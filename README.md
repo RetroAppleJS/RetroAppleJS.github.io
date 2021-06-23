@@ -10,5 +10,5 @@ This is a complete AppleII+ IDE toolchain with an assembler, debugger and emulat
 
 ## Credits
 
-The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ emulator, Mag. Norbert Landsteiner (2005) for the 6502 assembler and Freddy Vandriessche (2020) for gluing the IDE together, including sneaky bugs for real connaisseurs ;o)
+The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ emulator, Mag. Norbert Landsteiner (2005) for the 6502 assembler and Freddy Vandriessche (2020) for gluing the IDE together, and introducing new sneaky bugs, for the real connaisseurs ;o)
 
