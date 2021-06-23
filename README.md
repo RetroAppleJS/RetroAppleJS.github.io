@@ -6,7 +6,7 @@
 
 ## Introduction
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger and emulator environment and CPU reference manual in one client-side JavaScript web application.  All you need for running this, is a browser.  
+This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser.  
 
 The idea is simple, retro-computing enthusiasts want a frictionless implementation of their concepts.  Headaces on setting up the building blocks is especially not the sort of old memories one wants to recall.
 
