@@ -1,6 +1,6 @@
 # The Apple II+ IDE
 
-<img src="/res/appleii+_bck_650.png?raw=true" style="zoom:50%;" />
+<img src="/res/appleii+_bck_650.png?raw=true" style="zoom:50%;" align="left" />
 
 
 
