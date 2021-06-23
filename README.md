@@ -10,7 +10,7 @@ This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator 
 
 The idea is simple, retro-computing enthusiasts want a frictionless implementation of their concepts.  Headaces on setting up the building blocks is especially not the sort of old memories one wants to recall.
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. Please have peek inside folder **asm_code_examples**.
+Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. Please have peek inside folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples(**asm_code_examples**).
 
 ## Credits
 
