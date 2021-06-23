@@ -470,7 +470,7 @@ function getIdentifier(n)
 		var c = n.charAt(i);
 		if ((c < 'A') && (c > 'Z') && (c < '0') && (c > '9') && (c != '_')) return '';
 	}
-	//n = n.split("+")[0].split("-")[0];  FVD commented out, no clue what it does with identifiers
+	n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels 
 	if (n.length > 6)
 	{
 		n = n.substring(0, 6);
