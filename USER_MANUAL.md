@@ -1,38 +1,51 @@
-# The Apple II IDE
+Instructions
+ 
+The Display
+The display shows all (yes its all there is) registers of a 6502/6510 CPU:
 
-<img src="/res/appleii+_bck_650.png?raw=true" width=40% align="left" />
+  	PC	....	Program Counter
+  	A	....	Accumulator
+  	X	....	X Register
+  	Y	....	Y Register
+  	SR	....	Status Register
+  	SP	....	Stack Pointer
+The status register (SR) holds the following flags (from bit 7 to 0):
 
+  	N	....	Negative
+  	V	....	Overflow
+  	–	....	ignored
+  	B	....	Break
+  	D	....	Decimal
+  	I	....	Interrupt (IRQ disable)
+  	Z	....	Zero
+  	C	....	Carry
+The line disassembler shows the current value of PC, the content of the according memory address (the next instruction followed by the operands, if any), and a disassembly of this instruction.
 
+The cycle time display shows the ticks of exceeded CPU time (including extra cycles for branches page transitions).
 
-## Introduction
+ 
+Setting the Registers
+Click a registers label to set its value.
+Click on a SR flag to flip its value.
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser.  
+ 
+Memory
+The emulator implements 64 k of memory for the full 16 bit address range.
+The 6502's stack of 1 k range is located at 0100 to 01FF (hard wired).
 
-The idea is simple.  Retrocomputing enthusiasts want a frictionless implementation of their concepts.  Headaces associated with setting up a working system is especially not the sort of old memories one wants to recall.
+ 
+Accessing the Memory
+The button "look up mem #" offers a quick inspection of a 16 byte range around any address.
+You may enter any amount of hex code into the memory inspector's pane and load it to the specified start address.
+Further the memory inspector lets you inspect the memory in steps of 128 (0x80) bytes (half page). You may alter the display's content and load it back the emulator's memory. (Any figures prefixed by a colon ":" are ignored as line numbers.)
+The "show ASCII" option shows the according ASCII characters at the left of each line (if applicable). Uncheck this when transfering memory to the disassembler.
+Last there's an option to load the ROMs of the Commodore 64 (® CBM) to the according addresses (A000-BFFF, D000-FFFF) – for all those who can't help nostalgia. (Note: The emulator does not implement the C64's bank switching feature.)
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. 
+ 
+About the Emulator
+The emulator is written in JavaScript and emulates a 65xx-family micro processor unit that was the heart of so popular micro computers as the Apple II (6502) or the Commedore 64 (6510). The most common types, the 6502 and 6510 processors, are basicly the same and share the same instruction tables. (The 6510 varies from 6502 only in the implementation of 6 I/O ports at addresses 0000 and 0001.)
+The emulator implements all legal instructions. Undefined opcodes are ignored (treated as NOP, No OPeration, with cycle time 0) – no pseudo-opcodes are implemented.
+The emulator's core is based on the 6510 emulation C source by Earle F. Philhower III for his "Commodore 64 Emulator v0.3" for Mac, ® 1993-4, with some modification for exact cycle times.
+BCD arithmetics and V-flag behavior in 2016. Also, some more general, shared code is used for some instructions in immediate addressing mode (which were treated as special cases before in order to optimize runtime).
 
-## Credits
-
-The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ emulator, Mag. Norbert Landsteiner (2005) for the 6502 assembler and Freddy Vandriessche (2020) for gluing the IDE together, and introducing new sneaky bugs, for the real connaisseurs ;o)
-
-## Getting started
-
-1) Inside the assembler, tap the **'generate'** button
-2) Tap the **'to emulator'** button
-3) Inside the emulator, tap the **'paste'** button
-4) Type **G6000** to run the code at address 6000h, that's it !
-
-<img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50%  />
-
-<br>
-Other assembler listings can be found in [this folder](https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples), feel free to copy any of those in the left pane of the assembler and procedd as described above.
-
-## User manual
-
-## Future features
-
-
-
-
-
+The 6502 CPU script and the underlying JavaScript source are free software and may be redistributed and/or modified under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or any later version.
