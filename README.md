@@ -16,7 +16,7 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivin
 
 The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ emulator, Mag. Norbert Landsteiner (2005) for the 6502 assembler and Freddy Vandriessche (2020) for gluing the IDE together, and introducing new sneaky bugs, for the real connaisseurs ;o)
 
-## Getting Started
+## Getting started
 
 1) Inside the assembler, tap the **'generate'** button
 2) Tap the **'to emulator'** button
@@ -28,7 +28,9 @@ The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ em
 <br>
 Other assembler listings can be found in [this folder](https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples), feel free to copy any of those in the left pane of the assembler and procedd as described above.
 
-## Documentation
+## User manual
+
+
 
 
 
