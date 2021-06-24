@@ -18,4 +18,8 @@ The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ em
 
 ## Getting Started
 
+1) Tap the 'generate' button
+2) Tap the 'to emulator' button
+3) Inside the emulator, type G6000 to run the code, that's it !
+
 <img src="/res/Start_Step1.png?raw=true" width=50% align="left" />
