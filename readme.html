@@ -1,0 +1,19 @@
+<html>
+<head>
+    <meta charset='utf-8'>
+</head>
+<body onload=loadDoc()>
+
+<script>
+  function loadDoc() {
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = function() {
+      document.getElementById("demo").innerHTML = this.responseText;
+    }
+    xhttp.open("GET", "https://raw.githubusercontent.com/flyingzebra/AppleII-IDE/main/DEBUGGER_MANUAL.md");
+    xhttp.send();
+  }
+</script>
+<div id=demo></div>
+</body>
+</html>
