@@ -10,7 +10,7 @@ This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator 
 
 The idea is simple.  Retro-computing enthusiasts want a frictionless implementation of their concepts.  Headaces associated with setting up a working system is especially not the sort of old memories one wants to recall.
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Please have peek inside [this folder](https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples).
+Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. 
 
 ## Credits
 
@@ -18,9 +18,11 @@ The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ em
 
 ## Getting Started
 
-1) Tap the 'generate' button
+1) Inside the assembler, tap the 'generate' button
 2) Tap the 'to emulator' button
 3) Inside the emulator, tap the 'paste' button
 4) Type G6000 to run the code at address 6000h, that's it !
 
 <img src="/res/Start_Step1.png?raw=true" width=45% align="left" /><img src="/res/Start_Step2.png?raw=true" width=50% align="right" />
+
+Other assembler listings can be found in [this folder](https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples) feel free to copy any of those in the left pane of the assembler and procedd as described above.
