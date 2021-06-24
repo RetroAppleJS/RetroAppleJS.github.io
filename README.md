@@ -18,3 +18,4 @@ The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ em
 
 ## Getting Started
 
+<img src="/res/Start_Step1.png?raw=true" width=75% align="left" />
