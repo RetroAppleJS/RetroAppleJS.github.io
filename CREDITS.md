@@ -2,7 +2,8 @@ Credits
 =======
 
   - AppleII IDE v0
-    *[Freddy Vandriessche](https://github.com/flyingzebra)
+    * [Freddy Vandriessche](https://github.com/flyingzebra)<br>
+      Author of the AppleII IDE
 
 
   - Original Projects
