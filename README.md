@@ -12,10 +12,6 @@ The idea is simple.  Retrocomputing enthusiasts want a frictionless implementati
 
 Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. 
 
-## Credits
-
-The basic building blocks originate from Thomas Skibo (2014) for the AppleII+ emulator, Mag. Norbert Landsteiner (2005) for the 6502 assembler and Freddy Vandriessche (2020) for gluing the IDE together, and introducing new sneaky bugs, for the real connaisseurs ;o)
-
 ## Getting started
 
 1) Inside the assembler, tap the **'generate'** button
