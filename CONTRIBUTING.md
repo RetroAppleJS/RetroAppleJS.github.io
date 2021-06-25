@@ -11,7 +11,7 @@ Generally, bug reports should be in the following format:
  3. Expected Output (Output that is expected)
  4. Actual Output (Actual AppleII IDE output)
 
-ex:
+e.g. (6502 assembler code):
 
 **Description:**
 The assembler halts without error on a label identifier that is not followed by opcode on the same line. 
