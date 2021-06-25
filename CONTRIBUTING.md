@@ -63,14 +63,14 @@ PRs are awesome. However, before you submit your pull request consider the follo
    git checkout -b my-fix-branch develop
    ```
 
- <!-- - Run the full test suite before submitting and make sure all tests pass (obviously =P).-->
+ <!-- - Run the full test suite before submitting and make sure all tests pass (obviously =P).
  - Try to follow our [**coding style rules**]().
    Breaking them prevents the PR to pass the tests.
  - Refrain from fixing multiple issues in the same pull request. It's preferable to open multiple small PRs instead of one
    hard to review big one. Also, don't reuse old forks (or PRs) to fix new issues.
  - If the PR introduces a new feature or fixes an issue, please add the appropriate test case.)
-<!-- - We use commit notes to generate the changelog. It's extremely helpful if your commit messages adhere to the
- [**Git Commit Guidelines**]().-->
+ - We use commit notes to generate the changelog. It's extremely helpful if your commit messages adhere to the
+ [**Git Commit Guidelines**](). 
  - If we suggest changes then:
    - Make the required updates.
    - Re-run the Angular test suite to ensure tests are still passing.
