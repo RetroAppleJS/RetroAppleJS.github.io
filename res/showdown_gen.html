@@ -3,23 +3,35 @@
     <meta charset='utf-8'>
     <script type="text/javascript" src="showdown.js"></script>
 </head>
-<body onload=loadDoc()>
+<body onload="Markdown2HTML();HTML2Markdown()">
 
 <script>
-  function loadDoc() {
+  function Markdown2HTML() {
     const xhttp = new XMLHttpRequest();
     xhttp.onload = function() {
 
+      var converter = new showdown.Converter();
+      converter.setFlavor("github");
+      var html = converter.makeHtml(this.responseText);
+      document.getElementById("demo").innerHTML = html
+      //////////////////// INVERSION //////////////////
+      document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
 
-      //document.getElementById("demo").innerHTML = this.responseText;
-      var converter = new showdown.Converter(),text= this.responseText,html= converter.makeHtml(text);
-      document.getElementById("demo").innerHTML = html;
 
     }
-    xhttp.open("GET", "https://raw.githubusercontent.com/flyingzebra/AppleII-IDE/main/README.md");
+    xhttp.open("GET", "https://raw.githubusercontent.com/flyingzebra/AppleII-IDE/main/DEBUGGER_MANUAL.md");
     xhttp.send();
   }
 
+  function HTML2Markdown() {
+
+    var html = DbgHelp();
+    document.getElementById("demo3").innerHTML = html
+    var converter = new showdown.Converter();
+    //converter.setFlavor("github");
+    //var markdown = converter.makeMarkdown(html);
+    document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
+  }
 
   function DbgHelp()
   {
@@ -103,9 +115,11 @@
   +'\n'
   }
 
-
+var converter = new showdown.Converter();
 
 </script>
-<textarea id=demo style="width:800px;height:400px"></textarea>
+<textarea id=demo style="width:800px;height:250px"></textarea>
+<textarea id=demo2 style="width:800px;height:250px"></textarea>
+<div id=demo3></div>
 </body>
 </html>
