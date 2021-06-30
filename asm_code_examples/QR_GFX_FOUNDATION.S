@@ -100,7 +100,6 @@ NIBBLE    PHA          ; A = INPUT
           AND #$0F     ; A = RIGHT NIBBLE
           RTS
 
-
 HOME      JSR TXTPOS      ; DISPLAY HOME SCREEN
           LDY #>STR.00
           LDA #<STR.00
@@ -127,12 +126,12 @@ TXTPOS    JSR M.HOME
           RTS
 
 ; *** HGR WIPE USING COLOR ***
-HGRWIP  LDA #$FF
+HGRWIP  LDA #$FF          ; HCOLOR = WHITE
         STA HGR.BITS
         LDA #$40
-        JSR M.HGRCOL+2
+        JSR M.HGRCOL+2    ; WIPE HGR2
         LDA #$20
-        JSR M.HGRCOL+2
+        JSR M.HGRCOL+2    ; WIPE HGR
         LDA #$00
         JMP CYG.00
 
