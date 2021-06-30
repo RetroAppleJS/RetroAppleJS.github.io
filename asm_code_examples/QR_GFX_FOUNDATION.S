@@ -66,7 +66,8 @@ TOGFX     LDA #$03  ; CYCLE REGISTER INDEX & MAX
 
 TOG.00    STA M.HIRES   ; HIRES
           STA M.TXCL    ; GRAPHICS MODE (vs TEXT MODE)
-          STA M.TXP1    ; PAGE1
+          STA M.TXP1    ; PAGE 1
+          STA M.MXCL    ; FULL
           BEQ TOG.0
           CMP #$01
           BEQ TOG.1
@@ -77,27 +78,30 @@ TOG.3     STA M.TXST    ; TEXT    (TEXT FULL)
           RTS
 TOG.2     STA M.TXP2    ; PAGE2   (HGR2 FULL)
           RTS
-TOG.1     STA M.MXCL    ; FULL    (HGR FULL)
-          RTS
+TOG.1     RTS    ; FULL    (HGR FULL)
+          ;RTS
 TOG.0     STA M.MXST    ; MIXED   (HGR MIXED)
           RTS
 
 ; *** CYCLER ***
 ; A = (LEFT NIB = REGISTER INDEX)  (RIGHT NIB = MAX)
-CYCLR     PHA          ; A = LEFT NIB = REGISTER INDEX & MAX
-          LSR A
-          LSR A
-          LSR A
-          LSR A
-          TAX           ; X = REGISTER INDEX
+CYCLR     JSR NIBBLE   ; A = LEFT NIB = REGISTER INDEX & MAX
           INC CY_COU,X
-          PLA
-          AND #$0F      ; A = MAX
           CMP CY_COU,X
           BPL CYC.01
           LDA #$00
           STA CY_COU,X
 CYC.01    LDA CY_COU,X
+          RTS
+
+NIBBLE    PHA          ; A = INPUT
+          LSR A
+          LSR A
+          LSR A
+          LSR A
+          TAX          ; X = LEFT NIBBLE
+          PLA
+          AND #$0F     ; A = RIGHT NIBBLE
           RTS
 
 HELP      LDA #$11  ; CYCLE REGISTER INDEX & MAX
@@ -106,13 +110,12 @@ HELP      LDA #$11  ; CYCLE REGISTER INDEX & MAX
           PLA
           PLA
           JMP START
-HLP.01    LDA #$03
-          JSR TOG.00
-          JSR M.HOME
+HLP.01    JSR M.HOME
           LDY #>STR.01
           LDA #<STR.01
           JSR M.STROUT
-          RTS
+          LDA #$03
+          JMP TOG.00
 
 TXTPOS    JSR M.HOME
           JSR M.CBOT
