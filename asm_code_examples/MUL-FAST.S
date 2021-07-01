@@ -15,7 +15,7 @@ M.OUTSP   = $DB57   ; Space
 M.COUT    = $FDED   ; print char
 M.KPRESS  = $FD35
 M.RDKEY   = $FD2F   ; $FD0C
-M.STROUT  = $DB3A   ; Print string pointed to by Y,A. The string must end with a zero or a quote.
+M.STROUT  = $DB3A   ; print string from address Y (high) and A (low)
 
 S2.TX        = $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
 S2.TY        = $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
@@ -30,9 +30,9 @@ S0.TZ        = $1B       ; mul_product_hi
 
 *=$6000
 
-START   LDA #$00
-        JSR ISTROUT     ; Print string from A = index
-        JSR M.CRDO
+START   LDY #>STR.00
+        LDA #<STR.00
+        JSR M.STROUT
 
         LDX #$00
         LDY #$00
@@ -93,29 +93,7 @@ L3      LDX *S2.TX
 
 ; *** PRINT STRING from Y = INDEX ***
 STR.00  ASC "(RETURN=EXIT)"    ;0
-        HEX 00
-
-ISTROUT LDY #<STR.00    ; init pointer
-        STY *S0.TX
-        LDY #>STR.00    ; init pointer
-        STY *S0.TY
-        LDY #$00
-        TAX             ; X = array index
-        BEQ IST.2
-        DEY
-IST.1   INY
-        LDA (S0.TX),Y
-        BNE IST.1
-        DEX
-        BNE IST.1
-        INY             ; Y = found starting index
-IST.2   LDA (S0.TX),Y   ; Print string until next zero
-        BEQ IST.3
-        JSR M.COUT
-        INY
-        BNE IST.2
-IST.3   RTS
-
+        HEX 0D00
 
 
 ; mul 8x8 16 bit result for when you can't afford big tables
