@@ -247,8 +247,15 @@ TXTPLT  LDA #' '
 TXP.01  LDA #$20
 TXP.02  JSR M.COUT
         RTS
-TXP.03  LDX MO_CNT
-        INX
+TXP.03  LDA MO_CNT
+        LSR A
+        LSR A
+        LSR A
+        ADC #$00
+        ASL A
+        ASL A
+        ASL A
+        TAX
         INX
 TXP.04  JSR TXP.01
         DEX
