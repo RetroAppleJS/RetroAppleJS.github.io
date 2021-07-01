@@ -88,6 +88,7 @@ HELP      LDA #$11  ; CYCLE REGISTER INDEX & MAX
           LDY #>STR.01
           LDA #<STR.01
           JSR M.STROUT
+          JSR M.CRDO
           LDA #$03
           JMP HOM.00
 
@@ -180,51 +181,84 @@ STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"
         ASC "[W]IPE:CLEAR ALL GFX"
         HEX 00
 
+STR.02  HEX 2020202020202020
+        HEX 2020202020202020
+        HEX 2020202020202020
+        HEX 2000
+
 
 ;USING
-; *S1.TX
-; *S1.TY
+; *S2.TX
+; *S2.TY
 
 ;*** QR IMPORT PROCEDURE ***
-QR_IMP  LDA #<QR_BUF  ; LO-BYTE
-        STA *S1.TX
+QR_IMP  JSR TXP.03
+
+        LDA #<QR_BUF  ; LO-BYTE
+        STA *S2.TX
         LDA #>QR_BUF  ; HI-BYTE
-        STA *S1.TY
+        STA *S2.TY
         LDA MO_CNT    ; MAX VERT
-        STA MO_CNT+1  ; VERT COUNTDOWN
+        STA MO_VAR    ; VERT COUNTDOWN
         LSR A
         LSR A
         LSR A
         ADC #$00
-        STA MO_CNT+2    ; MAX HORIZ
+        STA MO_VAR+1    ; MAX HORIZ
 
-L0      JSR M.CRDO
+QMP.0   JSR TXP.01
         LDY #$00
 
 ;*INNER LOOP
-L1      LDA (S1.TX),Y
-        STY MO_CNT+3
+QMP.1   LDA (S2.TX),Y
 
-          JSR M.PRBYTE
+          JSR PLOT8
 
-        LDY MO_CNT+3
         INY
-        CPY MO_CNT+2
-        BNE L1
+        CPY MO_VAR+1
+        BNE QMP.1
 ;*INNER LOOP
 
         TYA
         CLC
-        ADC *S1.TX
-        STA *S1.TX
-        BCC L2
-        INC *S1.TY
-L2      DEC MO_CNT+1
-        BNE L0
+        ADC *S2.TX
+        STA *S2.TX
+        BCC QMP.2
+        INC *S2.TY
+QMP.2   JSR M.CRDO
+        DEC MO_VAR
+        BNE QMP.0
+        JSR TXP.03
+        RTS
+
+PLOT8   STA MO_VAR+3    ; BYTE
+        STY MO_VAR+2    ; HORIZ
+        LDX #$08
+        STX MO_VAR+4    ; BIT NUMBER
+PLT.00  ROL MO_VAR+3
+          JSR TXTPLT
+        DEC MO_VAR+4
+        BNE PLT.00
+        LDY MO_VAR+2
+        RTS
+
+TXTPLT  LDA #' '
+        BCS TXP.02
+TXP.01  LDA #$20
+TXP.02  JSR M.COUT
+        RTS
+TXP.03  LDX MO_CNT
+        INX
+        INX
+TXP.04  JSR TXP.01
+        DEX
+        BNE TXP.04
+        JSR M.CRDO
         RTS
 
 
-MO_CNT  HEX 15000000
+MO_VAR  HEX 0000000000  VERT COUNTDOWN / HORIZ MAX / HORIZ COUNTUP / CURRENT BYTE / BYTE COUNTDOWN
+MO_CNT  HEX 15
 QR_BUF  HEX FE2BF8
         HEX 820A08
         HEX BAA2E8
