@@ -47,7 +47,7 @@ USRCMD    LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
           PHA
           LDA #<USRCMD-1
           PHA
-          JSR M.KPRESS
+UCM.00    JSR M.KPRESS
           CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT
           BEQ CYGFX
           CMP #'H'
@@ -55,9 +55,8 @@ USRCMD    LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
           CMP #'W'
           BEQ HGRWIP
           CMP #'I'
-          BNE UCM.01
+          BNE UCM.00
           JMP QR_IMP
-UCM.01    RTS
 
 ; *** TOGGLE GFX MODE    (0) HGR+TEXT > (1)HGR FULL > (2)HGR2 FULL > (3)TEXT
 
@@ -183,45 +182,41 @@ STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"
 
 ;*** QR IMPORT PROCEDURE ***
 QR_IMP  LDA #<QR_BUF  ; LO-BYTE
-        STA *$1A
+        STA *S0.TY
         LDA #>QR_BUF  ; HI-BYTE
-        STA *$1B
-
+        STA *S0.TZ
         LDA MO_CNT    ; MAX VERT
-        STA *S1.TY
+        STA *S1.TY    ; VERT COUNTDOWN
         LSR A
         LSR A
         LSR A
         ADC #$00
         STA *S0.TA    ; MAX HORIZ
-L0      LDY #$00
 
-L1      LDA ($1A),Y
+L0      JSR M.CRDO
+        LDY #$00
+
+;*INNER LOOP
+L1      LDA (S0.TY),Y
         STY *S0.TX
-        JSR M.PRBYTE
+
+          JSR M.PRBYTE
+
         LDY *S0.TX
         INY
         CPY *S0.TA
         BNE L1
+;*INNER LOOP
 
-        LDA *S0.TA
+        TYA
         CLC
-        ADC *$1A
-        STA *$1A
+        ADC *S0.TY
+        STA *S0.TY
         BCC L2
-        INC *$1B
-L2      NOP
-
-          JSR M.OUTSP
-          LDA *S1.TY
-          JSR M.PRBYTE
-          JSR M.CRDO
-
-        DEC *S1.TY
+        INC *S0.TZ
+L2      DEC *S1.TY
         BNE L0
         RTS
-        ; {'R6':'08','R1':'1B','R2':'1A','R4':'6042'}
-        MO_LIM    HEX 00
 
 
 MO_CNT  HEX 15
