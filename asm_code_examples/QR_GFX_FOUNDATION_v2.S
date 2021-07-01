@@ -180,46 +180,51 @@ STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"
         ASC "[W]IPE:CLEAR ALL GFX"
         HEX 00
 
+
+;USING
+; *S1.TX
+; *S1.TY
+
 ;*** QR IMPORT PROCEDURE ***
 QR_IMP  LDA #<QR_BUF  ; LO-BYTE
-        STA *S0.TY
+        STA *S1.TX
         LDA #>QR_BUF  ; HI-BYTE
-        STA *S0.TZ
+        STA *S1.TY
         LDA MO_CNT    ; MAX VERT
-        STA *S1.TY    ; VERT COUNTDOWN
+        STA MO_CNT+1  ; VERT COUNTDOWN
         LSR A
         LSR A
         LSR A
         ADC #$00
-        STA *S0.TA    ; MAX HORIZ
+        STA MO_CNT+2    ; MAX HORIZ
 
 L0      JSR M.CRDO
         LDY #$00
 
 ;*INNER LOOP
-L1      LDA (S0.TY),Y
-        STY *S0.TX
+L1      LDA (S1.TX),Y
+        STY MO_CNT+3
 
           JSR M.PRBYTE
 
-        LDY *S0.TX
+        LDY MO_CNT+3
         INY
-        CPY *S0.TA
+        CPY MO_CNT+2
         BNE L1
 ;*INNER LOOP
 
         TYA
         CLC
-        ADC *S0.TY
-        STA *S0.TY
+        ADC *S1.TX
+        STA *S1.TX
         BCC L2
-        INC *S0.TZ
-L2      DEC *S1.TY
+        INC *S1.TY
+L2      DEC MO_CNT+1
         BNE L0
         RTS
 
 
-MO_CNT  HEX 15
+MO_CNT  HEX 15000000
 QR_BUF  HEX FE2BF8
         HEX 820A08
         HEX BAA2E8
