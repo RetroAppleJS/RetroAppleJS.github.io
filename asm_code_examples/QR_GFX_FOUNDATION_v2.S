@@ -8,6 +8,7 @@ M.CBOT    = $FB2F   ; move cursor to bottom
 M.C1UP    = $FC1A   ; move cursor one up
 M.HOME    = $FC58   ; clear text (HOME)
 M.KPRESS  = $FD35   ; key press
+M.SCRN2   = $F879   ; nibble splitter
 
 ;*** GFX CALLS ***
 M.SELHGR  = $F3E4   ; set hires mode only
@@ -114,15 +115,24 @@ CYC.01    LDA CY_COU,X  ; A = RESULT
           RTS
 
 ; *** NIBBLE SPLITTER
-NIBBLE    PHA          ; A = INPUT
-          LSR A
-          LSR A
-          LSR A
-          LSR A
-          TAX          ; X = LEFT NIBBLE
-          PLA
-          AND #$0F     ; A = RIGHT NIBBLE
-          RTS
+;NIBBLE    PHA          ; A = INPUT
+;          LSR A
+;          LSR A
+;          LSR A
+;          LSR A
+;          TAX          ; X = LEFT NIBBLE
+;          PLA
+;          AND #$0F     ; A = RIGHT NIBBLE
+;          RTS
+
+NIBBLE     PHA
+           JSR M.SCRN2
+           TAX
+           PLA
+           ; M.RTMSKZ (f87f)
+           AND #$0F
+           RTS
+
 
 HOME      JSR TXTPOS      ; DISPLAY HOME SCREEN
           LDY #>STR.00
