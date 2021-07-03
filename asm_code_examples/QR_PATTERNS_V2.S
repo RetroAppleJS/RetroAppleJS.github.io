@@ -32,8 +32,7 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 
 *=$6000
-PINTRO  JSR IST.4     ; INITIALISE ISTROUT
-        JSR M.TEXT
+PINTRO  JSR M.TEXT
         JSR DEB.0
         JSR M.KPRESS
         CMP #$D1      ; 'Q'
@@ -341,35 +340,32 @@ MUL.9   LDA #$00
         STA *S0.TX
         RTS
 
-; *** PRINT STRING from A = INDEX ***
-ISTROUT LDY #<STR.00    ; init pointer
-        STY *S0.TX
-        LDY #>STR.00    ; init pointer
-        STY *S0.TY
-        LDY #$00
-        TAX             ; X = array index
-        BEQ IST.2
+I; *** PRINT INDEX-BASED  STRING ***
+ISTROUT TAX           ; INDEX-BASED STRING OUT A=INDEX
+        LDY #>STR.00
+        LDA #<STR.00
+IST.00  STA *$AB
         DEY
-IST.1   INY
-        LDA (S0.TX),Y
-        BNE IST.1
+        STY *$AC
+        LDY #$FF
+        CPX #$00
+        BEQ IS2.02
+
+IS2.01  JSR IS2.03
+        BNE IS2.01     ; encounter zero value ?
         DEX
-        BNE IST.1
-        INY             ; Y = found starting index
-IST.2   LDA (S0.TX),Y   ; Print string until next zero
-        BEQ IST.3
-        CLC
-        ADC CH_IDX
+        BNE IS2.01     ; encounter zero counter ?
+
+IS2.02  JSR IS2.03
+        BEQ IS2.06     ; encounter zero value ?
         JSR M.COUT
-        INY
-        BNE IST.2
-IST.3   RTS
-IST.4   LDA CH_SET
-        CMP #$01
-        BNE IST.5
-        LDA #$80
-        STA CH_IDX
-IST.5   RTS
+        JMP IS2.02
+
+IS2.03  INY
+        BNE IS2.05
+        INC *$AC
+IS2.05  LDA ($AB),Y
+IS2.06  RTS
 
 ;*** DEBUG TRACE 1 ***
 DEB.0   LDA #$0E        ;  PRINT [QR-MASK] <ANYKEY>NEXT <Q>QUIT

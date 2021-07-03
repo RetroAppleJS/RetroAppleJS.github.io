@@ -1,12 +1,13 @@
+;*** TXT CALLS ***
 M.PRBYTE  = $FDDA   ; print hex byte
 M.CRDO    = $DAFB   ; line feed
 M.OUTSP   = $DB57   ; space
 M.COUT    = $FDED   ; print char
 M.STROUT  = $DB3A   ; print string from address Y (high) and A (low)
-M.KPRESS  = $FD35   ; key press
 M.CBOT    = $FB2F   ; move cursor to bottom
 M.C1UP    = $FC1A   ; move cursor one up
 M.HOME    = $FC58   ; clear text (HOME)
+M.KPRESS  = $FD35   ; key press
 
 ;*** GFX CALLS ***
 M.SELHGR  = $F3E4   ; set hires mode only
