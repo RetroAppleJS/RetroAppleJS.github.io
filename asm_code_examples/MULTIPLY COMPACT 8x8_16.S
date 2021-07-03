@@ -32,22 +32,19 @@ S0.TZ        = $1B       ; mul_product_hi
 
 START   LDY #>STR.00
         LDA #<STR.00
-        JSR M.STROUT
+        JSR M.STROUT   ; Pointer-based printing
+        JSR M.CRDO
 
         LDX #$00
         LDY #$00
 
-L2      STY *S2.TY      ; Y-coordinate
-L1      STX *S2.TX      ; X-coordinate
+L1      STY *S2.TY      ; Y-coordinate
+L2      STX *S2.TX      ; X-coordinate
 
         LDA #$D8
         JSR M.COUT
         LDA *S2.TX
         JSR M.PRBYTE    ; PRINT X
-        JSR M.OUTSP
-
-        LDA #'*'
-        JSR M.COUT
         JSR M.OUTSP
 
         LDA #$D9
@@ -79,77 +76,40 @@ L3      LDX *S2.TX
         INX
         ;CPX #$BF
         CPX #$10
-        BNE L1
+        BNE L2
         LDX #$00      ; RESET VALUE
         STX *S2.TX
         LDY *S2.TY
         INY
         ;CPY #$BF
         CPY #$00
-        BNE L2
+        BNE L1
         RTS
-
-
 
 ; *** PRINT STRING from Y = INDEX ***
 STR.00  ASC "(RETURN=EXIT)"    ;0
-        HEX 0D00
+        HEX 00
 
+; ***************************
+; *** MULTIPLY 8x8 16 bit ***
+; *** for when one can't  ***
+; *** afford big tables   ***
+; ***************************
 
-; mul 8x8 16 bit result for when you can't afford big tables
-; by djmips
-;
-; inputs are S0.TY and S0.TX and should be zero page.
-; A should be zero entering but if you want it will factor in as 1/2 A added to the result.
-;
-; output is 16 bit in S0.TY & S0.TX   (S0.TX is high byte)
-;
-; length = 65 bytes
-; total cycles worst case = 113
-; total cycles best case = 97
-; avg = 105
-; inner loop credits supercat
+MUL_D   HEX 0000      ; result of multiplication
 
-MUL  LDA *S0.TX
-     BEQ M.B9
-     LDA #$00
-     DEC *S0.TX
-     ROR *S0.TY
-     BCC M.B1
-     ADC *S0.TX
-M.B1 ROR A
-     ROR *S0.TY
-     BCC M.B2
-     ADC *S0.TX
-M.B2 ROR A
-     ROR *S0.TY
-     BCC M.B3
-     ADC *S0.TX
-M.B3 ROR A
-     ROR *S0.TY
-     BCC M.B4
-     ADC *S0.TX
-M.B4 ROR A
-     ROR *S0.TY
-     BCC M.B5
-     ADC *S0.TX
-M.B5 ROR A
-     ROR *S0.TY
-     BCC M.B6
-     ADC *S0.TX
-M.B6 ROR A
-     ROR *S0.TY
-     BCC M.B7
-     ADC *S0.TX
-M.B7 ROR A
-     ROR *S0.TY
-     BCC M.B8
-     ADC *S0.TX
-M.B8 ROR A
-     ROR *S0.TY
-     INC *S0.TX
-     STA *S0.TX
-     RTS
-M.B9 LDA #$00
-     STA *S0.TY
-     RTS
+MUL     LDA #$00     ;Initialize RESULT to 0
+        LDX #$08     ;There are 8 bits in NUM2
+MUL.1   LSR *S0.TY   ;Get low bit of NUM2
+        BCC MUL.2    ;0 or 1?
+        CLC          ;If 1, add NUM1
+        ADC *S0.TX
+MUL.2   ROR A        ;"Stairstep" shift (catching carry from add)
+        ROR MUL_D
+        DEX
+        BNE MUL.1
+        ;STA MUL_D+1
+        STA *S0.TX
+        LDA MUL_D
+        STA *S0.TY
+        RTS
