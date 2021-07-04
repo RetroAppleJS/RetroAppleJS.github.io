@@ -78,13 +78,6 @@ IST.03  INY
 IST.05  LDA ($AB),Y
 IST.06  RTS
 
-; *** PRINT ADDRESS ***
-; *** (A=hi X=lo)
-
-PRTADR  JSR M.PRBYTE
-        TXA
-        JSR M.PRBYTE
-        RTS
 
 ; *** STRING DATA ***
 STR.00  HEX 8D
