@@ -18,6 +18,7 @@ M.CLREOL  = $FC9C   ; clear text-line from cursor to right
 M.CLREOP  = $FC42   ; clear text from cursor to bottom
 M.HOME    = $FC58   ; clear text (HOME)
 M.KPRESS  = $FD35   ; wait for key press
+M.RESTART = $E003   ; restart BASIC
 
 S0.TA        = $18     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
@@ -102,8 +103,15 @@ FNT.01  NOP
         JSR M.PRDEC
         JSR M.CRDO
         INC FNTD+1
+        LDA FNTD+1
+        CMP #$80
+        BNE FNT.22
+        JSR FNT.06      ; move cursor 2x4 up
+        JSR FNT.06
+        JSR M.UP
+        JMP FNT.00
 
-        JSR M.KPRESS
+ FNT.22 JSR M.KPRESS
         CMP #'X'
         BEQ FNT.07      ; EXIT
         JSR FNT.06      ; move cursor 2x4 up
@@ -148,7 +156,7 @@ PRBPAT  STA PBPD
 PBP.0   ROR PBPD
         LDA #$20
         BCS PBP.1
-        LDA #' '
+        LDA #'+'
 PBP.1   JSR M.COUT
         DEC PBPD+1
         BNE PBP.0
@@ -201,14 +209,14 @@ STR.03  ASC "SCREEN FONT (X:EXIT ANY-KEY:NEXT)"
 STR.04  ASC "ASCII:$"
         HEX 00
 
-; 128 characters - 
+; Apple IIc alternate - 128 characters
 FONT  HEX   1008367F3F3F7E36 ;'@'^ 
       HEX   1008364121214A36 ;'A'^
       HEX   000002060E1E3642 ;'B'^
       HEX   7F22140808142A7F ;'C'^
       HEX   004020110A040400 ;'D'^
       HEX   7F3F5F6C757B7B7F ;'E'^
-      HEX   70607E3179303F02 ;'F'^ ??
+      HEX   70607E3179303F02 ;'F'^
       HEX   00180700070C0870 ;'G'^
       HEX   0804027F02040800 ;'H'^
       HEX   000000000000002A ;'I'^
@@ -220,7 +228,7 @@ FONT  HEX   1008367F3F3F7E36 ;'@'^
       HEX   13181C7E1C18106F ;'O'^
       HEX   640C1C3F1C0C047B ;'P'^
       HEX   4048087F3E1C4840 ;'Q'^
-      HEX   40481C3E7E084840 ;'R'^  DEBUG!
+      HEX   40481C3E7F084840 ;'R'^
       HEX   0000007F00000000 ;'S'^
       HEX   010101010101017F ;'T'^
       HEX   0810207F20100800 ;'U'^
