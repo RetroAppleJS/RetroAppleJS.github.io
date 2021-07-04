@@ -10,6 +10,10 @@ M.OUTSP   = $DB57   ; space
 M.COUT    = $FDED   ; print char
 M.STROUT  = $DB3A   ; print string from address (Y=hi A=lo)
 
+        ;B0=0 B1=1
+        LDA #$B9
+        JSR PRBITS
+        RTS
 
         LDA #$02
         JSR ISTROUT       ; PRINT INDEX-BASED STRING (A=INDEX)
@@ -34,6 +38,19 @@ M.STROUT  = $DB3A   ; print string from address (Y=hi A=lo)
         LDX #<ISTROUT
         JSR M.PRDEC       ; PRINT DEC WORD (A=HI X=LO)
         RTS
+
+
+PRBITS  LDX #$08
+        STA PRD
+PRB.0   ROL PRD
+        LDA #'0'
+        ADC #$00
+PRB.1   JSR M.COUT
+        DEX
+        BNE PRB.0
+        RTS
+PRD     HEX 00
+
 
 ; *** PRINT INDEX-BASED  STRING ***
 ; *** A = INDEX     (41 Bytes)  ***
