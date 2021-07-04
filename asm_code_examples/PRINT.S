@@ -10,10 +10,6 @@ M.OUTSP   = $DB57   ; space
 M.COUT    = $FDED   ; print char
 M.STROUT  = $DB3A   ; print string from address (Y=hi A=lo)
 
-        ;B0=0 B1=1
-        LDA #$B9
-        JSR PRBITS
-        RTS
 
         LDA #$02
         JSR ISTROUT       ; PRINT INDEX-BASED STRING (A=INDEX)
@@ -37,8 +33,21 @@ M.STROUT  = $DB3A   ; print string from address (Y=hi A=lo)
         LDA #>ISTROUT
         LDX #<ISTROUT
         JSR M.PRDEC       ; PRINT DEC WORD (A=HI X=LO)
+
+        LDA #'>'
+        JSR M.COUT
+        LDA #'%'
+        JSR M.COUT
+
+        LDA #>ISTROUT
+        JSR PRBITS
+        LDX #<ISTROUT
+        JSR PRBITS
+
         RTS
 
+; *** PRINT 8 BITS ***
+; *** A = BYTE     ***
 
 PRBITS  LDX #$08
         STA PRD
@@ -79,11 +88,15 @@ IST.05  LDA ($AB),Y
 IST.06  RTS
 
 
-; *** STRING DATA ***
+; - - - - - - - - - - - - - - - - - - -
+
+
+; STRING DATA
+
 STR.00  HEX 8D
-        ASC "POINTER-BASED PRINTING:"
+        ASC "POINTER-BASED PRINTING"
         HEX 8D
-        ASC ">>MULTILINE"
+        ASC "& MULTILINE"
         HEX 8D8D00
 STR.01  ASC "M.STROUT:$"
         HEX 00
