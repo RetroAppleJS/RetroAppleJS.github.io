@@ -93,7 +93,7 @@ function Apple2Video(ctx) {
     }
 
     this.setMonitor = function(mode) {
-        alert(mix_mode)
+        //alert(mix_mode)
         switch(mode & 3)
         {
             case 1: { monochrome = "white"; break }
@@ -112,7 +112,7 @@ function Apple2Video(ctx) {
         ctx.fillRect(col * 14, row * 16, 14, 16);
 
         // Color for white pixels.
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = monochrome?monochrome:"#ffffff";
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
 
