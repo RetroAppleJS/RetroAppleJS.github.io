@@ -58,5 +58,9 @@ function Apple2Plus(context) {
         hw.io.disk2.diskBytes = bytes;
     }
 
+    this.monitor = function(type) {
+        video.setMonitor(type);
+    }
+
     this.restart();
 }

@@ -213,6 +213,7 @@
       <!--   EMULATOR  -->
         <div style="padding:4px 90px">
         <input type="button" value="Pasteboard" onclick="javascript:onPasteboard()">
+        <input type="button" value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name)">
         <input type="button" onclick="javascript:pauseButton()" id="pausebutton" value="Pause ">
         <input type="button" onclick="javascript:resetButton()" id="resetbutton" value="Reset">
         <input type="button" onclick="javascript:restartButton()" id="restartbutton" value="Restart">
@@ -224,6 +225,8 @@
         </div>
         <script type="text/javascript">
         var bColor = false;
+
+        function onChangeMonitor(type) { apple2plus.monitor(type) }
         function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
         function onBoardPaste() {
            var e = board.boardText.value;

@@ -38,6 +38,7 @@ function Apple2Video(ctx) {
     var mix_mode;
     var page2_mode;
     var hires_mode;
+    var monochrome;
 
     var flash_on = true; // boolean toggled 6 hz or so.
     var flash_count = 0;
@@ -50,8 +51,7 @@ function Apple2Video(ctx) {
         gfx_mode = false;
         mix_mode = false;
         page2_mode = false;
-        hireset_mode = false;
-
+        hires_mode = false;
         flash_on = true;
         flash_count = 0;
     }
@@ -90,6 +90,18 @@ function Apple2Video(ctx) {
             hires_mode = flag;
             this.redraw();
         }
+    }
+
+    this.setMonitor = function(mode) {
+        alert(mix_mode)
+        switch(mode & 3)
+        {
+            case 1: { monochrome = "white"; break }
+            case 2: { monochrome = "#AFFFF6"; break }
+            case 3: { monochrome = "#FCE7A1"; break }
+            default:  monochrome = ""
+        }
+        this.redraw();
     }
 
     // Draw a text character from character ROM.
@@ -165,8 +177,12 @@ function Apple2Video(ctx) {
     function drawPixel(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
 
+        if (monochrome && me != 0)
+        {
+            ctx.fillStyle = monochrome;
+        }
         // If pixel is set and either adjacent pixels are set, it's white.
-        if (me != 0 && (left != 0 || right != 0))
+        else if (me != 0 && (left != 0 || right != 0))
             ctx.fillStyle = "white";
         // If pixel is set but no adjacent pixels are set, pick a color
         // based on column and b7.
@@ -185,7 +201,7 @@ function Apple2Video(ctx) {
         }
         // If pixel is not set and both adjacent pixels are set, pick a
         // color based on column (of adjacent pixel) and b7 (of this byte).
-        else if (left != 0 && right != 0) {
+        else if (!monochrome && left != 0 && right != 0) {
             if (b7 != 0) {
                 if (a0 != 0)
                     ctx.fillStyle = "blue";
