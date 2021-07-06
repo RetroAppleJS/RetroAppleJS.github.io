@@ -1,0 +1,98 @@
+<style>
+body {
+    font-family: 'Trebuchet MS', sans-serif;
+}
+</style>
+<script>
+
+var monoNames   = ["color","b/w","green","amber"];
+var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+
+var loresColors = [
+        "#000000// Black",
+        "#ff0000// Magenta",
+        "#0000ff// Dark Blue",        
+        "#c000c0// Purple",        
+        "#008000// Dark Green",
+        "#808080// Grey 1",
+        "#4040ff// Medium Blue",
+        "#8080ff// Light Blue",
+
+        "#8b4514// Brown",
+        "#ffa000// Orange",
+        "#808080// Grey 2",
+        "#ff69b4// Pink",
+        "#40ff40// Light Green",
+        "#ffff80// Yellow",
+        "#7fffd4// Aquamarine",
+        "#ffffff// White",
+    ];
+
+var rem = new Array();
+function loreschroma()
+{
+        function toHex(dec) { return ("0"+Math.round(dec).toString(16).toUpperCase()).slice(-2) }
+
+        var s = "var loresCols = [\r\n"
+        for(var j=0;j<loresColors.length;j++)
+        {
+            var col = loresColors[j].substring(0,7);
+            rem[j] = loresColors[j].substring(7,loresColors[j].length);
+            s += (j>0?",":"&nbsp;")+"[\""+col.toUpperCase()+"\","
+            for(var i=1;i<monoChromes.length;i++)
+            {
+                var c = [ parseInt(col.substring(1,3),16), parseInt(col.substring(3,5),16), parseInt(col.substring(5,7),16) ]
+                var m = [ parseInt(monoChromes[i].substring(1,3),16),parseInt(monoChromes[i].substring(3,5),16),parseInt(monoChromes[i].substring(5,7),16) ]
+                var avg = Math.round((c[0]+c[1]+c[2]))/3 / 255;   // luminosity factor
+                var mix = (i>1?",":"")+"\"#" + toHex(avg*m[0]) + toHex(avg*m[1]) + toHex(avg*m[2]) + "\""
+                s+= mix;
+            }
+            s += "] "+rem[j]+"\r\n";
+        }
+        s += "];\r\n";
+        return s;
+}
+
+document.write("<h1>APPLE II color palette code generator</h1>");
+document.write("<h3>insert into apple2video.js</h3>");
+document.write("<pre style=border-style:solid;padding:20px>")
+document.write('// Monochrome colors (index 0 = full color)<br>');
+document.write('var monoChromes = ["'+monoChromes.join('","')+'"];<br><br>');
+document.write('// Lores color to RGB table.<br>');
+document.write(loreschroma().replace(/\r\n/g,"<br>"))
+document.write("</pre>")
+eval(loreschroma().replace(/&nbsp;/g," "))
+
+var palletsize = [50,25]
+var s = "<table>"
+
+s+="<tr>"
+for(var j=0;j<monoChromes.length;j++)
+{
+    
+    s+="<td style=width:"+palletsize[0]+"px;height:"+palletsize[1]+"px><center>"+monoNames[j]+"</center></td>"
+}
+s+= "</tr>"
+
+s+="<tr>"
+for(var j=0;j<monoChromes.length;j++)
+{
+    monoNames 
+    s+="<td style=border-style:solid;width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+monoChromes[j]+">&nbsp;</td>"
+}
+s+= "<td>Monochrome colors</td></tr>"
+
+s+="<tr style=height:10px></tr>"
+
+ for(var i=0;i<loresCols.length;i++)
+ {
+     s+="<tr>"
+     for(var j=0;j<loresCols[i].length;j++)
+     {
+        s+="<td style=width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+loresCols[i][j]+">&nbsp;</td>"
+     }
+     s+= "<td>"+rem[i].replace(/\//g,"")+"</td></tr>"
+ }
+ s+= "</table>"
+ document.write(s)
+</script>
