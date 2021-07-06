@@ -38,7 +38,6 @@ function Apple2Video(ctx) {
     var mix_mode;
     var page2_mode;
     var hires_mode;
-    var monochrome;
     var chrome_mode;
 
     var flash_on = true; // boolean toggled 6 hz or so.
@@ -102,11 +101,6 @@ function Apple2Video(ctx) {
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawChar(col, row, d8) {
-        //var e = board.captureText;
-            //if(d8==160) 
-            //    e.value = e.value.substring(0,e.value.length-2)   //+"["+d8+"]";
-            //else 
-        //if(d8!=96 && d8!=160) e.value += String.fromCharCode(d8-128);//+"["+d8+"]";
 
         // Black out entire character
         ctx.fillStyle = "#000000";
@@ -239,16 +233,14 @@ function Apple2Video(ctx) {
         // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
         //
         // { d8_r[0:1], d8[0:6], d8_l[5:6] }
-        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) |
-            ((d8_l & 0x60) >> 5);
+        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
 
         // Draw pixels including one pixel to the left and to the right
         // of hires byte.
         //
         for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
-            if (x >= 0 && x < 280)
-                drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04,
-                          d8 & 0x80);
+            if (x >= 0 && x < 280 && y <= (mix_mode?159:191))
+                drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
             b >>= 1;
         }
     }
