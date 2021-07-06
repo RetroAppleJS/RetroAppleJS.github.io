@@ -64,8 +64,8 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
         ; A = INDEX
 FNT.00 STA FNTD 
-        LDY #>FONT
-        LDA #<FONT
+        LDY #>FIIca     ; Font from Apple IIc alternate 
+        LDA #<FIIca
 
         STA *S0.TX
         DEY
@@ -210,7 +210,7 @@ STR.04  ASC "ASCII:$"
         HEX 00
 
 ; Apple IIc alternate - 128 characters
-FONT  HEX   1008367F3F3F7E36 ;'@'^ 
+FIIca HEX   1008367F3F3F7E36 ;'@'^ 
       HEX   1008364121214A36 ;'A'^
       HEX   000002060E1E3642 ;'B'^
       HEX   7F22140808142A7F ;'C'^
