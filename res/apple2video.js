@@ -39,6 +39,7 @@ function Apple2Video(ctx) {
     var page2_mode;
     var hires_mode;
     var monochrome;
+    var chrome_mode;
 
     var flash_on = true; // boolean toggled 6 hz or so.
     var flash_count = 0;
@@ -52,6 +53,7 @@ function Apple2Video(ctx) {
         mix_mode = false;
         page2_mode = false;
         hires_mode = false;
+        chrome_mode = 0;
         flash_on = true;
         flash_count = 0;
     }
@@ -93,26 +95,25 @@ function Apple2Video(ctx) {
     }
 
     this.setMonitor = function(mode) {
-        //alert(mix_mode)
-        switch(mode & 3)
-        {
-            case 1: { monochrome = "white"; break }
-            case 2: { monochrome = "#AFFFF6"; break }
-            case 3: { monochrome = "#FCE7A1"; break }
-            default:  monochrome = ""
-        }
+        chrome_mode = mode & 3;
         this.redraw();
     }
 
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawChar(col, row, d8) {
+        //var e = board.captureText;
+            //if(d8==160) 
+            //    e.value = e.value.substring(0,e.value.length-2)   //+"["+d8+"]";
+            //else 
+        //if(d8!=96 && d8!=160) e.value += String.fromCharCode(d8-128);//+"["+d8+"]";
+
         // Black out entire character
         ctx.fillStyle = "#000000";
         ctx.fillRect(col * 14, row * 16, 14, 16);
 
         // Color for white pixels.
-        ctx.fillStyle = monochrome?monochrome:"#ffffff";
+        ctx.fillStyle = monoChromes[chrome_mode]?monoChromes[chrome_mode]:"#ffffff";
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
 
@@ -133,34 +134,37 @@ function Apple2Video(ctx) {
         }
     }
 
-    // Lores color to RGB table.  Not very good.  Feel free to improve.
-    var loresColors = [
-        "#000000",        // Black
-        "#ff0000",        // Magenta
-        "#0000ff",        // Dark Blue
-        "#c000c0",        // Purple
-        "#008000",        // Dark Green
-        "#808080",        // Grey 1
-        "#4040ff",        // Medium Blue
-        "#8080ff",        // Light Blue
+    // Monochrome colors (index 0 = full color)
+    var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
 
-        "#8b4514",        // Brown
-        "#ffa000",        // Orange
-        "#808080",        // Grey 2
-        "#ff69b4",        // Pink
-        "#40ff40",        // Light Green
-        "#ffff80",        // Yellow
-        "#7fffd4",        // Aquamarine
-        "#ffffff",        // White
+    // Lores color to RGB table.
+    var loresCols = [
+    ["#000000","#000000","#000000","#000000"] // Black
+    ,["#FF0000","#555555","#355550","#544D36"] // Magenta
+    ,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
+    ,["#C000C0","#808080","#508078","#7E7451"] // Purple
+    ,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
+    ,["#808080","#808080","#508078","#7E7451"] // Grey 1
+    ,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
+    ,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
+    ,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
+    ,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
+    ,["#808080","#808080","#508078","#7E7451"] // Grey 2
+    ,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
+    ,["#40FF40","#808080","#508078","#7E7451"] // Light Green
+    ,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
+    ,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
+    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
     ];
 
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawLores(col, row, d8) {
-        ctx.fillStyle = loresColors[d8 & 0x0f];
+        var m = chrome_mode?chrome_mode:0;
+        ctx.fillStyle = loresCols[d8 & 0x0f][m]
         ctx.fillRect(col * 14, row * 16, 14, 8);
 
-        ctx.fillStyle = loresColors[d8 >> 4];
+        ctx.fillStyle = loresCols[d8 >> 4][m]
         ctx.fillRect(col * 14, row * 16 + 8, 14, 8);
     }
 
@@ -176,7 +180,7 @@ function Apple2Video(ctx) {
     //
     function drawPixel(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
-
+        var monochrome = monoChromes[chrome_mode]?monoChromes[chrome_mode]:"";
         if (monochrome && me != 0)
         {
             ctx.fillStyle = monochrome;
