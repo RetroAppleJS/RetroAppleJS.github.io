@@ -81,8 +81,7 @@ FNT.00  STA FNTD
         LDA #$00
         STA FNTD+1      
 
-FNT.01  NOP
-        LDY FNTD
+FNT.01  LDY FNTD
         JSR FNT.03
         STY FNTD
         JSR PRBPAT 
@@ -106,20 +105,19 @@ FNT.01  NOP
         INC FNTD+1
         LDA FNTD+1
         CMP #$80
-        BNE FNT.22
+        BNE FNT.02
         JSR FNT.06      ; move cursor 2x4 up
         JSR FNT.06
         JSR M.UP
         JMP FNT.00
 
- FNT.22 JSR M.KPRESS
+ FNT.02 JSR M.KPRESS
         CMP #'X'
         BEQ FNT.07      ; EXIT
         JSR FNT.06      ; move cursor 2x4 up
         JSR FNT.06
         JSR M.UP
-
-FNT.02  JMP FNT.01
+        JMP FNT.01
 
 FNT.03  INY
         BNE FNT.05
@@ -136,7 +134,6 @@ FNTD    HEX 0000
 
 ; *** PRINT 8 BITS ***
 ; *** A = BYTE     ***
-
 PRBITS  LDX #$08
         STA PRBD
 PRB.0   ROL PRBD
@@ -150,14 +147,13 @@ PRBD    HEX 00
 
 ; *** PRINT 8 BIT PATTERN ***
 ; *** A = BYTE     ***
-
 PRBPAT  STA PBPD
         LDA #$08
         STA PBPD+1
 PBP.0   ROR PBPD
         LDA #$20
         BCS PBP.1
-        LDA #'+'
+        LDA #'L'
 PBP.1   JSR M.COUT
         DEC PBPD+1
         BNE PBP.0
@@ -167,7 +163,6 @@ PBPD    HEX 0008
 
 ; *** PRINT INDEX-BASED  STRING ***
 ; *** A = INDEX     (41 Bytes)  ***
-
 ISTROUT TAX           ; INDEX-BASED STRING OUT A=INDEX
         LDY #>STR.00
         LDA #<STR.00
@@ -195,7 +190,6 @@ IST.06  RTS
 ; - - - - - - - - - - - - - - - - - - -
 
 ; STRING DATA
-
 STR.00  HEX 8D
         ASC "POINTER-BASED PRINTING"
         HEX 8D
