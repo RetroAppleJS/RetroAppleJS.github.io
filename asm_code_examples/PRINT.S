@@ -62,8 +62,9 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
         LDA #$03
         JSR ISTROUT      
 
-        ; A = INDEX
-FNT.00 STA FNTD 
+; ---  FONT PRINTING ---
+; A = INDEX
+FNT.00  STA FNTD 
         LDY #>FIIca     ; Font from Apple IIc alternate 
         LDA #<FIIca
 
