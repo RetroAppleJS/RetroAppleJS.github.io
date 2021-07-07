@@ -44,6 +44,7 @@ function Apple2Video(ctx) {
     var flash_count = 0;
     var context = ctx;
     var charData = ctx.createImageData(14, 16);
+    var charFlow = {"prev":{}};
 
     this.vidram = null; // apple2hw.js sets this to give me refernce to ram
 
@@ -239,7 +240,7 @@ function Apple2Video(ctx) {
         // of hires byte.
         //
         for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
-            if (x >= 0 && x < 280 && y <= (mix_mode?159:191))
+            if (x >= 0 && x < 280 && y < (mix_mode?160:192))
                 drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
             b >>= 1;
         }
@@ -304,7 +305,35 @@ function Apple2Video(ctx) {
                 // Text mode
                 // console.log("Apple2Video().write(%s %s): text md write.",
                 //            addr.toString(16), d8.toString(16));
+
+                /*
+                if(d8!=96)
+                {
+                    var h = (d8-128).toString(16);
+
+                    board.logText.value += 
+                    (h=="20"?"":"\n")
+                    +"["+col+","+row+"]"
+                    +h
+                    +" '"+String.fromCharCode(d8-128)+"' "
+
+                    if(col==charFlow.prev.col && row==charFlow.prev.col)
+                    {
+                        board.logText.value += '"'+ board.captureText.value  +'"> '
+
+                        board.captureText.value 
+                        = board.captureText.value.substring(0,board.captureText.value.length-3)
+                        + board.captureText.value.slice(-1)
+                        + String.fromCharCode(d8-128);
+                        
+
+                        board.logText.value += '"'+ board.captureText.value  +'"'
+                    }
+                }
+                */
                 drawChar(col, row, d8);
+                charFlow.prev = {"col":col,"row":row,"d8":d8}
+
             }
         }
     } // write()
