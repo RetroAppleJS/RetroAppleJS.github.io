@@ -93,7 +93,9 @@ TST.0   JSR FNTADR      ; calculate font address pointer (*S0.TX=lo *S0.TY=hi)
         JMP TST.0
 TST.2   RTS
 
-FNTADR   STA FNTD+2     ; FONT INDEX
+
+; ---  FIND FONT POINTER ADDRESS ---
+FNTADR   STA FNTD+2     ; A = FONT INDEX
          STA *ACL
          LDA #$08
          STA *AUXL         
@@ -244,7 +246,7 @@ STR.03  ASC "SCREEN FONT (X:EXIT)"
 STR.04  ASC " ASCII:$"
         HEX 00
 
-; Apple IIc alternate - 128 characters
+; Apple IIc alternate - 128 characters = 1024 Bytes (can be compressed)
 FIIca HEX   1008367F3F3F7E36 ;'@'^  $00
       HEX   1008364121214A36 ;'A'^
       HEX   000002060E1E3642 ;'B'^
