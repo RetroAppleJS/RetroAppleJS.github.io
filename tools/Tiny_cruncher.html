@@ -1,0 +1,261 @@
+<style>
+body {
+    font-family: 'Trebuchet MS', sans-serif;
+}
+.txtblock {
+  border-style:solid;
+  width:600px;
+  height:200px;
+  margin:10px;
+  overflow:auto;
+  white-space:pre;
+  word-wrap:normal;
+}
+</style>
+<body onload=update_param()>
+<h1>CRUNCHER SIMULATOR</h1>
+<h2>RAW DATA</h2>
+<pre id=rawdata class=txtblock></pre>
+<div id=disp_param1></div><input type="range" min="4" max="64" value="16" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<br>
+<div id=disp_param2></div><input type="range" min="1" max="8" value="2" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<br>
+<div id=block_specs></div>
+<h2>CHOP INTO WORDS</h2>
+<pre id=blocks class=txtblock></pre>
+<h2>FREQUENCY ANALYSIS</h2>
+<div id=freq_specs></div>
+<div id=freq class=txtblock></div>
+</body>
+
+<script>
+var block_len;
+var overhead_len;
+var bUpdate = false;
+
+function update_param()
+{
+  if(bUpdate==false) setTimeout(update, 1500)
+  bUpdate = true;
+
+  block_len    = Number(document.getElementById("param1").value)
+  overhead_len = Number(document.getElementById("param2").value)
+
+  document.getElementById("disp_param1").innerHTML 
+        = "Word length = "+block_len+" bits"
+  document.getElementById("disp_param2").innerHTML 
+        = "Header bits per word = "+overhead_len
+}
+
+function update()
+{
+    bUpdate = false;     // allow new updates
+
+    // SERIALISE BYTES INTO ONE ARRAY
+    var a = s.split("HEX   ")
+    var arr = [], numbertree = {};
+    for(var i=1;i<a.length;i++) arr = arr.concat(splitBinArr(a[i].substring(0,a[i].indexOf(" "))));
+
+    // CHOP INTO WORDS
+    document.getElementById("blocks").innerHTML = "";
+    document.getElementById("blocks").innerHTML += "word count = "+Math.ceil(arr.length/block_len)+"<br>" 
+    for(var i=0;i<arr.length;i+=block_len)
+    {
+      var block = arr.slice(i,i+block_len);
+      var hex = parseInt(block.join(""),2).toString(16).toUpperCase()
+      numbertree[ hex ] = numbertree[ hex ] ? (numbertree[ hex ] +1) : 1;
+      document.getElementById("blocks").innerHTML +=  block.join("")+" "+hex+"<br>";
+    }
+    src_len = arr.length/8;
+
+    var toplist_len = Math.pow(2,overhead_len)-1
+    document.getElementById("freq_specs").innerHTML
+      = overhead_len+" header bits allow "+toplist_len+" short representations of the most frequent words"
+
+    var inv_tree = {};
+    var sav_sum = 0, compressed_blocks = 0;
+    document.getElementById("freq").innerHTML = "";
+    for(var i in numbertree)
+    {
+      if(numbertree[i]>1)
+      {
+        var sav = (numbertree[i] * (block_len - overhead_len) / 8);
+
+        document.getElementById("freq").innerHTML
+          += i+" occurs "+numbertree[i]+" times, saving "+sav+" bytes<br>";
+        sav_sum += sav;
+        compressed_blocks+=numbertree[i];
+      }
+    }
+
+    /*
+    document.write("<br>");
+
+    var loss = (src_len-(compressed_blocks*block_len/8))*overhead_len/8
+    document.write("uncompressed = "+src_len+" bytes<br>");
+    document.write("total occurences = "+compressed_blocks+" ->  bytes replaced by header = "+(compressed_blocks*block_len/8)+"<br>");
+
+    document.write("gain = ("+compressed_blocks+"*"+block_len+"/"+overhead_len+") "+sav_sum+" bytes<br>");
+    document.write("loss = ("+src_len+"-"+(compressed_blocks*block_len/8)+")*"+overhead_len+" bits =   "+((src_len-(compressed_blocks*block_len/8))*overhead_len/8)+" bytes<br>")
+
+    document.write("net gain ="+(sav_sum-loss)+" bytes ("+Math.round((100*sav_sum-loss)/src_len)+"%)")
+    */
+}
+
+//////////////////////////////////////////////////////////
+
+function toHex(dec) { return ("0"+Math.round(dec).toString(16).toUpperCase()).slice(-2) }
+function toBin(dec) { return ("0000000"+dec.toString(2).toUpperCase()).slice(-8) }
+function splitHexArr(str)
+{
+  var a = new Array();
+  for(var i=0;i<str.length;i+=2)
+    a[i/2] = str.substring(i,i+2);
+  return a;
+}
+
+function splitBinArr(str)
+{
+  var a = new Array();
+  for(var i=0;i<str.length;i+=2)
+  {
+    b = toBin( parseInt( str.substring(i,i+2) ,16 ) );
+    a = a.concat(b.split(""))
+  }
+  return a;
+}
+
+
+var s =
+      "FIIca HEX   1008367F3F3F7E36 ;'@'^  $00\n"
+      +"      HEX   1008364121214A36 ;'A'^\n"
+      +"      HEX   000002060E1E3642 ;'B'^\n"
+      +"      HEX   7F22140808142A7F ;'C'^\n"
+      +"      HEX   004020110A040400 ;'D'^\n"
+      +"      HEX   7F3F5F6C757B7B7F ;'E'^\n"
+      +"      HEX   70607E3179303F02 ;'F'^\n"
+      +"      HEX   00180700070C0870 ;'G'^\n"
+      +"      HEX   0804027F02040800 ;'H'^\n"
+      +"      HEX   000000000000002A ;'I'^\n"
+      +"      HEX   08080808492A1C08 ;'J'^\n"
+      +"      HEX   081C2A4908080808 ;'K'^\n"
+      +"      HEX   7F00000000000000 ;'L'^\n"
+      +"      HEX   40404044467F0604 ;'M'^\n"
+      +"      HEX   3F3F3F3F3F3F3F3F ;'N'^\n"
+      +"      HEX   13181C7E1C18106F ;'O'^\n"
+      +"      HEX   640C1C3F1C0C047B ;'P'^  $10\n"
+      +"      HEX   4048087F3E1C4840 ;'Q'^\n"
+      +"      HEX   40481C3E7F084840 ;'R'^\n"
+      +"      HEX   0000007F00000000 ;'S'^\n"
+      +"      HEX   010101010101017F ;'T'^\n"
+      +"      HEX   0810207F20100800 ;'U'^\n"
+      +"      HEX   2A552A552A552A55 ;'V'^\n"
+      +"      HEX   552A552A552A552A ;'W'^\n"
+      +"      HEX   003E410101017F00 ;'X'^\n"
+      +"      HEX   00003F4040407F00 ;'Y'^\n"
+      +"      HEX   4040404040404040 ;'Z'^\n"
+      +"      HEX   081C3E7F3E1C0800 ;'['^\n"
+      +"      HEX   7F0000000000007F ;'\'^\n"
+      +"      HEX   1414770077141400 ;']'^\n"
+      +"      HEX   7F40404C4C40407F ;'^'^\n"
+      +"      HEX   0101010101010101 ;'_'^\n"
+      +"      HEX   0000000000000000 ;'     $20\n"
+      +"      HEX   0808080808000800 ;'!\n"
+      +"      HEX   1414140000000000 ;'\n"
+      +"      HEX   14143E143E141400 ;'#\n"
+      +"      HEX   083C0A1C281E0800 ;'\n"
+      +"      HEX   0626100804323000 ;'%\n"
+      +"      HEX   040A0A042A122C00 ;'&\n"
+      +"      HEX   0808080000000000 ;''\n"
+      +"      HEX   0804020202040800 ;'(\n"
+      +"      HEX   0810202020100800 ;')\n"
+      +"      HEX   082A1C081C2A0800 ;'*\n"
+      +"      HEX   0008083E08080000 ;'+\n"
+      +"      HEX   0000000008080400 ;',\n"
+      +"      HEX   0000003E00000000 ;'-\n"
+      +"      HEX   0000000000000800 ;'.\n"
+      +"      HEX   0020100804020000 ;'/\n"
+      +"      HEX   1C22322A26221C00 ;'0    $30\n"
+      +"      HEX   080C080808081C00 ;'1\n"
+      +"      HEX   1C22201804023E00 ;'2\n"
+      +"      HEX   3E20101820221C00 ;'3\n"
+      +"      HEX   101814123E101000 ;'4\n"
+      +"      HEX   3E021E2020221C00 ;'5\n"
+      +"      HEX   3804021E22221C00 ;'6\n"
+      +"      HEX   3E20100804040400 ;'7\n"
+      +"      HEX   1C22221C22221C00 ;'8\n"
+      +"      HEX   1C22223C20100E00 ;'9\n"
+      +"      HEX   0000080008000000 ;':\n"
+      +"      HEX   0000080008080400 ;';\n"
+      +"      HEX   1008040204081000 ;'<\n"
+      +"      HEX   00003E003E000000 ;'=\n"
+      +"      HEX   0408102010080400 ;'>\n"
+      +"      HEX   1C22100808000800 ;'?\n"
+      +"      HEX   1C222A3A1A023C00 ;'@    $40\n"
+      +"      HEX   081422223E222200 ;'A\n"
+      +"      HEX   1E22221E22221E00 ;'B\n"
+      +"      HEX   1C22020202221C00 ;'C\n"
+      +"      HEX   1E22222222221E00 ;'D\n"
+      +"      HEX   3E02021E02023E00 ;'E\n"
+      +"      HEX   3E02021E02020200 ;'F\n"
+      +"      HEX   3C02020232223C00 ;'G\n"
+      +"      HEX   2222223E22222200 ;'H\n"
+      +"      HEX   1C08080808081C00 ;'I\n"
+      +"      HEX   2020202020221C00 ;'J\n"
+      +"      HEX   22120A060A122200 ;'K\n"
+      +"      HEX   0202020202023E00 ;'L\n"
+      +"      HEX   22362A2A22222200 ;'M\n"
+      +"      HEX   2222262A32222200 ;'N\n"
+      +"      HEX   1C22222222221C00 ;'O\n"
+      +"      HEX   1E22221E02020200 ;'P    $50\n"
+      +"      HEX   1C2222222A122C00 ;'Q\n"
+      +"      HEX   1E22221E0A122200 ;'R\n"
+      +"      HEX   1C22021C20221C00 ;'S\n"
+      +"      HEX   3E08080808080800 ;'T\n"
+      +"      HEX   2222222222221C00 ;'U\n"
+      +"      HEX   2222222222140800 ;'V\n"
+      +"      HEX   2222222A2A362200 ;'W\n"
+      +"      HEX   2222140814222200 ;'X\n"
+      +"      HEX   2222140808080800 ;'Y\n"
+      +"      HEX   3E20100804023E00 ;'Z\n"
+      +"      HEX   3E06060606063E00 ;'[\n"
+      +"      HEX   0002040810200000 ;'\\\n"
+      +"      HEX   3E30303030303E00 ;']\n"
+      +"      HEX   0000081422000000 ;'^\n"
+      +"      HEX   000000000000007F ;'_\n"
+      +"      HEX   0408100000000000 ;'`    $60\n"
+      +"      HEX   00001C203C223C00 ;'a\n"
+      +"      HEX   02021E2222221E00 ;'b\n"
+      +"      HEX   00003C0202023C00 ;'c\n"
+      +"      HEX   20203C2222223C00 ;'d\n"
+      +"      HEX   00001C223E023C00 ;'e\n"
+      +"      HEX   1824041E04040400 ;'f\n"
+      +"      HEX   00001C22223C201C ;'g\n"
+      +"      HEX   02021E2222222200 ;'h\n"
+      +"      HEX   08000C0808081C00 ;'i\n"
+      +"      HEX   100018101010120C ;'j\n"
+      +"      HEX   020222120E122200 ;'k\n"
+      +"      HEX   0C08080808081C00 ;'l\n"
+      +"      HEX   0000362A2A2A2200 ;'m\n"
+      +"      HEX   00001E2222222200 ;'n\n"
+      +"      HEX   00001C2222221C00 ;'o\n"
+      +"      HEX   00001E22221E0202 ;'p    $70\n"
+      +"      HEX   00003C22223C2020 ;'q\n"
+      +"      HEX   00003A0602020200 ;'r\n"
+      +"      HEX   00003C021C201E00 ;'s\n"
+      +"      HEX   04041E0404241800 ;'t\n"
+      +"      HEX   0000222222322C00 ;'u\n"
+      +"      HEX   0000222222140800 ;'v\n"
+      +"      HEX   000022222A2A3600 ;'w\n"
+      +"      HEX   0000221408142200 ;'x\n"
+      +"      HEX   00002222223C201C ;'y\n"
+      +"      HEX   00003E1008043E00 ;'z\n"
+      +"      HEX   380C0C060C0C3800 ;'{\n"
+      +"      HEX   0808080808080808 ;'|\n"
+      +"      HEX   0E18183018180E00 ;'}\n"
+      +"      HEX   2C1A000000000000 ;'~\n"
+      +"      HEX   002A142A142A0000 ;'*\n"
+
+      document.getElementById("rawdata").innerHTML = s.replace(/\n/g,"<br>").replace(/ /g,"&nbsp;");
+
+</script>
