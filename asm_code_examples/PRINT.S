@@ -78,16 +78,16 @@ TST.0   JSR FNTADR      ; calculate font address pointer (*S0.TX=lo *S0.TY=hi)
         JSR TXTFNT      ; display font in text format
         LDA #$04        
         JSR ISTROUT     ; display description
-        LDA FNTD+2
+        LDA FNTD+1
         JSR M.PRBYTE    ; display ASCII value in HEX
 
         JSR M.KPRESS
         CMP #'X'
         BEQ TST.2       ; EXIT
-        INC FNTD+2      ; Increment ASCII code
+        INC FNTD+1      ; Increment ASCII code
         JSR X4UP        ; move cursor 8x up
         JSR X4UP
-        LDA FNTD+2
+        LDA FNTD+1
         AND #$7F        ; loop until ASCII F7 -> 00    
         BNE TST.0
         JMP TST.0
@@ -95,19 +95,17 @@ TST.2   RTS
 
 
 ; ---  FIND FONT POINTER ADDRESS ---
-FNTADR   STA FNTD+2     ; A = FONT INDEX
+FNTADR   STA FNTD+1     ; A = FONT INDEX
          STA *ACL
          LDA #$08
-         STA *AUXL         
-
+         STA *AUXL
+         LDA #$00
+         STA *ACH
+         STA *AUXH
          LDA #>FIIca
          STA *XTNDH
          LDA #<FIIca
          STA *XTNDL
-
-         LDA #$00
-         STA *ACH
-         STA *AUXH
 
          JSR MUL         ; ACX * AUX + XTND  =  XTND,AC
 
@@ -139,7 +137,7 @@ FNT.03  INY
 FNT.05  LDA (S0.TX),Y   ; font data pointer
         RTS     
 
-FNTD    HEX 000000
+FNTD    HEX 0000
 
 ; *** MOVE CURSOR UP 4 LINNES
 X4UP    JSR M.UP        ; move cursor four up
