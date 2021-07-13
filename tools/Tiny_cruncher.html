@@ -36,10 +36,9 @@ var bUpdate = false;
 function update_param()
 {
   if(bUpdate==false) setTimeout(update, 1500)
-  bUpdate = true;
-
-  block_len    = Number(document.getElementById("param1").value)
-  overhead_len = Number(document.getElementById("param2").value)
+  bUpdate      = true;
+  block_len    = Number(document.getElementById("param1").value);
+  overhead_len = Number(document.getElementById("param2").value);
 
   document.getElementById("disp_param1").innerHTML 
         = "Word length = "+block_len+" bits"
@@ -50,6 +49,8 @@ function update_param()
 function update()
 {
     bUpdate = false;     // allow new updates
+    var byte_len = Math.log(block_len)/Math.log(2);
+    //alert(byte_len);
 
     // SERIALISE BYTES INTO ONE ARRAY
     var a = s.split("HEX   ")
@@ -64,46 +65,59 @@ function update()
       var block = arr.slice(i,i+block_len);
       var hex = parseInt(block.join(""),2).toString(16).toUpperCase()
       numbertree[ hex ] = numbertree[ hex ] ? (numbertree[ hex ] +1) : 1;
-      document.getElementById("blocks").innerHTML +=  block.join("")+" "+hex+"<br>";
+      document.getElementById("blocks").innerHTML +=  block.join("")+" "+prefix(hex,byte_len)+"<br>";
     }
     src_len = arr.length/8;
 
+    // CREATE TOP LIST
     var toplist_len = Math.pow(2,overhead_len)-1
     document.getElementById("freq_specs").innerHTML
       = overhead_len+" header bits allow "+toplist_len+" short representations of the most frequent words"
-
     var inv_tree = {};
-    var sav_sum = 0, compressed_blocks = 0;
+    var gain_bits = 0, compressed_words = 0;
     document.getElementById("freq").innerHTML = "";
-    for(var i in numbertree)
+
+    var frq_arr = [];
+    var inv_numbertree = {};
+    for(var i in numbertree) frq_arr[frq_arr.length] = numbertree[i];
+    for(var i in numbertree) inv_numbertree[ numbertree[i] ] = i;
+    frq_arr.sort(function(a, b){return b-a});
+    frq_arr.length = toplist_len;
+
+    for(var i=0;i<frq_arr.length;i++)
     {
-      if(numbertree[i]>1)
-      {
-        var sav = (numbertree[i] * (block_len - overhead_len) / 8);
+        var sav = frq_arr[i] * (block_len - overhead_len);
 
         document.getElementById("freq").innerHTML
-          += i+" occurs "+numbertree[i]+" times, saving "+sav+" bytes<br>";
-        sav_sum += sav;
-        compressed_blocks+=numbertree[i];
-      }
+          += prefix(inv_numbertree[ frq_arr[i] ],byte_len)+" occurs "+frq_arr[i]+" times,"
+          +" saving "+frq_arr[i]+"*("+block_len+"-"+overhead_len+") = "
+          +sav+" bits  or "+(Math.round(100*sav/8)/100)+" bytes<br>";
+        gain_bits += sav;
+        compressed_words+=frq_arr[i];
     }
+    var loss_bits = Math.round(((src_len/(block_len/8)-compressed_words)*overhead_len)/100)*100;
+    
 
-    /*
-    document.write("<br>");
+    var html = "<br>";
+    var gain = Math.floor(gain_bits/8);
+    var loss = Math.ceil(loss_bits /8);
+    
+    html += "uncompressed = "+src_len+" bytes<br>";
+    html += "gain = inventorised occurances "+compressed_words+"*("+block_len+"-"+overhead_len+") saving "
+          +gain_bits+" bits  or "+gain+" bytes<br>";
 
-    var loss = (src_len-(compressed_blocks*block_len/8))*overhead_len/8
-    document.write("uncompressed = "+src_len+" bytes<br>");
-    document.write("total occurences = "+compressed_blocks+" ->  bytes replaced by header = "+(compressed_blocks*block_len/8)+"<br>");
-
-    document.write("gain = ("+compressed_blocks+"*"+block_len+"/"+overhead_len+") "+sav_sum+" bytes<br>");
-    document.write("loss = ("+src_len+"-"+(compressed_blocks*block_len/8)+")*"+overhead_len+" bits =   "+((src_len-(compressed_blocks*block_len/8))*overhead_len/8)+" bytes<br>")
-
-    document.write("net gain ="+(sav_sum-loss)+" bytes ("+Math.round((100*sav_sum-loss)/src_len)+"%)")
-    */
+    // REVIEW!!!
+    html += "loss = ("+src_len/(block_len/8) +"-"+compressed_words+")*"+overhead_len+" bits =   "
+    +loss_bits+" bits or "+loss+" bytes<br>"
+    html += "net remain ="+src_len+"-"+(gain-loss)+" = "+(src_len-(gain-(loss_bits/8)))+" bytes ("+Math.round((100*(gain_bits/8)-loss_bits)/src_len)+"%)"
+    
+    document.getElementById("freq").innerHTML += html;
 }
 
 //////////////////////////////////////////////////////////
 
+
+function prefix(str,len) { return (len-str.length>0)?("0").repeat(len-str.length)+str:str }
 function toHex(dec) { return ("0"+Math.round(dec).toString(16).toUpperCase()).slice(-2) }
 function toBin(dec) { return ("0000000"+dec.toString(2).toUpperCase()).slice(-8) }
 function splitHexArr(str)
