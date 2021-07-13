@@ -16,9 +16,11 @@ body {
 <h1>CRUNCHER SIMULATOR</h1>
 <h2>RAW DATA</h2>
 <pre id=rawdata class=txtblock></pre>
-<div id=disp_param1></div><input type="range" min="4" max="64" value="16" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
-<br>
-<div id=disp_param2></div><input type="range" min="1" max="8" value="2" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<div id=disp1>
+  <div id=disp_param1></div><input type="range" min="4" max="64" value="16" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+  <br>
+  <div id=disp_param2></div><input type="range" min="1" max="8" value="2" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+</div>
 <br>
 <div id=block_specs></div>
 <h2>CHOP INTO WORDS</h2>
@@ -56,6 +58,11 @@ function update()
     var a = s.split("HEX   ")
     var arr = [], numbertree = {};
     for(var i=1;i<a.length;i++) arr = arr.concat(splitBinArr(a[i].substring(0,a[i].indexOf(" "))));
+
+    var stream = [];
+    for(var i=1;i<a.length;i++) stream = stream.concat(splitHexArr(a[i].substring(0,a[i].indexOf(" "))));
+    document.getElementById("disp1").innerHTML += '<input type=button value="DOWNLOAD" onclick=update_download("'+stream.join("")+'")>'
+    //alert(stream.join(""))
 
     // CHOP INTO WORDS
     document.getElementById("blocks").innerHTML = "";
@@ -96,22 +103,38 @@ function update()
         compressed_words+=frq_arr[i];
     }
     var loss_bits = Math.round(((src_len/(block_len/8)-compressed_words)*overhead_len)/100)*100;
-    
+    var headerloss_bits = toplist_len*block_len;
 
     var html = "<br>";
     var gain = Math.floor(gain_bits/8);
     var loss = Math.ceil(loss_bits /8);
+    var headerloss = Math.ceil(headerloss_bits /8);
+    
     
     html += "uncompressed = "+src_len+" bytes<br>";
-    html += "gain = inventorised occurances "+compressed_words+"*("+block_len+"-"+overhead_len+") saving "
+    html += "encoding gain = inventorised occurances "+compressed_words+"*("+block_len+"-"+overhead_len+") saving "
           +gain_bits+" bits  or "+gain+" bytes<br>";
 
-    // REVIEW!!!
-    html += "loss = ("+src_len/(block_len/8) +"-"+compressed_words+")*"+overhead_len+" bits =   "
+    html += "encoding loss = ("+src_len/(block_len/8)+"-"+compressed_words+")*"+overhead_len+" bits =   "
     +loss_bits+" bits or "+loss+" bytes<br>"
-    html += "net remain ="+src_len+"-"+(gain-loss)+" = "+(src_len-(gain-(loss_bits/8)))+" bytes ("+Math.round((100*(gain_bits/8)-loss_bits)/src_len)+"%)"
+
+    html += "header loss = ("+toplist_len+"*"+block_len+") = "+headerloss_bits+" bits or "+headerloss+" bytes<br>"
+
+    html += "net remain ="+src_len+"-("+gain+"-"+loss+"-"+headerloss+") = "+(src_len-(gain-loss-headerloss))
+    +" bytes ("+Math.round((100*(src_len-(gain-loss-headerloss))/src_len))+"%)"
     
     document.getElementById("freq").innerHTML += html;
+}
+
+function update_download(hexdata)
+{
+    var byteArray = new Uint8Array(hexdata.length/2);
+    for (var x = 0; x < byteArray.length; x++){
+        byteArray[x] = parseInt(hexdata.substr(x*2,2), 16);
+    }
+    var myBinaryBlob = new Blob([byteArray], {type: "application/octet-stream"})
+
+    downloadBlob(myBinaryBlob, 'data.bin', 'application/octet-stream');
 }
 
 //////////////////////////////////////////////////////////
@@ -139,6 +162,29 @@ function splitBinArr(str)
   return a;
 }
 
+
+downloadBlob = function(data, fileName, mimeType) {
+      var blob, url;
+      blob = new Blob([data], {
+        type: mimeType
+      });
+      url = window.URL.createObjectURL(blob);
+      downloadURL(url, fileName);
+      setTimeout(function() {
+        return window.URL.revokeObjectURL(url);
+      }, 1000);
+    };
+
+downloadURL = function(data, fileName) {
+  var a;
+  a = document.createElement('a');
+  a.href = data;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.style = 'display: none';
+  a.click();
+  a.remove();
+};
 
 var s =
       "FIIca HEX   1008367F3F3F7E36 ;'@'^  $00\n"
