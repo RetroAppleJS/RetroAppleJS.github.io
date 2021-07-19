@@ -19,7 +19,11 @@ M.CLREOP  = $FC42   ; clear text from cursor to bottom
 M.HOME    = $FC58   ; clear text (HOME)
 M.KPRESS  = $FD35   ; wait for key press
 M.RESTART = $E003   ; restart BASIC
-M.PRNTAX  =  $F941   ; print hex word (A=hi X=lo)
+M.PRNTAX  = $F941   ; print hex word (A=hi X=lo)
+M.HPOSN   = $F411
+M.HGR     = $F3E2   ; set hires mode 1 + clear screen
+M.TXST    = $C051
+
 MD1       =  $FBA4
 ACL       =  $50
 ACH       =  $51
@@ -27,12 +31,15 @@ XTNDL     =  $52
 XTNDH     =  $53
 AUXL      =  $54
 AUXH      =  $55
+GBASL     =  $26
+GBASH     =  $27
 
 S0.TA        = $18     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
+        JSR M.HGR
 
         LDA #$02
         JSR ISTROUT       ; PRINT INDEX-BASED STRING (A=INDEX)
@@ -75,7 +82,8 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 TST     LDA #$00        ; A = INDEX
 TST.0   JSR FNTADR      ; calculate font address pointer (*S0.TX=lo *S0.TY=hi)
-        JSR TXTFNT      ; display font in text format
+        ;JSR TXTFNT      ; display font in text format
+        JSR GFXFNT
         LDA #$04        
         JSR ISTROUT     ; display description
         LDA FNTD+1
@@ -91,7 +99,8 @@ TST.0   JSR FNTADR      ; calculate font address pointer (*S0.TX=lo *S0.TY=hi)
         AND #$7F        ; loop until ASCII F7 -> 00    
         BNE TST.0
         JMP TST.0
-TST.2   RTS
+TST.2   STA M.TXST
+        RTS
 
 
 ; ---  FIND FONT POINTER ADDRESS ---
@@ -146,6 +155,35 @@ X4UP    JSR M.UP        ; move cursor four up
         JSR M.UP
         RTS 
 
+
+
+; ---  TEXT FONT PRINTING ---
+GFXFNT  LDA #$FF
+        STA FNTD        ;  Initialize Font Y-coordinate
+GFT.01  LDY FNTD
+        JSR FNT.03
+        PHA
+        STY FNTD
+        LDA FNTD
+        JSR GBAS        ; Find address from, Y-coordinate
+        PLA
+        LDY #$00
+        STA (GBASL),Y 
+
+        LDA FNTD
+        AND #$07
+        EOR #$07
+        BNE GFT.01
+        RTS
+
+; *** CALC GFX ADDRESS (A=OFFSET, GBASL GBASH)
+GBAS    CLC
+        ADC #$98        ; STARTING Y-COORD
+        LDX #$00
+        LDY #$00
+        JSR M.HPOSN
+        RTS
+
 ; *** MULTIPLY 16x16 + 16 = 32
 ; AC * AUX + XTND  = XTND, AC
 MUL         LDY     #$10            ;INDEX FOR 16 BITS
@@ -191,7 +229,7 @@ PRBD    HEX 00
 ; *** A = BYTE     ***
 PRBPAT  STA PBPD
         LDA #$08
-        STA PBPD+1
+        STA PBPD+1      ; line counter
 PBP.0   ROR PBPD
 PBP.1   LDA #$20        ; active bit
         BCS PBP.3
@@ -201,6 +239,7 @@ PBP.3   JSR M.COUT
         BNE PBP.0
         RTS
 PBPD    HEX 0008
+
 
 ; *** PRINT INDEX-BASED  STRING ***
 ; *** A = INDEX     (41 Bytes)  ***
