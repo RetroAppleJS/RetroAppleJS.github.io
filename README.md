@@ -6,10 +6,15 @@ This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator 
 
 The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation of their concepts.  Issues associated with setting up a working system is especially not the sort of painful old memories one may wish to recall, this project aims quite the opposite.
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. 
+Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described just here below.
+
+## Modules
+
+### Assembler
+
+The assembler contains handy tools to edit source-code originating from all over the internet, but purposefully avoids the implementation of any exotic macro language as this would perpetuate numerous assembler code compatibility problems.
 
 ## Getting started
-
 
 1) Deploy (locally, on your desktop) the entire repository or unzip the .zip package
 2) Open AppleII_IDE.html on any JavaScript capable browser
