@@ -6,13 +6,7 @@ This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator 
 
 The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation of their concepts.  Issues associated with setting up a working system is especially not the sort of painful old memories one may wish to recall, this project aims quite the opposite.
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described just here below.
-
-## Modules
-
-### Assembler
-
-The assembler contains handy tools to edit source-code originating from all over the internet, but purposefully avoids the implementation of any exotic macro language as this would perpetuate numerous assembler code compatibility problems.
+Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described below.
 
 ## Getting started
 
@@ -27,6 +21,29 @@ The assembler contains handy tools to edit source-code originating from all over
 
 <br>
 Other assembler listings can be found in this folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples, feel free to copy any of those in the left pane of the assembler and procedd as described above.
+
+## Module overview
+
+### Assembler
+
+The assembler contains handy tools to edit source-code originating from all over the internet, but purposefully avoids the implementation of any exotic macro language as this would perpetuate numerous assembler code compatibility problems.  Once the code is generated, one can send the object code with one click to the debugger or the pasteboard of the emulator.
+
+### Debugger
+
+The debugger is composed from 5 sections
+1) Disassembler
+2) Memory tracer
+3) CPU operations monitor
+4) CPU register
+5) Memory map
+6) Help screen
+
+## Emulator
+
+The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
+One can:
+1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest 1 million characters per second (far from that), so be patient.
+2) insert any disk found on the internet (.do, .dsk)
 
 ## User manuals
 
