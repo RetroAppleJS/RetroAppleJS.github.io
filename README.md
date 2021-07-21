@@ -32,9 +32,11 @@ Other assembler listings can be found in this folder https://github.com/flyingze
 
 The debugger manual can be found [here](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/DEBUGGER.md).
 
+## Feature wish-list
 
-
-
-
-
-
+- Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
+- Main: better document assembler code located in asm_code_examples
+- Assembler: better compatibility with listing from different AppleII assemblers
+- Emulator: interactive Apple II+ keyboard
+- Emulator: save disk image
+- Tools: develop documentation tool (generate Markdown format files from built-in HTML documentation)
