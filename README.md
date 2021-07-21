@@ -7,7 +7,7 @@
 
 This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser.  
 
-The idea is simple.  Retrocomputing enthusiasts want a frictionless implementation of their concepts.  Issues associated with setting up a working system is especially not the sort of painful old memories one may wish to recall, we aim quite the opposite.
+The idea behind this project is simple:  Retrocomputing enthusiasts want a frictionless implementation of their concepts.  Issues associated with setting up a working system is especially not the sort of painful old memories one may wish to recall, we aim quite the opposite.
 
 Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly. 
 
