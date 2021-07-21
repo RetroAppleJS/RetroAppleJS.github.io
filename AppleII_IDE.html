@@ -222,7 +222,11 @@
         Disk Image: <input type="file" id="loadfile" value="" onchange="javascript:loadDisk()">
         </div>
         <div class="hints1" id="paste" hidden="" style="z-index:2;position:absolute;left:90px">
-        <form name="board"><textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea><textarea cols=40 rows=3  name=captureText></textarea><textarea cols=40 rows=3  name=logText></textarea></form>
+        <form name="board">
+          <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
+          <!--textarea cols=40 rows=3  name=captureText></textarea-->
+          <!--textarea-- cols=40 rows=3  name=logText></!--textarea-->
+        </form>
         <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onBoardClear()"><input type="button" value="Hide" onclick="javascript:onPasteboard()">
         </div>
         <script type="text/javascript">
