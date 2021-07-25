@@ -1,0 +1,53 @@
+<style>
+.tabs > div { display:none; }
+.tabs > div.active { display:block; }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
+
+<i class="fa fa-cogs"></i>
+
+<!-- links -->
+<div>
+<a href="#tab1">Tab1</a>
+<a href="#tab2">Tab2</a>
+<a href="#tab3">Tab3</a>
+<a href="#tab4">Tab4</a>
+</div>
+
+<!-- content -->
+<div class="tabs">
+  <div id="tab1"> Tab one content </div>
+  <div id="tab2"> Tab Two content </div>
+  <div id="tab3" class=active> 
+       Tab Three content with a <a href="#tab1">link to tab 1</a>
+  </div>
+  <div id="tab4"> Tab Four content </div>
+</div>
+
+<script>
+    // onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1
+    var _currhash;
+    function showTab(_currhash)
+    {
+        var sel_id = _currhash.substring(1,_currhash.length);
+        var sel_obj = document.getElementById(sel_id);
+        var node = document.getElementsByClassName('tabs')[0].childNodes
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id)
+            {
+                if(node[i].id == sel_id) node[i].classList.add('active');
+                else                     node[i].classList.remove('active');
+            }
+        }
+    }
+
+    function anchorWatch() {
+      if(document.location.hash.length>0 && _currhash!==document.location.hash) {
+           _currhash = document.location.hash;
+           showTab(_currhash);
+       }
+    } 
+    setInterval(anchorWatch,300);
+</script>
