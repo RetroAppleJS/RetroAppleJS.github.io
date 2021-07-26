@@ -1,18 +1,21 @@
 <style>
 .tabs > div { display:none; }
 .tabs > div.active { display:block; }
+
+.alltabs > a { display:none; }
+.alltabs > a.active { display:block; }
 </style>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
+<!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
+<link rel="stylesheet" href="../res/fontawesome/all.css">
 
-<i class="fa fa-cogs"></i>
-
-<!-- links -->
-<div>
-<a href="#tab1">Tab1</a>
-<a href="#tab2">Tab2</a>
-<a href="#tab3">Tab3</a>
-<a href="#tab4">Tab4</a>
+<div onmouseleave="switchNode('alltabs','')"  style="border: 1px solid #000;display:flex;" class="alltabs">
+    <i class="fa fa-bars" onmouseover="switchNode('alltabs','tab0')"></i>
+    <!-- links -->
+    <a id="tab0" href="#tab1">Tab1</a>
+    <a id="tab0" href="#tab2">Tab2</a>
+    <a id="tab0" href="#tab3">Tab3</a>
+    <a id="tab0" href="#tab4">Tab4</a>
 </div>
 
 <!-- content -->
@@ -30,9 +33,13 @@
     var _currhash;
     function showTab(_currhash)
     {
-        var sel_id = _currhash.substring(1,_currhash.length);
-        var sel_obj = document.getElementById(sel_id);
-        var node = document.getElementsByClassName('tabs')[0].childNodes
+        var sel_id  = _currhash.substring(1,_currhash.length);
+        switchNode('tabs',sel_id)
+    }
+
+    function switchNode(node_name,sel_id)
+    {
+        var node    = document.getElementsByClassName(node_name)[0].childNodes
         for(var i=0;i<node.length;i++)
         {
             if(node[i].id)
@@ -40,7 +47,7 @@
                 if(node[i].id == sel_id) node[i].classList.add('active');
                 else                     node[i].classList.remove('active');
             }
-        }
+        }        
     }
 
     function anchorWatch() {
