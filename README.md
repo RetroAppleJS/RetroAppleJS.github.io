@@ -30,7 +30,7 @@ The assembler contains handy tools to edit source-code originating from all over
 
 ### Debugger
 
-The debugger is composed from 5 sections
+The debugger is composed of 5 sections
 1) Disassembler
 2) Memory tracer
 3) CPU operations monitor
