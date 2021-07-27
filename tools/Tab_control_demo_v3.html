@@ -6,14 +6,17 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    font-family:'Arial';
   }
 
   body {
+    /*
     width: 100%;
     height: 100vh;
     display: flex;
     background: #76B9CE;
     overflow: hidden;
+    */
   }
 
   #app {
@@ -26,16 +29,16 @@
   #app ul {
     position: relative;
     width: 350px;
-    height: 50px;
+    height: 30px;
     display: grid;
     grid-template-columns: repeat(4, 1fr); /* elements */
-    border-radius: 15px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.65);
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
     overflow: hidden;
   }
 
-  #app ul li {
+  #app ul a {
     list-style: none;
     display: grid;
     place-items: center;
@@ -51,7 +54,7 @@
     top: 0;
     width: calc(100% / 4);
     height: 100%;
-    border-radius: 15px;
+    border-radius: 10px;
     background: #fff;
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
   }
@@ -59,26 +62,59 @@
   #app ul .focus-el.el--2 {
     left: calc(-100% / 4);
   }
+
+  .tabs > div { display:none; }
+  .tabs > div.active { display:block; }
+
+  .alltabs > a { display:none; }
+  .alltabs > a.active { display:block; }
+
   </style>
 </head>
 
 <body>
-  <div id="app">
-    <ul>
-      <li>Assembler</li>
-      <li>Debugger</li>
-      <li>Emulator</li>
-      <li>Reference</li>
-      <div class="focus-el el--1"></div>
-      <div class="focus-el el--2"></div>
-    </ul>
+
+  <table style="background:#76B9CE;border-radius:10px;">
+    <tr>
+      <td valign=top style="display:flex;flex-wrap:wrap;width:340px">
+
+        <div id="app">
+          <ul>
+            <a id="tab0">Assembler</a>
+            <a id="tab0" >Debugger</a>
+            <a id="tab0" >Emulator</a>
+            <a id="tab0" >Reference</a>
+            <div class="focus-el el--1"></div>
+            <div class="focus-el el--2"></div>
+          </ul>
+        </div>
+
+      </td>
+  </tr>
+</table>
+
+<!-- content -->
+<div class="tabs">
+  <div id="tab1"> Tab one content </div>
+  <div id="tab2"> Tab Two content </div>
+  <div id="tab3" class=active> 
+       Tab Three content with a <a href="#tab1">link to tab 1</a>
   </div>
+  <div id="tab4"> Tab Four content </div>
+</div>
+
 <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
 <script id="rendered-js">
 //console.clear();
 
+
+  //////////////////////
+  // FLOATING TABS    //
+  //////////////////////
+
+
 const liContainer = document.querySelector("ul");
-const liEls       = [...document.querySelectorAll("ul li")];
+const liEls       = [...document.querySelectorAll("ul a")];
 const slideEl_1   = document.querySelector(".focus-el.el--1");
 const slideEl_2   = document.querySelector(".focus-el.el--2");
 
@@ -91,14 +127,14 @@ slideEl_1_DefaultLeft  = slideEl_1.getBoundingClientRect().left;
 slideEl_2_DefaultLeft  = slideEl_2.getBoundingClientRect().left;
 
 startPosIndex = 1;
-reachedEnd = false;
-activeIndex = startPosIndex;
-animationDuration = 0.2;
+reachedEnd    = false;
+activeIndex   = startPosIndex;
+animationDuration = 0.1;
 
 liEls.forEach((el, index) => {
   let elRect = el.getBoundingClientRect();
 
-  el.addEventListener("mousedown", () => {
+  el.addEventListener("mouseover", () => {
     if (reachedEnd && index + 1 == startPosIndex) {
       tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
       tl.to(
@@ -132,11 +168,5 @@ liEls.forEach((el, index) => {
   });
 });
 </script>
-
-  
-
 </body>
-
 </html>
- 
-
