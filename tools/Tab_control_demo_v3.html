@@ -80,10 +80,10 @@
 
         <div id="app">
           <ul>
-            <a id="tab0">Assembler</a>
-            <a id="tab0" >Debugger</a>
-            <a id="tab0" >Emulator</a>
-            <a id="tab0" >Reference</a>
+            <a id="tab0" href="#tab1">Assembler</a>
+            <a id="tab0" href="#tab2">Debugger</a>
+            <a id="tab0" href="#tab3">Emulator</a>
+            <a id="tab0" href="#tab4">Reference</a>
             <div class="focus-el el--1"></div>
             <div class="focus-el el--2"></div>
           </ul>
@@ -132,9 +132,16 @@ activeIndex   = startPosIndex;
 animationDuration = 0.1;
 
 liEls.forEach((el, index) => {
-  let elRect = el.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
 
-  el.addEventListener("mouseover", () => {
+
+  el.addEventListener("mousedown", () => {
+
+    sel_id = el.href.split("#")[1];
+    switchNode('tabs',sel_id)
+    //alert(sel_id)
+
+
     if (reachedEnd && index + 1 == startPosIndex) {
       tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
       tl.to(
@@ -167,6 +174,26 @@ liEls.forEach((el, index) => {
     reachedEnd = (index + 1 == liEls.length) ? true : false
   });
 });
+
+
+  //////////////////////
+  // TAB SELECTOR     //
+  //////////////////////
+
+  function switchNode(node_name,sel_id)
+    {
+        var node    = document.getElementsByClassName(node_name)[0].childNodes
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id)
+            {
+                if(node[i].id == sel_id) node[i].classList.add('active');
+                else                     node[i].classList.remove('active');
+            }
+        }        
+    }
+
+
 </script>
 </body>
 </html>
