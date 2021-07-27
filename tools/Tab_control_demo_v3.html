@@ -12,8 +12,6 @@
     width: 100%;
     height: 100vh;
     display: flex;
-    justify-content: center;
-    align-items: center;
     background: #76B9CE;
     overflow: hidden;
   }
@@ -22,45 +20,49 @@
     width: 350px;
     height: 350px;
     display: grid;
-    place-items: center;
+    /*place-items: center;*/
   }
+
   #app ul {
     position: relative;
     width: 350px;
     height: 50px;
     display: grid;
     grid-template-columns: repeat(4, 1fr); /* elements */
-    border-radius: 35px;
+    border-radius: 15px;
     background: rgba(255, 255, 255, 0.65);
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
     overflow: hidden;
   }
+
   #app ul li {
     list-style: none;
     display: grid;
     place-items: center;
-    font-family: "montserrat";
+    /*font-family: "montserrat";*/
     color: #000;
     z-index: 10;
     cursor: pointer;
   }
+
   #app ul .focus-el {
     position: absolute;
     left: 0;
     top: 0;
     width: calc(100% / 4);
     height: 100%;
-    border-radius: 35px;
+    border-radius: 15px;
     background: #fff;
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
   }
+
   #app ul .focus-el.el--2 {
     left: calc(-100% / 4);
   }
   </style>
 </head>
 
-<body translate="no" >
+<body>
   <div id="app">
     <ul>
       <li>Assembler</li>
@@ -76,24 +78,21 @@
 //console.clear();
 
 const liContainer = document.querySelector("ul");
-const liEls = [...document.querySelectorAll("ul li")];
-const slideEl_1 = document.querySelector(".focus-el.el--1");
-const slideEl_2 = document.querySelector(".focus-el.el--2");
+const liEls       = [...document.querySelectorAll("ul li")];
+const slideEl_1   = document.querySelector(".focus-el.el--1");
+const slideEl_2   = document.querySelector(".focus-el.el--2");
 
-gsap.defaults({
-  ease: "ease.inOut" });
+//gsap.defaults({ ease: "ease.inOut" });
 
 tl = gsap.timeline();
-
 liRect = liContainer.getBoundingClientRect();
 slideEl_1_DefaultWidth = slideEl_1.getBoundingClientRect().width;
-slideEl_1_DefaultLeft = slideEl_1.getBoundingClientRect().left;
-slideEl_2_DefaultLeft = slideEl_2.getBoundingClientRect().left;
+slideEl_1_DefaultLeft  = slideEl_1.getBoundingClientRect().left;
+slideEl_2_DefaultLeft  = slideEl_2.getBoundingClientRect().left;
 
 startPosIndex = 1;
 reachedEnd = false;
 activeIndex = startPosIndex;
-
 animationDuration = 0.2;
 
 liEls.forEach((el, index) => {
@@ -117,7 +116,6 @@ liEls.forEach((el, index) => {
       slideEl_2,
       { left: `${slideEl_2_DefaultLeft - liRect.left}px` },
       `+=${animationDuration}`);
-
     }
 
     timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
@@ -128,14 +126,9 @@ liEls.forEach((el, index) => {
       tl.to(slideEl_1, animationDuration, {
         left: `${elRect.left - liRect.left}px`,
         width: `${slideEl_1_DefaultWidth}px` });
-
     }
 
-    if (index + 1 == liEls.length) {
-      reachedEnd = true;
-    } else {
-      reachedEnd = false;
-    }
+    reachedEnd = (index + 1 == liEls.length) ? true : false
   });
 });
 </script>
