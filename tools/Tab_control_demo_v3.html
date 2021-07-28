@@ -21,7 +21,7 @@
 
   #app {
     width: 350px;
-    height: 350px;
+    /*height: 30px;*/
     display: grid;
     /*place-items: center;*/
   }
@@ -76,7 +76,7 @@
 
   <table style="background:#76B9CE;border-radius:10px;">
     <tr>
-      <td valign=top style="display:flex;flex-wrap:wrap;width:340px">
+      <td valign=top style="display:flex;flex-wrap:wrap;;width:340px">
 
         <div id="app">
           <ul>
@@ -89,20 +89,17 @@
           </ul>
         </div>
 
-      </td>
-  </tr>
-  <tr>
-    <td style="height:200px;vertical-align:top;background-color: #000000;">
-    <!-- content -->
+
+           <!-- content -->
     <div class="tabs">
-      <div id="tab1"> Tab one content </div>
-      <div id="tab2"> Tab Two content </div>
-      <div id="tab3" class=active> 
+      <div id="tab1" class=active style="height:150px"> Tab one content </div>
+      <div id="tab2" style="height:200px"> Tab Two content </div>
+      <div id="tab3" style="height:250px"> 
           Tab Three content with a <a href="#tab1">link to tab 1</a>
       </div>
-      <div id="tab4"> Tab Four content </div>
-    </div>
-  </td>
+      <div id="tab4" style="height:300px"> Tab Four content </div>
+    </div> 
+      </td>
   </tr>
 </table>
 
