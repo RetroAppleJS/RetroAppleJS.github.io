@@ -139,12 +139,17 @@ liEls.forEach((el, index) => {
     // el = tab anchor
     sel_id = el.href.split("#")[1];
     switchNode('tabs',sel_id)
-    switchTab(tl)
+    switchTab(tl,index)
 
-    switchTab2(tl);
+    //switchTab2(tl,index);
+
+    /*
     timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
     activeIndex = index + 1;
+    alert(slideEl_1+" "+animationDuration+" "+(timesWidth * slideEl_1_DefaultWidth))
     tl.to(slideEl_1, animationDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
+    */
+
 
     if (index + 1 != startPosIndex || reachedEnd == false) {
       tl.to(slideEl_1, animationDuration, {
@@ -158,7 +163,7 @@ liEls.forEach((el, index) => {
 });
 
 
-function switchTab(tl)
+function switchTab(tl,index)
 {
   if (reachedEnd && index + 1 == startPosIndex) {
       tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
@@ -178,14 +183,14 @@ function switchTab(tl)
       { left: `${slideEl_2_DefaultLeft - liRect.left}px` },
       `+=${animationDuration}`);
     }
+    timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
+    activeIndex = index + 1;
+    tl.to(slideEl_1, animationDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
 }
 
-function switchTab2(tl)
+function switchTab2(tl,index)
 {
-    // TODO MAKE THIS CODE WORK !!!!
-    //timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
-    //activeIndex = index + 1;
-    //tl.to(slideEl_1, animationDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
+
 }
 
 function switchTab3(tl)
