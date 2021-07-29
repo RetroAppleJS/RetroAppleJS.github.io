@@ -133,37 +133,15 @@ animationDuration = 0.1;
 liEls.forEach((el, index) => {
   const elRect = el.getBoundingClientRect();
 
-
   el.addEventListener("mousedown", () => {
-
-    // el = tab anchor
     sel_id = el.href.split("#")[1];
-    switchNode('tabs',sel_id)
-    switchTab(tl,index)
-
-    //switchTab2(tl,index);
-
-    /*
-    timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
-    activeIndex = index + 1;
-    alert(slideEl_1+" "+animationDuration+" "+(timesWidth * slideEl_1_DefaultWidth))
-    tl.to(slideEl_1, animationDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
-    */
-
-
-    if (index + 1 != startPosIndex || reachedEnd == false) {
-      tl.to(slideEl_1, animationDuration, {
-        left: `${elRect.left - liRect.left}px`,
-        width: `${slideEl_1_DefaultWidth}px` });
-    }
-
-    switchTab3(tl);
-    
+    switchTabContent('tabs',sel_id)
+    switchTab(tl,index,elRect)
   });
 });
 
 
-function switchTab(tl,index)
+function switchTab(tl,index,elRect)
 {
   if (reachedEnd && index + 1 == startPosIndex) {
       tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
@@ -186,25 +164,14 @@ function switchTab(tl,index)
     timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
     activeIndex = index + 1;
     tl.to(slideEl_1, animationDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
-}
 
-function switchTab2(tl,index)
-{
-
-}
-
-function switchTab3(tl)
-{
-  // TODO MAKE THIS CODE WORK !!!!
-  /*
-  if (index + 1 != startPosIndex || reachedEnd == false) {
+    if (index + 1 != startPosIndex || reachedEnd == false)
+    {
       tl.to(slideEl_1, animationDuration, {
         left: `${elRect.left - liRect.left}px`,
         width: `${slideEl_1_DefaultWidth}px` });
     }
-  */
-
-  reachedEnd = (index + 1 == liEls.length) ? true : false
+    reachedEnd = (index + 1 == liEls.length) ? true : false
 }
 
   //////////////////////////////
@@ -218,10 +185,10 @@ function switchTab3(tl)
   {
     if(sel_id) sel_id = location.hash.slice(1);
     //alert(sel_id);
-    switchNode('tabs',sel_id);
+    switchTabContent('tabs',sel_id);
   }
 
-  function switchNode(node_name,sel_id)
+  function switchTabContent(node_name,sel_id)
   {
     var node    = document.getElementsByClassName(node_name)[0].childNodes
     for(var i=0;i<node.length;i++)
