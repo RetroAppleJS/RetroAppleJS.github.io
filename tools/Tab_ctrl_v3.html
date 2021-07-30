@@ -149,8 +149,8 @@ window.addEventListener("load", () => {
       if(node[index].href && node[index].href.split("#")[1] == sel_id)
         var el = node[index];
 
-    const elRect = el.getBoundingClientRect();
-    switchTab(tl,index,elRect)
+    //const elRect = el.getBoundingClientRect();
+    switchTab(tl,index,el.getBoundingClientRect());
   });
 
 function switchTab(tl,index,elRect)
