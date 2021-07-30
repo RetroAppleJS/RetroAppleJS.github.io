@@ -1,7 +1,7 @@
 <html lang="en" >
 <head>
-  <meta charset="UTF-8">
-  <style>
+<meta charset="UTF-8">
+<style>
   * {
     box-sizing: border-box;
     margin: 0;
@@ -65,19 +65,15 @@
 
   .tabs > div { display:none; }
   .tabs > div.active { display:block; }
-
-  .alltabs > a { display:none; }
-  .alltabs > a.active { display:block; }
-
-  </style>
+</style>
 </head>
-
 <body>
 
   <table style="background:#76B9CE;border-radius:10px;">
     <tr>
       <td valign=top style="display:flex;flex-wrap:wrap;;width:340px">
 
+        <!-- tab menu  -->
         <div id=app>
           <ul>
             <a id="tab0" href="#tab1">Assembler</a>
@@ -89,16 +85,15 @@
           </ul>
         </div>
 
-
-           <!-- content -->
-    <div class="tabs">
-      <div id="tab1" class=active style="height:150px"> Tab one content </div>
-      <div id="tab2" style="height:200px"> Tab Two content </div>
-      <div id="tab3" style="height:250px"> 
-          Tab Three content with a <a href="#tab1">link to tab 1</a>
-      </div>
-      <div id="tab4" style="height:300px"> Tab Four content </div>
-    </div> 
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab1" class=active style="height:150px"> Tab one content </div>
+          <div id="tab2" style="height:200px"> Tab Two content </div>
+          <div id="tab3" style="height:250px"> 
+              Tab Three content with a <a href="#tab1">link to tab 1</a>
+          </div>
+          <div id="tab4" style="height:300px"> Tab Four content </div>
+        </div> 
       </td>
   </tr>
 </table>
@@ -115,18 +110,16 @@ const liEls       = [...document.querySelectorAll("ul a")];
 const slideEl_1   = document.querySelector(".focus-el.el--1");
 const slideEl_2   = document.querySelector(".focus-el.el--2");
 
-//gsap.defaults({ ease: "ease.inOut" });
-
 tl = gsap.timeline();
 liRect = liContainer.getBoundingClientRect();
 slideEl_1_DefaultWidth = slideEl_1.getBoundingClientRect().width;
 slideEl_1_DefaultLeft  = slideEl_1.getBoundingClientRect().left;
 slideEl_2_DefaultLeft  = slideEl_2.getBoundingClientRect().left;
 
-startPosIndex = 1;
-const reachedEnd    = false;
-activeIndex   = startPosIndex;
-animationDuration = 0.1;
+startPosIndex     = 1;
+const reachedEnd  = false;
+activeIndex       = startPosIndex;
+animDuration      = 0.1;
 
 /*
 liEls.forEach((el, index) => {
@@ -134,12 +127,16 @@ liEls.forEach((el, index) => {
   el.addEventListener("mousedown", () => {
     sel_id = el.href.split("#")[1];
     switchTabContent('tabs',sel_id)
-    switchTab(tl,index,elRect)
+    switchHeader(tl,index,elRect)
   });
 });
 */
 
-window.addEventListener("load", () => {
+window.addEventListener("load", switchTab);
+window.addEventListener("hashchange", switchTab);
+
+function switchTab()
+{
     var sel_id = location.hash.slice(1);  // read hash value from url
     switchTabContent('tabs',sel_id);
     // find tab object corresponding to hash value
@@ -147,86 +144,50 @@ window.addEventListener("load", () => {
     for(var index=0;index<node.length;index++)
       if(node[index].href && node[index].href.split("#")[1] == sel_id)
         var el = node[index];
-    switchTab(tl,index,el.getBoundingClientRect());
-  });
+    switchHeader(tl,index,el.getBoundingClientRect());
+}
 
-  window.addEventListener("hashchange", () => {
-    var sel_id = location.hash.slice(1);  // read hash value from url
-    switchTabContent('tabs',sel_id);
-    // find tab object corresponding to hash value
-    var node = document.getElementById("app").childNodes[1].childNodes;
-    for(var index=0;index<node.length;index++)
-      if(node[index].href && node[index].href.split("#")[1] == sel_id)
-        var el = node[index];
-    switchTab(tl,index,el.getBoundingClientRect());
-  });
+//////////////////////////////
+// TAB Header SELECTOR     //
+//////////////////////////////
 
- 
-
-
-function switchTab(tl,index,elRect)
+function switchHeader(tl,index,elRect)
 {
   if (reachedEnd && index + 1 == startPosIndex) {
-      tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
-      tl.to(
-      slideEl_2,
-      animationDuration,
-      { left: `${elRect.left - liRect.left}px` },
-      `-=${animationDuration}`);
-
-      tl.set(
-      slideEl_1,
-      { left: `${slideEl_1_DefaultLeft - liRect.left}px` },
-      `+=${animationDuration}`);
-
-      tl.set(
-      slideEl_2,
-      { left: `${slideEl_2_DefaultLeft - liRect.left}px` },
-      `+=${animationDuration}`);
+      tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
+      tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
+      tl.set(slideEl_1, { left: `${slideEl_1_DefaultLeft - liRect.left}px` },`+=${animDuration}`);
+      tl.set(slideEl_2, { left: `${slideEl_2_DefaultLeft - liRect.left}px` },`+=${animDuration}`);
     }
     timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
     activeIndex = index + 1;
-    tl.to(slideEl_1, animationDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
+    tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
 
     if (index + 1 != startPosIndex || reachedEnd == false)
     {
-      tl.to(slideEl_1, animationDuration, {
+      tl.to(slideEl_1, animDuration, {
         left: `${elRect.left - liRect.left}px`,
         width: `${slideEl_1_DefaultWidth}px` });
     }
     reachedEnd = (index + 1 == liEls.length) ? true : false
 }
 
-  //////////////////////////////
-  // TAB CONTENT SELECTOR     //
-  //////////////////////////////
+//////////////////////////////
+// TAB CONTENT SELECTOR     //
+//////////////////////////////
 
-  //window.addEventListener("hashchange", locationHashChanged, false);
-  //window.addEventListener("load", locationHashChanged, false);
-
-  function locationHashChanged(sel_id)
+function switchTabContent(node_name,sel_id)
+{
+  var node = document.getElementsByClassName(node_name)[0].childNodes
+  for(var i=0;i<node.length;i++)
   {
-    if(sel_id) sel_id = location.hash.slice(1);
-    switchTabContent('tabs',sel_id);
-    //switchTab(tl,index,elRect)
-  }
-
-  function switchTabContent(node_name,sel_id)
-  {
-    var node = document.getElementsByClassName(node_name)[0].childNodes
-    for(var i=0;i<node.length;i++)
-    {
-        if(node[i].id)
-        {
-            if(node[i].id == sel_id) node[i].classList.add('active');
-            else                     node[i].classList.remove('active');
-        }
-    }        
-  }
-
-
-
-
+      if(node[i].id)
+      {
+          if(node[i].id == sel_id) node[i].classList.add('active');
+          else                     node[i].classList.remove('active');
+      }
+  }        
+}
 </script>
 </body>
 </html>
