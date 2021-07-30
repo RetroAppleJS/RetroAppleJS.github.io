@@ -128,34 +128,44 @@ const reachedEnd    = false;
 activeIndex   = startPosIndex;
 animationDuration = 0.1;
 
+/*
 liEls.forEach((el, index) => {
-  //alert(el+" "+index)
   const elRect = el.getBoundingClientRect();
-
   el.addEventListener("mousedown", () => {
     sel_id = el.href.split("#")[1];
     switchTabContent('tabs',sel_id)
     switchTab(tl,index,elRect)
   });
-
 });
+*/
 
 window.addEventListener("load", () => {
     var sel_id = location.hash.slice(1);  // read hash value from url
     switchTabContent('tabs',sel_id);
     // find tab object corresponding to hash value
-    var node    = document.getElementById("app").childNodes[1].childNodes;
+    var node = document.getElementById("app").childNodes[1].childNodes;
     for(var index=0;index<node.length;index++)
       if(node[index].href && node[index].href.split("#")[1] == sel_id)
         var el = node[index];
-
-    //const elRect = el.getBoundingClientRect();
     switchTab(tl,index,el.getBoundingClientRect());
   });
 
+  window.addEventListener("hashchange", () => {
+    var sel_id = location.hash.slice(1);  // read hash value from url
+    switchTabContent('tabs',sel_id);
+    // find tab object corresponding to hash value
+    var node = document.getElementById("app").childNodes[1].childNodes;
+    for(var index=0;index<node.length;index++)
+      if(node[index].href && node[index].href.split("#")[1] == sel_id)
+        var el = node[index];
+    switchTab(tl,index,el.getBoundingClientRect());
+  });
+
+ 
+
+
 function switchTab(tl,index,elRect)
 {
-  //alert("trigger")
   if (reachedEnd && index + 1 == startPosIndex) {
       tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
       tl.to(
