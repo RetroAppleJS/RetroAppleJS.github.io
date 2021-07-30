@@ -78,7 +78,7 @@
     <tr>
       <td valign=top style="display:flex;flex-wrap:wrap;;width:340px">
 
-        <div id="app">
+        <div id=app>
           <ul>
             <a id="tab0" href="#tab1">Assembler</a>
             <a id="tab0" href="#tab2">Debugger</a>
@@ -103,14 +103,12 @@
   </tr>
 </table>
 
-
 <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
 <script id="rendered-js">
 
 //////////////////////
 // TAB ANIMATOR     //
 //////////////////////
-
 
 const liContainer = document.querySelector("ul");
 const liEls       = [...document.querySelectorAll("ul a")];
@@ -131,6 +129,7 @@ activeIndex   = startPosIndex;
 animationDuration = 0.1;
 
 liEls.forEach((el, index) => {
+  //alert(el+" "+index)
   const elRect = el.getBoundingClientRect();
 
   el.addEventListener("mousedown", () => {
@@ -138,11 +137,25 @@ liEls.forEach((el, index) => {
     switchTabContent('tabs',sel_id)
     switchTab(tl,index,elRect)
   });
+
 });
 
+window.addEventListener("load", () => {
+    var sel_id = location.hash.slice(1);  // read hash value from url
+    switchTabContent('tabs',sel_id);
+    // find tab object corresponding to hash value
+    var node    = document.getElementById("app").childNodes[1].childNodes;
+    for(var index=0;index<node.length;index++)
+      if(node[index].href && node[index].href.split("#")[1] == sel_id)
+        var el = node[index];
+
+    const elRect = el.getBoundingClientRect();
+    switchTab(tl,index,elRect)
+  });
 
 function switchTab(tl,index,elRect)
 {
+  //alert("trigger")
   if (reachedEnd && index + 1 == startPosIndex) {
       tl.to(slideEl_1, animationDuration, { left: `${liRect.width}px` });
       tl.to(
@@ -178,19 +191,19 @@ function switchTab(tl,index,elRect)
   // TAB CONTENT SELECTOR     //
   //////////////////////////////
 
-  window.addEventListener("hashchange", locationHashChanged, false);
-  window.addEventListener("load", locationHashChanged, false);
+  //window.addEventListener("hashchange", locationHashChanged, false);
+  //window.addEventListener("load", locationHashChanged, false);
 
   function locationHashChanged(sel_id)
   {
     if(sel_id) sel_id = location.hash.slice(1);
-    //alert(sel_id);
     switchTabContent('tabs',sel_id);
+    //switchTab(tl,index,elRect)
   }
 
   function switchTabContent(node_name,sel_id)
   {
-    var node    = document.getElementsByClassName(node_name)[0].childNodes
+    var node = document.getElementsByClassName(node_name)[0].childNodes
     for(var i=0;i<node.length;i++)
     {
         if(node[i].id)
