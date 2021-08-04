@@ -42,7 +42,7 @@ The debugger is composed of 5 sections
 
 The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
 One can:
-1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest 1 million characters per second (far from that), so be patient.
+1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest many characters per second, so be patient.
 2) insert any disk found on the internet (.do, .dsk)
 
 ## User manuals
@@ -53,7 +53,7 @@ The debugger manual can be found [here](https://github.com/flyingzebra/AppleII-I
 
 - Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
 - Main: better document assembler code located in asm_code_examples
-- Assembler: better compatibility with listing from different AppleII assemblers
+- Assembler: better compatibility with listings from different AppleII assemblers
 - Emulator: interactive Apple II+ keyboard
-- Emulator: save disk image
+- Emulator: save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
 - Tools: develop documentation tool (generate Markdown format files from built-in HTML documentation)
