@@ -42,7 +42,7 @@ The debugger is composed of 5 sections
 
 The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
 One can:
-1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest 1 million characters per second (far from that), so be patient.
+1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest many characters per second, so be patient.
 2) insert any disk found on the internet (.do, .dsk)
 
 ## User manuals
