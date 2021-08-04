@@ -8,19 +8,9 @@
     padding: 0;
   }
 
-
-/*
-  #app {
-    width: 350px;
-    height: 30px;
-    place-items: center;
-    display: grid;
-  }
-*/
-
   #app ul {
     position: relative;
-    width: 350px;
+    
     height: 30px;
     display: grid;
     grid-template-columns: repeat(4, 1fr); /* elements */
@@ -55,19 +45,29 @@
     left: calc(-100% / 4);
   }
 
+  #box {
+    background:#76B9CE;
+    border-radius:10px;
+  }
+
+  #box tr td {
+    display:flex;
+    flex-wrap:wrap;
+  }
+
   .tabs > div { display:none; }
   .tabs > div.active { display:block; }
 </style>
 </head>
 <body style="font-family:'Arial';">
 
-  <table style="background:#76B9CE;border-radius:10px;">
+  <table id=box style=width:450px>
     <tr>
-      <td valign=top style="display:flex;flex-wrap:wrap;;width:350px">
+      <td valign=top>
 
         <!-- tab menu  -->
         <div id=app>
-          <ul>
+          <ul style=width:350px>
             <a id="tab0" href="#tab1">Assembler</a>
             <a id="tab0" href="#tab2">Debugger</a>
             <a id="tab0" href="#tab3">Emulator</a>
@@ -85,7 +85,8 @@
               Tab Three content with a <a href="#tab1">link to tab 1</a>
           </div>
           <div id="tab4" style="height:300px"> Tab Four content </div>
-        </div> 
+        </div>
+
       </td>
   </tr>
 </table>
@@ -104,65 +105,52 @@ const slideEl_2   = document.querySelector(".focus-el.el--2");
 
 tl = gsap.timeline();
 liRect = liContainer.getBoundingClientRect();
-slideEl_1_DefaultWidth = slideEl_1.getBoundingClientRect().width;
-slideEl_1_DefaultLeft  = slideEl_1.getBoundingClientRect().left;
-slideEl_2_DefaultLeft  = slideEl_2.getBoundingClientRect().left;
+slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
+slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
+slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
 
-startPosIndex     = 1;
-const reachedEnd  = false;
-activeIndex       = startPosIndex;
-animDuration      = 0.1;
-
-/*
-liEls.forEach((el, index) => {
-  const elRect = el.getBoundingClientRect();
-  el.addEventListener("mousedown", () => {
-    sel_id = el.href.split("#")[1];
-    switchTabContent('tabs',sel_id)
-    switchHeader(tl,index,elRect)
-  });
-});
-*/
+startPosIndex = 1;
+reachedEnd    = false;
+activeIndex   = startPosIndex;
+animDuration  = 0.1;
 
 window.addEventListener("load", switchTab);
 window.addEventListener("hashchange", switchTab);
 
 function switchTab()
 {
-    var sel_id = location.hash.slice(1);  // read hash value from url
-    
+    // read hash value from url
+    var sel_id = location.hash.slice(1);
     // find tab object corresponding to hash value
     var node = document.getElementById("app").childNodes[1].childNodes;
     for(var index=0;index<node.length;index++)
       if(node[index].href && (node[index].href.split("#")[1] == sel_id || typeof(el)=="undefined"))
         var el = node[index];
-  
-    switchHeader(tl,index,el.getBoundingClientRect());
+    switchTabHeader(tl,index,el.getBoundingClientRect());
     switchTabContent('tabs',el.href.split("#")[1]);
-
 }
 
 //////////////////////////////
 // TAB Header SELECTOR     //
 //////////////////////////////
 
-function switchHeader(tl,index,elRect)
+function switchTabHeader(tl,index,elRect)
 {
   if (reachedEnd && index + 1 == startPosIndex) {
       tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
       tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
-      tl.set(slideEl_1, { left: `${slideEl_1_DefaultLeft - liRect.left}px` },`+=${animDuration}`);
-      tl.set(slideEl_2, { left: `${slideEl_2_DefaultLeft - liRect.left}px` },`+=${animDuration}`);
+      tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
+      tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
     }
     timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
     activeIndex = index + 1;
-    tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefaultWidth}px` });
+    tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
 
     if (index + 1 != startPosIndex || reachedEnd == false)
     {
       tl.to(slideEl_1, animDuration, {
         left: `${elRect.left - liRect.left}px`,
-        width: `${slideEl_1_DefaultWidth}px` });
+        width: `${slideEl_1_DefWidth}px` });
     }
     reachedEnd = (index + 1 == liEls.length) ? true : false
 }
