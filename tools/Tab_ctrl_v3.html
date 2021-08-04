@@ -130,13 +130,16 @@ window.addEventListener("hashchange", switchTab);
 function switchTab()
 {
     var sel_id = location.hash.slice(1);  // read hash value from url
-    switchTabContent('tabs',sel_id);
+    
     // find tab object corresponding to hash value
     var node = document.getElementById("app").childNodes[1].childNodes;
     for(var index=0;index<node.length;index++)
-      if(node[index].href && node[index].href.split("#")[1] == sel_id)
+      if(node[index].href && (node[index].href.split("#")[1] == sel_id || typeof(el)=="undefined"))
         var el = node[index];
+  
     switchHeader(tl,index,el.getBoundingClientRect());
+    switchTabContent('tabs',el.href.split("#")[1]);
+
 }
 
 //////////////////////////////
