@@ -109,7 +109,7 @@ slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
 slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
 slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
 
-startPosIndex = 1;
+startPosIndex = 2;
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
@@ -123,9 +123,17 @@ function switchTab()
     var sel_id = location.hash.slice(1);
     // find tab object corresponding to hash value
     var node = document.getElementById("app").childNodes[1].childNodes;
-    for(var index=0;index<node.length;index++)
-      if(node[index].href && (node[index].href.split("#")[1] == sel_id || typeof(el)=="undefined"))
-        var el = node[index];
+    for(var index=0,cnt=1;index<node.length;index++)
+    {
+
+      //alert(cnt)
+      if(node[index].href)
+      {
+        if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
+          var el = node[index];
+        cnt++
+      }
+    }
     switchTabHeader(tl,index,el.getBoundingClientRect());
     switchTabContent('tabs',el.href.split("#")[1]);
 }
