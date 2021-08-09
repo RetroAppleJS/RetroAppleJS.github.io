@@ -51,23 +51,30 @@
   }
 
   #box tr td {
-    display:flex;
+    /*display:flex;*/
     flex-wrap:wrap;
   }
 
   .tabs > div { display:none; }
   .tabs > div.active { display:block; }
+
+  .alltabs > a { display:none; }
+  .alltabs > a.active { display:block; }
+
 </style>
+<link rel="stylesheet" href="../res/fontawesome/all.css">
 </head>
 <body style="font-family:'Arial'">
 
   <table id=box style=width:450px>
     <tr>
       <td valign=top>
+        <!--i class="fa fa-bars" onmouseover="document.getElementById('app').style.display=''" style=float:left;></i!-->
 
         <!-- tab menu  -->
         <div id=app>
-          <ul style=width:350px>
+          <ul style="width:350px;float:left">
+            <!-- links -->
             <a id="tab0" href="#tab1">Assembler</a>
             <a id="tab0" href="#tab2">Debugger</a>
             <a id="tab0" href="#tab3">Emulator</a>
@@ -76,6 +83,7 @@
             <div class="focus-el el--2"></div>
           </ul>
         </div>
+        <br><br>
 
         <!-- tab content -->
         <div class="tabs">
@@ -86,7 +94,6 @@
           </div>
           <div id="tab4" style="height:1000px"> Tab Four content </div>
         </div>
-
       </td>
   </tr>
 </table>
