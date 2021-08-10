@@ -5,6 +5,8 @@
 .alltabs > a { display:none;  }
 .alltabs > a.active { display:block; }
 
+.alltabs > div { display:block;  }
+.alltabs > div.active { display:none; }
 
 #box {
     background:#76B9CE;
@@ -18,16 +20,13 @@
 
 #app a {
     text-decoration:none;   
-    padding: 4px 2px 0px 2px;
+    padding: 4px 4px 0px 4px;
     text-align: center;
     align-items: center;
-    border-radius: 4px;
+    border-radius: 5px 5px 0px 0px;
     color: #000;
 }
 
-#app a:visited {    /* visited link */
-    /*color: #000;*/
-}
 #app a:hover {    /* mouse over link */
     color: #00ff00;
     border-bottom: none;
@@ -41,16 +40,18 @@
 </style>
 
 <body style="font-family:'Arial'">
-<!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
-<link rel="stylesheet" href="../res/fontawesome/all.css">
 
-<div id=app onmouseleave="switchTabContent('alltabs','')"  style="border: 0px solid #000;display:flex;" class="alltabs">
+<div id=app onmouseleave="switchTabContent('alltabs','');"  style="border: 0px solid #000;display:flex;" class="alltabs">
     <div onmouseover="switchTabContent('alltabs','tab0')" style="font-size: 150%; font-weight: bolder;">&#8801;</div>
     <!-- links -->
     <a id="tab0" href="#tab1">Tab1</a>
     <a id="tab0" href="#tab2">Tab2</a>
     <a id="tab0" href="#tab3">Tab3</a>
     <a id="tab0" href="#tab4">Tab4</a>
+    <div id="tab0">
+      <input id="tab1" type="button" onclick="javascript:alert('hit1')" id="resetbutton" value="TAB1 button">
+      <input id="tab2" type="button" onclick="javascript:alert('hit2')" id="resetbutton" value="TAB2 button">
+    </div>
 </div>
 
 <!-- content -->
@@ -91,26 +92,7 @@ function switchTab()
         cnt++
       }
     }
-    //switchTabHeader(tl,index,el.getBoundingClientRect());
-    switchTabHeader('alltabs',el.href.split("#")[1]);
     switchTabContent('tabs',el.href.split("#")[1]);
-}
-
-//////////////////////////////
-// TAB HEQDER SELECTOR      //
-//////////////////////////////
-
-function switchTabHeader(node_name,sel_id)
-{
-  var node = document.getElementsByClassName(node_name)[0].childNodes
-  for(var i=0;i<node.length;i++)
-  {
-    if(node[i].id)
-    {
-        //alert(node[i].classList)
-        //node[i].blur()
-    }
-  }
 }
 
 //////////////////////////////
