@@ -2,15 +2,48 @@
 .tabs > div { display:none; }
 .tabs > div.active { display:block; }
 
-.alltabs > a { display:none; }
+.alltabs > a { display:none;  }
 .alltabs > a.active { display:block; }
+
+
+#box {
+    background:#76B9CE;
+    border-radius:10px;
+  }
+
+#box tr td {
+    /*display:flex;*/
+    flex-wrap:wrap;
+  }
+
+#app a {
+    text-decoration:none;   
+    padding: 2px 2px;
+    text-align: center;
+    border-radius: 4px; // the rounded corners are here 
+}
+
+#app a:visited {    /* visited link */
+    color: #000;
+}
+#app a:hover {    /* mouse over link */
+    color: #00ff00;
+    border-bottom: none;
+    background:#76B9CE;
+    color: #fff;    
+}
+#app a:active {    /* active link */
+    color: #00ffff;
+}
+
 </style>
 
+<body style="font-family:'Arial'">
 <!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
 <link rel="stylesheet" href="../res/fontawesome/all.css">
 
 <div id=app onmouseleave="switchTabContent('alltabs','')"  style="border: 1px solid #000;display:flex;" class="alltabs">
-    <i class="fa fa-bars" onmouseover="switchTabContent('alltabs','tab0')"></i>&nbsp;
+    <i class="fa fa-bars" onmouseover="switchTabContent('alltabs','tab0')"></i>
     <!-- links -->
     <a id="tab0" href="#tab1">Tab1</a>
     <a id="tab0" href="#tab2">Tab2</a>
@@ -19,14 +52,21 @@
 </div>
 
 <!-- content -->
-<div class="tabs">
-  <div id="tab1"> Tab one content </div>
-  <div id="tab2"> Tab Two content </div>
-  <div id="tab3" class=active> 
-       Tab Three content with a <a href="#tab1">link to tab 1</a>
-  </div>
-  <div id="tab4"> Tab Four content </div>
-</div>
+<table id=box style=width:450px>
+    <tr>
+      <td valign=top>
+        <div class="tabs">
+            <div id="tab1" style="height:150px"> Tab one content </div>
+            <div id="tab2" style="height:200px"> Tab Two content </div>
+            <div id="tab3" style="height:250px"> 
+                Tab Three content with a <a href="#tab1">link to tab 1</a>
+            </div>
+            <div id="tab4" style="height:1000px"> Tab Four content </div>
+        </div>
+        </td>
+    </tr>
+</table>
+</body>
 
 <script>
 var startPosIndex = 2;
@@ -49,7 +89,25 @@ function switchTab()
       }
     }
     //switchTabHeader(tl,index,el.getBoundingClientRect());
+    switchTabHeader('alltabs',el.href.split("#")[1]);
     switchTabContent('tabs',el.href.split("#")[1]);
+}
+
+//////////////////////////////
+// TAB HEQDER SELECTOR      //
+//////////////////////////////
+
+function switchTabHeader(node_name,sel_id)
+{
+  var node = document.getElementsByClassName(node_name)[0].childNodes
+  for(var i=0;i<node.length;i++)
+  {
+    if(node[i].id)
+    {
+        //alert(node[i].classList)
+        //node[i].blur()
+    }
+  }
 }
 
 //////////////////////////////
