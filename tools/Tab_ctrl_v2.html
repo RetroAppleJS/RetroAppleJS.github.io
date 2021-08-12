@@ -53,7 +53,10 @@
     <a id="tab0" href="#tab4">Tab4</a>
     <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button A">
     <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button B">
-    <input id="tab2" type="button" onclick="javascript:alert('hit2')" value="TAB2 button">
+    <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button C">
+    <input id="tab2" type="button" onclick="javascript:alert('hit2')" value="TAB2 button A">
+    <input id="tab4" type="button" onclick="javascript:alert('hit2')" value="TAB4 button A">
+    <input id="tab4" type="button" onclick="javascript:alert('hit2')" value="TAB4 button B">
 </div>
 
 
@@ -103,6 +106,10 @@ function switchTab()
 {
     lastSel = SelTab().href.split("#")[1];
     switchTabContent('tabs',lastSel);
+
+    switchTabContent('alltabs','');
+    switchTabContent('alltabs',lastSel);
+    
 }
 
 //////////////////////////////
