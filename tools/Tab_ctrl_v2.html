@@ -77,12 +77,12 @@ var startPosIndex = 2;
 window.addEventListener("load", switchTab);
 window.addEventListener("hashchange", switchTab);
 
-function switchTab()
+function SelTab()
 {
     // read hash value from url
     var sel_id = location.hash.slice(1);
     // find tab object corresponding to hash value
-    var node = document.getElementById("app").childNodes;
+    var el,node = document.getElementById("app").childNodes;
     for(var index=0,cnt=1;index<node.length;index++)
     {
       if(node[index].href)
@@ -92,7 +92,12 @@ function switchTab()
         cnt++
       }
     }
-    switchTabContent('tabs',el.href.split("#")[1]);
+    return el
+}
+
+function switchTab()
+{
+    switchTabContent('tabs',SelTab().href.split("#")[1]);
 }
 
 //////////////////////////////
