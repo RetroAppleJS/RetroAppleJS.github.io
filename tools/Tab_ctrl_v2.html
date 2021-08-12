@@ -8,6 +8,9 @@
 .alltabs > div { display:block;  }
 .alltabs > div.active { display:none; }
 
+.alltabs > input { display:none;  }
+.alltabs > input.active { display:block; }
+
 #box {
     background:#76B9CE;
     border-radius:10px;
@@ -41,18 +44,18 @@
 
 <body style="font-family:'Arial'">
 
-<div id=app onmouseleave="switchTabContent('alltabs','');"  style="border: 0px solid #000;display:flex;" class="alltabs">
-    <div onmouseover="switchTabContent('alltabs','tab0')" style="font-size: 150%; font-weight: bolder;">&#8801;</div>
+<div id=app onmouseleave="switchTabContent('alltabs','');switchTabContent('alltabs',lastSel);"  style="border: 0px solid #000;display:flex;" class="alltabs">
+    <div onmouseover="switchTabContent('alltabs','tab0');" style="font-size: 150%; font-weight: bolder;">&#8801;</div>
     <!-- links -->
     <a id="tab0" href="#tab1">Tab1</a>
     <a id="tab0" href="#tab2">Tab2</a>
     <a id="tab0" href="#tab3">Tab3</a>
     <a id="tab0" href="#tab4">Tab4</a>
-    <div id="tab0">
-      <input id="tab1" type="button" onclick="javascript:alert('hit1')" id="resetbutton" value="TAB1 button">
-      <input id="tab2" type="button" onclick="javascript:alert('hit2')" id="resetbutton" value="TAB2 button">
-    </div>
+    <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button A">
+    <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button B">
+    <input id="tab2" type="button" onclick="javascript:alert('hit2')" value="TAB2 button">
 </div>
+
 
 <!-- content -->
 <table id=box style=width:450px>
@@ -93,12 +96,12 @@ function SelTab()
         cnt++
       }
     }
-    return el
+    return el;
 }
 
 function switchTab()
 {
-    lastSel = SelTab().href.split("#")[1]
+    lastSel = SelTab().href.split("#")[1];
     switchTabContent('tabs',lastSel);
 }
 
@@ -108,7 +111,7 @@ function switchTab()
 
 function switchTabContent(node_name,sel_id)
 {
-  var node = document.getElementsByClassName(node_name)[0].childNodes
+  var node = document.getElementsByClassName(node_name)[0].childNodes;
   for(var i=0;i<node.length;i++)
   {
       if(node[i].id)
