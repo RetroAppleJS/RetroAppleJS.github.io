@@ -74,6 +74,7 @@
 
 <script>
 var startPosIndex = 2;
+var lastSel = 0;
 window.addEventListener("load", switchTab);
 window.addEventListener("hashchange", switchTab);
 
@@ -88,7 +89,7 @@ function SelTab()
       if(node[index].href)
       {
         if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
-          var el = node[index];
+          el = node[index];
         cnt++
       }
     }
@@ -97,7 +98,8 @@ function SelTab()
 
 function switchTab()
 {
-    switchTabContent('tabs',SelTab().href.split("#")[1]);
+    lastSel = SelTab().href.split("#")[1]
+    switchTabContent('tabs',lastSel);
 }
 
 //////////////////////////////
