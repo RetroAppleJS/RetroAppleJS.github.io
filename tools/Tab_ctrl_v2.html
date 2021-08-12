@@ -1,27 +1,17 @@
 <style>
-.tabs > div { display:none; }
-.tabs > div.active { display:block; }
+.my_tabs > a              { display:none;  }  /* display tabs when 'active' */
+.my_tabs > a.active       { display:block; }
+.my_tabs > input          { display:none;  }  /* display button controls when 'active' */
+.my_tabs > input.active   { display:block; }
+.my_tabcon > div          { display:none;  }  /* display tab content when 'active' */
+.my_tabcon > div.active   { display:block; }
 
-.alltabs > a { display:none;  }
-.alltabs > a.active { display:block; }
-
-.alltabs > div { display:block;  }
-.alltabs > div.active { display:none; }
-
-.alltabs > input { display:none;  }
-.alltabs > input.active { display:block; }
-
-#box {
+#box {          /* simple rounded box */
     background:#76B9CE;
     border-radius:10px;
   }
 
-#box tr td {
-    /*display:flex;*/
-    flex-wrap:wrap;
-  }
-
-#app a {
+#app a {        /* make links with id=app look like tabs */
     text-decoration:none;   
     padding: 4px 4px 0px 4px;
     text-align: center;
@@ -36,35 +26,31 @@
     background:#76B9CE;
     color: #fff;    
 }
-#app a:active {    /* active link */
-    
-}
-
 </style>
 
 <body style="font-family:'Arial'">
 
-<div id=app onmouseleave="switchTabContent('alltabs','');switchTabContent('alltabs',lastSel);"  style="border: 0px solid #000;display:flex;" class="alltabs">
-    <div onmouseover="switchTabContent('alltabs','tab0');" style="font-size: 150%; font-weight: bolder;">&#8801;</div>
-    <!-- links -->
+<div id=app class="my_tabs" onmouseleave="switchTab()"  style="border: 0px solid #000;display:flex;">
+    <div onmouseover="switchTabContent('my_tabs','tab0')" style="font-size: 150%; font-weight: bolder;">&#8801;</div>
+    <!-- tabs -->
     <a id="tab0" href="#tab1">Tab1</a>
     <a id="tab0" href="#tab2">Tab2</a>
     <a id="tab0" href="#tab3">Tab3</a>
     <a id="tab0" href="#tab4">Tab4</a>
-    <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button A">
-    <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button B">
-    <input id="tab1" type="button" onclick="javascript:alert('hit1')" value="TAB1 button C">
-    <input id="tab2" type="button" onclick="javascript:alert('hit2')" value="TAB2 button A">
-    <input id="tab4" type="button" onclick="javascript:alert('hit2')" value="TAB4 button A">
-    <input id="tab4" type="button" onclick="javascript:alert('hit2')" value="TAB4 button B">
+    <!-- button controls (sub tabs)  -->
+    <input id="tab1" type="button" onclick="alert(this.value)" value="TAB1 button A">
+    <input id="tab1" type="button" onclick="alert(this.value)" value="TAB1 button B">
+    <input id="tab1" type="button" onclick="alert(this.value)" value="TAB1 button C">
+    <input id="tab2" type="button" onclick="alert(this.value)" value="TAB2 button A">
+    <input id="tab4" type="button" onclick="alert(this.value)" value="TAB4 button A">
+    <input id="tab4" type="button" onclick="alert(this.value)" value="TAB4 button B">
 </div>
 
-
-<!-- content -->
+<!-- tab content -->
 <table id=box style=width:450px>
     <tr>
       <td valign=top>
-        <div class="tabs">
+        <div class="my_tabcon">
             <div id="tab1" style="height:150px"> Tab one content </div>
             <div id="tab2" style="height:200px"> Tab Two content </div>
             <div id="tab3" style="height:250px"> 
@@ -80,11 +66,27 @@
 
 <script>
 var startPosIndex = 2;
-var lastSel = 0;
+var lastPosIndex  = 0;
 window.addEventListener("load", switchTab);
 window.addEventListener("hashchange", switchTab);
 
-function SelTab()
+/////////////////////////////////////////////////////////
+// SAVE LAST TAB POSITION & UPDATE TABS + TAB CONTENT  //
+/////////////////////////////////////////////////////////
+
+function switchTab()
+{
+    lastPosIndex = SelHash().href.split("#")[1];
+    switchTabContent('my_tabs','');
+    switchTabContent('my_tabs'  ,lastPosIndex);
+    switchTabContent('my_tabcon',lastPosIndex);
+}
+
+///////////////////////////////////////////////
+// FIND ELEMENT WITH HREF MATCHING URL HASH  //
+///////////////////////////////////////////////
+
+function SelHash()
 {
     // read hash value from url
     var sel_id = location.hash.slice(1);
@@ -102,19 +104,9 @@ function SelTab()
     return el;
 }
 
-function switchTab()
-{
-    lastSel = SelTab().href.split("#")[1];
-    switchTabContent('tabs',lastSel);
-
-    switchTabContent('alltabs','');
-    switchTabContent('alltabs',lastSel);
-    
-}
-
-//////////////////////////////
-// TAB CONTENT SELECTOR     //
-//////////////////////////////
+/////////////////////////////
+// HTML ELEMENT ACTIVATOR  //
+/////////////////////////////
 
 function switchTabContent(node_name,sel_id)
 {
