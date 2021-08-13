@@ -40,12 +40,7 @@
        color: red;
      }
 
-     .register
-     {
-       text-align:center;
-       nowrap:nowrap;
-       font-size: small;
-     }
+
 
      .gtable {
        height:180px;
@@ -92,16 +87,6 @@
        border-style: solid;
        border-color: #555 transparent transparent transparent;
      }
-
-     .dtable {
-       width:220px;
-       font-size:xx-small;
-      }
-      .dtable tr td {
-         border:1px solid black;
-         position: relative;
-       }
-
 </style>
 
 
@@ -339,6 +324,88 @@ Label1 TXA
     	<script language="JavaScript" type="text/javascript" src="res/DBG_6502cpu.js"></script>
     	<script language="JavaScript" type="text/javascript" src="res/DBG_6502gui.js"></script>
     	<script language="JavaScript" type="text/javascript" src="res/DBG_6502.css"></script>
+      <style>
+
+      .regdisp {
+        width: 218px;
+        height: 69px;
+      }
+
+      .regscroll_h {
+        width: 216px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+      }
+
+      .regpar {display: flex; scroll-behavior: smooth;}
+
+      .regbox {
+        flex-shrink: 0;
+        height: 40px;
+        width: 25px;
+        text-align: center;
+      }
+
+      .regbyte {
+      flex-shrink: 0;
+      height: 16px;
+      width: 25px;
+      border-style: solid;
+      border-width: 1px;
+      text-align: center;
+      }
+
+      .regbyte_red
+      {
+        /*  @extend .regbyte */;
+        flex-shrink: 0;
+        height: 16px;
+        width: 25px;
+        border-style: solid;
+        border-width: 1px;
+        background-color:red;
+      }
+
+      .regbyte_green
+      {
+        /*  @extend .regbyte */;
+        flex-shrink: 0;
+        height: 16px;
+        width: 25px;
+        border-style: solid;
+        border-width: 1px;
+        background-color:#00D000
+      }
+
+      .regadr {
+        font-size:xx-small;
+      }
+
+      #dispStep, #watchdisp
+      {
+        white-space:normal;
+        word-break:break-all;
+        overflow-wrap:anywhere;
+        overflow-y:scroll;
+      }
+
+      .dtable {
+       width:220px;
+       font-size:xx-small;
+      }
+
+      .dtable tr td {
+        border:1px solid black;
+        position: relative;
+        text-align:center;
+        nowrap:nowrap;
+        font-size: small;
+        width:12px;
+        text-align:center;
+        white-space: nowrap;
+       }
+
+      </style>
 
       <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
     	<tr>
@@ -363,87 +430,87 @@ Label1 TXA
                 <div id="regdisp" class="regdisp"></div>
                  <table class=dtable>
            				<tr>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setRegister('PC'); return false;" onfocus="if (this.blur) this.blur();" title="set PC">PC</a></td>
-           					<td class="register">&nbsp;</td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setRegister('AC'); return false;" onfocus="if (this.blur) this.blur();" title="set AC">A</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setRegister('XR'); return false;" onfocus="if (this.blur) this.blur();" title="set XR">X</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setRegister('YR'); return false;" onfocus="if (this.blur) this.blur();" title="set YR">Y</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setRegister('SR'); return false;" onfocus="if (this.blur) this.blur();" title="set SR">SR</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setRegister('SP'); return false;" onfocus="if (this.blur) this.blur();" title="set SP">SP</a></td>
+           					<td><a onclick="setRegister('PC'); return false;" onfocus="if(this.blur) this.blur();" title="set PC">PC</a></td>
+           					<td>&nbsp;</td>
+           					<td><a onclick="setRegister('AC'); return false;" onfocus="if(this.blur) this.blur();" title="set AC">A</a></td>
+           					<td><a onclick="setRegister('XR'); return false;" onfocus="if(this.blur) this.blur();" title="set XR">X</a></td>
+           					<td><a onclick="setRegister('YR'); return false;" onfocus="if(this.blur) this.blur();" title="set YR">Y</a></td>
+           					<td><a onclick="setRegister('SR'); return false;" onfocus="if(this.blur) this.blur();" title="set SR">SR</a></td>
+           					<td><a onclick="setRegister('SP'); return false;" onfocus="if(this.blur) this.blur();" title="set SP">SP</a></td>
            				</tr>
            				<tr>
-           					<td class="register"><div id="dispPC" class="displayLr" onclick="setRegister('PC'); return false;" style="cursor: pointer;">0000</div></td>
-           					<td class="register">&nbsp;</td>
-           					<td class="register"><div id="dispAC" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispXR" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispYR" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispSR" class="displayLr">20</div></td>
-           					<td class="register"><div id="dispSP" class="displayLr">FF</div></td>
+           					<td><div id="dispPC" class="displayLr" onclick="setRegister('PC'); return false;" style="cursor: pointer;">0000</div></td>
+           					<td>&nbsp;</td>
+           					<td><div id="dispAC" class="displayLr">00</div></td>
+           					<td><div id="dispXR" class="displayLr">00</div></td>
+           					<td><div id="dispYR" class="displayLr">00</div></td>
+           					<td><div id="dispSR" class="displayLr">20</div></td>
+           					<td><div id="dispSP" class="displayLr">FF</div></td>
            				</tr>
            			</table>
            			<table class=dtable>
            				<tr>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(7); return false;" onfocus="if (this.blur) this.blur();" title="flip Negative flag">N</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(6); return false;" onfocus="if (this.blur) this.blur();" title="flip Overflow flag">V</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(5); return false;" onfocus="if (this.blur) this.blur();" title="flip bit 5 (ignored)">-</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(4); return false;" onfocus="if (this.blur) this.blur();" title="flip Break flag">B</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(3); return false;" onfocus="if (this.blur) this.blur();" title="flip Decimal flag">D</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(2); return false;" onfocus="if (this.blur) this.blur();" title="flip Interrupt flag">I</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(1); return false;" onfocus="if (this.blur) this.blur();" title="flip Zero flag">Z</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="flipSRBit(0); return false;" onfocus="if (this.blur) this.blur();" title="flip Carry flag">C</a></td>
+           					<td><a onclick="flipSRBit(7); return false;" onfocus="if(this.blur) this.blur();" title="flip Negative flag">N</a></td>
+           					<td><a onclick="flipSRBit(6); return false;" onfocus="if(this.blur) this.blur();" title="flip Overflow flag">V</a></td>
+           					<td><a onclick="flipSRBit(5); return false;" onfocus="if(this.blur) this.blur();" title="flip bit 5 (ignored)">-</a></td>
+           					<td><a onclick="flipSRBit(4); return false;" onfocus="if(this.blur) this.blur();" title="flip Break flag">B</a></td>
+           					<td><a onclick="flipSRBit(3); return false;" onfocus="if(this.blur) this.blur();" title="flip Decimal flag">D</a></td>
+           					<td><a onclick="flipSRBit(2); return false;" onfocus="if(this.blur) this.blur();" title="flip Interrupt flag">I</a></td>
+           					<td><a onclick="flipSRBit(1); return false;" onfocus="if(this.blur) this.blur();" title="flip Zero flag">Z</a></td>
+           					<td><a onclick="flipSRBit(0); return false;" onfocus="if(this.blur) this.blur();" title="flip Carry flag">C</a></td>
            				</tr>
            				<tr>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR7" class="displayLr">0</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR6" class="displayLr">0</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR5" class="displayLr">1</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR4" class="displayLr">0</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR3" class="displayLr">0</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR2" class="displayLr">0</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR1" class="displayLr">0</div></td>
-           					<td class="register" width="12" nowrap="nowrap" align="center"><div id="dispSR0" class="displayLr">0</div></td>
+           					<td><div id="dispSR7" class="displayLr">0</div></td>
+           					<td><div id="dispSR6" class="displayLr">0</div></td>
+           					<td><div id="dispSR5" class="displayLr">1</div></td>
+           					<td><div id="dispSR4" class="displayLr">0</div></td>
+           					<td><div id="dispSR3" class="displayLr">0</div></td>
+           					<td><div id="dispSR2" class="displayLr">0</div></td>
+           					<td><div id="dispSR1" class="displayLr">0</div></td>
+           					<td><div id="dispSR0" class="displayLr">0</div></td>
            				</tr>
            			</table>
            			<table class=dtable>
            				<tr>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('AD'); return false;" onfocus="if (this.blur) this.blur();" title="set AD">AD</a></td>
-           					<td class="register">&nbsp;</td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('R1'); return false;" onfocus="if (this.blur) this.blur();" title="set R1">R1</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('R2'); return false;" onfocus="if (this.blur) this.blur();" title="set R2">R2</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('R3'); return false;" onfocus="if (this.blur) this.blur();" title="set R3">R3</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('R4'); return false;" onfocus="if (this.blur) this.blur();" title="set R4">R4</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('R5'); return false;" onfocus="if (this.blur) this.blur();" title="set R5">R5</a></td>
-           					<td class="register"><a href="javascript://" class="regset" onclick="setWatchByte('R6'); return false;" onfocus="if (this.blur) this.blur();" title="set R6">R6</a></td>
+           					<td><a onclick="setWatchByte('AD'); return false;" onfocus="if(this.blur) this.blur();" title="set AD">AD</a></td>
+           					<td>&nbsp;</td>
+           					<td><a onclick="setWatchByte('R1'); return false;" onfocus="if(this.blur) this.blur();" title="set R1">R1</a></td>
+           					<td><a onclick="setWatchByte('R2'); return false;" onfocus="if(this.blur) this.blur();" title="set R2">R2</a></td>
+           					<td><a onclick="setWatchByte('R3'); return false;" onfocus="if(this.blur) this.blur();" title="set R3">R3</a></td>
+           					<td><a onclick="setWatchByte('R4'); return false;" onfocus="if(this.blur) this.blur();" title="set R4">R4</a></td>
+           					<td><a onclick="setWatchByte('R5'); return false;" onfocus="if(this.blur) this.blur();" title="set R5">R5</a></td>
+           					<td><a onclick="setWatchByte('R6'); return false;" onfocus="if(this.blur) this.blur();" title="set R6">R6</a></td>
            				</tr>
            				<tr>
-           					<td class="register"><div id="dispAD" class="displayLr" onclick="setWatch('AD'); return false;" style="cursor: pointer;">0000</div></td>
-           					<td class="register">&nbsp;</td>
-           					<td class="register"><div id="dispR1" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispR2" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispR3" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispR4" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispR5" class="displayLr">00</div></td>
-           					<td class="register"><div id="dispR6" class="displayLr">00</div></td>
+           					<td><div id="dispAD" class="displayLr" onclick="setWatch('AD'); return false;" style="cursor: pointer;">0000</div></td>
+           					<td>&nbsp;</td>
+           					<td><div id="dispR1" class="displayLr">00</div></td>
+           					<td><div id="dispR2" class="displayLr">00</div></td>
+           					<td><div id="dispR3" class="displayLr">00</div></td>
+           					<td><div id="dispR4" class="displayLr">00</div></td>
+           					<td><div id="dispR5" class="displayLr">00</div></td>
+           					<td><div id="dispR6" class="displayLr">00</div></td>
            				</tr>
            			</table>
            			<table class=dtable>
            				<tr>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(7); return false;" onfocus="if (this.blur) this.blur();" title="bit7">7</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(6); return false;" onfocus="if (this.blur) this.blur();" title="bit6">6</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(5); return false;" onfocus="if (this.blur) this.blur();" title="bit5">5</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(4); return false;" onfocus="if (this.blur) this.blur();" title="bit4">4</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(3); return false;" onfocus="if (this.blur) this.blur();" title="bit3">3</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(2); return false;" onfocus="if (this.blur) this.blur();" title="bit2">2</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(1); return false;" onfocus="if (this.blur) this.blur();" title="bit1">1</a></td>
-           					<td class="register" width="12" align="center"><a href="javascript://" class="regset" onclick="setwatchBit(0); return false;" onfocus="if (this.blur) this.blur();" title="bit0">0</a></td>
+           					<td><a onclick="setwatchBit(7); return false;" onfocus="if(this.blur) this.blur();" title="bit7">7</a></td>
+           					<td><a onclick="setwatchBit(6); return false;" onfocus="if(this.blur) this.blur();" title="bit6">6</a></td>
+           					<td><a onclick="setwatchBit(5); return false;" onfocus="if(this.blur) this.blur();" title="bit5">5</a></td>
+           					<td><a onclick="setwatchBit(4); return false;" onfocus="if(this.blur) this.blur();" title="bit4">4</a></td>
+           					<td><a onclick="setwatchBit(3); return false;" onfocus="if(this.blur) this.blur();" title="bit3">3</a></td>
+           					<td><a onclick="setwatchBit(2); return false;" onfocus="if(this.blur) this.blur();" title="bit2">2</a></td>
+           					<td><a onclick="setwatchBit(1); return false;" onfocus="if(this.blur) this.blur();" title="bit1">1</a></td>
+           					<td><a onclick="setwatchBit(0); return false;" onfocus="if(this.blur) this.blur();" title="bit0">0</a></td>
            				</tr>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp7" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp6" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp5" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp4" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp3" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp2" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp1" class="displayLr">0</div></td>
-           				<td class="register" width="12" nowrap="nowrap" align="center"><div id="disp0" class="displayLr">0</div></td>
+                    <td><div id="disp7" class="displayLr">0</div></td>
+                    <td><div id="disp6" class="displayLr">0</div></td>
+                    <td><div id="disp5" class="displayLr">0</div></td>
+                    <td><div id="disp4" class="displayLr">0</div></td>
+                    <td><div id="disp3" class="displayLr">0</div></td>
+                    <td><div id="disp2" class="displayLr">0</div></td>
+                    <td><div id="disp1" class="displayLr">0</div></td>
+                    <td><div id="disp0" class="displayLr">0</div></td>
            				</tr>
            			</table>
 
@@ -745,7 +812,7 @@ Label1 TXA
           var opc = this.getAttribute('data-opc');
           if (opc) {
             if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            if (this.blur) this.blur();
+            if(this.blur) this.blur();
             self.location.href = '#' + opc;
           }
         }
@@ -1700,6 +1767,195 @@ Label1 TXA
       <img src="res/mcs6502-jsr-rts-ops.png" alt="6502 Subroutine Operations" width="480" height="593" />
       <figcaption>(Image: MCS6502 Instruction Set Summary, MOS Technology, Inc.)</figcaption>
       </figure>
+
+      <h2 id="layout">Appendix C: 6502 Instruction Layout</h2>
+      <div class="explanation">
+      <p>The 6502 instruction table is laid out according to a pattern <em>a-b-c,</em> where<br />
+      <em>a</em> and <em>b</em> are an octal number each, followed by a group of two binary digits <em>c,</em><br />
+      as in the bit-vector <em>&quot;aaabbbcc&quot;.</em></p>
+
+      <p><u>Example:</u><br />
+      All ROR instructions share <em>a</em> = 3 and <em>c</em> = 2 with the address mode in <em>b</em> (3x2).<br />
+      At the same time, all instructions addressing the zero-page share <em>b</em> = 1 (x1x).<br />
+      <em>abc</em> = 312 &nbsp;=&gt;&nbsp; (3 &lt;&lt; 5 | 1 &lt;&lt; 2 | 2) &nbsp;=&nbsp; $66, ROR zpg.</p>
+
+      <p>Notably, there are no legal opcodes defined where <em>c</em> = 3, accounting for the<br />
+      empty columns in the usual, hexadecimal view of the instruction table.</p>
+
+      <p>The following table lists the instruction set, rows sorted by <em>c,</em> then <em>a.</em></p>
+      <p>Generally, instructions of a kind are typically found in rows as a combination<br />
+      of <em>a</em> and <em>c</em>, and address modes are in columns <em>b</em>.<br />
+      However, there are a few exception to this rule, namely, where bits 0 of both<br />
+      <em>c</em> and <em>b</em> are low (<em>c</em> = 0, 2; <em>b</em> = 0, 2, 4, 6) and combinations of <em>c</em> and <em>b</em> select<br />
+      a group of related operations. (E.g., c=0 &and; b=4: branch, c=0 &and; b=6: set flag)</p>
+      </div>
+
+      <div class="instrlayout-wrapper">
+      <table class="instrlayout" aria-label="table representing a complex view on the instruction layout according to components a, b, c.">
+      <thead>
+      <tr><th rowspan="2">c</th><th rowspan="2" title="3 bits">a</th><th colspan="8">b</th></tr>
+      <tr class="bn"><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+      </thead>
+      <tbody>
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c0">0</td><td class="a a-b">0</td><td class="v0"><span class="opc">$00</span>BRK impl</td><td class="v1"></td><td class="v2"><span class="opc">$08</span>PHP impl</td><td class="v3"></td><td class="v4"><span class="opc">$10</span>BPL rel</td><td class="v5"></td><td class="v6"><span class="opc">$18</span>CLC impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">1</td><td class="v0"><span class="opc">$20</span>JSR abs</td><td class="v1"><span class="opc">$24</span>BIT zpg</td><td class="v2"><span class="opc">$28</span>PLP impl</td><td class="v3"><span class="opc">$2C</span>BIT abs</td><td class="v4"><span class="opc">$30</span>BMI rel</td><td class="v5"></td><td class="v6"><span class="opc">$38</span>SEC impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="a a-b">2</td><td class="v0"><span class="opc">$40</span>RTI impl</td><td class="v1"></td><td class="v2"><span class="opc">$48</span>PHA impl</td><td class="v3"><span class="opc">$4C</span>JMP abs</td><td class="v4"><span class="opc">$50</span>BVC rel</td><td class="v5"></td><td class="v6"><span class="opc">$58</span>CLI impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">3</td><td class="v0"><span class="opc">$60</span>RTS impl</td><td class="v1"></td><td class="v2"><span class="opc">$68</span>PLA impl</td><td class="v3"><span class="opc">$6C</span>JMP ind</td><td class="v4"><span class="opc">$70</span>BVS rel</td><td class="v5"></td><td class="v6"><span class="opc">$78</span>SEI impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="a a-b">4</td><td class="v0"></td><td class="v1"><span class="opc">$84</span>STY zpg</td><td class="v2"><span class="opc">$88</span>DEY impl</td><td class="v3"><span class="opc">$8C</span>STY abs</td><td class="v4"><span class="opc">$90</span>BCC rel</td><td class="v5"><span class="opc">$94</span>STY zpg,X</td><td class="v6"><span class="opc">$98</span>TYA impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">5</td><td class="v0"><span class="opc">$A0</span>LDY  #</td><td class="v1"><span class="opc">$A4</span>LDY zpg</td><td class="v2"><span class="opc">$A8</span>TAY impl</td><td class="v3"><span class="opc">$AC</span>LDY abs</td><td class="v4"><span class="opc">$B0</span>BCS rel</td><td class="v5"><span class="opc">$B4</span>LDY zpg,X</td><td class="v6"><span class="opc">$B8</span>CLV impl</td><td class="v7"><span class="opc">$BC</span>LDY abs,X</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">6</td><td class="v0"><span class="opc">$C0</span>CPY  #</td><td class="v1"><span class="opc">$C4</span>CPY zpg</td><td class="v2"><span class="opc">$C8</span>INY impl</td><td class="v3"><span class="opc">$CC</span>CPY abs</td><td class="v4"><span class="opc">$D0</span>BNE rel</td><td class="v5"></td><td class="v6"><span class="opc">$D8</span>CLD impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-odd g-last"><td class="a a-b">7</td><td class="v0"><span class="opc">$E0</span>CPX  #</td><td class="v1"><span class="opc">$E4</span>CPX zpg</td><td class="v2"><span class="opc">$E8</span>INX impl</td><td class="v3"><span class="opc">$EC</span>CPX abs</td><td class="v4"><span class="opc">$F0</span>BEQ rel</td><td class="v5"></td><td class="v6"><span class="opc">$F8</span>SED impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c1">1</td><td class="a a-b">0</td><td class="v0"><span class="opc">$01</span>ORA X,ind</td><td class="v1"><span class="opc">$05</span>ORA zpg</td><td class="v2"><span class="opc">$09</span>ORA  #</td><td class="v3"><span class="opc">$0D</span>ORA abs</td><td class="v4"><span class="opc">$11</span>ORA ind,Y</td><td class="v5"><span class="opc">$15</span>ORA zpg,X</td><td class="v6"><span class="opc">$19</span>ORA abs,Y</td><td class="v7"><span class="opc">$1D</span>ORA abs,X</td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">1</td><td class="v0"><span class="opc">$21</span>AND X,ind</td><td class="v1"><span class="opc">$25</span>AND zpg</td><td class="v2"><span class="opc">$29</span>AND  #</td><td class="v3"><span class="opc">$2D</span>AND abs</td><td class="v4"><span class="opc">$31</span>AND ind,Y</td><td class="v5"><span class="opc">$35</span>AND zpg,X</td><td class="v6"><span class="opc">$39</span>AND abs,Y</td><td class="v7"><span class="opc">$3D</span>AND abs,X</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">2</td><td class="v0"><span class="opc">$41</span>EOR X,ind</td><td class="v1"><span class="opc">$45</span>EOR zpg</td><td class="v2"><span class="opc">$49</span>EOR  #</td><td class="v3"><span class="opc">$4D</span>EOR abs</td><td class="v4"><span class="opc">$51</span>EOR ind,Y</td><td class="v5"><span class="opc">$55</span>EOR zpg,X</td><td class="v6"><span class="opc">$59</span>EOR abs,Y</td><td class="v7"><span class="opc">$5D</span>EOR abs,X</td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">3</td><td class="v0"><span class="opc">$61</span>ADC X,ind</td><td class="v1"><span class="opc">$65</span>ADC zpg</td><td class="v2"><span class="opc">$69</span>ADC  #</td><td class="v3"><span class="opc">$6D</span>ADC abs</td><td class="v4"><span class="opc">$71</span>ADC ind,Y</td><td class="v5"><span class="opc">$75</span>ADC zpg,X</td><td class="v6"><span class="opc">$79</span>ADC abs,Y</td><td class="v7"><span class="opc">$7D</span>ADC abs,X</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">4</td><td class="v0"><span class="opc">$81</span>STA X,ind</td><td class="v1"><span class="opc">$85</span>STA zpg</td><td class="v2"></td><td class="v3"><span class="opc">$8D</span>STA abs</td><td class="v4"><span class="opc">$91</span>STA ind,Y</td><td class="v5"><span class="opc">$95</span>STA zpg,X</td><td class="v6"><span class="opc">$99</span>STA abs,Y</td><td class="v7"><span class="opc">$9D</span>STA abs,X</td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">5</td><td class="v0"><span class="opc">$A1</span>LDA X,ind</td><td class="v1"><span class="opc">$A5</span>LDA zpg</td><td class="v2"><span class="opc">$A9</span>LDA  #</td><td class="v3"><span class="opc">$AD</span>LDA abs</td><td class="v4"><span class="opc">$B1</span>LDA ind,Y</td><td class="v5"><span class="opc">$B5</span>LDA zpg,X</td><td class="v6"><span class="opc">$B9</span>LDA abs,Y</td><td class="v7"><span class="opc">$BD</span>LDA abs,X</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">6</td><td class="v0"><span class="opc">$C1</span>CMP X,ind</td><td class="v1"><span class="opc">$C5</span>CMP zpg</td><td class="v2"><span class="opc">$C9</span>CMP  #</td><td class="v3"><span class="opc">$CD</span>CMP abs</td><td class="v4"><span class="opc">$D1</span>CMP ind,Y</td><td class="v5"><span class="opc">$D5</span>CMP zpg,X</td><td class="v6"><span class="opc">$D9</span>CMP abs,Y</td><td class="v7"><span class="opc">$DD</span>CMP abs,X</td></tr>
+      <tr class="r1 r-odd g-last"><td class="a a-b">7</td><td class="v0"><span class="opc">$E1</span>SBC X,ind</td><td class="v1"><span class="opc">$E5</span>SBC zpg</td><td class="v2"><span class="opc">$E9</span>SBC  #</td><td class="v3"><span class="opc">$ED</span>SBC abs</td><td class="v4"><span class="opc">$F1</span>SBC ind,Y</td><td class="v5"><span class="opc">$F5</span>SBC zpg,X</td><td class="v6"><span class="opc">$F9</span>SBC abs,Y</td><td class="v7"><span class="opc">$FD</span>SBC abs,X</td></tr>
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c2">2</td><td class="a a-b">0</td><td class="v0"></td><td class="v1"><span class="opc">$06</span>ASL zpg</td><td class="v2"><span class="opc">$0A</span>ASL  A</td><td class="v3"><span class="opc">$0E</span>ASL abs</td><td class="v4"></td><td class="v5"><span class="opc">$16</span>ASL zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$1E</span>ASL abs,X</td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">1</td><td class="v0"></td><td class="v1"><span class="opc">$26</span>ROL zpg</td><td class="v2"><span class="opc">$2A</span>ROL  A</td><td class="v3"><span class="opc">$2E</span>ROL abs</td><td class="v4"></td><td class="v5"><span class="opc">$36</span>ROL zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$3E</span>ROL abs,X</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">2</td><td class="v0"></td><td class="v1"><span class="opc">$46</span>LSR zpg</td><td class="v2"><span class="opc">$4A</span>LSR  A</td><td class="v3"><span class="opc">$4E</span>LSR abs</td><td class="v4"></td><td class="v5"><span class="opc">$56</span>LSR zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$5E</span>LSR abs,X</td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">3</td><td class="v0"></td><td class="v1"><span class="opc">$66</span>ROR zpg</td><td class="v2"><span class="opc">$6A</span>ROR  A</td><td class="v3"><span class="opc">$6E</span>ROR abs</td><td class="v4"></td><td class="v5"><span class="opc">$76</span>ROR zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$7E</span>ROR abs,X</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">4</td><td class="v0"></td><td class="v1"><span class="opc">$86</span>STX zpg</td><td class="v2"><span class="opc">$8A</span>TXA impl</td><td class="v3"><span class="opc">$8E</span>STX abs</td><td class="v4"></td><td class="v5"><span class="opc">$96</span>STX zpg,Y</td><td class="v6"><span class="opc">$9A</span>TXS impl</td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">5</td><td class="v0"><span class="opc">$A2</span>LDX  #</td><td class="v1"><span class="opc">$A6</span>LDX zpg</td><td class="v2"><span class="opc">$AA</span>TAX impl</td><td class="v3"><span class="opc">$AE</span>LDX abs</td><td class="v4"></td><td class="v5"><span class="opc">$B6</span>LDX zpg,Y</td><td class="v6"><span class="opc">$BA</span>TSX impl</td><td class="v7"><span class="opc">$BE</span>LDX abs,Y</td></tr>
+      <tr class="r1 r-even"><td class="a a-b">6</td><td class="v0"></td><td class="v1"><span class="opc">$C6</span>DEC zpg</td><td class="v2"><span class="opc">$CA</span>DEX impl</td><td class="v3"><span class="opc">$CE</span>DEC abs</td><td class="v4"></td><td class="v5"><span class="opc">$D6</span>DEC zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$DE</span>DEC abs,X</td></tr>
+      <tr class="r1 r-odd g-last"><td class="a a-b">7</td><td class="v0"></td><td class="v1"><span class="opc">$E6</span>INC zpg</td><td class="v2"><span class="opc">$EA</span>NOP impl</td><td class="v3"><span class="opc">$EE</span>INC abs</td><td class="v4"></td><td class="v5"><span class="opc">$F6</span>INC zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$FE</span>INC abs,X</td></tr>
+      <!--
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c3">3</td><td class="a a-b">0</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">1</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="a a-b">2</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">3</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="a a-b">4</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="a a-b">5</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="a a-b">6</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd g-last"><td class="a a-b">7</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      -->
+      </tbody>
+      </table>
+      </div>
+      <p style="margin: -1.2em 0 2.4em 0;"><em>Note: The operand of instructions like &quot;ASL A&quot; is essentially implied, as well.<br />
+      However, for consistency, they are here listed in the usual &quot;CMD A&quot; notation,<br />
+      instead of &quot;CMD impl&quot;. Mind that the two notations are interchangeable for any<br />
+      instructions involving the accumulator.</em></p>
+
+      <p class="explanation">A rotated view, rows as combinations of <em>c</em> and <em>b,</em> and columns as <em>a</em>:</p>
+
+      <div class="instrlayout-wrapper">
+      <table class="instrlayout" aria-label="table representing a complex view on the instruction layout according to components a, b, c.">
+      <thead>
+      <tr><th rowspan="2">c</th><th rowspan="2" title="3 bits">b</th><th colspan="8">a</th></tr>
+      <tr class="bn"><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+      </thead>
+      <tbody>
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c0">0</td><td class="b a-b">0</td><td class="v0"><span class="opc">$00</span>BRK impl</td><td class="v1"><span class="opc">$20</span>JSR abs</td><td class="v2"><span class="opc">$40</span>RTI impl</td><td class="v3"><span class="opc">$60</span>RTS impl</td><td class="v4"></td><td class="v5"><span class="opc">$A0</span>LDY  #</td><td class="v6"><span class="opc">$C0</span>CPY  #</td><td class="v7"><span class="opc">$E0</span>CPX  #</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">1</td><td class="v0"></td><td class="v1"><span class="opc">$24</span>BIT zpg</td><td class="v2"></td><td class="v3"></td><td class="v4"><span class="opc">$84</span>STY zpg</td><td class="v5"><span class="opc">$A4</span>LDY zpg</td><td class="v6"><span class="opc">$C4</span>CPY zpg</td><td class="v7"><span class="opc">$E4</span>CPX zpg</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">2</td><td class="v0"><span class="opc">$08</span>PHP impl</td><td class="v1"><span class="opc">$28</span>PLP impl</td><td class="v2"><span class="opc">$48</span>PHA impl</td><td class="v3"><span class="opc">$68</span>PLA impl</td><td class="v4"><span class="opc">$88</span>DEY impl</td><td class="v5"><span class="opc">$A8</span>TAY impl</td><td class="v6"><span class="opc">$C8</span>INY impl</td><td class="v7"><span class="opc">$E8</span>INX impl</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">3</td><td class="v0"></td><td class="v1"><span class="opc">$2C</span>BIT abs</td><td class="v2"><span class="opc">$4C</span>JMP abs</td><td class="v3"><span class="opc">$6C</span>JMP ind</td><td class="v4"><span class="opc">$8C</span>STY abs</td><td class="v5"><span class="opc">$AC</span>LDY abs</td><td class="v6"><span class="opc">$CC</span>CPY abs</td><td class="v7"><span class="opc">$EC</span>CPX abs</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">4</td><td class="v0"><span class="opc">$10</span>BPL rel</td><td class="v1"><span class="opc">$30</span>BMI rel</td><td class="v2"><span class="opc">$50</span>BVC rel</td><td class="v3"><span class="opc">$70</span>BVS rel</td><td class="v4"><span class="opc">$90</span>BCC rel</td><td class="v5"><span class="opc">$B0</span>BCS rel</td><td class="v6"><span class="opc">$D0</span>BNE rel</td><td class="v7"><span class="opc">$F0</span>BEQ rel</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">5</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"><span class="opc">$94</span>STY zpg,X</td><td class="v5"><span class="opc">$B4</span>LDY zpg,X</td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="b a-b">6</td><td class="v0"><span class="opc">$18</span>CLC impl</td><td class="v1"><span class="opc">$38</span>SEC impl</td><td class="v2"><span class="opc">$58</span>CLI impl</td><td class="v3"><span class="opc">$78</span>SEI impl</td><td class="v4"><span class="opc">$98</span>TYA impl</td><td class="v5"><span class="opc">$B8</span>CLV impl</td><td class="v6"><span class="opc">$D8</span>CLD impl</td><td class="v7"><span class="opc">$F8</span>SED impl</td></tr>
+      <tr class="r1 r-odd g-last"><td class="b a-b">7</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"><span class="opc">$BC</span>LDY abs,X</td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c1">1</td><td class="b a-b">0</td><td class="v0"><span class="opc">$01</span>ORA X,ind</td><td class="v1"><span class="opc">$21</span>AND X,ind</td><td class="v2"><span class="opc">$41</span>EOR X,ind</td><td class="v3"><span class="opc">$61</span>ADC X,ind</td><td class="v4"><span class="opc">$81</span>STA X,ind</td><td class="v5"><span class="opc">$A1</span>LDA X,ind</td><td class="v6"><span class="opc">$C1</span>CMP X,ind</td><td class="v7"><span class="opc">$E1</span>SBC X,ind</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">1</td><td class="v0"><span class="opc">$05</span>ORA zpg</td><td class="v1"><span class="opc">$25</span>AND zpg</td><td class="v2"><span class="opc">$45</span>EOR zpg</td><td class="v3"><span class="opc">$65</span>ADC zpg</td><td class="v4"><span class="opc">$85</span>STA zpg</td><td class="v5"><span class="opc">$A5</span>LDA zpg</td><td class="v6"><span class="opc">$C5</span>CMP zpg</td><td class="v7"><span class="opc">$E5</span>SBC zpg</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">2</td><td class="v0"><span class="opc">$09</span>ORA  #</td><td class="v1"><span class="opc">$29</span>AND  #</td><td class="v2"><span class="opc">$49</span>EOR  #</td><td class="v3"><span class="opc">$69</span>ADC  #</td><td class="v4"></td><td class="v5"><span class="opc">$A9</span>LDA  #</td><td class="v6"><span class="opc">$C9</span>CMP  #</td><td class="v7"><span class="opc">$E9</span>SBC  #</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">3</td><td class="v0"><span class="opc">$0D</span>ORA abs</td><td class="v1"><span class="opc">$2D</span>AND abs</td><td class="v2"><span class="opc">$4D</span>EOR abs</td><td class="v3"><span class="opc">$6D</span>ADC abs</td><td class="v4"><span class="opc">$8D</span>STA abs</td><td class="v5"><span class="opc">$AD</span>LDA abs</td><td class="v6"><span class="opc">$CD</span>CMP abs</td><td class="v7"><span class="opc">$ED</span>SBC abs</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">4</td><td class="v0"><span class="opc">$11</span>ORA ind,Y</td><td class="v1"><span class="opc">$31</span>AND ind,Y</td><td class="v2"><span class="opc">$51</span>EOR ind,Y</td><td class="v3"><span class="opc">$71</span>ADC ind,Y</td><td class="v4"><span class="opc">$91</span>STA ind,Y</td><td class="v5"><span class="opc">$B1</span>LDA ind,Y</td><td class="v6"><span class="opc">$D1</span>CMP ind,Y</td><td class="v7"><span class="opc">$F1</span>SBC ind,Y</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">5</td><td class="v0"><span class="opc">$15</span>ORA zpg,X</td><td class="v1"><span class="opc">$35</span>AND zpg,X</td><td class="v2"><span class="opc">$55</span>EOR zpg,X</td><td class="v3"><span class="opc">$75</span>ADC zpg,X</td><td class="v4"><span class="opc">$95</span>STA zpg,X</td><td class="v5"><span class="opc">$B5</span>LDA zpg,X</td><td class="v6"><span class="opc">$D5</span>CMP zpg,X</td><td class="v7"><span class="opc">$F5</span>SBC zpg,X</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">6</td><td class="v0"><span class="opc">$19</span>ORA abs,Y</td><td class="v1"><span class="opc">$39</span>AND abs,Y</td><td class="v2"><span class="opc">$59</span>EOR abs,Y</td><td class="v3"><span class="opc">$79</span>ADC abs,Y</td><td class="v4"><span class="opc">$99</span>STA abs,Y</td><td class="v5"><span class="opc">$B9</span>LDA abs,Y</td><td class="v6"><span class="opc">$D9</span>CMP abs,Y</td><td class="v7"><span class="opc">$F9</span>SBC abs,Y</td></tr>
+      <tr class="r1 r-odd g-last"><td class="b a-b">7</td><td class="v0"><span class="opc">$1D</span>ORA abs,X</td><td class="v1"><span class="opc">$3D</span>AND abs,X</td><td class="v2"><span class="opc">$5D</span>EOR abs,X</td><td class="v3"><span class="opc">$7D</span>ADC abs,X</td><td class="v4"><span class="opc">$9D</span>STA abs,X</td><td class="v5"><span class="opc">$BD</span>LDA abs,X</td><td class="v6"><span class="opc">$DD</span>CMP abs,X</td><td class="v7"><span class="opc">$FD</span>SBC abs,X</td></tr>
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c2">2</td><td class="b a-b">0</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"><span class="opc">$A2</span>LDX  #</td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">1</td><td class="v0"><span class="opc">$06</span>ASL zpg</td><td class="v1"><span class="opc">$26</span>ROL zpg</td><td class="v2"><span class="opc">$46</span>LSR zpg</td><td class="v3"><span class="opc">$66</span>ROR zpg</td><td class="v4"><span class="opc">$86</span>STX zpg</td><td class="v5"><span class="opc">$A6</span>LDX zpg</td><td class="v6"><span class="opc">$C6</span>DEC zpg</td><td class="v7"><span class="opc">$E6</span>INC zpg</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">2</td><td class="v0"><span class="opc">$0A</span>ASL  A</td><td class="v1"><span class="opc">$2A</span>ROL  A</td><td class="v2"><span class="opc">$4A</span>LSR  A</td><td class="v3"><span class="opc">$6A</span>ROR  A</td><td class="v4"><span class="opc">$8A</span>TXA impl</td><td class="v5"><span class="opc">$AA</span>TAX impl</td><td class="v6"><span class="opc">$CA</span>DEX impl</td><td class="v7"><span class="opc">$EA</span>NOP impl</td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">3</td><td class="v0"><span class="opc">$0E</span>ASL abs</td><td class="v1"><span class="opc">$2E</span>ROL abs</td><td class="v2"><span class="opc">$4E</span>LSR abs</td><td class="v3"><span class="opc">$6E</span>ROR abs</td><td class="v4"><span class="opc">$8E</span>STX abs</td><td class="v5"><span class="opc">$AE</span>LDX abs</td><td class="v6"><span class="opc">$CE</span>DEC abs</td><td class="v7"><span class="opc">$EE</span>INC abs</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">4</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">5</td><td class="v0"><span class="opc">$16</span>ASL zpg,X</td><td class="v1"><span class="opc">$36</span>ROL zpg,X</td><td class="v2"><span class="opc">$56</span>LSR zpg,X</td><td class="v3"><span class="opc">$76</span>ROR zpg,X</td><td class="v4"><span class="opc">$96</span>STX zpg,Y</td><td class="v5"><span class="opc">$B6</span>LDX zpg,Y</td><td class="v6"><span class="opc">$D6</span>DEC zpg,X</td><td class="v7"><span class="opc">$F6</span>INC zpg,X</td></tr>
+      <tr class="r1 r-even"><td class="b a-b">6</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"><span class="opc">$9A</span>TXS impl</td><td class="v5"><span class="opc">$BA</span>TSX impl</td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd g-last"><td class="b a-b">7</td><td class="v0"><span class="opc">$1E</span>ASL abs,X</td><td class="v1"><span class="opc">$3E</span>ROL abs,X</td><td class="v2"><span class="opc">$5E</span>LSR abs,X</td><td class="v3"><span class="opc">$7E</span>ROR abs,X</td><td class="v4"></td><td class="v5"><span class="opc">$BE</span>LDX abs,Y</td><td class="v6"><span class="opc">$DE</span>DEC abs,X</td><td class="v7"><span class="opc">$FE</span>INC abs,X</td></tr>
+      <!--
+      <tr class="r1 r-even g-first"><td rowspan="8" class="c c3">3</td><td class="b a-b">0</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">1</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="b a-b">2</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">3</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="b a-b">4</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd"><td class="b a-b">5</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-even"><td class="b a-b">6</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      <tr class="r1 r-odd g-last"><td class="b a-b">7</td><td class="v0"></td><td class="v1"></td><td class="v2"></td><td class="v3"></td><td class="v4"></td><td class="v5"></td><td class="v6"></td><td class="v7"></td></tr>
+      -->
+      </tbody>
+      </table>
+      </div>
+
+      <div class="explanation">
+      <p>Finally, a more complex view, the instruction set listed by rows as<br />
+      combinations of <em>a</em> and <em>c,</em> and <em>b</em> in columns:</p>
+      <p>Address modes are either a property of <em>b</em> (even columns) or combinations<br />
+      of <em>b</em> and <em>c</em> (odd columns with aspecific row-index modulus 3; i.e., every<br />
+      third row in a given column). In those latter columns, first and third<br />
+      rows (<em>c</em> = 0 and <em>c</em> = 2) refer to the same kind of general operation.</p>
+      <p>Load, store and transfer instructions as well as comparisons are typically<br />
+      found in the lower half of the table, while most of the arithmetical and<br />
+      logical operations as well as stack and jump instructions are found in the<br />
+      upper half. (However, mind the exception of SBC as a &quot;mirror&quot; of ADC.)</p>
+      </div>
+
+      <div class="instrlayout-wrapper">
+      <table class="instrlayout" aria-label="table representing a complex view on the instruction layout according to components a, b, c.">
+      <thead>
+      <tr><th rowspan="2">a</th><th rowspan="2" title="2 bits">c</th><th colspan="8">b</th></tr>
+      <tr class="bn"><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+      </thead>
+      <tbody>
+      <tr class="r0 g-first r-even"><td rowspan="3" class="a a-b">0</td><td class="c c0">0</td><td class="v0"><span class="opc">$00</span>BRK impl</td><td class="v1"></td><td class="v2"><span class="opc">$08</span>PHP impl</td><td class="v3"></td><td class="v4"><span class="opc">$10</span>BPL rel</td><td class="v5"></td><td class="v6"><span class="opc">$18</span>CLC impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$01</span>ORA X,ind</td><td class="v1"><span class="opc">$05</span>ORA zpg</td><td class="v2"><span class="opc">$09</span>ORA  #</td><td class="v3"><span class="opc">$0D</span>ORA abs</td><td class="v4"><span class="opc">$11</span>ORA ind,Y</td><td class="v5"><span class="opc">$15</span>ORA zpg,X</td><td class="v6"><span class="opc">$19</span>ORA abs,Y</td><td class="v7"><span class="opc">$1D</span>ORA abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$06</span>ASL zpg</td><td class="v2"><span class="opc">$0A</span>ASL  A</td><td class="v3"><span class="opc">$0E</span>ASL abs</td><td class="v4"></td><td class="v5"><span class="opc">$16</span>ASL zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$1E</span>ASL abs,X</td></tr>
+      <tr class="r0 g-first r-odd"><td rowspan="3" class="a a-b">1</td><td class="c c0">0</td><td class="v0"><span class="opc">$20</span>JSR abs</td><td class="v1"><span class="opc">$24</span>BIT zpg</td><td class="v2"><span class="opc">$28</span>PLP impl</td><td class="v3"><span class="opc">$2C</span>BIT abs</td><td class="v4"><span class="opc">$30</span>BMI rel</td><td class="v5"></td><td class="v6"><span class="opc">$38</span>SEC impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$21</span>AND X,ind</td><td class="v1"><span class="opc">$25</span>AND zpg</td><td class="v2"><span class="opc">$29</span>AND  #</td><td class="v3"><span class="opc">$2D</span>AND abs</td><td class="v4"><span class="opc">$31</span>AND ind,Y</td><td class="v5"><span class="opc">$35</span>AND zpg,X</td><td class="v6"><span class="opc">$39</span>AND abs,Y</td><td class="v7"><span class="opc">$3D</span>AND abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$26</span>ROL zpg</td><td class="v2"><span class="opc">$2A</span>ROL  A</td><td class="v3"><span class="opc">$2E</span>ROL abs</td><td class="v4"></td><td class="v5"><span class="opc">$36</span>ROL zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$3E</span>ROL abs,X</td></tr>
+      <tr class="r0 g-first r-even"><td rowspan="3" class="a a-b">2</td><td class="c c0">0</td><td class="v0"><span class="opc">$40</span>RTI impl</td><td class="v1"></td><td class="v2"><span class="opc">$48</span>PHA impl</td><td class="v3"><span class="opc">$4C</span>JMP abs</td><td class="v4"><span class="opc">$50</span>BVC rel</td><td class="v5"></td><td class="v6"><span class="opc">$58</span>CLI impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$41</span>EOR X,ind</td><td class="v1"><span class="opc">$45</span>EOR zpg</td><td class="v2"><span class="opc">$49</span>EOR  #</td><td class="v3"><span class="opc">$4D</span>EOR abs</td><td class="v4"><span class="opc">$51</span>EOR ind,Y</td><td class="v5"><span class="opc">$55</span>EOR zpg,X</td><td class="v6"><span class="opc">$59</span>EOR abs,Y</td><td class="v7"><span class="opc">$5D</span>EOR abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$46</span>LSR zpg</td><td class="v2"><span class="opc">$4A</span>LSR  A</td><td class="v3"><span class="opc">$4E</span>LSR abs</td><td class="v4"></td><td class="v5"><span class="opc">$56</span>LSR zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$5E</span>LSR abs,X</td></tr>
+      <tr class="r0 g-first r-odd"><td rowspan="3" class="a a-b">3</td><td class="c c0">0</td><td class="v0"><span class="opc">$60</span>RTS impl</td><td class="v1"></td><td class="v2"><span class="opc">$68</span>PLA impl</td><td class="v3"><span class="opc">$6C</span>JMP ind</td><td class="v4"><span class="opc">$70</span>BVS rel</td><td class="v5"></td><td class="v6"><span class="opc">$78</span>SEI impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$61</span>ADC X,ind</td><td class="v1"><span class="opc">$65</span>ADC zpg</td><td class="v2"><span class="opc">$69</span>ADC  #</td><td class="v3"><span class="opc">$6D</span>ADC abs</td><td class="v4"><span class="opc">$71</span>ADC ind,Y</td><td class="v5"><span class="opc">$75</span>ADC zpg,X</td><td class="v6"><span class="opc">$79</span>ADC abs,Y</td><td class="v7"><span class="opc">$7D</span>ADC abs,X</td></tr>
+      <tr class="r2 t-half-top"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$66</span>ROR zpg</td><td class="v2"><span class="opc">$6A</span>ROR  A</td><td class="v3"><span class="opc">$6E</span>ROR abs</td><td class="v4"></td><td class="v5"><span class="opc">$76</span>ROR zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$7E</span>ROR abs,X</td></tr>
+      <tr class="r0 g-first r-even t-half-bottom"><td rowspan="3" class="a a-b">4</td><td class="c c0">0</td><td class="v0"></td><td class="v1"><span class="opc">$84</span>STY zpg</td><td class="v2"><span class="opc">$88</span>DEY impl</td><td class="v3"><span class="opc">$8C</span>STY abs</td><td class="v4"><span class="opc">$90</span>BCC rel</td><td class="v5"><span class="opc">$94</span>STY zpg,X</td><td class="v6"><span class="opc">$98</span>TYA impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$81</span>STA X,ind</td><td class="v1"><span class="opc">$85</span>STA zpg</td><td class="v2"></td><td class="v3"><span class="opc">$8D</span>STA abs</td><td class="v4"><span class="opc">$91</span>STA ind,Y</td><td class="v5"><span class="opc">$95</span>STA zpg,X</td><td class="v6"><span class="opc">$99</span>STA abs,Y</td><td class="v7"><span class="opc">$9D</span>STA abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$86</span>STX zpg</td><td class="v2"><span class="opc">$8A</span>TXA impl</td><td class="v3"><span class="opc">$8E</span>STX abs</td><td class="v4"></td><td class="v5"><span class="opc">$96</span>STX zpg,Y</td><td class="v6"><span class="opc">$9A</span>TXS impl</td><td class="v7"></td></tr>
+      <tr class="r0 g-first r-odd"><td rowspan="3" class="a a-b">5</td><td class="c c0">0</td><td class="v0"><span class="opc">$A0</span>LDY  #</td><td class="v1"><span class="opc">$A4</span>LDY zpg</td><td class="v2"><span class="opc">$A8</span>TAY impl</td><td class="v3"><span class="opc">$AC</span>LDY abs</td><td class="v4"><span class="opc">$B0</span>BCS rel</td><td class="v5"><span class="opc">$B4</span>LDY zpg,X</td><td class="v6"><span class="opc">$B8</span>CLV impl</td><td class="v7"><span class="opc">$BC</span>LDY abs,X</td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$A1</span>LDA X,ind</td><td class="v1"><span class="opc">$A5</span>LDA zpg</td><td class="v2"><span class="opc">$A9</span>LDA  #</td><td class="v3"><span class="opc">$AD</span>LDA abs</td><td class="v4"><span class="opc">$B1</span>LDA ind,Y</td><td class="v5"><span class="opc">$B5</span>LDA zpg,X</td><td class="v6"><span class="opc">$B9</span>LDA abs,Y</td><td class="v7"><span class="opc">$BD</span>LDA abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"><span class="opc">$A2</span>LDX  #</td><td class="v1"><span class="opc">$A6</span>LDX zpg</td><td class="v2"><span class="opc">$AA</span>TAX impl</td><td class="v3"><span class="opc">$AE</span>LDX abs</td><td class="v4"></td><td class="v5"><span class="opc">$B6</span>LDX zpg,Y</td><td class="v6"><span class="opc">$BA</span>TSX impl</td><td class="v7"><span class="opc">$BE</span>LDX abs,Y</td></tr>
+      <tr class="r0 g-first r-even"><td rowspan="3" class="a a-b">6</td><td class="c c0">0</td><td class="v0"><span class="opc">$C0</span>CPY  #</td><td class="v1"><span class="opc">$C4</span>CPY zpg</td><td class="v2"><span class="opc">$C8</span>INY impl</td><td class="v3"><span class="opc">$CC</span>CPY abs</td><td class="v4"><span class="opc">$D0</span>BNE rel</td><td class="v5"></td><td class="v6"><span class="opc">$D8</span>CLD impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$C1</span>CMP X,ind</td><td class="v1"><span class="opc">$C5</span>CMP zpg</td><td class="v2"><span class="opc">$C9</span>CMP  #</td><td class="v3"><span class="opc">$CD</span>CMP abs</td><td class="v4"><span class="opc">$D1</span>CMP ind,Y</td><td class="v5"><span class="opc">$D5</span>CMP zpg,X</td><td class="v6"><span class="opc">$D9</span>CMP abs,Y</td><td class="v7"><span class="opc">$DD</span>CMP abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$C6</span>DEC zpg</td><td class="v2"><span class="opc">$CA</span>DEX impl</td><td class="v3"><span class="opc">$CE</span>DEC abs</td><td class="v4"></td><td class="v5"><span class="opc">$D6</span>DEC zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$DE</span>DEC abs,X</td></tr>
+      <tr class="r0 g-first r-odd"><td rowspan="3" class="a a-b">7</td><td class="c c0">0</td><td class="v0"><span class="opc">$E0</span>CPX  #</td><td class="v1"><span class="opc">$E4</span>CPX zpg</td><td class="v2"><span class="opc">$E8</span>INX impl</td><td class="v3"><span class="opc">$EC</span>CPX abs</td><td class="v4"><span class="opc">$F0</span>BEQ rel</td><td class="v5"></td><td class="v6"><span class="opc">$F8</span>SED impl</td><td class="v7"></td></tr>
+      <tr class="r1"><td class="c c1">1</td><td class="v0"><span class="opc">$E1</span>SBC X,ind</td><td class="v1"><span class="opc">$E5</span>SBC zpg</td><td class="v2"><span class="opc">$E9</span>SBC  #</td><td class="v3"><span class="opc">$ED</span>SBC abs</td><td class="v4"><span class="opc">$F1</span>SBC ind,Y</td><td class="v5"><span class="opc">$F5</span>SBC zpg,X</td><td class="v6"><span class="opc">$F9</span>SBC abs,Y</td><td class="v7"><span class="opc">$FD</span>SBC abs,X</td></tr>
+      <tr class="r2"><td class="c c2">2</td><td class="v0"></td><td class="v1"><span class="opc">$E6</span>INC zpg</td><td class="v2"><span class="opc">$EA</span>NOP impl</td><td class="v3"><span class="opc">$EE</span>INC abs</td><td class="v4"></td><td class="v5"><span class="opc">$F6</span>INC zpg,X</td><td class="v6"></td><td class="v7"><span class="opc">$FE</span>INC abs,X</td></tr>
+      </tbody>
+      </table>
+      </div>
+      <br />
+
+      <h2 id="family">APENDIX D: The 65xx-Family:</h2>
+      <pre>
+        Type               Features, Comments
+        -------------------------------------
+        6502               NMOS, 16 bit address bus, 8 bit data bus
+        6502A              accelerated version of 6502
+        6502C              accelerated version of 6502, CMOS
+        65C02              16 bit version, additional instructions and address modes
+        6503, 6505, 6506   12 bit address bus [4 KiB]
+        6504               13 bit address bus [8 KiB]
+        6507               13 bit address bus [8 KiB], no interrupts
+        6509               20 bit address bus [1 MiB] by bankswitching
+        6510               as 6502 with additional 6 bit I/O-port
+        6511               integrated micro controler with I/O-port, serial interface, and RAM (Rockwell)
+        65F11              as 6511, integrated FORTH interpreter
+        7501               as 6502, HMOS
+        8500               as 6510, CMOS
+        8502               as 6510 with switchable 2 MHz option, 7 bit I/O-port
+        65816 (65C816)     16 bit registers and ALU, 24 bit address bus [16 MiB], up to 24 MHz (Western Design Center)
+        65802 (65C802)     as 65816, pin compatible to 6502, 64 KiB address bus, up to 16 MHz
+      </pre>
       <!-- 6502 REFERENCE -->
 
     </div>
