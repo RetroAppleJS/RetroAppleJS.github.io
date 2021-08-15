@@ -27,7 +27,6 @@
 // apple2main.js
 
 addLoadEvent(init_emulator);
-
 var vidContext,apple2plus,ppleIntervalHandle
 var appleIntervalTime   = 50;
 var keypress_pointer    = apple2OnKeyPress;
