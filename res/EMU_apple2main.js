@@ -27,13 +27,13 @@
 // apple2main.js
 
 addLoadEvent(init_emulator);
-var vidContext,apple2plus,ppleIntervalHandle
+
+var vidContext,apple2plus,appleIntervalHandle
 var appleIntervalTime   = 50;
-var keypress_pointer    = apple2OnKeyPress;
 
 function init_emulator()
 {
-    window.onkeypress       = keypress_pointer;   //window.onkeydown = apple2OnKeyPress;
+    window.onkeypress   = apple2OnKeyPress;   //window.onkeydown = apple2OnKeyPress;
     appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
