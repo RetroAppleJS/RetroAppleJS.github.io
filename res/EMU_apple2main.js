@@ -59,7 +59,7 @@ function pauseButton() {
         appleIntervalHandle = null;
         document.getElementById('pausebutton').value = 'Resume';
     } else {
-        window.onkeypress = keypress_pointer;
+        window.onkeypress = apple2OnKeyPress;
         appleIntervalHandle = window.setInterval("appleIntervalFunc()",
                                                  appleIntervalTime);
         document.getElementById('pausebutton').value = 'Pause ';
