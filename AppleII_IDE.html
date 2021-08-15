@@ -89,30 +89,21 @@
      }
 </style>
 
-
-
-</head>
-<body>
-
-  <script>
+<script>
+  // COMMON SCRIPTS
   var _o = {"tools":{},"sys":"A2P"};
   function addLoadEvent(func)
   {
     var oldonload = window.onload;
     if (typeof window.onload != "function")
       window.onload = func;
-    else {
-      window.onload = function() 
-      {
-        if (oldonload) oldonload();
-        func();
-      }
-    }
+    else
+      { window.onload = function() { if (oldonload) oldonload(); func() } }
   }
-  </script>
+</script>
 
-
-
+</head>
+<body>
 <div class="pure-menu pure-menu-horizontal pc-tab">
 
   <input  id="tab1" type="radio" name="pct" />
