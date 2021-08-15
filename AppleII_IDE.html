@@ -90,25 +90,12 @@
 </style>
 
 
-<script type="text/javascript" src="res/EMU_cpu6502.js"></script>
-<script type="text/javascript" src="res/EMU_apple2roms.js"></script>
-<script type="text/javascript" src="res/EMU_apple2video.js"></script>
-<script type="text/javascript" src="res/EMU_appledisk2.js"></script>
-<script type="text/javascript" src="res/EMU_apple2io.js"></script>
-<script type="text/javascript" src="res/EMU_apple2hw.js"></script>
-<script type="text/javascript" src="res/EMU_apple2keys.js"></script>
-<script type="text/javascript" src="res/EMU_apple2plus.js"></script>
+
 </head>
 <body>
 
   <script>
-    var _o = {"tools":{},"sys":"A2P"};
-  
-  
-  //function func1() { alert("This is the first.") }
-  
-  //function func2() { alert("This is the second.") }
-  
+  var _o = {"tools":{},"sys":"A2P"};
   function addLoadEvent(func)
   {
     var oldonload = window.onload;
@@ -122,12 +109,6 @@
       }
     }
   }
-//  addLoadEvent(func1);
-//  addLoadEvent(func2);
-//  addLoadEvent(function() { document.body.style.backgroundColor = "#EFDF95" });
-
- 
-
   </script>
 
 
@@ -160,6 +141,17 @@
   <section>
     <div class="tab1" style="background-image:url('res/appleIIplus_bck_650.png');background-size:1300px;height:1300px;background-repeat:no-repeat;image-rendering:pixelated;">
       <!--   EMULATOR  -->
+
+      <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2video.js"></script>
+      <script type="text/javascript" src="res/EMU_appledisk2.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2io.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2hw.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2keys.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
+      <script type="text/javascript" src="res/EMU_apple2main.js"></script>
+
         <div style="padding:4px 90px">
         <input type="button" value="Pasteboard" onclick="javascript:onPasteboard()">
         <input type="button" value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name)">
@@ -200,7 +192,7 @@
         <br>
         <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1">
         <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
-        <script type="text/javascript" src="res/EMU_apple2main.js"></script>
+
 
       <!--   EMULATOR  -->
     </div>

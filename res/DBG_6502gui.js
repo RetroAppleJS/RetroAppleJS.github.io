@@ -1614,7 +1614,5 @@ return '  <p class=\"text\"> </p>\n'
 +'\n'
 }
 
-//onload=inialize;
 addLoadEvent(inialize);
-// eof
 // eof
