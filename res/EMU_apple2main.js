@@ -28,7 +28,7 @@
 
 addLoadEvent(init_emulator);
 
-var vidContext,apple2plus,appleIntervalHandle
+var vidContext,apple2plus,appleIntervalHandle,bKeyboardFocus
 var appleIntervalTime   = 50;
 
 function init_emulator()
@@ -39,8 +39,18 @@ function init_emulator()
     apple2plus          = new Apple2Plus(vidContext);
 }
 
+function attachKeyboard(bEnable)
+{
+    if(bEnable) window.onkeypress  = apple2OnKeyPress;
+    else window.onkeypress  = null;
+}
+
+
 function appleIntervalFunc() {
     apple2plus.cycle(1000 * appleIntervalTime);
+    // TODO: SET KEYBOARDFOCUS STATE ONLY ON TAB CHANGE EVENT
+    bKeyboardFocus = document.getElementById("tab1").checked;
+    attachKeyboard(bKeyboardFocus)
 }
 
 function resetButton() {
@@ -53,13 +63,15 @@ function restartButton() {
 
 function pauseButton() {
     if (appleIntervalHandle != null) {
-        window.onkeypress = null;
+        //window.onkeypress = null;
+        attachKeyboard(false);
 
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = null;
         document.getElementById('pausebutton').value = 'Resume';
     } else {
-        window.onkeypress = apple2OnKeyPress;
+        //window.onkeypress = apple2OnKeyPress;
+        attachKeyboard(true);
         appleIntervalHandle = window.setInterval("appleIntervalFunc()",
                                                  appleIntervalTime);
         document.getElementById('pausebutton').value = 'Pause ';
