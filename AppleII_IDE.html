@@ -6,9 +6,9 @@
 <!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
 <link rel="stylesheet" href="res/fontawesome/all.css">
 
-<script>
-  var _o = {"tools":{},"sys":"A2P"};
-</script>
+
+
+
 
 <style type="text/css">
 
@@ -101,7 +101,34 @@
 </head>
 <body>
 
+  <script>
+    var _o = {"tools":{},"sys":"A2P"};
+  
+  
+  //function func1() { alert("This is the first.") }
+  
+  //function func2() { alert("This is the second.") }
+  
+  function addLoadEvent(func)
+  {
+    var oldonload = window.onload;
+    if (typeof window.onload != "function")
+      window.onload = func;
+    else {
+      window.onload = function() 
+      {
+        if (oldonload) oldonload();
+        func();
+      }
+    }
+  }
+//  addLoadEvent(func1);
+//  addLoadEvent(func2);
+//  addLoadEvent(function() { document.body.style.backgroundColor = "#EFDF95" });
 
+ 
+
+  </script>
 
 
 
@@ -172,7 +199,9 @@
         <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
         <br>
         <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1">
-        <script type="text/javascript" src="res/apple2main.js"></script>
+        <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
+        <script type="text/javascript" src="res/EMU_apple2main.js"></script>
+
       <!--   EMULATOR  -->
     </div>
     <div class="tab2">
@@ -323,9 +352,8 @@ Label1 TXA
 
     	<script language="JavaScript" type="text/javascript" src="res/DBG_6502cpu.js"></script>
     	<script language="JavaScript" type="text/javascript" src="res/DBG_6502gui.js"></script>
-    	<script language="JavaScript" type="text/javascript" src="res/DBG_6502.css"></script>
+      <link rel="stylesheet" href="res/DBG_6502.css">
       <style>
-
       .regdisp {
         width: 218px;
         height: 69px;
@@ -622,12 +650,9 @@ Label1 TXA
                   s+="</tr>"
                 }
                 s+="</table>"
+              //document.write(s);
 */
-                //document.write(s);
-
-
-
-               </script>
+              </script>
 
 
                </div>

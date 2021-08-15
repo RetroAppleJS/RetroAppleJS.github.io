@@ -26,20 +26,23 @@
 
 // apple2main.js
 
-var vidContext = document.getElementById('applescreen').getContext("2d");
-var apple2plus = new Apple2Plus(vidContext);
-var appleIntervalTime = 50;
+addLoadEvent(init_emulator);
 
-var keypress_pointer = apple2OnKeyPress;
-window.onkeypress = keypress_pointer;
-//window.onkeydown = apple2OnKeyPress;
+var vidContext,apple2plus,ppleIntervalHandle
+var appleIntervalTime   = 50;
+var keypress_pointer    = apple2OnKeyPress;
+
+function init_emulator()
+{
+    window.onkeypress       = keypress_pointer;   //window.onkeydown = apple2OnKeyPress;
+    appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);
+    vidContext          = document.getElementById('applescreen').getContext("2d");
+    apple2plus          = new Apple2Plus(vidContext);
+}
 
 function appleIntervalFunc() {
     apple2plus.cycle(1000 * appleIntervalTime);
 }
-
-var appleIntervalHandle = window.setInterval("appleIntervalFunc()",
-                                           appleIntervalTime);
 
 function resetButton() {
     apple2plus.reset();
