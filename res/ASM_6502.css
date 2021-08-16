@@ -145,6 +145,8 @@
 
       @page { size:landscape; }
 
+      @font-face {  font-family: 'Arcade'; src: URL('ARCADE_N.TTF') format('truetype') } 
+
       .dotmatrix_bck {
           background-image: url("matrixpaper.png");
           /*background-size: auto;*/
@@ -155,4 +157,28 @@
           line-height: 21px;
           background-attachment:local;
           font-family: courier,monospace; font-size: 12px; font-weight:500;
+        }
+
+
+        #codefield,#debugfield
+        {
+          word-break:break-all;
+          overflow-wrap:anywhere;
+          overflow-y:scroll;
+          white-space:normal;
+          outline: 0px solid transparent;
+        }
+
+        #codefield::-webkit-scrollbar {
+          background-color: transparent;
+        }
+        #codefield::-webkit-scrollbar-thumb {
+          background-color: #AFFFF6;
+        }
+
+        #debugfield::-webkit-scrollbar {
+          background-color: transparent;
+        }
+        #debugfield::-webkit-scrollbar-thumb {
+          background-color: #AFFFF6;
         }

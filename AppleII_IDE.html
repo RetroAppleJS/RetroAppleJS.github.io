@@ -185,10 +185,9 @@
     <div class="tab2">
       <!-- ASSEMBLER -->
 
-      <style> @font-face {  font-family: 'Arcade'; src: URL('res/ARCADE_N.TTF') format('truetype') } </style>
-      <link rel="stylesheet" href="res/6502assembler.css">
-      <script language="JavaScript" type="text/javascript" src="res/6502assembler.js"></script>
-      <script language="JavaScript" type="text/javascript" src="res/6502assembler_gui.js"></script>
+      <script type="text/javascript" src="res/ASM_6502.js"></script>
+      <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
+      <link rel="stylesheet"        href="res/ASM_6502.css">
 
       <form name="ass" onsubmit="return false">
         <table style="background:#76B9CE;border-radius:10px;">
@@ -238,34 +237,6 @@ Label1 TXA
           </tr>
         </thead>
 
-<style>
-
-#codefield,#debugfield
-{
-  word-break:break-all;
-  overflow-wrap:anywhere;
-  overflow-y:scroll;
-  white-space:normal;
-  outline: 0px solid transparent;
-}
-
-#codefield::-webkit-scrollbar {
-  background-color: transparent;
-}
-#codefield::-webkit-scrollbar-thumb {
-  background-color: #AFFFF6;
-}
-
-#debugfield::-webkit-scrollbar {
-  background-color: transparent;
-}
-#debugfield::-webkit-scrollbar-thumb {
-  background-color: #AFFFF6;
-}
-
-
-</style>
-
           <tr>
             <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
               <div style="height:90px">
@@ -299,19 +270,8 @@ Label1 TXA
               target.innerHTML = _o.tools[target.id].cache;
         }
 
-        //var ignoreScrollEvents = false
         function syncScroll(element1, element2) {
           element2.scrollTop = element1.scrollTop;
-          /*
-        	element1.scroll(function (e) {
-        		var ignore = ignoreScrollEvents
-        		ignoreScrollEvents = false
-        		if (ignore) return
-
-        		ignoreScrollEvents = true
-        		element2.scrollTop(element1.scrollTop)
-        	})
-          */
         }
 
         function updateScroll(el)
@@ -327,90 +287,9 @@ Label1 TXA
     <div class="tab3">
       <!-- DEBUGGER -->
 
-    	<script language="JavaScript" type="text/javascript" src="res/DBG_6502cpu.js"></script>
-    	<script language="JavaScript" type="text/javascript" src="res/DBG_6502gui.js"></script>
-      <link rel="stylesheet" href="res/DBG_6502.css">
-      <style>
-      .regdisp {
-        width: 218px;
-        height: 69px;
-      }
-
-      .regscroll_h {
-        width: 216px;
-        overflow-x: auto;
-        scroll-behavior: smooth;
-      }
-
-      .regpar {display: flex; scroll-behavior: smooth;}
-
-      .regbox {
-        flex-shrink: 0;
-        height: 40px;
-        width: 25px;
-        text-align: center;
-      }
-
-      .regbyte {
-      flex-shrink: 0;
-      height: 16px;
-      width: 25px;
-      border-style: solid;
-      border-width: 1px;
-      text-align: center;
-      }
-
-      .regbyte_red
-      {
-        /*  @extend .regbyte */;
-        flex-shrink: 0;
-        height: 16px;
-        width: 25px;
-        border-style: solid;
-        border-width: 1px;
-        background-color:red;
-      }
-
-      .regbyte_green
-      {
-        /*  @extend .regbyte */;
-        flex-shrink: 0;
-        height: 16px;
-        width: 25px;
-        border-style: solid;
-        border-width: 1px;
-        background-color:#00D000
-      }
-
-      .regadr {
-        font-size:xx-small;
-      }
-
-      #dispStep, #watchdisp
-      {
-        white-space:normal;
-        word-break:break-all;
-        overflow-wrap:anywhere;
-        overflow-y:scroll;
-      }
-
-      .dtable {
-       width:220px;
-       font-size:xx-small;
-      }
-
-      .dtable tr td {
-        border:1px solid black;
-        position: relative;
-        text-align:center;
-        nowrap:nowrap;
-        font-size: small;
-        width:12px;
-        text-align:center;
-        white-space: nowrap;
-       }
-
-      </style>
+    	<script type="text/javascript" src="res/DBG_6502cpu.js"></script>
+    	<script type="text/javascript" src="res/DBG_6502gui.js"></script>
+      <link rel="stylesheet"        href="res/DBG_6502.css">
 
       <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
     	<tr>
@@ -735,7 +614,11 @@ Label1 TXA
       <!-- 6502 REFERENCE -->
       <script>
 
-      document.addEventListener('DOMContentLoaded', function() {
+      //document.addEventListener('DOMContentLoaded', function() {
+      addLoadEvent(Ref6502)
+
+      function Ref6502()
+      {
         var opcDict = {
             'ADC': 'Add with carry',
             'AND': 'And',
@@ -864,7 +747,8 @@ Label1 TXA
         }
         rows = null;
         document.querySelector('table#opctable').addEventListener('click', OPHideHandler, false);
-      }, false);
+      }
+      //, false);
 
 
       </script>
