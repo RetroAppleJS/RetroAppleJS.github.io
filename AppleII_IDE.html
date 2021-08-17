@@ -612,9 +612,7 @@ Label1 TXA
     <div class="tab4">
 
       <!-- 6502 REFERENCE -->
-      <script>
-
-      //document.addEventListener('DOMContentLoaded', function() {
+      <!--script>
       addLoadEvent(OPC_info)
 
       function OPC_info()
@@ -748,13 +746,10 @@ Label1 TXA
         rows = null;
         document.querySelector('table#opctable').addEventListener('click', OPHideHandler, false);
       }
-      //, false);
+      </!script>
 
 
-      </script>
-
-
-      <table id="opctable" aria-label="table of instruction codes">
+      <table-- id="opctable" aria-label="table of instruction codes">
       <thead>
       <tr>
       <th class="hi-nibble" aria-label="first column: high-nibble of byte (hexadecimal)">HI</th><th colspan="16" aria-label="columns 1 - 15: low nibble (hexadecimal)">LO-NIBBLE</th>
@@ -812,9 +807,9 @@ Label1 TXA
       <td class="hi-nibble">F0</td><td>BEQ rel</td><td>SBC ind,Y</td><td class="undef">---</td><td class="undef">---</td><td class="undef">---</td><td>SBC zpg,X</td><td>INC zpg,X</td><td class="undef">---</td><td>SED impl</td><td>SBC abs,Y</td><td class="undef">---</td><td class="undef">---</td><td class="undef">---</td><td>SBC abs,X</td><td>INC abs,X</td><td class="undef">---</td>
       </tr>
       </tbody>
-      </table>
-      <p>&nbsp;</p>
-      <p>Address Modes:</p>
+      </table-->
+      <h2>6502 INSTRUCTIONS OVERVIEW</h2>
+      <h3>Address Modes:</h3>
       <table id="addressmodes" aria-label="table of address modes: (1) abbreviated notation, (2) verbous, (3) formal example, (4) semantical annotations">
       <tbody>
       <tr><td>A<td><td aria-hidden="true">....</td><td>Accumulator</td><td aria-hidden="true">&nbsp;</td><td>OPC A</td><td aria-hidden="true">&nbsp;</td><td class="semantics">operand is AC (implied single byte instruction)</td></tr>
@@ -844,8 +839,7 @@ Label1 TXA
       <p aria-label="note 3">*** Branch offsets are signed 8-bit values, -128 ... +127, negative offsets in two's complement.<br />
       Page transitions may occur and add an extra cycle to the exucution.</p>
 
-      <p>&nbsp;</p>
-      <p>Instructions by Name:</p>
+      <h3>Instructions by Name:</h3>
       <table id="opclist" aria-label="table of mnemonics and their verbous equivalent">
       <tr><td><a href="#ADC" title="instruction details for ADC...">ADC</a></td><td aria-hidden="true">....</td><td>add with carry</td></tr>
       <tr><td><a href="#AND" title="instruction details for AND...">AND</a></td><td aria-hidden="true">....</td><td>and (with accumulator)</td></tr>
@@ -906,8 +900,7 @@ Label1 TXA
       </table>
       </p>
 
-      <p>&nbsp;</p>
-      <p>Registers:</p>
+      <h3>Registers:</h3>
       <table id="registers" aria-label="table of registers and their verbous names">
       <tr><td>PC</td><td aria-hidden="true">....</td><td>program counter</td><td align="right">(16 bit)</td></tr>
       <tr><td>AC</td><td aria-hidden="true">....</td><td>accumulator</td><td align="right">(8 bit)</td></tr>
@@ -917,7 +910,7 @@ Label1 TXA
       <tr><td>SP</td><td >....</td><td>stack pointer</td><td align="right">(8 bit)</td></tr>
       </table>
 
-      <p>&nbsp;<br >SR Flags (bit 7 to bit 0):</p>
+      <h3>SR Flags (bit 7 to bit 0):</h3>
       <table id="flags" aria-label="table of status register flags and their verbous names">
       <td>N</td><td aria-hidden="true">....</td><td>Negative</td></tr>
       <td>V</td><td aria-hidden="true">....</td><td>Overflow</td></tr>
@@ -929,9 +922,8 @@ Label1 TXA
       <td>C</td><td aria-hidden="true">....</td><td>Carry</td></tr>
       </table>
 
-      <p>&nbsp</p>
-      <p>Processor Stack:<br />
-      LIFO, top down, 8 bit range, 0x0100 - 0x01FF<br />&nbsp;</p>
+      <h3>Processor Stack:<br />
+      LIFO, top down, 8 bit range, 0x0100 - 0x01FF<br />&nbsp;</h3>
 
       <p>Bytes, Words, Addressing:<br />
       8 bit bytes, 16 bit words in lobyte-hibyte representation (Little-Endian).<br />
