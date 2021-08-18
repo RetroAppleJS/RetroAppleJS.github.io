@@ -1,4 +1,4 @@
-# Instructions
+# DEBUGGER Instructions
  
 ## The Display
 The display shows all (yes its all there is) registers of a 6502/6510 CPU:
