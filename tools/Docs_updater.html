@@ -2,31 +2,55 @@
 <head>
     <meta charset='utf-8'>
     <script type="text/javascript" src="../res/showdown.js"></script>
+    <style>
+      body {
+          font-family:'Arial';
+          font-size: 12px;
+          font-weight: 500;
+        }
+        img {
+          zoom: 0.5;
+          max-width:600px;
+        }
+    </style>
 </head>
-<body onload="Markdown2HTML();HTML2Markdown()">
+<body>
 
 <script>
-  function Markdown2HTML() {
+  Markdown2HTML("demo");
+
+
+  function Markdown2HTML(id) {
     const xhttp = new XMLHttpRequest();
-    xhttp.onload = function() {
-
-      var converter = new showdown.Converter();
-      converter.setFlavor("github");
-      var html = converter.makeHtml(this.responseText);
-      document.getElementById("demo").innerHTML = html
-      //////////////////// INVERSION //////////////////
-      document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
-
-
+    xhttp.onload = function()
+    {
+      process(this.responseText,id);
     }
-    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/DEBUGGER.md");
+    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
     xhttp.send();
   }
 
-  function HTML2Markdown() {
+  function process(txt,id)
+  {
+    var converter = new showdown.Converter();
+    converter.setFlavor("github");
+    var html = converter.makeHtml(txt);
+    html = html.replace(new RegExp('/res/','g'),"https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/");
+    document.getElementById("src").innerHTML = txt;
+    document.getElementById(id).innerHTML = html;
+    document.getElementById("demo1").innerHTML = html;
 
+    //                                                     /res/appleIIplus_bck_650.png?raw=true
+    // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
+    
+      //////////////////// INVERSION //////////////////
+      document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
+  }
+
+  function HTML2Markdown()
+  {
     var html = DbgHelp();
-    document.getElementById("demo3").innerHTML = html
+    document.getElementById("demo3").innerHTML = html;
     var converter = new showdown.Converter();
     //converter.setFlavor("github");
     //var markdown = converter.makeMarkdown(html);
@@ -118,8 +142,22 @@
 var converter = new showdown.Converter();
 
 </script>
-<textarea id=demo style="width:800px;height:250px"></textarea>
-<textarea id=demo2 style="width:800px;height:250px"></textarea>
+<table>
+<tr>
+  <td><textarea id=src style="width:600px;height:300px"></textarea></td>
+  <td>>></td>
+  <td><textarea id=demo style="width:600px;height:300px"></textarea></td>
+</tr>
+<tr>
+  <td><div id=demo1 style="width:600px;height:300px;overflow:scroll;border: 1px solid black;"></div></td>
+  <td>>></td>
+  <td><textarea id=demo2 style="width:600px;height:300px"></textarea></td>
+
+</tr>
+</table>
+
+
 <div id=demo3></div>
+</table>
 </body>
 </html>
