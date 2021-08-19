@@ -1,7 +1,10 @@
-# Instructions
+# DEBUGGER Instructions
+ 
+![]('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=)
+
  
 ## The Display
-The display shows all (yes its all there is) registers of a 6502/6510 CPU:
+The display shows all registers of a 6502/6510 CPU:
 
   	PC	....	Program Counter
   	A	....	Accumulator
@@ -20,6 +23,7 @@ The status register (SR) holds the following flags (from bit 7 to 0):
   	I	....	Interrupt (IRQ disable)
   	Z	....	Zero
   	C	....	Carry
+   
 The line disassembler shows the current value of PC, the content of the according memory address (the next instruction followed by the operands, if any), and a disassembly of this instruction.
 
 The cycle time display shows the ticks of exceeded CPU time (including extra cycles for branches page transitions).
