@@ -17,17 +17,18 @@
 <body>
 
 <script>
-  Markdown2HTML("demo");
+  Markdown2HTML("html_txt");
 
-  function Markdown2HTML(id) {
+  function Markdown2HTML(id)
+  {
     const xhttp = new XMLHttpRequest();
-    xhttp.onload = function()
-    {
-      process(this.responseText,id);
-    }
+    xhttp.onload = function() { process(this.responseText,id) }
     xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
     xhttp.send();
   }
+
+  //                                                     /res/appleIIplus_bck_650.png?raw=true
+  // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
   function process(txt,id)
   {
@@ -37,33 +38,27 @@
     //////////////////// MAKE HTML  //////////////////
     var html = converter.makeHtml(txt);
     html = html.replace(new RegExp('/res/','g'),"https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/");
-    document.getElementById("src").innerHTML = txt;
-    document.getElementById(id).innerHTML = html;
-    document.getElementById("demo1").innerHTML = html;
-
-    //                                                     /res/appleIIplus_bck_650.png?raw=true
-    // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
+    document.getElementById("src").innerHTML   = txt;
+    document.getElementById(id).innerHTML      = html;
+    document.getElementById("html").innerHTML = html;
 
     //////////////////// MAKE MARKDOWN //////////////////
-    document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
+    document.getElementById("markdown").innerHTML = converter.makeMarkdown(html);
   }
 </script>
+
 <table>
 <tr>
   <td><textarea id=src style="width:600px;height:300px"></textarea></td>
   <td>>></td>
-  <td><textarea id=demo style="width:600px;height:300px"></textarea></td>
+  <td><textarea id=html_txt style="width:600px;height:300px"></textarea></td>
 </tr>
 <tr>
-  <td><div id=demo1 style="width:600px;height:300px;overflow:scroll;border: 1px solid black;"></div></td>
+  <td><div id=html style="width:600px;height:300px;overflow:scroll;border: 1px solid black;"></div></td>
   <td>>></td>
-  <td><textarea id=demo2 style="width:600px;height:300px"></textarea></td>
-
+  <td><textarea id=markdown style="width:600px;height:300px"></textarea></td>
 </tr>
 </table>
 
-
-<div id=demo3></div>
-</table>
 </body>
 </html>
