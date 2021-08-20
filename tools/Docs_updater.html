@@ -12,6 +12,11 @@
           zoom: 0.5;
           max-width:600px;
         }
+
+        pre {
+          background-color: #F6F8FA;
+          border-radius: 5px 5px 5px 5px;
+        }
     </style>
 </head>
 <body>
@@ -23,7 +28,8 @@
   {
     const xhttp = new XMLHttpRequest();
     xhttp.onload = function() { process(this.responseText,id) }
-    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
+    //xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
+    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/DEBUGGER.md");
     xhttp.send();
   }
 
