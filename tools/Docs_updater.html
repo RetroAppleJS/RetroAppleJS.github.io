@@ -19,7 +19,6 @@
 <script>
   Markdown2HTML("demo");
 
-
   function Markdown2HTML(id) {
     const xhttp = new XMLHttpRequest();
     xhttp.onload = function()
@@ -34,6 +33,8 @@
   {
     var converter = new showdown.Converter();
     converter.setFlavor("github");
+
+    //////////////////// MAKE HTML  //////////////////
     var html = converter.makeHtml(txt);
     html = html.replace(new RegExp('/res/','g'),"https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/");
     document.getElementById("src").innerHTML = txt;
@@ -42,105 +43,10 @@
 
     //                                                     /res/appleIIplus_bck_650.png?raw=true
     // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
-    
-      //////////////////// INVERSION //////////////////
-      document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
-  }
 
-  function HTML2Markdown()
-  {
-    var html = DbgHelp();
-    document.getElementById("demo3").innerHTML = html;
-    var converter = new showdown.Converter();
-    //converter.setFlavor("github");
-    //var markdown = converter.makeMarkdown(html);
+    //////////////////// MAKE MARKDOWN //////////////////
     document.getElementById("demo2").innerHTML = converter.makeMarkdown(html);
   }
-
-  function DbgHelp()
-  {
-  return '  <p class=\"text\"> </p>\n'
-  +'\n'
-  +'      <h3>Instructions</h3>\n'
-  +'\n'
-  +'      <p class=\"text18\"> <br><b>The Display</b><br>\n'
-  +'      The display shows all (yes its all there is) registers of a 6502/6510 CPU:</p>\n'
-  +'      <table cellspacing=\"0\" cellpadding=\"3\" border=\"0\">\n'
-  +'      <tbody><tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">PC</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Program Counter</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">A</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Accumulator</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">X</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">X Register</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">Y</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Y Register</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">SR</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Status Register</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">SP</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Stack Pointer</td></tr>\n'
-  +'      </tbody></table>\n'
-  +'      <p class=\"text\">The status register (SR) holds the following flags (from bit 7 to 0):</p>\n'
-  +'      <table cellspacing=\"0\" cellpadding=\"3\" border=\"0\">\n'
-  +'      <tbody><tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">N</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Negative</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">V</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Overflow</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">–</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">ignored</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">B</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Break</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">D</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Decimal</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">I</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Interrupt (IRQ disable)</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">Z</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Zero</td></tr>\n'
-  +'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">C</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Carry</td></tr>\n'
-  +'      </tbody></table>\n'
-  +'      <p class=\"text18\">The line disassembler shows the current value of PC,\n'
-  +'      the content of the according memory address (the next instruction\n'
-  +'      followed by the operands, if any), and a disassembly of this\n'
-  +'      instruction.</p>\n'
-  +'      <p class=\"text18\">The cycle time display shows the ticks of exceeded CPU time (including extra cycles for branches page transitions).</p>\n'
-  +'\n'
-  +'      <p class=\"text18\"> <br><b>Setting the Registers</b><br>\n'
-  +'      Click a registers label to set its value.<br>\n'
-  +'      Click on a SR flag to flip its value.</p>\n'
-  +'\n'
-  +'      <p class=\"text18\"> <br><b>Memory</b><br>\n'
-  +'      The emulator implements 64 k of memory for the full 16 bit address range.<br>\n'
-  +'      The 6502\'s stack of 1 k range is located at 0100 to 01FF (hard wired).</p>\n'
-  +'\n'
-  +'      <p class=\"text18\"> <br><b>Accessing the Memory</b><br>\n'
-  +'      The button \"look up mem #\" offers a quick inspection of a 16 byte range around any address.<br>\n'
-  +'      You may enter any amount of hex code into the memory inspector\'s pane and load it to the specified start address.<br>Further\n'
-  +'       the memory inspector lets you inspect the memory in steps of 128 (0x80)\n'
-  +'       bytes (half page). You may alter the display\'s content and load it back\n'
-  +'       the emulator\'s memory. (Any figures prefixed by a colon \":\" are ignored\n'
-  +'       as line numbers.)<br>\n'
-  +'      The \"show ASCII\" option shows the according ASCII characters at the left\n'
-  +'       of each line (if applicable). Uncheck this when transfering memory to\n'
-  +'      the disassembler.<br>\n'
-  +'      Last there\'s an option to load the ROMs of the Commodore 64 (� CBM) to\n'
-  +'      the according addresses (A000-BFFF, D000-FFFF) – for all those who can\'t\n'
-  +'       help nostalgia. (Note: The emulator does not implement the C64\'s bank\n'
-  +'      switching feature.)</p>\n'
-  +'\n'
-  +'      <p class=\"text18\"> <br><b>About the Emulator</b><br>\n'
-  +'      The emulator is written in JavaScript and emulates a 65xx-family micro\n'
-  +'      processor unit that was the heart of so popular micro computers as the\n'
-  +'      Apple II (6502) or the Commedore 64 (6510). The most common types, the\n'
-  +'      6502 and 6510 processors, are basicly the same and share the same\n'
-  +'      instruction tables. (The 6510 varies from 6502 only in the\n'
-  +'      implementation of 6 I/O ports at addresses 0000 and 0001.)<br>\n'
-  +'      The emulator implements all legal instructions. Undefined opcodes are\n'
-  +'      ignored (treated as NOP, No OPeration, with cycle time 0) – no\n'
-  +'      pseudo-opcodes are implemented.<br>\n'
-  +'\n'
-  +'      <p class=\"text18\">The emulator\'s core is based on the 6510 emulation C\n'
-  +'      source by Earle F. Philhower III for his \"Commodore 64 Emulator\n'
-  +'      v0.3\" for Mac, � 1993-4, with some modification for exact cycle times.<br>\n'
-  +'       BCD arithmetics and V-flag behavior in 2016. Also, some more general,\n'
-  +'      shared code is used for some instructions in immediate addressing mode\n'
-  +'      (which were treated as special cases before in order to optimize\n'
-  +'      runtime).</p>\n'
-  +'\n'
-  +'      <p class=\"text18\">The 6502 CPU script and the underlying C source are free software and may be redistributed and/or modified\n'
-  +'      under the terms of the GNU General Public License as published by\n'
-  +'      the Free Software Foundation; either version 2 of the License, or\n'
-  +'      any later version.</p>\n'
-  +'\n'
-  }
-
-var converter = new showdown.Converter();
-
 </script>
 <table>
 <tr>
