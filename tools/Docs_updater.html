@@ -22,9 +22,9 @@
 <body>
 
 <script>
-  Markdown2HTML("html_txt","DEBUGGER");
+  GetMarkdown("html_txt","DEBUGGER");
 
-  function Markdown2HTML(id,filename)
+  function GetMarkdown(id,filename)
   {
     const xhttp = new XMLHttpRequest();
     xhttp.onload = function() { process(this.responseText,id,filename) }
@@ -33,23 +33,37 @@
     xhttp.send();
   }
 
+  function Markdown2HTML(md)
+  {
+    var converter = new showdown.Converter();
+    converter.setFlavor("github");
+    return converter.makeHtml(md);
+  }
+
+  function HTML2Markdown(html)
+  {
+    var converter = new showdown.Converter();
+    converter.setFlavor("github");
+    return converter.makeMarkdown(html);
+  }
+
   //                                                     /res/appleIIplus_bck_650.png?raw=true
   // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
   function process(txt,id,filename)
   {
-    var converter = new showdown.Converter();
-    converter.setFlavor("github");
+    //var converter = new showdown.Converter();
+    //converter.setFlavor("github");
 
     //////////////////// MAKE HTML  //////////////////
-    var html = converter.makeHtml(txt);
+    var html = Markdown2HTML(txt);
     html = html.replace(new RegExp('/res/','g'),"https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/");
-    document.getElementById("src").innerHTML   = txt;
-    document.getElementById(id).innerHTML      = html;
+    document.getElementById("src").innerHTML  = txt;
+    document.getElementById(id).innerHTML     = html;
     document.getElementById("html").innerHTML = html;
 
     //////////////////// MAKE MARKDOWN //////////////////
-    document.getElementById("markdown").innerHTML = converter.makeMarkdown(html);
+    document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
     var js = filename+'_DOC = "'+html.replace(new RegExp('\"','g'),'\\"')
                  .replace(new RegExp('\n','g'),"\"\n+\"")+'"';
@@ -86,7 +100,331 @@
   <td><textarea id=markdown style="width:600px;height:300px"></textarea></td>
 </tr>
 </table>
-<button onclick="download('hello.txt','This is the content of my file :)')">Download</button>
+<button onclick="download('asmhelp.html',HTML2Markdown(asmHelp()))">Download</button>
 
 </body>
 </html>
+
+<script>
+  function asmHelp() {
+
+return '<h3>Instructions</h3>' +
+  '' +
+  '      This is a simple 2 pass assembler for the 65xx microprocessor.  It is thought to accompany the emulator' +
+  '' +
+  '      <p class="text18">To get your source code compiled:</p>' +
+  '' +
+  '      <ol>' +
+  '      <li class="text18">Enter your src in "source code" pane.</li>' +
+  '      <li class="text18">Click the button "generate".</li>' +
+  '      <li class="text18">Watch progress in "listing" pane.</li>' +
+  '      <li class="text18">Copy code from "object code" pane.<br></li>' +
+  '      </ol>' +
+  '' +
+  '      <h3>Syntax</h3>' +
+  '      <p class="text">The assembler supports the following syntax:</p>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="2"><b>Opcodes and Addressing</b></td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="text">Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">implied</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC A</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">Accumulator</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC #BB</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">immediate</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC HHLL</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">absolute</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC HHLL,X</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">absolute, X-indexed</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC HHLL,Y</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">absolute, Y-indexed</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC *LL</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">zeropage</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC *LL,X</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">zeropage, X-indexed</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC *LL,Y</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">zeropage, Y-indexed</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC (BB,X)</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">X-indexed, indirect</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC (LL),Y</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">indirect, Y-indexed</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC (HHLL)</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">indirect</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">OPC BB</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">relative</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="text"> <br>' +
+  '      Where HHLL is a 16bit word and LL or BB an' +
+  '      8 bit byte, and A is literal "A".<br>' +
+  '      There must not be any white space in' +
+  '      any part of an instruction\'s address.<br> </td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="4"><b>Number Formats</b><br> </td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="display2" nowrap="nowrap">$[0-9A-Fa-f]</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">hex</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">%[01]</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">binary</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">0[0-7]</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">octal</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">[0-9]</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">decimal</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap"><</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">LO-byte portion</td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">></td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text" nowrap="nowrap">HI-byte portion</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="4"> <br><b>Labels and Identifiers</b></td>' +
+  '      </tr>' +
+  '      <tr>' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="text18">' +
+  '      Identifiers must begin with a letter [A-Z] and contain letters, digits,' +
+  '      and the underscore [A-Z0-9_]. Only the first 6 characters are' +
+  '      significant.<br><br>' +
+  '      All identifiers, numbers, opcodes, and pragmas are case insensitive and' +
+  '      translated to upper case. Identifiers must not be the same as valid' +
+  '      opcodes.<br><br>' +
+  '      The special identifier "*" refers to the program counter (PC).' +
+  '      </td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="text18">' +
+  '      Exampels:' +
+  '      </td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">* = $C000<br>' +
+  '                                          org $C000</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Set start address (PC) to C000.</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">LABEL1 LDA #4</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Define LABEL1 with address of instruction LDA.</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">BNE LABEL2</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Jump to address of label LABEL2.</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">STORE = $0800</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Define STORE with value 0800.</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">HERE = *</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Define HERE with current address (PC).</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">HERE2</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Define HERE2 with current address (PC).</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap"> </td>' +
+  '      <td class="display2" nowrap="nowrap">LDA #<VAL1</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Load LO-byte of VAL1.</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="4"> <br><b>Pragmas</b></td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="text" colspan="3">Pragmas start with a dot (.) and must be the only expression in a line:</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="display2" nowrap="nowrap">.BYTE BB</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Insert 8 bit byte at current address into code.</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="display2" nowrap="nowrap">.WORD HHLL</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Insert 16 bit word at current address into code.</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="display2" nowrap="nowrap">.END</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">End of source, stop assembly. (optional)</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="4"> <br><b>Comments</b></td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="display2" nowrap="nowrap">; comment</td>' +
+  '      <td class="text" nowrap="nowrap">....</td>' +
+  '      <td class="text">Any sequence of characters after a semicolon util end of the line is ignored.</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="2"> <br><b>White Space</b></td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">  </td>' +
+  '      <td class="text">The assembler does not rely on any special formatting with following exclusion:<br>' +
+  '      There must be white space between a label and a opcode and the opcode' +
+  '      and any operands. Only one instruction per line is permitted.</td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      <table cellspacing="0" cellpadding="3" border="0">' +
+  '      <tbody><tr>' +
+  '      <td class="text" colspan="4"><br><b>Code Example</b><br> </td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td class="text" nowrap="nowrap">   Src:</td>' +
+  '      <td class="text" nowrap="nowrap"></td>' +
+  '      <td class="text" nowrap="nowrap">Listing:</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td nowrap="nowrap"><xmp>' +
+  '   *=$c000\r\n' +
+  '          LDX #0\r\n' +
+  '   Label1 TXA\r\n' +
+  '          STA $0400,X\r\n' +
+  '          LDA #1\r\n' +
+  '          STA $D800,X\r\n' +
+  '          INX\r\n' +
+  '          BNE Label1\r\n' +
+  '          RTS\r\n' +
+  '   .END</xmp></td>' +
+  '      <td class="text" nowrap="nowrap"></td>' +
+  '      <td nowrap="nowrap"><xmp>' +
+  '* = $C000\r\n' +
+  'C000        LDX #$00        A2 00\r\n' +
+  'C002 LABEL1 TXA             8A\r\n' +
+  'C003        STA $0400,X     9D 00 04\r\n' +
+  'C006        LDA #$01        A9 01\r\n' +
+  'C008        STA $D800,X     9D 00 D8\r\n' +
+  'C00B        INX             E8\r\n' +
+  'C00C        BNE LABEL1      D0 F4\r\n' +
+  'C00E        RTS             60\r\n' +
+  'C00F .END\r\n</xmp></td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td colspan="3" class="text" nowrap="nowrap"><br>Object Code:</td>' +
+  '      </tr>' +
+  '      <tr valign="top">' +
+  '      <td colspan="3" nowrap="nowrap"><xmp>' +
+  '      A2 00 8A 9D 00 04 A9 01\r\n' +
+  '      9D 00 D8 E8 D0 F4 60</xmp></td>' +
+  '      </tr>' +
+  '      </tbody></table>' +
+  '      </td>' +
+  '      </tr>' +
+  '      </tbody></table>'
+}
+</script>
