@@ -1,4 +1,4 @@
-### Instructions
+# ASSEMBLER Instructions
 
  This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to accompany the emulator To get your source code compiled:
 
