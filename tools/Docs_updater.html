@@ -22,7 +22,39 @@
 <body>
 
 <script>
-  GetMarkdown("html_txt","DEBUGGER");
+  //GetMarkdown("html_txt","DEBUGGER");
+
+
+  GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
+  function() { process_dir(this.responseText,this.responseURL) } )
+
+
+  //GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
+  //function() { process(this.responseText,this.responseURL) } )
+
+
+  
+
+  function GetHTTP(url,callback_function)
+  {
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = callback_function;
+    xhttp.open("GET", url);
+    xhttp.send();
+  }
+
+  // https://github.com/RetroAppleJS/AppleII-IDE/tree/main/docs
+
+/*
+  function GetMarkdown(filename)
+  {
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = function() { process(this.responseText,id,filename) }
+    //xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
+    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/"+filename+".md");
+    xhttp.send();
+  }
+*/
 
   function GetMarkdown(id,filename)
   {
@@ -50,17 +82,18 @@
   //                                                     /res/appleIIplus_bck_650.png?raw=true
   // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
-  function process(txt,id,filename)
+  function process(txt,url)
   {
     //var converter = new showdown.Converter();
     //converter.setFlavor("github");
+    filename = url.substring(url.lastIndexOf("/")+1,url.length);
 
     //////////////////// MAKE HTML  //////////////////
     var html = Markdown2HTML(txt);
     html = html.replace(new RegExp('/res/','g'),"https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/");
-    document.getElementById("src").innerHTML  = txt;
-    document.getElementById(id).innerHTML     = html;
-    document.getElementById("html").innerHTML = html;
+    document.getElementById("src").innerHTML      = txt;
+    document.getElementById("html_txt").innerHTML = html;
+    document.getElementById("html").innerHTML     = html;
 
     //////////////////// MAKE MARKDOWN //////////////////
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
@@ -71,6 +104,16 @@
     alert(js);
     //download('DOCS.js',decodeURIComponent(js));
   }
+
+  function process_dir(txt,url)
+  {
+    var arr = txt.split("https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/")
+    for(var i=1;i<arr.length;i++)
+      arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3)
+    arr[0] = ""
+    alert(arr.join("\n"))
+  }
+
 
   // decodeURIComponent
 
