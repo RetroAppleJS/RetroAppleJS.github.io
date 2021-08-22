@@ -48,8 +48,11 @@ One can:
 ## User manuals
 
 [DEBUGGER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/DEBUGGER.md)
+
 [ASSEMBLER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ASSEMBLER.md)
+
 [EMULATOR.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/EMULATOR.md)
+
 [6502.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/6502.md)
 
 ## Feature wish-list
