@@ -21,7 +21,7 @@ The assembler halts without error on a label identifier that is not followed by 
 <pre>
 *=$C000
     NOP
-L1 
+L1  
     LDX #$FF
     RTS
 </pre>
