@@ -81,6 +81,9 @@
               .replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"res/")
               .replace(new RegExp('</h1>','g'),"</h1><hr>")
               .replace(new RegExp('</h2>','g'),"</h2><hr>")
+              .replace(new RegExp('</h3><br>','g'),"</h3>")
+              .replace(new RegExp('</h4><br>','g'),"</h4>")
+            
 
     document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
