@@ -74,9 +74,10 @@
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
     var js = "DOCS_"+filename.replace(new RegExp('.md','g'),"")
-      +' = "'+html.replace(new RegExp('\"','g'),'\\"')
+      +' = "'+(html.replace(new RegExp('\"','g'),'\\"')
                   .replace(new RegExp('\n','g'),"<br>\"\n+\"")
-              +"<br>\"\n\n";
+              +"<br>\"\n\n")
+              .replace(new RegExp('<br /><br>','g'),"<br>");
 
     document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
