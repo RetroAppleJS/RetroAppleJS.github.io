@@ -80,7 +80,9 @@ DOCS_ASSEMBLER = "<h1 id=\"assembler-instructions\">ASSEMBLER Instructions</h1>"
 +"  C00F .END</code></pre>"
 +"<h5 id=\"object-code\">Object Code:</h5>"
 +"<pre><code>  A2 00 8A 9D 00 04 A9 01"
-+"  9D 00 D8 E8 D0 F4 60</code></pre>'
++"  9D 00 D8 E8 D0 F4 60</code></pre>"
+
+DOCS_6502 = "<p>TODO</p>"
 
 DOCS_DEBUGGER = "<h1 id=\"debugger-instructions\">DEBUGGER Instructions</h1>"
 +"<h2 id=\"the-display\">The Display</h2>"
@@ -116,6 +118,5 @@ DOCS_DEBUGGER = "<h1 id=\"debugger-instructions\">DEBUGGER Instructions</h1>"
 +"Last there's an option to load the ROMs of the Commodore 64 (® CBM) to the according addresses (A000-BFFF, D000-FFFF) – for all those who can't help nostalgia. (Note: The emulator does not implement the C64's bank switching feature.)</p>"
 +"<h2 id=\"about-the-debugger\">About the Debugger</h2>"
 +"<p>The emulator is written in JavaScript and emulates a 65xx-family micro processor unit that was the heart of so popular micro computers as the Apple II (6502) or the Commedore 64 (6510). The most common types, the 6502 and 6510 processors, are basicly the same and share the same instruction tables. (The 6510 varies from 6502 only in the implementation of 6 I/O ports at addresses 0000 and 0001.)<br />"
-+"The emulator implements all legal instructions. Undefined opcodes are ignored (treated as NOP, No OPeration, with cycle time 0) – no pseudo-opcodes are implemented.</p>'
++"The emulator implements all legal instructions. Undefined opcodes are ignored (treated as NOP, No OPeration, with cycle time 0) – no pseudo-opcodes are implemented.</p>"
 
-DOCS_6502 = "<p>TODO</p>'
