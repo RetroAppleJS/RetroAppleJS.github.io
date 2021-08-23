@@ -99,7 +99,7 @@
     {
       arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
       var url = rawURL + arr[i]
-      GetHTTP(url, function() { process(this.responseText,this.responseURL) } )
+      GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
     }
     
     //alert(arr.join("\n"))
