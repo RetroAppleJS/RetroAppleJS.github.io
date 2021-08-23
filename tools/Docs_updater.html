@@ -78,7 +78,7 @@
                   .replace(new RegExp('\n','g'),"<br>\"\n+\"")
               +"<br>\"\n\n")
               .replace(new RegExp('<br /><br>','g'),"<br>")
-              .replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"../res/");
+              .replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"res/");
 
     document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
