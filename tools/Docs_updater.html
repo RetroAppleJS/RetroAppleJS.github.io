@@ -75,8 +75,8 @@
     //var html = "<p>TEST</p>";
     var js = "DOCS_"+filename.replace(new RegExp('.md','g'),"")
       +' = "'+html.replace(new RegExp('\"','g'),'\\"')
-                      .replace(new RegExp('\n','g'),"\"\n+\"")
-              +"\"\n\n";
+                  .replace(new RegExp('\n','g'),"<br>\"\n+\"")
+              +"<br>\"\n\n";
 
     document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
