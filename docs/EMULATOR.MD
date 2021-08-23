@@ -11,6 +11,14 @@ note: most apple][ disks do not boot, it was not uncommon to keep a bootable dis
      <img src="../res/appleIIplus_kbd_650.png?raw=true" style="margin: -200px 0px 0px -25px;" align="left" /><!-- top    left -->
 </p>
 
+img[src*="#crop1"] {
+   width:45px;
+   height:100px;
+}
+
+<img src="../res/appleIIplus_kbd_650.png#crop1" align="left" />
+
+
 A handful new functions make the experience complete 
 - pasteboard: 
 - 
