@@ -51,7 +51,7 @@ One can:
 
 [ASSEMBLER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ASSEMBLER.md)
 
-[EMULATOR.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/EMULATOR.md)
+[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.MD)
 
 [6502.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/6502.md)
 
