@@ -22,15 +22,14 @@
 <body>
 
 <script>
-  //GetMarkdown("html_txt","DEBUGGER");
-
 
   GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
   function() { process_dir(this.responseText,this.responseURL) } )
 
-  //GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
-  //function() { process(this.responseText,this.responseURL) } )
+  //GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/REF_6502.html",
+  //function() { toMD(this.responseText,this.responseURL) } )
 
+  
 
   function GetHTTP(url,callback_function)
   {
@@ -99,6 +98,10 @@
     //alert(arr.join("\n"))
   }
 
+  function toMD(txt,url)
+  {
+    document.getElementById("dest").innerHTML   = HTML2Markdown(txt);
+  }
 
   // decodeURIComponent
 
