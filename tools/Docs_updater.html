@@ -28,12 +28,9 @@
   GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
   function() { process_dir(this.responseText,this.responseURL) } )
 
-
   //GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
   //function() { process(this.responseText,this.responseURL) } )
 
-
-  
 
   function GetHTTP(url,callback_function)
   {
@@ -43,27 +40,6 @@
     xhttp.send();
   }
 
-  // https://github.com/RetroAppleJS/AppleII-IDE/tree/main/docs
-
-/*
-  function GetMarkdown(filename)
-  {
-    const xhttp = new XMLHttpRequest();
-    xhttp.onload = function() { process(this.responseText,id,filename) }
-    //xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
-    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/"+filename+".md");
-    xhttp.send();
-  }
-*/
-
-  function GetMarkdown(id,filename)
-  {
-    const xhttp = new XMLHttpRequest();
-    xhttp.onload = function() { process(this.responseText,id,filename) }
-    //xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md");
-    xhttp.open("GET", "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/"+filename+".md");
-    xhttp.send();
-  }
 
   function Markdown2HTML(md)
   {
@@ -98,20 +74,29 @@
     //////////////////// MAKE MARKDOWN //////////////////
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
-    var js = filename+'_DOC = "'+html.replace(new RegExp('\"','g'),'\\"')
-                 .replace(new RegExp('\n','g'),"\"\n+\"")+'"';
+    var js = "DOCS_"+filename.replace(new RegExp('.md','g'),"")
+      +' = "'+html.replace(new RegExp('\"','g'),'\\"')
+                      .replace(new RegExp('\n','g'),"\"\n+\"")
+              +"'\n\n";
 
-    alert(js);
+    document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
   }
 
   function process_dir(txt,url)
   {
-    var arr = txt.split("https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/")
+    var linkURL = "https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/";
+    var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/";
+    var arr = txt.split(linkURL);
+    arr[0] = "";
     for(var i=1;i<arr.length;i++)
-      arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3)
-    arr[0] = ""
-    alert(arr.join("\n"))
+    {
+      arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
+      var url = rawURL + arr[i]
+      GetHTTP(url, function() { process(this.responseText,this.responseURL) } )
+    }
+    
+    //alert(arr.join("\n"))
   }
 
 
@@ -133,16 +118,18 @@
 
 <table>
 <tr>
-  <td><textarea id=src style="width:600px;height:300px"></textarea></td>
+  <td><textarea id=src style="width:600px;height:180px"></textarea></td>
   <td>>></td>
-  <td><textarea id=html_txt style="width:600px;height:300px"></textarea></td>
+  <td><textarea id=html_txt style="width:600px;height:180px"></textarea></td>
 </tr>
 <tr>
-  <td><div id=html style="width:600px;height:300px;overflow:scroll;border: 1px solid black;font-size: 13px;"></div></td>
+  <td><div id=html style="width:600px;height:180px;overflow:scroll;border: 1px solid black;font-size: 13px;"></div></td>
   <td>>></td>
-  <td><textarea id=markdown style="width:600px;height:300px"></textarea></td>
+  <td><textarea id=markdown style="width:600px;height:180px"></textarea></td>
 </tr>
 </table>
+<textarea id=dest style="width:1200px;height:180px"></textarea>
+
 <button onclick="download('asmhelp.html',HTML2Markdown(asmHelp()))">Download</button>
 
 </body>
