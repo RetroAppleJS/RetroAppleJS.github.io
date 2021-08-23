@@ -7,10 +7,9 @@ All basic functions remain self-explanatory
 - warm boot: press the reset button on the pop-up keyboard
 - insert disk: press the right disk drive to load any disk file found on the internet (.do, .dsk), after, perform a cold boot
 note: most apple][ disks do not boot, it was not uncommon to keep a bootable disk image at handreach.
-<div style="width:200px;height:150px;overflow:hidden;">
-        <img src="/res/appleIIplus_kbd_650.png?raw=true" style="width:400px;height:300px;margin: -75px 0 0 -100px;" align="left" />
-</div>
-
+<p style="width:45px;height:100px;overflow:hidden;">
+     <img src="../res/appleIIplus_kbd_650.png?raw=true" style="margin: -200px 0px 0px -25px;" align="left" /><!-- top    left -->
+</p>
 
 A handful new functions make the experience complete 
 - pasteboard: 
