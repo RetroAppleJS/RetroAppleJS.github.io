@@ -472,11 +472,17 @@ pre code, pre tt {
               .replace(new RegExp('</h3><br>','g'),"</h3>")
               .replace(new RegExp('</h4><br>','g'),"</h4>")
               .replace(new RegExp('</th><br>','g'),"</th>")
+              .replace(new RegExp('</tr><br>','g'),"</tr>")
               .replace(new RegExp('</td><br>','g'),"</td>")
-              .replace(new RegExp('<td><br>','g'),"<td>")
+              .replace(new RegExp('</thead><br>','g'),"</thead>")
+              .replace(new RegExp('</tbody><br>','g'),"</tbody>")                
+              .replace(new RegExp('</table><br>','g'),"</table>")   
+              .replace(new RegExp('<th><br>','g'),"<th>")
               .replace(new RegExp('<tr><br>','g'),"<tr>")
+              .replace(new RegExp('<td><br>','g'),"<td>")
               .replace(new RegExp('<thead><br>','g'),"<thead>")
-              .replace(new RegExp('<tbody><br>','g'),"<tbody>")              
+              .replace(new RegExp('<tbody><br>','g'),"<tbody>")    
+              .replace(new RegExp('<table><br>','g'),"<table>")           
     document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
   }
