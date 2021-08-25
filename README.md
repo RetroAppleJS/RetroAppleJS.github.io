@@ -66,4 +66,4 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - Assembler: better compatibility with listings from different AppleII assemblers
 - Emulator: interactive Apple II+ keyboard
 - Emulator: save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
-- Tools: develop documentation tool to generate HTML from Markdown-formatted files
+- ~~Tools: develop documentation tool to generate HTML from Markdown-formatted files~~
