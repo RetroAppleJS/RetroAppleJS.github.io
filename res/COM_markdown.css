@@ -427,6 +427,10 @@
   padding: 0;
 }
 
+.markdown_mon a {
+  color: #AFFFF6;
+  text-decoration: underline;
+}
 
 .markdown_mon li p.first {
   display: inline-block;
@@ -589,4 +593,32 @@
 .markdown_mon pre code, pre tt {
   background-color: transparent;
   border: none;
+}
+
+.markdown_mon {
+  font-family:'Arcade';
+  font-size:8px;
+  color:#AFFFF6;
+  width:350px;
+  height:270px;
+  margin-left:105px;
+  white-space:normal;
+  word-break:break-all;
+  overflow-wrap:anywhere;
+  overflow-y:scroll;
+}
+
+.markdown_mon::-webkit-scrollbar-thumb {
+  box-shadow: inset 2px 2px 5px 0 #AFFFF6;
+  border-radius: 100px;
+  width:thin;
+}
+
+.markdown_mon::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.markdown_mon::-webkit-scrollbar-corner  {
+  background-color: transparent;
 }

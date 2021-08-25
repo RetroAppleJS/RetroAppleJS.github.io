@@ -209,7 +209,6 @@
 
       <form name="ass" onsubmit="return false">
         <table style="background:#76B9CE;border-radius:10px;">
-          <thead>
           <tr>
             <td valign=top style="display:flex;flex-wrap:wrap;width:340px">
               <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>*=$6000
@@ -258,21 +257,11 @@ Label1 TXA
               </div>
             </td>
           </tr>
-        </thead>
-
           <tr>
             <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
-              <div style="height:90px">
-              </div>
-
-              <div id="codefield" contenteditable="true" class=markdown_mon
-              style="font-family:'Arcade';font-size:8px;color:#AFFFF6;width:350px;height:270px;margin-left:105px;">OBJECT CODE:</div>
-
-              <textarea name="codefield" hidden=""></textarea>
-              <div style="height:180px">
-              </div>
-
-              </div>
+              <div style="height:90px"></div>
+              <div id="codefield" contenteditable="true" class=markdown_mon></div>
+              <div style="height:180px"></div>
             </td>
           </tr>
         </table>
@@ -280,7 +269,6 @@ Label1 TXA
 
 
       <script>
-
         function syncScroll(element1, element2) {
           element2.scrollTop = element1.scrollTop;
         }
@@ -623,24 +611,14 @@ Label1 TXA
       <!-- DEBUGGER -->
     </div>
     <div class="tab4">
-
       <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
-      <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
-        <div style="height:90px">
-        </div>
-        <div id="debugfield" contenteditable="true" class=markdown_mon
-        style="font-family:'Arcade';font-size:8px;color:#AFFFF6;width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
-    <script>document.write(DOCS_6502)</script>
-    </div>
-      
-      </div>
-
-        <textarea name="codefield" hidden=""></textarea>
-        <div style="height:180px">
-        </div>
-
-        </div>
+      <tr>
+      <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+        <div style="height:90px"></div>
+        <div contenteditable="true" class=markdown_mon><script>document.write(DOCS_6502)</script></div>
+        <div style="height:180px"></div>
       </td>
+    </tr>
     </table>
 
 
