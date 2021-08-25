@@ -64,4 +64,4 @@ One can:
 - Assembler: better compatibility with listings from different AppleII assemblers
 - Emulator: interactive Apple II+ keyboard
 - Emulator: save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
-- Tools: develop documentation tool (generate Markdown format files from built-in HTML documentation)
+- Tools: develop documentation tool to generate HTML from Markdown-formatted files
