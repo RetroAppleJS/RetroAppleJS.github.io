@@ -388,3 +388,209 @@
 }
 
 /* MARKDOWN CSS END */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ----------------------------------------------------------------------*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.markdown_mon hr {
+  border: 0 none;
+  color: #cccccc;
+  height: 4px;
+  padding: 0;
+}
+
+
+
+
+
+
+.markdown_mon li p.first {
+  display: inline-block;
+}
+
+.markdown_mon ul, ol {
+  padding-left: 30px;
+}
+
+.markdown_mon ul :first-child, ol :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon ul :last-child, ol :last-child {
+  margin-bottom: 0;
+}
+
+.markdown_mon dl {
+  padding: 0;
+}
+
+.markdown_mon dl dt {
+  font-size: 14px;
+  font-weight: bold;
+  font-style: italic;
+  padding: 0;
+  margin: 15px 0 5px;
+}
+
+.markdown_mon dl dt:first-child {
+  padding: 0;
+}
+
+.markdown_mon dl dt > :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon dl dt > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown_mon dl dd {
+  margin: 0 0 15px;
+  padding: 0 15px;
+}
+
+.markdown_mon dl dd > :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon dl dd > :last-child {
+  margin-bottom: 0;
+}
+
+
+
+.markdown_mon blockquote > :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+
+
+.markdown_mon span.frame span span {
+  clear: both;
+  color: #333333;
+  display: block;
+  padding: 5px 0 0;
+}
+
+.markdown_mon span.align-center {
+  display: block;
+  overflow: hidden;
+  clear: both;
+}
+
+.markdown_mon span.align-center > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px auto 0;
+  text-align: center;
+}
+
+.markdown_mon span.align-center span img {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.markdown_mon span.align-right {
+  display: block;
+  overflow: hidden;
+  clear: both;
+}
+
+.markdown_mon span.align-right > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px 0 0;
+  text-align: right;
+}
+
+.markdown_mon span.align-right span img {
+  margin: 0;
+  text-align: right;
+}
+
+.markdown_mon span.float-left {
+  display: block;
+  margin-right: 13px;
+  overflow: hidden;
+  float: left;
+}
+
+.markdown_mon span.float-left span {
+  margin: 13px 0 0;
+}
+
+.markdown_mon span.float-right {
+  display: block;
+  margin-left: 13px;
+  overflow: hidden;
+  float: right;
+}
+
+.markdown_mon span.float-right > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px auto 0;
+  text-align: right;
+}
+
+.markdown_mon pre code {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+  border: none;
+  background: transparent;
+}
+
+.markdown_mon .highlight pre {
+  font-size: 13px;
+  line-height: 19px;
+  overflow: auto;
+  padding: 6px 10px;
+  border-radius: 3px;
+}
+
+.markdown_mon pre {
+  border: 1px solid #AFFFF6;
+  font-size: 11px;
+  line-height: 19px;
+  overflow: auto;
+  padding: 6px 10px;
+  border-radius: 3px;
+}
+
+.markdown_mon pre code, pre tt {
+  background-color: transparent;
+  border: none;
+}
