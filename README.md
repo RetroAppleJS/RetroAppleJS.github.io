@@ -57,6 +57,8 @@ One can:
 
 [ZEROPAGE_APPLE2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
 
+Note that the markdown files here above are compiled into a JavaScript include file found [here](https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples)
+
 ## Feature wish-list
 
 - Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
