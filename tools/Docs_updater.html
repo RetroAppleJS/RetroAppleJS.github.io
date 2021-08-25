@@ -469,7 +469,10 @@ pre code, pre tt {
               .replace(new RegExp('<br /><br>','g'),"<br>")
               .replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"res/")
               .replace(new RegExp('</h1>','g'),"</h1><hr>")
+              .replace(new RegExp('</h1>','g'),"</h1><hr>")
               .replace(new RegExp('</h2>','g'),"</h2><hr>")
+              .replace(new RegExp('><br>','g'),">")
+              /*
               .replace(new RegExp('</h3><br>','g'),"</h3>")
               .replace(new RegExp('</h4><br>','g'),"</h4>")
               .replace(new RegExp('</th><br>','g'),"</th>")
@@ -483,7 +486,8 @@ pre code, pre tt {
               .replace(new RegExp('<td><br>','g'),"<td>")
               .replace(new RegExp('<thead><br>','g'),"<thead>")
               .replace(new RegExp('<tbody><br>','g'),"<tbody>")    
-              .replace(new RegExp('<table><br>','g'),"<table>")           
+              .replace(new RegExp('<table><br>','g'),"<table>")    
+                */       
     document.getElementById("dest").innerHTML += js;
     //download('DOCS.js',decodeURIComponent(js));
   }
