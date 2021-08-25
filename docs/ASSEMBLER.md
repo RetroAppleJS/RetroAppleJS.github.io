@@ -1,31 +1,29 @@
 ## ASSEMBLER Instructions
-
- This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to accompany the emulator To get your source code compiled:
-
- 1. Enter your src in "source code" pane.
+This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to accompany the emulator To get your source code compiled:
+1. Enter your src in "source code" pane.
 2. Click the button "generate".
 3. Watch progress in "listing" pane.
 4. Copy code from "object code" pane.<br>
 
 ### Syntax
-
 The assembler supports the following syntax:
 
 #### Opcodes and Addressing
-  	Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
-  	OPC	     ....	implied
- 	OPC A	     ....	Accumulator
- 	OPC #BB	     ....	immediate
- 	OPC HHLL     ....	absolute
- 	OPC HHLL,X   ....	absolute, X-indexed
- 	OPC HHLL,Y   ....	absolute, Y-indexed
- 	OPC *LL	     ....	zeropage
- 	OPC *LL,X    ....	zeropage, X-indexed
- 	OPC *LL,Y    ....	zeropage, Y-indexed
- 	OPC (BB,X)   ....	X-indexed, indirect
- 	OPC (LL),Y   ....	indirect, Y-indexed
- 	OPC (HHLL)   ....	indirect
- 	OPC BB       ....	relative
+Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
+
+   OPC	     ....	implied
+   OPC A	     ....	Accumulator
+   OPC #BB	     ....	immediate
+   OPC HHLL     ....	absolute
+   OPC HHLL,X   ....	absolute, X-indexed
+   OPC HHLL,Y   ....	absolute, Y-indexed
+   OPC *LL	     ....	zeropage
+   OPC *LL,X    ....	zeropage, X-indexed
+   OPC *LL,Y    ....	zeropage, Y-indexed
+   OPC (BB,X)   ....	X-indexed, indirect
+   OPC (LL),Y   ....	indirect, Y-indexed
+   OPC (HHLL)   ....	indirect
+   OPC BB       ....	relative
  	 
 Where HHLL is a 16bit word and LL or BB an 8 bit byte, and A is literal "A".
 There must not be any white space in any part of an instruction's address.
