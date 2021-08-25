@@ -1299,7 +1299,7 @@ function loadApple2PlusRoms(str) {
   }
 	else alert('Canceled');
 }
-
+/*
 function Apple2PlusZP() {
 
 var crlf = "\r\n"
@@ -1394,6 +1394,7 @@ var s = "$00-$05 - ???"+crlf
 alert(s)
 
 }
+*/
 
 function RAM_checksum()
 {
@@ -1531,7 +1532,7 @@ function simStep() {
 	}
 }
 
-
+/*
 function DbgHelp()
 {
 return '  <p class=\"text\"> </p>\n'
@@ -1600,6 +1601,7 @@ return '  <p class=\"text\"> </p>\n'
 +'      pseudo-opcodes are implemented.<br>\n'
 +'\n'
 }
+*/
 
 addLoadEvent(inialize);
 // eof
