@@ -55,7 +55,7 @@ One can:
 
 [6502.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/6502.md)
 
-[ZEROPAGE_A2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_A2PLUS.md)
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
 
 ## Feature wish-list
 
