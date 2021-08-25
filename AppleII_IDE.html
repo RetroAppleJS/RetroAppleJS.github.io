@@ -222,7 +222,12 @@ Label1 TXA
                 <button onclick="to_debugger()">
                   <i class="fa fa-arrow-circle-up"></i> to debugger</button>
               <button onclick="javascript:onToolBox('SrcTools')"><i class="fa fa-wrench"></i> tools & config</button>
-              <button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
+
+              <button onclick="onhelp(DOCS_ASSEMBLER ,document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
+              <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
+
+              
+
               <button onclick="assemble_step();"><i class="fa fa-road"></i> trace</button>
 
             </td>
