@@ -24,12 +24,10 @@ Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
       OPC (LL),Y  ....	indirect, Y-indexed
       OPC (HHLL)  ....	indirect
       OPC BB      ....	relative
- 	 
 Where HHLL is a 16bit word and LL or BB an 8 bit byte, and A is literal "A".
 There must not be any white space in any part of an instruction's address.
  
 #### Number Formats
- 
   	$[0-9A-Fa-f] ....	hex
  	%[01]        ....	binary
  	0[0-7]       ....	octal
@@ -96,4 +94,3 @@ There must be white space between a label and a opcode and the opcode and any op
 ##### Object Code:
       A2 00 8A 9D 00 04 A9 01
       9D 00 D8 E8 D0 F4 60
-
