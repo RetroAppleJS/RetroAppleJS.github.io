@@ -4,9 +4,9 @@
 
 This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser.
 
-The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation of their concepts.  Issues associated with setting up a working system is especially not the sort of painful old memories one may wish to recall, this project aims quite the opposite.
+The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation.  Issues associated with setting up a working system is especially not the sort of old memories one may wish to recall.  Back in 1980, I was passionate about machine coding on the Apple II+, and this project is all about recreating the experience, enhanced with some contemporary features.
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described below.
+So, enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described below.
 
 ## Getting started
 
@@ -55,7 +55,7 @@ One can:
 
 [6502.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/6502.md)
 
-[ZEROPAGE_A2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_A2PLUS.md)
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
 
 ## Feature wish-list
 
