@@ -11,19 +11,19 @@ The assembler supports the following syntax:
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
 
-   OPC	     ....	implied
-   OPC A	     ....	Accumulator
-   OPC #BB	     ....	immediate
-   OPC HHLL     ....	absolute
-   OPC HHLL,X   ....	absolute, X-indexed
-   OPC HHLL,Y   ....	absolute, Y-indexed
-   OPC *LL	     ....	zeropage
-   OPC *LL,X    ....	zeropage, X-indexed
-   OPC *LL,Y    ....	zeropage, Y-indexed
-   OPC (BB,X)   ....	X-indexed, indirect
-   OPC (LL),Y   ....	indirect, Y-indexed
-   OPC (HHLL)   ....	indirect
-   OPC BB       ....	relative
+      OPC         ....	implied
+      OPC A       ....	Accumulator
+      OPC #BB     ....	immediate
+      OPC HHLL    ....	absolute
+      OPC HHLL,X  ....	absolute, X-indexed
+      OPC HHLL,Y  ....	absolute, Y-indexed
+      OPC *LL     ....	zeropage
+      OPC *LL,X   ....	zeropage, X-indexed
+      OPC *LL,Y   ....	zeropage, Y-indexed
+      OPC (BB,X)  ....	X-indexed, indirect
+      OPC (LL),Y  ....	indirect, Y-indexed
+      OPC (HHLL)  ....	indirect
+      OPC BB      ....	relative
  	 
 Where HHLL is a 16bit word and LL or BB an 8 bit byte, and A is literal "A".
 There must not be any white space in any part of an instruction's address.
