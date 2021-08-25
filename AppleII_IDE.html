@@ -592,7 +592,7 @@ Label1 TXA
     				<input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
             <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
             <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
-            <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="alert(DOCS_ZEROPAGE_APPLE2PLUS)">
+            <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(DOCS_ZEROPAGE_APPLE2PLUS,document.getElementById('debugfield'))">
             <input type="button" value="memory MAP" class="isButton" onclick="RAM_checksum()">
     				<iframe name="c64loader" border="0" framespacing="0" marginwidth="0" marginheight="0" width="0" height="0" frameborder="0"></iframe>
     				<input type="button" value="&nbsp;show memory&nbsp;" class="isButton" onclick="showMem()">
