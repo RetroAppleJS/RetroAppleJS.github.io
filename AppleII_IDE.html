@@ -7,6 +7,22 @@
 <link rel="stylesheet" href="res/fontawesome/all.css">
 <link rel="stylesheet" href="res/COM_markdown.css">
 <script type="text/javascript" src="docs/_GENERATED_DOCS.js"></script>
+<script>
+          function onhelp(txt,target)
+        {
+            if( typeof(_o.tools[target.id])=="undefined" )
+              _o.tools[target.id] = {"toggle":false,"cache":""}
+
+            _o.tools[target.id].toggle = !_o.tools[target.id].toggle
+            if(_o.tools[target.id].toggle)
+            {
+              _o.tools[target.id].cache = target.innerHTML;
+              target.innerHTML = txt;
+            }
+            else
+              target.innerHTML = _o.tools[target.id].cache;
+        }
+</script>
 <style type="text/css">
 
      .appvid {
@@ -264,20 +280,6 @@ Label1 TXA
 
 
       <script>
-        function onhelp(txt,target)
-        {
-            if( typeof(_o.tools[target.id])=="undefined" )
-              _o.tools[target.id] = {"toggle":false,"cache":""}
-
-            _o.tools[target.id].toggle = !_o.tools[target.id].toggle
-            if(_o.tools[target.id].toggle)
-            {
-              _o.tools[target.id].cache = target.innerHTML;
-              target.innerHTML = txt;
-            }
-            else
-              target.innerHTML = _o.tools[target.id].cache;
-        }
 
         function syncScroll(element1, element2) {
           element2.scrollTop = element1.scrollTop;
@@ -622,10 +624,26 @@ Label1 TXA
     </div>
     <div class="tab4">
 
+      <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+      <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+        <div style="height:90px">
+        </div>
+        <div id="debugfield" contenteditable="true" class=markdown_mon
+        style="font-family:'Arcade';font-size:8px;color:#AFFFF6;width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
+    <script>document.write(DOCS_6502)</script>
+    </div>
+      
+      </div>
 
-      <script>
-        document.write("<div class=markdown style=\"width:675px;font-family:'Courier New',Courier,monospace'\">"+DOCS_6502+"</div>")
-      </script>
+        <textarea name="codefield" hidden=""></textarea>
+        <div style="height:180px">
+        </div>
+
+        </div>
+      </td>
+    </table>
+
+
 
       <!-- 6502 REFERENCE -->
       <!--script>
