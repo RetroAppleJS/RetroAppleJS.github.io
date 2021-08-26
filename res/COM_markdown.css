@@ -218,6 +218,7 @@
 
 .markdown table {
   padding: 0;
+  overflow: auto;
 }
 .markdown table tr {
   border-top: 1px solid #cccccc;
@@ -416,7 +417,9 @@
 
 
 
-
+.markdown_mon table {
+  overflow: auto;
+}
 
 
 
