@@ -572,13 +572,14 @@
   background: transparent;
 }
 
-.markdown_mon blockquote {
+.markdown_mon blockquote table tr td {
   border: 1px solid #AFFFF6;
-  font-size: 11px;
-  line-height: 19px;
+  margin: 0;
+  padding: 6px 13px;
+}
+
+.markdown_mon blockquote {
   overflow: auto;
-  padding: 6px 10px;
-  border-radius: 3px;
 }
 
 
