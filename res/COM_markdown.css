@@ -417,12 +417,6 @@
 
 
 
-.markdown_mon table {
-  overflow: auto;
-}
-
-
-
 .markdown_mon hr {
   border: 0 none;
   color: #cccccc;
@@ -567,6 +561,26 @@
   margin: 13px auto 0;
   text-align: right;
 }
+
+
+
+.markdown_mon blockquote table {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+  border: 1px;
+  background: transparent;
+}
+
+.markdown_mon blockquote {
+  border: 1px solid #AFFFF6;
+  font-size: 11px;
+  line-height: 19px;
+  overflow: auto;
+  padding: 6px 10px;
+  border-radius: 3px;
+}
+
 
 .markdown_mon pre code {
   margin: 0;
