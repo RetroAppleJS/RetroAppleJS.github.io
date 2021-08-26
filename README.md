@@ -38,7 +38,7 @@ The debugger is composed of 5 sections
 5) Memory map
 6) Help screen
 
-## Emulator
+### Emulator
 
 The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
 One can:
@@ -67,3 +67,12 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] interactive Apple II+ keyboard
 - [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
+
+## Contribute
+
+### JavaScript
+### Style Sheets
+### Markdown
+### 6502 assembler source code
+
+:+1:
