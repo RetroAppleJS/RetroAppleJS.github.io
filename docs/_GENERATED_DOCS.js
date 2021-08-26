@@ -1175,4 +1175,3 @@ DOCS_6502 = "<h2 id=\"6502-instructions\">6502 INSTRUCTIONS</h2><hr>"
 +"and recovered by the JSR instruction:</p>"
 +"<p><img src=\"res/mcs6502-jsr-rts-ops.png\" alt=\"6502 Subroutine Operations\" /></p>"
 +"<p>(Image: MCS6502 Instruction Set Summary, MOS Technology, Inc.)</p>"
-
