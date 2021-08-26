@@ -121,7 +121,7 @@ DOCS_ASSEMBLER = "<h2 id=\"assembler-instructions\">ASSEMBLER Instructions</h2><
 DOCS_6502 = "<h2 id=\"6502-instructions\">6502 INSTRUCTIONS</h2><hr>"
 +"<h3 id=\"table-of-instruction-codes\">Table of instruction codes</h3>"
 +"<blockquote>"
-+"  <table style='display:block;float:left;overflow: hidden;'>"
++"  <table>"
 +"  <thead>"
 +"  <tr>"
 +"  <th id=\"\" style=\"text-align:center;\"></th>"
