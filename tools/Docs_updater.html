@@ -473,7 +473,7 @@ pre code, pre tt {
               .replace(new RegExp('</h2>','g'),"</h2><hr>")
               .replace(new RegExp('<a ','g'),">")
               .replace(new RegExp('><br>','g'),">")
-              .replace(new RegExp('<img ','g'),"<img -webkit-filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);")
+              .replace(new RegExp('<img ','g'),"<img style=\”-webkit-filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);\” ")
 
               /*
               .replace(new RegExp('</h3><br>','g'),"</h3>")
