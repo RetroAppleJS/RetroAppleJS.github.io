@@ -63,7 +63,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 - [ ] Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
 - [ ] Main: better document assembler code located in asm_code_examples
-- [ ] : better compatibility with listings from different AppleII assemblers
-- [ ] : interactive Apple II+ keyboard
-- [ ] : save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
-- [x] : develop documentation tool to generate HTML from Markdown-formatted files
+- [ ] better compatibility with listings from different AppleII assemblers
+- [ ] interactive Apple II+ keyboard
+- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
+- [x] develop documentation tool to generate HTML from Markdown-formatted files
