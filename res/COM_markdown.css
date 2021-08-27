@@ -582,7 +582,6 @@
   overflow: auto;
 }
 
-
 .markdown_mon pre code {
   margin: 0;
   padding: 0;
@@ -601,8 +600,7 @@
 
 .markdown_mon pre {
   border: 1px solid #AFFFF6;
-  font-size: 11px;
-  line-height: 19px;
+  font-size: 12px;
   overflow: auto;
   padding: 6px 10px;
   border-radius: 3px;
