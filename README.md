@@ -2,9 +2,9 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser.
+This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser and run _AppleII_IDE.html_.
 
-The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation; issues associated with setting up a usable system is especially not the sort of old memories one may wish to recall.  Back in 1980, I was passionate about machine coding on the Apple II+, and this project is all about recreating the experience, enhanced with some contemporary features like copy-paste.
+The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation; issues associated with setting up a usable system is especially not the sort of old memories one may wish to recall.  Back in 1980, I was passionate about machine coding on the Apple II+, and this project is all about recreating the experience, pimped-up with some contemporary features (like copy-paste).
 
 So, enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described below.
 
@@ -38,7 +38,7 @@ The debugger is composed of 5 sections
 5) Memory map
 6) Help screen
 
-## Emulator
+### Emulator
 
 The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
 One can:
@@ -47,23 +47,24 @@ One can:
 
 ## User manuals
 
-[DEBUGGER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/DEBUGGER.md)
-
-[ASSEMBLER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ASSEMBLER.md)
-
-[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.MD)
-
-[6502.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/6502.md)
-
-[ZEROPAGE_APPLE2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
+[DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)  
+[ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)  
+[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md)  
+[6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)  
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
+[TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)  
 
 Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/tools/Docs_updater.html), into a JavaScript file included in the main application, called _\_GENERATED_DOCS.js_ located [here](https://github.com/flyingzebra/AppleII-IDE/tree/main/docs). In short, do not manually update this JavaScript file.
 
 ## Feature wish-list
 
-- Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
-- Main: better document assembler code located in asm_code_examples
-- Assembler: better compatibility with listings from different AppleII assemblers
-- Emulator: interactive Apple II+ keyboard
-- Emulator: save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
-- ~~Tools: develop documentation tool to generate HTML from Markdown-formatted files~~
+- [ ] Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
+- [ ] Main: better document assembler code located in asm_code_examples
+- [ ] better compatibility with listings from different AppleII assemblers
+- [ ] interactive Apple II+ keyboard
+- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
+- [x] develop documentation tool to generate HTML from Markdown-formatted files
+
+## Contribute
+
+This project is made of JavaScript, CSS, Markdown and 6502 assembler source code.  Contributions in any of these fields are welcome.
