@@ -73,5 +73,3 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 ## Contribute
 
 This project is made of JavaScript, CSS, Markdown and 6502 assembler source code.  Contributions in any of these fields are welcome.
-
-:+1:
