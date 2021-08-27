@@ -4,7 +4,7 @@ In the [tools folder](https://github.com/RetroAppleJS/AppleII-IDE/tree/main/tool
 
 ### DOCS_updater.html
 
-We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  Docs_updater.html was designed to read all the markdown documentation available online in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation inside the IDE.  The following diagram shows how clearly the steps:  Fetch Readme.me file from GitHub >> extract all \*.md file links located in /docs >> fetch all listed .md files >> convert each to HTML and append to JavaScript file >> preview >> download the output file >> overwite file in /docs.
+We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  Docs_updater.html was designed to read all the markdown documentation available online in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation inside the IDE.  The following diagram shows how clearly the steps:  Fetch Readme.me file from GitHub >> extract all \*.md file links located in /docs >> fetch all listed .md files >> convert each to HTML and append to JavaScript file >> preview >> download the output file >> overwite file in /docs folder.
 
     ┌──────────┐          ┌────┐ ┌───────────┐       ┌──────────────────┐
     │Readme.md │          │*.md│ │Showdown.js│       │ COM_markdown.css │
