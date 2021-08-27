@@ -17,4 +17,4 @@ In this project, we aim to have all the documentation available in markdown form
     └─────────────┘  │  └────────────────┘   │   └──────────────────┘     └────────────────────┘
                      │    loop until done    │
                      └───────────────────────┘
-:warning: mind that DOCS_updater.html does not get the latest markdown content updates instantateously, only 2-10 min after your last markdown edits, the updater will get the latest version. 
+:warning: mind that DOCS_updater.html only captures the latest version of the markdown files 2-10 min after the last edits.  This must be the time GitHub requires to update the raw files on the server.
