@@ -17,4 +17,4 @@ In this project, we aim to have all the documentation available in markdown form
     └─────────────┘  │  └────────────────┘   │   └──────────────────┘     └────────────────────┘
                      │    loop until done    │
                      └───────────────────────┘
-:warning: DOCS_updater.html does not catch the file updates instantateously, only 2-10 min after your last markdown edits, the updater will get the latest version. 
+:warning: DOCS_updater.html does not get markdown content updates instantateously, only 2-10 min after your last markdown edits, the updater will get the latest version. 
