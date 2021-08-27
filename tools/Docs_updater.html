@@ -13,9 +13,11 @@
 
   function GetHTTP(url,callback_function)
   {
+    // random value (workaround to avoid caching)
+    var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
     const xhttp = new XMLHttpRequest();
     xhttp.onload = callback_function;
-    xhttp.open("GET", url);
+    xhttp.open("GET", url+r);
     xhttp.send();
   }
 
