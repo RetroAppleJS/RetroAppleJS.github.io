@@ -47,15 +47,15 @@ One can:
 
 ## User manuals
 
-[DEBUGGER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/DEBUGGER.md)
+[DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)
 
-[ASSEMBLER.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ASSEMBLER.md)
+[ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)
 
 [EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.MD)
 
-[6502.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/6502.md)
+[6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)
 
-[ZEROPAGE_APPLE2PLUS.md](https://github.com/flyingzebra/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
 
 [TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)
 
