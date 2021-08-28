@@ -15,7 +15,7 @@
   //                                                     /res/appleIIplus_bck_650.png?raw=true
   // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
-  var js,last_el;
+  var js; //,last_el;
   var el_cnt = 0;
   var linkURL = "https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/";
   var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/";
@@ -30,15 +30,14 @@
     arr[0] = ""; //alert(arr.join("\n"));
     js = "var _DOCS = new Array();\n"
 
-    var lst = [];
+    //var lst = [];
     for(var i=1;i<arr.length;i++)
     {
       arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
       var url = rawURL + arr[i];
       GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
-      lst[lst.length] = arr[i];
+      //lst[lst.length] = arr[i];
     }
-    last_el = arr[i-1];
     el_cnt = i-1;
   }
 
