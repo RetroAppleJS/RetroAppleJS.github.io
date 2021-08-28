@@ -11,37 +11,31 @@
   GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
   function() { process_dir(this.responseText,this.responseURL) } )
 
-  function GetHTTP(url,callback_function)
-  {
-    // random value (workaround to avoid caching)
-    var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
-    const xhttp = new XMLHttpRequest();
-    xhttp.onload = callback_function;
-    xhttp.open("GET", url+r);
-    xhttp.send();
-  }
-
-  function Markdown2HTML(md)
-  {
-    var converter = new showdown.Converter();
-    converter.setFlavor("github");
-    return converter.makeHtml(md);
-  }
-
-  function HTML2Markdown(html)
-  {
-    var converter = new showdown.Converter();
-    converter.setFlavor("github");
-    return converter.makeMarkdown(html);
-  }
 
   //                                                     /res/appleIIplus_bck_650.png?raw=true
   // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
+  function process_dir(txt,url)
+  {
+    //document.write("<textarea>"+txt+"</textarea>")
+    var linkURL = "https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/";
+    var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/";
+    var arr = txt.split(linkURL);
+
+    arr[0] = ""; //alert(arr.join("\n"));
+    var lst = [];
+    document.getElementById("dest").innerHTML += "var _DOCS = new Array();\n"
+    for(var i=1;i<arr.length;i++)
+    {
+      arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
+      var url = rawURL + arr[i];
+      GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
+      lst[lst.length] = arr[i];
+    }
+  }
+
   function process(txt,url)
   {
-    //var converter = new showdown.Converter();
-    //converter.setFlavor("github");
     filename = url.substring(url.lastIndexOf("/")+1,url.length);
 
     //////////////////// MAKE HTML  //////////////////
@@ -54,7 +48,7 @@
     //////////////////// MAKE MARKDOWN //////////////////
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
-    var js = "DOCS_"+filename.replace(new RegExp('.md','g'),"")
+    var js = "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"
       +' = "'+(html.replace(new RegExp('\"','g'),'\\"')
                   .replace(new RegExp('\n','g'),"<br>\"\n+\"")
               +"<br>"+"\"\n\n")
@@ -71,25 +65,30 @@
     //download('DOCS.js',decodeURIComponent(js));
   }
 
-  function process_dir(txt,url)
-  {
-    //document.write("<textarea>"+txt+"</textarea>")
-    var linkURL = "https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/";
-    var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/";
-    var arr = txt.split(linkURL);
+  function toMD(txt,url) { document.getElementById("dest").innerHTML   = HTML2Markdown(txt) }
 
-    arr[0] = ""; //alert(arr.join("\n"));
-    for(var i=1;i<arr.length;i++)
-    {
-      arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
-      var url = rawURL + arr[i]
-      GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
-    }
+  function Markdown2HTML(md)
+  {
+    var converter = new showdown.Converter();
+    converter.setFlavor("github");
+    return converter.makeHtml(md);
   }
 
-  function toMD(txt,url)
+  function HTML2Markdown(html)
   {
-    document.getElementById("dest").innerHTML   = HTML2Markdown(txt);
+    var converter = new showdown.Converter();
+    converter.setFlavor("github");
+    return converter.makeMarkdown(html);
+  }
+
+  function GetHTTP(url,callback_function)
+  {
+    // random value (workaround to avoid caching)
+    var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = callback_function;
+    xhttp.open("GET", url+r);
+    xhttp.send();
   }
 
   function download(filename, text)
@@ -106,7 +105,7 @@
   
 </script>
 
-<table>
+<table hidden>
 <tr>
   <td><textarea id=src style="width:600px;height:180px"></textarea></td>
   <td>>></td>
@@ -119,6 +118,7 @@
 </tr>
 </table>
 <textarea id=dest style="width:1200px;height:180px"></textarea>
+<div id=dest_html style="width:1200px;height:180px;overflow:scroll;border: 1px solid black;font-size: 13px;"></div>
 
 <button onclick="download('_GENERATED_DOCS.js',document.getElementById('dest').innerHTML)">Download</button>
 
