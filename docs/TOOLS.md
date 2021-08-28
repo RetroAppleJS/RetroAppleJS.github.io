@@ -20,3 +20,13 @@ Fetch Readme.me file from GitHub :arrow_right: extract all \*.md file links loca
                       │    loop until done       │
                       └──────────────────────────┘</div>
 :warning: mind that DOCS_updater.html only captures the latest version of the markdown files 2-10 min after the last edits.  This must be the time GitHub requires to update the raw files on the server.
+
+### Monitor_palette.html
+
+Color graphics never really impressed on the Apple II, even if owners of a razor-sharp monochrome green or amber monitor often longed to see some color, noone at the time would exchange a color for a genuine crisp monochrome monitor.
+The emulator's display however offers an easy switching capability to render in color, black&white, green and amber as some graphics really look nicer in color or monochrome.
+This tool was made to test and assure the best image rendering approximation with these respective monitors.
+It produces a Javascript snippet that seamlessly maps the colors.
+
+
+
