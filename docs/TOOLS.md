@@ -20,7 +20,7 @@ Fetch Readme.me file from GitHub :arrow_right: extract all \*.md file links loca
                       │    loop until done       │
                       └──────────────────────────┘
     <code></div></code>
-/<ins>!</ins>\ mind that DOCS_updater.html only captures the latest version of the markdown files 2-10 min after the last edits.  This must be the time GitHub requires to update the raw files on the server.
+/<ins> ! </ins>\ mind that DOCS_updater.html only captures the latest version of the markdown files 2-10 min after the last edits.  This must be the time GitHub requires to update the raw files on the server.
 
 ### Monitor_palette.html
 
