@@ -238,7 +238,7 @@ Label1 TXA
                   <i class="fa fa-arrow-circle-up"></i> to debugger</button>
               <button onclick="javascript:onToolBox('SrcTools')"><i class="fa fa-wrench"></i> tools & config</button>
 
-              <button onclick="onhelp(DOCS_ASSEMBLER ,document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
+              <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
               <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
 
               
@@ -571,7 +571,7 @@ Label1 TXA
     		<td>
     			<button onclick="javascript:onToolBox('DbgTools')"><i class="fa fa-wrench">
             </i> tools & config</button>
-            <button onclick="onhelp(DOCS_DEBUGGER,document.getElementById('debugfield'));">
+            <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
     			<!--button onclick="onhelp(DbgHelp(),document.getElementById('debugfield'));"-->
   
             <i class="fa fa-book"></i> help</!--button>
@@ -584,7 +584,7 @@ Label1 TXA
     				<input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
             <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
             <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
-            <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(DOCS_ZEROPAGE_APPLE2PLUS,document.getElementById('debugfield'))">
+            <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS,document.getElementById('debugfield'))">
             <input type="button" value="memory MAP" class="isButton" onclick="RAM_checksum()">
     				<iframe name="c64loader" border="0" framespacing="0" marginwidth="0" marginheight="0" width="0" height="0" frameborder="0"></iframe>
     				<input type="button" value="&nbsp;show memory&nbsp;" class="isButton" onclick="showMem()">
@@ -615,7 +615,7 @@ Label1 TXA
       <tr>
       <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
         <div style="height:90px"></div>
-        <div contenteditable="true" class=markdown_mon><script>document.write(DOCS_6502)</script></div>
+        <div contenteditable="true" class=markdown_mon><script>document.write(_DOCS['6502'])</script></div>
         <div style="height:180px"></div>
       </td>
     </tr>
