@@ -16,6 +16,7 @@
   // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
   var js,last_el;
+  var el_cnt = 0;
   var linkURL = "https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/";
   var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/";
   var resURL = "https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/"
@@ -38,6 +39,7 @@
       lst[lst.length] = arr[i];
     }
     last_el = arr[i-1];
+    el_cnt = i-1;
   }
 
   function process(txt,url)
@@ -67,9 +69,10 @@
               .replace(new RegExp('><br>','g'),">")
               //.replace(new RegExp('<img ','g'),
               //"<img style=\\\"-webkit-filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);\\\" ");
-     
+    el_cnt--;
+
     //js += "\nalert(typeof(_DOCS))\n";
-    if(filename==last_el) 
+    if(el_cnt==0)
     {
         js = js.replace(new RegExp("res/","g"),resURL)
         document.getElementById("dest").innerHTML = js;
@@ -80,9 +83,9 @@
         var s = "";
         for(var i in _DOCS)
         {
-          s += 
+          s +=
           '<br><hr id=_DOCS_'+(c)+'><big><a href="#_DOCS_'+(c+1)+'">NEXT</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#_DOCS_0">TOP</a></big><hr>\n'
-          +_DOCS[i]  
+          +_DOCS[i]
           c++;
         }
         document.getElementById('dest_html').innerHTML = s
@@ -128,7 +131,7 @@
     document.body.removeChild(element);
   }
 
-  
+
 </script>
 
 <table hidden>
@@ -155,7 +158,7 @@
   </td>
   <td style="background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;vertical-align:top">
     <div contenteditable="true" class=markdown id=dest_html2></div>
-  </td>  
+  </td>
 </tr>
 </table>
 </body>
