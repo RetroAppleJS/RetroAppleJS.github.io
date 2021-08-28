@@ -71,20 +71,22 @@
     //js += "\nalert(typeof(_DOCS))\n";
     if(filename==last_el) 
     {
-      js = js.replace(new RegExp("res/","g"),resURL)
+        js = js.replace(new RegExp("res/","g"),resURL)
         document.getElementById("dest").innerHTML = js;
+
         //js += "for(var i in _DOCS) {document.getElementById('dest_html').innerHTML += _DOCS[i]+'<br><hr><a href=>NEXT</a><hr><br>'}"
         eval(js);
-       
-
         var c = 0;
+        var s = "";
         for(var i in _DOCS)
         {
-          document.getElementById('dest_html').innerHTML += 
+          s += 
           '<br><hr id=_DOCS_'+(c)+'><big><a href="#_DOCS_'+(c+1)+'">NEXT</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#_DOCS_0">TOP</a></big><hr>\n'
           +_DOCS[i]  
           c++;
         }
+        document.getElementById('dest_html').innerHTML = s
+        document.getElementById('dest_html2').innerHTML = s
     }
     //download('DOCS.js',decodeURIComponent(js));
   }
@@ -143,7 +145,20 @@
 </table>
 <textarea id=dest style="width:1200px;height:180px"></textarea>
 <br>
-<div id=dest_html class=markdown_mon style="width:1200px;height:360px;overflow:scroll;border: 1px solid black;background-color:black"></div>
+<table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+  <tr>
+  <td style="background-image:url('../res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;vertical-align:top">
+    <div style="height:90px"></div>
+    <div contenteditable="true" class=markdown_mon id=dest_html></div>
+    <div style="height:180px"></div>
+  </td>
+  <td style="background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;vertical-align:top">
+    <div style="height:90px"></div>
+    <div contenteditable="true" class=markdown id=dest_html2></div>
+    <div style="height:180px"></div>
+  </td>  
+</tr>
+</table>
 <button onclick="download('_GENERATED_DOCS.js',document.getElementById('dest').innerHTML)">Download</button>
 
 </body>
