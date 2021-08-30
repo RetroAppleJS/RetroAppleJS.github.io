@@ -34,7 +34,9 @@ We aim to have all the documentation available in markdown format, for easy onli
 Color graphics never really impressed on the Apple II, even if owners of a razor-sharp monochrome green or amber monitor often longed to see some color, noone at the time would exchange a color for a genuine crisp monochrome monitor.
 The emulator's display however offers an easy switching capability to render in color, black&white, green and amber as some graphics really look nicer in color or monochrome.
 This tool was made to test and assure the best image rendering approximation with these respective monitors.
-It produces a Javascript snippet that seamlessly maps the colors.
+It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.
 
+### Tab_ctrl_vx.html
 
+TODO
 
