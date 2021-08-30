@@ -6,7 +6,8 @@ In the [tools folder](https://github.com/RetroAppleJS/AppleII-IDE/tree/main/tool
 
 We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  Docs_updater.html was designed to read all the markdown documentation available online in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation inside the IDE.  The following diagram shows how clearly the steps:  
 * Fetch Readme.me file from GitHub
-* extract all \*.md file links located in /docs :arrow_right: fetch all listed .md files
+* extract all \*.md file links located in /docs
+* fetch all listed .md files
 * convert each to HTML and append to JavaScript file
 * preview
 * download the JavaScript file
@@ -31,10 +32,22 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ### Monitor_palette.html
 
-Color graphics never really impressed on the Apple II, even if owners of a razor-sharp monochrome green or amber monitor often longed to see some color, noone at the time would exchange a color for a genuine crisp monochrome monitor.
-The emulator's display however offers an easy switching capability to render in color, black&white, green and amber as some graphics really look nicer in color or monochrome.
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/palette.png" width=30% align=left />Color graphics on the Apple II never really impressed, as it could render only 4 distinct colors in high-resolution (green, orange, violet, blue).   Surely, owners of monochrome green or amber monitors sometimes longed for some color, but none at the time saw any advantage in using an expensive color monitor or a blurry and color-bleeding TV against the razor-sharp image produced by a genuine monochrome apple monitor.  
+
+The emulator's display offers an easy switching capability to render color, black&white, green and amber as some graphics really look nicer in color or monochrome.  e.g. fonts rendered on a hires screen produce very disturbing color fringing, which make the letters unreadable in color mode; any monochrome setting is more appropriate in this case. 
+
 This tool was made to test and assure the best image rendering approximation with these respective monitors.
-It produces a Javascript snippet that seamlessly maps the colors.
+It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_apple2video.js](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/res/EMU_apple2video.js).
 
+### Tab_ctrl_v*.html
 
+This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier.  e.g. www.example.com/index.html#tab1
+Subsequent versions of this tab control show increasingly interesting capabilities and design options.
+
+|         | pop-out<br>menu | sub-<br>menu | anima-<br>tion |
+|:-------:|:------------:|:---------:|:-------------:|
+| v0      | -            | -         | -            |
+| v1      | YES          | -         | -            |
+| v2      | YES          | YES       | -            |
+| v3      | -            |           | YES          |
 

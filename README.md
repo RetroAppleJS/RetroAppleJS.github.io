@@ -2,7 +2,7 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is a browser and run _AppleII_IDE.html_.
+This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is to run _AppleII_IDE.html_ in any browser.
 
 The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation; issues associated with setting up a usable system is especially not the sort of old memories one may wish to recall.  Back in 1980, I was passionate about machine coding on the Apple II+, and this project is all about recreating the experience, pimped-up with some contemporary features (like copy-paste).
 
@@ -58,13 +58,18 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [ ] Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
-- [ ] Main: better document assembler code located in asm_code_examples
-- [ ] better compatibility with listings from different AppleII assemblers
-- [ ] interactive Apple II+ keyboard
-- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
+- [ ] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
+- [ ] better document assembler code located in asm_code_examples
+- [ ] better compatibility with listings from different Apple II assemblers (no complicated macro commands or virtual mnemonics)
+- [ ] interactive Apple II+ pop-up keyboard
+- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
+- [ ] apple sound, including diskdrive noise
+- [ ] paddle/mouse capture
+- [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
+- [ ] real-time camera capture tool (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
+- [ ] macro script runner (emulating keyboard & paddle control)
 
 ## Contribute
 
-This project is made of JavaScript, CSS, Markdown and 6502 assembler source code.  Contributions in any of these fields are welcome.
+This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome.
