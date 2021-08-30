@@ -61,7 +61,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] Main: better top-menu tabbing function (using href hashes, enabling module stickiness or direct URL to module)
 - [ ] Main: better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different AppleII assemblers
-- [ ] interactive Apple II+ keyboard
+- [ ] interactive Apple II+ pop-up keyboard
 - [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
 - [ ] apple sound, including diskdrive noise
@@ -72,4 +72,4 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Contribute
 
-This project is made of JavaScript, CSS, Markdown and 6502 assembler source code.  Contributions in any of these fields are welcome.
+This project is build with JavaScript, CSS, Markdown and 6502 assembler source code.  Contributions in any of these fields are welcome.
