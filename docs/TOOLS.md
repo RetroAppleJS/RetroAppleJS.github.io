@@ -32,7 +32,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ### Monitor_palette.html
 
-<img src="/res/palette.png.png?raw=true" width=40% align="left" />Color graphics on the Apple II never really impressed, as it could render only 4 distinct colors (green, orange, violet, blue).   Surely, owners of monochrome green or amber monitors sometimes longed for some color, but none at the time saw any advantage in using an expensive color monitor or a blurry and color-bleeding TV against the razor-sharp image produced by a genuine monochrome apple monitor.  
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/palette.png" width=30% align=left />Color graphics on the Apple II never really impressed, as it could render only 4 distinct colors (green, orange, violet, blue).   Surely, owners of monochrome green or amber monitors sometimes longed for some color, but none at the time saw any advantage in using an expensive color monitor or a blurry and color-bleeding TV against the razor-sharp image produced by a genuine monochrome apple monitor.  
 
 The emulator's display offers an easy switching capability to render color, black&white, green and amber as some graphics really look nicer in color or monochrome.  e.g. fonts rendered on a hires screen produce very disturbing color fringing, which make the letters unreadable in color mode; any monochrome setting is more appropriate in this case. 
 
