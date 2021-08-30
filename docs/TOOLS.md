@@ -39,7 +39,7 @@ It produces a Javascript snippet that seamlessly maps the Apple II colors to the
 
 ### Tab_ctrl_vx.html
 
-This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier, also called hash links.  Subsequent versions of this tab control show increasingly complex capabilities and design options.
+This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier, also called hash links.  Subsequent versions of this tab control show increasingly interesting capabilities and design options.
 
 |         | pop-out<br>menu | sub-<br>menu | anima-<br>tion |
 |---------|--------------|-----------|---------------|
