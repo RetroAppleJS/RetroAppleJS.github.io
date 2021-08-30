@@ -38,5 +38,12 @@ It produces a Javascript snippet that seamlessly maps the Apple II colors to the
 
 ### Tab_ctrl_vx.html
 
-TODO
+This is a fully client-side tab controller that remembers the last clicked tab after a page reload.  Subsequent versions of this tab control show increasingly complex capabilities and design options.
+
+| version | pop-out menu | animation | sub-functions |
+|---------|--------------|-----------|---------------|
+| v0      | NO           | NO        | NO            |
+| v1      | YES          | NO        | NO            |
+| v2      | YES          | NO        | YES           |
+| v3      | NO           | YES       | NO            |
 
