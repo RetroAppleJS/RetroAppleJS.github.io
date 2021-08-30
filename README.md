@@ -65,9 +65,10 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
 - [ ] apple sound, including diskdrive noise
-- [ ] a lo-res graphics conversion tool
-- [ ] a hi-res graphics conversion tool (including dithering and color optimization algorithms)
-- [ ] a video camera capture tool
+- [ ] paddle/mouse capture
+- [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
+- [ ] video camera capture tool
+- [ ] macro script runner (emulating keyboard & paddle control)
 
 ## Contribute
 
