@@ -45,7 +45,7 @@ This is a fully client-side tab controller that remembers the last clicked tab a
 Subsequent versions of this tab control show increasingly interesting capabilities and design options.
 
 |         | pop-out<br>menu | sub-<br>menu | anima-<br>tion |
-|---------|--------------|-----------|---------------|
+|:-------:|:------------:|:---------:|:-------------:|
 | v0      | -            | -         | -            |
 | v1      | YES          | -         | -            |
 | v2      | YES          | YES       | -            |
