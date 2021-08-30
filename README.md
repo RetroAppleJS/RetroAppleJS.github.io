@@ -60,7 +60,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 - [ ] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
 - [ ] better document assembler code located in asm_code_examples
-- [ ] better compatibility with listings from different Apple II assemblers (no complicated macro shortcuts or virtual mnemonics)
+- [ ] better compatibility with listings from different Apple II assemblers (no complicated macro commands or virtual mnemonics)
 - [ ] interactive Apple II+ pop-up keyboard
 - [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
