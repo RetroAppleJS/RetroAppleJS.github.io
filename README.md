@@ -64,6 +64,9 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] interactive Apple II+ keyboard
 - [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
+- [ ] a lo-res graphics conversion tool
+- [ ] a hi-res graphics conversion tool (including dithering and color optimization algorithms)
+- [ ] a video camera capture tool
 
 ## Contribute
 
