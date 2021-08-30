@@ -62,7 +62,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] Main: better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different AppleII assemblers
 - [ ] interactive Apple II+ keyboard
-- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks
+- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
 - [ ] apple sound, including diskdrive noise
 - [ ] a lo-res graphics conversion tool
