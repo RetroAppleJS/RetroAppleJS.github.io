@@ -72,4 +72,4 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Contribute
 
-This project is build with JavaScript, CSS, Markdown and 6502 assembler source code.  Contributions in any of these fields are welcome.
+This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome.
