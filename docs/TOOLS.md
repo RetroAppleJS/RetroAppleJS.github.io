@@ -37,7 +37,7 @@ The emulator's display however offers an easy switching capability to render in 
 This tool was made to test and assure the best image rendering approximation with these respective monitors.
 It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_apple2video.js](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/res/EMU_apple2video.js)
 
-### Tab_ctrl_vx.html
+### Tab_ctrl_v*.html
 
 This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier.  e.g. www.example.com/index.html#tab1
 Subsequent versions of this tab control show increasingly interesting capabilities and design options.
