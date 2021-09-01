@@ -13,14 +13,23 @@
             if( typeof(_o.tools[target.id])=="undefined" )
               _o.tools[target.id] = {"toggle":false,"cache":""}
 
-            _o.tools[target.id].toggle = !_o.tools[target.id].toggle
-            if(_o.tools[target.id].toggle)
+            var t = target.tagName;
+            switch(target.tagName.toUpperCase())
             {
-              _o.tools[target.id].cache = target.innerHTML;
-              target.innerHTML = txt;
+              case "DIV":
+                _o.tools[target.id].toggle = !_o.tools[target.id].toggle
+                if(_o.tools[target.id].toggle)
+                {
+                  _o.tools[target.id].cache = target.innerHTML;
+                  target.innerHTML = txt;
+                }
+                else
+                  target.innerHTML = _o.tools[target.id].cache;
+              break;
+              case "TEXTAREA":
+                target.innerHTML = txt;
+              break;
             }
-            else
-              target.innerHTML = _o.tools[target.id].cache;
         }
 </script>
 <style type="text/css">
@@ -196,7 +205,7 @@
         <br>
         <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1">
         <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
-        
+
 
       <!--   EMULATOR  -->
     </div>
@@ -231,7 +240,7 @@ Label1 TXA
                 document.getElementById('tab2').checked=false;
               }
               </script>
-              <button onclick="assemble();document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')"><i class="fa fa-cogs"></i> generate</button>
+              <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> generate</button>
               <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();document.getElementById('tab1').checked=true;document.getElementById('tab2').checked=false;">
                 <i class="fa fa-arrow-circle-up"></i> to emulator</button>
                 <button onclick="to_debugger()">
@@ -241,7 +250,7 @@ Label1 TXA
               <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
               <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
 
-              
+
 
               <button onclick="assemble_step();"><i class="fa fa-road"></i> trace</button>
 
@@ -260,7 +269,7 @@ Label1 TXA
           <tr>
             <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
               <div style="height:90px"></div>
-              <div id="codefield" contenteditable="true" class=markdown_mon></div>
+              <div name="codefield" id="codefield" class="markdown_mon" style="background-color: transparent; border-color: transparent; resize: none;"></div>
               <div style="height:180px"></div>
             </td>
           </tr>
@@ -573,7 +582,7 @@ Label1 TXA
             </i> tools & config</button>
             <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
     			<!--button onclick="onhelp(DbgHelp(),document.getElementById('debugfield'));"-->
-  
+
             <i class="fa fa-book"></i> help</!--button>
     			<div id="DbgTools" hidden="">
     				<input type="button" value="continous run" class="isButton" onclick="run()">
@@ -598,10 +607,10 @@ Label1 TXA
     		<td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
     			<div style="height:90px">
     			</div>
-    			<div id="debugfield" contenteditable="true" class=markdown_mon
+    			<div id="debugfield" contenteditable="true" class="markdown_mon"
     				style="width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
-    			</div>
-    			<!--textarea name="debugfield" hidden=""></textarea-->
+    			<div>
+    			<!--textarea name="debugfield" hidden=""></!--textarea-->
     			<div style="height:180px">
     			</div>
     			</div>
@@ -611,16 +620,17 @@ Label1 TXA
       <!-- DEBUGGER -->
     </div>
     <div class="tab4">
+       <!-- DOCUMENTATION -->
       <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
       <tr>
       <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
         <div style="height:90px"></div>
-        <div contenteditable="true" class=markdown_mon><script>document.write(_DOCS['6502'])</script></div>
+        <div contenteditable="true" class="markdown_mon"><script>document.write(_DOCS['6502'])</script></div>
         <div style="height:180px"></div>
       </td>
     </tr>
     </table>
-
+      <!-- DOCUMENTATION -->
 
 
       <!-- 6502 REFERENCE -->
