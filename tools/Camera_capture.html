@@ -40,6 +40,8 @@ function init_gui(_o)
   function Apple2Plus(context) {
     var video = new Apple2Video(context);
     var hw = new Apple2Hw(video);
+    for(var i=8192;i<16384;i++)
+      hw.write(i,0);
 
     video.reset();
     video.setGfx(true);
