@@ -189,13 +189,18 @@ function assemble()
 	code_pc = new Array();
 	symtab = {};
 	asm.symlink = {};
+	var crlf = "<br>"
+
 	listing = document.forms.ass.listing;
 	var showADR = document.ass.showADR.checked;
 	var showDBG = {"RAM":document.ass.showDBG_RAM.checked == true,"ROM":document.ass.showDBG_ROM.checked == true}
 
-	var codefield = document.forms.ass.codefield;
+
+	//var codefield = document.forms.ass.codefield;
+	var codefield = document.getElementById('codefield');
+
 	getSrc(document.forms.ass.srcfield);
-	codefield.value = ' \n';
+	codefield.innerHTML = ' '+crlf;
 	//listing.value = 'starting assembly\npass 1\n';
 	var pass1 = false;
 	var pass2 = false;
@@ -222,14 +227,14 @@ function assemble()
 				if (new_pc > 0) pc = new_pc + code.length - i - 1
 				if (((n > 0) && (n % 8 == 0)) || new_pc > 0)
 				{
-					c += (i == 0 ? '' : '\n')
+					c += (i == 0 ? '' : crlf)
 					+ (showADR == 1 && (code.length - i - 1) >= 0 ? (getHexWord(pc - code.length + i + 1) + ': ') : '');
 					n = 0;
 				}
 				c += getHexByte(code[i]) + ' ';
 				n++;
 			}
-			codefield.value = c;
+			codefield.innerHTML = c;
 			listing.value += '\ndone.';
 		}
 	}
