@@ -161,15 +161,17 @@ function assemble_step()
 {
 	listing = document.forms.ass.listing;
 	var showADR = document.ass.showADR.checked;
-	var codefield = document.forms.ass.codefield;
+	var codefield = document.getElementById('codefield');
+	//var codefield = document.forms.ass.codefield;
 	getSrc(document.forms.ass.srcfield); // Slice ASM lines -> codesrc (array)
+	var crlf = "<br>"
 
 	if (asm.pass == 0 && asm.step == 0)
 	{
 		asm.symtab = {};
 		asm.symlink = {};
 		asm.symlink_l = 0;
-		codefield.value = ' \n';
+		codefield.innerHTML = ' '+crlf;
 		listing.value = '' //'starting assembly\npass 1\n';
 
 		asm.code = [];
