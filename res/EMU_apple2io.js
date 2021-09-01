@@ -59,7 +59,10 @@ function Apple2IO(vid) {
 
     var video = vid;
     var key = 0x00;
-    this.disk2 = new AppleDisk2();
+    try
+    {
+        this.disk2 = new AppleDisk2();
+    } catch(e) { console.log(e) }
 
     this.reset = function() {
         key = 0x00;
