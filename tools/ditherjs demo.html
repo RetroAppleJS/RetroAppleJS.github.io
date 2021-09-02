@@ -134,8 +134,10 @@ function HEX2RGB(hex)
                 "step": 3,
                 "className": "dither",
                 "palette": palette1,
-                //"algorithm": "errorDiffusion"
-                "algorithm": "ordered"
+                "algorithm": "errorDiffusion",
+                "ratio":1/20
+                //"algorithm": "ordered",
+                //"ratio":5
             };
 
             var el = document.querySelectorAll(".dither");

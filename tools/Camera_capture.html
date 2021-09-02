@@ -35,9 +35,65 @@ function init_gui(_o)
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
+  
+  var YVERTL = "HEX 0000000000000000 ;L57"
+        +"HEX 8080808080808080 ;L58"
+        +"HEX 0000000000000000 ;L59"
+        +"HEX 8080808080808080 ;L60"
+        +"HEX 0000000000000000 ;L61"
+        +"HEX 8080808080808080 ;L62"
+        +"HEX 0000000000000000 ;L63"
+        +"HEX 8080808080808080 ;L64"
+        +"HEX 2828282828282828 ;L65"
+        +"HEX A8A8A8A8A8A8A8A8 ;L66"
+        +"HEX 2828282828282828 ;L67"
+        +"HEX A8A8A8A8A8A8A8A8 ;L68"
+        +"HEX 2828282828282828 ;L69"
+        +"HEX A8A8A8A8A8A8A8A8 ;L70"
+        +"HEX 2828282828282828 ;L71"
+        +"HEX A8A8A8A8A8A8A8A8 ;L72"
+        +"HEX 5050505050505050 ;L73"
+        +"HEX D0D0D0D0D0D0D0D0 ;L74"
+        +"HEX 5050505050505050 ;L75"
+        +"HEX D0D0D0D0D0D0D0D0 ;L76"
+        +"HEX 5050505050505050 ;L77"
+        +"HEX D0D0D0D0D0D0D0D0 ;L78"
+        +"HEX 5050505050505050 ;L79"
+        +"HEX D0D0D0D0D0D0D0D0 ;L80"
+
+var YVERTH  = "HEX 2024282C3034383C ;L82"
+        +"HEX 2024282C3034383C ;L83"
+        +"HEX 2125292D3135393D ;L84"
+        +"HEX 2125292D3135393D ;L85"
+        +"HEX 22262A2E32363A3E ;L86"
+        +"HEX 22262A2E32363A3E ;L87"
+        +"HEX 23272B2F33373B3F ;L88"
+        +"HEX 23272B2F33373B3F ;L89"
+        +"HEX 2024282C3034383C ;L90"
+        +"HEX 2024282C3034383C ;L91"
+        +"HEX 2125292D3135393D ;L92"
+        +"HEX 2125292D3135393D ;L93"
+        +"HEX 22262A2E32363A3E ;L94"
+        +"HEX 22262A2E32363A3E ;L95"
+        +"HEX 23272B2F33373B3F ;L96"
+        +"HEX 23272B2F33373B3F ;L97"
+        +"HEX 2024282C3034383C ;L98"
+        +"HEX 2024282C3034383C ;L99"
+        +"HEX 2125292D3135393D ;L100"
+        +"HEX 2125292D3135393D ;L101"
+        +"HEX 22262A2E32363A3E ;L102"
+        +"HEX 22262A2E32363A3E ;L103"
+        +"HEX 23272B2F33373B3F ;L104"
+        +"HEX 23272B2F33373B3F ;L105"
+
 
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
+
+  // draw color palette
+  
+  // draw dithering patterns 
+
 
     //apple2plus.hw.write(8192,5);  
     //apple2plus.hw.write(8194,1);  

@@ -128,7 +128,7 @@ var DitherJS = function DitherJS(selector,opt) {
             // Step
             var step = self.opt.step;
             // Ratio >=1
-            var ratio = 3;
+            var ratio = self.opt.ratio?self.opt.ratio:3;
             // Threshold Matrix
             var m = new Array(
                 [  1,  9,  3, 11 ],
@@ -193,7 +193,7 @@ var DitherJS = function DitherJS(selector,opt) {
             // Step
             var step = self.opt.step;
             // Ratio >=1
-            var ratio = 1/16;
+            var ratio = self.opt.ratio?self.opt.ratio:1/16;
             // Threshold Matrix
             var m = new Array(
                 [  1,  9,  3, 11 ],
