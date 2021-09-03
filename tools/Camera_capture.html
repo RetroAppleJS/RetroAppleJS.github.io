@@ -61,30 +61,30 @@ function init_gui(_o)
               +"5050505050505050"
               +"D0D0D0D0D0D0D0D0"
 
-var YVERTH  ="2024282C3034383C"
-            +"2024282C3034383C"
-            +"2125292D3135393D"
-            +"2125292D3135393D"
-            +"22262A2E32363A3E"
-            +"22262A2E32363A3E"
-            +"23272B2F33373B3F"
-            +"23272B2F33373B3F"
-            +"2024282C3034383C"
-            +"2024282C3034383C"
-            +"2125292D3135393D"
-            +"2125292D3135393D"
-            +"22262A2E32363A3E"
-            +"22262A2E32363A3E"
-            +"23272B2F33373B3F"
-            +"23272B2F33373B3F"
-            +"2024282C3034383C"
-            +"2024282C3034383C"
-            +"2125292D3135393D"
-            +"2125292D3135393D"
-            +"22262A2E32363A3E"
-            +"22262A2E32363A3E"
-            +"23272B2F33373B3F"
-            +"23272B2F33373B3F"
+  var YVERTH  ="2024282C3034383C"
+              +"2024282C3034383C"
+              +"2125292D3135393D"
+              +"2125292D3135393D"
+              +"22262A2E32363A3E"
+              +"22262A2E32363A3E"
+              +"23272B2F33373B3F"
+              +"23272B2F33373B3F"
+              +"2024282C3034383C"
+              +"2024282C3034383C"
+              +"2125292D3135393D"
+              +"2125292D3135393D"
+              +"22262A2E32363A3E"
+              +"22262A2E32363A3E"
+              +"23272B2F33373B3F"
+              +"23272B2F33373B3F"
+              +"2024282C3034383C"
+              +"2024282C3034383C"
+              +"2125292D3135393D"
+              +"2125292D3135393D"
+              +"22262A2E32363A3E"
+              +"22262A2E32363A3E"
+              +"23272B2F33373B3F"
+              +"23272B2F33373B3F"
 
   var yref = new Array();
   for(var i=0;i<YVERTL.length;i+=2)
@@ -176,42 +176,48 @@ var YVERTH  ="2024282C3034383C"
   }
   */
 
-var s = "";
-for(var p=0;p<8;p++)
-{
-  s+= loresCols_names[pattern(p,x,y)[0]]+"<br>"
-	s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
-	for(var y=0;y<24;y++)
-	{
-		s+="<tr>"
-   		for(var x=23;x>=0;x--)
-	   	{
-				c = pattern(p,x,y)[1]
-				pix = c?"background-color:#000000":"background-color:#FFFFFF"
-				s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
-   		}
-		s+="</tr>"
-	}
-	s+="</table><br>"
-}  
-document.getElementById("debug").innerHTML += s
-//document.write(s)
+  var s = "";
+  for(var p=0;p<8;p++)
+  {
+    s+= loresCols_names[pattern(p,x,y)[0]]+"<br>"
+    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
+    for(var y=0;y<24;y++)
+    {
+      s+="<tr>"
+        for(var x=23;x>=0;x--)
+        {
+          c = pattern(p,x,y)[1]
+          pix = c?"background-color:#000000":"background-color:#FFFFFF"
+          s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
+        }
+      s+="</tr>"
+    }
+    s+="</table><br>"
+  }  
+  document.getElementById("debug").innerHTML += s
+  //document.write(s)
 
-function isCol(x,y)
-{ return x%8==0 ? "red":"white" }
-  
-function PRINTByte(by)
-{
-  var sa = ("0000000"+by.toString(2)).slice(-8).split("");
-  //sa = sa.reverse();
-  var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
-  return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
+  function isCol(x,y)
+  { return x%8==0 ? "red":"white" }
+    
+  function PRINTByte(by)
+  {
+    var sa = ("0000000"+by.toString(2)).slice(-8).split("");
+    //sa = sa.reverse();
+    var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
+    return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
+  }
+
+    // draw dithering patterns 
+    // apple2plus.hw.write(8192,5);  
+    // apple2plus.hw.write(8194,1);  
 }
 
-  // draw dithering patterns 
-  // apple2plus.hw.write(8192,5);  
-  // apple2plus.hw.write(8194,1);  
-}
+
+
+
+
+
 
 function Apple2Plus(context)
 {
