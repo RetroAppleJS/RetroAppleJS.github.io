@@ -36,62 +36,170 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
   
-  var YVERTL = "HEX 0000000000000000 ;L57"
-        +"HEX 8080808080808080 ;L58"
-        +"HEX 0000000000000000 ;L59"
-        +"HEX 8080808080808080 ;L60"
-        +"HEX 0000000000000000 ;L61"
-        +"HEX 8080808080808080 ;L62"
-        +"HEX 0000000000000000 ;L63"
-        +"HEX 8080808080808080 ;L64"
-        +"HEX 2828282828282828 ;L65"
-        +"HEX A8A8A8A8A8A8A8A8 ;L66"
-        +"HEX 2828282828282828 ;L67"
-        +"HEX A8A8A8A8A8A8A8A8 ;L68"
-        +"HEX 2828282828282828 ;L69"
-        +"HEX A8A8A8A8A8A8A8A8 ;L70"
-        +"HEX 2828282828282828 ;L71"
-        +"HEX A8A8A8A8A8A8A8A8 ;L72"
-        +"HEX 5050505050505050 ;L73"
-        +"HEX D0D0D0D0D0D0D0D0 ;L74"
-        +"HEX 5050505050505050 ;L75"
-        +"HEX D0D0D0D0D0D0D0D0 ;L76"
-        +"HEX 5050505050505050 ;L77"
-        +"HEX D0D0D0D0D0D0D0D0 ;L78"
-        +"HEX 5050505050505050 ;L79"
-        +"HEX D0D0D0D0D0D0D0D0 ;L80"
+  var YVERTL = "0000000000000000"
+              +"8080808080808080"
+              +"0000000000000000"
+              +"8080808080808080"
+              +"0000000000000000"
+              +"8080808080808080"
+              +"0000000000000000"
+              +"8080808080808080"
+              +"2828282828282828"
+              +"A8A8A8A8A8A8A8A8"
+              +"2828282828282828"
+              +"A8A8A8A8A8A8A8A8"
+              +"2828282828282828"
+              +"A8A8A8A8A8A8A8A8"
+              +"2828282828282828"
+              +"A8A8A8A8A8A8A8A8"
+              +"5050505050505050"
+              +"D0D0D0D0D0D0D0D0"
+              +"5050505050505050"
+              +"D0D0D0D0D0D0D0D0"
+              +"5050505050505050"
+              +"D0D0D0D0D0D0D0D0"
+              +"5050505050505050"
+              +"D0D0D0D0D0D0D0D0"
 
-var YVERTH  = "HEX 2024282C3034383C ;L82"
-        +"HEX 2024282C3034383C ;L83"
-        +"HEX 2125292D3135393D ;L84"
-        +"HEX 2125292D3135393D ;L85"
-        +"HEX 22262A2E32363A3E ;L86"
-        +"HEX 22262A2E32363A3E ;L87"
-        +"HEX 23272B2F33373B3F ;L88"
-        +"HEX 23272B2F33373B3F ;L89"
-        +"HEX 2024282C3034383C ;L90"
-        +"HEX 2024282C3034383C ;L91"
-        +"HEX 2125292D3135393D ;L92"
-        +"HEX 2125292D3135393D ;L93"
-        +"HEX 22262A2E32363A3E ;L94"
-        +"HEX 22262A2E32363A3E ;L95"
-        +"HEX 23272B2F33373B3F ;L96"
-        +"HEX 23272B2F33373B3F ;L97"
-        +"HEX 2024282C3034383C ;L98"
-        +"HEX 2024282C3034383C ;L99"
-        +"HEX 2125292D3135393D ;L100"
-        +"HEX 2125292D3135393D ;L101"
-        +"HEX 22262A2E32363A3E ;L102"
-        +"HEX 22262A2E32363A3E ;L103"
-        +"HEX 23272B2F33373B3F ;L104"
-        +"HEX 23272B2F33373B3F ;L105"
+var YVERTH  ="2024282C3034383C"
+            +"2024282C3034383C"
+            +"2125292D3135393D"
+            +"2125292D3135393D"
+            +"22262A2E32363A3E"
+            +"22262A2E32363A3E"
+            +"23272B2F33373B3F"
+            +"23272B2F33373B3F"
+            +"2024282C3034383C"
+            +"2024282C3034383C"
+            +"2125292D3135393D"
+            +"2125292D3135393D"
+            +"22262A2E32363A3E"
+            +"22262A2E32363A3E"
+            +"23272B2F33373B3F"
+            +"23272B2F33373B3F"
+            +"2024282C3034383C"
+            +"2024282C3034383C"
+            +"2125292D3135393D"
+            +"2125292D3135393D"
+            +"22262A2E32363A3E"
+            +"22262A2E32363A3E"
+            +"23272B2F33373B3F"
+            +"23272B2F33373B3F"
 
+  var yref = new Array();
+  for(var i=0;i<YVERTL.length;i+=2)
+    yref[i/2] = parseInt( YVERTH.substring(i,i+2),16)*256
+               +parseInt( YVERTL.substring(i,i+2),16);
 
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
 
+  function pattern(idx,j,i)
+  {
+    switch(idx)
+    {
+      /*
+    case 7: return  ((i*j)%2+(i*j)%3)==0;
+    case 6: return  ((Math.floor(i/2) + Math.floor(j/3))%2)==0;
+    case 5: return  (((i*j)%3+i+j)%2)==0;
+    case 4: return  (((i*j)%3+i*j)%2)==0;
+    case 3: return  (i%2)==0;
+    case 2: return  ((i+j)%2)==0;
+    case 1: return  ((i+j)%3)==0;
+    case 0: return  (j%3)==0;
+    */
+
+    case 7: return true;                    // white2
+    case 6: return  ((j+1)%2 && j%8)==0;   // blue
+    case 5: return  j%2==0;                 // orange
+    case 4: return  j%8==0;                // black 2
+   
+    case 3: return  !(j%8)==0;             // white 1  
+    case 2: return  (j+1)%2==0;            // purple
+    case 1: return  (j%2 || !(j%8))==0;    // green
+    case 0: return  false;                 // black 1  
+    default: return false;
+    }
+  }
+
+  var HGRcolornames = ["black","green","purple","white1","black","orange","blue","white2"]
+
+  function setPixel(x,y,patternID)
+  {
+    // find address and bit location
+    var ya = yref[y] + (x >> 8);
+    var xa = x%8 & 8;
+    var rbyt = apple2plus.hw.read(ya);
+    var msk = maskPixel(wbyt,x%8)
+    if(!isCollision(rbyt,msk))
+    {
+      // write byte
+    }
+  }
+
+  function maskPixel(byt,bit)
+  {
+    return byt&8 | byt&bit;
+  }
+
+  function isCollision(rbyt,wbyt)   // check color collitions
+  {
+      if(rbyt|wbyt==0) return false;
+
+  }
+
+  apple2plus.hw.write(yref[0],10+128);
+
   // draw color palette
+
+  /*
+  var by = 0;
+  var y=0;
+  for(var x=0;x<8;x++)
+    by = (by<<1) + pattern(2,x,y);
   
+  for(xb=0;xb<7;xb++)
+  {
+    for(var y=0;y<7;y++)
+    {
+      apple2plus.hw.write(yref[y]+xb,by);
+      //document.write(PRINTByte(by));
+    }
+  }
+  */
+
+var s = "";
+for(var p=0;p<8;p++)
+{
+  s+= HGRcolornames[p]+"<br>"
+	s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
+	for(var y=0;y<24;y++)
+	{
+		s+="<tr>"
+   		for(var x=23;x>=0;x--)
+	   	{
+				c = pattern(p,x,y)
+				pix = c?"background-color:#000000":"background-color:#FFFFFF"
+				s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
+   		}
+		s+="</tr>"
+	}
+	s+="</table><br>"
+}  
+document.getElementById("debug").innerHTML += s
+//document.write(s)
+
+function isCol(x,y)
+{ return x%8==0 ? "red":"white" }
+  
+function PRINTByte(by)
+{
+  var sa = ("0000000"+by.toString(2)).slice(-8).split("");
+  //sa = sa.reverse();
+  var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
+  return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
+}
+
   // draw dithering patterns 
 
 
@@ -167,7 +275,8 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 
 <!-- -->
 <table><tr>
-  <td style=vertical-align:top;><div id="my_camera"></div><div id="results" ></div></td>
+  <td style=vertical-align:top;><div id="my_camera"></div><div id="results" ></div>
+    <div id=debug style="overflow:scroll; height:400px;"></div></td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
 </tr></table>
 
