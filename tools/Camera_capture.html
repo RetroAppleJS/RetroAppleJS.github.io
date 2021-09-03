@@ -94,35 +94,44 @@ var YVERTH  ="2024282C3034383C"
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
 
+    var loresCols = [
+     ["#000000","#000000","#000000","#000000"] // Black
+    ,["#FF0000","#555555","#355550","#544D36"] // Magenta
+    ,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
+    ,["#C000C0","#808080","#508078","#7E7451"] // Purple
+    ,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
+    ,["#808080","#808080","#508078","#7E7451"] // Grey 1
+    ,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
+    ,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
+    ,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
+    ,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
+    ,["#808080","#808080","#508078","#7E7451"] // Grey 2
+    ,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
+    ,["#40FF40","#808080","#508078","#7E7451"] // Light Green
+    ,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
+    ,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
+    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
+    ];
+    var loresCols_names = 
+    ["black","magenta","dark blue","purple","dark green" ,"grey"  ,"medium blue","light blue"
+    ,"brown","orange" ,"grey"     ,"pink"  ,"light green","yellow","aquamarine" ,"white"]
+
   function pattern(idx,j,i)
   {
     switch(idx)
     {
-      /*
-    case 7: return  ((i*j)%2+(i*j)%3)==0;
-    case 6: return  ((Math.floor(i/2) + Math.floor(j/3))%2)==0;
-    case 5: return  (((i*j)%3+i+j)%2)==0;
-    case 4: return  (((i*j)%3+i*j)%2)==0;
-    case 3: return  (i%2)==0;
-    case 2: return  ((i+j)%2)==0;
-    case 1: return  ((i+j)%3)==0;
-    case 0: return  (j%3)==0;
-    */
-
-    case 7: return true;                    // white2
-    case 6: return  ((j+1)%2 && j%8)==0;   // blue
-    case 5: return  j%2==0;                 // orange
-    case 4: return  j%8==0;                // black 2
-   
-    case 3: return  !(j%8)==0;             // white 1  
-    case 2: return  (j+1)%2==0;            // purple
-    case 1: return  (j%2 || !(j%8))==0;    // green
-    case 0: return  false;                 // black 1  
-    default: return false;
+      case 0: return  [0,false];                 // black 1 
+      case 1: return  [4,(j%2 || !(j%8))==0];    // green 
+      case 2: return  [3,(j+1)%2==0];            // purple
+      case 3: return  [15,!(j%8)==0];            // white 1  
+      case 4: return  [0,j%8==0];                // black 2
+      case 5: return  [9,j%2==0];                // orange
+      case 6: return  [2,((j+1)%2 && j%8)==0];   // blue
+      case 7: return  [15,true];                 // white2 2
     }
   }
 
-  var HGRcolornames = ["black","green","purple","white1","black","orange","blue","white2"]
+  
 
   function setPixel(x,y,patternID)
   {
@@ -145,7 +154,6 @@ var YVERTH  ="2024282C3034383C"
   function isCollision(rbyt,wbyt)   // check color collitions
   {
       if(rbyt|wbyt==0) return false;
-
   }
 
   apple2plus.hw.write(yref[0],10+128);
@@ -171,14 +179,14 @@ var YVERTH  ="2024282C3034383C"
 var s = "";
 for(var p=0;p<8;p++)
 {
-  s+= HGRcolornames[p]+"<br>"
+  s+= loresCols_names[pattern(p,x,y)[0]]+"<br>"
 	s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
 	for(var y=0;y<24;y++)
 	{
 		s+="<tr>"
    		for(var x=23;x>=0;x--)
 	   	{
-				c = pattern(p,x,y)
+				c = pattern(p,x,y)[1]
 				pix = c?"background-color:#000000":"background-color:#FFFFFF"
 				s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
    		}
@@ -201,22 +209,20 @@ function PRINTByte(by)
 }
 
   // draw dithering patterns 
-
-
-    //apple2plus.hw.write(8192,5);  
-    //apple2plus.hw.write(8194,1);  
+  // apple2plus.hw.write(8192,5);  
+  // apple2plus.hw.write(8194,1);  
 }
 
 function Apple2Plus(context)
-  {
-    this.video = new Apple2Video(context);
-    this.hw    = new Apple2Hw(this.video);
-    // Switch on Apple II Hi-Res graphics
-    this.video.reset();
-    this.video.setGfx(true);
-    this.video.setHires(true);
-    this.video.redraw();
-  }
+{
+  this.video = new Apple2Video(context);
+  this.hw    = new Apple2Hw(this.video);
+  // Switch on Apple II Hi-Res graphics
+  this.video.reset();
+  this.video.setGfx(true);
+  this.video.setHires(true);
+  this.video.redraw();
+}
 
 var _T = function _T(idx,mod) {
 this.t = {get _language(){ return "NL" }
