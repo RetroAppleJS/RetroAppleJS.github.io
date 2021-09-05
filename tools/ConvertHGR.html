@@ -1,0 +1,177 @@
+
+1. nearest color / dither<br>
+2. byte color conflics viewer<br>
+3. conflict swapper / image mover left-right (7 bits)<br>
+
+
+<!doctype html>
+<html>
+<head>
+<title>ditherjs demo</title>
+<script src="../res/ditherjs.js"></script>
+<style>
+body, html {
+font-family: 'Arial';
+width: 100%;
+height: 100%;
+margin: 0;
+padding: 0;
+font-size: 12px;
+}
+div.wrapper {
+/*position: absolute;*/
+top: 0px;
+left: 0px;
+right: 0px;
+bottom: 0px;
+overflow: hidden;
+padding: 5em;
+}
+div.wrapper > .background {
+min-width: 50%;
+min-height: 50%;
+
+
+/*position: absolute;
+top: 0px;
+left: 0px;
+display: block;
+z-index: 1;*/
+background: #fff;
+}
+div.headline {
+position: relative;
+width: 40em;
+top: 0;
+left: 0;
+/*z-index: 9;*/
+color: #eee;
+text-shadow: 1px 1px #000, 2px 2px #000, 3px 3px #000, 4px 4px #000;
+}
+.dither {
+visibility: hidden;
+}
+div.headline > .download {
+float: left;
+width: 25%;
+}
+div.headline .text {
+float: left;
+width: 75%;
+font-size: 32px;
+}
+a {
+text-decoration: none;
+color: inherit;
+}
+a:hover {
+text-shadow: 1px 1px #000;
+}
+</style>
+</head>
+<body onload=update_dither(true)>
+<table border=1>
+<tr>
+    <td class="org"></td>
+    <td width=500>
+        <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="5" value="3" class="slider" id="step" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <br><br>
+        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="20" value="5" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <br><br><div><button>ordered</button><button>errorDiffusion</button></div>
+    </td>
+</tr>
+</table>
+<div class="wrapper">
+<img class="background dither"src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKUAAADABAMAAACXPL4AAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAYUExURfu3KfSEIGe4S+A8QP////3+/ZY/lwSc3JpBtD8AAAABYktHRASPaNlRAAAACXBIWXMAAAsTAAALEwEAmpwYAAACzElEQVR4nO3bUW6jMBAG4FQR741WucBIfm/l9gj7Th0Zn4C9Adrr7y6EMMbGEPzPylXix2B//QcKtDA52N2DVPzzerdJhDYNwU0iuEl4k/Am4U2DNycSZxLeNAIm4U0jYHKSLMQ0AibhTSNg+qRCmEbAJHnTAkwjbyqESXhza+mFmQphkrxpAebm0ssyLcLcHHO3afGmEjAtxDSbY+40Ld5UAqbFmxZvKry5St5vrpN3mxvIJTMMZYLDs3jIomb0V9FfnToFIuaWi2/y3hSa81tupLhwikqa4fwgKq1MmZsxcobS2pSZGSf5ksUZiyYtD5UUOeqblDNU1DQEQbmZSd6q52YuOQZlZnbMMSgz88lr0MkExLwGnUwEOQS9mZCYQ9CbiSH7oKMJitkHHU0q2GS1I0sfTSQJNvl5VB8wg5/vILISMPn1s4bGHMxDuabFmxU3a2xMoFl55qFY0+LNyjPrYk0rbqJLL9q039Ks0bvzwc2vE2DYpylpvgDI16f5kObpaYqakPNd4pp8fmDzVcA8ze7FxZqVgHn2TY0Yb/7fihBTS5g/BcxPzzxCzHcBU3vmBV08zvzg5pcGF//XbDS4+H//v2twUKT5ycwfIPONmUdUUPYM8IIy3wXM6x7tn1nBTD09r8OZHwJmX31vHrFob140FMWb+tybDdTUw3NvCfMXdAxmgyTbb2KO72UKN9vRbMo2p3d8RZvtZDYlm/x9ccFmy80GFlPWtLDShc0GVTrv5UDFlDYbUOlYsw17eCRM9ztzxHqiMsnuf5kOUvqsxwwSE2ku9MI5AdMiSp+bDhATZ3bLfZUSpssvPewpzY8Zmi47ZqSfNjtmxHS5MWO9xLkxY6ZbDuO2xIz2UaeTrMaMmi69yK3EjPd7u/Qau7I53peeXjPb3m3sdU+T3vZuc09+Yom/e7o7+vxdkrz91O7O7w64nd84r/8Aa35WkEZqwpoAAAAASUVORK5CYII=" />
+<div>
+  
+<script>
+var dither;
+function update_dither(bInit)
+{
+    var step = Number(document.getElementById("step").value);
+    document.getElementById("step_dsp").innerHTML = step;
+    var ratio = Number(document.getElementById("ratio").value);
+    document.getElementById("ratio_dsp").innerHTML = ratio;
+
+    var options = {
+                "step": step,
+                "className": "dither",
+                "palette": palette1,
+                //"algorithm": "errorDiffusion",
+                //"ratio":1/20
+                "algorithm": "ordered",
+                "ratio":ratio
+            };
+
+    
+
+    if(bInit)
+    {
+        var el = document.querySelectorAll(".dither")[0];
+        var elw = document.querySelectorAll(".wrapper")[0];
+        var elo = document.querySelectorAll(".org")[0];
+
+        var src = el.src;
+        elo.innerHTML = "<img src='"+src+"'>"
+
+        dither = new DitherJS('.dither',options);
+    }
+    else
+    {
+        //elw.innerHTML = "<img class='background dither' src='"+src+"'>'
+        //dither = new DitherJS('.dither',options);        
+    }
+
+    //alert(typeof(options.step)+" "+typeof(options.ratio))
+    //el[0].src = src;
+}
+         
+function HEX2RGB(hex)
+{
+    var rgb = parseInt(hex.substring(1,hex.length), 16);    
+    return [(rgb >> 16) & 0xFF,(rgb >> 8) & 0xFF,rgb & 0xFF] 
+}
+
+var loresCols = [
+ ["#000000","#000000","#000000","#000000"] // Black
+,["#FF0000","#555555","#355550","#544D36"] // Magenta
+,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
+,["#C000C0","#808080","#508078","#7E7451"] // Purple
+,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
+,["#808080","#808080","#508078","#7E7451"] // Grey 1
+,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
+,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
+,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
+,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
+,["#808080","#808080","#508078","#7E7451"] // Grey 2
+,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
+,["#40FF40","#808080","#508078","#7E7451"] // Light Green
+,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
+,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
+];
+
+var palette1 = [
+HEX2RGB(loresCols[0][0]),
+HEX2RGB(loresCols[3][0]),
+HEX2RGB(loresCols[6][0]),
+HEX2RGB(loresCols[9][0]),
+HEX2RGB(loresCols[12][0]),
+HEX2RGB(loresCols[15][0])
+];
+
+//var coin = Math.random();
+//var palette = coin < 0.3 ? palette1 : coin < 0.6 ? palette2 : palette3;
+
+/*
+var new_el = document.createElement("img");
+new_el.setAttribute("src", el[0].src);
+var anchor_el = document.getElementById("imgcopy")
+anchor_el.appendChild(new_el);
+*/
+
+//dither = new DitherJS('.dither',options);
+</script>
+</body>
+</html>
