@@ -73,11 +73,18 @@ text-shadow: 1px 1px #000;
 <table border=1>
 <tr>
     <td class="org"></td>
+    <td class="palette"></td>
     <td width=500>
         <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="5" value="3" class="slider" id="step" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
-        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="20" value="5" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
-        <br><br><div><button>ordered</button><button>errorDiffusion</button></div>
+        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="20" value="4" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <br><br>
+        <div>
+            <select id="dither_method" onchange=update_dither()>
+                <option value="ordered" selected>ordered</option>
+                <option value="errorDiffusion">errorDiffusion</option>
+              </select>
+        </div>
     </td>
 </tr>
 </table>
@@ -93,17 +100,25 @@ function update_dither(bInit)
     document.getElementById("step_dsp").innerHTML = step;
     var ratio = Number(document.getElementById("ratio").value);
     document.getElementById("ratio_dsp").innerHTML = ratio;
+    var dither_method = document.getElementById("dither_method").value;
+    switch(dither_method)
+    {
+        case "ordered":
+        break;
+        case "errorDiffusion":
+        break;
+    }
 
     var options = {
                 "step": step,
                 "className": "dither",
-                "palette": palette1,
+                "palette": HGRpalette,
                 //"algorithm": "errorDiffusion",
                 //"ratio":1/20
-                "algorithm": "ordered",
+                "algorithm":dither_method,
                 "ratio":ratio
             };
-
+    
     
 
     if(bInit)
@@ -111,11 +126,20 @@ function update_dither(bInit)
         var el = document.querySelectorAll(".dither")[0];
         var elw = document.querySelectorAll(".wrapper")[0];
         var elo = document.querySelectorAll(".org")[0];
+        var elp = document.querySelectorAll(".palette")[0];
 
         var src = el.src;
         elo.innerHTML = "<img src='"+src+"'>"
 
         dither = new DitherJS('.dither',options);
+
+        var paletsize = [50,25];
+        var s= "<table>\n";
+        for(var i=0;i<HGRpalette.length;i++)
+            s+="<tr><td style='border:2px solid;width:"+paletsize[0]+"px;height:"+paletsize[1]+"px;background-color:rgb("+HGRpalette[i].join(",")+")'>&nbsp;</td></tr>\n";
+        s+= "</table>\n";
+        elp.innerHTML = s;
+
     }
     else
     {
@@ -152,17 +176,20 @@ var loresCols = [
 ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
 ];
 
-var palette1 = [
+var HGRpalette = [
 HEX2RGB(loresCols[0][0]),
-HEX2RGB(loresCols[3][0]),
+HEX2RGB(loresCols[13][0]),//HEX2RGB(loresCols[3][0]),
 HEX2RGB(loresCols[6][0]),
 HEX2RGB(loresCols[9][0]),
 HEX2RGB(loresCols[12][0]),
 HEX2RGB(loresCols[15][0])
 ];
 
+
+
+
 //var coin = Math.random();
-//var palette = coin < 0.3 ? palette1 : coin < 0.6 ? palette2 : palette3;
+//var palette = coin < 0.3 ? HGRpalette : coin < 0.6 ? palette2 : palette3;
 
 /*
 var new_el = document.createElement("img");
