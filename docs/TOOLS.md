@@ -51,3 +51,6 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 | v2      | YES          | YES       | -            |
 | v3      | -            |           | YES          |
 
+### ConverHGR.html
+
+This handy tool converts the most common image file types to an Apple II HGR color bitmap. 
