@@ -20,7 +20,7 @@ var DitherJS = function DitherJS(selector,opt) {
      * */
     this._refreshDither = function(el) {
         // Reload src
-        el.src = el.src// + '?' + Math.random();
+        el.src = el.src //+ '?' + Math.random();
         el.onload = function() { 
             var start_time = Date.now();
             self._dither(el);
@@ -29,14 +29,24 @@ var DitherJS = function DitherJS(selector,opt) {
     };
 
     /**
+    * Main
+    * */
+     try {
+        var elements = document.querySelectorAll(selector);
+
+        //  deal with multiple
+        for (var i=0;i<elements.length;i++) {
+            this._refreshDither(elements[i]);
+        } 
+
+    } catch (e) {
+        // Officially not in the browser
+    }
+
+    /**
     * This does all the dirty things
     * */
     this._dither = function(el) {
-        var ditherCtx = this;
-
-        // Take image size
-        var h = el.clientHeight;
-        var w = el.clientWidth;
 
         /**
         * Return a distance of two colors ina three dimensional space
@@ -263,21 +273,30 @@ var DitherJS = function DitherJS(selector,opt) {
             return out_imgdata;
         };
 
-        var ctx = this.getContext(el);
+        //************************
+        // Main Dithering function
+        //************************
 
+        
+
+        // Take image size
+        var h = el.clientHeight;
+        var w = el.clientWidth;
+        
+        var ctx = this.getContext(el);
+        
         // Put the picture in
         ctx.drawImage(el,0,0,w,h);
-
+        
         // Pick image data
         var in_image = ctx.getImageData(0,0,w,h);
-
-        //var out_image = ditherCtx.orderedDither(in_image);
-        if (self.opt.algorithm == 'errorDiffusion')
-            var out_image = ditherCtx.errorDiffusionDither(in_image);
-        else if (self.opt.algorithm == 'ordered')
-            var out_image = ditherCtx.orderedDither(in_image);
-        else
-            throw new Error('Not a valid algorithm');
+        var ditherCtx = this;
+        switch(self.opt.algorithm)
+        {
+            case 'errorDiffusion':  var out_image = ditherCtx.errorDiffusionDither(in_image); break;
+            case 'ordered':         var out_image = ditherCtx.orderedDither(in_image); break;
+            default: new Error('Not a valid algorithm');
+        }
 
         // Put image data
         ctx.putImageData(out_image,0,0);
@@ -285,23 +304,6 @@ var DitherJS = function DitherJS(selector,opt) {
         // Turn it on
         //canvas.style.visibility = "visible";
     }
-
-
-    /**
-    * Main
-    * */
-    try {
-        var elements = document.querySelectorAll(selector);
-
-        //  deal with multiple
-        for (var i=0;i<elements.length;i++) {
-            this._refreshDither(elements[i]);
-        } 
-
-    } catch (e) {
-        // Officially not in the browser
-    }
-
 };
 
 /**
