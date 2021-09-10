@@ -129,28 +129,28 @@ function Apple2Video(ctx) {
         }
     }
 
-    // Monochrome colors (index 0 = full color)
-    var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+// Monochrome colors (index 0 = full color)
+var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
 
-    // Lores color to RGB table.
-    var loresCols = [
-    ["#000000","#000000","#000000","#000000"] // Black
-    ,["#FF0000","#555555","#355550","#544D36"] // Magenta
-    ,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
-    ,["#C000C0","#808080","#508078","#7E7451"] // Purple
-    ,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
-    ,["#808080","#808080","#508078","#7E7451"] // Grey 1
-    ,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
-    ,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
-    ,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
-    ,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
-    ,["#808080","#808080","#508078","#7E7451"] // Grey 2
-    ,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
-    ,["#40FF40","#808080","#508078","#7E7451"] // Light Green
-    ,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
-    ,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
-    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
-    ];
+// Lores color to RGB table.
+var loresCols = [
+ ["#000000","#000000","#000000","#000000"] // Black
+,["#901740","#4D4D4D","#304D48","#4C4631"] // Magenta
+,["#402CA5","#5B5B5B","#395B56","#5A5239"] // Dark Blue
+,["#D043E5","#A8A8A8","#69A89E","#A6986A"] // Purple
+,["#006940","#383838","#233835","#383324"] // Dark Green
+,["#808080","#808080","#508078","#7E7451"] // Grey 1
+,["#2F95E5","#8E8E8E","#598E85","#8C8059"] // Medium Blue
+,["#BFABFF","#CECECE","#81CEC2","#CBBA82"] // Light Blue
+,["#405400","#313131","#1F312E","#312D1F"] // Brown
+,["#D06A1A","#717171","#47716B","#706748"] // Orange
+,["#808080","#808080","#508078","#7E7451"] // Grey 2
+,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D"] // Pink
+,["#2FBC1A","#575757","#375752","#564F37"] // Light Green
+,["#BFD35A","#A4A4A4","#67A49A","#A29568"] // Yellow
+,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170"] // Aquamarine
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
+];
 
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
