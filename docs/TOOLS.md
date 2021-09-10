@@ -54,3 +54,10 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 ### ConverHGR.html
 
 This handy tool converts the most common image file types to an Apple II HGR color bitmap. 
+```mermaid
+graph TD;
+  A-->B;
+  A-->C;
+  B-->D;
+  C-->D;
+```
