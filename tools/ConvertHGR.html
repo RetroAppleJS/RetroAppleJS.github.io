@@ -93,7 +93,7 @@ text-shadow: 1px 1px #000;
 <div>
   
 <script>
-var dither;
+var dither, options;
 function update_dither(bInit)
 {
     var step = Number(document.getElementById("step").value);
@@ -101,29 +101,35 @@ function update_dither(bInit)
     var ratio = Number(document.getElementById("ratio").value);
     document.getElementById("ratio_dsp").innerHTML = ratio;
     var dither_method = document.getElementById("dither_method").value;
-    switch(dither_method)
-    {
-        case "ordered":
-        break;
-        case "errorDiffusion":
-        break;
-    }
 
-    var options = {
+    options = {
                 "step": step,
                 "className": "dither",
                 "palette": HGRpalette,
-                //"algorithm": "errorDiffusion",
-                //"ratio":1/20
                 "algorithm":dither_method,
                 "ratio":ratio
             };
-    
-    
+
+    var el = document.getElementById("ratio");
+    switch(dither_method)
+    {
+        case "ordered": 
+            el.setAttribute("min",1);
+            el.setAttribute("max",20);
+            el.setAttribute("step",1);
+            el.value = 1;
+        break;
+        case "errorDiffusion":
+            el.setAttribute("min",1/20);
+            el.setAttribute("min",1);
+            el.setAttribute("step",(1-(1/20))/20 );
+            el.value = 1;
+        break;
+    }
 
     if(bInit)
     {
-        var el = document.querySelectorAll(".dither")[0];
+        var el  = document.querySelectorAll(".dither")[0];
         var elw = document.querySelectorAll(".wrapper")[0];
         var elo = document.querySelectorAll(".org")[0];
         var elp = document.querySelectorAll(".palette")[0];
@@ -139,7 +145,6 @@ function update_dither(bInit)
             s+="<tr><td style='border:2px solid;width:"+paletsize[0]+"px;height:"+paletsize[1]+"px;background-color:rgb("+HGRpalette[i].join(",")+")'>&nbsp;</td></tr>\n";
         s+= "</table>\n";
         elp.innerHTML = s;
-
     }
     else
     {
@@ -158,22 +163,22 @@ function HEX2RGB(hex)
 }
 
 var loresCols = [
- ["#000000","#000000","#000000","#000000"] // Black
+ ["#000000","#000000","#000000","#000000"] // Black --
 ,["#FF0000","#555555","#355550","#544D36"] // Magenta
 ,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
-,["#C000C0","#808080","#508078","#7E7451"] // Purple
+,["#C000C0","#808080","#508078","#7E7451"] // Purple --
 ,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
 ,["#808080","#808080","#508078","#7E7451"] // Grey 1
-,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
+,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue --
 ,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
 ,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
-,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
+,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange --
 ,["#808080","#808080","#508078","#7E7451"] // Grey 2
 ,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
-,["#40FF40","#808080","#508078","#7E7451"] // Light Green
+,["#40FF40","#808080","#508078","#7E7451"] // Light Green --
 ,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
 ,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
-,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White --
 ];
 
 var HGRpalette = [
@@ -184,8 +189,6 @@ HEX2RGB(loresCols[9][0]),
 HEX2RGB(loresCols[12][0]),
 HEX2RGB(loresCols[15][0])
 ];
-
-
 
 
 //var coin = Math.random();
