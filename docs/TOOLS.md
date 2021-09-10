@@ -13,14 +13,6 @@ We aim to have all the documentation available in markdown format, for easy onli
 * download the JavaScript file
 * overwite file in /docs folder.
 
-```mermaid
-graph LR;
-  Extract *.md links located in /docs-->Read next .md file, convert to HTML & append to JS file;
-  A-->C;
-  B-->D;
-  C-->D;
-```
-
 
         <div style=width:800px>
         ┌──────────┐          ┌────┐ ┌───────────┐       ┌──────────────────┐
