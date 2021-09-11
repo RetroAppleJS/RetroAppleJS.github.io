@@ -53,5 +53,5 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### ConverHGR.html
 
-This handy tool converts the most common image file types to an Apple II HGR color bitmap. 
+This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent Wozniackian artifacts.
 
