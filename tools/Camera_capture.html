@@ -324,18 +324,64 @@ function take_snapshot()
 {
   // play sound effect
   shutter.play();
-
   // take snapshot and get image data
   Webcam.snap( function(data_uri) {
   // display results in page
-  document.getElementById('results').innerHTML = '<img src="'+data_uri+'"/>';
+  document.getElementById('results').innerHTML = '<img onload=process_snapshot() id=snap class=snap src="'+data_uri+'"/>';
   } );
 }
+
+function process_snapshot()
+{
+        var self = this;
+
+        var el = document.getElementById("snap");
+
+        // Take image size
+        var h = el.clientHeight;
+        var w = el.clientWidth;
+        
+        var ctx = getContext(el);
+        
+        // Put the picture in
+        ctx.drawImage(el,0,0,w,h);
+        
+        // Pick image data
+        var in_image = ctx.getImageData(0,0,w,h);
+        //var ditherCtx = this;
+
+        alert("SNAP! "+h+" "+w)
+}
+
+
+        /**
+        * borrowed from ditherjs.js  !!!!
+        * */
+        function getContext(el) {
+            var canvas = document.createElement('canvas');
+            // this can influence the quality of the acquistion
+            canvas.height = el.clientHeight;
+            canvas.width = el.clientWidth;
+            el.parentNode.replaceChild(canvas,el);
+
+            // Inherit classes
+            canvas.className = el.className;
+            canvas.className = canvas.className.replace('snap',' ');
+            // Inherit Styles
+
+            // Turn it off
+            // canvas.style.visibility = "hidden";
+
+            // Get the context
+            var ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            return ctx;    
+        }
+
 </script>
 
 
   </div>
   </div>
-
 </body>
 </html>
