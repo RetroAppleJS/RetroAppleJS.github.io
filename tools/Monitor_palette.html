@@ -5,7 +5,7 @@ body {
 .text
 {
     font-family: 'Trebuchet MS', sans-serif; 
-    font-size:14px;
+    font-size:13px;
     -webkit-font-smoothing:none;
     font-weight: bold;
 }
@@ -97,7 +97,7 @@ document.write(loreschroma().replace(/\r\n/g,"<br>"))
 document.write("</pre>")
 eval(loreschroma().replace(/&nbsp;/g," "))
 
-var palletsize = [40,15]
+var palletsize = [40,0]
 var s = "<table>"
 
 s+="<tr>"
@@ -107,17 +107,17 @@ s+= "</tr>"
 
 s+="<tr>"
 for(var j=0;j<monoChromes.length;j++)
-    s+="<td style=border-style:solid;width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+monoChromes[j]+">&nbsp;</td>"
+    s+="<td class=text style=border-style:solid;width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+monoChromes[j]+">&nbsp;</td>"
 
 s+= "<td class=text>Lores colors<br><small>(*Hires)</small></td></tr>"
-s+="<tr style=height:10px></tr>"
+s+="<tr style=height:0px></tr>"
 
  for(var i=0;i<loresCols.length;i++)
  {
      s+="<tr>"
      for(var j=0;j<loresCols[i].length;j++)
      {
-        s+="<td style='width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+loresCols[i][j]+";border:1px solid black'>&nbsp;</td>"
+        s+="<td class=text style='width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+loresCols[i][j]+";border:1px solid black'>&nbsp;</td>"
      }
      s+= "<td class=text>"+rem[i].replace(/\//g,"")+(i%3==0?"*":"")+"</td></tr>"
  }
