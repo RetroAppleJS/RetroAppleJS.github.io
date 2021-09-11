@@ -55,7 +55,7 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGR_Venus.png" align=left width=30% />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts.  Buttons and tuning sliders will help you model the most acceptable conversion.  For developers, the challenge will be to optimize conversion quality and speed, as this very algorithm will serve inside the webcam capture tool.
 
->> flow diagram
+TODO: flow diagram
 
 ### Camera_capture.html
 
