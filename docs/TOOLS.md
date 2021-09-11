@@ -53,4 +53,4 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### ConverHGR.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGR_Venus.png" align=left width=30%  />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts.
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGR_Venus.png" align=left width=30% />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts.
