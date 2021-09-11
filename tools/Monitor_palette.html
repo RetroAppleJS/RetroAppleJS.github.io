@@ -102,7 +102,7 @@ s+="<tr>"
 for(var j=0;j<monoChromes.length;j++)
     s+="<td style=border-style:solid;width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+monoChromes[j]+">&nbsp;</td>"
 
-s+= "<td>Monochrome colors</td></tr>"
+s+= "<td>Lores colors<br><small>(*Hires)</small></td></tr>"
 s+="<tr style=height:10px></tr>"
 
  for(var i=0;i<loresCols.length;i++)
@@ -112,7 +112,7 @@ s+="<tr style=height:10px></tr>"
      {
         s+="<td style=width:"+palletsize[0]+"px;height:"+palletsize[1]+"px;background-color:"+loresCols[i][j]+">&nbsp;</td>"
      }
-     s+= "<td>"+rem[i].replace(/\//g,"")+"</td></tr>"
+     s+= "<td>"+rem[i].replace(/\//g,"")+(i%3==0?"*":"")+"</td></tr>"
  }
  s+= "</table>"
  document.write(s)
