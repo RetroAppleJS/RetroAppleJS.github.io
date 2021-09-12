@@ -151,7 +151,7 @@ function init_gui(_o)
     }
     s+="</table><br>"
   }  
-  //document.getElementById("debug").innerHTML += s
+  document.getElementById("debug").innerHTML += s
   //document.write(s)
 
   function isCol(x,y)
@@ -191,12 +191,21 @@ function Apple2Plus(context)
   this.video.redraw();
 }
 
-function setPixel(x,y,patternID)
-  {
+function setPixel_HGR(x,y,patternID)
+{
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
     apple2plus.hw.write(adr,wbyt);                    // write byte 
+}
+
+function wipe_HGR(byte)
+{
+    // find address and bit location
+    //var adr = yref[y] + Math.floor(x/7);              // find address 
+    //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    for(var adr=8192;adr<16384;adr++)
+      apple2plus.hw.write(adr,byte);                    // write byte 
 }
 
 
@@ -308,6 +317,8 @@ function take_snapshot()
 
 function process_snapshot()
 {
+        wipe_HGR(0)
+
         var self = this;
         var el = document.getElementById("snap");
 
@@ -342,14 +353,14 @@ function process_snapshot()
                 var color = new Array(d[r],d[g],d[b]); 
 
                 if(((color[0]+color[1]+color[2])/3) > 128)
-                  setPixel(x,y)
+                  setPixel_HGR(x,y)
                 //if(y==0)
                 //   document.getElementById("debug").innerHTML += "("+x+","+y+") "+color.join(",")+"<br>"
 
               }
         }
 
-        alert("SNAP! "+h+" "+w);
+        //alert("SNAP! "+h+" "+w);
 }
 
 
