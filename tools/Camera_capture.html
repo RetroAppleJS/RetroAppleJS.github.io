@@ -40,6 +40,12 @@ var _D =
               +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
               +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
 }
+var yref = new Array();
+  for(var i=0;i<_D.YVERTL.length;i+=2)
+    yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
+               +parseInt( _D.YVERTL.substring(i,i+2),16);
+
+
 
 var vidContext, apple2plus;
 function init_gui(_o)
@@ -55,10 +61,6 @@ function init_gui(_o)
   my_camera.style.height = _D.cam_y+"px";
   my_camera.style.backgroundSize = (_D.cam_x*0.8)+"px "+(_D.cam_y*0.8)+"px"
   
-  var yref = new Array();
-  for(var i=0;i<_D.YVERTL.length;i+=2)
-    yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
-               +parseInt( _D.YVERTL.substring(i,i+2),16);
 
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
@@ -100,13 +102,6 @@ function init_gui(_o)
     }
   }
 
-  function setPixel(x,y,patternID)
-  {
-    // find address and bit location
-    var adr = yref[y] + Math.floor(x/7);              // find address 
-    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
-  }
 
   function maskPixel(byt,bit)
   {
@@ -156,7 +151,7 @@ function init_gui(_o)
     }
     s+="</table><br>"
   }  
-  document.getElementById("debug").innerHTML += s
+  //document.getElementById("debug").innerHTML += s
   //document.write(s)
 
   function isCol(x,y)
@@ -181,6 +176,10 @@ function init_gui(_o)
 
 
 
+
+
+
+
 function Apple2Plus(context)
 {
   this.video = new Apple2Video(context);
@@ -191,6 +190,20 @@ function Apple2Plus(context)
   this.video.setHires(true);
   this.video.redraw();
 }
+
+function setPixel(x,y,patternID)
+  {
+    // find address and bit location
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    apple2plus.hw.write(adr,wbyt);                    // write byte 
+}
+
+
+
+
+
+/////////////////////////////////////////////////////////
 
 var _T = function _T(idx,mod) {
 this.t = {get _language(){ return "NL" }
@@ -296,7 +309,6 @@ function take_snapshot()
 function process_snapshot()
 {
         var self = this;
-
         var el = document.getElementById("snap");
 
         // Take image size
@@ -328,6 +340,12 @@ function process_snapshot()
                 var a = i+3;
 
                 var color = new Array(d[r],d[g],d[b]); 
+
+                if(((color[0]+color[1]+color[2])/3) > 128)
+                  setPixel(x,y)
+                //if(y==0)
+                //   document.getElementById("debug").innerHTML += "("+x+","+y+") "+color.join(",")+"<br>"
+
               }
         }
 
