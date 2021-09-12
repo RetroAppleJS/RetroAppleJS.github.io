@@ -26,8 +26,20 @@
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
 <script>
-var CONF_version="" 
-var CONF_builddate=""  
+var CONF_version="";
+var CONF_builddate="";  
+
+var _D = 
+{
+     "cam_x":256
+    ,"cam_y":192
+    ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
+              +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
+              +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
+    ,"YVERTH":"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+}
 
 var vidContext, apple2plus;
 function init_gui(_o)
@@ -39,65 +51,14 @@ function init_gui(_o)
   var my_camera    = document.getElementById("my_camera");
   //alert(typeof(my_camera.style.width)+" ("+Number(my_camera.style.width))+")"
   
-
-  my_camera.style.width  = _CFG.cam_x+"px";
-  my_camera.style.height = _CFG.cam_y+"px";
-  my_camera.style.backgroundSize = (_CFG.cam_x*0.8)+"px "+(_CFG.cam_y*0.8)+"px"
+  my_camera.style.width  = _D.cam_x+"px";
+  my_camera.style.height = _D.cam_y+"px";
+  my_camera.style.backgroundSize = (_D.cam_x*0.8)+"px "+(_D.cam_y*0.8)+"px"
   
-  var YVERTL = "0000000000000000"
-              +"8080808080808080"
-              +"0000000000000000"
-              +"8080808080808080"
-              +"0000000000000000"
-              +"8080808080808080"
-              +"0000000000000000"
-              +"8080808080808080"
-              +"2828282828282828"
-              +"A8A8A8A8A8A8A8A8"
-              +"2828282828282828"
-              +"A8A8A8A8A8A8A8A8"
-              +"2828282828282828"
-              +"A8A8A8A8A8A8A8A8"
-              +"2828282828282828"
-              +"A8A8A8A8A8A8A8A8"
-              +"5050505050505050"
-              +"D0D0D0D0D0D0D0D0"
-              +"5050505050505050"
-              +"D0D0D0D0D0D0D0D0"
-              +"5050505050505050"
-              +"D0D0D0D0D0D0D0D0"
-              +"5050505050505050"
-              +"D0D0D0D0D0D0D0D0"
-
-  var YVERTH  ="2024282C3034383C"
-              +"2024282C3034383C"
-              +"2125292D3135393D"
-              +"2125292D3135393D"
-              +"22262A2E32363A3E"
-              +"22262A2E32363A3E"
-              +"23272B2F33373B3F"
-              +"23272B2F33373B3F"
-              +"2024282C3034383C"
-              +"2024282C3034383C"
-              +"2125292D3135393D"
-              +"2125292D3135393D"
-              +"22262A2E32363A3E"
-              +"22262A2E32363A3E"
-              +"23272B2F33373B3F"
-              +"23272B2F33373B3F"
-              +"2024282C3034383C"
-              +"2024282C3034383C"
-              +"2125292D3135393D"
-              +"2125292D3135393D"
-              +"22262A2E32363A3E"
-              +"22262A2E32363A3E"
-              +"23272B2F33373B3F"
-              +"23272B2F33373B3F"
-
   var yref = new Array();
-  for(var i=0;i<YVERTL.length;i+=2)
-    yref[i/2] = parseInt( YVERTH.substring(i,i+2),16)*256
-               +parseInt( YVERTL.substring(i,i+2),16);
+  for(var i=0;i<_D.YVERTL.length;i+=2)
+    yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
+               +parseInt( _D.YVERTL.substring(i,i+2),16);
 
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
@@ -142,14 +103,9 @@ function init_gui(_o)
   function setPixel(x,y,patternID)
   {
     // find address and bit location
-    var ya = yref[y] + (x >> 8);
-    var xa = x%8 & 8;
-    var rbyt = apple2plus.hw.read(ya);
-    var msk = maskPixel(wbyt,x%8)
-    if(!isCollision(rbyt,msk))
-    {
-      // write byte
-    }
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    apple2plus.hw.write(adr,wbyt);                    // write byte 
   }
 
   function maskPixel(byt,bit)
@@ -162,7 +118,7 @@ function init_gui(_o)
     if(rbyt|wbyt==0) return false;
   }
 
-  apple2plus.hw.write(yref[0],10+128);
+  //apple2plus.hw.write(yref[0],10+128);
 
   // draw color palette
 
@@ -304,18 +260,14 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 // Configure a few settings and attach camera
 var bCamera = false;
 var shutter = new Audio();
-var _CFG = 
-{
-    cam_x:256,cam_y:192
-}
 
 function enable_camera()
 {
   if(!bCamera)
   {
     Webcam.set({
-    width:  _CFG.cam_x,
-    height: _CFG.cam_y,
+    width:  _D.cam_x,
+    height: _D.cam_y,
     image_format: 'jpeg',
     jpeg_quality: 90
     });
