@@ -56,14 +56,12 @@ function Apple2IO(vid) {
         DISK_PROM =     0x600,
         DISK_PROM_SIZE = 0x100;
  
-
     var video = vid;
     var key = 0x00;
-    try
-    {
-        this.disk2 = new AppleDisk2();
-    } catch(e) { console.log(e) }
 
+    if(typeof(AppleDisk2)!="undefined")
+        this.disk2 = new AppleDisk2();
+ 
     this.reset = function() {
         key = 0x00;
         this.disk2.reset();
