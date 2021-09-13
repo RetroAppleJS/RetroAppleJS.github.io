@@ -65,24 +65,29 @@ function init_gui(_o)
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
 
-    var loresCols = [
-     ["#000000","#000000","#000000","#000000"] // Black
-    ,["#FF0000","#555555","#355550","#544D36"] // Magenta
-    ,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
-    ,["#C000C0","#808080","#508078","#7E7451"] // Purple
-    ,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
-    ,["#808080","#808080","#508078","#7E7451"] // Grey 1
-    ,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
-    ,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
-    ,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
-    ,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
-    ,["#808080","#808080","#508078","#7E7451"] // Grey 2
-    ,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
-    ,["#40FF40","#808080","#508078","#7E7451"] // Light Green
-    ,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
-    ,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
-    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
-    ];
+// Monochrome colors (index 0 = full color)
+var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+
+// Lores color to RGB table. (* Hires)
+var loresCols = [
+ ["#000000","#000000","#000000","#000000","Black"]  // *
+,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
+,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
+,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
+,["#006940","#383838","#233835","#383324","Dark Green"] 
+,["#808080","#808080","#508078","#7E7451","Grey 1"] 
+,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
+,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
+,["#405400","#313131","#1F312E","#312D1F","Brown"] 
+,["#D06A1A","#717171","#47716B","#706748","Orange"]  // *
+,["#808080","#808080","#508078","#7E7451","Grey 2"] 
+,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
+,["#2FBC1A","#575757","#375752","#564F37","Light Green"]  // *
+,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
+,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
+];
+
     var loresCols_names = 
     ["black","magenta","dark blue","purple","dark green" ,"grey"  ,"medium blue","light blue"
     ,"brown","orange" ,"grey"     ,"pink"  ,"light green","yellow","aquamarine" ,"white"]
@@ -113,46 +118,7 @@ function init_gui(_o)
     if(rbyt|wbyt==0) return false;
   }
 
-  //apple2plus.hw.write(yref[0],10+128);
 
-  // draw color palette
-
-  /*
-  var by = 0;
-  var y=0;
-  for(var x=0;x<8;x++)
-    by = (by<<1) + pattern(2,x,y);
-  
-  for(xb=0;xb<7;xb++)
-  {
-    for(var y=0;y<7;y++)
-    {
-      apple2plus.hw.write(yref[y]+xb,by);
-      //document.write(PRINTByte(by));
-    }
-  }
-  */
-
-  var s = "";
-  for(var p=0;p<8;p++)
-  {
-    s+= loresCols_names[pattern(p,x,y)[0]]+"<br>"
-    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
-    for(var y=0;y<24;y++)
-    {
-      s+="<tr>"
-        for(var x=23;x>=0;x--)
-        {
-          c = pattern(p,x,y)[1]
-          pix = c?"background-color:#000000":"background-color:#FFFFFF"
-          s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
-        }
-      s+="</tr>"
-    }
-    s+="</table><br>"
-  }  
-  document.getElementById("debug").innerHTML += s
-  //document.write(s)
 
   function isCol(x,y)
   { return x%8==0 ? "red":"white" }
