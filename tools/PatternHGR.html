@@ -84,6 +84,24 @@ function init_gui(_o)
     }
   }
 
+    function setPixel_HGR(x,y,patternID)
+    {
+        // find address and bit location
+        var adr = yref[y] + Math.floor(x/7);              // find address 
+        var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+        if(pattern(patternID,x,y)[1])
+            apple2plus.hw.write(adr,wbyt);                    // write byte 
+    }
+
+    function wipe_HGR(byte)
+    {
+        // find address and bit location
+        //var adr = yref[y] + Math.floor(x/7);              // find address 
+        //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+        for(var adr=8192;adr<16384;adr++)
+        apple2plus.hw.write(adr,byte);                    // write byte 
+    }
+
 
   function maskPixel(byt,bit)
   {
@@ -150,6 +168,20 @@ function init_gui(_o)
     // draw dithering patterns 
     // apple2plus.hw.write(8192,5);  
     // apple2plus.hw.write(8194,1);  
+    wipe_HGR(0);
+    var pid = 0;
+    var bls = [21,21];
+    var spc = [7,7]
+    for(var dx=0;dx<4;dx++)
+    {
+            for(var dy=0;dy<2;dy++)
+            {
+                for(var x=0;x<bls[0];x++)
+                    for(var y=0;y<bls[0];y++)
+                        setPixel_HGR(x+dx*(bls[0]+spc[0]),y+dy*(bls[1]+spc[1]),pid);
+                pid++
+            }
+    }
 }
 
 
