@@ -1,0 +1,298 @@
+<html style="background-color:#B0B0B0"><head>
+  <title>HGR PATTERN GENERATOR</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+  <style>
+  html {height:100%;font-family:"Arial"}
+  body {background-color:#808080;height:100%;margin:0px;padding:0px}
+  </style>
+</head>
+
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
+<script>
+var CONF_version="";
+var CONF_builddate="";  
+
+var _D = 
+{
+     "cam_x":256
+    ,"cam_y":192
+    ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
+              +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
+              +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
+    ,"YVERTH":"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+}
+var yref = new Array();
+  for(var i=0;i<_D.YVERTL.length;i+=2)
+    yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
+               +parseInt( _D.YVERTL.substring(i,i+2),16);
+
+
+
+var vidContext, apple2plus;
+function init_gui(_o)
+{
+  document.getElementById('slider_title').outerHTML = _TITLE();
+  vidContext          = document.getElementById('applescreen').getContext("2d");
+  apple2plus          = new Apple2Plus(vidContext);  
+
+  for(var i=8192;i<16384;i++)      // clear video RAM
+    apple2plus.hw.write(i,0);
+
+    var loresCols = [
+     ["#000000","#000000","#000000","#000000"] // Black
+    ,["#FF0000","#555555","#355550","#544D36"] // Magenta
+    ,["#0000FF","#555555","#355550","#544D36"] // Dark Blue
+    ,["#C000C0","#808080","#508078","#7E7451"] // Purple
+    ,["#008000","#2B2B2B","#1B2B28","#2A271B"] // Dark Green
+    ,["#808080","#808080","#508078","#7E7451"] // Grey 1
+    ,["#4040FF","#808080","#508078","#7E7451"] // Medium Blue
+    ,["#8080FF","#AAAAAA","#6BAAA0","#A89A6C"] // Light Blue
+    ,["#8B4514","#4C4C4C","#304C48","#4B4530"] // Brown
+    ,["#FFA000","#8A8A8A","#578A82","#897D57"] // Orange
+    ,["#808080","#808080","#508078","#7E7451"] // Grey 2
+    ,["#FF69B4","#B4B4B4","#71B4A9","#B2A372"] // Pink
+    ,["#40FF40","#808080","#508078","#7E7451"] // Light Green
+    ,["#FFFF80","#D5D5D5","#85D5C8","#D2C186"] // Yellow
+    ,["#7FFFD4","#C6C6C6","#7CC6BA","#C4B37D"] // Aquamarine
+    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White
+    ];
+    var loresCols_names = 
+    ["black","magenta","dark blue","purple","dark green" ,"grey"  ,"medium blue","light blue"
+    ,"brown","orange" ,"grey"     ,"pink"  ,"light green","yellow","aquamarine" ,"white"]
+
+  function pattern(idx,j,i)
+  {
+    switch(idx)
+    {
+      case 0: return  [0,false];                 // black 1 
+      case 1: return  [4,(j%2 || !(j%8))==0];    // green 
+      case 2: return  [3,(j+1)%2==0];            // purple
+      case 3: return  [15,!(j%8)==0];            // white 1  
+      case 4: return  [0,j%8==0];                // black 2
+      case 5: return  [9,j%2==0];                // orange
+      case 6: return  [2,((j+1)%2 && j%8)==0];   // blue
+      case 7: return  [15,true];                 // white2 2
+    }
+  }
+
+
+  function maskPixel(byt,bit)
+  {
+    return byt&8 | byt&bit;
+  }
+
+  function isCollision(rbyt,wbyt)   // check color collitions
+  {
+    if(rbyt|wbyt==0) return false;
+  }
+
+  //apple2plus.hw.write(yref[0],10+128);
+
+  // draw color palette
+
+  /*
+  var by = 0;
+  var y=0;
+  for(var x=0;x<8;x++)
+    by = (by<<1) + pattern(2,x,y);
+  
+  for(xb=0;xb<7;xb++)
+  {
+    for(var y=0;y<7;y++)
+    {
+      apple2plus.hw.write(yref[y]+xb,by);
+      //document.write(PRINTByte(by));
+    }
+  }
+  */
+
+  var s = "";
+  for(var p=0;p<8;p++)
+  {
+    s+= loresCols_names[pattern(p,x,y)[0]]+"<br>"
+    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
+    for(var y=0;y<24;y++)
+    {
+      s+="<tr>"
+        for(var x=23;x>=0;x--)
+        {
+          c = pattern(p,x,y)[1]
+          pix = c?"background-color:#000000":"background-color:#FFFFFF"
+          s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
+        }
+      s+="</tr>"
+    }
+    s+="</table><br>"
+  }  
+  document.getElementById("debug").innerHTML += s
+  //document.write(s)
+
+  function isCol(x,y)
+  { return x%8==0 ? "red":"white" }
+    
+  function PRINTByte(by)
+  {
+    var sa = ("0000000"+by.toString(2)).slice(-8).split("");
+    //sa = sa.reverse();
+    var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
+    return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
+  }
+
+    // draw dithering patterns 
+    // apple2plus.hw.write(8192,5);  
+    // apple2plus.hw.write(8194,1);  
+}
+
+
+
+
+
+
+
+
+
+
+
+function Apple2Plus(context)
+{
+  this.video = new Apple2Video(context);
+  this.hw    = new Apple2Hw(this.video);
+  // Switch on Apple II Hi-Res graphics
+  this.video.reset();
+  this.video.setGfx(true);
+  this.video.setHires(true);
+  this.video.redraw();
+}
+
+function setPixel_HGR(x,y,patternID)
+{
+    // find address and bit location
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    apple2plus.hw.write(adr,wbyt);                    // write byte 
+}
+
+function wipe_HGR(byte)
+{
+    // find address and bit location
+    //var adr = yref[y] + Math.floor(x/7);              // find address 
+    //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    for(var adr=8192;adr<16384;adr++)
+      apple2plus.hw.write(adr,byte);                    // write byte 
+}
+
+
+
+
+
+/////////////////////////////////////////////////////////
+
+var _T = function _T(idx,mod) {
+this.t = {get _language(){ return "NL" }
+,"title":document.title
+,"menu_convert":""
+,"menu_info":"Info/Contact"
+,"intro":""
+,"version":(CONF_version?("Version "+CONF_version):"")
+,"built":(CONF_builddate?("Built "+CONF_builddate):"")
+,get _(){return this}
+}
+if(idx.length>0 && typeof(this.t[idx])=="undefined") { alert(idx); return "<font color=red>"+idx+"</font>" }
+switch(mod) {
+  case "cap": return this.t[idx].charAt(0).toUpperCase()+this.t[idx].substring(1,this.t[idx].length);
+  case "inv": { var j = {}; for(var i in t) { j[ t[i] ] = i }; return j } // inverse associative
+  default: return this.t[idx];
+}
+}
+function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
+function _TITLE() {
+var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
++"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
++"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
++"#carvetext:focus {outline: none;}.slider_main {position: relative;height: 100%;}"
++".slider_overlay {position: absolute;bottom: 0;left: 0;right: 0;background-color: #A0A0A0;overflow: hidden;width: 100%;height: 85%;transition: .5s ease;}"
+//+".slider_main:hover "
++".slider_overlay {height: 100%;}"
++"#topmenu{width:100%;background-color:#f0f0f0}"
++"ul#minitabs{list-style:none;margin:0;padding:3px 0 0 0;border-left:1px solid #ccc;border-right:1px solid #ccc;border-top:1px solid #ccc;border-bottom:1px solid #ccc;font-weight:700;text-align:left;white-space:nowrap}ul#minitabs li{display:inline;margin:0 3px}ul#minitabs a{text-decoration:none;color:#999}ul#minitabs a#current{border-color:#f60;color:#06f}ul#minitabs a:hover{border-color:#f60;color:#666}"
+
+return "<style>"+css+".slider_overlay{height: 85%}</style>"
++"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
++"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
++"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
++" &nbsp; "+(typeof(_T("built"))=="string"?_T("built"):"")+"</div>"
++"</div></center></div>"
+}
+
+
+</script>
+
+ <body class="slider_main" onload=init_gui()>
+
+<div id="slider_title"></div>
+ <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+        <li><input type=button value="Generate" onclick="generate()"></li>
+        <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+      </ul>
+    </div>
+    <div id=main>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.24/webcam.js"></script>
+
+<!-- -->
+<table><tr>
+  <td style=vertical-align:top;><div id="results"></div>
+    <div id=debug style="overflow:scroll; height:400px;"></div></td>
+  <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
+</tr></table>
+
+<!-- Code to handle taking the snapshot and displaying it locally -->
+<script language="JavaScript">
+
+
+function generate()
+{
+        wipe_HGR(255);
+}
+
+
+        /**
+        * borrowed from ditherjs.js  !!!!
+        * */
+        function getContext(el) {
+            var canvas = document.createElement('canvas');
+            // this can influence the quality of the acquistion
+            canvas.height = el.clientHeight;
+            canvas.width = el.clientWidth;
+            el.parentNode.replaceChild(canvas,el);
+
+            // Inherit classes
+            canvas.className = el.className;
+            canvas.className = canvas.className.replace('snap',' ');
+            // Inherit Styles
+
+            // Turn it off
+            // canvas.style.visibility = "hidden";
+
+            // Get the context
+            var ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            return ctx;    
+        }
+
+</script>
+
+
+  </div>
+  </div>
+</body>
+</html>
