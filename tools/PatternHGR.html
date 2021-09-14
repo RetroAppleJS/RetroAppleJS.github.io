@@ -14,6 +14,10 @@
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
 <script>
+
+/////////////////////////////////////////////////////////
+// INITIALISE DATA
+
 var CONF_version="";
 var CONF_builddate="";  
 
@@ -33,76 +37,45 @@ var yref = new Array();
     yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
                +parseInt( _D.YVERTL.substring(i,i+2),16);
 
+// Monochrome colors (index 0 = full color)
+var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
 
+// Lores color to RGB table. (* Hires)
+var loresCols = [
+["#000000","#000000","#000000","#000000","Black"]  // *
+,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
+,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
+,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
+,["#006940","#383838","#233835","#383324","Dark Green"] 
+,["#808080","#808080","#508078","#7E7451","Grey 1"] 
+,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
+,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
+,["#405400","#313131","#1F312E","#312D1F","Brown"] 
+,["#D06A1A","#717171","#47716B","#706748","Orange"]  // *
+,["#808080","#808080","#508078","#7E7451","Grey 2"] 
+,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
+,["#2FBC1A","#575757","#375752","#564F37","Light Green"]  // *
+,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
+,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
+];
 
-var vidContext, apple2plus;
+/////////////////////////////////////////////////////////
+// ONLOAD
+
 function init_gui(_o)
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);  
 
-  for(var i=8192;i<16384;i++)      // clear video RAM
-    apple2plus.hw.write(i,0);
-
-    // Monochrome colors (index 0 = full color)
-    var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
-
-    // Lores color to RGB table. (* Hires)
-    var loresCols = [
-    ["#000000","#000000","#000000","#000000","Black"]  // *
-    ,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
-    ,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
-    ,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
-    ,["#006940","#383838","#233835","#383324","Dark Green"] 
-    ,["#808080","#808080","#508078","#7E7451","Grey 1"] 
-    ,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
-    ,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
-    ,["#405400","#313131","#1F312E","#312D1F","Brown"] 
-    ,["#D06A1A","#717171","#47716B","#706748","Orange"]  // *
-    ,["#808080","#808080","#508078","#7E7451","Grey 2"] 
-    ,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
-    ,["#2FBC1A","#575757","#375752","#564F37","Light Green"]  // *
-    ,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
-    ,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
-    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
-    ];
-
-  var s = "";
-  for(var p=0;p<8;p++)
-  {
-    s+= loresCols[ pattern(p,x,y)[0] ][4]+"<br>"
-    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
-    for(var y=0;y<24;y++)
-    {
-      s+="<tr>"
-        for(var x=23;x>=0;x--)
-        {
-          c = pattern(p,x,y)[1]
-          pix = c?"background-color:#000000":"background-color:#FFFFFF"
-          s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
-        }
-      s+="</tr>"
-    }
-    s+="</table><br>"
-  }  
-  document.getElementById("debug").innerHTML += s
-
-  function isCol(x,y)
-  { return x%8==0 ? "red":"white" }
-    
+  show_BITMAP();    
 }
 
+/////////////////////////////////////////////////////////
+// CALL FUNCTIONS
 
-
-
-
-
-
-
-
-
-
+var vidContext, apple2plus;
 function Apple2Plus(context)
 {
   this.video = new Apple2Video(context);
@@ -185,7 +158,74 @@ var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
 return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
 }
 
+function show_BITMAP()
+{
+  //for(var i=8192;i<16384;i++)      // clear video RAM
+  //  apple2plus.hw.write(i,0);
+
+  var s = "<big><font color=white>BITMAPS<font></big><br>";
+  for(var p=0;p<8;p++)
+  {
+    s+= "<font color=white>"+loresCols[ pattern(p,x,y)[0] ][4]+"</font><br>"
+    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
+    for(var y=0;y<24;y++)
+    {
+      s+="<tr>"
+        for(var x=23;x>=0;x--)
+        {
+          c = x%8==0?pattern(p,x,y)[2]:pattern(p,x,y)[1];
+          pix = c?"background-color:#000000":"background-color:#FFFFFF"
+          s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
+        }
+      s+="</tr>"
+    }
+    s+="</table><br>"
+  }  
+  document.getElementById("debug").innerHTML += s
+
+  function isCol(x,y)
+  { return x%8==0 ? "red":"white" }
+}
+
+function generate_HGR()
+{ 
+    wipe_HGR(0);
+    var pid = 0;
+    var bls = [20,20];
+    var spc = [10,10]
+    for(var dy=0;dy<1;dy++)
+    {
+            for(var dx=0;dx<8;dx++)
+            {
+                // DRAW LINE SQUARE
+                for(var x=-3;x<bls[0]+3;x++)
+                {
+                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-4+spc[1]+dy*(bls[1]+spc[1]),3);
+                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-3+spc[1]+dy*(bls[1]+spc[1]),3);
+                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+2+spc[1]+dy*(bls[1]+spc[1]),3);
+                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+3+spc[1]+dy*(bls[1]+spc[1]),3);
+                }
+                for(var y=-3;y<bls[1]+3;y++)
+                {
+                  setPixel_HGR(-4+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
+                  setPixel_HGR(-3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
+                  setPixel_HGR(bls[0]+2+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
+                  setPixel_HGR(bls[0]+3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
+                }          
+
+                // DRAW SOLID SQUARE
+                for(var y=0;y<bls[1];y++)
+                    for(var x=0;x<bls[0];x++)
+                        setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),pid);
+                pid++;
+            }
+    }  
+}
+
+
+
 /////////////////////////////////////////////////////////
+// GUI TEMPLATE
 
 var _T = function _T(idx,mod) {
 this.t = {get _language(){ return "NL" }
@@ -233,7 +273,7 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type=button value="Generate" onclick="generate()"></li>
+        <li><input type=button value="Generate_HGR" onclick="generate_HGR()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
       </ul>
     </div>
@@ -247,77 +287,6 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
     <div id=debug style="overflow:scroll; height:400px;"></div></td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
 </tr></table>
-
-<!-- Code to handle taking the snapshot and displaying it locally -->
-<script language="JavaScript">
-
-
-function generate()
-{
-          // draw dithering patterns 
-    // apple2plus.hw.write(8192,5);  
-    // apple2plus.hw.write(8194,1);  
-    wipe_HGR(0);
-    var pid = 0;
-    var bls = [20,20];
-    var spc = [10,10]
-    for(var dy=0;dy<1;dy++)
-    {
-            for(var dx=0;dx<8;dx++)
-            {
-                // DRAW LINE SQUARE
-                for(var x=-3;x<bls[0]+3;x++)
-                {
-                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-4+spc[1]+dy*(bls[1]+spc[1]),3);
-                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-3+spc[1]+dy*(bls[1]+spc[1]),3);
-                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+2+spc[1]+dy*(bls[1]+spc[1]),3);
-                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+3+spc[1]+dy*(bls[1]+spc[1]),3);
-                }
-
-                for(var y=-3;y<bls[1]+3;y++)
-                {
-                  setPixel_HGR(-4+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
-                  setPixel_HGR(-3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
-                  setPixel_HGR(bls[0]+2+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
-                  setPixel_HGR(bls[0]+3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),3);
-                }          
-
-                // DRAW SOLID SQUARE
-                for(var y=0;y<bls[1];y++)
-                    for(var x=0;x<bls[0];x++)
-                        setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),pid);
-                pid++;
-            }
-    }  
-}
-
-
-        /**
-        * borrowed from ditherjs.js  !!!!
-        * */
-        function getContext(el) {
-            var canvas = document.createElement('canvas');
-            // this can influence the quality of the acquistion
-            canvas.height = el.clientHeight;
-            canvas.width = el.clientWidth;
-            el.parentNode.replaceChild(canvas,el);
-
-            // Inherit classes
-            canvas.className = el.className;
-            canvas.className = canvas.className.replace('snap',' ');
-            // Inherit Styles
-
-            // Turn it off
-            // canvas.style.visibility = "hidden";
-
-            // Get the context
-            var ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = false;
-            return ctx;    
-        }
-
-</script>
-
 
   </div>
   </div>
