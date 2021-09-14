@@ -110,14 +110,37 @@ function pattern(idx,j,i)
     
     switch(idx)
     {
-      case 0: return  [0 ,false,0];                 // black 1 
-      case 1: return  [4 ,(j+1)%2==0,0];            // green 
-      case 2: return  [3 ,j%2==0,0];                // purple
-      case 3: return  [15,true,0];                  // white 1  
-      case 4: return  [0 ,false,128];               // black 2
-      case 5: return  [9 ,(j+1)%2==0,128];          // orange
-      case 6: return  [2 ,j%2==0,128];              // blue
-      case 7: return  [15,true,128];                // white2 2
+      case 0:  return  [0 ,false,0];                 // black 1 
+      case 1:  return  [4 ,(j+1)%2==0,0];            // green 
+      case 2:  return  [3 ,j%2==0,0];                // purple
+      case 3:  return  [15,true,0];                  // white 1  
+      case 4:  return  [0 ,false,128];               // black 2
+      case 5:  return  [9 ,(j+1)%2==0,128];          // orange
+      case 6:  return  [2 ,j%2==0,128];              // blue
+      case 7:  return  [15,true,128];                // white2 2
+
+      
+      case 8:  return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
+      case 9:  return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
+      case 10: return  [9 ,(j+1)%2==0 && i%2==0,128];// dark orange
+      case 11: return  [2 ,j%2==0 && i%2==0,128];    // dark blue
+
+      case 12:  return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
+      case 13:  return  [3 ,j%2==0 || i%2==0,0];      // dark purple    
+      case 14: return  [9 ,(j+1)%2==0 || i%2==0,128];// dark orange
+      case 15: return  [2 ,j%2==0 || i%2==0,128];    // dark blue
+
+      case 16:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,0];
+      case 17:  return  [4 ,(j+1)%2==0,i%2!=0?128:0];
+      case 18:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,i%2!=0?128:0];
+      case 19:  return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
+      case 20:  return  [4 ,j%2==0,i%2!=0?128:0];
+      case 21:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];
+
+      case 50: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];               // dark gray 
+      case 50: return  [15 ,i%2==0,0];               // dark gray 
+
+      default: return [0,false,0];  
     }
   }
 
@@ -193,7 +216,7 @@ function generate_HGR()
     var pid = 0;
     var bls = [20,20];
     var spc = [10,10]
-    for(var dy=0;dy<1;dy++)
+    for(var dy=0;dy<4;dy++)
     {
             for(var dx=0;dx<8;dx++)
             {
