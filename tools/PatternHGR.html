@@ -69,7 +69,7 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);  
 
-  show_BITMAP();    
+  show_BITMAPS();    
 }
 
 /////////////////////////////////////////////////////////
@@ -158,12 +158,12 @@ var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
 return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
 }
 
-function show_BITMAP()
+function show_BITMAPS()
 {
   //for(var i=8192;i<16384;i++)      // clear video RAM
   //  apple2plus.hw.write(i,0);
 
-  var s = "<big><font color=white>BITMAPS<font></big><br>";
+  var s = "<big><font color=white>BITMAPS<font></big><br><br>";
   for(var p=0;p<8;p++)
   {
     s+= "<font color=white>"+loresCols[ pattern(p,x,y)[0] ][4]+"</font><br>"
