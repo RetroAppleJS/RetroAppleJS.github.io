@@ -137,8 +137,14 @@ function pattern(idx,j,i)
       case 20:  return  [4 ,j%2==0,i%2!=0?128:0];
       case 21:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];
 
-      case 50: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];               // dark gray 
-      case 50: return  [15 ,i%2==0,0];               // dark gray 
+      case 22: return  [15 ,i%2==0,0];               // dark gray 
+      case 23: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];               // dark gray 
+      case 25: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2!=0?128:0];   
+
+
+
+      
+      case 50: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,0];               // dark gray 
 
       default: return [0,false,0];  
     }
