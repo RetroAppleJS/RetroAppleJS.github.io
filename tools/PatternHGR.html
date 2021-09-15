@@ -107,7 +107,6 @@ function wipe_HGR(byte)
 function pattern(idx,j,i)
   {
     // output = [color_index, pixel_decision, high_bit ]
-    
     switch(idx)
     {
       case 0:  return  [0 ,false,0];                 // black 1 
@@ -119,24 +118,21 @@ function pattern(idx,j,i)
       case 6:  return  [2 ,j%2==0,128];              // blue
       case 7:  return  [15,true,128];                // white2 2
 
-      
       case 8:  return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
       case 9:  return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
       case 10: return  [9 ,(j+1)%2==0 && i%2==0,128];// dark orange
       case 11: return  [2 ,j%2==0 && i%2==0,128];    // dark blue
-
-      case 12:  return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
-      case 13:  return  [3 ,j%2==0 || i%2==0,0];      // dark purple    
+      case 12: return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
+      case 13: return  [3 ,j%2==0 || i%2==0,0];      // dark purple    
       case 14: return  [9 ,(j+1)%2==0 || i%2==0,128];// dark orange
       case 15: return  [2 ,j%2==0 || i%2==0,128];    // dark blue
 
-      case 16:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,0];
-      case 17:  return  [4 ,(j+1)%2==0,i%2!=0?128:0];
-      case 18:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,i%2!=0?128:0];
-      case 19:  return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
-      case 20:  return  [4 ,j%2==0,i%2!=0?128:0];
-      case 21:  return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];
-
+      case 16: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,0];
+      case 17: return  [4 ,(j+1)%2==0,i%2!=0?128:0];
+      case 18: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,i%2!=0?128:0];
+      case 19: return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
+      case 20: return  [4 ,j%2==0,i%2!=0?128:0];
+      case 21: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];
       case 22: return  [15 ,i%2==0,0];               // dark gray 
       case 23: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];               // dark gray 
       
@@ -146,8 +142,7 @@ function pattern(idx,j,i)
       case 27: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && j%2!=0,i%2!=0?128:0];  
       case 28: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
       case 29: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,128];  
-
-      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,0];               // dark gray 
+      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];               // dark gray 
 
       default: return [0,false,0];  
     }
