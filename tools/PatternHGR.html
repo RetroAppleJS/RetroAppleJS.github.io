@@ -133,8 +133,8 @@ function pattern(idx,j,i)
       case 19: return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
       case 20: return  [4 ,j%2==0,i%2!=0?128:0];
       case 21: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];
-      case 22: return  [15 ,i%2==0,0];               // dark gray 
-      case 23: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];               // dark gray 
+      case 22: return  [15 ,i%2==0,0];
+      case 23: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];
       
       case 24: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,0]; 
       case 25: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2!=0?128:0];   
@@ -142,11 +142,30 @@ function pattern(idx,j,i)
       case 27: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && j%2!=0,i%2!=0?128:0];  
       case 28: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
       case 29: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,128];  
-      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];               // dark gray 
-
+      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
+      case 31: return  pat(idx,j,i);
       default: return [0,false,0];  
     }
+
+    function pat(idx,j,i)
+    {
+      var a = 0;
+      var b1 = ("11101111").split().reverse().join("");
+      var b2 = ("10101010").split().reverse().join("");
+
+      if(i%2==0)
+        var b = b1.charAt(j%8)=="1";
+      else
+        var b = b2.charAt(j%8)=="1";
+      if(i==7) c = b;
+
+      return  [a , b, c];
+    }
   }
+
+  //var b1 = "11011100";
+  //var b = b1.charAt[1]=="1";
+  //alert(b);
 
 function setPixel_HGR(x,y,patternID)
 {
@@ -191,9 +210,9 @@ function show_BITMAPS()
   //  apple2plus.hw.write(i,0);
 
   var s = "<big><font color=white>BITMAPS<font></big><br><br>";
-  for(var p=0;p<8;p++)
+  for(var p=0;p<32;p++)
   {
-    s+= "<font color=white>"+loresCols[ pattern(p,x,y)[0] ][4]+"</font><br>"
+    s+= "<font color=white>"+p%8/*loresCols[ pattern(p,x,y)[0] ][4]*/+"</font><br>"
     s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
     for(var y=0;y<24;y++)
     {
