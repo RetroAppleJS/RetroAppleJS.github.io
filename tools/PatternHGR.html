@@ -70,6 +70,7 @@ function init_gui(_o)
   apple2plus          = new Apple2Plus(vidContext);
   wipe_HGR(0);
   show_BITMAPS2();
+  wipe_HGR(0);
 }
 
 /////////////////////////////////////////////////////////
@@ -154,11 +155,8 @@ function setPixel_HGR(x,y,patternID)
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var rbyt = apple2plus.hw.read(adr);
-
-    //rbyt = rbyt & ~(1 << x%7);
+    //rbyt = rbyt & ~(1 << x%7) & 127; 
     var wbyt = rbyt | (1 << x%7);    // OR current bit with pixel bit
-    
-    //wbyt &= 127;
     if(rbyt ==0 && rbyt&8 != pattern(patternID,x,y)[2])
       wbyt |= pattern(patternID,x,y)[2];              // OR high bit
     else
