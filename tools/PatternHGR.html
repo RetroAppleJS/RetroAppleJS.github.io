@@ -67,9 +67,8 @@ function init_gui(_o)
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
-  apple2plus          = new Apple2Plus(vidContext);  
-
-  show_BITMAPS();    
+  apple2plus          = new Apple2Plus(vidContext);
+  show_BITMAPS2();
 }
 
 /////////////////////////////////////////////////////////
@@ -85,23 +84,6 @@ function Apple2Plus(context)
   this.video.setGfx(true);
   this.video.setHires(true);
   this.video.redraw();
-}
-
-function setPixel_HGR(x,y,patternID)
-{
-    // find address and bit location
-    var adr = yref[y] + Math.floor(x/7);              // find address 
-    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
-}
-
-function wipe_HGR(byte)
-{
-    // find address and bit location
-    //var adr = yref[y] + Math.floor(x/7);              // find address 
-    //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
-    for(var adr=8192;adr<16384;adr++)
-      apple2plus.hw.write(adr,byte);                    // write byte 
 }
 
 function pattern(idx,j,i)
@@ -149,23 +131,22 @@ function pattern(idx,j,i)
 
     function pat(idx,j,i)
     {
-      var a = 0;
-      var b1 = ("11101111").split().reverse().join("");
-      var b2 = ("10101010").split().reverse().join("");
+      var a = new Array();
+      a[0] = 0;
+      var ba = [("11101111").split("").reverse().join("")
+               ,("10101010").split("").reverse().join("")];
+      a[1] = ba[i%2].charAt(j%8)=="1";
+      a[2] = ba[i%2].charAt(0)=="1"?128:0;
 
-      if(i%2==0)
-        var b = b1.charAt(j%8)=="1";
-      else
-        var b = b2.charAt(j%8)=="1";
-      if(i==7) c = b;
+      //return  [a , b, c];
+      var t = [0 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
 
-      return  [a , b, c];
+     // if(t[0]!=a[0] || t[1]!=a[1] || t[2]!=a[2])
+     //   alert(i+","+j+"(i,j) "+t.join(",")+" != "+a.join(","))
+
+      return a;
     }
   }
-
-  //var b1 = "11011100";
-  //var b = b1.charAt[1]=="1";
-  //alert(b);
 
 function setPixel_HGR(x,y,patternID)
 {
@@ -173,18 +154,27 @@ function setPixel_HGR(x,y,patternID)
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var rbyt = apple2plus.hw.read(adr)
     var wbyt = rbyt | 1 << x%7;    // OR current bit with pixel bit
-
+    //wbyt &= 127;
     if(rbyt ==0 && rbyt&8 != pattern(patternID,x,y)[2])
-    {
-      wbyt |= pattern(patternID,x,y)[2];
-    }  
-    else {
+      wbyt |= pattern(patternID,x,y)[2];              // OR high bit
+    else
+    { 
       wbyt |= pattern(patternID,x,y)[2];
       //document.getElementById("debug").innerHTML += "CONFLICT "+PRINTByte(rbyt)+" >> "+PRINTByte(wbyt)
     }  // Hi-Byte conflict !!
 
     if(pattern(patternID,x,y)[1])
         apple2plus.hw.write(adr,wbyt);                    // write byte 
+}
+
+function getPixel_HGR(x,y)
+{
+    // find address and bit location
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var rbyt = apple2plus.hw.read(adr);
+    var bit = (rbyt >> (x%7)) & 1 == 1;
+    var hbit  = rbyt & 128;
+    return [ bit,hbit ]
 }
 
 function wipe_HGR(byte)
@@ -219,8 +209,8 @@ function show_BITMAPS()
       s+="<tr>"
         for(var x=23;x>=0;x--)
         {
-          c = x%8==0?pattern(p,x,y)[2]:pattern(p,x,y)[1];
-          pix = c?"background-color:#000000":"background-color:#FFFFFF"
+          var c = x%8==0?pattern(p,x,y)[2]:pattern(p,x,y)[1];
+          var pix = c?"background-color:#000000":"background-color:#FFFFFF"
           s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
         }
       s+="</tr>"
@@ -233,11 +223,45 @@ function show_BITMAPS()
   { return x%8==0 ? "red":"white" }
 }
 
+function show_BITMAPS2()
+{
+  var bls = [24,24];
+  var s = "<big><font color=white>BITMAPS<font></big><br><br>";
+  for(var p=0;p<32;p++)
+  {
+    wipe_HGR(0);
+    for(var y=0;y<bls[1];y++)
+        for(var x=0;x<bls[0];x++)
+            setPixel_HGR(x,y,p);
+    
+    
+    s+= "<font color=white>"+p%8/*loresCols[ pattern(p,x,y)[0] ][4]*/+"</font><br>"
+    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
+    for(var y=0;y<bls[1];y++)
+    {
+        s+="<tr>"
+        for(var x=0;x<bls[0];x++)
+        {
+            var a = getPixel_HGR(x,y);
+            var pix = a[0]?"background-color:#000000":"background-color:#FFFFFF"
+            s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid white;border-collapse:collapse;\"></td>"
+            if((x+1)%7==0) 
+            {
+              var pix = a[1]?"background-color:#000000":"background-color:#FFFFFF"
+              s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid red;border-collapse:collapse;\"></td>"
+            }
+        }
+        s+="</tr>"
+    }
+  }
+  document.getElementById("debug").innerHTML += s
+}
+
 function generate_HGR()
 { 
     wipe_HGR(0);
     var pid = 0;
-    var bls = [20,20];
+    var bls = [24,20];
     var spc = [10,10]
     for(var dy=0;dy<4;dy++)
     {
@@ -266,6 +290,7 @@ function generate_HGR()
                 pid++;
             }
     }  
+    
 }
 
 
