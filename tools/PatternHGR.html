@@ -6,6 +6,8 @@
   <style>
   html {height:100%;font-family:"Arial"}
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
+  .tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
+  .tcell5 {width:5px;background-color:red;padding:0;border:1px solid white}
   </style>
 </head>
 
@@ -207,37 +209,44 @@ function show_BITMAPS()
 {
   //for(var i=8192;i<16384;i++)      // clear video RAM
   //  apple2plus.hw.write(i,0);
-  var px1 = "<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:9px;height:9px\">";
-  var px2 = "<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
 
   var s = "<big><font color=white>BITMAPS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
     s+= "<font color=white>"+p+"</font><br>";
-    s+= "<table style='margin:0;padding:0;border:1px solid black;'>";
+    s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
     for(var y=0;y<24;y++)
     {
       s+="<tr>"
         for(var x=0;x<21;x++)
-        {
-          var c = pattern(p,x,y);
-          var pix = c[1]?"#000000":"white";
-          var bck = (c[2]==128?"#FFE9D0":"white");
-          var sep = (x+1)%7==0?"3px":"1px";
-          s+= "<td style=\"background-color:"+pix+";width:10;height:10;padding:0;border:1px solid "+bck+";border-collapse:collapse;\">"
-            +px1
-            +"</td>"
-          if((x+1)%7==0)
-              s+= "<td style=\"background-color:red;width:5px\">"
-                +px2
-                +"</td>"
-        }
+          s+= gen_cell(p,x,y);
       s+="</tr>";
     }
     s+="</table><br>";
   }  
   document.getElementById("debug").innerHTML += s;
 }
+
+function gen_cell(p,x,y)
+{
+  var px1 = "<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\">";
+  var px2 = "<img src=\"../res/pixT.gif\" style=\"width:4px;height:9px\">";
+  //var px2 = "<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
+var px1 = px2 = "";
+  var c = pattern(p,x,y);
+  var bi = isNaN(p); 
+  var pix = c[1]?"background-color:black":"";
+  var bck = (c[2]==128?"border-color:#FFE9D0":"");
+  var s= "<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\">"
+            +px1
+            +"</td>"
+  if((x+1)%7==0)
+    s+= "<td class=tcell5>"
+                +px2
+                +"</td>"
+  return s;
+}
+
 /*
 function show_BITMAPS2()
 {
