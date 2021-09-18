@@ -141,11 +141,7 @@ function pattern(idx,j,i)
       a[2] = ba[i%2].charAt(0)=="1"?128:0;
 
       //return  [a , b, c];
-      var t = [0 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
-
-     // if(t[0]!=a[0] || t[1]!=a[1] || t[2]!=a[2])
-     //   alert(i+","+j+"(i,j) "+t.join(",")+" != "+a.join(","))
-
+      //var t = [0 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
       return a;
     }
   }
@@ -211,6 +207,9 @@ function show_BITMAPS()
 {
   //for(var i=8192;i<16384;i++)      // clear video RAM
   //  apple2plus.hw.write(i,0);
+  var px1 = "<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:9px;height:9px\">";
+  var px2 = "<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
+
   var s = "<big><font color=white>BITMAPS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
@@ -224,10 +223,14 @@ function show_BITMAPS()
           var c = pattern(p,x,y);
           var pix = c[1]?"#000000":"white";
           var bck = (c[2]==128?"#FFE9D0":"white");
-          var sep = (x+1)%7==0?"3px":"1px"
-          s+= "<td style=\"background-color:"+pix+";width:10;height:10;padding:0;border:1px solid "+bck+";border-collapse:collapse;\"></td>"
+          var sep = (x+1)%7==0?"3px":"1px";
+          s+= "<td style=\"background-color:"+pix+";width:10;height:10;padding:0;border:1px solid "+bck+";border-collapse:collapse;\">"
+            +px1
+            +"</td>"
           if((x+1)%7==0)
-              s+= "<td></td>"
+              s+= "<td style=\"background-color:red;width:5px\">"
+                +px2
+                +"</td>"
         }
       s+="</tr>";
     }
@@ -235,7 +238,7 @@ function show_BITMAPS()
   }  
   document.getElementById("debug").innerHTML += s;
 }
-
+/*
 function show_BITMAPS2()
 {
   var bls = [24,24];
@@ -250,7 +253,7 @@ function show_BITMAPS2()
             setPixel_HGR(x,y,p);
         }
     
-    s+= "<font color=white>"+p%8/*loresCols[ pattern(p,x,y)[0] ][4]*/+"</font><br>"
+    s+= "<font color=white>"+p%8+"</font><br>"
     s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
     for(var y=0;y<bls[1];y++)
     {
@@ -271,6 +274,7 @@ function show_BITMAPS2()
   }
   document.getElementById("debug").innerHTML += s;
 }
+*/
 
 function generate_HGR()
 { 
