@@ -69,7 +69,7 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
   wipe_HGR(0);
-  show_BITMAPS2();
+  show_BITMAPS();
   wipe_HGR(0);
 }
 
@@ -102,32 +102,32 @@ function pattern(idx,j,i)
       case 6:  return  [2 ,j%2==0,128];              // blue
       case 7:  return  [15,true,128];                // white2 2
 
-      case 8:  return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
-      case 9:  return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
-      case 10: return  [9 ,(j+1)%2==0 && i%2==0,128];// dark orange
-      case 11: return  [2 ,j%2==0 && i%2==0,128];    // dark blue
-      case 12: return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
-      case 13: return  [3 ,j%2==0 || i%2==0,0];      // dark purple    
-      case 14: return  [9 ,(j+1)%2==0 || i%2==0,128];// dark orange
-      case 15: return  [2 ,j%2==0 || i%2==0,128];    // dark blue
+      case 10:  return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
+      case 11:  return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
+      case 12: return  [9 ,(j+1)%2==0 && i%2==0,128];// dark orange
+      case 13: return  [2 ,j%2==0 && i%2==0,128];    // dark blue
+      case 14: return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
+      case 15: return  [3 ,j%2==0 || i%2==0,0];      // dark purple    
+      case 16: return  [9 ,(j+1)%2==0 || i%2==0,128];// dark orange
+      case 17: return  [2 ,j%2==0 || i%2==0,128];    // dark blue
+      case 18: return  [15 ,i%2==0,0];
 
-      case 16: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,0];
-      case 17: return  [4 ,(j+1)%2==0,i%2!=0?128:0];
-      case 18: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,i%2!=0?128:0];
-      case 19: return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
-      case 20: return  [4 ,j%2==0,i%2!=0?128:0];
-      case 21: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];
-      case 22: return  [15 ,i%2==0,0];
-      case 23: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];
-      
-      case 24: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,0]; 
-      case 25: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2!=0?128:0];   
-      case 26: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
-      case 27: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && j%2!=0,i%2!=0?128:0];  
-      case 28: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
-      case 29: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,128];  
-      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
-      case 31: return  pat(idx,j,i);
+      case 20: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,0];
+      case 21: return  [4 ,(j+1)%2==0,i%2!=0?128:0];
+      case 22: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,i%2!=0?128:0];
+      case 23: return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
+      case 24: return  [4 ,j%2==0,i%2!=0?128:0];
+      case 25: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];  
+
+      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,0]; 
+      case 31: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2!=0?128:0];   
+      case 32: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
+      case 33: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && j%2!=0,i%2!=0?128:0];  
+      case 34: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
+      case 35: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,128];  
+      case 36: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
+      case 37: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];
+      case 39: return  pat(idx,j,i);
       default: return [0,false,0];  
     }
 
@@ -135,7 +135,7 @@ function pattern(idx,j,i)
     {
       var a = new Array();
       a[0] = 0;
-      var ba = [("11101111").split("").reverse().join("")
+      var ba = [("01110111").split("").reverse().join("")
                ,("10101010").split("").reverse().join("")];
       a[1] = ba[i%2].charAt(j%8)=="1";
       a[2] = ba[i%2].charAt(0)=="1"?128:0;
@@ -211,29 +211,29 @@ function show_BITMAPS()
 {
   //for(var i=8192;i<16384;i++)      // clear video RAM
   //  apple2plus.hw.write(i,0);
-
   var s = "<big><font color=white>BITMAPS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
-    s+= "<font color=white>"+p%8/*loresCols[ pattern(p,x,y)[0] ][4]*/+"</font><br>"
-    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
+    s+= "<font color=white>"+p+"</font><br>";
+    s+= "<table style='margin:0;padding:0;border:1px solid black;'>";
     for(var y=0;y<24;y++)
     {
       s+="<tr>"
-        for(var x=23;x>=0;x--)
+        for(var x=0;x<21;x++)
         {
-          var c = x%8==0?pattern(p,x,y)[2]:pattern(p,x,y)[1];
-          var pix = c?"background-color:#000000":"background-color:#FFFFFF"
-          s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid "+isCol(x, y)+";border-collapse:collapse;\"></td>"
+          var c = pattern(p,x,y);
+          var pix = c[1]?"#000000":"white";
+          var bck = (c[2]==128?"#FFE9D0":"white");
+          var sep = (x+1)%7==0?"3px":"1px"
+          s+= "<td style=\"background-color:"+pix+";width:10;height:10;padding:0;border:1px solid "+bck+";border-collapse:collapse;\"></td>"
+          if((x+1)%7==0)
+              s+= "<td></td>"
         }
-      s+="</tr>"
+      s+="</tr>";
     }
-    s+="</table><br>"
+    s+="</table><br>";
   }  
-  document.getElementById("debug").innerHTML += s
-
-  function isCol(x,y)
-  { return x%8==0 ? "red":"white" }
+  document.getElementById("debug").innerHTML += s;
 }
 
 function show_BITMAPS2()
@@ -269,18 +269,18 @@ function show_BITMAPS2()
         s+="</tr>"
     }
   }
-  document.getElementById("debug").innerHTML += s
+  document.getElementById("debug").innerHTML += s;
 }
 
 function generate_HGR()
 { 
     wipe_HGR(0);
     var pid = 0;
-    var bls = [24,20];
+    var bls = [17,17];
     var spc = [10,10]
     for(var dy=0;dy<4;dy++)
     {
-            for(var dx=0;dx<8;dx++)
+            for(var dx=0;dx<10;dx++)
             {
                 // DRAW LINE SQUARE
                 for(var x=-3;x<bls[0]+3;x++)
