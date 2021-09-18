@@ -70,9 +70,9 @@ function init_gui(_o)
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
-  wipe_HGR(0);
+  //wipe_HGR(0);
   show_BITMAPS();
-  wipe_HGR(0);
+  //wipe_HGR(0);
 }
 
 /////////////////////////////////////////////////////////
@@ -207,19 +207,30 @@ return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</t
 
 function show_BITMAPS()
 {
-  //for(var i=8192;i<16384;i++)      // clear video RAM
-  //  apple2plus.hw.write(i,0);
+  var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\">"
+          ,"<img src=\"../res/pixT.gif\" style=\"width:4px;height:9px\">"]
+  //"<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
 
-  var s = "<big><font color=white>BITMAPS<font></big><br><br>";
+  var s = "<big><font color=white>FLEX BITMAP<font></big><br><br>";
+  s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
+  for(var y=0;y<21;y++)
+  {
+    s+="<tr>"
+    for(var x=0;x<21;x++) s+= gen_cell(9,x,y,px);
+    s+="</tr>";
+  }
+  s+="</table><br>";
+
+
+  s+= "<big><font color=white>HARD CODED BITMAPS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
     s+= "<font color=white>"+p+"</font><br>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
-    for(var y=0;y<24;y++)
+    for(var y=0;y<21;y++)
     {
       s+="<tr>"
-        for(var x=0;x<21;x++)
-          s+= gen_cell(p,x,y);
+      for(var x=0;x<21;x++) s+= gen_cell(p,x,y,["",""]);
       s+="</tr>";
     }
     s+="</table><br>";
@@ -227,23 +238,15 @@ function show_BITMAPS()
   document.getElementById("debug").innerHTML += s;
 }
 
-function gen_cell(p,x,y)
+function gen_cell(p,x,y,img)
 {
-  var px1 = "<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\">";
-  var px2 = "<img src=\"../res/pixT.gif\" style=\"width:4px;height:9px\">";
-  //var px2 = "<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
-var px1 = px2 = "";
   var c = pattern(p,x,y);
   var bi = isNaN(p); 
   var pix = c[1]?"background-color:black":"";
   var bck = (c[2]==128?"border-color:#FFE9D0":"");
-  var s= "<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\">"
-            +px1
-            +"</td>"
+  var s= "<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\">"+img[0]+"</td>"
   if((x+1)%7==0)
-    s+= "<td class=tcell5>"
-                +px2
-                +"</td>"
+    s+= "<td class=tcell5>"+img[1]+"</td>"
   return s;
 }
 
