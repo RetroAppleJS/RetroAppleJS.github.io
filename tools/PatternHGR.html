@@ -205,10 +205,15 @@ var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
 return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
 }
 
+function LOpix() {}
+function HOpix() {}
+function CCpix() {}
+function HCpix() {}
+
 function show_BITMAPS()
 {
-  var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\">"
-          ,"<img src=\"../res/pixT.gif\" style=\"width:4px;height:9px\">"]
+  var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\" onmouseover=LOpix() onclick=CCpix()>"
+          ,"<img src=\"../res/pixT.gif\" style=\"width:4px;height:9px\" onmouseover=HOpix() onclick=HCpix()>"]
   //"<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
 
   var s = "<big><font color=white>CUSTOM BITMAP<font></big><br><br>";
