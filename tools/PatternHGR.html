@@ -7,7 +7,9 @@
   html {height:100%;font-family:"Arial"}
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
   .tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
-  .tcell5 {width:5px;background-color:red;padding:0;border:1px solid white}
+  .tcell10:hover { background-color:yellow;border:1px solid black }
+  .tcell5 {width:5px;background-color:lightgray;padding:0;border:0px solid white}
+  .tcell5:hover { background-color:green;border:0px solid white}
   </style>
 </head>
 
@@ -224,7 +226,7 @@ function Cpix(t,x,y,z)
 function show_BITMAPS()
 {
   var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
-          ,"<img src=\"../res/pixT.gif\" style=\"width:4px;height:9px\" onclick=Cpix(this)>"]
+          ,"<img src=\"../res/pixT.gif\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
   //"<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
 
   // TODO: MODIFIERS - preset pattern -  load/save pattern)
