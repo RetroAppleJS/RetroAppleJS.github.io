@@ -107,10 +107,11 @@ function pattern(idx,j,i)
       case 5:  return  [9 ,(j+1)%2==0,128];          // orange
       case 6:  return  [2 ,j%2==0,128];              // blue
       case 7:  return  [15,true,128];                // white2 2
-      case 8:  return  [0,custom_pattern[j%21][i%21][0],custom_pattern[j%21][i%21][1]];
 
-      case 10:  return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
-      case 11:  return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
+      case 9:  return  [0,custom_pattern[j%21][i%21][0],custom_pattern[j%21][i%21][1]];
+
+      case 10: return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
+      case 11: return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
       case 12: return  [9 ,(j+1)%2==0 && i%2==0,128];// dark orange
       case 13: return  [2 ,j%2==0 && i%2==0,128];    // dark blue
       case 14: return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
@@ -134,10 +135,10 @@ function pattern(idx,j,i)
       case 35: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,128];  
       case 36: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
       case 37: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];
-      case 39: return  pat(idx,j,i);
+      //case 39: return  pat(idx,j,i);
       default: return [0,false,0];  
     }
-
+/*
     function pat(idx,j,i)
     {
       var a = new Array();
@@ -151,6 +152,7 @@ function pattern(idx,j,i)
       //var t = [0 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
       return a;
     }
+*/
   }
 
 function setPixel_HGR(x,y,patternID)
@@ -223,6 +225,10 @@ function Cpix(t,x,y,z)
   var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green" 
 }
 
+function ltrim(s) { return s.replace(/^ */,"") }
+function rtrim(s) { return s.replace(/ *$/,"") }
+function trim(s) { return rtrim(ltrim(s)) }
+
 function show_BITMAPS()
 {
   var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
@@ -230,6 +236,21 @@ function show_BITMAPS()
   //"<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
 
   // TODO: MODIFIERS - preset pattern -  load/save pattern)
+
+  // PARSE PATTERN FUNCTION - CASE BY CASE
+  var formula_list = String(pattern).split("return");
+  var formula_ref = {};
+  for(var i=1;i<formula_list.length;i++)
+  {
+    var casenr = formula_list[i-1].split("case")[1];
+    var triple = trim( formula_list[i].substring(0,formula_list[i].indexOf(";")) );
+    if(typeof(casenr)=="string" && casenr.indexOf(":")>0 && triple.charAt(0)=="[")
+    {
+      casenr = Number(casenr.substring(0,casenr.indexOf(":")))
+      formula_ref[casenr] = triple;
+      //document.write(casenr+"  "+triple+"<br>" )
+    }
+  }
 
   var s = "<big><font color=white>CUSTOM BITMAP<font></big><br><br>";
   s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
@@ -245,7 +266,7 @@ function show_BITMAPS()
   s+= "<big><font color=white>HARD CODED BITMAPS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
-    s+= "<font color=white>"+p+"</font><br>";
+    s+= "<div style='color:white;font-size:smaller;overflow-wrap:anywhere;width:320px'>"+p+": "+formula_ref[p]+"</div><br>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
     for(var y=0;y<21;y++)
     {
