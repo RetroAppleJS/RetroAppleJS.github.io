@@ -94,48 +94,48 @@ function Apple2Plus(context)
 
 // define 21x21 array filled with zeroes
 var custom_pattern = new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]));
-function pattern(idx,j,i)
+function pattern(idx,x,y)
   {
     // output = [color_index, pixel_decision, high_bit ]
     switch(idx)
     {
       case 0:  return  [0 ,false,0];                 // black 1 
-      case 1:  return  [4 ,(j+1)%2==0,0];            // green 
-      case 2:  return  [3 ,j%2==0,0];                // purple
+      case 1:  return  [4 ,(x+1)%2==0,0];            // green 
+      case 2:  return  [3 ,x%2==0,0];                // purple
       case 3:  return  [15,true,0];                  // white 1  
       case 4:  return  [0 ,false,128];               // black 2
-      case 5:  return  [9 ,(j+1)%2==0,128];          // orange
-      case 6:  return  [2 ,j%2==0,128];              // blue
+      case 5:  return  [9 ,(x+1)%2==0,128];          // orange
+      case 6:  return  [2 ,x%2==0,128];              // blue
       case 7:  return  [15,true,128];                // white2 2
 
-      case 9:  return  [0,custom_pattern[j%21][i%21][0],custom_pattern[j%21][i%21][1]];
+      case 9:  return  [0,custom_pattern[x%21][y%21][0],custom_pattern[x%21][y%21][1]];
 
-      case 10: return  [4 ,(j+1)%2==0 && i%2==0,0];  // dark green 
-      case 11: return  [3 ,j%2==0 && i%2==0,0];      // dark purple       
-      case 12: return  [9 ,(j+1)%2==0 && i%2==0,128];// dark orange
-      case 13: return  [2 ,j%2==0 && i%2==0,128];    // dark blue
-      case 14: return  [4 ,(j+1)%2==0 || i%2==0,0];  // dark green 
-      case 15: return  [3 ,j%2==0 || i%2==0,0];      // dark purple    
-      case 16: return  [9 ,(j+1)%2==0 || i%2==0,128];// dark orange
-      case 17: return  [2 ,j%2==0 || i%2==0,128];    // dark blue
-      case 18: return  [15 ,i%2==0,0];
+      case 10: return  [4 ,(x+1)%2==0 && y%2==0,0];  // dark green 
+      case 11: return  [3 ,x%2==0 && y%2==0,0];      // dark purple       
+      case 12: return  [9 ,(x+1)%2==0 && y%2==0,128];// dark orange
+      case 13: return  [2 ,x%2==0 && y%2==0,128];    // dark blue
+      case 14: return  [4 ,(x+1)%2==0 || y%2==0,0];  // dark green 
+      case 15: return  [3 ,x%2==0 || y%2==0,0];      // dark purple    
+      case 16: return  [9 ,(x+1)%2==0 || y%2==0,128];// dark orange
+      case 17: return  [2 ,x%2==0 || y%2==0,128];    // dark blue
+      case 18: return  [15 ,y%2==0,0];
 
-      case 20: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,0];
-      case 21: return  [4 ,(j+1)%2==0,i%2!=0?128:0];
-      case 22: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,i%2!=0?128:0];
-      case 23: return  [4 ,j%2==0 && i%2==0 || (j+1)%2==0 && i%2!=0,i%2!=0?128:0];
-      case 24: return  [4 ,j%2==0,i%2!=0?128:0];
-      case 25: return  [4 ,(j+1)%2==0 && i%2==0 || j%2==0 && i%2!=0,128];  
+      case 20: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,0];
+      case 21: return  [4 ,(x+1)%2==0,y%2!=0?128:0];
+      case 22: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,y%2!=0?128:0];
+      case 23: return  [4 ,x%2==0 && y%2==0 || (x+1)%2==0 && y%2!=0,y%2!=0?128:0];
+      case 24: return  [4 ,x%2==0,y%2!=0?128:0];
+      case 25: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,128];  
 
-      case 30: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,0]; 
-      case 31: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2!=0?128:0];   
-      case 32: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
-      case 33: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && j%2!=0,i%2!=0?128:0];  
-      case 34: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j)%2==0)   || i%2!=0 && (j+1)%2!=0,i%2!=0?128:0]; 
-      case 35: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && (j+1)%2!=0,128];  
-      case 36: return  [15 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
-      case 37: return  [15 ,i%2==0 && (j>>1)%2!=0 || i%2!=0,0];
-      //case 39: return  pat(idx,j,i);
+      case 30: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,0]; 
+      case 31: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2!=0?128:0];   
+      case 32: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
+      case 33: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && x%2!=0,y%2!=0?128:0];  
+      case 34: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
+      case 35: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
+      case 36: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
+      case 37: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
+      //case 39: return  pat(idx,x,i);
       default: return [0,false,0];  
     }
 /*
@@ -246,8 +246,9 @@ function show_BITMAPS()
     var triple = trim( formula_list[i].substring(0,formula_list[i].indexOf(";")) );
     if(typeof(casenr)=="string" && casenr.indexOf(":")>0 && triple.charAt(0)=="[")
     {
-      casenr = Number(casenr.substring(0,casenr.indexOf(":")))
-      formula_ref[casenr] = triple;
+      casenr = Number(casenr.substring(0,casenr.indexOf(":")));
+      var fml = triple.split(",")
+      formula_ref[casenr] = fml[1];
       //document.write(casenr+"  "+triple+"<br>" )
     }
   }
@@ -266,7 +267,8 @@ function show_BITMAPS()
   s+= "<big><font color=white>HARD CODED BITMAPS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
-    s+= "<div style='color:white;font-size:smaller;overflow-wrap:anywhere;width:320px'>"+p+": "+formula_ref[p]+"</div><br>";
+    s+= ""
+    s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div><br>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
     for(var y=0;y<21;y++)
     {
