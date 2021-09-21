@@ -65,6 +65,7 @@ var loresCols = [
 ];
 
 oPATTERN = new PATTERN();
+var custom_pattern =  new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]))
 
 /////////////////////////////////////////////////////////
 // ONLOAD
@@ -94,8 +95,6 @@ function Apple2Plus(context)
   this.video.redraw();
 }
 
-// define 21x21 array filled with zeroes
-var custom_pattern = new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]));
 function PATTERN(idx,x,y)
 {
     this.calulate = PATTERN_calc;
