@@ -75,6 +75,13 @@ function init_gui(_o)
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
+
+  var a = oPATTERN.parse();
+  var s = "";
+  for(var i in a)
+    s+= "<option value=\""+i+": "+a[i]+"\">\n"
+  document.getElementById("formulas").innerHTML = s;
+
   //wipe_HGR(0);
   show_BITMAPS();
   //wipe_HGR(0);
@@ -265,7 +272,7 @@ function show_BITMAPS()
   for(var p=0;p<32;p++)
   {
     s+= ""
-    s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div><br>";
+    s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
     for(var y=0;y<21;y++)
     {
@@ -407,6 +414,8 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 }
 
 
+
+
 </script>
 
  <body class="slider_main" onload=init_gui()>
@@ -425,13 +434,12 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 <table><tr>
   <td style=vertical-align:top;>
 
-    <input list="formulas" name="state-choice" />
+    <input list="formulas" name="state-choice" style="width:320px"/>
     <datalist id="formulas">
-        <option value="Maine">
-        <option value="Maryland">
-        <option value="Massachusetts">
     </datalist>
-  
+    <br>
+    <input type=button value="apply formula" onclick="generate_HGR()">
+    <br>  
     <div id="results"></div>
     <div id=debug style="overflow:scroll; height:400px;"></div></td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
