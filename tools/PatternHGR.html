@@ -65,7 +65,8 @@ var loresCols = [
 ];
 
 oPATTERN = new PATTERN();
-var custom_pattern =  new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]))
+var custom_pattern =  new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]));
+var custom_formula = ["(x+1)%2==0","y%2!=0?128:0"];
 
 /////////////////////////////////////////////////////////
 // ONLOAD
@@ -76,10 +77,8 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
 
-  var a = oPATTERN.parse();
-  var s = "";
-  for(var i in a)
-    s+= "<option value=\""+i+": "+a[i]+"\">\n"
+  var a = oPATTERN.parse(), s = "";
+  for(var i in a) s+= "<option value=\""+i+" : "+a[i][0]+" : "+a[i][1]+"\">\n";
   document.getElementById("formulas").innerHTML = s;
 
   //wipe_HGR(0);
@@ -106,6 +105,7 @@ function PATTERN(idx,x,y)
 {
     this.calulate = PATTERN_calc;
     this.parse = PATTERN_parse;
+    this.color = PATTERN_color;
 
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
@@ -116,16 +116,17 @@ function PATTERN(idx,x,y)
       // output = [color_index, pixel_decision, high_bit ]
       switch(idx)
       {
-        case 0:  return  [0 ,false,0];                 // black 1 
-        case 1:  return  [4 ,(x+1)%2==0,0];            // green 
-        case 2:  return  [3 ,x%2==0,0];                // purple
-        case 3:  return  [15,true,0];                  // white 1  
-        case 4:  return  [0 ,false,128];               // black 2
-        case 5:  return  [9 ,(x+1)%2==0,128];          // orange
-        case 6:  return  [2 ,x%2==0,128];              // blue
-        case 7:  return  [15,true,128];                // white2 2
+        case 0:  return  [loresCols[0][0],false,0];                 // black 1 
+        case 1:  return  [loresCols[1][0],(x+1)%2==0,0];            // green 
+        case 2:  return  [loresCols[2][0],x%2==0,0];                // purple
+        case 3:  return  [loresCols[3][0],true,0];                  // white 1  
+        case 4:  return  [loresCols[4][0],false,128];               // black 2
+        case 5:  return  [loresCols[5][0] ,(x+1)%2==0,128];         // orange
+        case 6:  return  [loresCols[6][0],x%2==0,128];              // blue
+        case 7:  return  [loresCols[7][0],true,128];                // white2 2
 
-        case 9:  return  [0,custom_pattern[x%21][y%21][0],custom_pattern[x%21][y%21][1]];
+        case 8:  return  [0,custom_pattern[x%21][y%21][0],custom_pattern[x%21][y%21][1]];
+        case 9:  return  [0,eval(custom_formula[0]),eval(custom_formula[1])];
 
         case 10: return  [4 ,(x+1)%2==0 && y%2==0,0];  // dark green 
         case 11: return  [3 ,x%2==0 && y%2==0,0];      // dark purple       
@@ -156,6 +157,12 @@ function PATTERN(idx,x,y)
       }
   }
 
+  function PATTERN_color(pattern_ID)
+  {
+    // TODO: calculqte average color aimed by given pattern
+    return loresCols[0][0];
+  }
+
   function PATTERN_parse()
   {
     // PARSE PATTERN FUNCTION - CASE BY CASE
@@ -168,14 +175,15 @@ function PATTERN(idx,x,y)
       if(typeof(casenr)=="string" && casenr.indexOf(":")>0 && triple.charAt(0)=="[")
       {
         casenr = Number(casenr.substring(0,casenr.indexOf(":")));
-        var fml = triple.split(",")
-        formula_ref[casenr] = fml[1];
+        var fml = triple.split(",");
+        formula_ref[casenr] = [ fml[1] , fml[2].substring(0,fml[2].indexOf("]")) ];
         //document.write(casenr+"  "+triple+"<br>" )
       }
     }
     return formula_ref
   }
 }
+
 
 function setPixel_HGR(x,y,patternID)
 {
@@ -228,10 +236,10 @@ function wipe_HGR(byte)
 
 function PRINTByte(by)
 {
-var sa = ("0000000"+by.toString(2)).slice(-8).split("");
-//sa = sa.reverse();
-var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
-return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
+  var sa = ("0000000"+by.toString(2)).slice(-8).split("");
+  //sa = sa.reverse();
+  var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
+  return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
 }
 
 function Cpix(t,x,y,z)
@@ -415,7 +423,12 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 
 
 
-
+function load_bitmap()
+{
+  var sel = document.getElementById("FSL").value;
+  sel = sel.split(" : ")
+  alert(sel[0]+"\n"+sel[1]+"\n"+sel[2]);
+}
 </script>
 
  <body class="slider_main" onload=init_gui()>
@@ -433,12 +446,12 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 <!-- -->
 <table><tr>
   <td style=vertical-align:top;>
-
-    <input list="formulas" name="state-choice" style="width:320px"/>
+    
+    <input list="formulas" name="formula-selector" id="FSL" style="width:320px"/>
     <datalist id="formulas">
     </datalist>
     <br>
-    <input type=button value="apply formula" onclick="generate_HGR()">
+    <input type=button value="apply formula" onclick="load_bitmap()">
     <br>  
     <div id="results"></div>
     <div id=debug style="overflow:scroll; height:400px;"></div></td>
