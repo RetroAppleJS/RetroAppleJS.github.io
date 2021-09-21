@@ -64,6 +64,8 @@ var loresCols = [
 ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
 ];
 
+oPATTERN = new PATTERN();
+
 /////////////////////////////////////////////////////////
 // ONLOAD
 
@@ -94,66 +96,80 @@ function Apple2Plus(context)
 
 // define 21x21 array filled with zeroes
 var custom_pattern = new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]));
-function pattern(idx,x,y)
-  {
-    // output = [color_index, pixel_decision, high_bit ]
-    switch(idx)
+function PATTERN(idx,x,y)
+{
+    this.calulate = PATTERN_calc;
+    this.parse = PATTERN_parse;
+
+    function ltrim(s) { return s.replace(/^ */,"") }
+    function rtrim(s) { return s.replace(/ *$/,"") }
+    function trim(s) { return rtrim(ltrim(s)) }
+
+    function PATTERN_calc(idx,x,y)
     {
-      case 0:  return  [0 ,false,0];                 // black 1 
-      case 1:  return  [4 ,(x+1)%2==0,0];            // green 
-      case 2:  return  [3 ,x%2==0,0];                // purple
-      case 3:  return  [15,true,0];                  // white 1  
-      case 4:  return  [0 ,false,128];               // black 2
-      case 5:  return  [9 ,(x+1)%2==0,128];          // orange
-      case 6:  return  [2 ,x%2==0,128];              // blue
-      case 7:  return  [15,true,128];                // white2 2
+      // output = [color_index, pixel_decision, high_bit ]
+      switch(idx)
+      {
+        case 0:  return  [0 ,false,0];                 // black 1 
+        case 1:  return  [4 ,(x+1)%2==0,0];            // green 
+        case 2:  return  [3 ,x%2==0,0];                // purple
+        case 3:  return  [15,true,0];                  // white 1  
+        case 4:  return  [0 ,false,128];               // black 2
+        case 5:  return  [9 ,(x+1)%2==0,128];          // orange
+        case 6:  return  [2 ,x%2==0,128];              // blue
+        case 7:  return  [15,true,128];                // white2 2
 
-      case 9:  return  [0,custom_pattern[x%21][y%21][0],custom_pattern[x%21][y%21][1]];
+        case 9:  return  [0,custom_pattern[x%21][y%21][0],custom_pattern[x%21][y%21][1]];
 
-      case 10: return  [4 ,(x+1)%2==0 && y%2==0,0];  // dark green 
-      case 11: return  [3 ,x%2==0 && y%2==0,0];      // dark purple       
-      case 12: return  [9 ,(x+1)%2==0 && y%2==0,128];// dark orange
-      case 13: return  [2 ,x%2==0 && y%2==0,128];    // dark blue
-      case 14: return  [4 ,(x+1)%2==0 || y%2==0,0];  // dark green 
-      case 15: return  [3 ,x%2==0 || y%2==0,0];      // dark purple    
-      case 16: return  [9 ,(x+1)%2==0 || y%2==0,128];// dark orange
-      case 17: return  [2 ,x%2==0 || y%2==0,128];    // dark blue
-      case 18: return  [15 ,y%2==0,0];
+        case 10: return  [4 ,(x+1)%2==0 && y%2==0,0];  // dark green 
+        case 11: return  [3 ,x%2==0 && y%2==0,0];      // dark purple       
+        case 12: return  [9 ,(x+1)%2==0 && y%2==0,128];// dark orange
+        case 13: return  [2 ,x%2==0 && y%2==0,128];    // dark blue
+        case 14: return  [4 ,(x+1)%2==0 || y%2==0,0];  // dark green 
+        case 15: return  [3 ,x%2==0 || y%2==0,0];      // dark purple    
+        case 16: return  [9 ,(x+1)%2==0 || y%2==0,128];// dark orange
+        case 17: return  [2 ,x%2==0 || y%2==0,128];    // dark blue
+        case 18: return  [15 ,y%2==0,0];
 
-      case 20: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,0];
-      case 21: return  [4 ,(x+1)%2==0,y%2!=0?128:0];
-      case 22: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,y%2!=0?128:0];
-      case 23: return  [4 ,x%2==0 && y%2==0 || (x+1)%2==0 && y%2!=0,y%2!=0?128:0];
-      case 24: return  [4 ,x%2==0,y%2!=0?128:0];
-      case 25: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,128];  
+        case 20: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,0];
+        case 21: return  [4 ,(x+1)%2==0,y%2!=0?128:0];
+        case 22: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,y%2!=0?128:0];
+        case 23: return  [4 ,x%2==0 && y%2==0 || (x+1)%2==0 && y%2!=0,y%2!=0?128:0];
+        case 24: return  [4 ,x%2==0,y%2!=0?128:0];
+        case 25: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,128];  
 
-      case 30: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,0]; 
-      case 31: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2!=0?128:0];   
-      case 32: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
-      case 33: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && x%2!=0,y%2!=0?128:0];  
-      case 34: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
-      case 35: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
-      case 36: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
-      case 37: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
-      //case 39: return  pat(idx,x,i);
-      default: return [0,false,0];  
-    }
-/*
-    function pat(idx,j,i)
-    {
-      var a = new Array();
-      a[0] = 0;
-      var ba = [("01110111").split("").reverse().join("")
-               ,("10101010").split("").reverse().join("")];
-      a[1] = ba[i%2].charAt(j%8)=="1";
-      a[2] = ba[i%2].charAt(0)=="1"?128:0;
-
-      //return  [a , b, c];
-      //var t = [0 ,i%2==0 && ( (j>>1)%2!=0 || (j+1)%2==0) || i%2!=0 && j%2!=0,i%2==0?128:0];
-      return a;
-    }
-*/
+        case 30: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,0]; 
+        case 31: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2!=0?128:0];   
+        case 32: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
+        case 33: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && x%2!=0,y%2!=0?128:0];  
+        case 34: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
+        case 35: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
+        case 36: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
+        case 37: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
+        default: return [0,false,0];  
+      }
   }
+
+  function PATTERN_parse()
+  {
+    // PARSE PATTERN FUNCTION - CASE BY CASE
+    var formula_list = String(PATTERN_calc).split("return");
+    var formula_ref = {};
+    for(var i=1;i<formula_list.length;i++)
+    {
+      var casenr = formula_list[i-1].split("case")[1];
+      var triple = trim( formula_list[i].substring(0,formula_list[i].indexOf(";")) );
+      if(typeof(casenr)=="string" && casenr.indexOf(":")>0 && triple.charAt(0)=="[")
+      {
+        casenr = Number(casenr.substring(0,casenr.indexOf(":")));
+        var fml = triple.split(",")
+        formula_ref[casenr] = fml[1];
+        //document.write(casenr+"  "+triple+"<br>" )
+      }
+    }
+    return formula_ref
+  }
+}
 
 function setPixel_HGR(x,y,patternID)
 {
@@ -162,15 +178,15 @@ function setPixel_HGR(x,y,patternID)
     var rbyt = apple2plus.hw.read(adr);
     //rbyt = rbyt & ~(1 << x%7) & 127; 
     var wbyt = rbyt | (1 << x%7);    // OR current bit with pixel bit
-    if(rbyt ==0 && rbyt&8 != pattern(patternID,x,y)[2])
-      wbyt |= pattern(patternID,x,y)[2];              // OR high bit
+    if(rbyt ==0 && rbyt&8 != oPATTERN.calulate(patternID,x,y)[2])
+      wbyt |= oPATTERN.calulate(patternID,x,y)[2];              // OR high bit
     else
     {
-      wbyt |= pattern(patternID,x,y)[2];
+      wbyt |= oPATTERN.calulate(patternID,x,y)[2];
       //document.getElementById("debug").innerHTML += "CONFLICT "+PRINTByte(rbyt)+" >> "+PRINTByte(wbyt)
     }  // Hi-Byte conflict !!
 
-    if(pattern(patternID,x,y)[1])
+    if(oPATTERN.calulate(patternID,x,y)[1])
         apple2plus.hw.write(adr,wbyt);                    // write byte 
 }
 
@@ -225,33 +241,15 @@ function Cpix(t,x,y,z)
   var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green" 
 }
 
-function ltrim(s) { return s.replace(/^ */,"") }
-function rtrim(s) { return s.replace(/ *$/,"") }
-function trim(s) { return rtrim(ltrim(s)) }
-
 function show_BITMAPS()
 {
   var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
           ,"<img src=\"../res/pixT.gif\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
   //"<img src=\"data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" style=\"width:4px;height:9px\">";
-
   // TODO: MODIFIERS - preset pattern -  load/save pattern)
 
   // PARSE PATTERN FUNCTION - CASE BY CASE
-  var formula_list = String(pattern).split("return");
-  var formula_ref = {};
-  for(var i=1;i<formula_list.length;i++)
-  {
-    var casenr = formula_list[i-1].split("case")[1];
-    var triple = trim( formula_list[i].substring(0,formula_list[i].indexOf(";")) );
-    if(typeof(casenr)=="string" && casenr.indexOf(":")>0 && triple.charAt(0)=="[")
-    {
-      casenr = Number(casenr.substring(0,casenr.indexOf(":")));
-      var fml = triple.split(",")
-      formula_ref[casenr] = fml[1];
-      //document.write(casenr+"  "+triple+"<br>" )
-    }
-  }
+  formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
   var s = "<big><font color=white>CUSTOM BITMAP<font></big><br><br>";
   s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
@@ -283,7 +281,7 @@ function show_BITMAPS()
 
 function gen_cell(p,x,y,img)
 {
-  var c = pattern(p,x,y);
+  var c = oPATTERN.calulate(p,x,y);
   var bi = isNaN(p); 
   var pix = c[1]?"background-color:black":"";
   var bck = (c[2]==128?"border-color:#FFE9D0":"");
@@ -424,11 +422,18 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
     </div>
     <div id=main>
 
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.24/webcam.js"></script>
-
 <!-- -->
 <table><tr>
-  <td style=vertical-align:top;><div id="results"></div>
+  <td style=vertical-align:top;>
+
+    <input list="formulas" name="state-choice" />
+    <datalist id="formulas">
+        <option value="Maine">
+        <option value="Maryland">
+        <option value="Massachusetts">
+    </datalist>
+  
+    <div id="results"></div>
     <div id=debug style="overflow:scroll; height:400px;"></div></td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
 </tr></table>
