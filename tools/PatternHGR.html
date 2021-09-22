@@ -103,7 +103,7 @@ function Apple2Plus(context)
 
 function PATTERN(idx,x,y)
 {
-    this.calulate = PATTERN_calc;
+    this.calulate = PATTERN_calculate;
     this.parse = PATTERN_parse;
     this.color = PATTERN_color;
 
@@ -111,7 +111,7 @@ function PATTERN(idx,x,y)
     function rtrim(s) { return s.replace(/ *$/,"") }
     function trim(s) { return rtrim(ltrim(s)) }
 
-    function PATTERN_calc(idx,x,y)
+    function PATTERN_calculate(idx,x,y)
     {
       // output = [color_index, pixel_decision, high_bit ]
       switch(idx)
@@ -157,7 +157,7 @@ function PATTERN(idx,x,y)
       }
   }
 
-  function PATTERN_color(pattern_ID)
+  function PATTERN_color(patternID)
   {
     // TODO: calculqte average color aimed by given pattern
     return loresCols[0][0];
@@ -166,7 +166,7 @@ function PATTERN(idx,x,y)
   function PATTERN_parse()
   {
     // PARSE PATTERN FUNCTION - CASE BY CASE
-    var formula_list = String(PATTERN_calc).split("return");
+    var formula_list = String(PATTERN_calculate).split("return");
     var formula_ref = {};
     for(var i=1;i<formula_list.length;i++)
     {
@@ -255,6 +255,8 @@ function Cpix(t,x,y,z)
   var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green" 
 }
 
+
+// SHOW BITMAP TABLES (LEFT PANE)
 function show_BITMAPS()
 {
   var px = ["<img src=\"../res/pixT.gif\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
@@ -290,18 +292,19 @@ function show_BITMAPS()
     }
     s+="</table><br>";
   }  
-  document.getElementById("debug").innerHTML += s;
+  document.getElementById("debug").innerHTML = s;
 }
 
-function gen_cell(p,x,y,img)
+
+function gen_cell(patternID,x,y,img)
 {
-  var c = oPATTERN.calulate(p,x,y);
-  var bi = isNaN(p); 
+  var c = oPATTERN.calulate(patternID,x,y);
+  var bi = isNaN(patternID); 
   var pix = c[1]?"background-color:black":"";
   var bck = (c[2]==128?"border-color:#FFE9D0":"");
   var s= "<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+"</td>"
   if((x+1)%7==0)
-    s+= "<td class=tcell5>"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
+    s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
   return s;
 }
 
@@ -427,7 +430,25 @@ function load_bitmap()
 {
   var sel = document.getElementById("FSL").value;
   sel = sel.split(" : ")
-  alert(sel[0]+"\n"+sel[1]+"\n"+sel[2]);
+  //alert(sel[0]+"\n"+sel[1]+"\n"+sel[2]);
+
+  custom_formula[0] = sel[1];
+  custom_formula[1] = sel[2];
+  var patternID = 9; 
+
+  // FILL custom_pattern using custom_formula
+  for(var y=0;y<21;y++)
+  {
+    for(var x=0;x<21;x++) 
+    { 
+      var c = oPATTERN.calulate(patternID,x,y);
+      var bi = isNaN(patternID); 
+      custom_pattern[x][y] = [c[1],c[2]]
+      //s+= gen_cell(9,x,y,px);
+    }
+  }
+
+  show_BITMAPS();
 }
 </script>
 
@@ -447,8 +468,8 @@ function load_bitmap()
 <table><tr>
   <td style=vertical-align:top;>
     
-    <input list="formulas" name="formula-selector" id="FSL" style="width:320px"/>
-    <datalist id="formulas">
+    <input list="formulas" name="formula-selector" id="FSL" style="width:320px" onselect=alert("select") />
+    <datalist id="formulas" >
     </datalist>
     <br>
     <input type=button value="apply formula" onclick="load_bitmap()">
