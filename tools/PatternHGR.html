@@ -270,10 +270,10 @@ function show_BITMAPS()
 
   var s = "<big><font color=white>CUSTOM BITMAP<font></big><br><br>";
   s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
-  for(var y=0;y<28;y++)
+  for(var y=0;y<bmap.sy;y++)
   {
     s+="<tr>"
-    for(var x=0;x<28;x++) s+= gen_cell(9,x,y,px);
+    for(var x=0;x<bmap.sx;x++) s+= gen_cell(9,x,y,px);
     s+="</tr>";
   }
   s+="</table><br>";
@@ -285,10 +285,10 @@ function show_BITMAPS()
     s+= ""
     s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
-    for(var y=0;y<28;y++)
+    for(var y=0;y<bmap.sy;y++)
     {
       s+="<tr>"
-      for(var x=0;x<28;x++) s+= gen_cell(p,x,y,["",""]);
+      for(var x=0;x<bmap.sx;x++) s+= gen_cell(p,x,y,["",""]);
       s+="</tr>";
     }
     s+="</table><br>";
@@ -461,13 +461,13 @@ function load_bitmap()
     <div id="topmenu">
       <ul id="minitabs">
         <li>
-          <input list="formulas" name="formula-selector" id="FSL" onclick="this.value=''" style='width:430px;vertical-align:top; margin:4px 0px 0px 0px' />
+          <input list="formulas" name="formula-selector" id="FSL" onclick="this.value=''" value="select a pattern here" style='width:430px;vertical-align:top; margin:4px 0px 0px 0px' />
           <datalist id="formulas" >
           </datalist>
         </li>
-        <li><input type=button value="apply formula" onclick="load_bitmap()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
-        <li><input type=button value="Generate_HGR" onclick="generate_HGR()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="load" onclick="load_bitmap()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+        <li><input type=button value="Generate_HGR" onclick="generate_HGR()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
       </ul>
     </div>
     <div id=main>
