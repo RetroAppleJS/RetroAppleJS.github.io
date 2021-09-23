@@ -65,7 +65,7 @@ var loresCols = [
 ];
 
 oPATTERN = new PATTERN();
-var bmap = {sx:28,sy:28}
+var bmap = {sx:28,sy:4}
 var custom_pattern =  new Array(bmap.sx).fill([false,0]).map(() => new Array(bmap.sy).fill([false,0]));
 var custom_formula = ["",""];
 
@@ -460,6 +460,12 @@ function load_bitmap()
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
+        <li>
+          <input list="formulas" name="formula-selector" id="FSL" onclick="this.value=''" style='width:430px;vertical-align:top; margin:4px 0px 0px 0px' />
+          <datalist id="formulas" >
+          </datalist>
+        </li>
+        <li><input type=button value="apply formula" onclick="load_bitmap()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><input type=button value="Generate_HGR" onclick="generate_HGR()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
       </ul>
@@ -470,11 +476,9 @@ function load_bitmap()
 <table><tr>
   <td style=vertical-align:top;>
     
-    <input list="formulas" name="formula-selector" id="FSL" style="width:430px" onclick="this.value=''" />
-    <datalist id="formulas" >
-    </datalist>
+
     <br>
-    <input type=button value="apply formula" onclick="load_bitmap()">
+    
     <br>  
     <div id="results"></div>
     <div id=debug style="overflow:scroll; height:400px;"></div></td>
