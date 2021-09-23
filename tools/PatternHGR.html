@@ -65,8 +65,9 @@ var loresCols = [
 ];
 
 oPATTERN = new PATTERN();
-var custom_pattern =  new Array(21).fill([false,0]).map(() => new Array(21).fill([false,0]));
-var custom_formula = ["(x+1)%2==0","y%2!=0?128:0"];
+var bmap = {sx:28,sy:28}
+var custom_pattern =  new Array(bmap.sx).fill([false,0]).map(() => new Array(bmap.sy).fill([false,0]));
+var custom_formula = ["",""];
 
 /////////////////////////////////////////////////////////
 // ONLOAD
@@ -77,8 +78,8 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
 
-  var a = oPATTERN.parse(), s = "";
-  for(var i in a) s+= "<option value=\""+i+" : "+a[i][0]+" : "+a[i][1]+"\">\n";
+  var a = oPATTERN.parse(), s = "", sep = " ; ";
+  for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+"\">\n";
   document.getElementById("formulas").innerHTML = s;
 
   //wipe_HGR(0);
@@ -125,7 +126,7 @@ function PATTERN(idx,x,y)
         case 6:  return  [loresCols[6][0],x%2==0,128];              // blue
         case 7:  return  [loresCols[7][0],true,128];                // white2 2
 
-        case 8:  return  [0,custom_pattern[x%21][y%21][0],custom_pattern[x%21][y%21][1]];
+        case 8:  return  [0,custom_pattern[x%bmap.sx][y%bmap.sy][0],custom_pattern[x%bmap.sx][y%bmap.sy][1]];
         case 9:  return  [0,eval(custom_formula[0]),eval(custom_formula[1])];
 
         case 10: return  [4 ,(x+1)%2==0 && y%2==0,0];  // dark green 
@@ -269,10 +270,10 @@ function show_BITMAPS()
 
   var s = "<big><font color=white>CUSTOM BITMAP<font></big><br><br>";
   s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
-  for(var y=0;y<21;y++)
+  for(var y=0;y<28;y++)
   {
     s+="<tr>"
-    for(var x=0;x<21;x++) s+= gen_cell(9,x,y,px);
+    for(var x=0;x<28;x++) s+= gen_cell(9,x,y,px);
     s+="</tr>";
   }
   s+="</table><br>";
@@ -284,10 +285,10 @@ function show_BITMAPS()
     s+= ""
     s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
-    for(var y=0;y<21;y++)
+    for(var y=0;y<28;y++)
     {
       s+="<tr>"
-      for(var x=0;x<21;x++) s+= gen_cell(p,x,y,["",""]);
+      for(var x=0;x<28;x++) s+= gen_cell(p,x,y,["",""]);
       s+="</tr>";
     }
     s+="</table><br>";
@@ -428,8 +429,9 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 
 function load_bitmap()
 {
+  var sep = " ; "
   var sel = document.getElementById("FSL").value;
-  sel = sel.split(" : ")
+  sel = sel.split(sep)
   //alert(sel[0]+"\n"+sel[1]+"\n"+sel[2]);
 
   custom_formula[0] = sel[1];
@@ -437,9 +439,9 @@ function load_bitmap()
   var patternID = 9; 
 
   // FILL custom_pattern using custom_formula
-  for(var y=0;y<21;y++)
+  for(var y=0;y<bmap.sy;y++)
   {
-    for(var x=0;x<21;x++) 
+    for(var x=0;x<bmap.sx;x++) 
     { 
       var c = oPATTERN.calulate(patternID,x,y);
       var bi = isNaN(patternID); 
@@ -468,7 +470,7 @@ function load_bitmap()
 <table><tr>
   <td style=vertical-align:top;>
     
-    <input list="formulas" name="formula-selector" id="FSL" style="width:320px" onselect=alert("select") />
+    <input list="formulas" name="formula-selector" id="FSL" style="width:320px" onclick="this.value=''" />
     <datalist id="formulas" >
     </datalist>
     <br>
