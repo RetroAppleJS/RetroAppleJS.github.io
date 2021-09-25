@@ -19,6 +19,8 @@
 
 <script>
 
+// TODO CLICKING HIGH-BIT DOES NOT RENDER ALTERNATE COLORS !!!
+
 /////////////////////////////////////////////////////////
 // INITIALISE DATA
 
@@ -82,9 +84,8 @@ function init_gui(_o)
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
 
-  //wipe_HGR(0);
-  generate_BITMAPS();
-  //wipe_HGR(0);
+  generate_GRIDS();
+  generate_HGR();
 }
 
 /////////////////////////////////////////////////////////
@@ -112,7 +113,7 @@ function PATTERN(idx,x,y)
     function rtrim(s) { return s.replace(/ *$/,"") }
     function trim(s) { return rtrim(ltrim(s)) }
 
-    function custom_map(x,y)
+    function editable_map(x,y)
     {
        return custom_bmap[x%_D.bmapx][y%_D.bmapy]
     }
@@ -122,7 +123,7 @@ function PATTERN(idx,x,y)
       // output = [color_index, pixel_decision, high_bit ]
       switch(idx)
       {
-        case 0:  return  [0,custom_map(x,y)[0],custom_map(x,y)[1]];
+        case 0:  return  [0,editable_map(x,y)[0],editable_map(x,y)[1]];
         //case 1:  return  [0,eval(custom_fmla[0]),eval(custom_fmla[1])];
         //case 2:  return  [loresCols[0][0],false,0];                 // black 1 
         case 1:  return  [loresCols[1][0],(x+1)%2==0,0];            // green 
@@ -273,7 +274,7 @@ function Cpix(t,x,y,z)
 
 
 // SHOW BITMAP TABLES (LEFT PANE)
-function generate_BITMAPS()
+function generate_GRIDS()
 {
   var im = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
   //var im = "../res/pixT.gif";
@@ -284,11 +285,11 @@ function generate_BITMAPS()
   // PARSE PATTERN FUNCTION - CASE BY CASE
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
-  s= "<big><font color=white>HARD CODED BITMAPS<font></big><br><br>";
+  s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
   for(var p=0;p<32;p++)
   {
     s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div>";
-    s+= "<table class=tcell style='margin:0;padding:0;border:1px solid black;'>";
+    s+= "<table class=tcell style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
     for(var y=0;y<_D.bmapy;y++)
     {
       s+="<tr>";
@@ -314,7 +315,7 @@ function gen_cell(patternID,x,y,img)
 }
 
 /*
-function generate_BITMAPS2()
+function generate_GRIDS2()
 {
   var bls = [24,24];
   var s = "<big><font color=white>BITMAPS<font></big><br><br>";
@@ -447,7 +448,7 @@ function load_bitmap()
       custom_bmap[x][y] = [eval(custom_fmla[0]),eval(custom_fmla[1])];
   }
 
-  generate_BITMAPS();
+  generate_GRIDS();
 }
 </script>
 
