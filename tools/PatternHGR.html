@@ -7,9 +7,33 @@
   html {height:100%;font-family:"Arial"}
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
   .tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
-  .tcell10:hover { background-color:yellow;border:1px solid black }
-  .tcell5 {width:5px;background-color:lightgray;padding:0;border:0px solid white}
-  .tcell5:hover { background-color:green;border:0px solid white}
+  .tcell10:hover { width:10px;height:10px;background-color:yellow;border:1px solid black }
+  .tcell5 {width:5px;height:10px;background-color:lightgray;padding:0;border:0px solid white}
+  .tcell5:hover { width:5px;height:10px;background-color:yellow;border:0px solid white}
+
+  .tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+
+  /* Position the tooltip */
+  position: absolute;
+  z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
   </style>
 </head>
 
@@ -29,9 +53,9 @@ var CONF_builddate="";
 
 var _D = 
 {
-     "bmapx":28
-    ,"bmapy":4
-    ,"bmapID":0
+     "bmapx":28  // grid width
+    ,"bmapy":4   // grid height
+    ,"bmapID":0  // location of editable grid
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
               +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
               +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
@@ -239,9 +263,51 @@ function getPixel_HGR(x,y)
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var rbyt = apple2plus.hw.read(adr);
     var bit = (rbyt >> (x%7)) & 1 == 1;
-    var hbit  = rbyt & 128;
-    return [ bit,hbit ]
+    bit = x<0 || x>279 ? 0 : bit;                     // 
+    var b7  = rbyt & 128;
+    return [ bit,b7 ]
 }
+
+function getPixelColor_HGR(x, y, left, me, right, b7) {
+        var a0 = x & 0x01;
+        // If pixel is set and either adjacent pixels are set, it's white.
+        if (me != 0 && (left != 0 || right != 0))
+            return loresCols[15][0];  // White
+        // If pixel is set but no adjacent pixels are set, pick a color
+        // based on column and b7.
+        else if (me != 0) {
+            if (b7 != 0) {
+                if (a0 != 0)
+                    return loresCols[9][0]; // Orange
+                else
+                    return loresCols[6][0]; // Medium Blue
+            } else {
+                if (a0 != 0)
+                    return loresCols[12][0]; // Green
+                else
+                    return loresCols[3][0]; // Purple
+            }
+        }
+        // If pixel is not set and both adjacent pixels are set, pick a
+        // color based on column (of adjacent pixel) and b7 (of this byte).
+        else if (left != 0 && right != 0) {
+            if (b7 != 0) {
+                if (a0 != 0)
+                    return loresCols[6][0]; // Medium Blue
+                else
+                    return loresCols[9][0]; // Orange
+            } else {
+                if (a0 != 0)
+                    return loresCols[3][0]; // Purple
+                else
+                    return loresCols[12][0]; // Green
+            }
+        }
+        // Else it's black.
+        else
+           return loresCols[0][0];    // Black
+    }
+
 
 function wipe_HGR(byte)
 {
@@ -306,9 +372,21 @@ function gen_cell(patternID,x,y,img)
 {
   var c = oPATTERN.calulate(patternID,x,y);
   var bi = isNaN(patternID); 
+
+  // TODO DEBUG color definitions
+  var left = getPixel_HGR(x-1,y)[0];
+  var me = getPixel_HGR(x,y)[0];
+  var right = getPixel_HGR(x+1,y)[0];
+  var b7 = getPixel_HGR(x,y)[1]==128?1:0;
+  var col = getPixelColor_HGR(x, y, left, me, right, b7)
+  var alt = "<span class=tooltiptext>"+col+"("+[left,me,right,b7].join(",")+")</span>"
+
+
   var pix = c[1]?"background-color:black":"";
+
+
   var bck = (c[2]==128?"border-color:#FFE9D0":"");
-  var s= "<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+"</td>"
+  var s= "<td class='tooltip tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
   if((x+1)%7==0)
     s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
   return s;
