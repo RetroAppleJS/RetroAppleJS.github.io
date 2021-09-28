@@ -53,7 +53,9 @@ var CONF_builddate="";
 
 var _D = 
 {
-     "bmapx":28  // grid width
+     "hpat":10  // horizontal hgr pattern count
+    ,"vpat":6   // vertical hgr pattern count
+    ,"bmapx":28  // grid width
     ,"bmapy":4   // grid height
     ,"bmapID":0  // location of editable grid
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
@@ -182,7 +184,20 @@ function PATTERN(idx,x,y)
         case 34: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
         case 35: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
         case 36: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
-        case 37: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
+        case 37: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+2)%4==0) && y%2!=0,y%2==0?128:0 ];
+        case 39: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
+
+        case 40: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,0];
+        case 41: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,128];
+        case 42: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2==0?128:0];
+        case 43: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2!=0?128:0];
+        case 44: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || ((x+1)%2==0 || (x+6)%10==0) && y%2!=0,y%2==0?128:0 ];
+        case 45: return  [15, (x%2==0 || (x+1)%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2==0?128:0 ];
+
+        case 50: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,y%2==0?128:0 ];
+        
+        case 51: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
+
         case "": return  [loresCols[3][0],true,0];
         default: return [0,false,0];  
       }
@@ -338,7 +353,6 @@ function Cpix(t,x,y,z)
   var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green";
 }
 
-
 // SHOW BITMAP TABLES (LEFT PANE)
 function generate_GRIDS()
 {
@@ -352,7 +366,7 @@ function generate_GRIDS()
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
   s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
-  for(var p=0;p<32;p++)
+  for(var p=0;p<(_D.vpat*_D.hpat);p++)
   {
     s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big><br>"+formula_ref[p]+"</div>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
@@ -374,23 +388,28 @@ function gen_cell(patternID,x,y,img)
   var bi = isNaN(patternID); 
 
   // TODO DEBUG color definitions
-  var left = getPixel_HGR(x-1,y)[0];
-  var me = getPixel_HGR(x,y)[0];
-  var right = getPixel_HGR(x+1,y)[0];
-  var b7 = getPixel_HGR(x,y)[1]==128?1:0;
-  var col = getPixelColor_HGR(x, y, left, me, right, b7)
-  var alt = "<span class=tooltiptext>"+col+"("+[left,me,right,b7].join(",")+")</span>"
+  if(patternID == _D.bmapID)
+  {
+    //console.log(x+" "+y+" "+_D.bmapx+" ")
 
+    var left = x<=0 ? false : custom_bmap[x-1][y][0];
+    var me = custom_bmap[x][y][0];
+    var right = x>=(_D.bmapx-1) ? false : custom_bmap[x+1][y][0];
+    var b7 = custom_bmap[x][y][1]==128?1:0;
 
-  var pix = c[1]?"background-color:black":"";
+    var col = getPixelColor_HGR(x, y, left, me, right, b7)
+    var alt = "<span class=tooltiptext style=color:"+col+";font-size:8px>"+col+"("+[left,me,right,b7].join(",")+")</span>";
+    var css = "tooltip "
+    }
+    else { alt = ""; css = ""}
 
-
-  var bck = (c[2]==128?"border-color:#FFE9D0":"");
-  var s= "<td class='tooltip tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
-  if((x+1)%7==0)
+    var pix = c[1]?"background-color:black":"";
+    var bck = (c[2]==128?"border-color:#FFE9D0":"");
+    var s= "<td class='"+css+"tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
+    if((x+1)%7==0)
     s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
-  return s;
-}
+    return s;
+  }
 
 /*
 function generate_GRIDS2()
@@ -436,9 +455,9 @@ function generate_HGR()
     var pid = 0;
     var bls = [17,17];
     var spc = [10,10]
-    for(var dy=0;dy<4;dy++)
+    for(var dy=0;dy<_D.vpat;dy++)
     {
-            for(var dx=0;dx<10;dx++)
+            for(var dx=0;dx<_D.hpat;dx++)
             {
                 // DRAW LINE SQUARE
                 for(var x=-3;x<bls[0]+3;x++)
@@ -537,7 +556,7 @@ function load_bitmap()
     <div id="topmenu">
       <ul id="minitabs">
         <li>
-          <input list="formulas" name="formula-selector" id="FSL" onclick="this.value=''" value="select a pattern here" style='width:430px;vertical-align:top; margin:4px 0px 0px 0px' />
+          <input list="formulas" name="formula-selector" id="FSL" value="select a pattern here" onclick=this.value='' style='width:430px;vertical-align:top; margin:4px 0px 0px 0px' />
           <datalist id="formulas" >
           </datalist>
         </li>
