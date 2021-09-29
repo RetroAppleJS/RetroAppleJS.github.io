@@ -401,12 +401,12 @@ function generate_GRIDS()
   s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
   for(var p=0;p<(_D.vpat*_D.hpat);p++)
   {
-    var col = "";
-    var c = oPATTERN.color(p);    // calculate average color of patternID
-    var col = "#"+getHexByte(c[0])+getHexByte(c[1])+getHexByte(c[2])
-  
 
-    s+= "<div style='color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big> "+col+"<br>"+formula_ref[p]+"</div>";
+    var c = oPATTERN.color(p);    // calculate average color of patternID  
+    var cs = "#"+getHexByte(c[0])+getHexByte(c[1])+getHexByte(c[2]);
+    var cs2 = Math.round(100*c[0]/255)+"% "+Math.round(100*c[1]/255)+"% "+Math.round(100*c[2]/255)+"% "
+
+    s+= "<div style='background-color:"+cs+";color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big> "+cs+" "+cs2+"<br>"+formula_ref[p]+"</div>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
     for(var y=0;y<_D.bmapy;y++)
     {
