@@ -99,6 +99,10 @@ function Apple2Video(ctx) {
         this.redraw();
     }
 
+    this.getloresCols = function() {
+        return loresCols;
+    }
+
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawChar(col, row, d8) {
@@ -144,9 +148,11 @@ var loresCols = [
 ,["#BFABFF","#CECECE","#81CEC2","#CBBA82"] // Light Blue
 ,["#405400","#313131","#1F312E","#312D1F"] // Brown
 ,["#D06A1A","#717171","#47716B","#706748"] // Orange *
+//,["#FF4000","#717171","#47716B","#706748"] // Orange *
 ,["#808080","#808080","#508078","#7E7451"] // Grey 2
 ,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D"] // Pink
 ,["#2FBC1A","#575757","#375752","#564F37"] // Light Green *
+//,["#40FF00","#575757","#375752","#564F37"] // Light Green *
 ,["#BFD35A","#A4A4A4","#67A49A","#A29568"] // Yellow
 ,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170"] // Aquamarine
 ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White *
