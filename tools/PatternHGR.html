@@ -11,6 +11,10 @@
   .tcell5 {width:5px;height:10px;background-color:lightgray;padding:0;border:0px solid white}
   .tcell5:hover { width:5px;height:10px;background-color:yellow;border:0px solid white}
 
+  .leftpane { width:400px;  }
+
+  /* vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere; */
+
   .tooltip {
   position: relative;
   display: inline-block;
@@ -53,8 +57,9 @@ var CONF_builddate="";
 
 var _D = 
 {
-     "hpat":10  // horizontal hgr pattern count
+    "hpat":10  // horizontal hgr pattern count
     ,"vpat":6   // vertical hgr pattern count
+    ,"leftpane":430  // size of left pane (grid)
     ,"bmapx":28  // grid width
     ,"bmapy":4   // grid height
     ,"bmapID":0  // location of editable grid
@@ -70,32 +75,11 @@ var yref = new Array();
     yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
                +parseInt( _D.YVERTL.substring(i,i+2),16);
 
-// Monochrome colors (index 0 = full color)
-var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
-
-// Lores color to RGB table. (* Hires)
-var loresCols = [
-["#000000","#000000","#000000","#000000","Black"]  // *
-,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
-,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
-,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
-,["#006940","#383838","#233835","#383324","Dark Green"] 
-,["#808080","#808080","#508078","#7E7451","Grey 1"] 
-,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
-,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
-,["#405400","#313131","#1F312E","#312D1F","Brown"] 
-,["#D06A1A","#717171","#47716B","#706748","Orange"]  // *
-,["#808080","#808080","#508078","#7E7451","Grey 2"] 
-,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
-,["#2FBC1A","#575757","#375752","#564F37","Light Green"]  // *
-,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
-,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
-,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
-];
 
 oPATTERN = new PATTERN();
 var custom_bmap =  new Array(_D.bmapx).fill([false,0]).map(() => new Array(_D.bmapy).fill([false,0]));
 var custom_fmla = ["",""];
+var loresCols = [];
 
 /////////////////////////////////////////////////////////
 // ONLOAD
@@ -127,6 +111,7 @@ function Apple2Plus(context)
   this.video.setGfx(true);
   this.video.setHires(true);
   this.video.redraw();
+  loresCols = this.video.getloresCols();
 }
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
@@ -182,7 +167,11 @@ function PATTERN(idx,x,y)
         case 22: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,y%2!=0?128:0];
         case 23: return  [4 ,x%2==0 && y%2==0 || (x+1)%2==0 && y%2!=0,y%2!=0?128:0];
         case 24: return  [4 ,x%2==0,y%2!=0?128:0];
-        case 25: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,128];  
+        case 25: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,128];
+        case 26: return  [15 ,(y&1)==0 && (x&3)==0 || (y&1)==1 && (x&3)==2 ,0];
+        case 27: return  [15 ,(y&1)==0 && (x&3)==1 || (y&1)==1 && (x&3)==3 ,0];
+        case 28: return  [15 ,(y&1)==0 && (x&3)==0 || (y&1)==1 && (x&3)==2 ,128];
+        case 29: return  [15 ,(y&1)==0 && (x&3)==1 || (y&1)==1 && (x&3)==3 ,128];          
 
         case 30: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,0]; 
         case 31: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2!=0?128:0];   
@@ -191,8 +180,11 @@ function PATTERN(idx,x,y)
         case 34: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x)%2==0)   || y%2!=0 && (x+1)%2!=0,y%2!=0?128:0]; 
         case 35: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
         case 36: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
-        case 37: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+2)%4==0) && y%2!=0,y%2==0?128:0 ];
-        
+        case 37: return  [15 ,(x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+2)%4==0) && y%2!=0,y%2==0?128:0 ];
+
+        case 38: return  [4 ,(x%5==0 || (x+2)%5==0 || (x+3)%5==0) && y%2==0 || ((x+1)%5==0 || (x+3)%5==0 || (x+4)%5==0) && y%2!=0  ,0];
+        case 39: return  [4 ,(x%11==0 || (x+2)%11==0 || (x+3)%11==0 || (x+5)%11==0 || (x+7)%11==0 || (x+8)%11==0 || (x-2)%11==0) && y%2==0,0];
+        //  110101101011
 
         case 40: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,0];
         case 41: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,128];
@@ -200,13 +192,16 @@ function PATTERN(idx,x,y)
         case 43: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2!=0?128:0];
         case 44: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || ((x+1)%2==0 || (x+6)%10==0) && y%2!=0,y%2==0?128:0 ];
         case 45: return  [15, (x%2==0 || (x+1)%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2==0?128:0 ];
+        case 46: return  [15 ,(y&1)==0 && (x&3)==1 || (y&1)==1 && (x&3)==3 ,(y&1)<<7];
+        case 47: return  [15 ,(y&1)==0 && (x&3)==0 || (y&1)==1 && (x&3)==2 ,(y&1)<<7];
 
-        case 50: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,y%2==0?128:0 ];
-        
-        case 51: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
-        case 52: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,0 ];
-        case 53: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,y%2==0?128:0 ];
+
+        case 50: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
+        case 51: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,0 ];
+        case 52: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,y%2==0?128:0 ];
+        case 53: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,y%2==0?128:0 ];
         case 54: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
+
         case "": return  [loresCols[3][0],true,0];
         default: return [0,false,0];  
       }
@@ -397,16 +392,15 @@ function generate_GRIDS()
   // PARSE PATTERN FUNCTION - CASE BY CASE
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
-
   s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
   for(var p=0;p<(_D.vpat*_D.hpat);p++)
   {
-
     var c = oPATTERN.color(p);    // calculate average color of patternID  
     var cs = "#"+getHexByte(c[0])+getHexByte(c[1])+getHexByte(c[2]);
-    var cs2 = Math.round(100*c[0]/255)+"% "+Math.round(100*c[1]/255)+"% "+Math.round(100*c[2]/255)+"% "
+    var cs2 = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
+    var tc = cs2[0]>90 && cs2[1]>90 && cs2[2]>90 ? "black":"white";
 
-    s+= "<div style='background-color:"+cs+";color:white;overflow-wrap:anywhere;width:320px'><big>"+p+"</big> "+cs+" "+cs2+"<br>"+formula_ref[p]+"</div>";
+    s+= "<div style='width:430px;background-color:"+cs+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "+cs+" "+cs2.join("% ")+"%<br>"+formula_ref[p]+"</div>";
     s+= "<table class=tcell style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
     for(var y=0;y<_D.bmapy;y++)
     {
@@ -418,7 +412,6 @@ function generate_GRIDS()
   }  
   document.getElementById("debug").innerHTML = s;
 }
-
 
 function gen_cell(patternID,x,y,img)
 {
@@ -435,9 +428,10 @@ function gen_cell(patternID,x,y,img)
     var right = x>=(_D.bmapx-1) ? false : custom_bmap[x+1][y][0];
     var b7 = custom_bmap[x][y][1]==128?1:0;
 
-    var col = getPixelColor_HGR(x, y, left, me, right, b7)
-    var alt = "<span class=tooltiptext style=color:"+col+";font-size:8px>"+col+"("+[left,me,right,b7].join(",")+")</span>";
+    //var col = getPixelColor_HGR(x, y, left, me, right, b7)
+    //var alt = "<span class=tooltiptext style=color:"+col+";font-size:8px>"+col+"("+[left,me,right,b7].join(",")+")</span>";
     var css = "tooltip "
+    var alt = "";
     }
     else { alt = ""; css = ""}
 
@@ -447,45 +441,8 @@ function gen_cell(patternID,x,y,img)
     if((x+1)%7==0)
     s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
     return s;
-  }
-
-/*
-function generate_GRIDS2()
-{
-  var bls = [24,24];
-  var s = "<big><font color=white>BITMAPS<font></big><br><br>";
-  for(var p=0;p<32;p++)
-  {
-    //wipe_HGR(0);
-    for(var y=0;y<bls[1];y++)
-        for(var x=0;x<bls[0];x++)
-        {
-            clearPixel_HGR(x,y);
-            setPixel_HGR(x,y,p);
-        }
-    
-    s+= "<font color=white>"+p%8+"</font><br>"
-    s+= "<table style='margin:0;padding:0;border:1px solid black;'>"
-    for(var y=0;y<bls[1];y++)
-    {
-        s+="<tr>"
-        for(var x=0;x<bls[0];x++)
-        {
-            var a = getPixel_HGR(x,y);
-            var pix = a[0]?"background-color:#000000":"background-color:#FFFFFF";
-            s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid white;border-collapse:collapse;\"></td>";
-            if((x+1)%7==0) 
-            {
-              var pix = a[1]?"background-color:#000000":"background-color:#FFFFFF";
-              s+= "<td style=\""+pix+";width:10;height:10;margin:0;padding:0;border:1px solid red;border-collapse:collapse;\"></td>";
-            }
-        }
-        s+="</tr>"
-    }
-  }
-  document.getElementById("debug").innerHTML += s;
 }
-*/
+
 
 function generate_HGR()
 { 
@@ -594,7 +551,7 @@ function load_bitmap()
     <div id="topmenu">
       <ul id="minitabs">
         <li>
-          <input list="formulas" name="formula-selector" id="FSL" value="select a pattern here" onclick=this.value='' style='width:430px;vertical-align:top; margin:4px 0px 0px 0px' />
+          <input style=width:430px list="formulas" name="formula-selector" id="FSL" value="select a pattern here" onclick=this.value='' />
           <datalist id="formulas" >
           </datalist>
         </li>
