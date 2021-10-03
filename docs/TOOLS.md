@@ -60,8 +60,12 @@ This tool is designed to analyse ways to maximise color encoding and dithering c
 | switch | even | odd | even | odd | even | odd | even |
 
 * switch: 0 selects a pallette of green and violet, and 1 selects a pallet of orange and blue for all 7 visible pixels in bits 0-6
-* convolution: 
+* convolutional logic
 
+| <<left | even bit | right>> | | <<left | odd bit | right>> |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+| 1 | 0 | 1 || 1 | 0 | 1 |
+|   | 0 |  || 1 | 0 | 1 |
 
 ### ConverHGR.html
 
