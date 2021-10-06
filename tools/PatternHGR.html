@@ -115,10 +115,7 @@ function Apple2Plus(context)
 }
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
-function getHexByte(v)
-{
-return ''+hextab[Math.floor(v/16)]+hextab[v&0x0f];
-}
+function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
 
 function PATTERN(idx,x,y)
 {
@@ -567,6 +564,43 @@ function load_bitmap()
 <!-- -->
 <table><tr>
   <td style=vertical-align:top;>
+
+
+
+
+    <style type="text/css">
+      #MyCanvas {
+      border:1px solid black;
+      }
+  </style>
+<script type="text/javascript">
+    function draw() {
+        var canvas = document.getElementById("MyCanvas");
+        if (canvas.getContext) {
+            var ctx = canvas.getContext("2d");
+            objGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            objGradient.addColorStop(0, 'red');
+            objGradient.addColorStop(1 / 6, 'orange');
+            objGradient.addColorStop(2 / 6, 'yellow');
+            objGradient.addColorStop(3 / 6, 'green')
+            objGradient.addColorStop(4 / 6, 'blue');
+            objGradient.addColorStop(5 / 6, 'Indigo');
+            objGradient.addColorStop(1, 'Violet');
+
+            ctx.fillStyle = objGradient;
+            ctx.fillRect(0, 75, canvas.width, 50);
+            ctx.fill();
+        }
+    }
+</script>
+<div onload="draw();">
+<canvas id="MyCanvas" width="550" height="200">
+This browser or document mode doesn't support canvas object</canvas>
+</div>
+
+
+
+
     <div id="results"></div>
     <div id=debug style="overflow:scroll; height:400px;"></div></td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
