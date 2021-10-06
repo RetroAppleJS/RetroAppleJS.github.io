@@ -32,7 +32,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ### Monitor_palette.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/palette.png" width=30% align=left />Color graphics on the Apple II never really impressed, as it could render only 4 distinct colors in high-resolution (green, orange, violet, blue).   Surely, owners of monochrome green or amber monitors sometimes longed for some color, but none at the time saw any advantage in using an expensive color monitor or a blurry and color-bleeding TV against the razor-sharp image produced by a genuine monochrome apple monitor.  
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/palette.png" width=30% align=left />Color graphics on the Apple II rendered only 4 distinct colors in high-resolution (green, orange, violet, blue) as a result of a cheap but smart piece of discrete logic.  Surely, owners of monochrome green or amber monitors sometimes longed for some color, but the blurry and color-bleeding TV screen rendering was more like a gimmick compared to the razor-sharp image produced by a genuine monochrome apple monitor.
 
 The emulator's display offers an easy switching capability to render color, black&white, green and amber as some graphics really look nicer in color or monochrome.  e.g. fonts rendered on a hires screen produce very disturbing color fringing artifacts, which make the letters unreadable in color mode; any monochrome setting is more appropriate in this case. 
 
@@ -51,9 +51,25 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 | v2      | YES          | YES       | -            |
 | v3      | -            |           | YES          |
 
+### PatternHGR.html
+
+This tool is designed to analyse ways to maximise color encoding and dithering capabilities on Apple II HGR graphics.  Three major challenges must be considered : the color limitation itself (4 colors + black and white), the high-bit color switch and the convolutional color encoding method.
+
+| bit7 | bit6 | bit5 | bit4 | bit3 | bit2 | bit1 | bit0 |
+|:----:|:----:|:----:|:----:|:---:|:---:|:---:|----:|
+| switch | even | odd | even | odd | even | odd | even |
+
+* switch: 0 selects a pallette of green and violet, and 1 selects a pallet of orange and blue for all 7 visible pixels in bits 0-6
+* convolutional logic
+
+| <<left | even bit | right>> | | <<left | odd bit | right>> |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+| 1 | 0 | 1 || 1 | 0 | 1 |
+|   | 0 |  || 1 | 0 | 1 |
+
 ### ConverHGR.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGR_Venus.png" align=left width=30% />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts.  Buttons and tuning sliders will help you model the most acceptable conversion.  For developers, the challenge will be to optimize conversion quality and speed, as this very algorithm will serve inside the webcam capture tool.
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGR_Venus.png" align=left width=30% />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts explained in *PatternHGR.html*.   Buttons and tuning sliders will help you model the most acceptable conversion.  For developers, the challenge will be to optimize conversion quality and speed, as this very algorithm will serve inside the webcam capture tool.
 
 TODO: flow diagram
 
