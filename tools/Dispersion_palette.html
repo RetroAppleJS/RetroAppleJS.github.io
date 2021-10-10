@@ -1,0 +1,258 @@
+<head>
+  <title>Draw Rainbow with Linear gradient</title>
+    <style type="text/css">
+        body
+        {
+            font-family: 'Courier';
+            font-size: 12px;
+        }
+        #MyCanvas {
+        border:1px solid black;
+        }
+        #MyCanvas2 {
+        border:1px solid black;
+        }
+        .slider { display: inline-block; }
+    </style>
+<script type="text/javascript">
+
+/*
+    function draw_old() {
+        var canvas = document.getElementById("MyCanvas");
+        if (canvas.getContext) {
+            var ctx = canvas.getContext("2d");
+            objGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            objGradient.addColorStop(0, '#0000FF');
+            objGradient.addColorStop(1/6, '#FF00FF');
+            objGradient.addColorStop(2/6, '#FF0000');
+            objGradient.addColorStop(3/6, '#FFFF00');
+            objGradient.addColorStop(4/6, '#00FF00');
+            objGradient.addColorStop(5/6, '#00FFFF');
+            objGradient.addColorStop(6/6, '#0000FF');
+            ctx.fillStyle = objGradient;
+            ctx.fillRect(0, 75, canvas.width, 50);
+            ctx.fill();
+        }
+    }
+*/
+
+function drawPixel(context, x, y, color)
+{
+    var roundedX = Math.round(x);
+    var roundedY = Math.round(y);
+
+    context.beginPath();
+    context.fillStyle = color || '#000';
+    context.fillRect(roundedX, roundedY, 1, 1);
+    context.fill();
+}
+
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
+function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
+var canvas,ctx;
+
+function init()
+{
+    canvas = [ document.getElementById("MyCanvas"), document.getElementById("MyCanvas2") ];
+    ctx = [ canvas[0].getContext("2d"), canvas[1].getContext("2d") ];
+    update_param();
+    draw_rainbow();
+}
+
+//color_depth2([250,250,250],[24,12]).join(",")
+
+/*
+var bits = [24,6]
+var p = Math.pow(2, bits[0]/3 );
+var q = Math.pow(2, bits[1]/3 );
+document.write("p="+p+" q="+q+"<br>")
+
+for(var i=0;i<256;i++)
+{
+    var c = [i,i,i];
+    document.write( c[0] +" "+color_depth2(c,bits)[0]+"<br>" )
+}
+*/
+
+function color_depth(triple,bits)
+{
+    //p = Math.pow( Math.pow(2,bits[0]) ,1/3);
+    //q = Math.pow( Math.pow(2,bits[1]) ,1/3);
+    p = Math.pow(2, bits[0]/3 );
+    q = Math.pow(2, bits[1]/3 );
+    var t = [Math.min(255,Math.round( Math.floor(triple[0]/(p/q))*(p-1)/(q-1) ))
+            ,Math.min(255,Math.round( Math.floor(triple[1]/(p/q))*(p-1)/(q-1) ))
+            ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
+    return t;
+}
+/*
+var bf = true;
+function color_depth(triple,bits)
+{
+    var p = Math.pow(2, (bits[0]-bits[1])/3);
+    var m = 1;
+    //if(bf) { bf=false; alert(p)  }
+    return [Math.round(triple[0]*m/p-0.5)*p,Math.round(triple[1]*m/p-0.5)*p,Math.round(triple[2]*m/p-0.5)*p]
+}
+*/
+
+function draw_rainbow()
+{
+    debug_color();
+
+    bUpdate = false;     // allow new updates
+    var width  = canvas[1].width;
+    var height = canvas[1].height;
+
+    for(var y=0;y<height;y++)
+    {
+        var j = y;
+        for(var x=0;x<width;x++)
+        { 
+            var i = x;
+            var dec_cx = calc_section(i,j,width,height);
+            //if(y==150 && x==0) alert(dec_cx.join(",")+" "+color_depth(dec_cx,[24,color_depth_val]).join(",")  );
+            //////////////////////////////////////////////////////
+            dec_cx = color_depth(dec_cx,[24,color_depth_val]);  // Color depth modifier
+            //////////////////////////////////////////////////////
+            
+            var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
+            
+
+            drawPixel(ctx[1], i, j, '#'+hex_cx.join(""));
+        }
+    }
+}
+
+function debug_color()
+{
+    var width  = canvas[0].width;
+    var height = canvas[0].height;
+    ctx[0].fillStyle = 'white';
+    ctx[0].fillRect(0, 0, width, height);
+    var pc = "";
+    document.getElementById("debug").innerHTML = ""
+    for(var i=0;i<=width;i++)
+    {
+        var v = i*(255/width)
+        var dec_cx = [v,v,v];
+        var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
+
+        ctx[0].strokeStyle = '#'+hex_cx.join("");
+        ctx[0].beginPath();
+        ctx[0].moveTo(i, height-50);
+        ctx[0].lineTo(i, height-30);
+        ctx[0].stroke();
+
+        var dec_dx = color_depth(dec_cx,[24,color_depth_val*3]);
+        var hex_dx = [getHexByte(dec_dx[0]),getHexByte(dec_dx[1]),getHexByte(dec_dx[2])];
+
+        /*
+        if(pc!=hex_cx.join(""))
+        {
+                document.getElementById("debug").innerHTML += 
+                '#'+hex_cx.join("")+"\t"
+                +'#'+hex_dx.join("")+" "
+                +"<br>"
+        }
+        */
+
+        ctx[0].strokeStyle = '#'+hex_dx.join("");
+        ctx[0].beginPath();
+        ctx[0].moveTo(i, height-20);
+        ctx[0].lineTo(i, height);
+        ctx[0].stroke();
+
+        //drawPixel(ctx[0], width*(c[0]/255), 99, '#FF0000');
+        //drawPixel(ctx[0], width*(d[0]/255), 100, '#FF0000');
+
+        //document.write(width*(c[0]/255)+"<br>")
+        pc = hex_cx.join("");
+    }
+}
+
+var toRad = function(angle) { return angle * (Math.PI / 180) }
+
+function calc_section(x,y,width,height)
+{
+    var sec_n  = 8; // number of sections
+    var sec_sw = 8; // number of switch cases
+    var fac_x = x/width;
+    var fac_y = y/height;
+
+    var sec   = Math.floor(fac_x*sec_n);
+    var sec_x = fac_x*sec_n-sec;
+    sec += fac_y*2>1?sec_sw:0;
+
+    drawPixel(ctx[0], x,sec_x*(width/sec_n), 'black');
+    var sec_odd = sec & 1;
+    ///////////////////////////////////////////////////////////////////////////////////
+    //sec_x += sec_odd - sec_x + (1- 2*sec_odd) * Math.sin(toRad(90*(sec_odd+sec_x))) // horizontal iteration modifier
+    //if(y==0 && sec==0) document.write(Math.round(Math.sin(toRad(90*sec_x))*100)/100+" ")
+    
+    if(sec_odd==0) sec_x += 0.22*Math.sin(toRad(180*sec_x));
+    else           sec_x += 0.22*Math.sin(toRad(180+180*sec_x));
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    drawPixel(ctx[0], x,sec_x*(width/sec_n), 'black');
+
+    var dec_y = fac_y*2>1?1:fac_y*2;
+    var inc_y = fac_y*2-1;
+    
+    var drk = {"up":sec_x*255*dec_y,"dn":255*(1-sec_x)*dec_y,"max":255*dec_y,"min":0,"uh":sec_x*255*dec_y,"dh":255*(1-sec_x)*dec_y}
+    var lgt = {"up":drk.up+(255-drk.up)*inc_y,"dn":drk.dn+(255-drk.dn)*inc_y,"max":drk.max+(255-drk.max)*inc_y,"min":drk.min+(255-drk.min)*inc_y}
+
+    switch(sec)
+    {
+        case 0: return [drk.up,drk.min,drk.max];
+        case 1: return [drk.max,drk.min,drk.dn];
+        case 2: return [drk.max,drk.up,drk.min];
+        case 3: return [drk.dn,drk.max,drk.min];
+        case 4: return [drk.min,drk.max,drk.up];
+        case 5: return [drk.min,drk.dn,drk.max];
+        case 6: return [drk.uh,drk.uh,drk.dh];
+        case 7: return [drk.dh,drk.dh,drk.uh];
+
+
+        case 8: return [lgt.up,lgt.min,lgt.max];
+        case 9: return [lgt.max,lgt.min,lgt.dn];
+        case 10: return [lgt.max,lgt.up,lgt.min];
+        case 11: return [lgt.dn,lgt.max,lgt.min];
+        case 12: return [lgt.min,lgt.max,lgt.up];
+        case 13: return [lgt.min,lgt.dn,lgt.max];
+        case 14: return [lgt.up,lgt.up,lgt.max];
+        case 15: return [lgt.dn,lgt.dn,lgt.max];
+        default: return [255,255,255]
+    }
+}
+
+var bUpdate = false;
+var color_depth_val = 24; 
+function update_param()
+{
+  if(bUpdate==false) setTimeout(draw_rainbow, 1000);
+  bUpdate          = true;
+  color_depth_val  = Number(document.getElementById("param1").value);
+  //draw_rainbow();
+  document.getElementById("disp_param1").innerHTML 
+      = color_depth_val 
+      + "bits ("+Math.pow(2,color_depth_val)+"&nbsp;cols) "
+      +Math.round( Math.pow(2, color_depth_val/3 )*100)/100+"&nbsp;RGBcols";
+}
+
+
+</script>
+</head>
+<body onload="init()">
+  <canvas id="MyCanvas" width="550" height="200">
+  This browser or document mode doesn't support canvas object</canvas>
+<br>
+<div style="">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="8" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+</div>
+<br>
+  <canvas id="MyCanvas2" width="550" height="200">
+    This browser or document mode doesn't support canvas object</canvas>
+<div id=debug></div>
+</body>
+</html>
