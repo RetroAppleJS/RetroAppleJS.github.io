@@ -169,39 +169,50 @@ function debug_color()
         //document.write(width*(c[0]/255)+"<br>")
         pc = hex_cx.join("");
     }
+
+
+    for(var x=0;x<width;x+=5)
+        for(var y=0;y<height;y+=5)
+        {
+
+        }
 }
 
-var toRad = function(angle) { return angle * (Math.PI / 180) }
 
+
+var toRad = function(angle) { return angle * (Math.PI / 180) }
+var sx = 0;
 function calc_section(x,y,width,height)
 {
-    var sec_n  = 8; // number of sections
-    var sec_sw = 8; // number of switch cases
+    var sec_n  = [8,8];     // sections to show vs sections
     var fac_x = x/width;
     var fac_y = y/height;
 
-    var sec   = Math.floor(fac_x*sec_n);
-    var sec_x = fac_x*sec_n-sec;
-    sec += fac_y*2>1?sec_sw:0;
+    var sec   = Math.floor(fac_x*sec_n[0]);
+    var sec_x = fac_x*sec_n[0]-sec;
+    sec += fac_y*2>1?sec_n[1]:0;
 
-    drawPixel(ctx[0], x,sec_x*(width/sec_n), 'black');
-    var sec_odd = sec & 1;
-    ///////////////////////////////////////////////////////////////////////////////////
-    //sec_x += sec_odd - sec_x + (1- 2*sec_odd) * Math.sin(toRad(90*(sec_odd+sec_x))) // horizontal iteration modifier
-    //if(y==0 && sec==0) document.write(Math.round(Math.sin(toRad(90*sec_x))*100)/100+" ")
-    
-    if(sec_odd==0) sec_x += 0.22*Math.sin(toRad(180*sec_x));
-    else           sec_x += 0.22*Math.sin(toRad(180+180*sec_x));
+    drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
+
+    if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));
+    else        sec_x += 0.22*Math.sin(toRad(180*sec_x)); 
 
     ///////////////////////////////////////////////////////////////////////////////////
-    drawPixel(ctx[0], x,sec_x*(width/sec_n), 'black');
+    drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
 
     var dec_y = fac_y*2>1?1:fac_y*2;
     var inc_y = fac_y*2-1;
-    
-    var drk = {"up":sec_x*255*dec_y,"dn":255*(1-sec_x)*dec_y,"max":255*dec_y,"min":0,"uh":sec_x*255*dec_y,"dh":255*(1-sec_x)*dec_y}
-    var lgt = {"up":drk.up+(255-drk.up)*inc_y,"dn":drk.dn+(255-drk.dn)*inc_y,"max":drk.max+(255-drk.max)*inc_y,"min":drk.min+(255-drk.min)*inc_y}
+    return section(sec,sec_x,inc_y,dec_y);
+}
 
+function section(sec,sec_x,inc_y,dec_y)
+{
+    var drk = {"up":sec_x*255*dec_y,"dn":255*(1-sec_x)*dec_y,"max":255*dec_y,"min":0,"uh":sec_x*128*dec_y,"dh":sec_x*128*dec_y}
+    var lgt = {"up":drk.up+(255-drk.up)*inc_y,"dn":drk.dn+(255-drk.dn)*inc_y,"max":drk.max+(255-drk.max)*inc_y,"min":drk.min+(255-drk.min)*inc_y}
+    //if(sec==6 && x==sx) document.write(drk.dh+"&nbsp;&nbsp;&nbsp;"+dec_y+" "+sec_x+"<br>");
+    //if(sec==6 && sx==0) sx = x;
+    //if(x==sx && sec==6) document.write("y="+y+" "+[drk.uh,drk.uh,drk.dh].join(",")+"<br>");
+    
     switch(sec)
     {
         case 0: return [drk.up,drk.min,drk.max];
