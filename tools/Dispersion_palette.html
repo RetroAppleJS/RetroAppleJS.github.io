@@ -171,14 +171,35 @@ function debug_color()
     }
 
 
-    for(var x=0;x<width;x+=5)
-        for(var y=0;y<height;y+=5)
-        {
+    var s = ["<table border=1 style='text-align:center'>","<tr>","</tr>","</table>"];
 
+    var sec_n  = [8,8];     // sections to show vs sections
+    for(var y=0;y<=height;y+=5)
+    {
+        s[2]+= "<tr>";
+        for(var x=0;x<=width;x+=5)
+        {
+            var fac_x = x/width;
+            var fac_y = y/height;
+            var sec   = Math.floor(fac_x*sec_n[0]);
+            var sec_x = fac_x*sec_n[0]-sec;
+            sec += fac_y>0.5?sec_n[1]:0;
+            var dec_y = fac_y*2>1?1:fac_y*2;
+            var inc_y = fac_y*2-1;
+
+            if(sec==6)
+            {
+                if(y==0) s[1]+="<td style='background-color:#EEEEEE'>"+cap(sec_x)+"</td>";
+                if(sec_x<0.04) s[2]+= "<td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
+                s[2]+= "<td>"+calc_section(x,y,width,height).join(",")+"</td>";
+            }
         }
+        s[2]+= "</tr>"
+    }
+    document.getElementById("debug").innerHTML = s.join("");
 }
 
-
+function cap(v) { return Math.floor(v*100)/100 }
 
 var toRad = function(angle) { return angle * (Math.PI / 180) }
 var sx = 0;
@@ -190,14 +211,16 @@ function calc_section(x,y,width,height)
 
     var sec   = Math.floor(fac_x*sec_n[0]);
     var sec_x = fac_x*sec_n[0]-sec;
-    sec += fac_y*2>1?sec_n[1]:0;
+    sec += fac_y>0.5?sec_n[1]:0;
 
     drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
 
-    if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));
-    else        sec_x += 0.22*Math.sin(toRad(180*sec_x)); 
+    ////////////////////////////////////////////////////////////////
+    //if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
+    //else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
+    ////////////////////////////////////////////////////////////////
 
-    ///////////////////////////////////////////////////////////////////////////////////
+
     drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
 
     var dec_y = fac_y*2>1?1:fac_y*2;
@@ -207,8 +230,9 @@ function calc_section(x,y,width,height)
 
 function section(sec,sec_x,inc_y,dec_y)
 {
-    var drk = {"up":sec_x*255*dec_y,"dn":255*(1-sec_x)*dec_y,"max":255*dec_y,"min":0,"uh":sec_x*128*dec_y,"dh":sec_x*128*dec_y}
-    var lgt = {"up":drk.up+(255-drk.up)*inc_y,"dn":drk.dn+(255-drk.dn)*inc_y,"max":drk.max+(255-drk.max)*inc_y,"min":drk.min+(255-drk.min)*inc_y}
+    function r(v) { return Math.floor(v) }
+    var drk = {"up":r(sec_x*255*dec_y),"dn":r(255*(1-sec_x)*dec_y),"max":255*dec_y,"min":0,"uh0":r(sec_x*128*dec_y),"dh1":r((251-sec_x*128)*dec_y)}
+    var lgt = {"up":r(drk.up+(255-drk.up)*inc_y),"dn":drk.dn+(255-drk.dn)*inc_y,"max":drk.max+(255-drk.max)*inc_y,"min":drk.min+(255-drk.min)*inc_y}
     //if(sec==6 && x==sx) document.write(drk.dh+"&nbsp;&nbsp;&nbsp;"+dec_y+" "+sec_x+"<br>");
     //if(sec==6 && sx==0) sx = x;
     //if(x==sx && sec==6) document.write("y="+y+" "+[drk.uh,drk.uh,drk.dh].join(",")+"<br>");
@@ -221,9 +245,8 @@ function section(sec,sec_x,inc_y,dec_y)
         case 3: return [drk.dn,drk.max,drk.min];
         case 4: return [drk.min,drk.max,drk.up];
         case 5: return [drk.min,drk.dn,drk.max];
-        case 6: return [drk.uh,drk.uh,drk.dh];
-        case 7: return [drk.dh,drk.dh,drk.uh];
-
+        case 6: return [drk.uh0,drk.uh0,drk.dh1];
+        case 7: return [drk.dh0,drk.dh0,drk.uh1];
 
         case 8: return [lgt.up,lgt.min,lgt.max];
         case 9: return [lgt.max,lgt.min,lgt.dn];
