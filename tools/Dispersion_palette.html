@@ -124,6 +124,8 @@ function draw_rainbow()
     }
 }
 
+var sec_n  = [7,8];     // sections to show vs sections
+
 function debug_color()
 {
     var width  = canvas[0].width;
@@ -170,10 +172,8 @@ function debug_color()
         pc = hex_cx.join("");
     }
 
-
-    var s = ["<table border=1 style='text-align:center'>","<tr>","</tr>","</table>"];
-
-    var sec_n  = [8,8];     // sections to show vs sections
+    var trig = {"x":false,"y":false}
+    var s = ["<table border=1 style='text-align:center'>","<tr><td></td>","</tr>","</table>"];
     for(var y=0;y<=height;y+=5)
     {
         s[2]+= "<tr>";
@@ -187,10 +187,12 @@ function debug_color()
             var dec_y = fac_y*2>1?1:fac_y*2;
             var inc_y = fac_y*2-1;
 
-            if(sec==6)
+            if(sec==14)
             {
-                if(y==0) s[1]+="<td style='background-color:#EEEEEE'>"+cap(sec_x)+"</td>";
-                if(sec_x<0.04) s[2]+= "<td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
+                // y=0 doesnt work on lower area
+                if(!trig.x) trig = {"x":x,"y":y}
+                if(y==trig.y) s[1]+="<td style='background-color:#EEEEEE'>"+cap(sec_x)+"</td>";
+                if(x==trig.x) s[2]+= "<td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
                 s[2]+= "<td>"+calc_section(x,y,width,height).join(",")+"</td>";
             }
         }
@@ -205,7 +207,6 @@ var toRad = function(angle) { return angle * (Math.PI / 180) }
 var sx = 0;
 function calc_section(x,y,width,height)
 {
-    var sec_n  = [8,8];     // sections to show vs sections
     var fac_x = x/width;
     var fac_y = y/height;
 
@@ -231,8 +232,16 @@ function calc_section(x,y,width,height)
 function section(sec,sec_x,inc_y,dec_y)
 {
     function r(v) { return Math.floor(v) }
-    var drk = {"up":r(sec_x*255*dec_y),"dn":r(255*(1-sec_x)*dec_y),"max":255*dec_y,"min":0,"uh0":r(sec_x*128*dec_y),"dh1":r((251-sec_x*128)*dec_y)}
-    var lgt = {"up":r(drk.up+(255-drk.up)*inc_y),"dn":drk.dn+(255-drk.dn)*inc_y,"max":drk.max+(255-drk.max)*inc_y,"min":drk.min+(255-drk.min)*inc_y}
+    var drk = {"up":r(sec_x*255*dec_y),"dn":r(255*(1-sec_x)*dec_y),"max":255*dec_y,"min":0
+    ,"uh0":r(sec_x*128*dec_y)
+    ,"uh1":r(128+sec_x*128*dec_y)
+    ,"dh0":r((128-sec_x*128)*dec_y)
+    ,"dh1":r((251-sec_x*128)*dec_y)
+    }
+    var lgt = {"up":r(drk.up+(255-drk.up)*inc_y),"dn":r(drk.dn+(255-drk.dn)*inc_y),"max":r(drk.max+(255-drk.max)*inc_y),"min":r(drk.min+(255-drk.min)*inc_y)
+    ,"uh0":r(drk.uh0)
+    ,"dh1":r(drk.dh1)
+    }
     //if(sec==6 && x==sx) document.write(drk.dh+"&nbsp;&nbsp;&nbsp;"+dec_y+" "+sec_x+"<br>");
     //if(sec==6 && sx==0) sx = x;
     //if(x==sx && sec==6) document.write("y="+y+" "+[drk.uh,drk.uh,drk.dh].join(",")+"<br>");
@@ -254,7 +263,7 @@ function section(sec,sec_x,inc_y,dec_y)
         case 11: return [lgt.dn,lgt.max,lgt.min];
         case 12: return [lgt.min,lgt.max,lgt.up];
         case 13: return [lgt.min,lgt.dn,lgt.max];
-        case 14: return [lgt.up,lgt.up,lgt.max];
+        case 14: return [lgt.uh0,lgt.uh0,lgt.dh1];
         case 15: return [lgt.dn,lgt.dn,lgt.max];
         default: return [255,255,255]
     }
