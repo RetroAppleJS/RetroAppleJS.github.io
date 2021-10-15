@@ -103,6 +103,10 @@ function Apple2Video(ctx) {
         return loresCols;
     }
 
+    this.gethiresCols = function() {
+        return hiresCols;
+    }
+
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawChar(col, row, d8) {
@@ -138,25 +142,33 @@ var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
 
 // Lores color to RGB table. (* Hires)
 var loresCols = [
- ["#000000","#000000","#000000","#000000"] // Black *
-,["#901740","#4D4D4D","#304D48","#4C4631"] // Magenta
-,["#402CA5","#5B5B5B","#395B56","#5A5239"] // Dark Blue
-,["#D043E5","#A8A8A8","#69A89E","#A6986A"] // Purple *
-,["#006940","#383838","#233835","#383324"] // Dark Green
-,["#808080","#808080","#508078","#7E7451"] // Grey 1
-,["#2F95E5","#8E8E8E","#598E85","#8C8059"] // Medium Blue *
-,["#BFABFF","#CECECE","#81CEC2","#CBBA82"] // Light Blue
-,["#405400","#313131","#1F312E","#312D1F"] // Brown
-,["#D06A1A","#717171","#47716B","#706748"] // Orange *
-//,["#FF4000","#717171","#47716B","#706748"] // Orange *
-,["#808080","#808080","#508078","#7E7451"] // Grey 2
-,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D"] // Pink
-,["#2FBC1A","#575757","#375752","#564F37"] // Light Green *
-//,["#40FF00","#575757","#375752","#564F37"] // Light Green *
-,["#BFD35A","#A4A4A4","#67A49A","#A29568"] // Yellow
-,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170"] // Aquamarine
-,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1"] // White *
+ ["#000000","#000000","#000000","#000000","Black"]  // *
+,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
+,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
+,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
+,["#006940","#383838","#233835","#383324","Dark Green"] 
+,["#808080","#808080","#508078","#7E7451","Grey 1"] 
+,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
+,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
+,["#405400","#313131","#1F312E","#312D1F","Brown"] 
+,["#D06A1A","#717171","#47716B","#706748","Orange"]  // *
+,["#808080","#808080","#508078","#7E7451","Grey 2"] 
+,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
+,["#2FBC1A","#575757","#375752","#564F37","Light Green"]  // *
+,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
+,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
 ];
+
+var hiresCols = [
+ ["#000000","#000000","#000000","#000000","Black"]
+,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]
+,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]
+,["#D06A1A","#717171","#47716B","#706748","Orange"]
+,["#2FBC1A","#575757","#375752","#564F37","Light Green"]
+,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]
+];
+
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawLores(col, row, d8) {
