@@ -120,7 +120,7 @@ var DitherJS = function DitherJS(selector,opt) {
             // Inherit Styles
 
             // Turn it off
-            // canvas.style.visibility = "hidden";
+            //canvas.style.visibility = "hidden";
 
             // Get the context
             var ctx = canvas.getContext('2d');
