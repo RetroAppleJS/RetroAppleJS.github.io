@@ -42,8 +42,11 @@ function Apple2Video(ctx) {
 
     var flash_on = true; // boolean toggled 6 hz or so.
     var flash_count = 0;
-    var context = ctx;
-    var charData = ctx.createImageData(14, 16);
+    if(ctx)
+    {
+        var context = ctx;
+        var charData = ctx.createImageData(14, 16);
+    }  
     var charFlow = {"prev":{}};
 
     this.vidram = null; // apple2hw.js sets this to give me refernce to ram
