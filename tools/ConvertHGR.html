@@ -82,7 +82,7 @@ text-shadow: 1px 1px #000;
     <td width=500>
         <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="5" value="3" class="slider" id="step" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
-        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="20" value="4" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="20" value="6" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
         <div>
             <select id="dither_method" onchange=update_dither()>
@@ -95,7 +95,7 @@ text-shadow: 1px 1px #000;
 </table>
 <div class="wrapper">
 <img class="background dither"src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKUAAADABAMAAACXPL4AAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAYUExURfu3KfSEIGe4S+A8QP////3+/ZY/lwSc3JpBtD8AAAABYktHRASPaNlRAAAACXBIWXMAAAsTAAALEwEAmpwYAAACzElEQVR4nO3bUW6jMBAG4FQR741WucBIfm/l9gj7Th0Zn4C9Adrr7y6EMMbGEPzPylXix2B//QcKtDA52N2DVPzzerdJhDYNwU0iuEl4k/Am4U2DNycSZxLeNAIm4U0jYHKSLMQ0AibhTSNg+qRCmEbAJHnTAkwjbyqESXhza+mFmQphkrxpAebm0ssyLcLcHHO3afGmEjAtxDSbY+40Ld5UAqbFmxZvKry5St5vrpN3mxvIJTMMZYLDs3jIomb0V9FfnToFIuaWi2/y3hSa81tupLhwikqa4fwgKq1MmZsxcobS2pSZGSf5ksUZiyYtD5UUOeqblDNU1DQEQbmZSd6q52YuOQZlZnbMMSgz88lr0MkExLwGnUwEOQS9mZCYQ9CbiSH7oKMJitkHHU0q2GS1I0sfTSQJNvl5VB8wg5/vILISMPn1s4bGHMxDuabFmxU3a2xMoFl55qFY0+LNyjPrYk0rbqJLL9q039Ks0bvzwc2vE2DYpylpvgDI16f5kObpaYqakPNd4pp8fmDzVcA8ze7FxZqVgHn2TY0Yb/7fihBTS5g/BcxPzzxCzHcBU3vmBV08zvzg5pcGF//XbDS4+H//v2twUKT5ycwfIPONmUdUUPYM8IIy3wXM6x7tn1nBTD09r8OZHwJmX31vHrFob140FMWb+tybDdTUw3NvCfMXdAxmgyTbb2KO72UKN9vRbMo2p3d8RZvtZDYlm/x9ccFmy80GFlPWtLDShc0GVTrv5UDFlDYbUOlYsw17eCRM9ztzxHqiMsnuf5kOUvqsxwwSE2ku9MI5AdMiSp+bDhATZ3bLfZUSpssvPewpzY8Zmi47ZqSfNjtmxHS5MWO9xLkxY6ZbDuO2xIz2UaeTrMaMmi69yK3EjPd7u/Qau7I53peeXjPb3m3sdU+T3vZuc09+Yom/e7o7+vxdkrz91O7O7w64nd84r/8Aa35WkEZqwpoAAAAASUVORK5CYII=" />
-<div>
+</div>
 
     
     <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
@@ -133,6 +133,8 @@ function Apple2Plus(context)
 
 function update_dither(bInit)
 {
+ 
+
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     //alert(loresCols[0][1])
@@ -168,17 +170,17 @@ function update_dither(bInit)
         break;
     }
 
+    var el  = document.querySelectorAll(".dither")[0];
+    var elw = document.querySelectorAll(".wrapper")[0];
+    var elo = document.querySelectorAll(".org")[0];
+    var elp = document.querySelectorAll(".palette")[0];
+
     if(bInit)
     {
-        var el  = document.querySelectorAll(".dither")[0];
-        var elw = document.querySelectorAll(".wrapper")[0];
-        var elo = document.querySelectorAll(".org")[0];
-        var elp = document.querySelectorAll(".palette")[0];
+        //alert(elw.innerHTML)
 
         var src = el.src;
         elo.innerHTML = "<img src='"+src+"'>"
-
-        dither = new DitherJS('.dither',options);
 
         var paletsize = [50,25];
         var s= "<table>\n";
@@ -186,11 +188,13 @@ function update_dither(bInit)
             s+="<tr><td style='border:2px solid;width:"+paletsize[0]+"px;height:"+paletsize[1]+"px;background-color:rgb("+HGRpalette[i].join(",")+")'>&nbsp;</td></tr>\n";
         s+= "</table>\n";
         elp.innerHTML = s;
+
+        dither = new DitherJS('.dither',options);
     }
     else
     {
-        //elw.innerHTML = "<img class='background dither' src='"+src+"'>'
-        //dither = new DitherJS('.dither',options);        
+        elw.innerHTML = elo.innerHTML.replace("src","class='background dither' src");
+        dither = new DitherJS('.dither',options);     
     }
 
     //alert(typeof(options.step)+" "+typeof(options.ratio))
