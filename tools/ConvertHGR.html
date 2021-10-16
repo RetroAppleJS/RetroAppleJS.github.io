@@ -86,8 +86,8 @@ text-shadow: 1px 1px #000;
         <br><br>
         <div>
             <select id="dither_method" onchange=update_dither()>
-                <option value="ordered" selected>ordered</option>
-                <option value="errorDiffusion">errorDiffusion</option>
+                <option value="ordered">ordered</option>
+                <option value="errorDiffusion"  selected>errorDiffusion</option>
               </select>
         </div>
     </td>
@@ -103,7 +103,7 @@ text-shadow: 1px 1px #000;
 <script>
 var dither, options;
 var loresCols = [];
-var HGRpalette;
+var HGRpalette = [];
 
 var vidContext, apple2plus;
 function Apple2Plus(context)
@@ -111,10 +111,14 @@ function Apple2Plus(context)
   this.video = new Apple2Video(context);
   this.hw    = new Apple2Hw(this.video);
   // Switch on Apple II Hi-Res graphics
+  if(context)
+  {
   this.video.reset();
   this.video.setGfx(true);
   this.video.setHires(true);
   this.video.redraw();
+  }
+
   loresCols = this.video.getloresCols();
   hiresCols = this.video.gethiresCols();
 
@@ -133,16 +137,14 @@ function Apple2Plus(context)
 
 function update_dither(bInit)
 {
- 
-
-    vidContext          = document.getElementById('applescreen').getContext("2d");
-    apple2plus          = new Apple2Plus(vidContext);
-    //alert(loresCols[0][1])
+    vidContext  = document.getElementById('applescreen').getContext("2d");
+    vidContext  = false;
+    apple2plus  = new Apple2Plus(vidContext);
 
     var step = Number(document.getElementById("step").value);
     document.getElementById("step_dsp").innerHTML = step;
     var ratio = Number(document.getElementById("ratio").value);
-    document.getElementById("ratio_dsp").innerHTML = ratio;
+    document.getElementById("ratio_dsp").innerHTML = Math.round(ratio*100)/100;
     var dither_method = document.getElementById("dither_method").value;
 
     options = {
@@ -159,14 +161,14 @@ function update_dither(bInit)
         case "ordered": 
             el.setAttribute("min",1);
             el.setAttribute("max",20);
-            el.setAttribute("step",1);
-            el.value = 1;
+            el.setAttribute("step",.5);
+            //el.value = 1;
         break;
         case "errorDiffusion":
-            el.setAttribute("min",1/20);
-            el.setAttribute("min",1);
-            el.setAttribute("step",(1-(1/20))/20 );
-            el.value = 1;
+            el.setAttribute("min",0.01);
+            el.setAttribute("max",0.2);
+            el.setAttribute("step",0.01 );
+            //el.value = 1;
         break;
     }
 
@@ -196,9 +198,6 @@ function update_dither(bInit)
         elw.innerHTML = elo.innerHTML.replace("src","class='background dither' src");
         dither = new DitherJS('.dither',options);     
     }
-
-    //alert(typeof(options.step)+" "+typeof(options.ratio))
-    //el[0].src = src;
 }
 
 
