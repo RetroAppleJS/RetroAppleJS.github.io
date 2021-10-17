@@ -105,9 +105,9 @@ function debug_color()
         pc = hex_cx.join("");
     }
 
-    var step = 1;
+    var step = 2;
     var trig = {"x":false,"y":false}
-    var s = ["<table border=1 style='text-align:center'>","<tr><td></td>","</tr>","</table>"];
+    var s = ["<table border=1 style='text-align:center'>","<tr><td>sec_x -></td>","</tr>","</table>"];
     for(var y=0;y<=height;y+=step)
     {
         //if(sec==14) s[2]+= "<tr>";
@@ -152,8 +152,8 @@ function calc_section(x,y,width,height)
     drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
 
     ////////////////////////////////////////////////////////////////
-    //if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
-    //else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
+    if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
+    else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
 
     drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
@@ -168,13 +168,15 @@ function section(sec,sec_x,inc_y,dec_y)
     function r(v) { return Math.floor(v) }
     var drk = {"up":r(sec_x*255*dec_y),"dn":r(255*(1-sec_x)*dec_y),"max":255*dec_y,"min":0
         ,"uh0":r(sec_x*128*dec_y)
-        ,"uh1":r(128+sec_x*128*dec_y)
+        //,"uh1":r(128+sec_x*128*dec_y)
+        ,"uh1":r(256*sec_x*dec_y)
+
         ,"dh0":r((128-sec_x*128)*dec_y)
         ,"dh1":r((251-sec_x*128)*dec_y)
     }
     var lgt = {"up":r(drk.up+(255-drk.up)*inc_y),"dn":r(drk.dn+(255-drk.dn)*inc_y),"max":r(drk.max+(255-drk.max)*inc_y),"min":r(drk.min+(255-drk.min)*inc_y)
-        ,"uh0":r(drk.uh0)
-        ,"dh1":r(drk.dh1)
+        ,"uh0":r(drk.uh0+ inc_y*256 -inc_y*sec_x*128 )
+        ,"dh1":r(drk.dh1+ inc_y*sec_x*128)
     }
     
     switch(sec)
@@ -196,6 +198,7 @@ function section(sec,sec_x,inc_y,dec_y)
         case 13: return [lgt.min,lgt.dn,lgt.max];
         case 14: return [lgt.uh0,lgt.uh0,lgt.dh1];
         case 15: return [lgt.dn,lgt.dn,lgt.max];
+
         default: return [255,255,255]
     }
 }
