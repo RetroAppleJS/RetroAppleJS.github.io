@@ -105,12 +105,13 @@ function debug_color()
         pc = hex_cx.join("");
     }
 
+    var step = 1;
     var trig = {"x":false,"y":false}
     var s = ["<table border=1 style='text-align:center'>","<tr><td></td>","</tr>","</table>"];
-    for(var y=0;y<=height;y+=5)
+    for(var y=0;y<=height;y+=step)
     {
-        s[2]+= "<tr>";
-        for(var x=0;x<=width;x+=5)
+        //if(sec==14) s[2]+= "<tr>";
+        for(var x=0;x<=width;x+=step)
         {
             var fac_x = x/width;
             var fac_y = y/height;
@@ -124,14 +125,16 @@ function debug_color()
             {
                 // y=0 doesnt work on lower area
                 if(!trig.x) trig = {"x":x,"y":y}
+                if(x==trig.x) s[2]+= "<tr><td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
                 if(y==trig.y) s[1]+="<td style='background-color:#EEEEEE'>"+cap(sec_x)+"</td>";
-                if(x==trig.x) s[2]+= "<td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
-                s[2]+= "<td>"+calc_section(x,y,width,height).join(",")+"</td>";
+                s[2]+= "<td><small>"+calc_section(x,y,width,height).join(",")+"</small></td>";
             }
         }
-        s[2]+= "</tr>"
+        if(sec==14)
+            s[2]+= "</tr>"
     }
     document.getElementById("debug").innerHTML = s.join("");
+    //document.getElementById("debug").innerHTML = "<textarea>"+s.join("\r\n\r\n")+"</textarea>";
 }
 
 function cap(v) { return Math.floor(v*100)/100 }
@@ -142,7 +145,6 @@ function calc_section(x,y,width,height)
 {
     var fac_x = x/width;
     var fac_y = y/height;
-
     var sec   = Math.floor(fac_x*sec_n[0]);
     var sec_x = fac_x*sec_n[0]-sec;
     sec += fac_y>0.5?sec_n[1]:0;
