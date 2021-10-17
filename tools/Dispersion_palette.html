@@ -76,8 +76,6 @@ for(var i=0;i<256;i++)
 
 function color_depth(triple,bits)
 {
-    //p = Math.pow( Math.pow(2,bits[0]) ,1/3);
-    //q = Math.pow( Math.pow(2,bits[1]) ,1/3);
     p = Math.pow(2, bits[0]/3 );
     q = Math.pow(2, bits[1]/3 );
     var t = [Math.min(255,Math.round( Math.floor(triple[0]/(p/q))*(p-1)/(q-1) ))
@@ -85,16 +83,6 @@ function color_depth(triple,bits)
             ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
     return t;
 }
-/*
-var bf = true;
-function color_depth(triple,bits)
-{
-    var p = Math.pow(2, (bits[0]-bits[1])/3);
-    var m = 1;
-    //if(bf) { bf=false; alert(p)  }
-    return [Math.round(triple[0]*m/p-0.5)*p,Math.round(triple[1]*m/p-0.5)*p,Math.round(triple[2]*m/p-0.5)*p]
-}
-*/
 
 function draw_rainbow()
 {
@@ -149,26 +137,12 @@ function debug_color()
         var dec_dx = color_depth(dec_cx,[24,color_depth_val*3]);
         var hex_dx = [getHexByte(dec_dx[0]),getHexByte(dec_dx[1]),getHexByte(dec_dx[2])];
 
-        /*
-        if(pc!=hex_cx.join(""))
-        {
-                document.getElementById("debug").innerHTML += 
-                '#'+hex_cx.join("")+"\t"
-                +'#'+hex_dx.join("")+" "
-                +"<br>"
-        }
-        */
-
         ctx[0].strokeStyle = '#'+hex_dx.join("");
         ctx[0].beginPath();
         ctx[0].moveTo(i, height-20);
         ctx[0].lineTo(i, height);
         ctx[0].stroke();
-
-        //drawPixel(ctx[0], width*(c[0]/255), 99, '#FF0000');
-        //drawPixel(ctx[0], width*(d[0]/255), 100, '#FF0000');
-
-        //document.write(width*(c[0]/255)+"<br>")
+        
         pc = hex_cx.join("");
     }
 
