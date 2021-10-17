@@ -30,13 +30,6 @@ padding: 5em;
 div.wrapper > .background {
 min-width: 50%;
 min-height: 50%;
-
-
-/*position: absolute;
-top: 0px;
-left: 0px;
-display: block;
-z-index: 1;*/
 background: #fff;
 }
 div.headline {
@@ -113,10 +106,10 @@ function Apple2Plus(context)
   // Switch on Apple II Hi-Res graphics
   if(context)
   {
-  this.video.reset();
-  this.video.setGfx(true);
-  this.video.setHires(true);
-  this.video.redraw();
+    this.video.reset();
+    this.video.setGfx(true);
+    this.video.setHires(true);
+    this.video.redraw();
   }
 
   loresCols = this.video.getloresCols();
@@ -162,13 +155,11 @@ function update_dither(bInit)
             el.setAttribute("min",1);
             el.setAttribute("max",20);
             el.setAttribute("step",.5);
-            //el.value = 1;
         break;
         case "errorDiffusion":
             el.setAttribute("min",0.01);
             el.setAttribute("max",0.2);
             el.setAttribute("step",0.01 );
-            //el.value = 1;
         break;
     }
 
@@ -179,8 +170,6 @@ function update_dither(bInit)
 
     if(bInit)
     {
-        //alert(elw.innerHTML)
-
         var src = el.src;
         elo.innerHTML = "<img src='"+src+"'>"
 
@@ -199,19 +188,6 @@ function update_dither(bInit)
         dither = new DitherJS('.dither',options);     
     }
 }
-
-
-//var coin = Math.random();
-//var palette = coin < 0.3 ? HGRpalette : coin < 0.6 ? palette2 : palette3;
-
-/*
-var new_el = document.createElement("img");
-new_el.setAttribute("src", el[0].src);
-var anchor_el = document.getElementById("imgcopy")
-anchor_el.appendChild(new_el);
-*/
-
-//dither = new DitherJS('.dither',options);
 </script>
 </body>
 </html>
