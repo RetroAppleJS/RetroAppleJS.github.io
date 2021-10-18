@@ -12,6 +12,11 @@ var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var bUpdate = false;        // screen update trigger
 var color_depth_val = 24;   // source color depth
+var hex_pal = ["#BFABFF"];
+var dec_pal = [];
+for(var i=0;i<hex_pal.length;i++)
+    dec_pal[i] = HEX2RGB(hex_pal[i]);
+
 //if(bDebug) document.write( "<canvas id=\"DebugCanvas\" width=\"550\" height=\"200\">This browser or document mode doesn't support canvas object</canvas>")
 
 function drawPixel(context, x, y, color)
@@ -27,6 +32,8 @@ function drawPixel(context, x, y, color)
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
+
+function HEX2RGB(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
 
 function init()
 {
@@ -46,6 +53,16 @@ function color_depth(triple,bits)
     return t;
 }
 
+function colorDistance(a,b) {
+            //if (a == null) return b;
+            //if (b == null) return a;
+            return Math.sqrt( 
+                Math.pow( ((a[0]) - (b[0])),2 )
+                + Math.pow( ((a[1]) - (b[1])),2 ) 
+                + Math.pow( ((a[2]) - (b[2])),2 )
+            );
+        };
+
 function draw_rainbow()
 {
     if(bDebug)
@@ -55,7 +72,6 @@ function draw_rainbow()
         canvas[1].removeAttribute("hidden");
         debug_color();
     }
-
 
     bUpdate = false;     // allow new updates
     var width  = canvas[0].width;
@@ -71,7 +87,11 @@ function draw_rainbow()
             //////////////////////////////////////////////////////
             
             var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
-            drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
+
+            var d = colorDistance(dec_cx,dec_pal[0]);
+            //if(x==0) document.write(Math.round(d)+"<br>")
+            if(d>10) drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
+            else drawPixel(ctx[0], x, y, '#FFFFFF');
         }
     }
 }
