@@ -1,20 +1,18 @@
 <head>
   <title>Draw Rainbow with Linear gradient</title>
     <style type="text/css">
-        body
-        {
-            font-family: 'Courier';
-            font-size: 12px;
-        }
-        #MyCanvas {
-        border:1px solid black;
-        }
-        #MyCanvas2 {
-        border:1px solid black;
-        }
+        body { font-family: 'Courier'; font-size: 12px; }
+        #DebugCanvas { border:1px solid black; }
+        #MyCanvas { border:1px solid black; }
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
+var bDebug = false;
+var canvas,ctx;
+var sec_n  = [7,8];         // sections to show vs total sections
+var bUpdate = false;        // screen update trigger
+var color_depth_val = 24;   // source color depth
+//if(bDebug) document.write( "<canvas id=\"DebugCanvas\" width=\"550\" height=\"200\">This browser or document mode doesn't support canvas object</canvas>")
 
 function drawPixel(context, x, y, color)
 {
@@ -29,12 +27,11 @@ function drawPixel(context, x, y, color)
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
-var canvas,ctx;
 
 function init()
 {
-    canvas = [ document.getElementById("MyCanvas"), document.getElementById("MyCanvas2") ];
-    ctx = [ canvas[0].getContext("2d"), canvas[1].getContext("2d") ];
+    canvas = [ document.getElementById("MyCanvas") ];
+    ctx = [ canvas[0].getContext("2d")];
     update_param();
     draw_rainbow();
 }
@@ -51,10 +48,16 @@ function color_depth(triple,bits)
 
 function draw_rainbow()
 {
-    debug_color();
-    bUpdate = false;     // allow new updates
-    var width  = canvas[1].width;
-    var height = canvas[1].height;
+    if(bDebug)
+    {
+        canvas[1] = document.getElementById("DebugCanvas");
+        ctx[1] = canvas[1].getContext("2d") ;
+        canvas[1].removeAttribute("hidden");
+        debug_color();
+    }
+
+    var width  = canvas[0].width;
+    var height = canvas[0].height;
     for(var y=0;y<height;y++)
     {
         for(var x=0;x<width;x++)
@@ -66,41 +69,39 @@ function draw_rainbow()
             //////////////////////////////////////////////////////
             
             var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
-            drawPixel(ctx[1], x, y, '#'+hex_cx.join(""));
+            drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
         }
     }
 }
 
-var sec_n  = [7,8];     // sections to show vs sections
-
 function debug_color()
 {
-    var width  = canvas[0].width;
-    var height = canvas[0].height;
-    ctx[0].fillStyle = 'white';
-    ctx[0].fillRect(0, 0, width, height);
+    var width  = canvas[1].width;
+    var height = canvas[1].height;
+    ctx[1].fillStyle = 'white';
+    ctx[1].fillRect(0, 0, width, height);
     var pc = "";
-    document.getElementById("debug").innerHTML = ""
+    
     for(var i=0;i<=width;i++)
     {
         var v = i*(255/width)
         var dec_cx = [v,v,v];
         var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
 
-        ctx[0].strokeStyle = '#'+hex_cx.join("");
-        ctx[0].beginPath();
-        ctx[0].moveTo(i, height-50);
-        ctx[0].lineTo(i, height-30);
-        ctx[0].stroke();
+        ctx[1].strokeStyle = '#'+hex_cx.join("");
+        ctx[1].beginPath();
+        ctx[1].moveTo(i, height-50);
+        ctx[1].lineTo(i, height-30);
+        ctx[1].stroke();
 
         var dec_dx = color_depth(dec_cx,[24,color_depth_val*3]);
         var hex_dx = [getHexByte(dec_dx[0]),getHexByte(dec_dx[1]),getHexByte(dec_dx[2])];
 
-        ctx[0].strokeStyle = '#'+hex_dx.join("");
-        ctx[0].beginPath();
-        ctx[0].moveTo(i, height-20);
-        ctx[0].lineTo(i, height);
-        ctx[0].stroke();
+        ctx[1].strokeStyle = '#'+hex_dx.join("");
+        ctx[1].beginPath();
+        ctx[1].moveTo(i, height-20);
+        ctx[1].lineTo(i, height);
+        ctx[1].stroke();
         
         pc = hex_cx.join("");
     }
@@ -133,14 +134,14 @@ function debug_color()
         if(sec==14)
             s[2]+= "</tr>"
     }
-    document.getElementById("debug").innerHTML = s.join("");
+    document.getElementById("debug").innerHTML += s.join("");
     //document.getElementById("debug").innerHTML = "<textarea>"+s.join("\r\n\r\n")+"</textarea>";
 }
 
 function cap(v) { return Math.floor(v*100)/100 }
 
 var toRad = function(angle) { return angle * (Math.PI / 180) }
-var sx = 0;
+
 function calc_section(x,y,width,height)
 {
     var fac_x = x/width;
@@ -149,14 +150,14 @@ function calc_section(x,y,width,height)
     var sec_x = fac_x*sec_n[0]-sec;
     sec += fac_y>0.5?sec_n[1]:0;
 
-    drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) drawPixel(ctx[1], x,sec_x*(width/sec_n[0]), 'black');
 
     ////////////////////////////////////////////////////////////////
     if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
     else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
 
-    drawPixel(ctx[0], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) drawPixel(ctx[1], x,sec_x*(width/sec_n[0]), 'black');
 
     var dec_y = fac_y*2>1?1:fac_y*2;
     var inc_y = fac_y*2-1;
@@ -203,12 +204,10 @@ function section(sec,sec_x,inc_y,dec_y)
     }
 }
 
-var bUpdate = false;
-var color_depth_val = 24; 
 function update_param()
 {
   if(bUpdate==false) setTimeout(draw_rainbow, 1000);
-  bUpdate          = true;
+  bUpdate = true;
   color_depth_val  = Number(document.getElementById("param1").value);
   //draw_rainbow();
   document.getElementById("disp_param1").innerHTML 
@@ -221,15 +220,15 @@ function update_param()
 </script>
 </head>
 <body onload="init()">
-  <canvas id="MyCanvas" width="550" height="200">
-  This browser or document mode doesn't support canvas object</canvas>
-<br>
+ 
 <div style="">
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="8" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
 </div>
 <br>
-  <canvas id="MyCanvas2" width="550" height="200">
+  <canvas id="MyCanvas" width="550" height="200">
     This browser or document mode doesn't support canvas object</canvas>
-<div id=debug></div>
+    <canvas hidden id="DebugCanvas" width="550" height="200">This browser or document mode doesn't support canvas object</canvas>
+
+    <div id=debug></div>
 </body>
 </html>
