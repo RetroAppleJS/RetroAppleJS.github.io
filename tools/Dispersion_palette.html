@@ -56,6 +56,8 @@ function draw_rainbow()
         debug_color();
     }
 
+
+    bUpdate = false;     // allow new updates
     var width  = canvas[0].width;
     var height = canvas[0].height;
     for(var y=0;y<height;y++)
@@ -227,8 +229,7 @@ function update_param()
 <br>
   <canvas id="MyCanvas" width="550" height="200">
     This browser or document mode doesn't support canvas object</canvas>
-    <canvas hidden id="DebugCanvas" width="550" height="200">This browser or document mode doesn't support canvas object</canvas>
-
-    <div id=debug></div>
+  <canvas hidden id="DebugCanvas" width="550" height="200">This browser or document mode doesn't support canvas object</canvas>
+  <div id=debug></div>
 </body>
 </html>
