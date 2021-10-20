@@ -12,7 +12,7 @@ var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var bUpdate = false;        // screen update trigger
 var color_depth_val = 24;   // source color depth
-var hex_pal = ["#BFABFF"];
+var hex_pal = ["#2FBC1A","#D043E5","#D06A1A","#2F95E5"];
 var dec_pal = [];
 for(var i=0;i<hex_pal.length;i++)
     dec_pal[i] = HEX2RGB(hex_pal[i]);
@@ -39,6 +39,19 @@ function init()
 {
     canvas = [ document.getElementById("MyCanvas") ];
     ctx = [ canvas[0].getContext("2d")];
+    canvas[0].addEventListener('click', function(event)
+    {
+        x = event.offsetX;
+        y = event.offsetY;
+        if(x==0 && y==0) return;
+        
+
+        var imageData = ctx[0].getImageData(x, y, 1, 1).data;
+        rgbaColor = 'rgba(' + imageData[0] + ',' + imageData[1] + ',' + imageData[2] + ',1)';
+        document.getElementById("debug").innerHTML += x+" "+y+" "+rgbaColor+"<br>"
+    }
+    
+    , false);
     update_param();
     draw_rainbow();
 }
@@ -88,9 +101,15 @@ function draw_rainbow()
             
             var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
 
-            var d = colorDistance(dec_cx,dec_pal[0]);
+            var vd = 1000;
+            for(var i=0;i<hex_pal.length;i++)
+            {
+                var d = colorDistance(dec_cx,dec_pal[i]);
+                if(d<vd) vd = d;
+            }
+
             //if(x==0) document.write(Math.round(d)+"<br>")
-            if(d>10) drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
+            if(vd>30) drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
             else drawPixel(ctx[0], x, y, '#FFFFFF');
         }
     }
@@ -239,6 +258,7 @@ function update_param()
 }
 
 
+
 </script>
 </head>
 <body onload="init()">
@@ -247,7 +267,7 @@ function update_param()
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="8" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
 </div>
 <br>
-  <canvas id="MyCanvas" width="550" height="200">
+  <canvas id="MyCanvas" width="550" height="200" onclick="click(this)">
     This browser or document mode doesn't support canvas object</canvas>
   <canvas hidden id="DebugCanvas" width="550" height="200">This browser or document mode doesn't support canvas object</canvas>
   <div id=debug></div>
