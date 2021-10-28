@@ -141,7 +141,7 @@ function draw_rainbow()
             dec_near_xy[i][0][1] = avg[1]/dec_near_xy[i].length;
             
         }
-
+/*
         var x = dec_near_xy[i][0][0];
         var y = dec_near_xy[i][0][1];
         var hex_cx = [getHexByte(dec_near_col[i][0]),getHexByte(dec_near_col[i][1]),getHexByte(dec_near_col[i][2])];
@@ -154,11 +154,12 @@ function draw_rainbow()
         ctx[1].stroke();
         ctx[1].fillStyle = '#'+hex_cx.join("")
         ctx[1].fill();
+*/
     }
     draw_colormatches();
 }
 
-function colormatches()
+function draw_colormatches()
 {
     var width  = canvas[0].width;
     var height = canvas[0].height;
@@ -166,7 +167,18 @@ function colormatches()
   
     for(var i=0;i<dec_near_col.length;i++)
     {
+        var x = dec_near_xy[i][0][0];
+        var y = dec_near_xy[i][0][1];
+        var hex_cx = [getHexByte(dec_near_col[i][0]),getHexByte(dec_near_col[i][1]),getHexByte(dec_near_col[i][2])];
+        //document.write("#"+hex_cx.join("")+" "+x+" "+y+"<br>");
 
+        ctx[1].beginPath();
+        ctx[1].arc(x, y, 3, 0, 2 * Math.PI);
+        ctx[1].lineWidth=1;
+        ctx[1].strokeStyle = "#000000";
+        ctx[1].stroke();
+        ctx[1].fillStyle = '#'+hex_cx.join("")
+        ctx[1].fill();
     }
 }
 
