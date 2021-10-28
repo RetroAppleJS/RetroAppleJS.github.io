@@ -13,8 +13,6 @@ var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var bUpdate = false;        // screen update trigger
 var color_depth_val = 24;   // source color depth
-//var hex_pal = ["#2FBC1A","#D043E5","#D06A1A","#2F95E5"
-//              ,"#175E0D","#682172"];
 var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C"," #97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 var dec_pal = [];
 
@@ -22,12 +20,7 @@ var dec_near_col = [];
 var dec_near_xy  = [];
 
 
-for(var i=0;i<hex_pal.length;i++)
-{
-    dec_pal[i] = HEX2RGB(hex_pal[i]);
-    dec_near_col[i] = [0,0,0];
-    dec_near_xy[i]  = [0,0];
-}
+
 
 
 //if(bDebug) document.write( "<canvas id=\"DebugCanvas\" width=\"550\" height=\"200\">This browser or document mode doesn't support canvas object</canvas>")
@@ -88,8 +81,23 @@ function colorDistance(a,b)
     );
 };
 
+function clear_layer()
+{
+    var width  = canvas[0].width;
+    var height = canvas[0].height;
+    ctx[1].clearRect(0, 0, width, height);
+    for(var i=0;i<hex_pal.length;i++)
+    {
+        dec_pal[i] = HEX2RGB(hex_pal[i]);
+        dec_near_col[i] = [0,0,0];
+        dec_near_xy[i]  = [0,0];
+    }
+}
+
 function draw_rainbow()
 {
+    clear_layer();
+
     if(bDebug)
     {
         canvas[2] = document.getElementById("DebugCanvas");
@@ -97,7 +105,7 @@ function draw_rainbow()
         canvas[2].removeAttribute("hidden");
         debug_color();
     }
-    ctx[1].clearRect(0, 0, width, height);
+    
 
     bUpdate = false;     // allow new updates
     var width  = canvas[0].width;
@@ -114,33 +122,39 @@ function draw_rainbow()
     
             var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
             drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
-
-            
-            //var nc = nearest_color(dec_pal,dec_cx);
-            //if(nc<30) drawPixel(ctx[1], x, y, '#FFFFFF');
-
             nearest(x,y,dec_cx);
         }
     }
 
     for(var i=0;i<dec_near_col.length;i++)
     {
+        if(dec_near_xy[i].length>1)
+        {
+            var avg = [0,0];
+            for(var j=0;j<dec_near_xy[i].length;j++)
+            {   
+                avg[0] += dec_near_xy[i][j][0];
+                avg[1] += dec_near_xy[i][j][1];
+                //if(i==0) document.write(avg[0]+"<br>")
+            }
+            dec_near_xy[i][0][0] = avg[0]/dec_near_xy[i].length;
+            dec_near_xy[i][0][1] = avg[1]/dec_near_xy[i].length;
+            
+        }
 
-    var x = dec_near_xy[i][0];
-    var y = dec_near_xy[i][1];
-    var hex_cx = [getHexByte(dec_near_col[i][0]),getHexByte(dec_near_col[i][1]),getHexByte(dec_near_col[i][2])];
-    //document.write("#"+hex_cx.join("")+" "+x+" "+y+"<br>")
+        var x = dec_near_xy[i][0][0];
+        var y = dec_near_xy[i][0][1];
+        var hex_cx = [getHexByte(dec_near_col[i][0]),getHexByte(dec_near_col[i][1]),getHexByte(dec_near_col[i][2])];
+        //document.write("#"+hex_cx.join("")+" "+x+" "+y+"<br>")
 
-    ctx[1].beginPath();
-    ctx[1].arc(x, y, 3, 0, 2 * Math.PI);
-    ctx[1].lineWidth=1;
-    ctx[1].strokeStyle = "#000000";
-    ctx[1].stroke();
-    ctx[1].fillStyle = '#FFF';
-    ctx[1].fill();
-    
+        ctx[1].beginPath();
+        ctx[1].arc(x, y, 3, 0, 2 * Math.PI);
+        ctx[1].lineWidth=1;
+        ctx[1].strokeStyle = "#000000";
+        ctx[1].stroke();
+        ctx[1].fillStyle = '#'+hex_cx.join("")
+        ctx[1].fill();
     }
-    //document.write("<br>")
 }
 
 function nearest(x,y,dec_cx)
@@ -151,26 +165,19 @@ function nearest(x,y,dec_cx)
         {
             //if(i==0 && j==0 && x==0 && y==0)
             //    document.write(colorDistance(dec_cx,dec_pal[i]) + " < "+colorDistance(dec_near_col[i],dec_pal[i])+"<br>");
+            var cd = [colorDistance(dec_cx,dec_pal[i]),colorDistance(dec_near_col[i],dec_pal[i])]
 
-
-            if( colorDistance(dec_cx,dec_pal[i]) <  colorDistance(dec_near_col[i],dec_pal[i]) )
+            if( cd[0] <  cd[1] )
             {
                 dec_near_col[i] = dec_cx; 
-                dec_near_xy[i] = [x,y];
+                dec_near_xy[i] = [[x,y]];
+            }
+            else if(cd[0] ==  cd[1])
+            {
+                dec_near_xy[i][ dec_near_xy[i].length  ] = [x,y];
             }
         }
     }
-}
-
-function nearest_color(dec_pal,dec_cx)
-{
-    var vd = 1000;
-    for(var i=0;i<dec_pal.length;i++)
-    {
-        var d = colorDistance(dec_cx,dec_pal[i]);
-        if(d<vd) vd = d;
-    }
-    return vd;
 }
 
 function debug_color()
@@ -319,7 +326,7 @@ function update_param()
 
 </head>
 <body onload="init()">
- 
+ <button onclick="clear_layer()">clear</button>
 <div style="">
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="14" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
 </div>
