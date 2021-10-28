@@ -4,6 +4,7 @@
         body { font-family: 'Courier'; font-size: 12px; }
         #DebugCanvas { border:1px solid black; }
         #MyCanvas { border:1px solid black; }
+        #MyCanvas2 { border:1px solid black; }
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
@@ -12,10 +13,22 @@ var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var bUpdate = false;        // screen update trigger
 var color_depth_val = 24;   // source color depth
-var hex_pal = ["#2FBC1A","#D043E5","#D06A1A","#2F95E5"];
+//var hex_pal = ["#2FBC1A","#D043E5","#D06A1A","#2F95E5"
+//              ,"#175E0D","#682172"];
+var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C"," #97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 var dec_pal = [];
+
+var dec_near_col = [];
+var dec_near_xy  = [];
+
+
 for(var i=0;i<hex_pal.length;i++)
+{
     dec_pal[i] = HEX2RGB(hex_pal[i]);
+    dec_near_col[i] = [0,0,0];
+    dec_near_xy[i]  = [0,0];
+}
+
 
 //if(bDebug) document.write( "<canvas id=\"DebugCanvas\" width=\"550\" height=\"200\">This browser or document mode doesn't support canvas object</canvas>")
 
@@ -37,21 +50,21 @@ function HEX2RGB(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n
 
 function init()
 {
-    canvas = [ document.getElementById("MyCanvas") ];
-    ctx = [ canvas[0].getContext("2d")];
-    canvas[0].addEventListener('click', function(event)
+    canvas = [ document.getElementById("MyCanvas"),document.getElementById("MyCanvas2") ];
+    ctx = [ canvas[0].getContext("2d"), canvas[1].getContext("2d")];
+    canvas[0].addEventListener('click', 
+    function(event)
     {
         x = event.offsetX;
         y = event.offsetY;
         if(x==0 && y==0) return;
-        
 
         var imageData = ctx[0].getImageData(x, y, 1, 1).data;
         rgbaColor = 'rgba(' + imageData[0] + ',' + imageData[1] + ',' + imageData[2] + ',1)';
         document.getElementById("debug").innerHTML += x+" "+y+" "+rgbaColor+"<br>"
     }
-    
     , false);
+
     update_param();
     draw_rainbow();
 }
@@ -66,25 +79,25 @@ function color_depth(triple,bits)
     return t;
 }
 
-function colorDistance(a,b) {
-            //if (a == null) return b;
-            //if (b == null) return a;
-            return Math.sqrt( 
-                Math.pow( ((a[0]) - (b[0])),2 )
-                + Math.pow( ((a[1]) - (b[1])),2 ) 
-                + Math.pow( ((a[2]) - (b[2])),2 )
-            );
-        };
+function colorDistance(a,b) 
+{
+    return Math.sqrt( 
+        Math.pow( ((a[0]) - (b[0])),2 )
+        + Math.pow( ((a[1]) - (b[1])),2 ) 
+        + Math.pow( ((a[2]) - (b[2])),2 )
+    );
+};
 
 function draw_rainbow()
 {
     if(bDebug)
     {
-        canvas[1] = document.getElementById("DebugCanvas");
-        ctx[1] = canvas[1].getContext("2d") ;
-        canvas[1].removeAttribute("hidden");
+        canvas[2] = document.getElementById("DebugCanvas");
+        ctx[2] = canvas[2].getContext("2d") ;
+        canvas[2].removeAttribute("hidden");
         debug_color();
     }
+    ctx[1].clearRect(0, 0, width, height);
 
     bUpdate = false;     // allow new updates
     var width  = canvas[0].width;
@@ -98,29 +111,74 @@ function draw_rainbow()
             //////////////////////////////////////////////////////
             dec_cx = color_depth(dec_cx,[24,color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
-            
+    
             var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
+            drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
 
-            var vd = 1000;
-            for(var i=0;i<hex_pal.length;i++)
+            
+            //var nc = nearest_color(dec_pal,dec_cx);
+            //if(nc<30) drawPixel(ctx[1], x, y, '#FFFFFF');
+
+            nearest(x,y,dec_cx);
+        }
+    }
+
+    for(var i=0;i<dec_near_col.length;i++)
+    {
+
+    var x = dec_near_xy[i][0];
+    var y = dec_near_xy[i][1];
+    var hex_cx = [getHexByte(dec_near_col[i][0]),getHexByte(dec_near_col[i][1]),getHexByte(dec_near_col[i][2])];
+    //document.write("#"+hex_cx.join("")+" "+x+" "+y+"<br>")
+
+    ctx[1].beginPath();
+    ctx[1].arc(x, y, 3, 0, 2 * Math.PI);
+    ctx[1].lineWidth=1;
+    ctx[1].strokeStyle = "#000000";
+    ctx[1].stroke();
+    ctx[1].fillStyle = '#FFF';
+    ctx[1].fill();
+    
+    }
+    //document.write("<br>")
+}
+
+function nearest(x,y,dec_cx)
+{
+    for(var i=0;i<dec_pal.length;i++)
+    {
+        for(var j=0;j<dec_near_col.length;j++)
+        {
+            //if(i==0 && j==0 && x==0 && y==0)
+            //    document.write(colorDistance(dec_cx,dec_pal[i]) + " < "+colorDistance(dec_near_col[i],dec_pal[i])+"<br>");
+
+
+            if( colorDistance(dec_cx,dec_pal[i]) <  colorDistance(dec_near_col[i],dec_pal[i]) )
             {
-                var d = colorDistance(dec_cx,dec_pal[i]);
-                if(d<vd) vd = d;
+                dec_near_col[i] = dec_cx; 
+                dec_near_xy[i] = [x,y];
             }
-
-            //if(x==0) document.write(Math.round(d)+"<br>")
-            if(vd>30) drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
-            else drawPixel(ctx[0], x, y, '#FFFFFF');
         }
     }
 }
 
+function nearest_color(dec_pal,dec_cx)
+{
+    var vd = 1000;
+    for(var i=0;i<dec_pal.length;i++)
+    {
+        var d = colorDistance(dec_cx,dec_pal[i]);
+        if(d<vd) vd = d;
+    }
+    return vd;
+}
+
 function debug_color()
 {
-    var width  = canvas[1].width;
-    var height = canvas[1].height;
-    ctx[1].fillStyle = 'white';
-    ctx[1].fillRect(0, 0, width, height);
+    var width  = canvas[2].width;
+    var height = canvas[2].height;
+    ctx[2].fillStyle = 'white';
+    ctx[2].fillRect(0, 0, width, height);
     var pc = "";
     
     for(var i=0;i<=width;i++)
@@ -129,20 +187,20 @@ function debug_color()
         var dec_cx = [v,v,v];
         var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
 
-        ctx[1].strokeStyle = '#'+hex_cx.join("");
-        ctx[1].beginPath();
-        ctx[1].moveTo(i, height-50);
-        ctx[1].lineTo(i, height-30);
-        ctx[1].stroke();
+        ctx[2].strokeStyle = '#'+hex_cx.join("");
+        ctx[2].beginPath();
+        ctx[2].moveTo(i, height-50);
+        ctx[2].lineTo(i, height-30);
+        ctx[2].stroke();
 
         var dec_dx = color_depth(dec_cx,[24,color_depth_val*3]);
         var hex_dx = [getHexByte(dec_dx[0]),getHexByte(dec_dx[1]),getHexByte(dec_dx[2])];
 
-        ctx[1].strokeStyle = '#'+hex_dx.join("");
-        ctx[1].beginPath();
-        ctx[1].moveTo(i, height-20);
-        ctx[1].lineTo(i, height);
-        ctx[1].stroke();
+        ctx[2].strokeStyle = '#'+hex_dx.join("");
+        ctx[2].beginPath();
+        ctx[2].moveTo(i, height-20);
+        ctx[2].lineTo(i, height);
+        ctx[2].stroke();
         
         pc = hex_cx.join("");
     }
@@ -191,14 +249,14 @@ function calc_section(x,y,width,height)
     var sec_x = fac_x*sec_n[0]-sec;
     sec += fac_y>0.5?sec_n[1]:0;
 
-    if(bDebug) drawPixel(ctx[1], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
 
     ////////////////////////////////////////////////////////////////
     if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
     else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
 
-    if(bDebug) drawPixel(ctx[1], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
 
     var dec_y = fac_y*2>1?1:fac_y*2;
     var inc_y = fac_y*2-1;
@@ -257,19 +315,22 @@ function update_param()
       +Math.round( Math.pow(2, color_depth_val/3 )*100)/100+"&nbsp;RGBcols";
 }
 
-
-
 </script>
+
 </head>
 <body onload="init()">
  
 <div style="">
-<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="8" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="14" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
 </div>
 <br>
-  <canvas id="MyCanvas" width="550" height="200" onclick="click(this)">
-    This browser or document mode doesn't support canvas object</canvas>
-  <canvas hidden id="DebugCanvas" width="550" height="200">This browser or document mode doesn't support canvas object</canvas>
+<div style="position:absolute;left:8px;top:50px;">
+    <canvas id="MyCanvas" width="550" height="200" style="position: absolute;top:28px;z-index:0" onclick="click(this)">This browser or document mode doesn't support canvas object</canvas>
+    <br><br>
+    <canvas id="MyCanvas2" width="550" height="200" style="position: absolute;z-index:1">This browser or document mode doesn't support canvas object</canvas>
+</div>
+<br>
+  <canvas hidden id="DebugCanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
   <div id=debug></div>
 </body>
 </html>
