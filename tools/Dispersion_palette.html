@@ -8,7 +8,7 @@
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
-var bDebug = true;
+var bDebug = false;
 var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var dotsize = 0;
@@ -98,10 +98,11 @@ function clear_layer()
 function draw_rainbow()
 {
     clear_layer();
-
+    document.getElementById("debug").innerHTML = "";
+    canvas[2] = document.getElementById("DebugCanvas");
+    canvas[2].setAttribute("hidden","");
     if(bDebug)
     {
-        canvas[2] = document.getElementById("DebugCanvas");
         ctx[2] = canvas[2].getContext("2d") ;
         canvas[2].removeAttribute("hidden");
         debug_color();
@@ -180,6 +181,13 @@ function draw_colormatches()
         ctx[1].stroke();
         ctx[1].fillStyle = '#'+hex_cx.join("")
         ctx[1].fill();
+
+        ctx[1].fillStyle = '#FFF'
+        ctx[1].font = (dotsize*1.4)+"px Arial bold";
+        ctx[1].textAlign = "center"; 
+        ctx[1].textBaseline = "middle";
+        ctx[1].fillText(i , x, y);
+
     }
 }
 
@@ -208,7 +216,7 @@ function nearest(x,y,dec_cx)
 
 function debug()
 {
-    
+    bDebug = !bDebug;
     draw_rainbow();
 }
 
@@ -345,16 +353,17 @@ function section(sec,sec_x,inc_y,dec_y)
 
 function update_param()
 {
-  if(bUpdate==false) setTimeout(draw_rainbow, 1000);
-  bUpdate = true;
-  color_depth_val  = Number(document.getElementById("param1").value);
-  dotsize  = Number(document.getElementById("param2").value);
-  //draw_rainbow();
-  //draw_rainbow();
-  document.getElementById("disp_param1").innerHTML 
-      = color_depth_val 
-      + "bits ("+Math.pow(2,color_depth_val)+"&nbsp;cols) "
-      +Math.round( Math.pow(2, color_depth_val/3 )*100)/100+"&nbsp;RGBcols";
+    if(bUpdate==false) setTimeout(draw_rainbow, 1000);
+    bUpdate = true;
+    color_depth_val  = Number(document.getElementById("param1").value);
+    dotsize  = Number(document.getElementById("param2").value);
+    document.getElementById("disp_param1").innerHTML 
+        = color_depth_val + "bits "
+        //+"("+Math.pow(2,color_depth_val)+"&nbsp;cols) "
+        +Math.round( Math.pow(2, color_depth_val/3 )*100)/100+"&nbsp;RGBcols";
+    document.getElementById("disp_param2").innerHTML 
+        = "dot size "+dotsize
+      
 }
 
 </script>
@@ -364,14 +373,15 @@ function update_param()
  <button onclick="clear_layer()">clear</button>
  <button onclick="debug()">debug</button>
 <div style="">
-<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="14" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
-<div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="3" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<br>
+<div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
 </div>
 <br>
 <div style="position:absolute;left:8px;top:50px;">
-    <canvas id="MyCanvas" width="550" height="200" style="position: absolute;top:28px;z-index:0" onclick="click(this)">This browser or document mode doesn't support canvas object</canvas>
+    <canvas id="MyCanvas" width="550" height="200" style="position: absolute;top:58px;z-index:0" onclick="click(this)">This browser or document mode doesn't support canvas object</canvas>
     <br><br>
-    <canvas id="MyCanvas2" width="550" height="200" style="position: absolute;z-index:1">This browser or document mode doesn't support canvas object</canvas>
+    <canvas id="MyCanvas2" width="550" height="200" style="position: absolute;top:58px;z-index:1">This browser or document mode doesn't support canvas object</canvas>
 </div>
 <br>
   <canvas hidden id="DebugCanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
