@@ -113,7 +113,7 @@ function draw_rainbow()
         for(var x=0;x<width;x++)
         { 
             var dec_cx = calc_section(x,y,width,height);
-            
+
             //////////////////////////////////////////////////////
             dec_cx = color_depth(dec_cx,[24,color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
@@ -194,11 +194,10 @@ function debug_color()
     var height = canvas[2].height;
     ctx[2].fillStyle = 'white';
     ctx[2].fillRect(0, 0, width, height);
-    var pc = "";
     
     for(var i=0;i<=width;i++)
     {
-        var v = i*(255/width)
+        var v = i*(255/width);
         var dec_cx = [v,v,v];
         var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
 
@@ -216,8 +215,6 @@ function debug_color()
         ctx[2].moveTo(i, height-20);
         ctx[2].lineTo(i, height);
         ctx[2].stroke();
-        
-        pc = hex_cx.join("");
     }
 
     var step = 2;
@@ -225,7 +222,6 @@ function debug_color()
     var s = ["<table border=1 style='text-align:center'>","<tr><td>sec_x -></td>","</tr>","</table>"];
     for(var y=0;y<=height;y+=step)
     {
-        //if(sec==14) s[2]+= "<tr>";
         for(var x=0;x<=width;x+=step)
         {
             var fac_x = x/width;
@@ -280,17 +276,20 @@ function calc_section(x,y,width,height)
 function section(sec,sec_x,inc_y,dec_y)
 {
     function r(v) { return Math.floor(v) }
-    var drk = {"up":r(sec_x*255*dec_y),"dn":r(255*(1-sec_x)*dec_y),"max":255*dec_y,"min":0
-        ,"uh0":r(sec_x*128*dec_y)
-        //,"uh1":r(128+sec_x*128*dec_y)
-        ,"uh1":r(256*sec_x*dec_y)
-
-        ,"dh0":r((128-sec_x*128)*dec_y)
-        ,"dh1":r((251-sec_x*128)*dec_y)
+    var drk = {  "up":r(sec_x*255*dec_y)
+                ,"dn":r(255*(1-sec_x)*dec_y)
+                ,"max":255*dec_y,"min":0
+                ,"uh0":r(sec_x*128*dec_y)
+                ,"uh1":r(256*sec_x*dec_y)
+                ,"dh0":r((128-sec_x*128)*dec_y)
+                ,"dh1":r((251-sec_x*128)*dec_y)
     }
-    var lgt = {"up":r(drk.up+(255-drk.up)*inc_y),"dn":r(drk.dn+(255-drk.dn)*inc_y),"max":r(drk.max+(255-drk.max)*inc_y),"min":r(drk.min+(255-drk.min)*inc_y)
-        ,"uh0":r(drk.uh0+ inc_y*256 -inc_y*sec_x*128 )
-        ,"dh1":r(drk.dh1+ inc_y*sec_x*128)
+    var lgt = {  "up":r(drk.up+(255-drk.up)*inc_y)
+                ,"dn":r(drk.dn+(255-drk.dn)*inc_y)
+                ,"max":r(drk.max+(255-drk.max)*inc_y)
+                ,"min":r(drk.min+(255-drk.min)*inc_y)
+                ,"uh0":r(drk.uh0+ inc_y*256 -inc_y*sec_x*128 )
+                ,"dh1":r(drk.dh1+ inc_y*sec_x*128)
     }
     
     switch(sec)
@@ -320,9 +319,10 @@ function section(sec,sec_x,inc_y,dec_y)
 function update_param()
 {
     if(bUpdate==false) setTimeout(draw_rainbow, 1000);
+
     bUpdate = true;
     color_depth_val  = Number(document.getElementById("param1").value);
-    dotsize  = Number(document.getElementById("param2").value);
+    dotsize          = Number(document.getElementById("param2").value);
     document.getElementById("disp_param1").innerHTML 
         = color_depth_val + "bits "
         //+"("+Math.pow(2,color_depth_val)+"&nbsp;cols) "
