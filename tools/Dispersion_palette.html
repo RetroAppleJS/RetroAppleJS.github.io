@@ -8,7 +8,7 @@
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
-var bDebug = false;
+var bDebug = true;
 var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var bUpdate = false;        // screen update trigger
@@ -180,6 +180,13 @@ function nearest(x,y,dec_cx)
     }
 }
 
+function debug()
+{
+    
+    draw_rainbow();
+}
+
+
 function debug_color()
 {
     var width  = canvas[2].width;
@@ -327,6 +334,7 @@ function update_param()
 </head>
 <body onload="init()">
  <button onclick="clear_layer()">clear</button>
+ <button onclick="debug()">debug</button>
 <div style="">
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="14" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
 </div>
