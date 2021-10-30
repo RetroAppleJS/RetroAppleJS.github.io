@@ -20,6 +20,11 @@ var dec_pal = [];
 var dec_near_col = [];
 var dec_near_pos  = [];
 
+function PALETTE()
+{
+    this.colorDistance = colorDistance;
+}
+
 function drawPixel(context, x, y, color)
 {
     var roundedX = Math.round(x);
@@ -38,21 +43,21 @@ function RGB2HEX(dec)  { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByt
 function cap(v) { return Math.floor(v*100)/100 }
 var toRad = function(angle) { return angle * (Math.PI / 180) }
 function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
+function colorDistance(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+function clear_layer(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
+
 
 function init()
 {
     canvas = [ document.getElementById("MyCanvas"),document.getElementById("MyCanvas2") ];
-    ctx = [ canvas[0].getContext("2d"), canvas[1].getContext("2d")];
-    canvas[0].addEventListener('click', 
+    ctx    = [ canvas[0].getContext("2d")         ,canvas[1].getContext("2d")];
+    canvas[1].addEventListener('click', 
     function(event)
     {
         x = event.offsetX;
         y = event.offsetY;
-        if(x==0 && y==0) return;
-
         var imageData = ctx[0].getImageData(x, y, 1, 1).data;
-        rgbaColor = 'rgba(' + imageData[0] + ',' + imageData[1] + ',' + imageData[2] + ',1)';
-        document.getElementById("debug").innerHTML += x+" "+y+" "+rgbaColor+"<br>"
+        alert("("+x+","+y+") #"+RGB2HEX(imageData).join(""))
     }
     , false);
 
@@ -68,22 +73,6 @@ function color_depth(triple,bits)
             ,Math.min(255,Math.round( Math.floor(triple[1]/(p/q))*(p-1)/(q-1) ))
             ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
     return t;
-}
-
-function colorDistance(a,b) 
-{
-    return Math.sqrt( 
-        Math.pow( ((a[0]) - (b[0])),2 )
-        + Math.pow( ((a[1]) - (b[1])),2 ) 
-        + Math.pow( ((a[2]) - (b[2])),2 )
-    );
-};
-
-function clear_layer(n)
-{
-    var width  = canvas[0].width;
-    var height = canvas[0].height;
-    ctx[n].clearRect(0, 0, width, height);
 }
 
 function draw_rainbow()
@@ -167,7 +156,6 @@ function draw_colormatches()
         ctx[1].textAlign = "center"; 
         ctx[1].textBaseline = "middle";
         ctx[1].fillText(i , x, y);
-
     }
 }
 
@@ -318,8 +306,6 @@ function section(sec,sec_x,inc_y,dec_y)
 
 function update_param()
 {
-
-
     color_depth_val  = Number(document.getElementById("param1").value);
     dotsize          = Number(document.getElementById("param2").value);
     document.getElementById("disp_param1").innerHTML 
@@ -327,8 +313,7 @@ function update_param()
         //+"("+Math.pow(2,color_depth_val)+"&nbsp;cols) "
         +Math.round( Math.pow(2, color_depth_val/3 )*100)/100+"&nbsp;RGBcols";
     document.getElementById("disp_param2").innerHTML 
-        = "dot size "+dotsize
-      
+        = "dot size "+dotsize   
 }
 
 </script>
@@ -337,7 +322,7 @@ function update_param()
 <body onload="init()">
  <button onclick="clear_layer()">clear</button>
  <button onclick="bDebug=!bDebug;draw_rainbow();">debug</button>
-<div style="">
+<div>
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(draw_rainbow,500)">
 <br>
 <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="draw_colormatches()">
