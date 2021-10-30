@@ -8,6 +8,8 @@
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
+var oPALETTE = new PALETTE();
+
 var bDebug = false;
 var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
@@ -22,7 +24,10 @@ var dec_near_pos  = [];
 
 function PALETTE()
 {
-    this.colorDistance = colorDistance;
+    this.draw = function() { this.draw_rainbow(); this.draw_colormatches() }
+    this.draw_rainbow       = draw_rainbow;
+    this.draw_colormatches  = draw_colormatches;
+    this.colorDistance      = colorDistance;
 }
 
 function drawPixel(context, x, y, color)
@@ -59,12 +64,12 @@ function init()
         var imageData = ctx[0].getImageData(x, y, 1, 1).data;
         alert("("+x+","+y+") #"+RGB2HEX(imageData).join(""))
     }
-    , false);
+    ,false);
 
-    draw();
+    oPALETTE.draw();
 }
 
-function color_depth(triple,bits)
+function color_depth_transform(triple,bits)
 {
     p = Math.pow(2, bits[0]/3 );
     q = Math.pow(2, bits[1]/3 );
@@ -72,12 +77,6 @@ function color_depth(triple,bits)
             ,Math.min(255,Math.round( Math.floor(triple[1]/(p/q))*(p-1)/(q-1) ))
             ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
     return t;
-}
-
-function draw()
-{
-    draw_rainbow();
-    draw_colormatches();
 }
 
 function draw_rainbow()
@@ -106,7 +105,7 @@ function draw_rainbow()
         { 
             var dec_cx = calc_section(x,y,width,height);
             //////////////////////////////////////////////////////
-            dec_cx = color_depth(dec_cx,[24,color_depth_val]);  // Color depth modifier
+            dec_cx = color_depth_transform(dec_cx,[24,color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
             var hex_cx = RGB2HEX(dec_cx);
             drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
@@ -128,7 +127,6 @@ function draw_rainbow()
             dec_near_pos[i][0][1] = avg[1]/dec_near_pos[i].length;
         }
     }
-    draw_colormatches();
     bUpdate = true;     // allow new updates
 }
 
@@ -200,7 +198,7 @@ function debug_color()
         ctx[2].lineTo(i, height-30);
         ctx[2].stroke();
 
-        var dec_dx = color_depth(dec_cx,[24,color_depth_val*3]);
+        var dec_dx = color_depth_transform(dec_cx,[24,color_depth_val*3]);
         var hex_dx = RGB2HEX(dec_dx);
 
         ctx[2].strokeStyle = '#'+hex_dx.join("");
@@ -320,12 +318,11 @@ function update_param()
 
 </head>
 <body onload="init()">
- <button onclick="clear_layer()">clear</button>
- <button onclick="bDebug=!bDebug;draw_rainbow();">debug</button>
+ <button onclick="bDebug=!bDebug;oPALETTE.draw_rainbow();">debug</button>
 <div>
-<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(draw,500)">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(oPALETTE.draw,500)">
 <br>
-<div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="draw_colormatches()">
+<div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="oPALETTE.draw_colormatches()">
 </div>
 <br>
 <div style="position:absolute;left:8px;top:50px;">
