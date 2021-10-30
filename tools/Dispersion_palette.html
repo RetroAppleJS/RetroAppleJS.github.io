@@ -15,12 +15,10 @@ var dotsize = 0;
 var bUpdate = false;        // screen update trigger
 var color_depth_val = 24;   // source color depth
 var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C"," #97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
-var dec_pal = [];
 
+var dec_pal = [];
 var dec_near_col = [];
 var dec_near_xy  = [];
-
-//if(bDebug) document.write( "<canvas id=\"DebugCanvas\" width=\"550\" height=\"200\">This browser or document mode doesn't support canvas object</canvas>")
 
 function drawPixel(context, x, y, color)
 {
@@ -35,8 +33,10 @@ function drawPixel(context, x, y, color)
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
-
-function HEX2RGB(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+function HEX2RGB(hex)  { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+function RGB2HEX(dec)  { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] }
+function cap(v) { return Math.floor(v*100)/100 }
+var toRad = function(angle) { return angle * (Math.PI / 180) }
 
 function init()
 {
@@ -78,34 +78,30 @@ function colorDistance(a,b)
     );
 };
 
-function clear_layer()
+function clear_layer(n)
 {
     var width  = canvas[0].width;
     var height = canvas[0].height;
-    ctx[1].clearRect(0, 0, width, height);
-    for(var i=0;i<hex_pal.length;i++)
-    {
-        dec_pal[i] = HEX2RGB(hex_pal[i]);
-        dec_near_col[i] = [0,0,0];
-        dec_near_xy[i]  = [0,0];
-    }
+    ctx[n].clearRect(0, 0, width, height);
 }
 
 function draw_rainbow()
 {
-    clear_layer();
+    bUpdate = false;     // allow new updates
+
+    // initialise color arrays
+    for(var i=0;i<hex_pal.length;i++)
+    {
+        dec_pal[i]      = HEX2RGB(hex_pal[i]);
+        dec_near_col[i] = [0,0,0];
+        dec_near_xy[i]  = [0,0];
+    }
+
     document.getElementById("debug").innerHTML = "";
     canvas[2] = document.getElementById("DebugCanvas");
     canvas[2].setAttribute("hidden","");
-    if(bDebug)
-    {
-        ctx[2] = canvas[2].getContext("2d") ;
-        canvas[2].removeAttribute("hidden");
-        debug_color();
-    }
-    
+    if(bDebug) debug_color();
 
-    bUpdate = false;     // allow new updates
     var width  = canvas[0].width;
     var height = canvas[0].height;
     for(var y=0;y<height;y++)
@@ -118,13 +114,13 @@ function draw_rainbow()
             dec_cx = color_depth(dec_cx,[24,color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
     
-            var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
+            var hex_cx = RGB2HEX(dec_cx);
             drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
             nearest(x,y,dec_cx);
         }
     }
 
-    // 
+    // calculate center location of closest color
     for(var i=0;i<dec_near_col.length;i++)
     {
         if(dec_near_xy[i].length>1)
@@ -143,6 +139,7 @@ function draw_rainbow()
 
 function draw_colormatches()
 {
+    clear_layer(1);
     var width  = canvas[0].width;
     var height = canvas[0].height;
     ctx[1].clearRect(0, 0, width, height);
@@ -151,7 +148,7 @@ function draw_colormatches()
     {
         var x = dec_near_xy[i][0][0];
         var y = dec_near_xy[i][0][1];
-        var hex_cx = [getHexByte(dec_near_col[i][0]),getHexByte(dec_near_col[i][1]),getHexByte(dec_near_col[i][2])];
+        var hex_cx = RGB2HEX(dec_near_col[i]);
 
         ctx[1].beginPath();
         ctx[1].arc(x, y, dotsize, 0, 2 * Math.PI);
@@ -190,6 +187,9 @@ function nearest(x,y,dec_cx)
 
 function debug_color()
 {
+    ctx[2] = canvas[2].getContext("2d") ;
+    canvas[2].removeAttribute("hidden");
+
     var width  = canvas[2].width;
     var height = canvas[2].height;
     ctx[2].fillStyle = 'white';
@@ -199,7 +199,7 @@ function debug_color()
     {
         var v = i*(255/width);
         var dec_cx = [v,v,v];
-        var hex_cx = [getHexByte(dec_cx[0]),getHexByte(dec_cx[1]),getHexByte(dec_cx[2])];
+        var hex_cx = RGB2HEX(dec_cx);
 
         ctx[2].strokeStyle = '#'+hex_cx.join("");
         ctx[2].beginPath();
@@ -208,7 +208,7 @@ function debug_color()
         ctx[2].stroke();
 
         var dec_dx = color_depth(dec_cx,[24,color_depth_val*3]);
-        var hex_dx = [getHexByte(dec_dx[0]),getHexByte(dec_dx[1]),getHexByte(dec_dx[2])];
+        var hex_dx = RGB2HEX(dec_dx);
 
         ctx[2].strokeStyle = '#'+hex_dx.join("");
         ctx[2].beginPath();
@@ -246,10 +246,6 @@ function debug_color()
     }
     document.getElementById("debug").innerHTML += s.join("");
 }
-
-function cap(v) { return Math.floor(v*100)/100 }
-
-var toRad = function(angle) { return angle * (Math.PI / 180) }
 
 function calc_section(x,y,width,height)
 {
@@ -320,7 +316,6 @@ function update_param()
 {
     if(bUpdate==false) setTimeout(draw_rainbow, 1000);
 
-    bUpdate = true;
     color_depth_val  = Number(document.getElementById("param1").value);
     dotsize          = Number(document.getElementById("param2").value);
     document.getElementById("disp_param1").innerHTML 
