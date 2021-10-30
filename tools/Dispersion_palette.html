@@ -12,7 +12,7 @@ var bDebug = false;
 var canvas,ctx;
 var sec_n  = [7,8];         // sections to show vs total sections
 var dotsize = 0;
-var bUpdate = false;        // screen update trigger
+var bUpdate = true;        // screen update trigger
 var color_depth_val = 24;   // source color depth
 var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C"," #97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 
@@ -37,6 +37,7 @@ function HEX2RGB(hex)  { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(
 function RGB2HEX(dec)  { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] }
 function cap(v) { return Math.floor(v*100)/100 }
 var toRad = function(angle) { return angle * (Math.PI / 180) }
+function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
 
 function init()
 {
@@ -87,7 +88,9 @@ function clear_layer(n)
 
 function draw_rainbow()
 {
-    bUpdate = false;     // allow new updates
+    bUpdate = true;     // allow new updates
+    update_param();
+    clear_layer(0);
 
     // initialise color arrays
     for(var i=0;i<hex_pal.length;i++)
@@ -139,6 +142,7 @@ function draw_rainbow()
 
 function draw_colormatches()
 {
+    update_param();
     clear_layer(1);
     var width  = canvas[0].width;
     var height = canvas[0].height;
@@ -314,7 +318,7 @@ function section(sec,sec_x,inc_y,dec_y)
 
 function update_param()
 {
-    if(bUpdate==false) setTimeout(draw_rainbow, 1000);
+
 
     color_depth_val  = Number(document.getElementById("param1").value);
     dotsize          = Number(document.getElementById("param2").value);
@@ -334,9 +338,9 @@ function update_param()
  <button onclick="clear_layer()">clear</button>
  <button onclick="bDebug=!bDebug;draw_rainbow();">debug</button>
 <div style="">
-<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(draw_rainbow,500)">
 <br>
-<div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param()">
+<div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="draw_colormatches()">
 </div>
 <br>
 <div style="position:absolute;left:8px;top:50px;">
