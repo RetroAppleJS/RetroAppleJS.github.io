@@ -61,8 +61,7 @@ function init()
     }
     , false);
 
-    update_param();
-    draw_rainbow();
+    draw();
 }
 
 function color_depth(triple,bits)
@@ -75,9 +74,14 @@ function color_depth(triple,bits)
     return t;
 }
 
+function draw()
+{
+    draw_rainbow();
+    draw_colormatches();
+}
+
 function draw_rainbow()
 {
-    bUpdate = true;     // allow new updates
     update_param();
     clear_layer(0);
 
@@ -101,11 +105,9 @@ function draw_rainbow()
         for(var x=0;x<width;x++)
         { 
             var dec_cx = calc_section(x,y,width,height);
-
             //////////////////////////////////////////////////////
             dec_cx = color_depth(dec_cx,[24,color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
-    
             var hex_cx = RGB2HEX(dec_cx);
             drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
             nearest(x,y,dec_cx);
@@ -127,6 +129,7 @@ function draw_rainbow()
         }
     }
     draw_colormatches();
+    bUpdate = true;     // allow new updates
 }
 
 function draw_colormatches()
@@ -162,7 +165,6 @@ function draw_colormatches()
 function nearest(x,y,dec_cx)
 {
     for(var i=0;i<dec_pal.length;i++)
-    {
         for(var j=0;j<dec_near_col.length;j++)
         {
             var cd = [colorDistance(dec_cx,dec_pal[i]),colorDistance(dec_near_col[i],dec_pal[i])]
@@ -174,7 +176,6 @@ function nearest(x,y,dec_cx)
             else if(cd[0] ==  cd[1])
                 dec_near_pos[i][ dec_near_pos[i].length ] = [x,y];
         }
-    }
 }
 
 function debug_color()
@@ -291,8 +292,8 @@ function section(sec,sec_x,inc_y,dec_y)
         case 6: return [drk.uh0,drk.uh0,drk.dh1];
         case 7: return [drk.dh0,drk.dh0,drk.uh1];
 
-        case 8: return [lgt.up,lgt.min,lgt.max];
-        case 9: return [lgt.max,lgt.min,lgt.dn];
+        case 8: return  [lgt.up,lgt.min,lgt.max];
+        case 9: return  [lgt.max,lgt.min,lgt.dn];
         case 10: return [lgt.max,lgt.up,lgt.min];
         case 11: return [lgt.dn,lgt.max,lgt.min];
         case 12: return [lgt.min,lgt.max,lgt.up];
@@ -310,8 +311,7 @@ function update_param()
     dotsize          = Number(document.getElementById("param2").value);
     document.getElementById("disp_param1").innerHTML 
         = color_depth_val + "bits "
-        //+"("+Math.pow(2,color_depth_val)+"&nbsp;cols) "
-        +Math.round( Math.pow(2, color_depth_val/3 )*100)/100+"&nbsp;RGBcols";
+        + cap(Math.pow(2, color_depth_val/3))+"&nbsp;RGBcols";
     document.getElementById("disp_param2").innerHTML 
         = "dot size "+dotsize   
 }
@@ -323,7 +323,7 @@ function update_param()
  <button onclick="clear_layer()">clear</button>
  <button onclick="bDebug=!bDebug;draw_rainbow();">debug</button>
 <div>
-<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(draw_rainbow,500)">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(draw,500)">
 <br>
 <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="draw_colormatches()">
 </div>
