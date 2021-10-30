@@ -14,11 +14,11 @@ var sec_n  = [7,8];         // sections to show vs total sections
 var dotsize = 0;
 var bUpdate = true;        // screen update trigger
 var color_depth_val = 24;   // source color depth
-var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C"," #97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
+var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 
 var dec_pal = [];
 var dec_near_col = [];
-var dec_near_xy  = [];
+var dec_near_pos  = [];
 
 function drawPixel(context, x, y, color)
 {
@@ -97,7 +97,7 @@ function draw_rainbow()
     {
         dec_pal[i]      = HEX2RGB(hex_pal[i]);
         dec_near_col[i] = [0,0,0];
-        dec_near_xy[i]  = [0,0];
+        dec_near_pos[i]  = [0,0];
     }
 
     document.getElementById("debug").innerHTML = "";
@@ -126,15 +126,15 @@ function draw_rainbow()
     // calculate center location of closest color
     for(var i=0;i<dec_near_col.length;i++)
     {
-        if(dec_near_xy[i].length>1)
+        if(dec_near_pos[i].length>1)
         {
-            for(var j=0,avg = [0,0] ;j<dec_near_xy[i].length;j++)
+            for(var j=0,avg = [0,0] ;j<dec_near_pos[i].length;j++)
             {   
-                avg[0] += dec_near_xy[i][j][0];
-                avg[1] += dec_near_xy[i][j][1];
+                avg[0] += dec_near_pos[i][j][0];
+                avg[1] += dec_near_pos[i][j][1];
             }
-            dec_near_xy[i][0][0] = avg[0]/dec_near_xy[i].length;
-            dec_near_xy[i][0][1] = avg[1]/dec_near_xy[i].length;
+            dec_near_pos[i][0][0] = avg[0]/dec_near_pos[i].length;
+            dec_near_pos[i][0][1] = avg[1]/dec_near_pos[i].length;
         }
     }
     draw_colormatches();
@@ -150,8 +150,8 @@ function draw_colormatches()
   
     for(var i=0;i<dec_near_col.length;i++)
     {
-        var x = dec_near_xy[i][0][0];
-        var y = dec_near_xy[i][0][1];
+        var x = dec_near_pos[i][0][0];
+        var y = dec_near_pos[i][0][1];
         var hex_cx = RGB2HEX(dec_near_col[i]);
 
         ctx[1].beginPath();
@@ -181,10 +181,10 @@ function nearest(x,y,dec_cx)
             if( cd[0] <  cd[1] )
             {
                 dec_near_col[i] = dec_cx; 
-                dec_near_xy[i] = [[x,y]];
+                dec_near_pos[i] = [[x,y]];
             }
             else if(cd[0] ==  cd[1])
-                dec_near_xy[i][ dec_near_xy[i].length ] = [x,y];
+                dec_near_pos[i][ dec_near_pos[i].length ] = [x,y];
         }
     }
 }
