@@ -8,7 +8,8 @@
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
-var oPALETTE = new PALETTE();
+var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
+var oPALETTE = new PALETTE(hex_pal);
 
 var bDebug = false;
 var canvas,ctx;
@@ -16,85 +17,70 @@ var sec_n  = [7,8];         // sections to show vs total sections
 var dotsize = 0;
 var bUpdate = true;        // screen update trigger
 var color_depth_val = 24;   // source color depth
-var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 
-var dec_pal = [];
-var dec_near_col = [];
-var dec_near_pos  = [];
 
-function PALETTE()
+function PALETTE(palette)
 {
-    this.draw = function() { this.draw_rainbow(); this.draw_colormatches() }
+    this.hex_pal = palette;     // CONSTRUCTOR
+    
     this.draw_rainbow       = draw_rainbow;
     this.draw_colormatches  = draw_colormatches;
-    this.colorDistance      = colorDistance;
-}
+    this.sweep_section      = sweep_section;
+    this.calc_section       = calc_section;
+    this.nearest            = nearest;
 
-function drawPixel(context, x, y, color)
-{
-    var roundedX = Math.round(x);
-    var roundedY = Math.round(y);
-
-    context.beginPath();
-    context.fillStyle = color || '#000';
-    context.fillRect(roundedX, roundedY, 1, 1);
-    context.fill();
-}
-
-var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
-function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
-function HEX2RGB(hex)  { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
-function RGB2HEX(dec)  { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] }
-function cap(v) { return Math.floor(v*100)/100 }
-var toRad = function(angle) { return angle * (Math.PI / 180) }
-function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
-function colorDistance(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
-function clear_layer(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
-
-
-function init()
-{
-    canvas = [ document.getElementById("MyCanvas"),document.getElementById("MyCanvas2") ];
-    ctx    = [ canvas[0].getContext("2d")         ,canvas[1].getContext("2d")];
-    canvas[1].addEventListener('click', 
-    function(event)
+    this.clear_layer = function(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
+    this.drawPixel = function(context, x, y, color)
     {
-        x = event.offsetX;
-        y = event.offsetY;
-        var imageData = ctx[0].getImageData(x, y, 1, 1).data;
-        alert("("+x+","+y+") #"+RGB2HEX(imageData).join(""))
+        var roundedX = Math.round(x);
+        var roundedY = Math.round(y);
+
+        context.beginPath();
+        context.fillStyle = color || '#000';
+        context.fillRect(roundedX, roundedY, 1, 1);
+        context.fill();
     }
-    ,false);
+    this.draw = function() { this.draw_rainbow(); this.draw_colormatches() }
 
-    oPALETTE.draw();
+    this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+    this.getHexByte = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+    this.HEX2RGB = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+    this.RGB2HEX = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+    this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+
+    this.color_depth_transform = function(triple,bits)
+    {
+        p = Math.pow(2, bits[0]/3 );
+        q = Math.pow(2, bits[1]/3 );
+        var t = [Math.min(255,Math.round( Math.floor(triple[0]/(p/q))*(p-1)/(q-1) ))
+                ,Math.min(255,Math.round( Math.floor(triple[1]/(p/q))*(p-1)/(q-1) ))
+                ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
+        return t;
+    }    
 }
 
-function color_depth_transform(triple,bits)
-{
-    p = Math.pow(2, bits[0]/3 );
-    q = Math.pow(2, bits[1]/3 );
-    var t = [Math.min(255,Math.round( Math.floor(triple[0]/(p/q))*(p-1)/(q-1) ))
-            ,Math.min(255,Math.round( Math.floor(triple[1]/(p/q))*(p-1)/(q-1) ))
-            ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
-    return t;
-}
 
 function draw_rainbow()
 {
     update_param();
-    clear_layer(0);
+    this.clear_layer(0);
+    this.dec_pal = [];
+    this.dec_near_col= [];
+    this.dec_near_pos = [];
 
     // initialise color arrays
-    for(var i=0;i<hex_pal.length;i++)
+    for(var i=0;i<this.hex_pal.length;i++)
     {
-        dec_pal[i]      = HEX2RGB(hex_pal[i]);
-        dec_near_col[i] = [0,0,0];
-        dec_near_pos[i]  = [0,0];
+        this.dec_pal[i]      = this.HEX2RGB(this.hex_pal[i]);
+        this.dec_near_col[i] = [0,0,0];
+        this.dec_near_pos[i]  = [0,0];
     }
 
     document.getElementById("debug").innerHTML = "";
     canvas[2] = document.getElementById("DebugCanvas");
     canvas[2].setAttribute("hidden","");
+
+
     if(bDebug) debug_color();
 
     var width  = canvas[0].width;
@@ -103,28 +89,28 @@ function draw_rainbow()
     {
         for(var x=0;x<width;x++)
         { 
-            var dec_cx = calc_section(x,y,width,height);
+            var dec_cx = this.sweep_section(x,y,width,height);
             //////////////////////////////////////////////////////
-            dec_cx = color_depth_transform(dec_cx,[24,color_depth_val]);  // Color depth modifier
+            dec_cx = this.color_depth_transform(dec_cx,[24,color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
-            var hex_cx = RGB2HEX(dec_cx);
-            drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
-            nearest(x,y,dec_cx);
+            var hex_cx = this.RGB2HEX(dec_cx);
+            this.drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
+            this.nearest(x,y,dec_cx);
         }
     }
 
     // calculate center location of closest color
-    for(var i=0;i<dec_near_col.length;i++)
+    for(var i=0;i<this.dec_near_col.length;i++)
     {
-        if(dec_near_pos[i].length>1)
+        if(this.dec_near_pos[i].length>1)
         {
-            for(var j=0,avg = [0,0] ;j<dec_near_pos[i].length;j++)
+            for(var j=0,avg = [0,0] ;j<this.dec_near_pos[i].length;j++)
             {   
-                avg[0] += dec_near_pos[i][j][0];
-                avg[1] += dec_near_pos[i][j][1];
+                avg[0] += this.dec_near_pos[i][j][0];
+                avg[1] += this.dec_near_pos[i][j][1];
             }
-            dec_near_pos[i][0][0] = avg[0]/dec_near_pos[i].length;
-            dec_near_pos[i][0][1] = avg[1]/dec_near_pos[i].length;
+            this.dec_near_pos[i][0][0] = avg[0]/this.dec_near_pos[i].length;
+            this.dec_near_pos[i][0][1] = avg[1]/this.dec_near_pos[i].length;
         }
     }
     bUpdate = true;     // allow new updates
@@ -133,16 +119,16 @@ function draw_rainbow()
 function draw_colormatches()
 {
     update_param();
-    clear_layer(1);
+    this.clear_layer(1);
     var width  = canvas[0].width;
     var height = canvas[0].height;
     ctx[1].clearRect(0, 0, width, height);
   
-    for(var i=0;i<dec_near_col.length;i++)
+    for(var i=0;i<this.dec_near_col.length;i++)
     {
-        var x = dec_near_pos[i][0][0];
-        var y = dec_near_pos[i][0][1];
-        var hex_cx = RGB2HEX(dec_near_col[i]);
+        var x = this.dec_near_pos[i][0][0];
+        var y = this.dec_near_pos[i][0][1];
+        var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
 
         ctx[1].beginPath();
         ctx[1].arc(x, y, dotsize, 0, 2 * Math.PI);
@@ -162,105 +148,44 @@ function draw_colormatches()
 
 function nearest(x,y,dec_cx)
 {
-    for(var i=0;i<dec_pal.length;i++)
-        for(var j=0;j<dec_near_col.length;j++)
+    for(var i=0;i<this.dec_pal.length;i++)
+        for(var j=0;j<this.dec_near_col.length;j++)
         {
-            var cd = [colorDistance(dec_cx,dec_pal[i]),colorDistance(dec_near_col[i],dec_pal[i])]
+            var cd = [this.colorDistance(dec_cx,this.dec_pal[i]),this.colorDistance(this.dec_near_col[i],this.dec_pal[i])]
             if( cd[0] <  cd[1] )
             {
-                dec_near_col[i] = dec_cx; 
-                dec_near_pos[i] = [[x,y]];
+                this.dec_near_col[i] = dec_cx; 
+                this.dec_near_pos[i] = [[x,y]];
             }
             else if(cd[0] ==  cd[1])
-                dec_near_pos[i][ dec_near_pos[i].length ] = [x,y];
+                this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
         }
 }
 
-function debug_color()
-{
-    ctx[2] = canvas[2].getContext("2d") ;
-    canvas[2].removeAttribute("hidden");
-
-    var width  = canvas[2].width;
-    var height = canvas[2].height;
-    ctx[2].fillStyle = 'white';
-    ctx[2].fillRect(0, 0, width, height);
-    
-    for(var i=0;i<=width;i++)
-    {
-        var v = i*(255/width);
-        var dec_cx = [v,v,v];
-        var hex_cx = RGB2HEX(dec_cx);
-
-        ctx[2].strokeStyle = '#'+hex_cx.join("");
-        ctx[2].beginPath();
-        ctx[2].moveTo(i, height-50);
-        ctx[2].lineTo(i, height-30);
-        ctx[2].stroke();
-
-        var dec_dx = color_depth_transform(dec_cx,[24,color_depth_val*3]);
-        var hex_dx = RGB2HEX(dec_dx);
-
-        ctx[2].strokeStyle = '#'+hex_dx.join("");
-        ctx[2].beginPath();
-        ctx[2].moveTo(i, height-20);
-        ctx[2].lineTo(i, height);
-        ctx[2].stroke();
-    }
-
-    var step = 2;
-    var trig = {"x":false,"y":false}
-    var s = ["<table border=1 style='text-align:center'>","<tr><td>sec_x -></td>","</tr>","</table>"];
-    for(var y=0;y<=height;y+=step)
-    {
-        for(var x=0;x<=width;x+=step)
-        {
-            var fac_x = x/width;
-            var fac_y = y/height;
-            var sec   = Math.floor(fac_x*sec_n[0]);
-            var sec_x = fac_x*sec_n[0]-sec;
-            sec += fac_y>0.5?sec_n[1]:0;
-            var dec_y = fac_y*2>1?1:fac_y*2;
-            var inc_y = fac_y*2-1;
-
-            if(sec==14)
-            {
-                // y=0 doesnt work on lower area
-                if(!trig.x) trig = {"x":x,"y":y}
-                if(x==trig.x) s[2]+= "<tr><td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
-                if(y==trig.y) s[1]+="<td style='background-color:#EEEEEE'>"+cap(sec_x)+"</td>";
-                s[2]+= "<td><small>"+calc_section(x,y,width,height).join(",")+"</small></td>";
-            }
-        }
-        if(sec==14)
-            s[2]+= "</tr>"
-    }
-    document.getElementById("debug").innerHTML += s.join("");
-}
-
-function calc_section(x,y,width,height)
+function sweep_section(x,y,width,height)
 {
     var fac_x = x/width;
     var fac_y = y/height;
     var sec   = Math.floor(fac_x*sec_n[0]);
     var sec_x = fac_x*sec_n[0]-sec;
     sec += fac_y>0.5?sec_n[1]:0;
+    var toRad = function(angle) { return angle * (Math.PI / 180) }
 
-    if(bDebug) drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
 
     ////////////////////////////////////////////////////////////////
     if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
     else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
 
-    if(bDebug) drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
 
     var dec_y = fac_y*2>1?1:fac_y*2;
     var inc_y = fac_y*2-1;
-    return section(sec,sec_x,inc_y,dec_y);
+    return this.calc_section(sec,sec_x,inc_y,dec_y);
 }
 
-function section(sec,sec_x,inc_y,dec_y)
+function calc_section(sec,sec_x,inc_y,dec_y)
 {
     function r(v) { return Math.floor(v) }
     var drk = {  "up":r(sec_x*255*dec_y)
@@ -303,6 +228,27 @@ function section(sec,sec_x,inc_y,dec_y)
     }
 }
 
+
+
+
+///////////////////////////////////////////////////
+
+function init()
+{
+    canvas = [ document.getElementById("MyCanvas"),document.getElementById("MyCanvas2") ];
+    ctx    = [ canvas[0].getContext("2d")         ,canvas[1].getContext("2d")];
+    canvas[1].addEventListener('click', 
+    function(event)
+    {
+        x = event.offsetX;
+        y = event.offsetY;
+        var imageData = ctx[0].getImageData(x, y, 1, 1).data;
+        alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""))
+    }
+    ,false);
+    oPALETTE.draw();
+}
+
 function update_param()
 {
     color_depth_val  = Number(document.getElementById("param1").value);
@@ -314,13 +260,79 @@ function update_param()
         = "dot size "+dotsize   
 }
 
+function debug_color()
+{
+    ctx[2] = canvas[2].getContext("2d") ;
+    canvas[2].removeAttribute("hidden");
+
+    var width  = canvas[2].width;
+    var height = canvas[2].height;
+    ctx[2].fillStyle = 'white';
+    ctx[2].fillRect(0, 0, width, height);
+    
+    for(var i=0;i<=width;i++)
+    {
+        var v = i*(255/width);
+        var dec_cx = [v,v,v];
+        var hex_cx = oPALETTE.RGB2HEX(dec_cx);
+
+        ctx[2].strokeStyle = '#'+hex_cx.join("");
+        ctx[2].beginPath();
+        ctx[2].moveTo(i, height-50);
+        ctx[2].lineTo(i, height-30);
+        ctx[2].stroke();
+
+        var dec_dx = oPALETTE.color_depth_transform(dec_cx,[24,color_depth_val*3]);
+        var hex_dx = oPALETTE.RGB2HEX(dec_dx);
+
+        ctx[2].strokeStyle = '#'+hex_dx.join("");
+        ctx[2].beginPath();
+        ctx[2].moveTo(i, height-20);
+        ctx[2].lineTo(i, height);
+        ctx[2].stroke();
+    }
+
+    var step = 2;
+    var trig = {"x":false,"y":false}
+    var s = ["<table border=1 style='text-align:center'>","<tr><td>sec_x -></td>","</tr>","</table>"];
+    for(var y=0;y<=height;y+=step)
+    {
+        for(var x=0;x<=width;x+=step)
+        {
+            var fac_x = x/width;
+            var fac_y = y/height;
+            var sec   = Math.floor(fac_x*sec_n[0]);
+            var sec_x = fac_x*sec_n[0]-sec;
+            sec += fac_y>0.5?sec_n[1]:0;
+            var dec_y = fac_y*2>1?1:fac_y*2;
+            var inc_y = fac_y*2-1;
+
+            if(sec==14)
+            {
+                // y=0 doesnt work on lower area
+                if(!trig.x) trig = {"x":x,"y":y}
+                if(x==trig.x) s[2]+= "<tr><td style='background-color:#EEEEEE'>dec_y="+cap(dec_y)+" inc_y="+cap(inc_y)+"</td>"
+                if(y==trig.y) s[1]+="<td style='background-color:#EEEEEE'>"+cap(sec_x)+"</td>";
+                s[2]+= "<td><small>"+oPALETTE.sweep_section(x,y,width,height).join(",")+"</small></td>";
+            }
+        }
+        if(sec==14)
+            s[2]+= "</tr>"
+    }
+    document.getElementById("debug").innerHTML += s.join("");
+}
+
+function reload() { oPALETTE.draw() }
+function cap(v) { return Math.floor(v*100)/100 }
+function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
+
 </script>
 
 </head>
 <body onload="init()">
- <button onclick="bDebug=!bDebug;oPALETTE.draw_rainbow();">debug</button>
+ <button onclick="bDebug=!bDebug;oPALETTE.draw_rainbow()">debug</button>
 <div>
-<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(oPALETTE.draw,500)">
+<div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(reload,500)">
 <br>
 <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="oPALETTE.draw_colormatches()">
 </div>
