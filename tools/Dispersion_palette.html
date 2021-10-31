@@ -13,10 +13,7 @@ var oPALETTE = new PALETTE(hex_pal);
 
 var bDebug = false;
 var canvas,ctx;
-var sec_n  = [7,8];         // sections to show vs total sections
-var dotsize = 0;
 var bUpdate = true;        // screen update trigger
-var color_depth_val = 24;   // source color depth
 
 
 function PALETTE(palette)
@@ -27,7 +24,9 @@ function PALETTE(palette)
     this.draw_colormatches  = draw_colormatches;
     this.sweep_section      = sweep_section;
     this.calc_section       = calc_section;
-    this.nearest            = nearest;
+    this.color_depth_val    = 24;           // source color depth
+    this.dotsize = 0;
+    this.sec_n  = [7,8];         // sections to show vs total sections
 
     this.clear_layer = function(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
     this.drawPixel = function(context, x, y, color)
@@ -56,7 +55,23 @@ function PALETTE(palette)
                 ,Math.min(255,Math.round( Math.floor(triple[1]/(p/q))*(p-1)/(q-1) ))
                 ,Math.min(255,Math.round( Math.floor(triple[2]/(p/q))*(p-1)/(q-1) ))]
         return t;
-    }    
+    }
+    
+    this.nearest = function(x,y,dec_cx)
+    {
+        for(var i=0;i<this.dec_pal.length;i++)
+            for(var j=0;j<this.dec_near_col.length;j++)
+            {
+                var cd = [this.colorDistance(dec_cx,this.dec_pal[i]),this.colorDistance(this.dec_near_col[i],this.dec_pal[i])]
+                if( cd[0] <  cd[1] )
+                {
+                    this.dec_near_col[i] = dec_cx; 
+                    this.dec_near_pos[i] = [[x,y]];
+                }
+                else if(cd[0] ==  cd[1])
+                    this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
+            }
+    }
 }
 
 
@@ -80,7 +95,6 @@ function draw_rainbow()
     canvas[2] = document.getElementById("DebugCanvas");
     canvas[2].setAttribute("hidden","");
 
-
     if(bDebug) debug_color();
 
     var width  = canvas[0].width;
@@ -91,7 +105,7 @@ function draw_rainbow()
         { 
             var dec_cx = this.sweep_section(x,y,width,height);
             //////////////////////////////////////////////////////
-            dec_cx = this.color_depth_transform(dec_cx,[24,color_depth_val]);  // Color depth modifier
+            dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth_val]);  // Color depth modifier
             //////////////////////////////////////////////////////
             var hex_cx = this.RGB2HEX(dec_cx);
             this.drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
@@ -131,7 +145,7 @@ function draw_colormatches()
         var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
 
         ctx[1].beginPath();
-        ctx[1].arc(x, y, dotsize, 0, 2 * Math.PI);
+        ctx[1].arc(x, y, this.dotsize, 0, 2 * Math.PI);
         ctx[1].lineWidth=1;
         ctx[1].strokeStyle = "#000000";
         ctx[1].stroke();
@@ -139,46 +153,30 @@ function draw_colormatches()
         ctx[1].fill();
 
         ctx[1].fillStyle = '#FFF'
-        ctx[1].font = (dotsize*1.4)+"px Arial bold";
+        ctx[1].font = (this.dotsize*1.4)+"px Arial bold";
         ctx[1].textAlign = "center"; 
         ctx[1].textBaseline = "middle";
         ctx[1].fillText(i , x, y);
     }
 }
 
-function nearest(x,y,dec_cx)
-{
-    for(var i=0;i<this.dec_pal.length;i++)
-        for(var j=0;j<this.dec_near_col.length;j++)
-        {
-            var cd = [this.colorDistance(dec_cx,this.dec_pal[i]),this.colorDistance(this.dec_near_col[i],this.dec_pal[i])]
-            if( cd[0] <  cd[1] )
-            {
-                this.dec_near_col[i] = dec_cx; 
-                this.dec_near_pos[i] = [[x,y]];
-            }
-            else if(cd[0] ==  cd[1])
-                this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
-        }
-}
-
 function sweep_section(x,y,width,height)
 {
     var fac_x = x/width;
     var fac_y = y/height;
-    var sec   = Math.floor(fac_x*sec_n[0]);
-    var sec_x = fac_x*sec_n[0]-sec;
-    sec += fac_y>0.5?sec_n[1]:0;
+    var sec   = Math.floor(fac_x*this.sec_n[0]);
+    var sec_x = fac_x*this.sec_n[0]-sec;
+    sec += fac_y>0.5?this.sec_n[1]:0;
     var toRad = function(angle) { return angle * (Math.PI / 180) }
 
-    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
 
     ////////////////////////////////////////////////////////////////
     if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
     else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
 
-    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/sec_n[0]), 'black');
+    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
 
     var dec_y = fac_y*2>1?1:fac_y*2;
     var inc_y = fac_y*2-1;
@@ -228,10 +226,7 @@ function calc_section(sec,sec_x,inc_y,dec_y)
     }
 }
 
-
-
-
-///////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 
 function init()
 {
@@ -251,13 +246,13 @@ function init()
 
 function update_param()
 {
-    color_depth_val  = Number(document.getElementById("param1").value);
-    dotsize          = Number(document.getElementById("param2").value);
+    oPALETTE.color_depth_val  = Number(document.getElementById("param1").value);
+    oPALETTE.dotsize          = Number(document.getElementById("param2").value);
     document.getElementById("disp_param1").innerHTML 
-        = color_depth_val + "bits "
-        + cap(Math.pow(2, color_depth_val/3))+"&nbsp;RGBcols";
+        = oPALETTE.color_depth_val + "bits "
+        + cap(Math.pow(2, oPALETTE.color_depth_val/3))+"&nbsp;RGBcols";
     document.getElementById("disp_param2").innerHTML 
-        = "dot size "+dotsize   
+        = "dot size "+oPALETTE.dotsize   
 }
 
 function debug_color()
@@ -282,7 +277,7 @@ function debug_color()
         ctx[2].lineTo(i, height-30);
         ctx[2].stroke();
 
-        var dec_dx = oPALETTE.color_depth_transform(dec_cx,[24,color_depth_val*3]);
+        var dec_dx = oPALETTE.color_depth_transform(dec_cx,[24,oPALETTE.color_depth_val*3]);
         var hex_dx = oPALETTE.RGB2HEX(dec_dx);
 
         ctx[2].strokeStyle = '#'+hex_dx.join("");
@@ -301,9 +296,9 @@ function debug_color()
         {
             var fac_x = x/width;
             var fac_y = y/height;
-            var sec   = Math.floor(fac_x*sec_n[0]);
-            var sec_x = fac_x*sec_n[0]-sec;
-            sec += fac_y>0.5?sec_n[1]:0;
+            var sec   = Math.floor(fac_x*oPALETTE.sec_n[0]);
+            var sec_x = fac_x*oPALETTE.sec_n[0]-sec;
+            sec += fac_y>0.5?oPALETTE.sec_n[1]:0;
             var dec_y = fac_y*2>1?1:fac_y*2;
             var inc_y = fac_y*2-1;
 
