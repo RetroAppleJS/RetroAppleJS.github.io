@@ -8,28 +8,43 @@
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
-var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
-var oPALETTE = new PALETTE(hex_pal);
+//var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 
-var bDebug = false;
-var canvas,ctx;
 var bUpdate = true;        // screen update trigger
+var oPALETTE = new PALETTE();
+oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"])
+
+var canvas,ctx;
 
 
-function PALETTE(palette)
+
+function PALETTE()
 {
-    this.hex_pal = palette;     // CONSTRUCTOR
-    
+
+    this.color_depth = 24;    // source color depth
+    this.dotsize     = 0;
+    this.sec_n       = [7,8]; // sections to show vs total sections
+    this.debug_pos   = [];  
+
+
+    this.load               = function(p) { this.hex_pal = p }
+
+    this.bDebug             = false;
+    this.debug_data = {};
+    this.debug_save = function(arg)
+    { 
+        for(var i in arg)
+        {
+            if(!this.debug_data[i]) this.debug_data[i] = [];
+            this.debug_data[i][ this.debug_data[i].length ] = arg[i]; 
+        }
+    }; 
     this.draw_rainbow       = draw_rainbow;
     this.draw_colormatches  = draw_colormatches;
     this.sweep_section      = sweep_section;
     this.calc_section       = calc_section;
-    this.color_depth_val    = 24;           // source color depth
-    this.dotsize = 0;
-    this.sec_n  = [7,8];         // sections to show vs total sections
-
-    this.clear_layer = function(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
-    this.drawPixel = function(context, x, y, color)
+    this.clear_layer        = function(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
+    this.drawPixel          = function(context, x, y, color)
     {
         var roundedX = Math.round(x);
         var roundedY = Math.round(y);
@@ -40,11 +55,10 @@ function PALETTE(palette)
         context.fill();
     }
     this.draw = function() { this.draw_rainbow(); this.draw_colormatches() }
-
     this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-    this.getHexByte = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
-    this.HEX2RGB = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
-    this.RGB2HEX = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+    this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+    this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+    this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
 
     this.color_depth_transform = function(triple,bits)
@@ -72,6 +86,11 @@ function PALETTE(palette)
                     this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
             }
     }
+
+    this.html = '<div style="position:absolute;left:8px;top:50px;">'
+    +'<canvas id="MyCanvas"  width="550" height="200" style="position: absolute;top:58px;z-index:0" onclick="click(this)">This browser or document mode doesn\'t support canvas object</canvas>'
+    +'<canvas id="MyCanvas2" width="550" height="200" style="position: absolute;top:58px;z-index:1">This browser or document mode doesn\'t support canvas object</canvas>'
+    +'</div>'
 }
 
 
@@ -95,7 +114,7 @@ function draw_rainbow()
     canvas[2] = document.getElementById("DebugCanvas");
     canvas[2].setAttribute("hidden","");
 
-    if(bDebug) debug_color();
+    if(this.bDebug) debug_color();
 
     var width  = canvas[0].width;
     var height = canvas[0].height;
@@ -105,7 +124,7 @@ function draw_rainbow()
         { 
             var dec_cx = this.sweep_section(x,y,width,height);
             //////////////////////////////////////////////////////
-            dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth_val]);  // Color depth modifier
+            dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth]);  // Color depth modifier
             //////////////////////////////////////////////////////
             var hex_cx = this.RGB2HEX(dec_cx);
             this.drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
@@ -169,14 +188,16 @@ function sweep_section(x,y,width,height)
     sec += fac_y>0.5?this.sec_n[1]:0;
     var toRad = function(angle) { return angle * (Math.PI / 180) }
 
-    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
+    //if(this.bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
+    if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
 
     ////////////////////////////////////////////////////////////////
     if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
     else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
 
-    if(bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
+    //if(this.bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
+    if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
 
     var dec_y = fac_y*2>1?1:fac_y*2;
     var inc_y = fac_y*2-1;
@@ -246,11 +267,11 @@ function init()
 
 function update_param()
 {
-    oPALETTE.color_depth_val  = Number(document.getElementById("param1").value);
+    oPALETTE.color_depth  = Number(document.getElementById("param1").value);
     oPALETTE.dotsize          = Number(document.getElementById("param2").value);
     document.getElementById("disp_param1").innerHTML 
-        = oPALETTE.color_depth_val + "bits "
-        + cap(Math.pow(2, oPALETTE.color_depth_val/3))+"&nbsp;RGBcols";
+        = oPALETTE.color_depth + "bits "
+        + cap(Math.pow(2, oPALETTE.color_depth/3))+"&nbsp;RGBcols";
     document.getElementById("disp_param2").innerHTML 
         = "dot size "+oPALETTE.dotsize   
 }
@@ -271,20 +292,8 @@ function debug_color()
         var dec_cx = [v,v,v];
         var hex_cx = oPALETTE.RGB2HEX(dec_cx);
 
-        ctx[2].strokeStyle = '#'+hex_cx.join("");
-        ctx[2].beginPath();
-        ctx[2].moveTo(i, height-50);
-        ctx[2].lineTo(i, height-30);
-        ctx[2].stroke();
-
-        var dec_dx = oPALETTE.color_depth_transform(dec_cx,[24,oPALETTE.color_depth_val*3]);
+        var dec_dx = oPALETTE.color_depth_transform(dec_cx,[24,oPALETTE.color_depth*3]);
         var hex_dx = oPALETTE.RGB2HEX(dec_dx);
-
-        ctx[2].strokeStyle = '#'+hex_dx.join("");
-        ctx[2].beginPath();
-        ctx[2].moveTo(i, height-20);
-        ctx[2].lineTo(i, height);
-        ctx[2].stroke();
     }
 
     var step = 2;
@@ -317,26 +326,27 @@ function debug_color()
     document.getElementById("debug").innerHTML += s.join("");
 }
 
-function reload() { oPALETTE.draw() }
-function cap(v) { return Math.floor(v*100)/100 }
-function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
 
+function cap(v) { return Math.floor(v*100)/100 }
+function reload() { oPALETTE.draw() }
+function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
+function draw_debug()
+{
+    for(var i=0;i<oPALETTE.debug_data.x.length;i++)
+        oPALETTE.drawPixel(ctx[2], oPALETTE.debug_data.x[i],oPALETTE.debug_data.y[i], 'black');
+}
 </script>
 
 </head>
 <body onload="init()">
- <button onclick="bDebug=!bDebug;oPALETTE.draw_rainbow()">debug</button>
+ <button onclick="oPALETTE.bDebug=!oPALETTE.bDebug;oPALETTE.draw_rainbow();draw_debug()">debug</button>
 <div>
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(reload,500)">
 <br>
 <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="oPALETTE.draw_colormatches()">
 </div>
 <br>
-<div style="position:absolute;left:8px;top:50px;">
-    <canvas id="MyCanvas" width="550" height="200" style="position: absolute;top:58px;z-index:0" onclick="click(this)">This browser or document mode doesn't support canvas object</canvas>
-    <br><br>
-    <canvas id="MyCanvas2" width="550" height="200" style="position: absolute;top:58px;z-index:1">This browser or document mode doesn't support canvas object</canvas>
-</div>
+<script>document.write( oPALETTE.html )</script>
 <br>
   <canvas hidden id="DebugCanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
   <div id=debug></div>
