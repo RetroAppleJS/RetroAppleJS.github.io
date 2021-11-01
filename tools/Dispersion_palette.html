@@ -121,13 +121,11 @@ function PALETTE()
 
 function draw_rainbow()
 {
-
     update_param();
     this.clear_layer(0);
-    this.dec_pal = [];
-    this.dec_near_col= [];
+    this.dec_pal      = [];
+    this.dec_near_col = [];
     this.dec_near_pos = [];
-
 
     // initialise color arrays
     for(var i=0;i<this.hex_pal.length;i++)
