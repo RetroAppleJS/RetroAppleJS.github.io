@@ -547,6 +547,7 @@ function load_bitmap()
   }
 
   generate_GRIDS();
+  // TODO >> fish color array !!! (oPATTERN.color(p))
 }
 
 var oPALETTE = new PALETTE();
@@ -578,17 +579,11 @@ function draw()
     <div id=main>
 
 <table><tr>
-  <td style=vertical-align:top;>
-
-
-
-<div id=mainPalette>
-
-</div>
-
-
+  <td style="vertical-align:top">
+    <div id=mainPalette></div>
     <div id="results" style="margin-top:150px"></div>
-    <div id=debug style="overflow:scroll; height:400px;"></div></td>
+    <div id=debug style="overflow:scroll; height:400px;"></div>
+  </td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
 </tr></table>
 
