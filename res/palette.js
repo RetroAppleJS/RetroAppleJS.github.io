@@ -38,7 +38,7 @@ function PALETTE()
         this.canvas[0].height = arg.height;
         this.canvas[0].style.zIndex = 0;
         this.canvas[0].style.position = "absolute";
-        this.canvas[0].style.top = "58px";
+        //this.canvas[0].style.top = "58px";
         anchor.appendChild(this.canvas[0]);
 
         this.canvas[1].id = "Mycanvas2";
@@ -46,7 +46,7 @@ function PALETTE()
         this.canvas[1].height = arg.height;
         this.canvas[1].style.zIndex = 1;
         this.canvas[1].style.position = "absolute";
-        this.canvas[1].style.top = "58px";
+        //this.canvas[1].style.top = "58px";
         this.canvas[1].addEventListener('click', 
         function(event)
         {
@@ -66,7 +66,7 @@ function PALETTE()
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
     this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
-    this.draw          = function()    { this.draw_rainbow(); this.draw_colormatches() }
+    //this.draw          = function()    { this.draw_rainbow(); this.draw_colormatches() }
 
     this.color_depth_transform = function(triple,bits)
     {
@@ -96,7 +96,7 @@ function PALETTE()
 
     this.draw_rainbow = function()
     {
-        update_param();
+        //update_param();
         this.clear_layer(0);
         this.dec_pal      = [];
         this.dec_near_col = [];
@@ -145,7 +145,7 @@ function PALETTE()
 
     this.draw_colormatches = function()
     {
-        update_param();
+        //update_param();
         this.clear_layer(1);
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
