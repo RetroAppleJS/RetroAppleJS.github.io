@@ -2,36 +2,29 @@
   <title>Draw Rainbow with Linear gradient</title>
     <style type="text/css">
         body { font-family: 'Courier'; font-size: 12px; }
-        #DebugCanvas { border:1px solid black; }
-        #MyCanvas { border:1px solid black; }
-        #MyCanvas2 { border:1px solid black; }
+        #Debugcanvas { border:1px solid black; }
+        #Mycanvas { border:1px solid black; }
+        #Mycanvas2 { border:1px solid black; }
         .slider { display: inline-block; }
     </style>
 <script type="text/javascript">
-//var hex_pal = ["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"];
 
-var bUpdate = true;        // screen update trigger
+var bUpdate  = true;        // screen update trigger
 var oPALETTE = new PALETTE();
 oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"])
 
-var canvas,ctx;
-
-
-
 function PALETTE()
 {
-
+    this.bDebug      = false;
     this.color_depth = 24;    // source color depth
     this.dotsize     = 0;
     this.sec_n       = [7,8]; // sections to show vs total sections
-    this.debug_pos   = [];  
+    this.canvas      = [];
+    this.ctx         = [];
 
-
-    this.load               = function(p) { this.hex_pal = p }
-
-    this.bDebug             = false;
-    this.debug_data = {};
-    this.debug_save = function(arg)
+    this.load        = function(p) { this.hex_pal = p }
+    this.debug_data  = {};
+    this.debug_save  = function(arg)
     { 
         for(var i in arg)
         {
@@ -43,7 +36,7 @@ function PALETTE()
     this.draw_colormatches  = draw_colormatches;
     this.sweep_section      = sweep_section;
     this.calc_section       = calc_section;
-    this.clear_layer        = function(n) { ctx[n].clearRect(0, 0, canvas[n].width, canvas[n].height) }
+    this.clear_layer        = function(n) { this.ctx[n].clearRect(0, 0, this.canvas[n].width, this.canvas[n].height) }
     this.drawPixel          = function(context, x, y, color)
     {
         var roundedX = Math.round(x);
@@ -54,12 +47,49 @@ function PALETTE()
         context.fillRect(roundedX, roundedY, 1, 1);
         context.fill();
     }
-    this.draw = function() { this.draw_rainbow(); this.draw_colormatches() }
+    
+    this.html = '<canvas id="Mycanvas"  width="550" height="200" style="position: absolute;top:58px;z-index:0" onclick="click(this)">This browser or document mode doesn\'t support canvas object</canvas>'
+               +'<canvas id="Mycanvas2" width="550" height="200" style="position: absolute;top:58px;z-index:1">This browser or document mode doesn\'t support canvas object</canvas>'
+
+    this.insert_canvas = function(id)
+    {
+        var anchor = document.getElementById(id);
+        this.canvas = [ document.createElement('canvas'),document.createElement('canvas') ];
+
+        this.canvas[0].id = "Mycanvas";
+        this.canvas[0].width = 550;
+        this.canvas[0].height = 200;
+        this.canvas[0].style.zIndex = 0;
+        this.canvas[0].style.position = "absolute";
+        this.canvas[0].style.top = "58px";
+        anchor.appendChild(this.canvas[0]);
+
+        this.canvas[1].id = "Mycanvas2";
+        this.canvas[1].width = 550;
+        this.canvas[1].height = 200;
+        this.canvas[1].style.zIndex = 1;
+        this.canvas[1].style.position = "absolute";
+        this.canvas[1].style.top = "58px";
+        anchor.appendChild(this.canvas[1]);
+
+        this.ctx    = [ this.canvas[0].getContext("2d"),this.canvas[1].getContext("2d")];
+        this.canvas[1].addEventListener('click', 
+        function(event)
+        {
+            x = event.offsetX;
+            y = event.offsetY;
+            var imageData = this.ctx[0].getImageData(x, y, 1, 1).data;
+            alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""))
+        }
+        ,false);
+    }
+
     this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
     this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
     this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+    this.draw          = function()    { this.draw_rainbow(); this.draw_colormatches() }
 
     this.color_depth_transform = function(triple,bits)
     {
@@ -85,22 +115,19 @@ function PALETTE()
                 else if(cd[0] ==  cd[1])
                     this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
             }
-    }
-
-    this.html = '<div style="position:absolute;left:8px;top:50px;">'
-    +'<canvas id="MyCanvas"  width="550" height="200" style="position: absolute;top:58px;z-index:0" onclick="click(this)">This browser or document mode doesn\'t support canvas object</canvas>'
-    +'<canvas id="MyCanvas2" width="550" height="200" style="position: absolute;top:58px;z-index:1">This browser or document mode doesn\'t support canvas object</canvas>'
-    +'</div>'
+    }    
 }
 
 
 function draw_rainbow()
 {
+
     update_param();
     this.clear_layer(0);
     this.dec_pal = [];
     this.dec_near_col= [];
     this.dec_near_pos = [];
+
 
     // initialise color arrays
     for(var i=0;i<this.hex_pal.length;i++)
@@ -110,14 +137,9 @@ function draw_rainbow()
         this.dec_near_pos[i]  = [0,0];
     }
 
-    document.getElementById("debug").innerHTML = "";
-    canvas[2] = document.getElementById("DebugCanvas");
-    canvas[2].setAttribute("hidden","");
 
-    if(this.bDebug) debug_color();
-
-    var width  = canvas[0].width;
-    var height = canvas[0].height;
+    var width  = this.canvas[0].width;
+    var height = this.canvas[0].height;
     for(var y=0;y<height;y++)
     {
         for(var x=0;x<width;x++)
@@ -127,7 +149,7 @@ function draw_rainbow()
             dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth]);  // Color depth modifier
             //////////////////////////////////////////////////////
             var hex_cx = this.RGB2HEX(dec_cx);
-            this.drawPixel(ctx[0], x, y, '#'+hex_cx.join(""));
+            this.drawPixel(this.ctx[0], x, y, '#'+hex_cx.join(""));
             this.nearest(x,y,dec_cx);
         }
     }
@@ -153,9 +175,9 @@ function draw_colormatches()
 {
     update_param();
     this.clear_layer(1);
-    var width  = canvas[0].width;
-    var height = canvas[0].height;
-    ctx[1].clearRect(0, 0, width, height);
+    var width  = this.canvas[0].width;
+    var height = this.canvas[0].height;
+    this.ctx[1].clearRect(0, 0, width, height);
   
     for(var i=0;i<this.dec_near_col.length;i++)
     {
@@ -163,19 +185,19 @@ function draw_colormatches()
         var y = this.dec_near_pos[i][0][1];
         var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
 
-        ctx[1].beginPath();
-        ctx[1].arc(x, y, this.dotsize, 0, 2 * Math.PI);
-        ctx[1].lineWidth=1;
-        ctx[1].strokeStyle = "#000000";
-        ctx[1].stroke();
-        ctx[1].fillStyle = '#'+hex_cx.join("")
-        ctx[1].fill();
+        this.ctx[1].beginPath();
+        this.ctx[1].arc(x, y, this.dotsize, 0, 2 * Math.PI);
+        this.ctx[1].lineWidth=1;
+        this.ctx[1].strokeStyle = "#000000";
+        this.ctx[1].stroke();
+        this.ctx[1].fillStyle = '#'+hex_cx.join("")
+        this.ctx[1].fill();
 
-        ctx[1].fillStyle = '#FFF'
-        ctx[1].font = (this.dotsize*1.4)+"px Arial bold";
-        ctx[1].textAlign = "center"; 
-        ctx[1].textBaseline = "middle";
-        ctx[1].fillText(i , x, y);
+        this.ctx[1].fillStyle = '#FFF'
+        this.ctx[1].font = (this.dotsize*1.4)+"px Arial bold";
+        this.ctx[1].textAlign = "center"; 
+        this.ctx[1].textBaseline = "middle";
+        this.ctx[1].fillText(i , x, y);
     }
 }
 
@@ -188,15 +210,11 @@ function sweep_section(x,y,width,height)
     sec += fac_y>0.5?this.sec_n[1]:0;
     var toRad = function(angle) { return angle * (Math.PI / 180) }
 
-    //if(this.bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
     if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
-
     ////////////////////////////////////////////////////////////////
     if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
     else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
     ////////////////////////////////////////////////////////////////
-
-    //if(this.bDebug) this.drawPixel(ctx[2], x,sec_x*(width/this.sec_n[0]), 'black');
     if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
 
     var dec_y = fac_y*2>1?1:fac_y*2;
@@ -247,22 +265,19 @@ function calc_section(sec,sec_x,inc_y,dec_y)
     }
 }
 
+
+
 /////////////////////////////////////////////////////////////////////////////
+
+
+
 
 function init()
 {
-    canvas = [ document.getElementById("MyCanvas"),document.getElementById("MyCanvas2") ];
-    ctx    = [ canvas[0].getContext("2d")         ,canvas[1].getContext("2d")];
-    canvas[1].addEventListener('click', 
-    function(event)
-    {
-        x = event.offsetX;
-        y = event.offsetY;
-        var imageData = ctx[0].getImageData(x, y, 1, 1).data;
-        alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""))
-    }
-    ,false);
+    oPALETTE.insert_canvas("mainPalette");
     oPALETTE.draw();
+    oPALETTE.canvas[2] = document.getElementById("Debugcanvas");
+    oPALETTE.ctx[2]    = oPALETTE.canvas[2].getContext("2d");
 }
 
 function update_param()
@@ -276,22 +291,19 @@ function update_param()
         = "dot size "+oPALETTE.dotsize   
 }
 
-function debug_color()
+function debug_color(section)
 {
-    ctx[2] = canvas[2].getContext("2d") ;
-    canvas[2].removeAttribute("hidden");
+    oPALETTE.canvas[2].removeAttribute("hidden");
 
-    var width  = canvas[2].width;
-    var height = canvas[2].height;
-    ctx[2].fillStyle = 'white';
-    ctx[2].fillRect(0, 0, width, height);
+    var width  = oPALETTE.canvas[2].width;
+    var height = oPALETTE.canvas[2].height;
+    oPALETTE.clear_layer(2);
     
     for(var i=0;i<=width;i++)
     {
         var v = i*(255/width);
         var dec_cx = [v,v,v];
         var hex_cx = oPALETTE.RGB2HEX(dec_cx);
-
         var dec_dx = oPALETTE.color_depth_transform(dec_cx,[24,oPALETTE.color_depth*3]);
         var hex_dx = oPALETTE.RGB2HEX(dec_dx);
     }
@@ -311,7 +323,7 @@ function debug_color()
             var dec_y = fac_y*2>1?1:fac_y*2;
             var inc_y = fac_y*2-1;
 
-            if(sec==14)
+            if(sec==section)
             {
                 // y=0 doesnt work on lower area
                 if(!trig.x) trig = {"x":x,"y":y}
@@ -326,29 +338,39 @@ function debug_color()
     document.getElementById("debug").innerHTML += s.join("");
 }
 
-
 function cap(v) { return Math.floor(v*100)/100 }
 function reload() { oPALETTE.draw() }
 function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
 function draw_debug()
 {
-    for(var i=0;i<oPALETTE.debug_data.x.length;i++)
-        oPALETTE.drawPixel(ctx[2], oPALETTE.debug_data.x[i],oPALETTE.debug_data.y[i], 'black');
-}
+    if(oPALETTE.bDebug)
+    {
+        for(var i=0;i<oPALETTE.debug_data.x.length;i++)
+            oPALETTE.drawPixel(oPALETTE.ctx[2],oPALETTE.debug_data.x[i],oPALETTE.debug_data.y[i],'black'); 
+    }
+    else
+    {
+        document.getElementById("debug").innerHTML = "";
+        oPALETTE.canvas[2].setAttribute("hidden","");
+    }
+
+ }
 </script>
 
 </head>
 <body onload="init()">
- <button onclick="oPALETTE.bDebug=!oPALETTE.bDebug;oPALETTE.draw_rainbow();draw_debug()">debug</button>
+ <button onclick="oPALETTE.bDebug=!oPALETTE.bDebug;debug_color(14);draw_debug()">debug</button>
 <div>
 <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(reload,500)">
 <br>
 <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="oPALETTE.draw_colormatches()">
 </div>
 <br>
-<script>document.write( oPALETTE.html )</script>
+<div id=mainPalette  style="position:absolute;left:8px;top:50px;">
+
+</div>
 <br>
-  <canvas hidden id="DebugCanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
+  <canvas hidden id="Debugcanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
   <div id=debug></div>
 </body>
 </html>
