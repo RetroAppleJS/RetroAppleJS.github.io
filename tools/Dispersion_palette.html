@@ -70,18 +70,18 @@ function PALETTE()
         this.canvas[1].style.zIndex = 1;
         this.canvas[1].style.position = "absolute";
         this.canvas[1].style.top = "58px";
-        anchor.appendChild(this.canvas[1]);
-
-        this.ctx    = [ this.canvas[0].getContext("2d"),this.canvas[1].getContext("2d")];
         this.canvas[1].addEventListener('click', 
         function(event)
         {
             x = event.offsetX;
             y = event.offsetY;
-            var imageData = this.ctx[0].getImageData(x, y, 1, 1).data;
+            var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
             alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""))
         }
-        ,false);
+        ,false);   
+        anchor.appendChild(this.canvas[1]);
+      
+        this.ctx    = [ this.canvas[0].getContext("2d"),this.canvas[1].getContext("2d")];
     }
 
     this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
@@ -126,6 +126,8 @@ function draw_rainbow()
     this.dec_pal      = [];
     this.dec_near_col = [];
     this.dec_near_pos = [];
+    var width  = this.canvas[0].width;
+    var height = this.canvas[0].height;
 
     // initialise color arrays
     for(var i=0;i<this.hex_pal.length;i++)
@@ -135,9 +137,6 @@ function draw_rainbow()
         this.dec_near_pos[i]  = [0,0];
     }
 
-
-    var width  = this.canvas[0].width;
-    var height = this.canvas[0].height;
     for(var y=0;y<height;y++)
     {
         for(var x=0;x<width;x++)
