@@ -32,10 +32,6 @@ function PALETTE()
             this.debug_data[i][ this.debug_data[i].length ] = arg[i]; 
         }
     }; 
-    this.draw_rainbow       = draw_rainbow;
-    this.draw_colormatches  = draw_colormatches;
-    this.sweep_section      = sweep_section;
-    this.calc_section       = calc_section;
     this.clear_layer        = function(n) { this.ctx[n].clearRect(0, 0, this.canvas[n].width, this.canvas[n].height) }
     this.drawPixel          = function(context, x, y, color)
     {
@@ -97,7 +93,7 @@ function PALETTE()
         return t;
     }
     
-    this.nearest = function(x,y,dec_cx)
+    this.calc_nearest = function(x,y,dec_cx)
     {
         for(var i=0;i<this.dec_pal.length;i++)
             for(var j=0;j<this.dec_near_col.length;j++)
@@ -112,151 +108,151 @@ function PALETTE()
                     this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
             }
     }    
-}
 
-
-function draw_rainbow()
-{
-    update_param();
-    this.clear_layer(0);
-    this.dec_pal      = [];
-    this.dec_near_col = [];
-    this.dec_near_pos = [];
-    var width  = this.canvas[0].width;
-    var height = this.canvas[0].height;
-
-    // initialise color arrays
-    for(var i=0;i<this.hex_pal.length;i++)
+    this.draw_rainbow = function()
     {
-        this.dec_pal[i]      = this.HEX2RGB(this.hex_pal[i]);
-        this.dec_near_col[i] = [0,0,0];
-        this.dec_near_pos[i]  = [0,0];
-    }
+        update_param();
+        this.clear_layer(0);
+        this.dec_pal      = [];
+        this.dec_near_col = [];
+        this.dec_near_pos = [];
+        var width  = this.canvas[0].width;
+        var height = this.canvas[0].height;
 
-    for(var y=0;y<height;y++)
-    {
-        for(var x=0;x<width;x++)
-        { 
-            var dec_cx = this.sweep_section(x,y,width,height);
-            //////////////////////////////////////////////////////
-            dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth]);  // Color depth modifier
-            //////////////////////////////////////////////////////
-            var hex_cx = this.RGB2HEX(dec_cx);
-            this.drawPixel(this.ctx[0], x, y, '#'+hex_cx.join(""));
-            this.nearest(x,y,dec_cx);
-        }
-    }
-
-    // calculate center location of closest color
-    for(var i=0;i<this.dec_near_col.length;i++)
-    {
-        if(this.dec_near_pos[i].length>1)
+        // initialise color arrays
+        for(var i=0;i<this.hex_pal.length;i++)
         {
-            for(var j=0,avg = [0,0] ;j<this.dec_near_pos[i].length;j++)
-            {   
-                avg[0] += this.dec_near_pos[i][j][0];
-                avg[1] += this.dec_near_pos[i][j][1];
+            this.dec_pal[i]      = this.HEX2RGB(this.hex_pal[i]);
+            this.dec_near_col[i] = [0,0,0];
+            this.dec_near_pos[i]  = [0,0];
+        }
+
+        for(var y=0;y<height;y++)
+        {
+            for(var x=0;x<width;x++)
+            { 
+                var dec_cx = this.sweep_section(x,y,width,height);
+                //////////////////////////////////////////////////////
+                dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth]);  // Color depth modifier
+                //////////////////////////////////////////////////////
+                var hex_cx = this.RGB2HEX(dec_cx);
+                this.drawPixel(this.ctx[0], x, y, '#'+hex_cx.join(""));
+                this.calc_nearest(x,y,dec_cx);
             }
-            this.dec_near_pos[i][0][0] = avg[0]/this.dec_near_pos[i].length;
-            this.dec_near_pos[i][0][1] = avg[1]/this.dec_near_pos[i].length;
+        }
+
+        // calculate center location of closest color
+        for(var i=0;i<this.dec_near_col.length;i++)
+        {
+            if(this.dec_near_pos[i].length>1)
+            {
+                for(var j=0,avg = [0,0] ;j<this.dec_near_pos[i].length;j++)
+                {   
+                    avg[0] += this.dec_near_pos[i][j][0];
+                    avg[1] += this.dec_near_pos[i][j][1];
+                }
+                this.dec_near_pos[i][0][0] = avg[0]/this.dec_near_pos[i].length;
+                this.dec_near_pos[i][0][1] = avg[1]/this.dec_near_pos[i].length;
+            }
+        }
+        bUpdate = true;     // allow new updates
+    }
+
+    this.draw_colormatches = function()
+    {
+        update_param();
+        this.clear_layer(1);
+        var width  = this.canvas[0].width;
+        var height = this.canvas[0].height;
+        this.ctx[1].clearRect(0, 0, width, height);
+    
+        for(var i=0;i<this.dec_near_col.length;i++)
+        {
+            var x = this.dec_near_pos[i][0][0];
+            var y = this.dec_near_pos[i][0][1];
+            var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
+
+            this.ctx[1].beginPath();
+            this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
+            this.ctx[1].lineWidth=1;
+            this.ctx[1].strokeStyle = "#000000";
+            this.ctx[1].stroke();
+            this.ctx[1].fillStyle = '#'+hex_cx.join("")
+            this.ctx[1].fill();
+
+            this.ctx[1].fillStyle = '#FFF'
+            this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
+            this.ctx[1].textAlign = "center"; 
+            this.ctx[1].textBaseline = "middle";
+            this.ctx[1].fillText(i , x, y);
         }
     }
-    bUpdate = true;     // allow new updates
-}
 
-function draw_colormatches()
-{
-    update_param();
-    this.clear_layer(1);
-    var width  = this.canvas[0].width;
-    var height = this.canvas[0].height;
-    this.ctx[1].clearRect(0, 0, width, height);
-  
-    for(var i=0;i<this.dec_near_col.length;i++)
+    this.sweep_section = function(x,y,width,height)
     {
-        var x = this.dec_near_pos[i][0][0];
-        var y = this.dec_near_pos[i][0][1];
-        var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
+        var fac_x = x/width;
+        var fac_y = y/height;
+        var sec   = Math.floor(fac_x*this.sec_n[0]);
+        var sec_x = fac_x*this.sec_n[0]-sec;
+        sec += fac_y>0.5?this.sec_n[1]:0;
+        var toRad = function(angle) { return angle * (Math.PI / 180) }
 
-        this.ctx[1].beginPath();
-        this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
-        this.ctx[1].lineWidth=1;
-        this.ctx[1].strokeStyle = "#000000";
-        this.ctx[1].stroke();
-        this.ctx[1].fillStyle = '#'+hex_cx.join("")
-        this.ctx[1].fill();
+        if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
+        ////////////////////////////////////////////////////////////////
+        if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
+        else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
+        ////////////////////////////////////////////////////////////////
+        if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
 
-        this.ctx[1].fillStyle = '#FFF'
-        this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
-        this.ctx[1].textAlign = "center"; 
-        this.ctx[1].textBaseline = "middle";
-        this.ctx[1].fillText(i , x, y);
+        var dec_y = fac_y*2>1?1:fac_y*2;
+        var inc_y = fac_y*2-1;
+        return this.calc_section(sec,sec_x,inc_y,dec_y);
     }
-}
 
-function sweep_section(x,y,width,height)
-{
-    var fac_x = x/width;
-    var fac_y = y/height;
-    var sec   = Math.floor(fac_x*this.sec_n[0]);
-    var sec_x = fac_x*this.sec_n[0]-sec;
-    sec += fac_y>0.5?this.sec_n[1]:0;
-    var toRad = function(angle) { return angle * (Math.PI / 180) }
-
-    if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
-    ////////////////////////////////////////////////////////////////
-    if(sec & 1) sec_x += 0.22*Math.sin(toRad(180+180*sec_x));     //  Bend x
-    else        sec_x += 0.22*Math.sin(toRad(180*sec_x));         //
-    ////////////////////////////////////////////////////////////////
-    if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
-
-    var dec_y = fac_y*2>1?1:fac_y*2;
-    var inc_y = fac_y*2-1;
-    return this.calc_section(sec,sec_x,inc_y,dec_y);
-}
-
-function calc_section(sec,sec_x,inc_y,dec_y)
-{
-    function r(v) { return Math.floor(v) }
-    var drk = {  "up":r(sec_x*255*dec_y)
-                ,"dn":r(255*(1-sec_x)*dec_y)
-                ,"max":255*dec_y,"min":0
-                ,"uh0":r(sec_x*128*dec_y)
-                ,"uh1":r(256*sec_x*dec_y)
-                ,"dh0":r((128-sec_x*128)*dec_y)
-                ,"dh1":r((251-sec_x*128)*dec_y)
-    }
-    var lgt = {  "up":r(drk.up+(255-drk.up)*inc_y)
-                ,"dn":r(drk.dn+(255-drk.dn)*inc_y)
-                ,"max":r(drk.max+(255-drk.max)*inc_y)
-                ,"min":r(drk.min+(255-drk.min)*inc_y)
-                ,"uh0":r(drk.uh0+ inc_y*256 -inc_y*sec_x*128 )
-                ,"dh1":r(drk.dh1+ inc_y*sec_x*128)
-    }
-    
-    switch(sec)
+    this.calc_section = function(sec,sec_x,inc_y,dec_y)
     {
-        case 0: return [drk.up,drk.min,drk.max];
-        case 1: return [drk.max,drk.min,drk.dn];
-        case 2: return [drk.max,drk.up,drk.min];
-        case 3: return [drk.dn,drk.max,drk.min];
-        case 4: return [drk.min,drk.max,drk.up];
-        case 5: return [drk.min,drk.dn,drk.max];
-        case 6: return [drk.uh0,drk.uh0,drk.dh1];
-        case 7: return [drk.dh0,drk.dh0,drk.uh1];
+        function r(v) { return Math.floor(v) }
+        var drk = {  "up":r(sec_x*255*dec_y)
+                    ,"dn":r(255*(1-sec_x)*dec_y)
+                    ,"max":255*dec_y,"min":0
+                    ,"uh0":r(sec_x*128*dec_y)
+                    ,"uh1":r(256*sec_x*dec_y)
+                    ,"dh0":r((128-sec_x*128)*dec_y)
+                    ,"dh1":r((251-sec_x*128)*dec_y)
+        }
+        var lgt = {  "up":r(drk.up+(255-drk.up)*inc_y)
+                    ,"dn":r(drk.dn+(255-drk.dn)*inc_y)
+                    ,"max":r(drk.max+(255-drk.max)*inc_y)
+                    ,"min":r(drk.min+(255-drk.min)*inc_y)
+                    ,"uh0":r(drk.uh0+ inc_y*256 -inc_y*sec_x*128 )
+                    ,"dh1":r(drk.dh1+ inc_y*sec_x*128)
+        }
+        
+        switch(sec)
+        {
+            case 0: return [drk.up,drk.min,drk.max];
+            case 1: return [drk.max,drk.min,drk.dn];
+            case 2: return [drk.max,drk.up,drk.min];
+            case 3: return [drk.dn,drk.max,drk.min];
+            case 4: return [drk.min,drk.max,drk.up];
+            case 5: return [drk.min,drk.dn,drk.max];
+            case 6: return [drk.uh0,drk.uh0,drk.dh1];
+            case 7: return [drk.dh0,drk.dh0,drk.uh1];
 
-        case 8: return  [lgt.up,lgt.min,lgt.max];
-        case 9: return  [lgt.max,lgt.min,lgt.dn];
-        case 10: return [lgt.max,lgt.up,lgt.min];
-        case 11: return [lgt.dn,lgt.max,lgt.min];
-        case 12: return [lgt.min,lgt.max,lgt.up];
-        case 13: return [lgt.min,lgt.dn,lgt.max];
-        case 14: return [lgt.uh0,lgt.uh0,lgt.dh1];
-        case 15: return [lgt.dn,lgt.dn,lgt.max];
+            case 8: return  [lgt.up,lgt.min,lgt.max];
+            case 9: return  [lgt.max,lgt.min,lgt.dn];
+            case 10: return [lgt.max,lgt.up,lgt.min];
+            case 11: return [lgt.dn,lgt.max,lgt.min];
+            case 12: return [lgt.min,lgt.max,lgt.up];
+            case 13: return [lgt.min,lgt.dn,lgt.max];
+            case 14: return [lgt.uh0,lgt.uh0,lgt.dh1];
+            case 15: return [lgt.dn,lgt.dn,lgt.max];
 
-        default: return [255,255,255]
+            default: return [255,255,255]
+        }
     }
 }
+
 
 
 
