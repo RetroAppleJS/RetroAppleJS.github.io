@@ -16,8 +16,8 @@ oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97C
 function PALETTE()
 {
     this.bDebug      = false;
-    this.color_depth = 24;    // source color depth
-    this.dotsize     = 0;
+    this.color_depth = 12;    // source color depth
+    this.dot_size    = 16;
     this.sec_n       = [7,8]; // sections to show vs total sections
     this.canvas      = [];
     this.ctx         = [];
@@ -47,26 +47,22 @@ function PALETTE()
         context.fillRect(roundedX, roundedY, 1, 1);
         context.fill();
     }
-    
-    this.html = '<canvas id="Mycanvas"  width="550" height="200" style="position: absolute;top:58px;z-index:0" onclick="click(this)">This browser or document mode doesn\'t support canvas object</canvas>'
-               +'<canvas id="Mycanvas2" width="550" height="200" style="position: absolute;top:58px;z-index:1">This browser or document mode doesn\'t support canvas object</canvas>'
-
-    this.insert_canvas = function(id)
+    this.insert_canvas = function(arg)
     {
-        var anchor = document.getElementById(id);
+        var anchor = document.getElementById(arg.id);
         this.canvas = [ document.createElement('canvas'),document.createElement('canvas') ];
 
         this.canvas[0].id = "Mycanvas";
-        this.canvas[0].width = 550;
-        this.canvas[0].height = 200;
+        this.canvas[0].width = arg.width;
+        this.canvas[0].height = arg.height;
         this.canvas[0].style.zIndex = 0;
         this.canvas[0].style.position = "absolute";
         this.canvas[0].style.top = "58px";
         anchor.appendChild(this.canvas[0]);
 
         this.canvas[1].id = "Mycanvas2";
-        this.canvas[1].width = 550;
-        this.canvas[1].height = 200;
+        this.canvas[1].width = arg.width;
+        this.canvas[1].height = arg.height;
         this.canvas[1].style.zIndex = 1;
         this.canvas[1].style.position = "absolute";
         this.canvas[1].style.top = "58px";
@@ -183,7 +179,7 @@ function draw_colormatches()
         var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
 
         this.ctx[1].beginPath();
-        this.ctx[1].arc(x, y, this.dotsize, 0, 2 * Math.PI);
+        this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
         this.ctx[1].lineWidth=1;
         this.ctx[1].strokeStyle = "#000000";
         this.ctx[1].stroke();
@@ -191,7 +187,7 @@ function draw_colormatches()
         this.ctx[1].fill();
 
         this.ctx[1].fillStyle = '#FFF'
-        this.ctx[1].font = (this.dotsize*1.4)+"px Arial bold";
+        this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
         this.ctx[1].textAlign = "center"; 
         this.ctx[1].textBaseline = "middle";
         this.ctx[1].fillText(i , x, y);
@@ -271,7 +267,7 @@ function calc_section(sec,sec_x,inc_y,dec_y)
 
 function init()
 {
-    oPALETTE.insert_canvas("mainPalette");
+    oPALETTE.insert_canvas({"id":"mainPalette","width":550,"height":200});
     oPALETTE.draw();
     oPALETTE.canvas[2] = document.getElementById("Debugcanvas");
     oPALETTE.ctx[2]    = oPALETTE.canvas[2].getContext("2d");
@@ -279,13 +275,19 @@ function init()
 
 function update_param()
 {
-    oPALETTE.color_depth  = Number(document.getElementById("param1").value);
-    oPALETTE.dotsize          = Number(document.getElementById("param2").value);
-    document.getElementById("disp_param1").innerHTML 
+    if(document.getElementById("param1").value)
+    {
+        oPALETTE.color_depth  = Number(document.getElementById("param1").value);
+        document.getElementById("disp_param1").innerHTML 
         = oPALETTE.color_depth + "bits "
         + cap(Math.pow(2, oPALETTE.color_depth/3))+"&nbsp;RGBcols";
-    document.getElementById("disp_param2").innerHTML 
-        = "dot size "+oPALETTE.dotsize   
+    }
+    if(document.getElementById("param2").value )
+    {
+        oPALETTE.dot_size     = Number(document.getElementById("param2").value);
+        document.getElementById("disp_param2").innerHTML 
+        = "dot size "+oPALETTE.dot_size
+    }
 }
 
 function debug_color(section)
