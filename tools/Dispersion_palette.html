@@ -17,7 +17,7 @@ oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97C
 function init()
 {
     oPALETTE.insert_canvas({"id":"mainPalette","width":550,"height":200});
-    oPALETTE.draw();
+    reload();
     oPALETTE.canvas[2] = document.getElementById("Debugcanvas");
     oPALETTE.ctx[2]    = oPALETTE.canvas[2].getContext("2d");
 }
@@ -87,7 +87,14 @@ function debug_color(section)
 }
 
 function cap(v) { return Math.floor(v*100)/100 }
-function reload() { oPALETTE.draw() }
+function reload()
+{     
+    //oPALETTE.draw();
+    update_param();
+    oPALETTE.draw_rainbow(); 
+    oPALETTE.draw_colormatches();
+
+}
 function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
 function draw_debug()
 {
@@ -112,7 +119,7 @@ function draw_debug()
 <button onclick="oPALETTE.bDebug=!oPALETTE.bDebug;debug_color(14);draw_debug()">debug</button>
 <div>
     <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(reload,500)"><br>
-    <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="oPALETTE.draw_colormatches()">
+    <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()">
 </div>
 
 
