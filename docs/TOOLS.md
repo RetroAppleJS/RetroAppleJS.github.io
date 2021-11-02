@@ -53,7 +53,8 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### PatternHGR.html
 
-This tool is designed to analyse ways to maximise color encoding and dithering capabilities on Apple II HGR graphics.  Three major challenges must be considered : the color limitation itself (4 colors + black and white), the high-bit color switch and the convolutional color encoding method.
+This tool is designed to study color encoding and dithering capabilities on Apple II HGR graphics.  Three major constraints must be considered : color limitations (4 colors + black and white), the high-bit color switch and the convolutional color encoding method.
+
 
 | bit7 | bit6 | bit5 | bit4 | bit3 | bit2 | bit1 | bit0 |
 |:----:|:----:|:----:|:----:|:---:|:---:|:---:|----:|
