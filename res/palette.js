@@ -7,6 +7,7 @@ function PALETTE()
     this.canvas      = [];
     this.ctx         = [];
     this.hex_pal     = [];
+    this.limit_dots  = {};
 
     this.load        = function(p) { this.hex_pal = p }
     this.debug_data  = {};
@@ -154,6 +155,13 @@ function PALETTE()
     
         for(var i=0;i<this.dec_near_col.length;i++)
         {
+            //for(var o in this.limit_dots)
+            //   document.write(o+" "+this.limit_dots[o]+"<br>")
+
+
+            if(Object.keys(this.limit_dots).length===0 || this.limit_dots[i]==true )
+            {
+
             var x = this.dec_near_pos[i][0][0];
             var y = this.dec_near_pos[i][0][1];
             var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
@@ -174,6 +182,8 @@ function PALETTE()
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
             this.ctx[1].fillText(i , x, y);
+
+            }
         }
     }
 
