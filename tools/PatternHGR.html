@@ -43,6 +43,8 @@
 border:1px solid black;
 }
 
+.slider { display: inline-block; }
+
 
   </style>
 </head>
@@ -104,6 +106,7 @@ function init_gui(_o)
   apple2plus.video.setCol(9,0,"#FFA040");   // orange
   apple2plus.video.setCol(12,0,"#A0FF20");  // green
 
+
   var a = oPATTERN.parse(), s = "", sep = " ; ";
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
@@ -114,6 +117,10 @@ function init_gui(_o)
   oPALETTE.dot_size=8;
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
+
+  document.getElementById("param3").max = oPALETTE.hex_pal.length; // set slider range
+  update_param();
+
   oPALETTE.draw_colormatches();
 }
 
@@ -544,6 +551,19 @@ function draw_number(num,pos)
   }
 }
 
+function update_param()
+{
+    if(document.getElementById("param3"))
+    {
+        var dot_idx   = Number(document.getElementById("param3").value);
+        oPALETTE.limit_dots = {}
+        if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
+        else dot_idx = "";
+        document.getElementById("disp_param3").innerHTML 
+        ="dot select "+dot_idx
+    }    
+}
+
 /////////////////////////////////////////////////////////
 // GUI TEMPLATE
 
@@ -628,6 +648,7 @@ function load_bitmap()
   <td style="vertical-align:top">
     <div id=mainPalette></div>
     <div id="results" style="margin-top:150px"></div>
+    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()"><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
