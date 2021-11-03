@@ -118,7 +118,7 @@ function init_gui(_o)
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
 
-  document.getElementById("param3").max = oPALETTE.hex_pal.length; // set slider range
+  document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
   update_param();
 
   oPALETTE.draw_colormatches();
