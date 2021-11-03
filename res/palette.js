@@ -1,7 +1,7 @@
 function PALETTE()
 {
     this.bDebug      = false;
-    this.color_depth = 12;    // source color depth
+    this.color_depth = 12;    // color depth
     this.dot_size    = 10;
     this.sec_n       = [7,8]; // sections to show vs total sections
     this.canvas      = [];
@@ -68,7 +68,6 @@ function PALETTE()
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
     this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
-    //this.draw          = function()    { this.draw_rainbow(); this.draw_colormatches() }
 
     this.color_depth_transform = function(triple,bits)
     {
@@ -83,22 +82,21 @@ function PALETTE()
     this.calc_nearest = function(x,y,dec_cx)
     {
         for(var i=0;i<this.dec_pal.length;i++)
-            for(var j=0;j<this.dec_near_col.length;j++)
+        {
+            var cd = [this.colorDistance(dec_cx,this.dec_pal[i])                  // picked color  - palette color
+                     ,this.colorDistance(this.dec_near_col[i],this.dec_pal[i])]   // closest match - palette color
+            if( cd[0] <  cd[1] )
             {
-                var cd = [this.colorDistance(dec_cx,this.dec_pal[i]),this.colorDistance(this.dec_near_col[i],this.dec_pal[i])]
-                if( cd[0] <  cd[1] )
-                {
-                    this.dec_near_col[i] = dec_cx; 
-                    this.dec_near_pos[i] = [[x,y]];
-                }
-                else if(cd[0] ==  cd[1])
-                    this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
+                this.dec_near_col[i] = dec_cx; 
+                this.dec_near_pos[i] = [[x,y]];
             }
+            else if(cd[0] ==  cd[1])
+                this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
+        }
     }    
 
     this.draw_rainbow = function()
     {
-        //update_param();
         this.clear_layer(0);
         this.dec_pal      = [];
         this.dec_near_col = [];
@@ -147,42 +145,34 @@ function PALETTE()
 
     this.draw_colormatches = function()
     {
-        //update_param();
         this.clear_layer(1);
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
-        
     
         for(var i=0;i<this.dec_near_col.length;i++)
         {
-            //for(var o in this.limit_dots)
-            //   document.write(o+" "+this.limit_dots[o]+"<br>")
-
-
             if(Object.keys(this.limit_dots).length===0 || this.limit_dots[i]==true )
             {
+                var x = this.dec_near_pos[i][0][0];
+                var y = this.dec_near_pos[i][0][1];
+                var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
+                var sec = this.define_section(x,y,width,height);
 
-            var x = this.dec_near_pos[i][0][0];
-            var y = this.dec_near_pos[i][0][1];
-            var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
-            var sec = this.define_section(x,y,width,height);
+                // DRAW CIRCLE
+                this.ctx[1].beginPath();
+                this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
+                this.ctx[1].lineWidth=1;
+                this.ctx[1].strokeStyle = "#000000";
+                this.ctx[1].stroke();
+                this.ctx[1].fillStyle = '#'+hex_cx.join("")
+                this.ctx[1].fill();
 
-            // DRAW CIRCLE
-            this.ctx[1].beginPath();
-            this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
-            this.ctx[1].lineWidth=1;
-            this.ctx[1].strokeStyle = "#000000";
-            this.ctx[1].stroke();
-            this.ctx[1].fillStyle = '#'+hex_cx.join("")
-            this.ctx[1].fill();
-
-            // DRAW NUMBER
-            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
-            this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
-            this.ctx[1].textAlign = "center"; 
-            this.ctx[1].textBaseline = "middle";
-            this.ctx[1].fillText(i , x, y);
-
+                // DRAW NUMBER
+                this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+                this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
+                this.ctx[1].textAlign = "center"; 
+                this.ctx[1].textBaseline = "middle";
+                this.ctx[1].fillText(i , x, y);
             }
         }
     }
