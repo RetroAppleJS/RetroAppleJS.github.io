@@ -499,33 +499,14 @@ function generate_HGR()
                     for(var x=0;x<bls[0];x++)
                         setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),pid);
 
-                //draw_number(1,[-4,-5])
-var numberfont = 
-[
-  ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110"]
- ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011"]
- ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111"]
- ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110"]
- ,["01110","01111","11111","11110","00011","11110","01110","11000","01110","01100"]
-]
+                var ddx = spc[0]+dx*(bls[0]+spc[0])-5;
+                var ddy = spc[1]+dy*(bls[1]+spc[1])-5;
 
-                var ddx = spc[0]+dx*(bls[0]+spc[0])-5
-                var ddy = spc[1]+dy*(bls[1]+spc[1])-5
-
-                // DRAW LEFT TOP SQUARE
-                for(var x=0;x<5;x++)
-                {
-                  for(var y=0;y<5;y++)
-                  {
-                      if(numberfont[y][9].charAt(x)=="1")
-                           setPixel_HGR(x+ddx,y+ddy,3);
-                      else clearPixel_HGR(x+ddx,y+ddy);
-
-                      clearPixel_HGR(x+1+ddx,y+ddy);
-                      clearPixel_HGR(x+2+ddx,y+ddy);
-                      clearPixel_HGR(x+ddx,y+1+ddy);
-                  }
-                }
+                var digits = pid.toString(10);
+                for(var c=0;c<digits.length;c++)
+                  draw_number(Number(digits[c]),[ddx+c*6,ddy])
+                
+                //draw_number(0,[ddx+6,ddy])
 
                 pid++;
             }
@@ -533,7 +514,31 @@ var numberfont =
     
 }
 
+function draw_number(num,pos)
+{
+  var numberfont = 
+  [
+    ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110"]
+  ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011"]
+  ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111"]
+  ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110"]
+  ,["01110","01111","11111","11110","00011","11110","01110","11000","01110","01100"]
+  ]
 
+  // DRAW LEFT TOP SQUARE
+  for(var x=0;x<5;x++)
+  {
+    for(var y=0;y<5;y++)
+    {
+        if(numberfont[y][num].charAt(x)=="1")
+              setPixel_HGR(x+pos[0],y+pos[1],3);
+        else clearPixel_HGR(x+pos[0],y+pos[1]);
+
+        clearPixel_HGR(x+1+pos[0],y+pos[1]);
+        clearPixel_HGR(x+2+pos[0],y+pos[1]);
+    }
+  }
+}
 
 /////////////////////////////////////////////////////////
 // GUI TEMPLATE
