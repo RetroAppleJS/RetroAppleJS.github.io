@@ -149,13 +149,14 @@ function PALETTE()
         this.clear_layer(1);
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
-        this.ctx[1].clearRect(0, 0, width, height);
+        
     
         for(var i=0;i<this.dec_near_col.length;i++)
         {
             var x = this.dec_near_pos[i][0][0];
             var y = this.dec_near_pos[i][0][1];
             var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
+            var sec = this.define_section(x,y,width,height);
 
             // DRAW CIRCLE
             this.ctx[1].beginPath();
@@ -167,7 +168,7 @@ function PALETTE()
             this.ctx[1].fill();
 
             // DRAW NUMBER
-            this.ctx[1].fillStyle = '#FFF'
+            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
             this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
@@ -185,13 +186,13 @@ function PALETTE()
         var dec_y = fac_y*2>1?1:fac_y*2;
         var inc_y = fac_y*2-1;
 
-        return [sec_x,sec_y,sec_y?sec+this.sec_n[1]:sec,inc_y,dec_y];
+        return {"x":sec_x,"y":sec_y,"n":sec_y?sec+this.sec_n[1]:sec,"inc_y":inc_y,"dec_y":dec_y};
     }
 
     this.sweep_section = function(x,y,width,height)
     {
         var section = this.define_section(x,y,width,height);
-        var sec_x=section[0],sec_y=section[1],sec=section[2],inc_y=section[3],dec_y=section[4]
+        var sec_x=section["x"],sec_y=section["y"],sec=section["n"],inc_y=section["inc_y"],dec_y=section["dec_y"]
 
         var toRad = function(angle) { return angle * (Math.PI / 180) }
 
