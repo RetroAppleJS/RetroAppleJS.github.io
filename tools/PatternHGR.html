@@ -90,8 +90,6 @@ var loresCols = [];
 
 var oPALETTE = new PALETTE();
 
-
-
 /////////////////////////////////////////////////////////
 // ONLOAD
 
@@ -101,16 +99,20 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
 
+  apple2plus.video.setCol(3,0,"#FF40FF");   // purple
+  apple2plus.video.setCol(6,0,"#2F95FF");   // blue
+  apple2plus.video.setCol(9,0,"#FFA040");   // orange
+  apple2plus.video.setCol(12,0,"#A0FF20");  // green
+
   var a = oPATTERN.parse(), s = "", sep = " ; ";
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
 
-  //oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97CAF2","#7F7F7F","#7F931A","#2FA87F","#D0567F","#7F6CE5"])
   oPALETTE.insert_canvas({"id":"mainPalette","width":430,"height":150});
-
   generate_GRIDS();
   generate_HGR();
   oPALETTE.dot_size=8;
+  oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
   oPALETTE.draw_colormatches();
 }
@@ -129,9 +131,6 @@ function Apple2Plus(context)
   this.video.setHires(true);
   this.video.redraw();
 
-  this.video.setCol(9,0,"#FF8040");
-  this.video.setCol(12,0,"#80FF40");
-
   loresCols = this.video.getloresCols();
 }
 
@@ -147,7 +146,7 @@ function PATTERN(idx,x,y)
 
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
-    function trim(s) { return rtrim(ltrim(s)) }
+    function trim(s)  { return rtrim(ltrim(s)) }
 
     function editable_map(x,y)
     {
@@ -252,7 +251,6 @@ function PATTERN(idx,x,y)
       }
       //var a = [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ]
       //alert("#"+getHexByte(a[0])+getHexByte(a[1])+getHexByte(a[2]))
-
       return [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ];
   }
 
@@ -407,7 +405,7 @@ function generate_GRIDS()
   var im = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
   //var im = "../res/pixT.gif";
   var dot = ["<img src=\""+im+"\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
-          ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
+            ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
   // TODO: MODIFIERS - preset pattern -  load/save pattern)
 
   // PARSE PATTERN FUNCTION - CASE BY CASE
@@ -524,7 +522,7 @@ function draw_number(num,pos)
 {
   var numberfont = 
   [
-    ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110"]
+   ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110"]
   ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011"]
   ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111"]
   ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110"]
