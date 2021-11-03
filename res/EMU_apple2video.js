@@ -110,6 +110,10 @@ function Apple2Video(ctx) {
         return hiresCols;
     }
 
+    this.setCol = function(idx,column,val) {
+        return loresCols[idx][column] = val;
+    }
+
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawChar(col, row, d8) {
@@ -134,7 +138,6 @@ function Apple2Video(ctx) {
             for (var x = 0; x < 7; x++) {
                 if ((bits & 0x01) != 0)
                     ctx.fillRect(col * 14 + x * 2, row * 16 + y * 2, 2, 2);
-
                 bits >>= 1;
             }
         }
