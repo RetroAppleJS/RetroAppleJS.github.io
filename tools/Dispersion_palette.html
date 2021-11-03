@@ -17,9 +17,15 @@ oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97C
 function init()
 {
     oPALETTE.insert_canvas({"id":"mainPalette","width":550,"height":200});
+    document.getElementById("param3").max = oPALETTE.hex_pal.length;
     reload();
     oPALETTE.canvas[2] = document.getElementById("Debugcanvas");
     oPALETTE.ctx[2]    = oPALETTE.canvas[2].getContext("2d");
+
+    //alert(oPALETTE.hex_pal.length)
+    
+    //alert(document.getElementById("param3").value)// = 10;
+    //update_param()
 }
 
 function update_param()
@@ -37,6 +43,16 @@ function update_param()
         document.getElementById("disp_param2").innerHTML 
         = "dot size "+oPALETTE.dot_size
     }
+    if(document.getElementById("param3"))
+    {
+        var dot_idx   = Number(document.getElementById("param3").value);
+        oPALETTE.limit_dots = {}
+        if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
+        //oPALETTE.limit_dots = dot_idx<0?{}:{Number(document.getElementById("param3").value):true}
+        
+        document.getElementById("disp_param3").innerHTML 
+        ="limit_dots "+dot_idx
+    }    
 }
 
 function debug_color(section)
@@ -117,11 +133,12 @@ function draw_debug()
 <button onclick="oPALETTE.bDebug=!oPALETTE.bDebug;debug_color(14);draw_debug()">debug</button>
 <div>
     <div id=disp_param1 class="slider" style="width:100px"></div><input type="range" min="1" max="24" value="12" class="slider" id="param1" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="trigger(reload,500)"><br>
-    <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()">
+    <div id=disp_param2 class="slider" style="width:100px"></div><input type="range" min="1" max="20" value="10" class="slider" id="param2" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()"><br>
+    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="10" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()">
 </div>
 
 
-<div id=mainPalette  style="position:absolute;left:8px;top:100px;"></div>
+<div id=mainPalette  style="position:absolute;left:8px;top:150px;"></div>
 
 <br>
 <canvas hidden id="Debugcanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
