@@ -157,6 +157,7 @@ function PALETTE()
             var y = this.dec_near_pos[i][0][1];
             var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
 
+            // DRAW CIRCLE
             this.ctx[1].beginPath();
             this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
             this.ctx[1].lineWidth=1;
@@ -165,6 +166,7 @@ function PALETTE()
             this.ctx[1].fillStyle = '#'+hex_cx.join("")
             this.ctx[1].fill();
 
+            // DRAW NUMBER
             this.ctx[1].fillStyle = '#FFF'
             this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
             this.ctx[1].textAlign = "center"; 
@@ -173,13 +175,24 @@ function PALETTE()
         }
     }
 
-    this.sweep_section = function(x,y,width,height)
+    this.define_section = function(x,y,width,height)
     {
         var fac_x = x/width;
         var fac_y = y/height;
         var sec   = Math.floor(fac_x*this.sec_n[0]);
         var sec_x = fac_x*this.sec_n[0]-sec;
-        sec += fac_y>0.5?this.sec_n[1]:0;
+        var sec_y = fac_y>0.5?1:0;
+        var dec_y = fac_y*2>1?1:fac_y*2;
+        var inc_y = fac_y*2-1;
+
+        return [sec_x,sec_y,sec_y?sec+this.sec_n[1]:sec,inc_y,dec_y];
+    }
+
+    this.sweep_section = function(x,y,width,height)
+    {
+        var section = this.define_section(x,y,width,height);
+        var sec_x=section[0],sec_y=section[1],sec=section[2],inc_y=section[3],dec_y=section[4]
+
         var toRad = function(angle) { return angle * (Math.PI / 180) }
 
         if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
@@ -189,8 +202,6 @@ function PALETTE()
         ////////////////////////////////////////////////////////////////
         if(this.bDebug) this.debug_save({"x":x,"y":sec_x*(width/this.sec_n[0])});
 
-        var dec_y = fac_y*2>1?1:fac_y*2;
-        var inc_y = fac_y*2-1;
         return this.calc_section(sec,sec_x,inc_y,dec_y);
     }
 
