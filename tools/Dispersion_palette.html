@@ -43,10 +43,10 @@ function update_param()
         var dot_idx   = Number(document.getElementById("param3").value);
         oPALETTE.limit_dots = {}
         if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
+        else dot_idx = "";
         //oPALETTE.limit_dots = dot_idx<0?{}:{Number(document.getElementById("param3").value):true}
-        
         document.getElementById("disp_param3").innerHTML 
-        ="limit_dots "+dot_idx
+        ="dot select "+dot_idx
     }    
 }
 
