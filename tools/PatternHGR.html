@@ -560,7 +560,7 @@ function update_param()
         if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
         else dot_idx = "";
         document.getElementById("disp_param3").innerHTML 
-        ="dot select "+dot_idx
+        ="<font color=white>dot select "+dot_idx+"</font>"
     }    
 }
 
@@ -648,7 +648,7 @@ function load_bitmap()
   <td style="vertical-align:top">
     <div id=mainPalette></div>
     <div id="results" style="margin-top:150px"></div>
-    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()"><br>
+    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()"><br><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
