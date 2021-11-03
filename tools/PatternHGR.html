@@ -322,7 +322,7 @@ function getPixel_HGR(x,y)
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var rbyt = apple2plus.hw.read(adr);
     var bit = (rbyt >> (x%7)) & 1 == 1;
-    bit = x<0 || x>279 ? 0 : bit;                     // 
+    bit = x<0 || x>279 ? 0 : bit;                     
     var b7  = rbyt & 128;
     return [ bit,b7 ]
 }
@@ -494,20 +494,22 @@ function generate_HGR()
                   setPixel_HGR(bls[0]+3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),"");
                 }          
 
-                // DRAW SOLID SQUARE
+                // DRAW PATTERN SQUARE
                 for(var y=0;y<bls[1];y++)
                     for(var x=0;x<bls[0];x++)
                         setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),pid);
 
+                // DRAW NUMBERS
+                //clearPixel_HGR(-3+spc[0]+dx*(bls[0]+spc[0]),0+spc[1]+dy*(bls[1]+spc[1]),"");
                 var ddx = spc[0]+dx*(bls[0]+spc[0])-5;
                 var ddy = spc[1]+dy*(bls[1]+spc[1])-5;
+                clearPixel_HGR(ddx+1,ddy+5);
+                clearPixel_HGR(ddx+2,ddy+5);
 
                 var digits = pid.toString(10);
                 for(var c=0;c<digits.length;c++)
                   draw_number(Number(digits[c]),[ddx+c*6,ddy])
                 
-                //draw_number(0,[ddx+6,ddy])
-
                 pid++;
             }
     }  
