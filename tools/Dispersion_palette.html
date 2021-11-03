@@ -88,12 +88,10 @@ function debug_color(section)
 
 function cap(v) { return Math.floor(v*100)/100 }
 function reload()
-{     
-    //oPALETTE.draw();
+{
     update_param();
     oPALETTE.draw_rainbow(); 
     oPALETTE.draw_colormatches();
-
 }
 function trigger(f,t) { if(bUpdate) { bUpdate = false; setTimeout(f, t) } }
 function draw_debug()
@@ -123,7 +121,7 @@ function draw_debug()
 </div>
 
 
-<div id=mainPalette  style="position:absolute;left:8px;top:50px;"></div>
+<div id=mainPalette  style="position:absolute;left:8px;top:100px;"></div>
 
 <br>
 <canvas hidden id="Debugcanvas" width="550" height="200" style="position: relative;top:0px;left:600px;z-index:0">This browser or document mode doesn't support canvas object</canvas>
