@@ -6,6 +6,7 @@ function PALETTE()
     this.sec_n       = [7,8]; // sections to show vs total sections
     this.canvas      = [];
     this.ctx         = [];
+    this.hex_pal     = [];
 
     this.load        = function(p) { this.hex_pal = p }
     this.debug_data  = {};
