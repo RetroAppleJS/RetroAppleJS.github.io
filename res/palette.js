@@ -81,6 +81,8 @@ function PALETTE()
     
     this.calc_nearest = function(x,y,dec_cx)
     {
+        if(dec_cx.join("")=="000") return;
+
         for(var i=0;i<this.dec_pal.length;i++)
         {
             var cd = [this.colorDistance(dec_cx,this.dec_pal[i])                  // picked color  - palette color
