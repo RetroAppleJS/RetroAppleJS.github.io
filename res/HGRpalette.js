@@ -22,12 +22,9 @@ function PALETTE()
     this.clear_layer        = function(n) { this.ctx[n].clearRect(0, 0, this.canvas[n].width, this.canvas[n].height) }
     this.drawPixel          = function(context, x, y, color)
     {
-        var roundedX = Math.round(x);
-        var roundedY = Math.round(y);
-
         context.beginPath();
         context.fillStyle = color || '#000';
-        context.fillRect(roundedX, roundedY, 1, 1);
+        context.fillRect(Math.round(x), Math.round(y), 1, 1);
         context.fill();
     }
     this.insert_canvas = function(arg)
