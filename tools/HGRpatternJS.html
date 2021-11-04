@@ -146,11 +146,7 @@ function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
 
 function PATTERN(idx,x,y)
 {
-    //this.calulate = PATTERN_calculate;
-    //this.parse = PATTERN_parse;
-    //this.color = PATTERN_color;
     this.color_arr = [];
-
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
     function trim(s)  { return rtrim(ltrim(s)) }
@@ -225,12 +221,12 @@ function PATTERN(idx,x,y)
 
   this.color = function(patternID)
   {
-    // sample multiplier
     var m = 1;
     var col_m = 255 * m * m * _D.bmapx * _D.bmapy;
     var max_sum = [col_m,col_m,col_m];
     var col_sum = [0,0,0];
 
+      // color sampler
       for(var y=0;y<_D.bmapy*m;y++)
       {
         for(var x=0;x<_D.bmapx*m;x++)
@@ -245,6 +241,7 @@ function PATTERN(idx,x,y)
                     , col_sum[2] + parseInt(col.substring(5,7),16)];
         }
       }
+      // calculate color average
       return [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ];
   }
 
