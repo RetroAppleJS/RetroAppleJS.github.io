@@ -67,7 +67,7 @@ var CONF_builddate="";
 var _D = 
 {
     "hpat":10  // horizontal hgr pattern count
-    ,"vpat":6   // vertical hgr pattern count
+    ,"vpat":7   // vertical hgr pattern count
     ,"leftpane":430  // size of left pane (grid)
     ,"bmapx":28  // grid width
     ,"bmapy":12   // grid height
@@ -186,6 +186,7 @@ function PATTERN(idx,x,y)
         case 16: return  [9 ,(x+1)%2==0 || y%2==0,128];// dark orange
         case 17: return  [2 ,x%2==0 || y%2==0,128];    // dark blue
         case 18: return  [15 ,y%2==0,0];
+        case 19: return  [4 ,(!(x&1)==0 && y%3==0) || (!(x&1)==0 && y%3==1) || ((x&1)==0 && y%3==2),y%3!=1?128:0 ];
 
         case 20: return  [4 ,(x+1)%2==0 && y%2==0 || x%2==0 && y%2!=0,0];
         case 21: return  [4 ,(x+1)%2==0,y%2!=0?128:0];
@@ -206,31 +207,16 @@ function PATTERN(idx,x,y)
         case 35: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
         case 36: return  [15 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
         case 37: return  [15 ,(x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+2)%4==0) && y%2!=0,y%2==0?128:0 ];
-        case 38: return  [4 ,(x>>1)%2==0 && y%2==0 ,0 ];
-        case 39: return  [4 ,(!(x&1)==0 && y%3==0) || (!(x&1)==0 && y%3==1) || ((x&1)==0 && y%3==2),y%3!=1?128:0 ];
 
+        case 40: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
+        case 41: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,0 ];
+        case 42: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,y%2==0?128:0 ];
+        case 43: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,y%2==0?128:0 ];
+        case 44: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
 
-        //case 39: return  [4 ,(x%5==0 || (x+2)%5==0 || (x+3)%5==0) && y%2==0 || ((x+1)%5==0 || (x+3)%5==0 || (x+4)%5==0) && y%2!=0  ,y%2==0?128:0];
-        //case 39: return  [4 ,(x%11==0 || (x-2)%11==0 || (x-3)%11==0 || (x-4)%11==0 || (x-6)%11==0 || (x-8)%11==0 || (x-9)%11==0) && y%2==0
-        //                  || ((x-6)%11==0 || (x-8)%11==0 || (x-5)%11==0 || (x-6)%11==0 || (x-8)%11==0 || (x-10)%11==0 || (x-11)%11==0) && y%2!=0 ,0];
-        // 0 2 3 4 6 8 9
-        //  110101101011
-
-        //case 40: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,0];
-        //case 41: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,128];
-        //case 42: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2==0?128:0];
-        //case 43: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2!=0?128:0];
-        //case 44: return  [15, ((x+1)%2==0 || x%10==0) && y%2==0 || ((x+1)%2==0 || (x+6)%10==0) && y%2!=0,y%2==0?128:0 ];
-        //case 45: return  [15, (x%2==0 || (x+1)%10==0) && y%2==0 || (x%2==0 || (x+5)%10==0) && y%2!=0,y%2==0?128:0 ];
         case 46: return  [15 ,(y&1)==0 && (x&3)==1 || (y&1)==1 && (x&3)==3 ,(y&1)<<7];
         case 47: return  [15 ,(y&1)==0 && (x&3)==0 || (y&1)==1 && (x&3)==2 ,(y&1)<<7];
-
-
-        case 50: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
-        case 51: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,0 ];
-        case 52: return  [15, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,y%2==0?128:0 ];
-        case 53: return  [15, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,y%2==0?128:0 ];
-        case 54: return  [15 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
+        case 48: return  [4 ,(x>>1)%2==0 && y%2==0 ,0 ];
 
         case "": return  [loresCols[3][0],true,0];
         default: return [0,false,0];  
@@ -576,6 +562,7 @@ switch(mod) {
 }
 function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
 function _TITLE() {
+var hight_pct = 6;
 var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
 +"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
 +"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
@@ -586,7 +573,7 @@ var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0
 +"#topmenu{width:100%;background-color:#f0f0f0}"
 +"ul#minitabs{list-style:none;margin:0;padding:3px 0 0 0;border-left:1px solid #ccc;border-right:1px solid #ccc;border-top:1px solid #ccc;border-bottom:1px solid #ccc;font-weight:700;text-align:left;white-space:nowrap}ul#minitabs li{display:inline;margin:0 3px}ul#minitabs a{text-decoration:none;color:#999}ul#minitabs a#current{border-color:#f60;color:#06f}ul#minitabs a:hover{border-color:#f60;color:#666}"
 
-return "<style>"+css+".slider_overlay{height: 85%}</style>"
+return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
 +"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
 +"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
 +"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
@@ -617,15 +604,13 @@ function load_bitmap()
 </script>
 
  <body class="slider_main" onload="init_gui()">
-
 <div id="slider_title"></div>
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
         <li>
           <input autofocus style=width:430px list="formulas" name="formula-selector" id="FSL" value="select a pattern here" onclick=this.value='' />
-          <datalist id="formulas" >
-          </datalist>
+          <datalist id="formulas" ></datalist>
         </li>
         <li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
