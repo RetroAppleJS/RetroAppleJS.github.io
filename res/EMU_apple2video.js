@@ -114,6 +114,8 @@ function Apple2Video(ctx) {
         return loresCols[idx][column] = val;
     }
 
+    this.getPixelColor = getPixelColor;
+
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function drawChar(col, row, d8) {
@@ -196,52 +198,50 @@ var hiresCols = [
     // right != 0, pixel to the right is set
     // b7 != 0, the relevant byte in hires memory has bit 7 set
     //
-    function drawPixel(x, y, left, me, right, b7) {
+    function getPixelColor(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
-        var monochrome = monoChromes[chrome_mode]?monoChromes[chrome_mode]:"";
-        if (monochrome && me != 0)
-        {
-            ctx.fillStyle = monochrome;
-        }
         // If pixel is set and either adjacent pixels are set, it's white.
-        else if (me != 0 && (left != 0 || right != 0))
-            ctx.fillStyle = "white";
+        if (me != 0 && (left != 0 || right != 0))
+            return loresCols[15][0];  // White
         // If pixel is set but no adjacent pixels are set, pick a color
         // based on column and b7.
         else if (me != 0) {
             if (b7 != 0) {
                 if (a0 != 0)
-                    ctx.fillStyle = loresCols[9][0]; // Orange
+                    return loresCols[9][0]; // Orange
                 else
-                    ctx.fillStyle = loresCols[6][0]; // Medium Blue
+                    return loresCols[6][0]; // Medium Blue
             } else {
                 if (a0 != 0)
-                    ctx.fillStyle = loresCols[12][0]; // Green
+                    return loresCols[12][0]; // Green
                 else
-                    ctx.fillStyle = loresCols[3][0]; // Purple
+                    return loresCols[3][0]; // Purple
             }
         }
         // If pixel is not set and both adjacent pixels are set, pick a
         // color based on column (of adjacent pixel) and b7 (of this byte).
-        else if (!monochrome && left != 0 && right != 0) {
+        else if (left != 0 && right != 0) {
             if (b7 != 0) {
                 if (a0 != 0)
-                    ctx.fillStyle = loresCols[6][0]; // Medium Blue
+                    return loresCols[6][0]; // Medium Blue
                 else
-                    ctx.fillStyle = loresCols[9][0]; // Orange
+                    return loresCols[9][0]; // Orange
             } else {
                 if (a0 != 0)
-                    ctx.fillStyle = loresCols[3][0]; // Purple
+                    return loresCols[3][0]; // Purple
                 else
-                    ctx.fillStyle = loresCols[12][0]; // Green
+                    return loresCols[12][0]; // Green
             }
         }
         // Else it's black.
         else
-            ctx.fillStyle = "black";
+           return loresCols[0][0];    // Black
+    }
 
-        // Draw the pixel.
-        ctx.fillRect(x * 2, y * 2, 2, 2);
+    function drawPixel(x, y, left, me, right, b7) {
+        
+        ctx.fillStyle = getPixelColor(x, y, left, me, right, b7)
+        ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
     }
 
     // Draw a hires memory location, ends up redrawing pixels
