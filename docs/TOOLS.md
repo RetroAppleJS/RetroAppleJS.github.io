@@ -53,13 +53,13 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### PatternHGR.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to demonstrate color encoding and dithering challenges that are typical to Apple II HGR graphics.  
-Particularly detrimental to picture quality are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte and the convolutional color encoding itself.
-Classic dithering algorthms as we know, simply can't cope well with all the weird stuff that happens on pixel level on an Apple II, therefore we need to create a separate layer that is making abstraction from the encoding limitations and instead focus on the extended color pallette that specific bit patterns can provide.
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to demonstrate color encoding and dithering challenges typical to Apple II HGR graphics.  
+Particularly detrimental to picture quality, are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte, and the convolutional color encoding itself.
+Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II, therefore we need to create a separate layer that is making abstraction from the encoding limitations and instead focus on the extended color palette that specific bit patterns can provide.
 
-The proposed approach here is to select patterns that blend well together, some indeed can be better ruled out, especialy the combination of low color resolution and the very limited amount of colors sometimes result in disturbing or uacceptably rough patterns when dithering.  Some can't be ruled out as we need to assure a certain color range accross the spectrum.  Therefore, all color blends are layed out on a color gamut (see top-left area on screen), that will further help to make an informed decision.
+The proposed approach here is to select patterns that blend well together.  Some indeed can be better ruled out, especially the combination of low color resolution and the limited amount of colors sometimes result in disturbing or unacceptably rough patterns when dithering.  Some can't be ruled out as we need to assure a certain color range across the spectrum.  Therefore, all color blends are laid out on a color gamut (see the top-left area on the screen), which will further help make an informed decision.
 
-In short, the selection of color patterns is based on dithering pattern quality and color dispersion.
+In short, the selection of color patterns shall be based on dithering pattern quality and color dispersion.
 
 
 
