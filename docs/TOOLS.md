@@ -57,10 +57,10 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 Particularly detrimental to picture quality are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte and the convolutional color encoding itself.
 Classic dithering algorthms as we know, simply can't cope well with all the weird stuff that happens on pixel level on an Apple II, therefore we need to create a separate layer that is making abstraction from the encoding limitations and focus on the extended color pallette that specific bit patterns can provide.
 
-The proposed approach here is to select patterns that blend well together, some indeed can be ruled out.
+The proposed approach here is to select patterns that blend well together, some indeed can be better left out.
 Especialy the combination of low color resolution and the very limited amount of colors sometimes result in disturbing or uacceptably rough patterns when dithering, but since we can render only very few basic colors, even so the amount of combinations, we can't be too picky either.  Anyway, these selected new blends in turn are layed out on a color gamut (see top-left area on screen), where we can further pick a balanced distribution of colors.
 
-In short, the selection of color patterns will be based on dithering pattern quality and color dispersion.  
+In short, the selection of color patterns will be based on dithering pattern quality and color dispersion.
 
 
 
