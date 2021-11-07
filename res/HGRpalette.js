@@ -3,7 +3,8 @@ function PALETTE()
     this.bDebug      = false;
     this.color_depth = 12;    // color depth
     this.dot_size    = 10;
-    this.sec_n       = [7,8]; // sections to show vs total sections
+    this.opat        = 0;     // pattern index offset
+    this.sec_n       = [6,8]; // sections to show vs total sections
     this.canvas      = [];
     this.ctx         = [];
     this.hex_pal     = [];
@@ -108,7 +109,7 @@ function PALETTE()
         {
             this.dec_pal[i]      = this.HEX2RGB(this.hex_pal[i]);
             this.dec_near_col[i] = [0,0,0];
-            this.dec_near_pos[i]  = [0,0];
+            this.dec_near_pos[i] = [0,0];
         }
 
         for(var y=0;y<height;y++)
@@ -154,24 +155,43 @@ function PALETTE()
             {
                 var x = this.dec_near_pos[i][0][0];
                 var y = this.dec_near_pos[i][0][1];
-                var hex_cx = this.RGB2HEX(this.dec_near_col[i]);
+                var hex_dx = this.RGB2HEX(this.dec_near_col[i]);
+                var hex_cx = this.RGB2HEX(this.dec_pal[i]);
+                
                 var sec = this.define_section(x,y,width,height);
 
                 // DRAW CIRCLE
                 this.ctx[1].beginPath();
-                this.ctx[1].arc(x, y, this.dot_size, 0, 2 * Math.PI);
+                this.ctx[1].arc(x, y, this.dot_size, -0.5*Math.PI, 0.5*Math.PI);
                 this.ctx[1].lineWidth=1;
                 this.ctx[1].strokeStyle = "#000000";
                 this.ctx[1].stroke();
                 this.ctx[1].fillStyle = '#'+hex_cx.join("")
                 this.ctx[1].fill();
 
-                // DRAW NUMBER
+                this.ctx[1].beginPath();
+                this.ctx[1].arc(x, y, this.dot_size, 0.5*Math.PI, 1.5*Math.PI);
+                this.ctx[1].lineWidth=1;
+                this.ctx[1].strokeStyle = "#000000";
+                this.ctx[1].stroke();
+                this.ctx[1].fillStyle = '#'+hex_dx.join("")
+                this.ctx[1].fill();
+
+                // DRAW PATTERN INDEX NUMBER
                 this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
                 this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
                 this.ctx[1].textAlign = "center"; 
                 this.ctx[1].textBaseline = "middle";
-                this.ctx[1].fillText(i , x, y);
+                this.ctx[1].fillText(i+this.opat , x, y);
+
+                /*
+                // DRAW COLOR VALUE
+                this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+                this.ctx[1].font = (this.dot_size)+"px Arial bold";
+                this.ctx[1].textAlign = "center"; 
+                this.ctx[1].textBaseline = "middle";
+                this.ctx[1].fillText('#'+hex_cx.join("") , x, y+10);
+                */
             }
         }
     }
