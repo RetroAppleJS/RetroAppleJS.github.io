@@ -1,6 +1,9 @@
 function PATTERN(idx,x,y)
 {
     this.color_arr = [];
+    this.bmapx = 28;   // gride width
+    this.bmapy = 12;   // grid height
+
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
     function trim(s)  { return rtrim(ltrim(s)) }
@@ -8,12 +11,29 @@ function PATTERN(idx,x,y)
     function editable_map(x,y)
     {
       if(x<0) return [false,0];
-      return custom_bmap[x%_D.bmapx][y%_D.bmapy];
+      return custom_bmap[x%this.bmapx][y%this.bmapy];
     }
 
     this.calculate = function(idx,x,y)
     {
+        var p = idx;
+        var ba = [0,1,3];
+        //var bp = [p&15, (ba[(p>>8)&3]&1)*128, (p>>4)&15, (ba[(p>>8)&3]&2)*64];
+        if((y&1)==0)
+          return [0,(p&15)&(1<<(x%4))?1:0,(ba[(p>>8)&3]&1)*128];
+        else 
+         return [0,((p>>4)&15)&(1<<(x%4))?1:0,(ba[(p>>8)&3]&2)*64];
+    }
+    
+    this.calculate_alt = function(idx,x,y)
+    {
       // output = [color_index, pixel_decision, high_bit ]
+
+      // TODO RETURN ALL COMBINATIONS OF 8 visible bits and 2 invisible
+      var p = idx&(1<<10);
+      var ba = [0,1,3];
+      var bp = [p&15,ba[(p>>8)&3]&1,(p>>4)&15,ba[(p>>8)&3]&2];
+
       switch(idx)
       {
         case 0:  return  [0,editable_map(x,y)[0],editable_map(x,y)[1]];
@@ -57,6 +77,7 @@ function PATTERN(idx,x,y)
         case 35: return  [0 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
         case 36: return  [0 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
         case 37: return  [0 ,(x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+2)%4==0) && y%2!=0,y%2==0?128:0 ];
+        case 38: return  [0 ,(x>>1)%2==0 && y%2==0 ,0 ];
 
         case 40: return  [0, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
         case 41: return  [0, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,0 ];
@@ -64,9 +85,12 @@ function PATTERN(idx,x,y)
         case 43: return  [0, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,y%2==0?128:0 ];
         case 44: return  [0 ,y%2==0 && (x>>1)%2!=0 || y%2!=0,0];
 
-        case 46: return  [0 ,(y&1)==0 && (x&3)==1 || (y&1)==1 && (x&3)==3 ,(y&1)<<7];
-        case 47: return  [0 ,(y&1)==0 && (x&3)==0 || (y&1)==1 && (x&3)==2 ,(y&1)<<7];
-        case 48: return  [0 ,(x>>1)%2==0 && y%2==0 ,0 ];
+        case 50: return  [0 ,(y&1)==0 && (x&3)==1 || (y&1)==1 && (x&3)==3 ,(y&1)<<7];
+        case 51: return  [0 ,(y&1)==0 && (x&3)==0 || (y&1)==1 && (x&3)==2 ,(y&1)<<7];
+        case 52: return  [0 ,(y&1)==0 && ((x+1)&3)==0,0];
+        case 53: return  [0 ,(y&1)==0 && (x&3)==0,0];
+        case 54: return  [0 ,(y&1)==0 && ((x+1)&3)==0,128];
+        case 55: return  [0 ,(y&1)==0 && (x&3)==0,128];
 
         case "": return  [0,true,0];
         default: return  [null,false,0];  
@@ -79,14 +103,14 @@ function PATTERN(idx,x,y)
   {
     this.colorIDX = {};
     var m = 1;
-    var col_m = 255 * m * m * _D.bmapx * _D.bmapy;
+    var col_m = 255 * m * m * this.bmapx * this.bmapy;
     var max_sum = [col_m,col_m,col_m];
     var col_sum = [0,0,0];
 
       // color sampler
-      for(var y=0;y<_D.bmapy*m;y++)
+      for(var y=0;y<this.bmapy*m;y++)
       {
-        for(var x=0;x<_D.bmapx*m;x++)
+        for(var x=0;x<this.bmapx*m;x++)
         {
           var left = this.calculate(patternID,x-1,y)[1];
           var me = this.calculate(patternID,x,y)[1];
