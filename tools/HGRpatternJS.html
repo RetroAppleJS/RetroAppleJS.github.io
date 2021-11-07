@@ -68,9 +68,8 @@ var _D =
 {
     "hpat":10  // horizontal hgr pattern count
     ,"vpat":7   // vertical hgr pattern count
+    ,"opat":0  // pattern index offset
     ,"leftpane":430  // size of left pane (grid)
-    ,"bmapx":28  // grid width
-    ,"bmapy":12   // grid height
     ,"bmapID":0  // location of editable grid
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
               +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
@@ -86,10 +85,36 @@ var yref = new Array();
 
 
 oPATTERN = new PATTERN();
-var custom_bmap =  new Array(_D.bmapx).fill([false,0]).map(() => new Array(_D.bmapy).fill([false,0]));
+var custom_bmap =  new Array(oPATTERN.bmapx).fill([false,0]).map(() => new Array(oPATTERN.bmapy).fill([false,0]));
 var custom_fmla = ["",""];
 
 var oPALETTE = new PALETTE();
+
+/*
+var styl = " style='padding:5px;border:1px solid;font-family:Courier New'"
+document.write("<div"+styl+"><small>")
+for(var idx=0;idx<(255*3);idx++)
+{
+  document.write("<table>");
+  for(var y=0;y<10;y++)
+  {
+    document.write("<tr>");
+    var s="";
+    for(var x=0;x<10;x++)
+    {
+      var c = oPATTERN.calculate_alt(idx,x,y);
+      var pix = c[1]?"background-color:black":"";
+      var bck = (c[2]==128?"border-color:#FF0000":"");
+
+      s+="<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\"></td>"
+    }
+    document.write(s+"<tr>");
+  }
+  document.write("</table><br>");
+}
+document.write("</small></div>")
+*/
+
 
 /////////////////////////////////////////////////////////
 // ONLOAD
@@ -119,6 +144,7 @@ function init_gui(_o)
   document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
   update_param();
 
+  oPALETTE.opat = _D.opat;
   oPALETTE.draw_colormatches();
 }
 
@@ -144,12 +170,21 @@ function RGB2HEX(dec) { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte
 
 
 
-function setPixel_HGR(x,y,patternID)
+function patPixel_HGR(x,y,patternID)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var rbyt = apple2plus.hw.read(adr);               // read byte
     var wbyt = oPATTERN.pixel(x,y,patternID,rbyt)
+    apple2plus.hw.write(adr,wbyt);                    // write byte 
+}
+
+function setPixel_HGR(x,y)
+{
+    // find address and bit location
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var rbyt = apple2plus.hw.read(adr);
+    var wbyt = rbyt | (1 << x%7);
     apple2plus.hw.write(adr,wbyt);                    // write byte 
 }
 
@@ -217,18 +252,18 @@ function generate_GRIDS()
   s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
   for(var p=0;p<(_D.vpat*_D.hpat);p++)
   {
-    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
     var cs2 = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
     var tc = cs2[0]>90 && cs2[1]>90 && cs2[2]>90 ? "black":"white";
     oPALETTE.hex_pal[p] = cs;
 
-    s+= "<div style='width:430px;background-color:"+cs+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "+cs+" "+cs2.join("% ")+"%<br>"+formula_ref[p]+"</div>";
-    s+= "<table class=tcell style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
-    for(var y=0;y<_D.bmapy;y++)
+    s+= "<div style='width:430px;background-color:"+cs+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+(p+_D.opat)+"</big> "+cs+" "+cs2.join("% ")+"%<br>"+formula_ref[p]+"</div>";
+    s+= "<table style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
+    for(var y=0;y<oPATTERN.bmapy;y++)
     {
       s+="<tr>";
-      for(var x=0;x<_D.bmapx;x++) s+= gen_cell(p,x,y,p==_D.bmapID?dot:["",""]);
+      for(var x=0;x<oPATTERN.bmapx;x++) s+= gen_cell(p+_D.opat,x,y,p==_D.bmapID?dot:["",""]);
       s+="</tr>";
     }
     s+="</table><br>";
@@ -273,7 +308,7 @@ function gen_cell(patternID,x,y,img)
   {
     var left = x<=0 ? false : custom_bmap[x-1][y][0];
     var me = custom_bmap[x][y][0];
-    var right = x>=(_D.bmapx-1) ? false : custom_bmap[x+1][y][0];
+    var right = x>=(oPATTERN.bmapx-1) ? false : custom_bmap[x+1][y][0];
     var b7 = custom_bmap[x][y][1]==128?1:0;
 
     //var col = getPixelColor_HGR(x, y, left, me, right, b7)
@@ -306,23 +341,23 @@ function generate_HGR()
           // DRAW LINE SQUARE
           for(var x=-3;x<bls[0]+3;x++)
           {
-            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-4+spc[1]+dy*(bls[1]+spc[1]),"");
-            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-3+spc[1]+dy*(bls[1]+spc[1]),"");
-            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+2+spc[1]+dy*(bls[1]+spc[1]),"");
-            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+3+spc[1]+dy*(bls[1]+spc[1]),"");
+            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-4+spc[1]+dy*(bls[1]+spc[1]));
+            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),-3+spc[1]+dy*(bls[1]+spc[1]));
+            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+2+spc[1]+dy*(bls[1]+spc[1]));
+            setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),bls[1]+3+spc[1]+dy*(bls[1]+spc[1]));
           }
           for(var y=-3;y<bls[1]+3;y++)
           {
-            setPixel_HGR(-4+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),"");
-            setPixel_HGR(-3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),"");
-            setPixel_HGR(bls[0]+2+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),"");
-            setPixel_HGR(bls[0]+3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),"");
+            setPixel_HGR(-4+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]));
+            setPixel_HGR(-3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]));
+            setPixel_HGR(bls[0]+2+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]));
+            setPixel_HGR(bls[0]+3+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]));
           }          
 
           // DRAW PATTERN SQUARE
           for(var y=0;y<bls[1];y++)
               for(var x=0;x<bls[0];x++)
-                  setPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),pid);
+                  patPixel_HGR(x+spc[0]+dx*(bls[0]+spc[0]),y+spc[1]+dy*(bls[1]+spc[1]),pid+_D.opat);
 
           // DRAW NUMBERS
           //clearPixel_HGR(-3+spc[0]+dx*(bls[0]+spc[0]),0+spc[1]+dy*(bls[1]+spc[1]),"");
@@ -330,8 +365,7 @@ function generate_HGR()
           var ddy = spc[1]+dy*(bls[1]+spc[1])-5;
           clearPixel_HGR(ddx+1,ddy+5);
           clearPixel_HGR(ddx+2,ddy+5);
-
-          var digits = pid.toString(10);
+          var digits = (pid+_D.opat).toString(10);
           for(var c=0;c<digits.length;c++)
             draw_number(Number(digits[c]),[ddx+c*6,ddy])
           
@@ -355,7 +389,7 @@ function draw_number(num,pos)
   for(var x=0;x<5;x++)
     for(var y=0;y<5;y++)
     {
-        if(numberfont[y][num].charAt(x)=="1") setPixel_HGR(x+pos[0],y+pos[1],3);
+        if(numberfont[y][num].charAt(x)=="1") setPixel_HGR(x+pos[0],y+pos[1]);
         else clearPixel_HGR(x+pos[0],y+pos[1]);
 
         clearPixel_HGR(x+1+pos[0],y+pos[1]);
@@ -408,7 +442,7 @@ function update_param()
         if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
         else dot_idx = "";
         document.getElementById("disp_param3").innerHTML 
-        ="<font color=white>dot select "+dot_idx+"</font>"
+        ="<font color=white>dot select "+(dot_idx+_D.opat)+"</font>"
     }    
 }
 
@@ -465,9 +499,9 @@ function load_bitmap()
   //var patternID = _D.bmapID; 
 
   // FILL custom_bmap using custom_fmla
-  for(var y=0;y<_D.bmapy;y++)
+  for(var y=0;y<oPATTERN.bmapy;y++)
   {
-    for(var x=0;x<_D.bmapx;x++) 
+    for(var x=0;x<oPATTERN.bmapx;x++) 
       custom_bmap[x][y] = [eval(custom_fmla[0]),eval(custom_fmla[1])];
   }
 
