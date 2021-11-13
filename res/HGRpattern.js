@@ -11,7 +11,8 @@ function PATTERN(idx,x,y)
     function editable_map(x,y)
     {
       if(x<0) return [false,0];
-      return custom_bmap[x%this.bmapx][y%this.bmapy];
+      try{ return custom_bmap[x%this.bmapx][y%this.bmapy] }
+      catch(e){ return 0 }
     }
 
     
@@ -30,6 +31,7 @@ function PATTERN(idx,x,y)
       return idx;
     }
 
+    /*
     this.calculate = function(idx,x,y)
     {
         var p = idx;
@@ -41,8 +43,9 @@ function PATTERN(idx,x,y)
         else 
          return [0,((p>>4)&15)&(1<<(x%4))?1:0,(ba[(p>>8)&3]&2)*64];
     }
+    */
     
-  /*  
+  
     this.calculate = function(idx,x,y)
     {
       // output = [color_index, pixel_decision, high_bit ]
@@ -114,7 +117,7 @@ function PATTERN(idx,x,y)
         default: return  [null,false,0];  
       }
   }
-  */
+  
 
   this.colorIDX = {}
 
