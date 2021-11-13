@@ -66,11 +66,8 @@ var CONF_builddate="";
 
 var _D = 
 {
-
-    //"hpat":15  // horizontal hgr pattern count
-    //,"vpat":12   // vertical hgr pattern count
-    "blc":[15,12]
-    ,"bls":[8,6]  // block size
+    "blc":[15,11]
+    ,"bls":[8,7]  // block size
     ,"opat":0   // pattern index offset
     ,"leftpane":430  // size of left pane (grid)
     ,"bmapID":0  // location of editable grid
@@ -296,11 +293,10 @@ function generate_REPORT()
       var cs = "#"+RGB2HEX(c).join("");
       oPALETTE.hex_pal[p] = cs;
       cs="\"col\":\""+cs+"\""
-      cs += ",\"comp\":["
+       +",\"sat\":"+oPALETTE.colorSaturation(c)
+       +",\"cmp\":["
       for(var o in oPATTERN.colorIDX)
-      {
         cs+="\""+o+"\","
-      }
       cs = cs.slice(0,-1);
       cs += "]"
 
