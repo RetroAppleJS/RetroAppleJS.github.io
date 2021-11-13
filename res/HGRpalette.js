@@ -55,7 +55,22 @@ function PALETTE()
             var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
             alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""))
         }
-        ,false);   
+        ,false);
+
+        this.canvas[1].addEventListener('mousemove', 
+        function(event)
+        {
+            x = event.offsetX;
+            y = event.offsetY;
+            var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
+
+            /*
+            var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
+            alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""));
+            */
+        }
+        ,false);
+
         anchor.appendChild(this.canvas[1]);
       
         this.ctx    = [ this.canvas[0].getContext("2d"),this.canvas[1].getContext("2d")];
@@ -66,6 +81,14 @@ function PALETTE()
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
     this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+    this.colorSaturation = function(a) { 
+        
+        var avg = Math.round((a[0]+a[1]+a[2])/3); 
+
+        //document.write(this.colorDistance(a,a)+"<br>");
+
+        
+        return Math.round(this.colorDistance(a,[avg,avg,avg])) }
 
     this.color_depth_transform = function(triple,bits)
     {
