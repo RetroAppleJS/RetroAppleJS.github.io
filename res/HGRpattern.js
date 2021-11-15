@@ -31,7 +31,7 @@ function PATTERN(idx,x,y)
       return idx;
     }
 
-    /*
+    
     this.calculate = function(idx,x,y)
     {
         var p = idx;
@@ -43,18 +43,11 @@ function PATTERN(idx,x,y)
         else 
          return [0,((p>>4)&15)&(1<<(x%4))?1:0,(ba[(p>>8)&3]&2)*64];
     }
-    */
+    
     
   
     this.calculate = function(idx,x,y)
     {
-      // output = [color_index, pixel_decision, high_bit ]
-
-      // TODO RETURN ALL COMBINATIONS OF 8 visible bits and 2 invisible
-      var p = idx&(1<<10);
-      var ba = [0,1,3];
-      var bp = [p&15,ba[(p>>8)&3]&1,(p>>4)&15,ba[(p>>8)&3]&2];
-
       switch(idx)
       {
         case 0:  return  [0,editable_map(x,y)[0],editable_map(x,y)[1]];
@@ -98,7 +91,7 @@ function PATTERN(idx,x,y)
         case 35: return  [0 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && (x+1)%2!=0,128];  
         case 36: return  [0 ,y%2==0 && ( (x>>1)%2!=0 || (x+1)%2==0) || y%2!=0 && x%2!=0,y%2==0?128:0];
         case 37: return  [0 ,(x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+2)%4==0) && y%2!=0,y%2==0?128:0 ];
-        case 38: return  [0 ,(x>>1)%2==0 && y%2==0 ,0 ];
+        case 38: return  [0 ,(x>>1)%2==0 && y%2==0 || ((x+2)>>1)%2==0 && y%2!=0 ,0 ];
 
         case 40: return  [0, (x%2==0 || (x+1)%4==0) && y%2==0 || (x%2==0 || (x+3)%4==0) && y%2!=0,0 ];
         case 41: return  [0, ((x+1)%2==0 || (x+2)%4==0) && y%2==0 || ((x+1)%2==0 || (x+4)%4==0) && y%2!=0,0 ];
