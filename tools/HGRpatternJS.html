@@ -66,8 +66,8 @@ var CONF_builddate="";
 
 var _D = 
 {
-    "blc":[15,11]
-    ,"bls":[8,7]  // block size
+     "blc":[15,10] // pattern matrix
+    ,"bls":[8,8]   // pattern sample size
     ,"opat":0   // pattern index offset
     ,"leftpane":430  // size of left pane (grid)
     ,"bmapID":0  // location of editable grid
@@ -340,7 +340,8 @@ function generate_HGR()
 { 
     wipe_HGR(0);
     var pid = 0;
-    var spc = [10,10];
+    var spc = [11,11];
+    //var c_spc = 
 
     for(var dy=0;dy<_D.blc[1];dy++)
     {
