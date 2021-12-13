@@ -70,6 +70,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] real-time camera capture tool (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] macro script runner (emulating keyboard & paddle control)
+- [ ] complete zero-page documentation (ZEROPAGE_APPLE2PLUS.md)
 
 ## Contribute
 
