@@ -30,23 +30,24 @@ function PATTERN(idx,x,y)
         if(idx>=arr[i]) idx++;
       return idx;
     }
-
     
     this.calculate = function(idx,x,y)
     {
-        var p = idx;
-        //var p = this.exclude(idx);
-        
-        var ba = [0,1,3];
+        var p  = idx;
+        var n  = 2;                 // horizontal pattern repetition
+        var pm = (1<<n)-1;          // when all n bits should be lit        
+        var ba = [0,1,3];           // cycle through bit 7 
+        var b7 =  ba[(p>>(2*n))&3]  // bit 7 status is changing at every combination of every even and uneven rows e.g. 2 * 4 bits = 8 bits
+
         if((y&1)==0)
-          return [0,(p&15)&(1<<(x%4))?1:0,(ba[(p>>8)&3]&1)*128];
+          return [0,(p&pm)&(1<<(x%n))?1:0      ,(b7&1)*128];    // even rows
         else 
-         return [0,((p>>4)&15)&(1<<(x%4))?1:0,(ba[(p>>8)&3]&2)*64];
+          return [0,((p>>n)&pm)&(1<<(x%n))?1:0 ,(b7&2)*64];     // odd rows
     }
     
-    
-  
-    this.calculate = function(idx,x,y)
+
+  /*
+  this.calculate = function(idx,x,y)
     {
       switch(idx)
       {
@@ -110,13 +111,14 @@ function PATTERN(idx,x,y)
         default: return  [null,false,0];  
       }
   }
-  
+  */
 
-  this.colorIDX = {}
+  this.colCompIDX = {}
+  this.colIDX = {}
 
   this.color = function(patternID,colorFN)
   {
-    this.colorIDX = {};
+    this.colCompIDX = {};
     var m = 1;
     var col_m = 255 * m * m * this.bmapx * this.bmapy;
     var max_sum = [col_m,col_m,col_m];
@@ -137,11 +139,22 @@ function PATTERN(idx,x,y)
                     , col_sum[2] + parseInt(col.substring(5,7),16)];
 
           //if(y==0 && x==0) document.write(col+"<br>")
-          this.colorIDX[col] = true;
+          this.colCompIDX[col] = true;
         }
       }
       // calculate color average
-      return [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ];
+      var col = [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ]
+      this.colIDX[this.RGB2HEX(col)] = true;
+      return col;
+  }
+
+  this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
+  this.getHexByte = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+  this.RGB2HEX = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+
+  this.bColorUsed = function(col)
+  {
+     return this.colIDX[col]?true:false;
   }
 
   this.parse = function()
