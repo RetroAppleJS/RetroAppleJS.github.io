@@ -253,7 +253,9 @@ function generate_GRIDS()
   var colIDX = {}
   var pid = 0;  // patternID
   s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
-  for(var p=0;p<(_D.blc[1]*_D.blc[0]);p++)
+  var pmax = _D.blc[1]*_D.blc[0];
+  var pmax = 256;
+  for(var p=0;p<pmax;p++)
   {
     var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
@@ -292,7 +294,8 @@ function generate_REPORT()
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
   s= "var d = {\r\n";
-  for(var p=0;p<(_D.blc[1]*_D.blc[0]);p++)
+  var pmax = _D.blc[1]*_D.blc[0];
+  for(var p=0;p<pmax;p++)   // this is the display matrix size
   {
     if(oPATTERN.calculate(p,0,0)[0]!=null)
     {
@@ -365,8 +368,7 @@ function generate_HGR()
             }
             if(p==_D.blc[1]*_D.blc[0]) break;
           }
-          
-          colIDX[cs] = true;  // skip patterns that generate identical color``
+          colIDX[cs] = true;  // skip patterns that generate identical color
 
           // DRAW LINE SQUARE
           for(var x=-3;x<_D.bls[0]+3;x++)
