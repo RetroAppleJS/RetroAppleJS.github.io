@@ -87,6 +87,7 @@ var yref = new Array();
 oPATTERN = new PATTERN();
 var custom_bmap =  new Array(oPATTERN.bmapx).fill([false,0]).map(() => new Array(oPATTERN.bmapy).fill([false,0]));
 var custom_fmla = ["",""];
+var skip_double_patterns = true;
 
 var oPALETTE = new PALETTE();
 
@@ -256,7 +257,8 @@ function generate_GRIDS()
   {
     var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
-    if(colIDX[cs]==true) continue; else colIDX[cs] = true;  // skip patterns that generate identical color
+
+    if(colIDX[cs]==true && skip_double_patterns==true) continue; else colIDX[cs] = true;  // PATTERN SKIP CRITERIA
 
     var cs2 = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
     var tc = cs2[0]>90 && cs2[1]>90 && cs2[2]>90 ? "black":"white";
@@ -353,13 +355,16 @@ function generate_HGR()
     {
       for(var dx=0;dx<_D.blc[0];dx++)
       {
-          for(var p=pid;p<_D.blc[1]*_D.blc[0];p++)
+          if(skip_double_patterns==true)
           {
-            var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-            var cs = "#"+RGB2HEX(c).join("");
-            if(colIDX[cs]!=true) {  pid=p; break; }
+            for(var p=pid;p<_D.blc[1]*_D.blc[0];p++)
+            {
+              var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+              var cs = "#"+RGB2HEX(c).join("");
+              if(colIDX[cs]!=true) {  pid=p; break; }   // PATTERN SKIP CRITERIA
+            }
+            if(p==_D.blc[1]*_D.blc[0]) break;
           }
-          if(p==_D.blc[1]*_D.blc[0]) break;
           
           colIDX[cs] = true;  // skip patterns that generate identical color``
 

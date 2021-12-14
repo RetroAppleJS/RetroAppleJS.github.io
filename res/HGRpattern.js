@@ -34,7 +34,7 @@ function PATTERN(idx,x,y)
     this.calculate = function(idx,x,y)
     {
         var p  = idx;
-        var n  = 2;                 // horizontal pattern repetition
+        var n  = 4;                 // horizontal pattern repetition
         var pm = (1<<n)-1;          // when all n bits should be lit        
         var ba = [0,1,3];           // cycle through bit 7 
         var b7 =  ba[(p>>(2*n))&3]  // bit 7 status is changing at every combination of every even and uneven rows e.g. 2 * 4 bits = 8 bits
