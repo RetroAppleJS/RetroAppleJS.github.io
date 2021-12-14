@@ -31,10 +31,12 @@ function PATTERN(idx,x,y)
       return idx;
     }
     
+    this.prep = 4;                     // horizontal pattern repetition
+    this.pmax = Math.pow(2,2*this.prep+1);  // 2 rows * 4 bits + 1 high bit
     this.calculate = function(idx,x,y)
     {
         var p  = idx;
-        var n  = 4;                 // horizontal pattern repetition
+        var n  = this.prep;         // horizontal pattern repetition
         var pm = (1<<n)-1;          // when all n bits should be lit        
         var ba = [0,1,3];           // cycle through bit 7 
         var b7 =  ba[(p>>(2*n))&3]  // bit 7 status is changing at every combination of every even and uneven rows e.g. 2 * 4 bits = 8 bits

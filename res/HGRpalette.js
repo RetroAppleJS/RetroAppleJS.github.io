@@ -130,7 +130,7 @@ function PALETTE()
         // initialise color arrays
         for(var i=0;i<this.hex_pal.length;i++)
         {
-            this.dec_pal[i]      = this.HEX2RGB(this.hex_pal[i]);
+            this.dec_pal[i]      = this.hex_pal[i]?this.HEX2RGB(this.hex_pal[i]):[0,0,0];
             this.dec_near_col[i] = [0,0,0];
             this.dec_near_pos[i] = [0,0];
         }
