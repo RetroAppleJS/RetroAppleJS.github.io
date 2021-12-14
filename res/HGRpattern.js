@@ -114,7 +114,6 @@ function PATTERN(idx,x,y)
   */
 
   this.colCompIDX = {}
-  this.colIDX = {}
 
   this.color = function(patternID,colorFN)
   {
@@ -143,14 +142,9 @@ function PATTERN(idx,x,y)
         }
       }
       // calculate color average
-      var col = [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ]
-      this.colIDX[this.RGB2HEX(col)] = true;
-      return col;
+      return [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ]
   }
 
-  this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
-  this.getHexByte = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
-  this.RGB2HEX = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
 
   this.bColorUsed = function(col)
   {
