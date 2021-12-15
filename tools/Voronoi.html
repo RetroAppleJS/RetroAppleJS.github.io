@@ -18,19 +18,20 @@ h4 {font-size:14px;margin:0.5em 0 0 0;border:0;border-bottom:solid 1px #c9d7f1;p
 </style>
 
 </head>
-<body onload="VoronoiDemo.init();">
+<body onload="oVoronoi.init();">
+
 <h4 class="divhdr">Sites generator</h4>
 <div class="divinfo" id="voronoiGenerator">
-<input type="button" value="Generate" onclick="VoronoiDemo.randomSites(parseInt(document.getElementById('voronoiNumberSites').value,10),true);VoronoiDemo.render();"/> or <input type="button" value="Add" onclick="VoronoiDemo.randomSites(parseInt(document.getElementById('voronoiNumberSites').value,10),false);VoronoiDemo.render();"/><input id="voronoiNumberSites" type="text" value="100" size="5" maxlength="5"/> sites randomly (Warning: performance might suffer the more sites you add.)
-<br/><input id="voronoiClearSites" type="button" value="Clear all sites" onclick="VoronoiDemo.clearSites();VoronoiDemo.render();"/>
+<input type="button" value="Generate" onclick="oVoronoi.randomSites(parseInt(document.getElementById('voronoiNumberSites').value,10),true);oVoronoi.render();"/> or <input type="button" value="Add" onclick="oVoronoi.randomSites(parseInt(document.getElementById('voronoiNumberSites').value,10),false);oVoronoi.render();"/><input id="voronoiNumberSites" type="text" value="100" size="5" maxlength="5"/> sites randomly (Warning: performance might suffer the more sites you add.)
+<br/><input id="voronoiClearSites" type="button" value="Clear all sites" onclick="oVoronoi.clearSites();oVoronoi.render();"/>
 <!--
-<br/><input id="voronoiBenchmark" type="button" value="Benchmark" onclick="VoronoiDemo.benchmarkToggle();" /> Result: <span id="benchmarkResult">?</span>
+<br/><input id="voronoiBenchmark" type="button" value="Benchmark" onclick="oVoronoi.benchmarkToggle();" /> Result: <span id="benchmarkResult">?</span>
 -->
 </div>
 <h4 class="divhdr">Canvas <span id="voronoiStats" style="font:normal 11px sans"></span></h4>
 <div id="canvasParent">
 <noscript>You need to enable Javascript in your browser for this page to display properly.</noscript>
-<canvas id="voronoiCanvas" width="800" height="600" onclick="VoronoiDemo.recompute();"></canvas>
+<canvas id="voronoiCanvas" width="800" height="600"></canvas>
 <div id="voronoiNoCanvasAlert" style="display:none;padding:1em;background-color:#fcc;color:black;">
 <p>Your browser doesn't support the HTML5 &lt;canvas&gt; element technology.</p>
 <p>See <a target="_blank" href="http://en.wikipedia.org/wiki/Canvas_(HTML_element)">Wikipedia</a> for information on which browsers support the <u>HTML5 &lt;canvas&gt;</u> technology.</p>
@@ -43,7 +44,8 @@ h4 {font-size:14px;margin:0.5em 0 0 0;border:0;border-bottom:solid 1px #c9d7f1;p
 <span>&lt;script type=&quot;text/javascript&quot; src=&quot;<a href="rhill-voronoi-core.js" target="_blank">rhill-voronoi-core.js</a>&quot;&gt;&lt;/script&gt;</span>
 
 <script id="script" type="text/javascript">
-    var VoronoiDemo = {
+
+    var oVoronoi = {
         voronoi: new Voronoi(),
         sites: [],
         diagram: null,
@@ -59,12 +61,6 @@ h4 {font-size:14px;margin:0.5em 0 0 0;border:0;border-bottom:solid 1px #c9d7f1;p
             this.canvas = document.getElementById('voronoiCanvas');
             this.randomSites(100,true);
             this.render();
-            },
-    
-        clearSites: function() {
-            this.sites = [];
-            this.diagram = this.voronoi.compute(this.sites, this.bbox);
-            this.updateStats();
             },
     
         randomSites: function(n,clear) {
@@ -84,19 +80,6 @@ h4 {font-size:14px;margin:0.5em 0 0 0;border:0;border-bottom:solid 1px #c9d7f1;p
                 }
             this.voronoi.recycle(this.diagram);
             this.diagram = this.voronoi.compute(this.sites, this.bbox);
-            this.updateStats();
-            },
-    
-        recompute: function() {
-            this.diagram = this.voronoi.compute(this.sites, this.bbox);
-            this.updateStats();
-            },
-    
-        updateStats: function() {
-            if (!this.diagram) {return;}
-            var e = document.getElementById('voronoiStats');
-            if (!e) {return;}
-            e.innerHTML = '('+this.diagram.cells.length+' Voronoi cells computed from '+this.diagram.cells.length+' Voronoi sites in '+this.diagram.execTime+' ms &ndash; rendering <i>not</i> included)';
             },
     
         render: function() {
