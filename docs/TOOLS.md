@@ -62,12 +62,11 @@ The proposed approach here is to calculate the average color rendered by all all
 * patch size 2x2 bits (color resolution 240x96)
 * patch size 4x2 bits (color resolution 120x96)
 
-The amount of combinations one can get is quite decent, but by developing this pattern tester, repetitions are unavoidable; these are bit pattern combination that finally render exactly the same avaerage color, even identical dithering patterns.
+The amount of combinations one can get is quite decent, but this pattern tester shows that repetitions are unavoidable; some bit pattern combinations render exactly the same average color. In theory, these repetitions could be removed, but we have to check other aspects before doing so.  In practice, we have to deal with color encoding conflics that can occur on byte-level.  We still have 7 visible bits per byte ammended by one inivisible high-bit.  Situations where a high-bit should be on in the lower nibble and off for the higher nibble for the correct color, selector can be resolved by picking a alternate dithering pattern in the lower nibble or the higher nibble.  We can additionally reduce the statistical chance for such conflicts by chosing for the larger patch size, since we select only patch patterns that do not have any internal conflicts.
 
+>> add drawing (show 2x2 & 4x4 bit pattern, nominate the significance of the bits, and demonstrate a conflict resolution)
 
-on a 2x2 and 4x4 pixel patch (in this order)
-
-Some indeed can be better ruled out, in case their disturbance gets more outspoken compared to their color rendering benefit.  On the other hand, some can't be ruled out as we need to assure a certain color range across the spectrum.  To make this clear, all color blends are laid out on a color gamut (see the top-left area on the screen), which will further help make an informed decision.
+Next to this, larger pattern combinations starting from 4x2 can be directly ruled out, in case their roughness gets too outspoken compared to their color rendering benefit.  This sort of informed decisions can be made by laying out all color blends on a color gamut (see the top-left area on the screen).
 
 In short, the selection of color patterns shall be based on dithering pattern quality and color dispersion.
 
