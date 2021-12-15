@@ -148,26 +148,16 @@ function init_gui(_o)
 
 
   oPALETTE.clear_layer(1);
-      // INITIALISE VORONOI SITES
-      oVoronoi.init();
-  //var width  = oPALETTE.canvas[0].width;
-  //var height = oPALETTE.canvas[0].height;
+  // DRAW VORONOI 
+  oVoronoi.init(oPALETTE.canvas[1].id);
   for(var i=0;i<oPALETTE.dec_near_col.length;i++)
-  {
-          var xc = oPALETTE.dec_near_pos[i][0][0];
-          var yc = oPALETTE.dec_near_pos[i][0][1];
-          if(typeof(xc)=="undefined") continue;
-          console.log(xc+" "+yc)
-          oVoronoi.addSite(xc,yc);
-  }
+    if(oPALETTE.dec_near_pos[i][0][0])
+      oVoronoi.addSite(oPALETTE.dec_near_pos[i][0]);
   oVoronoi.compute();
   oVoronoi.render();
 
   oPALETTE.opat = _D.opat;
-
   oPALETTE.draw_colormatches();
-
-
 }
 
 /////////////////////////////////////////////////////////
@@ -371,7 +361,6 @@ function generate_HGR()
 { 
     wipe_HGR(0);
     var pid = 0;
-    var nid = 0;
     var spc = [11,11];
     var colIDX = {};
 
@@ -380,60 +369,50 @@ function generate_HGR()
 
   for(var p=0,dx=0,dy=0;p<pmax;p++)
   {
+    if(skip_double_patterns==true && _D.remdub)
+    {
+      for(var p=pid;p<pmax;p++)
+      {
+        var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+        var cs = "#"+RGB2HEX(c).join("");
+        if(colIDX[cs]!=true) {  pid=p; break; }   // PATTERN SKIP CRITERIA
+      }
+      if(p==pmax) break;
+    }
+    colIDX[cs] = true;  // skip patterns that generate identical color
 
-    //for(var dy=0;dy<_D.blc[1];dy++)
-    //{
-    //  for(var dx=0;dx<_D.blc[0];dx++)
-    //  {
+    // DRAW LINE SQUARE
+    for(var x=-3;x<_D.bls[0]+3;x++)
+    {
+      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),-4+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),-3+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),_D.bls[1]+2+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),_D.bls[1]+3+spc[1]+dy*(_D.bls[1]+spc[1]));
+    }
+    for(var y=-3;y<_D.bls[1]+3;y++)
+    {
+      setPixel_HGR(-4+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(_D.bls[0]+2+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(_D.bls[0]+3+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
+    }          
 
-          if(skip_double_patterns==true && _D.remdub)
-          {
-            for(var p=pid;p<pmax;p++)
-            {
-              var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-              var cs = "#"+RGB2HEX(c).join("");
-              if(colIDX[cs]!=true) {  pid=p; break; }   // PATTERN SKIP CRITERIA
-            }
-            if(p==_D.blc[1]*_D.blc[0]) break;
-          }
-          colIDX[cs] = true;  // skip patterns that generate identical color
+    // DRAW PATTERN SQUARE
+    for(var y=0;y<_D.bls[1];y++)
+        for(var x=0;x<_D.bls[0];x++)
+            patPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]),p+_D.opat);
 
-          // DRAW LINE SQUARE
-          for(var x=-3;x<_D.bls[0]+3;x++)
-          {
-            setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),-4+spc[1]+dy*(_D.bls[1]+spc[1]));
-            setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),-3+spc[1]+dy*(_D.bls[1]+spc[1]));
-            setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),_D.bls[1]+2+spc[1]+dy*(_D.bls[1]+spc[1]));
-            setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),_D.bls[1]+3+spc[1]+dy*(_D.bls[1]+spc[1]));
-          }
-          for(var y=-3;y<_D.bls[1]+3;y++)
-          {
-            setPixel_HGR(-4+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-            setPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-            setPixel_HGR(_D.bls[0]+2+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-            setPixel_HGR(_D.bls[0]+3+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-          }          
-
-          // DRAW PATTERN SQUARE
-          for(var y=0;y<_D.bls[1];y++)
-              for(var x=0;x<_D.bls[0];x++)
-                  patPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]),pid+_D.opat);
-
-          // DRAW NUMBERS
-          //clearPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),0+spc[1]+dy*(_D.bls[1]+spc[1]),"");
-          var ddx = spc[0]+dx*(_D.bls[0]+spc[0])-5;
-          var ddy = spc[1]+dy*(_D.bls[1]+spc[1])-5;
-          clearPixel_HGR(ddx+1,ddy+5);
-          clearPixel_HGR(ddx+2,ddy+5);
-          var digits = (p+_D.opat).toString(10);
-          for(var c=0;c<digits.length;c++)
-            draw_number(Number(digits[c]),[ddx+c*6,ddy])
-          
-          pid++;
-          nid++;
-    //  }
-    //}
-
+    // DRAW NUMBERS
+    //clearPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),0+spc[1]+dy*(_D.bls[1]+spc[1]),"");
+    var ddx = spc[0]+dx*(_D.bls[0]+spc[0])-5;
+    var ddy = spc[1]+dy*(_D.bls[1]+spc[1])-5;
+    clearPixel_HGR(ddx+1,ddy+5);
+    clearPixel_HGR(ddx+2,ddy+5);
+    var digits = (p+_D.opat).toString(10);
+    for(var c=0;c<digits.length;c++)
+      draw_number(Number(digits[c]),[ddx+c*6,ddy])
+    
+    pid++;
     if(dx==_D.blc[0]-1) dx=0; else { dx++; continue; }
     if(dy==_D.blc[1]-1) break; else dy++;
   }
@@ -516,27 +495,15 @@ var oVoronoi =
 {
   voronoi: new Voronoi(),
   sites: [],
-  diagram: null,
-  margin: 0.15,
-  canvas: null,
   bbox: {xl:0,xr:800,yt:0,yb:600},
 
-  init: function() {
-      this.canvas = document.getElementById(oPALETTE.canvas[1].id);
-      },
+  init: function(canvasID) {  this.canvas = document.getElementById(canvasID) },
 
-  draw_random: function() {
-      this.canvas = document.getElementById(oPALETTE.canvas[1].id);
-      this.randomSites(100,true);
-      this.render();
-      },      
-
-  addSite: function(xc,yc) {
+  addSite: function(coord) {
       // create vertices
-
           this.sites.push({
-              x: xc,
-              y: yc
+              x: coord[0],
+              y: coord[1]
               });
       },
 
@@ -545,43 +512,8 @@ var oVoronoi =
       this.diagram = this.voronoi.compute(this.sites, this.bbox);
     },
 
-  randomSites: function(n,clear) {
-      if (clear) {this.sites = [];}
-      // create vertices
-      var xmargin = this.canvas.width*this.margin,
-          ymargin = this.canvas.height*this.margin,
-          xo = xmargin,
-          dx = this.canvas.width-xmargin*2,
-          yo = ymargin,
-          dy = this.canvas.height-ymargin*2;
-      for (var i=0; i<n; i++)
-      {
-          var xc = xo + Math.random()*dx + Math.random()/dx;
-          var yc = yo + Math.random()*dy + Math.random()/dy;
-          console.log(xc+" "+yc);       //[Log] 326.2868832030095 49.353446144901234 (HGRpatternJS.html, line 560)
-          this.sites.push({
-              x: xc,
-              y: yc
-              });
-      }
-
-      this.voronoi.recycle(this.diagram);
-      this.diagram = this.voronoi.compute(this.sites, this.bbox);
-      },
-
   render: function() {
       var ctx = this.canvas.getContext('2d');
-      // background
-      /*
-      ctx.globalAlpha = 1;
-      ctx.beginPath();
-      ctx.rect(0,0,this.canvas.width,this.canvas.height);
-      ctx.fillStyle = 'white';
-      ctx.fill();
-
-      ctx.strokeStyle = '#888';
-      ctx.stroke();
-      */
 
       // voronoi
       if (!this.diagram) {return;}
@@ -601,32 +533,6 @@ var oVoronoi =
           ctx.lineTo(v.x,v.y);
           }
       ctx.stroke();
-
-      // edges
-      /*
-      ctx.beginPath();
-      ctx.fillStyle = 'red';
-      var vertices = this.diagram.vertices,
-          iVertex = vertices.length;
-      while (iVertex--) {
-          v = vertices[iVertex];
-          ctx.rect(v.x-1,v.y-1,3,3);
-          }
-      ctx.fill();
-      */
-
-      // sites
-      /*
-      ctx.beginPath();
-      ctx.fillStyle = '#44f';
-      var sites = this.sites,
-          iSite = sites.length;
-      while (iSite--) {
-          v = sites[iSite];
-          ctx.rect(v.x-2/3,v.y-2/3,2,2);
-          }
-      ctx.fill();
-      */
       }
 }
 
@@ -702,8 +608,8 @@ function load_bitmap()
         </li>
         <li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.draw_colormatches();" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
-        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.draw_colormatches();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oPALETTE.draw_colormatches();oVoronoi.render()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oPALETTE.draw_colormatches();oVoronoi.render();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
       </ul>
     </div>
     <div id=main>
@@ -712,7 +618,7 @@ function load_bitmap()
   <td style="vertical-align:top">
     <div id=mainPalette></div>
     <div id="results" style="margin-top:150px"></div>
-    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.draw_colormatches()"><br><br>
+    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oPALETTE.draw_colormatches();oVoronoi.render()"><br><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
