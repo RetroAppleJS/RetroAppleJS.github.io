@@ -53,6 +53,7 @@ border:1px solid black;
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 <script type="text/javascript" src="../res/HGRpalette.js"></script>
 <script type="text/javascript" src="../res/HGRpattern.js"></script>
+<script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
 
 <script>
 
@@ -142,12 +143,31 @@ function init_gui(_o)
   oPALETTE.dot_size=8;
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
-
   document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
   update_param();
 
+
+  oPALETTE.clear_layer(1);
+      // INITIALISE VORONOI SITES
+      oVoronoi.init();
+  //var width  = oPALETTE.canvas[0].width;
+  //var height = oPALETTE.canvas[0].height;
+  for(var i=0;i<oPALETTE.dec_near_col.length;i++)
+  {
+          var xc = oPALETTE.dec_near_pos[i][0][0];
+          var yc = oPALETTE.dec_near_pos[i][0][1];
+          if(typeof(xc)=="undefined") continue;
+          console.log(xc+" "+yc)
+          oVoronoi.addSite(xc,yc);
+  }
+  oVoronoi.compute();
+  oVoronoi.render();
+
   oPALETTE.opat = _D.opat;
+
   oPALETTE.draw_colormatches();
+
+
 }
 
 /////////////////////////////////////////////////////////
@@ -492,6 +512,123 @@ function update_param()
 }
 
 
+var oVoronoi = 
+{
+  voronoi: new Voronoi(),
+  sites: [],
+  diagram: null,
+  margin: 0.15,
+  canvas: null,
+  bbox: {xl:0,xr:800,yt:0,yb:600},
+
+  init: function() {
+      this.canvas = document.getElementById(oPALETTE.canvas[1].id);
+      },
+
+  draw_random: function() {
+      this.canvas = document.getElementById(oPALETTE.canvas[1].id);
+      this.randomSites(100,true);
+      this.render();
+      },      
+
+  addSite: function(xc,yc) {
+      // create vertices
+
+          this.sites.push({
+              x: xc,
+              y: yc
+              });
+      },
+
+  compute: function(xc,yc) {
+      this.voronoi.recycle(this.diagram);
+      this.diagram = this.voronoi.compute(this.sites, this.bbox);
+    },
+
+  randomSites: function(n,clear) {
+      if (clear) {this.sites = [];}
+      // create vertices
+      var xmargin = this.canvas.width*this.margin,
+          ymargin = this.canvas.height*this.margin,
+          xo = xmargin,
+          dx = this.canvas.width-xmargin*2,
+          yo = ymargin,
+          dy = this.canvas.height-ymargin*2;
+      for (var i=0; i<n; i++)
+      {
+          var xc = xo + Math.random()*dx + Math.random()/dx;
+          var yc = yo + Math.random()*dy + Math.random()/dy;
+          console.log(xc+" "+yc);       //[Log] 326.2868832030095 49.353446144901234 (HGRpatternJS.html, line 560)
+          this.sites.push({
+              x: xc,
+              y: yc
+              });
+      }
+
+      this.voronoi.recycle(this.diagram);
+      this.diagram = this.voronoi.compute(this.sites, this.bbox);
+      },
+
+  render: function() {
+      var ctx = this.canvas.getContext('2d');
+      // background
+      /*
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.rect(0,0,this.canvas.width,this.canvas.height);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+
+      ctx.strokeStyle = '#888';
+      ctx.stroke();
+      */
+
+      // voronoi
+      if (!this.diagram) {return;}
+      // edges
+
+      ctx.beginPath();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#FFF';
+      var edges = this.diagram.edges,
+          iEdge = edges.length,
+          edge, v;
+      while (iEdge--) {
+          edge = edges[iEdge];
+          v = edge.va;
+          ctx.moveTo(v.x,v.y);
+          v = edge.vb;
+          ctx.lineTo(v.x,v.y);
+          }
+      ctx.stroke();
+
+      // edges
+      /*
+      ctx.beginPath();
+      ctx.fillStyle = 'red';
+      var vertices = this.diagram.vertices,
+          iVertex = vertices.length;
+      while (iVertex--) {
+          v = vertices[iVertex];
+          ctx.rect(v.x-1,v.y-1,3,3);
+          }
+      ctx.fill();
+      */
+
+      // sites
+      /*
+      ctx.beginPath();
+      ctx.fillStyle = '#44f';
+      var sites = this.sites,
+          iSite = sites.length;
+      while (iSite--) {
+          v = sites[iSite];
+          ctx.rect(v.x-2/3,v.y-2/3,2,2);
+          }
+      ctx.fill();
+      */
+      }
+}
 
 /////////////////////////////////////////////////////////
 // GUI TEMPLATE

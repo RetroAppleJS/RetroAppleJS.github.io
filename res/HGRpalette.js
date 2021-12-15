@@ -168,7 +168,7 @@ function PALETTE()
 
     this.draw_colormatches = function()
     {
-        this.clear_layer(1);
+        //this.clear_layer(1);
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
     
