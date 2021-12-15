@@ -31,8 +31,8 @@ function PATTERN(idx,x,y)
       return idx;
     }
     
-    this.prep = 4;                     // horizontal pattern repetition
-    this.pmax = Math.pow(2,2*this.prep+1);  // 2 rows * 4 bits + 1 high bit
+    this.prep = 2;                     // horizontal pattern repetition
+    this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
     this.calculate = function(idx,x,y)
     {
         var p  = idx;
