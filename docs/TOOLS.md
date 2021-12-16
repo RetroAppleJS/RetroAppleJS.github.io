@@ -61,29 +61,29 @@ Classic dithering algorithms as we know, simply can't cope well with all the wei
 
 The proposed approach here is to calculate the average color rendered by all all possible bit patterns that one can generate on a small patch or block of pixels, which will reveal interesting features in both layers.  All we need to do now is to determine  a usable block size.  Since the color encoding layer has a size of 2x1 bits (wxh), in a full resolution of 280x192, rendering 4 colors + black and white brings us already to a factual color resolution of 140x192.
 
-The pattern encoding layer can only bare multiples of the color encoding block size, bringing us to a size of 2x2 bits (wxh), and the next being 4x2 bits (wxh).  Through this tool, we want to analyse color resolution, color conflict sensitivity and color range, and this are our findings:
+The pattern encoding layer can only bare multiples of the color encoding block size, bringing us to a size of 2x2 bits (wxh), and the next being 4x2 bits (wxh).  For this project, we must analyse color resolution, color conflict sensitivity and color range :
 
 * color block size 2x1 bits (wxh)
-   * color resolution 140x96
+   * color resolution = 140x96
    * no color conflics - by ruling out conflictual pattern blocks
    * color range - 4 unique colors + black and white
 * pattern block size 2x2 bits (wxh)
-   * color resolution 140x96
+   * color resolution = 140x96
    * 3 possible high-bit color conflicts between pattern blocks in the same byte
    * color range - 19 unique colors + black and white
 * pattern block size 4x2 bits (wxh)
-   * color resolution 70x96
+   * color resolution = 70x96
    * 1 possible high-bit color conflict between pattern blocks in the same byte
    * color range - ? unique colors + black and white
 * mixed mode block size 2x2 and 4x4 bits (wxh)
-   * average color resolution 105x95
+   * average color resolution = 105x95
    * 3 possible high-bit color conflicts between pattern blocks in the same byte
    * color range - ? unique colors + black and white
 
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_2x2.png" width=20% align=left />
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_4x2.png" width=20% align=left />
 
-The amount of combinations one can get is quite decent, but this pattern tester proves that repetitions are unavoidable; some bit pattern combinations render exactly the same average color. In theory, these repetitions could be removed, but we have to check other aspects before doing so.  In practice, we have to deal with color encoding conflics that can occur on byte-level.  We still have 7 visible bits per byte ammended by one inivisible high-bit.  Situations where a high-bit selector should be =1 in the lower nibble and =0 for the higher nibble, these can be resolved by picking a alternate dithering pattern in the lower nibble or the higher nibble in another byte.  We can additionally reduce the statistical chance for such conflicts by chosing for the larger block size, since we obviously only preselect conflict-free block patterns.
+The amount of combinations one can get is quite decent, but this pattern tester proves that some bit pattern combinations render exactly the same average color. In theory, these repetitions could be removed, but we have to check other aspects before doing so.  In practice, we have to deal with color encoding conflics that can occur on byte-level.  We still have 7 visible bits per byte ammended by one inivisible high-bit.  Situations where a high-bit selector should be =1 in the lower nibble and =0 for the higher nibble, these can be resolved by picking a alternate dithering pattern in the lower nibble or the higher nibble to resolve the conflict.  We can additionally reduce the statistical chance for such conflicts by chosing for the larger block size.
 
 >> add drawing (show 2x2 & 4x4 bit pattern, nominate the significance of the bits, and demonstrate a conflict resolution)
 
