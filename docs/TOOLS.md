@@ -57,13 +57,28 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to demonstrate color encoding challenges typical to Apple II HGR graphics, that is a necessary step before we can we can think about proper dithering.
 
 Particularly detrimental to picture quality, are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte, and the convolutional color encoding itself.
-Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II, therefore we need to imagine a separate abstraction layer that is focusing on sub-patterns that render pure colors and another pattern layer on top for color dithering.  Both layers have encoding limitation on their own. 
+Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II, therefore we need to imagine separate abstraction layers, one focusing on sub-patterns that we call the color-encoding layer, and on top of this, a pattern encoding layer to achieve color dithering. 
 
-the encoding limitations and instead focus on the extended color palette that specific bit patterns can provide.
+The proposed approach here is to calculate the average color rendered by all all possible bit patterns that one can generate on a small patch or block of pixels, which will reveal interesting features in both layers.  All we need to do now is to determine  a usable block size.  Since the color encoding layer has a size of 2x1 bits (wxh), in a full resolution of 280x192, rendering 4 colors + black and white brings us already to a factual color resolution of 140x192.
 
-The proposed approach here is to calculate the average color rendered by all all possible bit patterns that one can generate on a small block of pixels, but, since the size of these blocks deteriorate the overall color resolution that is  already super bad due to the convoluted color encoding on the Apple II, we need to keep these packages to a minimum size.  A block size of 2x1 bits (wxh) that renders 4 colors + black and white brings us already to a factual resolution of 140x192, before we started dithering.  There are only 2 realistic dithering options :
-* pattern block size 2x2 bits (color resolution 240x96)
-* pattern block size 4x2 bits (color resolution 120x96)
+The pattern encoding layer can only bare multiples of the color encoding block size, bringing us to a size of 2x2 bits (wxh), and the next being 4x2 bits (wxh).  Through this tool, we want to analyse color resolution, color conflict sensitivity and color range, and this are our findings:
+
+* color block size 2x1 bits (wxh)
+   * color resolution 140x96
+   * no color conflics - by ruling out conflictual pattern blocks
+   * color range - 4 unique colors + black and white
+* pattern block size 2x2 bits (wxh)
+   * color resolution 140x96
+   * 3 possible high-bit color conflicts between pattern blocks in the same byte
+   * color range - 19 unique colors + black and white
+* pattern block size 4x2 bits (wxh)
+   * color resolution 70x96
+   * 1 possible high-bit color conflict between pattern blocks in the same byte
+   * color range - ? unique colors + black and white
+* mixed mode block size 2x2 and 4x4 bits (wxh)
+   * average color resolution 105x95
+   * 3 possible high-bit color conflicts between pattern blocks in the same byte
+   * color range - ? unique colors + black and white
 
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_2x2.png" width=20% align=left />
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_4x2.png" width=20% align=left />
