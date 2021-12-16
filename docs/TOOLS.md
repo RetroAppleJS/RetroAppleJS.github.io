@@ -74,7 +74,7 @@ Color conflics at block size 2x2 bits
 Color conflics at block size 4x2 bits
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_conflicts_4x2.png" width=20% align=left />
 
-Note the high-bit on the right side, turned on or off generates different color conflicts. According to classic dithering practice, these conflicts need to be resolved by causing the least color deviation.
+Note the high-bit on the right side, turned on or off generates different color conflicts. According to classic dithering practice, these conflicts should to be resolved by any means to keep a minimal color deviation.
 
 
 Altogether, we are putting together color resolution, color conflict sensitivity and color range :
