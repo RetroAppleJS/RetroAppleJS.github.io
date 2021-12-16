@@ -56,8 +56,7 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to find a color encoding strategy to tackle the typical challenges with Apple II HGR graphics.
 
-Particularly detrimental to picture quality, are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte, and the convolutional color encoding itself.
-Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II, therefore we need to imagine separate abstraction layers, one focusing on sub-patterns that we call the color-encoding layer, and on top of this, a pattern encoding layer to achieve color dithering. 
+Particularly detrimental to picture quality, are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte, and the convolutional color encoding itself.  Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II.  Therefore we need to imagine separate abstraction layers, one focusing on sub-patterns that we call the color-encoding layer, and on top of this, a pattern encoding layer to achieve color dithering.
 
 The proposed approach here is to calculate the average color rendered by all all possible bit patterns that one can generate on a small patch or block of pixels, which will reveal interesting features in both layers.  All we need to do now is to determine  a usable block size.  Since the color encoding layer has a size of 2x1 bits (wxh), in a full resolution of 280x192, rendering 4 colors + black and white brings us already to a factual color resolution of 140x192.
 
