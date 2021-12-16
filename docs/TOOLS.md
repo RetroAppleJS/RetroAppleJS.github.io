@@ -68,7 +68,16 @@ Block size 4x2 bits
 
 The pattern encoding layer can only bare multiples of the color encoding block size, bringing us to a minimal size of 2x2 bits (wxh), and the next being 4x2 bits (wxh).  In the next figure, we check color encoding conflicts.
 
-Altogether, we analyse color resolution, color conflict sensitivity and color range :
+Color conflics at block size 2x2 bits
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_conflicts_2x2.png" width=20% align=left />
+
+Color conflics at block size 4x2 bits
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_conflicts_4x2.png" width=20% align=left />
+
+Note the high-bit on the right side, turned on or off generates different color conflicts. According to classic dithering practice, these conflicts need to be resolved by causing the least color deviation.
+
+
+Altogether, we are putting together color resolution, color conflict sensitivity and color range :
 * color block size 2x1 bits (wxh)
    * color resolution = 140x96
    * no color conflics - by ruling out conflictual pattern blocks
