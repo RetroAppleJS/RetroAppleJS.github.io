@@ -78,10 +78,6 @@ Note the high-bit on the right side, turned on or off generates different color 
 
 The amount of combinations one can get is quite decent, but this testing tool proves that some bit pattern combinations render exactly the same average color. In theory, these repetitions could be removed, but we have to check other aspects before doing so.  In practice, we have to deal with color encoding conflics that can occur on byte-level.  We still have 7 visible bits per byte ammended by one inivisible high-bit.  Situations where a high-bit selector should be =1 in the lower nibble and =0 for the higher nibble, these can be resolved by picking an alternate dithering pattern in the lower nibble or the higher nibble to resolve the conflict.  We can additionally reduce the statistical chance for such conflicts by chosing for the larger block size.
 
-Next to this, larger pattern combinations starting from 4x2 can be directly ruled out, in case their roughness is too outspoken compared to their color rendering benefit.  This sort of informed decisions can be made by laying out all color blends on a color gamut (see the top-left area on the screen).
-
-In short, the selection of color patterns shall be based on dithering pattern quality and color dispersion.
-
 In our conclusion, we are putting together color resolution, color conflict sensitivity and color range :
 * color block size 2x1 bits (wxh)
    * color resolution = 140x96
