@@ -62,6 +62,10 @@ The proposed approach here is to calculate the average color rendered by all all
 * pattern block size 2x2 bits (color resolution 240x96)
 * pattern block size 4x2 bits (color resolution 120x96)
 
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_2x2.png" width=30% align=left />
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_4x2.png" width=30% align=left />
+
+
 The amount of combinations one can get is quite decent, but this pattern tester proves that repetitions are unavoidable; some bit pattern combinations render exactly the same average color. In theory, these repetitions could be removed, but we have to check other aspects before doing so.  In practice, we have to deal with color encoding conflics that can occur on byte-level.  We still have 7 visible bits per byte ammended by one inivisible high-bit.  Situations where a high-bit selector should be =1 in the lower nibble and =0 for the higher nibble, these can be resolved by picking a alternate dithering pattern in the lower nibble or the higher nibble in another byte.  We can additionally reduce the statistical chance for such conflicts by chosing for the larger block size, since we obviously only preselect conflict-free block patterns.
 
 >> add drawing (show 2x2 & 4x4 bit pattern, nominate the significance of the bits, and demonstrate a conflict resolution)
