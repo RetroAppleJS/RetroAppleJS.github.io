@@ -54,7 +54,7 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### PatternHGR.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to demonstrate color encoding challenges typical to Apple II HGR graphics, that is a necessary step before we can we can think about proper dithering.
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to find a color encoding strategy to tackle the typical challenges with Apple II HGR graphics.
 
 Particularly detrimental to picture quality, are the extreme color limitations (4 colors + black and white), a high-bit color switch ruling over an entire byte, and the convolutional color encoding itself.
 Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II, therefore we need to imagine separate abstraction layers, one focusing on sub-patterns that we call the color-encoding layer, and on top of this, a pattern encoding layer to achieve color dithering. 
