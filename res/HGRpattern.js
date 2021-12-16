@@ -31,7 +31,7 @@ function PATTERN(idx,x,y)
       return idx;
     }
     
-    this.prep = 2;                     // horizontal pattern repetition
+    this.prep = 4;                     // horizontal pattern repetition
     this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
     this.calculate = function(idx,x,y)
     {
@@ -45,6 +45,19 @@ function PATTERN(idx,x,y)
           return [0,(p&pm)&(1<<(x%n))?1:0      ,(b7&1)*128];    // even rows
         else 
           return [0,((p>>n)&pm)&(1<<(x%n))?1:0 ,(b7&2)*64];     // odd rows
+    }
+
+    this.is_2x2 = function(patternID)
+    {
+      for(var y=0;y<2;y++)
+        for(var x=0;x<2;x++)
+          if(this.calculate(patternID,x,y)[1] != this.calculate(patternID,x+2,y)[1]) return false;
+
+      for(var x=0;x<2;x++)
+        for(var y=0;y<2;y++)
+          if(this.calculate(patternID,x,y)[1] != this.calculate(patternID,x,y+2)[1]) return false;
+
+      return true;
     }
     
 
