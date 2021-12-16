@@ -77,29 +77,29 @@ Color conflics at block size 4x2 bits
 Note the high-bit on the right side, turned on or off generates different color conflicts. According to classic dithering practice, these conflicts should to be resolved by any means to keep a minimal color deviation.
 
 
-Altogether, we are putting together color resolution, color conflict sensitivity and color range :
+In our conclusion, we are putting together color resolution, color conflict sensitivity and color range :
 * color block size 2x1 bits (wxh)
    * color resolution = 140x96
    * no color conflics - by ruling out conflictual pattern blocks
-   * bit combinations = 2 ^ (2 + 1) = 8
+   * bit combinations = 2 ^ (2 visible bits + 1 high bit) = 8
    * net usable color range - 4 distinct colors + black and white
 * pattern block size 2x2 bits (wxh)
    * color resolution = 140x96
    * 3 possible high-bit color conflicts between pattern blocks in the same byte
    * statistical chance for color conflics = (5/7-2/7)/2 = 0.714 - 0.286 / 2 = 21 %
-   * bit combinations = 2 ^ ( 4 + 2) = 64
+   * bit combinations = 2 ^ (4 visible bits + 2 high bits) = 64
    * net usable color range - 19 distinct colors + black and white
 * pattern block size 4x2 bits (wxh)
    * color resolution = 70x96
    * 1 possible high-bit color conflict between pattern blocks in the same byte
    * statistical chance for color conflics = (3/7-4/7)/2 = 0.429 - 0.571 / 2 = 14 %
-   * bit combinations = 2 ^ (8 + 2) = 1024
+   * bit combinations = 2 ^ (8 visible bits + 2 high biths) = 1024
    * net usable color range - ? distinct colors + black and white
 * mixed mode block size 2x2 and 4x4 bits (wxh)
    * average color resolution = 105x95
    * 3 possible high-bit color conflicts between pattern blocks in the same byte
    * statistical change for color conflicts = (21%+14%)/2 = 17.5%
-   * bit combinations = 2 ^ (8 + 2) = 1024
+   * bit combinations = 2 ^ (8 vsible bits + 2 high bits) = 1024
    * net usable color range - ? distinct colors + black and white
 
 The amount of combinations one can get is quite decent, but this pattern tester proves that some bit pattern combinations render exactly the same average color. In theory, these repetitions could be removed, but we have to check other aspects before doing so.  In practice, we have to deal with color encoding conflics that can occur on byte-level.  We still have 7 visible bits per byte ammended by one inivisible high-bit.  Situations where a high-bit selector should be =1 in the lower nibble and =0 for the higher nibble, these can be resolved by picking a alternate dithering pattern in the lower nibble or the higher nibble to resolve the conflict.  We can additionally reduce the statistical chance for such conflicts by chosing for the larger block size.
