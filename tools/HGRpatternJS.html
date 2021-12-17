@@ -615,8 +615,8 @@ function load_bitmap()
         </li>
         <li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oPALETTE.draw_colormatches();oVoronoi.render()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
-        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oPALETTE.draw_colormatches();oVoronoi.render();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);;oVoronoi.render();oPALETTE.draw_colormatches()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);;oVoronoi.render();oPALETTE.draw_colormatches();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
       </ul>
     </div>
     <div id=main>
@@ -625,11 +625,17 @@ function load_bitmap()
   <td style="vertical-align:top">
     <div id=mainPalette></div>
     <div id="results" style="margin-top:150px"></div>
-    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oPALETTE.draw_colormatches();oVoronoi.render()"><br><br>
+    <div id=disp_param3 class="slider" style="width:100px"></div><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:300px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);;oVoronoi.render();oPALETTE.draw_colormatches()"><br><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>
-  <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
+  <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+    <br>
+    <input type=button value="prev" onclick="" style='vertical-align:top; margin:4px 0px 0px 0px'>
+    <input type=button value="next" onclick="" style='vertical-align:top; margin:4px 0px 0px 0px'>
+
+  </td>
 </tr></table>
+
 
   </div>
   </div>
