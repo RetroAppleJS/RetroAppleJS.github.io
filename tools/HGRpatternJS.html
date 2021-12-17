@@ -65,12 +65,13 @@ border:1px solid black;
 var CONF_version="";
 var CONF_builddate="";  
 
+
 var _D = 
 {
-     "blc":[14,10]      // pattern matrix
-    ,"bls":[8,8]        // pattern sample size
+     "blc":[10,10]      // pattern matrix
+    ,"bls":[17,8]        // pattern sample size
     ,"opat":0           // pattern index offset
-    ,"remdub":false     // remove double colors
+    ,"remdub":true     // remove double colors
     ,"leftpane":430     // size of left pane (grid)
     ,"bmapID":0         // location of editable grid
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
@@ -362,8 +363,8 @@ function generate_HGR()
     wipe_HGR(0);
     var pid = 0;
     var spc = [11,11];
+    var ofs = [-4,-4]
     var colIDX = {};
-    var dp = 140
 
   //var pmax = _D.blc[1]*_D.blc[0];
   var pmax = oPATTERN.pmax;
@@ -372,7 +373,7 @@ function generate_HGR()
   {
     if(skip_double_patterns==true && _D.remdub)
     {
-      for(var p=pid;p<pmax;p++)
+      for(var p=_D.opat;p<pmax;p++)
       {
         var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
         var cs = "#"+RGB2HEX(c).join("");
@@ -385,32 +386,32 @@ function generate_HGR()
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
     {
-      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),-4+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),-3+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),_D.bls[1]+2+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),_D.bls[1]+3+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]-4+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]-3+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+_D.bls[1]+2+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+_D.bls[1]+3+spc[1]+dy*(_D.bls[1]+spc[1]));
     }
     for(var y=-3;y<_D.bls[1]+3;y++)
     {
-      setPixel_HGR(-4+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(_D.bls[0]+2+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(_D.bls[0]+3+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]-4+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]-3+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]+_D.bls[0]+2+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+y+spc[1]+dy*(_D.bls[1]+spc[1]));
+      setPixel_HGR(ofs[0]+_D.bls[0]+3+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+y+spc[1]+dy*(_D.bls[1]+spc[1]));
     }          
 
     // DRAW PATTERN SQUARE
     for(var y=0;y<_D.bls[1];y++)
         for(var x=0;x<_D.bls[0];x++)
-            patPixel_HGR(x+spc[0]+dx*(_D.bls[0]+spc[0]),y+spc[1]+dy*(_D.bls[1]+spc[1]),p);
+            patPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+y+spc[1]+dy*(_D.bls[1]+spc[1]),p);
 
     // DRAW NUMBERS
-    //clearPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),0+spc[1]+dy*(_D.bls[1]+spc[1]),"");
-    var ddx = spc[0]+dx*(_D.bls[0]+spc[0])-5;
-    var ddy = spc[1]+dy*(_D.bls[1]+spc[1])-5;
+    //clearPixel_HGR(-3+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+0+spc[1]+dy*(_D.bls[1]+spc[1]),"");
+    var ddx = ofs[0]+spc[0]+dx*(_D.bls[0]+spc[0])-5;
+    var ddy = ofs[1]+spc[1]+dy*(_D.bls[1]+spc[1])-5;
     clearPixel_HGR(ddx+1,ddy+4);
     clearPixel_HGR(ddx+2,ddy+4);
-    clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+4);
-    clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+4);
+    //clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+4);
+    //clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+4);
 
     var digits = p.toString(10);
     for(var c=0;c<digits.length;c++)
@@ -501,7 +502,7 @@ function update_param()
         var num = Number(document.getElementById('param4').value);
         if(num<0) num = 0;
         document.getElementById('param4').value = num;
-        _D.opat = num * 140;
+        _D.opat = num * ( _D.blc[0]*_D.blc[1] )
     }
 }
 
