@@ -363,7 +363,7 @@ function generate_HGR()
     wipe_HGR(0);
     var pid = 0;
     var spc = [11,11];
-    var ofs = [-4,-4]
+    var ofs = [-5,-4]
     var colIDX = {};
 
   //var pmax = _D.blc[1]*_D.blc[0];
@@ -386,8 +386,8 @@ function generate_HGR()
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
     {
-      setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]-4+spc[1]+dy*(_D.bls[1]+spc[1]));
-      setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]-3+spc[1]+dy*(_D.bls[1]+spc[1]));
+      //setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]-4+spc[1]+dy*(_D.bls[1]+spc[1]));
+      //setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]-3+spc[1]+dy*(_D.bls[1]+spc[1]));
       setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+_D.bls[1]+2+spc[1]+dy*(_D.bls[1]+spc[1]));
       setPixel_HGR(ofs[0]+x+spc[0]+dx*(_D.bls[0]+spc[0]),ofs[1]+_D.bls[1]+3+spc[1]+dy*(_D.bls[1]+spc[1]));
     }
@@ -410,8 +410,10 @@ function generate_HGR()
     var ddy = ofs[1]+spc[1]+dy*(_D.bls[1]+spc[1])-5;
     clearPixel_HGR(ddx+1,ddy+4);
     clearPixel_HGR(ddx+2,ddy+4);
-    //clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+4);
-    //clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+4);
+    clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+2);
+    clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+2);
+    clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+3);
+    clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+3);
 
     var digits = p.toString(10);
     for(var c=0;c<digits.length;c++)
