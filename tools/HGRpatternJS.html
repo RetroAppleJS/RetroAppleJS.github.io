@@ -67,12 +67,12 @@ var CONF_builddate="";
 
 var _D = 
 {
-     "blc":[14,10]    // pattern matrix
+     "blc":[14,10]      // pattern matrix
     ,"bls":[8,8]        // pattern sample size
-    ,"opat":140           // pattern index offset
+    ,"opat":0           // pattern index offset
     ,"remdub":false     // remove double colors
-    ,"leftpane":430  // size of left pane (grid)
-    ,"bmapID":0  // location of editable grid
+    ,"leftpane":430     // size of left pane (grid)
+    ,"bmapID":0         // location of editable grid
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
               +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
               +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
@@ -494,7 +494,15 @@ function update_param()
         else dot_idx = "";
         document.getElementById("disp_param3").innerHTML 
         ="<font color=white>dot select "+(dot_idx+_D.opat)+"</font>"
-    }    
+    }
+
+    if(document.getElementById('param4'))
+    {
+        var num = Number(document.getElementById('param4').value);
+        if(num<0) num = 0;
+        document.getElementById('param4').value = num;
+        _D.opat = num * 140;
+    }
 }
 
 
@@ -630,9 +638,9 @@ function load_bitmap()
   </td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
     <br>
-    <input type=button value="prev" onclick="" style='vertical-align:top; margin:4px 0px 0px 0px'>
-    <input type=button value="next" onclick="" style='vertical-align:top; margin:4px 0px 0px 0px'>
-
+    <input type=button value="prev" onclick="document.getElementById('param4').value--;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
+    <input type=button value="next" onclick="document.getElementById('param4').value++;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
+    <input id=param4 value=0 hidden>
   </td>
 </tr></table>
 
