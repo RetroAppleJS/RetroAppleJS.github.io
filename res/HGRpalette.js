@@ -46,6 +46,7 @@ function PALETTE()
         this.canvas[1].height = arg.height;
         this.canvas[1].style.zIndex = 1;
         this.canvas[1].style.position = "absolute";
+        this.canvas[1].style.cursor = "crosshair";
         //this.canvas[1].style.top = "58px";
         this.canvas[1].addEventListener('click', 
         function(event)
