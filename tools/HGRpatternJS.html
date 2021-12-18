@@ -71,7 +71,7 @@ var _D =
      "blc":[10,10]      // pattern matrix
     ,"bls":[17,8]        // pattern sample size
     ,"opat":0           // pattern index offset
-    ,"remdub":true     // remove double colors
+    ,"remdub":false     // remove double colors
     ,"leftpane":430     // size of left pane (grid)
     ,"bmapID":0         // location of editable grid
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
@@ -90,8 +90,6 @@ var yref = new Array();
 oPATTERN = new PATTERN();
 var custom_bmap =  new Array(oPATTERN.bmapx).fill([false,0]).map(() => new Array(oPATTERN.bmapy).fill([false,0]));
 var custom_fmla = ["",""];
-var skip_double_patterns = true;
-
 var oPALETTE = new PALETTE();
 
 /*
@@ -272,7 +270,7 @@ function generate_GRIDS()
     var c = oPATTERN.color(p+_D.opat,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
 
-    if(colIDX[cs] && skip_double_patterns && _D.remdub) continue; else colIDX[cs] = true;  // PATTERN SKIP CRITERIA
+    if(colIDX[cs] && _D.remdub) continue; else colIDX[cs] = true;  // PATTERN SKIP CRITERIA
 
     var cs2 = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
     var tc = cs2[0]>90 && cs2[1]>90 && cs2[2]>90 ? "black":"white";
@@ -368,20 +366,25 @@ function generate_HGR()
 
   //var pmax = _D.blc[1]*_D.blc[0];
   var pmax = oPATTERN.pmax;
-
+  var bDouble = false;
   for(var p=_D.opat,dx=0,dy=0;p<pmax;p++)
   {
-    if(skip_double_patterns==true && _D.remdub)
+    if(_D.remdub)
     {
       for(var p=_D.opat;p<pmax;p++)
       {
         var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
         var cs = "#"+RGB2HEX(c).join("");
-        if(colIDX[cs]!=true) {  pid=p; break; }   // PATTERN SKIP CRITERIA
+        if(typeof(colIDX[cs])=="undefined") { pid=p; break; }   // PATTERN SKIP CRITERIA
       }
       if(p==pmax) break;
     }
-    colIDX[cs] = true;  // skip patterns that generate identical color
+    else
+    {
+        var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+        var cs = "#"+RGB2HEX(c).join("");
+        bDouble = typeof(colIDX[cs])=="number"
+    }
 
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
@@ -415,12 +418,25 @@ function generate_HGR()
     clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+3);
     clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+3);
 
-    var digits = p.toString(10);
-    for(var c=0;c<digits.length;c++)
-      draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
-    
+    if(bDouble)
+    {
+      draw_number(11,[ddx,ddy-1]);
+      ddx+=6;
+      var digits = colIDX[cs].toString(10);
+      for(var c=0;c<digits.length;c++)
+        draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
+    }
+    else
+    {
+      var digits = p.toString(10);
+      for(var c=0;c<digits.length;c++)
+        draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
+    }
     // detect 2x2 patterns
     if(oPATTERN.is_2x2(p)) draw_number(10,[ddx+c*6,ddy-1]);
+
+    if(!bDouble)
+      colIDX[cs] = p;  // skip patterns that generate identical color
 
     pid++;
     if(dx==_D.blc[0]-1) dx=0; else { dx++; continue; }
@@ -432,11 +448,11 @@ function draw_number(num,pos)
 {
   var numberfont = 
   [
-   ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110","11011"]
-  ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011","01110"]
-  ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111","11011"]
-  ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110","00000"]
-  ,["01110","01111","11111","11110","00011","11110","01110","11000","01110","01100","00000"]
+   ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110","11011","00000"]
+  ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011","01110","01100"]
+  ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111","11011","11000"]
+  ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110","00000","01100"]
+  ,["01110","01111","11111","11110","00011","11110","01110","11000","01110","01100","00000","00000"]
   ]
 
   // DRAW NUMBER
@@ -445,7 +461,6 @@ function draw_number(num,pos)
     {
         if(numberfont[y][num].charAt(x)=="1") setPixel_HGR(x+pos[0],y+pos[1]);
         else clearPixel_HGR(x+pos[0],y+pos[1]);
-
         clearPixel_HGR(x+1+pos[0],y+pos[1]);
         clearPixel_HGR(x+2+pos[0],y+pos[1]);
     }
