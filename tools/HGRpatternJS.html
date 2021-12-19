@@ -137,6 +137,7 @@ function init_gui(_o)
   document.getElementById("formulas").innerHTML = s;
 
   oPALETTE.insert_canvas({"id":"mainPalette","width":430,"height":150});
+  update_criteria();
   generate_GRIDS();
   generate_HGR();
   oPALETTE.dot_size=8;
@@ -199,12 +200,12 @@ function setPixel_HGR(x,y,h)
     apple2plus.hw.write(adr,wbyt);                    // write byte 
 }
 
-function clearPixel_HGR(x,y)
+function clearPixel_HGR(x,y,h)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
     var rbyt = apple2plus.hw.read(adr);
-    var wbyt = rbyt & ~(1 << x%7) & 127;              // AND current bit with pixel bit
+    var wbyt = rbyt & ~(1 << x%7) & 127 | (h?h:0);              // AND current bit with pixel bit
     apple2plus.hw.write(adr,wbyt);                    // write byte 
 }
 
@@ -355,6 +356,24 @@ function gen_cell(patternID,x,y,img)
   return s;
 }
 
+// TODO make oPATTERN object from function
+function update_criteria()
+{
+  oPATTERN.criteria = {"colIDX":{},"dirEXC":{}}
+  for(var p=0;p<oPATTERN.pmax;p++)
+  {
+    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var cs = "#"+RGB2HEX(c).join("");
+    if(typeof(oPATTERN.criteria.colIDX[cs])!="number") oPATTERN.criteria.colIDX[cs] = p;
+  }
+
+  // TODO DIRECT EXCLUSION
+
+  //for(var i in oPATTERN.criteria.colIDX)
+  //  document.write("colIDX["+i+"]="+oPATTERN.criteria.colIDX[i]+"<br>")
+}
+
+function 
 
 function generate_HGR()
 { 
@@ -366,25 +385,29 @@ function generate_HGR()
 
   //var pmax = _D.blc[1]*_D.blc[0];
   var pmax = oPATTERN.pmax;
-  var bDouble = false;
+  //var bDouble = false;
+
   for(var p=_D.opat,dx=0,dy=0;p<pmax;p++)
   {
+
     if(_D.remdub)
     {
       for(var p=_D.opat;p<pmax;p++)
       {
         var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
         var cs = "#"+RGB2HEX(c).join("");
-        if(typeof(colIDX[cs])=="undefined") { pid=p; break; }   // PATTERN SKIP CRITERIA
+        if(typeof(colIDX[cs])=="undefined") { pid=p; break; }        // PATTERN SKIP CRITERIA
       }
       if(p==pmax) break;
     }
     else
     {
-        var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-        var cs = "#"+RGB2HEX(c).join("");
-        bDouble = typeof(colIDX[cs])=="number"
+       // var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+       // var cs = "#"+RGB2HEX(c).join("");
+        //bDouble = typeof(colIDX[cs])=="number";
     }
+    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var cs = "#"+RGB2HEX(c).join("");
 
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
@@ -418,16 +441,19 @@ function generate_HGR()
     clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+3);
     clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+3);
 
-    if(bDouble)
+    // DOUBLE
+    if( oPATTERN.criteria.colIDX[cs]!=p )
     {
+      //document.write("hoi");
       draw_number(11,[ddx,ddy-1]);
       ddx+=6;
-      var digits = colIDX[cs].toString(10);
+      var digits = oPATTERN.criteria.colIDX[cs].toString(10);
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
     }
     else
     {
+      // NORMAL
       var digits = p.toString(10);
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
@@ -435,8 +461,8 @@ function generate_HGR()
     // detect 2x2 patterns
     if(oPATTERN.is_2x2(p)) draw_number(10,[ddx+c*6,ddy-1]);
 
-    if(!bDouble)
-      colIDX[cs] = p;  // skip patterns that generate identical color
+    //if(!bDouble)
+    //  colIDX[cs] = p;  // skip patterns that generate identical color
 
     pid++;
     if(dx==_D.blc[0]-1) dx=0; else { dx++; continue; }
@@ -448,11 +474,11 @@ function draw_number(num,pos)
 {
   var numberfont = 
   [
-   ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110","11011","00000"]
-  ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011","01110","00010"]
-  ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111","11011","01000"]
-  ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110","00000","00010"]
-  ,["01110","01111","11111","11110","00011","11110","01110","11000","01110","01100","00000","00000"]
+   ["01110","00110","01110","11110","00111","11111","01111","11111","01110","01110","11011","00000","10001"]
+  ,["11011","01110","11011","00011","01111","11000","11000","00011","11011","11011","01110","00101","00100"]
+  ,["11011","00110","00110","01110","11011","11110","11110","00110","01110","01111","11011","10100","00100"]
+  ,["11011","00110","01100","00011","11111","00011","11011","01100","11011","00110","00000","00101","00100"]
+  ,["01110","01111","11111","11110","00011","11110","01110","11000","01110","01100","00000","00000","10001"]
   ]
 
   // DRAW NUMBER
@@ -460,9 +486,9 @@ function draw_number(num,pos)
     for(var y=0;y<5;y++)
     {
         if(numberfont[y][num].charAt(x)=="1") setPixel_HGR(x+pos[0],y+pos[1],128);
-        else clearPixel_HGR(x+pos[0],y+pos[1]);
-        clearPixel_HGR(x+1+pos[0],y+pos[1]);
-        clearPixel_HGR(x+2+pos[0],y+pos[1]);
+        else clearPixel_HGR(x+pos[0],y+pos[1],128);
+        clearPixel_HGR(x+1+pos[0],y+pos[1],128);
+        clearPixel_HGR(x+2+pos[0],y+pos[1],128);
     }
 }
 
