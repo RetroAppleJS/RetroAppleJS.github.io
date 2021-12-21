@@ -359,9 +359,12 @@ function gen_cell(patternID,x,y,img)
 // TODO make oPATTERN object from function
 function update_criteria()
 {
-  oPATTERN.criteria = {"DOUBL":{},"EXCL":{15:"VPAT",34:"VPAT",57:"VPAT"}}  // TODO ADD MORE EXCLUSIONS
+  oPATTERN.criteria = {"DOUBL":{},"EXCL":{15:"VPAT",18:"SAT",19:"VPAT",24:"SAT",33:"SAT",34:"VPAT",36:"SAT",54:"VPAT",57:"VPAT",59:"VPAT",63:"VPAT",91:"PROX",93:"PROX",94:"PROX",99:"VPAT"
+                      ,102:"VPAT",103:"VPAT",108:"VPAT",111:"VPAT",115:"VPAT",119:"VPAT",126:"PROX",136:"VPAT",153:"VPAT",155:"VPAT",156:"VPAT",157:"VPAT",159:"VPAT",174:"PROX",179:"VPAT",185:"VPAT",186:"PROX",187:"VPAT",189:"PROX",198:"VPAT"
+                      ,201:"VPAT",204:"VPAT",206:"VPAT",221:"VPAT",234:"PROX",236:"VPAT",238:"VPAT",243:"VPAT",246:"VPAT",273:"VPAT",274:"VPAT",280:"VPAT",290:"VPAT"
+                      ,307:"VPAT",367:"VPAT",371:"VPAT",379:"VPAT"}}  // TODO ADD MORE EXCLUSIONS
   // VPAT: outspoken vertical pattern
-  var excl = [30,51,55,153,379,382]
+  var excl = [30,51,55,382]
   for(var i=0;i<excl.length;i++)
     oPATTERN.criteria.EXCL[excl[i]] = true;
 
