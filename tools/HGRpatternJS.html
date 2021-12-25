@@ -362,10 +362,10 @@ function update_criteria()
   ,"SAT":"Color composition with low saturation"
   ,"VPAT":"Heavy vertical lines"
   ,"PROX":"Redundant, too close to an optimal pattern"}
-  oPATTERN.criteria = {"EXCL":{18:"SAT",19:"VPAT",24:"SAT",33:"SAT",34:"VPAT",36:"SAT",54:"VPAT",57:"VPAT",59:"VPAT",63:"VPAT",91:"PROX",93:"PROX",94:"PROX",99:"VPAT"
-                      ,102:"VPAT",103:"VPAT",108:"VPAT",111:"VPAT",115:"VPAT",119:"VPAT",126:"PROX",136:"VPAT",153:"VPAT",155:"VPAT",156:"VPAT",157:"VPAT",159:"VPAT",174:"PROX",179:"VPAT",185:"VPAT",186:"PROX",187:"VPAT",189:"PROX",198:"VPAT"
-                      ,201:"VPAT",204:"VPAT",206:"VPAT",221:"VPAT",234:"PROX",236:"VPAT",238:"VPAT",243:"VPAT",246:"VPAT",273:"VPAT",274:"VPAT",280:"VPAT",290:"VPAT"
-                      ,307:"VPAT",367:"VPAT",371:"VPAT",379:"VPAT"}}  // TODO ADD MORE EXCLUSIONS
+  oPATTERN.criteria = {"EXCL":{18:"SAT",19:"VPAT",24:"SAT",33:"SAT",34:"VPAT",36:"SAT",54:"VPAT",57:"VPAT",59:"VPAT",63:"VPAT",66:"SAT",72:"SAT",91:"PROX",93:"PROX",94:"PROX",99:"VPAT"
+                      ,102:"VPAT",103:"VPAT",108:"VPAT",110:"VPAT",111:"VPAT",115:"VPAT",118:"VPAT",119:"VPAT",126:"PROX",129:"SAT",132:"SAT",136:"VPAT",147:"VPAT",153:"VPAT",155:"VPAT",156:"VPAT",157:"VPAT",159:"VPAT",174:"PROX",179:"VPAT",185:"VPAT",186:"PROX",187:"VPAT",189:"PROX",198:"VPAT"
+                      ,201:"VPAT",204:"VPAT",206:"VPAT",207:"VPAT",221:"VPAT",222:"SAT",231:"SAT",234:"PROX",236:"VPAT",238:"VPAT",243:"VPAT",246:"VPAT",249:"VPAT",252:"VPAT",273:"VPAT",274:"VPAT",280:"VPAT",290:"VPAT"
+                      ,307:"VPAT",311:"VPAT",313:"VPAT",315:"VPAT",319:"VPAT",355:"VPAT",358:"VPAT",367:"VPAT",371:"VPAT",374:"VPAT",375:"VPAT",379:"VPAT",392:"VPAT"}}  // TODO ADD MORE EXCLUSIONS
   // VPAT: outspoken vertical pattern
   var excl = [30,51,55,382]
   for(var i=0;i<excl.length;i++)
@@ -379,7 +379,7 @@ function update_criteria()
     var cs = "#"+RGB2HEX(c).join("");
     //if(typeof(oPATTERN.criteria.DOUBL[cs])!="number" && !oPATTERN.criteria.EXCL[p]) oPATTERN.criteria.DOUBL[cs] = p;
 
-    if(typeof(doubles[cs])!="number") doubles[cs] = p;
+    if(typeof(doubles[cs])!="number" && !oPATTERN.criteria.EXCL[p]) doubles[cs] = p;
     else oPATTERN.criteria.EXCL[p] = typeof(oPATTERN.criteria.EXCL[p])!="string"?("DOUBL("+doubles[cs]+")"):(oPATTERN.criteria.EXCL[p]+",DOUBL("+doubles[cs]+")");
 
     //if(oPATTERN.criteria.EXCL[p] && oPATTERN.criteria.EXCL[p].indexOf("DOUBL")<0) oPATTERN.criteria.EXCL[p] += " DOUBL"
