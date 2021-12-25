@@ -262,7 +262,6 @@ function generate_GRIDS()
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
   var DOUBL = {}
-  var pid = 0;  // patternID
   s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
   //var pmax = _D.blc[1]*_D.blc[0];
   var pmax = oPATTERN.pmax;
@@ -289,7 +288,6 @@ function generate_GRIDS()
       s+="</tr>";
     }
     s+="</table><br>";
-    pid++;
   }  
   document.getElementById("debug").innerHTML = s;
 
@@ -359,45 +357,63 @@ function gen_cell(patternID,x,y,img)
 // TODO make oPATTERN object from function
 function update_criteria()
 {
-  oPATTERN.criteria = {"DOUBL":{},"EXCL":{15:"VPAT",18:"SAT",19:"VPAT",24:"SAT",33:"SAT",34:"VPAT",36:"SAT",54:"VPAT",57:"VPAT",59:"VPAT",63:"VPAT",91:"PROX",93:"PROX",94:"PROX",99:"VPAT"
+  oPATTERN.criteria_desc = {
+    "DOUBL":"Redundant, same color"
+  ,"SAT":"Color composition with low saturation"
+  ,"VPAT":"Heavy vertical lines"
+  ,"PROX":"Redundant, too close to an optimal pattern"}
+  oPATTERN.criteria = {"EXCL":{18:"SAT",19:"VPAT",24:"SAT",33:"SAT",34:"VPAT",36:"SAT",54:"VPAT",57:"VPAT",59:"VPAT",63:"VPAT",91:"PROX",93:"PROX",94:"PROX",99:"VPAT"
                       ,102:"VPAT",103:"VPAT",108:"VPAT",111:"VPAT",115:"VPAT",119:"VPAT",126:"PROX",136:"VPAT",153:"VPAT",155:"VPAT",156:"VPAT",157:"VPAT",159:"VPAT",174:"PROX",179:"VPAT",185:"VPAT",186:"PROX",187:"VPAT",189:"PROX",198:"VPAT"
                       ,201:"VPAT",204:"VPAT",206:"VPAT",221:"VPAT",234:"PROX",236:"VPAT",238:"VPAT",243:"VPAT",246:"VPAT",273:"VPAT",274:"VPAT",280:"VPAT",290:"VPAT"
                       ,307:"VPAT",367:"VPAT",371:"VPAT",379:"VPAT"}}  // TODO ADD MORE EXCLUSIONS
   // VPAT: outspoken vertical pattern
   var excl = [30,51,55,382]
   for(var i=0;i<excl.length;i++)
-    oPATTERN.criteria.EXCL[excl[i]] = true;
+    oPATTERN.criteria.EXCL[excl[i]] = "BAD";
 
-
+  // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
+  var doubles = {};
   for(var p=0;p<oPATTERN.pmax;p++)
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
-    if(typeof(oPATTERN.criteria.DOUBL[cs])!="number" && !oPATTERN.criteria.EXCL[p]) oPATTERN.criteria.DOUBL[cs] = p;
-  }
+    //if(typeof(oPATTERN.criteria.DOUBL[cs])!="number" && !oPATTERN.criteria.EXCL[p]) oPATTERN.criteria.DOUBL[cs] = p;
 
+    if(typeof(doubles[cs])!="number") doubles[cs] = p;
+    else oPATTERN.criteria.EXCL[p] = typeof(oPATTERN.criteria.EXCL[p])!="string"?("DOUBL("+doubles[cs]+")"):(oPATTERN.criteria.EXCL[p]+",DOUBL("+doubles[cs]+")");
+
+    //if(oPATTERN.criteria.EXCL[p] && oPATTERN.criteria.EXCL[p].indexOf("DOUBL")<0) oPATTERN.criteria.EXCL[p] += " DOUBL"
+    //if(typeof(oPATTERN.criteria.EXCL[p])!="string" ) oPATTERN.criteria.EXCL[p] = "EXCL";
+  }
 
   // TODO DIRECT EXCLUSION
   //for(var i in oPATTERN.criteria.DOUBL)
   //  document.write("DOUBL["+i+"]="+oPATTERN.criteria.DOUBL[i]+"<br>")
+
+  //for(var i in oPATTERN.criteria.EXCL)
+  //  document.write("EXCL["+i+"]="+oPATTERN.criteria.EXCL[i]+"<br>")
 }
 
 function check_criteria(patternID)
 {
   var c = oPATTERN.color(patternID,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
-    if(oPATTERN.criteria.EXCL[patternID]) return "EXCL";
-    if(oPATTERN.criteria.DOUBL[cs]!=patternID) return  "DOUBL";
+    if(oPATTERN.criteria.EXCL[patternID])
+    {
+      if(oPATTERN.criteria.EXCL[patternID].substring(0,5)=="DOUBL") return oPATTERN.criteria.EXCL[patternID].split("(")
+      else return ["EXCL"]
+    }
+    //if(oPATTERN.criteria.EXCL[patternID]) return "EXCL";
+    //if(oPATTERN.criteria.DOUBL[cs]!=patternID) return  "DOUBL";
     return 0;
 }
 
 function generate_HGR()
 { 
     wipe_HGR(0);
-    var pid = 0;
     var spc = [11,11];
     var ofs = [-5,-4]
-    var DOUBL = {};
+    //var DOUBL = {};
 
   //var pmax = _D.blc[1]*_D.blc[0];
   var pmax = oPATTERN.pmax;
@@ -410,9 +426,11 @@ function generate_HGR()
     {
       for(var p=_D.opat;p<pmax;p++)
       {
+        var cc = check_criteria(p);
         var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
         var cs = "#"+RGB2HEX(c).join("");
-        if(typeof(DOUBL[cs])=="undefined") { pid=p; break; }        // PATTERN SKIP CRITERIA
+        if(cc[0]=="DOUBL") break;
+        //if(typeof(DOUBL[cs])=="undefined") { pid=p; break; }        // PATTERN SKIP CRITERIA
       }
       if(p==pmax) break;
     }
@@ -459,7 +477,7 @@ function generate_HGR()
 
     var cc = check_criteria(p);
 
-    if(cc=="EXCL")   // EXCLUDED
+    if(cc[0]=="EXCL")   // EXCLUDED
     {
       draw_number(12,[ddx,ddy-1]);
       ddx+=6;
@@ -467,12 +485,13 @@ function generate_HGR()
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])      
     }
-    else if(cc=="DOUBL")   // DOUBLE
+    else if(cc[0]=="DOUBL")   // DOUBLE
     {
       //document.write("hoi");
       draw_number(11,[ddx,ddy-1]);
       ddx+=6;
-      var digits = oPATTERN.criteria.DOUBL[cs].toString(10);
+      //var digits = oPATTERN.criteria.DOUBL[cs].toString(10);
+      var digits = cc[1].split(")")[0].toString(10);
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
     }
@@ -489,7 +508,6 @@ function generate_HGR()
     //if(!bDouble)
     //  DOUBL[cs] = p;  // skip patterns that generate identical color
 
-    pid++;
     if(dx==_D.blc[0]-1) dx=0; else { dx++; continue; }
     if(dy==_D.blc[1]-1) break; else dy++;
   }
