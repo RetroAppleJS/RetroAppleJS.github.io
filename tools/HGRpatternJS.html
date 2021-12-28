@@ -158,6 +158,53 @@ function init_gui(_o)
 
   oPALETTE.opat = _D.opat;
   oPALETTE.draw_colormatches();
+
+
+  // PALETTE MOUSE EVENTS (select circular area)
+  oPALETTE.canvas[1].addEventListener('mousedown',
+        function(event)
+        {
+            oPALETTE.mouseXY.x = event.offsetX;
+            oPALETTE.mouseXY.y = event.offsetY;
+            oPALETTE.mouseXY.down = true;
+        }
+        ,false);
+
+  oPALETTE.canvas[1].addEventListener('mousemove',
+  function(event)
+  {
+    if(!oPALETTE.mouseXY.down) return;
+
+      oPALETTE.mouseXY.dx = event.offsetX-oPALETTE.mouseXY.x;
+      oPALETTE.mouseXY.dy = event.offsetY-oPALETTE.mouseXY.y;
+      var r = Math.sqrt(oPALETTE.mouseXY.dx*oPALETTE.mouseXY.dx + oPALETTE.mouseXY.dy*oPALETTE.mouseXY.dy)
+      oPALETTE.clear_layer(1);
+      oPALETTE.draw_colormatches();
+      oPALETTE.ctx[1].beginPath();
+      oPALETTE.ctx[1].arc(oPALETTE.mouseXY.x, oPALETTE.mouseXY.y, r, -0.5*Math.PI, 1.5*Math.PI);
+      oPALETTE.ctx[1].lineWidth=1;
+      oPALETTE.ctx[1].strokeStyle = "#808080";
+      oPALETTE.ctx[1].stroke();
+  }
+  ,false);
+
+  oPALETTE.canvas[1].addEventListener('mouseup',
+  function(event)
+  {
+      oPALETTE.mouseXY.dx = event.offsetX-oPALETTE.mouseXY.x;
+      oPALETTE.mouseXY.dy = event.offsetY-oPALETTE.mouseXY.y;
+      var r = Math.sqrt(oPALETTE.mouseXY.dx*oPALETTE.mouseXY.dx + oPALETTE.mouseXY.dy*oPALETTE.mouseXY.dy)
+
+      var imageData = oPALETTE.ctx[0].getImageData(oPALETTE.mouseXY.x, oPALETTE.mouseXY.y, 1, 1).data;
+      alert("TODO report on narrowed selection - down("+oPALETTE.mouseXY.x+","+oPALETTE.mouseXY.y+") r("+r+") #"+oPALETTE.RGB2HEX(imageData).join(""));
+
+      oPALETTE.mouseXY.down = false;
+      oPALETTE.clear_layer(1);
+      oVoronoi.render();
+      oPALETTE.draw_colormatches();
+
+  }
+  ,false);        
 }
 
 /////////////////////////////////////////////////////////
@@ -713,8 +760,8 @@ function load_bitmap()
         </li>
         <li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);;oVoronoi.render();oPALETTE.draw_colormatches()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
-        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);;oVoronoi.render();oPALETTE.draw_colormatches();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
       </ul>
     </div>
     <div id=main>

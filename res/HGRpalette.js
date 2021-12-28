@@ -9,6 +9,7 @@ function PALETTE()
     this.ctx         = [];
     this.hex_pal     = [];
     this.limit_dots  = {};
+    this.mouseXY     = {"x":0,"y":0,"dx":0,"dy":0,"down":false};
 
     this.load        = function(p) { this.hex_pal = p }
     this.debug_data  = {};
@@ -48,29 +49,6 @@ function PALETTE()
         this.canvas[1].style.position = "absolute";
         this.canvas[1].style.cursor = "crosshair";
         //this.canvas[1].style.top = "58px";
-        this.canvas[1].addEventListener('click', 
-        function(event)
-        {
-            x = event.offsetX;
-            y = event.offsetY;
-            var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
-            alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""))
-        }
-        ,false);
-
-        this.canvas[1].addEventListener('mousemove', 
-        function(event)
-        {
-            x = event.offsetX;
-            y = event.offsetY;
-            var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
-
-            /*
-            var imageData = oPALETTE.ctx[0].getImageData(x, y, 1, 1).data;
-            alert("("+x+","+y+") #"+oPALETTE.RGB2HEX(imageData).join(""));
-            */
-        }
-        ,false);
 
         anchor.appendChild(this.canvas[1]);
       
