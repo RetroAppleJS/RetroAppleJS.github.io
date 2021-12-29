@@ -342,7 +342,7 @@ function generate_GRIDS()
       for(var x=0;x<oPATTERN.bmapx;x++) s+= gen_cell(p,x,y,p==_D.bmapID?dot:["",""]);
       s+="</tr>";
     }
-    s+="</table><br>";
+    s+="</table>";
   }  
   document.getElementById("debug").innerHTML = s;
 
