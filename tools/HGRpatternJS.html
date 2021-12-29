@@ -69,7 +69,7 @@ var CONF_builddate="";
 var _D = 
 {
      "blc":[10,10]       // pattern matrix
-    ,"bls":[14,8]        // pattern sample size
+    ,"bls":[17,8]        // pattern sample size
     ,"opat":0            // pattern index offset
     ,"remExcl":true     // remove excluded patterns
     ,"leftpane":430      // size of left pane (grid)
@@ -311,7 +311,6 @@ function generate_GRIDS()
   //var im = "../res/pixT.gif";
   var dot = ["<img src=\""+im+"\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
             ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
-  // TODO: MODIFIERS - preset pattern -  load/save pattern)
 
   // PARSE PATTERN FUNCTION - CASE BY CASE
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
@@ -321,6 +320,8 @@ function generate_GRIDS()
   var pmax = oPATTERN.pmax;
   for(var p=0;p<pmax;p++)
   {
+    if(p==734) p=734;
+
     if(Object.keys(oPALETTE.limit_dots).length>0 && oPALETTE.limit_dots[p]!=true) continue;
 
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
@@ -334,7 +335,7 @@ function generate_GRIDS()
     if(_D.remExcl==false || cc[0]!="EXCL" && cc[0]!="DOUBL")
       oPALETTE.hex_pal[p] = cs;
 
-    s+= "<div style='width:430px;background-color:"+cs+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+(p+_D.opat)+"</big> "
+    s+= "<div style='width:430px;background-color:"+cs+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
        +"<small>"+cs+" ("+cs2.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)+"</small>"
     s+= formula_ref[p]?("<br>"+formula_ref[p]):"";
     s+="</div>"
@@ -626,7 +627,7 @@ function update_param()
         if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
         else dot_idx = "";
         document.getElementById("disp_param3").innerHTML 
-        ="<font color=white>dot select "+(dot_idx+_D.opat)+"</font>"
+        ="<font color=white>dot select "+dot_idx+"</font>"
     }
 
     if(document.getElementById('param4'))
@@ -771,7 +772,9 @@ function load_bitmap()
     <br>
     <input type=button value="prev" onclick="document.getElementById('param4').value--;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
     <input type=button value="next" onclick="document.getElementById('param4').value++;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
+    <input type=button value="filter excluded patterns" onclick="document.getElementById('param5').value^=1;this.backgroundColor=document.getElementById('param5').value?'blue':'none'" style='vertical-align:top; margin:4px 0px 0px 0px;background-color:blue'>
     <input id=param4 value=0 hidden>
+    <input id=param5 value=1>
   </td>
 </tr></table>
 
