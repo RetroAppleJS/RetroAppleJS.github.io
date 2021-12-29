@@ -151,50 +151,53 @@ function PALETTE()
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
     
-        for(var i=0;i<this.dec_near_col.length;i++)
+        for(var p=0;p<this.dec_near_col.length;p++)
         {
-            if(Object.keys(this.limit_dots).length==0 || this.limit_dots[i]==true )
-            {
-                var x = this.dec_near_pos[i][0][0];
-                var y = this.dec_near_pos[i][0][1];
-                var hex_dx = this.RGB2HEX(this.dec_near_col[i]);
-                var hex_cx = this.RGB2HEX(this.dec_pal[i]);
-                
-                var sec = this.define_section(x,y,width,height);
+            var cc = check_criteria(p);
+            if(Object.keys(this.limit_dots).length>0
+                && this.limit_dots[p]!=true) continue;      // RANGE SELECT CRITERIA
+            if(_D.filterExcl && cc[0]) continue;            // PATTERN EXCLUSION CRITERIA
 
-                // DRAW CIRCLE
-                this.ctx[1].beginPath();
-                this.ctx[1].arc(x, y, this.dot_size, -0.5*Math.PI, 0.5*Math.PI);
-                this.ctx[1].lineWidth=1;
-                this.ctx[1].strokeStyle = "#000000";
-                this.ctx[1].stroke();
-                this.ctx[1].fillStyle = '#'+hex_cx.join("")
-                this.ctx[1].fill();
+            var x = this.dec_near_pos[p][0][0];
+            var y = this.dec_near_pos[p][0][1];
+            var hex_dx = this.RGB2HEX(this.dec_near_col[p]);
+            var hex_cx = this.RGB2HEX(this.dec_pal[p]);
+            
+            var sec = this.define_section(x,y,width,height);
 
-                this.ctx[1].beginPath();
-                this.ctx[1].arc(x, y, this.dot_size, 0.5*Math.PI, 1.5*Math.PI);
-                this.ctx[1].lineWidth=1;
-                this.ctx[1].strokeStyle = "#000000";
-                this.ctx[1].stroke();
-                this.ctx[1].fillStyle = '#'+hex_dx.join("")
-                this.ctx[1].fill();
+            // DRAW CIRCLE
+            this.ctx[1].beginPath();
+            this.ctx[1].arc(x, y, this.dot_size, -0.5*Math.PI, 0.5*Math.PI);
+            this.ctx[1].lineWidth=1;
+            this.ctx[1].strokeStyle = "#000000";
+            this.ctx[1].stroke();
+            this.ctx[1].fillStyle = '#'+hex_cx.join("")
+            this.ctx[1].fill();
 
-                // DRAW PATTERN INDEX NUMBER
-                this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
-                this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
-                this.ctx[1].textAlign = "center"; 
-                this.ctx[1].textBaseline = "middle";
-                this.ctx[1].fillText(i+this.opat , x, y);
+            this.ctx[1].beginPath();
+            this.ctx[1].arc(x, y, this.dot_size, 0.5*Math.PI, 1.5*Math.PI);
+            this.ctx[1].lineWidth=1;
+            this.ctx[1].strokeStyle = "#000000";
+            this.ctx[1].stroke();
+            this.ctx[1].fillStyle = '#'+hex_dx.join("")
+            this.ctx[1].fill();
 
-                /*
-                // DRAW COLOR VALUE
-                this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
-                this.ctx[1].font = (this.dot_size)+"px Arial bold";
-                this.ctx[1].textAlign = "center"; 
-                this.ctx[1].textBaseline = "middle";
-                this.ctx[1].fillText('#'+hex_cx.join("") , x, y+10);
-                */
-            }
+            // DRAW PATTERN INDEX NUMBER
+            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+            this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
+            this.ctx[1].textAlign = "center"; 
+            this.ctx[1].textBaseline = "middle";
+            this.ctx[1].fillText(i+this.opat , x, y);
+
+            /*
+            // DRAW COLOR VALUE
+            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+            this.ctx[1].font = (this.dot_size)+"px Arial bold";
+            this.ctx[1].textAlign = "center"; 
+            this.ctx[1].textBaseline = "middle";
+            this.ctx[1].fillText('#'+hex_cx.join("") , x, y+10);
+            */
+            
         }
     }
 
