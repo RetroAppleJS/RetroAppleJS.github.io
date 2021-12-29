@@ -133,7 +133,7 @@ function PATTERN(idx,x,y)
   this.color = function(patternID,colorFN)
   {
     this.colCompIDX = {};
-    var m = 1;
+    var m = 2;
     var col_m = 255 * m * m * this.bmapx * this.bmapy;
     var max_sum = [col_m,col_m,col_m];
     var col_sum = [0,0,0];
