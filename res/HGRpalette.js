@@ -153,7 +153,7 @@ function PALETTE()
     
         for(var i=0;i<this.dec_near_col.length;i++)
         {
-            if(Object.keys(this.limit_dots).length===0 || this.limit_dots[i]==true )
+            if(Object.keys(this.limit_dots).length==0 || this.limit_dots[i]==true )
             {
                 var x = this.dec_near_pos[i][0][0];
                 var y = this.dec_near_pos[i][0][1];

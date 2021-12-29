@@ -2,7 +2,7 @@ function PATTERN(idx,x,y)
 {
     this.color_arr = [];
     this.bmapx = 28;   // grid width
-    this.bmapy = 12;   // grid height
+    this.bmapy = 4;   // grid height
 
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
