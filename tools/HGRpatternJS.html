@@ -141,17 +141,18 @@ function init_gui(_o)
  
   //oPALETTE.insert_canvas({"id":"mainPalette","width":430,"height":150});
   oPALETTE.insert_canvas({"id":"mainPalette","width":_D.leftpane+_D.rightpane,"height":_D.topheight});
-  update_criteria();
-
-
-  generate_GRIDS();
+  //update_criteria();
+  update_criteria2();
+  inventorize_PALETTE();
   oPALETTE.dot_size=6;
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
-  update_param(); 
+
+  update_param();
+
+  generate_GRIDS();
   generate_HGR();
   
-
   oPALETTE.clear_layer(1);
   // DRAW VORONOI 
   oVoronoi.compute();
@@ -309,6 +310,17 @@ function Cpix(t,x,y,z)
   var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green";
 }
 
+function inventorize_PALETTE()
+{
+  var pmax = oPATTERN.pmax;
+  for(var p=0;p<pmax;p++)
+  {
+    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var cs = "#"+RGB2HEX(c).join("");
+    oPALETTE.hex_pal[p] = cs;   // inventorize palette colors from every pattern
+  }
+}
+
 // SHOW BITMAP TABLES (LEFT PANE)
 function generate_GRIDS()
 {
@@ -324,22 +336,32 @@ function generate_GRIDS()
   var pmax = oPATTERN.pmax;
   for(var p=0;p<pmax;p++)
   {
-    if(p==734) p=734;   // TODO DEBUG :  WHY DOES IT JUMP FROM 734 TO 750 ?
-
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
     var cs2 = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
-    var cc = check_criteria(p);
-
-    oPALETTE.hex_pal[p] = cs;   // inventorize palette colors from every pattern
+    var cc2 = check_criteria2(p);
 
     if(Object.keys(oPALETTE.limit_dots).length>0
-          && oPALETTE.limit_dots[p]!=true) continue;      // RANGE SELECT CRITERIA
-    if(_D.filterExcl && cc[0]!=0) continue;               // PATTERN EXCLUSION CRITERIA
+          && oPALETTE.limit_dots[p]!=true) continue;                // RANGE SELECT CRITERIA
+    if(Object.keys(oPALETTE.limit_dots).length!=1 
+          && _D.filterExcl && Object.keys(cc2).length>0) continue;   // PATTERN EXCLUSION CRITERIA
 
     var tc = cs2[0]>90 && cs2[1]>90 && cs2[2]>90 ? "black":"white";
+
     s+= "<div style='width:430px;background-color:"+cs+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
-       +"<small>"+cs+" ("+cs2.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)+"</small>"
+       +"<small>"+cs+" ("+cs2.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)
+       //+(typeof(oPATTERN.criteria[p])!="undefined"?(" "+oPATTERN.criteria[p]):"")
+       //+typeof(oPATTERN.criteria[p])
+       
+    if(Object.keys(cc2).length>0)
+    {
+      s+=" ";
+      for(var j in oPATTERN.criteria2[p])
+        if(oPATTERN.criteria2[p][j]>=0) s+=j+":"+oPATTERN.criteria2[p][j]+" ";
+        else s+= j+" ";
+    }
+
+    s+="</small>"
     s+= formula_ref[p]?("<br>"+formula_ref[p]):"";
     s+="</div>"
     s+= "<table style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
@@ -417,6 +439,7 @@ function gen_cell(patternID,x,y,img)
   return s;
 }
 
+/*
 // TODO make oPATTERN object from function
 function update_criteria()
 {
@@ -434,6 +457,41 @@ function update_criteria()
                       ,601:"PROX(309)",602:"SAT",605:"PROX(599)",606:"PROX(603)",611:"VPAT",614:"VPAT",615:"VPAT",617:"PROX(105)",619:"PROX(318)",620:"VPAT",622:"VPAT",623:"VPAT",627:"VPAT",630:"VPAT",631:"VPAT",635:"SAT",636:"PROX(317)",638:"PROX(635)",641:"SAT",644:"SAT",648:"SAT",649:"PROX(306)",653:"PROX(539)",654:"PROX(555)",655:"SAT",656:"PROX(3)",657:"PROX(308)",658:"PROX(312)",659:"VPAT",660:"PROX(308)",661:"PROX(309)",662:"PROX(105)",664:"PROX(312)",665:"VPAT",666:"PROX(314)",667:"VPAT",668:"VPAT",669:"VPAT",670:"PROX(318)",671:"VPAT",681:"PROX(314)",685:"PROX(634)",686:"PROX(683)",691:"VPAT",694:"PROX(318)",695:"SAT",697:"VPAT",699:"VPAT"
                       ,700:"PROX(318)",701:"PROX(635)",710:"VPAT",711:"PROX(317)",713:"VPAT",715:"PROX(318)",716:"VPAT",717:"VPAT",718:"VPAT",719:"VPAT",720:"PROX(263)",721:"PROX(535)",722:"SAT",724:"PROX(535)",725:"PROX(599)",728:"SAT",729:"VPAT",730:"PROX(634)",731:"PROX(635)",732:"VPAT",733:"VPAT",734:"PROX(635)",735:"PROX(503)",736:"PROX(267)",737:"PROX(653)",738:"PROX(555)",739:"SAT",740:"PROX(653)",741:"PROX(603)",742:"VPAT",743:"PROX(701)",744:"PROX(555)",745:"PROX(459)",746:"PROX(683)",748:"VPAT",749:"PROX(701)",750:"VPAT",751:"PROX(507)",754:"SAT",755:"VPAT",758:"VPAT",760:"SAT",761:"VPAT",764:"VPAT",765:"PROX(503)",766:"PROX(507)"
                     }
+  
+  // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
+  var doubles = {};
+  for(var p=0;p<oPATTERN.pmax;p++)
+  {
+    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var cs = "#"+RGB2HEX(c).join("");
+    if(typeof(doubles[cs])!="number") doubles[cs] = p;
+    else oPATTERN.criteria[p] = typeof(oPATTERN.criteria[p])!="string"
+      ?("DOUBL("+doubles[cs]+")") : ("DOUBL("+doubles[cs]+"),"+oPATTERN.criteria[p]);
+  }
+
+  // REPORT EXCLUSION RULES
+  //for(var i in oPATTERN.criteria)
+  //  document.write("EXCL["+i+"]="+oPATTERN.criteria[i]+"<br>")
+}
+*/
+
+function update_criteria2()
+{
+  oPATTERN.criteria_desc = {
+   "DOUBL":"copy of "
+  ,"SAT":"pale blend"
+  ,"VPAT":"hard vertical lines"
+  ,"PROX":"adjoining "}
+
+  oPATTERN.criteria2 = {9:{"PROX":3},11:{"SAT":-1},13:{"PROX":7},14:{"PROX":11},17:{"VPAT":-1},18:{"SAT":-1},19:{"VPAT":-1},20:{"VPAT":-1},24:{"SAT":-1},25:{"PROX":22},27:{"SAT":-1},29:{"PROX":23},30:{"SAT":-1},33:{"SAT":-1},34:{"VPAT":-1},35:{"PROX":41},36:{"SAT":-1},38:{"PROX":41},39:{"SAT":-1},41:{"SAT":-1},44:{"PROX":41},45:{"SAT":-1},46:{"PROX":43},50:{"PROX":41},51:{"VPAT":-1},54:{"VPAT":-1},55:{"VPAT":-1},56:{"PROX":41},57:{"VPAT":-1},59:{"VPAT":-1},62:{"SAT":-1},63:{"VPAT":-1},66:{"SAT":-1},72:{"SAT":-1},73:{"PROX":22},75:{"SAT":-1},77:{"PROX":23},78:{"SAT":-1},89:{"PROX":53},91:{"PROX":87},93:{"PROX":87},94:{"PROX":87},98:{"PROX":41},99:{"VPAT":-1}
+  ,102:{"VPAT":-1},103:{"VPAT":-1},104:{"PROX":41},107:{"PROX":62},108:{"VPAT":-1},110:{"VPAT":-1},114:{"SAT":-1},111:{"VPAT":-1},115:{"VPAT":-1},118:{"VPAT":-1},119:{"VPAT":-1},120:{"SAT":-1},124:{"PROX":61},126:{"PROX":-1},129:{"SAT":-1},132:{"SAT":-1},131:{"PROX":41},134:{"PROX":41},135:{"SAT":-1},136:{"VPAT":-1},140:{"PROX":41},141:{"SAT":-1},142:{"PROX":43},144:{"PROX":3},145:{"PROX":22},147:{"VPAT":-1},148:{"PROX":22},149:{"PROX":53},153:{"VPAT":-1},154:{"PROX":58},155:{"VPAT":-1},156:{"VPAT":-1},157:{"VPAT":-1},158:{"PROX":62},159:{"VPAT":-1},169:{"PROX":58},173:{"PROX":122},174:{"PROX":-1},177:{"SAT":-1},179:{"VPAT":-1},180:{"SAT":-1},182:{"PROX":62},185:{"VPAT":-1},186:{"PROX":-1},187:{"VPAT":-1},188:{"PROX":62},189:{"PROX":-1},194:{"PROX":41},198:{"VPAT":-1},199:{"PROX":61}
+  ,200:{"PROX":41},201:{"VPAT":-1},203:{"PROX":62},204:{"VPAT":-1},206:{"VPAT":-1},207:{"VPAT":-1},208:{"PROX":7},209:{"PROX":23},210:{"SAT":-1},213:{"PROX":87},216:{"SAT":-1},217:{"VPAT":-1},218:{"PROX":122},219:{"PROX":123},221:{"VPAT":-1},222:{"SAT":-1},223:{"PROX":127},224:{"PROX":11},225:{"SAT":-1},226:{"PROX":43},227:{"SAT":-1},228:{"SAT":-1},229:{"PROX":181},230:{"SAT":-1},231:{"SAT":-1},232:{"PROX":43},233:{"PROX":182},234:{"PROX":-1},236:{"VPAT":-1},237:{"PROX":123},238:{"VPAT":-1},239:{"PROX":191},243:{"VPAT":-1},246:{"VPAT":-1},249:{"VPAT":-1},252:{"VPAT":-1},253:{"PROX":127},254:{"PROX":191},263:{"SAT":-1},265:{"PROX":3},269:{"PROX":263},270:{"PROX":267},273:{"VPAT":-1},274:{"VPAT":-1},280:{"VPAT":-1},281:{"PROX":25},283:{"SAT":-1},285:{"PROX":279},286:{"SAT":-1},290:{"VPAT":-1},291:{"PROX":41},293:{"PROX":35},294:{"PROX":41},295:{"PROX":301},297:{"PROX":41}
+  ,300:{"PROX":41},301:{"SAT":-1},302:{"PROX":299},305:{"PROX":404},306:{"PROX":658},307:{"VPAT":-1},308:{"SAT":-1},311:{"VPAT":-1},313:{"VPAT":-1},315:{"VPAT":-1},318:{"SAT":-1},319:{"VPAT":-1},329:{"PROX":22},331:{"SAT":-1},333:{"PROX":279},334:{"SAT":-1},343:{"PROX":349},345:{"PROXY":53},350:{"PROX":347},351:{"PROX":105},355:{"VPAT":-1},358:{"VPAT":-1},359:{"VPAT":-1},361:{"PROX":105},363:{"VPAT":-1},366:{"SAT":-1},367:{"VPAT":-1},370:{"SAT":-1},371:{"VPAT":-1},374:{"VPAT":-1},375:{"VPAT":-1},376:{"SAT":-1},377:{"PROX":61},379:{"VPAT":-1},380:{"PROX":61},387:{"PROX":41},389:{"SAT":-1},390:{"PROX":41},391:{"SAT":-1},392:{"VPAT":-1},393:{"PROX":35},396:{"PROX":41},397:{"SAT":-1},398:{"PROX":299}
+  ,400:{"PROX":3},401:{"PROX":305},402:{"PROX":306},403:{"VPAT":-1},405:{"PROX":309},404:{"PROX":308},406:{"PROX":105},407:{"PROX":317},408:{"PROX":306},409:{"VPAT":-1},410:{"PROX":314},411:{"VPAT":-1},413:{"VPAT":-1},414:{"PROX":318},415:{"VPAT":-1},425:{"PROX":58},429:{"PROX":423},430:{"PROX":427},433:{"SAT":-1},435:{"VPAT":-1},438:{"PROX":62},441:{"VPAT":-1},444:{"PROX":62},445:{"PROX":439},454:{"VPAT":-1},455:{"PROX":317},457:{"VPAT":-1},459:{"PROX":318},460:{"VPAT":-1},461:{"VPAT":-1},462:{"VPAT":-1},463:{"VPAT":-1},464:{"PROX":7},465:{"PROX":279},468:{"PROX":279},469:{"PROX":373},471:{"PROX":381},473:{"VPAT":-1},474:{"PROX":378},475:{"PROX":382},477:{"VPAT":-1},478:{"PROX":478},479:{"PROX":127},480:{"PROX":11},481:{"PROX":391},485:{"PROX":437},486:{"VPAT":-1},487:{"PROX":439},489:{"PROX":62},490:{"PROX":442},491:{"PROX":446},492:{"VPAT":-1},493:{"PROX":439},494:{"PROX":491},495:{"PROX":191},497:{"SAT":-1},498:{"SAT":-1},499:{"VPAT":-1}
+  ,500:{"SAT":-1},502:{"VPAT":-1},504:{"SAT":-1},505:{"VPAT":-1},508:{"VPAT":-1},509:{"PROX":503},510:{"PROX":507},521:{"PROX":3},525:{"PROX":263},526:{"PROX":267},529:{"VPAT":-1},530:{"SAT":-1},536:{"SAT":-1},537:{"PROX":308},539:{"SAT":-1},541:{"PROX":535},542:{"PROX":539},545:{"SAT":-1},546:{"VPAT":-1},547:{"VPAT":-1},548:{"SAT":-1},549:{"SAT":-1},551:{"SAT":-1},553:{"PROX":402},557:{"PROX":542},558:{"PROX":555},559:{"SAT":-1},563:{"VPAT":-1},566:{"VPAT":-1},567:{"VPAT":-1},569:{"VPAT":-1},571:{"VPAT":-1},574:{"SAT":-1},575:{"VPAT":-1},578:{"SAT":-1},584:{"SAT":-1},585:{"PROX":308},587:{"SAT":-1},589:{"PROX":535},590:{"PROX":539}
+  ,601:{"PROX":309},602:{"SAT":-1},605:{"PROX":599},606:{"PROX":603},611:{"VPAT":-1},614:{"VPAT":-1},615:{"VPAT":-1},617:{"PROX":105},619:{"PROX":318},620:{"VPAT":-1},622:{"VPAT":-1},623:{"VPAT":-1},627:{"VPAT":-1},630:{"VPAT":-1},631:{"VPAT":-1},635:{"SAT":-1},636:{"PROX":317},638:{"PROX":635},641:{"SAT":-1},644:{"SAT":-1},648:{"SAT":-1},649:{"PROX":306},653:{"PROX":539},654:{"PROX":555},655:{"SAT":-1},656:{"PROX":3},657:{"PROX":308},658:{"PROX":312},659:{"VPAT":-1},660:{"PROX":308},661:{"PROX":309},662:{"PROX":105},664:{"PROX":312},665:{"VPAT":-1},666:{"PROX":314},667:{"VPAT":-1},668:{"VPAT":-1},669:{"VPAT":-1},670:{"PROX":318},671:{"VPAT":-1},681:{"PROX":314},685:{"PROX":634},686:{"PROX":683},691:{"VPAT":-1},694:{"PROX":318},695:{"SAT":-1},697:{"VPAT":-1},699:{"VPAT":-1}
+  ,700:{"PROX":318},701:{"PROX":635},710:{"VPAT":-1},711:{"PROX":317},713:{"VPAT":-1},715:{"PROX":318},716:{"VPAT":-1},717:{"VPAT":-1},718:{"VPAT":-1},719:{"VPAT":-1},720:{"PROX":263},721:{"PROX":535},722:{"SAT":-1},724:{"PROX":535},725:{"PROX":599},728:{"SAT":-1},729:{"VPAT":-1},730:{"PROX":634},731:{"PROX":635},732:{"VPAT":-1},733:{"VPAT":-1},734:{"PROX":635},735:{"PROX":503},736:{"PROX":267},737:{"PROX":653},738:{"PROX":555},739:{"SAT":-1},740:{"PROX":653},741:{"PROX":603},742:{"VPAT":-1},743:{"PROX":701},744:{"PROX":555},745:{"PROX":459},746:{"PROX":683},748:{"VPAT":-1},749:{"PROX":701},750:{"VPAT":-1},751:{"PROX":507},754:{"SAT":-1},755:{"VPAT":-1},758:{"VPAT":-1},760:{"SAT":-1},761:{"VPAT":-1},764:{"VPAT":-1},765:{"PROX":503},766:{"PROX":507}
+  }
 
   // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
   var doubles = {};
@@ -441,15 +499,24 @@ function update_criteria()
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
-    if(typeof(doubles[cs])!="number" && !oPATTERN.criteria[p]) doubles[cs] = p;
-    else oPATTERN.criteria[p] = typeof(oPATTERN.criteria[p])!="string"?("DOUBL("+doubles[cs]+")"):(oPATTERN.criteria[p]+",DOUBL("+doubles[cs]+")");
+    if(typeof(doubles[cs])!="number") doubles[cs] = p;
+    else if (!oPATTERN.criteria2[p] || Object.keys(oPATTERN.criteria2[p]).length==0)   
+      oPATTERN.criteria2[p] = {"DOUBL":doubles[cs]};
+    else oPATTERN.criteria2[p]["DOUBL"] = doubles[cs];
   }
 
+  /*
   // REPORT EXCLUSION RULES
-  for(var i in oPATTERN.criteria)
+  for(var i in oPATTERN.criteria2)
   {
-   // document.write("EXCL["+i+"]="+oPATTERN.criteria[i]+"<br>")
+    // TODO ELABORATE oPATTERN.criteria2[i]
+    document.write("EXCL["+i+"]=");
+    for(var j in oPATTERN.criteria2[i])
+      if(oPATTERN.criteria2[i][j]>=0) document.write(j+":"+oPATTERN.criteria2[i][j]+",");
+      else document.write(j+",");
+    document.write("<br>");
   }
+  */
 }
 
 function check_criteria(patternID)
@@ -465,6 +532,27 @@ function check_criteria(patternID)
     return [0];
 }
 
+function check_criteria2(patternID)
+{
+  //var c = oPATTERN.color(patternID,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+  //var cs = "#"+RGB2HEX(c).join("");
+  var cd = {};
+  if(oPATTERN.criteria2[patternID])
+  {
+    return oPATTERN.criteria2[patternID]
+    /*
+    var arr = oPATTERN.criteria[patternID].split(",");
+    for(var i=0;i<arr.length;i++)
+    {
+      var a = arr[i].split("(");
+      if(a.length>1) cd[a[0]] = a[1].substring(0,a[1].length-1);
+      else cd[arr[i]] = " ";
+    }
+    */
+  }
+  return cd;
+}
+
 function generate_HGR()
 { 
   wipe_HGR(0);
@@ -476,10 +564,12 @@ function generate_HGR()
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var cs = "#"+RGB2HEX(c).join("");
-    var cc = check_criteria(p);
+    var cc2 = check_criteria2(p);
+
     if(Object.keys(oPALETTE.limit_dots).length>0
-          && oPALETTE.limit_dots[p]!=true) continue;      // RANGE SELECT CRITERIA
-    if(_D.filterExcl && cc[0]!=0) continue;               // PATTERN EXCLUSION CRITERIA
+          && oPALETTE.limit_dots[p]!=true) continue;                 // RANGE SELECT CRITERIA
+    if(Object.keys(oPALETTE.limit_dots).length!=1 
+          && _D.filterExcl && Object.keys(cc2).length>0) continue;   // PATTERN EXCLUSION CRITERIA
 
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
@@ -513,9 +603,7 @@ function generate_HGR()
     clearPixel_HGR(ddx+1+_D.bls[0]+6,ddy+3);
     clearPixel_HGR(ddx+1+_D.bls[0]+7,ddy+3);
 
-    var cc = check_criteria(p);
-
-    if(cc[0]=="EXCL")   // EXCLUDED
+    if(Object.keys(cc2).length>0 && !cc2["DOUBL"])   // EXCLUDED
     {
       draw_number(12,[ddx,ddy-1]);
       ddx+=6;
@@ -523,13 +611,12 @@ function generate_HGR()
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])      
     }
-    else if(cc[0]=="DOUBL")   // DOUBLE
+    else if(cc2["DOUBL"])   // DOUBLE
     {
-      //document.write("hoi");
       draw_number(11,[ddx,ddy-1]);
       ddx+=6;
       //var digits = oPATTERN.criteria.DOUBL[cs].toString(10);
-      var digits = cc[1].split(")")[0].toString(10);
+      var digits = cc2["DOUBL"].toString(10);
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
     }
@@ -540,14 +627,11 @@ function generate_HGR()
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
     }
-    // detect 2x2 patterns
-    if(oPATTERN.is_2x2(p)) draw_number(10,[ddx+c*6,ddy-1]);
 
-    //if(!bDouble)
-    //  DOUBL[cs] = p;  // skip patterns that generate identical color
+    if(oPATTERN.is_2x2(p)) draw_number(10,[ddx+c*6,ddy-1]);   // detect 2x2 patterns
 
-    if(dx==_D.blc[0]-1) dx=0; else { dx++; continue; }
-    if(dy==_D.blc[1]-1) break; else dy++;
+    if(dx==_D.blc[0]-1) dx=0; else { dx++; continue; }  // x coordinate positioning
+    if(dy==_D.blc[1]-1) break; else dy++;               // y coordinate positioning
   }
 }
 
@@ -638,8 +722,8 @@ function update_param()
     for(var p=0;p<oPALETTE.dec_near_col.length;p++)
     {
       if(!oPALETTE.dec_near_pos[p][0][0]) continue; // NOT DISPLAYABLE
-      var cc = check_criteria(p);
-      if(_D.filterExcl && cc[0]!=0) continue;               // PATTERN EXCLUSION CRITERIA
+      var cc2 = check_criteria2(p);
+      if(_D.filterExcl && Object.keys(cc2).length>0) continue;   // PATTERN EXCLUSION CRITERIA
 
       oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
     }
