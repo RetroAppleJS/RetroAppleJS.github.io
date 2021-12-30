@@ -187,7 +187,7 @@ function PALETTE()
             this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
-            this.ctx[1].fillText(i+this.opat , x, y);
+            this.ctx[1].fillText(p , x, y);
 
             /*
             // DRAW COLOR VALUE
