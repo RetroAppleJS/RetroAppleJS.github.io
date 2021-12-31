@@ -153,7 +153,7 @@ function PALETTE()
     
         for(var p=0;p<this.dec_near_col.length;p++)
         {
-            var cc2 = check_criteria2(p);                    // TODO INCOPORATE CHECK_CRITERIA2
+            var cc = oPATTERN.criteria[p]                    // TODO INCOPORATE CHECK_CRITERIA2
 
             /*
             if(Object.keys(this.limit_dots).length>0
@@ -164,7 +164,7 @@ function PALETTE()
             if(Object.keys(this.limit_dots).length>0
             && oPALETTE.limit_dots[p]!=true) continue;                 // RANGE SELECT CRITERIA
             if(Object.keys(this.limit_dots).length!=1 
-            && _D.filterExcl && Object.keys(cc2).length>0) continue;   // PATTERN EXCLUSION CRITERIA
+            && _D.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
 
             var x = this.dec_near_pos[p][0][0];
             var y = this.dec_near_pos[p][0][1];
