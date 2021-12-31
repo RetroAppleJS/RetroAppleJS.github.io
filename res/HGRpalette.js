@@ -90,7 +90,11 @@ function PALETTE()
                 this.dec_near_pos[i] = [[x,y]];
             }
             else if(cd[0] ==  cd[1])
+            {
+                this.dec_near_col[i] = dec_cx; 
                 this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
+                return;
+            }
         }
     }    
 

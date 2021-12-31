@@ -129,13 +129,12 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
 
-  apple2plus.video.setCol(3,0,"#FF40FF");   // overload purple
-  apple2plus.video.setCol(6,0,"#2F95FF");   // overload blue
-  apple2plus.video.setCol(9,0,"#FFA040");   // overload orange
-  apple2plus.video.setCol(12,0,"#A0FF20");  // overload green
+  //var hiresCols = apple2plus.video.getloresCols(); for(var i=0;i<hiresCols.length;i++) document.write(i+" "+hiresCols[i][0]+" "+hiresCols[i][4]+"<br>")
 
-  var hiresCols = apple2plus.video.getloresCols();
-  //for(var i=0;i<hiresCols.length;i++) document.write(i+" "+hiresCols[i][0]+" "+hiresCols[i][4]+"<br>")
+  //apple2plus.video.setCol(3,0,"#FF40FF");   // overload purple
+  //apple2plus.video.setCol(6,0,"#2F95FF");   // overload blue
+  //apple2plus.video.setCol(9,0,"#FFA040");   // overload orange
+  //apple2plus.video.setCol(12,0,"#A0FF20");  // overload green
 
   apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
   apple2plus.video.setCol(6,0, "#0080FF");    // tweak blue value   (#2F95FF)
