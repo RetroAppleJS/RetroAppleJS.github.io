@@ -60,14 +60,11 @@ function PALETTE()
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
     this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
-    this.colorSaturation = function(a) { 
-        
-        var avg = Math.round((a[0]+a[1]+a[2])/3); 
-
+    this.colorSaturation = function(a) {
+        var avg = Math.round((a[0]+a[1]+a[2])/3);
+        if(avg==0) return 0; 
         //document.write(this.colorDistance(a,a)+"<br>");
-
-        
-        return Math.round(this.colorDistance(a,[avg,avg,avg])) }
+        return Math.round(100*this.colorDistance(a,[avg,avg,avg])/avg) }
 
     this.color_depth_transform = function(triple,bits)
     {
