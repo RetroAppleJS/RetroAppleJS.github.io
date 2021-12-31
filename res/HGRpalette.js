@@ -91,12 +91,30 @@ function PALETTE()
             }
             else if(cd[0] ==  cd[1])
             {
-                this.dec_near_col[i] = dec_cx; 
                 this.dec_near_pos[i][ this.dec_near_pos[i].length ] = [x,y];
                 return;
             }
         }
     }    
+
+    this.get_nearest = function(dec_cx)
+    {
+        var dec_near_col=[-1,-1,-1], near_idx = "*";
+        for(var i=0;i<this.dec_pal.length;i++)
+        {
+            if(oPATTERN.criteria[i]) continue;  // TODO EXTERNALISE THIS FUNCTION
+
+
+            var cd = [ this.colorDistance(dec_cx,this.dec_pal[i])                   // picked color  - palette color
+                      ,this.colorDistance(dec_near_col,this.dec_pal[i]) ]   // closest match - palette color
+            if( cd[0]!=0 && cd[0] <  cd[1] )
+            {
+                dec_near_col = this.dec_pal[i];
+                near_idx = i;
+            }
+        }
+        return "idx:"+near_idx+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
+    } 
 
     this.draw_rainbow = function()
     {

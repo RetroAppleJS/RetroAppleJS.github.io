@@ -157,7 +157,7 @@ function PATTERN(idx,x,y)
         }
       }
       // calculate color average
-      return [col_sum[0]/max_sum[0]*255, col_sum[1]/max_sum[1]*255, col_sum[2]/max_sum[2]*255 ]
+      return [Math.round(col_sum[0]/max_sum[0]*255), Math.round(col_sum[1]/max_sum[1]*255), Math.round(col_sum[2]/max_sum[2]*255) ]
   }
 
 
