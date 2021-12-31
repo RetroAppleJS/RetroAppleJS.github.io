@@ -134,6 +134,14 @@ function init_gui(_o)
   apple2plus.video.setCol(9,0,"#FFA040");   // overload orange
   apple2plus.video.setCol(12,0,"#A0FF20");  // overload green
 
+  var hiresCols = apple2plus.video.getloresCols();
+  //for(var i=0;i<hiresCols.length;i++) document.write(i+" "+hiresCols[i][0]+" "+hiresCols[i][4]+"<br>")
+
+  apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
+  apple2plus.video.setCol(6,0, "#0080FF");    // tweak blue value   (#2F95FF)
+  apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
+  apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
+  
   var a = oPATTERN.parse(), s = "", sep = " ; ";
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
@@ -218,7 +226,9 @@ function init_gui(_o)
       generate_HGR();
   }
   ,false);  
-  ////////////////////////////////      
+  ////////////////////////////////   
+  
+  
 }
 
 
