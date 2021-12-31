@@ -395,15 +395,15 @@ function generate_REPORT()
       var csd = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
 
       //oPALETTE.hex_pal[p] = csh;
-      s="\"col\":\""+csh+"\""
+      var ss="\"col\":\""+csh+"\""
        +",\"sat\":"+oPALETTE.colorSaturation(c)
        +",\"cmp\":["
       for(var o in oPATTERN.colCompIDX)
-        s+="\""+o+"\","
-      s = s.slice(0,-1)+"],";
-      s += "\"pct\":["+csd.join(",")+"]"
+        ss+="\""+o+"\","
+      ss = ss.slice(0,-1)+"],";
+      ss += "\"pct\":["+csd.join(",")+"]"
 
-      s += p+":{"+s+"}\r\n"
+      s += p+":{"+ss+"}\r\n"
     }
   }
   s+="}"
