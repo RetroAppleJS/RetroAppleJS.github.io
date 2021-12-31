@@ -82,8 +82,8 @@ function PALETTE()
 
         for(var i=0;i<this.dec_pal.length;i++)
         {
-            var cd = [this.colorDistance(dec_cx,this.dec_pal[i])                  // picked color  - palette color
-                     ,this.colorDistance(this.dec_near_col[i],this.dec_pal[i])]   // closest match - palette color
+            var cd = [ this.colorDistance(dec_cx,this.dec_pal[i])                   // picked color  - palette color
+                      ,this.colorDistance(this.dec_near_col[i],this.dec_pal[i]) ]   // closest match - palette color
             if( cd[0] <  cd[1] )
             {
                 this.dec_near_col[i] = dec_cx; 
