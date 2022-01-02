@@ -144,7 +144,6 @@ function init_gui(_o)
   var a = oPATTERN.parse(), s = "", sep = " ; ";
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
-
  
   //oPALETTE.insert_canvas({"id":"mainPalette","width":430,"height":150});
   oPALETTE.insert_canvas({"id":"mainPalette","width":_D.leftpane+_D.rightpane,"height":_D.topheight});

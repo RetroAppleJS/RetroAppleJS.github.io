@@ -21,8 +21,8 @@ function PALETTE()
             this.debug_data[i][ this.debug_data[i].length ] = arg[i]; 
         }
     }; 
-    this.clear_layer        = function(n) { this.ctx[n].clearRect(0, 0, this.canvas[n].width, this.canvas[n].height) }
-    this.drawPixel          = function(context, x, y, color)
+    this.clear_layer    = function(n) { this.ctx[n].clearRect(0, 0, this.canvas[n].width, this.canvas[n].height) }
+    this.drawPixel      = function(context, x, y, color)
     {
         context.beginPath();
         context.fillStyle = color || '#000';
@@ -65,6 +65,7 @@ function PALETTE()
         if(avg==0) return 0;
         return Math.round(100*this.colorDistance(a,[avg,avg,avg])/avg)
     }
+    this.brightness = function(dec) { return Math.round( (0.299*dec[0]+0.587*dec[1]+0.114*dec[2])/255*100 ) }
 
     this.color_depth_transform = function(triple,bits)
     {
@@ -187,6 +188,7 @@ function PALETTE()
 
             var x = this.dec_near_pos[p][0][0];
             var y = this.dec_near_pos[p][0][1];
+
             var hex_dx = this.RGB2HEX(this.dec_near_col[p]);
             var hex_cx = this.RGB2HEX(this.dec_pal[p]);
             
@@ -194,27 +196,30 @@ function PALETTE()
 
             // DRAW CIRCLE
             this.ctx[1].beginPath();
-            this.ctx[1].arc(x, y, this.dot_size, -0.5*Math.PI, 0.5*Math.PI);
+            this.ctx[1].arc(x, y, this.dot_size, -0.5*Math.PI, 1.5*Math.PI);
             this.ctx[1].lineWidth=1;
             this.ctx[1].strokeStyle = "#000000";
             this.ctx[1].stroke();
             this.ctx[1].fillStyle = '#'+hex_cx.join("")
             this.ctx[1].fill();
 
+            /*
             this.ctx[1].beginPath();
             this.ctx[1].arc(x, y, this.dot_size, 0.5*Math.PI, 1.5*Math.PI);
             this.ctx[1].lineWidth=1;
             this.ctx[1].strokeStyle = "#000000";
             this.ctx[1].stroke();
             this.ctx[1].fillStyle = '#'+hex_dx.join("")
+            */
             this.ctx[1].fill();
 
             // DRAW PATTERN INDEX NUMBER
-            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+            //this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+            this.ctx[1].fillStyle = this.brightness(this.dec_near_col[p]) > 70 ?"#000":"#FFF"
             this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
-            this.ctx[1].fillText(p , x, y);
+            this.ctx[1].fillText(this.brightness(this.dec_near_col[p]) , x, y);
 
             /*
             // DRAW COLOR VALUE
