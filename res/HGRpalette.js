@@ -210,8 +210,8 @@ function PALETTE()
             this.ctx[1].strokeStyle = "#000000";
             this.ctx[1].stroke();
             this.ctx[1].fillStyle = '#'+hex_dx.join("")
-            */
             this.ctx[1].fill();
+            */
 
             // DRAW PATTERN INDEX NUMBER
             //this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
