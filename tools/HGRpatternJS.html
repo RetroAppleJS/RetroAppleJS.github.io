@@ -146,12 +146,16 @@ function init_gui(_o)
   document.getElementById("formulas").innerHTML = s;
  
   //oPALETTE.insert_canvas({"id":"mainPalette","width":430,"height":150});
-  oPALETTE.insert_canvas({"id":"mainPalette","width":_D.leftpane+_D.rightpane,"height":_D.topheight});
+  oPALETTE.insert_canvas({"id":"mainPalette","canvasID":[0,1],"width":_D.leftpane+_D.rightpane,"height":_D.topheight});
   update_criteria();
   inventorize_PALETTE();
   oPALETTE.dot_size=6;
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
+
+  oPALETTE.insert_canvas({"id":"greyPalette","canvasID":[2,3],"width":_D.leftpane,"height":50});
+  oPALETTE.draw_greyscale();
+
 
   //alert( oPALETTE.colorSaturation([20,25,20]) )
 
@@ -798,7 +802,10 @@ function load_bitmap()
 <table><tr>
   <td style="vertical-align:top">
     <div id=mainPalette></div>
-    <div id="results" style="margin-top:150px"></div>
+    <div id=greyPalette style="margin-top:150px"></div>
+
+    <div id="results" style="margin-top:200px"></div>
+
     <div id=disp_param3 class="slider" style="width:100px"></div><button class=smallbutton onclick="document.getElementById('param3').value--;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS(); generate_HGR();">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>

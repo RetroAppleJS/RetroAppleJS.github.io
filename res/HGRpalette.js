@@ -32,27 +32,29 @@ function PALETTE()
     this.insert_canvas = function(arg)
     {
         var anchor = document.getElementById(arg.id);
-        this.canvas = [ document.createElement('canvas'),document.createElement('canvas') ];
+        this.canvas[arg.canvasID[0]] = document.createElement('canvas');
+        this.canvas[arg.canvasID[1]] = document.createElement('canvas');
 
-        this.canvas[0].id = "Mycanvas";
-        this.canvas[0].width = arg.width;
-        this.canvas[0].height = arg.height;
-        this.canvas[0].style.zIndex = 0;
-        this.canvas[0].style.position = "absolute";
-        //this.canvas[0].style.top = "58px";
-        anchor.appendChild(this.canvas[0]);
+        this.canvas[arg.canvasID[0]].id = arg.id+"0";
+        this.canvas[arg.canvasID[0]].width = arg.width;
+        this.canvas[arg.canvasID[0]].height = arg.height;
+        this.canvas[arg.canvasID[0]].style.zIndex = 0;
+        this.canvas[arg.canvasID[0]].style.position = "absolute";
+        //this.canvas[arg.canvasID[0]].style.top = "58px";
+        anchor.appendChild(this.canvas[arg.canvasID[0]]);
 
-        this.canvas[1].id = "Mycanvas2";
-        this.canvas[1].width = arg.width;
-        this.canvas[1].height = arg.height;
-        this.canvas[1].style.zIndex = 1;
-        this.canvas[1].style.position = "absolute";
-        this.canvas[1].style.cursor = "crosshair";
-        //this.canvas[1].style.top = "58px";
+        this.canvas[arg.canvasID[1]].id = arg.id+"1";
+        this.canvas[arg.canvasID[1]].width = arg.width;
+        this.canvas[arg.canvasID[1]].height = arg.height;
+        this.canvas[arg.canvasID[1]].style.zIndex = 1;
+        this.canvas[arg.canvasID[1]].style.position = "absolute";
+        this.canvas[arg.canvasID[1]].style.cursor = "crosshair";
+        //this.canvas[arg.canvasID[1]].style.top = "58px";
 
-        anchor.appendChild(this.canvas[1]);
+        anchor.appendChild(this.canvas[arg.canvasID[1]]);
       
-        this.ctx    = [ this.canvas[0].getContext("2d"),this.canvas[1].getContext("2d")];
+        this.ctx[arg.canvasID[0]]    =  this.canvas[arg.canvasID[0]].getContext("2d");
+        this.ctx[arg.canvasID[1]]    =  this.canvas[arg.canvasID[1]].getContext("2d");
     }
 
     this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
@@ -116,6 +118,20 @@ function PALETTE()
         }
         return "idx:"+near_idx+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
     } 
+
+    this.draw_greyscale = function()
+    {
+        this.clear_layer(2);
+        var width  = this.canvas[2].width;
+        var height = this.canvas[2].height;
+        for(var y=0;y<height;y++)
+        {
+            for(var x=0;x<width;x++)
+            { 
+                this.drawPixel(this.ctx[2], x, y, '#FF0');
+            }
+        }
+    }
 
     this.draw_rainbow = function()
     {
