@@ -90,6 +90,8 @@ var yref = new Array();
 
 
 oPATTERN = new PATTERN();
+oPATTERN.filterExcl = oPATTERN.filterExcl;
+
 var custom_bmap =  new Array(oPATTERN.bmapx).fill([false,0]).map(() => new Array(oPATTERN.bmapy).fill([false,0]));
 var custom_fmla = ["",""];
 var oPALETTE = new PALETTE();
@@ -141,13 +143,17 @@ function init_gui(_o)
   apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
   apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
   
-  var a = oPATTERN.parse(), s = "", sep = " ; ";
+
+
+  var a = oPATTERN.parse();
+  var s = "", sep = " ; ";
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
- 
-  //oPALETTE.insert_canvas({"id":"mainPalette","width":430,"height":150});
+
   oPALETTE.insert_canvas({"id":"mainPalette","canvasID":[0,1],"width":_D.leftpane+_D.rightpane,"height":_D.topheight});
+
   update_criteria();
+
   inventorize_PALETTE();
   oPALETTE.dot_size=6;
   oPALETTE.color_depth=24;
@@ -157,11 +163,10 @@ function init_gui(_o)
   oPALETTE.draw_greyscale();
 
 
-  //alert( oPALETTE.colorSaturation([20,25,20]) )
-
   update_param();
-
   generate_GRIDS();
+
+
   generate_HGR();
   
   oPALETTE.clear_layer(1);
@@ -170,7 +175,10 @@ function init_gui(_o)
   oVoronoi.render();
 
   oPALETTE.opat = _D.opat;
-  oPALETTE.draw_colormatches();
+  oPALETTE.draw_colormatches(oPATTERN);
+
+  oPALETTE.draw_greymatches();
+  
 
   //////   PALETTE MOUSE EVENTS (select circular area)
   oPALETTE.canvas[1].addEventListener('mousedown',
@@ -191,7 +199,7 @@ function init_gui(_o)
       oPALETTE.mouseXY.dy = event.offsetY-oPALETTE.mouseXY.y;
       var r = Math.sqrt(oPALETTE.mouseXY.dx*oPALETTE.mouseXY.dx + oPALETTE.mouseXY.dy*oPALETTE.mouseXY.dy)
       oPALETTE.clear_layer(1);
-      oPALETTE.draw_colormatches();
+      oPALETTE.draw_colormatches(oPATTERN);
       oPALETTE.ctx[1].beginPath();
       oPALETTE.ctx[1].arc(oPALETTE.mouseXY.x, oPALETTE.mouseXY.y, r, -0.5*Math.PI, 1.5*Math.PI);
       oPALETTE.ctx[1].lineWidth=1;
@@ -223,7 +231,7 @@ function init_gui(_o)
 
       oPALETTE.clear_layer(1);
       oVoronoi.render();
-      oPALETTE.draw_colormatches();
+      oPALETTE.draw_colormatches(oPATTERN);
       generate_GRIDS();
       generate_HGR();
   }
@@ -353,27 +361,27 @@ function generate_GRIDS()
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
     var csp = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
-    var cc = oPATTERN.criteria[p];
+    var cc = oPATTERN[p];
 
     if(Object.keys(oPALETTE.limit_dots).length>0
           && oPALETTE.limit_dots[p]!=true) continue;                // RANGE SELECT CRITERIA
     if(Object.keys(oPALETTE.limit_dots).length!=1 
-          && _D.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
+          && oPATTERN.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
 
     var tc = csp[0]>90 && csp[1]>90 && csp[2]>90 ? "black":"white";
 
     s+= "<div style='width:430px;background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
        +"<small>"+csh+" ("+csp.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)
         +" "+oPALETTE.get_nearest(c);
-       //+(typeof(oPATTERN.criteria[p])!="undefined"?(" "+oPATTERN.criteria[p]):"")
-       //+typeof(oPATTERN.criteria[p])
+       //+(typeof(oPATTERN[p])!="undefined"?(" "+oPATTERN[p]):"")
+       //+typeof(oPATTERN[p])
 
        
     if(cc)
     {
       s+=" ";
-      for(var j in oPATTERN.criteria[p])
-        if(oPATTERN.criteria[p][j]>=0) s+=j+":"+oPATTERN.criteria[p][j]+" ";
+      for(var j in oPATTERN[p])
+        if(oPATTERN[p][j]>=0) s+=j+":"+oPATTERN[p][j]+" ";
         else s+= j+" ";
     }
 
@@ -457,7 +465,7 @@ function gen_cell(patternID,x,y,img)
 
 function update_criteria()
 {
-  oPATTERN.criteria_desc = {
+  oPATTERN_desc = {
    "DOUBL":"copy of "
   ,"SAT":"pale blend"
   ,"VPAT":"hard vertical lines"
@@ -479,20 +487,20 @@ function update_criteria()
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
-    if(typeof(doubles[csh])!="number" && !oPATTERN.criteria[p]) doubles[csh] = p;
-    else if (!oPATTERN.criteria[p] || Object.keys(oPATTERN.criteria[p]).length==0)   
-      oPATTERN.criteria[p] = {"DOUBL":doubles[csh]};
-    else oPATTERN.criteria[p]["DOUBL"] = doubles[csh];
+    if(typeof(doubles[csh])!="number" && !oPATTERN[p]) doubles[csh] = p;
+    else if (!oPATTERN[p] || Object.keys(oPATTERN[p]).length==0)   
+      oPATTERN[p] = {"DOUBL":doubles[csh]};
+    else oPATTERN[p]["DOUBL"] = doubles[csh];
   }
 
   /*
   // REPORT EXCLUSION RULES
-  for(var i in oPATTERN.criteria)
+  for(var i in oPATTERN)
   {
-    // TODO ELABORATE oPATTERN.criteria[i]
+    // TODO ELABORATE oPATTERN[i]
     document.write("EXCL["+i+"]=");
-    for(var j in oPATTERN.criteria[i])
-      if(oPATTERN.criteria[i][j]>=0) document.write(j+":"+oPATTERN.criteria[i][j]+",");
+    for(var j in oPATTERN[i])
+      if(oPATTERN[i][j]>=0) document.write(j+":"+oPATTERN[i][j]+",");
       else document.write(j+",");
     document.write("<br>");
   }
@@ -510,12 +518,12 @@ function generate_HGR()
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
-    var cc = oPATTERN.criteria[p];
+    var cc = oPATTERN[p];
 
     if(Object.keys(oPALETTE.limit_dots).length>0
           && oPALETTE.limit_dots[p]!=true) continue;                 // RANGE SELECT CRITERIA
     if(Object.keys(oPALETTE.limit_dots).length!=1 
-          && _D.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
+          && oPATTERN.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
 
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
@@ -561,7 +569,7 @@ function generate_HGR()
     {
       draw_number(11,[ddx,ddy-1]);
       ddx+=6;
-      //var digits = oPATTERN.criteria.DOUBL[csh].toString(10);
+      //var digits = oPATTERN.DOUBL[csh].toString(10);
       var digits = cc["DOUBL"].toString(10);
       for(var c=0;c<digits.length;c++)
         draw_number(Number(digits[c]),[ddx+c*6,ddy-1])
@@ -642,7 +650,7 @@ function copyTextToClipboard(text) {
 function update_param()
 {
     document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
-    _D.filterExcl=document.getElementById('param5').value==1;          // set filter
+    oPATTERN.filterExcl=document.getElementById('param5').value==1;          // set filter
 
     if(document.getElementById("param3"))
     {
@@ -668,8 +676,8 @@ function update_param()
     for(var p=0;p<oPALETTE.dec_near_col.length;p++)
     {
       if(!oPALETTE.dec_near_pos[p][0][0]) continue; // NOT DISPLAYABLE
-      var cc = oPATTERN.criteria[p]
-      if(_D.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
+      var cc = oPATTERN[p]
+      if(oPATTERN.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
 
       oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
     }
@@ -793,8 +801,8 @@ function load_bitmap()
         </li>
         <li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
-        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN)" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
       </ul>
     </div>
     <div id=main>
@@ -806,7 +814,7 @@ function load_bitmap()
 
     <div id="results" style="margin-top:200px"></div>
 
-    <div id=disp_param3 class="slider" style="width:100px"></div><button class=smallbutton onclick="document.getElementById('param3').value--;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS(); generate_HGR();">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
+    <div id=disp_param3 class="slider" style="width:100px"></div><button class=smallbutton onclick="document.getElementById('param3').value--;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS(); generate_HGR();">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>
   <td style=vertical-align:top;>
@@ -814,7 +822,7 @@ function load_bitmap()
     <br>
     <input type=button value="prev" onclick="document.getElementById('param4').value--;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
     <input type=button value="next" onclick="document.getElementById('param4').value++;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
-    <input type=button id=filter value="filter excluded patterns" onclick="document.getElementById('param5').value^=1;update_param();this.style.background=_D.filterExcl?'blue':'';generate_HGR();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches();generate_GRIDS()" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
+    <input type=button id=filter value="filter excluded patterns" onclick="document.getElementById('param5').value^=1;update_param();this.style.background=oPATTERN.filterExcl?'blue':'';generate_HGR();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS()" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
     <input id=param4 value=0 hidden>
     <input id=param5 value=1 hidden>
   </td>

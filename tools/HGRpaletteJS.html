@@ -16,7 +16,8 @@ oPALETTE.load(["#682172","#68350D","#174A72","#97DD8C","#E7A1F2","#E7B48C","#97C
 
 function init()
 {
-    oPALETTE.insert_canvas({"id":"mainPalette","width":550,"height":200});
+    oPALETTE.insert_canvas({"id":"mainPalette","canvasID":[0,1],"width":800,"height":300});
+
     document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
     reload();
     oPALETTE.canvas[2] = document.getElementById("Debugcanvas");

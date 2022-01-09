@@ -85,6 +85,9 @@ function PALETTE()
 
         for(var i=0;i<this.dec_pal.length;i++)
         {
+            //var cc = oPATTERN.criteria[i]                    // TODO INCOPORATE CHECK_CRITERIA2
+            //if(cc && cc["GREY"]) continue;
+
             var cd = [ this.colorDistance(dec_cx,this.dec_pal[i])                   // picked color  - palette color
                       ,this.colorDistance(this.dec_near_col[i],this.dec_pal[i]) ]   // closest match - palette color
             if( cd[0] <  cd[1] )
@@ -98,15 +101,14 @@ function PALETTE()
                 return;
             }
         }
-    }    
-
+    }  
+    
     this.get_nearest = function(dec_cx)
     {
         var dec_near_col=[-1,-1,-1], near_idx = "*";
         for(var i=0;i<this.dec_pal.length;i++)
         {
             if(oPATTERN.criteria[i]) continue;  // TODO EXTERNALISE THIS FUNCTION
-
 
             var cd = [ this.colorDistance(dec_cx,this.dec_pal[i])                   // picked color  - palette color
                       ,this.colorDistance(dec_near_col,this.dec_pal[i]) ]   // closest match - palette color
@@ -117,7 +119,7 @@ function PALETTE()
             }
         }
         return "idx:"+near_idx+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
-    } 
+    }
 
     this.draw_greyscale = function()
     {
@@ -128,7 +130,8 @@ function PALETTE()
         {
             for(var x=0;x<width;x++)
             { 
-                this.drawPixel(this.ctx[2], x, y, '#FF0');
+                var dec_cx = this.sweep_greyscale(x,y,width,height);
+                this.drawPixel(this.ctx[2], x, y, "#"+this.RGB2HEX( dec_cx ).join("") );
             }
         }
     }
@@ -139,6 +142,7 @@ function PALETTE()
         this.dec_pal      = [];
         this.dec_near_col = [];
         this.dec_near_pos = [];
+
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
 
@@ -147,9 +151,10 @@ function PALETTE()
         {
             this.dec_pal[i]      = this.hex_pal[i]?this.HEX2RGB(this.hex_pal[i]):[0,0,0];
             this.dec_near_col[i] = [0,0,0];
-            this.dec_near_pos[i] = [0,0];
+            this.dec_near_pos[i] = [0,0];           
         }
 
+        // Draw color range + find nearest color pattern
         for(var y=0;y<height;y++)
         {
             for(var x=0;x<width;x++)
@@ -163,6 +168,19 @@ function PALETTE()
                 this.calc_nearest(x,y,dec_cx);
             }
         }
+
+        /*
+        // Find nearest greyscale + find nearest greyscale
+        for(var y=0;y<height;y++)
+        {
+            for(var x=width-40;x<width;x++)
+            { 
+                var dec_cx = this.sweep_greyscale(y,x,height,40);
+                this.drawPixel(this.ctx[0], x, y, "#"+this.RGB2HEX( dec_cx ).join("") );
+                this.calc_nearest(x,y,dec_cx);
+            }
+        }
+        */
 
         // calculate center location of closest color
         for(var i=0;i<this.dec_near_col.length;i++)
@@ -181,27 +199,78 @@ function PALETTE()
         bUpdate = true;     // allow new updates
     }
 
-    this.draw_colormatches = function()
+    this.draw_colormatches = function(pattern_obj)
     {
         //this.clear_layer(1);
+        if(typeof(pattern_obj)=="undefined") var pattern_obj = {"criteria":{},"filterExcl":null};
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
     
         for(var p=0;p<this.dec_near_col.length;p++)
         {
-            var cc = oPATTERN.criteria[p]                    // TODO INCOPORATE CHECK_CRITERIA2
+            var cc = pattern_obj.criteria[p]  //oPATTERN.criteria[p];
+
+            if(Object.keys(this.limit_dots).length>0
+            && this.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
+            if(Object.keys(this.limit_dots).length!=1 
+            && pattern_obj.filterExcl && cc && !cc["GREY"]       // PATTERN EXCLUSION CRITERIA
+            ) continue;
+
+            var x = this.dec_near_pos[p][0][0];
+            var y = this.dec_near_pos[p][0][1];
+            var hex_dx = this.RGB2HEX(this.dec_near_col[p]);
+            var hex_cx = this.RGB2HEX(this.dec_pal[p]);
+            var sec = this.define_section(x,y,width,height);
+
+            // DRAW CIRCLE
+            this.ctx[1].beginPath();
+            this.ctx[1].arc(x, y, this.dot_size, -0.5*Math.PI, 1.5*Math.PI);
+            this.ctx[1].lineWidth=1;
+            this.ctx[1].strokeStyle = "#000000";
+            this.ctx[1].stroke();
+            this.ctx[1].fillStyle = '#'+hex_cx.join("")
+            this.ctx[1].fill();
+
+            // DRAW PATTERN INDEX NUMBER
+            //this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+            this.ctx[1].fillStyle = this.brightness(this.dec_near_col[p]) > 70 ?"#000":"#FFF"
+            this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
+            this.ctx[1].textAlign = "center"; 
+            this.ctx[1].textBaseline = "middle";
+            //this.ctx[1].fillText(this.brightness(this.dec_near_col[p]) , x, y);
+            this.ctx[1].fillText(p , x, y);
 
             /*
-            if(Object.keys(this.limit_dots).length>0
-                && this.limit_dots[p]!=true) continue;      // RANGE SELECT CRITERIA
-            if(_D.filterExcl && cc[0]) continue;            // PATTERN EXCLUSION CRITERIA
+            // DRAW COLOR VALUE
+            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
+            this.ctx[1].font = (this.dot_size)+"px Arial bold";
+            this.ctx[1].textAlign = "center"; 
+            this.ctx[1].textBaseline = "middle";
+            this.ctx[1].fillText('#'+hex_cx.join("") , x, y+10);
             */
+            
+        }
+    }
 
+    this.draw_greymatches = function()
+    {
+        this.clear_layer(3);
+        var width  = this.canvas[2].width;
+        var height = this.canvas[2].height;
+    
+        
+        for(var p=0;p<this.dec_near_col.length;p++)
+        {
+            var cc = oPATTERN.criteria[p]                    // TODO INCOPORATE CHECK_CRITERIA2
+
+            
             if(Object.keys(this.limit_dots).length>0
-            && oPALETTE.limit_dots[p]!=true) continue;                 // RANGE SELECT CRITERIA
+            && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
             if(Object.keys(this.limit_dots).length!=1 
-            && _D.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
+            && _D.filterExcl && cc && !cc["GREY"]) continue;           // PATTERN EXCLUSION CRITERIA
 
+
+            /*
             var x = this.dec_near_pos[p][0][0];
             var y = this.dec_near_pos[p][0][1];
 
@@ -219,16 +288,6 @@ function PALETTE()
             this.ctx[1].fillStyle = '#'+hex_cx.join("")
             this.ctx[1].fill();
 
-            /*
-            this.ctx[1].beginPath();
-            this.ctx[1].arc(x, y, this.dot_size, 0.5*Math.PI, 1.5*Math.PI);
-            this.ctx[1].lineWidth=1;
-            this.ctx[1].strokeStyle = "#000000";
-            this.ctx[1].stroke();
-            this.ctx[1].fillStyle = '#'+hex_dx.join("")
-            this.ctx[1].fill();
-            */
-
             // DRAW PATTERN INDEX NUMBER
             //this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
             this.ctx[1].fillStyle = this.brightness(this.dec_near_col[p]) > 70 ?"#000":"#FFF"
@@ -236,17 +295,10 @@ function PALETTE()
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
             this.ctx[1].fillText(this.brightness(this.dec_near_col[p]) , x, y);
-
-            /*
-            // DRAW COLOR VALUE
-            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
-            this.ctx[1].font = (this.dot_size)+"px Arial bold";
-            this.ctx[1].textAlign = "center"; 
-            this.ctx[1].textBaseline = "middle";
-            this.ctx[1].fillText('#'+hex_cx.join("") , x, y+10);
             */
             
         }
+        
     }
 
     this.define_section = function(x,y,width,height)
@@ -260,6 +312,13 @@ function PALETTE()
         var inc_y = fac_y*2-1;
 
         return {"x":sec_x,"y":sec_y,"n":sec_y?sec+this.sec_n[1]:sec,"inc_y":inc_y,"dec_y":dec_y};
+    }
+
+    this.sweep_greyscale = function(x,y,width,height)
+    {
+        function r(v) { return Math.floor(v) }
+        var col = r(x/width*255)
+        return [col,col,col];
     }
 
     this.sweep_section = function(x,y,width,height)
