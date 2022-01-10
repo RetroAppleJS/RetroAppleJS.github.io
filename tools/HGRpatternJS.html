@@ -822,7 +822,7 @@ function load_bitmap()
     <br>
     <input type=button value="prev" onclick="document.getElementById('param4').value--;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
     <input type=button value="next" onclick="document.getElementById('param4').value++;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
-    <input type=button id=filter value="filter excluded patterns" onclick="document.getElementById('param5').value^=1;update_param();this.style.background=oPATTERN.filterExcl?'blue':'';generate_HGR();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS()" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
+    <input type=button id=filter value="exclude patterns" onclick="document.getElementById('param5').value^=1;update_param();this.style.background=oPATTERN.filterExcl?'blue':'';generate_HGR();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS()" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
     <input id=param4 value=0 hidden>
     <input id=param5 value=1 hidden>
   </td>
