@@ -204,13 +204,6 @@ var DitherJS = function DitherJS(selector,opt) {
             var step = self.opt.step;
             // Ratio >=1
             var ratio = self.opt.ratio?self.opt.ratio:1/16;
-            // Threshold Matrix
-            var m = new Array(
-                [  1,  9,  3, 11 ],
-                [ 13,  5, 15,  7 ],
-                [  4, 12,  2, 10 ],
-                [ 16,  8, 14,  6 ]
-            );
 
             for (var y=0;y<h;y += step) {
                 for (var x=0;x<w;x += step) {

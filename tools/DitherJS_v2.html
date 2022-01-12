@@ -1,0 +1,270 @@
+<!doctype html>
+<html>
+<head>
+<title>ditherjs demo</title>
+<script type="text/javascript" src="../res/HGRpalette.js"></script>
+<style>
+body, html {
+font-family: 'Arial';
+width: 100%;
+height: 100%;
+margin: 0;
+padding: 0;
+font-size: 12px;
+}
+.img_org {
+visibility: hidden;
+}
+div.wrapper {
+/*position: absolute;*/
+top: 0px;
+left: 0px;
+right: 0px;
+bottom: 0px;
+overflow: hidden;
+padding: 5em;
+}
+div.wrapper > .background {
+min-width: 50%;
+min-height: 50%;
+background: #fff;
+}
+</style>
+</head>
+
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
+<body onload=update_dither(true)>
+<table border=1>
+<tr>
+    <td class="palette"></td>
+    <td>
+        <div class=wrapper>
+            <img id="org" class="img_org" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKUAAADABAMAAACXPL4AAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAYUExURfu3KfSEIGe4S+A8QP////3+/ZY/lwSc3JpBtD8AAAABYktHRASPaNlRAAAACXBIWXMAAAsTAAALEwEAmpwYAAACzElEQVR4nO3bUW6jMBAG4FQR741WucBIfm/l9gj7Th0Zn4C9Adrr7y6EMMbGEPzPylXix2B//QcKtDA52N2DVPzzerdJhDYNwU0iuEl4k/Am4U2DNycSZxLeNAIm4U0jYHKSLMQ0AibhTSNg+qRCmEbAJHnTAkwjbyqESXhza+mFmQphkrxpAebm0ssyLcLcHHO3afGmEjAtxDSbY+40Ld5UAqbFmxZvKry5St5vrpN3mxvIJTMMZYLDs3jIomb0V9FfnToFIuaWi2/y3hSa81tupLhwikqa4fwgKq1MmZsxcobS2pSZGSf5ksUZiyYtD5UUOeqblDNU1DQEQbmZSd6q52YuOQZlZnbMMSgz88lr0MkExLwGnUwEOQS9mZCYQ9CbiSH7oKMJitkHHU0q2GS1I0sfTSQJNvl5VB8wg5/vILISMPn1s4bGHMxDuabFmxU3a2xMoFl55qFY0+LNyjPrYk0rbqJLL9q039Ks0bvzwc2vE2DYpylpvgDI16f5kObpaYqakPNd4pp8fmDzVcA8ze7FxZqVgHn2TY0Yb/7fihBTS5g/BcxPzzxCzHcBU3vmBV08zvzg5pcGF//XbDS4+H//v2twUKT5ycwfIPONmUdUUPYM8IIy3wXM6x7tn1nBTD09r8OZHwJmX31vHrFob140FMWb+tybDdTUw3NvCfMXdAxmgyTbb2KO72UKN9vRbMo2p3d8RZvtZDYlm/x9ccFmy80GFlPWtLDShc0GVTrv5UDFlDYbUOlYsw17eCRM9ztzxHqiMsnuf5kOUvqsxwwSE2ku9MI5AdMiSp+bDhATZ3bLfZUSpssvPewpzY8Zmi47ZqSfNjtmxHS5MWO9xLkxY6ZbDuO2xIz2UaeTrMaMmi69yK3EjPd7u/Qau7I53peeXjPb3m3sdU+T3vZuc09+Yom/e7o7+vxdkrz91O7O7w64nd84r/8Aa35WkEZqwpoAAAAASUVORK5CYII=" />
+        </div>
+    </td>
+    <td style="vertical-align:top">
+        <div id="dst" style="width:500px"></div>
+    </td>
+</tr>
+</table>
+
+<canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+
+<script>
+var dither, options;
+var loresCols = [];
+var HGRpalette = [];
+var oPALETTE = new PALETTE();
+
+var vidContext, apple2plus;
+function Apple2Plus(context)
+{
+  this.video = new Apple2Video(context);
+  this.hw    = new Apple2Hw(this.video);
+  // Switch on Apple II Hi-Res graphics
+  if(context)
+  {
+    this.video.reset();
+    this.video.setGfx(true);
+    this.video.setHires(true);
+    this.video.redraw();
+  }
+
+  loresCols = this.video.getloresCols();
+  hiresCols = this.video.gethiresCols();
+
+  HGRpalette = [
+  HEX2RGB(hiresCols[0][0]),
+  HEX2RGB(hiresCols[1][0]),
+  HEX2RGB(hiresCols[2][0]),
+  HEX2RGB(hiresCols[3][0]),
+  HEX2RGB(hiresCols[4][0]),
+  HEX2RGB(hiresCols[5][0])
+  ];
+
+  function HEX2RGB(hex) {
+  var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+}
+
+function update_dither(bInit)
+{
+    vidContext  = document.getElementById('applescreen').getContext("2d");
+    vidContext  = false;
+    apple2plus  = new Apple2Plus(vidContext);
+
+    var elo = document.getElementById("org");
+    var eld = document.getElementById("dst");
+
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var h = elo.clientHeight;
+    var w = elo.clientWidth;
+    canvas.height = h;
+    canvas.width = w;
+
+    if(bInit)
+    {
+        oDITHER.insert_canvas({"id":"dst","canvasID":[0,1],"width":w,"height":h});
+        var ctx = oDITHER.ctx[0];
+        ctx.imageSmoothingEnabled = false;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(elo,0,0,w,h);
+
+        var in_image = ctx.getImageData(0,0,w,h);
+        //var d = new Uint8ClampedArray(in_image.data);
+        //var out_imgdata = ctx.createImageData(in_image);
+
+        var step = 1
+        var out_image = oDITHER.errorDiffusionDither(in_image);
+        oDITHER.canvas[1].style.margin = "0px 0px 0px "+oDITHER.canvas[1].width+"px"
+        oDITHER.ctx[1].putImageData(out_image,0,0);
+
+   }
+}
+ 
+var oDITHER = new function()
+{
+    this.canvas      = [];
+    this.ctx         = [];
+    this.insert_canvas = function(arg)
+    {
+        var anchor = document.getElementById(arg.id);
+        this.canvas[arg.canvasID[0]] = document.createElement('canvas');
+        this.canvas[arg.canvasID[1]] = document.createElement('canvas');
+
+        this.canvas[arg.canvasID[0]].id = arg.id+"0";
+        this.canvas[arg.canvasID[0]].width = arg.width;
+        this.canvas[arg.canvasID[0]].height = arg.height;
+        this.canvas[arg.canvasID[0]].style.zIndex = 0;
+        this.canvas[arg.canvasID[0]].style.position = "absolute";
+        //this.canvas[arg.canvasID[0]].style.top = "58px";
+        anchor.appendChild(this.canvas[arg.canvasID[0]]);
+
+        this.canvas[arg.canvasID[1]].id = arg.id+"1";
+        this.canvas[arg.canvasID[1]].width = arg.width;
+        this.canvas[arg.canvasID[1]].height = arg.height;
+        this.canvas[arg.canvasID[1]].style.zIndex = 1;
+        this.canvas[arg.canvasID[1]].style.position = "absolute";
+        this.canvas[arg.canvasID[1]].style.cursor = "crosshair";
+        //this.canvas[arg.canvasID[1]].style.top = "58px";
+        anchor.appendChild(this.canvas[arg.canvasID[1]]);
+      
+        this.ctx[arg.canvasID[0]]    =  this.canvas[arg.canvasID[0]].getContext("2d");
+        this.ctx[arg.canvasID[1]]    =  this.canvas[arg.canvasID[1]].getContext("2d");
+    }
+
+    this.approximateColor = function(color) {
+            var palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ]
+            //var palette =  [ [0,0,0],[255,255,255] ]
+            var findIndex = function(fun,arg,list,min) {
+                if (list.length == 2) {
+                    if (fun(arg,min) <= fun(arg,list[1])) {
+                        return min;
+                    }else {
+                        return list[1];
+                    }
+                } else {
+                    //var hd = list[0];
+                    var tl = list.slice(1);
+                    if (fun(arg,min) <= fun(arg,list[1])) {
+                        min = min; 
+                    } else {
+                        min = list[1];
+                    }
+                    return findIndex(fun,arg,tl,min);
+                }
+            };
+            var found_color = findIndex(this.colorDistance,color,palette,palette[0]);
+            return found_color;
+        }
+
+    this.errorDiffusionDither = function(in_imgdata) 
+    {
+            // Create a new empty image
+            var out_imgdata = this.ctx[0].createImageData(in_imgdata);
+            var h = this.canvas[0].height;
+            var w = this.canvas[0].width;
+
+            var d   = new Uint8ClampedArray(in_imgdata.data);
+            var out = new Uint8ClampedArray(in_imgdata.data);
+            // Step
+            var step = 2;
+            // Ratio >=1
+            var ratio = 1/16;
+            
+            for (var y=0;y<h;y += step) {
+                for (var x=0;x<w;x += step) {
+                    var i = (4*x) + (4*y*w);
+                    
+                    var $i = function(x,y) {
+                        return (4*x) + (4*y*w);
+                    };
+
+                    // Define bytes
+                    var r = i;
+                    var g = i+1;
+                    var b = i+2;
+                    var a = i+3;
+
+                    var color = new Array(d[r],d[g],d[b]); 
+                    var approx = this.approximateColor(color);
+                    
+                    var q = [];
+                    q[r] = d[r] - approx[0];
+                    q[g] = d[g] - approx[1];
+                    q[b] = d[b] - approx[2];
+                                     
+                    // Diffuse the error
+                    d[$i(x+step,y)] =  d[$i(x+step,y)] + 7 * ratio * q[r];
+                    d[$i(x-step,y+1)] =  d[$i(x-1,y+step)] + 3 * ratio * q[r];
+                    d[$i(x,y+step)] =  d[$i(x,y+step)] + 5 * ratio * q[r];
+                    d[$i(x+step,y+step)] =  d[$i(x+1,y+step)] + 1 * ratio * q[r];
+
+                    d[$i(x+step,y)+1] =  d[$i(x+step,y)+1] + 7 * ratio * q[g];
+                    d[$i(x-step,y+step)+1] =  d[$i(x-step,y+step)+1] + 3 * ratio * q[g];
+                    d[$i(x,y+step)+1] =  d[$i(x,y+step)+1] + 5 * ratio * q[g];
+                    d[$i(x+step,y+step)+1] =  d[$i(x+step,y+step)+1] + 1 * ratio * q[g];
+
+                    d[$i(x+step,y)+2] =  d[$i(x+step,y)+2] + 7 * ratio * q[b];
+                    d[$i(x-step,y+step)+2] =  d[$i(x-step,y+step)+2] + 3 * ratio * q[b];
+                    d[$i(x,y+step)+2] =  d[$i(x,y+step)+2] + 5 * ratio * q[b];
+                    d[$i(x+step,y+step)+2] =  d[$i(x+step,y+step)+2] + 1 * ratio * q[b];
+
+                    // Color
+                    var tr = approx[0];
+                    var tg = approx[1];
+                    var tb = approx[2];
+
+                    // Draw a block
+                    for (var dx=0;dx<step;dx++){
+                        for (var dy=0;dy<step;dy++){
+                            var di = i + (4 * dx) + (4 * w * dy);
+
+                            // Draw pixel
+                            out[di] = tr;
+                            out[di+1] = tg;
+                            out[di+2] = tb;
+
+                        }
+                    }
+                }
+            }
+            out_imgdata.data.set(out);
+            return out_imgdata;
+        };
+     
+        this.colorDistance = function(a,b) {
+            return Math.sqrt( 
+                  Math.pow( ((a[0]) - (b[0])),2 )
+                + Math.pow( ((a[1]) - (b[1])),2 ) 
+                + Math.pow( ((a[2]) - (b[2])),2 )
+            );
+        };
+}
+
+</script>
+</body>
+</html>
