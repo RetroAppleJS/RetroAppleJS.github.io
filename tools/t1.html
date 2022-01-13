@@ -1,0 +1,81 @@
+<script>
+var approximateColor = function(color) {
+            var palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ]
+            //var palette =  [ [0,0,0],[255,255,255] ]
+            var findIndex = function(fun,arg,list,min) {
+                if (list.length == 2) {
+                    if (fun(arg,min) <= fun(arg,list[1])) {
+                        return min;
+                    }else {
+                        return list[1];
+                    }
+                } else {
+                    //var hd = list[0];
+                    var tl = list.slice(1);
+                    if (fun(arg,min) <= fun(arg,list[1])) {
+                        min = min; 
+                    } else {
+                        min = list[1];
+                    }
+                    return findIndex(fun,arg,tl,min);
+                }
+            };
+            var found_color = findIndex(colorDistance,color,palette,palette[0]);
+            return found_color;
+        }
+        
+        
+        var approximateColor2 = function(color) {
+            const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
+            const l = palette.length;
+            var dist =  new Array(l);
+            for(var i=0;i<l;i++) dist[i] = colorDistance(palette[i],color);
+            return palette[  dist.indexOf( Math.min(...dist) )  ];
+        
+        var approximateColor3 = function(color) {
+            const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
+            const l = palette.length;
+            var min = 16581375,pos = -1,d;
+            for(var i=0;i<l;i++)
+            {
+                d = colorDistance(palette[i],color)
+                if(d<min) { min=d; pos=i }
+            }
+            return palette[pos];
+        }
+        
+        var approximateColor4 = function(color) {
+            const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
+            var dist =  [ colorDistance(palette[0],color),colorDistance(palette[1],color),colorDistance(palette[2],color)
+                        ,colorDistance(palette[3],color),colorDistance(palette[4],color),colorDistance(palette[5],color) ];
+            return palette[  dist.indexOf( Math.min(...dist) )  ];
+        }
+        
+        
+        var approximateColor5 = function(color) {
+            const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
+            var dist =  [ colorDistance(palette[0],color),colorDistance(palette[1],color),colorDistance(palette[2],color)
+                        ,colorDistance(palette[3],color),colorDistance(palette[4],color),colorDistance(palette[5],color) ];
+            const l = palette.length;
+            var min = 16581375, pos = -1;
+            for(var i=0;i<l;i++) if(dist[i]<min) { min=dist[i]; pos=i };
+            return palette[pos];
+        }
+        
+        var colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+
+        
+var r1 = Math.random()*255
+var r2 = Math.random()*255
+var r3 = Math.random()*255
+approximateColor3([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+approximateColor2([r1++,r2++,r3++])
+</script>
