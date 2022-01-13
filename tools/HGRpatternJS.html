@@ -364,9 +364,9 @@ function generate_GRIDS()
     var cc = oPATTERN.criteria[p];
 
     if(Object.keys(oPALETTE.limit_dots).length>0
-          && oPALETTE.limit_dots[p]!=true) continue;                // RANGE SELECT CRITERIA
+          && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
     if(Object.keys(oPALETTE.limit_dots).length!=1 
-          && oPATTERN.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
+          && oPATTERN.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
 
     var tc = csp[0]>90 && csp[1]>90 && csp[2]>90 ? "black":"white";
 
@@ -418,6 +418,16 @@ function generate_REPORT()
       var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
       var csh = "#"+RGB2HEX(c).join("");
       var csp = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
+      var cc = oPATTERN.criteria[p];
+
+      var cri = "";
+      for(var i in cc) cri += "\""+i+"\":"+cc[i]+",";
+      cri = !cri ? "" : (",\"cri\":{"+cri.slice(0,-1)+"}");
+
+      //if(Object.keys(oPALETTE.limit_dots).length>0
+      //    && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
+      //if(Object.keys(oPALETTE.limit_dots).length!=1 
+      //    && oPATTERN.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
 
       //oPALETTE.hex_pal[p] = csh;
       var ss="\"col\":\""+csh+"\""
@@ -425,12 +435,13 @@ function generate_REPORT()
        +",\"cmp\":["
       for(var o in oPATTERN.colCompIDX)
         ss+="\""+o+"\","
-      ss = ss.slice(0,-1)+"],";
-      ss += "\"pct\":["+csp.join(",")+"]"
+      ss = ss.slice(0,-1)+"]";
+      ss += cri
 
-      s += p+":{"+ss+"}\r\n"
+      s += p+":{"+ss+"},\r\n"
     }
   }
+  s = s.slice(0,-3)+"\r\n"
   s+="}"
   copyTextToClipboard(s);
 }
@@ -487,10 +498,15 @@ function update_criteria()
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
-    if(typeof(doubles[csh])!="number" && !oPATTERN.criteria[p]) doubles[csh] = p;
-    else if (!oPATTERN.criteria[p] || Object.keys(oPATTERN.criteria[p]).length==0)   
-      oPATTERN.criteria[p] = {"DOUBL":doubles[csh]};
-    else oPATTERN.criteria[p]["DOUBL"] = doubles[csh];
+    if(typeof(doubles[csh])!="number")
+        doubles[csh] = p;
+    else
+    {
+      if (!oPATTERN.criteria[p] || Object.keys(oPATTERN.criteria[p]).length==0)   
+          oPATTERN.criteria[p] = {"DOUBL":doubles[csh]};
+        else 
+          oPATTERN.criteria[p]["DOUBL"] = doubles[csh]; // bug
+    }
   }
 
   /*
