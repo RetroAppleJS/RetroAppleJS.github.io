@@ -57,8 +57,6 @@ border:1px solid black;
 
 <script>
 
-// TODO CLICKING HIGH-BIT DOES NOT RENDER ALTERNATE COLORS !!!
-
 /////////////////////////////////////////////////////////
 // INITIALISE DATA
 
@@ -218,8 +216,6 @@ function init_gui(_o)
       var r = Math.sqrt(dx*dx + dy*dy);
 
       var imageData = oPALETTE.ctx[0].getImageData(oPALETTE.mouseXY.x, oPALETTE.mouseXY.y, 1, 1).data;
-      //alert("TODO report on narrowed selection - down("+oPALETTE.mouseXY.x+","+oPALETTE.mouseXY.y+") r("+r+") #"+oPALETTE.RGB2HEX(imageData).join(""));
-
       oPALETTE.bSelectMode = false;
       
       for(var i=0;i<oPALETTE.dec_near_col.length;i++)
@@ -400,9 +396,6 @@ function generate_GRIDS()
   }  
   s+="<br><br>";
   document.getElementById("debug").innerHTML = s;
-
-  // TODO >> fish color array !!! (oPATTERN.color(p))
-  //draw();  // DOES NOT LOAD ???
 }
 
 function generate_REPORT()
@@ -452,7 +445,6 @@ function gen_cell(patternID,x,y,img)
   var c = oPATTERN.calculate(patternID,x,y);
   var bi = isNaN(patternID); 
 
-  // TODO DEBUG color definitions
   if(patternID == _D.bmapID)
   {
     var left = x<=0 ? false : custom_bmap[x-1][y][0];
@@ -510,19 +502,6 @@ function update_criteria()
           oPATTERN.criteria[p]["DOUBL"] = doubles[csh]; // bug
     }
   }
-
-  /*
-  // REPORT EXCLUSION RULES
-  for(var i in oPATTERN)
-  {
-    // TODO ELABORATE oPATTERN.criteria[i]
-    document.write("EXCL["+i+"]=");
-    for(var j in oPATTERN.criteria[i])
-      if(oPATTERN.criteria[i][j]>=0) document.write(j+":"+oPATTERN.criteria[i][j]+",");
-      else document.write(j+",");
-    document.write("<br>");
-  }
-  */
 }
 
 function generate_HGR()
