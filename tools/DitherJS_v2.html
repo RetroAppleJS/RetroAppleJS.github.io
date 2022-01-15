@@ -13,7 +13,8 @@ padding: 0;
 font-size: 12px;
 }
 .img_org {
-visibility: hidden;
+/*visibility: hidden;*/
+
 }
 div.wrapper {
 /*position: absolute;*/
@@ -32,6 +33,12 @@ background: #fff;
 </style>
 </head>
 
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+<script type="text/javascript" src="../res/HGRpalette.js"></script>
+<script type="text/javascript" src="../res/HGRpattern.js"></script>
+<script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
 
 
 <body onload=update_dither(true)>
@@ -372,10 +379,15 @@ BECBQRKCIEiggUEQJFBIoIgSICRYRAEYEiQqCIECgiUEQIFBEoIgSKCBQRAkUEigiBIgJFhEAR/Z
     <td style="vertical-align:top">
         <div id="dst" style="width:500px"></div>
     </td>
+    <td style="vertical-align:top">
+        <div id="dst2" style="width:500px"></div>
+    </td>    
+    <td>
+        <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+    </td>
 </tr>
 </table>
 
-<canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
 
 <script>
 var d = {
@@ -1168,50 +1180,35 @@ var dither, options;
 var loresCols = [];
 var HGRpalette = [];
 
-/*
+
+
 var vidContext, apple2plus;
 function Apple2Plus(context)
 {
   this.video = new Apple2Video(context);
   this.hw    = new Apple2Hw(this.video);
   // Switch on Apple II Hi-Res graphics
-  if(context)
-  {
-    this.video.reset();
-    this.video.setGfx(true);
-    this.video.setHires(true);
-    this.video.redraw();
-  }
-
-  loresCols = this.video.getloresCols();
-  hiresCols = this.video.gethiresCols();
-
-  HGRpalette = [
-  HEX2RGB(hiresCols[0][0]),
-  HEX2RGB(hiresCols[1][0]),
-  HEX2RGB(hiresCols[2][0]),
-  HEX2RGB(hiresCols[3][0]),
-  HEX2RGB(hiresCols[4][0]),
-  HEX2RGB(hiresCols[5][0])
-  ];
-
-  function HEX2RGB(hex) {
-  var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+  this.video.reset();
+  this.video.setGfx(true);
+  this.video.setHires(true);
+  this.video.redraw();
 }
-*/
-
-
 
 function update_dither(bInit,idx)
 {
-    /*
-    vidContext  = document.getElementById('applescreen').getContext("2d");
-    vidContext  = false;
-    apple2plus  = new Apple2Plus(vidContext);
-    */
+    vidContext          = document.getElementById('applescreen').getContext("2d");
+    apple2plus          = new Apple2Plus(vidContext);
+    apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
+    apple2plus.video.setCol(6,0, "#0080FF");    // tweak blue value   (#2F95FF)
+    apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
+    apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
+
+
+
 
     var elo = document.getElementById("org");
     var eld = document.getElementById("dst");
+    var el2 = document.getElementById("dst2");
 
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
@@ -1233,8 +1230,17 @@ function update_dither(bInit,idx)
             //var in_image = oDITHER.downsample(in_image,2);
 
             var out_image = oDITHER.errorDiffusionDither(in_image,{"step":4});
-            oDITHER.canvas[1].style.margin = "0px 0px 0px "+oDITHER.canvas[1].width+"px"
-            oDITHER.ctx[1].putImageData(out_image,0,0);
+           // oDITHER.canvas[1].style.margin = "0px 0px 0px "+oDITHER.canvas[1].width+"px"
+
+
+        var anchor = document.getElementById("dst2");
+        var canvas = document.createElement('canvas');
+        canvas.id = "canvas_2";
+        canvas.width = 500;
+        canvas.height = 500;
+        anchor.appendChild(canvas);
+        var ctx   =  canvas.getContext("2d");
+        ctx.putImageData(out_image,0,0);
    }
 }
  
