@@ -213,7 +213,7 @@ function PALETTE()
             if(Object.keys(this.limit_dots).length>0
             && this.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
             if(Object.keys(this.limit_dots).length!=1 
-            && pattern_obj.filterExcl && cc && !cc["GREY"]       // PATTERN EXCLUSION CRITERIA
+            && pattern_obj.filterExcl && cc      // PATTERN EXCLUSION CRITERIA
             ) continue;
 
             var x = this.dec_near_pos[p][0][0];
