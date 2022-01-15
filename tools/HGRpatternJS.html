@@ -72,7 +72,7 @@ var _D =
     ,"bls":[17,8]        // pattern sample size
     ,"opat":0            // pattern index offset
     ,"filterExcl":false  // remove excluded patterns
-    ,"topheight":150      // height of top pane (rainbow)
+    ,"topheight":160      // height of top pane (rainbow)
     ,"leftpane":430      // width of left pane (grid)
     ,"rightpane":560     // width of right pane (HGR screen)
     ,"bmapID":0          // location of editable grid
@@ -130,6 +130,8 @@ function init_gui(_o)
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
+  document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
+  document.getElementById('applescreen').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
 
   //var hiresCols = apple2plus.video.getloresCols(); for(var i=0;i<hiresCols.length;i++) document.write(i+" "+hiresCols[i][0]+" "+hiresCols[i][4]+"<br>")
 
@@ -237,8 +239,7 @@ function init_gui(_o)
   }
   ,false);  
   ////////////////////////////////   
-  
-  
+
 }
 
 
@@ -487,7 +488,7 @@ function update_criteria()
   ,200:{"PROX":41},201:{"VPAT":-1},203:{"PROX":62},204:{"VPAT":-1},206:{"VPAT":-1},207:{"VPAT":-1},208:{"PROX":7},209:{"PROX":23},210:{"SAT":-1},212:{"PROX":23},213:{"PROX":87},216:{"SAT":-1},217:{"VPAT":-1},218:{"PROX":122},219:{"PROX":123},221:{"VPAT":-1},222:{"SAT":-1},223:{"PROX":127},224:{"PROX":11},225:{"SAT":-1},226:{"PROX":43},227:{"SAT":-1},228:{"SAT":-1},229:{"PROX":181},230:{"SAT":-1},231:{"SAT":-1},232:{"PROX":43},233:{"PROX":182},234:{"PROX":-1},236:{"VPAT":-1},237:{"PROX":123},238:{"VPAT":-1},239:{"PROX":191},240:{"GREY":-1},242:{"PROX":43},243:{"VPAT":-1},246:{"VPAT":-1},248:{"PROX":43},249:{"VPAT":-1},252:{"VPAT":-1},253:{"PROX":127},254:{"PROX":191},255:{"GREY":-1},256:{"GREY":-1},259:{"GREY":-1},262:{"GREY":-1},263:{"SAT":-1},265:{"PROX":3},268:{"GREY":-1},269:{"PROX":263},270:{"PROX":267},271:{"GREY":-1},273:{"VPAT":-1},280:{"VPAT":-1},281:{"PROX":25},283:{"SAT":-1},285:{"PROX":279},286:{"SAT":-1},290:{"VPAT":-1},291:{"PROX":41},294:{"PROX":41},295:{"PROX":301},297:{"PROX":41}
   ,300:{"PROX":41},301:{"SAT":-1},302:{"PROX":299},303:{"PROX":43},304:{"GREY":-1},305:{"PROX":404},306:{"PROX":658},307:{"VPAT":-1},308:{"SAT":-1},310:{"GREY":-1},311:{"VPAT":-1},313:{"VPAT":-1},315:{"VPAT":-1},316:{"GREY":-1},318:{"SAT":-1},319:{"VPAT":-1},329:{"PROX":22},331:{"SAT":-1},333:{"PROX":279},334:{"SAT":-1},343:{"PROX":349},345:{"PROXY":53},350:{"PROX":347},351:{"PROX":105},352:{"GREY":-1},355:{"VPAT":-1},358:{"VPAT":-1},359:{"VPAT":-1},361:{"PROX":105},363:{"VPAT":-1},364:{"GREY":-1},366:{"SAT":-1},367:{"VPAT":-1},370:{"SAT":-1},371:{"VPAT":-1},374:{"VPAT":-1},375:{"VPAT":-1},376:{"SAT":-1},377:{"PROX":61},379:{"VPAT":-1},380:{"PROX":61},387:{"PROX":41},389:{"SAT":-1},390:{"PROX":41},391:{"SAT":-1},392:{"VPAT":-1},393:{"PROX":35},396:{"PROX":41},397:{"SAT":-1},398:{"PROX":299},399:{"PROX":43}
   ,400:{"PROX":3},401:{"PROX":305},402:{"PROX":306},403:{"VPAT":-1},405:{"PROX":309},404:{"PROX":308},406:{"PROX":105},407:{"PROX":317},408:{"PROX":306},409:{"VPAT":-1},410:{"PROX":314},411:{"VPAT":-1},412:{"GREY":-1},413:{"VPAT":-1},414:{"PROX":318},415:{"VPAT":-1},425:{"PROX":58},429:{"PROX":423},430:{"PROX":427},433:{"SAT":-1},435:{"VPAT":-1},437:{"PROX":501},438:{"PROX":62},441:{"VPAT":-1},442:{"PROX":506},444:{"PROX":62},445:{"PROX":439},448:{"GREY":-1},451:{"GREY":-1},454:{"VPAT":-1},455:{"PROX":317},457:{"VPAT":-1},459:{"PROX":318},460:{"VPAT":-1},461:{"VPAT":-1},462:{"VPAT":-1},463:{"VPAT":-1},464:{"PROX":7},465:{"PROX":279},468:{"PROX":279},469:{"PROX":373},471:{"PROX":381},473:{"VPAT":-1},474:{"PROX":378},475:{"PROX":382},477:{"VPAT":-1},478:{"PROX":478},479:{"PROX":127},480:{"PROX":11},481:{"PROX":391},485:{"PROX":437},486:{"VPAT":-1},487:{"PROX":439},489:{"PROX":62},490:{"PROX":442},491:{"PROX":446},492:{"VPAT":-1},493:{"PROX":439},494:{"PROX":491},495:{"PROX":191},496:{"GREY":-1},497:{"SAT":-1},498:{"SAT":-1},499:{"VPAT":-1}
-  ,500:{"SAT":-1},502:{"VPAT":-1},504:{"SAT":-1},505:{"VPAT":-1},508:{"VPAT":-1},509:{"PROX":503},510:{"PROX":507},511:{"GREY":-1},512:{"PROX":3},515:{"GREY":-1},518:{"GREY":-1},521:{"GREY":-1},524:{"GREY":-1},525:{"PROX":263},526:{"PROX":267},527:{"GREY":-1},529:{"VPAT":-1},530:{"SAT":-1},536:{"SAT":-1},537:{"PROX":308},538:{"SAT":-1},539:{"SAT":-1},541:{"PROX":535},542:{"PROX":539},545:{"SAT":-1},546:{"VPAT":-1},547:{"VPAT":-1},548:{"SAT":-1},549:{"SAT":-1},551:{"SAT":-1},553:{"PROX":402},557:{"PROX":542},558:{"PROX":555},559:{"SAT":-1},560:{"GREY":-1},563:{"VPAT":-1},566:{"VPAT":-1},567:{"VPAT":-1},569:{"VPAT":-1},571:{"VPAT":-1},572:{"GREY":-1},574:{"SAT":-1},575:{"VPAT":-1},578:{"SAT":-1},584:{"SAT":-1},585:{"PROX":308},587:{"SAT":-1},589:{"PROX":535},590:{"PROX":539},594:{"PROX":293}
+  ,500:{"SAT":-1},502:{"VPAT":-1},504:{"SAT":-1},505:{"VPAT":-1},506:{"PROX":687},508:{"VPAT":-1},509:{"PROX":503},510:{"PROX":507},511:{"GREY":-1},512:{"PROX":3},515:{"GREY":-1},518:{"GREY":-1},521:{"GREY":-1},524:{"GREY":-1},525:{"PROX":263},526:{"PROX":267},527:{"GREY":-1},529:{"VPAT":-1},530:{"SAT":-1},536:{"SAT":-1},537:{"PROX":308},538:{"SAT":-1},539:{"SAT":-1},541:{"PROX":535},542:{"PROX":539},545:{"SAT":-1},546:{"VPAT":-1},547:{"VPAT":-1},548:{"SAT":-1},549:{"SAT":-1},551:{"SAT":-1},553:{"PROX":402},557:{"PROX":542},558:{"PROX":555},559:{"SAT":-1},560:{"GREY":-1},563:{"VPAT":-1},566:{"VPAT":-1},567:{"VPAT":-1},569:{"VPAT":-1},571:{"VPAT":-1},572:{"GREY":-1},574:{"SAT":-1},575:{"VPAT":-1},578:{"SAT":-1},584:{"SAT":-1},585:{"PROX":308},587:{"SAT":-1},589:{"PROX":535},590:{"PROX":539},594:{"PROX":293}
   ,600:{"PROX":293},601:{"PROX":309},602:{"SAT":-1},605:{"PROX":599},606:{"PROX":603},608:{"GREY":-1},611:{"VPAT":-1},614:{"VPAT":-1},615:{"VPAT":-1},617:{"PROX":105},619:{"PROX":318},620:{"VPAT":-1},622:{"VPAT":-1},623:{"VPAT":-1},626:{"SAT":-1},627:{"VPAT":-1},630:{"VPAT":-1},631:{"VPAT":-1},632:{"SAT":-1},635:{"SAT":-1},636:{"PROX":317},638:{"PROX":635},641:{"SAT":-1},644:{"SAT":-1},645:{"PROX":293},647:{"SAT":-1},648:{"SAT":-1},649:{"PROX":306},653:{"PROX":539},654:{"PROX":555},655:{"SAT":-1},656:{"PROX":3},657:{"PROX":308},658:{"PROX":312},659:{"VPAT":-1},660:{"PROX":308},661:{"PROX":309},662:{"PROX":105},664:{"PROX":312},665:{"VPAT":-1},666:{"PROX":314},667:{"VPAT":-1},668:{"VPAT":-1},669:{"VPAT":-1},670:{"PROX":318},671:{"VPAT":-1},677:{"SAT":-1},681:{"PROX":314},685:{"PROX":634},686:{"PROX":683},689:{"SAT":-1},691:{"VPAT":-1},692:{"SAT":-1},694:{"PROX":318},695:{"SAT":-1},697:{"VPAT":-1},699:{"VPAT":-1}
   ,700:{"PROX":318},701:{"PROX":635},704:{"GREY":-1},707:{"GREY":-1},710:{"VPAT":-1},711:{"PROX":317},713:{"VPAT":-1},715:{"PROX":318},716:{"VPAT":-1},717:{"VPAT":-1},718:{"VPAT":-1},719:{"VPAT":-1},720:{"PROX":263},721:{"PROX":535},722:{"SAT":-1},724:{"PROX":535},725:{"PROX":599},728:{"SAT":-1},729:{"VPAT":-1},730:{"PROX":634},731:{"PROX":635},732:{"VPAT":-1},733:{"VPAT":-1},734:{"PROX":635},735:{"PROX":503},736:{"PROX":267},737:{"PROX":653},738:{"PROX":555},739:{"SAT":-1},740:{"PROX":653},741:{"PROX":603},742:{"VPAT":-1},743:{"PROX":701},744:{"PROX":555},745:{"PROX":459},746:{"PROX":683},748:{"VPAT":-1},749:{"PROX":701},750:{"VPAT":-1},751:{"PROX":507},752:{"GREY":-1},754:{"SAT":-1},755:{"VPAT":-1},758:{"VPAT":-1},760:{"SAT":-1},761:{"VPAT":-1},764:{"VPAT":-1},765:{"PROX":503},766:{"PROX":507},767:{"GREY":-1}
   }
@@ -827,14 +828,12 @@ function load_bitmap()
   <td style="vertical-align:top">
     <div id=mainPalette></div>
     <div id=greyPalette style="margin-top:150px"></div>
-
     <div id="results" style="margin-top:200px"></div>
-
     <div id=disp_param3 class="slider" style="width:100px"></div><button class=smallbutton onclick="document.getElementById('param3').value--;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS(); generate_HGR();">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
     <div id=debug style="overflow:scroll; height:400px;"></div>
   </td>
   <td style=vertical-align:top;>
-    <canvas class="appvid" id="applescreen" width="560" height="384" style="margin:155px 0px 0px 0px"></canvas>
+    <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
     <br>
     <input type=button value="prev" onclick="document.getElementById('param4').value--;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
     <input type=button value="next" onclick="document.getElementById('param4').value++;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
