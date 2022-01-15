@@ -381,12 +381,12 @@ BECBQRKCIEiggUEQJFBIoIgSICRYRAEYEiQqCIECgiUEQIFBEoIgSKCBQRAkUEigiBIgJFhEAR/Z
         </div>
     </td>
     <td style="vertical-align:top">
-        <div id="dst" style="width:500px"></div>
+        <div id="dst"></div>
     </td>
     <td style="vertical-align:top">
-        <div id="dst2" style="width:500px"></div>
+        <div id="dst2"></div>
     </td>    
-    <td>
+    <td style="vertical-align:top">
         <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
     </td>
 </tr>
@@ -1207,7 +1207,7 @@ function update_dither(bInit,idx)
     apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
     apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
 
-
+    
 
 
     var elo = document.getElementById("org");
@@ -1220,6 +1220,8 @@ function update_dither(bInit,idx)
     var w = elo.clientWidth;
     canvas.height = h;
     canvas.width = w;
+    document.getElementById('dst').style.width = w+"px";
+    document.getElementById('dst2').style.width = w+"px";
 
     if(bInit)
     {
@@ -1240,8 +1242,10 @@ function update_dither(bInit,idx)
         var anchor = document.getElementById("dst2");
         var canvas = document.createElement('canvas');
         canvas.id = "canvas_2";
-        canvas.width = 500;
-        canvas.height = 500;
+        alert(w);
+
+        canvas.width = w;
+        canvas.height = h;
         anchor.appendChild(canvas);
         var ctx   =  canvas.getContext("2d");
         ctx.putImageData(out_image,0,0);
@@ -1351,9 +1355,6 @@ var oDITHER = new function()
             // Ratio >=1
             var ratio = 1/16;
 
-
-            
-            
             for (var y=0;y<h;y += step) {
                 for (var x=0;x<w;x += step) {
                     var i = (4*x) + (4*y*w);
@@ -1412,15 +1413,10 @@ var oDITHER = new function()
                             out[di] = tr;
                             out[di+1] = tg;
                             out[di+2] = tb;
-
                         }
                     }
                 }
             }
-            
-
-
-
             out_imgdata.data.set(out);
             return out_imgdata;
         };
