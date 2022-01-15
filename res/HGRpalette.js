@@ -234,11 +234,11 @@ function PALETTE()
             // DRAW PATTERN INDEX NUMBER
             //this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
             this.ctx[1].fillStyle = this.brightness(this.dec_near_col[p]) > 70 ?"#000":"#FFF"
-            this.ctx[1].font = (this.dot_size*1.4)+"px Arial bold";
+            this.ctx[1].font = (this.dot_size*1.3)+"px Arial bold";
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
             //this.ctx[1].fillText(this.brightness(this.dec_near_col[p]) , x, y);
-            this.ctx[1].fillText(p , x, y);
+            this.ctx[1].fillText(p , x, y+1);
 
             /*
             // DRAW COLOR VALUE
