@@ -70,7 +70,7 @@ var _D =
     ,"bls":[17,8]        // pattern sample size
     ,"opat":0            // pattern index offset
     ,"filterExcl":false  // remove excluded patterns
-    ,"topheight":200      // height of top pane (rainbow)
+    ,"topheight":220      // height of top pane (rainbow)
     ,"leftpane":430      // width of left pane (grid)
     ,"rightpane":560     // width of right pane (HGR screen)
     ,"bmapID":0          // location of editable grid
@@ -94,32 +94,6 @@ var custom_bmap =  new Array(oPATTERN.bmapx).fill([false,0]).map(() => new Array
 var custom_fmla = ["",""];
 var oPALETTE = new PALETTE();
 
-/*
-var styl = " style='padding:5px;border:1px solid;font-family:Courier New'"
-document.write("<div"+styl+"><small>")
-for(var idx=0;idx<(255*3);idx++)
-{
-  document.write("<table>");
-  for(var y=0;y<10;y++)
-  {
-    document.write("<tr>");
-    var s="";
-    for(var x=0;x<10;x++)
-    {
-      var c = oPATTERN.calculate_alt(idx,x,y);
-      var pix = c[1]?"background-color:black":"";
-      var bck = (c[2]==128?"border-color:#FF0000":"");
-
-      s+="<td class=tcell10 style=\""+pix+";padding:0;"+bck+"\"></td>"
-    }
-    document.write(s+"<tr>");
-  }
-  document.write("</table><br>");
-}
-document.write("</small></div>")
-*/
-
-
 /////////////////////////////////////////////////////////
 // ONLOAD
 
@@ -128,7 +102,7 @@ function init_gui(_o)
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
-  document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
+  //document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
   document.getElementById('applescreen').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
 
   //var hiresCols = apple2plus.video.getloresCols(); for(var i=0;i<hiresCols.length;i++) document.write(i+" "+hiresCols[i][0]+" "+hiresCols[i][4]+"<br>")
@@ -159,7 +133,7 @@ function init_gui(_o)
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
 
-  oPALETTE.insert_canvas({"id":"greyPalette","canvasID":[2,3],"width":_D.leftpane,"height":50});
+  //oPALETTE.insert_canvas({"id":"greyPalette","canvasID":[2,3],"width":_D.leftpane,"height":50});
   //oPALETTE.draw_greyscale();
 
 
@@ -300,9 +274,6 @@ function getPixel_HGR(x,y)
 
 function wipe_HGR(byte)
 {
-    // find address and bit location
-    //var adr = yref[y] + Math.floor(x/7);              // find address 
-    //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
     for(var adr=8192;adr<16384;adr++)
     apple2plus.hw.write(adr,byte);                      // write byte 
 }
@@ -417,11 +388,6 @@ function generate_REPORT()
       var cri = "";
       for(var i in cc) cri += "\""+i+"\":"+cc[i]+",";
       cri = !cri ? "" : (",\"cri\":{"+cri.slice(0,-1)+"}");
-
-      //if(Object.keys(oPALETTE.limit_dots).length>0
-      //    && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
-      //if(Object.keys(oPALETTE.limit_dots).length!=1 
-      //    && oPATTERN.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
 
       //oPALETTE.hex_pal[p] = csh;
       var ss="\"col\":\""+csh+"\""
@@ -670,8 +636,6 @@ function update_param()
         _D.opat = num * ( _D.blc[0]*_D.blc[1] )
     }
 
-    //if(Object.keys(this.limit_dots).length==0 || this.limit_dots[i]==true )
-
     oVoronoi.init(oPALETTE.canvas[1].id);
     for(var p=0;p<oPALETTE.dec_near_col.length;p++)
     {
@@ -772,10 +736,8 @@ function load_bitmap()
 {
   var sep = " ; "
   var sel = document.getElementById("FSL").value.split(sep);
-
   custom_fmla[0] = sel[1];
   custom_fmla[1] = sel[2];
-  //var patternID = _D.bmapID; 
 
   // FILL custom_bmap using custom_fmla
   for(var y=0;y<oPATTERN.bmapy;y++)
@@ -788,7 +750,7 @@ function load_bitmap()
 }
 </script>
 
- <body class="slider_main" onload="init_gui()">
+<body class="slider_main" onload="init_gui()">
 <div id="slider_title"></div>
  <div class="slider_overlay">
     <div id="topmenu">
@@ -808,7 +770,7 @@ function load_bitmap()
 <table><tr>
   <td style="vertical-align:top">
     <div id=mainPalette></div>
-    <div id=greyPalette style="margin-top:150px"></div>
+    <!--div id=greyPalette style="margin-top:150px"></div-->
     <div id="results" style="margin-top:200px"></div>
     <div id=disp_param3 class="slider" style="width:100px"></div>
     <button class=smallbutton onclick="document.getElementById('param3').value--;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS(); generate_HGR();">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
