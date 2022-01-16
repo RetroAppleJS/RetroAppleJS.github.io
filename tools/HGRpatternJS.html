@@ -675,14 +675,12 @@ function update_param()
     oVoronoi.init(oPALETTE.canvas[1].id);
     for(var p=0;p<oPALETTE.dec_near_col.length;p++)
     {
-      //if(!oPALETTE.dec_near_pos[p][0][0]) continue; // NOT DISPLAYABLE
-      var cc = oPATTERN.criteria[p]
-      if(oPATTERN.filterExcl && cc) continue;   // PATTERN EXCLUSION CRITERIA
-
+      if(!oPALETTE.dec_near_pos[p][0][0]) continue;   // NOT DISPLAYABLE
+      var cc = oPATTERN.criteria[p];
+      if(oPATTERN.filterExcl && cc) continue;         // PATTERN EXCLUSION CRITERIA
       oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
     }
     oVoronoi.compute();
-
 }
 
 
@@ -708,24 +706,24 @@ var oVoronoi =
     },
 
   render: function() {
-      var ctx = this.canvas.getContext('2d');
+      var _ctx = this.canvas.getContext('2d');
       if (!this.diagram) return;
 
       // voronoi edges
-      ctx.beginPath();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#FFF';
+      _ctx.beginPath();
+      _ctx.lineWidth = 2;
+      _ctx.strokeStyle = '#FFF';
       var edges = this.diagram.edges,
           iEdge = edges.length,
           edge, v;
       while (iEdge--) {
           edge = edges[iEdge];
           v = edge.va;
-          ctx.moveTo(v.x,v.y);
+          _ctx.moveTo(v.x,v.y);
           v = edge.vb;
-          ctx.lineTo(v.x,v.y);
+          _ctx.lineTo(v.x,v.y);
           }
-      ctx.stroke();
+      _ctx.stroke();
       }
 }
 
