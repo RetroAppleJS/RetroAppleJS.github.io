@@ -1,7 +1,7 @@
 <!--
 ASCII ART
 https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=ANSI%20Regular
-https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity&t=PATTERN
+https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity
 -->
 <html style="background-color:#B0B0B0"><head>
   <title>APPLE II HGR PATTERN GENERATOR</title>
@@ -76,6 +76,7 @@ for(var i=0;i<_D.YVERTL.length;i+=2)
 var oPATTERN = new PATTERN();
 var oPALETTE = new PALETTE();
 var custom_bmap,custom_fmla;
+var vidContext, apple2plus;
 
 
 //   ██████  ███    ██ ██       ██████   █████  ██████  
@@ -141,7 +142,13 @@ function init_gui(_o)
   //  |_____||____| |____||________||________|  |_____|    |_____|  |________| 
 
   oPALETTE.insert_canvas({"id":"mainPalette","canvasID":[0,1],"width":_D.leftpane+_D.rightpane,"height":_D.topheight});
-  inventorize_PALETTE();
+  var pmax = oPATTERN.pmax;
+  for(var p=0;p<pmax;p++)
+  {
+    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var csh = "#"+RGB2HEX(c).join("");
+    oPALETTE.hex_pal[p] = csh;   // inventorize palette colors from every pattern
+  }
   oPALETTE.dot_size=6;
   oPALETTE.color_depth=24;
   oPALETTE.draw_rainbow();
@@ -176,16 +183,16 @@ function init_gui(_o)
   {
     if(!oPALETTE.bSelectMode) return;
 
-      oPALETTE.mouseXY.dx = event.offsetX-oPALETTE.mouseXY.x;
-      oPALETTE.mouseXY.dy = event.offsetY-oPALETTE.mouseXY.y;
-      var r = Math.sqrt(oPALETTE.mouseXY.dx*oPALETTE.mouseXY.dx + oPALETTE.mouseXY.dy*oPALETTE.mouseXY.dy)
-      oPALETTE.clear_layer(1);
-      oPALETTE.draw_colormatches(oPATTERN);
-      oPALETTE.ctx[1].beginPath();
-      oPALETTE.ctx[1].arc(oPALETTE.mouseXY.x, oPALETTE.mouseXY.y, r, -0.5*Math.PI, 1.5*Math.PI);
-      oPALETTE.ctx[1].lineWidth=1;
-      oPALETTE.ctx[1].strokeStyle = "#808080";
-      oPALETTE.ctx[1].stroke();
+    oPALETTE.mouseXY.dx = event.offsetX-oPALETTE.mouseXY.x;
+    oPALETTE.mouseXY.dy = event.offsetY-oPALETTE.mouseXY.y;
+    var r = Math.sqrt(oPALETTE.mouseXY.dx*oPALETTE.mouseXY.dx + oPALETTE.mouseXY.dy*oPALETTE.mouseXY.dy)
+    oPALETTE.clear_layer(1);
+    oPALETTE.draw_colormatches(oPATTERN);
+    oPALETTE.ctx[1].beginPath();
+    oPALETTE.ctx[1].arc(oPALETTE.mouseXY.x, oPALETTE.mouseXY.y, r, -0.5*Math.PI, 1.5*Math.PI);
+    oPALETTE.ctx[1].lineWidth=1;
+    oPALETTE.ctx[1].strokeStyle = "#808080";
+    oPALETTE.ctx[1].stroke();
   }
   ,false);
 
@@ -206,7 +213,6 @@ function init_gui(_o)
         var rs = Math.sqrt(dxs*dxs + dys*dys);
         if(rs<r) oPALETTE.limit_dots[i] = true;
       }
-      //alert(Object.keys(oPALETTE.limit_dots).length)
 
       oPALETTE.clear_layer(1);
       oVoronoi.render();
@@ -263,8 +269,7 @@ function generate_GRIDS()
     {
       s+=" ";
       for(var j in oPATTERN.criteria[p])
-        if(oPATTERN.criteria[p][j]>=0) s+=j+":"+oPATTERN.criteria[p][j]+" ";
-        else s+= j+" ";
+        if(oPATTERN.criteria[p][j]>=0) s+=j+":"+oPATTERN.criteria[p][j]+" "; else s+= j+" ";
     }
 
     s+="</small>"
@@ -323,6 +328,18 @@ function load_bitmap()
       custom_bmap[x][y] = [eval(custom_fmla[0]),eval(custom_fmla[1])];
   }
   generate_GRIDS();
+}
+
+function Cpix(t,x,y,z)
+{ 
+  if(z==0)
+    custom_bmap[x][y] = [ custom_bmap[x][y][0]?false:true, custom_bmap[x][y][1]];
+  else
+  {
+     for(var i=x;i>(x-7);i--)
+        custom_bmap[i][y] = [ custom_bmap[i][y][0], custom_bmap[i][y][1]==0?128:0];
+  }
+  var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green";
 }
 
 //██████  ███████ ██████   ██████  ██████  ████████ 
@@ -517,7 +534,6 @@ function draw_number(num,pos)
     }
 }
 
-var vidContext, apple2plus;
 function Apple2Plus(context)
 {
   this.video = new Apple2Video(context);
@@ -578,6 +594,7 @@ function wipe_HGR(byte)
     apple2plus.hw.write(adr,byte);                      // write byte 
 }
 
+/*
 function PRINTByte(by)
 {
   var sa = ("0000000"+by.toString(2)).slice(-8).split("");
@@ -585,63 +602,7 @@ function PRINTByte(by)
   var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
   return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
 }
-
-function Cpix(t,x,y,z)
-{ 
-  if(z==0)
-    custom_bmap[x][y] = [ custom_bmap[x][y][0]?false:true, custom_bmap[x][y][1]];
-  else
-  {
-     for(var i=x;i>(x-7);i--)
-        custom_bmap[i][y] = [ custom_bmap[i][y][0], custom_bmap[i][y][1]==0?128:0];
-  }
-  var o=t.parentNode.style; o.backgroundColor=o.backgroundColor?"":"green";
-}
-
-function inventorize_PALETTE()
-{
-  var pmax = oPATTERN.pmax;
-  for(var p=0;p<pmax;p++)
-  {
-    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-    var csh = "#"+RGB2HEX(c).join("");
-    oPALETTE.hex_pal[p] = csh;   // inventorize palette colors from every pattern
-  }
-}
-
-function update_param()
-{
-    document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
-    oPATTERN.filterExcl=document.getElementById('param5').value==1;          // set filter
-
-    if(document.getElementById("param3"))
-    {
-        var dot_idx   = Number(document.getElementById("param3").value);
-        oPALETTE.limit_dots = {}
-        if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
-        else dot_idx = "";
-        document.getElementById("disp_param3").innerHTML 
-        ="<font color=white>dot select "+dot_idx+"</font>"
-    }
-
-    if(document.getElementById('param4'))
-    {
-        var num = Number(document.getElementById('param4').value);
-        if(num<0) num = 0;
-        document.getElementById('param4').value = num;
-        _D.opat = num * ( _D.blc[0]*_D.blc[1] )
-    }
-
-    oVoronoi.init(oPALETTE.canvas[1].id);
-    for(var p=0;p<oPALETTE.dec_near_col.length;p++)
-    {
-      if(!oPALETTE.dec_near_pos[p][0][0]) continue;   // NOT DISPLAYABLE
-      var cc = oPATTERN.criteria[p];
-      if(oPATTERN.filterExcl && cc) continue;         // PATTERN EXCLUSION CRITERIA
-      oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
-    }
-    oVoronoi.compute();
-}
+*/
 
 //  ██    ██  ██████  ██████   ██████  ███    ██  ██████  ██ 
 //  ██    ██ ██    ██ ██   ██ ██    ██ ████   ██ ██    ██ ██ 
@@ -690,6 +651,46 @@ var oVoronoi =
           }
       _ctx.stroke();
       }
+}
+
+//  ██    ██ ██████  ██████   █████  ████████ ███████ 
+//  ██    ██ ██   ██ ██   ██ ██   ██    ██    ██      
+//  ██    ██ ██████  ██   ██ ███████    ██    █████   
+//  ██    ██ ██      ██   ██ ██   ██    ██    ██      
+//   ██████  ██      ██████  ██   ██    ██    ███████
+
+function update_param()
+{
+    document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
+    oPATTERN.filterExcl=document.getElementById('param5').value==1;          // set filter
+
+    if(document.getElementById("param3"))
+    {
+        var dot_idx   = Number(document.getElementById("param3").value);
+        oPALETTE.limit_dots = {}
+        if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
+        else dot_idx = "";
+        document.getElementById("disp_param3").innerHTML 
+        ="<font color=white>dot select "+dot_idx+"</font>"
+    }
+
+    if(document.getElementById('param4'))
+    {
+        var num = Number(document.getElementById('param4').value);
+        if(num<0) num = 0;
+        document.getElementById('param4').value = num;
+        _D.opat = num * ( _D.blc[0]*_D.blc[1] )
+    }
+
+    oVoronoi.init(oPALETTE.canvas[1].id);
+    for(var p=0;p<oPALETTE.dec_near_col.length;p++)
+    {
+      if(!oPALETTE.dec_near_pos[p][0][0]) continue;   // NOT DISPLAYABLE
+      var cc = oPATTERN.criteria[p];
+      if(oPATTERN.filterExcl && cc) continue;         // PATTERN EXCLUSION CRITERIA
+      oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
+    }
+    oVoronoi.compute();
 }
 
 //  ██   ██ ████████ ███    ███ ██      
