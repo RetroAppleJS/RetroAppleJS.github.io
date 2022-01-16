@@ -131,14 +131,6 @@ function PALETTE()
         //+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
     }
 
-            /*
-            var cc = oPATTERN.criteria[p];
-            if(Object.keys(oPALETTE.limit_dots).length>0
-            && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
-            if(Object.keys(oPALETTE.limit_dots).length!=1 
-            && oPATTERN.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
-            */
-
     this.draw_greyscale = function()
     {
         this.clear_layer(2);
@@ -256,17 +248,7 @@ function PALETTE()
             this.ctx[1].textAlign = "center"; 
             this.ctx[1].textBaseline = "middle";
             //this.ctx[1].fillText(this.brightness(this.dec_near_col[p]) , x, y);
-            this.ctx[1].fillText(p , x, y+1);
-
-            /*
-            // DRAW COLOR VALUE
-            this.ctx[1].fillStyle = sec.y==0?'#FFF':"#000"
-            this.ctx[1].font = (this.dot_size)+"px Arial bold";
-            this.ctx[1].textAlign = "center"; 
-            this.ctx[1].textBaseline = "middle";
-            this.ctx[1].fillText('#'+hex_cx.join("") , x, y+10);
-            */
-            
+            this.ctx[1].fillText(p , x, y+1);            
         }
     }
 
@@ -276,11 +258,9 @@ function PALETTE()
         var width  = this.canvas[2].width;
         var height = this.canvas[2].height;
     
-        
         for(var p=0;p<this.dec_near_col.length;p++)
         {
             var cc = oPATTERN.criteria[p]                    // TODO INCOPORATE CHECK_CRITERIA2
-
             
             if(Object.keys(this.limit_dots).length>0
             && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
