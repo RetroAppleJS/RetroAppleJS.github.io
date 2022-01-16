@@ -1,6 +1,7 @@
 <!--
 ASCII ART
 https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=ANSI%20Regular
+https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity&t=PATTERN
 -->
 <html style="background-color:#B0B0B0"><head>
   <title>APPLE II HGR PATTERN GENERATOR</title>
@@ -72,8 +73,7 @@ for(var i=0;i<_D.YVERTL.length;i+=2)
   yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
               +parseInt( _D.YVERTL.substring(i,i+2),16);
 
-oPATTERN = new PATTERN();
-
+var oPATTERN = new PATTERN();
 var oPALETTE = new PALETTE();
 var custom_bmap,custom_fmla;
 
@@ -88,28 +88,59 @@ var custom_bmap,custom_fmla;
 function init_gui(_o)
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
+
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
-  //document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
   document.getElementById('applescreen').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
-
   apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
   apple2plus.video.setCol(6,0, "#0080FF");    // tweak blue value   (#2F95FF)
   apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
   apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
 
+    //document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
+
+  //   _______     _     _________  _________  ________  _______     ____  _____  
+  //  |_   __ \   / \   |  _   _  ||  _   _  ||_   __  ||_   __ \   |_   \|_   _| 
+  //    | |__) | / _ \  |_/ | | \_||_/ | | \_|  | |_ \_|  | |__) |    |   \ | |   
+  //    |  ___/ / ___ \     | |        | |      |  _| _   |  __ /     | |\ \| |   
+  //   _| |_  _/ /   \ \_  _| |_      _| |_    _| |__/ | _| |  \ \_  _| |_\   |_  
+  //  |_____||____| |____||_____|    |_____|  |________||____| |___||_____|\____| 
+
   oPATTERN.colorFN = apple2plus.video.getPixelColor;
-  update_criteria();
+  oPATTERN.criteria_desc = {
+   "DOUBL":"copy of "
+  ,"SAT":"pale blend"
+  ,"VPAT":"hard vertical lines"
+  ,"PROX":"adjoining "}
+  oPATTERN.criteria = {0:{"GREY":-1},3:{"GREY":-1},6:{"GREY":-1},9:{"PROX":3},11:{"SAT":-1},12:{"GREY":-1},13:{"PROX":7},14:{"PROX":11},15:{"GREY":-1},17:{"VPAT":-1},18:{"SAT":-1},19:{"VPAT":-1},20:{"VPAT":-1},24:{"SAT":-1},25:{"PROX":22},26:{"SAT":-1},27:{"SAT":-1},29:{"PROX":23},30:{"SAT":-1},33:{"SAT":-1},34:{"VPAT":-1},35:{"PROX":41},36:{"SAT":-1},37:{"PROX":21},38:{"PROX":41},39:{"SAT":-1},41:{"SAT":-1},44:{"PROX":41},45:{"SAT":-1},46:{"PROX":43},47:{"PROX":43},48:{"GREY":-1},50:{"PROX":41},51:{"VPAT":-1},54:{"VPAT":-1},55:{"VPAT":-1},56:{"PROX":41},57:{"VPAT":-1},59:{"VPAT":-1},60:{"GREY":-1},62:{"SAT":-1},63:{"VPAT":-1},66:{"SAT":-1},72:{"SAT":-1},73:{"PROX":22},75:{"SAT":-1},77:{"PROX":23},78:{"SAT":-1},82:{"PROX":5},88:{"PROX":5},89:{"PROX":53},90:{"DOUBL":165},91:{"PROX":87},93:{"PROX":87},94:{"PROX":87},96:{"GREY":-1},98:{"PROX":41},99:{"VPAT":-1}
+  ,102:{"VPAT":-1},103:{"VPAT":-1},104:{"PROX":41},105:{"GREY":-1},107:{"PROX":62},108:{"VPAT":-1},110:{"VPAT":-1},114:{"SAT":-1},111:{"VPAT":-1},115:{"VPAT":-1},118:{"VPAT":-1},119:{"VPAT":-1},120:{"SAT":-1},122:{"PROX":175},124:{"PROX":61},126:{"PROX":-1},129:{"SAT":-1},132:{"SAT":-1},133:{"PROX":5},131:{"PROX":41},134:{"PROX":41},135:{"SAT":-1},136:{"VPAT":-1},137:{"PROX":176},140:{"PROX":41},141:{"SAT":-1},142:{"PROX":43},143:{"PROX":43},144:{"PROX":3},145:{"PROX":22},147:{"VPAT":-1},148:{"PROX":22},149:{"PROX":53},150:{"GREY":-1},153:{"VPAT":-1},154:{"PROX":58},155:{"VPAT":-1},156:{"VPAT":-1},157:{"VPAT":-1},158:{"PROX":62},159:{"VPAT":-1},167:{"PROX":175},169:{"PROX":58},173:{"PROX":122},174:{"PROX":-1},176:{"PROX":146},177:{"SAT":-1},179:{"VPAT":-1},180:{"SAT":-1},182:{"PROX":62},185:{"VPAT":-1},186:{"PROX":-1},187:{"VPAT":-1},188:{"PROX":62},189:{"PROX":-1},192:{"GREY":-1},194:{"PROX":41},195:{"GREY":-1},198:{"VPAT":-1},199:{"PROX":61}
+  ,200:{"PROX":41},201:{"VPAT":-1},203:{"PROX":62},204:{"VPAT":-1},206:{"VPAT":-1},207:{"VPAT":-1},208:{"PROX":7},209:{"PROX":23},210:{"SAT":-1},212:{"PROX":23},213:{"PROX":87},216:{"SAT":-1},217:{"VPAT":-1},218:{"PROX":122},219:{"PROX":123},221:{"VPAT":-1},222:{"SAT":-1},223:{"PROX":127},224:{"PROX":11},225:{"SAT":-1},226:{"PROX":43},227:{"SAT":-1},228:{"SAT":-1},229:{"PROX":181},230:{"SAT":-1},231:{"SAT":-1},232:{"PROX":43},233:{"PROX":182},234:{"PROX":-1},236:{"VPAT":-1},237:{"PROX":123},238:{"VPAT":-1},239:{"PROX":191},240:{"GREY":-1},242:{"PROX":43},243:{"VPAT":-1},246:{"VPAT":-1},248:{"PROX":43},249:{"VPAT":-1},252:{"VPAT":-1},253:{"PROX":127},254:{"PROX":191},255:{"GREY":-1},256:{"GREY":-1},259:{"GREY":-1},262:{"GREY":-1},263:{"SAT":-1},265:{"PROX":3},268:{"GREY":-1},269:{"PROX":263},270:{"PROX":267},271:{"GREY":-1},273:{"VPAT":-1},280:{"VPAT":-1},281:{"PROX":25},283:{"SAT":-1},285:{"PROX":279},286:{"SAT":-1},290:{"VPAT":-1},291:{"PROX":41},294:{"PROX":41},295:{"PROX":301},297:{"PROX":41}
+  ,300:{"PROX":41},301:{"SAT":-1},302:{"PROX":299},303:{"PROX":43},304:{"GREY":-1},305:{"PROX":404},306:{"PROX":658},307:{"VPAT":-1},308:{"SAT":-1},310:{"GREY":-1},311:{"VPAT":-1},313:{"VPAT":-1},315:{"VPAT":-1},316:{"GREY":-1},318:{"SAT":-1},319:{"VPAT":-1},329:{"PROX":22},331:{"SAT":-1},333:{"PROX":279},334:{"SAT":-1},343:{"PROX":349},345:{"PROXY":53},350:{"PROX":347},351:{"PROX":105},352:{"GREY":-1},355:{"VPAT":-1},358:{"VPAT":-1},359:{"VPAT":-1},361:{"PROX":105},363:{"VPAT":-1},364:{"GREY":-1},366:{"SAT":-1},367:{"VPAT":-1},370:{"SAT":-1},371:{"VPAT":-1},374:{"VPAT":-1},375:{"VPAT":-1},376:{"SAT":-1},377:{"PROX":61},379:{"VPAT":-1},380:{"PROX":61},387:{"PROX":41},389:{"SAT":-1},390:{"PROX":41},391:{"SAT":-1},392:{"VPAT":-1},393:{"PROX":35},396:{"PROX":41},397:{"SAT":-1},398:{"PROX":299},399:{"PROX":43}
+  ,400:{"PROX":3},401:{"PROX":305},402:{"PROX":306},403:{"VPAT":-1},405:{"PROX":309},404:{"PROX":308},406:{"PROX":105},407:{"PROX":317},408:{"PROX":306},409:{"VPAT":-1},410:{"PROX":314},411:{"VPAT":-1},412:{"GREY":-1},413:{"VPAT":-1},414:{"PROX":318},415:{"VPAT":-1},425:{"PROX":58},429:{"PROX":423},430:{"PROX":427},432:{"PROX":146},433:{"SAT":-1},435:{"VPAT":-1},437:{"PROX":501},438:{"PROX":62},441:{"VPAT":-1},442:{"PROX":506},444:{"PROX":62},445:{"PROX":439},448:{"GREY":-1},451:{"GREY":-1},454:{"VPAT":-1},455:{"PROX":317},457:{"VPAT":-1},459:{"PROX":318},460:{"VPAT":-1},461:{"VPAT":-1},462:{"VPAT":-1},463:{"VPAT":-1},464:{"PROX":7},465:{"PROX":279},468:{"PROX":279},469:{"PROX":373},471:{"PROX":381},473:{"VPAT":-1},474:{"PROX":378},475:{"PROX":382},477:{"VPAT":-1},478:{"PROX":478},479:{"PROX":127},480:{"PROX":11},481:{"PROX":391},485:{"PROX":437},486:{"VPAT":-1},487:{"PROX":439},489:{"PROX":62},490:{"PROX":442},491:{"PROX":446},492:{"VPAT":-1},493:{"PROX":439},494:{"PROX":491},495:{"PROX":191},496:{"GREY":-1},497:{"SAT":-1},498:{"SAT":-1},499:{"VPAT":-1}
+  ,500:{"SAT":-1},502:{"VPAT":-1},503:{"DOUBL":639},504:{"SAT":-1},505:{"VPAT":-1},506:{"DOUBL":687},507:{"DOUBL":703},508:{"VPAT":-1},509:{"PROX":503},510:{"DOUBL":703},511:{"GREY":-1},512:{"PROX":3},515:{"GREY":-1},518:{"GREY":-1},521:{"GREY":-1},524:{"GREY":-1},525:{"PROX":263},526:{"PROX":267},527:{"GREY":-1},529:{"VPAT":-1},530:{"SAT":-1},536:{"SAT":-1},537:{"PROX":308},538:{"SAT":-1},539:{"SAT":-1},541:{"PROX":535},542:{"PROX":539},545:{"SAT":-1},546:{"VPAT":-1},547:{"VPAT":-1},548:{"SAT":-1},549:{"SAT":-1},551:{"SAT":-1},553:{"PROX":402},557:{"PROX":542},558:{"PROX":555},559:{"SAT":-1},560:{"GREY":-1},563:{"VPAT":-1},566:{"VPAT":-1},567:{"VPAT":-1},569:{"VPAT":-1},571:{"VPAT":-1},572:{"GREY":-1},574:{"SAT":-1},575:{"VPAT":-1},578:{"SAT":-1},584:{"SAT":-1},585:{"PROX":308},587:{"SAT":-1},589:{"PROX":535},590:{"PROX":539},594:{"PROX":293}
+  ,600:{"PROX":293},601:{"PROX":309},602:{"SAT":-1},603:{"PROX":373},605:{"PROX":599},606:{"DOUBL":693},608:{"GREY":-1},611:{"VPAT":-1},614:{"VPAT":-1},615:{"VPAT":-1},617:{"PROX":105},619:{"PROX":318},620:{"VPAT":-1},622:{"VPAT":-1},623:{"VPAT":-1},626:{"SAT":-1},627:{"VPAT":-1},630:{"VPAT":-1},631:{"VPAT":-1},632:{"SAT":-1},635:{"SAT":-1},636:{"PROX":317},638:{"PROX":635},641:{"SAT":-1},644:{"SAT":-1},645:{"PROX":293},647:{"SAT":-1},648:{"SAT":-1},649:{"PROX":306},653:{"PROX":539},654:{"PROX":555},655:{"SAT":-1},656:{"PROX":3},657:{"PROX":308},658:{"PROX":312},659:{"VPAT":-1},660:{"PROX":308},661:{"PROX":309},662:{"PROX":105},664:{"PROX":312},665:{"VPAT":-1},666:{"PROX":314},667:{"VPAT":-1},668:{"VPAT":-1},669:{"VPAT":-1},670:{"PROX":318},671:{"VPAT":-1},677:{"SAT":-1},681:{"PROX":314},685:{"PROX":634},686:{"PROX":683},689:{"SAT":-1},691:{"VPAT":-1},692:{"SAT":-1},694:{"PROX":318},695:{"SAT":-1},697:{"VPAT":-1},699:{"VPAT":-1}
+  ,700:{"PROX":318},701:{"PROX":635},704:{"GREY":-1},707:{"GREY":-1},710:{"VPAT":-1},711:{"PROX":317},713:{"VPAT":-1},715:{"PROX":318},716:{"VPAT":-1},717:{"VPAT":-1},718:{"VPAT":-1},719:{"VPAT":-1},720:{"PROX":263},721:{"PROX":535},722:{"SAT":-1},724:{"PROX":535},725:{"PROX":599},728:{"SAT":-1},729:{"VPAT":-1},730:{"PROX":634},731:{"PROX":635},732:{"VPAT":-1},733:{"VPAT":-1},734:{"PROX":635},735:{"PROX":503},736:{"PROX":267},737:{"PROX":653},738:{"PROX":555},739:{"SAT":-1},740:{"PROX":653},741:{"PROX":603},742:{"VPAT":-1},743:{"PROX":701},744:{"PROX":555},745:{"PROX":459},746:{"PROX":683},748:{"VPAT":-1},749:{"PROX":701},750:{"VPAT":-1},751:{"PROX":507},752:{"GREY":-1},754:{"SAT":-1},755:{"VPAT":-1},758:{"VPAT":-1},760:{"SAT":-1},761:{"VPAT":-1},764:{"VPAT":-1},765:{"PROX":503},766:{"PROX":507},767:{"GREY":-1}
+  }
+  oPATTERN.add_criteria(apple2plus.video.getPixelColor)
   oPATTERN.filterExcl = _D.filterExcl;
+
+  /*
   custom_bmap =  new Array(oPATTERN.bmapx).fill([false,0]).map(() => new Array(oPATTERN.bmapy).fill([false,0]));
   custom_fmla = ["",""];
   var a = oPATTERN.parse();
   var s = "", sep = " ; ";
   for(var i in a) s+= "<option value=\""+i+sep+a[i][0]+sep+a[i][1]+sep+"\">\n";
   document.getElementById("formulas").innerHTML = s;
+  */
+
+  //   _______     _       _____     ________  _________  _________  ________  
+  //  |_   __ \   / \     |_   _|   |_   __  ||  _   _  ||  _   _  ||_   __  | 
+  //    | |__) | / _ \      | |       | |_ \_||_/ | | \_||_/ | | \_|  | |_ \_| 
+  //    |  ___/ / ___ \     | |   _   |  _| _     | |        | |      |  _| _  
+  //   _| |_  _/ /   \ \_  _| |__/ | _| |__/ |   _| |_      _| |_    _| |__/ | 
+  //  |_____||____| |____||________||________|  |_____|    |_____|  |________| 
 
   oPALETTE.insert_canvas({"id":"mainPalette","canvasID":[0,1],"width":_D.leftpane+_D.rightpane,"height":_D.topheight});
-
   inventorize_PALETTE();
   oPALETTE.dot_size=6;
   oPALETTE.color_depth=24;
@@ -130,7 +161,6 @@ function init_gui(_o)
   oPALETTE.draw_colormatches(oPATTERN);
   //oPALETTE.draw_greymatches();
   
-
   //////   PALETTE MOUSE EVENTS (select circular area)
   oPALETTE.canvas[1].addEventListener('mousedown',
   function(event)
@@ -186,54 +216,6 @@ function init_gui(_o)
   }
   ,false);  
   ////////////////////////////////
-}
-
-//   ██████ ██████  ██ ████████ ███████ ██████  ██  █████  
-//  ██      ██   ██ ██    ██    ██      ██   ██ ██ ██   ██ 
-//  ██      ██████  ██    ██    █████   ██████  ██ ███████ 
-//  ██      ██   ██ ██    ██    ██      ██   ██ ██ ██   ██ 
-//   ██████ ██   ██ ██    ██    ███████ ██   ██ ██ ██   ██
-
-function update_criteria()
-{
-  oPATTERN.criteria_desc = {
-   "DOUBL":"copy of "
-  ,"SAT":"pale blend"
-  ,"VPAT":"hard vertical lines"
-  ,"PROX":"adjoining "}
-
-  oPATTERN.criteria = {0:{"GREY":-1},3:{"GREY":-1},6:{"GREY":-1},9:{"PROX":3},11:{"SAT":-1},12:{"GREY":-1},13:{"PROX":7},14:{"PROX":11},15:{"GREY":-1},17:{"VPAT":-1},18:{"SAT":-1},19:{"VPAT":-1},20:{"VPAT":-1},24:{"SAT":-1},25:{"PROX":22},26:{"SAT":-1},27:{"SAT":-1},29:{"PROX":23},30:{"SAT":-1},33:{"SAT":-1},34:{"VPAT":-1},35:{"PROX":41},36:{"SAT":-1},37:{"PROX":21},38:{"PROX":41},39:{"SAT":-1},41:{"SAT":-1},44:{"PROX":41},45:{"SAT":-1},46:{"PROX":43},47:{"PROX":43},48:{"GREY":-1},50:{"PROX":41},51:{"VPAT":-1},54:{"VPAT":-1},55:{"VPAT":-1},56:{"PROX":41},57:{"VPAT":-1},59:{"VPAT":-1},60:{"GREY":-1},62:{"SAT":-1},63:{"VPAT":-1},66:{"SAT":-1},72:{"SAT":-1},73:{"PROX":22},75:{"SAT":-1},77:{"PROX":23},78:{"SAT":-1},82:{"PROX":5},88:{"PROX":5},89:{"PROX":53},90:{"DOUBL":165},91:{"PROX":87},93:{"PROX":87},94:{"PROX":87},96:{"GREY":-1},98:{"PROX":41},99:{"VPAT":-1}
-  ,102:{"VPAT":-1},103:{"VPAT":-1},104:{"PROX":41},105:{"GREY":-1},107:{"PROX":62},108:{"VPAT":-1},110:{"VPAT":-1},114:{"SAT":-1},111:{"VPAT":-1},115:{"VPAT":-1},118:{"VPAT":-1},119:{"VPAT":-1},120:{"SAT":-1},122:{"PROX":175},124:{"PROX":61},126:{"PROX":-1},129:{"SAT":-1},132:{"SAT":-1},133:{"PROX":5},131:{"PROX":41},134:{"PROX":41},135:{"SAT":-1},136:{"VPAT":-1},137:{"PROX":176},140:{"PROX":41},141:{"SAT":-1},142:{"PROX":43},143:{"PROX":43},144:{"PROX":3},145:{"PROX":22},147:{"VPAT":-1},148:{"PROX":22},149:{"PROX":53},150:{"GREY":-1},153:{"VPAT":-1},154:{"PROX":58},155:{"VPAT":-1},156:{"VPAT":-1},157:{"VPAT":-1},158:{"PROX":62},159:{"VPAT":-1},167:{"PROX":175},169:{"PROX":58},173:{"PROX":122},174:{"PROX":-1},176:{"PROX":146},177:{"SAT":-1},179:{"VPAT":-1},180:{"SAT":-1},182:{"PROX":62},185:{"VPAT":-1},186:{"PROX":-1},187:{"VPAT":-1},188:{"PROX":62},189:{"PROX":-1},192:{"GREY":-1},194:{"PROX":41},195:{"GREY":-1},198:{"VPAT":-1},199:{"PROX":61}
-  ,200:{"PROX":41},201:{"VPAT":-1},203:{"PROX":62},204:{"VPAT":-1},206:{"VPAT":-1},207:{"VPAT":-1},208:{"PROX":7},209:{"PROX":23},210:{"SAT":-1},212:{"PROX":23},213:{"PROX":87},216:{"SAT":-1},217:{"VPAT":-1},218:{"PROX":122},219:{"PROX":123},221:{"VPAT":-1},222:{"SAT":-1},223:{"PROX":127},224:{"PROX":11},225:{"SAT":-1},226:{"PROX":43},227:{"SAT":-1},228:{"SAT":-1},229:{"PROX":181},230:{"SAT":-1},231:{"SAT":-1},232:{"PROX":43},233:{"PROX":182},234:{"PROX":-1},236:{"VPAT":-1},237:{"PROX":123},238:{"VPAT":-1},239:{"PROX":191},240:{"GREY":-1},242:{"PROX":43},243:{"VPAT":-1},246:{"VPAT":-1},248:{"PROX":43},249:{"VPAT":-1},252:{"VPAT":-1},253:{"PROX":127},254:{"PROX":191},255:{"GREY":-1},256:{"GREY":-1},259:{"GREY":-1},262:{"GREY":-1},263:{"SAT":-1},265:{"PROX":3},268:{"GREY":-1},269:{"PROX":263},270:{"PROX":267},271:{"GREY":-1},273:{"VPAT":-1},280:{"VPAT":-1},281:{"PROX":25},283:{"SAT":-1},285:{"PROX":279},286:{"SAT":-1},290:{"VPAT":-1},291:{"PROX":41},294:{"PROX":41},295:{"PROX":301},297:{"PROX":41}
-  ,300:{"PROX":41},301:{"SAT":-1},302:{"PROX":299},303:{"PROX":43},304:{"GREY":-1},305:{"PROX":404},306:{"PROX":658},307:{"VPAT":-1},308:{"SAT":-1},310:{"GREY":-1},311:{"VPAT":-1},313:{"VPAT":-1},315:{"VPAT":-1},316:{"GREY":-1},318:{"SAT":-1},319:{"VPAT":-1},329:{"PROX":22},331:{"SAT":-1},333:{"PROX":279},334:{"SAT":-1},343:{"PROX":349},345:{"PROXY":53},350:{"PROX":347},351:{"PROX":105},352:{"GREY":-1},355:{"VPAT":-1},358:{"VPAT":-1},359:{"VPAT":-1},361:{"PROX":105},363:{"VPAT":-1},364:{"GREY":-1},366:{"SAT":-1},367:{"VPAT":-1},370:{"SAT":-1},371:{"VPAT":-1},374:{"VPAT":-1},375:{"VPAT":-1},376:{"SAT":-1},377:{"PROX":61},379:{"VPAT":-1},380:{"PROX":61},387:{"PROX":41},389:{"SAT":-1},390:{"PROX":41},391:{"SAT":-1},392:{"VPAT":-1},393:{"PROX":35},396:{"PROX":41},397:{"SAT":-1},398:{"PROX":299},399:{"PROX":43}
-  ,400:{"PROX":3},401:{"PROX":305},402:{"PROX":306},403:{"VPAT":-1},405:{"PROX":309},404:{"PROX":308},406:{"PROX":105},407:{"PROX":317},408:{"PROX":306},409:{"VPAT":-1},410:{"PROX":314},411:{"VPAT":-1},412:{"GREY":-1},413:{"VPAT":-1},414:{"PROX":318},415:{"VPAT":-1},425:{"PROX":58},429:{"PROX":423},430:{"PROX":427},432:{"PROX":146},433:{"SAT":-1},435:{"VPAT":-1},437:{"PROX":501},438:{"PROX":62},441:{"VPAT":-1},442:{"PROX":506},444:{"PROX":62},445:{"PROX":439},448:{"GREY":-1},451:{"GREY":-1},454:{"VPAT":-1},455:{"PROX":317},457:{"VPAT":-1},459:{"PROX":318},460:{"VPAT":-1},461:{"VPAT":-1},462:{"VPAT":-1},463:{"VPAT":-1},464:{"PROX":7},465:{"PROX":279},468:{"PROX":279},469:{"PROX":373},471:{"PROX":381},473:{"VPAT":-1},474:{"PROX":378},475:{"PROX":382},477:{"VPAT":-1},478:{"PROX":478},479:{"PROX":127},480:{"PROX":11},481:{"PROX":391},485:{"PROX":437},486:{"VPAT":-1},487:{"PROX":439},489:{"PROX":62},490:{"PROX":442},491:{"PROX":446},492:{"VPAT":-1},493:{"PROX":439},494:{"PROX":491},495:{"PROX":191},496:{"GREY":-1},497:{"SAT":-1},498:{"SAT":-1},499:{"VPAT":-1}
-  ,500:{"SAT":-1},502:{"VPAT":-1},503:{"DOUBL":639},504:{"SAT":-1},505:{"VPAT":-1},506:{"DOUBL":687},507:{"DOUBL":703},508:{"VPAT":-1},509:{"PROX":503},510:{"DOUBL":703},511:{"GREY":-1},512:{"PROX":3},515:{"GREY":-1},518:{"GREY":-1},521:{"GREY":-1},524:{"GREY":-1},525:{"PROX":263},526:{"PROX":267},527:{"GREY":-1},529:{"VPAT":-1},530:{"SAT":-1},536:{"SAT":-1},537:{"PROX":308},538:{"SAT":-1},539:{"SAT":-1},541:{"PROX":535},542:{"PROX":539},545:{"SAT":-1},546:{"VPAT":-1},547:{"VPAT":-1},548:{"SAT":-1},549:{"SAT":-1},551:{"SAT":-1},553:{"PROX":402},557:{"PROX":542},558:{"PROX":555},559:{"SAT":-1},560:{"GREY":-1},563:{"VPAT":-1},566:{"VPAT":-1},567:{"VPAT":-1},569:{"VPAT":-1},571:{"VPAT":-1},572:{"GREY":-1},574:{"SAT":-1},575:{"VPAT":-1},578:{"SAT":-1},584:{"SAT":-1},585:{"PROX":308},587:{"SAT":-1},589:{"PROX":535},590:{"PROX":539},594:{"PROX":293}
-  ,600:{"PROX":293},601:{"PROX":309},602:{"SAT":-1},603:{"PROX":373},605:{"PROX":599},606:{"DOUBL":693},608:{"GREY":-1},611:{"VPAT":-1},614:{"VPAT":-1},615:{"VPAT":-1},617:{"PROX":105},619:{"PROX":318},620:{"VPAT":-1},622:{"VPAT":-1},623:{"VPAT":-1},626:{"SAT":-1},627:{"VPAT":-1},630:{"VPAT":-1},631:{"VPAT":-1},632:{"SAT":-1},635:{"SAT":-1},636:{"PROX":317},638:{"PROX":635},641:{"SAT":-1},644:{"SAT":-1},645:{"PROX":293},647:{"SAT":-1},648:{"SAT":-1},649:{"PROX":306},653:{"PROX":539},654:{"PROX":555},655:{"SAT":-1},656:{"PROX":3},657:{"PROX":308},658:{"PROX":312},659:{"VPAT":-1},660:{"PROX":308},661:{"PROX":309},662:{"PROX":105},664:{"PROX":312},665:{"VPAT":-1},666:{"PROX":314},667:{"VPAT":-1},668:{"VPAT":-1},669:{"VPAT":-1},670:{"PROX":318},671:{"VPAT":-1},677:{"SAT":-1},681:{"PROX":314},685:{"PROX":634},686:{"PROX":683},689:{"SAT":-1},691:{"VPAT":-1},692:{"SAT":-1},694:{"PROX":318},695:{"SAT":-1},697:{"VPAT":-1},699:{"VPAT":-1}
-  ,700:{"PROX":318},701:{"PROX":635},704:{"GREY":-1},707:{"GREY":-1},710:{"VPAT":-1},711:{"PROX":317},713:{"VPAT":-1},715:{"PROX":318},716:{"VPAT":-1},717:{"VPAT":-1},718:{"VPAT":-1},719:{"VPAT":-1},720:{"PROX":263},721:{"PROX":535},722:{"SAT":-1},724:{"PROX":535},725:{"PROX":599},728:{"SAT":-1},729:{"VPAT":-1},730:{"PROX":634},731:{"PROX":635},732:{"VPAT":-1},733:{"VPAT":-1},734:{"PROX":635},735:{"PROX":503},736:{"PROX":267},737:{"PROX":653},738:{"PROX":555},739:{"SAT":-1},740:{"PROX":653},741:{"PROX":603},742:{"VPAT":-1},743:{"PROX":701},744:{"PROX":555},745:{"PROX":459},746:{"PROX":683},748:{"VPAT":-1},749:{"PROX":701},750:{"VPAT":-1},751:{"PROX":507},752:{"GREY":-1},754:{"SAT":-1},755:{"VPAT":-1},758:{"VPAT":-1},760:{"SAT":-1},761:{"VPAT":-1},764:{"VPAT":-1},765:{"PROX":503},766:{"PROX":507},767:{"GREY":-1}
-  }
-
-  oPATTERN.add_criteria(apple2plus.video.getPixelColor)
-
-  /*
-  // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
-  var doubles = {};
-  for(var p=0;p<oPATTERN.pmax;p++)
-  {
-    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-    var csh = "#"+RGB2HEX(c).join("");
-
-    if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
-    && !oPATTERN.criteria[p])    // do not inventorize pre-defined doubles
-        doubles[csh] = p;
-    else
-    {
-      if (!oPATTERN.criteria[p])   
-          oPATTERN.criteria[p] = {"DOUBL":doubles[csh]};
-        else 
-          oPATTERN.criteria[p]["DOUBL"] = doubles[csh]; // bug
-    }
-  }
-  */
 }
 
 // ██████  ██████  ██ ██████  ███████ 
@@ -763,14 +745,14 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li>
+        <!--li>
           <input autofocus style=width:430px list="formulas" name="formula-selector" id="FSL" value="select a pattern here" onclick=this.value='' />
           <datalist id="formulas" ></datalist>
-        </li>
-        <li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        </li-->
+        <!--li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li-->
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN)" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
-        <li><input type=button value="Copy_Report" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
+        <!--li><input type=button value="Generate_HGR" onclick="generate_HGR();document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN)" style='vertical-align:top; margin:4px 0px 0px 0px'></li-->
+        <li><input type=button value="Copy_Report" onclick="generate_REPORT()" style='vertical-align:top; margin:4px 0px 0px 0px'></li>
       </ul>
     </div>
     <div id=main>
