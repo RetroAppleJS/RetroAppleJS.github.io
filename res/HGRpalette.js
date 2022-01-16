@@ -103,14 +103,23 @@ function PALETTE()
         }
     }  
     
-    this.get_nearest = function(dec_cx)
+    this.get_nearest = function(dec_cx,oPATTERN)
     {
         var dec_near_col=[-1,-1,-1], near_idx = "*";
         for(var i=0;i<this.dec_pal.length;i++)
         {
-            if(oPATTERN.criteria[i]) continue;  // TODO EXTERNALISE THIS FUNCTION
+            var cc = oPATTERN.criteria[i];
+            
+            // TODO REVIEW CRITERIA
+            if(Object.keys(this.limit_dots).length>0
+            && this.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
 
-            var cd = [ this.colorDistance(dec_cx,this.dec_pal[i])                   // picked color  - palette color
+            if(Object.keys(this.limit_dots).length!=1 
+            && this.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
+            
+            //if(oPATTERN.criteria[i]) continue;  // TODO EXTERNALISE THIS FUNCTION
+
+            var cd = [ this.colorDistance(dec_cx,this.dec_pal[i])           // picked color  - palette color
                       ,this.colorDistance(dec_near_col,this.dec_pal[i]) ]   // closest match - palette color
             if( cd[0]!=0 && cd[0] <  cd[1] )
             {
@@ -118,8 +127,17 @@ function PALETTE()
                 near_idx = i;
             }
         }
-        return "idx:"+near_idx+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
+        return "idx:"+near_idx
+        //+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
     }
+
+            /*
+            var cc = oPATTERN.criteria[p];
+            if(Object.keys(oPALETTE.limit_dots).length>0
+            && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
+            if(Object.keys(oPALETTE.limit_dots).length!=1 
+            && oPATTERN.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
+            */
 
     this.draw_greyscale = function()
     {
