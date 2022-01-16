@@ -4,6 +4,7 @@ function PATTERN(idx,x,y)
     this.bmapx = 28;   // grid width
     this.bmapy = 4;   // grid height
 
+    this.colorFN = function(x, y, left, me, right, b7) { [0,0,0] }  // NEEDS FUNCTION OVERRIDE
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
     function trim(s)  { return rtrim(ltrim(s)) }
@@ -15,20 +16,26 @@ function PATTERN(idx,x,y)
       catch(e){ return 0 }
     }
 
-    
-    this.exclude = function(idx,arr)
+    this.add_criteria = function(colorFN)
     {
-      var arr = [4,6,8,9,12,13,14,16,17,18,19,21,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,44,45,46,47,48,49,50,51,52,54,56,57,59,64,65,66,67,68,69
-        ,70,71,72,73,74,75,76,77,78,79,82,83,84,86,88,89,92,93,97,98,99,100,101,102,103,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,124,126,129,132,133,134,135,136,137,138,139
-      
-      ]
+        // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
+        var doubles = {};
+        for(var p=0;p<this.pmax;p++)
+        {
+          var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+          var csh = "#"+RGB2HEX(c).join("");
 
-      // exclude white with black mixed with color
-      // exclude where upper & lower nibble correspond with lower & upper
-
-      for(var i=0;i<arr.length;i++)
-        if(idx>=arr[i]) idx++;
-      return idx;
+          if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
+          && !this.criteria[p])    // do not inventorize pre-defined doubles
+              doubles[csh] = p;
+          else
+          {
+            if (!this.criteria[p])   
+                this.criteria[p] = {"DOUBL":doubles[csh]};
+              else 
+                this.criteria[p]["DOUBL"] = doubles[csh]; // bug
+          }
+        }
     }
     
     this.prep = 4;                     // horizontal pattern repetition
