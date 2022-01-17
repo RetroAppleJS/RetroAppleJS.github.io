@@ -29,6 +29,13 @@ function PALETTE()
         context.fillRect(Math.round(x), Math.round(y), 1, 1);
         context.fill();
     }
+
+//   ██████  █████  ███    ██ ██    ██  █████  ███████ 
+//  ██      ██   ██ ████   ██ ██    ██ ██   ██ ██      
+//  ██      ███████ ██ ██  ██ ██    ██ ███████ ███████ 
+//  ██      ██   ██ ██  ██ ██  ██  ██  ██   ██      ██ 
+//   ██████ ██   ██ ██   ████   ████   ██   ██ ███████ 
+
     this.insert_canvas = function(arg)
     {
         var anchor = document.getElementById(arg.id);
@@ -79,6 +86,12 @@ function PALETTE()
         return t;
     }
     
+//  ███    ██ ███████  █████  ██████  ███████ ███████ ████████ 
+//  ████   ██ ██      ██   ██ ██   ██ ██      ██         ██    
+//  ██ ██  ██ █████   ███████ ██████  █████   ███████    ██    
+//  ██  ██ ██ ██      ██   ██ ██   ██ ██           ██    ██    
+//  ██   ████ ███████ ██   ██ ██   ██ ███████ ███████    ██
+
     this.calc_nearest = function(x,y,dec_cx)
     {
         if(dec_cx.join("")=="000") return;
@@ -131,20 +144,11 @@ function PALETTE()
         //+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
     }
 
-    this.draw_greyscale = function()
-    {
-        this.clear_layer(2);
-        var width  = this.canvas[2].width;
-        var height = this.canvas[2].height;
-        for(var y=0;y<height;y++)
-        {
-            for(var x=0;x<width;x++)
-            { 
-                var dec_cx = this.sweep_greyscale(x,y,width,height);
-                this.drawPixel(this.ctx[2], x, y, "#"+this.RGB2HEX( dec_cx ).join("") );
-            }
-        }
-    }
+//  ██████   █████  ██ ███    ██ ██████   ██████  ██     ██ 
+//  ██   ██ ██   ██ ██ ████   ██ ██   ██ ██    ██ ██     ██ 
+//  ██████  ███████ ██ ██ ██  ██ ██████  ██    ██ ██  █  ██ 
+//  ██   ██ ██   ██ ██ ██  ██ ██ ██   ██ ██    ██ ██ ███ ██ 
+//  ██   ██ ██   ██ ██ ██   ████ ██████   ██████   ███ ███
 
     this.draw_rainbow = function()
     {
@@ -208,6 +212,27 @@ function PALETTE()
         }
         bUpdate = true;     // allow new updates
     }
+
+    this.draw_greyscale = function()
+    {
+        this.clear_layer(2);
+        var width  = this.canvas[2].width;
+        var height = this.canvas[2].height;
+        for(var y=0;y<height;y++)
+        {
+            for(var x=0;x<width;x++)
+            { 
+                var dec_cx = this.sweep_greyscale(x,y,width,height);
+                this.drawPixel(this.ctx[2], x, y, "#"+this.RGB2HEX( dec_cx ).join("") );
+            }
+        }
+    }
+
+    //   ██████  ██████  ██       ██████  ██████  ███    ███  █████  ████████  ██████ ██   ██ 
+    //  ██      ██    ██ ██      ██    ██ ██   ██ ████  ████ ██   ██    ██    ██      ██   ██ 
+    //  ██      ██    ██ ██      ██    ██ ██████  ██ ████ ██ ███████    ██    ██      ███████ 
+    //  ██      ██    ██ ██      ██    ██ ██   ██ ██  ██  ██ ██   ██    ██    ██      ██   ██ 
+    //   ██████  ██████  ███████  ██████  ██   ██ ██      ██ ██   ██    ██     ██████ ██   ██ 
 
     this.draw_colormatches = function(pattern_obj)
     {
@@ -298,6 +323,12 @@ function PALETTE()
         }
         
     }
+
+//  ███████ ██     ██ ███████ ███████ ██████  
+//  ██      ██     ██ ██      ██      ██   ██ 
+//  ███████ ██  █  ██ █████   █████   ██████  
+//       ██ ██ ███ ██ ██      ██      ██      
+//  ███████  ███ ███  ███████ ███████ ██      
 
     this.define_section = function(x,y,width,height)
     {

@@ -15,34 +15,11 @@ function PATTERN(idx,x,y)
       try{ return custom_bmap[x%this.bmapx][y%this.bmapy] }
       catch(e){ return 0 }
     }
-
-    this.add_criteria = function(colorFN)
-    {
-        // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
-        var doubles = {};
-        for(var p=0;p<this.pmax;p++)
-        {
-          var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-          var csh = "#"+RGB2HEX(c).join("");
-
-          if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
-          && !this.criteria[p])    // do not inventorize pre-defined doubles
-              doubles[csh] = p;
-          else
-          {
-            if (!this.criteria[p])   
-                this.criteria[p] = {"DOUBL":doubles[csh]};
-              else 
-                this.criteria[p]["DOUBL"] = doubles[csh]; // bug
-          }
-        }
-    }
     
     this.prep = 4;                     // horizontal pattern repetition
     this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
-    this.calculate = function(idx,x,y)
+    this.calculate = function(p,x,y)
     {
-        var p  = idx;
         var n  = this.prep;         // horizontal pattern repetition
         var pm = (1<<n)-1;          // when all n bits should be lit        
         var ba = [0,1,3];           // cycle through bit 7 
@@ -171,6 +148,28 @@ function PATTERN(idx,x,y)
   this.bColorUsed = function(col)
   {
      return this.colIDX[col]?true:false;
+  }
+
+  this.add_criteria = function(colorFN)
+  {
+      // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
+      var doubles = {};
+      for(var p=0;p<this.pmax;p++)
+      {
+        var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+        var csh = "#"+RGB2HEX(c).join("");
+
+        if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
+        && !this.criteria[p])    // do not inventorize pre-defined doubles
+            doubles[csh] = p;
+        else
+        {
+          if (!this.criteria[p])   
+              this.criteria[p] = {"DOUBL":doubles[csh]};
+            else 
+              this.criteria[p]["DOUBL"] = doubles[csh]; // bug
+        }
+      }
   }
 
   this.parse = function()
