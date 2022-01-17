@@ -155,7 +155,8 @@ function init_gui(_o)
   //oPALETTE.insert_canvas({"id":"greyPalette","canvasID":[2,3],"width":_D.leftpane,"height":50});
   //oPALETTE.draw_greyscale();
 
-  update_param();
+  update_param(true);
+  /*
   generate_GRIDS();
   generate_HGR();
   
@@ -163,6 +164,7 @@ function init_gui(_o)
   // DRAW VORONOI 
   oVoronoi.compute();
   oVoronoi.render();
+  */
 
   oPALETTE.opat = _D.opat;
   oPALETTE.draw_colormatches(oPATTERN);
@@ -649,7 +651,7 @@ var oVoronoi =
 //  ██    ██ ██      ██   ██ ██   ██    ██    ██      
 //   ██████  ██      ██████  ██   ██    ██    ███████
 
-function update_param()
+function update_param(bRender)
 {
     document.getElementById("param3").max = oPALETTE.hex_pal.length-1; // set slider range
     oPATTERN.filterExcl=document.getElementById('param5').value==1;          // set filter
@@ -681,6 +683,13 @@ function update_param()
       oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
     }
     oVoronoi.compute();
+
+    if(!bRender) return;
+    oPALETTE.clear_layer(1);
+    oVoronoi.render();
+    oPALETTE.draw_colormatches(oPATTERN);
+    generate_GRIDS();
+    generate_HGR();
 }
 
 //  ██   ██ ████████ ███    ███ ██      
@@ -754,12 +763,12 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
     <!--div id=greyPalette style="margin-top:150px"></div-->
     <div id="results" style="margin-top:220px"></div>
     <div id=disp_param3 class="slider" style="width:100px"></div>
-    <button class=smallbutton onclick="document.getElementById('param3').value--;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS(); generate_HGR();">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
+    <button class=smallbutton onclick="document.getElementById('param3').value--;update_param(true);">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update_param();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
     <div style="text-align:right">
       <input type=button value="prev" onclick="document.getElementById('param4').value--;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
       <input type=button value="next" onclick="document.getElementById('param4').value++;update_param();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
       <br>
-      <input type=button id=filter value="exclude patterns" onclick="document.getElementById('param5').value^=1;update_param();this.style.background=oPATTERN.filterExcl?'blue':'';generate_HGR();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS()" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
+      <input type=button id=filter value="exclude patterns" onclick="document.getElementById('param5').value^=1;update_param(true);this.style.background=oPATTERN.filterExcl?'blue':''" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
       <input id=param4 value=0 hidden>
       <input id=param5 value=1 hidden>
     </div>   
