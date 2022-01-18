@@ -36,7 +36,6 @@ background: #fff;
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 <script type="text/javascript" src="../res/HGRpalette.js"></script>
-<script type="text/javascript" src="../res/HGRpattern.js"></script>
 <script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
 
 
@@ -44,10 +43,10 @@ background: #fff;
 <body>
 <table border=1>
 <tr>
-    <td><big>APPLE</big></td>
-    <td><big>DITHERED</big></td>
+    <td><big>DITHERED ON APPLE</big></td>
+    <td><big>DITHERED ON CANVAS</big></td>
     <td><big>CANVAS COPY</big></td>
-    <td><big>ORIGINAL</big></td>
+    <td><big>SOURCE PNG IMAGE</big></td>
 </tr>
 <tr>
     <td style="vertical-align:top">
@@ -1963,7 +1962,7 @@ for(var i in d)
         //document.write(i+":["+PATPAL[PATPAL.length-1].join(",")+"]<br>")
     }
 }
-
+var PATPAL = [[0,0,0],[255,255,255]];
 
 
 var dither, options;
