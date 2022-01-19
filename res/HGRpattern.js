@@ -3,6 +3,7 @@ function PATTERN(idx,x,y)
     this.color_arr = [];
     this.bmapx = 28;   // grid width
     this.bmapy = 4;   // grid height
+    this.filterExcl = [];
 
     this.colorFN = function(x, y, left, me, right, b7) { [0,0,0] }  // NEEDS FUNCTION OVERRIDE
     function ltrim(s) { return s.replace(/^ */,"") }
@@ -152,24 +153,33 @@ function PATTERN(idx,x,y)
 
   this.add_criteria = function(colorFN)
   {
-      // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
-      var doubles = {};
-      for(var p=0;p<this.pmax;p++)
-      {
-        var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
-        var csh = "#"+RGB2HEX(c).join("");
+    // INVENTORIZE DOUBLES (PATTERNS WITH SAME COLOR)
+    var doubles = {};
+    for(var p=0;p<this.pmax;p++)
+    {
+      var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+      var csh = "#"+RGB2HEX(c).join("");
 
-        if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
-        && !this.criteria[p])    // do not inventorize pre-defined doubles
-            doubles[csh] = p;
-        else
-        {
-          if (!this.criteria[p])   
-              this.criteria[p] = {"DOUBL":doubles[csh]};
-            else 
-              this.criteria[p]["DOUBL"] = doubles[csh]; // bug
-        }
+      if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
+      && !this.criteria[p])    // do not inventorize pre-defined doubles
+          doubles[csh] = p;
+      else
+      {
+        if (!this.criteria[p])   
+            this.criteria[p] = {"DOUBL":doubles[csh]};
+          else 
+            this.criteria[p]["DOUBL"] = doubles[csh]; // bug
       }
+    }
+  }
+
+  this.test_criteria = function(p)
+  {
+    var cc = this.criteria[p];
+    if(typeof(cc)=="undefined") cc = {"REG":-1};
+    for(var i=0;i<this.filterExcl.length;i++)
+      if(cc[this.filterExcl[i]]) return false;
+    return true;
   }
 
   this.parse = function()

@@ -3,45 +3,15 @@ ASCII ART
 https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=ANSI%20Regular
 https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity
 -->
-<html style="background-color:#B0B0B0"><head>
-  <title>APPLE II HGR PATTERN GENERATOR</title>
-  <meta name="description" content="">
-  <meta name="author" content="Freddy Vandriessche">
-  <meta charset="utf-8">
-  <style>
-  html {height:100%;font-family:"Arial"}
-  body {background-color:#808080;height:100%;margin:0px;padding:0px}
-  .tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
-  .tcell10:hover {width:10px;height:10px;background-color:yellow;border:1px solid black }
-  .tcell5 {width:5px;height:10px;background-color:lightgray;padding:0;border:0px solid white}
-  .tcell5:hover { width:5px;height:10px;background-color:yellow;border:0px solid white}
-  .slider {display:inline-block}
-  .smallbutton {width:15px;height:5px;font-size:12px;vertical-align:top;margin:13px 0px 0px 0px;padding:0px 0px 0px 0px;font-weight:800}
-  .leftpane {width:400px}
-  #MyCanvas {border:1px solid black}
 
-  .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; }
-  .tooltip:hover .tooltiptext { visibility: visible; }
-  .tooltip .tooltiptext {
-  visibility: hidden;
-  width: 120px;
-  background-color: black;
-  color: #fff;
-  text-align: center;
-  border-radius: 6px;
-  padding: 5px 0;
-  position: absolute;
-  z-index: 1;
-  }
-  </style>
-</head>
-
-<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
-<script type="text/javascript" src="../res/HGRpalette.js"></script>
-<script type="text/javascript" src="../res/HGRpattern.js"></script>
-<script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
+<html style="background-color:#B0B0B0">
+  <head>
+  <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+  <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+  <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+  <script type="text/javascript" src="../res/HGRpalette.js"></script>
+  <script type="text/javascript" src="../res/HGRpattern.js"></script>
+  <script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
 
 <script>
 
@@ -57,8 +27,8 @@ var _D =
     ,"bls":[17,8]        // pattern sample size
     ,"opat":0            // pattern index offset
     ,"prep":4            // horizontal pattern repetition (bits)
-    ,"filterExcl":false  // remove excluded patterns
-    ,"topheight":220      // height of top pane (rainbow)
+    ,"filterExcl":["DOUBL","SAT","VPAT","GREY","PROX"]     // remove excluded patterns
+    ,"topheight":220     // height of top pane (rainbow)
     ,"leftpane":430      // width of left pane (grid)
     ,"rightpane":560     // width of right pane (HGR screen)
     ,"bmapID":0          // location of editable grid
@@ -258,7 +228,9 @@ function generate_GRIDS()
     if(Object.keys(oPALETTE.limit_dots).length>0
           && oPALETTE.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
     if(Object.keys(oPALETTE.limit_dots).length!=1 
-          && oPATTERN.filterExcl && cc) continue;     // PATTERN EXCLUSION CRITERIA
+          && oPATTERN.test_criteria(p)) continue;     // PATTERN EXCLUSION CRITERIA
+
+
 
     var tc = csp[0]>90 && csp[1]>90 && csp[2]>90 ? "black":"white";
 
@@ -451,7 +423,7 @@ function generate_HGR()
     if(Object.keys(oPALETTE.limit_dots).length>0
           && oPALETTE.limit_dots[p]!=true) continue; // RANGE SELECT CRITERIA
     if(Object.keys(oPALETTE.limit_dots).length!=1 
-          && oPATTERN.filterExcl && cc) continue;    // PATTERN EXCLUSION CRITERIA
+          && oPATTERN.test_criteria(p)) continue;    // PATTERN EXCLUSION CRITERIA
 
     // DRAW LINE SQUARE
     for(var x=-3;x<_D.bls[0]+3;x++)
@@ -658,7 +630,7 @@ var oVoronoi =
 function update(bRender)
 {
     document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
-    oPATTERN.filterExcl=document.getElementById('param5').value==1;         // set filter
+    //oPATTERN.filterExcl=document.getElementById('param5').value==1;         // set filter
 
     if(document.getElementById("param3"))
     {
@@ -678,12 +650,19 @@ function update(bRender)
         _D.opat = num * ( _D.blc[0]*_D.blc[1] )
     }
 
+    var checkboxes = document.getElementsByName("param6"); 
+    oPATTERN.filterExcl = []
+    for(var i = 0; i < checkboxes.length; i++)  
+        if(checkboxes[i].checked) oPATTERN.filterExcl[oPATTERN.filterExcl.length] = checkboxes[i].value;
+    
+    //alert("'"+oPATTERN.filterExcl.join("','")+"'")
+
     oVoronoi.init(oPALETTE.canvas[1].id);
     for(var p=0;p<oPALETTE.dec_near_col.length;p++)
     {
       if(!oPALETTE.dec_near_pos[p][0][0]) continue;   // NOT DISPLAYABLE
       var cc = oPATTERN.criteria[p];
-      if(oPATTERN.filterExcl && cc) continue;         // PATTERN EXCLUSION CRITERIA
+      if(oPATTERN.test_criteria(p)) continue;   // PATTERN EXCLUSION CRITERIA
       oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
     }
     oVoronoi.compute();
@@ -744,11 +723,74 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
 }
 </script>
 
+  <title>APPLE II HGR PATTERN GENERATOR</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+  <style>
+  html {height:100%;font-family:"Arial"}
+  body {background-color:#808080;height:100%;margin:0px;padding:0px}
+  .tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
+  .tcell10:hover {width:10px;height:10px;background-color:yellow;border:1px solid black }
+  .tcell5 {width:5px;height:10px;background-color:lightgray;padding:0;border:0px solid white}
+  .tcell5:hover { width:5px;height:10px;background-color:yellow;border:0px solid white}
+  .slider {display:inline-block; margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;}
+  .smallbutton {width:15px;height:5px;font-size:12px;vertical-align:top;margin:3px 0px 0px 0px;padding:0px 0px 0px 0px;font-weight:800}
+  .leftpane {width:400px}
+  #MyCanvas {border:1px solid black}
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+
+  .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; }
+  .tooltip:hover .tooltiptext { visibility: visible; }
+  .tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+  position: absolute;
+  z-index: 1;
+  }
+  </style>
+</head>
+
 <body class="slider_main" onload="init_gui()">
 <div id="slider_title"></div>
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
+
+        <li class=no_margins style=vertical-align:top;>
+          <table class=nomargins style="display:inline-block;">
+          <tr><td class=no_margins style="vertical-align:top;"><div id=disp_param3 class="slider" style="width:100px;vertical-align:top"></div>
+              <button class=smallbutton onclick="document.getElementById('param3').value--;update(true);">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button>
+          </td></tr>    
+        </li>
+
+        <li class=no_margins>
+          <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
+          <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
+          <input type=button id=filter value="exclude patterns" onclick="document.getElementById('param5').value^=1;update(true);this.style.background=oPATTERN.filterExcl?'blue':''" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
+          <input id=param4 value=0 hidden>
+          <input id=param5 value=1 hidden>
+        </li>
+
+        <li class=no_margins>
+          <table style='display:inline-block;border:1px solid; vertical-align: top;'>
+          <tr>
+            <td><input type="checkbox" name=param6 value=DOUBL onclick=update(true) style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> double</small></td>
+            <td><input type="checkbox" name=param6 value=PROX onclick=update(true) style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> close</small></td>
+            <td><input type="checkbox" name=param6 value=VPAT onclick=update(true) style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> dirty</small></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" name=param6 value=SAT onclick=update(true) style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> saturation</small></td>
+            <td><input type="checkbox" name=param6 value=GREY onclick=update(true) style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> greyscale</small></td>
+            <td><input type="checkbox" name=param6 value="REG" onclick=update(true)  checked style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> regular</small></td>
+          </tr>         
+          </table>
+        </li>
         <!--li>
           <input autofocus style=width:430px list="formulas" name="formula-selector" id="FSL" value="select a pattern here" onclick=this.value='' />
           <datalist id="formulas" ></datalist>
@@ -761,27 +803,17 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
     </div>
     <div id=main>
 
-<table><tr>
-  <td style="vertical-align:top">
-    <div id=mainPalette></div>
-    <!--div id=greyPalette style="margin-top:150px"></div-->
-    <div id="results" style="margin-top:220px"></div>
-    <div id=disp_param3 class="slider" style="width:100px"></div>
-    <button class=smallbutton onclick="document.getElementById('param3').value--;update(true);">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin-top:10px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button><br><br>
-    <div style="text-align:right">
-      <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
-      <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; margin:4px 0px 0px 0px'>
-      <br>
-      <input type=button id=filter value="exclude patterns" onclick="document.getElementById('param5').value^=1;update(true);this.style.background=oPATTERN.filterExcl?'blue':''" style='vertical-align:top; margin:4px 0px 0px 0px;background:blue'>
-      <input id=param4 value=0 hidden>
-      <input id=param5 value=1 hidden>
-    </div>   
-    <div id=debug style="overflow:scroll; height:400px;"></div>
-  </td>
-  <td style=vertical-align:top;>
-    <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
-  </td>
-</tr></table>
+    <table><tr>
+      <td style="vertical-align:top">
+        <div id=mainPalette></div>
+        <!--div id=greyPalette style="margin-top:150px"></div-->
+        <div id="results" style="margin-top:220px"></div>   
+        <div id=debug style="overflow:scroll; height:400px;"></div>
+      </td>
+      <td style=vertical-align:top;>
+        <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+      </td>
+    </tr></table>
 
   </div>
   </div>
