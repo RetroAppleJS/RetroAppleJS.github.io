@@ -165,6 +165,8 @@ function PATTERN(idx,x,y)
           doubles[csh] = p;
       else
       {
+        if(typeof(doubles[csh])!="number") continue;
+
         if (!this.criteria[p])   
             this.criteria[p] = {"DOUBL":doubles[csh]};
           else 
