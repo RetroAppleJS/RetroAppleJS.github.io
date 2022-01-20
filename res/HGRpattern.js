@@ -1,7 +1,6 @@
 function PATTERN(idx,x,y)
 {
-    this.color_arr = [];
-    this.bmapx = 28;   // grid width
+    this.bmapx = 28;  // grid width
     this.bmapy = 4;   // grid height
     this.filterExcl = [];
 
@@ -19,6 +18,8 @@ function PATTERN(idx,x,y)
     
     this.prep = 4;                     // horizontal pattern repetition
     this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
+
+    this.set_prep = function(bits) { this.prep = Number(bits); this.pmax = Math.pow(2,2*this.prep)*3 }
     this.calculate = function(p,x,y)
     {
         var n  = this.prep;         // horizontal pattern repetition

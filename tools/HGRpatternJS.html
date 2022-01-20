@@ -60,18 +60,19 @@ var vidContext, apple2plus;
 function init_gui(bRefresh)
 {
 
+  try{ document.getElementById('slider_title').outerHTML = _TITLE() } catch(e){}  
+  if(!bRefresh)
+  {
+    vidContext          = document.getElementById('applescreen').getContext("2d");
+    apple2plus          = new Apple2Plus(vidContext);
+    document.getElementById('applescreen').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
+    apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
+    apple2plus.video.setCol(6,0, "#0080FF");    // tweak blue value   (#2F95FF)
+    apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
+    apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
+  }
 
-  try{ document.getElementById('slider_title').outerHTML = _TITLE() } catch(e){}   
- 
-  vidContext          = document.getElementById('applescreen').getContext("2d");
-  apple2plus          = new Apple2Plus(vidContext);
-  document.getElementById('applescreen').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
-  apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
-  apple2plus.video.setCol(6,0, "#0080FF");    // tweak blue value   (#2F95FF)
-  apple2plus.video.setCol(9,0, "#FF8000");    // tweak orange value (#D06A1A)
-  apple2plus.video.setCol(12,0,"#80FF80");    // tweak green value  (#2FBC1A)
-
-    //document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
+  //document.getElementById('greyPalette').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
 
   //   _______     _     _________  _________  ________  _______     ____  _____  
   //  |_   __ \   / \   |  _   _  ||  _   _  ||_   __  ||_   __ \   |_   \|_   _| 
@@ -81,7 +82,8 @@ function init_gui(bRefresh)
   //  |_____||____| |____||_____|    |_____|  |________||____| |___||_____|\____| 
 
   oPATTERN.colorFN = apple2plus.video.getPixelColor;
-  oPATTERN.prep = _D.prep;
+  oPATTERN.set_prep(bRefresh?oPATTERN.prep:_D.prep);
+
   oPATTERN.criteria_desc = {
    "DOUBL":"copy of "
   ,"SAT":"pale blend"
@@ -122,9 +124,10 @@ function init_gui(bRefresh)
   //   _| |_  _/ /   \ \_  _| |__/ | _| |__/ |   _| |_      _| |_    _| |__/ | 
   //  |_____||____| |____||________||________|  |_____|    |_____|  |________| 
 
+
   if(!bRefresh) oPALETTE.insert_canvas({"id":"mainPalette","canvasID":[0,1],"width":_D.leftpane+_D.rightpane,"height":_D.topheight});
-  var pmax = oPATTERN.pmax;
-  for(var p=0;p<pmax;p++)
+  oPALETTE.hex_pal = [];
+  for(var p=0;p<oPATTERN.pmax;p++)
   {
     var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
@@ -132,14 +135,15 @@ function init_gui(bRefresh)
   }
   oPALETTE.dot_size=6;
   oPALETTE.color_depth=24;
+
   oPALETTE.draw_rainbow();
   //oPALETTE.insert_canvas({"id":"greyPalette","canvasID":[2,3],"width":_D.leftpane,"height":50});
   //oPALETTE.draw_greyscale();
 
+  oPALETTE.opat = _D.opat;
   update(true);
 
-  oPALETTE.opat = _D.opat;
-  oPALETTE.draw_colormatches(oPATTERN);
+  //oPALETTE.draw_colormatches(oPATTERN);
   //oPALETTE.draw_greymatches();
   
   //////   PALETTE MOUSE EVENTS (select circular area)
@@ -658,7 +662,7 @@ function update(bRender)
     
     var checkboxes = document.getElementsByName("param7"); 
     for(var i = 0; i < checkboxes.length; i++)  
-        if(checkboxes[i].checked) _D.prep = Number( checkboxes[i].value);
+        if(checkboxes[i].checked) oPATTERN.set_prep( Number( checkboxes[i].value));
 
     //alert("'"+oPATTERN.filterExcl.join("','")+"'")
 
@@ -772,10 +776,11 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
           <tr><td class=no_margins style="vertical-align:top;">
               <div id=disp_param3 class="slider" style="width:100px;vertical-align:top"></div>
               <small>pattern </small>
-              <input type="radio" name=param7 value=2 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small> 2bit</small>
-              <input type="radio" name=param7 value=4 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small> 4bit</small>
-              <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
+              <input type="radio" name=param7 value=2 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>2</small>
+              <input type="radio" name=param7 value=4 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small>4</small>
+              <input type="radio" name=param7 value=7 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>7</small>bit
               <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
+              <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
               <br>
               <button class=smallbutton onclick="document.getElementById('param3').value--;update(true);">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin:0px 0px 0px 0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button>
           </td></tr>    

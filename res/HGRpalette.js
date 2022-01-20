@@ -236,19 +236,21 @@ function PALETTE()
 
     this.draw_colormatches = function(pattern_obj)
     {
+        //alert(this.dec_near_col.length)
+
         //this.clear_layer(1);
         if(typeof(pattern_obj)=="undefined") var pattern_obj = {"criteria":{},"filterExcl":null};
         var width  = this.canvas[0].width;
         var height = this.canvas[0].height;
-    
+  
         for(var p=0;p<this.dec_near_col.length;p++)
         {
-            var cc = pattern_obj.criteria[p]  //oPATTERN.criteria[p];
+            var cc = pattern_obj.criteria[p];
 
             if(Object.keys(this.limit_dots).length>0
-            && this.limit_dots[p]!=true) continue;  // RANGE SELECT CRITERIA
+            && this.limit_dots[p]!=true) continue;      // RANGE SELECT CRITERIA
             if(Object.keys(this.limit_dots).length!=1 
-            && pattern_obj.test_criteria(p)) continue;     // PATTERN EXCLUSION CRITERIA
+            && pattern_obj.test_criteria(p)) continue;  // PATTERN EXCLUSION CRITERIA
 
             var x = this.dec_near_pos[p][0][0];
             var y = this.dec_near_pos[p][0][1];
