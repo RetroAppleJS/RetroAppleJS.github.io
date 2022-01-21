@@ -48,6 +48,8 @@ var oPATTERN = new PATTERN();
 var oPALETTE = new PALETTE();
 var custom_bmap,custom_fmla;
 var vidContext, apple2plus;
+var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
+
 
 
 //   ██████  ███    ██ ██       ██████   █████  ██████  
@@ -59,6 +61,7 @@ var vidContext, apple2plus;
 
 function init_gui(bRefresh)
 {
+  status_message("init");
 
   try{ document.getElementById('slider_title').outerHTML = _TITLE() } catch(e){}  
   if(!bRefresh)
@@ -141,7 +144,9 @@ function init_gui(bRefresh)
   //oPALETTE.draw_greyscale();
 
   oPALETTE.opat = _D.opat;
-  update(true);
+  //status_message("update");
+  setTimeout(function(){update(true)},1);
+  //update(true);
 
   //oPALETTE.draw_colormatches(oPATTERN);
   //oPALETTE.draw_greymatches();
@@ -235,13 +240,11 @@ function generate_GRIDS()
     if(Object.keys(oPALETTE.limit_dots).length!=1 
           && oPATTERN.test_criteria(p)) continue;     // PATTERN EXCLUSION CRITERIA
 
-
-
     var tc = csp[0]>90 && csp[1]>90 && csp[2]>90 ? "black":"white";
 
     s+= "<div style='width:430px;background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
        +"<small>"+csh+" ("+csp.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)
-        +" "+oPALETTE.get_nearest(c,oPATTERN);
+       //+" "+oPALETTE.get_nearest(c,oPATTERN);
        //+(typeof(oPATTERN.citeria[p])!="undefined"?(" "+oPATTERN.citeria[p]):"")
        //+typeof(oPATTERN.criteria[p])
  
@@ -634,54 +637,57 @@ var oVoronoi =
 
 function update(bRender)
 {
-    document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
-    //oPATTERN.filterExcl=document.getElementById('param5').value==1;         // set filter
+  setTimeout(function(){status_message("update")},10);
+  document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
+  //oPATTERN.filterExcl=document.getElementById('param5').value==1;         // set filter
 
-    if(document.getElementById("param3"))
-    {
-        var dot_idx   = Number(document.getElementById("param3").value);
-        oPALETTE.limit_dots = {}
-        if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
-        else dot_idx = "";
-        document.getElementById("disp_param3").innerHTML 
-        ="<font color=black>dot select "+dot_idx+"</font>"
-    }
+  if(document.getElementById("param3"))
+  {
+      var dot_idx   = Number(document.getElementById("param3").value);
+      oPALETTE.limit_dots = {}
+      if(dot_idx>=0) oPALETTE.limit_dots[dot_idx] = true;
+      else dot_idx = "";
+      document.getElementById("disp_param3").innerHTML 
+      ="<font color=black>dot select "+dot_idx+"</font>"
+  }
 
-    if(document.getElementById('param4'))
-    {
-        var num = Number(document.getElementById('param4').value);
-        if(num<0) num = 0;
-        document.getElementById('param4').value = num;
-        _D.opat = num * ( _D.blc[0]*_D.blc[1] )
-    }
+  if(document.getElementById('param4'))
+  {
+      var num = Number(document.getElementById('param4').value);
+      if(num<0) num = 0;
+      document.getElementById('param4').value = num;
+      _D.opat = num * ( _D.blc[0]*_D.blc[1] )
+  }
 
-    var checkboxes = document.getElementsByName("param6"); 
-    oPATTERN.filterExcl = []
-    for(var i = 0; i < checkboxes.length; i++)  
-        if(checkboxes[i].checked) oPATTERN.filterExcl[oPATTERN.filterExcl.length] = checkboxes[i].value;
-    
-    var checkboxes = document.getElementsByName("param7"); 
-    for(var i = 0; i < checkboxes.length; i++)  
-        if(checkboxes[i].checked) oPATTERN.set_prep( Number( checkboxes[i].value));
+  var checkboxes = document.getElementsByName("param6"); 
+  oPATTERN.filterExcl = []
+  for(var i = 0; i < checkboxes.length; i++)  
+      if(checkboxes[i].checked) oPATTERN.filterExcl[oPATTERN.filterExcl.length] = checkboxes[i].value;
+  
+  var checkboxes = document.getElementsByName("param7"); 
+  for(var i = 0; i < checkboxes.length; i++)  
+      if(checkboxes[i].checked) oPATTERN.set_prep( Number( checkboxes[i].value));
 
-    //alert("'"+oPATTERN.filterExcl.join("','")+"'")
+  //alert("'"+oPATTERN.filterExcl.join("','")+"'")
 
-    oVoronoi.init(oPALETTE.canvas[1].id);
-    for(var p=0;p<oPALETTE.dec_near_col.length;p++)
-    {
-      if(!oPALETTE.dec_near_pos[p][0][0]) continue;   // NOT DISPLAYABLE
-      var cc = oPATTERN.criteria[p];
-      if(oPATTERN.test_criteria(p)) continue;   // PATTERN EXCLUSION CRITERIA
-      oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
-    }
-    oVoronoi.compute();
+  oVoronoi.init(oPALETTE.canvas[1].id);
+  for(var p=0;p<oPALETTE.dec_near_col.length;p++)
+  {
+    if(!oPALETTE.dec_near_pos[p][0][0]) continue;   // NOT DISPLAYABLE
+    var cc = oPATTERN.criteria[p];
+    if(oPATTERN.test_criteria(p)) continue;   // PATTERN EXCLUSION CRITERIA
+    oVoronoi.addSite(oPALETTE.dec_near_pos[p][0]);
+  }
+  oVoronoi.compute();
 
-    if(!bRender) return;
-    oPALETTE.clear_layer(1);
-    oVoronoi.render();
-    oPALETTE.draw_colormatches(oPATTERN);
-    generate_GRIDS();
-    generate_HGR();
+  if(!bRender) return;
+  oPALETTE.clear_layer(1);
+  oVoronoi.render();
+  oPALETTE.draw_colormatches(oPATTERN);
+  generate_GRIDS();
+  generate_HGR();
+
+  setTimeout(function(){status_message("done")},10);
 }
 
 //  ██   ██ ████████ ███    ███ ██      
@@ -776,9 +782,9 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
           <tr><td class=no_margins style="vertical-align:top;">
               <div id=disp_param3 class="slider" style="width:100px;vertical-align:top"></div>
               <small>pattern </small>
-              <input type="radio" name=param7 value=2 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>2</small>
-              <input type="radio" name=param7 value=4 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small>4</small>
-              <input type="radio" name=param7 value=7 onclick="update(false);init_gui(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>7</small>bit
+              <input type="radio" name=param7 value=2 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>2</small>
+              <input type="radio" name=param7 value=4 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small>4</small>
+              <input type="radio" name=param7 value=6 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>6</small> bit
               <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
               <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
               <br>
@@ -804,9 +810,14 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
           <datalist id="formulas" ></datalist>
         </li-->
         <!--li><input type=button value="load" onclick="load_bitmap();document.getElementById('FSL').focus()" style='vertical-align:top; margin:4px 0px 0px 0px'></li-->
-        <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+        <li class=no_margins><img style='vertical-align:top; margin:15px 0px 0px 0px' src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <!--li><input type=button value="Generate_HGR" onclick="document.getElementById('FSL').focus();oPALETTE.draw_rainbow();update(true);" style='vertical-align:top; margin:4px 0px 0px 0px'></li-->
-        <li><input type=button value="Copy_Report" onclick="generate_REPORT()" style='vertical-align:top; margin:20px 0px 0px 0px'></li>
+        <li class=no_margins>
+          <div class=no_margins style="display:inline-block;">
+          <div class=no_margins id=status></div>
+          <input type=button value="Copy_Report" onclick="generate_REPORT()" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
+           </div>
+        </li>
         <li>
           <input id=param4 value=0 hidden>
           <input id=param5 value=1 hidden>
