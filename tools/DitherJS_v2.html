@@ -282,23 +282,24 @@ function generate_GRID()
   var dot = ["<img src=\""+im+"\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
             ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
 
-  s= "<big><font color=white>BITMAP GRIDS<font></big><br><br>";
-  var pmax = 1
-  for(var p=0;p<pmax;p++)
+  s= ""; //"<big><font color=white>BITMAP GRIDS<font></big><br><br>";
+  var cols = ["#F00","#0F0","#00F"]
+  for(var i=0;i<3;i++)
   {
 
     var csh = ""
     var tc = ""
 
-    s+= "<div style='width:430px;background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
+    s+= "<div style='background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'>"
+        //+"<big style='font-color:white'>"+cols[i]+"</big> "
     s+="</small>"
     s+="</div>"
-    s+= "<table style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
+    s+= "<table style='margin:0;padding:0;border:5px solid "+cols[i]+";'>";
     for(var y=0;y<_D.bmapy;y++)
     {
       s+="<tr>";
       for(var x=0;x<_D.bmapx;x++)
-        s+= gen_cell(p,x,y,p==_D.bmapID?dot:["",""]);
+        s+= gen_cell(i,x,y,i==_D.bmapID?dot:["",""]);
       s+="</tr>";
     }
     s+="</table>";
@@ -332,11 +333,24 @@ function gen_cell(patternID,x,y,img)
 
   var pix = c[1]?"background-color:black":"";
   var bck = (c[2]==128?"border-color:#FFE9D0":"");
-  var s= "<td class='"+css+"tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
+  var s= "<td class='"+css+"tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"
+    //+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt
+    +(x+200)+"<br>"
+    +"<font color=red>"+0+"</font>"
+    +"</td>"
   if((x+1)%7==0)
-    s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
+    s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")
+        +"</td>"
   return s;
 }
+
+
+
+//██   ██ ████████ ███    ███ ██      
+//██   ██    ██    ████  ████ ██      
+//███████    ██    ██ ████ ██ ██      
+//██   ██    ██    ██  ██  ██ ██      
+//██   ██    ██    ██      ██ ███████ 
 
 
         </script>
@@ -367,10 +381,12 @@ min-height: 50%;
 background: #fff;
 }
 
-.tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
-.tcell10:hover {width:10px;height:10px;background-color:yellow;border:1px solid black }
-.tcell5 {width:5px;height:10px;background-color:lightgray;padding:0;border:0px solid white}
-.tcell5:hover { width:5px;height:10px;background-color:yellow;border:0px solid white}
+.tcell10 {width:20px;height:20px;background-color:white;padding:0px 0px 0px 0px;border:1px solid white;
+    font-family: "Arial";font-weight: bold;font-size: 9px;text-align: center;vertical-align: top }
+.tcell10:hover {width:20px;height:20px;background-color:yellow;padding:0px 0px 0px 0px;border:1px solid black;
+    font-family: "Arial";font-weight: bold;font-size: 9px;text-align: center;vertical-align: top }
+.tcell5 {width:10px;height:20px;background-color:lightgray;padding:0;border:0px solid white}
+.tcell5:hover { width:10px;height:20px;background-color:yellow;border:0px solid white}
 
 </style>
 </head>
@@ -397,8 +413,8 @@ background: #fff;
         <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
     </td>
 
-    <td style="vertical-align:top;overflow:scroll;height:400px;background-color:#808080">
-        <div id="grid"></div>
+    <td style="vertical-align:top;height:400px;overflow:scroll;background-color:#808080;">
+        <div id="grid" style="width:750px"></div>
     </td>
 
     <td style="vertical-align:top">
