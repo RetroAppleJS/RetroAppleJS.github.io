@@ -92,9 +92,10 @@ function update_dither(bInit,idx)
         anchor.appendChild(canvas);
         var ctx   =  canvas.getContext("2d");
         ctx.putImageData(out_image,0,0);
+
+        oDITHER.generate_GRID(in_image,{"step":1});
    }
 
-   generate_GRID();
 }
  
 var oDITHER = new function()
@@ -185,135 +186,166 @@ var oDITHER = new function()
         out_imgdata.data.set(out);
         return out_imgdata;
     }
-
+    
     this.errorDiffusionDither = function(in_imgdata,opt) 
     {
-            // Create a new empty image
-            var out_imgdata = this.ctx[0].createImageData(in_imgdata);
-            var h = this.canvas[0].height;
-            var w = this.canvas[0].width;
+        // Create a new empty image
+        var out_imgdata = this.ctx[0].createImageData(in_imgdata);
+        var h = this.canvas[0].height;
+        var w = this.canvas[0].width;
 
-            var d   = new Uint8ClampedArray(in_imgdata.data);
-            var out = new Uint8ClampedArray(in_imgdata.data);
-            // Step
-            var step = opt && opt.step?opt.step:1;
-            // Ratio >=1
-            var ratio = 1/16;
+        var d   = new Uint8ClampedArray(in_imgdata.data);
+        var out = new Uint8ClampedArray(in_imgdata.data);
+        // Step
+        var step = opt && opt.step?opt.step:1;
+        // Ratio >=1
+        var ratio = 1/16;
 
-            for (var y=0;y<h;y += step) {
-                for (var x=0;x<w;x += step) {
-                    var i = (4*x) + (4*y*w);
-                    
-                    var $i = function(x,y) {
-                        return x + (4*y*w);
-                    };
+        for (var y=0;y<h;y += step) {
+            for (var x=0;x<w;x += step) {
+                var i = (4*x) + (4*y*w);
+                
+                var $i = function(x,y) {
+                    return x + (4*y*w);
+                };
 
-                    // Define bytes
-                    var r = i;
-                    var g = i+1;
-                    var b = i+2;
-                    var a = i+3;
+                // Define bytes
+                var r = i;
+                var g = i+1;
+                var b = i+2;
+                var a = i+3;
 
-                    var color = new Array(d[r],d[g],d[b]); 
-                    var approx = this.approximateColor(color);
-                    
-                    var q = [];   // 
-                    q[r] = d[r] - approx[0];
-                    q[g] = d[g] - approx[1];
-                    q[b] = d[b] - approx[2];
-                              
-                    var xps = (x+step)*4
-                    var xms = (x-step)*4
-                    var x4 = x*4
+                var color = new Array(d[r],d[g],d[b]); 
+                var approx = this.approximateColor(color);
+                
+                var q = [];   // 
+                q[r] = d[r] - approx[0];
+                q[g] = d[g] - approx[1];
+                q[b] = d[b] - approx[2];
+                            
+                var xps = (x+step)*4
+                var xms = (x-step)*4
+                var x4 = x*4
 
-                    // Diffuse the error - RED component
-                    d[$i(xps,y)] =  d[$i(xps,y)] + 7 * ratio * q[r];
-                    d[$i(xms,y+1)] =  d[$i(x4-4,y+step)] + 3 * ratio * q[r];
-                    d[$i(x4,y+step)] =  d[$i(x4,y+step)] + 5 * ratio * q[r];
-                    d[$i(xps,y+step)] =  d[$i(x4+4,y+step)] + 1 * ratio * q[r];
+                // Diffuse the error - RED component
+                d[$i(xps,y)] =  d[$i(xps,y)] + 7 * ratio * q[r];
+                d[$i(xms,y+1)] =  d[$i(x4-4,y+step)] + 3 * ratio * q[r];
+                d[$i(x4,y+step)] =  d[$i(x4,y+step)] + 5 * ratio * q[r];
+                d[$i(xps,y+step)] =  d[$i(x4+4,y+step)] + 1 * ratio * q[r];
 
-                     // Diffuse the error - GREEN component
-                    d[$i(xps,y)+1] =  d[$i(xps,y)+1] + 7 * ratio * q[g];
-                    d[$i(xms,y+step)+1] =  d[$i(xms,y+step)+1] + 3 * ratio * q[g];
-                    d[$i(x4,y+step)+1] =  d[$i(x4,y+step)+1] + 5 * ratio * q[g];
-                    d[$i(xps,y+step)+1] =  d[$i(xps,y+step)+1] + 1 * ratio * q[g];
+                    // Diffuse the error - GREEN component
+                d[$i(xps,y)+1] =  d[$i(xps,y)+1] + 7 * ratio * q[g];
+                d[$i(xms,y+step)+1] =  d[$i(xms,y+step)+1] + 3 * ratio * q[g];
+                d[$i(x4,y+step)+1] =  d[$i(x4,y+step)+1] + 5 * ratio * q[g];
+                d[$i(xps,y+step)+1] =  d[$i(xps,y+step)+1] + 1 * ratio * q[g];
 
-                     // Diffuse the error - BLUE component
-                    d[$i(xps,y)+2] =  d[$i(xps,y)+2] + 7 * ratio * q[b];
-                    d[$i(xms,y+step)+2] =  d[$i(xms,y+step)+2] + 3 * ratio * q[b];
-                    d[$i(x4,y+step)+2] =  d[$i(x4,y+step)+2] + 5 * ratio * q[b];
-                    d[$i(xps,y+step)+2] =  d[$i(xps,y+step)+2] + 1 * ratio * q[b];
+                    // Diffuse the error - BLUE component
+                d[$i(xps,y)+2] =  d[$i(xps,y)+2] + 7 * ratio * q[b];
+                d[$i(xms,y+step)+2] =  d[$i(xms,y+step)+2] + 3 * ratio * q[b];
+                d[$i(x4,y+step)+2] =  d[$i(x4,y+step)+2] + 5 * ratio * q[b];
+                d[$i(xps,y+step)+2] =  d[$i(xps,y+step)+2] + 1 * ratio * q[b];
 
-                    // Color
-                    var tr = approx[0];
-                    var tg = approx[1];
-                    var tb = approx[2];
+                // Color
+                var tr = approx[0];
+                var tg = approx[1];
+                var tb = approx[2];
 
-                    // Draw a block
-                    for (var dx=0;dx<step;dx++){
-                        for (var dy=0;dy<step;dy++){
-                            var di = i + (4 * dx) + (4 * w * dy);
+                // Draw a block
+                for (var dx=0;dx<step;dx++){
+                    for (var dy=0;dy<step;dy++){
+                        var di = i + (4 * dx) + (4 * w * dy);
 
-                            // Draw pixel
-                            out[di] = tr;
-                            out[di+1] = tg;
-                            out[di+2] = tb;
-                        }
+                        // Draw pixel
+                        out[di] = tr;
+                        out[di+1] = tg;
+                        out[di+2] = tb;
                     }
                 }
             }
-            out_imgdata.data.set(out);
-            return out_imgdata;
-        };
-     
-        // Math.pow is faster than multiplying 2x
-        this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+        }
+        out_imgdata.data.set(out);
+        return out_imgdata;
+    };
+
+        
+    this.generate_GRID = function(in_imgdata,opt)
+    {
+        var h = this.canvas[0].height;
+        var w = this.canvas[0].width;
+
+        var d   = new Uint8ClampedArray(in_imgdata.data);
+        var step = opt && opt.step?opt.step:1;
+
+        var im = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
+        //var im = "../res/pixT.gif";
+
+
+        s= ""; //"<big><font color=white>BITMAP GRIDS<font></big><br><br>";
+        var cols = ["#F00","#0F0","#00F"]
+        for(var i=0;i<3;i++)
+        {
+            var csh = ""
+            var tc = ""
+
+            s+= "<div style='background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'>"
+                //+"<big style='font-color:white'>"+cols[i]+"</big> "
+            s+="</small>"
+            s+="</div>"
+            s+= "<table style='margin:0;padding:0;border:5px solid "+cols[i]+";'>";
+            for(var y=0;y<_D.bmapy;y++)
+            {
+                s+="<tr>";
+                for(var x=0;x<_D.bmapx;x++)
+                {
+
+                    s+= gen_cell(d,x,y,i,w);
+                }
+                s+="</tr>";
+            }
+            s+="</table>";
+        }  
+        s+="<br><br><br><br><br><br>";
+        document.getElementById("grid").innerHTML = s;
+    }
+
+
+
+    // Math.pow is faster than multiplying 2x
+    this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
 }
 
 
 
 
-function generate_GRID()
+
+
+function gen_cell(img_arr,x,y,i,w)
 {
-  // TODO : REPORT MOST APPROXIMATE COLOR MATCH + DISTANCE
+    img_arr[0] = 1;
+    img_arr[4] = 2;
+    img_arr[8] = 3;
+    img_arr[12] = 4;
+    img_arr[16] = 5;
+    img_arr[20] = 6;
+    img_arr[24] = 7;
+    img_arr[28] = 8;
+    img_arr[32] = 9;
+
+  //var c = oPATTERN.calculate(patternID,x,y);
+//x += 30
+//y+= 30
+
+  var idx = (4*x) + (4*y*w);
+  //document.write(idx+" ")
+
+  var color = new Array(img_arr[idx],img_arr[idx+1],img_arr[idx+2]); 
+  var avgcol = (color[0]+color[1]+color[2])/3
 
   var im = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
-  //var im = "../res/pixT.gif";
   var dot = ["<img src=\""+im+"\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
-            ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
+                    ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
 
-  s= ""; //"<big><font color=white>BITMAP GRIDS<font></big><br><br>";
-  var cols = ["#F00","#0F0","#00F"]
-  for(var i=0;i<3;i++)
-  {
-
-    var csh = ""
-    var tc = ""
-
-    s+= "<div style='background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'>"
-        //+"<big style='font-color:white'>"+cols[i]+"</big> "
-    s+="</small>"
-    s+="</div>"
-    s+= "<table style='margin:0;padding:0;border:5px solid "+cols[i]+";'>";
-    for(var y=0;y<_D.bmapy;y++)
-    {
-      s+="<tr>";
-      for(var x=0;x<_D.bmapx;x++)
-        s+= gen_cell(i,x,y,i==_D.bmapID?dot:["",""]);
-      s+="</tr>";
-    }
-    s+="</table>";
-  }  
-  s+="<br><br><br><br><br><br>";
-  document.getElementById("grid").innerHTML = s;
-}
-
-
-function gen_cell(patternID,x,y,img)
-{
-  //var c = oPATTERN.calculate(patternID,x,y);
   c = [1,0]
-  var bi = isNaN(patternID); 
   var alt = "", css = ""
 
 
@@ -331,15 +363,19 @@ function gen_cell(patternID,x,y,img)
   //}
 
 
-  var pix = c[1]?"background-color:black":"";
+  //var pix = c[1]?"background-color:black":"";
   var bck = (c[2]==128?"border-color:#FFE9D0":"");
+  var pix = "background-color:#"+RGB2HEX(color).join("");
+
+  //document.write(pix+"<br>")
+
   var s= "<td class='"+css+"tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"
     //+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt
-    +(x+200)+"<br>"
+    +"<font color="+(avgcol>128?"black":"white")+">"+color[i]+"</font><br>"
     +"<font color=red>"+0+"</font>"
     +"</td>"
   if((x+1)%7==0)
-    s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")
+    s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+dot[1].replace(/this/g,"this,"+x+","+y+",1")
         +"</td>"
   return s;
 }
@@ -1404,7 +1440,9 @@ d[2] = {
 42:{"col":"#FA7E00","sat":141,"cmp":["#000000","#FF8000"]},
 }
 
-
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
+function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
+function RGB2HEX(dec) { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] }
 function HEX2RGB(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
 
 var PATPAL = [];
