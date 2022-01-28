@@ -281,6 +281,7 @@ var oDITHER = new function()
 
 
         s= ""; //"<big><font color=white>BITMAP GRIDS<font></big><br><br>";
+        s+="<button onclick=document.getElementById('param1').value=-1>reset</button><button onclick=document.getElementById('param1').value++;oDITHER.update_cell()>next</button><input id=param1 type=text value=-1>"
         var cols = ["#F00","#0F0","#00F"]
         for(var i=0;i<3;i++)
         {
@@ -309,6 +310,11 @@ var oDITHER = new function()
     }
 
 
+    this.update_cell = function()
+    {
+        var idx = document.getElementById('param1').value;
+        alert(idx)
+    }
 
     // Math.pow is faster than multiplying 2x
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
@@ -321,20 +327,6 @@ var oDITHER = new function()
 
 function gen_cell(img_arr,x,y,i,w)
 {
-    img_arr[0] = 1;
-    img_arr[4] = 2;
-    img_arr[8] = 3;
-    img_arr[12] = 4;
-    img_arr[16] = 5;
-    img_arr[20] = 6;
-    img_arr[24] = 7;
-    img_arr[28] = 8;
-    img_arr[32] = 9;
-
-  //var c = oPATTERN.calculate(patternID,x,y);
-//x += 30
-//y+= 30
-
   var idx = (4*x) + (4*y*w);
   //document.write(idx+" ")
 
