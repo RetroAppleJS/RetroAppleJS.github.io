@@ -104,27 +104,32 @@
 // TAB ANIMATOR     //
 //////////////////////
 
-const liContainer = document.querySelector("ul");
-const liEls       = [...document.querySelectorAll("ul a")];
-const slideEl_1   = document.querySelector(".focus-el.el--1");
-const slideEl_2   = document.querySelector(".focus-el.el--2");
 
 tl = gsap.timeline();
-liRect = liContainer.getBoundingClientRect();
-slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
-slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
-slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
-
 startPosIndex = 2;
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
+var liContainer,liEls,slideEl_1,slideEl_2 
 
 window.addEventListener("load", switchTab);
 window.addEventListener("hashchange", switchTab);
 
 function switchTab()
 {
+    if(typeof(liContainer)=="undefined")
+    {
+      liContainer = document.querySelector("ul");
+      liEls       = [...document.querySelectorAll("ul a")];
+      slideEl_1   = document.querySelector(".focus-el.el--1");
+      slideEl_2   = document.querySelector(".focus-el.el--2");
+
+      liRect = liContainer.getBoundingClientRect();
+      slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
+      slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
+      slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
+    }
+
     // read hash value from url
     var sel_id = location.hash.slice(1);
     // find tab object corresponding to hash value

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apple II+ in Javascript</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <!--link rel="stylesheet" href="res/pure.css"-->
+    <!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
+    <link rel="stylesheet" href="res/fontawesome/all.css">
+    <link rel="stylesheet" href="res/COM_markdown.css">
+    <script type="text/javascript" src="docs/_GENERATED_DOCS.js"></script>  <!-- load all the help & documentation content-->
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
+    <!--script type="text/javascript" src='res/COM_gsap.min.js'></script--> <!-- only used for animating tabs-->
+    <script id="rendered-js">
+
+
+//   ____    ____          _            
+//  |_   \  /   _|        (_)           
+//    |   \/   |   ,--.   __   _ .--.   
+//    | |\  /| |  `'_\ : [  | [ `.-. |  
+//   _| |_\/_| |_ // | |, | |  | | | |  
+//  |_____||_____|\'-;__/[___][___||__]
+//  ███████  ██████ ██████  ██ ██████  ████████ ███████ 
+//  ██      ██      ██   ██ ██ ██   ██    ██    ██      
+//  ███████ ██      ██████  ██ ██████     ██    ███████ 
+//       ██ ██      ██   ██ ██ ██         ██         ██ 
+//  ███████  ██████ ██   ██ ██ ██         ██    ███████ 
+
+
+    //////////////////////
+    // TAB ANIMATOR     //
+    //////////////////////
+
+    tl = gsap.timeline();
+    startPosIndex = 1;
+    reachedEnd    = false;
+    activeIndex   = startPosIndex;
+    animDuration  = 0.1;
+    var liContainer,liEls,slideEl_1,slideEl_2 
+
+    window.addEventListener("load", onswitchTab);
+    window.addEventListener("hashchange", onswitchTab);
+
+
+    ////////////////////////////
+    // TAB EVENT HANDLER      //
+    ////////////////////////////
+
+    function onswitchTab()
+    {
+        if(typeof(liContainer)=="undefined")
+        {
+
+            liContainer = document.querySelector("ul");
+            liEls       = [...document.querySelectorAll("ul a")];
+            slideEl_1   = document.querySelector(".focus-el.el--1");
+            slideEl_2   = document.querySelector(".focus-el.el--2");
+
+            liRect = liContainer.getBoundingClientRect();
+            slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
+            slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
+            slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
+        }
+
+        // read hash value from url
+        var sel_id = location.hash.slice(1);
+        // find tab object corresponding to hash value
+        var node = document.getElementById("app").childNodes[1].childNodes;
+        for(var index=0,cnt=1;index<node.length;index++)
+        {
+            if(node[index].href)
+            {
+                if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
+                var el = node[index];
+                cnt++
+            }
+        }
+        switchTabHeader(tl,index,el.getBoundingClientRect());
+        switchTabContent('tabs',el.href.split("#")[1]);
+    }
+
+    //////////////////////////////
+    // TAB HEADER SELECTOR      //
+    //////////////////////////////
+
+    function switchTabHeader(tl,index,elRect)
+    {
+        if (reachedEnd && index + 1 == startPosIndex)
+        {
+            tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
+            tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
+            tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
+            tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
+        }
+        timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
+        activeIndex = index + 1;
+        tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
+        if (index + 1 != startPosIndex || reachedEnd == false)
+        {
+            tl.to(slideEl_1, animDuration, {
+                left: `${elRect.left - liRect.left}px`,
+                width: `${slideEl_1_DefWidth}px` });
+        }
+        reachedEnd = (index + 1 == liEls.length) ? true : false
+    }
+
+    //////////////////////////////
+    // TAB CONTENT SELECTOR     //
+    //////////////////////////////
+
+    function switchTabContent(node_name,sel_id)
+    {
+        var node = document.getElementsByClassName(node_name)[0].childNodes
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id)
+            {
+                if(node[i].id == sel_id) node[i].classList.add('active');
+                else                     node[i].classList.remove('active');
+            }
+        }        
+    }
+
+    ////////////////////
+    // ON-SCREEN HELP //
+    ////////////////////
+
+    function onhelp(txt,target)
+    {
+        if( typeof(_o.tools[target.id])=="undefined" )
+        _o.tools[target.id] = {"toggle":false,"cache":""}
+
+        var t = target.tagName;
+        switch(target.tagName.toUpperCase())
+        {
+        case "DIV":
+            _o.tools[target.id].toggle = !_o.tools[target.id].toggle
+            if(_o.tools[target.id].toggle)
+            {
+            _o.tools[target.id].cache = target.innerHTML;
+            target.innerHTML = txt;
+            }
+            else
+            target.innerHTML = _o.tools[target.id].cache;
+        break;
+        case "TEXTAREA":
+            target.innerHTML = txt;
+        break;
+        }
+    }
+            
+            
+    </script>
+<!--
+   ____    ____          _            
+  |_   \  /   _|        (_)           
+    |   \/   |   ,--.   __   _ .--.   
+    | |\  /| |  `'_\ : [  | [ `.-. |  
+   _| |_\/_| |_ // | |, | |  | | | |  
+  |_____||_____|\'-;__/[___][___||__]
+   ██████ ███████ ███████ 
+  ██      ██      ██      
+  ██      ███████ ███████ 
+  ██           ██      ██ 
+   ██████ ███████ ███████
+-->
+    <style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    #app ul {
+        position: relative;
+        height: 30px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); 
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.65);
+        box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+    }
+
+    #app ul a {
+        list-style: none;
+        display: grid;
+        place-items: center;
+        color: #000;
+        z-index: 10;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    #app ul .focus-el {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: calc(100% / 4);
+        height: 100%;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+    }
+
+    #app ul .focus-el.el--2 {
+        left: calc(-100% / 4);
+    }
+
+    #box {
+        background:#76B9CE;
+        border-radius:10px;
+    }
+
+    #box tr td {
+        /*display:flex;*/
+        flex-wrap:wrap;
+    }
+
+    .tabs > div { display:none; }
+    .tabs > div.active { display:block; }
+
+    /*
+    .alltabs > a { display:none; }
+    .alltabs > a.active { display:block; }
+    */
+
+    </style>
+</head>
+<!--
+   ____    ____          _            
+  |_   \  /   _|        (_)           
+    |   \/   |   ,--.   __   _ .--.   
+    | |\  /| |  `'_\ : [  | [ `.-. |  
+   _| |_\/_| |_ // | |, | |  | | | |  
+  |_____||_____|\'-;__/[___][___||__]
+  ██   ██ ████████ ███    ███ ██      
+  ██   ██    ██    ████  ████ ██      
+  ███████    ██    ██ ████ ██ ██      
+  ██   ██    ██    ██  ██  ██ ██      
+  ██   ██    ██    ██      ██ ███████ 
+-->  
+<body style="font-family:'Arial';">
+  <table id=box style=width:450px;margin-top:0px>
+    <tr>
+      <td valign=top>
+        <!--i class="fa fa-bars" onmouseover="document.getElementById('app').style.display=''" style=float:left;></i!-->
+
+        <!-- tab menu  -->
+        <div id=app>
+          <ul style="width:350px;float:left">
+            <!-- links -->
+            <a id="tab0" href="#tab1">Emulator</a>
+            <a id="tab0" href="#tab2">Assembler</a>
+            <a id="tab0" href="#tab3">Debugger</a>
+            <a id="tab0" href="#tab4">Reference</a>
+            <div class="focus-el el--1"></div>
+            <div class="focus-el el--2"></div>
+          </ul>
+        </div>
+        <br><br>
+
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab1" style="height:1300px;width:1300px;background-image:url('res/appleIIplus_bck_650_v2.png');background-size:1300px;background-repeat:no-repeat;image-rendering:pixelated;">
+          <!--
+            ███████ ███    ███ ██    ██ ██       █████  ████████  ██████  ██████  
+            ██      ████  ████ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
+            █████   ██ ████ ██ ██    ██ ██      ███████    ██    ██    ██ ██████  
+            ██      ██  ██  ██ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
+            ███████ ██      ██  ██████  ███████ ██   ██    ██     ██████  ██   ██  
+          -->
+          </div>
+          <div id="tab2" style="height:200px;width:700px">
+          <!--
+            █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
+            ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
+            ███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████
+            ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
+            ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
+          -->
+          </div>
+          <div id="tab3" style="height:250px;width:700px">
+          <!--
+            ██████  ███████ ██████  ██    ██  ██████   ██████  ███████ ██████ 
+            ██   ██ ██      ██   ██ ██    ██ ██       ██       ██      ██   ██
+            ██   ██ █████   ██████  ██    ██ ██   ███ ██   ███ █████   ██████
+            ██   ██ ██      ██   ██ ██    ██ ██    ██ ██    ██ ██      ██   ██
+            ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
+          -->
+          </div>
+          <div id="tab4" style="height:1000px;width:700px">
+          <!--
+            ██████  ███████ ███████ ███████ ██████  ███████ ███    ██  ██████ ███████
+            ██   ██ ██      ██      ██      ██   ██ ██      ████   ██ ██      ██
+            ██████  █████   █████   █████   ██████  █████   ██ ██  ██ ██      █████
+            ██   ██ ██      ██      ██      ██   ██ ██      ██  ██ ██ ██      ██
+            ██   ██ ███████ ██      ███████ ██   ██ ███████ ██   ████  ██████ ███████
+          -->
+          </div>
+        </div>
+      </td>
+  </tr>
+</table>
+
+</body>
+</html>
