@@ -179,6 +179,7 @@
     @font-face {  font-family: 'Arcade'; src: URL('res/ARCADE_N.TTF') format('truetype') }
 
     * {
+      
         box-sizing: border-box;
         margin: 0;
         padding: 0;
@@ -221,6 +222,7 @@
     }
 
     #box {
+        font-family:'Arial';
         background:#76B9CE;
         border-radius:10px;
     }
@@ -253,7 +255,7 @@
   ██   ██    ██    ██  ██  ██ ██      
   ██   ██    ██    ██      ██ ███████ 
 -->  
-<body style="font-family:'Arial';">
+<body>
   <table id=box style=width:450px;margin-top:0px>
     <tr>
       <td valign=top>
@@ -441,6 +443,342 @@
             ██   ██ ██      ██   ██ ██    ██ ██    ██ ██    ██ ██      ██   ██
             ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
           -->
+
+
+
+
+
+
+
+          <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
+          <script type="text/javascript" src="res/DBG_6502gui.js"></script>
+        <link rel="stylesheet"        href="res/DBG_6502.css">
+  
+        <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+          <tr>
+              <td>
+            <form action="#" onsubmit="singleStep(); return false"></form>
+            <form name="MemLoader" onsubmit="showMem();return false"></form>
+            <textarea id="mem" name="mem" rows="16" cols="62" wrap="virtual" hidden=""></textarea>
+              </td>
+          </tr>
+          <tr>
+              <td>
+            <div>
+                <!-- LEFT PANE -->
+                       <div class="displayLr" style="float:left;width:250px;height:200px;font-size:small/*;border-style:solid;border-width:1px;border-color:yellow*/">
+                   <div id="dispStep" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
+                   <div style="width:248px;height:4px"></div>
+                   <div id="watchdisp" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
+                 </div>
+                 <!-- RIGHT PANE -->
+                 <div style="float:left;/*border-style:solid;border-width:1px;border-color:yellow;*/">
+                   <!-- BEGIN DASHBOARD -->
+                  <div id="regdisp" class="regdisp"></div>
+                   <table class=dtable>
+                             <tr>
+                                 <td><a onclick="setRegister('PC'); return false;" onfocus="if(this.blur) this.blur();" title="set PC">PC</a></td>
+                                 <td>&nbsp;</td>
+                                 <td><a onclick="setRegister('AC'); return false;" onfocus="if(this.blur) this.blur();" title="set AC">A</a></td>
+                                 <td><a onclick="setRegister('XR'); return false;" onfocus="if(this.blur) this.blur();" title="set XR">X</a></td>
+                                 <td><a onclick="setRegister('YR'); return false;" onfocus="if(this.blur) this.blur();" title="set YR">Y</a></td>
+                                 <td><a onclick="setRegister('SR'); return false;" onfocus="if(this.blur) this.blur();" title="set SR">SR</a></td>
+                                 <td><a onclick="setRegister('SP'); return false;" onfocus="if(this.blur) this.blur();" title="set SP">SP</a></td>
+                             </tr>
+                             <tr>
+                                 <td><div id="dispPC" class="displayLr" onclick="setRegister('PC'); return false;" style="cursor: pointer;">0000</div></td>
+                                 <td>&nbsp;</td>
+                                 <td><div id="dispAC" class="displayLr">00</div></td>
+                                 <td><div id="dispXR" class="displayLr">00</div></td>
+                                 <td><div id="dispYR" class="displayLr">00</div></td>
+                                 <td><div id="dispSR" class="displayLr">20</div></td>
+                                 <td><div id="dispSP" class="displayLr">FF</div></td>
+                             </tr>
+                         </table>
+                         <table class=dtable>
+                             <tr>
+                                 <td><a onclick="flipSRBit(7); return false;" onfocus="if(this.blur) this.blur();" title="flip Negative flag">N</a></td>
+                                 <td><a onclick="flipSRBit(6); return false;" onfocus="if(this.blur) this.blur();" title="flip Overflow flag">V</a></td>
+                                 <td><a onclick="flipSRBit(5); return false;" onfocus="if(this.blur) this.blur();" title="flip bit 5 (ignored)">-</a></td>
+                                 <td><a onclick="flipSRBit(4); return false;" onfocus="if(this.blur) this.blur();" title="flip Break flag">B</a></td>
+                                 <td><a onclick="flipSRBit(3); return false;" onfocus="if(this.blur) this.blur();" title="flip Decimal flag">D</a></td>
+                                 <td><a onclick="flipSRBit(2); return false;" onfocus="if(this.blur) this.blur();" title="flip Interrupt flag">I</a></td>
+                                 <td><a onclick="flipSRBit(1); return false;" onfocus="if(this.blur) this.blur();" title="flip Zero flag">Z</a></td>
+                                 <td><a onclick="flipSRBit(0); return false;" onfocus="if(this.blur) this.blur();" title="flip Carry flag">C</a></td>
+                             </tr>
+                             <tr>
+                                 <td><div id="dispSR7" class="displayLr">0</div></td>
+                                 <td><div id="dispSR6" class="displayLr">0</div></td>
+                                 <td><div id="dispSR5" class="displayLr">1</div></td>
+                                 <td><div id="dispSR4" class="displayLr">0</div></td>
+                                 <td><div id="dispSR3" class="displayLr">0</div></td>
+                                 <td><div id="dispSR2" class="displayLr">0</div></td>
+                                 <td><div id="dispSR1" class="displayLr">0</div></td>
+                                 <td><div id="dispSR0" class="displayLr">0</div></td>
+                             </tr>
+                         </table>
+                         <table class=dtable>
+                             <tr>
+                                 <td><a onclick="setWatchByte('AD'); return false;" onfocus="if(this.blur) this.blur();" title="set AD">AD</a></td>
+                                 <td>&nbsp;</td>
+                                 <td><a onclick="setWatchByte('R1'); return false;" onfocus="if(this.blur) this.blur();" title="set R1">R1</a></td>
+                                 <td><a onclick="setWatchByte('R2'); return false;" onfocus="if(this.blur) this.blur();" title="set R2">R2</a></td>
+                                 <td><a onclick="setWatchByte('R3'); return false;" onfocus="if(this.blur) this.blur();" title="set R3">R3</a></td>
+                                 <td><a onclick="setWatchByte('R4'); return false;" onfocus="if(this.blur) this.blur();" title="set R4">R4</a></td>
+                                 <td><a onclick="setWatchByte('R5'); return false;" onfocus="if(this.blur) this.blur();" title="set R5">R5</a></td>
+                                 <td><a onclick="setWatchByte('R6'); return false;" onfocus="if(this.blur) this.blur();" title="set R6">R6</a></td>
+                             </tr>
+                             <tr>
+                                 <td><div id="dispAD" class="displayLr" onclick="setWatch('AD'); return false;" style="cursor: pointer;">0000</div></td>
+                                 <td>&nbsp;</td>
+                                 <td><div id="dispR1" class="displayLr">00</div></td>
+                                 <td><div id="dispR2" class="displayLr">00</div></td>
+                                 <td><div id="dispR3" class="displayLr">00</div></td>
+                                 <td><div id="dispR4" class="displayLr">00</div></td>
+                                 <td><div id="dispR5" class="displayLr">00</div></td>
+                                 <td><div id="dispR6" class="displayLr">00</div></td>
+                             </tr>
+                         </table>
+                         <table class=dtable>
+                             <tr>
+                                 <td><a onclick="setwatchBit(7); return false;" onfocus="if(this.blur) this.blur();" title="bit7">7</a></td>
+                                 <td><a onclick="setwatchBit(6); return false;" onfocus="if(this.blur) this.blur();" title="bit6">6</a></td>
+                                 <td><a onclick="setwatchBit(5); return false;" onfocus="if(this.blur) this.blur();" title="bit5">5</a></td>
+                                 <td><a onclick="setwatchBit(4); return false;" onfocus="if(this.blur) this.blur();" title="bit4">4</a></td>
+                                 <td><a onclick="setwatchBit(3); return false;" onfocus="if(this.blur) this.blur();" title="bit3">3</a></td>
+                                 <td><a onclick="setwatchBit(2); return false;" onfocus="if(this.blur) this.blur();" title="bit2">2</a></td>
+                                 <td><a onclick="setwatchBit(1); return false;" onfocus="if(this.blur) this.blur();" title="bit1">1</a></td>
+                                 <td><a onclick="setwatchBit(0); return false;" onfocus="if(this.blur) this.blur();" title="bit0">0</a></td>
+                             </tr>
+                      <td><div id="disp7" class="displayLr">0</div></td>
+                      <td><div id="disp6" class="displayLr">0</div></td>
+                      <td><div id="disp5" class="displayLr">0</div></td>
+                      <td><div id="disp4" class="displayLr">0</div></td>
+                      <td><div id="disp3" class="displayLr">0</div></td>
+                      <td><div id="disp2" class="displayLr">0</div></td>
+                      <td><div id="disp1" class="displayLr">0</div></td>
+                      <td><div id="disp0" class="displayLr">0</div></td>
+                             </tr>
+                         </table>
+  
+                    <!-- END DASHBOARD -->
+                 </div>
+                 <div style="float:left">
+  
+                 <table class=gtable>
+                 <tr><td>$0000</td><td id='m0000' class=gtip></td><td id='m0100'></td><td id='m0200'></td><td id='m0300'></td><td id='m0400'></td><td id='m0500'></td><td id='m0600'></td><td id='m0700'></td><td id='m0800'></td><td id='m0900'></td><td id='m0A00'></td><td id='m0B00'></td><td id='m0C00'></td><td id='m0D00'></td><td id='m0E00'></td><td id='m0F00'></td></tr>
+                 <tr><td>$1000</td><td id='m1000'></td><td id='m1100'></td><td id='m1200'></td><td id='m1300'></td><td id='m1400'></td><td id='m1500'></td><td id='m1600'></td><td id='m1700'></td><td id='m1800'></td><td id='m1900'></td><td id='m1A00'></td><td id='m1B00'></td><td id='m1C00'></td><td id='m1D00'></td><td id='m1E00'></td><td id='m1F00'></td></tr>
+                 <tr><td>$2000</td><td id='m2000'></td><td id='m2100'></td><td id='m2200'></td><td id='m2300'></td><td id='m2400'></td><td id='m2500'></td><td id='m2600'></td><td id='m2700'></td><td id='m2800'></td><td id='m2900'></td><td id='m2A00'></td><td id='m2B00'></td><td id='m2C00'></td><td id='m2D00'></td><td id='m2E00'></td><td id='m2F00'></td></tr>
+                 <tr><td>$3000</td><td id='m3000'></td><td id='m3100'></td><td id='m3200'></td><td id='m3300'></td><td id='m3400'></td><td id='m3500'></td><td id='m3600'></td><td id='m3700'></td><td id='m3800'></td><td id='m3900'></td><td id='m3A00'></td><td id='m3B00'></td><td id='m3C00'></td><td id='m3D00'></td><td id='m3E00'></td><td id='m3F00'></td></tr>
+                 <tr><td>$4000</td><td id='m4000'></td><td id='m4100'></td><td id='m4200'></td><td id='m4300'></td><td id='m4400'></td><td id='m4500'></td><td id='m4600'></td><td id='m4700'></td><td id='m4800'></td><td id='m4900'></td><td id='m4A00'></td><td id='m4B00'></td><td id='m4C00'></td><td id='m4D00'></td><td id='m4E00'></td><td id='m4F00'></td></tr>
+                 <tr><td>$5000</td><td id='m5000'></td><td id='m5100'></td><td id='m5200'></td><td id='m5300'></td><td id='m5400'></td><td id='m5500'></td><td id='m5600'></td><td id='m5700'></td><td id='m5800'></td><td id='m5900'></td><td id='m5A00'></td><td id='m5B00'></td><td id='m5C00'></td><td id='m5D00'></td><td id='m5E00'></td><td id='m5F00'></td></tr>
+                 <tr><td>$6000</td><td id='m6000'></td><td id='m6100'></td><td id='m6200'></td><td id='m6300'></td><td id='m6400'></td><td id='m6500'></td><td id='m6600'></td><td id='m6700'></td><td id='m6800'></td><td id='m6900'></td><td id='m6A00'></td><td id='m6B00'></td><td id='m6C00'></td><td id='m6D00'></td><td id='m6E00'></td><td id='m6F00'></td></tr>
+                 <tr><td>$7000</td><td id='m7000'></td><td id='m7100'></td><td id='m7200'></td><td id='m7300'></td><td id='m7400'></td><td id='m7500'></td><td id='m7600'></td><td id='m7700'></td><td id='m7800'></td><td id='m7900'></td><td id='m7A00'></td><td id='m7B00'></td><td id='m7C00'></td><td id='m7D00'></td><td id='m7E00'></td><td id='m7F00'></td></tr>
+                 <tr><td>$8000</td><td id='m8000'></td><td id='m8100'></td><td id='m8200'></td><td id='m8300'></td><td id='m8400'></td><td id='m8500'></td><td id='m8600'></td><td id='m8700'></td><td id='m8800'></td><td id='m8900'></td><td id='m8A00'></td><td id='m8B00'></td><td id='m8C00'></td><td id='m8D00'></td><td id='m8E00'></td><td id='m8F00'></td></tr>
+                 <tr><td>$9000</td><td id='m9000'></td><td id='m9100'></td><td id='m9200'></td><td id='m9300'></td><td id='m9400'></td><td id='m9500'></td><td id='m9600'></td><td id='m9700'></td><td id='m9800'></td><td id='m9900'></td><td id='m9A00'></td><td id='m9B00'></td><td id='m9C00'></td><td id='m9D00'></td><td id='m9E00'></td><td id='m9F00'></td></tr>
+                 <tr><td>$A000</td><td id='mA000'></td><td id='mA100'></td><td id='mA200'></td><td id='mA300'></td><td id='mA400'></td><td id='mA500'></td><td id='mA600'></td><td id='mA700'></td><td id='mA800'></td><td id='mA900'></td><td id='mAA00'></td><td id='mAB00'></td><td id='mAC00'></td><td id='mAD00'></td><td id='mAE00'></td><td id='mAF00'></td></tr>
+                 <tr><td>$B000</td><td id='mB000'></td><td id='mB100'></td><td id='mB200'></td><td id='mB300'></td><td id='mB400'></td><td id='mB500'></td><td id='mB600'></td><td id='mB700'></td><td id='mB800'></td><td id='mB900'></td><td id='mBA00'></td><td id='mBB00'></td><td id='mBC00'></td><td id='mBD00'></td><td id='mBE00'></td><td id='mBF00'></td></tr>
+                 <tr><td>$C000</td><td id='mC000'></td><td id='mC100'></td><td id='mC200'></td><td id='mC300'></td><td id='mC400'></td><td id='mC500'></td><td id='mC600'></td><td id='mC700'></td><td id='mC800'></td><td id='mC900'></td><td id='mCA00'></td><td id='mCB00'></td><td id='mCC00'></td><td id='mCD00'></td><td id='mCE00'></td><td id='mCF00'></td></tr>
+                 <tr><td>$D000</td><td id='mD000'></td><td id='mD100'></td><td id='mD200'></td><td id='mD300'></td><td id='mD400'></td><td id='mD500'></td><td id='mD600'></td><td id='mD700'></td><td id='mD800'></td><td id='mD900'></td><td id='mDA00'></td><td id='mDB00'></td><td id='mDC00'></td><td id='mDD00'></td><td id='mDE00'></td><td id='mDF00'></td></tr>
+                 <tr><td>$E000</td><td id='mE000'></td><td id='mE100'></td><td id='mE200'></td><td id='mE300'></td><td id='mE400'></td><td id='mE500'></td><td id='mE600'></td><td id='mE700'></td><td id='mE800'></td><td id='mE900'></td><td id='mEA00'></td><td id='mEB00'></td><td id='mEC00'></td><td id='mED00'></td><td id='mEE00'></td><td id='mEF00'></td></tr>
+                 <tr><td>$F000</td><td id='mF000'></td><td id='mF100'></td><td id='mF200'></td><td id='mF300'></td><td id='mF400'></td><td id='mF500'></td><td id='mF600'></td><td id='mF700'></td><td id='mF800'></td><td id='mF900'></td><td id='mFA00'></td><td id='mFB00'></td><td id='mFC00'></td><td id='mFD00'></td><td id='mFE00'></td><td id='mFF00'></td></tr>
+                 </table>
+  
+                 <script>
+                  var lbl = {
+                             "A2P":{
+                             "0000-00FF":["#FFFFFF","zero-page"]
+                            ,"0100-01FF":["#E0E0E0","stack"]
+                            ,"0200-02FF":["#00D000","GETLN buffer"]
+                            ,"0300-03FF":["#00D000","Vector pointers"]
+                            ,"0400-07FF":["#DF48FF","TXT1/LORES1"]
+                            ,"0800-0BFF":["#D040E0","TXT2/LORES2"]
+                            ,"0C00-1FFF":["#00D000","APPLESOFT PRG"]
+                            ,"2000-3FFF":["#0000FF","HIRES1"]
+                            ,"4000-5FFF":["#0000E0","HIRES2"]
+                            ,"C000-CFFF":["#D0D000","I/O"]
+                            ,"D000-F7FF":["#D00000","BASIC ROM"]
+                            ,"F800-FFFF":["#D00000","Monitor ROM"]
+                            ,"0300":["","GETLN"]
+                            }
+                          }
+  
+                   // PREPARE ALL DATA
+                   var blk_col = {}, blk_txt = {} //, c = ""
+                   for(var i in lbl[_o.sys])
+                   {
+                     var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
+                     for(var j=b[0];j<b[1];j+=parseInt("0100",16))
+                     { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
+                       var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase()
+                       blk_col[idx] = lbl[_o.sys][i][0]; blk_txt[idx] = lbl[_o.sys][i][1];
+                     }
+                   } //document.write(c)
+  
+                   // DISPLAY GRID
+                   /*
+                   var s = "<table border=1 style='width:180px;height:180px;margin-left:10px'>"
+                   for(var i=0;i<16;i++)
+                   {
+                     s+="<tr><td style='font-size:xx-small;padding:0px;margin:0px;width:20%'>$"+i.toString(16).toUpperCase()+"000</td>"
+                     for(var j=0;j<16;j++)
+                     {
+                       var b = i.toString(16).toUpperCase() + j.toString(16).toUpperCase() + "00";
+                       s+="<td id='m"+b+"' class=gtip></td>";
+                     }
+                     s+="</tr>\n"
+                   }
+                   s+="</table>"
+                   document.write("<textarea>"+s+"</textarea>")
+                   */
+  
+                   // PAINT GRID
+                   for(var i in lbl[_o.sys])
+                   {
+                     var a = i.split("-");
+                     if(a.length==2)
+                     {
+                       var b = [parseInt(a[0],16),parseInt(a[1],16)];
+                       for(var j=b[0];j<b[1];j+=parseInt("0100",16))
+                       {
+                         var idx = ("000"+j.toString(16)).slice(-4).toUpperCase();
+                         var el = document.getElementById("m"+idx);
+                         if(blk_col[idx].charAt(0)=="#") el.style.backgroundColor = blk_col[idx];
+                         el.innerHTML = "<span class=gt>"+blk_txt[idx]+"</span>"
+                       }
+                     }
+                   }
+  
+                   //alert(document.getElementById("m0000"))
+                   //document.write("<button onclick=alert(document.getElementById('m0000'))>TEST</button>")
+  
+                   //document.getElementById("m0000").style.backgroundColor = "red";
+  
+  /*
+                  var s = "<table border=1 style='width:180px;height:180px;margin-left:10px'>"
+                  for(var i=0;i<16;i++)
+                  {
+                    s+="<tr><td style='font-size:xx-small;padding:0px;margin:0px;width:20%'>$"+i.toString(16).toUpperCase()+"000</td>"
+                    for(var j=0;j<16;j++)
+                    {
+                      var blk = i.toString(16).toUpperCase() + j.toString(16).toUpperCase() + "00";
+                      s+="<td style='width:5%;background-color:"+blk_col[blk]+"' class='tooltip'>"
+                      +(blk_txt[blk]?("<span class='tooltiptext'>"+blk_txt[blk]+"</span>"):"")
+                      +"</td>";
+                    }
+                    s+="</tr>"
+                  }
+                  s+="</table>"
+                //document.write(s);
+  */
+                </script>
+  
+  
+                 </div>
+            </div>
+              </td>
+          </tr>
+        <tr>
+          <td>
+            <!--div style="float:left;">start&nbsp;$</div><div onclick='chage_adr(this)' style="border-style: solid;border-width:1px; width:100px;">6000</div-->
+            <input type="text" id="memAddr" name="memAddr" size="4" value="6000" hidden="" style="float:left;">
+  
+            <script>
+  
+                var oBASE = new function() {
+                    this.convert = function (str, fromBase, toBase)
+                    {
+                      if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
+                      if(typeof(toBase)  =='object') { this.toSymbols = toBase[0] }
+                      fromBase = this.fromSymbols.length; toBase = this.toSymbols.length;
+  
+                      // PARSE INPUT DIGITS ARRAY
+                      for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
+                      var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
+  
+                      // BASE CONVERSION
+                      for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBase), toBase); _p = mul(fromBase, _p, toBase) }
+  
+                      // PARSE OUTPUT DIGITS ARRAY
+                      for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
+                      return _o.length==0?this.toSymbols[0]:_o;
+                    }
+  
+                    var add = function(x, y, base) {
+                        var _m = Math.max(x.length, y.length);
+                        for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
+                          var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
+                          var _n =  _r.push(_z % base);
+                        }
+                        return _r;
+                    }
+  
+                    var mul = function(x, pow, base) {
+                        for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
+                          if(x & 1) _r = add(_r, pow, base);
+                          pow = add(pow, pow, base);
+                        }
+                        return _r;
+                    }
+                }()
+  
+  
+            </script>
+            <!--button style="float:left"><i class="fa fa-play"></i>start at $6000</button-->
+            <button onclick="debugReset();load_adr(this)" style="float:left">
+              <i class="fa fa-truck"></i> load at addr</button>
+            <button onclick="singleStep()" style="float:left;"><i class="fa fa-paw">
+              </i> step</button>
+          </td>
+        </tr>
+          <tr>
+              <td>
+                  <button onclick="javascript:onToolBox('DbgTools')"><i class="fa fa-wrench">
+              </i> tools & config</button>
+              <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
+                  <!--button onclick="onhelp(DbgHelp(),document.getElementById('debugfield'));"-->
+  
+              <i class="fa fa-book"></i> help</!--button>
+                  <div id="DbgTools" hidden="">
+                      <input type="button" value="continous run" class="isButton" onclick="run()">
+              <input type="button" value="reset debugger" class="isButton" onclick="debugReset()">
+                      <input type="button" value="look up mem #" class="isButton" onclick="memLookup()">
+                      <input type="button" value="reset CPU" class="isButton" onclick="masterReset()">
+                      show ASCII <input type="checkbox" id="showASCII" value="1" class="formField"><br>
+                      <input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
+              <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
+              <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
+              <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS,document.getElementById('debugfield'))">
+              <input type="button" value="memory MAP" class="isButton" onclick="RAM_checksum()">
+                      <iframe name="c64loader" border="0" framespacing="0" marginwidth="0" marginheight="0" width="0" height="0" frameborder="0"></iframe>
+                      <input type="button" value="&nbsp;show memory&nbsp;" class="isButton" onclick="showMem()">
+                      <div id="dispCycles" class="displayLr">total cycles: 0</div>
+              <input id="watchparam" value="" style="width:300px">
+              <input id="watchparam2" value="" style="width:300px">
+                  </div>
+              </td>
+          </tr>
+          <tr>
+              <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                  <div style="height:90px">
+                  </div>
+                  <div id="debugfield" contenteditable="true" class="markdown_mon"
+                      style="width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
+                  <div>
+                  <!--textarea name="debugfield" hidden=""></!--textarea-->
+                  <div style="height:180px">
+                  </div>
+                  </div>
+              </td>
+          </tr>
+      </table>
+
+
+
+
+
+
+
           </div>
           <div id="tab4" style="height:1000px;width:700px">
           <!--
