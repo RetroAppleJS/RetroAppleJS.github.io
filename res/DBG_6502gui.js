@@ -234,7 +234,7 @@ function resetProcessor() {
 	disassemble();
 }
 
-function inialize() {
+function DBG_init() {
 	window.status='initializing ...';
 	resetProcessor();
 	loaded=true;
@@ -1603,5 +1603,5 @@ return '  <p class=\"text\"> </p>\n'
 }
 */
 
-addLoadEvent(inialize);
+addLoadEvent(DBG_init);
 // eof

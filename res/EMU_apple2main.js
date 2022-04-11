@@ -26,12 +26,12 @@
 
 // apple2main.js
 
-addLoadEvent(init_emulator);
+addLoadEvent(EMU_init);
 
 var vidContext,apple2plus,appleIntervalHandle,bKeyboardFocus
 var appleIntervalTime   = 50;
 
-function init_emulator()
+function EMU_init()
 {
     window.onkeypress   = apple2OnKeyPress;   //window.onkeydown = apple2OnKeyPress;
     appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);

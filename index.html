@@ -37,15 +37,15 @@
     animDuration  = 0.1;
     var liContainer,liEls,slideEl_1,slideEl_2 
 
-    addLoadEvent(onswitchTab);
-    window.addEventListener("hashchange", onswitchTab);
+    addLoadEvent(COM_switchTab);
+    window.addEventListener("hashchange", COM_switchTab);
 
 
     ////////////////////////////
     // TAB EVENT HANDLER      //
     ////////////////////////////
 
-    function onswitchTab()
+    function COM_switchTab()
     {
         if(typeof(liContainer)=="undefined")
         {
@@ -155,6 +155,7 @@
     var _o = {"tools":{},"sys":"A2P"};
     function addLoadEvent(func)
     {
+        console.log(func.name)
         var oldonload = window.onload;
         if (typeof window.onload != "function")
             window.onload = func;
