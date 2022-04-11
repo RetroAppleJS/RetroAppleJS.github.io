@@ -145,8 +145,6 @@
 
       @page { size:landscape; }
 
-      @font-face {  font-family: 'Arcade'; src: URL('ARCADE_N.TTF') format('truetype') } 
-
       .dotmatrix_bck {
           background-image: url("matrixpaper.png");
           /*background-size: auto;*/

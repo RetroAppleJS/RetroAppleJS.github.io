@@ -8,9 +8,8 @@
     <link rel="stylesheet" href="res/fontawesome/all.css">
     <link rel="stylesheet" href="res/COM_markdown.css">
     <script type="text/javascript" src="docs/_GENERATED_DOCS.js"></script>  <!-- load all the help & documentation content-->
-
     <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
-    <!--script type="text/javascript" src='res/COM_gsap.min.js'></script--> <!-- only used for animating tabs-->
+    <!--script type="text/javascript" src='res/COM_gsap.min.js'></script> <!-- only used for animating tabs-->
     <script id="rendered-js">
 
 
@@ -38,7 +37,7 @@
     animDuration  = 0.1;
     var liContainer,liEls,slideEl_1,slideEl_2 
 
-    window.addEventListener("load", onswitchTab);
+    addLoadEvent(onswitchTab);
     window.addEventListener("hashchange", onswitchTab);
 
 
@@ -148,8 +147,20 @@
         break;
         }
     }
-            
-            
+
+    ////////////////////////////
+    // ONLOAD EVENT SEQUENCER //
+    ////////////////////////////
+
+    var _o = {"tools":{},"sys":"A2P"};
+    function addLoadEvent(func)
+    {
+        var oldonload = window.onload;
+        if (typeof window.onload != "function")
+            window.onload = func;
+        else
+        { window.onload = function() { if (oldonload) oldonload(); func() } }
+    }
     </script>
 <!--
    ____    ____          _            
@@ -165,6 +176,8 @@
    ██████ ███████ ███████
 -->
     <style>
+    @font-face {  font-family: 'Arcade'; src: URL('res/ARCADE_N.TTF') format('truetype') }
+
     * {
         box-sizing: border-box;
         margin: 0;
@@ -253,7 +266,7 @@
             <a id="tab0" href="#tab1">Emulator</a>
             <a id="tab0" href="#tab2">Assembler</a>
             <a id="tab0" href="#tab3">Debugger</a>
-            <a id="tab0" href="#tab4">Reference</a>
+            <a id="tab0" href="#tab4">Manual</a>
             <div class="focus-el el--1"></div>
             <div class="focus-el el--2"></div>
           </ul>
@@ -270,6 +283,68 @@
             ██      ██  ██  ██ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
             ███████ ██      ██  ██████  ███████ ██   ██    ██     ██████  ██   ██  
           -->
+
+            <script type="text/javascript" src="res/EMU_apple2main.js"></script>
+            <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2video.js"></script>
+            <script type="text/javascript" src="res/EMU_appledisk2.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2io.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2hw.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2keys.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
+
+            <style>
+            .appvid {
+                margin-top: 85px;
+                margin-left: 162px;
+                padding: 0px;
+                background: #222266;
+                width: 560px;
+                height: 384px;
+            }
+            </style>
+            <div style="padding:4px 90px">
+            <input type="button" value="Pasteboard" onclick="javascript:onPasteboard()">
+            <input type="button" value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name)">
+            <input type="button" onclick="javascript:pauseButton()" id="pausebutton" value="Pause ">
+            <input type="button" onclick="javascript:resetButton()" id="resetbutton" value="Reset">
+            <input type="button" onclick="javascript:restartButton()" id="restartbutton" value="Restart">
+            Disk Image: <input type="file" id="loadfile" value="" onchange="javascript:loadDisk()">
+            </div>
+            <div class="hints1" id="paste" hidden="" style="z-index:2;position:absolute;left:90px">
+            <form name="board">
+            <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
+            <!--textarea cols=40 rows=3  name=captureText></textarea-->
+            <!--textarea-- cols=40 rows=3  name=logText></!--textarea-->
+            </form>
+            <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onBoardClear()"><input type="button" value="Hide" onclick="javascript:onPasteboard()">
+            </div>
+            <script type="text/javascript">
+            var bColor = false;
+
+            function onChangeMonitor(type) { apple2plus.monitor(type) }
+            function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
+            function onBoardPaste() {
+            var e = board.boardText.value;
+            e = e.replace(/\r\n/g,"\r");
+            e = e.replace(/\n/g,"\r");
+            for(var _i=0;_i<e.length;_i++)
+            {
+                var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
+                apple2OnKeyPress(event);
+                if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
+                apple2plus.cycle(1000 * appleIntervalTime);
+            }
+            }
+            function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" }
+            </script>
+
+            <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+            <br>
+            <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1">
+            <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
+
           </div>
           <div id="tab2" style="height:200px;width:700px">
           <!--
@@ -279,6 +354,84 @@
             ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
             ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
           -->
+
+          <script type="text/javascript" src="res/ASM_6502.js"></script>
+          <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
+          <link rel="stylesheet"        href="res/ASM_6502.css">
+    
+          <form name="ass" onsubmit="return false">
+            <table style="background:#76B9CE;border-radius:10px;">
+              <tr>
+                <td valign=top style="display:flex;flex-wrap:wrap;width:340px">
+                  <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>*=$6000
+           LDX #0
+    Label1 TXA
+           STA $0400,X
+           LDA #1
+           STA $D800,X
+           INX
+           BNE Label1
+           RTS
+    .END
+                  </textarea>
+                  <br>
+                  <script>
+                  function to_debugger()
+                  {
+                    document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;
+                    document.getElementById('tab3').checked=true;
+                    document.getElementById('tab2').checked=false;
+                  }
+                  </script>
+                  <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> generate</button>
+                  <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();document.getElementById('tab1').checked=true;document.getElementById('tab2').checked=false;">
+                    <i class="fa fa-arrow-circle-up"></i> to emulator</button>
+                    <button onclick="to_debugger()">
+                      <i class="fa fa-arrow-circle-up"></i> to debugger</button>
+                  <button onclick="javascript:onToolBox('SrcTools')"><i class="fa fa-wrench"></i> tools & config</button>
+    
+                  <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
+                  <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
+    
+    
+    
+                  <button onclick="assemble_step();"><i class="fa fa-road"></i> trace</button>
+    
+                </td>
+                <td valign=top>
+                  <textarea name="listing" onscroll="syncScroll(document.forms.ass.listing,document.forms.ass.srcfield)" readonly="readonly" wrap="virtual" class="dotmatrix_bck" style="width:260px;height:400px;margin:10px 10px 10px 0px;-webkit-filter: brightness(0.95);filter: brightness(0.95);" placeholder="Listing"></textarea>
+                </td>
+              </tr>
+              <tr>
+                <td colspan=2>
+                  <div id="SrcTools" hidden="">
+                    <script>document.write(sTools);</script>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                  <div style="height:90px"></div>
+                  <div name="codefield" id="codefield" class="markdown_mon" style="background-color: transparent; border-color: transparent; resize: none;"></div>
+                  <div style="height:180px"></div>
+                </td>
+              </tr>
+            </table>
+          </form>
+    
+    
+          <script>
+            function syncScroll(element1, element2) {
+              element2.scrollTop = element1.scrollTop;
+            }
+    
+            function updateScroll(el)
+            {
+                var element = document.getElementById(el);
+                element.scrollTop = element.scrollHeight;
+            }
+          </script>
+
           </div>
           <div id="tab3" style="height:250px;width:700px">
           <!--
@@ -291,12 +444,22 @@
           </div>
           <div id="tab4" style="height:1000px;width:700px">
           <!--
-            ██████  ███████ ███████ ███████ ██████  ███████ ███    ██  ██████ ███████
-            ██   ██ ██      ██      ██      ██   ██ ██      ████   ██ ██      ██
-            ██████  █████   █████   █████   ██████  █████   ██ ██  ██ ██      █████
-            ██   ██ ██      ██      ██      ██   ██ ██      ██  ██ ██ ██      ██
-            ██   ██ ███████ ██      ███████ ██   ██ ███████ ██   ████  ██████ ███████
+            ███    ███  █████  ███    ██ ██    ██  █████  ██
+            ████  ████ ██   ██ ████   ██ ██    ██ ██   ██ ██
+            ██ ████ ██ ███████ ██ ██  ██ ██    ██ ███████ ██
+            ██  ██  ██ ██   ██ ██  ██ ██ ██    ██ ██   ██ ██
+            ██      ██ ██   ██ ██   ████  ██████  ██   ██ ███████ 
           -->
+          <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+            <tr>
+            <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+              <div style="height:90px"></div>
+              <div contenteditable="true" class="markdown_mon"><script>document.write(_DOCS['6502'])</script></div>
+              <div style="height:180px"></div>
+            </td>
+          </tr>
+          </table>
+
           </div>
         </div>
       </td>
