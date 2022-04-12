@@ -155,7 +155,7 @@
     var _o = {"tools":{},"sys":"A2P"};
     function addLoadEvent(func)
     {
-        console.log(func.name)
+        console.log("addLoadEvent("+func.name+")");
         var oldonload = window.onload;
         if (typeof window.onload != "function")
             window.onload = func;
@@ -328,19 +328,21 @@
 
             function onChangeMonitor(type) { apple2plus.monitor(type) }
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
-            function onBoardPaste() {
-            var e = board.boardText.value;
-            e = e.replace(/\r\n/g,"\r");
-            e = e.replace(/\n/g,"\r");
-            for(var _i=0;_i<e.length;_i++)
+            function onBoardPaste()
             {
-                var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
-                apple2OnKeyPress(event);
-                if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
-                apple2plus.cycle(1000 * appleIntervalTime);
+                var e = board.boardText.value;
+                e = e.replace(/\r\n/g,"\r");
+                e = e.replace(/\n/g,"\r");
+                for(var _i=0;_i<e.length;_i++)
+                {
+                    var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
+                    apple2OnKeyPress(event);
+                    if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
+                    apple2plus.cycle(1000 * appleIntervalTime);
+                }
             }
-            }
-            function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" }
+            function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" }  
+            function handleKeyPress(e) { console.log(" "+e) }          
             </script>
 
             <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
