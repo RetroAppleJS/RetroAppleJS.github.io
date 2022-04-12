@@ -38,7 +38,6 @@ function EMU_keypress(e)
     //apple2plus.cycle(1000 * appleIntervalTime);
 }
 
-
 function EMU_init()
 {
     //window.onkeypress   = apple2OnKeyPress;   //window.onkeydown = apple2OnKeyPress;
@@ -46,7 +45,6 @@ function EMU_init()
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     document.getElementById('applescreen').addEventListener('keypress', EMU_keypress);
-    //console.log("document.getElementById('applescreen').addEventListener('keypress', handleKeyPress);")
 }
 
 function attachKeyboard(bEnable)
@@ -79,12 +77,14 @@ function pauseButton() {
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = null;
         document.getElementById('pausebutton').value = 'Resume';
+        document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
     } else {
         //window.onkeypress = apple2OnKeyPress;
         attachKeyboard(true);
         appleIntervalHandle = window.setInterval("appleIntervalFunc()",
                                                  appleIntervalTime);
         document.getElementById('pausebutton').value = 'Pause ';
+        document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
     }
 }
 

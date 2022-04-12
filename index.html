@@ -297,7 +297,8 @@
             <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
 
             <style>
-            .appvid {
+            .appvid
+            {
                 margin-top: 85px;
                 margin-left: 162px;
                 padding: 0px;
@@ -305,21 +306,45 @@
                 width: 560px;
                 height: 384px;
             }
+
+            /*
+            .appbut
+            {
+                margin-left: 360px;
+                max-width:100px;
+                width:auto; 
+                height: 30px;
+                border-radius: 10px;
+                background: rgba(255, 255, 255, 0.65);
+                box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+            }
+            */
+
+            .appbut
+            {
+                font-family: "Arial";
+                font-size:13px;
+                margin-left:6px;
+                padding: 6px;
+                border-radius: 10px;
+                border-style: none;
+                background: rgba(240, 240, 255, 0.65);
+                box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+            }
+            .appbut:hover
+            {
+                background: rgba(255, 255, 255, 1);
+            }
             </style>
-            <div style="width:auto; height: 30px; max-width:200px border-radius: 10px;background: rgba(255, 255, 255, 0.65);box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);">
-                
-                    <input type=button value="Pasteboard" onclick="javascript:onPasteboard()">
-                
-            </div>
 
+            <div style="padding:0px 90px">
+                <button type=button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
+                <button type=button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
+                <button class=appbut onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
+                <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
+                <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
 
-            <div style="padding:4px 90px">
-            
-            <input type="button"  value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name)">
-            <input type="button" onclick="javascript:pauseButton()" id="pausebutton" value="Pause ">
-            <input type="button" onclick="javascript:resetButton()" id="resetbutton" value="Reset">
-            <input type="button" onclick="javascript:restartButton()" id="restartbutton" value="Restart">
-            Disk Image: <input type="file" id="loadfile" value="" onchange="javascript:loadDisk()">
+            Disk <input type="file" class=appbut id="loadfile" value="Disk" onchange="javascript:loadDisk()">
             </div>
             <div class="hints1" id="paste" hidden="" style="z-index:2;position:absolute;left:90px">
             <form name="board">
