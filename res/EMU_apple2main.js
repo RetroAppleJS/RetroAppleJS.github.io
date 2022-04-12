@@ -31,9 +31,11 @@ addLoadEvent(EMU_init);
 var vidContext,apple2plus,appleIntervalHandle,bKeyboardFocus
 var appleIntervalTime   = 50;
 
-function EMU_keypress() 
+function EMU_keypress(e) 
 {
-    alert("t");  // TODO
+    var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
+    apple2OnKeyPress(event);
+    //apple2plus.cycle(1000 * appleIntervalTime);
 }
 
 
@@ -43,13 +45,8 @@ function EMU_init()
     appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
-
-    
-    document.getElementById('applescreen').addEventListener('keypress', handleKeyPress);
+    document.getElementById('applescreen').addEventListener('keypress', EMU_keypress);
     //console.log("document.getElementById('applescreen').addEventListener('keypress', handleKeyPress);")
-
-
-
 }
 
 function attachKeyboard(bEnable)

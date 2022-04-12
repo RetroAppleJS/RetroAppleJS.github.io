@@ -274,7 +274,7 @@
             <div class="focus-el el--2"></div>
           </ul>
         </div>
-        <br><br>
+       
 
         <!-- tab content -->
         <div class="tabs">
@@ -344,8 +344,8 @@
             function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" }  
             function handleKeyPress(e) { console.log(" "+e) }          
             </script>
-
-            <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+            <br>
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
             <br>
             <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1">
             <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
