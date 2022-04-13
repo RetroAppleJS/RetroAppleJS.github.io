@@ -57,8 +57,11 @@ function apple2OnKeyPress(event) {
     return false;
 }
 
-function apple2OnKeyHover(t,event)
+function apple2OnKeyHover(event)
 {
+    var t = document.getElementById("keyimg");
+    var u = document.getElementById("keybox");
+
     var x = event.pageX-775;
     var y = event.pageY-740;
 
@@ -74,32 +77,51 @@ function apple2OnKeyHover(t,event)
         case 3: x = xc*47-603; break;
     }
     y = yc*47.5+25-237.5;
-
     switch(event.type)
     {
         case "mousemove":
             document.getElementById("keybox").style.top = y+"px";
             document.getElementById("keybox").style.left = x+"px";
+            _o.EMU_keyb_timer = true;
         break;
         case "mouseover":
             if(t.style.opacity!=1)
             {
                 t.style.opacity=1;
-                document.getElementById("keybox").style.display = "";
+                u.style.display="";
                 //document.body.style.cursor = 'none';
+                _o.EMU_keyb_timer = true;
             }
         break;
         case "mouseout":
+            _o.EMU_keyb_timer = false;
+            setTimeout(apple2OnKeyHover_out, 2000);
+            
+            /*
             if(t.style.opacity!=0)
             {
                 t.style.opacity=0;
-                document.getElementById("keybox").style.display = "none";
+                u.style.display="none";
                 //document.body.style.cursor = 'auto';
             }
+            */
         break;
         case "click":
             alert((xc+13)+","+(yc+5));
         break;
     }
+}
+
+function apple2OnKeyHover_out()
+{
+    if(_o.EMU_keyb_timer == true) return;
+
+    var t = document.getElementById("keyimg");
+    var u = document.getElementById("keybox");
+
+    t.style.opacity=0;
+    u.style.display="none";
+
+    _o.EMU_keyb_timer = false;
 }
 
