@@ -155,7 +155,6 @@
     // ONLOAD EVENT SEQUENCER //
     ////////////////////////////
 
-    var _o = {"tools":{},"sys":"A2P"};
     function addLoadEvent(func)
     {
         console.log("addLoadEvent("+func.name+")");
@@ -165,6 +164,9 @@
         else
         { window.onload = function() { if (oldonload) oldonload(); func() } }
     }
+
+
+    var _o = {"tools":{},"sys":"A2P"};
 </script>    
 <!--
    ____    ____          _            
@@ -338,8 +340,9 @@
             {
                 background: rgba(255, 255, 255, 1);
             }
-            </style>
 
+
+            </style>
             <div style="padding:0px 90px">
                 <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
                 <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
@@ -380,8 +383,25 @@
             </script>
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
             <br>
-            <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onmouseout="this.style.opacity=0" onmouseover="this.style.opacity=1">
+            <img src=res/appleIIplus_kbd_650.png style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onclick=onmousemove=apple2OnKeyHover(this,event) onmousemove=apple2OnKeyHover(this,event) onmouseout="apple2OnKeyHover(this,event)" onmouseover="apple2OnKeyHover(this,event)">
             <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
+
+
+            <style>
+            .box {
+            position:relative;
+            display:inline-block;
+            width:30px;
+            height:30px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 3px;
+            /*top:-212px;
+            left:-192px;*/
+            }
+            </style>
+            <div class="box" id="keybox"></div>
+
+
 
           </div>
           <div id="tab2" style="height:1024px;width:700px">
@@ -705,6 +725,8 @@
                   s+="</table>"
                 //document.write(s);
   */
+
+  
                 </script>
   
   

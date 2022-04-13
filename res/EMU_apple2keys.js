@@ -56,3 +56,44 @@ function apple2OnKeyPress(event) {
 
     return false;
 }
+
+function apple2OnKeyHover(t,event)
+{
+    var x = event.pageX-775;
+    var y = event.pageY-720;
+    var xc = Math.floor(x/47);
+    var yc = Math.floor(y/47.5);
+
+    x = xc*47-3;
+    y = yc*47.5+25;
+
+    switch(event.type)
+    {
+        case "mousemove":
+            document.getElementById("keybox").style.top = y+"px";
+            document.getElementById("keybox").style.left = x+"px";
+        break;
+
+        case "mouseover": if(t.style.opacity!=1)
+                        {
+                            t.style.opacity=1;
+                            document.getElementById("keybox").style.display = "";
+                            document.body.style.cursor = 'none';
+                            //setTimeout(function, milliseconds)
+                        }
+                          break;
+        case "mouseout": if(t.style.opacity!=0)
+                         {
+                             t.style.opacity=0;
+                             //alert(document.getElementById("keybox").style.display)
+                             document.getElementById("keybox").style.display = "none";
+                             document.body.style.cursor = 'auto';
+                         }
+                          break;
+        case "click":   alert((xc+13)+","+(yc+5))
+
+                         
+                         break;
+    }
+}
+
