@@ -60,12 +60,20 @@ function apple2OnKeyPress(event) {
 function apple2OnKeyHover(t,event)
 {
     var x = event.pageX-775;
-    var y = event.pageY-720;
-    var xc = Math.floor(x/47);
-    var yc = Math.floor(y/47.5);
+    var y = event.pageY-740;
 
-    x = xc*47-3;
-    y = yc*47.5+25;
+    var xc = Math.floor(x/47)+13;
+    var yc = Math.floor(y/47.5)+5;
+
+    var w = 30;
+    switch(yc)
+    {
+        case 0: x = xc*47-614+47; break;
+        case 1: x = xc*47-635+47; break;
+        case 2: x = xc*47-624+47; break;
+        case 3: x = xc*47-603; break;
+    }
+    y = yc*47.5+25-237.5;
 
     switch(event.type)
     {
@@ -73,27 +81,25 @@ function apple2OnKeyHover(t,event)
             document.getElementById("keybox").style.top = y+"px";
             document.getElementById("keybox").style.left = x+"px";
         break;
-
-        case "mouseover": if(t.style.opacity!=1)
-                        {
-                            t.style.opacity=1;
-                            document.getElementById("keybox").style.display = "";
-                            document.body.style.cursor = 'none';
-                            //setTimeout(function, milliseconds)
-                        }
-                          break;
-        case "mouseout": if(t.style.opacity!=0)
-                         {
-                             t.style.opacity=0;
-                             //alert(document.getElementById("keybox").style.display)
-                             document.getElementById("keybox").style.display = "none";
-                             document.body.style.cursor = 'auto';
-                         }
-                          break;
-        case "click":   alert((xc+13)+","+(yc+5))
-
-                         
-                         break;
+        case "mouseover":
+            if(t.style.opacity!=1)
+            {
+                t.style.opacity=1;
+                document.getElementById("keybox").style.display = "";
+                //document.body.style.cursor = 'none';
+            }
+        break;
+        case "mouseout":
+            if(t.style.opacity!=0)
+            {
+                t.style.opacity=0;
+                document.getElementById("keybox").style.display = "none";
+                //document.body.style.cursor = 'auto';
+            }
+        break;
+        case "click":
+            alert((xc+13)+","+(yc+5));
+        break;
     }
 }
 
