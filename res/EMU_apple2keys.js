@@ -71,14 +71,14 @@ function apple2OnKeyHover(event)
     var w = 30;
     switch(yc)
     {
-        case 0: 
-            if(xc>=0) x = xc*47-614+47; 
-        break;
-        case 1: x = xc*47-635+47; break;
-        case 2: x = xc*47-624+47; break;
-        case 3: x = xc*47-603; break;
+        case 0: x = xc>=0 ? xc*47-567 : -47-567; break;
+        case 1: x = xc>=0 ? xc*47-588 : -47-588; w=xc>10?55:w; break;
+        case 2: x = xc>=0 ? xc*47-577 : -47-577; break;
+        case 3: x = xc>0 ? xc*47-603 : -47-603+25; w=xc<=0 || xc>10 ? 55:w; break;
+        case 4: x = -603+25+69; w=360; break;
     }
     y = yc*47.5+25-237.5;
+    u.style.width = w+"px";
 
     switch(event.type)
     {
