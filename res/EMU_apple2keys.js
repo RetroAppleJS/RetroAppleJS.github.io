@@ -71,12 +71,15 @@ function apple2OnKeyHover(event)
     var w = 30;
     switch(yc)
     {
-        case 0: x = xc*47-614+47; break;
+        case 0: 
+            if(xc>=0) x = xc*47-614+47; 
+        break;
         case 1: x = xc*47-635+47; break;
         case 2: x = xc*47-624+47; break;
         case 3: x = xc*47-603; break;
     }
     y = yc*47.5+25-237.5;
+
     switch(event.type)
     {
         case "mousemove":
@@ -85,26 +88,13 @@ function apple2OnKeyHover(event)
             _o.EMU_keyb_timer = true;
         break;
         case "mouseover":
-            if(t.style.opacity!=1)
-            {
-                t.style.opacity=1;
-                u.style.display="";
-                //document.body.style.cursor = 'none';
-                _o.EMU_keyb_timer = true;
-            }
+            t.style.opacity=1;
+            u.style.display="";
+            _o.EMU_keyb_timer = true;
         break;
         case "mouseout":
             _o.EMU_keyb_timer = false;
             setTimeout(apple2OnKeyHover_out, 2000);
-            
-            /*
-            if(t.style.opacity!=0)
-            {
-                t.style.opacity=0;
-                u.style.display="none";
-                //document.body.style.cursor = 'auto';
-            }
-            */
         break;
         case "click":
             alert((xc+13)+","+(yc+5));
