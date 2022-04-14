@@ -47,7 +47,7 @@ The debugger is composed of 5 sections
 
 ## User manuals
 
-[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) 
+[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md)  
 [DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)  
 [ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)   
 [6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)  
