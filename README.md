@@ -2,7 +2,7 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is to run _AppleII_IDE.html_ in any browser.
+This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser.
 
 The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation; issues associated with setting up a usable system is not the sort of old memories one may wish to recall.  Back in 1980, many were passionate about machine coding on the Apple II+.  This project is all about recreating the experience, pimped-up with some contemporary features (like copy-paste).
 
@@ -24,6 +24,13 @@ Other assembler listings can be found in this folder https://github.com/flyingze
 
 ## Module overview
 
+### Emulator
+
+The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
+One can:
+1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest many characters per second, so be patient.
+2) insert any disk found on the internet (.do, .dsk)
+
 ### Assembler
 
 The assembler contains handy tools to edit source-code originating from all over the internet, but purposefully avoids the implementation of any exotic macro language as this would perpetuate numerous assembler code compatibility problems.  Once the code is generated, one can send the object code with one click to the debugger or the pasteboard of the emulator.
@@ -38,18 +45,11 @@ The debugger is composed of 5 sections
 5) Memory map
 6) Help screen
 
-### Emulator
-
-The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
-One can:
-1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest many characters per second, so be patient.
-2) insert any disk found on the internet (.do, .dsk)
-
 ## User manuals
 
+[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) 
 [DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)  
-[ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)  
-[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md)  
+[ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)   
 [6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)  
 [ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)  
