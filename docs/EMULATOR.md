@@ -14,8 +14,5 @@ _note: most apple][ disks do not boot, it was not uncommon to keep a bootable di
 
 __A handful new functions make the experience complete__  
 \* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1 MHz computer takes this slowly.  
-\* monitor:  
-\* pause:  
-
-
-
+\* monitor: color rendering is cycling through, color, black/white, green and amber
+\* pause: freeze/unfreeze CPU
