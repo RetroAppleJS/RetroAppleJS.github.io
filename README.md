@@ -11,7 +11,7 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivin
 ## Getting started
 
 1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop
-2) Open AppleII_IDE.html on any JavaScript capable browser
+2) Open index.html on any JavaScript capable browser
 3) Inside the assembler, tap the **'generate'** button
 4) Tap the **'to emulator'** button
 5) Inside the emulator, tap the **'paste'** button
