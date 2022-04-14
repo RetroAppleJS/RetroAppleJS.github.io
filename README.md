@@ -2,7 +2,7 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser.
+This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser.
 
 The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic childhood computer experience, with some nice twits.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done without throwing the already faint computing power of a CPU that was originally designed for pocket calculators.  This project is all about recreating some of the fun experiences, pimped-up with some contemporary features (like copy-paste).
 
