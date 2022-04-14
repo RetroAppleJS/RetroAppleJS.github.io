@@ -64,20 +64,28 @@ function apple2OnKeyHover(event)
 
     var x = event.pageX-775;
     var y = event.pageY-740;
-
     var xc = Math.floor(x/47)+14;
     var yc = Math.floor(y/47.5)+5;
 
     var w = 30;
+    var sbtn = {"LSHIFT":[-625,-70],"RSHIFT":[-39,-70],"CTRL":[-624,-117],"REPT":[-118,-165]};
+    var keymap = {0:[0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xB0,0xBA,0xAD,"RESET"],
+                  1:[0x9B,0xD1,0xD7,0xC5,0xD2,0xD4,0xD9,0xD5,0xC9,0xCF,0xD0,"REPT",0x8D],
+                  2:["CTRL",0xC1,0xD3,0xC4,0xC6,0xC7,0xC8,0xCA,0xCB,0xCC,0xBB,0x88,0x95],
+                  3:["LSHIFT",0xDA,0xD8,0xC3,0xD6,0xC2,0xCE,0xCD,0xAC,0xAE,0xAF,"RSHIFT","RSHIFT"],
+                  4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
+                }
+
+
     switch(yc)
     {
         case 0: x = xc>0 ? (xc-1)*47-567 : -47-567; break;
-        case 1: x = xc>0 ? (xc-1)*47-588 : -47-588; w=xc>10?55:w; break;
+        case 1: x = xc>0 ? (xc-1)*47-588 : -47-588; w=xc>11?55:w; break;
         case 2: x = xc>0 ? (xc-1)*47-577 : -47-577; break;
         case 3: x = xc>0 ? xc*47-603 : -47-603+25; w=xc<=0 || xc>10 ? 55:w; break;
         case 4: x = xc==0 ? -620 : -603+25+69; w=xc==0?30:360; break;
     }
-    y = yc*47.5+25-237.5;
+    y = Math.round(yc*47.5+25-237.5);
     u.style.width = w+"px";
 
     switch(event.type)
@@ -97,7 +105,13 @@ function apple2OnKeyHover(event)
             setTimeout(apple2OnKeyHover_out, 2000);
         break;
         case "click":
-            alert((xc)+","+(yc));
+            if(typeof(keymap[yc][xc])!="number")
+                alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
+            else
+            {
+                var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
+                apple2OnKeyPress(event);
+            }
         break;
         default:
             alert(event.type)
