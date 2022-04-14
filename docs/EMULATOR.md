@@ -1,6 +1,6 @@
 ## EMULATOR Instructions
 
-<img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
+<img src="/res/appleIIplus_bck_650.png?raw=true" width=35% align="left" />
 Unsurprisingly, the use of this emulator hardly differs from the real hardware.<br><br>
 
 __All basic functions remain self-explanatory__  
