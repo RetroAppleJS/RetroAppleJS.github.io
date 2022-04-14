@@ -13,6 +13,6 @@ _note: most apple][ disks do not boot, it was not uncommon to keep a bootable di
 
 __A handful new functions make the experience complete__  
 \* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1 MHz computer takes this slowly.  
-\* monitor: color rendering is cycling through, color, black/white, green and amber  
+\* monitor: cycle color rendering through color mode, black/white, green and amber  
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
