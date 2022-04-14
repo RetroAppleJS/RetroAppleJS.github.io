@@ -58,7 +58,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [ ] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
+- [x] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
 - [ ] better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
 - [ ] pasteboard scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
