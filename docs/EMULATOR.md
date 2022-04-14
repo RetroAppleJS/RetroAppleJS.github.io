@@ -4,7 +4,7 @@
 Unsurprisingly, the use of this emulator hardly differs from the real hardware.<br><br>
 
 __All basic functions remain self-explanatory__  
-\* the pop-up keyboard is toggling SHIFT, CTRL and REPT, allowing simultaneous keypresses  
+\* the pop-up keyboard is toggling SHIFT, CTRL and REPT, allowing combinations  
 \* cold boot: press the power button on the pop-up keyboard  
 \* warm boot: press the reset button on the pop-up keyboard
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40%/>  
