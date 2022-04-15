@@ -344,9 +344,10 @@
               <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
               <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
               <button class=appbut onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
+              <!--
               <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
               <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
-
+              -->
             Disk <input type="file" class=appbut id="loadfile" value="Disk" onchange="javascript:loadDisk()">
             </div>
             <div class="hints1" id="paste" hidden="" style="z-index:2;position:absolute;left:90px">
@@ -427,18 +428,10 @@
     .END
                   </textarea>
                   <br>
-                  <script>
-                  function to_debugger()
-                  {
-                    document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;
-                    //document.getElementById('tab3').checked=true;
-                    //document.getElementById('tab2').checked=false;
-                  }
-                  </script>
                   <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> generate</button>
                   <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
-                  <button onclick="to_debugger();COM_switchTab('tab3')">
+                  <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
                       <i class="fa fa-arrow-circle-up"></i> to debugger</button>
                   <button onclick="javascript:onToolBox('SrcTools');"><i class="fa fa-wrench"></i> tools & config</button>
     

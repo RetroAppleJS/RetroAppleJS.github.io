@@ -76,7 +76,6 @@ function apple2OnKeyHover(event)
                   4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
                 }
 
-
     switch(yc)
     {
         case 0: x = xc>0 ? (xc-1)*47-567 : -47-567; break;
@@ -105,13 +104,25 @@ function apple2OnKeyHover(event)
             setTimeout(apple2OnKeyHover_out, 2000);
         break;
         case "click":
-            if(typeof(keymap[yc][xc])!="number")
-                alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
-            else
+            if(typeof(keymap[yc][xc])=="number")
             {
                 var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
                 apple2OnKeyPress(event);
             }
+            if(typeof(keymap[yc][xc])=="string")
+            {
+                switch(keymap[yc][xc])
+                {
+                    case "RESET":
+                        resetButton();
+                    break;
+                    case "POWER":
+                        restartButton();
+                    break;
+                }
+            }
+            else
+                alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
         break;
         default:
             alert(event.type)
