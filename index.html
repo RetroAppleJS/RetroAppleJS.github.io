@@ -341,11 +341,11 @@
 
             </style>
             <div style="padding:0px 90px">
-                <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
-                <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
-                <button class=appbut onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
-                <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
-                <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
+              <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
+              <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
+              <button class=appbut onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
+              <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
+              <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
 
             Disk <input type="file" class=appbut id="loadfile" value="Disk" onchange="javascript:loadDisk()">
             </div>
@@ -364,16 +364,16 @@
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
             function onBoardPaste()
             {
-                var e = board.boardText.value;
-                e = e.replace(/\r\n/g,"\r");
-                e = e.replace(/\n/g,"\r");
-                for(var _i=0;_i<e.length;_i++)
-                {
-                    var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
-                    apple2OnKeyPress(event);
-                    if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
-                    apple2plus.cycle(1000 * appleIntervalTime);
-                }
+              var e = board.boardText.value;
+              e = e.replace(/\r\n/g,"\r");
+              e = e.replace(/\n/g,"\r");
+              for(var _i=0;_i<e.length;_i++)
+              {
+                  var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
+                  apple2OnKeyPress(event);
+                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
+                  apple2plus.cycle(1000 * appleIntervalTime);
+              }
             }
             function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" }  
             function handleKeyPress(e) { console.log(" "+e) }          
@@ -382,7 +382,6 @@
             <br>
             <img src=res/appleIIplus_kbd_650.png id=keyimg style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;" onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout="apple2OnKeyHover(event)" onmouseover="apple2OnKeyHover(event)">
             <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
-
 
             <style>
             .box {
@@ -397,8 +396,6 @@
             }
             </style>
             <div class="box" id="keybox" onclick=apple2OnKeyHover(event)></div>
-
-
 
           </div>
           <div id="tab2" style="height:1024px;width:700px">
@@ -434,16 +431,16 @@
                   function to_debugger()
                   {
                     document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;
-                    document.getElementById('tab3').checked=true;
-                    document.getElementById('tab2').checked=false;
+                    //document.getElementById('tab3').checked=true;
+                    //document.getElementById('tab2').checked=false;
                   }
                   </script>
                   <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> generate</button>
                   <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
-                  <button onclick="to_debugger()">
+                  <button onclick="to_debugger();COM_switchTab('tab3')">
                       <i class="fa fa-arrow-circle-up"></i> to debugger</button>
-                  <button onclick="javascript:onToolBox('SrcTools')"><i class="fa fa-wrench"></i> tools & config</button>
+                  <button onclick="javascript:onToolBox('SrcTools');"><i class="fa fa-wrench"></i> tools & config</button>
     
                   <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                   <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
@@ -471,8 +468,7 @@
               </tr>
             </table>
           </form>
-    
-    
+
           <script>
             function syncScroll(element1, element2) {
               element2.scrollTop = element1.scrollTop;
@@ -495,12 +491,6 @@
             ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
           -->
 
-
-
-
-
-
-
           <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
           <script type="text/javascript" src="res/DBG_6502gui.js"></script>
         <link rel="stylesheet"        href="res/DBG_6502.css">
@@ -515,7 +505,7 @@
           </tr>
           <tr>
               <td>
-            <div>
+              <div>
                 <!-- LEFT PANE -->
                        <div class="displayLr" style="float:left;width:250px;height:200px;font-size:small/*;border-style:solid;border-width:1px;border-color:yellow*/">
                    <div id="dispStep" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
@@ -722,8 +712,6 @@
                   s+="</table>"
                 //document.write(s);
   */
-
-  
                 </script>
   
   
@@ -737,46 +725,44 @@
             <input type="text" id="memAddr" name="memAddr" size="4" value="6000" hidden="" style="float:left;">
   
             <script>
-  
-                var oBASE = new function() {
-                    this.convert = function (str, fromBase, toBase)
-                    {
-                      if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
-                      if(typeof(toBase)  =='object') { this.toSymbols = toBase[0] }
-                      fromBase = this.fromSymbols.length; toBase = this.toSymbols.length;
-  
-                      // PARSE INPUT DIGITS ARRAY
-                      for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
-                      var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
-  
-                      // BASE CONVERSION
-                      for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBase), toBase); _p = mul(fromBase, _p, toBase) }
-  
-                      // PARSE OUTPUT DIGITS ARRAY
-                      for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
-                      return _o.length==0?this.toSymbols[0]:_o;
+            var oBASE = new function() {
+                this.convert = function (str, fromBase, toBase)
+                {
+                  if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
+                  if(typeof(toBase)  =='object') { this.toSymbols = toBase[0] }
+                  fromBase = this.fromSymbols.length; toBase = this.toSymbols.length;
+
+                  // PARSE INPUT DIGITS ARRAY
+                  for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
+                  var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
+
+                  // BASE CONVERSION
+                  for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBase), toBase); _p = mul(fromBase, _p, toBase) }
+
+                  // PARSE OUTPUT DIGITS ARRAY
+                  for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
+                  return _o.length==0?this.toSymbols[0]:_o;
+                }
+
+                var add = function(x, y, base) {
+                    var _m = Math.max(x.length, y.length);
+                    for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
+                      var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
+                      var _n =  _r.push(_z % base);
                     }
-  
-                    var add = function(x, y, base) {
-                        var _m = Math.max(x.length, y.length);
-                        for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
-                          var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
-                          var _n =  _r.push(_z % base);
-                        }
-                        return _r;
+                    return _r;
+                }
+
+                var mul = function(x, pow, base) {
+                    for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
+                      if(x & 1) _r = add(_r, pow, base);
+                      pow = add(pow, pow, base);
                     }
-  
-                    var mul = function(x, pow, base) {
-                        for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
-                          if(x & 1) _r = add(_r, pow, base);
-                          pow = add(pow, pow, base);
-                        }
-                        return _r;
-                    }
-                }()
-  
-  
+                    return _r;
+                }
+            }()
             </script>
+
             <!--button style="float:left"><i class="fa fa-play"></i>start at $6000</button-->
             <button onclick="debugReset();load_adr(this)" style="float:left">
               <i class="fa fa-truck"></i> load at addr</button>
@@ -825,11 +811,6 @@
               </td>
           </tr>
       </table>
-
-
-
-
-
 
 
           </div>
