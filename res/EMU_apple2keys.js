@@ -110,7 +110,7 @@ function apple2OnKeyHover(event)
                 var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
                 apple2OnKeyPress(event);
             }
-            if(typeof(keymap[yc][xc])=="string")
+            else if(typeof(keymap[yc][xc])=="string")
             {
                 switch(keymap[yc][xc])
                 {
