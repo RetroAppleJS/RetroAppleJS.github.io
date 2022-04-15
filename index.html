@@ -48,7 +48,7 @@
     // TAB EVENT HANDLER      //
     ////////////////////////////
 
-    function COM_switchTab()
+    function COM_switchTab(sel_id)
     {
         if(typeof(liContainer)=="undefined")
         {
@@ -65,6 +65,8 @@
         }
 
         // read hash value from url
+        //alert(location.hash)
+        if(sel_id) location.hash = "#"+sel_id;
         var sel_id = location.hash.slice(1);
         // find tab object corresponding to hash value
         var node = document.getElementById("app").childNodes[1].childNodes;
@@ -442,9 +444,9 @@
                   }
                   </script>
                   <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> generate</button>
-                  <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();document.getElementById('tab1').checked=true;document.getElementById('tab2').checked=false;">
+                  <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
-                    <button onclick="to_debugger()">
+                  <button onclick="to_debugger()">
                       <i class="fa fa-arrow-circle-up"></i> to debugger</button>
                   <button onclick="javascript:onToolBox('SrcTools')"><i class="fa fa-wrench"></i> tools & config</button>
     
