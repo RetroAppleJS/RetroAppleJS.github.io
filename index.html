@@ -15,7 +15,6 @@
 
     <script id="rendered-js">
 
-
 //   ____    ____          _            
 //  |_   \  /   _|        (_)           
 //    |   \/   |   ,--.   __   _ .--.   
@@ -27,7 +26,6 @@
 //  ███████ ██      ██████  ██ ██████     ██    ███████ 
 //       ██ ██      ██   ██ ██ ██         ██         ██ 
 //  ███████  ██████ ██   ██ ██ ██         ██    ███████ 
-
 
     //////////////////////
     // TAB ANIMATOR     //
@@ -43,16 +41,14 @@
     addLoadEvent(COM_switchTab);
     window.addEventListener("hashchange", COM_switchTab);
 
-
     ////////////////////////////
     // TAB EVENT HANDLER      //
     ////////////////////////////
 
-    function COM_switchTab(sel_id)
+    function COM_switchTab(sel)
     {
         if(typeof(liContainer)=="undefined")
         {
-
             liContainer = document.querySelector("ul");
             liEls       = [...document.querySelectorAll("ul a")];
             slideEl_1   = document.querySelector(".focus-el.el--1");
@@ -65,8 +61,7 @@
         }
 
         // read hash value from url
-        //alert(location.hash)
-        if(sel_id) location.hash = "#"+sel_id;
+        if(typeof(sel)=="string") location.hash = "#"+sel;
         var sel_id = location.hash.slice(1);
         // find tab object corresponding to hash value
         var node = document.getElementById("app").childNodes[1].childNodes;
@@ -89,23 +84,23 @@
 
     function switchTabHeader(tl,index,elRect)
     {
-        if (reachedEnd && index + 1 == startPosIndex)
-        {
-            tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
-            tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
-            tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
-            tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
-        }
-        timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
-        activeIndex = index + 1;
-        tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
-        if (index + 1 != startPosIndex || reachedEnd == false)
-        {
-            tl.to(slideEl_1, animDuration, {
-                left: `${elRect.left - liRect.left}px`,
-                width: `${slideEl_1_DefWidth}px` });
-        }
-        reachedEnd = (index + 1 == liEls.length) ? true : false
+      if (reachedEnd && index + 1 == startPosIndex)
+      {
+        tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
+        tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
+        tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
+        tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
+      }
+      timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
+      activeIndex = index + 1;
+      tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
+      if (index + 1 != startPosIndex || reachedEnd == false)
+      {
+        tl.to(slideEl_1, animDuration, {
+            left: `${elRect.left - liRect.left}px`,
+            width: `${slideEl_1_DefWidth}px` });
+      }
+      reachedEnd = (index + 1 == liEls.length) ? true : false;
     }
 
     //////////////////////////////
@@ -114,15 +109,15 @@
 
     function switchTabContent(node_name,sel_id)
     {
-        var node = document.getElementsByClassName(node_name)[0].childNodes
-        for(var i=0;i<node.length;i++)
+      var node = document.getElementsByClassName(node_name)[0].childNodes
+      for(var i=0;i<node.length;i++)
+      {
+        if(node[i].id)
         {
-            if(node[i].id)
-            {
-                if(node[i].id == sel_id) node[i].classList.add('active');
-                else                     node[i].classList.remove('active');
-            }
-        }        
+          if(node[i].id == sel_id) node[i].classList.add('active');
+          else                     node[i].classList.remove('active');
+        }
+      }        
     }
 
     ////////////////////
