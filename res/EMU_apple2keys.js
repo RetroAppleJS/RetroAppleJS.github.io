@@ -82,6 +82,7 @@ function apple2OnKeyHover(event)
         case 1: x = xc>0 ? (xc-1)*47-588 : -47-588; w=xc>11?55:w; break;
         case 2: x = xc>0 ? (xc-1)*47-577 : -47-577; break;
         case 3: x = xc>0 ? xc*47-603 : -47-603+25; w=xc<=0 || xc>10 ? 55:w; break;
+        case 5: yc--;
         case 4: x = xc==0 ? -620 : -603+25+69; w=xc==0?30:360; break;
     }
     y = Math.round(yc*47.5+25-237.5);
