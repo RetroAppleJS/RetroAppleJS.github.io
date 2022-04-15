@@ -120,6 +120,8 @@ function apple2OnKeyHover(event)
                     case "POWER":
                         restartButton();
                     break;
+                    default:
+                        alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
                 }
             }
             else
