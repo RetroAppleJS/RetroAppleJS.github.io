@@ -2,16 +2,16 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an assembler, debugger, emulator and CPU reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser.
+This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser.
 
-The idea behind this project is simple: Retrocomputing enthusiasts want a frictionless implementation; issues associated with setting up a usable system is not the sort of old memories one may wish to recall.  Back in 1980, many were passionate about machine coding on the Apple II+.  This project is all about recreating the experience, pimped-up with some contemporary features (like copy-paste).
+The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic childhood computer experience, with some nice twits.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done without throwing the already faint computing power of a CPU that was originally designed for pocket calculators.  Even if most computer books in those days were dreadfully printed, and contained mediocre, buggy projects, Jeff Stanton was a big exception that triggred the sparkles. 
 
 Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described below.
 
 ## Getting started
 
 1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop
-2) Open AppleII_IDE.html on any JavaScript capable browser
+2) Open index.html on any JavaScript capable browser
 3) Inside the assembler, tap the **'generate'** button
 4) Tap the **'to emulator'** button
 5) Inside the emulator, tap the **'paste'** button
@@ -58,7 +58,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [ ] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
+- [x] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
 - [ ] better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
 - [ ] pasteboard scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
