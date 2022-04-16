@@ -53,7 +53,7 @@ function apple2OnKeyPress(event) {
     // Hi bit is always set
     code |= 0x80;
     apple2plus.keypress(code);
-    
+
     return false;
 }
 
@@ -102,7 +102,7 @@ function apple2OnKeyHover(event)
         break;
         case "mouseout":
             _o.EMU_keyb_timer = false;
-            setTimeout(apple2OnKeyHover_out, 2000);
+            //setTimeout(apple2OnKeyHover_out, 2000);
         break;
         case "click":
             if(typeof(keymap[yc][xc])=="number")
