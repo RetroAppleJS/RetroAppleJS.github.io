@@ -35,6 +35,14 @@ function EMU_keypress(e)
 {
     var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
     apple2OnKeyPress(event);
+
+    if(e.keyCode == 32) { e.preventDefault(); }
+
+    /*
+    if( ["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1)
+        e.preventDefault()
+*/
+
     //apple2plus.cycle(1000 * appleIntervalTime);
 }
 

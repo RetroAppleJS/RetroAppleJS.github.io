@@ -49,11 +49,11 @@ function apple2OnKeyPress(event) {
     // Apple control key on alpha characters
     if (event.ctrlKey && code >= 0x41 && code <= 0x5a)
         code -= 0x40;
-
+        
     // Hi bit is always set
     code |= 0x80;
     apple2plus.keypress(code);
-
+    
     return false;
 }
 
