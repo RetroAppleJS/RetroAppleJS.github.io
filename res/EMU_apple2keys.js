@@ -129,7 +129,7 @@ function apple2OnKeyHover(event)
         default:
             alert(event.type)
     }
-    document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
+    //document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
 }
 
 function apple2OnKeyHover_out()
