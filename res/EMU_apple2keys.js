@@ -100,7 +100,7 @@ function apple2OnKeyHover(event)
         break;
         case "mouseout":
             _o.EMU_keyb_timer = false;
-            //setTimeout(apple2OnKeyHover_out, 2000);
+            setTimeout(apple2OnKeyHover_out, 2000);
         break;
         case "click":
         case "touchstart":
@@ -119,6 +119,16 @@ function apple2OnKeyHover(event)
                     case "POWER":
                         restartButton();
                     break;
+                    case "REPT":
+                        document.getElementById("key_rept").style.top = y+"px";
+                        document.getElementById("key_rept").style.left = (x-36)+"px";
+                        var visibility = document.getElementById("key_rept").style.visibility == "hidden";
+                        document.getElementById("key_rept").style.visibility = visibility?"visible":"hidden";
+                        //alert(x+" "+y)
+                    break;
+                    case "LSHIFT":
+
+                    break;
                     default:
                         alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
                 }
@@ -129,7 +139,7 @@ function apple2OnKeyHover(event)
         default:
             alert(event.type)
     }
-    //document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
+    document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
 }
 
 function apple2OnKeyHover_out()
