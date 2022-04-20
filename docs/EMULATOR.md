@@ -21,11 +21,16 @@ __A handful new functions make the experience complete__
 
 __Keyboard functions__
 
-'Cancel an entire line'
-| CTRL-X | 
-| ------ |
+|    Keys and their associated ASCII codes    |
+| --------------------------------- |
 
-<img src="../res/appleIIplus_key_CTRL.png?raw=true" width=5%/> 
+| Key   | Alone | CTRL | SHIFT | Both |   | Key    | Alone | CTRL | SHIFT | Both |
+| ----- | ----- | ---- | ----- | ---- | - | ------ | ----- | ---- | ----- | ---- |
+| space | $A0   | $A0  | $A0   | $A0  |   | RETURN | $8D   | $8D  | $8D   | $8D  |
+| 0     | $B0   | $B0  | $B0   | $B0  |   | G      | $C7   | $87  | $C7   | $87  |    
+| 1!    | $B1   | $B1  | $A1   | $A1  |   | H      | $C8   | $88  | $C8   | $88  |
+
+<img src="../res/appleIIplus_key_CTRL.png?raw=true"/> 
 
 term
 : definition
