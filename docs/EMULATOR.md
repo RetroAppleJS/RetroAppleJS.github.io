@@ -27,7 +27,7 @@ The **REPT** key is pressed alone produces a duplicate of the last code that was
 If you press and hold down the **REPT** key while you are holding down a character key, it will act as if you are pressing that key repeatedly at a rate of 10 pressess each second. This repetition will cease when you release either the character key or **REPT**.
 
 The **POWER** light at the lower left-hand corner is an indicator lamp to show when the power to the Apple is on.
-In the emulator, the **POWER** light is a key that triggers a cold boot (the physical power switch is located below the keyboard) 
+As the physical power switch is located below the keyboard, for convenience, we turned the **POWER** light into a cold boot button.
 
 |    Keys and their associated ASCII codes    |
 | --------------------------------- |
