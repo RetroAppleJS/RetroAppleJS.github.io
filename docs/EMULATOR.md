@@ -59,8 +59,3 @@ As the physical power switch is located below the keyboard, for convenience, we 
 | F     | $C6   | $86  | $C6   | $86  |   | <-     | $95   | $95  | $95   | $95  |
 |       |       |      |       |      |   | ESC    | $9B   | $9B  | $9B   | $9B  |
 
-<img src="../res/appleIIplus_key_CTRL.png?raw=true"/> 
-
-term
-: definition
-
