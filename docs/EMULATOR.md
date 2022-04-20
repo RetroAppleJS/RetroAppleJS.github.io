@@ -17,8 +17,14 @@ __A handful new functions make the experience complete__
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
 
-__Appendix__
+## Appendix
 
-Keyboard functions
+__Keyboard functions__
 
+'Cancel an entire line'
+| CTRL-X | 
+| ------ |
+
+term
+: definition
 
