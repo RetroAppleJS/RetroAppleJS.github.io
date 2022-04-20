@@ -16,3 +16,9 @@ __A handful new functions make the experience complete__
 \* monitor: cycle color mode through apple color, black/white, green and amber  
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
+
+__Appendix__
+
+Keyboard functions
+
+
