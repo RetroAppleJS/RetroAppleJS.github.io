@@ -21,6 +21,8 @@ __A handful new functions make the experience complete__
 
 __Keyboard functions__
 
+<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="right"/> 
+
 The **CTRL** and **SHIFT** keys generate no codes by themselves, but only after the codes produced by other keys.
 
 The **REPT** key is pressed alone produces a duplicate of the last code that was generated.
