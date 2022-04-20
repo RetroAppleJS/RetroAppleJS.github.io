@@ -21,6 +21,12 @@ __A handful new functions make the experience complete__
 
 __Keyboard functions__
 
+The CTRL and SHIFT keys generate no codes by themselves, but only after the codes produced by other keys.
+The REPT key is pressed alone produces a duplicate of the last code that was generated.
+If you press and hold down the REPT key while you are holding down a character key, it will act as if you are pressing that key repeatedly at a rate of 10 pressess each second. This repetition will cease when you release either the character key or REPT.
+
+The POWER light at the lower left-hand corner is an indicator lamp to show when the power to the Apple is on.
+
 |    Keys and their associated ASCII codes    |
 | --------------------------------- |
 
