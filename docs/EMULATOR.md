@@ -25,6 +25,8 @@ __Keyboard functions__
 | CTRL-X | 
 | ------ |
 
+<img src="../res/appleIIplus_key_CTRL.png?raw=true" width=5%/> 
+
 term
 : definition
 
