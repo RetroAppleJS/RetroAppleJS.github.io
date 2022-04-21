@@ -72,8 +72,10 @@ As the physical power switch is located below the keyboard, for convenience, we 
 __Escape codes__
 
 When pressing the **ESC** key, Apples firmware goes into _escape mode_. In this mode, 11 keys have separate meanings called _escape codes_.
-**ESC A**
-**ESC B**
+
+**ESC A** moves cursor one space to the right  
+**ESC B** moves cursor one space back  
+
 **ESC C**
 **ESC D**
 **ESC E**
