@@ -106,13 +106,13 @@ function apple2OnKeyHover(event)
         case "touchstart":
             //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
             //alert(event.type);
-            _o.EMU_keyb_timer = false;
+            t.style.opacity=0;
             break;
         
         case "click":
             //if(o.EMU_keyb_timer == false) break;
             //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
-            if(_o.EMU_keyb_timer == false) { _o.EMU_keyb_timer = true; break; }
+            //if(_o.EMU_keyb_timer == false) { _o.EMU_keyb_timer = true; break; }
 
             if(typeof(keymap[yc][xc])=="number")
             {
