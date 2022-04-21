@@ -108,7 +108,8 @@ function apple2OnKeyHover(event)
             if(t.style.opacity!=1) break;
         */
         case "click":
-            if(o.EMU_keyb_timer == false) break;
+            //if(o.EMU_keyb_timer == false) break;
+            alert(_o.EMU_keyb_timer)
 
             if(typeof(keymap[yc][xc])=="number")
             {
