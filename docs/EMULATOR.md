@@ -63,5 +63,7 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 ### Firmware keyboard functions ###
 
-**CTRL-S** triggers the **STOP-LIST** feature, which is pausing any screen text printing at every RETURN code. Screen printing resumes after pressing any key. 
+**CTRL-S** triggers the **STOP-LIST** feature, which is pausing any screen text printing at every RETURN code. Screen printing resumes after pressing any key, unless **CTRL-C** is pressed, which breaks screen printing and goes back to the program that is sending output.
+
+**CTRL-G** does not print any character, instead it produces a tone of 100Hz in the speaker during 0.1s.
 
