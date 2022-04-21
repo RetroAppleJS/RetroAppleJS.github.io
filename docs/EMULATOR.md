@@ -73,7 +73,7 @@ __Escape codes__
 
 When pressing the **ESC** key, Apples firmware goes into _escape mode_. In this mode, 11 keys have separate meanings called _escape codes_.
 
-**ESC A** moves cursor one space forward 
+**ESC A** moves cursor one space forward  
 **ESC B** moves cursor one space back  
 **ESC C** moves cursor one line down  
 **ESC D** moves cursor one line up  
