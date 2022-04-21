@@ -69,6 +69,6 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 **CTRL-X** breaks an input line, forgets all what was typed and starts a new input line.
 
-__ESCAPE CODES__
+__Escape codes__
 
 
