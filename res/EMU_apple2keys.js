@@ -143,8 +143,7 @@ function apple2OnKeyHover(event)
             else
                 alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
         break;
-        default:
-            alert(event.type)
+        //default: alert(event.type)
     }
     document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
 }
