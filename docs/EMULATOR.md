@@ -71,4 +71,15 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 __Escape codes__
 
-When pressing the **ESC** key, Apples firmware goes into _escape mode_. In this mode, 11 keys have separate meanings called _secape codes_.
+When pressing the **ESC** key, Apples firmware goes into _escape mode_. In this mode, 11 keys have separate meanings called _escape codes_.
+**ESC A**
+**ESC B**
+**ESC C**
+**ESC D**
+**ESC E**
+**ESC F**
+**ESC @**
+**ESC K**
+**ESC J**
+**ESC M**
+**ESC I**
