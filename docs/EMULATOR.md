@@ -67,3 +67,8 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 **CTRL-G** does not print any character, instead it produces a tone of 100Hz in the speaker during 0.1s.
 
+**CTRL-X** breaks an input line, forgets all what was typed and starts a new input line.
+
+__ESCAPE CODES__
+
+
