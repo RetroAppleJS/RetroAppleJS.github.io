@@ -73,14 +73,25 @@ __Escape codes__
 
 When pressing the **ESC** key, Apples firmware goes into _escape mode_. In this mode, 11 keys have separate meanings called _escape codes_.
 
-**ESC A** moves cursor one space forward  
-**ESC B** moves cursor one space back  
-**ESC C** moves cursor one line down  
-**ESC D** moves cursor one line up  
-**ESC E** clear until end of line while screen text printing  
-**ESC F** clear until end of screen while screen text printing  
-**ESC @** home and clear - clears entire window and places cursor in upper left corner  
-**ESC K** same as ESC A - move cursor one right  
-**ESC J** same as ESC B - move cursor one left  
-**ESC M** same as ESC C - move cursor one down  
-**ESC I** same as ESC D - move cursor one up   
+**ESC A**
+: moves cursor one space forward  
+**ESC B**
+: moves cursor one space back  
+**ESC C**
+: moves cursor one line down  
+**ESC D**
+: moves cursor one line up  
+**ESC E**
+: clear until end of line while screen text printing  
+**ESC F**
+: clear until end of screen while screen text printing  
+**ESC @**
+: home and clear - clears entire window and places cursor in upper left corner  
+**ESC K**
+: same as ESC A - move cursor one right  
+**ESC J**
+: same as ESC B - move cursor one left  
+**ESC M**
+: same as ESC C - move cursor one down  
+**ESC I**
+: same as ESC D - move cursor one up   
