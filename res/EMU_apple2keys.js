@@ -106,7 +106,7 @@ function apple2OnKeyHover(event)
         case "touchstart":
             //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
             //alert(event.type);
-            t.style.opacity=0;
+            //t.style.opacity=0;
             break;
         
         case "click":
