@@ -69,7 +69,8 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 **CTRL-X** breaks an input line, forgets all what was typed and starts a new input line.
 
-__Escape codes__
+|    Escape codes    |
+| ------------------ |
 
 When pressing the **ESC** key, Apples firmware goes into _escape mode_. In this mode, 11 keys have separate meanings called _escape codes_.
 
