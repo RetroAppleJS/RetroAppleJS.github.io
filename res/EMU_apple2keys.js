@@ -104,6 +104,7 @@ function apple2OnKeyHover(event)
         break;
         case "click":
         case "touchstart":
+            alert(t.style.opacity)
             if(typeof(keymap[yc][xc])=="number")
             {
                 var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
