@@ -102,9 +102,10 @@ function apple2OnKeyHover(event)
             _o.EMU_keyb_timer = false;
             setTimeout(apple2OnKeyHover_out, 2000);
         break;
-        case "click":
         case "touchstart":
+            break;
             if(t.style.opacity!=1) break;
+        case "click":
             if(typeof(keymap[yc][xc])=="number")
             {
                 var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
