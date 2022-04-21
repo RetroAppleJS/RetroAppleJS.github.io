@@ -19,11 +19,11 @@ __A handful new functions make the experience complete__
 
 ## Appendix
 
-__Keyboard functions__
+### Hard-wired keyboard functions ###
 
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="right"/> 
 
-The **CTRL** and **SHIFT** keys generate no codes by themselves, but only after the codes produced by other keys.
+**CTRL** and **SHIFT** keys generate no codes by themselves, but only after the codes produced by other keys.
 
 The **REPT** key is pressed alone produces a duplicate of the last code that was generated.
 If you press and hold down the **REPT** key while you are holding down a character key, it will act as if you are pressing that key repeatedly at a rate of 10 pressess each second. This repetition will cease when you release either the character key or **REPT**.
@@ -60,4 +60,8 @@ As the physical power switch is located below the keyboard, for convenience, we 
 | E     | $C5   | $85  | $C5   | $85  |   | ->     | $88   | $88  | $88   | $88  |
 | F     | $C6   | $86  | $C6   | $86  |   | <-     | $95   | $95  | $95   | $95  |
 |       |       |      |       |      |   | ESC    | $9B   | $9B  | $9B   | $9B  |
+
+### Firmware keyboard functions ###
+
+**CTRL-S** triggers the **STOP-LIST** feature, which is pausing any screen text printing at every RETURN code.
 
