@@ -63,5 +63,5 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 ### Firmware keyboard functions ###
 
-**CTRL-S** triggers the **STOP-LIST** feature, which is pausing any screen text printing at every RETURN code.
+**CTRL-S** triggers the **STOP-LIST** feature, which is pausing any screen text printing at every RETURN code. Screen printing resumes after pressing any key. 
 
