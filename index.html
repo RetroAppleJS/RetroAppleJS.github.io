@@ -308,7 +308,6 @@
                 width: 560px;
                 height: 384px;
             }
-
             .appbut
             {
                 font-family: "Arial";
@@ -324,13 +323,33 @@
             {
                 background: rgba(255, 255, 255, 1);
             }
-
+            .appkbd
+            {
+              background-image:url('res/appleIIplus_kbd_650.png');
+              width:650px;
+              height:257px;
+              background-size:650px 257px;
+              top: 50%;
+              left: 50%;
+              margin-left: 105px;
+              background-repeat:no-repeat;
+              image-rendering:pixelated;
+              opacity:0.5;
+            }
+            .key {
+            position:relative;
+            display:inline-block;
+            width:30px;
+            height:30px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 3px;
+            }
 
             </style>
             <div style="padding:0px 90px">
               <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
-              <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
-              <button class=appbut onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
+              <button class=appbut value="Monitor"    onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
+              <button class=appbut                    onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
               <!--
               <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
               <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
@@ -367,27 +386,18 @@
             function handleKeyPress(e) { console.log(" "+e) }          
             </script>
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
+            <div class="appkbd" id="kbdimg" ontouchstart=apple2OnKeyHover(event) onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)>
+              <div class="key"  id="keybox"                                      onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+              <div class="key"  id="key_rept"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+              <div class="key"  id="key_ctrl"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+              <div class="key"  id="key_lshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+              <div class="key"  id="key_rshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>  
+            </div>
+            <!--
             <br>
-            <img src=res/appleIIplus_kbd_650.png id=keyimg style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;user-drag:none;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;" ontouchstart=apple2OnKeyHover(event) onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseover="apple2OnKeyHover(event)" onmouseout="apple2OnKeyHover(event)">
+            <img src=res/appleIIplus_kbd_650.png id=kbdimg style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;user-drag:none;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;" ontouchstart=apple2OnKeyHover_b(event) onclick=apple2OnKeyHover_b(event) onmousemove=apple2OnKeyHover_b(event) onmouseover="apple2OnKeyHover_b(event)" onmouseout="apple2OnKeyHover_b(event)">
+            -->
             <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
-
-            <style>
-            .box {
-            position:relative;
-            display:inline-block;
-            width:30px;
-            height:30px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 3px;
-            /*top:-212px;
-            left:-192px;*/
-            }
-            </style>
-            <div class="box" id="keybox" style="z-index:1" ontouchstart=apple2OnKeyHover(event) onclick=apple2OnKeyHover(event) onmousemove="apple2OnKeyHover(event)" onmouseout="apple2OnKeyHover(event)" onmouseover="apple2OnKeyHover(event)"></div>
-            <div class="box" id="key_rept"   style="z-index:1;visibility:hidden;" onclick=apple2OnKeyHover(event) onmousemove="apple2OnKeyHover(event)" onmouseout="apple2OnKeyHover(event)" onmouseover="apple2OnKeyHover(event)"></div>
-            <div class="box" id="key_lshift" style="z-index:1;visibility:hidden;" onclick=apple2OnKeyHover(event) onmousemove="apple2OnKeyHover(event)" onmouseout="apple2OnKeyHover(event)" onmouseover="apple2OnKeyHover(event)"></div>
-            <div class="box" id="key_rshift" style="z-index:1;visibility:hidden;" onclick=apple2OnKeyHover(event) onmousemove="apple2OnKeyHover(event)" onmouseout="apple2OnKeyHover(event)" onmouseover="apple2OnKeyHover(event)"></div>
-            
             <br>
             <input id="key_debug" style="width:400px">
             
