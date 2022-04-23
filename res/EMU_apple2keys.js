@@ -70,7 +70,7 @@ function apple2OnKeyHover(event)
                   4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
                 }
 
-    var xoff = -40;
+    var xoff = 39;
     var yoff = 228
 
     var x = event.pageX-775;
@@ -79,12 +79,12 @@ function apple2OnKeyHover(event)
     var w = 30;
     switch(yc)
     {
-        case 0: xc = Math.floor(x/47+13.5); x = xc>0 ? xc*47-xoff : -xoff                         ; break;                 
-        case 1: xc = Math.floor(x/47+14.1); x = xc>0 ? xc*47-xoff-23 : xoff-23; w=xc>11?55:w           ; break;
-        case 2: xc = Math.floor(x/47+13.8); x = xc>0 ? xc*47-xoff-10 : xoff-10                         ; break;
-        case 3: xc = Math.floor(x/47+13.4); x = xc>0 ? xc*47-xoff+12 : xoff-10; w=xc<=0 || xc>10 ? 55:w; break;
+        case 0: xc = Math.floor(x/47+13.5); x = xc>0 ? xc*47+xoff : xoff                         ; break;                 
+        case 1: xc = Math.floor(x/47+14.1); x = xc>0 ? xc*47+xoff-23 : xoff-23; w=xc>11?55:w           ; break;
+        case 2: xc = Math.floor(x/47+13.8); x = xc>0 ? xc*47+xoff-11 : xoff-11                         ; break;
+        case 3: xc = Math.floor(x/47+13.4); x = xc>0 ? xc*47+xoff+12 : xoff-10; w=xc<=0 || xc>10 ? 55:w; break;
         case 5: xc = yc--;
-        case 4: x = xc==0 ? xoff-5 : xoff+106  ; w=xc==0?30:360                                   ; break;
+        case 4: x = xc==0 ? -xoff-5 : -xoff+106  ; w=xc==0?30:360                                   ; break;
     }
     y = Math.round(yc*47.5-212.5)+yoff;
     u.style.width = w+"px";
