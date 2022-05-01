@@ -61,7 +61,11 @@ function apple2OnKeyHover(event)
 {
     var o = {"kbdimg":document.getElementById("kbdimg")
             ,"keybox":document.getElementById("keybox")
-            ,"key_rept":document.getElementById("key_rept")};
+            ,"key_rept":document.getElementById("key_rept")
+            ,"key_ctrl":document.getElementById("key_ctrl")
+            ,"key_lshift":document.getElementById("key_lshift")
+            ,"key_rshift":document.getElementById("key_rshift")
+        };
 
 
     //var t = document.getElementById("kbdimg");
