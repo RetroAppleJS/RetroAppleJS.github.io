@@ -89,6 +89,8 @@ function apple2OnKeyHover(event)
     y = Math.round(yc*47.5-212.5)+yoff;
     u.style.width = w+"px";
 
+    var visibility = {"key_rept":document.getElementById("key_rept").style.visibility == "hidden"};
+
     switch(event.type)
     {
         case "mousemove":
@@ -111,6 +113,10 @@ function apple2OnKeyHover(event)
             //alert(event.type);
             //t.style.opacity=0;
             //break;
+
+        case "mousedown":
+
+        break;
         
         case "click":
             //if(o.EMU_keyb_timer == false) break;
@@ -135,13 +141,15 @@ function apple2OnKeyHover(event)
                     case "REPT":
                         document.getElementById("key_rept").style.top = y+"px";
                         document.getElementById("key_rept").style.left = (x-36)+"px";
-                        var visibility = document.getElementById("key_rept").style.visibility == "hidden";
-                        document.getElementById("key_rept").style.visibility = visibility?"visible":"hidden";
+                        //var visibility = document.getElementById("key_rept").style.visibility == "hidden";
+                        //document.getElementById("key_rept").style.visibility = visibility?"visible":"hidden";
+                        //alert(visibility.key_rept);
+                        document.getElementById("key_rept").style.visibility = visibility.key_rept?"visible":"hidden";
                         //alert(x+" "+y)
                     break;
-                    case "LSHIFT":
+                    //case "LSHIFT":
 
-                    break;
+                    //break;
                     default:
                         alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
                 }
