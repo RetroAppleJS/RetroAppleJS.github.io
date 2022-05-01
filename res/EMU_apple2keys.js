@@ -59,8 +59,13 @@ function apple2OnKeyPress(event) {
 
 function apple2OnKeyHover(event)
 {
-    var t = document.getElementById("kbdimg");
-    var u = document.getElementById("keybox");
+    var o = {"kbdimg":document.getElementById("kbdimg")
+            ,"keybox":document.getElementById("keybox")
+            ,"key_rept":document.getElementById("key_rept")};
+
+
+    //var t = document.getElementById("kbdimg");
+    //var u = document.getElementById("keybox");
 
     var sbtn = {"LSHIFT":[-625,-70],"RSHIFT":[-39,-70],"CTRL":[-624,-117],"REPT":[-118,-165]};
     var keymap = {0:[0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xB0,0xBA,0xAD,"RESET"],
@@ -75,6 +80,7 @@ function apple2OnKeyHover(event)
 
     var x = event.pageX-775;
     var y = event.pageY-740-10;
+    var xc = 0;
     var yc = Math.floor(y/47.5)+5;
     var w = 30;
     switch(yc)
@@ -87,9 +93,7 @@ function apple2OnKeyHover(event)
         case 4: x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30                                   ; break;
     }
     y = Math.round(yc*47.5-212.5)+yoff;
-    u.style.width = w+"px";
-
-    var visibility = {"key_rept":document.getElementById("key_rept").style.visibility == "hidden"};
+    o["keybox"].style.width = w+"px";
 
     switch(event.type)
     {
@@ -99,8 +103,8 @@ function apple2OnKeyHover(event)
             _o.EMU_keyb_timer = true;
         break;
         case "mouseover":
-            t.style.opacity=1;
-            u.style.display="";
+            o["kbdimg"].style.opacity=1;
+            o["keybox"].style.display="";
             _o.EMU_keyb_timer = true;
         break;
         case "mouseout":
@@ -139,12 +143,12 @@ function apple2OnKeyHover(event)
                         restartButton();
                     break;
                     case "REPT":
-                        document.getElementById("key_rept").style.top = y+"px";
-                        document.getElementById("key_rept").style.left = (x-36)+"px";
+                        o["key_rept"].style.top = y+"px";
+                        o["key_rept"].style.left = (x-36)+"px";
                         //var visibility = document.getElementById("key_rept").style.visibility == "hidden";
                         //document.getElementById("key_rept").style.visibility = visibility?"visible":"hidden";
                         //alert(visibility.key_rept);
-                        document.getElementById("key_rept").style.visibility = visibility.key_rept?"visible":"hidden";
+                        o["key_rept"].style.visibility = o["key_rept"].style.visibility == "hidden"?"visible":"hidden";
                         //alert(x+" "+y)
                     break;
                     //case "LSHIFT":
