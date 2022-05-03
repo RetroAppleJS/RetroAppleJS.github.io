@@ -62,7 +62,8 @@
 
         // read hash value from url
         if(typeof(sel)=="string") location.hash = "#"+sel;
-        var sel_id = location.hash.slice(1);
+        var sel_id = location.hash.slice(1)
+        if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
         // find tab object corresponding to hash value
         var node = document.getElementById("app").childNodes[1].childNodes;
         for(var index=0,cnt=1;index<node.length;index++)
