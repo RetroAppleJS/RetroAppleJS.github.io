@@ -84,12 +84,12 @@ function apple2OnKeyHover(event)
     var w = 30;
     switch(yc)
     {
-        case 0: xc = Math.floor(x/47+13.5); x = xc>0 ? xc*47+xoff : xoff                         ; break;                 
-        case 1: xc = Math.floor(x/47+14.1); x = xc>0 ? xc*47+xoff-23 : xoff-23; w=xc>11?55:w           ; break;
-        case 2: xc = Math.floor(x/47+13.8); x = xc>0 ? xc*47+xoff-11 : xoff-11                         ; break;
-        case 3: xc = Math.floor(x/47+13.4); x = xc>0 ? xc*47+xoff+12 : xoff-10; w=xc<=0 || xc>10 ? 55:w; break;  
-        case 4: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30; break;
-        case 5: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30; yc--; break;                                ; break;
+        case 0: xc = Math.floor(x/47+13.5); x = xc>0 ? xc*47+xoff : xoff                                ; break;                 
+        case 1: xc = Math.floor(x/47+14.1); x = xc>0 ? xc*47+xoff-23 : xoff-23; w=xc>11?55:w            ; break;
+        case 2: xc = Math.floor(x/47+13.8); x = xc>0 ? xc*47+xoff-11 : xoff-11                          ; break;
+        case 3: xc = Math.floor(x/47+13.4); x = xc>0 ? xc*47+xoff+12 : xoff-10; w=xc<=0 || xc>10 ? 55:w ; break;  
+        case 4: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30               ; break;
+        case 5: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30; yc--         ; break;                                ; break;
     }
     y = Math.round(yc*47.5-212.5)+yoff;
     o["keybox"].style.width = w+"px";
@@ -115,7 +115,7 @@ function apple2OnKeyHover(event)
             //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
             //alert(event.type);
             //t.style.opacity=0;
-            //break;
+        //break;
 
         case "mousedown":
 
@@ -125,7 +125,7 @@ function apple2OnKeyHover(event)
             //if(o.EMU_keyb_timer == false) break;
             //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
             //if(_o.EMU_keyb_timer == false) { _o.EMU_keyb_timer = true; break; }
-
+            xc = xc<0?0:xc;
             if(typeof(keymap[yc][xc])=="number")
             {
                 var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
@@ -165,11 +165,9 @@ function apple2OnKeyHover(event)
     document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
 }
 
-
 function apple2OnKeyHover_out()
 {
     if(_o.EMU_keyb_timer == true) return;
-
 
     var o = {"kbdimg":document.getElementById("kbdimg")
             ,"keybox":document.getElementById("keybox")
@@ -184,4 +182,3 @@ function apple2OnKeyHover_out()
 
     _o.EMU_keyb_timer = false;
 }
-
