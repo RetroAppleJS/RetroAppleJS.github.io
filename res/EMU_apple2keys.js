@@ -118,10 +118,19 @@ function apple2OnKeyHover(event)
         //break;
 
         case "mousedown":
-
+            //beep();
+            xc = xc<0?0:xc;
+            if(typeof(keymap[yc][xc])=="number")
+            {
+                //alert("t")
+                var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
+                apple2OnKeyPress(event);
+            }
         break;
         
         case "click":
+            //if(event.target.id != "keybox") return;
+            alert(event.target.id)
             //if(o.EMU_keyb_timer == false) break;
             //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
             //if(_o.EMU_keyb_timer == false) { _o.EMU_keyb_timer = true; break; }
@@ -130,6 +139,7 @@ function apple2OnKeyHover(event)
             {
                 var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
                 apple2OnKeyPress(event);
+                //o["key_rept"].style.visibility = "hidden";
             }
             else if(typeof(keymap[yc][xc])=="string")
             {
@@ -142,13 +152,19 @@ function apple2OnKeyHover(event)
                         restartButton();
                     break;
                     case "REPT":
+                        //beep();
+                        alert("Instead of REPT, keep    key down >0.5s");
+                        /*
+                        beep();
                         o["key_rept"].style.top = y+"px";
                         o["key_rept"].style.left = (x-36)+"px";
                         //var visibility = document.getElementById("key_rept").style.visibility == "hidden";
                         //document.getElementById("key_rept").style.visibility = visibility?"visible":"hidden";
                         //alert(visibility.key_rept);
-                        o["key_rept"].style.visibility = o["key_rept"].style.visibility == "hidden"?"visible":"hidden";
-                        //alert(x+" "+y)
+                        //o["key_rept"].style.visibility = o["key_rept"].style.visibility == "hidden"?"visible":"hidden";
+                        o["key_rept"].style.visibility = "visible";
+                        */
+                       return true;
                     break;
                     //case "LSHIFT":
 
