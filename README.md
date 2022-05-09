@@ -84,6 +84,8 @@ Only two files are impacted:
 - index.html
 - res/EMU_apple2keys.js
 
+### Status
+
 - [x] AppleII+ keyboard pop-up image (onmouseover)
 - [x] alphanumeric keys + ESC key + arrow keys + space bar + RETURN key
 - [x] POWER key
