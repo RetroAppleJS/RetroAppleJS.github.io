@@ -68,7 +68,8 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] apple sound, including diskdrive noise
 - [ ] paddle/mouse capture
 - [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
-- [ ] real-time camera capture tool (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
+- [ ] real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
+- [ ] real-time camera capture tool - hi-res through firmware color-approximation and dithering
 - [ ] macro script runner (emulating keyboard & paddle control)
 - [ ] complete zero-page documentation (ZEROPAGE_APPLE2PLUS.md)
 
