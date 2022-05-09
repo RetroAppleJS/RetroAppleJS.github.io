@@ -77,6 +77,8 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome.
 
+---
+
 ## Latest News
 
 9-May-2022 currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list.
@@ -84,7 +86,7 @@ Only two files are impacted:
 - index.html
 - res/EMU_apple2keys.js
 
-### Status
+### Current Status
 
 - [x] AppleII+ keyboard pop-up image (onmouseover)
 - [x] alphanumeric keys + ESC key + arrow keys + space bar + RETURN key
