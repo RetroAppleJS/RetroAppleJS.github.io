@@ -76,3 +76,14 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 ## Contribute
 
 This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome.
+
+## Latest News
+
+9-May-2022 currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list
+- [x] AppleII+ keyboard pop-up image
+- [x] alphanumeric keys + escape key + arrow keys
+- [ ] Rept key
+- [ ] Shift key
+- [ ] Ctrl key
+- [x] Power key
+- [x] Reset key
