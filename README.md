@@ -75,7 +75,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Contribute
 
-This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome.
+This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome, but the latest feature developments (here below) are currently the most valuable on my priority list.
 
 ### Latest developments
 
@@ -92,5 +92,3 @@ feature details & status:
 *Note: Only two files are impacted:*
 - *index.html*
 - *res/EMU_apple2keys.js*
-
-
