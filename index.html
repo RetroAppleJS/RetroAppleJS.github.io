@@ -380,8 +380,10 @@
               e = e.replace(/\n/g,"\r");
               for(var _i=0;_i<e.length;_i++)
               {
-                  var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
-                  apple2OnKeyPress(event);
+                  //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
+                  //apple2OnKeyPress(event);
+
+                  var code = apple2plus.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
                   if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
                   apple2plus.cycle(1000 * appleIntervalTime);
               }

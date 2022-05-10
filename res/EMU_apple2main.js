@@ -28,23 +28,23 @@
 
 addLoadEvent(EMU_init);
 
-var vidContext,apple2plus,appleIntervalHandle,bKeyboardFocus
+var ppleIntervalHandle,vidContext,apple2plus,apple2keys,bKeyboardFocus
 var appleIntervalTime   = 50;
 
 function EMU_keypress(e) 
 {
-    var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
-    apple2OnKeyPress(event);
+    //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
+    //apple2OnKeyPress(event);
 
-    if(e.keyCode == 32) { e.preventDefault(); }
+    var data = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
+    apple2plus.keystroke(data);
+    if(e.keyCode == 32) { e.preventDefault(); }  // TODO analyse if this is still necessary, otherwise addEventListener can just call apple2plus.keystroke directly and EMU_keypress() can be removed!!
 
-    /*
-    if( ["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1)
-        e.preventDefault()
-*/
-
+    //if( ["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1)
+    //    e.preventDefault()
     //apple2plus.cycle(1000 * appleIntervalTime);
 }
+
 
 function EMU_init()
 {
@@ -52,6 +52,7 @@ function EMU_init()
     appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
+    apple2keys          = new Apple2Keys();
     document.getElementById('applescreen').addEventListener('keypress', EMU_keypress);
 }
 

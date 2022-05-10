@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2014 Thomas Skibo.
+// Copyright (c) 2022 Freddy Vandriessche.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,69 @@
 
 // apple2keys.js
 
-/*
+
 function Apple2Keys()
 {
-    this.virtualkeys(event) =
+    this.KeyCodeHandler = function(data)
+    {
+        if (data.metaKey || data.altKey) return true;
+        var code = data.charCode != 0 ? data.charCode : data.keyCode;
+
+        // left arrow
+        if (data.charCode == 0 && data.keyCode == 37)
+            code = 0x08;
+
+        // right arrow
+        if (data.charCode == 0 && data.keyCode == 39)
+            code = 0x15;
+
+        // Convert lower case to upper case
+        if (code >= 0x61 && code <= 0x7a)
+            code -= 0x20;
+
+        // Apple control key on alpha characters
+        if (data.ctrlKey && code >= 0x41 && code <= 0x5a)
+            code -= 0x40;
+            
+        // Hi bit is always set
+        code |= 0x80;
+        return code;
+    }
+
+    this.KeyPress = function(event)
+    {
+        if (event.metaKey || event.altKey)
+        return true;
+  
+      var code = event.charCode != 0 ? event.charCode : event.keyCode;
+      //console.log("apple2OnKeyPress: code=0x%s", code.toString(16));
+      //alert("apple2OnKeyPress: code=0x"+code.toString(16))
+  
+      // left arrow
+      if (event.charCode == 0 && event.keyCode == 37)
+          code = 0x08;
+  
+      // right arrow
+      if (event.charCode == 0 && event.keyCode == 39)
+          code = 0x15;
+  
+      // Convert lower case to upper case
+      if (code >= 0x61 && code <= 0x7a)
+          code -= 0x20;
+  
+      // Apple control key on alpha characters
+      if (event.ctrlKey && code >= 0x41 && code <= 0x5a)
+          code -= 0x40;
+          
+      // Hi bit is always set
+      code |= 0x80;
+      apple2plus.keypress(code);
+  
+      return false;
+    }
+
+
+    this.VirtualKeyPress = function(event)
     {
         var o = {"kbdimg":document.getElementById("kbdimg")
         ,"keybox":document.getElementById("keybox")
@@ -77,7 +136,6 @@ function Apple2Keys()
                 case "REPT":
                     alert("Instead of REPT, keep key down >0.5s");
                     
-                    
                     //o["key_rept"].style.top = y+"px";
                     //o["key_rept"].style.left = (x-36)+"px";
                     //o["key_rept"].style.visibility = "visible";
@@ -95,9 +153,42 @@ function Apple2Keys()
 
     }
 }
-*/
+
+    function apple2OnKeyPress(event) {
+
+        if (event.metaKey || event.altKey)
+          return true;
+    
+        var code = event.charCode != 0 ? event.charCode : event.keyCode;
+        //console.log("apple2OnKeyPress: code=0x%s", code.toString(16));
+        //alert("apple2OnKeyPress: code=0x"+code.toString(16))
+    
+        // left arrow
+        if (event.charCode == 0 && event.keyCode == 37)
+            code = 0x08;
+    
+        // right arrow
+        if (event.charCode == 0 && event.keyCode == 39)
+            code = 0x15;
+    
+        // Convert lower case to upper case
+        if (code >= 0x61 && code <= 0x7a)
+            code -= 0x20;
+    
+        // Apple control key on alpha characters
+        if (event.ctrlKey && code >= 0x41 && code <= 0x5a)
+            code -= 0x40;
+            
+        // Hi bit is always set
+        code |= 0x80;
+        apple2plus.keypress(code);
+    
+        return false;
+    }
+
 
 function apple2OnKeyPress(event) {
+
     if (event.metaKey || event.altKey)
       return true;
 
