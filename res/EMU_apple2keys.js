@@ -55,6 +55,36 @@ function Apple2Keys()
         return code;
     }
 
+    this.KbdCodeHandler = function(data)
+    {
+        var o = {"kbdimg":document.getElementById("kbdimg")
+        ,"keybox":document.getElementById("keybox")
+        ,"key_rept":document.getElementById("key_rept")
+        ,"key_ctrl":document.getElementById("key_ctrl")
+        ,"key_lshift":document.getElementById("key_lshift")
+        ,"key_rshift":document.getElementById("key_rshift")
+        };
+
+        var sbtn = {"LSHIFT":[-625,-70],"RSHIFT":[-39,-70],"CTRL":[-624,-117],"REPT":[-118,-165]};
+        var keymap = {0:[0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xB0,0xBA,0xAD,"RESET"],
+                      1:[0x9B,0xD1,0xD7,0xC5,0xD2,0xD4,0xD9,0xD5,0xC9,0xCF,0xD0,"REPT",0x8D],
+                      2:["CTRL",0xC1,0xD3,0xC4,0xC6,0xC7,0xC8,0xCA,0xCB,0xCC,0xBB,0x88,0x95],
+                      3:["LSHIFT",0xDA,0xD8,0xC3,0xD6,0xC2,0xCE,0xCD,0xAC,0xAE,0xAF,"RSHIFT","RSHIFT"],
+                      4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
+                    }
+
+        var xoff = 39;
+        var yoff = 228
+
+        var x = data.pageX-775;
+        var y = data.pageY-740-10;
+        var yc = Math.floor(y/47.5)+5;
+        var w = 30;
+
+        xc = xc<0?0:xc;
+        return keymap[yc][xc];
+    }
+
     this.KeyPress = function(event)
     {
         if (event.metaKey || event.altKey)

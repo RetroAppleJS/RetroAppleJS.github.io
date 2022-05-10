@@ -56,7 +56,37 @@ function Apple2Plus(context) {
     }
 
     this.keystroke = function(data) {
-        this.keypress(  keys.KeyCodeHandler(data)  );
+        
+        if(data.type=="click") var code = keys.KbdCodeHandler(data);  // virtual keyboard
+        else var code = keys.KeyCodeHandler(data);                    // real keyboard
+
+        if(typeof(code)=="number") hw.io.keypress(code);
+        else if (typeof(code)=="number")
+        {
+            switch(code)
+            {
+                case "RESET":
+                    beep();
+                    resetButton();
+                break;
+                case "POWER":
+                    beep();
+                    restartButton();
+                break;
+                case "REPT":
+                    alert("Instead of REPT, keep key down >0.5s");
+                    
+                    //o["key_rept"].style.top = y+"px";
+                    //o["key_rept"].style.left = (x-36)+"px";
+                    //o["key_rept"].style.visibility = "visible";
+                    
+                break;
+                default:
+                    alert("no function defined on key '"+code+"'");
+            }
+        }
+        else
+            alert("no key");
     }
 
     this.loadDisk = function(bytes) {
