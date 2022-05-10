@@ -67,6 +67,8 @@ function Apple2Video(ctx) {
             flash_count = 0;
             this.reflash();
         }
+        if(flash_count % (250000/4+1) == 0)
+            this.rept();
     }
 
     this.setGfx = function(flag) {
@@ -128,9 +130,9 @@ function Apple2Video(ctx) {
         ctx.fillStyle = monoChromes[chrome_mode]?monoChromes[chrome_mode]:"#ffffff";
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
-
         for (var y = 0; y < 8; y++) {
             var bits = apple2CharRom[offs + y];
+            
 
             // Inverse or flashing?
             if ((d8 & 0xc0) == 0x00 ||
@@ -361,9 +363,9 @@ var hiresCols = [
         }
     } // write()
 
-    // Redraw flashing characters only.  Called every time flash_on toggles.
+    // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
     this.reflash = function() {
-        if (!gfx_mode || mix_mode) {
+        if (!gfx_mode || mix_mode) {            
             for (var col = 0; col < 40; col++)
                 for (var row = (gfx_mode && mix_mode) ? 20 : 0;
                      row < 24; row++) {
@@ -375,6 +377,7 @@ var hiresCols = [
                     // Redraw flashing characters.
                     if ((d8 & 0xc0) == 0x40)
                         drawChar(col, row, d8);
+                    
                 }
         }
     }
@@ -417,4 +420,9 @@ var hiresCols = [
                 }
             }
     }
+
+    this.rept = function() {
+    // cursor repeat pace (TODO)
+    }
+
 }

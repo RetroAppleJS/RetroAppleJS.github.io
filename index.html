@@ -354,7 +354,7 @@
             </style>
             <div style="padding:0px 90px">
               <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
-              <button class=appbut value="Monitor"    onclick="javascript:this.name=(this.name?Number(this.name)+1:1);onChangeMonitor(this.name);alert(this.name)" title="Color mode"><i class="fa fa-palette"></i></button>
+              <button class=appbut value="Monitor"    onclick="javascript:this.name=(this.name?Number(this.name)+1:1);apple2plus.monitor(this.name);" title="Color mode"><i class="fa fa-palette"></i></button>
               <button class=appbut                    onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
               <!--
               <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
@@ -372,7 +372,6 @@
             </div>
             <script type="text/javascript">
             var bColor = false;
-            function onChangeMonitor(type) { apple2plus.monitor(type) }
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
             function onBoardPaste()
             {
@@ -393,12 +392,12 @@
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
             <div class="appkbd" id="kbdimg" ontouchstart=apple2OnKeyHover(event)   onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)>
             <div class="key"  id="keybox"                                      onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-            <!--
+           
               <div class="key"  id="key_rept"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
               <div class="key"  id="key_ctrl"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
               <div class="key"  id="key_lshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
               <div class="key"  id="key_rshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>  
-              -->
+              
             </div>
             <!--
             <br>

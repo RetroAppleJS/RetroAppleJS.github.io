@@ -29,6 +29,7 @@
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
     var hw = new Apple2Hw(video);
+    //var keys = new Apple2Keys();
     var cpu = new Cpu6502(hw);
 
     this.reset = function() {
@@ -51,6 +52,11 @@ function Apple2Plus(context) {
     }
 
     this.keypress = function(code) {
+        hw.io.keypress(code);
+    }
+
+    // FVD TO REVIEW
+    this.virtual_keypress = function(code) {
         hw.io.keypress(code);
     }
 

@@ -66,7 +66,7 @@ function appleIntervalFunc() {
     apple2plus.cycle(1000 * appleIntervalTime);
     // TODO: SET KEYBOARDFOCUS STATE ONLY ON TAB CHANGE EVENT
     bKeyboardFocus = document.getElementById("tab1").checked;
-    attachKeyboard(bKeyboardFocus)
+    attachKeyboard(bKeyboardFocus);
 }
 
 function resetButton() {
