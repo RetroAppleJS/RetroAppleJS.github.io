@@ -31,29 +31,12 @@ addLoadEvent(EMU_init);
 var ppleIntervalHandle,vidContext,apple2plus,apple2keys,bKeyboardFocus
 var appleIntervalTime   = 50;
 
-function EMU_keypress(e) 
-{
-    //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
-    //apple2OnKeyPress(event);
-
-    var data = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
-    apple2plus.keystroke(data);
-    //if(e.keyCode == 32) { e.preventDefault(); }  // TODO analyse if this is still necessary, otherwise addEventListener can just call apple2plus.keystroke directly and EMU_keypress() can be removed!!
-
-    //if( ["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1)
-    //    e.preventDefault()
-    //apple2plus.cycle(1000 * appleIntervalTime);
-}
-
-
 function EMU_init()
 {
-    //window.onkeypress   = apple2OnKeyPress;   //window.onkeydown = apple2OnKeyPress;
     appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     apple2keys          = new Apple2Keys();
-    //document.getElementById('applescreen').addEventListener('keypress', EMU_keypress);
     document.getElementById('applescreen').addEventListener('keypress', apple2plus.keystroke);
 }
 
@@ -62,7 +45,6 @@ function attachKeyboard(bEnable)
     if(bEnable) window.onkeypress  = apple2plus.keystroke;
     else window.onkeypress  = null;
 }
-
 
 function appleIntervalFunc() {
     apple2plus.cycle(1000 * appleIntervalTime);
@@ -81,7 +63,6 @@ function restartButton() {
 
 function pauseButton() {
     if (appleIntervalHandle != null) {
-        //window.onkeypress = null;
         attachKeyboard(false);
 
         window.clearInterval(appleIntervalHandle);
@@ -89,7 +70,6 @@ function pauseButton() {
         document.getElementById('pausebutton').value = 'Resume';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
     } else {
-        //window.onkeypress = apple2OnKeyPress;
         attachKeyboard(true);
         appleIntervalHandle = window.setInterval("appleIntervalFunc()",
                                                  appleIntervalTime);

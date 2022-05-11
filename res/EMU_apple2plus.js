@@ -51,25 +51,21 @@ function Apple2Plus(context) {
         }
     }
 
-    /*
-    this.keypress = function(code) {
-        hw.io.keypress(code);
-    }
-    */
-
     this.keystroke = function(data) {
         
-        if(data.type=="click")  // virtual keyboard ?
-            var code = keys.KbdCodeHandler(data);
-        else                    // real keyboard or pasteboard ?
+        if(data.type!="click")          // real keyboard or pasteboard ?
         {
             var code = keys.KeyCodeHandler(data);         
             if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
                 data.preventDefault(); // prevent space-bar from triggering page-down
         }
+        else                            // virtual keyboard ?
+        {
+            var code = keys.KbdCodeHandler(data);
 
-        if(typeof(code)=="number") hw.io.keypress(code);
-        else if (typeof(code)=="string") 
+        if(typeof(code)=="number")       // ASCII keys ?
+            hw.io.keypress(code);
+        else if (typeof(code)=="string") // HARD-WIRED keys ?
         {
             switch(code)
             {
