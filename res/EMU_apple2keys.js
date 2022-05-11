@@ -4,7 +4,6 @@
 //
 // apple2keys.js
 
-
 function Apple2Keys()
 {
     this.KeyCodeHandler = function(data)
