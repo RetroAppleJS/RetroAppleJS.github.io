@@ -51,8 +51,8 @@ function Apple2Plus(context) {
         }
     }
 
-    this.keystroke = function(data) {
-        
+    this.keystroke = function(data)
+    {
         if(data.type!="click")          // real keyboard or pasteboard ?
         {
             var code = keys.KeyCodeHandler(data);         
@@ -60,7 +60,6 @@ function Apple2Plus(context) {
                 data.preventDefault(); // prevent space-bar from triggering page-down
         }
         else                            // virtual keyboard ?
-        {
             var code = keys.KbdCodeHandler(data);
 
         if(typeof(code)=="number")       // ASCII keys ?
