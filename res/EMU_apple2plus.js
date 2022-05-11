@@ -69,11 +69,11 @@ function Apple2Plus(context) {
             switch(code)
             {
                 case "RESET":
-                    beep();
+                    //beep();
                     resetButton();
                 break;
                 case "POWER":
-                    beep();
+                    //beep();
                     restartButton();
                 break;
                 case "REPT":

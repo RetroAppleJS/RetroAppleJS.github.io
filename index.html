@@ -169,8 +169,14 @@
       snd.play();
     }
 
-    // global data object initialization
-    var _o = {"tools":{},"sys":"A2P","EMU_keyb_timer":false,"EMU_kbd_id":"kbdimg","EMU_key_id":"keybox"};
+    
+    function toggle()
+    {
+      var snd = new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/");  
+      snd.play();
+    }
+    
+
 </script>    
 <!--
    ____    ____          _            
@@ -384,8 +390,8 @@
                   //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
                   //apple2OnKeyPress(event);
                   var code = apple2plus.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
-                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * appleIntervalTime);  // carriage return takes more cycle time
-                  apple2plus.cycle(1000 * appleIntervalTime);
+                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.appleIntervalTime_ms);  // carriage return takes more cycle time
+                  apple2plus.cycle(1000 * _o.appleIntervalTime_ms);
               }
             }
             function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" };        
@@ -410,7 +416,7 @@
             -->
             <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
             <br>
-            <input id="key_debug" style="width:400px">
+            <input id="key_debug" style="width:400px" value="1">
             
           </div>
           <div id="tab2" style="height:1024px;width:700px">

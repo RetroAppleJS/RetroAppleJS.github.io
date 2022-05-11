@@ -79,6 +79,10 @@ function Apple2IO(vid) {
             return disk2Rom[addr - DISK_PROM];
         else
             switch(addr) {
+            case SPKR_TOGGLE:
+                _o.EMU_snd_toggle.play();
+                document.getElementById("key_debug").value++;
+                break;
             case GFX_ON:
                 video.setGfx(true);
                 break;

@@ -26,14 +26,23 @@
 
 // apple2main.js
 
-addLoadEvent(EMU_init);
+addLoadEvent(EMU_init); // EMULATOR KICKSTART
 
+// global data initializations
+var _o = {"tools":{}
+        ,"sys":"A2P"
+        ,"EMU_keyb_timer":false
+        ,"EMU_kbd_id":"kbdimg"
+        ,"EMU_key_id":"keybox"
+        ,"appleIntervalTime_ms":50
+        ,"EMU_snd_toggle":new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
+    };
 var ppleIntervalHandle,vidContext,apple2plus,apple2keys,bKeyboardFocus
-var appleIntervalTime   = 50;
+//var appleIntervalTime   = 100;  // 100ms = 10 refreshes/s
 
 function EMU_init()
 {
-    appleIntervalHandle = window.setInterval("appleIntervalFunc()",appleIntervalTime);
+    appleIntervalHandle = window.setInterval(appleIntervalFunc,_o.appleIntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     apple2keys          = new Apple2Keys();
@@ -47,7 +56,7 @@ function attachKeyboard(bEnable)
 }
 
 function appleIntervalFunc() {
-    apple2plus.cycle(1000 * appleIntervalTime);
+    apple2plus.cycle(1000*_o.appleIntervalTime_ms);
     // TODO: SET KEYBOARDFOCUS STATE ONLY ON TAB CHANGE EVENT
     bKeyboardFocus = document.getElementById("tab1").checked;
     attachKeyboard(bKeyboardFocus);
