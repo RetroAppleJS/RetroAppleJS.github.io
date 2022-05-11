@@ -91,8 +91,6 @@ function Apple2Keys()
         return true;
   
       var code = event.charCode != 0 ? event.charCode : event.keyCode;
-      //console.log("apple2OnKeyPress: code=0x%s", code.toString(16));
-      //alert("apple2OnKeyPress: code=0x"+code.toString(16))
   
       // left arrow
       if (event.charCode == 0 && event.keyCode == 37)
@@ -116,137 +114,6 @@ function Apple2Keys()
   
       return false;
     }
-
-
-    this.VirtualKeyPress = function(event)
-    {
-        var o = {"kbdimg":document.getElementById("kbdimg")
-        ,"keybox":document.getElementById("keybox")
-        ,"key_rept":document.getElementById("key_rept")
-        ,"key_ctrl":document.getElementById("key_ctrl")
-        ,"key_lshift":document.getElementById("key_lshift")
-        ,"key_rshift":document.getElementById("key_rshift")
-        };
-
-        var sbtn = {"LSHIFT":[-625,-70],"RSHIFT":[-39,-70],"CTRL":[-624,-117],"REPT":[-118,-165]};
-        var keymap = {0:[0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xB0,0xBA,0xAD,"RESET"],
-                    1:[0x9B,0xD1,0xD7,0xC5,0xD2,0xD4,0xD9,0xD5,0xC9,0xCF,0xD0,"REPT",0x8D],
-                    2:["CTRL",0xC1,0xD3,0xC4,0xC6,0xC7,0xC8,0xCA,0xCB,0xCC,0xBB,0x88,0x95],
-                    3:["LSHIFT",0xDA,0xD8,0xC3,0xD6,0xC2,0xCE,0xCD,0xAC,0xAE,0xAF,"RSHIFT","RSHIFT"],
-                    4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
-                    }
-
-        var xoff = 39;
-        var yoff = 228
-
-        var x = event.pageX-775;
-        var y = event.pageY-740-10;
-        var yc = Math.floor(y/47.5)+5;
-        var w = 30;
-
-        xc = xc<0?0:xc;
-        if(typeof(keymap[yc][xc])=="number")
-        {
-            var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
-            apple2OnKeyPress(event);
-            o["key_rept"].style.visibility = "hidden";
-        }
-        else if(typeof(keymap[yc][xc])=="string")
-        {
-            switch(keymap[yc][xc])
-            {
-                case "RESET":
-                    beep();
-                    resetButton();
-                break;
-                case "POWER":
-                    beep();
-                    restartButton();
-                break;
-                case "REPT":
-                    alert("Instead of REPT, keep key down >0.5s");
-                    
-                    //o["key_rept"].style.top = y+"px";
-                    //o["key_rept"].style.left = (x-36)+"px";
-                    //o["key_rept"].style.visibility = "visible";
-                    
-                break;
-                //case "LSHIFT":
-
-                //break;
-                default:
-                    alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
-            }
-        }
-        else
-            alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
-
-    }
-}
-
-    function apple2OnKeyPress(event) {
-
-        if (event.metaKey || event.altKey)
-          return true;
-    
-        var code = event.charCode != 0 ? event.charCode : event.keyCode;
-        //console.log("apple2OnKeyPress: code=0x%s", code.toString(16));
-        //alert("apple2OnKeyPress: code=0x"+code.toString(16))
-    
-        // left arrow
-        if (event.charCode == 0 && event.keyCode == 37)
-            code = 0x08;
-    
-        // right arrow
-        if (event.charCode == 0 && event.keyCode == 39)
-            code = 0x15;
-    
-        // Convert lower case to upper case
-        if (code >= 0x61 && code <= 0x7a)
-            code -= 0x20;
-    
-        // Apple control key on alpha characters
-        if (event.ctrlKey && code >= 0x41 && code <= 0x5a)
-            code -= 0x40;
-            
-        // Hi bit is always set
-        code |= 0x80;
-        apple2plus.keypress(code);
-    
-        return false;
-    }
-
-
-function apple2OnKeyPress(event) {
-
-    if (event.metaKey || event.altKey)
-      return true;
-
-    var code = event.charCode != 0 ? event.charCode : event.keyCode;
-    //console.log("apple2OnKeyPress: code=0x%s", code.toString(16));
-    //alert("apple2OnKeyPress: code=0x"+code.toString(16))
-
-    // left arrow
-    if (event.charCode == 0 && event.keyCode == 37)
-        code = 0x08;
-
-    // right arrow
-    if (event.charCode == 0 && event.keyCode == 39)
-        code = 0x15;
-
-    // Convert lower case to upper case
-    if (code >= 0x61 && code <= 0x7a)
-        code -= 0x20;
-
-    // Apple control key on alpha characters
-    if (event.ctrlKey && code >= 0x41 && code <= 0x5a)
-        code -= 0x40;
-        
-    // Hi bit is always set
-    code |= 0x80;
-    apple2plus.keypress(code);
-
-    return false;
 }
 
 function apple2OnKeyHover(event)
@@ -308,60 +175,7 @@ function apple2OnKeyHover(event)
             //alert(event.type);
             //t.style.opacity=0;
         //break;
-
-        case "mousedown":
-            //beep();
-            xc = xc<0?0:xc;
-            if(typeof(keymap[yc][xc])=="number")
-            {
-                //alert("t")
-                var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
-                apple2OnKeyPress(event);
-            }
-        break;
-        
-        case "click":
-            //if(o.EMU_keyb_timer == false) break;
-            //alert(_o.EMU_keyb_timer+" "+t.style.opacity)
-            //if(_o.EMU_keyb_timer == false) { _o.EMU_keyb_timer = true; break; }
-            xc = xc<0?0:xc;
-            if(typeof(keymap[yc][xc])=="number")
-            {
-                var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":keymap[yc][xc]}
-                apple2OnKeyPress(event);
-                o["key_rept"].style.visibility = "hidden";
-            }
-            else if(typeof(keymap[yc][xc])=="string")
-            {
-                switch(keymap[yc][xc])
-                {
-                    case "RESET":
-                        beep();
-                        resetButton();
-                    break;
-                    case "POWER":
-                        beep();
-                        restartButton();
-                    break;
-                    case "REPT":
-                        alert("Instead of REPT, keep key down >0.5s");
-                        
-                        /*
-                        o["key_rept"].style.top = y+"px";
-                        o["key_rept"].style.left = (x-36)+"px";
-                        o["key_rept"].style.visibility = "visible";
-                        */
-                    break;
-                    //case "LSHIFT":
-
-                    //break;
-                    default:
-                        alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
-                }
-            }
-            else
-                alert("("+xc+","+yc+") ["+x+","+y+"] "+keymap[yc][xc]);
-        break;
+    
         //default: alert(event.type)
     }
     document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc

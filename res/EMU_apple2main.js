@@ -38,7 +38,7 @@ function EMU_keypress(e)
 
     var data = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.keyCode}
     apple2plus.keystroke(data);
-    if(e.keyCode == 32) { e.preventDefault(); }  // TODO analyse if this is still necessary, otherwise addEventListener can just call apple2plus.keystroke directly and EMU_keypress() can be removed!!
+    //if(e.keyCode == 32) { e.preventDefault(); }  // TODO analyse if this is still necessary, otherwise addEventListener can just call apple2plus.keystroke directly and EMU_keypress() can be removed!!
 
     //if( ["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1)
     //    e.preventDefault()
@@ -53,12 +53,13 @@ function EMU_init()
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     apple2keys          = new Apple2Keys();
-    document.getElementById('applescreen').addEventListener('keypress', EMU_keypress);
+    //document.getElementById('applescreen').addEventListener('keypress', EMU_keypress);
+    document.getElementById('applescreen').addEventListener('keypress', apple2plus.keystroke);
 }
 
 function attachKeyboard(bEnable)
 {
-    if(bEnable) window.onkeypress  = apple2OnKeyPress;
+    if(bEnable) window.onkeypress  = apple2plus.keystroke;
     else window.onkeypress  = null;
 }
 
