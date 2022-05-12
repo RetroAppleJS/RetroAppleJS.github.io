@@ -80,8 +80,10 @@ function Apple2IO(vid) {
         else
             switch(addr) {
             case SPKR_TOGGLE:
+                _o.EMU_snd_toggle.pause();
                 _o.EMU_snd_toggle.play();
                 document.getElementById("key_debug").value++;
+                
                 break;
             case GFX_ON:
                 video.setGfx(true);
