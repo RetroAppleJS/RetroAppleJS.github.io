@@ -172,8 +172,9 @@
     
     function toggle()
     {
-      var snd = new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/");  
-      snd.play();
+      if(bOsc) {pulse1.start(); pulse1.stop("+0.01"); }
+      else pulse2.start(); pulse2.stop("+0.01");
+      bOsc = !bOsc;
     }
     
 
@@ -301,6 +302,7 @@
             ███████ ██      ██  ██████  ███████ ██   ██    ██     ██████  ██   ██  
           -->
 
+          <script type="text/javascript" src="res/Tone.js"></script>
             <script type="text/javascript" src="res/EMU_apple2main.js"></script>
             <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
@@ -310,6 +312,7 @@
             <script type="text/javascript" src="res/EMU_apple2hw.js"></script>
             <script type="text/javascript" src="res/EMU_apple2keys.js"></script>
             <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
+            
 
             <style>
             .appvid
@@ -394,7 +397,7 @@
                   apple2plus.cycle(1000 * _o.appleIntervalTime_ms);
               }
             }
-            function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" };        
+            function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" };  
             </script>
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
 

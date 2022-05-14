@@ -28,6 +28,10 @@
 
 addLoadEvent(EMU_init); // EMULATOR KICKSTART
 
+
+//const pulse1 = new Tone.PulseOscillator(1, -0.001).toDestination();
+//const pulse2 = new Tone.PulseOscillator(1, 0.001).toDestination();
+
 // global data initializations
 var _o = {"tools":{}
         ,"sys":"A2P"
@@ -35,10 +39,17 @@ var _o = {"tools":{}
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
         ,"appleIntervalTime_ms":50
-        ,"EMU_snd_toggle":new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
+        ,"EMU_snd_bpulse":false
+        ,"EMU_snd_pulse1":new Tone.PulseOscillator(1, -0.001).toDestination()
+        ,"EMU_snd_pulse2":new Tone.PulseOscillator(1, 0.001).toDestination()
+        //new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
     };
 var ppleIntervalHandle,vidContext,apple2plus,apple2keys,bKeyboardFocus
 //var appleIntervalTime   = 100;  // 100ms = 10 refreshes/s
+
+
+var bOsc = false;
+
 
 function EMU_init()
 {

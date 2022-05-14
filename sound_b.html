@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<script type="text/javascript" src="res/tone.js"></script>
+<script>
+
+var _o = {"tools":{}
+        ,"sys":"A2P"
+        ,"EMU_keyb_timer":false
+        ,"EMU_kbd_id":"kbdimg"
+        ,"EMU_key_id":"keybox"
+        ,"appleIntervalTime_ms":50
+        ,"EMU_snd_bpulse":false
+        ,"EMU_snd_pulse1":new Tone.PulseOscillator(1, -0.001).toDestination()
+        ,"EMU_snd_pulse2":new Tone.PulseOscillator(1, 0.001).toDestination()
+        //new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
+    };
+    
+const si = setInterval(myTimer, 8);
+function myTimer()
+{
+    if(_o.EMU_snd_bpulse) {_o.EMU_snd_pulse1.start(); _o.EMU_snd_pulse1.stop("+0.01") }
+    else {    _o.EMU_snd_pulse2.start(); _o.EMU_snd_pulse2.stop("+0.01") }
+    _o.EMU_snd_bpulse = !_o.EMU_snd_bpulse;
+}
+
+    /*
+const source1 = new Tone.Oscillator(1000,"square").toDestination();
+const source = new Tone.Oscillator(1000,"square").toDestination();
+
+var bOsc = false;
+const i = setInterval(myTimer, 2);
+function myTimer()
+{
+    if(bOsc) {source1.start(); source1.stop("+0.001"); }
+    else source2.start(); source2.stop("+0.001");
+    bOsc = !bOsc;
+}
+*/
+
+// https://tonejs.github.io/docs/14.7.77/PulseOscillator
+//const pulse = new Tone.PulseOscillator(1, -0.001).toDestination().start();
+//const pulse = new Tone.PulseOscillator(1, 0.001).toDestination().start();
+
+</script>

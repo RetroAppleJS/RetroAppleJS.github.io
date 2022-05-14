@@ -1306,7 +1306,7 @@ function sym_link(_obj)
 	}
 	if(_obj.call) asm.symlink[key].call = _obj.call;
 }
-
+/*
 var JSON = function ()
 {
 	this.stringify = JSON_stringify;
@@ -1318,6 +1318,7 @@ function JSON_stringify(_o)
 	for (var i in _o) s += i + ":" + _o[i];
 	return s;
 }
+*/
 
 function getHexByte(v)
 {
