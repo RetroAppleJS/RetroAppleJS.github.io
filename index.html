@@ -38,7 +38,7 @@
     animDuration  = 0.1;
     var liContainer,liEls,slideEl_1,slideEl_2 
 
-    addLoadEvent(COM_switchTab);
+    window.addEventListener("load", COM_switchTab);
     window.addEventListener("hashchange", COM_switchTab);
 
     ////////////////////////////

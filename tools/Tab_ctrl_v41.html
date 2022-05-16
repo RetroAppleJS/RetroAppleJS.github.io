@@ -87,7 +87,25 @@
         <!-- tab content -->
         <div class="tabs">
           <div id="tab1" style="height:150px"> Tab one content </div>
-          <div id="tab2" style="height:200px"> Tab Two content </div>
+          <div id="tab2" style="height:200px">
+          
+
+            <div id=app>
+              <ul style="width:350px;float:left">
+                <!-- links -->
+                <a href="#tab2-1">Assembler</a>
+                <a href="#tab2-2">Debugger</a>
+                <div class="focus-el el--3"></div>
+                <div class="focus-el el--4"></div>
+              </ul>
+            </div>
+            <br><br>          
+          
+          
+          </div>
+          <div id="tab2-1" style="height:200px">tab2-1</div>
+          <div id="tab2-2" style="height:200px">tab2-2</div>
+
           <div id="tab3" style="height:250px"> 
               Tab Three content with a <a href="#tab1">link to tab 1</a>
           </div>
@@ -109,7 +127,7 @@ startPosIndex = 2;
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
-var liContainer,liEls,slideEl_1,slideEl_2 
+var liContainer,liEls,slideEl_1,slideEl_2,elms;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
@@ -120,10 +138,12 @@ window.addEventListener("hashchange", COM_switchTab);
 
 function COM_switchTab(sel)
 {
+    if(typeof(i)=="undefined") i = 0;
     if(typeof(liContainer)=="undefined")
     {
-        liContainer = document.querySelector("ul");
-        liEls       = [...document.querySelectorAll("ul a")];
+        elms = document.querySelectorAll("[id='app']");
+        liContainer = elms[0].querySelector("ul");
+        liEls       = [...elms[0].querySelectorAll("ul a")];
         slideEl_1   = document.querySelector(".focus-el.el--1");
         slideEl_2   = document.querySelector(".focus-el.el--2");
 
@@ -135,21 +155,24 @@ function COM_switchTab(sel)
 
     // read hash value from url
     if(typeof(sel)=="string") location.hash = "#"+sel;
-    var sel_id = location.hash.slice(1)
-    if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
+    var sel_id = [location.hash.slice(1).split("-")[0],location.hash.slice(1)];
+
+    if(sel_id[0].indexOf("_")>0) sel_id = sel_id.split("_")[0];
     // find tab object corresponding to hash value
     var node = document.getElementById("app").childNodes[1].childNodes;
     for(var index=0,cnt=1;index<node.length;index++)
     {
         if(node[index].href)
         {
-            if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
+            if (node[index].href.split("#")[1] == sel_id[0] || (typeof(el)=="undefined" && cnt == startPosIndex))
             var el = node[index];
             cnt++
         }
     }
     switchTabHeader(tl,index,el.getBoundingClientRect());
     switchTabContent('tabs',el.href.split("#")[1]);
+
+
 }
 
 //////////////////////////////

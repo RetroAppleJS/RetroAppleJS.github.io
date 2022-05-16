@@ -1,0 +1,279 @@
+<html lang="en" >
+<head>
+<meta charset="UTF-8">
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  #app ul {
+    position: relative;
+    height: 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* elements */
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+  }
+
+  #app ul a {
+    list-style: none;
+    display: grid;
+    place-items: center;
+    color: #000;
+    z-index: 10;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  #app ul .focus-el {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc(100% / 4);
+    height: 100%;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+  }
+
+  #app ul .focus-el.el--2 {
+    left: calc(-100% / 4);
+  }
+
+  #box {
+    background:#76B9CE;
+    border-radius:10px;
+  }
+
+  #box tr td {
+    /*display:flex;*/
+    flex-wrap:wrap;
+  }
+
+  .tabs > div { display:none; }
+  .tabs > div.active { display:block; }
+
+  .alltabs > a { display:none; }
+  .alltabs > a.active { display:block; }
+
+</style>
+<link rel="stylesheet" href="../res/fontawesome/all.css">
+</head>
+<body style="font-family:'Arial'">
+
+  <table id=box style=width:450px>
+    <tr>
+      <td valign=top>
+        <!--i class="fa fa-bars" onmouseover="document.getElementById('app').style.display=''" style=float:left;></i!-->
+
+        <!-- tab menu  -->
+        <div id=app>
+          <ul style="width:350px;float:left">
+            <!-- links -->
+            <a href="#tab1">Assembler</a>
+            <a href="#tab2">Debugger</a>
+            <a href="#tab3">Emulator</a>
+            <a href="#tab4">Reference</a>
+            <div class="focus-el el--1"></div>
+            <div class="focus-el el--2"></div>
+          </ul>
+        </div>
+        <br><br>
+
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab1" style="height:150px"> Tab one content </div>
+          <div id="tab2" style="height:200px">
+            
+            <div id=app>
+              <ul style="width:350px;float:left">
+                <!-- links -->
+                <a href="#tab2-1">Assembler</a>
+                <a href="#tab2-2">Debugger</a>
+                <div class="focus-el el--3"></div>
+                <div class="focus-el el--4"></div>
+              </ul>
+            </div>
+            <br><br>
+            <div id="tab2-1" style="height:200px">tab2-1</div>
+            <div id="tab2-2" style="height:200px">tab2-2</div>
+
+            <br><br>Tab Two content
+          </div>
+          <div id="tab3" style="height:250px"> 
+              Tab Three content with a <a href="#tab1">link to tab 1</a>
+          </div>
+          <div id="tab4" style="height:1000px"> Tab Four content </div>
+        </div>
+      </td>
+  </tr>
+</table>
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
+<script id="rendered-js">
+
+//////////////////////
+// TAB ANIMATOR     //
+//////////////////////
+
+tl = [gsap.timeline(),gsap.timeline()];
+startPosIndex = [2,1];
+reachedEnd    = [false,false];
+activeIndex   = startPosIndex;
+animDuration  = 0.1;
+var liContainer = [];
+var liEls = [];
+var slideEl_1 = [];
+var slideEl_2 = [];
+var slideEl_1_DefWidth = [];
+
+window.addEventListener("load", switchTab);
+window.addEventListener("hashchange", switchTab);
+
+function switchTab(i)
+{
+  if(typeof(i)=="undefined") i = 0;
+  var elms = document.querySelectorAll("[id='app']");
+  if(typeof(liContainer[i])=="undefined")
+  {
+    liContainer[i] = elms[i].querySelector("ul");
+    liEls[i]       = [...elms[i].querySelectorAll("ul a")];
+
+    slideEl_1[i]   = document.querySelector(".focus-el.el--"+(i+1));
+    slideEl_2[i]   = document.querySelector(".focus-el.el--"+(i+2));
+    liRect[i] = liContainer[i].getBoundingClientRect();
+    slideEl_1_DefWidth[i] = slideEl_1[i].getBoundingClientRect().width;
+    slideEl_1_DefLeft[i]  = slideEl_1[i].getBoundingClientRect().left;
+    slideEl_2_DefLeft[i]  = slideEl_2[i].getBoundingClientRect().left;
+  }
+
+  // read hash value from url
+  var sel_id = location.hash.slice(1).split("-")[0];
+
+  // find tab object corresponding to hash value
+  node = elms[i].childNodes[1].childNodes;
+  for(var index=0,cnt=1;index<node.length;index++)
+  {
+    if(node[index].href)
+    {
+      if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex[i]))
+        var el = node[index];
+      cnt++
+    }
+  }
+  switchTabHeader(tl[i],index,el.getBoundingClientRect());
+  switchTabContent('tabs',el.href.split("#")[1]);
+}
+/*
+function switchTab2()
+{
+  var elms = document.querySelectorAll("[id='app']");
+  
+
+    if(typeof(liContainer)=="undefined")
+    {
+      liContainer2 = elms[1].querySelector("ul");
+      liEls       = [...elms[0].querySelectorAll("ul a")];
+      slideEl_3   = document.querySelector(".focus-el.el--3");
+      slideEl_4   = document.querySelector(".focus-el.el--4");
+      liRect = liContainer.getBoundingClientRect();
+      slideEl_3_DefWidth = slideEl_3.getBoundingClientRect().width;
+      slideEl_3_DefLeft  = slideEl_3.getBoundingClientRect().left;
+      slideEl_4_DefLeft  = slideEl_4.getBoundingClientRect().left;
+    }
+    
+
+    // read hash value from url
+    var sel_id = location.hash.slice(1);
+    //alert(sel_id);
+    
+    // find tab object corresponding to hash value
+    //var node = document.getElementById("app").childNodes[1].childNodes;
+    node = elms[0].childNodes[1].childNodes;
+    for(var index=0,cnt=1;index<node.length;index++)
+    {
+      if(node[index].href)
+      {
+        if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
+          var el = node[index];
+        cnt++
+      }
+    }
+    
+    switchTabHeader2(tl2,index,el.getBoundingClientRect());
+    switchTabContent2('tabs',el.href.split("#")[1]);
+}
+*/
+
+//////////////////////////////
+// TAB HEADER SELECTOR      //
+//////////////////////////////
+
+function switchTabHeader(tl,index,elRect)
+{
+  var i =0;
+  if (reachedEnd && index + 1 == startPosIndex[0]) {
+      tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
+      tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
+      tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
+      tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
+    }
+    timesWidth = index + 1 - activeIndex[i] + 1 <= 0 ? 1 : index + 1 - activeIndex[i] + 1;
+    activeIndex[i] = index + 1;
+    tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
+
+    if (index + 1 != startPosIndex[0] || reachedEnd == false)
+    {
+      tl.to(slideEl_1, animDuration, {
+        left: `${elRect.left - liRect.left}px`,
+        width: `${slideEl_1_DefWidth}px` });
+    }
+    reachedEnd = (index + 1 == liEls.length) ? true : false
+}
+
+/*
+function switchTabHeader2(tl,index,elRect)
+{
+  if (reachedEnd && index + 1 == startPosIndex) {
+      tl.to( slideEl_3, animDuration, { left: `${liRect.width}px` });
+      tl.to( slideEl_4, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
+      tl.set(slideEl_3, { left: `${slideEl_3_DefLeft - liRect.left}px` },`+=${animDuration}`);
+      tl.set(slideEl_4, { left: `${slideEl_4_DefLeft - liRect.left}px` },`+=${animDuration}`);
+    }
+    timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
+    activeIndex = index + 1;
+    tl.to(slideEl_3, animDuration, { width: `${timesWidth * slideEl_3_DefWidth}px` });
+
+    if (index + 1 != startPosIndex || reachedEnd == false)
+    {
+      tl.to(slideEl_3, animDuration, {
+        left: `${elRect.left - liRect.left}px`,
+        width: `${slideEl_3_DefWidth}px` });
+    }
+    reachedEnd = (index + 1 == liEls.length) ? true : false
+}
+*/
+
+//////////////////////////////
+// TAB CONTENT SELECTOR     //
+//////////////////////////////
+
+function switchTabContent(node_name,sel_id)
+{
+  var node = document.getElementsByClassName(node_name)[0].childNodes
+  for(var i=0;i<node.length;i++)
+  {
+      if(node[i].id)
+      {
+          if(node[i].id == sel_id) node[i].classList.add('active');
+          else                     node[i].classList.remove('active');
+      }
+  }        
+}
+</script>
+</body>
+</html>
