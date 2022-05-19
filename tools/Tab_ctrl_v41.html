@@ -74,10 +74,10 @@
         <div id=app>
           <ul style="width:350px;float:left">
             <!-- links -->
-            <a id="tab0" href="#tab1">Assembler</a>
-            <a id="tab0" href="#tab2">Debugger</a>
-            <a id="tab0" href="#tab3">Emulator</a>
-            <a id="tab0" href="#tab4">Reference</a>
+            <a  href="#tab1">Assembler</a>
+            <a  href="#tab2">Debugger</a>
+            <a  href="#tab3">Emulator</a>
+            <a  href="#tab4">Reference</a>
             <div class="focus-el el--1"></div>
             <div class="focus-el el--2"></div>
           </ul>
@@ -93,8 +93,8 @@
             <div id=app>
               <ul style="width:350px;float:left">
                 <!-- links -->
-                <a href="#tab2-1">Assembler</a>
-                <a href="#tab2-2">Debugger</a>
+                <a href="#tab2-1">CPU</a>
+                <a href="#tab2-2">Disk</a>
                 <div class="focus-el el--3"></div>
                 <div class="focus-el el--4"></div>
               </ul>
@@ -103,8 +103,10 @@
           
           
           </div>
-          <div id="tab2-1" style="height:200px">tab2-1</div>
-          <div id="tab2-2" style="height:200px">tab2-2</div>
+          <div class="tabs2">
+            <div id="tab2-1" style="height:150px">tab2-1</div>
+            <div id="tab2-2" style="height:200px">tab2-2</div>
+          </div>
 
           <div id="tab3" style="height:250px"> 
               Tab Three content with a <a href="#tab1">link to tab 1</a>
@@ -123,14 +125,26 @@
 //////////////////////
 
 tl = gsap.timeline();
-startPosIndex = 2;
+tl2 = gsap.timeline();
+startPosIndex = [[2],[0,1]];
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
-var liContainer,liEls,slideEl_1,slideEl_2,elms;
+var liContainer,liEls,elms;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
+
+var slideEl_1   = [document.querySelector(".focus-el.el--1"),document.querySelector(".focus-el.el--3")]
+var slideEl_2   = [document.querySelector(".focus-el.el--2"),document.querySelector(".focus-el.el--4")]
+
+slideEl_1_DefWidth = slideEl_1[0].getBoundingClientRect().width;
+slideEl_1_DefLeft  = slideEl_1[0].getBoundingClientRect().left;
+slideEl_2_DefLeft  = slideEl_2[0].getBoundingClientRect().left;
+
+elms = document.querySelectorAll("[id='app']");
+liEls       = [ [...elms[0].querySelectorAll("ul a")], [...elms[1].querySelectorAll("ul a")]];
+
 
 ////////////////////////////
 // TAB EVENT HANDLER      //
@@ -141,16 +155,11 @@ function COM_switchTab(sel)
     if(typeof(i)=="undefined") i = 0;
     if(typeof(liContainer)=="undefined")
     {
-        elms = document.querySelectorAll("[id='app']");
         liContainer = elms[0].querySelector("ul");
-        liEls       = [...elms[0].querySelectorAll("ul a")];
-        slideEl_1   = document.querySelector(".focus-el.el--1");
-        slideEl_2   = document.querySelector(".focus-el.el--2");
+        liContainer2 = elms[0].querySelector("ul");
+        liRect = [liContainer.getBoundingClientRect(),liContainer.getBoundingClientRect()];
 
-        liRect = liContainer.getBoundingClientRect();
-        slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
-        slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
-        slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
+
     }
 
     // read hash value from url
@@ -159,19 +168,46 @@ function COM_switchTab(sel)
 
     if(sel_id[0].indexOf("_")>0) sel_id = sel_id.split("_")[0];
     // find tab object corresponding to hash value
-    var node = document.getElementById("app").childNodes[1].childNodes;
+    //var node = document.getElementById("app").childNodes[1].childNodes;
+    var node = elms[0].childNodes[1].childNodes;
+    //node.append(elms[1].childNodes[1].childNodes);
     for(var index=0,cnt=1;index<node.length;index++)
     {
         if(node[index].href)
         {
-            if (node[index].href.split("#")[1] == sel_id[0] || (typeof(el)=="undefined" && cnt == startPosIndex))
-            var el = node[index];
-            cnt++
+          console.log("index="+index+" "+node[index].href.split("#")[1])
+            if (node[index].href.split("#")[1] == sel_id[0] || (typeof(el)=="undefined" && cnt == startPosIndex[0]))
+            {
+              var el = node[index];
+              console.log("el="+(typeof(el)=="object"?el.outerHTML:"?")+ "el2="+(typeof(el2)=="object"?el2.outerHTML:""));
+            }
+            cnt++; 
         }
     }
-    switchTabHeader(tl,index,el.getBoundingClientRect());
+    //alert(typeof(el))
+    switchTabHeader(tl,index,el.getBoundingClientRect(),0);
     switchTabContent('tabs',el.href.split("#")[1]);
 
+    //////////////////
+    
+    var node = elms[1].childNodes[1].childNodes;
+    for(var index=0,cnt=1;index<node.length;index++)
+    {
+        if(node[index].href)
+        {
+          console.log("index="+index+" "+node[index].href.split("#")[1])
+          if (node[index].href.split("#")[1] == sel_id[1] || (typeof(el2)=="undefined" && cnt == startPosIndex[1][1]))
+          {
+              var el2 = node[index];
+              console.log("el2="+(typeof(el2)=="object"?el2.outerHTML:"?")+ "el2="+(typeof(el2)=="object"?el2.outerHTML:""));
+          }
+          cnt++; 
+        }
+    }
+    // CHECK THIS OUT !!!
+    switchTabHeader(tl,index,el2.getBoundingClientRect(),1);
+    alert(el2.href.split("#")[1])
+    switchTabContent('tabs2',el2.href.split("#")[1]);
 
 }
 
@@ -179,25 +215,25 @@ function COM_switchTab(sel)
 // TAB HEADER SELECTOR      //
 //////////////////////////////
 
-function switchTabHeader(tl,index,elRect)
+function switchTabHeader(tl,index,elRect,ii)
 {
   if (reachedEnd && index + 1 == startPosIndex) {
-      tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
-      tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
-      tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
-      tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
+      tl.to( slideEl_1[ii], animDuration, { left: `${liRect[ii].width}px` });
+      tl.to( slideEl_2[ii], animDuration, { left: `${elRect.left - liRect[ii].left}px` },`-=${animDuration}`);
+      tl.set(slideEl_1[ii], { left: `${slideEl_1_DefLeft - liRect[ii].left}px` },`+=${animDuration}`);
+      tl.set(slideEl_2[ii], { left: `${slideEl_2_DefLeft - liRect[ii].left}px` },`+=${animDuration}`);
     }
     timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
     activeIndex = index + 1;
-    tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
+    tl.to(slideEl_1[ii], animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
 
     if (index + 1 != startPosIndex || reachedEnd == false)
     {
-      tl.to(slideEl_1, animDuration, {
-        left: `${elRect.left - liRect.left}px`,
+      tl.to(slideEl_1[ii], animDuration, {
+        left: `${elRect.left - liRect[ii].left}px`,
         width: `${slideEl_1_DefWidth}px` });
     }
-    reachedEnd = (index + 1 == liEls.length) ? true : false
+    reachedEnd = (index + 1 == liEls[ii].length) ? true : false
 }
 
 //////////////////////////////
