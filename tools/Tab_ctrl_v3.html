@@ -96,8 +96,8 @@
 //////////////////////
 
 var tl = gsap.timeline();
-var startPosIndex = 2;
-var activeIndex   = startPosIndex;
+var startIndex = 2;
+var activeIndex   = startIndex;
 var animDuration  = 0.2;
 var reachedEnd    = false;
 var linkEl,focusEl;
@@ -122,22 +122,24 @@ function COM_switchTab(sel)
     var node = linkEl.childNodes;
     for(var index=0,cnt=0;index<node.length;index++)
       if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
-         || el=== undefined && startPosIndex == cnt++))                    // OR match start position
+         || el=== undefined && startIndex == cnt++))                    // OR match start position
         var el = node[index];
-    
-    liRect = el.getBoundingClientRect().left - linkEl.getBoundingClientRect().left;
-    switchTabHeader(tl,index,liRect);
-    switchTabContent('tabs',el.href.split("#")[1]);
+    switchTabHeader(tl,index,el.getBoundingClientRect().left - linkEl.getBoundingClientRect().left);
+    switchTabContent("tabs",el.href.split("#")[1]);
 }
 
 //////////////////////////////
 // TAB HEADER SELECTOR      //
 //////////////////////////////
 
-function switchTabHeader(tl,index,liRect)
+function switchTabHeader(tl,index,pos)
 {
-  if (index != startPosIndex || reachedEnd == false)
-    tl.to(focusEl, animDuration, {left:`${liRect}px`,width:`${focusEl.getBoundingClientRect().width}px`});
+  if (index != startIndex || reachedEnd == false)
+  {
+    tl.to(focusEl, animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
+
+		//var t = new Tween(focusEl, _parseVars(arguments, 0, this), _parsePosition(this, _isNumber(vars) ? arguments[3] : position));
+  }
 }
 
 //////////////////////////////
