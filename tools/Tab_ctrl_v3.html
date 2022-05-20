@@ -89,7 +89,7 @@
           <div id="tab0" style="height:150px"> Tab zero content </div>
           <div id="tab1" style="height:200px"> Tab one content </div>
           <div id="tab2" style="height:250px"> 
-              Tab Three content with a <a href="#tab1">link to tab one</a>
+              Tab Three content with a <a href="#tab0">link to tab zero</a>
           </div>
           <div id="tab3" style="height:1000px"> Tab three content </div>
         </div>
@@ -105,7 +105,7 @@
 //////////////////////
 
 tl = gsap.timeline();
-startPosIndex = 2;
+startPosIndex = 1;
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
