@@ -158,7 +158,7 @@ function COM_switchTab(sel)
 
 function switchTabHeader(tl,index,elRect)
 {
-  if (reachedEnd && index + 1 == (startPosIndex+1)) {
+  if (reachedEnd && index == startPosIndex) {
       tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
       tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
       tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
@@ -168,7 +168,7 @@ function switchTabHeader(tl,index,elRect)
     activeIndex = index + 1;
     tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
 
-    if (index + 1 != (startPosIndex+1) || reachedEnd == false)
+    if (index != startPosIndex || reachedEnd == false)
     {
       tl.to(slideEl_1, animDuration, {
         left: `${elRect.left - liRect.left}px`,
