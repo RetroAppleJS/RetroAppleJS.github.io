@@ -74,10 +74,10 @@
         <div id=app>
           <ul style="width:350px;float:left">
             <!-- links -->
-            <a  href="#tab1">Assembler</a>
-            <a  href="#tab2">Debugger</a>
-            <a  href="#tab3">Emulator</a>
-            <a  href="#tab4">Reference</a>
+            <a  href="#tab0">Assembler</a>
+            <a  href="#tab1">Debugger</a>
+            <a  href="#tab2">Emulator</a>
+            <a  href="#tab3">Reference</a>
             <div class="focus-el el--1"></div>
             <div class="focus-el el--2"></div>
           </ul>
@@ -86,15 +86,15 @@
 
         <!-- tab content -->
         <div class="tabs">
-          <div id="tab1" style="height:150px"> Tab one content </div>
-          <div id="tab2" style="height:200px">
+          <div id="tab0" style="height:150px"> Tab one content </div>
+          <div id="tab1" style="height:200px">
           
 
             <div id=app>
               <ul style="width:350px;float:left">
                 <!-- links -->
-                <a href="#tab2-1">CPU</a>
-                <a href="#tab2-2">Disk</a>
+                <a href="#tab1-0">CPU</a>
+                <a href="#tab1-1">Disk</a>
                 <div class="focus-el el--3"></div>
                 <div class="focus-el el--4"></div>
               </ul>
@@ -108,10 +108,10 @@
             <div id="tab2-2" style="height:200px">tab2-2</div>
           </div>
 
-          <div id="tab3" style="height:250px"> 
+          <div id="tab2" style="height:250px"> 
               Tab Three content with a <a href="#tab1">link to tab 1</a>
           </div>
-          <div id="tab4" style="height:1000px"> Tab Four content </div>
+          <div id="tab3" style="height:1000px"> Tab Four content </div>
         </div>
       </td>
   </tr>
@@ -126,11 +126,12 @@
 
 tl = gsap.timeline();
 tl2 = gsap.timeline();
-startPosIndex = [[2],[0,1]];
+var startPosIndex = [1,[0,1]];
+
 reachedEnd    = false;
-activeIndex   = startPosIndex;
+activeIndex   = [startPosIndex[0],startPosIndex[1][1]];
 animDuration  = 0.1;
-var liContainer,liEls,elms;
+var liContainer,elms,slideEl_1_DefWidth,slideEl_1_DefLeft,slideEl_2_DefLeft;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
@@ -138,12 +139,8 @@ window.addEventListener("hashchange", COM_switchTab);
 var slideEl_1   = [document.querySelector(".focus-el.el--1"),document.querySelector(".focus-el.el--3")]
 var slideEl_2   = [document.querySelector(".focus-el.el--2"),document.querySelector(".focus-el.el--4")]
 
-slideEl_1_DefWidth = slideEl_1[0].getBoundingClientRect().width;
-slideEl_1_DefLeft  = slideEl_1[0].getBoundingClientRect().left;
-slideEl_2_DefLeft  = slideEl_2[0].getBoundingClientRect().left;
-
 elms = document.querySelectorAll("[id='app']");
-liEls       = [ [...elms[0].querySelectorAll("ul a")], [...elms[1].querySelectorAll("ul a")]];
+var liEls       = [ [...elms[0].querySelectorAll("ul a")], [...elms[1].querySelectorAll("ul a")]];
 
 
 ////////////////////////////
@@ -158,8 +155,9 @@ function COM_switchTab(sel)
         liContainer = elms[0].querySelector("ul");
         liContainer2 = elms[0].querySelector("ul");
         liRect = [liContainer.getBoundingClientRect(),liContainer.getBoundingClientRect()];
-
-
+        slideEl_1_DefWidth = slideEl_1[0].getBoundingClientRect().width;
+        slideEl_1_DefLeft  = slideEl_1[0].getBoundingClientRect().left;
+        slideEl_2_DefLeft  = slideEl_2[0].getBoundingClientRect().left;
     }
 
     // read hash value from url
@@ -175,38 +173,44 @@ function COM_switchTab(sel)
     {
         if(node[index].href)
         {
-          console.log("index="+index+" "+node[index].href.split("#")[1])
-            if (node[index].href.split("#")[1] == sel_id[0] || (typeof(el)=="undefined" && cnt == startPosIndex[0]))
+            console.log("index="+index+" "+node[index].href.split("#")[1]+" == "+sel_id[0]+" ? cnt(="+cnt+") == "+(startPosIndex[0]+1));
+            if (node[index].href.split("#")[1] == sel_id[0] || (typeof(el)=="undefined" && cnt == (startPosIndex[0]+1)))
             {
               var el = node[index];
-              console.log("el="+(typeof(el)=="object"?el.outerHTML:"?")+ "el2="+(typeof(el2)=="object"?el2.outerHTML:""));
+              console.log("el="+(typeof(el)=="object"?el.outerHTML:"?"));
             }
             cnt++; 
         }
     }
-    //alert(typeof(el))
-    switchTabHeader(tl,index,el.getBoundingClientRect(),0);
+    switchTabHeader(tl,index,el.getBoundingClientRect(),0,startPosIndex[0]);
     switchTabContent('tabs',el.href.split("#")[1]);
 
     //////////////////
+    console.log("---");
     
     var node = elms[1].childNodes[1].childNodes;
     for(var index=0,cnt=1;index<node.length;index++)
     {
         if(node[index].href)
         {
-          console.log("index="+index+" "+node[index].href.split("#")[1])
-          if (node[index].href.split("#")[1] == sel_id[1] || (typeof(el2)=="undefined" && cnt == startPosIndex[1][1]))
+          console.log("index="+index+" "+node[index].href.split("#")[1]+" == "+sel_id[1]+" ?");
+          //console.log("index="+index+" "+node[index].href.split("#")[1]);
+
+          if (node[index].href.split("#")[1] == sel_id[1] || (typeof(el2)=="undefined" && cnt == (startPosIndex[1][1]+1)))
           {
               var el2 = node[index];
-              console.log("el2="+(typeof(el2)=="object"?el2.outerHTML:"?")+ "el2="+(typeof(el2)=="object"?el2.outerHTML:""));
+              console.log("el2="+(typeof(el2)=="object"?el2.outerHTML:"?"));
           }
           cnt++; 
         }
     }
     // CHECK THIS OUT !!!
-    switchTabHeader(tl,index,el2.getBoundingClientRect(),1);
-    alert(el2.href.split("#")[1])
+    //slideEl_1_DefWidth = slideEl_1[1].getBoundingClientRect().width;
+    //slideEl_1_DefLeft  = slideEl_1[1].getBoundingClientRect().left;
+    //slideEl_2_DefLeft  = slideEl_2[1].getBoundingClientRect().left;
+
+    switchTabHeader(tl,index,el2.getBoundingClientRect(),1,startPosIndex[1][1]);
+    //alert(el2.href.split("#")[1]);
     switchTabContent('tabs2',el2.href.split("#")[1]);
 
 }
@@ -215,25 +219,22 @@ function COM_switchTab(sel)
 // TAB HEADER SELECTOR      //
 //////////////////////////////
 
-function switchTabHeader(tl,index,elRect,ii)
+function switchTabHeader(tl,index,elRect,ii,startPosIdx)
 {
-  if (reachedEnd && index + 1 == startPosIndex) {
+  if (reachedEnd && index == startPosIdx)
+  {
       tl.to( slideEl_1[ii], animDuration, { left: `${liRect[ii].width}px` });
       tl.to( slideEl_2[ii], animDuration, { left: `${elRect.left - liRect[ii].left}px` },`-=${animDuration}`);
       tl.set(slideEl_1[ii], { left: `${slideEl_1_DefLeft - liRect[ii].left}px` },`+=${animDuration}`);
       tl.set(slideEl_2[ii], { left: `${slideEl_2_DefLeft - liRect[ii].left}px` },`+=${animDuration}`);
-    }
-    timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
-    activeIndex = index + 1;
-    tl.to(slideEl_1[ii], animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
-
-    if (index + 1 != startPosIndex || reachedEnd == false)
-    {
-      tl.to(slideEl_1[ii], animDuration, {
-        left: `${elRect.left - liRect[ii].left}px`,
-        width: `${slideEl_1_DefWidth}px` });
-    }
-    reachedEnd = (index + 1 == liEls[ii].length) ? true : false
+  }
+  timesWidth = index - activeIndex[ii] <= 0 ? 1 : index - activeIndex[ii];
+  activeIndex[ii] = index;
+  
+  tl.to(slideEl_1[ii], animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
+  if (index != startPosIdx|| reachedEnd == false)
+    tl.to(slideEl_1[ii], animDuration, { left: `${elRect.left - liRect[ii].left}px`, width: `${slideEl_1_DefWidth}px` });
+  reachedEnd = (index == liEls[ii].length) ? true : false
 }
 
 //////////////////////////////
