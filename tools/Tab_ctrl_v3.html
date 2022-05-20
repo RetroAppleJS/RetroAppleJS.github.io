@@ -98,9 +98,9 @@
 var tl = gsap.timeline();
 var startPosIndex = 2;
 var activeIndex   = startPosIndex;
-var animDuration  = 0.1;
+var animDuration  = 0.2;
 var reachedEnd    = false;
-var liContainer,slideEl_1;
+var linkEl,focusEl;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
@@ -111,21 +111,21 @@ window.addEventListener("hashchange", COM_switchTab);
 
 function COM_switchTab(sel)
 {
-    if(liContainer === undefined)
+    if(linkEl === undefined)
     {
-        liContainer = document.querySelector("ul");
-        slideEl_1   = document.querySelector(".focus-el.el--1");
+        linkEl  = document.querySelector("ul");
+        focusEl = document.querySelector(".focus-el.el--1");
     }
 
     var sel_id = location.hash.slice(1);                                  // read url hash
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
-    var node = document.getElementById("app").childNodes[1].childNodes;
+    var node = linkEl.childNodes;
     for(var index=0,cnt=0;index<node.length;index++)
       if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
          || el=== undefined && startPosIndex == cnt++))                    // OR match start position
         var el = node[index];
     
-    liRect = el.getBoundingClientRect().left - liContainer.getBoundingClientRect().left;
+    liRect = el.getBoundingClientRect().left - linkEl.getBoundingClientRect().left;
     switchTabHeader(tl,index,liRect);
     switchTabContent('tabs',el.href.split("#")[1]);
 }
@@ -137,7 +137,7 @@ function COM_switchTab(sel)
 function switchTabHeader(tl,index,liRect)
 {
   if (index != startPosIndex || reachedEnd == false)
-    tl.to(slideEl_1, animDuration, {left:`${liRect}px`,width:`${slideEl_1.getBoundingClientRect().width}px`});
+    tl.to(focusEl, animDuration, {left:`${liRect}px`,width:`${focusEl.getBoundingClientRect().width}px`});
 }
 
 //////////////////////////////
