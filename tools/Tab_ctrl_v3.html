@@ -135,7 +135,6 @@ function COM_switchTab(sel)
 
     var sel_id = location.hash.slice(1);                                  // read url hash
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
-
     var node = document.getElementById("app").childNodes[1].childNodes;
     for(var index=0,cnt=0;index<node.length;index++)
       if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
@@ -152,16 +151,6 @@ function COM_switchTab(sel)
 
 function switchTabHeader(tl,index,elRect)
 {
-  if (reachedEnd && index == startPosIndex)
-  {
-    tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
-    tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
-    tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
-    tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
-  }
-  timesWidth = index - activeIndex <= 0 ? 1 : index - activeIndex;
-  activeIndex = index; reachedEnd = (index == liEls.length) ? true : false;
-  tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
   if (index != startPosIndex || reachedEnd == false)
     tl.to(slideEl_1, animDuration, { left: `${elRect.left - liRect.left}px`, width: `${slideEl_1_DefWidth}px` });
 }
