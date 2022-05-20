@@ -135,23 +135,15 @@ function COM_switchTab(sel)
 
     // read hash value from url
     if(typeof(sel)=="string") location.hash = "#"+sel;
-    var sel_id = location.hash.slice(1)
+    var sel_id = location.hash.slice(1);
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
-    // find tab object corresponding to hash value
     var node = document.getElementById("app").childNodes[1].childNodes;
+    
     for(var index=0,cnt=0;index<node.length;index++)
-    {
-        if(node[index].href)
-        {
-            //console.log("index="+index+" "+node[index].href.split("#")[1]+" == "+sel_id+" ? cnt(="+cnt+") == "+startPosIndex)
-            if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
-            {
-              var el = node[index];
-              //console.log("el="+(typeof(el)=="object"?el.outerHTML:"?"));
-            }
-            cnt++
-        }
-    }
+      if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
+         || el=== undefined && startPosIndex == cnt++))                    // OR match start position
+        var el = node[index];
+    
     switchTabHeader(tl,index,el.getBoundingClientRect());
     switchTabContent('tabs',el.href.split("#")[1]);
 }
