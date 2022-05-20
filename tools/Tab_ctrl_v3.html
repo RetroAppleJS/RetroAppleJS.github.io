@@ -108,7 +108,7 @@ startPosIndex = 2;
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
-var liContainer,liEls,slideEl_1,slideEl_2;
+var liContainer,slideEl_1;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
@@ -122,9 +122,7 @@ function COM_switchTab(sel)
     if(liContainer === undefined)
     {
         liContainer = document.querySelector("ul");
-        liEls       = [...document.querySelectorAll("ul a")];
         slideEl_1   = document.querySelector(".focus-el.el--1");
-        liRect = liContainer.getBoundingClientRect();
     }
 
     var sel_id = location.hash.slice(1);                                  // read url hash
@@ -135,7 +133,8 @@ function COM_switchTab(sel)
          || el=== undefined && startPosIndex == cnt++))                    // OR match start position
         var el = node[index];
     
-    switchTabHeader(tl,index,el.getBoundingClientRect());
+    liRect = el.getBoundingClientRect().left - liContainer.getBoundingClientRect().left;
+    switchTabHeader(tl,index,liRect);
     switchTabContent('tabs',el.href.split("#")[1]);
 }
 
@@ -143,10 +142,10 @@ function COM_switchTab(sel)
 // TAB HEADER SELECTOR      //
 //////////////////////////////
 
-function switchTabHeader(tl,index,elRect)
+function switchTabHeader(tl,index,liRect)
 {
   if (index != startPosIndex || reachedEnd == false)
-    tl.to(slideEl_1, animDuration, {left:`${elRect.left-liRect.left}px`,width:`${slideEl_1.getBoundingClientRect().width}px`});
+    tl.to(slideEl_1, animDuration, {left:`${liRect}px`,width:`${slideEl_1.getBoundingClientRect().width}px`});
 }
 
 //////////////////////////////
