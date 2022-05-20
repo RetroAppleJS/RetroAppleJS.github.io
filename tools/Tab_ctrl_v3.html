@@ -79,7 +79,6 @@
             <a href="#tab2">Emulator</a>
             <a href="#tab3">Reference</a>
             <div class="focus-el el--1"></div>
-            <div class="focus-el el--2"></div>
           </ul>
         </div>
         <br><br>
@@ -125,12 +124,7 @@ function COM_switchTab(sel)
         liContainer = document.querySelector("ul");
         liEls       = [...document.querySelectorAll("ul a")];
         slideEl_1   = document.querySelector(".focus-el.el--1");
-        slideEl_2   = document.querySelector(".focus-el.el--2");
-
         liRect = liContainer.getBoundingClientRect();
-        slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
-        slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
-        slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
     }
 
     var sel_id = location.hash.slice(1);                                  // read url hash
@@ -152,7 +146,7 @@ function COM_switchTab(sel)
 function switchTabHeader(tl,index,elRect)
 {
   if (index != startPosIndex || reachedEnd == false)
-    tl.to(slideEl_1, animDuration, { left: `${elRect.left - liRect.left}px`, width: `${slideEl_1_DefWidth}px` });
+    tl.to(slideEl_1, animDuration, {left:`${elRect.left-liRect.left}px`,width:`${slideEl_1.getBoundingClientRect().width}px`});
 }
 
 //////////////////////////////
@@ -164,11 +158,9 @@ function switchTabContent(node_name,sel_id)
   var node = document.getElementsByClassName(node_name)[0].childNodes
   for(var i=0;i<node.length;i++)
   {
-      if(node[i].id)
-      {
-          if(node[i].id == sel_id) node[i].classList.add('active');
-          else                     node[i].classList.remove('active');
-      }
+      if(node[i].id===undefined) continue;
+      if(node[i].id == sel_id) node[i].classList.add('active');
+      else                     node[i].classList.remove('active');
   }        
 }
 </script>
