@@ -109,7 +109,7 @@ startPosIndex = 1;
 reachedEnd    = false;
 activeIndex   = startPosIndex;
 animDuration  = 0.1;
-var liContainer,liEls,slideEl_1,slideEl_2 
+var liContainer,liEls,slideEl_1,slideEl_2;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
@@ -139,16 +139,20 @@ function COM_switchTab(sel)
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
     // find tab object corresponding to hash value
     var node = document.getElementById("app").childNodes[1].childNodes;
-    for(var index=0,cnt=1;index<node.length;index++)
+    for(var index=0,cnt=0;index<node.length;index++)
     {
         if(node[index].href)
         {
-            if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == (startPosIndex+1)))
-            var el = node[index];
+            //console.log("index="+index+" "+node[index].href.split("#")[1]+" == "+sel_id+" ? cnt(="+cnt+") == "+startPosIndex)
+            if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
+            {
+              var el = node[index];
+              //console.log("el="+(typeof(el)=="object"?el.outerHTML:"?"));
+            }
             cnt++
         }
     }
-    switchTabHeader(tl,index-1,el.getBoundingClientRect());
+    switchTabHeader(tl,index,el.getBoundingClientRect());
     switchTabContent('tabs',el.href.split("#")[1]);
 }
 
