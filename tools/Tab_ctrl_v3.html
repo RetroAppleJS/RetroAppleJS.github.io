@@ -1,64 +1,57 @@
-<html lang="en" >
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <style>
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-  #app ul {
-    position: relative;
-    height: 30px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr); /* elements */
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.65);
-    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
-    overflow: hidden;
-  }
+#app ul {
+  position: relative;
+  height: 30px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* elements */
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
 
-  #app ul a {
-    list-style: none;
-    display: grid;
-    place-items: center;
-    color: #000;
-    z-index: 10;
-    cursor: pointer;
-    text-decoration: none;
-  }
+#app ul a {
+  list-style: none;
+  display: grid;
+  place-items: center;
+  color: #000;
+  z-index: 10;
+  cursor: pointer;
+  text-decoration: none;
+}
 
-  #app ul .focus-el {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: calc(100% / 4);
-    height: 100%;
-    border-radius: 10px;
-    background: #fff;
-    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
-  }
+#app ul .focus-el {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / 4);
+  height: 100%;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+}
 
-  #app ul .focus-el.el--2 {
-    left: calc(-100% / 4);
-  }
+#box {
+  background:#76B9CE;
+  border-radius:10px;
+}
 
-  #box {
-    background:#76B9CE;
-    border-radius:10px;
-  }
+#box tr td {
+  /*display:flex;*/
+  flex-wrap:wrap;
+}
 
-  #box tr td {
-    /*display:flex;*/
-    flex-wrap:wrap;
-  }
-
-  .tabs > div { display:none; }
-  .tabs > div.active { display:block; }
-
-  .alltabs > a { display:none; }
-  .alltabs > a.active { display:block; }
+.tabs > div { display:none; }
+.tabs > div.active { display:block; }
 
 </style>
 <link rel="stylesheet" href="../res/fontawesome/all.css">
@@ -68,7 +61,6 @@
   <table id=box style=width:450px>
     <tr>
       <td valign=top>
-        <!--i class="fa fa-bars" onmouseover="document.getElementById('app').style.display=''" style=float:left;></i!-->
 
         <!-- tab menu  -->
         <div id=app>
@@ -103,11 +95,11 @@
 // TAB ANIMATOR     //
 //////////////////////
 
-tl = gsap.timeline();
-startPosIndex = 2;
-reachedEnd    = false;
-activeIndex   = startPosIndex;
-animDuration  = 0.1;
+var tl = gsap.timeline();
+var startPosIndex = 2;
+var activeIndex   = startPosIndex;
+var animDuration  = 0.1;
+var reachedEnd    = false;
 var liContainer,slideEl_1;
 
 window.addEventListener("load", COM_switchTab);
