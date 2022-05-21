@@ -95,14 +95,14 @@
 // TAB ANIMATOR     //
 //////////////////////
 
-var tl = gsap.timeline();
 var startIndex    = 2;
-var activeIndex   = startIndex;
 var animDuration  = 0.2;
-var reachedEnd    = false;
-var mainEl,focusEl;
 
-window.addEventListener("load", COM_switchTab);
+var tl = gsap.timeline();
+var activeIndex   = startIndex;
+var reachedEnd    = false;
+
+window.addEventListener("load",       COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
 
 ////////////////////////////
@@ -111,19 +111,14 @@ window.addEventListener("hashchange", COM_switchTab);
 
 function COM_switchTab(sel)
 {
-    if(mainEl === undefined)
-    {
-        mainEl  = document.querySelector("ul");
-        focusEl = document.querySelector(".focus-el.el--1");
-    }
-
+    if(mainEl === undefined) var mainEl  = document.querySelector("ul");
     var sel_id = location.hash.slice(1);                                   // read url hash
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
     for(var index=0,cnt=0,node=mainEl.childNodes;index<node.length;index++)
       if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
          || SelEl===undefined && startIndex == cnt++))                     // OR match start position
         var SelEl = node[index];
-    switchTabHeader(tl,index,SelEl.getBoundingClientRect().left-mainEl.getBoundingClientRect().left);
+    switchTabHeader(tl,index,document.querySelector(".focus-el.el--1"),SelEl.getBoundingClientRect().left-mainEl.getBoundingClientRect().left);
     switchTabContent("tabs",SelEl.href.split("#")[1]);
 }
 
@@ -131,7 +126,7 @@ function COM_switchTab(sel)
 // TAB HEADER SELECTOR      //
 //////////////////////////////
 
-function switchTabHeader(tl,index,pos)
+function switchTabHeader(tl,index,focusEl,pos,)
 {
   if (index != startIndex || reachedEnd == false)
     tl.to(focusEl, animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
