@@ -119,8 +119,7 @@ function COM_switchTab(sel)
 
     var sel_id = location.hash.slice(1);                                   // read url hash
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
-    var node = mainEl.childNodes;
-    for(var index=0,cnt=0;index<node.length;index++)
+    for(var index=0,cnt=0,node=mainEl.childNodes;index<node.length;index++)
       if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
          || SelEl===undefined && startIndex == cnt++))                     // OR match start position
         var SelEl = node[index];
