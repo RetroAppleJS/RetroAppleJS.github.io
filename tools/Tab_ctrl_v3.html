@@ -96,11 +96,11 @@
 //////////////////////
 
 var tl = gsap.timeline();
-var startIndex = 2;
+var startIndex    = 2;
 var activeIndex   = startIndex;
 var animDuration  = 0.2;
 var reachedEnd    = false;
-var linkEl,focusEl;
+var mainEl,focusEl;
 
 window.addEventListener("load", COM_switchTab);
 window.addEventListener("hashchange", COM_switchTab);
@@ -111,21 +111,21 @@ window.addEventListener("hashchange", COM_switchTab);
 
 function COM_switchTab(sel)
 {
-    if(linkEl === undefined)
+    if(mainEl === undefined)
     {
-        linkEl  = document.querySelector("ul");
+        mainEl  = document.querySelector("ul");
         focusEl = document.querySelector(".focus-el.el--1");
     }
 
-    var sel_id = location.hash.slice(1);                                  // read url hash
+    var sel_id = location.hash.slice(1);                                   // read url hash
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
-    var node = linkEl.childNodes;
+    var node = mainEl.childNodes;
     for(var index=0,cnt=0;index<node.length;index++)
       if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
-         || el=== undefined && startIndex == cnt++))                    // OR match start position
-        var el = node[index];
-    switchTabHeader(tl,index,el.getBoundingClientRect().left - linkEl.getBoundingClientRect().left);
-    switchTabContent("tabs",el.href.split("#")[1]);
+         || SelEl===undefined && startIndex == cnt++))                     // OR match start position
+        var SelEl = node[index];
+    switchTabHeader(tl,index,SelEl.getBoundingClientRect().left-mainEl.getBoundingClientRect().left);
+    switchTabContent("tabs",SelEl.href.split("#")[1]);
 }
 
 //////////////////////////////
@@ -135,11 +135,7 @@ function COM_switchTab(sel)
 function switchTabHeader(tl,index,pos)
 {
   if (index != startIndex || reachedEnd == false)
-  {
     tl.to(focusEl, animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
-
-		//var t = new Tween(focusEl, _parseVars(arguments, 0, this), _parsePosition(this, _isNumber(vars) ? arguments[3] : position));
-  }
 }
 
 //////////////////////////////
@@ -148,7 +144,7 @@ function switchTabHeader(tl,index,pos)
 
 function switchTabContent(node_name,sel_id)
 {
-  var node = document.getElementsByClassName(node_name)[0].childNodes
+  var node = document.getElementsByClassName(node_name)[0].childNodes;
   for(var i=0;i<node.length;i++)
   {
       if(node[i].id===undefined) continue;
