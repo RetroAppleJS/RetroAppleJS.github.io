@@ -40,6 +40,11 @@
   box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
 }
 
+#app .focus-el {
+    float:left;
+    width:350px;
+}
+
 #box {
   background:#76B9CE;
   border-radius:10px;
@@ -64,7 +69,7 @@
 
         <!-- tab menu  -->
         <div id=app>
-          <ul style="width:350px;float:left">
+          <ul class="main-el el--1">
             <!-- links -->
             <a href="#tab0">Assembler</a>
             <a href="#tab1">Debugger</a>
@@ -73,7 +78,6 @@
             <div class="focus-el el--1"></div>
           </ul>
         </div>
-        <br><br>
 
         <!-- tab content -->
         <div class="tabs">
@@ -81,14 +85,14 @@
           <div id="tab1" style="height:200px">
         
             <div id=app>
-                <ul style="width:350px;float:left">
+                <ul class="main-el el--2">
                   <!-- links -->
                   <a href="#tab1-0">CPU</a>
                   <a href="#tab1-1">Disk</a>
                   <div class="focus-el el--2"></div>
                 </ul>
               </div>
-              <br><br> 
+              <br>
         
           </div>
           <div id="tab2" style="height:250px"> 
@@ -103,11 +107,10 @@
 <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
 <script id="rendered-js">
 
-var oTAB1 = new ANIMTAB();
+var oTAB1 = new ANIMTAB();  oTAB1.readhash = function() { return location.hash.slice(1).split("-")[0] };
+var oTAB2 = new ANIMTAB();  oTAB2.readhash = function() { return location.hash.slice(1) };
 
-var oTAB2 = new ANIMTAB();
-
-window.addEventListener("load",function(){oTAB1.switchTab(event)},false );
+window.addEventListener("load",function(){oTAB1.switchTab(event);/*oTAB2.switchTab(event)*/},false );
 window.addEventListener('hashchange',function(){oTAB2.switchTab(event)},false);
 
 //////////////////////
@@ -116,39 +119,41 @@ window.addEventListener('hashchange',function(){oTAB2.switchTab(event)},false);
 
 function ANIMTAB()
 {
-    this.startIndex    = 1;
-    this.animDuration  = 0.2;
-    this.activeIndex   = this.startIndex;
-    this.reachedEnd    = false;
-    this.tl            = gsap.timeline();   // requires GSAP3 (GreenSock) library
+    this.startIndex     = 1;
+    this.animDuration   = 0.2;
+    this.mainTAG        = "#app .main-el.el--1"; 
+    this.focusTAG       = "#app .focus-el.el--1"; 
+    this.tabTAG         = ".tabs"; 
+
+    this.activeIndex    = this.startIndex;
+    this.reachedEnd     = false;
+    this.tl             = gsap.timeline();   // requires GSAP3 (GreenSock) library
+    this.readhash       = function() { return location.hash.slice(1) }
 
     ////////////////////////////
     // TAB EVENT HANDLER      //
     ////////////////////////////
     this.switchTab = function(event)  // event handler
     {
-    if(this.mainEl === undefined) { this.mainEl  = document.querySelector("ul") }
-    var sel_id = this.readhash();                                   // read url hash
-    if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
-    for(var index=0,cnt=0,node=this.mainEl.childNodes;index<node.length;index++)
-        if (node[index].href && (node[index].href.split("#")[1] == sel_id  // match url hash
-        || SelEl===undefined && this.startIndex == cnt++))                 // OR match start position
-        var SelEl = node[index];
-    var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
-
-    this.switchTabHeader(index,document.querySelector(".focus-el.el--1"),pos);
-    this.switchTabContent("tabs",SelEl.href.split("#")[1]);
+        if(this.mainEl === undefined) { this.mainEl  = document.querySelector(this.mainTAG) }
+        var sel_id = this.readhash();                                   // read url hash
+        if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
+        for(var index=0,cnt=0,node=this.mainEl.childNodes;index<node.length;index++)
+            if (node[index].href && (node[index].href.split("#")[1] == sel_id  // match url hash
+            || SelEl===undefined && this.startIndex == cnt++))                 // OR match start position
+            var SelEl = node[index];
+        var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
+        this.switchTabHeader(index,document.querySelector(this.focusTAG),pos);
+        this.switchTabContent(this.tabTAG,SelEl.href.split("#")[1]);
     }
-
-    this.readhash = function() { return location.hash.slice(1) }
 
     //////////////////////////////
     // TAB HEADER SELECTOR      //
     //////////////////////////////
     this.switchTabHeader = function(index,focusEl,pos)
     {
-    if (index != this.startIndex || this.reachedEnd == false)
-        this.tl.to(focusEl, this.animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
+        if (index != this.startIndex || this.reachedEnd == false)
+            this.tl.to(focusEl, this.animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
     }
 
     //////////////////////////////
@@ -156,7 +161,7 @@ function ANIMTAB()
     //////////////////////////////
     this.switchTabContent = function(node_name,sel_id)
     {
-        var node = document.getElementsByClassName(node_name)[0].childNodes;
+        var node = document.querySelector(node_name).childNodes;
         for(var i=0;i<node.length;i++)
         {
             if(node[i].id===undefined) continue;
