@@ -1,0 +1,170 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#app ul {
+  position: relative;
+  height: 30px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* elements */
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+#app ul a {
+  list-style: none;
+  display: grid;
+  place-items: center;
+  color: #000;
+  z-index: 10;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#app ul .focus-el {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / 4);
+  height: 100%;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+}
+
+#box {
+  background:#76B9CE;
+  border-radius:10px;
+}
+
+#box tr td {
+  /*display:flex;*/
+  flex-wrap:wrap;
+}
+
+.tabs > div { display:none; }
+.tabs > div.active { display:block; }
+
+</style>
+<link rel="stylesheet" href="../res/fontawesome/all.css">
+</head>
+<body style="font-family:'Arial'">
+
+  <table id=box style=width:450px>
+    <tr>
+      <td valign=top>
+
+        <!-- tab menu  -->
+        <div id=app>
+          <ul style="width:350px;float:left">
+            <!-- links -->
+            <a href="#tab0">Assembler</a>
+            <a href="#tab1">Debugger</a>
+            <a href="#tab2">Emulator</a>
+            <a href="#tab3">Reference</a>
+            <div class="focus-el el--1"></div>
+          </ul>
+        </div>
+        <br><br>
+
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab0" style="height:150px"> Tab zero content </div>
+          <div id="tab1" style="height:200px">
+        
+            <div id=app>
+                <ul style="width:350px;float:left">
+                  <!-- links -->
+                  <a href="#tab1-0">CPU</a>
+                  <a href="#tab1-1">Disk</a>
+                  <div class="focus-el el--2"></div>
+                </ul>
+              </div>
+              <br><br> 
+        
+          </div>
+          <div id="tab2" style="height:250px"> 
+              Tab Three content with a <a href="#tab0">link to tab zero</a>
+          </div>
+          <div id="tab3" style="height:1000px"> Tab three content </div>
+        </div>
+      </td>
+  </tr>
+</table>
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
+<script id="rendered-js">
+
+var oTAB1 = new ANIMTAB();
+
+var oTAB2 = new ANIMTAB();
+
+window.addEventListener("load",function(){oTAB1.switchTab(event)},false );
+window.addEventListener('hashchange',function(){oTAB2.switchTab(event)},false);
+
+//////////////////////
+// TAB ANIMATOR     //
+//////////////////////
+
+function ANIMTAB()
+{
+    this.startIndex    = 1;
+    this.animDuration  = 0.2;
+    this.activeIndex   = this.startIndex;
+    this.reachedEnd    = false;
+    this.tl            = gsap.timeline();   // requires GSAP3 (GreenSock) library
+
+    ////////////////////////////
+    // TAB EVENT HANDLER      //
+    ////////////////////////////
+    this.switchTab = function(event)  // event handler
+    {
+    if(this.mainEl === undefined) { this.mainEl  = document.querySelector("ul") }
+    var sel_id = this.readhash();                                   // read url hash
+    if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
+    for(var index=0,cnt=0,node=this.mainEl.childNodes;index<node.length;index++)
+        if (node[index].href && (node[index].href.split("#")[1] == sel_id  // match url hash
+        || SelEl===undefined && this.startIndex == cnt++))                 // OR match start position
+        var SelEl = node[index];
+    var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
+
+    this.switchTabHeader(index,document.querySelector(".focus-el.el--1"),pos);
+    this.switchTabContent("tabs",SelEl.href.split("#")[1]);
+    }
+
+    this.readhash = function() { return location.hash.slice(1) }
+
+    //////////////////////////////
+    // TAB HEADER SELECTOR      //
+    //////////////////////////////
+    this.switchTabHeader = function(index,focusEl,pos)
+    {
+    if (index != this.startIndex || this.reachedEnd == false)
+        this.tl.to(focusEl, this.animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
+    }
+
+    //////////////////////////////
+    // TAB CONTENT SELECTOR     //
+    //////////////////////////////
+    this.switchTabContent = function(node_name,sel_id)
+    {
+        var node = document.getElementsByClassName(node_name)[0].childNodes;
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id===undefined) continue;
+            if(node[i].id == sel_id) node[i].classList.add('active');
+            else                     node[i].classList.remove('active');
+        }        
+    }
+}
+</script>
+</body>
+</html>
