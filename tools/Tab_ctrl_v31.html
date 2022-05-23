@@ -91,7 +91,7 @@
 <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
 <script id="rendered-js">
 
-var oTAB = new TAB();
+var oTAB = new ANIMTAB();
 window.addEventListener("load",function(){oTAB.switchTab(event)},false );
 window.addEventListener('hashchange',function(){oTAB.switchTab(event)},false);
 
@@ -99,47 +99,54 @@ window.addEventListener('hashchange',function(){oTAB.switchTab(event)},false);
 // TAB ANIMATOR     //
 //////////////////////
 
-function TAB()
+function ANIMTAB()
 {
-  this.startIndex    = 2;
-  this.animDuration  = 0.2;
-  this.activeIndex   = this.startIndex;
-  this.reachedEnd    = false;
-  this.tl            = gsap.timeline();
+    this.startIndex    = 2;
+    this.animDuration  = 0.2;
+    this.activeIndex   = this.startIndex;
+    this.reachedEnd    = false;
+    this.tl            = gsap.timeline();   // requires GSAP3 (GreenSock) library
 
-  this.switchTabHeader = function(index,focusEl,pos)
-  {
-    if (index != this.startIndex || this.reachedEnd == false)
-      this.tl.to(focusEl, this.animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
-  }
-
-  this.switchTabContent = function(node_name,sel_id)
-  {
-    var node = document.getElementsByClassName(node_name)[0].childNodes;
-    for(var i=0;i<node.length;i++)
+    ////////////////////////////
+    // TAB EVENT HANDLER      //
+    ////////////////////////////
+    this.switchTab = function(event)  // event handler
     {
-        if(node[i].id===undefined) continue;
-        if(node[i].id == sel_id) node[i].classList.add('active');
-        else                     node[i].classList.remove('active');
-    }        
-  }
-
-  this.switchTab = function(event)
-  {
-    //if(typeof(event)=="object") console.log("event.type="+event.type);
-    //else console.log("typeof(event)="+typeof(event));
     if(this.mainEl === undefined) { this.mainEl  = document.querySelector("ul") }
     var sel_id = location.hash.slice(1);                                   // read url hash
     if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
     for(var index=0,cnt=0,node=this.mainEl.childNodes;index<node.length;index++)
-      if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
+        if (node[index].href && (node[index].href.split("#")[1] == sel_id    // match url hash
         || SelEl===undefined && this.startIndex == cnt++))                 // OR match start position
         var SelEl = node[index];
     var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
 
     this.switchTabHeader(index,document.querySelector(".focus-el.el--1"),pos);
     this.switchTabContent("tabs",SelEl.href.split("#")[1]);
-  }
+    }
+
+    //////////////////////////////
+    // TAB HEADER SELECTOR      //
+    //////////////////////////////
+    this.switchTabHeader = function(index,focusEl,pos)
+    {
+    if (index != this.startIndex || this.reachedEnd == false)
+        this.tl.to(focusEl, this.animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
+    }
+
+    //////////////////////////////
+    // TAB CONTENT SELECTOR     //
+    //////////////////////////////
+    this.switchTabContent = function(node_name,sel_id)
+    {
+        var node = document.getElementsByClassName(node_name)[0].childNodes;
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id===undefined) continue;
+            if(node[i].id == sel_id) node[i].classList.add('active');
+            else                     node[i].classList.remove('active');
+        }        
+    }
 }
 </script>
 </body>
