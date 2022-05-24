@@ -58,8 +58,16 @@
 .tabs > div { display:none; }
 .tabs > div.active { display:block; }
 
+/*
+.tabs1 > div { display:none; }
+.tabs1 > div.active { display:block; }
+
 .tabs2 > div { display:none; }
 .tabs2 > div.active { display:block; }
+
+.tabs3 > div { display:none; }
+.tabs3 > div.active { display:block; }
+*/
 
 </style>
 <link rel="stylesheet" href="../res/fontawesome/all.css">
@@ -84,9 +92,27 @@
 
         <!-- tab content -->
         <div class="tabs">
-          <div id="tab0" style="height:150px"> Tab zero content </div>
+          <div id="tab0" style="height:150px">
+        
+            <!-- tab sub-menu  -->
+            <div id=app>
+                <ul class="main-el el--3">
+                    <!-- links -->
+                    <a href="#tab0-0">APPLE</a>
+                    <a href="#tab0-1">DEVICES</a>
+                    <div class="focus-el el--3"></div>
+                </ul>
+            </div>
+            <div class="tabs">
+                <div id="tab0-0" style="height:250px">EMULATOR</div>
+                <div id="tab0-1" style="height:250px">Devices</div>
+            </div>
+        
+          </div>
           <div id="tab1" style="height:200px">Tab one content with a <a href="#tab0">link to tab zero</a></div>
           <div id="tab2" style="height:250px"> 
+
+            <!-- tab sub-menu  -->
             <div id=app>
                 <ul class="main-el el--2">
                     <!-- links -->
@@ -95,15 +121,14 @@
                     <div class="focus-el el--2"></div>
                 </ul>
             </div>
-
-            <div class="tabs2">
+            <div class="tabs">
                 <div id="tab2-0" style="height:250px">CPU content</div>
                 <div id="tab2-1" style="height:250px">Disk content</div>
             </div>
 
               
           </div>
-          <div id="tab3" style="height:1000px"> Tab three content </div>
+          <div id="tab3" style="height:1000px"></div>
         </div>
       </td>
   </tr>
@@ -112,12 +137,21 @@
 <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
 <script id="rendered-js">
 
-var startPosIndex = [1,[0,1,0,0]];
-var oTAB1 = new ANIMTAB({"startIndex":3,"readhash":function(){return location.hash.slice(1).split("-")[0]}});
-var oTAB2 = new ANIMTAB({"startIndex":1,"mainTAG":"#app .main-el.el--2","focusTAG":"#app .focus-el.el--2","tabTAG":".tabs2"});
+var _td =   [
+                {"startIndex":2,"mainTAG":"#app .main-el.el--1","focusTAG":"#app .focus-el.el--1","tabTAG":".tabs1"},
+                {"mainTAG":"#app .main-el.el--2","focusTAG":"#app .focus-el.el--2","tabTAG":".tabs2"}
+            ]
 
-window.addEventListener("load",function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) oTAB2.switchTab(event);},false );
-window.addEventListener('hashchange',function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) oTAB2.switchTab(event);},false);
+var startPosIndex = [1,[0,1,0,0]];
+var oTAB1 = new ANIMTAB({"startIndex":2,"readhash":function(){return location.hash.slice(1).split("-")[0]},"tabTAG":".tabs","tabIDX":0});
+var oTAB2 = new ANIMTAB({"mainTAG":"#app .main-el.el--2","focusTAG":"#app .focus-el.el--2","tabTAG":".tabs","tabIDX":2});
+var oTAB3 = new ANIMTAB({"mainTAG":"#app .main-el.el--3","focusTAG":"#app .focus-el.el--3","tabTAG":".tabs","tabIDX":1});
+
+oTAB = new ANIMTAB({"menuID":"#app","contentCL":".tabs"});
+window.addEventListener("load",function(){oTAB.init()});
+
+window.addEventListener("load",function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)} },false );
+window.addEventListener('hashchange',function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)}},false);
 
 //////////////////////
 // TAB ANIMATOR     //
@@ -130,6 +164,7 @@ function ANIMTAB(arg)
     this.mainTAG        = "#app .main-el.el--1"; 
     this.focusTAG       = "#app .focus-el.el--1"; 
     this.tabTAG         = ".tabs"; 
+    this.tabIDX         = 0
 
     this.activeIndex    = this.startIndex;
     this.reachedEnd     = false;
@@ -142,9 +177,35 @@ function ANIMTAB(arg)
     ////////////////////////////
     // TAB UPATE SQUENCER     //
     ////////////////////////////
-    this.update = function(event)
+    this.init = function(args)
     {
+        var el  = document.querySelectorAll(this.menuID);
+        //alert(typeof(el)+" "+el.childNodes.length);
+        for(var i=0;i<el.length;i++)
+        {
+            console.log(i+") "+el[i].outerHTML);
+        }
+        console.log("---------------");
 
+        var el  = document.querySelectorAll(this.contentCL);
+        //alert(typeof(el)+" "+el.childNodes.length);
+
+        for(var i=0;i<el.length;i++)
+        {
+            //console.log(i+") "+el[i].outerHTML);
+            for(var j=0;j<el[i].childNodes.length;j++)
+                if(el[i].childNodes[j].tagName=="DIV") console.log(el[i].childNodes[j].id)
+        }
+        console.log("---------------");
+
+        /*
+        for(var i=0;i<el.childNodes.length;i++)
+        {
+            console.log(i+") "+el.childNodes[i].outerHTML)
+            //console.log("")
+        }
+        */
+        
     }
 
     ////////////////////////////
@@ -164,7 +225,8 @@ function ANIMTAB(arg)
         var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
 
         var hasChild = "";
-        //var seekChildren = this.tabTAG+" #"+sel_id+" #app" ;
+        var seekChildren = this.tabTAG+" #"+sel_id+" #app" ;
+        console.log("seekChildren="+seekChildren)
         //var hasChild = !document.querySelector(seekChildren)!=null // + what level was clicked ?
         var isTargetLevel = location.hash.slice(1).split("-").length - sel_id.split("-").length == 0;
         //if(isTargetLevel) hasChild = !hasChild
@@ -174,7 +236,7 @@ function ANIMTAB(arg)
         +bswitchChildren)
 
         this.switchTabHeader(index,document.querySelector(this.focusTAG),pos);
-        this.switchTabContent(this.tabTAG,SelEl.href.split("#")[1]);
+        this.switchTabContent(this.tabTAG,this.tabIDX,SelEl.href.split("#")[1]);
 
         //return !this.hasChildren && this.isTargetLevel;
         return bswitchChildren;
@@ -192,10 +254,28 @@ function ANIMTAB(arg)
     //////////////////////////////
     // TAB CONTENT SELECTOR     //
     //////////////////////////////
-    this.switchTabContent = function(node_name,sel_id)
+
+    this.switchTabContent = function(tabTAG,tabIDX,sel_id)
     {
-        var node = document.querySelector(node_name);
-        if(node==null) {console.log("unable to find '"+node_name+"'") ;return;}
+        var node = document.querySelectorAll(tabTAG)[tabIDX];
+        console.log("tabIDX="+tabIDX+" sel_id="+sel_id)
+        console.log(node.outerHTML)
+        if(node==null) {console.log("unable to find '"+tabTAG+"'") ;return}
+        else node=node.childNodes;
+        
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id===undefined) continue;
+            if(node[i].id == sel_id) node[i].classList.add('active');
+            else                     node[i].classList.remove('active');
+        }      
+    }
+
+/*
+    this.switchTabContent = function(tabTAG,sel_id)
+    {
+        var node = document.querySelector(tabTAG);
+        if(node==null) {console.log("unable to find '"+tabTAG+"'") ;return;}
         else node=node.childNodes
 
         for(var i=0;i<node.length;i++)
@@ -205,7 +285,9 @@ function ANIMTAB(arg)
             else                     node[i].classList.remove('active');
         }        
     }
+*/
 }
+
 </script>
 </body>
 </html>
