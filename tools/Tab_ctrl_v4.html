@@ -8,7 +8,7 @@
   padding: 0;
 }
 
-#app ul {
+#tab_div ul {
   position: relative;
   height: 30px;
   display: grid;
@@ -19,7 +19,7 @@
   overflow: hidden;
 }
 
-#app ul a {
+#tab_div ul a {
   list-style: none;
   display: grid;
   place-items: center;
@@ -29,7 +29,7 @@
   text-decoration: none;
 }
 
-#app ul .focus-el {
+#tab_div ul .tab_div_end {
   position: absolute;
   left: 0;
   top: 0;
@@ -38,11 +38,6 @@
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
-}
-
-#app .focus-el {
-    float:left;
-    width:350px;
 }
 
 #box {
@@ -69,28 +64,29 @@
       <td valign=top>
 
         <!-- tab menu  -->
-        <div id=app>
-          <ul class="main-el el--1">
+        <div id=tab_div>
+          <ul class="tab-ul el--1">
             <!-- links -->
             <a href="#tab0">Emulator</a>
             <a href="#tab1">Assembler</a>
-            <a href="#tab2">Tracer</a>
+            <a href="#tab2" id="tab_a">Tracer</a>
             <a href="#tab3">Reference</a>
-            <div class="focus-el el--1"></div>
+            <div class="tab_div_end el--1"></div>
           </ul>
         </div>
+        
 
         <!-- tab content -->
         <div class="tabs">
           <div id="tab0" style="height:150px">
         
             <!-- tab sub-menu  -->
-            <div id=app>
-                <ul class="main-el el--3">
+            <div id=tab_div>
+                <ul class="tab-ul el--3">
                     <!-- links -->
                     <a href="#tab0-0">APPLE</a>
-                    <a href="#tab0-1">DEVICES</a>
-                    <div class="focus-el el--3"></div>
+                    <a href="#tab0-1" id="tab_a">DEVICES</a>
+                    <div class="tab_div_end el--3"></div>
                 </ul>
             </div>
             <div class="tabs">
@@ -103,12 +99,12 @@
           <div id="tab2" style="height:250px"> 
 
             <!-- tab sub-menu  -->
-            <div id=app>
-                <ul class="main-el el--2">
+            <div id=tab_div>
+                <ul class="tab-ul el--2">
                     <!-- links -->
-                    <a href="#tab2-0">CPU</a>
+                    <a href="#tab2-0" id="tab_a">CPU</a>
                     <a href="#tab2-1">Disk</a>
-                    <div class="focus-el el--2"></div>
+                    <div class="tab_div_end el--2"></div>
                 </ul>
             </div>
             <div class="tabs">
@@ -116,7 +112,6 @@
                 <div id="tab2-1" style="height:250px">Disk content</div>
             </div>
 
-              
           </div>
           <div id="tab3" style="height:1000px"></div>
         </div>
@@ -128,16 +123,16 @@
 <script id="rendered-js">
 
 var _td =   [
-                {"startIndex":2,"mainTAG":"#app .main-el.el--1","focusTAG":"#app .focus-el.el--1","tabTAG":".tabs1"},
-                {"mainTAG":"#app .main-el.el--2","focusTAG":"#app .focus-el.el--2","tabTAG":".tabs2"}
+                {"startIndex":2,"mainTAG":"#tab_div .tab-ul.el--1","focusTAG":"#tab_div .tab_div_end.el--1","tabTAG":".tabs1"},
+                {"mainTAG":"#tab_div .tab-ul.el--2","focusTAG":"#tab_div .tab_div_end.el--2","tabTAG":".tabs2"}
             ]
 
 var startPosIndex = [1,[0,1,0,0]];
 var oTAB1 = new ANIMTAB({"startIndex":2,"readhash":function(){return location.hash.slice(1).split("-")[0]},"tabIDX":0});
-var oTAB2 = new ANIMTAB({"mainTAG":"#app .main-el.el--2","focusTAG":"#app .focus-el.el--2","tabIDX":2});
-var oTAB3 = new ANIMTAB({"mainTAG":"#app .main-el.el--3","focusTAG":"#app .focus-el.el--3","tabIDX":1});
+var oTAB2 = new ANIMTAB({"mainTAG":"#tab_div .tab-ul.el--2","focusTAG":"#tab_div .tab_div_end.el--2","tabIDX":2});
+var oTAB3 = new ANIMTAB({"mainTAG":"#tab_div .tab-ul.el--3","focusTAG":"#tab_div .tab_div_end.el--3","tabIDX":1});
 
-oTAB = new ANIMTAB({"menuID":"#app","contentCL":".tabs"});
+oTAB = new ANIMTAB({"menuID":"#tab_div .tab-ul","contentCL":".tabs"});
 window.addEventListener("load",function(){oTAB.init()});
 
 window.addEventListener("load",function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)} },false );
@@ -151,8 +146,8 @@ function ANIMTAB(arg)
 {
     this.startIndex     = 0;
     this.animDuration   = 0.2;
-    this.mainTAG        = "#app .main-el.el--1"; 
-    this.focusTAG       = "#app .focus-el.el--1"; 
+    this.mainTAG        = "#tab_div .tab-ul.el--1"; 
+    this.focusTAG       = "#tab_div .tab_div_end.el--1"; 
     this.tabTAG         = ".tabs"; 
     this.tabIDX         = 0
 
@@ -165,21 +160,27 @@ function ANIMTAB(arg)
     if(typeof(arg)=="object") for(var i in arg) this[i] = arg[i];
 
     ////////////////////////////
-    // TAB UPATE SQUENCER     //
+    // TAB UPDATE SQUENCER     //
     ////////////////////////////
     this.init = function(args)
     {
         console.log("--------------- TAB MENU");
         var el  = document.querySelectorAll(this.menuID);
-        //alert(typeof(el)+" "+el.childNodes.length);
+        console.log("query '"+this.menuID+"'");
         for(var i=0;i<el.length;i++)
         {
-            console.log(i+") "+el[i].outerHTML);
+          //console.log(i+") "+el[i].outerHTML);
+          for(var j=0;j<el[i].childNodes.length;j++)
+          {
+            var node = el[i].childNodes[j]
+            if(node.tagName!="A" || node.href===undefined) continue;
+            console.log( node.hash +" "+node.id )
+          }
         }
         console.log("--------------- TAB CONTENT");
 
         var el  = document.querySelectorAll(this.contentCL);
-        //alert(typeof(el)+" "+el.childNodes.length);
+        console.log("query '"+this.contentCL+"'");
 
         for(var i=0;i<el.length;i++)
         {
@@ -188,14 +189,6 @@ function ANIMTAB(arg)
                 if(el[i].childNodes[j].tagName=="DIV") console.log(el[i].childNodes[j].id)
         }
         console.log("---------------");
-
-        /*
-        for(var i=0;i<el.childNodes.length;i++)
-        {
-            console.log(i+") "+el.childNodes[i].outerHTML)
-            //console.log("")
-        }
-        */
         
     }
 
@@ -216,7 +209,7 @@ function ANIMTAB(arg)
         var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
 
         var hasChild = "";
-        var seekChildren = this.tabTAG+" #"+sel_id+" #app" ;
+        var seekChildren = this.tabTAG+" #"+sel_id+" #tab_div" ;
         console.log("seekChildren="+seekChildren)
         //var hasChild = !document.querySelector(seekChildren)!=null // + what level was clicked ?
         var isTargetLevel = location.hash.slice(1).split("-").length - sel_id.split("-").length == 0;
