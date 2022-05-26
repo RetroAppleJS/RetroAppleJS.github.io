@@ -133,8 +133,6 @@ var oTAB2 = new ANIMTAB({"mainTAG":"#tab_div .tab-ul.el--2","focusTAG":"#tab_div
 var oTAB3 = new ANIMTAB({"mainTAG":"#tab_div .tab-ul.el--3","focusTAG":"#tab_div .tab_div_end.el--3","tabIDX":1});
 
 oTAB = new ANIMTAB({"menuID":"#tab_div .tab-ul","contentCL":".tabs"});
-window.addEventListener("load",function(){oTAB.init()});
-
 window.addEventListener("load",function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)} },false );
 window.addEventListener('hashchange',function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)}},false);
 
@@ -148,9 +146,13 @@ function ANIMTAB(arg)
     this.animDuration   = 0.2;
     this.mainTAG        = "#tab_div .tab-ul.el--1"; 
     this.focusTAG       = "#tab_div .tab_div_end.el--1"; 
-    this.tabTAG         = ".tabs"; 
+    this.tabTAG         = ".tabs";
+
+    this.tabHASH        = "#tab";
+    this.defID          = "tab_a"; 
     this.tabIDX         = 0
 
+    this.struct         = [];
     this.activeIndex    = this.startIndex;
     this.reachedEnd     = false;
     this.hasChildren    = false;
@@ -158,39 +160,6 @@ function ANIMTAB(arg)
     this.readhash       = function() { return location.hash.slice(1) }
 
     if(typeof(arg)=="object") for(var i in arg) this[i] = arg[i];
-
-    ////////////////////////////
-    // TAB UPDATE SQUENCER     //
-    ////////////////////////////
-    this.init = function(args)
-    {
-        console.log("--------------- TAB MENU");
-        var el  = document.querySelectorAll(this.menuID);
-        console.log("query '"+this.menuID+"'");
-        for(var i=0;i<el.length;i++)
-        {
-          //console.log(i+") "+el[i].outerHTML);
-          for(var j=0;j<el[i].childNodes.length;j++)
-          {
-            var node = el[i].childNodes[j]
-            if(node.tagName!="A" || node.href===undefined) continue;
-            console.log( node.hash +" "+node.id )
-          }
-        }
-        console.log("--------------- TAB CONTENT");
-
-        var el  = document.querySelectorAll(this.contentCL);
-        console.log("query '"+this.contentCL+"'");
-
-        for(var i=0;i<el.length;i++)
-        {
-            //console.log(i+") "+el[i].outerHTML);
-            for(var j=0;j<el[i].childNodes.length;j++)
-                if(el[i].childNodes[j].tagName=="DIV") console.log(el[i].childNodes[j].id)
-        }
-        console.log("---------------");
-        
-    }
 
     ////////////////////////////
     // TAB EVENT HANDLER      //
