@@ -1,0 +1,302 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#tab_div ul {
+  position: relative;
+  height: 30px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* elements */
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+#tab_div ul a {
+  list-style: none;
+  display: grid;
+  place-items: center;
+  color: #000;
+  z-index: 10;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#tab_div ul .tab_div_end {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / 4);
+  height: 100%;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+}
+
+#box {
+  background:#76B9CE;
+  border-radius:10px;
+}
+
+#box tr td {
+  /*display:flex;*/
+  flex-wrap:wrap;
+}
+
+.tabs > div { display:none; }
+.tabs > div.active { display:block; }
+
+
+</style>
+<link rel="stylesheet" href="../res/fontawesome/all.css">
+</head>
+<body style="font-family:'Arial'">
+
+  <table id=box style=width:450px>
+    <tr>
+      <td valign=top>
+
+        <!-- tab menu  -->
+        <div id=tab_div>
+          <ul class="tab-ul el--1">
+            <!-- links -->
+            <a href="#tab0">Emulator</a>
+            <a href="#tab1">Assembler</a>
+            <a href="#tab2" id="tab_a">Tracer</a>
+            <a href="#tab3">Reference</a>
+            <div class="tab_div_end el--1"></div>
+          </ul>
+        </div>
+        
+
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab0" style="height:150px">
+        
+            <!-- tab sub-menu  -->
+            <div id=tab_div>
+                <ul class="tab-ul el--3">
+                    <!-- links -->
+                    <a href="#tab0-0">APPLE</a>
+                    <a href="#tab0-1" id="tab_a">DEVICES</a>
+                    <div class="tab_div_end el--3"></div>
+                </ul>
+            </div>
+            <div class="tabs">
+                <div id="tab0-0" style="height:250px">EMULATOR</div>
+                <div id="tab0-1" style="height:250px">Devices</div>
+            </div>
+        
+          </div>
+          <div id="tab1" style="height:200px">Tab one content with a <a href="#tab0">link to tab zero</a></div>
+          <div id="tab2" style="height:250px"> 
+
+            <!-- tab sub-menu  -->
+            <div id=tab_div>
+                <ul class="tab-ul el--2">
+                    <!-- links -->
+                    <a href="#tab2-0">CPU</a>
+                    <a href="#tab2-1" id="tab_a">Disk</a>
+                    <div class="tab_div_end el--2"></div>
+                </ul>
+            </div>
+            <div class="tabs">
+                <div id="tab2-0" style="height:250px">CPU content</div>
+                <div id="tab2-1" style="height:250px">Disk content</div>
+            </div>
+
+          </div>
+          <div id="tab3" style="height:1000px"></div>
+        </div>
+      </td>
+  </tr>
+</table>
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
+<script id="rendered-js">
+
+var _td =   [
+                {"startIndex":2,"mainTAG":"#tab_div .tab-ul.el--1","focusTAG":"#tab_div .tab_div_end.el--1","tabTAG":".tabs1"},
+                {"mainTAG":"#tab_div .tab-ul.el--2","focusTAG":"#tab_div .tab_div_end.el--2","tabTAG":".tabs2"}
+            ]
+
+var startPosIndex = [1,[0,1,0,0]];
+var oTAB1 = new ANIMTAB({"startIndex":2,"readhash":function(){return location.hash.slice(1).split("-")[0]},"tabIDX":0});
+var oTAB2 = new ANIMTAB({"mainTAG":"#tab_div .tab-ul.el--2","focusTAG":"#tab_div .tab_div_end.el--2","tabIDX":2});
+var oTAB3 = new ANIMTAB({"mainTAG":"#tab_div .tab-ul.el--3","focusTAG":"#tab_div .tab_div_end.el--3","tabIDX":1});
+
+oTAB = new ANIMTAB({"menuID":"#tab_div .tab-ul","contentCL":".tabs"});
+window.addEventListener("load",function(){oTAB.init()});
+
+
+//window.addEventListener("load",function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)} },false );
+window.addEventListener('hashchange',function(){var bdeeper = oTAB1.switchTab(event);if(bdeeper) {oTAB2.switchTab(event);oTAB3.switchTab(event)}},false);
+
+//////////////////////
+// TAB ANIMATOR     //
+//////////////////////
+
+function ANIMTAB(arg)
+{
+    this.startIndex     = 0;
+    this.animDuration   = 0.2;
+    this.mainTAG        = "#tab_div .tab-ul.el--1"; 
+    this.focusTAG       = "#tab_div .tab_div_end.el--1"; 
+    this.tabTAG         = ".tabs";
+
+    this.tabHASH        = "#tab";
+    this.defID          = "tab_a"; 
+    this.tabIDX         = 0
+
+    this.struct         = [];
+    this.activeIndex    = this.startIndex;
+    this.reachedEnd     = false;
+    this.hasChildren    = false;
+    this.tl             = gsap.timeline();   // requires GSAP3 (GreenSock) library
+    this.readhash       = function() { return location.hash.slice(1) }
+
+    if(typeof(arg)=="object") for(var i in arg) this[i] = arg[i];
+
+    ////////////////////////////
+    // TAB UPDATE SQUENCER     //
+    ////////////////////////////
+    this.init = function(args)
+    {
+        var seq = []
+        console.log("--------------- TAB MENU");
+        var el  = document.querySelectorAll(this.menuID);
+        console.log("query '"+this.menuID+"'");
+        for(var i=0;i<el.length;i++)
+        {
+          //console.log(i+") "+el[i].outerHTML);
+          for(var j=0;j<el[i].childNodes.length;j++)
+          {
+            var node = el[i].childNodes[j]
+            if(node.tagName!="A" || node.href===undefined) continue;
+            var level = node.hash.split("-").length;
+            var position = node.hash.split(this.tabHASH)[1].split("-").join(",");
+            var def = node.id==this.defID;
+
+            if(def) seq[seq.length] = node.hash.split(this.tabHASH)[1];
+            console.log(level+" "+position+" "+def);
+          }
+        }
+
+        var h = this.readhash;
+        this.readhash = function(arg) { return arg.node }
+
+        for(var i=0;i<seq.length;i++)
+        {
+          console.log(seq[i]);
+          var a = [{"node":("tab"+seq[i].split("-")[0])},{"node":"tab"+seq[i]}];
+          for(var j=0;j<seq[i].split("-").length;j++)
+            this.switchTab(a[j]);
+            console.log("---");
+        }
+        this.readhash = h;
+
+        console.log("--------------- TAB CONTENT");
+
+        var el  = document.querySelectorAll(this.contentCL);
+        console.log("query '"+this.contentCL+"'");
+
+        for(var i=0;i<el.length;i++)
+        {
+            //console.log(i+") "+el[i].outerHTML);
+            for(var j=0;j<el[i].childNodes.length;j++)
+                if(el[i].childNodes[j].tagName=="DIV") console.log(el[i].childNodes[j].id)
+        }
+        console.log("---------------");
+        
+    }
+
+    ////////////////////////////
+    // TAB EVENT HANDLER      //
+    ////////////////////////////
+    this.switchTab = function(event)  // event handler
+    {
+        if(this.mainEl === undefined) { this.mainEl  = document.querySelector(this.mainTAG) }
+        var sel_id = this.readhash(event);
+        if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
+        for(var index=0,cnt=0,node=this.mainEl.childNodes;index<node.length;index++)
+        {
+            if (node[index].href && (node[index].href.split("#")[1] == sel_id  // match url hash
+            || SelEl===undefined && this.startIndex == cnt++))                 // OR match start position
+            var SelEl = node[index];
+        }
+        var pos = SelEl.getBoundingClientRect().left-this.mainEl.getBoundingClientRect().left;
+
+        var hasChild = "";
+        var seekChildren = this.tabTAG+" #"+sel_id+" #tab_div" ;
+        console.log("seekChildren="+seekChildren)
+        //var hasChild = !document.querySelector(seekChildren)!=null // + what level was clicked ?
+        var isTargetLevel = location.hash.slice(1).split("-").length - sel_id.split("-").length == 0;
+        //if(isTargetLevel) hasChild = !hasChild
+        var bswitchChildren = !isTargetLevel;
+
+        console.log("switchTab("+event.type+") "+this.readhash(event)+" isTargetLevel="+isTargetLevel+" "
+        +bswitchChildren)
+
+        this.switchTabHeader(index,document.querySelector(this.focusTAG),pos);
+        this.switchTabContent(this.tabTAG,this.tabIDX,SelEl.href.split("#")[1]);
+
+        //return !this.hasChildren && this.isTargetLevel;
+        return bswitchChildren;
+    }
+
+    //////////////////////////////
+    // TAB HEADER SELECTOR      //
+    //////////////////////////////
+    this.switchTabHeader = function(index,focusEl,pos)
+    {
+        if (index != this.startIndex || this.reachedEnd == false)
+            this.tl.to(focusEl, this.animDuration, {left:`${pos}px`,width:`${focusEl.getBoundingClientRect().width}px`});
+    }
+
+    //////////////////////////////
+    // TAB CONTENT SELECTOR     //
+    //////////////////////////////
+
+    this.switchTabContent = function(tabTAG,tabIDX,sel_id)
+    {
+        var node = document.querySelectorAll(tabTAG)[tabIDX];
+        //console.log("tabIDX="+tabIDX+" sel_id="+sel_id)
+        //console.log(node.outerHTML)
+        if(node==null) {console.log("unable to find '"+tabTAG+"'") ;return}
+        else node=node.childNodes;
+        
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id===undefined) continue;
+            if(node[i].id == sel_id) node[i].classList.add('active');
+            else                     node[i].classList.remove('active');
+        }      
+    }
+
+/*
+    this.switchTabContent = function(tabTAG,sel_id)
+    {
+        var node = document.querySelector(tabTAG);
+        if(node==null) {console.log("unable to find '"+tabTAG+"'") ;return;}
+        else node=node.childNodes
+
+        for(var i=0;i<node.length;i++)
+        {
+            if(node[i].id===undefined) continue;
+            if(node[i].id == sel_id) node[i].classList.add('active');
+            else                     node[i].classList.remove('active');
+        }        
+    }
+*/
+}
+
+</script>
+</body>
+</html>
