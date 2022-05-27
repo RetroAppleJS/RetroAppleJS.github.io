@@ -334,7 +334,7 @@ function Cpix(t,x,y,z)
 //██   ██ ██      ██      ██    ██ ██   ██    ██    
 //██   ██ ███████ ██       ██████  ██   ██    ██    
                                                 
-function generate_REPORT()
+function generate_REPORT(bFilter)
 {
   // PARSE PATTERN FUNCTION - CASE BY CASE
   formula_ref = oPATTERN.parse(); //parse_FORMULA()
@@ -353,6 +353,7 @@ function generate_REPORT()
       var cri = "";
       for(var i in cc) cri += "\""+i+"\":"+cc[i]+",";
       cri = !cri ? "" : (",\"cri\":{"+cri.slice(0,-1)+"}");
+      if(bFilter && cri.length>0) continue;
 
       //oPALETTE.hex_pal[p] = csh;
       var ss="\"col\":\""+csh+"\""
@@ -361,7 +362,7 @@ function generate_REPORT()
       for(var o in oPATTERN.colCompIDX)
         ss+="\""+o+"\","
       ss = ss.slice(0,-1)+"]";
-      ss += cri
+      ss += cri;
 
       s += p+":{"+ss+"},\r\n"
     }
@@ -815,7 +816,9 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
         <li class=no_margins>
           <div class=no_margins style="display:inline-block;">
           <div class=no_margins id=status></div>
-          <input type=button value="Copy_Report" onclick="generate_REPORT()" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
+          <input type=button value="Copy_Lim_Report" onclick="generate_REPORT(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
+          <br>
+          <input type=button value="Copy_Full_Report" onclick="generate_REPORT(false)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
            </div>
         </li>
         <li>
