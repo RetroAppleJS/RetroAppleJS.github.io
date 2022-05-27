@@ -82,19 +82,7 @@ function Apple2IO(vid) {
             case SPKR_TOGGLE:
                 //_o.EMU_snd_toggle.pause();
                 //_o.EMU_snd_toggle.play();
-
-                // TODO DEBUG
-                /*
-                if(bOsc) {_o.EMU_snd_pulse1.start(); _o.EMU_snd_pulse1.stop("+0.01"); }
-                else { _o.EMU_snd_pulse2.start(); _o.EMU_snd_pulse2.stop("+0.01"); }
-                bOsc = !bOsc;
-                */
-                if(_o.EMU_snd_bpulse) {_o.EMU_snd_pulse1.start(); _o.EMU_snd_pulse1.stop("+0.01") }
-                else {    _o.EMU_snd_pulse2.start(); _o.EMU_snd_pulse2.stop("+0.01") }
-                _o.EMU_snd_bpulse = !_o.EMU_snd_bpulse;
-                
-                //document.getElementById("key_debug").value++;
-                
+                toggle();
                 break;
             case GFX_ON:
                 video.setGfx(true);
