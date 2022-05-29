@@ -19,6 +19,16 @@ function PATTERN(idx,x,y)
     this.prep = 4;                     // horizontal pattern repetition
     this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
 
+    this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+    this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+    this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+    this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+    this.colorSaturation = function(a) {
+      var avg = Math.round((a[0]+a[1]+a[2])/3);
+      if(avg==0) return 0;
+      return Math.round(100*this.colorDistance(a,[avg,avg,avg])/avg)
+  }
+
     this.set_prep = function(bits) { this.prep = Number(bits); this.pmax = Math.pow(2,2*this.prep)*3 }
     this.calculate = function(p,x,y)
     {
@@ -222,5 +232,41 @@ function PATTERN(idx,x,y)
 
       if(this.calculate(patternID,x,y)[1]) return wbyt;
       return rbyt;
+  }
+
+  this.export_json = function(arg)
+  {
+    var s= "var d = {\r\n";
+    var idx = 0;
+    //var pmax = _D.blc[1]*_D.blc[0];
+    for(var p=0;p<this.pmax;p++)   // this is the display matrix size
+    {
+      if(this.calculate(p,0,0)[0]!=null)
+      {
+        var c = this.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+        var cc = this.criteria[p];
+        var data_arg = {"col":"#"+RGB2HEX(c).join(""),"sat":this.colorSaturation(c)}
+  
+        var cri = "";
+        for(var i in cc) cri += "\""+i+"\":"+cc[i]+",";
+        cri = !cri ? "" : (",\"cri\":{"+cri.slice(0,-1)+"}");
+        if(arg.filter=="exclude_all_criteria" && cri.length>0) continue;
+        
+        //oPALETTE.hex_pal[p] = csh;
+        var ss= "\"idx\":"+(idx++)
+         +",\"col\":\""+data_arg.col+"\""
+         +",\"sat\":"+data_arg.sat
+         +",\"cmp\":["
+        for(var o in this.colCompIDX)
+          ss+="\""+o+"\","
+        ss = ss.slice(0,-1)+"]";
+        ss += cri;
+  
+        s += p+":{"+ss+"},\r\n"
+      }
+    }
+    s = s.slice(0,-3)+"\r\n"
+    s+="}"
+    return s;
   }
 }

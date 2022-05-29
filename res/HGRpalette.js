@@ -150,6 +150,19 @@ function PALETTE()
         //+" d:"+Math.round(this.colorDistance(dec_cx,this.dec_pal[near_idx]));
     }
 
+    this.calc_nearest_COLOR = function(dec_cx)
+    {
+        for(var i=0,cd=[0,255*255*255];i<this.dec_pal.length;i++)
+        {
+            c = this.colorDistance(dec_cx,this.dec_pal[i]) // picked color  - palette color
+            if( c <  cd[1] )
+                cd = [dec_cx,c]; 
+            else if(c ==  cd[1])
+                return [c,0];
+        }
+        return cd;
+    }      
+
 //  ██████   █████  ██ ███    ██ ██████   ██████  ██     ██ 
 //  ██   ██ ██   ██ ██ ████   ██ ██   ██ ██    ██ ██     ██ 
 //  ██████  ███████ ██ ██ ██  ██ ██████  ██    ██ ██  █  ██ 
