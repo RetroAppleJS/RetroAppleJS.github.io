@@ -340,12 +340,12 @@ function Cpix(t,x,y,z)
 //██   ██ ██      ██      ██    ██ ██   ██    ██    
 //██   ██ ███████ ██       ██████  ██   ██    ██    
                                                 
-function generate_REPORT(bFilter)
+function generate_REPORT(arg)
 {
   // PARSE PATTERN FUNCTION - CASE BY CASE
   //formula_ref = oPATTERN.parse(); //parse_FORMULA()
 
-  copyTextToClipboard(oPATTERN.export_json({"filter":"exclude_all_criteria"}));
+  copyTextToClipboard(oPATTERN.export_json(arg));
 }
 
 function fallbackCopyTextToClipboard(text) 
@@ -792,9 +792,9 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
         <li class=no_margins>
           <div class=no_margins style="display:inline-block;">
           <div class=no_margins id=status></div>
-          <input type=button value="Copy_Lim_Report" onclick="generate_REPORT(true)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
+          <input type=button value="Copy_Lim_Report" onclick="generate_REPORT({'filter':'exclude_all_criteria'})" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
           <br>
-          <input type=button value="Copy_Full_Report" onclick="generate_REPORT(false)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
+          <input type=button value="Copy_Full_Report" onclick="generate_REPORT()" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'>
            </div>
         </li>
         <li>
