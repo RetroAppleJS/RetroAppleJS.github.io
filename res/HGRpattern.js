@@ -249,6 +249,9 @@ function PATTERN(idx,x,y)
     //s+= "\"settings\":{\"bits\":4},\r\n";
     var idx = 0;
     //var pmax = _D.blc[1]*_D.blc[0];
+
+// TODO ADD 2 RECORDS !!! BLACK AND WHITE !!!!
+
     for(var p=0;p<this.pmax;p++)   // this is the display matrix size
     {
       if(this.calculate(p,0,0)[0]!=null)
@@ -258,17 +261,17 @@ function PATTERN(idx,x,y)
         var pat = ["0b1111","0b0101"];
 
         var data_arg = {
-          "col":"#"+RGB2HEX(c).join("")
+          "idx":idx++
+          ,"col":"\"#"+RGB2HEX(c).join("")+"\""
           ,"sat":this.colorSaturation(c)
           ,"cmp":"["+Object.keys(this.colCompIDX).map(function(x){return '"'+x+'"'}).join(',')+"]"
           ,"pat":"["+pat.join(',')+"]"
           ,"cri":"{"+Object.keys(cc).map(function(x){return '"'+x+'":'+cc[x]}).join(',')+"}"
-        } 
-        console.log(arg.filter);
+        }
         if(arg.filter=="exclude_all_criteria" && data_arg.cri.length>2) continue;
 
-        var ss= "\"idx\":"+(idx++)
-         +",\"col\":\""+data_arg.col+"\""
+        var ss= "\"idx\":"+data_arg.idx
+         +",\"col\":"+data_arg.col
          +",\"sat\":"+data_arg.sat
          +",\"cmp\":"+data_arg.cmp
          +",\"pat\":"+data_arg.pat
