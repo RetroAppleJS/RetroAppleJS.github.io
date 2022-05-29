@@ -1,3 +1,9 @@
+//
+// Copyright (c) 2022 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+// HGRpattern.js
+
 function PATTERN(idx,x,y)
 {
     this.bmapx = 28;  // grid width
