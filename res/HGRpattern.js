@@ -4,6 +4,8 @@
 //
 // HGRpattern.js
 
+const { data } = require("jquery");
+
 var glob_cc;
 
 function PATTERN(idx,x,y)
@@ -251,6 +253,7 @@ function PATTERN(idx,x,y)
     //var pmax = _D.blc[1]*_D.blc[0];
 
 // TODO ADD 2 RECORDS !!! BLACK AND WHITE !!!!
+    var isBW = [false,false];
 
     for(var p=0;p<this.pmax;p++)   // this is the display matrix size
     {
@@ -260,26 +263,33 @@ function PATTERN(idx,x,y)
         var cc = typeof(this.criteria[p])=="object"?this.criteria[p]:{};
         var pat = ["0b1111","0b0101"];
 
+        var m=["0b","0b"]
+        for(var i=0;i<this.prep;i++) m[0]+= this.calculate(p,i,0)[1];
+        for(var i=0;i<this.prep;i++) m[1]+= this.calculate(p,i,1)[1];
+        //console.log(p+" "+m[0]+" "+m[0]);
+
         var data_arg = {
           "idx":idx++
           ,"col":"\"#"+RGB2HEX(c).join("")+"\""
           ,"sat":this.colorSaturation(c)
           ,"cmp":"["+Object.keys(this.colCompIDX).map(function(x){return '"'+x+'"'}).join(',')+"]"
-          ,"pat":"["+pat.join(',')+"]"
+          ,"pat":"["+m.join(",")+"]"
           ,"cri":"{"+Object.keys(cc).map(function(x){return '"'+x+'":'+cc[x]}).join(',')+"}"
         }
-        if(arg.filter=="exclude_all_criteria" && data_arg.cri.length>2) continue;
 
-        var ss= "\"idx\":"+data_arg.idx
-         +",\"col\":"+data_arg.col
-         +",\"sat\":"+data_arg.sat
-         +",\"cmp\":"+data_arg.cmp
-         +",\"pat\":"+data_arg.pat
-         +",\"cri\":"+data_arg.cri
+        isBW[0] = data_arg.col=="\"#000000\"";
+        isBW[1] = data_arg.col=="\"#FFFFFF\"";
+
+        if(arg.filter=="exclude_all_criteria"
+        && data_arg.cri.length>2
+        && !isBW[0] && !isBW[1]) continue;
+        var ss = Object.keys(data_arg).map(function(x){return '"'+x+'":'+data_arg[x]}).join(',')
   
         s += p+":{"+ss+"},\r\n"
       }
     }
+    //if(!isBW[0]) s+= '0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b0000,0b0000],"cri":{"GREY":-1}},'
+
     s = s.slice(0,-3)+"\r\n"
     s+="}"
     return s;
