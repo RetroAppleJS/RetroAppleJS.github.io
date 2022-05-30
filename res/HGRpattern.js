@@ -273,7 +273,7 @@ function PATTERN(idx,x,y)
           ,"col":"\"#"+RGB2HEX(c).join("")+"\""
           ,"sat":this.colorSaturation(c)
           ,"cmp":"["+Object.keys(this.colCompIDX).map(function(x){return '"'+x+'"'}).join(',')+"]"
-          ,"pat":"["+m.join(",")+"]"
+          ,"pat":"["+m.join(",")+"]"   // TODO ADD CARRY BIT !!!!!!
           ,"cri":"{"+Object.keys(cc).map(function(x){return '"'+x+'":'+cc[x]}).join(',')+"}"
         }
 
@@ -288,8 +288,6 @@ function PATTERN(idx,x,y)
         s += p+":{"+ss+"},\r\n"
       }
     }
-    //if(!isBW[0]) s+= '0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b0000,0b0000],"cri":{"GREY":-1}},'
-
     s = s.slice(0,-3)+"\r\n"
     s+="}"
     return s;
