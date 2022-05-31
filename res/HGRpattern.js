@@ -4,9 +4,7 @@
 //
 // HGRpattern.js
 
-const { data } = require("jquery");
-
-var glob_cc;
+//const { data } = require("jquery");
 
 function PATTERN(idx,x,y)
 {
@@ -261,15 +259,14 @@ function PATTERN(idx,x,y)
       {
         var c = this.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
         var cc = typeof(this.criteria[p])=="object"?this.criteria[p]:{};
-        var pat = ["0b1111","0b0101"];
 
-        var m=["0b","0b"]
-        for(var i=0;i<this.prep;i++) m[0]+= this.calculate(p,i,0)[1];
-        for(var i=0;i<this.prep;i++) m[1]+= this.calculate(p,i,1)[1];
+        var m=["0b",0,"0b",0]
+        for(var i=0;i<this.prep;i++) { var t=this.calculate(p,i,0); m[0]+=t[1];m[1]=t[2] }
+        for(var i=0;i<this.prep;i++) { var t=this.calculate(p,i,1); m[2]+=t[1];m[3]=t[2] }
         //console.log(p+" "+m[0]+" "+m[0]);
 
         var data_arg = {
-          "idx":idx++
+          "idx":idx
           ,"col":"\"#"+RGB2HEX(c).join("")+"\""
           ,"sat":this.colorSaturation(c)
           ,"cmp":"["+Object.keys(this.colCompIDX).map(function(x){return '"'+x+'"'}).join(',')+"]"
@@ -283,6 +280,8 @@ function PATTERN(idx,x,y)
         if(arg.filter=="exclude_all_criteria"
         && data_arg.cri.length>2
         && !isBW[0] && !isBW[1]) continue;
+        
+        idx++;
         var ss = Object.keys(data_arg).map(function(x){return '"'+x+'":'+data_arg[x]}).join(',')
   
         s += p+":{"+ss+"},\r\n"
