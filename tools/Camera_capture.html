@@ -133,30 +133,27 @@ function init_gui(_o)
 
     var palette = {
 0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,0,0b00,0],"cri":{}},
-1:{"idx":1,"col":"#800080","sat":123,"cmp":["#FF00FF","#000000"],"pat":[0b10,0,0b00,0],"cri":{}},
-2:{"idx":2,"col":"#3F7D3F","sat":60,"cmp":["#000000","#80FF80"],"pat":[0b01,0,0b00,0],"cri":{}},
-3:{"idx":3,"col":"#808080","sat":0,"cmp":["#FFFFFF","#000000"],"pat":[0b11,0,0b00,0],"cri":{}},
-5:{"idx":4,"col":"#FF00FF","sat":122,"cmp":["#FF00FF"],"pat":[0b10,0,0b10,0],"cri":{}},
-6:{"idx":5,"col":"#BE7DBE","sat":32,"cmp":["#000000","#80FF80","#FF00FF"],"pat":[0b01,0,0b10,0],"cri":{}},
-7:{"idx":6,"col":"#FF80FF","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":[0b11,0,0b10,0],"cri":{}},
-10:{"idx":7,"col":"#7EFA7E","sat":61,"cmp":["#000000","#80FF80"],"pat":[0b01,0,0b01,0],"cri":{}},
-11:{"idx":8,"col":"#BEFDBE","sat":24,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":[0b11,0,0b01,0],"cri":{}},
-15:{"idx":9,"col":"#FFFFFF","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,0,0b11,0],"cri":{}},
+1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":[0b10,0,0b00,0],"cri":{}},
+2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":[0b01,0,0b00,0],"cri":{}},
+3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":[0b11,0,0b00,0],"cri":{}},
+5:{"idx":4,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":[0b10,0,0b10,0],"cri":{}},
+6:{"idx":5,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":[0b01,0,0b10,0],"cri":{}},
+7:{"idx":6,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":[0b11,0,0b10,0],"cri":{}},
+10:{"idx":7,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":[0b01,0,0b01,0],"cri":{}},
+11:{"idx":8,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":[0b11,0,0b01,0],"cri":{}},
+15:{"idx":9,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,0,0b11,0],"cri":{}},
 16:{"idx":10,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,0],"cri":{"DOUBL":0}},
-17:{"idx":11,"col":"#004080","sat":141,"cmp":["#0080FF","#000000"],"pat":[0b10,128,0b00,0],"cri":{}},
-18:{"idx":12,"col":"#7D3F00","sat":140,"cmp":["#000000","#FF8000"],"pat":[0b01,128,0b00,0],"cri":{}},
-21:{"idx":13,"col":"#8040FF","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":[0b10,128,0b10,0],"cri":{}},
-22:{"idx":14,"col":"#FD3F80","sat":92,"cmp":["#000000","#FF8000","#FF00FF"],"pat":[0b01,128,0b10,0],"cri":{}},
-25:{"idx":15,"col":"#3FBDBE","sat":70,"cmp":["#0080FF","#000000","#80FF80"],"pat":[0b10,128,0b01,0],"cri":{}},
-26:{"idx":16,"col":"#BCBC3F","sat":70,"cmp":["#000000","#FF8000","#80FF80"],"pat":[0b01,128,0b01,0],"cri":{}},
-29:{"idx":17,"col":"#80C0FF","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":[0b10,128,0b11,0],"cri":{}},
-30:{"idx":18,"col":"#FDBE80","sat":47,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":[0b01,128,0b11,0],"cri":{}},
-31:{"idx":19,"col":"#FFFFFF","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,128,0b11,0],"cri":{"DOUBL":15}},
-32:{"idx":20,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,128],"cri":{"DOUBL":0}},
-37:{"idx":21,"col":"#0080FF","sat":141,"cmp":["#0080FF"],"pat":[0b10,128,0b10,128],"cri":{}},
-38:{"idx":22,"col":"#7D7F80","sat":2,"cmp":["#000000","#FF8000","#0080FF"],"pat":[0b01,128,0b10,128],"cri":{}},
-42:{"idx":23,"col":"#FA7E00","sat":141,"cmp":["#000000","#FF8000"],"pat":[0b01,128,0b01,128],"cri":{}},
-47:{"idx":24,"col":"#FFFFFF","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,128,0b11,128],"cri":{"DOUBL":15}}
+17:{"idx":11,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":[0b10,128,0b00,0],"cri":{}},
+18:{"idx":12,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":[0b01,128,0b00,0],"cri":{}},
+21:{"idx":13,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":[0b10,128,0b10,0],"cri":{}},
+22:{"idx":14,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":[0b01,128,0b10,0],"cri":{}},
+25:{"idx":15,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":[0b10,128,0b01,0],"cri":{}},
+26:{"idx":16,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":[0b01,128,0b01,0],"cri":{}},
+29:{"idx":17,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":[0b10,128,0b11,0],"cri":{}},
+30:{"idx":18,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":[0b01,128,0b11,0],"cri":{}},
+32:{"idx":19,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,128],"cri":{"DOUBL":0}},
+37:{"idx":20,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":[0b10,128,0b10,128],"cri":{}},
+42:{"idx":21,"col":"#F67B00","sat":141,"cmp":["#FF8000"],"pat":[0b01,128,0b01,128],"cri":{}}
 }
 
 
@@ -202,6 +199,7 @@ function Apple2Plus(context)
   this.video.redraw();
 }
 
+// Overloading the setPixel function to accomodate patterning
 function setPixel_HGR(x,y,patternID)
 {
     // find address and bit location
