@@ -164,7 +164,6 @@ function PATTERN(idx,x,y)
       return [Math.round(col_sum[0]/max_sum[0]*255), Math.round(col_sum[1]/max_sum[1]*255), Math.round(col_sum[2]/max_sum[2]*255) ]
   }
 
-
   this.bColorUsed = function(col)
   {
      return this.colIDX[col]?true:false;
