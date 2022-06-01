@@ -145,7 +145,7 @@ function PATTERN(idx,x,y)
       // color sampler
       for(var y=0;y<this.bmapy*m;y++)
       {
-        for(var x=0;x<this.bmapx*m;x++)
+        for(var x=1;x<this.bmapx*m-1;x++)
         {
           var left = this.calculate(patternID,x-1,y)[1];
           var me = this.calculate(patternID,x,y)[1];
@@ -280,7 +280,7 @@ function PATTERN(idx,x,y)
         if(arg.filter=="exclude_all_criteria"
         && data_arg.cri.length>2
         && !isBW[0] && !isBW[1]) continue;
-        
+
         idx++;
         var ss = Object.keys(data_arg).map(function(x){return '"'+x+'":'+data_arg[x]}).join(',')
   
