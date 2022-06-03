@@ -427,7 +427,8 @@ function process_snapshot()
   </div>
 
   <script>
-     document.write( oPATTERN.trace_diffusion_data() );
+     document.getElementById("debug").innerHTML = oPATTERN.trace_diffusion_data();
   </script>
+  <div id=debug></div>
 </body>
 </html>
