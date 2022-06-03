@@ -27,10 +27,10 @@ function PATTERN(idx,x,y)
     {
       for(var i=0,s="";i<3;i++)
       {
-        s+="<table class=thin border=1><tr><td></td>";
+        s+="<div style='float:left'><table class=thin border=1 style='float:left;margin-right:10px'><tr><td></td>";
         for(var j=0;j<5;j++)
           s+= "<td>"+this.diffusion_data[i][j].join(".")+"</td>"+(j==1?"</tr><tr>":"")
-        s+="</tr></table><br>";
+        s+="</tr></table></div>";
       }
       return s
     }
