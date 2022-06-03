@@ -49,6 +49,7 @@ var yref = new Array();
 
 var vidContext, apple2plus;
 var oPALETTE = new PALETTE();
+var oPATTERN = new PATTERN();
 
 function init_gui(_o)
 {
@@ -155,7 +156,6 @@ function init_gui(_o)
 37:{"idx":20,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":[0b10,128,0b10,128],"cri":{}},
 42:{"idx":21,"col":"#F67B00","sat":141,"cmp":["#FF8000"],"pat":[0b01,128,0b01,128],"cri":{}}
 }
-
 
     oPALETTE.dec_pal      = [];
     
@@ -425,5 +425,9 @@ function process_snapshot()
 
   </div>
   </div>
+
+  <script>
+     document.write( oPATTERN.trace_diffusion_data() );
+  </script>
 </body>
 </html>

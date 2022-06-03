@@ -11,6 +11,30 @@ function PATTERN(idx,x,y)
     this.bmapx = 28;  // grid width
     this.bmapy = 4;   // grid height
     this.filterExcl = [];
+    this.diffusion_data = [
+      [[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0]],
+      [[0,1,0],[0,2,0],[0,3,0],[0,4,0],[0,5,0]],
+      [[0,0,1],[0,0,2],[0,0,3],[0,0,4],[0,0,5]]
+    ]
+
+    this.diffusion_data = [
+      [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
+      [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
+      [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
+    ]
+
+    this.trace_diffusion_data = function()
+    {
+      for(var i=0,s="";i<3;i++)
+      {
+        s+="<table class=thin border=1><tr><td></td>";
+        for(var j=0;j<5;j++)
+          s+= "<td>"+this.diffusion_data[i][j].join(".")+"</td>"+(j==1?"</tr><tr>":"")
+        s+="</tr></table><br>";
+      }
+      return s
+    }
+
 
     this.colorFN = function(x, y, left, me, right, b7) { [0,0,0] }  // NEEDS FUNCTION OVERRIDE
     function ltrim(s) { return s.replace(/^ */,"") }
@@ -239,6 +263,11 @@ function PATTERN(idx,x,y)
 
       if(this.calculate(patternID,x,y)[1]) return wbyt;
       return rbyt;
+  }
+
+  this.steinberg_error_diffusion = function(arg)
+  {
+
   }
 
   this.export_json = function(arg)
