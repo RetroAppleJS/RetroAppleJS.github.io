@@ -33,7 +33,7 @@ var CONF_builddate="";
 
 var _D = 
 {
-     "cam_x":280
+     "cam_x":256
     ,"cam_y":192
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
               +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
@@ -69,6 +69,11 @@ var _D =
     }
 
 }
+// Define block size
+var bh = _D.palette[0].pat.length/2;
+var bw = _D.palette[0].bits;
+
+
 var yref = new Array();
   for(var i=0;i<_D.YVERTL.length;i+=2)
     yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
@@ -299,8 +304,10 @@ function enable_camera()
   if(!bCamera)
   {
     Webcam.set({
-    width:  _D.cam_x,
-    height: _D.cam_y,
+    width:        _D.cam_x/4,
+    height:       _D.cam_y/2,
+    dest_width:   _D.cam_x,
+    dest_height:  _D.cam_y,
     image_format: 'jpeg',
     jpeg_quality: 90
     });
@@ -339,10 +346,6 @@ function process_snapshot()
         // Take image size
         var h = el.clientHeight;
         var w = el.clientWidth;
-
-        // Define block size
-        var bh = _D.palette[0].pat.length/2;
-        var bw = _D.palette[0].bits;
 
         var ctx = getContext(el);
         // Put the picture in
