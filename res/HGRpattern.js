@@ -35,7 +35,6 @@ function PATTERN(idx,x,y)
       return s
     }
 
-
     this.colorFN = function(x, y, left, me, right, b7) { [0,0,0] }  // NEEDS FUNCTION OVERRIDE
     function ltrim(s) { return s.replace(/^ */,"") }
     function rtrim(s) { return s.replace(/ *$/,"") }
@@ -301,6 +300,7 @@ function PATTERN(idx,x,y)
           ,"pat":"["+m.join(",")+"]"   // TODO ADD CARRY BIT !!!!!!
           ,"cri":"{"+Object.keys(cc).map(function(x){return '"'+x+'":'+cc[x]}).join(',')+"}"
         }
+        if(idx==0) data_arg["bits"] = m[0].length-2;
 
         isBW[0] = data_arg.col=="\"#000000\"";
         isBW[1] = data_arg.col=="\"#FFFFFF\"";

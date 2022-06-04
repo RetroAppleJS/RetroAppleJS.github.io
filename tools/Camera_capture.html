@@ -33,7 +33,7 @@ var CONF_builddate="";
 
 var _D = 
 {
-     "cam_x":256
+     "cam_x":280
     ,"cam_y":192
     ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
               +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
@@ -41,6 +41,33 @@ var _D =
     ,"YVERTH":"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
               +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
               +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+
+    ,"palette":
+    {
+    0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,0,0b00,0],"cri":{},"bits":2},
+    1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":[0b10,0,0b00,0],"cri":{}},
+    2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":[0b01,0,0b00,0],"cri":{}},
+    3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":[0b11,0,0b00,0],"cri":{}},
+    5:{"idx":4,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":[0b10,0,0b10,0],"cri":{}},
+    6:{"idx":5,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":[0b01,0,0b10,0],"cri":{}},
+    7:{"idx":6,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":[0b11,0,0b10,0],"cri":{}},
+    10:{"idx":7,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":[0b01,0,0b01,0],"cri":{}},
+    11:{"idx":8,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":[0b11,0,0b01,0],"cri":{}},
+    15:{"idx":9,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,0,0b11,0],"cri":{}},
+    16:{"idx":10,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,0],"cri":{"DOUBL":0}},
+    17:{"idx":11,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":[0b10,128,0b00,0],"cri":{}},
+    18:{"idx":12,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":[0b01,128,0b00,0],"cri":{}},
+    21:{"idx":13,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":[0b10,128,0b10,0],"cri":{}},
+    22:{"idx":14,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":[0b01,128,0b10,0],"cri":{}},
+    25:{"idx":15,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":[0b10,128,0b01,0],"cri":{}},
+    26:{"idx":16,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":[0b01,128,0b01,0],"cri":{}},
+    29:{"idx":17,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":[0b10,128,0b11,0],"cri":{}},
+    30:{"idx":18,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":[0b01,128,0b11,0],"cri":{}},
+    32:{"idx":19,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,128],"cri":{"DOUBL":0}},
+    37:{"idx":20,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":[0b10,128,0b10,128],"cri":{}},
+    42:{"idx":21,"col":"#F67B00","sat":141,"cmp":["#FF8000"],"pat":[0b01,128,0b01,128],"cri":{}}
+    }
+
 }
 var yref = new Array();
   for(var i=0;i<_D.YVERTL.length;i+=2)
@@ -64,7 +91,6 @@ function init_gui(_o)
   my_camera.style.height = _D.cam_y+"px";
   my_camera.style.backgroundSize = (_D.cam_x*0.8)+"px "+(_D.cam_y*0.8)+"px"
   
-
   for(var i=8192;i<16384;i++)      // clear video RAM
     apple2plus.hw.write(i,0);
 
@@ -106,7 +132,6 @@ function init_gui(_o)
     }
   }
 
-
   function maskPixel(byt,bit)
   {
     return byt&8 | byt&bit;
@@ -128,54 +153,28 @@ function init_gui(_o)
     return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
   }
 
-    // draw dithering patterns 
-    // apple2plus.hw.write(8192,5);  
-    // apple2plus.hw.write(8194,1);  
+  // draw dithering patterns 
+  // apple2plus.hw.write(8192,5);
+  // apple2plus.hw.write(8194,1);
 
-    var palette = {
-0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,0,0b00,0],"cri":{}},
-1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":[0b10,0,0b00,0],"cri":{}},
-2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":[0b01,0,0b00,0],"cri":{}},
-3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":[0b11,0,0b00,0],"cri":{}},
-5:{"idx":4,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":[0b10,0,0b10,0],"cri":{}},
-6:{"idx":5,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":[0b01,0,0b10,0],"cri":{}},
-7:{"idx":6,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":[0b11,0,0b10,0],"cri":{}},
-10:{"idx":7,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":[0b01,0,0b01,0],"cri":{}},
-11:{"idx":8,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":[0b11,0,0b01,0],"cri":{}},
-15:{"idx":9,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,0,0b11,0],"cri":{}},
-16:{"idx":10,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,0],"cri":{"DOUBL":0}},
-17:{"idx":11,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":[0b10,128,0b00,0],"cri":{}},
-18:{"idx":12,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":[0b01,128,0b00,0],"cri":{}},
-21:{"idx":13,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":[0b10,128,0b10,0],"cri":{}},
-22:{"idx":14,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":[0b01,128,0b10,0],"cri":{}},
-25:{"idx":15,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":[0b10,128,0b01,0],"cri":{}},
-26:{"idx":16,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":[0b01,128,0b01,0],"cri":{}},
-29:{"idx":17,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":[0b10,128,0b11,0],"cri":{}},
-30:{"idx":18,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":[0b01,128,0b11,0],"cri":{}},
-32:{"idx":19,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,128],"cri":{"DOUBL":0}},
-37:{"idx":20,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":[0b10,128,0b10,128],"cri":{}},
-42:{"idx":21,"col":"#F67B00","sat":141,"cmp":["#FF8000"],"pat":[0b01,128,0b01,128],"cri":{}}
-}
+  oPALETTE.dec_pal      = [];
+  
+  var w = 0;
+  for(var i in _D.palette)
+  {
+    var idx = _D.palette[i].idx;
+    oPALETTE.dec_pal[idx] = oPALETTE.HEX2RGB(_D.palette[i].col);  // create fast palette
+    //if(_D.palette[i].pat[0]>w) w=_D.palette[i].pat[0];
+    //console.log("dec_pal["+idx+"] = oPALETTE.HEX2RGB("+_D.palette[i].col+") " +oPALETTE.HEX2RGB(_D.palette[i].col).join(" ")+" ("+i+")")
+  }
 
-    oPALETTE.dec_pal      = [];
-    
-    var w = 0;
-    for(var i in palette)
-    {
-      var idx = palette[i].idx;
-      oPALETTE.dec_pal[idx] = oPALETTE.HEX2RGB(palette[i].col);
-      if(palette[i].pat[0]>w) w=palette[i].pat[0];
+  //var bh = _D.palette[0].pat.length/2;
+  //var bw = _D.palette[0].bits;
+  //console.log("w="+bw+" h="+bh);
 
-      //console.log("dec_pal["+idx+"] = oPALETTE.HEX2RGB("+palette[i].col+") " +oPALETTE.HEX2RGB(palette[i].col).join(" ")+" ("+i+")")
-    }
-    
-    var w = Math.floor(Math.log(w+1)/Math.log(2));
-    var h = palette[0].pat.length/2;
-    console.log("w="+w+" h="+h);
-
-    var input = [13,23,29]
-    var result = oPALETTE.calc_nearest_IDX_ERR(input)
-    console.log("input="+input+" idx="+result[0]+" error="+result[1]+" --> ["+oPALETTE.dec_pal[result[0]]+"]");
+  var input = [13,23,29]
+  var result = oPALETTE.calc_nearest_IDX_ERR(input)
+  console.log("input="+input+" idx="+result[0]+" error="+result[1]+" --> ["+oPALETTE.dec_pal[result[0]]+"]");
 }
 
 
@@ -269,7 +268,7 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type=button value="Enable camera" onclick="enable_camera()"></li>
+        <li><input type=button id=cam_button value="Enable camera" onclick="enable_camera()"></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><input type=button value="Take Snapshot" onclick="take_snapshot()"></li>
       </ul>
@@ -290,7 +289,10 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
 
 // Configure a few settings and attach camera
 var bCamera = false;
-var shutter = new Audio();
+var bSound  = false;
+
+
+if(bSound) var shutter = new Audio();
 
 function enable_camera()
 {
@@ -304,19 +306,23 @@ function enable_camera()
     });
     Webcam.attach('#my_camera');
 
-    // preload shutter audio clip
-    shutter.autoplay = true;
-    shutter.src = navigator.userAgent.match(/Firefox/) ? 'shutter.ogg' : 'shutter.mp3';
+    if(bSound)
+    {
+      // preload shutter audio clip
+      shutter.autoplay = true;
+      shutter.src = navigator.userAgent.match(/Firefox/) ? 'shutter.ogg' : 'shutter.mp3';
+    }
   }
   else Webcam.reset();
 
+  document.getElementById("cam_button").value = bCamera?"Enable camera":"Disable camera"
   bCamera = !bCamera;
 }
 
 function take_snapshot()
 {
   // play sound effect
-  shutter.play();
+  if(bSound) shutter.play();
   // take snapshot and get image data
   Webcam.snap( function(data_uri) {
   // display results in page
@@ -334,6 +340,10 @@ function process_snapshot()
         var h = el.clientHeight;
         var w = el.clientWidth;
 
+        // Define block size
+        var bh = _D.palette[0].pat.length/2;
+        var bw = _D.palette[0].bits;
+
         var ctx = getContext(el);
         // Put the picture in
         ctx.drawImage(el,0,0,w,h);
@@ -349,17 +359,18 @@ function process_snapshot()
           return c[0]+c[1]+c[2] > 240
         }
         
+        // COPY CAMERA CONTENT INTO APPLE SCREEN
         for (var y=0;y<h;y++)
         {
-            for (var x=0;x<w;x+=2)
+            for (var x=0;x<w;x+=bw)
             {
-                var i = (4*x) + (4*y*w);
+                var i = 4*x + 4*y*w;
                 var color = [ d[i],d[i+1],d[i+2] ];
-                if(pixelDecision(color)) setPixel_HGR(x,y);
-
-                var i = (4*x) + (4*y*w);
-                var color = [ d[i],d[i+1],d[i+2] ];
-                if(pixelDecision(color)) setPixel_HGR(x+1,y);              
+                if(pixelDecision(color))
+                { 
+                  setPixel_HGR(x,y);
+                  setPixel_HGR(x+1,y);  
+                }             
             }
         }
         

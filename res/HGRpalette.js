@@ -155,7 +155,7 @@ function PALETTE()
         for(var i=0,cd=[0,255*255*255];i<this.dec_pal.length;i++)
         {
             c = this.colorDistance(dec_cx,this.dec_pal[i]) // picked color  - palette color
-            console.log("this.colorDistance("+dec_cx+" <-> "+this.dec_pal[i]+") = "+c)
+            //console.log("this.colorDistance("+dec_cx+" <-> "+this.dec_pal[i]+") = "+c)
             if( c <=  cd[1] ) cd = [i,c];
         }
         return cd;
