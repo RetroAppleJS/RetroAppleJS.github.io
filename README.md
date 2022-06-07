@@ -79,6 +79,8 @@ This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502
 
 ### Latest developments
 
+#### interactive Apple II+ pop-up keyboard
+
 Currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list.
 feature details & status:
 - [x] AppleII+ keyboard pop-up image (onmouseover)
@@ -92,3 +94,10 @@ feature details & status:
 *Note: Only two files are impacted:*
 - *index.html*
 - *res/EMU_apple2keys.js*
+
+#### real-time audio
+
+As archaic it may sound, the simple ability of the appleII to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems very hard to achieve through emulation. The main reason being the 'unpredictability' of the audio output. 
+
+*Note:  i am currently reading the following article, that explains the issues with real-time sound in JavaScript : https://www.html5rocks.com/en/tutorials/audio/scheduling/
+
