@@ -97,6 +97,6 @@ feature details & status:
 
 #### real-time audio
 
-As archaic it may sound, the simple ability of the appleII to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems very hard to achieve through emulation. The main reason being the 'unpredictability' of the audio output. 
+As dumb it may sound, the simple ability of the appleII to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems very hard to achieve through emulation. The main reason being the 'unpredictability' of the audio output. 
 
 *Note:  Currently reading the following article, that explains the issues with real-time sound in JavaScript : https://www.html5rocks.com/en/tutorials/audio/scheduling/*
