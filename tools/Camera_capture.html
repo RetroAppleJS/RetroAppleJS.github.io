@@ -7,6 +7,7 @@
   html {height:100%;font-family:"Arial"}
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
 
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
 
   #my_camera{
   /*width: 256px;
@@ -69,7 +70,7 @@ var _D =
     }
 
 }
-// Define block size
+// Define color sampling rate
 var bh = _D.palette[0].pat.length/2;
 var bw = _D.palette[0].bits;
 
@@ -227,6 +228,8 @@ function wipe_HGR(byte)
 
 /////////////////////////////////////////////////////////
 
+var CONF_version="";
+var CONF_builddate="";  
 var _T = function _T(idx,mod) {
 this.t = {get _language(){ return "NL" }
 ,"title":document.title
@@ -246,6 +249,7 @@ switch(mod) {
 }
 function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
 function _TITLE() {
+var hight_pct = 6;
 var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
 +"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
 +"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
@@ -256,7 +260,7 @@ var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0
 +"#topmenu{width:100%;background-color:#f0f0f0}"
 +"ul#minitabs{list-style:none;margin:0;padding:3px 0 0 0;border-left:1px solid #ccc;border-right:1px solid #ccc;border-top:1px solid #ccc;border-bottom:1px solid #ccc;font-weight:700;text-align:left;white-space:nowrap}ul#minitabs li{display:inline;margin:0 3px}ul#minitabs a{text-decoration:none;color:#999}ul#minitabs a#current{border-color:#f60;color:#06f}ul#minitabs a:hover{border-color:#f60;color:#666}"
 
-return "<style>"+css+".slider_overlay{height: 85%}</style>"
+return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
 +"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
 +"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
 +"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
@@ -273,9 +277,37 @@ return "<style>"+css+".slider_overlay{height: 85%}</style>"
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
+
+        <li class=no_margins style=vertical-align:top;>
+          <table class=nomargins style='display:inline-block;border:1px solid; vertical-align: top;'>
+          <tr><td class=no_margins style="vertical-align:top;">
+              <div id=disp_param3 class="slider" style="width:100px;vertical-align:top"></div>
+              <small>dithering method</small>
+              <input type="radio" name=param7 value=2 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>2</small>
+              <input type="radio" name=param7 value=4 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small>4</small>
+              <input type="radio" name=param7 value=6 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>6</small> bit
+              <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
+              <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
+              <br>
+              <button class=smallbutton onclick="document.getElementById('param3').value--;update(true);">&larr;</button><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin:0px 0px 0px 0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><button class=smallbutton onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">&rarr;</button>
+          </td></tr></table>    
+        </li>
+
+
+        <li>
+        <input type="radio" name=param7 value="1x1" onchange="setTimeout(function(){update(false);},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small>B&W<small>(1x1)</small></small>
+        <input type="radio" name=param7 value="2x2" onchange="setTimeout(function(){update(false);},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>reg_B&W<small>(2x2)</small></small>
+        <input type="radio" name=param7 value="2x1" onchange="setTimeout(function(){update(false);},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>dif_B&W<small>(2x1)</small></small>
+        <br>
+        <input type="radio" name=param7 value="2x2" onchange="setTimeout(function(){update(false);},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>reg_COL<small>(2x2)</small></small>
+        <input type="radio" name=param7 value="4x2" onchange="setTimeout(function(){update(false);},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>reg_COL<small>(4x2)</small></small>
+        <input type="radio" name=param7 value="1x2" onchange="setTimeout(function(){update(false);},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>dif_COL<small>(1x2)</small></small>
+      </li>
         <li><input type=button id=cam_button value="Enable camera" onclick="enable_camera()"></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><input type=button value="Take Snapshot" onclick="take_snapshot()"></li>
+        <li><div class=no_margins id=status>TEST</div></li>
+
       </ul>
     </div>
     <div id=main>
@@ -298,6 +330,19 @@ var bSound  = false;
 
 
 if(bSound) var shutter = new Audio();
+
+function update(bRender)
+{
+  setTimeout(function(){status_message("update")},10);
+  document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
+  if(document.getElementById("param3"))
+  {
+      var dot_idx   = Number(document.getElementById("param3").value);
+  }
+}
+
+var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
+
 
 function enable_camera()
 {
@@ -362,7 +407,7 @@ function process_snapshot()
           return c[0]+c[1]+c[2] > 240
         }
         
-        // COPY CAMERA CONTENT INTO APPLE SCREEN
+        // DIGITIZE CAMERA CONTENT INTO APPLE SCREEN
         for (var y=0;y<h;y++)
         {
             for (var x=0;x<w;x+=bw)
