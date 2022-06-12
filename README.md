@@ -102,7 +102,7 @@ The simple ability from the appleII to produce a 'click' sound by activating a c
 *Note:  Currently reading the following article, that explains the issues with real-time sound in JavaScript : https://www.html5rocks.com/en/tutorials/audio/scheduling/*
 
 #### apple II peripherals emulation
-<img src="/res/appleIIplus_motherboard_650.png?raw=true" width=40% align="right" />
+<img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
 Apple II wizards out there, anyone familiar with emulating any of these popular cards ? 
 
 - [ ] 6820, Peripheral Interface Adapter, often abreviated by PIA https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter
