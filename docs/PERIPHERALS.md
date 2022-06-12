@@ -5,49 +5,49 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲
           │                                    │   │
-          │   Open for large ROM programs      │  2K
+          │   Open for large ROM programs      │  2024 bytes
           │   Activated by I/O strobe (pin 20) │   │
           │                                    │   │
      C800 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#7           │   │  
-          │                                    │  1/4K
+          │                                    │  256 bytes
      C700 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#6           │   │ 
-          │                                    │  1/4K
+          │                                    │  256 bytes
      C600 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#5           │   │
-          │                                    │  1/4K
+          │                                    │  256 bytes
      C500 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#4           │   │
-          │                                    │  1/4K
+          │                                    │  256 bytes
      C400 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#3           │   │
-          │                                    │  1/4K
+          │                                    │  256 bytes
      C300 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#2           │   │
-          │                                    │  1/4K
+          │                                    │  256 bytes
      C200 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#1           │   │
-          │                                    │  1/4K
-     C100 ├────────────────────────────────────┤  ─┘
-          │  C0F0 - I/O Port slot #7  ─┐ 16B   │   ▲
-          │  C0E0 - I/O Port slot #6  ─┘       │   │       
-          │  C0D0 - I/O Port slot #5           │  1/8K
-          │  C0C0 - I/O Port slot #4           │   │
-          │  C0B0 - I/O Port slot #3           │   │
-          │  C0A0 - I/O Port slot #2           │   │
-          │  C090 - I/O Port slot #1           │   │
-          │  C080 - I/O Port slot #0           │   │
+          │                                    │  256 bytes
+     C100 └────────────────────────────────────┤  ─┘
+           C0F0 │  I/O slot #7  ─┐ 8*16 bytes  │   ▲
+           C0E0 │ I/O slot #6  ─┘              │   │       
+           C0D0 │ I/O slot #5                  │  128 bytes
+           C0C0 │ I/O slot #4                  │   │
+           C0B0 │ I/O slot #3                  │   │
+           C0A0 │ I/O slot #2                  │   │
+           C090 │ I/O slot #1                  │   │
+           C080 │ I/O slot #0                  │   │
      C080 ├────────────────────────────────────┤  ─┘
           │  Built-in I/O locations            │   ▲
-          │  (keyboard,speaker,casette,game..  │  1/8K
+          │  (keyboard,speaker,casette,game..  │  128 bytes
      C000 └────────────────────────────────────┘  ─┘
   
           </div>
