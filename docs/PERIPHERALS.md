@@ -8,7 +8,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │   Open for large ROM programs      │  2K
           │   Activated by I/O strobe (pin 20) │   │
           │                                    │   │
-     C800 ├────────────────────────────────────┤  ─
+     C800 ├────────────────────────────────────┤  ─┘
           │                                    │   ▲
           │  RAM/ROM open for slot#7           │   │  
           │                                    │  1/4K
@@ -37,9 +37,17 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │  RAM/ROM open for slot#1           │   │
           │                                    │  1/4K
      C100 ├────────────────────────────────────┤  ─┘
-          │  I/O Ports (0-7)                   │
-     C080 ├────────────────────────────────────┤
-          │  Built-in I/O locations            │
-     C000 └────────────────────────────────────┘ 
+          │  I/O Port slot #7  ─┐              │   ▲
+          │  I/O Port slot #6  ─┘              │   │       
+          │  I/O Port slot #5                  │  1/8K
+          │  I/O Port slot #4                  │   │
+          │  I/O Port slot #3                  │   │
+          │  I/O Port slot #2                  │   │
+          │  I/O Port slot #1                  │   │
+          │  I/O Port slot #0                  │   │
+     C080 ├────────────────────────────────────┤  ─┘
+          │  Built-in I/O locations            │   ▲
+          │  (keyboard,speaker,casette,game..  │  1/8K
+     C000 └────────────────────────────────────┘  ─┘
   
           </div>
