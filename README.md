@@ -105,6 +105,6 @@ The simple ability from the appleII to produce a 'click' sound by activating a c
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
 Apple II wizards out there, anyone familiar with emulating any of these popular cards ? 
 
-- [ ] 6820, Peripheral Interface Adapter, often abreviated by PIA https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter
+- [ ] 6820, Peripheral Interface Adapter, often abreviated as PIA https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter
 - [ ] Serial Pro, Serial card + real time clock (Applied Engineering) https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf
 
