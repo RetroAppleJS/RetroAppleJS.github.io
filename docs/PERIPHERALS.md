@@ -37,14 +37,14 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │  RAM/ROM open for slot#1           │   │
           │                                    │  1/4K
      C100 ├────────────────────────────────────┤  ─┘
-          │  I/O Port slot #7  ─┐              │   ▲
-          │  I/O Port slot #6  ─┘              │   │       
-          │  I/O Port slot #5                  │  1/8K
-          │  I/O Port slot #4                  │   │
-          │  I/O Port slot #3                  │   │
-          │  I/O Port slot #2                  │   │
-          │  I/O Port slot #1                  │   │
-          │  I/O Port slot #0                  │   │
+          │  C0F0 - I/O Port slot #7  ─┐ 16B   │   ▲
+          │  C0E0 - I/O Port slot #6  ─┘       │   │       
+          │  C0D0 - I/O Port slot #5           │  1/8K
+          │  C0C0 - I/O Port slot #4           │   │
+          │  C0B0 - I/O Port slot #3           │   │
+          │  C0A0 - I/O Port slot #2           │   │
+          │  C090 - I/O Port slot #1           │   │
+          │  C080 - I/O Port slot #0           │   │
      C080 ├────────────────────────────────────┤  ─┘
           │  Built-in I/O locations            │   ▲
           │  (keyboard,speaker,casette,game..  │  1/8K
