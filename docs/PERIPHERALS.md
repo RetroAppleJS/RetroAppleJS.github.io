@@ -1,6 +1,3 @@
-## PERIPHERALS Explained
+## PERIPHERAL interfacing Explained
 
-On the back of the motherboard, we have a row of 8 long slots, also called Peripheral Connectors.
-Seven of these can drive general purpose interface cards designed for the Apple II.
-A total of 280 byte locations have been allocated for each of these seven slots.
-There is also 2K byte "common area"
+Peripheral emulation is usually easier to achieve compared to building real hardware, as we can ignore the electrical and signal or logic layer including a major part of the electronic circuitry.  Our only real concern is software compatibility, which comes down to minding about all the memory mapped I/O.
