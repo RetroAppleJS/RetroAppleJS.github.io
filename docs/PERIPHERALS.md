@@ -4,6 +4,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
 
 <div style=width:800px>
 D000 ┌────────────────────────────────────┐   ▲
+
      │                                    │   │
      │   Open for large ROM programs      │  2K
      │   Activated by I/O strobe (pin 20) │   │
