@@ -51,7 +51,7 @@ The debugger is composed of 5 sections
 [DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)  
 [ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)   
 [6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)  
-[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
 [PERIPHERALS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/PERIPHERALS.md)
 [TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)
 
