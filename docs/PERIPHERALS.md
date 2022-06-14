@@ -37,8 +37,8 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │  RAM/ROM open for slot#1           │   │
           │                                    │  256 bytes
      C100 └───┬────────────────────────────────┤  ─┘
-         C0F0 │  I/O slot #7  ─┐ 8*16 bytes    │   ▲
-         C0E0 │  I/O slot #6  ─┘               │   │       
+         C0F0 │ I/O slot #7  ─┐ 8*16 bytes     │   ▲
+         C0E0 │ I/O slot #6  ─┘                │   │       
          C0D0 │ I/O slot #5                    │  128 bytes
          C0C0 │ I/O slot #4                    │   │
          C0B0 │ I/O slot #3                    │   │
