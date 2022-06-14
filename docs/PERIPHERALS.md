@@ -36,16 +36,16 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#1           │   │                  │
           │                                    │  256 bytes           │
-     C100 └───┬────────────────────────────────┤  ─┘                  │
-         C0F0 │ I/O slot #7  ─┐                │   ▲                  │
-         C0E0 │ I/O slot #6  ─┘ 16 bytes       │   │                  │
-         C0D0 │ I/O slot #5                    │  128 bytes           │
-         C0C0 │ I/O slot #4     X 8            │   │                  │
-         C0B0 │ I/O slot #3                    │   │                  │
-         C0A0 │ I/O slot #2                    │   │                  │
-         C090 │ I/O slot #1                    │   │                  │
-         C080 │ I/O slot #0                    │   │                  │
-     C080 ┌───┴────────────────────────────────┤  ─┘                  │
+     C100 └────┬───────────────────────────────┤  ─┘                  │
+          C0F0 │ I/O slot #7  ─┐               │   ▲                  │
+          C0E0 │ I/O slot #6  ─┘ 16 bytes      │   │                  │
+          C0D0 │ I/O slot #5                   │  128 bytes           │
+          C0C0 │ I/O slot #4     X 8           │   │                  │
+          C0B0 │ I/O slot #3                   │   │                  │
+          C0A0 │ I/O slot #2                   │   │                  │
+          C090 │ I/O slot #1                   │   │                  │
+          C080 │ I/O slot #0                   │   │                  │
+     C080 ┌────┴───────────────────────────────┤  ─┘                  │
           │  Built-in I/O locations            │   ▲                  │
           │  (keyboard,speaker,casette,game..  │  128 bytes           │
      C000 └────────────────────────────────────┘  ─┘                  ▼
