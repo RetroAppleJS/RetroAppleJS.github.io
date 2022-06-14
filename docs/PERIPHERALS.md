@@ -50,5 +50,5 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │  (keyboard,speaker,casette,game..  │  128 bytes
      C000 └────────────────────────────────────┘  ─┘
   
-          
+
           </div>
