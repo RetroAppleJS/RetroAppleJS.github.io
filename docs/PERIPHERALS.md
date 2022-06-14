@@ -5,7 +5,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲                  ▲
           │                                    │   │                  │
-          │   Open for large ROM programs      │  2024 bytes         4096 bytes
+          │   Open for large ROM programs      │  2024 bytes          │
           │   Activated by I/O strobe (pin 20) │   │                  │
           │                                    │   │                  │
      C800 ├────────────────────────────────────┤  ─┘                  │
@@ -16,7 +16,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#6           │   │                  │
           │                                    │  256 bytes           │
-     C600 ├────────────────────────────────────┤  ─┘                  │
+     C600 ├────────────────────────────────────┤  ─┘                 4096 bytes
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#5           │   │                  │
           │                                    │  256 bytes           │
