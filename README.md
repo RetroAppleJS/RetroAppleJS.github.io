@@ -51,8 +51,9 @@ The debugger is composed of 5 sections
 [DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)  
 [ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)   
 [6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)  
-[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
-[TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)  
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)
+[PERIPHERALS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md) 
+[TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)
 
 Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/tools/Docs_updater.html), into a JavaScript file included in the main application, called _\_GENERATED_DOCS.js_ located [here](https://github.com/flyingzebra/AppleII-IDE/tree/main/docs). In short, do not manually update this JavaScript file.
 
