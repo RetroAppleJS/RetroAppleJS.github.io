@@ -2,7 +2,7 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser, in other words: no need at all to deploy this code on a web-server.  The last build can be ran directly [here](https://bright-swan-0d3fbc.netlify.app)
+This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser, in other words: no need at all to deploy this code on a web-server.  The last build runs directly on [Netlify.com](https://bright-swan-0d3fbc.netlify.app)
 
 The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic computer experience, with some nice twits.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done on a CPU that was originally designed for desktop calculators.  Even if most computer books in those days were dreadfully printed, and contained mediocre, buggy projects, I know that he hates fanship, but Jeff Stanton was one of the rare exceptions that triggred my enthousiasm. 
 
