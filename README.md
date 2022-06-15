@@ -11,8 +11,8 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivin
 ## Getting started
 
 1) Check the last build on [Netlify.com](https://bright-swan-0d3fbc.netlify.app)
-OR
-1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser
+--OR--
+Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser
 
 2) Inside the assembler, tap the **'generate'** button
 3) Tap the **'to emulator'** button
