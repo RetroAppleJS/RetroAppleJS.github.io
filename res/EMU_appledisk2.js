@@ -43,6 +43,7 @@ function AppleDisk2() {
     var offset = 0;
 
     this.diskBytes = null;
+    this.bHidden = false;
 
     this.reset = function() {
         phase = 0;
@@ -53,12 +54,32 @@ function AppleDisk2() {
         q7 = 0;
     }
 
-    this.update = function(passtrough)
+    this.hide = function()
     {
+        //this.bHidden = true;
+        document.getElementById("dskLED1").style.visibility = "hidden"; 
+    }
+
+    //this.show = function()
+    //{
+    //    this.bHidden = false;
+        //this.update();
+    //}
+
+    this.update = function()
+    {
+        if(_o.EMU_keyb_active) return;
+        
+
         // FVD - we have only drive 0 here, TODO mount drive 1 and action the LED
+        //if(_o.EMU_keyb_timer) 
+        //{ 
+        //    document.getElementById("dskLED1").style.visibility = "hidden"; 
+        //    return
+        //}
+
         if(motor==1) { document.getElementById("dskLED1").style.visibility = "visible"; }
         else document.getElementById("dskLED1").style.visibility = "hidden";
-        return passtrough;
     }
 
     this.read = function(addr) {
@@ -107,7 +128,7 @@ function AppleDisk2() {
                 q6 = 0;
                 // Strobe Data Latch for I/O
                 if (!this.diskBytes || !motor || drv1)
-                    return this.update(0xff);
+                    return 0xff;
                 else {
                     if (++offset == TRACK_SIZE)
                         offset = 0;
@@ -146,7 +167,5 @@ function AppleDisk2() {
         //            d8.toString(16));
         if (addr == Q6H)
             data_latch = d8;
-
-        this.update()
     }
 }

@@ -92,6 +92,10 @@ function Apple2Plus(context) {
             alert("no key");
     }
 
+    this.DiskObj = function() {
+        return hw.io.disk2;
+    }
+
     this.loadDisk = function(bytes) {
         hw.io.disk2.diskBytes = bytes;
     }

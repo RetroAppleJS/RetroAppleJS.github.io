@@ -36,6 +36,7 @@ addLoadEvent(EMU_init); // EMULATOR KICKSTART
 var _o = {"tools":{}
         ,"sys":"A2P"
         ,"EMU_keyb_timer":false
+        ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
         ,"appleIntervalTime_ms":50

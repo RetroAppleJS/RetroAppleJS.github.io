@@ -79,6 +79,7 @@ function Apple2Keys()
                 document.getElementById(_o.EMU_key_id).style.display="";
                 document.getElementById(_o.EMU_key_id).style.top = loc.y+"px";
                 document.getElementById(_o.EMU_key_id).style.left = loc.x+"px";
+                _o.EMU_keyb_active = true;
                 _o.EMU_keyb_timer = true;
             break;        
             case "mouseout":
@@ -95,7 +96,7 @@ function Apple2Keys()
         if(_o.EMU_keyb_timer == true) return;
         document.getElementById(_o.EMU_kbd_id).style.opacity=0;
         document.getElementById(_o.EMU_key_id).style.display="none";
-    
+        _o.EMU_keyb_active = false;
         _o.EMU_keyb_timer = false;
     }
 
