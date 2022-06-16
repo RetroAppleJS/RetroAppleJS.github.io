@@ -2,20 +2,22 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser.
+This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ in any browser, in other words: no need at all to deploy this code on a web-server.
 
-The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic computer experience, with some nice twits.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done on a CPU that was originally designed for desktop calculators.  Even if most computer books in those days were dreadfully printed, and contained mediocre, buggy projects, I know that he hates fanship, but Jeff Stanton was one of the rare exceptions that triggred my enthousiasm. 
+The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic computer experience, with some nice twits.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done on a CPU that was originally designed for desktop calculators.  Even if most computer books in those days were dreadfully printed, and contained mediocre, buggy projects. I know that  Jeff Stanton hates fanship, but he was one of the rare authors that triggred my enthousiasm. 
 
 Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and deceivingly simple instruction set.  Alongside the development of this IDE, it is crucial to have a 6502 assembler codebase handy that can be edited, compiled, ran and debugged seamlessly.  Each of these functions have been conveniently knitted together in modules, represented in a tabbed view and formatted for reduced resolution screens, briefly described below.
 
 ## Getting started
 
-1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop
-2) Open index.html on any JavaScript capable browser
-3) Inside the assembler, tap the **'generate'** button
-4) Tap the **'to emulator'** button
-5) Inside the emulator, tap the **'paste'** button
-6) Type **G6000** to run the code at address 6000h, that's it !
+1) Check the last build on [Netlify.com](https://bright-swan-0d3fbc.netlify.app)
+--OR--
+Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser
+
+2) Inside the assembler, tap the **'generate'** button
+3) Tap the **'to emulator'** button
+4) Inside the emulator, tap the **'paste'** button
+5) Type **G6000** to run the code at address 6000h, that's it !
 
 <img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50% />
 

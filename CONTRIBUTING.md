@@ -1,11 +1,8 @@
 Contributing
 ============
 
-If you wish to contribute please read the following quick guide, but first, we want to thank all the helpful sources of code, inspiration and tooling that made this entire project possible.
+If you wish to contribute please read the following quick guide, but first, we want to thank all the helpful sources of code, inspiration and tooling that made this entire project possible. [CREDITS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/CREDITS.md)
 
-* Thomas Skibo - for the javascrip 6502 emulator
-* N. Landsteiner - for the 6502 assembler and 6502 debugger source code
-* https://asciiflow.com/#/ diagram tooling
 
 # Issues (bug reporting)
 Generally, bug reports should be in the following format:
