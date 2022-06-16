@@ -93,7 +93,7 @@ function pauseButton() {
     } else {
         attachKeyboard(true);
         appleIntervalHandle = window.setInterval("appleIntervalFunc()",
-                                                 appleIntervalTime);
+        _o.appleIntervalTime_ms);
         document.getElementById('pausebutton').value = 'Pause ';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
     }
