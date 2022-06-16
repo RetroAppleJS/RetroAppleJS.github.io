@@ -53,6 +53,14 @@ function AppleDisk2() {
         q7 = 0;
     }
 
+    this.update = function(passtrough)
+    {
+        // FVD - we have only drive 0 here, TODO mount drive 1 and action the LED
+        if(motor==1) { document.getElementById("dskLED1").style.visibility = "visible"; }
+        else document.getElementById("dskLED1").style.visibility = "hidden";
+        return passtrough;
+    }
+
     this.read = function(addr) {
         // console.log("AppleDisk2: read %s", addr.toString(16));
 
@@ -83,9 +91,11 @@ function AppleDisk2() {
             switch (addr) {
             case MOTOR_OFF:
                 motor = 0;
+                this.update()
                 break;
             case MOTOR_ON:
                 motor = 1;
+                this.update()
                 break;
             case DRV0EN:
                 drv1 = 0;
@@ -97,7 +107,7 @@ function AppleDisk2() {
                 q6 = 0;
                 // Strobe Data Latch for I/O
                 if (!this.diskBytes || !motor || drv1)
-                    return 0xff;
+                    return this.update(0xff);
                 else {
                     if (++offset == TRACK_SIZE)
                         offset = 0;
@@ -136,5 +146,7 @@ function AppleDisk2() {
         //            d8.toString(16));
         if (addr == Q6H)
             data_latch = d8;
+
+        this.update()
     }
 }

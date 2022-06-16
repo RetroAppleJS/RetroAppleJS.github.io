@@ -258,6 +258,15 @@
         flex-wrap:wrap;
     }
 
+    .appdskLED {
+      z-index:0;
+      opacity:0.5;
+      visibility:hidden;
+      position:absolute;
+      background-color:#FF5555;
+      padding:9px 16px 0px 0px;
+    }
+
     .tabs > div { display:none; }
     .tabs > div.active { display:block; }
 
@@ -409,7 +418,8 @@
             function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" };  
             </script>
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
-
+            <div class="appdskLED" id="dskLED1" style="left:392px;top:666px"></div>
+            <div class="appdskLED" id="dskLED2" style="left:750px;top:666px"></div>
             <div class="appkbd" id="kbdimg" onmousemove=apple2keys.KbdHover(event) onmouseout=apple2keys.KbdHover(event)>
               <div class="key"  id="keybox" onclick=apple2plus.keystroke(event)></div>
 
