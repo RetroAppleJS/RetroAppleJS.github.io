@@ -110,4 +110,4 @@ Apple II wizards out there, anyone familiar with emulating any of these popular 
 
 - [ ] 6820, Peripheral Interface Adapter, often abreviated as PIA https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter
 - [ ] Serial Pro, Serial card + real time clock (Applied Engineering) https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf
-
+- [ ] Apple 16K Language Card http://www.applelogic.org/PeripheralCards.html
