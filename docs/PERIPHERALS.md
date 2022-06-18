@@ -5,7 +5,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲                  ▲
           │                                    │   │                  │
-          │   Open for large ROM programs      │  2024 bytes          │
+          │   Open for large ROM programs      │  2048 bytes          │
           │   Activated by I/O strobe (pin 20) │   │                  │
           │                                    │   │                  │
      C800 ├────────────────────────────────────┤  ─┘                  │
