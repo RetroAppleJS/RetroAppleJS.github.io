@@ -36,13 +36,16 @@ START   LDY #>STR.00
         LDA (CLKADR+1),Y
         JSR M.PRBYTE    ; PRINT Y
         JSR M.OUTSP
-        ; move cursor up
+  : insert here !
+        JSR M.PRBYTE
 
+        ; move cursor up
+        
       
         RTS
 
 ; *** PRINT STRING from Y = INDEX ***
-STR.00  ASC "S  M  H  D WD MO YR"
+STR.00  ASC "S  M  H  D  MO YR"
         HEX 00
 
 ; ***************************
