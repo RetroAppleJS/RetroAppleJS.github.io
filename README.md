@@ -102,12 +102,12 @@ feature details & status:
 
 The simple ability from the appleII to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems very hard to achieve through emulation.  The main reasons are the inaccurate JavaScript timer and the way sound production is 'buffered', which works with scheduling.  
 
-*Note:  Currently reading the following article, that explains the issues with real-time sound in JavaScript : https://www.html5rocks.com/en/tutorials/audio/scheduling/*
+*Note:  Currently reading the following article, that explains the issues with real-time sound in JavaScript : [Audio scheduling](https://www.html5rocks.com/en/tutorials/audio/scheduling/)*
 
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
 Apple II wizards out there, anyone familiar with emulating any of these popular cards ? 
 
-- [ ] 6820, Peripheral Interface Adapter, often abreviated as PIA https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter
-- [ ] Serial Pro, Serial card + real time clock (Applied Engineering) https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf
-
+- [ ] [6820 Peripheral Interface Adapter](https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter), often abreviated as PIA
+- [ ] [Serial Pro](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) = Serial card + real time clock (Applied Engineering) 
+- [ ] [Apple 16K Language Card](http://www.applelogic.org/PeripheralCards.html) e.g. enabling ProDOS
