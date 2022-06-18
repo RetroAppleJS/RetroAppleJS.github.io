@@ -10,6 +10,7 @@ M.COUT    = $FDED   ; print char
 M.KPRESS  = $FD35
 M.RDKEY   = $FD2F   ; $FD0C
 M.STROUT  = $DB3A   ; print string from address Y (high) and A (low)
+CLKADR    = $C084
 
 S2.TX        = $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
 S2.TY        = $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
@@ -30,10 +31,12 @@ START   LDY #>STR.00
         JSR M.CRDO
 
         LDY SLOTNR
-        
-
-        ;JSR M.PRBYTE    ; PRINT Y
+        LDA #00          ; SEC
+        STA (CLKADR),Y
+        LDA (CLKADR+1),Y
+        JSR M.PRBYTE    ; PRINT Y
         JSR M.OUTSP
+        ; move cursor up
 
       
         RTS
