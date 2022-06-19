@@ -36,8 +36,16 @@ function Apple2IO(vid) {
         SLOT4_IO =      0xC0,
         SLOT5_IO =      0xD0, 
         SLOT6_IO =      0xE0,
-        SLOT7_IO =      0xF0;
-        SLOT_IO_SIZE =  0x10;     
+        SLOT7_IO =      0xF0,
+        SLT_IO_SIZE =   0x10,
+        SLOT1_PROM =    0x100,
+        SLOT2_PROM =    0x200,
+        SLOT3_PROM =    0x300,
+        SLOT4_PROM =    0x400,
+        SLOT5_PROM =    0x500,
+        SLOT6_PROM =    0x600,
+        SLOT7_PROM =    0x700,
+        SLT_PROM_SIZE = 0x100;     
 
     const KEY_DATA =    0x00,
         KEY_STROBE =    0x10,
@@ -60,13 +68,13 @@ function Apple2IO(vid) {
         ANALOG_IN1 =    0x65,
         ANALOG_IN2 =    0x66,
         ANALOG_IN3 =    0x67,
-        ANALOG_CLR =    0x70:
+        ANALOG_CLR =    0x70;
 
-    // ASSIGN DISK TO SLOT#6
+    // MAP DISK TO SLOT#6
     var DISK_IO =       SLOT6_IO,
-        DISK_IO_SIZE =  SLOT_IO_SIZE,
-        DISK_PROM =     0x600,
-        DISK_PROM_SIZE = 0x100;
+        DISK_IO_SIZE =  SLT_IO_SIZE,
+        DISK_PROM =     SLOT6_PROM,
+        DISK_PROM_SIZE = SLT_PROM_SIZE;
  
     var video = vid;
     var key = 0x00;
