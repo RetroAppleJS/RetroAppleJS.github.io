@@ -30,25 +30,26 @@
 
 function Apple2IO(vid) {
     // Slot I/O addresses
-    const SLOT0_IO =    0x80,
-        SLOT1_IO =      0x90,
-        SLOT2_IO =      0xA0,
-        SLOT3_IO =      0xB0,
-        SLOT4_IO =      0xC0,
-        SLOT5_IO =      0xD0, 
-        SLOT6_IO =      0xE0,
-        SLOT7_IO =      0xF0,
-        SLT_IO_SIZE =   0x10;
+    const SLOT_IO =    [0x80,
+                        0x90,
+                        0xA0,
+                        0xB0,
+                        0xC0,
+                        0xD0, 
+                        0xE0,
+                        0xF0];
+    const SLT_IO_SIZE = 0x10;
 
     // Slot RAM/ROM spaces
-    const SLOT1_PROM =  0x100,  // SLOT0_PROM does not exist
-        SLOT2_PROM =    0x200,
-        SLOT3_PROM =    0x300,
-        SLOT4_PROM =    0x400,
-        SLOT5_PROM =    0x500,
-        SLOT6_PROM =    0x600,
-        SLOT7_PROM =    0x700,
-        SLT_PROM_SIZE = 0x100;     
+    const SLOT_PROM =  [null,   // SLOT0_PROM does not exist
+                        0x100,
+                        0x200,
+                        0x300,
+                        0x400,
+                        0x500,
+                        0x600,
+                        0x700];
+    const SLT_PROM_SIZE = 0x100;     
 
     const KEY_DATA =    0x00,
         KEY_STROBE =    0x10,
@@ -74,9 +75,9 @@ function Apple2IO(vid) {
         ANALOG_CLR =    0x70;
 
     // MAP DISK TO SLOT#6
-    var DISK_IO =       SLOT6_IO,
+    var DISK_IO =       SLOT_IO[6],
         DISK_IO_SIZE =  SLT_IO_SIZE,
-        DISK_PROM =     SLOT6_PROM,
+        DISK_PROM =     SLOT_PROM[6],
         DISK_PROM_SIZE = SLT_PROM_SIZE;
  
     var video = vid;
