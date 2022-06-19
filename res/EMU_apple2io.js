@@ -29,7 +29,8 @@
 // The hard part: modelling apple 2 hardware.
 
 function Apple2IO(vid) {
-    const SLOT0_IO =      0x80,
+    // Slot I/O addresses
+    const SLOT0_IO =    0x80,
         SLOT1_IO =      0x90,
         SLOT2_IO =      0xA0,
         SLOT3_IO =      0xB0,
@@ -38,7 +39,9 @@ function Apple2IO(vid) {
         SLOT6_IO =      0xE0,
         SLOT7_IO =      0xF0,
         SLT_IO_SIZE =   0x10,
-        SLOT1_PROM =    0x100,
+
+    // Slot RAM/ROM spaces
+    const SLOT1_PROM =  0x100,  // SLOT0_PROM does not exist
         SLOT2_PROM =    0x200,
         SLOT3_PROM =    0x300,
         SLOT4_PROM =    0x400,
