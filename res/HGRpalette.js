@@ -70,6 +70,7 @@ function PALETTE()
         this.ctx[arg.canvasID[1]]    =  this.canvas[arg.canvasID[1]].getContext("2d");
     }
 
+    
     this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
     this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
