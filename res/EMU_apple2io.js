@@ -38,7 +38,7 @@ function Apple2IO(vid) {
         SLOT5_IO =      0xD0, 
         SLOT6_IO =      0xE0,
         SLOT7_IO =      0xF0,
-        SLT_IO_SIZE =   0x10,
+        SLT_IO_SIZE =   0x10;
 
     // Slot RAM/ROM spaces
     const SLOT1_PROM =  0x100,  // SLOT0_PROM does not exist
