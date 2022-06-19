@@ -35,7 +35,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
      C200 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#1           │   │                  │
-          │                                    │  256 bytes           │
+          │  (No mem mapped for slot#0)        │  256 bytes           │
      C100 └────┬───────────────────────────────┤  ─┘                  │
           C0F0 │ I/O slot #7  ─┐               │   ▲                  │
           C0E0 │ I/O slot #6  ─┘ 16 bytes      │   │                  │
