@@ -29,7 +29,17 @@
 // The hard part: modelling apple 2 hardware.
 
 function Apple2IO(vid) {
-    var KEY_DATA =      0x00,
+    const SLOT0_IO =      0x80,
+        SLOT1_IO =      0x90,
+        SLOT2_IO =      0xA0,
+        SLOT3_IO =      0xB0,
+        SLOT4_IO =      0xC0,
+        SLOT5_IO =      0xD0, 
+        SLOT6_IO =      0xE0,
+        SLOT7_IO =      0xF0;
+        SLOT_IO_SIZE =  0x10;     
+
+    const KEY_DATA =    0x00,
         KEY_STROBE =    0x10,
         CASS_TOGGLE =   0x20,
         SPKR_TOGGLE =   0x30,
@@ -50,9 +60,11 @@ function Apple2IO(vid) {
         ANALOG_IN1 =    0x65,
         ANALOG_IN2 =    0x66,
         ANALOG_IN3 =    0x67,
-        ANALOG_CLR =    0x70,
-        DISK_IO =       0xE0,
-        DISK_IO_SIZE =  0x10,
+        ANALOG_CLR =    0x70:
+
+    // ASSIGN DISK TO SLOT#6
+    var DISK_IO =       SLOT6_IO,
+        DISK_IO_SIZE =  SLOT_IO_SIZE,
         DISK_PROM =     0x600,
         DISK_PROM_SIZE = 0x100;
  
