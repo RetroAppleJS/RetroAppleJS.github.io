@@ -26,6 +26,8 @@
 
 // apple2plus.js
 
+const timestamp = new Date();
+
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
     var hw = new Apple2Hw(video);
