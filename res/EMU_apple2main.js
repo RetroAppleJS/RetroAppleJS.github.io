@@ -42,7 +42,7 @@ const _o = {"tools":{}
         //,"CPU_IntervalTime_ms":0.1         // CPU refresh
 
         ,"KBD_Updates_s":10                // KBD updates / second       
-        ,"CPU_Clocks_s":2000000            // CPU clocks  / second
+        ,"CPU_Clocks_s":1000000            // CPU clocks  / second
         ,"EMU_snd_bpulse":false
         ,"EMU_snd_pulse1":new Tone.PulseOscillator(1, -0.001).toDestination()
         ,"EMU_snd_pulse2":new Tone.PulseOscillator(1, 0.001).toDestination()
