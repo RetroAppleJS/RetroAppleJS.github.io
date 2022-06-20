@@ -56,7 +56,7 @@ _o.cycles = (_o.CPU_Clocks_s / _o.KBD_Updates_s / 100)*_o.KBD_IntervalTime_ms
 //_o.CPU_IntervalTime_ms =  1/CPU_Clocks_s
 
 
-alert(_o.cycles)
+//alert(_o.cycles)
 
 // 1000
 
