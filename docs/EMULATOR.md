@@ -12,13 +12,13 @@ _note: most apple][ disks do not boot, it was not uncommon to keep a bootable di
 
 
 __A handful new functions make the experience complete__  
-\* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1 MHz computer takes this slowly.  
+\* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1MHz computer takes this slowly.  
 \* monitor: cycle color mode through apple color, black/white, green and amber  
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
 
 __Major challenge with sound__  
-Howerver simple AppleII sound production was implemented, since it's inception, JavaScript maintained 1ms as the [highest achievable timing accuracy], while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used AppleII Beep sound is a 1KHz square wave.
+However simple sound production was implemented on the Apple II, since 1997 until today, JavaScript maintained 1ms as the [highest achievable timing accuracy], while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used AppleII Beep sound is a 1KHz square wave.
 
 ## Appendix
 
