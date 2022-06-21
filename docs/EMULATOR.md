@@ -24,7 +24,7 @@ W3C recently started to worry about this limitation by proposing a new spec call
 
 Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that one read operation takes 4 clock cycles, only every 4µs, we should mind about toggling the speaker.
 
-Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.
+Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.  In conclusion, we only need 25µs or 0.025ms timer accuracy.
 
 
 ## Appendix
