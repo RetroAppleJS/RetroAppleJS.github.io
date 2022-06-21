@@ -17,8 +17,9 @@ __A handful new functions make the experience complete__
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
 
-__Major challenge with sound__  
-However simple sound production was implemented on the Apple II, since 1997 until today, JavaScript maintained 1ms as the [highest achievable timing accuracy], while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used AppleII Beep sound is a 1KHz square wave.
+__Major challenges with sound emulation__  
+However simple sound production was implemented on the Apple II, since 1997, so far, JavaScript maintained 1ms as the [highest achievable timing accuracy], while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used AppleII Beep sound is a 1KHz square wave.  W3C is intending to address this issue by gearing up to a new spec called [hr-time](https://w3c.github.io/hr-time/) or "High Resolution Time", but since hr-timing can be used for malicious purposes like [CACHE-ATTACKS] and [SPECTRE], the intent is to purposefully mess with it's accuracy, by reducing resolution, adding jitter, or by any other piggish means that probably never would provide anything near to 1µs clock accuracy. 
+
 
 ## Appendix
 
