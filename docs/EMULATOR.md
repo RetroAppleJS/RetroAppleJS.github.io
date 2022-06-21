@@ -24,16 +24,15 @@ W3C recently started to worry about this limitation by proposing a new spec call
 
 Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that one read operation takes 4 clock cycles, only every 4µs, we should mind about toggling the speaker.
 
-`
-LDA $C030  
-LDX #$0A  
-DEX  
-BNE $305  
-JMP $300  
-`
+Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.
 
-Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that one read operation takes 4 clock cycles, only every 4µs, we should mind about toggling the speaker.
-
+``` 
+    LDA $C030 - 4 cycles
+    LDX #$0A  - 2 cycles
+    DEX       - 2 cycles
+    BNE $305  - 2 cycles
+    JMP $300  - 3 cycles  >> total = 13 cycles
+```
 
 
 ## Appendix
