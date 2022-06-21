@@ -1,7 +1,7 @@
 ## EMULATOR Instructions
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
-Unsurprisingly, the use of this emulator hardly differs from the real hardware.<br><br>
+While the end-user experience with emulator hardly differs from the real hardware, which in fact should not hinder anyone familiar with the Apple II, there are some essential differences, mostly to your benefit, but there are some downsides too.<br><br>
 
 __All basic functions remain self-explanatory__  
 \* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
@@ -16,6 +16,9 @@ __A handful new functions make the experience complete__
 \* monitor: cycle color mode through apple color, black/white, green and amber  
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
+
+__Major challenge with sound__  
+Howerver simple AppleII sound production was implemented, since it's inception, JavaScript maintained 1ms as the [highest achievable timing accuracy], while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used AppleII Beep sound is a 1KHz square wave.
 
 ## Appendix
 
