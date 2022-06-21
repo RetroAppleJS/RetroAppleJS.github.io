@@ -17,14 +17,12 @@ __A handful new functions make the experience complete__
 \* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
 
-__Major challenges with sound emulation__  
-However simple sound production was implemented on the Apple II, since 1997, so far, JavaScript maintained 1ms as the **highest achievable timing accuracy**, while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used Apple II Beep sound is a 1KHz square wave.
+__JavaScript sound emulation__  
+However simple sound production was implemented on the Apple II, since 1997, so far, JavaScript maintained 1ms as the **highest achievable timing accuracy**, while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, a JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used Apple II Beep sound is a 1KHz square wave.
 
 W3C recently started to worry about this limitation by proposing a new spec called ["High Resolution Time" or hr-time](https://w3c.github.io/hr-time/), but because of alleged malicious capability like [CACHE-ATTACKS] and [SPECTRE], W3C recommends to purposefully mess-up it's accuracy by reducing resolution, adding jitter, or by any other piggish means that probably never will provide us anything near to 1µs clock accuracy.  Nobody would have thought that an Apple II made in 1978 🦖, due to it's highly accurate clock of 1,022727 MHz could up till today present a cybersecurity risk 44 years later, let alone an emulated Apple II ! 🤨
 
-Last but not least, we actually do not need 1µs clock accuracy.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that one read operation takes 4 clock cycles, only every 4µs, we should mind about toggling the speaker.
-
-Last but not least, we actually do not need 1µs clock accuracy for sound emulation.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.  In conclusion, we only need 25µs or 0.025ms timer accuracy, which in the future will be achieved with High Resolution Time control logic.
+Last but not least, we actually do not need 1µs clock accuracy for sound emulation.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.  In conclusion, we only need 25µs or 0.025ms timer accuracy, which in future will be achieved with High Resolution Time control logic.
 
 
 ## Appendix
