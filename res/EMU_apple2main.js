@@ -39,26 +39,18 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
-        //,"CPU_IntervalTime_ms":0.1         // CPU refresh
-
-        ,"KBD_Updates_s":10                // KBD updates / second       
-        ,"CPU_Clocks_s":1000000            // CPU clocks  / second
+        ,"EMU_Updates_s":25                // Emulator intervals per second       
+        ,"CPU_ClocksTicks_s":1000000       // CPU clocksTicks per second
         ,"EMU_snd_bpulse":false
         ,"EMU_snd_pulse1":new Tone.PulseOscillator(1, -0.001).toDestination()
         ,"EMU_snd_pulse2":new Tone.PulseOscillator(1, 0.001).toDestination()
         //new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
     };
-//const CPU_SRC_rate = Math.round(_o.KBD_IntervalTime_ms / _o.CPU_IntervalTime_ms);
-//const CPU_SRC_rate = _o.CPU_Clocks_s / _o.KBD_Updates_s / 100;
-_o.KBD_IntervalTime_ms = 1000/_o.KBD_Updates_s        // keyboard refresh
-_o.cycles = (_o.CPU_Clocks_s / _o.KBD_Updates_s / 100)*_o.KBD_IntervalTime_ms
 
-//_o.CPU_IntervalTime_ms =  1/CPU_Clocks_s
+_o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
+_o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Update
+console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 
-
-//alert(_o.cycles)
-
-// 1000
 
 var ts = 0;
 var ppleIntervalHandle,vidContext,apple2plus,apple2keys,bKeyboardFocus;
@@ -67,7 +59,7 @@ var bOsc = false;
 
 function EMU_init()
 {
-    appleIntervalHandle = window.setInterval(appleIntervalFunc,_o.KBD_IntervalTime_ms);
+    appleIntervalHandle = window.setInterval(appleIntervalFunc,_o.EMU_IntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     apple2keys          = new Apple2Keys();
@@ -81,10 +73,9 @@ function attachKeyboard(bEnable)
 }
 
 // TODO rename to sreenIntervalFunc
-function appleIntervalFunc() {
-    document.getElementById("debug").value = _o.KBD_IntervalTime_ms+" ms / "+_o.cycles+" clocks = "+(1000*_o.cycles/_o.KBD_IntervalTime_ms)+" clocks/ms";
-    //(ts-timestamp.getTime())+"
-    apple2plus.cycle(_o.cycles);
+function appleIntervalFunc()
+{
+    apple2plus.cycle(_o.CPU_ClockTicks);
     // TODO: SET KEYBOARDFOCUS STATE ONLY ON TAB CHANGE EVENT
     bKeyboardFocus = document.getElementById("tab1").checked;
     attachKeyboard(bKeyboardFocus);
@@ -109,7 +100,7 @@ function pauseButton() {
     } else {
         attachKeyboard(true);
         appleIntervalHandle = window.setInterval("appleIntervalFunc()",
-        _o.KBD_IntervalTime_ms);
+        _o.EMU_IntervalTime_ms);
         document.getElementById('pausebutton').value = 'Pause ';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
     }
