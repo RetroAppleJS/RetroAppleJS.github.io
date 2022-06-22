@@ -3,11 +3,11 @@
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
 While the end-user experience with emulators hardly differ from the real hardware, there are some essential differences, mostly to our benefit, but there are some downsides too.<br><br>
 
-__All basic functions remain self-explanatory__  
+__Most basic functions remain the same__  
 \* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
 \* warm boot: press the reset button on the pop-up keyboard
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40%/>  
-\* insert disk: press the right disk drive to load any disk file found on the internet (.do, .dsk), after, perform a cold boot  
+\* insert disk: load any disk file found on the internet (.do, .dsk), after, perform a cold boot  
 _note: most apple][ disks do not boot, it was not uncommon to keep a bootable disk image at hand reach._  
 
 
