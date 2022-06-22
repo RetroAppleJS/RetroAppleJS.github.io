@@ -25,20 +25,20 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 
           <div style=width:800px>
           
-                                                                 10ms                         
+                                                                 100ms                         
                                         ┌────────────────────────────────────────────────────┐┌─────...  
       setInterval(appleInterval(),10)   │                                                    ││  
                                       ──┘                                                    └┘  
                                         :                                                     :
                                         :<1ms                                                 :<1ms
-                                        ┌───┐                                                 ┌───┐ 
-              apple2plus.cycle(10000) ──┘10K└─────────────────────────────────────────────────┘10K└─...
+                                        ┌────┐                                                 ┌────┐ 
+              apple2plus.cycle(10000) ──┘100K└─────────────────────────────────────────────────┘100K└─...
                                         :cycles                                               :cycles  
                                         :                                                     :
                                         :                                                     :
                                         ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐
         real Apple II clock cylcles   ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...
-                                                              10K cycles             
+                                                              100K cycles             
                                          
 
           </div>
