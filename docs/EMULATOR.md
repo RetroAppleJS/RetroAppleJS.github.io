@@ -6,15 +6,16 @@ While the end-user experience with emulators hardly differ from the real hardwar
 __Most basic functions remain the same__  
 \* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
 \* warm boot: press the reset button on the pop-up keyboard  
+\* cold boot: press the white power button on the pop-up keyboard (on a real Apple II, this was a flip-switch below the keyboard   
 \* insert disk: load any disk file found on the internet (.do, .dsk), after, perform a cold boot   
 _note: most Apple II disks do not boot, keeping a bootable disk image at hand reach is still required._  
 
+
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40%/> 
 
-__A handful new functions make the experience complete__  
+__A handful extra functions make the experience complete__  
 \* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1MHz computer takes this slowly.  
 \* monitor: cycle color mode through apple color, black/white, green and amber  
-\* cold boot: press the power button on the pop-up keyboard  
 \* pause: freeze/unfreeze CPU
 
 __The 1MHz trick__
