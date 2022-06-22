@@ -23,8 +23,18 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 
 
 
-  
+          <div style=width:800px>
+            10ms                                                  10ms
+            ┌────────────────────────────────────────────────────┐┌─...
+            │                                                    ││
+          ──┘                                                    └┘
+            
+            ┌┐┌┐┌┐┌┐                                              ┌┐
+          ──┘└┘└┘└┘└...───────────────────────────────────────────┘└┘...
+            10K cycles                                            10K cycles
+          </div>
 
+  
 __Impossible sound emulation__  
 However simple sound production was designed on the Apple II, since 1997, JavaScript maintained 1ms as the **highest achievable timing accuracy**, while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, a JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used Apple II Beep sound is a 1KHz square wave.
 
