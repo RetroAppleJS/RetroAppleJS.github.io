@@ -39,7 +39,7 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
-        ,"EMU_Updates_s":100                // Emulator intervals per second       
+        ,"EMU_Updates_s":10                // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
         ,"EMU_snd_bpulse":false
         ,"EMU_snd_pulse1":new Tone.PulseOscillator(1, -0.001).toDestination()
@@ -59,7 +59,7 @@ var bOsc = false;
 
 function EMU_init()
 {
-    appleIntervalHandle = window.setInterval(appleIntervalFunc,_o.EMU_IntervalTime_ms);
+    appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
     apple2keys          = new Apple2Keys();
@@ -73,7 +73,7 @@ function attachKeyboard(bEnable)
 }
 
 // TODO rename to sreenIntervalFunc
-function appleIntervalFunc()
+function appleInterval()
 {
     apple2plus.cycle(_o.CPU_ClockTicks);
     // TODO: SET KEYBOARDFOCUS STATE ONLY ON TAB CHANGE EVENT
@@ -99,7 +99,7 @@ function pauseButton() {
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
     } else {
         attachKeyboard(true);
-        appleIntervalHandle = window.setInterval("appleIntervalFunc()",
+        appleIntervalHandle = window.setInterval("appleInterval()",
         _o.EMU_IntervalTime_ms);
         document.getElementById('pausebutton').value = 'Pause ';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
