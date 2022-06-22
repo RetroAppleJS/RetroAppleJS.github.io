@@ -25,7 +25,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 
           <div style=width:800px>
           
-                                                                 100ms                         
+                                        :                   100ms                   :      
                                         ┌──────────────────────────────────────────┐┌─────...    ┐
       setInterval(appleInterval(),10)   │                                          ││            │
                                       ──┘                                          └┘            │
@@ -39,7 +39,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                                           :
                                         ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐        ┐
                       real Apple II   ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...     ├>  HARDWARE
-                                                             100K cycles                          ┘   CLOCK
+                                        :                 100K cycles               :             ┘   CLOCK
                                          
           </div>
 
