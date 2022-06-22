@@ -22,7 +22,7 @@ However simple sound production was implemented on the Apple II, since 1997, so 
 
 W3C recently started to worry about this limitation by proposing a new spec called ["High Resolution Time" or hr-time](https://w3c.github.io/hr-time/), but because of alleged malicious capability like [CACHE-ATTACKS] and [SPECTRE], W3C recommends to purposefully mess-up it's accuracy by reducing resolution, adding jitter, or by any other piggish means that probably never will provide us anything near to 1µs clock accuracy.  Nobody would have thought that an Apple II made in 1978 🦖, due to it's highly accurate clock of 1,022727 MHz could up till today present a cybersecurity risk 44 years later, let alone an emulated Apple II ! 🤨
 
-Last but not least, we actually do not need 1µs clock accuracy for sound emulation.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.  In conclusion, we only need 25µs or 0.025ms timer accuracy, which in future may be achieved with High Resolution Time control logic, fingers crossed !
+Last but not least, we actually do not need 1µs clock accuracy for sound emulation.  The speaker can be switched from 'off' to 'on' and back to 'off' by reading the address location twice.  Knowing that frequencies above 20000 Hz remain unhearable, we only should mind about toggling the speaker every 50 cycles / 2 = 25 cycles.  In conclusion, we only need 25µs or 0.025ms timer accuracy, which in future may be achieved with High Resolution Time control logic, but since this spec came only in 2022, we can only wait and see.
 
 
 ## Appendix
