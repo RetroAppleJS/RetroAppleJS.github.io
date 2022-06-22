@@ -1,7 +1,7 @@
 ## EMULATOR Instructions
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
-While the end-user experience with emulator hardly differs from the real hardware, which in fact should not hinder anyone familiar with the Apple II, there are some essential differences, mostly to your benefit, but there are some downsides too.<br><br>
+While the end-user experience with emulators hardly differ from the real hardware, there are some essential differences, mostly to our benefit, but there are some downsides too.<br><br>
 
 __All basic functions remain self-explanatory__  
 \* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
