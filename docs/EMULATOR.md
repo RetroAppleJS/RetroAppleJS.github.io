@@ -24,14 +24,16 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 
 
           <div style=width:800px>
-            10ms                                                  10ms
-            ┌────────────────────────────────────────────────────┐┌─...
-            │                                                    ││
-          ──┘                                                    └┘
+          
+                                        10ms                                                  10ms
+                                        ┌────────────────────────────────────────────────────┐┌─...
+setInterval(appleInterval(),10)         │                                                    ││
+                                      ──┘                                                    └┘
             
-            ┌┐┌┐┌┐┌┐                                              ┌┐
-          ──┘└┘└┘└┘└...───────────────────────────────────────────┘└┘...
-            10K cycles                                            10K cycles
+                                        ┌┐┌┐┌┐┌┐                                              ┌┐
+apple2plus.cycle(10000)               ──┘└┘└┘└┘└...───────────────────────────────────────────┘└┘...
+                                        10K cycles                                            10K cycles
+            
           </div>
 
   
