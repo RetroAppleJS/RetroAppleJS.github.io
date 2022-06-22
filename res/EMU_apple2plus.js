@@ -46,11 +46,13 @@ function Apple2Plus(context) {
     }
 
     this.cycle = function(n) {
+        //var t = new Date();
         while (n-- > 0) {
             hw.cycle();
             video.cycle();
             cpu.cycle();
         }
+        //document.getElementById("debug").value = new Date()-t;
     }
 
     this.keystroke = function(data)
