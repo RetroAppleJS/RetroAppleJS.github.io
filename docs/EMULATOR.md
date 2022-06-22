@@ -19,7 +19,10 @@ __A handful extra functions make the experience complete__
 \* pause: freeze/unfreeze CPU
 
 __The 1MHz trick__  
-JavaScript does not provide 1µs timing precision, but we have a workaround.  The setInterval() function located in EMU_apple2main.js, which drives the main loop of our emulator, starts a new sequence every 10ms.  But instead of cycling one time through the CPU emulator every 1µs, we cycle 10000 times every 10ms.  By this trick, we achieve exactly the same performance as a real Apple II at 1MHz.  Just, all 10000 cycles are far from equally spread accross this 10ms loop.  Most CPU's nowadays, effortlessly execute all 10000 cycles in less than one millisecond, which sounds good, until you want to emulate 'sound'.
+JavaScript does not provide 1µs timing precision, but we have a workaround.  The setInterval() function located in EMU_apple2main.js, which drives the main loop of our emulator, starts a new sequence every 10ms.  But instead of cycling one time through the CPU emulator every 1µs, we cycle 10000 times every 0.01s or 10000/0.01 = 1M cyles/sec.  By this trick, we achieve exactly the same performance as a real Apple II at 1MHz.  Just, all 10000 cycles are far from equally spread accross this 10ms loop.  Most CPU's nowadays, effortlessly execute all 10000 cycles in less than one millisecond, which all sounds good, until you want to emulate 'sound'. Below diagram explains the 1MHz trick visually :
+
+
+
   
 
 __Impossible sound emulation__  
