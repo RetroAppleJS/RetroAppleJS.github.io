@@ -37,9 +37,9 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                                                     :
                                         :                                                     :
                                         ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐
-                real Apple II clock   ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...
-                                         10K                 
-                                         cycles
+        real Apple II clock cylcles   ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...
+                                                              10K cycles             
+                                         
 
           </div>
 
