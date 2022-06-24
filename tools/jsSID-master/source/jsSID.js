@@ -68,7 +68,7 @@ function jsSID(bufferlen, background_noise)
         this.playcont();
     }    
 
-    this._base64ToArrayBuffer = function(base64)
+    this._base64ToArray = function(base64)
     {
         var binary_string = window.atob(base64);
         var len = binary_string.length;
@@ -76,7 +76,7 @@ function jsSID(bufferlen, background_noise)
         for (var i = 0; i < len; i++) {
             bytes[i] = binary_string.charCodeAt(i);
         }
-        return bytes.buffer;
+        return bytes;
     }
 
     this.loadinit_b64 = function(b64, subt)
@@ -85,7 +85,7 @@ function jsSID(bufferlen, background_noise)
         this.pause();
         initSID();
         subtune = subt;
-        var filedata = this._base64ToArrayBuffer(b64);
+        var filedata = this._base64ToArray(b64);
 
         //SID-file format information can be found at HVSC
         var i, strend, offs = filedata[7];
