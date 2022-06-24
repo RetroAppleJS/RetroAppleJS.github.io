@@ -10,6 +10,14 @@ function playSID(sidurl, subtune) {
     SIDplayer.loadstart(sidurl, subtune);
 }
 
+function playSID_b64(b64, subtune) {
+    //convenience function to create default-named jsSID object and play in one call, easily includable as inline JS function call in HTML
+    if (typeof SIDplayer === 'undefined')
+        SIDplayer = new jsSID(16384,0.0005);
+    //create the object if doesn't exist yet
+    SIDplayer.loadstart_b64(b64, subtune);
+}
+
 
 function jsSID(bufferlen, background_noise)
 {
@@ -50,6 +58,80 @@ function jsSID(bufferlen, background_noise)
         if (startcallback !== null )
             startcallback();
         this.playcont();
+    }
+
+    //user functions callable from outside
+    this.loadstart_b64 = function(b64, subt) {
+        this.loadinit_b64(b64, subt);
+        if (startcallback !== null )
+            startcallback();
+        this.playcont();
+    }    
+
+    this._base64ToArrayBuffer = function(base64)
+    {
+        var binary_string = window.atob(base64);
+        var len = binary_string.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    this.loadinit_b64 = function(b64, subt)
+    {
+        loaded = 0;
+        this.pause();
+        initSID();
+        subtune = subt;
+        var filedata = this._base64ToArrayBuffer(b64);
+
+        //SID-file format information can be found at HVSC
+        var i, strend, offs = filedata[7];
+        loadaddr = filedata[8] + filedata[9] ? filedata[8] * 256 + filedata[9] : filedata[offs] + filedata[offs + 1] * 256;
+        for (i = 0; i < 32; i++)
+            timermode[31 - i] = filedata[0x12 + (i >> 3)] & Math.pow(2, 7 - i % 8);
+        for (i = 0; i < memory.length; i++)
+            memory[i] = 0;
+        for (i = offs + 2; i < filedata.byteLength; i++) {
+            if (loadaddr + i - (offs + 2) < memory.length)
+                memory[loadaddr + i - (offs + 2)] = filedata[i];
+        }
+        strend = 1;
+        for (i = 0; i < 32; i++) {
+            if (strend != 0)
+                strend = SIDtitle[i] = filedata[0x16 + i];
+            else
+                strend = SIDtitle[i] = 0;
+        }
+        strend = 1;
+        for (i = 0; i < 32; i++) {
+            if (strend != 0)
+                strend = SIDauthor[i] = filedata[0x36 + i];
+            else
+                strend = SIDauthor[i] = 0;
+        }
+        strend = 1;
+        for (i = 0; i < 32; i++) {
+            if (strend != 0)
+                strend = SIDinfo[i] = filedata[0x56 + i];
+            else
+                strend = SIDinfo[i] = 0;
+        }
+        initaddr = filedata[0xA] + filedata[0xB] ? filedata[0xA] * 256 + filedata[0xB] : loadaddr;
+        playaddr = playaddf = filedata[0xC] * 256 + filedata[0xD];
+        subtune_amount = filedata[0xF];
+        preferred_SID_model[0] = (filedata[0x77] & 0x30) >= 0x20 ? 8580 : 6581;
+        preferred_SID_model[1] = (filedata[0x77] & 0xC0) >= 0x80 ? 8580 : 6581;
+        preferred_SID_model[2] = (filedata[0x76] & 3) >= 3 ? 8580 : 6581;
+        SID_address[1] = filedata[0x7A] >= 0x42 && (filedata[0x7A] < 0x80 || filedata[0x7A] >= 0xE0) ? 0xD000 + filedata[0x7A] * 16 : 0;
+        SID_address[2] = filedata[0x7B] >= 0x42 && (filedata[0x7B] < 0x80 || filedata[0x7B] >= 0xE0) ? 0xD000 + filedata[0x7B] * 16 : 0;
+        SIDamount = 1 + (SID_address[1] > 0) + (SID_address[2] > 0);
+        loaded = 1;
+        if (loadcallback !== null )
+            loadcallback();
+        init(subtune);        
     }
 
     this.loadinit = function(sidurl, subt) {
