@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>jsSID</title>
+    <style>
+      body {
+        background-color: #eee;
+        font-size: medium;
+        color: #333;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      }
+    </style>
+  </head>
+
+  <body onload="document.getElementById('ver').innerHTML=SIDplayer.version; document.getElementById('setvol').value=100;"
+        onbeforeunload="SIDplayer.stop();">
+
+    <h1>jsSID <span id="ver"></span> by Hermit - a javascript SID emulator and player for the Web Audio API</h1>
+    <p>(It doesn't need Flash-player or Java-VM, it's pure JavaScript.)</p>
+    <p>Web Audio API is supported (and contained) by browsers (according to Wikipedia) since these versions:
+      <ul>
+        <li>Firefox 23+</li>
+        <li>Chrome 10+</li>
+        <li>Opera 15+</li>
+        <li>Safari 6+</li>
+        <li>M$ Edge 12</li>
+        <li>Chrome for Android 28</li>
+        <li>Mobile Safari 6 (restricted)</li>
+        <li>Mobile Firefox 23</li>
+        <li>Tizen</li>
+      </ul>
+    </p>
+
+    <p>The player supports simple Vsync/CIA timed SIDs. SIDs with custom player and digis are not fully implemented.</p>
+    <p>To include jsSID at your page, 'jsSID.js' should be included in body/header of your HTML code: <br/><pre>&ltscript type="text/javascript" src="jsSID.js"&gt&lt/script&gt</pre></p>
+
+    <h2>Examples</h2>
+      <u>Let's see some examples (HTML buttons that handle various aspects of jsSID):</u>
+
+    <h3>Simple way</h3>
+    <p>If you just want to simply play a SID without manually creating and initializing a JS object:<br/>(This creates a jsSID object called 'SIDplayer' automatically behind the scene, so you can use its functions.)<br/></p>
+     <button onclick="playSID('music/Funck_the_Metal.sid',0);st=0;">Simple SID playback</button> <br/><pre>playSID('URL', subtune);</pre>
+
+    <h3>A bit more expert way</h3>
+    <p>If you want to create a SIDplayer object manually before using its functions:<br/>
+    <pre>SIDplayer = new jsSID(buffersize, background_noise); //background noise around 0.0005 is suitable</pre>
+      <small>Samplerate is inherited from the web-browser, usually 44100Hz.</small><br/>
+      <small>Buffersize values that make sense: 1024/2048/4096/8192/16384, maximal 16384 advised at 44100Hz and above.</small><br/><br/>
+      Then (as jsSID object called 'SIDplayer' is created) you can use its subfunctions/methods:</p>
+
+      <p>Choose file: <input name="Browse" type="file" onchange="SIDplayer.loadstart(window.URL.createObjectURL(this.files[0]),0);"></input></p>
+      <p>or type local URL: <input id="sidurl" type="url" onchange="SIDplayer.loadstart(this.value,0);" value="music/Magyar_Nepzenek.sid"></input>
+        <button onclick="SIDplayer.loadstart(document.getElementById('sidurl').value,0);">go</button> <br/>
+        <pre>SIDplayer.loadstart('URL', subtune);</pre>
+      </p>
+
+    <h3>Controls</h3>
+    <p>
+      <button onclick="SIDplayer.loadinit('music/I_Just_Cant_Stop_Loving_You.sid',0);">Load</button><pre>SIDplayer.loadinit('URL', subtune);</pre>
+      <button onclick="SIDplayer.start(st);">Start</button>
+      <button onclick="SIDplayer.playcont();">Play/Continue</button>
+      <button onclick="SIDplayer.pause();">Pause</button>
+      <button onclick="SIDplayer.stop();">Stop</button>
+      <button onclick="if(st<SIDplayer.getsubtunes()-1) SIDplayer.start(++st);">subtune+</button>
+      <button onclick="if(st>0) SIDplayer.start(--st);">subtune-</button> subtune:<span id="selsubt">1</span>
+      <p>In JavaScript:</p>
+      <pre>SIDplayer.start(subtune);</pre>
+      <pre>SIDplayer.playcont();</pre>
+      <pre>SIDplayer.pause();</pre>
+      <pre>SIDplayer.stop();</pre>
+      <p>volume:</p>
+      <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="SIDplayer.setvolume(value/100);showvol(this.value);" onchange="SIDplayer.setvolume(value/100);showvol(this.value);"></input>
+      <span id="voldisp">100</span>%<br/>
+      <p>In JavaScript:</p>
+      <pre>SIDplayer.setvolume(volume);</pre>
+      <pre>SIDplayer.getoutput(); //volume range: 0..1</pre>
+    </p>
+    <h3>Song info</h3>
+      <p>Playtime: <span id="playtimedisp"></span></p>
+      <p>SID Title: <span id="titledisp">...</span></p>
+      <p>SID Author: <span id="authdisp">...</span></p>
+      <p>SID release info: <span id="infodisp">...</span></p>
+      <p>No. of subtunes: <span id="subtdisp">0</span></p>
+      <p>Preferred SID-model for tune: <span id="prefmodeldisp">0</span>, using: <span id="modeldisp"></span></p>
+      <p>
+        <button onclick="setSIDmodel(8580);">use 8580</button>
+        <button onclick="setSIDmodel(6581);">use 6581</button>
+      </p>
+      <pre>SIDplayer.gettitle();</pre>
+      <pre>SIDplayer.getauthor();</pre>
+      <pre>SIDplayer.getinfo();</pre>
+      <pre>SIDplayer.getsubtunes();</pre>
+      <pre>SIDplayer.getprefmodel();</pre>
+      <pre>SIDplayer.getplaytime();</pre>
+      <pre>//'playtime' is in seconds</pre>
+      <pre>SID-model for playback: SIDplayer.getmodel();</pre>
+      <pre>SIDplayer.setmodel(model);</pre>
+      <pre>//models: 8580.0 or 6581.0</pre>
+      <pre>Set callback functions (e.g. displaying SID-file info) for jsSID events:</pre>
+      <pre>SIDplayer.setloadcallback(function_name);</pre>
+      <pre>SIDplayer.setstartcallback(fn);</pre>
+      <pre>SIDplayer.setendcallback(fn,playtime); //in seconds</pre>
+      <p>A simple playlist player can be found in this folder: <a href="player.html">playlist.html</a></p>
+      <p>You can also hear jsSID in action at: <a href="http://hermit.sidrip.com" target="blank">http://hermit.sidrip.com</a></p>
+
+    <script type="text/javascript" src="source/jsSID.js"></script>
+    <script type="text/javascript">
+      // Simple example:
+      playSID('music/Funtempo.sid',0); //simple load & play with implicit object (named 'SIDplayer') creation
+
+      // Examples with manual object-initialization:
+      // SIDplayer = new jsSID(16384,0.0005);
+      // load and start playback (more in your face :):
+      // SIDplayer.loadstart('music/Funtempo.sid',0);
+      // or load first, then start on demand (people usually don't like websites automatically creating sound):
+      // SIDplayer.loadinit('music/Funtempo.sid'); //SIDplayer.start(0);
+      setInterval('show_playtime()',1000);
+      SIDplayer.setloadcallback(init_tune); SIDplayer.setstartcallback(show_info);
+
+      function init_tune() {
+        st=0; show_info();
+      }
+
+      function show_info() {
+        document.getElementById('subtdisp').innerHTML = SIDplayer.getsubtunes();
+        document.getElementById('selsubt').innerHTML = st+1;
+        document.getElementById('prefmodeldisp').innerHTML = SIDplayer.getprefmodel();
+        document.getElementById('modeldisp').innerHTML = SIDplayer.getmodel();
+        document.getElementById('titledisp').innerHTML = SIDplayer.gettitle();
+        document.getElementById('authdisp').innerHTML = SIDplayer.getauthor();
+        document.getElementById('infodisp').innerHTML = SIDplayer.getinfo();
+      }
+
+      function showvol(pos) {
+        document.getElementById('voldisp').innerHTML = pos;
+      }
+
+      function show_playtime() {
+        document.getElementById('playtimedisp').innerHTML=parseInt(SIDplayer.getplaytime()/60)+':'+parseInt(SIDplayer.getplaytime()%60);
+      }
+
+      function setSIDmodel(model) {
+        SIDplayer.setmodel(model);
+        show_info();
+      }
+      var st=0; //subtune selector state
+    </script>
+
+  </body>
+</html>
