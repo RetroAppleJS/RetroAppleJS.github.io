@@ -29,7 +29,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         ┌──────────────────────────────────────────┐┌─────...    ┐
       setInterval(appleInterval(),10)   │                                          ││            │
                                       ──┘                                          └┘            │
-                                        :                                           :            ├>  JAVASCRIPT
+                                        :                                           :            ├>  EMULATED
                                         :<5ms                                       :<5ms        │   CLOCK
                                         ┌────┐                                      ┌────┐       │
               apple2plus.cycle(10000) ──┘100K└──────────────────────────────────────┘100K└─...   │
@@ -45,14 +45,66 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 
   
 __Impossible sound emulation__  
-However simple sound production was designed on the Apple II, since 1997, JavaScript maintained 1ms as the **highest achievable timing accuracy**, while the 6502 CPU was clocked at approximately 1MHz or 1/1000ms cycles.  In other words, a JavaScript cannot emulate any sound above it's nyquist frequency of 500Hz, while the most commonly used Apple II Beep sound is a 1KHz square wave.
+However simple sound production was designed on the Apple II, since 1997, JavaScript maintained **1ms** as the **highest achievable timing accuracy**, while the 6502 CPU was clocked at approximately 1MHz, we need 1000 times more accuracy than JavaScript can provide today.  JavaScript's timer simply cannot produce any sound above it's nyquist maximum of 500Hz, while a typical Apple II Beep sound is 1KHz.
 
 W3C recently started to worry about this limitation by proposing a new spec called ["High Resolution Time"](https://w3c.github.io/hr-time/) or [hr-time](https://w3c.github.io/hr-time/), but because of alleged malicious capability like [CACHE-ATTACKS] and [SPECTRE], W3C recommends to purposefully mess-up it's timers accuracy by reducing resolution, adding jitter, or by any other piggish means that probably never will provide us anything near to 1µs clock accuracy.  Last time I turned my eyes the same way was the day after 9/11, when I discovered that my boss replaced metal knives in our company kitchen by plastic ones, anyway, nobody would have thought that an emulated Apple II from 1978 🦖, more than 4 decades later, becuase of it's 1MHz clock could be mean a cybersecurity hazard ?? 🤨
 
-In the end, we actually do not need 1µs clock accuracy for sound emulation.  The Apple II speaker can be switched from 'off' to 'on' and back to 'off' by reading the $C030 address location twice in a row.  Knowing that frequencies above 20000Hz remain unhearable, we only should mind about toggling the speaker once every 1/4000s or 25 cycles at 1MHz.  In conclusion, we only need 25µs or 0.025ms timer accuracy, which in future may be achieved with High Resolution Time control logic, but since this spec showed up only very recently, we can only wait, hope, pray and see.
+In the end, we may not need 1µs clock accuracy for sound emulation after all.  The Apple II speaker toggles from 'off' to 'on' by reading the $C030 address location, and back to 'off' by doing the same as many times as we want.  But, knowing that frequencies above 20000Hz remain inaudible, we should mind about toggling the speaker only once every 40000 times per second or 25 cycles at 1MHz.  The "coarsen time" add-on proposed by W3C will by default deliver 100µs accuracy, but by setting the flag crossOriginIsolatedCapability = true, it may deliver 5µs.
+
+In conclusion, we only need 25µs timer accuracy, which [hr-time](https://w3c.github.io/hr-time/) likely will provide. 
 
 
 ## Appendix
+
+### Memory map
+
+
+          <div style=width:800px>
+     D000 ┌────────────────────────────────────┐                      ▲ 
+          │  Autostart ROM                     │  2K                  │
+          │                                    │                      │
+     F800 ├────────────────────────────────────┤                      │  12K
+          │                                    │                      │  ROM
+          │                                    │                      │     
+          │  Applesoft ROM                     │  10K                 │
+          │                                    │                      │
+          │                                    │                      ▼
+     D000 ├────────────────────────────────────┤                        
+          │  I/O ROM/RAM                       │  2K                  ▲
+          │                                    │                      │
+     C800 ├────────────────────────────────────┤                      │  4K
+          │  I/O Ports                         │  2K                  │  I/O
+          │                                    │                      ▼
+     C000 ├────────────────────────────────────┤                      
+          │                                    │                      ▲     
+          │                                    │                      │
+          │                                    │                      │     
+          │  Free                              │  24K                 │
+          │                                    │                      │
+          │                                    │                      │
+          │                                    │                      │
+     6000 ├────────────────────────────────────┤                      │
+          │                                    │                      │     
+          │  Hi-Res 2                          │  8K                  │
+          │                                    │                      │
+          │                                    │                      │
+     4000 ├────────────────────────────────────┤                      │  48K
+          │                                    │                      │  RAM   
+          │  Hi-Res 1                          │  8K                  │
+          │                                    │                      │          
+          │                                    │                      │
+     2000 ├────────────────────────────────────┤                      │
+          │                                    │                      │     
+          │  Free                              │  5K                  │
+          │                                    │                      │
+     0C00 ├────────────────────────────────────┤                      │
+          │  Text & Lo-res graphics 2          │  1K                  │
+     0800 ├────────────────────────────────────┤                      │
+          │  Text & Lo-res graphics 1          │  1K                  │
+     0400 ├────────────────────────────────────┤                      │
+          │  System RAM  (zero page, stack..)  │  1K                  │
+     0000 └────────────────────────────────────┘                      ▼
+
 
 ### Hard-wired keyboard functions ###
 

@@ -100,9 +100,8 @@ feature details & status:
 
 #### real-time audio
 
-The simple ability from the appleII to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems very hard to achieve through emulation.  The main reasons are the inaccurate JavaScript timer and the way sound production is 'buffered', which works with scheduling.  
-
-*Note:  Currently reading the following article, that explains the issues with real-time sound in JavaScript : [Audio scheduling](https://www.html5rocks.com/en/tutorials/audio/scheduling/)*
+The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [inaccurate JavaScript timer](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
+`
 
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
