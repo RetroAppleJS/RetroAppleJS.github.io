@@ -1,36 +1,125 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>jsSID</title>
-    <style>
-      body {
-        background-color: #eee;
-        font-size: medium;
-        color: #333;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      }
+<html style="background-color:#B0B0B0"><head>
+  <title>SID EMULATOR TOOL</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+  <style>
+  html {height:100%;font-family:"Arial"}
+  body {background-color:#808080;height:100%;margin:0px;padding:0px}
+
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+
+
     </style>
-  </head>
+</head>
 
-  <body onload="document.getElementById('ver').innerHTML=SIDplayer.version; document.getElementById('setvol').value=100;"
-        onbeforeunload="SIDplayer.stop();">
 
-    <h1>jsSID <span id="ver"></span> by Hermit - a javascript SID emulator and player for the Web Audio API</h1>
-    <p>(It doesn't need Flash-player or Java-VM, it's pure JavaScript.)</p>
-    <p>Web Audio API is supported (and contained) by browsers (according to Wikipedia) since these versions:
-      <ul>
-        <li>Firefox 23+</li>
-        <li>Chrome 10+</li>
-        <li>Opera 15+</li>
-        <li>Safari 6+</li>
-        <li>M$ Edge 12</li>
-        <li>Chrome for Android 28</li>
-        <li>Mobile Safari 6 (restricted)</li>
-        <li>Mobile Firefox 23</li>
-        <li>Tizen</li>
+<script>
+
+
+
+/////////////////////////////////////////////////////////
+
+var CONF_version="";
+var CONF_builddate="";  
+var _T = function _T(idx,mod) {
+this.t = {get _language(){ return "NL" }
+,"title":document.title
+,"menu_convert":""
+,"menu_info":"Info/Contact"
+,"intro":""
+,"version":(CONF_version?("Version "+CONF_version):"")
+,"built":(CONF_builddate?("Built "+CONF_builddate):"")
+,get _(){return this}
+}
+if(idx.length>0 && typeof(this.t[idx])=="undefined") { alert(idx); return "<font color=red>"+idx+"</font>" }
+switch(mod) {
+  case "cap": return this.t[idx].charAt(0).toUpperCase()+this.t[idx].substring(1,this.t[idx].length);
+  case "inv": { var j = {}; for(var i in t) { j[ t[i] ] = i }; return j } // inverse associative
+  default: return this.t[idx];
+}
+}
+function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
+function _TITLE() {
+var hight_pct = 6;
+var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
++"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
++"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
++"#carvetext:focus {outline: none;}.slider_main {position: relative;height: 100%;}"
++".slider_overlay {position: absolute;bottom: 0;left: 0;right: 0;background-color: #A0A0A0;overflow: hidden;width: 100%;height: 85%;transition: .5s ease;}"
+//+".slider_main:hover "
++".slider_overlay {height: 100%;}"
++"#topmenu{width:100%;background-color:#f0f0f0}"
++"ul#minitabs{list-style:none;margin:0;padding:3px 0 0 0;border-left:1px solid #ccc;border-right:1px solid #ccc;border-top:1px solid #ccc;border-bottom:1px solid #ccc;font-weight:700;text-align:left;white-space:nowrap}ul#minitabs li{display:inline;margin:0 3px}ul#minitabs a{text-decoration:none;color:#999}ul#minitabs a#current{border-color:#f60;color:#06f}ul#minitabs a:hover{border-color:#f60;color:#666}"
+
+return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
++"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
++"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
++"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
++" &nbsp; "+(typeof(_T("built"))=="string"?_T("built"):"")+"</div>"
++"</div></center></div>"
+}
+
+
+function init_gui(_o)
+{
+  document.getElementById('slider_title').outerHTML = _TITLE();
+}
+
+</script>
+
+ <body class="slider_main" onload="init_gui();document.getElementById('ver').innerHTML=SIDplayer.version; document.getElementById('setvol').value=100;" onbeforeunload="SIDplayer.stop();">
+
+<div id="slider_title"></div>
+ <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+
+        <li class=no_margins style=vertical-align:top;>
+          <table class=nomargins style='display:inline-block;border:1px solid; vertical-align: top;'>
+          <tr><td class=no_margins style="vertical-align:top;">
+
+            <button onclick="SIDplayer.start(st);">Start</button>
+            <button onclick="SIDplayer.playcont();">Play/Continue</button>
+            <button onclick="SIDplayer.pause();">Pause</button>
+            <button onclick="SIDplayer.stop();">Stop</button>
+            <button onclick="if(st>0) SIDplayer.start(--st);">subtune-</button> subtune:<span id="selsubt">1</span>
+            <button onclick="if(st<SIDplayer.getsubtunes()-1) SIDplayer.start(++st);">subtune+</button>
+            </td></tr></table>    
+        </li>
+        <li>volume:
+        <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="SIDplayer.setvolume(value/100);showvol(this.value);" onchange="SIDplayer.setvolume(value/100);showvol(this.value);"></input>
+        <span id="voldisp">100</span>%<br/>
+      </li>
+
       </ul>
-    </p>
+    </div>
+    <div id=main>
 
+
+
+
+
+<!-- -->
+
+jsSID <span id="ver"></span> by Hermit - a javascript SID emulator and player for the Web Audio API<br>
+<small>
+(No Flash-player or Java-VM, JavaScript.)<br>
+Web Audio API is supported (and contained) by browsers (according to Wikipedia) since these versions:
+  <ul>
+    <li>Firefox 23+</li>
+    <li>Chrome 10+</li>
+    <li>Opera 15+</li>
+    <li>Safari 6+</li>
+    <li>M$ Edge 12</li>
+    <li>Chrome for Android 28</li>
+    <li>Mobile Safari 6 (restricted)</li>
+    <li>Mobile Firefox 23</li>
+    <li>Tizen</li>
+  </ul>
+</small>
+
+<textarea>
     <p>The player supports simple Vsync/CIA timed SIDs. SIDs with custom player and digis are not fully implemented.</p>
     <p>To include jsSID at your page, 'jsSID.js' should be included in body/header of your HTML code: <br/><pre>&ltscript type="text/javascript" src="jsSID.js"&gt&lt/script&gt</pre></p>
 
@@ -40,68 +129,67 @@
     <h3>Simple way</h3>
     <p>If you just want to simply play a SID without manually creating and initializing a JS object:<br/>(This creates a jsSID object called 'SIDplayer' automatically behind the scene, so you can use its functions.)<br/></p>
      <button onclick="playSID('music/Funck_the_Metal.sid',0);st=0;">Simple SID playback</button> <br/><pre>playSID('URL', subtune);</pre>
+     <h3>A bit more expert way</h3>
+     <p>If you want to create a SIDplayer object manually before using its functions:<br/>
+     <pre>SIDplayer = new jsSID(buffersize, background_noise); //background noise around 0.0005 is suitable</pre>
+       <small>Samplerate is inherited from the web-browser, usually 44100Hz.</small><br/>
+       <small>Buffersize values that make sense: 1024/2048/4096/8192/16384, maximal 16384 advised at 44100Hz and above.</small><br/><br/>
+       Then (as jsSID object called 'SIDplayer' is created) you can use its subfunctions/methods:</p>
+ 
+       <p>Choose file: <input name="Browse" type="file" onchange="SIDplayer.loadstart(window.URL.createObjectURL(this.files[0]),0);"></input></p>
+       <p>or type local URL: <input id="sidurl" type="url" onchange="SIDplayer.loadstart(this.value,0);" value="music/Magyar_Nepzenek.sid"></input>
+         <button onclick="SIDplayer.loadstart(document.getElementById('sidurl').value,0);">go</button> <br/>
+         <pre>SIDplayer.loadstart('URL', subtune);</pre>
+       </p>
 
-    <h3>A bit more expert way</h3>
-    <p>If you want to create a SIDplayer object manually before using its functions:<br/>
-    <pre>SIDplayer = new jsSID(buffersize, background_noise); //background noise around 0.0005 is suitable</pre>
-      <small>Samplerate is inherited from the web-browser, usually 44100Hz.</small><br/>
-      <small>Buffersize values that make sense: 1024/2048/4096/8192/16384, maximal 16384 advised at 44100Hz and above.</small><br/><br/>
-      Then (as jsSID object called 'SIDplayer' is created) you can use its subfunctions/methods:</p>
+       <button onclick="SIDplayer.loadinit('music/I_Just_Cant_Stop_Loving_You.sid',0);">Load</button><pre>SIDplayer.loadinit('URL', subtune);</pre>
+  
+       <h3>Controls</h3>
+       <p>
+   
+         <p>In JavaScript:</p>
+         <pre>SIDplayer.start(subtune);</pre>
+         <pre>SIDplayer.playcont();</pre>
+         <pre>SIDplayer.pause();</pre>
+         <pre>SIDplayer.stop();</pre>
+          <p>In JavaScript:</p>
+         <pre>SIDplayer.setvolume(volume);</pre>
+         <pre>SIDplayer.getoutput(); //volume range: 0..1</pre>
+       </p>
+       <h3>Song info</h3>
+         <p>Playtime: <span id="playtimedisp"></span></p>
+         <p>SID Title: <span id="titledisp">...</span></p>
+         <p>SID Author: <span id="authdisp">...</span></p>
+         <p>SID release info: <span id="infodisp">...</span></p>
+         <p>No. of subtunes: <span id="subtdisp">0</span></p>
+         <p>Preferred SID-model for tune: <span id="prefmodeldisp">0</span>, using: <span id="modeldisp"></span></p>
+         <p>
+           <button onclick="setSIDmodel(8580);">use 8580</button>
+           <button onclick="setSIDmodel(6581);">use 6581</button>
+         </p>
+         <pre>SIDplayer.gettitle();</pre>
+         <pre>SIDplayer.getauthor();</pre>
+         <pre>SIDplayer.getinfo();</pre>
+         <pre>SIDplayer.getsubtunes();</pre>
+         <pre>SIDplayer.getprefmodel();</pre>
+         <pre>SIDplayer.getplaytime();</pre>
+         <pre>//'playtime' is in seconds</pre>
+         <pre>SID-model for playback: SIDplayer.getmodel();</pre>
+         <pre>SIDplayer.setmodel(model);</pre>
+         <pre>//models: 8580.0 or 6581.0</pre>
+         <pre>Set callback functions (e.g. displaying SID-file info) for jsSID events:</pre>
+         <pre>SIDplayer.setloadcallback(function_name);</pre>
+         <pre>SIDplayer.setstartcallback(fn);</pre>
+         <pre>SIDplayer.setendcallback(fn,playtime); //in seconds</pre>
+         <p>A simple playlist player can be found in this folder: <a href="player.html">playlist.html</a></p>
+         <p>You can also hear jsSID in action at: <a href="http://hermit.sidrip.com" target="blank">http://hermit.sidrip.com</a></p>
 
-      <p>Choose file: <input name="Browse" type="file" onchange="SIDplayer.loadstart(window.URL.createObjectURL(this.files[0]),0);"></input></p>
-      <p>or type local URL: <input id="sidurl" type="url" onchange="SIDplayer.loadstart(this.value,0);" value="music/Magyar_Nepzenek.sid"></input>
-        <button onclick="SIDplayer.loadstart(document.getElementById('sidurl').value,0);">go</button> <br/>
-        <pre>SIDplayer.loadstart('URL', subtune);</pre>
-      </p>
 
-    <h3>Controls</h3>
-    <p>
-      <button onclick="SIDplayer.loadinit('music/I_Just_Cant_Stop_Loving_You.sid',0);">Load</button><pre>SIDplayer.loadinit('URL', subtune);</pre>
-      <button onclick="SIDplayer.start(st);">Start</button>
-      <button onclick="SIDplayer.playcont();">Play/Continue</button>
-      <button onclick="SIDplayer.pause();">Pause</button>
-      <button onclick="SIDplayer.stop();">Stop</button>
-      <button onclick="if(st<SIDplayer.getsubtunes()-1) SIDplayer.start(++st);">subtune+</button>
-      <button onclick="if(st>0) SIDplayer.start(--st);">subtune-</button> subtune:<span id="selsubt">1</span>
-      <p>In JavaScript:</p>
-      <pre>SIDplayer.start(subtune);</pre>
-      <pre>SIDplayer.playcont();</pre>
-      <pre>SIDplayer.pause();</pre>
-      <pre>SIDplayer.stop();</pre>
-      <p>volume:</p>
-      <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="SIDplayer.setvolume(value/100);showvol(this.value);" onchange="SIDplayer.setvolume(value/100);showvol(this.value);"></input>
-      <span id="voldisp">100</span>%<br/>
-      <p>In JavaScript:</p>
-      <pre>SIDplayer.setvolume(volume);</pre>
-      <pre>SIDplayer.getoutput(); //volume range: 0..1</pre>
-    </p>
-    <h3>Song info</h3>
-      <p>Playtime: <span id="playtimedisp"></span></p>
-      <p>SID Title: <span id="titledisp">...</span></p>
-      <p>SID Author: <span id="authdisp">...</span></p>
-      <p>SID release info: <span id="infodisp">...</span></p>
-      <p>No. of subtunes: <span id="subtdisp">0</span></p>
-      <p>Preferred SID-model for tune: <span id="prefmodeldisp">0</span>, using: <span id="modeldisp"></span></p>
-      <p>
-        <button onclick="setSIDmodel(8580);">use 8580</button>
-        <button onclick="setSIDmodel(6581);">use 6581</button>
-      </p>
-      <pre>SIDplayer.gettitle();</pre>
-      <pre>SIDplayer.getauthor();</pre>
-      <pre>SIDplayer.getinfo();</pre>
-      <pre>SIDplayer.getsubtunes();</pre>
-      <pre>SIDplayer.getprefmodel();</pre>
-      <pre>SIDplayer.getplaytime();</pre>
-      <pre>//'playtime' is in seconds</pre>
-      <pre>SID-model for playback: SIDplayer.getmodel();</pre>
-      <pre>SIDplayer.setmodel(model);</pre>
-      <pre>//models: 8580.0 or 6581.0</pre>
-      <pre>Set callback functions (e.g. displaying SID-file info) for jsSID events:</pre>
-      <pre>SIDplayer.setloadcallback(function_name);</pre>
-      <pre>SIDplayer.setstartcallback(fn);</pre>
-      <pre>SIDplayer.setendcallback(fn,playtime); //in seconds</pre>
-      <p>A simple playlist player can be found in this folder: <a href="player.html">playlist.html</a></p>
-      <p>You can also hear jsSID in action at: <a href="http://hermit.sidrip.com" target="blank">http://hermit.sidrip.com</a></p>
+      </textarea>
+
+
+
+
 
     <script type="text/javascript" src="../res/jsSID.js"></script>
     <script type="text/javascript">
@@ -151,5 +239,39 @@
       var st=0; //subtune selector state
     </script>
 
-  </body>
+
+
+
+
+<!-- Code to handle taking the snapshot and displaying it locally -->
+<script language="JavaScript">
+
+
+function update(bRender)
+{
+  setTimeout(function(){status_message("update")},10);
+  document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
+  if(document.getElementById("param3"))
+  {
+      var dot_idx   = Number(document.getElementById("param3").value);
+  }
+}
+
+var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
+
+
+
+
+  </div>
+  </div>
+
+  <div id=debug></div>
+</body>
 </html>
+
+
+
+
+
+
+
