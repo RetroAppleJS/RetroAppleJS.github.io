@@ -36,11 +36,11 @@ function jsSID(bufferlen, background_noise)
     var samplerate = jsSID_audioCtx.sampleRate;
     if (typeof jsSID_audioCtx.createJavaScriptNode === 'function') {
         var jsSID_scriptNode = jsSID_audioCtx.createJavaScriptNode(bufferlen, 0, 1);
-        alert("using createJavaScriptNode")
+        console.log("using createJavaScriptNode")
     }
     else {
         var jsSID_scriptNode = jsSID_audioCtx.createScriptProcessor(bufferlen, 0, 1);
-        alert("using createScriptProcessor --- unfortunately deprecated, must be replaced by AudioWorkletNode")
+        console.log("using createScriptProcessor --- unfortunately deprecated, must be replaced by AudioWorkletNode")
     }
 
     
