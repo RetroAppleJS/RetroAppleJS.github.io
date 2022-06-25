@@ -56,6 +56,10 @@ In conclusion, we only need 25µs timer accuracy, which [hr-time](https://w3c.gi
 
 ## Appendix
 
+### Memory map
+
+
+
 ### Hard-wired keyboard functions ###
 
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="right"/> 
