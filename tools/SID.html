@@ -9,7 +9,6 @@
 
   .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
 
-
     </style>
 </head>
 
@@ -76,16 +75,23 @@ function init_gui(_o)
       <ul id="minitabs">
 
         <li class=no_margins style=vertical-align:top;>
-          <table class=nomargins style='display:inline-block;border:1px solid; vertical-align: top;'>
-          <tr><td class=no_margins style="vertical-align:top;">
-
-            <button onclick="SIDplayer.start(st);">Start</button>
-            <button onclick="SIDplayer.playcont();">Play/Continue</button>
-            <button onclick="SIDplayer.pause();">Pause</button>
-            <button onclick="SIDplayer.stop();">Stop</button>
-            <button onclick="if(st>0) SIDplayer.start(--st);">subtune-</button> subtune:<span id="selsubt">1</span>
-            <button onclick="if(st<SIDplayer.getsubtunes()-1) SIDplayer.start(++st);">subtune+</button>
-            </td></tr></table>    
+          <table class=no_margins style='display:inline-block;border:0px solid; vertical-align: top;'>
+          <tr>
+            <td style="vertical-align:top;border:1px solid;">
+              <button onclick="SIDplayer.start(st);">Start</button>
+              <button onclick="SIDplayer.playcont();">Play/Continue</button>
+              <button onclick="SIDplayer.pause();">Pause</button>
+              <button onclick="SIDplayer.stop();">Stop</button>
+            </td>
+            <td style="vertical-align:top;border:1px solid;">
+              <button onclick="if(st>0) SIDplayer.start(--st);">subtune-</button> subtune:<span id="selsubt">1</span>
+              <button onclick="if(st<SIDplayer.getsubtunes()-1) SIDplayer.start(++st);">subtune+</button>
+            </td>
+            <td style="vertical-align:top;border:1px solid;">
+              <button onclick="setSIDmodel(8580);">use 8580</button>
+              <button onclick="setSIDmodel(6581);">use 6581</button>
+            </td>
+          </tr></table>    
         </li>
         <li>volume:
         <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="SIDplayer.setvolume(value/100);showvol(this.value);" onchange="SIDplayer.setvolume(value/100);showvol(this.value);"></input>
@@ -102,24 +108,52 @@ function init_gui(_o)
 
 <!-- -->
 
-jsSID <span id="ver"></span> by Hermit - a javascript SID emulator and player for the Web Audio API<br>
-<small>
-(No Flash-player or Java-VM, JavaScript.)<br>
-Web Audio API is supported (and contained) by browsers (according to Wikipedia) since these versions:
-  <ul>
-    <li>Firefox 23+</li>
-    <li>Chrome 10+</li>
-    <li>Opera 15+</li>
-    <li>Safari 6+</li>
-    <li>M$ Edge 12</li>
-    <li>Chrome for Android 28</li>
-    <li>Mobile Safari 6 (restricted)</li>
-    <li>Mobile Firefox 23</li>
-    <li>Tizen</li>
-  </ul>
-</small>
+<table class=nomargins style='display:inline-block;border:1px solid; vertical-align: top;'>
+  <tr>
+    <td class=no_margins style="vertical-align:top;">
+      <textarea id="b64" style="width:500px;height:100px" onclick="this.value=''">
+        PASTE HERE YOUR SID FILE IN BASE64
+      </textarea>
+    </td>
+    <td class=no_margins style="vertical-align:top;">
+      Playtime: <span id="playtimedisp"></span><br>
+      SID Author: <span id="authdisp">...</span><br>
+      Preferred SID-model: <span id="prefmodeldisp">0</span>, using: <span id="modeldisp"></span><br>
+      <br>
+      <button onclick=SIDplayer.loadstart_b64(document.getElementById('b64').value,0);>Load</button>
+    </td>
+    <td class=no_margins style="vertical-align:top;">
+      SID Title: <span id="titledisp">...</span><br>
+      SID release info: <span id="infodisp">...</span><br>
+      No. of subtunes: <span id="subtdisp">0</span>
+    </td>
+  </tr>
+</table>
 
 <textarea>
+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
+</textarea>
+<hr>
+jsSID <span id="ver"></span> by Hermit - a javascript SID emulator and player for the Web Audio API<br>
+<small>
+
+
+<div style="visibility:hidden">
+  (No Flash-player or Java-VM, JavaScript.)<br>
+  Web Audio API is supported (and contained) by browsers (according to Wikipedia) since these versions:
+    <ul>
+      <li>Firefox 23+</li>
+      <li>Chrome 10+</li>
+      <li>Opera 15+</li>
+      <li>Safari 6+</li>
+      <li>M$ Edge 12</li>
+      <li>Chrome for Android 28</li>
+      <li>Mobile Safari 6 (restricted)</li>
+      <li>Mobile Firefox 23</li>
+      <li>Tizen</li>
+    </ul>
+  </small>
+
     <p>The player supports simple Vsync/CIA timed SIDs. SIDs with custom player and digis are not fully implemented.</p>
     <p>To include jsSID at your page, 'jsSID.js' should be included in body/header of your HTML code: <br/><pre>&ltscript type="text/javascript" src="jsSID.js"&gt&lt/script&gt</pre></p>
 
@@ -156,16 +190,9 @@ Web Audio API is supported (and contained) by browsers (according to Wikipedia) 
          <pre>SIDplayer.setvolume(volume);</pre>
          <pre>SIDplayer.getoutput(); //volume range: 0..1</pre>
        </p>
-       <h3>Song info</h3>
-         <p>Playtime: <span id="playtimedisp"></span></p>
-         <p>SID Title: <span id="titledisp">...</span></p>
-         <p>SID Author: <span id="authdisp">...</span></p>
-         <p>SID release info: <span id="infodisp">...</span></p>
-         <p>No. of subtunes: <span id="subtdisp">0</span></p>
-         <p>Preferred SID-model for tune: <span id="prefmodeldisp">0</span>, using: <span id="modeldisp"></span></p>
+
          <p>
-           <button onclick="setSIDmodel(8580);">use 8580</button>
-           <button onclick="setSIDmodel(6581);">use 6581</button>
+
          </p>
          <pre>SIDplayer.gettitle();</pre>
          <pre>SIDplayer.getauthor();</pre>
@@ -185,7 +212,7 @@ Web Audio API is supported (and contained) by browsers (according to Wikipedia) 
          <p>You can also hear jsSID in action at: <a href="http://hermit.sidrip.com" target="blank">http://hermit.sidrip.com</a></p>
 
 
-      </textarea>
+        </div>
 
 
 
