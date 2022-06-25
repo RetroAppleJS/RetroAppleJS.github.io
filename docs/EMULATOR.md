@@ -61,7 +61,6 @@ In conclusion, we only need 25µs timer accuracy, which [hr-time](https://w3c.gi
 
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐                      ▲ 
-          │                                    │                      │
           │  Autostart ROM                     │  2K                  │
           │                                    │                      │
      F800 ├────────────────────────────────────┤                      │  12K
@@ -97,7 +96,6 @@ In conclusion, we only need 25µs timer accuracy, which [hr-time](https://w3c.gi
      2000 ├────────────────────────────────────┤                      │
           │                                    │                      │     
           │  Free                              │  5K                  │
-          │                                    │                      │
           │                                    │                      │
      0C00 ├────────────────────────────────────┤                      │
           │  Text & Lo-res graphics 2          │  1K                  │
