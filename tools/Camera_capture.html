@@ -183,16 +183,6 @@ function init_gui(_o)
   console.log("input="+input+" idx="+result[0]+" error="+result[1]+" --> ["+oPALETTE.dec_pal[result[0]]+"]");
 }
 
-
-
-
-
-
-
-
-
-
-
 function Apple2Plus(context)
 {
   this.video = new Apple2Video(context);
@@ -221,9 +211,6 @@ function wipe_HGR(byte)
     for(var adr=8192;adr<16384;adr++)
       apple2plus.hw.write(adr,byte);                    // write byte 
 }
-
-
-
 
 
 /////////////////////////////////////////////////////////
