@@ -412,8 +412,8 @@
                   //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
                   //apple2OnKeyPress(event);
                   var code = apple2plus.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
-                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.appleIntervalTime_ms);  // carriage return takes more cycle time
-                  apple2plus.cycle(1000 * _o.appleIntervalTime_ms);
+                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
+                  apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
               }
             }
             function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" };  
