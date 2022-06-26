@@ -9,7 +9,7 @@ Credits
     * [Raymond Hill](https://github.com/gorhill/Javascript-Voronoi)<br/>
       Based on Steven J. Fortune's Voronoi algorithm
     * [Lewis Hemens](https://asciiflow.com)<br/>
-      Author of Asciiflow
+      Author of Asciiflow - not part of this codebase, but great tool !
       
   - AppleII IDE v0
     * [Freddy Vandriessche](https://github.com/flyingzebra)<br>
