@@ -87,6 +87,7 @@ Card Memory map
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
              └─────────────┘     └─────────────────┘ 
 
+          </div>
 
 |  Language card soft switches   |
 | --------------------------------- |
@@ -103,4 +104,4 @@ Card Memory map
 | C08B    |           |   R     |   on  |       | >> if accessed twice
 
 
-          </div>
+
