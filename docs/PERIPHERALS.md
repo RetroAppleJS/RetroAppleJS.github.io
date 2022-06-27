@@ -64,15 +64,14 @@ TODO: check which chip has to be removed, and to which address locations this ch
 Card Memory map
 
           <div style=width:800px>
-     FFFF ┌────────────────┐----->┌───────────────┐
-          │                │      │               │
-          │  APPLE         │      │  RAMCARD RAM  │
-          │  ROM           │      │  4K           │
-     E000 │                │----->├───────────────┤
-          │                │      │               │               
-          │                │      │  BANK 1 or 2  │ 
-          │                │      │  (switchable) │    
-     D000 ├────────────────┤----->└───────────────┘
+     FFFF ┌────────────────┐----->┌───────────────┐    ▲    ▲
+          │                │      │               │    │    │
+          │  APPLE         │      │  RAMCARD RAM  │    8K   │
+          │  ROM           │      │               │    ▼    │
+     E000 │                │----->├───────────────┤         │ 12K    
+          │                │      │  BANK 1 or 2  │    ▲    │
+          │                │      │  (switchable) │    4K   │
+     D000 ├────────────────┤----->└───────────────┘    ▼    ▼ 
           │                │  
           │  SLOT ROM/RAM  │
           │  (unused)      │ 
