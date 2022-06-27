@@ -103,5 +103,3 @@ Card Memory map
 | C08A    |    R      |   WP    |   on  |       |                      |
 | C08B    |           |  R+WE   |   on  |       | >> if accessed twice |
 
-
-
