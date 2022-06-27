@@ -87,6 +87,4 @@ Card Memory map
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
              └─────────────┘     └─────────────────┘ 
 
-
-
           </div>
