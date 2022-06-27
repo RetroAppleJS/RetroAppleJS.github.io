@@ -60,3 +60,19 @@ Peripheral emulation is usually easier to achieve compared to building real hard
 
 [Apple II+ motherboard schematics](https://archive.org/details/Schematic_Diagram_of_the_Apple_II/page/n1/mode/2up)
 TODO: check which chip has to be removed, and to which address locations this chip corresponds.
+
+Card Memory map
+
+          <div style=width:800px>
+     FFFF ┌────────────┐--------->┌───────────────┐
+          │            │          │               │
+          │  APPLE     │          │  RAMCARD RAM  │
+          │  ROM       │          │  4K           │
+     E000 │            │--------->├───────────────┤--->┌───────────────┐ 
+          │            │          │               │    │               │                  
+          │            │          │  BANK 2       │    │  BANK 1       │   
+          │            │          │  4K           │    │  4K           │     
+     D000 └────────────┘--------->└───────────────┘--->└───────────────┘
+  
+
+          </div>
