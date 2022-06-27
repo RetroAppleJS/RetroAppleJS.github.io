@@ -94,14 +94,14 @@ Card Memory map
 
 | Address | APPLE ROM | RAMCARD | BANK1 | BANK2 | Description          |
 | :-----: | --------- |  ------ | ----- | ----- | -------------------- |
-| C080    |           |   R+WP  |       |  on   |                      |
+| C080    |           |  R+WP   |       |  on   |                      |
 | C081    |    R      |   WE    |       |  on   | >> if accessed twice |
-| C082    |    R      |   RO    |       |  on   |                      |
+| C082    |    R      |   WP    |       |  on   |                      |
 | C083    |           |  R+WE   |       |  on   | >> if accessed twice |
-| C088    |           |   R+WP  |   on  |       |                      |
+| C088    |           |  R+WP   |   on  |       |                      |
 | C089    |    R      |   WE    |   on  |       | >> if accessed twice |
 | C08A    |    R      |   WP    |   on  |       |                      |
-| C08B    |           |   R     |   on  |       | >> if accessed twice |
+| C08B    |           |  R+WE   |   on  |       | >> if accessed twice |
 
 
 
