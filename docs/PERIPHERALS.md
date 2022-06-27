@@ -52,3 +52,11 @@ Peripheral emulation is usually easier to achieve compared to building real hard
   
 
           </div>
+         
+## The Language card (16K)
+
+[Apple Language Card](http://www.applelogic.org/files/LANGCARDMAN.pdf)
+[Microsoft Ramcard](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Microsoft%20RAMCard/Manuals/)
+
+[Apple II+ motherboard schematics](https://archive.org/details/Schematic_Diagram_of_the_Apple_II/page/n1/mode/2up)
+TODO: check which chip has to be removed, and to which address locations this chip corresponds.
