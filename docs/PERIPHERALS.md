@@ -55,19 +55,20 @@ Peripheral emulation is usually easier to achieve compared to building real hard
          
 ## The Language card (16K)
 
-[Apple Language Card](http://www.applelogic.org/files/LANGCARDMAN.pdf)  
-[Microsoft Ramcard](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Microsoft%20RAMCard/Manuals/)  
+[Apple Language Card](http://www.applelogic.org/files/LANGCARDMAN.pdf)
+[Microsoft Ramcard](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Microsoft%20RAMCard/Manuals/)
+The only difference between the Language card from Apple and Microsoft is that the Apple card overrides ROM addresses F800-FFFF permanently, which is factually a ROM upgrade for old Apple II's.   Note that we are emulating an Apple II+, which factually already has the new Kickstart ROM.
 
 [Apple II+ motherboard schematics](https://archive.org/details/Schematic_Diagram_of_the_Apple_II/page/n1/mode/2up)
 TODO: check which chip has to be removed, and to which address locations this chip corresponds.
 
-Card Memory map
+Language Card Memory map
 
           <div style=width:800px>
      FFFF ┌────────────────┐----->┌───────────────┐    ▲    ▲
-          │                │      │               │    │    │
-          │  APPLE         │      │  RAMCARD RAM  │    8K   │
-          │  ROM           │      │               │    ▼    │
+          │  KICKSTART ROM │      │               │    │    │
+     F800 ├────────────────┤      │  RAMCARD RAM  │    8K   │
+          │  APPLE ROM     │      │               │    ▼    │
      E000 │                │----->├───────────────┤         │ 12K    
           │                │      │  BANK 1 or 2  │    ▲    │
           │                │      │  (switchable) │    4K   │
@@ -93,9 +94,9 @@ Card Memory map
 
 | Address | APPLE ROM | RAMCARD | BANK1 | BANK2 | Description          |
 | :-----: | --------- |  ------ | ----- | ----- | -------------------- |
-| C080    |           |  R+WP   |       |  on   |                      |
+| C080    |           |  R+WP   |       |  on   |                      | 
 | C081    |    R      |   WE    |       |  on   | >> if accessed twice |
-| C082    |    R      |   WP    |       |  on   |                      |
+| C082    |    R      |   WP    |       |  on   |                      |  
 | C083    |           |  R+WE   |       |  on   | >> if accessed twice |
 | C088    |           |  R+WP   |   on  |       |                      |
 | C089    |    R      |   WE    |   on  |       | >> if accessed twice |
