@@ -81,13 +81,13 @@ Language Card Memory map
      C800 ├────────────────┤- - - - - - -│- - - - - - -          
           │  SLOT ROM/RAM  │             │  
           │  (unused)      │             │
-          │                │     ┌───────┴─────────┐
-     C100 └──┬─────────────┤     │ C979 RAMTST     │    
-        C0F0 │ I/O slot #7 │     │ C958 WPTSINIT   │
-        C0E0 │ I/O slot #6 │     │                 │
-        C0D0 │ I/O slot #5 │     │                 │
-        C0C0 │ I/O slot #4 │     │                 │
-        C0B0 │ I/O slot #3 │     │                 │
+          │                │             │
+     C100 └──┬─────────────┤             │   
+        C0F0 │ I/O slot #7 │             │
+        C0E0 │ I/O slot #6 │     ┌───────┴─────────┐
+        C0D0 │ I/O slot #5 │     │   SUBROUTINES ? │
+        C0C0 │ I/O slot #4 │     │ C979 RAMTST ??  │
+        C0B0 │ I/O slot #3 │     │ C958 WPTSINIT ??│
         C0A0 │ I/O slot #2 │     └─────────────────┘
         C090 │ I/O slot #1 │     ┌─────────────────┐   
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
