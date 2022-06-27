@@ -93,8 +93,8 @@ Language Card Memory map
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
              └─────────────┘     └─────────────────┘ 
 
->> check https://www.youtube.com/watch?v=1KPIAoO1dTU
->> 
+[video](https://www.youtube.com/watch?v=1KPIAoO1dTU)
+[schematics]( https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Language%20Cards/Apple%20Language%20Card/Schematics/Apple%20Language%20Card%20-%20Schematics%20050-0019-01.pdf)
 
           </div>
 
