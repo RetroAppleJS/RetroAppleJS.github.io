@@ -74,8 +74,8 @@ Card Memory map
           │                │      │  (switchable) │    
      D000 ├────────────────┤----->└───────────────┘
           │                │  
-          │                │
-          │                │ 
+          │  SLOT ROM/RAM  │
+          │  (unused)      │ 
      C100 └──┬─────────────┤ 
         C0F0 │ I/O slot #7 │
         C0E0 │ I/O slot #6 │
