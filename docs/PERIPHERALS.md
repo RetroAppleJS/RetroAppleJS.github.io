@@ -68,27 +68,33 @@ TODO: check which chip has to be removed, and to which address locations this ch
 Language Card Memory map
 
           <div style=width:800px>
-     FFFF ┌────────────────┐----->┌───────────────┐    ▲    ▲
+     FFFF ┌────────────────┐ - - >┌───────────────┐ - -▲    ▲
           │  KICKSTART ROM │      │               │    │    │
      F800 ├────────────────┤      │  RAMCARD RAM  │    8K   │
-          │  APPLE ROM     │      │               │    ▼    │
-     E000 │                │----->├───────────────┤         │ 12K    
+          │  APPLE ROM     │      │               │    │    │
+     E000 │                │ - - >├───────────────┤    ▼    │ 12K    
           │                │      │  BANK 1 or 2  │    ▲    │
           │                │      │  (switchable) │    4K   │
-     D000 ├────────────────┤----->└───────────────┘    ▼    ▼ 
-          │                │  
-          │  SLOT ROM/RAM  │
-          │  (unused)      │ 
-     C100 └──┬─────────────┤ 
-        C0F0 │ I/O slot #7 │
-        C0E0 │ I/O slot #6 │
-        C0D0 │ I/O slot #5 │
-        C0C0 │ I/O slot #4 │
-        C0B0 │ I/O slot #3 │
-        C0A0 │ I/O slot #2 │     
+     D000 ├────────────────┤ - - >└───────────────┘ -  ▼    ▼ 
+          │ large ROM prog │                           ▲ 
+          │ on I/O strobe  ├─────────────┐             ▼ 2K
+     C800 ├────────────────┤- - - - - - -│- - - - - - -          
+          │  SLOT ROM/RAM  │             │  
+          │  (unused)      │             │
+          │                │     ┌───────┴─────────┐
+     C100 └──┬─────────────┤     │ C979 RAMTST     │    
+        C0F0 │ I/O slot #7 │     │ C958 WPTSINIT   │
+        C0E0 │ I/O slot #6 │     │                 │
+        C0D0 │ I/O slot #5 │     │                 │
+        C0C0 │ I/O slot #4 │     │                 │
+        C0B0 │ I/O slot #3 │     │                 │
+        C0A0 │ I/O slot #2 │     └─────────────────┘
         C090 │ I/O slot #1 │     ┌─────────────────┐   
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
              └─────────────┘     └─────────────────┘ 
+
+>> check https://www.youtube.com/watch?v=1KPIAoO1dTU
+>> 
 
           </div>
 
