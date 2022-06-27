@@ -87,4 +87,20 @@ Card Memory map
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
              └─────────────┘     └─────────────────┘ 
 
+
+|  Language card soft switches   |
+| --------------------------------- |
+
+| Address | APPLE ROM | RAMCARD | BANK1 | BANK2 |
+| :-----: | --------- |  ------ | ----- | ----- |
+| C080    |           |   R+WP  |       |  on   |
+| C081    |    R      |   WE    |       |  on   | >> if accessed twice
+| C082    |    R      |   RO    |       |  on   |
+| C083    |           |  R+WE   |       |  on   | >> if accessed twice
+| C088    |           |   R+WP  |   on  |       |
+| C089    |    R      |   WE    |   on  |       | >> if accessed twice
+| C08A    |    R      |   WP    |   on  |       |
+| C08B    |           |   R     |   on  |       | >> if accessed twice
+
+
           </div>
