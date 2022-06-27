@@ -58,7 +58,8 @@ Peripheral emulation is usually easier to achieve compared to building real hard
 We will discuss two similar cards, with the same functions and same soft switches.
 * [Apple Language Card](http://www.applelogic.org/files/LANGCARDMAN.pdf)  
 * [Microsoft Ramcard](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Microsoft%20RAMCard/Manuals/)  
-The only difference between Apple vs Microsoft, is that the Apple card overrides ROM addresses F800-FFFF permanently, which is factually a ROM upgrade for old Apple II's.   Note that we are emulating an Apple II+, which factually already has the new Kickstart ROM.
+
+The only difference between Apple vs Microsoft, is that the Apple card overrides ROM addresses F800-FFFF permanently, which only served as a ROM upgrade for old Apple II's. As we emulate the Apple II+, the Kickstart ROM on the card is bit-by-bit equal with the Kickstart ROM shipped with the Apple II+.
 
 [Apple II+ motherboard schematics](https://archive.org/details/Schematic_Diagram_of_the_Apple_II/page/n1/mode/2up)
 TODO: check which chip has to be removed, and to which address locations this chip corresponds.
