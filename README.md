@@ -100,7 +100,7 @@ feature details & status:
 
 #### real-time audio
 
-The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [inaccurate JavaScript timer](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
+The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [coarse-precision JavaScript timer](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
 `
 
 #### apple II peripherals emulation
