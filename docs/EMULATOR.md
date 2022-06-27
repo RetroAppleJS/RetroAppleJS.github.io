@@ -51,7 +51,7 @@ W3C recently started to worry about this limitation by proposing a new spec call
 
 But, in the end, we may not need 1µs clock accuracy for sound emulation after all.  The Apple II speaker toggles from 'off' to 'on' by reading the $C030 address location, and back to 'off' by doing the same as many times as we want.  But, knowing that frequencies above 20000Hz remain inaudible, we should mind about toggling the speaker only 40000 times per second or once every 25µs.  The "coarsen time" add-on proposed by W3C will by default deliver 100µs accuracy, but by setting the flag crossOriginIsolatedCapability = true, it may deliver 5µs.
 
-In conclusion, we only need 25µs timer accuracy, which hopefull [hr-time](https://w3c.github.io/hr-time/) will provide. 
+In conclusion, we only need 25µs timer accuracy, which [hr-time](https://w3c.github.io/hr-time/) will likely provide. 
 
 
 ## Appendix
