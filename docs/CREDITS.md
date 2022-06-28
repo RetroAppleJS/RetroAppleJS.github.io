@@ -8,7 +8,7 @@ Credits
       Author of the virtual 6502, 6502 Assembler, 6502 Instruction Set
     * [Raymond Hill](https://github.com/gorhill/Javascript-Voronoi)<br/>
       Based on Steven J. Fortune's Voronoi algorithm
-    * [Mihaly Horvath](https://github.com/og2t/jsSID)
+    * [Mihaly Horvath](https://github.com/og2t/jsSID)  
       Author of the SID chip emulator
  - Supporting Tools
     * [Patrick Gillespie](http://patorjk.com/software/taag/#p=display&f=Graffiti&t=Type%20Something%20)  
