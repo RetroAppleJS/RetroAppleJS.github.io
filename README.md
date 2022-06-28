@@ -100,8 +100,7 @@ feature details & status:
 
 #### real-time audio
 
-The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [inaccurate JavaScript timer](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
-`
+The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [coarse-precision JavaScript timer](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
 
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
@@ -111,4 +110,5 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 - [ ] [6820 Peripheral Interface Adapter](https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter), often abreviated as PIA
 - [ ] [Serial Pro](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) = Serial card + real time clock (Applied Engineering) 
 - [ ] [Apple 16K Language Card](http://www.applelogic.org/PeripheralCards.html) e.g. enabling ProDOS
-
+- [ ] [AE RamFactor](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/AE%20RamFactor/) more serious RAM expansion (256K - 1Mb)
+- [ ] [Videx VideoTerm or UltraTerm](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/) 80-Column card

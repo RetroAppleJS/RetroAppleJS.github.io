@@ -1,7 +1,7 @@
 ## EMULATOR Instructions
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
-While the end-user experience with emulators hardly differ from the real hardware, there are some essential differences, mostly to our benefit, but there are some downsides too.<br><br>
+While the end-user experience with emulators hardly differ from the real hardware, there are some essential deviations, mostly to our benefit, but there are some downsides too.<br><br>
 
 __Most basic functions remain the same__  
 \* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
@@ -19,7 +19,7 @@ __A handful extra functions make the experience complete__
 \* pause: freeze/unfreeze CPU
 
 __The 1MHz trick__  
-JavaScript does not provide 1µs timing precision, but we have a workaround.  The setInterval() function located in EMU_apple2main.js, which drives the main loop of our emulator, starts a new sequence every 100ms.  Instead of cycling one time through the CPU emulator every 1µs, we cycle 100K times every 0.1s or 100000/0.1 = 1M cyles/sec.  By this trick, we achieve exactly the same performance as a real Apple II at 1MHz.  Just, all 100K cycles are far from equally spread accross this 10ms loop.  Most CPU's nowadays, effortlessly execute all 100K cycles in less than 5ms, which all sounds good, until one needs to emulate 'sound'. Below diagram explains the 1MHz trick visually :
+JavaScript does not provide 1µs timing precision, but we have a workaround.  The setInterval() function located in EMU_apple2main.js, which drives the main loop of our emulator, starts a new sequence every 100ms.  Instead of cycling one time through the CPU emulator every 1µs, we cycle 100K times every 0.1s or 100ms.  By this trick, we achieve exactly the same performance as a real Apple II at 1MHz (100K cycles/0.1).  Just, all 100K cycles are far from equally spread accross this 100ms loop.  Most CPU's nowadays, effortlessly execute all 100K cycles in less than 5ms, which all sounds good, until one needs to emulate 'sound'. Below diagram explains the 1MHz trick visually :
 
 
 
@@ -45,13 +45,13 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 
   
 __Impossible sound emulation__  
-However simple sound production was designed on the Apple II, since 1997, JavaScript maintained **1ms** as the **highest achievable timing accuracy**, while the 6502 CPU was clocked at approximately 1MHz, we need 1000 times more accuracy than JavaScript can provide today.  JavaScript's timer simply cannot produce any sound above it's nyquist maximum of 500Hz, while a typical Apple II Beep sound is 1KHz.
+However simple sound production was designed on the Apple II, since 1997, JavaScript maintained **1ms** as the **highest achievable timing accuracy**.  While the 6502 CPU was clocked at approximately 1MHz, we need a 1000-fold more accuracy than JavaScript can provide today.  JavaScript simply cannot implement any timer-driven sound above it's nyquist maximum of 500Hz, while a typical Apple II Beep sound is 1KHz.
 
-W3C recently started to worry about this limitation by proposing a new spec called ["High Resolution Time"](https://w3c.github.io/hr-time/) or [hr-time](https://w3c.github.io/hr-time/), but because of alleged malicious capability like [CACHE-ATTACKS] and [SPECTRE], W3C recommends to purposefully mess-up it's timers accuracy by reducing resolution, adding jitter, or by any other piggish means that probably never will provide us anything near to 1µs clock accuracy.  Last time I turned my eyes the same way was the day after 9/11, when I discovered that my boss replaced metal knives in our company kitchen by plastic ones, anyway, nobody would have thought that an emulated Apple II from 1978 🦖, more than 4 decades later, becuase of it's 1MHz clock could be mean a cybersecurity hazard ?? 🤨
+W3C recently started to worry about this limitation by proposing a new spec called ["High Resolution Time"](https://w3c.github.io/hr-time/) or [hr-time](https://w3c.github.io/hr-time/), but because of alleged malicious capability like [CACHE-ATTACKS] and [SPECTRE], W3C recommends to purposefully mess-up it's timers accuracy by reducing resolution, adding jitter, or by any other means that probably never will provide us anything near to 1µs clock accuracy.
 
-In the end, we may not need 1µs clock accuracy for sound emulation after all.  The Apple II speaker toggles from 'off' to 'on' by reading the $C030 address location, and back to 'off' by doing the same as many times as we want.  But, knowing that frequencies above 20000Hz remain inaudible, we should mind about toggling the speaker only once every 40000 times per second or 25 cycles at 1MHz.  The "coarsen time" add-on proposed by W3C will by default deliver 100µs accuracy, but by setting the flag crossOriginIsolatedCapability = true, it may deliver 5µs.
+Since we may never reach this accuracy, we have to think about how hard we need 1µs clock accuracy for sound emulation after all.  We can toggle the Apple II speaker on and off by reading the $C030 address location as often as we want.  But, knowing that frequencies above 20000Hz remain inaudible, we should mind about toggling the speaker only 40000 times per second = once every 25µs.  The "coarsen time" add-on proposed by W3C will by default deliver 100µs accuracy, but by setting the flag crossOriginIsolatedCapability = true, it may deliver 5µs.
 
-In conclusion, we only need 25µs timer accuracy, which [hr-time](https://w3c.github.io/hr-time/) likely will provide. 
+In conclusion, we only need a maximum of 25µs timer accuracy, which [hr-time](https://w3c.github.io/hr-time/) will likely provide, fingers crossed! 
 
 
 ## Appendix
@@ -152,7 +152,7 @@ As the physical power switch is located below the keyboard, for convenience, we 
 
 **CTRL-S** triggers the **STOP-LIST** feature, which is pausing any screen text printing at every RETURN code. Screen printing resumes after pressing any key, unless **CTRL-C** is pressed, which breaks screen printing and goes back to the program that is sending output.
 
-**CTRL-G** does not print any character, instead it produces a tone of 100Hz in the speaker during 0.1s.
+**CTRL-G** does not print any character, instead it produces a tone of 1000Hz in the speaker during 0.1s.
 
 **CTRL-X** breaks an input line, forgets all what was typed and starts a new input line.
 
