@@ -7,10 +7,14 @@ Credits
     * [Norbert Landsteiner](https://github.com/masswerk)<br/>
       Author of the virtual 6502, 6502 Assembler, 6502 Instruction Set
     * [Raymond Hill](https://github.com/gorhill/Javascript-Voronoi)<br/>
-      Based on Steven J. Fortune's Voronoi algorithm
+      Author of the JavaScript Voronoi algorithm, based on Steven J.
+    * [Mihaly Horvath](https://github.com/og2t/jsSID)  
+      Author of the SID chip emulator
+ - Supporting Tools
+    * [Patrick Gillespie](http://patorjk.com/software/taag/#p=display&f=Graffiti&t=Type%20Something%20)  
+      Text ASCII Art Generator, used [ANSI Regular](https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=ANSI%20Regular) & [Varsity](https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity) for visible titles in codebase  
     * [Lewis Hemens](https://asciiflow.com)<br/>
-      Author of Asciiflow - not part of this codebase, but great tool !
-      
+      Author of Asciiflow - not part of this codebase, but great tool for Markdown diagrams !
   - AppleII IDE v0
     * [Freddy Vandriessche](https://github.com/flyingzebra)<br>
       Author of the AppleII IDE foundations, and introducing sneaky bugs, leaving food for thought to the real connaisseurs ;o)
