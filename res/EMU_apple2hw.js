@@ -64,11 +64,15 @@ function Apple2Hw(vid) {
     //
     this.read = function(addr) {
         var d8;
-
-        if (addr < RAM_SIZE)
+        if(this.io.ramcard.active == true && addr >= ROM_ADDR)
+        {
+            d8 = this.io.read(addr); //  TODO let the IO read return ROM stuff !!!
+            // d8 = apple2Rom[addr - ROM_ADDR];
+        }
+        else if (addr < RAM_SIZE)
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-            d8 = apple2Rom[addr - ROM_ADDR];
+            d8 = apple2Rom[addr - ROM_ADDR];            
         else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             d8 = this.io.read(addr - IO_ADDR);
         else
@@ -87,7 +91,11 @@ function Apple2Hw(vid) {
             console.err("Pet2001hw.write(%s %s) d8 too big!",
                         addr.toString(16), d8.toString(16));
 
-        if (addr < RAM_SIZE) {
+        if(this.io.ramcard.active == true && addr >= ROM_ADDR)
+        {
+            d8 = this.io.write(addr,d8); 
+        }
+        else if (addr < RAM_SIZE) {
             ram[addr] = d8;
 
             // If it falls within the video regions, let the

@@ -9,6 +9,11 @@
 
 
 function Apple2IO(vid) {
+
+    const ROM_ADDR =      0xD000;
+    const ROM_SIZE =      0x4000;
+
+
     // Slot I/O addresses
     const SLOT_IO =    [0x80,
                         0x90,
@@ -74,7 +79,8 @@ function Apple2IO(vid) {
         this.disk2.reset();
     }
     
-    this.read = function(addr) {
+    this.read = function(addr)
+    {
         if (addr >= KEY_DATA && addr < KEY_DATA + 0x10)
             return key;
         else if (addr >= KEY_STROBE && addr < KEY_STROBE + 0x10)
@@ -84,13 +90,15 @@ function Apple2IO(vid) {
         else if (this.disk2.diskBytes && addr >= DISK_PROM &&
                  addr < DISK_PROM + DISK_PROM_SIZE)
             return disk2Rom[addr - DISK_PROM];
-        else if(this.ramcard.active 
+        else if(this.ramcard.active  // RAMCARD SOFT SWITCHES
             && addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
-        {
-            return this.ramcard.read(addr - MEM_RAMCARD_IO)
-        }
+            return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
+        else if(this.ramcard.active &&
+            addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+            return this.ramcard.read(addr - ROM_ADDR);
         else
-            switch(addr) {
+            switch(addr)
+            {
             case SPKR_TOGGLE:
                 //_o.EMU_snd_toggle.pause();
                 //_o.EMU_snd_toggle.play();
@@ -128,7 +136,10 @@ function Apple2IO(vid) {
     this.write = function(addr, d8) {
         if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
             this.disk2.write(addr - DISK_IO, d8);
-
+        else if(this.ramcard.active &&
+            addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+            return this.ramcard.write(addr - ROM_ADDR,d8)
+        
         // Implement same side-effects as read.
         this.read(addr);
     }
