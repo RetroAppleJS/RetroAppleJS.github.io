@@ -60,6 +60,9 @@ function Apple2IO(vid) {
         DISK_PROM =     SLOT_PROM[6],
         DISK_PROM_SIZE = SLT_PROM_SIZE;
  
+    var MEM_RAMCARD_IO =  SLOT_IO[0],
+        MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
+
     var video = vid;
     var key = 0x00;
 

@@ -24,7 +24,7 @@
 // SUCH DAMAGE.
 //
 
-// appledisk2.js
+// EMU_appledisk2.js
 
 function AppleDisk2() {
 
