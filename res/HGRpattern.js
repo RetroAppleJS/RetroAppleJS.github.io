@@ -50,6 +50,7 @@ function PATTERN(idx,x,y)
     this.prep = 4;                     // horizontal pattern repetition
     this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
 
+    this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
     this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
     this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }

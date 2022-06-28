@@ -66,8 +66,8 @@ function Apple2IO(vid) {
     var video = vid;
     var key = 0x00;
 
-    if(typeof(AppleDisk2)!="undefined")
-        this.disk2 = new AppleDisk2();
+    if(typeof(AppleDisk2)!="undefined") this.disk2 = new AppleDisk2();
+    if(typeof(RamCard)!="undefined") this.ramcard = new RamCard();
  
     this.reset = function() {
         key = 0x00;
@@ -84,6 +84,11 @@ function Apple2IO(vid) {
         else if (this.disk2.diskBytes && addr >= DISK_PROM &&
                  addr < DISK_PROM + DISK_PROM_SIZE)
             return disk2Rom[addr - DISK_PROM];
+        else if(this.ramcard.active 
+            && addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
+        {
+            return this.ramcard.read(addr - MEM_RAMCARD_IO)
+        }
         else
             switch(addr) {
             case SPKR_TOGGLE:
