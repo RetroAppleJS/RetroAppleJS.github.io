@@ -101,16 +101,16 @@ Language Card Memory map
 |  Language card soft switches   |
 | --------------------------------- |
 
-| Address | MODE | ROM | RAMCARD | BANK1 | BANK2 | Description       |
-| :-----: | ---- |---- |  ------ | ----- | ----- | ----------------- |
-|  C080   |  WP  |     |  R      |       |  R    |                   | 
-| *C081   |  WE  |  R  |  W      |       |  W    | >> if accessed 2x |
-|  C082   |  WP  |  R  |         |       |       |                   |  
-|  C083   |  WE  |     |  R/W    |       |  R/W  | >> if accessed 2x |
-|  C088   |  WP  |     |  R      |   R   |       |                   |
-|  C089   |  WE  |  R  |  W      |   W   |       | >> if accessed 2x |
-|  C08A   |  WP  |  R  |         |       |       |                   |
-|  C08B   |  WE  |     |  R/W    |   R/W |       | >> if accessed 2x |
+| Address | MODE | ROM | RAMCARD | BANK1 | BANK2 | Description  |
+| :-----: | ---- |---- |  ------ | ----- | ----- | ------------ |
+|  C080   |  WP  |     |  R      |       |  R    |              | 
+| *C081   |  WE  |  R  |  W      |       |  W    | >> access 2x |
+|  C082   |  WP  |  R  |         |       |       |              |  
+|  C083   |  WE  |     |  R/W    |       |  R/W  | >> access 2x |
+|  C088   |  WP  |     |  R      |   R   |       |              |
+|  C089   |  WE  |  R  |  W      |   W   |       | >> access 2x |
+|  C08A   |  WP  |  R  |         |       |       |              |
+|  C08B   |  WE  |     |  R/W    |   R/W |       | >> access 2x |
 
 \* default setting after cold boot
 
