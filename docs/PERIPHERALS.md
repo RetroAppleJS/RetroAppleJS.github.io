@@ -101,16 +101,16 @@ Language Card Memory map
 |  Language card soft switches   |
 | --------------------------------- |
 
-| Address | MODE | ROM | RAMCARD | BANK1 | BANK2 | Description       |
-| :-----: | ---- |---- |  ------ | ----- | ----- | ----------------- |
-|  C080   |  WP  |     |  R      |       |  R    | write-protect     | 
-| *C081   |  WE  |  R  |  W      |       |  W    | write (access 2x) |
-|  C082   |  WP  |  R  |         |       |       | ROM-only          | 
-|  C083   |  WE  |     |  R/W    |       |  R/W  | write (access 2x) |
-|  C088   |  WP  |     |  R      |   R   |       | write-protect     |
-|  C089   |  WE  |  R  |  W      |   W   |       | write (access 2x) |
-|  C08A   |  WP  |  R  |         |       |       | ROM-only          |
-|  C08B   |  WE  |     |  R/W    |   R/W |       | write (access 2x) |
+| Address | ROM | RAMCARD | BANK1 | BANK2 | Description       |
+| :-----: | --- |  ------ | ----- | ----- | ----------------- |
+|  C080   |     |  R      |       |  R    | write-protect     | 
+| *C081   |  R  |  W      |       |  W    | write (access 2x) |
+|  C082   |  R  |         |       |       | ROM-only          | 
+|  C083   |     |  R/W    |       |  R/W  | write (access 2x) |
+|  C088   |     |  R      |  R    |       | write-protect     |
+|  C089   |  R  |  W      |  W    |       | write (access 2x) |
+|  C08A   |  R  |         |       |       | ROM-only          |
+|  C08B   |     |  R/W    |  R/W  |       | write (access 2x) |
 
 \* default setting after cold boot
 
