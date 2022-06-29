@@ -21,7 +21,7 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceiv
 <img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50% />
 
 <br>
-Other assembler listings can be found in this folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples, feel free to copy any of those in the left pane of the assembler and procedd as described above.
+Other assembler listings can be found in this folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples, feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
 
 ## Module overview
 
@@ -108,6 +108,9 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 
 - [x] [Apple 16K Language Card](http://www.applelogic.org/PeripheralCards.html) e.g. enabling ProDOS
 - [ ] [Videx VideoTerm or UltraTerm](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/) 80-Column card
+- [ ] [Thunderware Thunderclock Plus](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Clock/Thunderware%20Thunderclock/) Clock with [BSR X-10 AC Remote Control System](https://www.atarimagazines.com/compute/issue17/209_1_INTERFACING_A_BSR_X-10_AC_REMOTE_CONTROL_SYSTEM_TO_YOUR_PET.php) 
+- [ ] [No-Slot Clock](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Chips/SMT%20No-Slot%20Clock/Manuals/No-Slot%20Clock%20-%20User%27s%20Manual.pdf) Simple Real-Time Clock
 - [ ] [Serial Pro](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) = Serial card + real time clock (Applied Engineering) 
 - [ ] [6820 Peripheral Interface Adapter](https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter), often abreviated as PIA
 - [ ] [AE RamFactor](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/AE%20RamFactor/) more serious RAM expansion (256K - 1Mb)
+- [ ] [Apple Mouse Card 670-0030-C](http://www.applelogic.org/PeripheralCards.html)
