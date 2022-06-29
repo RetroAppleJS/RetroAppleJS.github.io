@@ -77,18 +77,18 @@ Language Card Memory map
           │                │      │  (switchable) │    4K   │
      D000 ├────────────────┤ - - >└───────────────┘ -  ▼    ▼ 
           │ large ROM prog │                           ▲ 
-          │ on I/O strobe  ├─────────────┐             ▼ 2K
-     C800 ├────────────────┤- - - - - - -│- - - - - - -          
-          │  SLOT ROM/RAM  │             │  
-          │  (unused)      │             │
-          │                │             │
-     C100 └──┬─────────────┤             │   
-        C0F0 │ I/O slot #7 │             │
-        C0E0 │ I/O slot #6 │     ┌───────┴─────────┐
-        C0D0 │ I/O slot #5 │     │   SUBROUTINES ? │
-        C0C0 │ I/O slot #4 │     │ C979 RAMTST ??  │
-        C0B0 │ I/O slot #3 │     │ C958 WPTSINIT ??│
-        C0A0 │ I/O slot #2 │     └─────────────────┘
+          │  (unused)      │                           ▼ 2K
+     C800 ├────────────────┤- - - - - - - - - - - - - -          
+          │  SLOT ROM/RAM  │                
+          │  (unused)      │              
+          │                │             
+     C100 └──┬─────────────┤                
+        C0F0 │ I/O slot #7 │
+        C0E0 │ I/O slot #6 │
+        C0D0 │ I/O slot #5 │
+        C0C0 │ I/O slot #4 │
+        C0B0 │ I/O slot #3 │
+        C0A0 │ I/O slot #2 │
         C090 │ I/O slot #1 │     ┌─────────────────┐   
         C080 │ I/O slot #0 ├─────┤ 8 soft switches │
              └─────────────┘     └─────────────────┘  
@@ -101,16 +101,16 @@ Language Card Memory map
 |  Language card soft switches   |
 | --------------------------------- |
 
-| Address | APPLE ROM | RAMCARD | BANK1 | BANK2 | Description          |
-| :-----: | --------- |  ------ | ----- | ----- | -------------------- |
-|  C080   |           |  R+WP   |       |  on   |                      | 
-| *C081   |    R      |   WE    |       |  on   | >> if accessed twice |
-|  C082   |    R      |   WP    |       |  on   |                      |  
-|  C083   |           |  R+WE   |       |  on   | >> if accessed twice |
-|  C088   |           |  R+WP   |   on  |       |                      |
-|  C089   |    R      |   WE    |   on  |       | >> if accessed twice |
-|  C08A   |    R      |   WP    |   on  |       |                      |
-|  C08B   |           |  R+WE   |   on  |       | >> if accessed twice |
+| Address | MODE | ROM | RAMCARD | BANK1 | BANK2 | Description          |
+| :-----: | ---- |---- |  ------ | ----- | ----- | -------------------- |
+|  C080   |  WP  |     |  R+WP   |       |  on   |                      | 
+| *C081   |  WE  |  R  |   WE    |       |  on   | >> if accessed twice |
+|  C082   |  WP  |  R  |   WP    |       |  on   |                      |  
+|  C083   |  WE  |     |  R+WE   |       |  on   | >> if accessed twice |
+|  C088   |  WP  |     |  R+WP   |   on  |       |                      |
+|  C089   |  WE  |  R  |   WE    |   on  |       | >> if accessed twice |
+|  C08A   |  WP  |  R  |   WP    |   on  |       |                      |
+|  C08B   |  WE  |     |  R+WE   |   on  |       | >> if accessed twice |
 
 \* default setting after cold boot
 
