@@ -1,18 +1,17 @@
-# The Apple II IDE
+# The Apple II+ IDE
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
 This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application.  All you need is to run _index.html_ locally, in any browser, in other words: no need at all to deploy this code on a web-server.
 
-The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic computer experience, with a new twist.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done on a CPU that was originally designed for desktop calculators.  Even if most computer books in those days were dreadfully printed, and contained mediocre, buggy projects. I know that Jeff Stanton hates fanship, but he was one of the rare authors that triggred my enthousiasm. 
+The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic computer experience, with a new twist.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done on a CPU that was originally designed for calculators.
 
 Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceivingly simple instruction set**. Before getting started, I must say that this project is bearing significant codebase from several authors, which [deserve all my thanks and respect](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/CREDITS.md)  .
 
 ## Getting started
 
-1) Check the last build on [Netlify.com](https://bright-swan-0d3fbc.netlify.app)
---OR--
-Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser
+1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser --OR-- Check the last build on [Netlify.com](https://bright-swan-0d3fbc.netlify.app)
+
 
 2) Inside the assembler, tap the **'generate'** button
 3) Tap the **'to emulator'** button
