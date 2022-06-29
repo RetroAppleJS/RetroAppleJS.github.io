@@ -21,7 +21,7 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceiv
 <img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50% />
 
 <br>
-Other assembler listings can be found in this folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples, feel free to copy any of those in the left pane of the assembler and procedd as described above.
+Other assembler listings can be found in this folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples, feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
 
 ## Module overview
 
