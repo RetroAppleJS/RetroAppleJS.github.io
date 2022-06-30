@@ -66,9 +66,9 @@ function ByteAt(addr) {
 function WordAt(addr) {
 	return ByteAt(addr)+ByteAt(0xffff&(addr+1))*256;
 }
-function ImmediateByte() {
-	return ByteAt(pc);
-}
+//function ImmediateByte(pc) {
+//	return ByteAt(pc);
+//}
 function ImmediateAddr() {
 	return pc;
 }
@@ -122,7 +122,7 @@ function AbsoluteYAddr() {
 }
 function BranchRelAddr() {
 	excycles++;
-	var addr=ImmediateByte()
+	var addr=ByteAt(pc)
 	pc++;
 	addr= (addr&128)? pc-((addr^255)+1) : pc+addr;
 	if ((pc&0xff00)!=(addr&0xff00)) excycles++;
@@ -460,7 +460,7 @@ function i01() { opORA(IndirectXAddr); pc++; }
 function i05() { opORA(ZeroPageAddr); pc++; }
 function i06() { opASL(ZeroPageAddr); pc++; }
 function i08() { stPush(flags); }
-function i09() { a |= ImmediateByte(); FlagsNZ(a); pc++; }
+function i09() { a |= ByteAt(pc); FlagsNZ(a); pc++; }
 function i0a() {
 	if (a&128) {
 		flags |= fCAR;
@@ -488,7 +488,7 @@ function i24() { opBIT(ZeroPageAddr); pc++; }
 function i25() { opAND(ZeroPageAddr); pc++; }
 function i26() { opROL(ZeroPageAddr); pc++; }
 function i28() { flags = stPop(); }
-function i29() { a &= ImmediateByte(); FlagsNZ(a); pc++; }
+function i29() { a &= ByteAt(pc); FlagsNZ(a); pc++; }
 function i2a() {
 	if (flags&fCAR) {
 		if ((a&128)==0) flags &=~fCAR;
@@ -517,7 +517,7 @@ function i41() { opEOR(IndirectXAddr); pc++; }
 function i45() { opEOR(ZeroPageAddr); pc++; }
 function i46() { opLSR(ZeroPageAddr); pc++; }
 function i48() { stPush(a); }
-function i49() { a ^= ImmediateByte(); FlagsNZ(a); pc++; }
+function i49() { a ^= ByteAt(pc); FlagsNZ(a); pc++; }
 function i4a() {
 	flags &=~(fCAR+fNEG+fZER);
 	if (a&1) flags |=fCAR;
@@ -588,14 +588,14 @@ function i98() { a=y; FlagsNZ(a); }
 function i99() { opSTA(AbsoluteYAddr); pc+=2; }
 function i9a() { sp=x; }
 function i9d() { opSTA(AbsoluteXAddr); pc+=2; }
-function ia0() { y=ImmediateByte(); FlagsNZ(y); pc++; }
+function ia0() { y=ByteAt(pc); FlagsNZ(y); pc++; }
 function ia1() { opLDA(IndirectXAddr); pc++; }
-function ia2() { x=ImmediateByte(); FlagsNZ(x); pc++; }
+function ia2() { x=ByteAt(pc); FlagsNZ(x); pc++; }
 function ia4() { opLDY(ZeroPageAddr); pc++; }
 function ia5() { opLDA(ZeroPageAddr); pc++; }
 function ia6() { opLDX(ZeroPageAddr); pc++; }
 function ia8() { y=a; FlagsNZ(y); }
-function ia9() { a=ImmediateByte(); FlagsNZ(a); pc++; }
+function ia9() { a=ByteAt(pc); FlagsNZ(a); pc++; }
 function iaa() { x=a; FlagsNZ(x); }
 function iac() { opLDY(AbsoluteAddr); pc+=2; }
 function iad() { opLDA(AbsoluteAddr); pc+=2; }
@@ -770,7 +770,7 @@ var internalCycleDelay=0;
 
 function processorLoop() {
 	breakFlag=false;
-	var instructCode =ImmediateByte();
+	var instructCode =ByteAt(pc);
 	pc++;
 	pc &=0xffff;
 	excycles =0;
