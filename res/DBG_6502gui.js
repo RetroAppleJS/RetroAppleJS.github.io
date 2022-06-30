@@ -13,6 +13,11 @@ var mem_checksum = [];
 var pstruct = {};
 var watch_data = {};
 
+var oASM = new ASM();
+oASM.writeDisplay = writeDisplay;
+oASM.updateScroll = updateScroll
+
+
 // lookup tables
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
@@ -142,16 +147,10 @@ if (!String.prototype.charCodeAt) {
 
 // functions
 
-function getReg(r) {
-	switch (r) {
-		case 'PC' : return pc;
-		case 'AC' : return a;
-		case 'XR' : return x;
-		case 'YR' : return y;
-		case 'SR' : return flags;
-		case 'SP' : return sp;
-		default : return '';
-	}
+function updateScroll(el)
+{
+	var element = document.getElementById(el);
+	element.scrollTop = element.scrollHeight;
 }
 
 function setReg(r,v) {
@@ -166,7 +165,7 @@ function setReg(r,v) {
 	}
 }
 function setRegister(r) {
-	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(getReg(r));
+	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(oASM.getReg(r));
 	var v=prompt('Please enter a hex value for '+r+':', prstr);
 	v=parseInt(v,16);
 	if (isNaN(v)) return;
@@ -176,7 +175,7 @@ function setRegister(r) {
 	else v&=255;
 	setReg(r,v);
 	updateReg(r);
-	if (r=='PC') disassemble();
+	if (r=='PC') oASM.disassemble();
 }
 
 function setWatchByte(r) {
@@ -231,7 +230,7 @@ function resetProcessor() {
 	resetCPU();
 	updateReg();
 	updateWatch();
-	disassemble();
+	oASM.disassemble();
 }
 
 function DBG_init() {
@@ -257,7 +256,7 @@ function updateReg(r) {
 		writeDisplay('dispPC',getHexWord(pc));
 	}
 	else {
-		writeDisplay('disp'+r,''+getHexByte(getReg(r)));
+		writeDisplay('disp'+r,''+getHexByte(oASM.getReg(r)));
 	}
 	if (r=='SR') {
 		for (var i=0; i<8; i++) {
@@ -616,7 +615,7 @@ function load_adr(obj)
 	v&=0xffff
 	setReg("PC",v);
 	updateReg("PC");
-	disassemble();
+	oASM.disassemble();
 
 }
 
@@ -924,7 +923,7 @@ function simStep() {
 	processorLoop();
 	updateReg();
 	updateWatch();
-	disassemble();
+	oASM.disassemble();
 	// continous?
 	if (runThrou) {
 		runStep++;
