@@ -15,8 +15,10 @@ var watch_data = {};
 
 var oASM = new ASM();
 oASM.writeDisplay = writeDisplay;
-oASM.updateScroll = updateScroll
-
+oASM.updateScroll = updateScroll;
+oASM.getHexByte = getHexByte;
+oASM.ByteAt = ByteAt;  // inherit from DBG_6502cpu.js
+oASM.sym_search = sym_search;
 
 // lookup tables
 
