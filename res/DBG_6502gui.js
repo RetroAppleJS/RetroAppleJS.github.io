@@ -13,12 +13,10 @@ var mem_checksum = [];
 var pstruct = {};
 var watch_data = {};
 
-var oASM = new ASM();
-oASM.writeDisplay = writeDisplay;
-oASM.updateScroll = updateScroll;
-oASM.getHexByte = getHexByte;
-oASM.ByteAt = ByteAt;  // inherit from DBG_6502cpu.js
-oASM.sym_search = sym_search;
+var oDBG_ASM = new ASM();
+oDBG_ASM.getHexByte = getHexByte;
+oDBG_ASM.ByteAt = ByteAt;  // inherit from DBG_6502cpu.js
+oDBG_ASM.sym_search = sym_search;
 
 // lookup tables
 
@@ -149,12 +147,6 @@ if (!String.prototype.charCodeAt) {
 
 // functions
 
-function updateScroll(el)
-{
-	var element = document.getElementById(el);
-	element.scrollTop = element.scrollHeight;
-}
-
 function setReg(r,v) {
 	switch (r) {
 		case 'PC' : pc=v; break;
@@ -167,7 +159,7 @@ function setReg(r,v) {
 	}
 }
 function setRegister(r) {
-	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(oASM.getReg(r));
+	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(oDBG_ASM.getReg(r));
 	var v=prompt('Please enter a hex value for '+r+':', prstr);
 	v=parseInt(v,16);
 	if (isNaN(v)) return;
@@ -177,7 +169,7 @@ function setRegister(r) {
 	else v&=255;
 	setReg(r,v);
 	updateReg(r);
-	if (r=='PC') oASM.disassemble();
+	if (r=='PC') oDBG_ASM.disassemble();
 }
 
 function setWatchByte(r) {
@@ -213,7 +205,7 @@ function writeWatchAddresses(p)
 	for(var _i in p)
 		if(p[_i]!="" && p[_i]!="null") _a[_a.length] = "'"+_i+"':'"+p[_i]+"'";
 
-  // TODO user generic function for that like writeDisplay !!!
+  // TODO user generic function for that like oDBG_ASM.writeDisplay !!!
 	document.getElementById('watchparam').value = "{"+_a.join(",")+"}";
 }
 
@@ -232,7 +224,7 @@ function resetProcessor() {
 	resetCPU();
 	updateReg();
 	updateWatch();
-	oASM.disassemble();
+	oDBG_ASM.disassemble();
 }
 
 function DBG_init() {
@@ -250,20 +242,20 @@ function updateReg(r) {
 		updateReg('YR');
 		updateReg('SR');
 		updateReg('SP');
-		writeDisplay('dispCycles', 'total cycles: '+processorCycles+" <small>("+processorCycles/1000+"ms)<small>");
+		oDBG_ASM.writeDisplay('dispCycles', 'total cycles: '+processorCycles+" <small>("+processorCycles/1000+"ms)<small>");
 		return;
 	}
 	var obj;
 	if (r=='PC') {
-		writeDisplay('dispPC',getHexWord(pc));
+		oDBG_ASM.writeDisplay('dispPC',getHexWord(pc));
 	}
 	else {
-		writeDisplay('disp'+r,''+getHexByte(oASM.getReg(r)));
+		oDBG_ASM.writeDisplay('disp'+r,''+getHexByte(oDBG_ASM.getReg(r)));
 	}
 	if (r=='SR') {
 		for (var i=0; i<8; i++) {
 			var b=((flags&(1<<i))>0)? 1:0;
-			writeDisplay('dispSR'+i,b);
+			oDBG_ASM.writeDisplay('dispSR'+i,b);
 		}
 	}
 }
@@ -288,8 +280,8 @@ function report_watch(obj)
 
 	//alert( parseInt(obj.ins,16)+" "+opctab[ parseInt(obj.ins,16) ][0] )
 
-  writeDisplay('watchdisp',dispwatch,"beforeend");
-	updateScroll('watchdisp');
+  oDBG_ASM.writeDisplay('watchdisp',dispwatch,"beforeend");
+	oDBG_ASM.updateScroll('watchdisp');
 }
 
 function updateWatch(r) {
@@ -333,38 +325,10 @@ function updateWatch(r) {
 		 var by = ByteAt(m);
  	 	 var hby = typeof(badr[1])=="undefined"? getHexByte(by) : ((by & bi)>0 ? 1:0);
 
-		 writeDisplay('disp'+r, hby);
+		 oDBG_ASM.writeDisplay('disp'+r, hby);
 	 }
 // getMem
-	 //writeDisplay('disp'+r, getHexWord(pc));
-}
-
-function writeDisplay(n,v,f) {
-	var obj,tagname,bAppend = typeof(f)!="undefined";
-	if (document.getElementById) {
-		obj=document.getElementById(n);
-		tagname = obj.tagName.toUpperCase();
-	}
-	else if (document.all) {
-		obj=document.all[n];
-	}
-	if(!obj) return;
-	switch(tagname)
-	{
-		case "INPUT":
-			switch(f)
-			{
-				case "beforebegin":obj.value += v; break; 						// less common
-				case "afterbegin": obj.value = v + obj.value; break;	// less common
-				case "afterend":   obj.value = v + obj.value; break;
-				case "beforeend":  obj.value += v; break;
-				default:  				 obj.value = v;
-			}
-		break;
-		default:
-			if(bAppend) obj.insertAdjacentHTML(f,v);
-			else obj.innerHTML=v;
-	}
+	 //oDBG_ASM.writeDisplay('disp'+r, getHexWord(pc));
 }
 
 function getHexByte(v) {
@@ -585,7 +549,6 @@ function load_debug_signature(mem)
 */
 }
 
-// MOVE TO 6502gui.js !!!!!!!!!!!!
 function load_adr(obj)
 {
 	var u = obj.innerHTML.substring(0,49);
@@ -617,7 +580,7 @@ function load_adr(obj)
 	v&=0xffff
 	setReg("PC",v);
 	updateReg("PC");
-	oASM.disassemble();
+	oDBG_ASM.disassemble();
 
 }
 
@@ -912,8 +875,8 @@ function debugReset()
 	processorCycles = 0;
 	dispwatch = "";
 	updateReg();
-	writeDisplay('dispStep',"");
-	writeDisplay('watchdisp',"");
+	oDBG_ASM.writeDisplay('dispStep',"");
+	oDBG_ASM.writeDisplay('watchdisp',"");
 }
 
 function singleStep() {
@@ -925,7 +888,7 @@ function simStep() {
 	processorLoop();
 	updateReg();
 	updateWatch();
-	oASM.disassemble();
+	oDBG_ASM.disassemble();
 	// continous?
 	if (runThrou) {
 		runStep++;

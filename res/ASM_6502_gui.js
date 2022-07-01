@@ -1,3 +1,10 @@
+var oASM = new ASM();
+oASM.getHexByte = getHexByte;
+oASM.ByteAt = function ByteAt(addr) { return this.srcfield_bin}
+oASM.sym_search = function sym_search(op,adm) { return }
+oASM.srcfield_bin = new Uint8Array(); 
+
+
 var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.srcfield)\"><i class='fa fa-indent'></i> Margin+</button>\n" +
   "<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n" +
   "<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n" +

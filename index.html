@@ -393,19 +393,17 @@
             Disk <input type="file" class=appbut id="loadfile" value="Disk" onchange="javascript:loadDisk()">
             </div>
             <div class="hints1" id="paste" hidden="" style="z-index:2;position:absolute;left:90px">
-            <form name="board">
+            <form name="EMUboard">
             <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
-            <!--textarea cols=40 rows=3  name=captureText></textarea-->
-            <!--textarea-- cols=40 rows=3  name=logText></!--textarea-->
             </form>
-            <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onBoardClear()"><input type="button" value="Hide" onclick="javascript:onPasteboard()">
+            <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onEMUBoardClear()"><input type="button" value="Hide" onclick="javascript:onPasteboard()">
             </div>
             <script type="text/javascript">
             var bColor = false;
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
             function onBoardPaste()
             {
-              var e = board.boardText.value;
+              var e = EMUboard.boardText.value;
               e = e.replace(/\r\n/g,"\r");
               e = e.replace(/\n/g,"\r");
               for(var _i=0;_i<e.length;_i++)
@@ -417,7 +415,7 @@
                   apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
               }
             }
-            function onBoardClear() { board.boardText.value = ""; board.logText.value = ""  ; board.captureText.value = "" };  
+            function onEMUBoardClear() { EMUboard.boardText.value = "" };  
             </script>
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
             <div class="appdskLED" id="dskLED1" style="left:392px;top:666px"></div>
@@ -458,10 +456,29 @@
           <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
           <link rel="stylesheet"        href="res/ASM_6502.css">
     
+
+          <div style="padding:0px 90px">
+            <button class=appbut value="pasteboard" onclick="javascript:onASMPasteboard()" title="ByteCode pasteboard"><i class="fa fa-paste"></i></button>
+          </div>
+          <div class="hints1" id="bytecodepaste" hidden="" style="z-index:2;position:absolute;left:90px">
+            <form name="ASMboard">
+            <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
+            <!--textarea cols=40 rows=3  name=captureText></textarea-->
+            <!--textarea-- cols=40 rows=3  name=logText></!--textarea-->
+            </form>
+            <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onASMBoardClear()"><input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
+            </div>
+          <script type="text/javascript">
+            var bColor = false;
+            function onASMPasteboard() { var e = document.getElementById('bytecodepaste'); e.hidden = !e.hidden; }
+            function onASMBoardClear() { ASMboard.boardText.value = "" }; 
+          </script>
+
           <form name="ass" onsubmit="return false">
             <table style="background:#76B9CE;border-radius:10px;">
               <tr>
                 <td valign=top style="display:flex;flex-wrap:wrap;width:340px">
+                  <!-- LEFT PANE -->
                   <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>*=$6000
            LDX #0
     Label1 TXA
@@ -474,7 +491,8 @@
     .END
                   </textarea>
                   <br>
-                  <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> generate</button>
+                  <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
+                  <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
                   <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
                   <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
@@ -488,6 +506,7 @@
     
                 </td>
                 <td valign=top>
+                  <!-- RIGHT PANE -->
                   <textarea name="listing" onscroll="syncScroll(document.forms.ass.listing,document.forms.ass.srcfield)" readonly="readonly" wrap="virtual" class="dotmatrix_bck" style="width:340px;height:400px;margin:10px 10px 10px 0px;-webkit-filter: brightness(0.95);filter: brightness(0.95);" placeholder="Listing"></textarea>
                 </td>
               </tr>

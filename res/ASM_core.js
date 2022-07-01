@@ -337,9 +337,6 @@ function ASM()
 			case "LDX":
 				if(typeof(opc)=="undefined") var opc = {"title":"Load X Register","reg":"XR","A2":"imm","A6":"zpg","B6":"zpy","AE":"abs","BE":"aby"};
 			case "LDA":
-
-// 621C (274)
-
 				if(typeof(opc)=="undefined") var opc = {"title":"Load Accumulator","reg":"AC","A9":"imm","A5":"zpg","B5":"zpx","AD":"abs","BD":"abx","B9":"aby","A1":"inx","B1":"iny"};
 				s+=opc.title+" - ["+opc[ops[0]]+"]<br>"
 				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
@@ -617,15 +614,40 @@ function ASM()
 		+"</div>\r\n"
 	}
 
-    this.writeDisplay = function(n,v,f)
-    {
-        console.log("writeDisplay("+n+","+v+","+f+") requires an inheritant")
-    }
+    this.writeDisplay = function(n,v,f) {
+		// n = el, v = value, f = extra HTML
+		var obj,tagname,bAppend = typeof(f)!="undefined";
+		if (document.getElementById) {
+			obj=document.getElementById(n);
+			tagname = obj.tagName.toUpperCase();
+		}
+		else if (document.all) {
+			obj=document.all[n];
+		}
+		if(!obj) return;
+		switch(tagname)
+		{
+			case "INPUT":
+				switch(f)
+				{
+					case "beforebegin":obj.value += v; break; 				// less common
+					case "afterbegin": obj.value = v + obj.value; break;	// less common
+					case "afterend":   obj.value = v + obj.value; break;
+					case "beforeend":  obj.value += v; break;
+					default:  		   obj.value = v;
+				}
+			break;
+			default:
+				if(bAppend) obj.insertAdjacentHTML(f,v);
+				else obj.innerHTML=v;
+		}
+	}
 
     this.updateScroll = function(el)
-    {
-        console.log("updateScroll("+el+") requires an inheritant")
-    }
+	{
+		var element = document.getElementById(el);
+		element.scrollTop = element.scrollHeight;
+	}
 
     this.getHexByte = function(v)
     {
