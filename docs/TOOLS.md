@@ -141,4 +141,4 @@ TODO: flow diagram
 
 <img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/SID_chips.png" align=left width=50% />
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/TOOL_SID_emulator.png" align=left width=50% />
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/TOOL_SID_emulator.png" align=left />
