@@ -137,3 +137,6 @@ TODO: flow diagram
 
 ### Camera_capture.html
 
+### SID_emulator.html
+
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/TOOL_SID_emulator.png" align=left width=30% />
