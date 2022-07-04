@@ -396,7 +396,21 @@
             <form name="EMUboard">
             <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
             </form>
-            <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onEMUBoardClear()"><input type="button" value="Hide" onclick="javascript:onPasteboard()">
+            <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()">
+            <input type="button" id=Capture value="Capture" onclick="javascript:onCapture();onBoardPaste()">
+            <!--
+            <input type="button" id=CaptureBase value="hex" onclick="onCaptureBase(this)">
+            -->
+            <!--
+            <input type="text" value="$0000►$FFFF" size=11 onkeyup="onCaptureRange(event,this,document.getElementById('CaptureBase').value)">
+            -->
+            
+            <input type="text" value="$0000" size=5 onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
+            
+            <input type="button" value="Clear" onclick="javascript:onEMUBoardClear()">
+            <input type="button" value="X" onclick="javascript:onPasteboard()">
+            <input id="debug2" style="width:400px" value="">
+
             </div>
             <script type="text/javascript">
             var bColor = false;
@@ -416,6 +430,37 @@
               }
             }
             function onEMUBoardClear() { EMUboard.boardText.value = "" };  
+            function onCaptureBase(tag)
+            {
+              tag.value=tag.value=="hex"?"dec":"hex";
+            }
+            function onCaptureRange(event,tag,base)
+            {
+              var template = {"hex":["\\$([0-9A-F]{1,4})►\\$([0-9A-F]{1,4})",16],
+                              "dec":["([0-9]{1,5})►([0-9]{1,5})",10]};
+              // VALIDATE
+              var re = new RegExp(template[base][0],'g');
+              var addr_arr = tag.value.replace(re,'$1,$2').split(",");
+              document.getElementById('Capture').disabled = addr_arr.length!=2;
+
+
+              document.getElementById("debug2").value = event.keyCode
+
+              //document.getElementById("debug2").value = "$"+addr_arr.join("►$")
+              //alert(tag.value+" ("+tag.value.replace(re,'$1,$2')+")");
+           
+            }
+
+            function onCaptureAddr(tag)
+            {
+              var template = {16:"\\$([0-9A-F]{1,4})",
+                              10:"([0-9]{1,5})"};
+              var base = tag.value.charAt(1)=="$"?16:10;
+              var bValid = tag.value.match(template[base])==null?false:tag.value;
+              document.getElementById('Capture').disabled = !bValid
+              return bValid;
+            }
+
             </script>
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
             <div class="appdskLED" id="dskLED1" style="left:392px;top:666px"></div>
@@ -462,15 +507,37 @@
           </div>
           <div class="hints1" id="bytecodepaste" hidden="" style="z-index:2;position:absolute;left:90px">
             <form name="ASMboard">
-            <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
-            <!--textarea cols=40 rows=3  name=captureText></textarea-->
-            <!--textarea-- cols=40 rows=3  name=logText></!--textarea-->
+            <textarea cols=40 rows=3  placeholder="Paste ByteCode here" name=boardText></textarea>
             </form>
-            <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onBoardPaste()"><input type="button" value="Clear" onclick="javascript:onASMBoardClear()"><input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
+            <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()"><input type="button" value="Clear" onclick="javascript:onASMBoardClear()"><input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
             </div>
           <script type="text/javascript">
             var bColor = false;
             function onASMPasteboard() { var e = document.getElementById('bytecodepaste'); e.hidden = !e.hidden; }
+            function onASMBoardPaste()
+            {
+              var e = ASMboard.boardText.value.toUpperCase(); 
+              e = e.replace(/^.*[!-\/;-@G-~].*$/gm,"");   // remove each line with incompliant characters
+              e = e.replace(/[\r\n ]/g,"");               // remove all <cr> <lf> <spaces>                
+              e = e.replace(/([0-9A-F]{4}:)/g,"\n$1");    // introduce linefeed
+              e = e.replace(/([0-9A-F]{2})/g," $1");      // equally separate bytes
+              e = e.replace(/ ([0-9A-F]{2}) ([0-9A-F]{2}): /g,"$1$2:"); // re-join 16-bit addresses
+              e = e.replace(/^[\s\n]/g,"");               // remove heading spaces and linefeeds
+              ass.srcfield.value = e;
+              //ass.listing.value = e;
+              
+              var s = "";
+              for(var _i=0;_i<e.length;_i++)
+              {
+                //alert(e)
+
+                  //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
+                  //apple2OnKeyPress(event);
+                  //var code = apple2plus.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
+                  //if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
+                  //apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
+              }
+            }
             function onASMBoardClear() { ASMboard.boardText.value = "" }; 
           </script>
 
