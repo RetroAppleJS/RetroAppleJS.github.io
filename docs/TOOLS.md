@@ -139,4 +139,4 @@ TODO: flow diagram
 
 ### SID_emulator.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/TOOL_SID_emulator.png" align=left width=30% />
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/TOOL_SID_emulator.png" align=left width=50% />
