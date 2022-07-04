@@ -15,6 +15,7 @@ Credits
       Text ASCII Art Generator, used [ANSI Regular](https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=ANSI%20Regular) & [Varsity](https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity) for visible titles in codebase  
     * [Lewis Hemens](https://asciiflow.com)<br/>
       Author of Asciiflow - not part of this codebase, but great tool for Markdown diagrams !
+    * [RegExp tool](https://regex101.com)
   - AppleII IDE v0
     * [Freddy Vandriessche](https://github.com/flyingzebra)<br>
       Author of the AppleII IDE foundations, and introducing sneaky bugs, leaving food for thought to the real connaisseurs ;o)
