@@ -114,3 +114,4 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 - [ ] [6820 Peripheral Interface Adapter](https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter), often abreviated as PIA
 - [ ] [AE RamFactor](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/AE%20RamFactor/) more serious RAM expansion (256K - 1Mb)
 - [ ] [Apple Mouse Card 670-0030-C](http://www.applelogic.org/PeripheralCards.html)
+- [ ] The Mocking Board](https://en.wikipedia.org/wiki/Mockingboard) sound card supported by different games and the 'Music Construction Set"
