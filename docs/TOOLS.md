@@ -139,6 +139,4 @@ TODO: flow diagram
 
 ### SID_emulator.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/SID_chips.png" align=left width=30% />
-
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/TOOL_SID_emulator.png" align=left width=50% />
+<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/SID_chips.png" align=left width=30% />As for now, emulating AppleII sound is a complete loss of time, let's put to work a crazy idea that could bring us closer to emulating a [Mockingboard](https://en.wikipedia.org/wiki/Mockingboard) sound card.
