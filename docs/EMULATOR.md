@@ -45,6 +45,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                 100K cycles               :            ┘   CLOCK
           </div>
 
+
 ![plantuml](http://www.plantuml.com/plantuml/png/ZOunJyCm48Lt_ugdJ21rE0yPs48g445YwifYdAjguTYMVMaGYFzEI8iQcDZkdhxtz3L5J9PnyChwQ5y1L7V3w8t4ZC6u01zZUWwFvcXsDhiasB5qGJWVZR-whc0AjeJ9oG69iuizD17Iw0lZfaRSxmiBIDaOh2lyTtvoeO_JQKQh75_68ci75mBdHM9XsXM3Kt8HpsmyRbFoZAw34UYdX_S5klybM9_rw6AdMXncZbIhbqDlvgmXjTLm1HM_iVrHLUsIVT16VyvCVVw_UKt_QMXQTLJ3eHy7_mK0)
 
   
