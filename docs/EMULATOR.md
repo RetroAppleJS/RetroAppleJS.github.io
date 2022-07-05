@@ -27,7 +27,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
           
                                         :                   100ms                   :      
                                         ┌──────────────────────────────────────────┐┌─────...    ┐
-      setInterval(appleInterval(),10)   │                                          ││            │
+      setInterval(appleInterval(),100)  │                                          ││            │
       (outer loop)                    ──┘                                          └┘            │
                                         :                                           :            │
                                         :                                           :            │                                        
