@@ -45,6 +45,8 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                 100K cycles               :            ┘   CLOCK
           </div>
 
+![http://www.plantuml.com/plantuml/png/TSu_IqCn50NmFP_YqAakaXGSt9uKmISuTNMvvDrYyEOFoKshVdfRBROFRBOJkBzpXgPKjKSnNh9_1x1uZ5r8SqMaa20vbzVqJ3lQ-1gAOiCw9kMw8rdUB40DQujzq3SKhY5FSDQYT6cC-plaxRQnmXgVam-DBtZ-O7yuJ5FUjr_dl85A4LuLwUtMVthXfRE7TwfpL-gS_QixIvL9y73aC8uWXNjv-lhVEJ4NYZ63DMk4zZFs69sTVGohMHuuJJtADm00](http://www.plantuml.com/plantuml/png/TSu_IqCn50NmFP_YqAakaXGSt9uKmISuTNMvvDrYyEOFoKshVdfRBROFRBOJkBzpXgPKjKSnNh9_1x1uZ5r8SqMaa20vbzVqJ3lQ-1gAOiCw9kMw8rdUB40DQujzq3SKhY5FSDQYT6cC-plaxRQnmXgVam-DBtZ-O7yuJ5FUjr_dl85A4LuLwUtMVthXfRE7TwfpL-gS_QixIvL9y73aC8uWXNjv-lhVEJ4NYZ63DMk4zZFs69sTVGohMHuuJJtADm00)
+
   
 __Impossible sound emulation__  
 However simple sound production was designed on the Apple II, since 1997, JavaScript maintained **1ms** as the **highest achievable timing accuracy**.  While the 6502 CPU was clocked at approximately 1MHz, we need a 1000-fold more accuracy than JavaScript can provide today.  JavaScript simply cannot implement any timer-driven sound above it's nyquist maximum of 500Hz, while a typical Apple II Beep sound is 1KHz.
