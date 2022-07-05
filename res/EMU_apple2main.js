@@ -44,8 +44,6 @@ const _o = {"tools":{}
         ,"EMU_Updates_s":10                // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
         ,"EMU_snd_bpulse":false
-        ,"EMU_snd_pulse1":new Tone.PulseOscillator(1, -0.001).toDestination()
-        ,"EMU_snd_pulse2":new Tone.PulseOscillator(1, 0.001).toDestination()
         //new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
     };
 
