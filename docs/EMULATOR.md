@@ -29,10 +29,10 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         ┌──────────────────────────────────────────┐┌─────...    ┐
       setInterval(appleInterval(),10)   │                                          ││            │
       (outer loop)                    ──┘                                          └┘            │
-                                        :                                           :            ├>  EMULATED
-                                        :<5ms                                       :<5ms        │   CLOCK
-                                        ┌────┐                                      ┌────┐       │
-                                        ││││││                                      ││││││
+                                        :                                           :            │
+                                        :<5ms                                       :<5ms        ├>  EMULATED
+                                        ┌────┐                                      ┌────┐       │   CLOCK
+                                        ││││││                                      ││││││       │  
               apple2plus.cycle(10000) ──┘100K└──────────────────────────────────────┘100K└─...   │
               (inner loop)              :cycles                                     :cycles      ┘
                                         :                                           :
