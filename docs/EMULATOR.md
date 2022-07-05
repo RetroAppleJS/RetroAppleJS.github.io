@@ -45,7 +45,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                 100K cycles               :            ┘   CLOCK
           </div>
 
-![http://www.plantuml.com/plantuml/png/TSu_IqCn50NmFP_YqAakaXGSt9uKmISuTNMvvDrYyEOFoKshVdfRBROFRBOJkBzpXgPKjKSnNh9_1x1uZ5r8SqMaa20vbzVqJ3lQ-1gAOiCw9kMw8rdUB40DQujzq3SKhY5FSDQYT6cC-plaxRQnmXgVam-DBtZ-O7yuJ5FUjr_dl85A4LuLwUtMVthXfRE7TwfpL-gS_QixIvL9y73aC8uWXNjv-lhVEJ4NYZ63DMk4zZFs69sTVGohMHuuJJtADm00](http://www.plantuml.com/plantuml/png/TSu_IqCn50NmFP_YqAakaXGSt9uKmISuTNMvvDrYyEOFoKshVdfRBROFRBOJkBzpXgPKjKSnNh9_1x1uZ5r8SqMaa20vbzVqJ3lQ-1gAOiCw9kMw8rdUB40DQujzq3SKhY5FSDQYT6cC-plaxRQnmXgVam-DBtZ-O7yuJ5FUjr_dl85A4LuLwUtMVthXfRE7TwfpL-gS_QixIvL9y73aC8uWXNjv-lhVEJ4NYZ63DMk4zZFs69sTVGohMHuuJJtADm00)
+![plantuml](//www.plantuml.com/plantuml/png/ZOunJyCm48Lt_ugdJ21rE0yPs4eg445Yweg4Z7DLBHpRiYyD0l7V2MbH2bEtkwVlFNth8YRBq7jbVRHl0AgxVl16OaPlN82FCJs7HtCmMvjT4cnPsY2S3yPVNLSm1Hl2w6IFnDd53fe8QV25SLCZxdQ51QHi3DOL_Zy_kj35yJYZLOwlGv5p1nS2vrbYPfepvkMOBEAPZSTjIfxHjZ02_VJmCKFtVmJhanujTgh1Vk98DNe-z6hArgGs6gwWudUslwggcRDFMkclYQbF_m-lwPA6fgKplHoweVVV)
 
   
 __Impossible sound emulation__  
