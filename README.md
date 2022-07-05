@@ -117,4 +117,4 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 - [ ] [The Mocking Board](https://en.wikipedia.org/wiki/Mockingboard) sound card supported by different games and the 'Music Construction Set'
 - [ ] [VersaCard](https://forum.vcfed.org/index.php?threads/do-you-own-a-prometheus-versacard-for-the-apple-ii-i-need-a-copy-of-the-rom.70770/) - [Brochure](https://cvxmelody.net/VERSAcard%20original%20brochure%20&%20manual%20cover.pdf) 4 on 1 card: serial, parallel,real-time clock, BSR Home automation
 
-![https://plantuml.com/timing-diagram](https://plantuml.com/timing-diagram)
+![https://plantuml.com/timing-diagram](www.plantuml.com/plantuml/png/JSun2iCm38NXNQSGEK5ABo2yTUjYD3kEA8RK1Zs7NhyDRKqseUyVdg0dx_jp8s_BZiwJsiB1smlc4oUm1igjvWBxMXmGYMGcZLp0jtKpqZ1EailyDqsbb_huyTrRDk1ua5oFA9mZiRf-vhm1)
