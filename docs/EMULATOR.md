@@ -45,7 +45,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                 100K cycles               :            ┘   CLOCK
           </div>
 
-![plantuml](http://www.plantuml.com/plantuml/png/ZOunJyCm48Lt_ugdJ21rE0yPs4eg445Yweg4Z7DLBHpRiYyD0l7V2MbH2bEtkwVlFNth8YRBq7jbVRHl0AgxVl16OaPlN82FCJs7HtCmMvjT4cnPsY2S3yPVNLSm1Hl2w6IFnDd53fe8QV25SLCZxdQ51QHi3DOL_Zy_kj35yJYZLOwlGv5p1nS2vrbYPfepvkMOBEAPZSTjIfxHjZ02_VJmCKFtVmJhanujTgh1Vk98DNe-z6hArgGs6gwWudUslwggcRDFMkclYQbF_m-lwPA6fgKplHoweVVV)
+![plantuml](http://www.plantuml.com/plantuml/png/ZOunJyCm48Lt_ugdJ21rE0yPs48g445YwifYdAjguTYMVMaGYFzEI8iQcDZkdhxtz3L5J9PnyChwQ5y1L7V3w8t4ZC6u01zZUWwFvcXsDhiasB5qGJWVZR-whc0AjeJ9oG69iuizD17Iw0lZfaRSxmiBIDaOh2lyTtvoeO_JQKQh75_68ci75mBdHM9XsXM3Kt8HpsmyRbFoZAw34UYdX_S5klybM9_rw6AdMXncZbIhbqDlvgmXjTLm1HM_iVrHLUsIVT16VyvCVVw_UKt_QMXQTLJ3eHy7_mK0)
 
   
 __Impossible sound emulation__  
