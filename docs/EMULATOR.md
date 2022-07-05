@@ -32,7 +32,8 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         :                                           :            │
                                         :                                           :            │                                        
                                         :<5ms                                       :<5ms        ├>  EMULATED
-                                        ┌┐┌┐┌┐                                      ┌┐┌┐┌┐       │   CLOCK
+                                        :◄───►                                      :◄───►
+                                        ┌┬┬┬┬┐                                      ┌┬┬┬┬┐       │   CLOCK
                                         ││││││                                      ││││││       │  
               apple2plus.cycle(10000) ──┘100K└──────────────────────────────────────┘100K└─...   │
               (inner loop)              :cycles                                     :cycles      ┘
@@ -42,7 +43,6 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
                                         ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐       ┐
                       real Apple II   ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...    ├>  HARDWARE
                                         :                 100K cycles               :            ┘   CLOCK
-                                         
           </div>
 
   
