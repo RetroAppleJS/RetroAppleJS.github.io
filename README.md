@@ -81,7 +81,7 @@ This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502
 
 ### Latest developments
 
-#### interactive Apple II+ pop-up keyboard
+#### interactive Apple II+ virtual keyboard
 
 Currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list.
 feature details & status:
