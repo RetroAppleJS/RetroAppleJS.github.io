@@ -9,10 +9,15 @@ __Most basic functions remain the same..but__
 
 __Screen features__
 
+__Disk features__
+
+
+<br><br>
 
 __Keyboard features__
 
-<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="left"/> 
+<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="left"/>  
+
 **physical keyboard** and **pop-up virtual keyboard** can be used interchangably.
 **physical keyboard** activates when clicking inside the area of the emulated screen.
 **virtual keyboard** activates when hovering over the area of the virtual keyboard.
