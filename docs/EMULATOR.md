@@ -7,7 +7,7 @@ While the end-user experience with this emulator hardly differs from the real ha
 
 __Most basic functions remain the same..but__  
 
-__Screen features__
+__Special screen features__
 
 __Disk features__
 
