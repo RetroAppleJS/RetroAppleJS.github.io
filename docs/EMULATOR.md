@@ -10,8 +10,7 @@ __Most basic functions remain the same, BUT__
 * **physical keyboard** activates when clicking inside the area of the emulated screen.
 * **virtual keyboard** activates when hovering over the area of the virtual keyboard.
 * **virtual keyboard** by default is configured for mouse-driven host computers where SHIFT, CTRL and REPT keys toggle on/off by means of 2 mouse clicks. 
-* **power light** on virtual keyboard acts like a power button. The power button on a real Apple II is usually located under the keyboard.  
-* 
+* **white power light** on virtual keyboard acts like a power button, while on a real Apple II, this is a flip-switch below the keyboard.  
 *   press the white power button on the pop-up keyboard (originally, this was a flip-switch below the keyboard)   
 \* insert disk: load any disk file found on the internet (.do, .dsk), after, perform a cold boot   
 _note: most Apple II disks do not boot, keeping a bootable disk image at hand reach is still required._  
