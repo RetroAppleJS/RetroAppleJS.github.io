@@ -1,7 +1,11 @@
 ## EMULATOR User Instructions
 
 <img src="../res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
-While the end-user experience with emulators hardly differ from the real hardware, there are some essential deviations, mostly to our benefit, but there are some downsides too.<br><br>
+While the end-user experience with this emulator hardly differs from the real hardware, there are some essential deviations, mostly to accomodate contemporary user expecations, like copy-paste.  There is no point in creating an emulator that is completely offline like it was mostly the case in the pre-internet era.  This user manual is only discussing the usability deviations of the emulator compared to the bare metal.  For the last one, there is a [huge body of documentation available] (https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/)
+
+
+
+<br><br>
 
 __Most basic functions remain the same__  
 \* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
