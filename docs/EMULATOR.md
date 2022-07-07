@@ -7,10 +7,13 @@ While the end-user experience with this emulator hardly differs from the real ha
 
 __Most basic functions remain the same, but please mind the...__  
 
+__Pasteboard feature__
+
+__CPU speed settings__
+
 __Screen settings__
 
 __Disk feature__
-
 
 <br><br>
 
