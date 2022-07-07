@@ -6,9 +6,11 @@ While the end-user experience with this emulator hardly differs from the real ha
 [documentation](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/) available.
 
 __Most basic functions remain the same, BUT__  
-\* One can use a **physical keyboard** and a **the pop-up keyboard** interchangeably.
+* **physical keyboard** and **pop-up virtual keyboard** can be used interchangably.
+* **physical keyboard** activates when clicking inside the area of the emulated screen.
+* **virtual keyboard** activates when hovering over the area of the virtual keyboard.
+* **virtual keyboard** by default is configured for mouse-driven host computers where SHIFT, CTRL and REPT keys toggle on/off by means of 2 mouse clicks. 
 
-**the pop-up keyboard** toggles SHIFT, CTRL and REPT, enabling key combinations **NOT IMPLEMENTED YET**  
 \* warm boot: press the reset button on the pop-up keyboard  
 \* cold boot: press the white power button on the pop-up keyboard (originally, this was a flip-switch below the keyboard)   
 \* insert disk: load any disk file found on the internet (.do, .dsk), after, perform a cold boot   
