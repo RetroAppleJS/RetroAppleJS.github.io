@@ -93,6 +93,8 @@ feature details & status:
 - [ ] SHIFT keys
 - [ ] CTRL key
 
+Also to be considered: detect if host device is mouse-driven or touch-driven.  When touch-driven, hovering the keyboard is not possible without actioning a key.
+
 *Note: Only two files are impacted:*
 - *index.html*
 - *res/EMU_apple2keys.js*
