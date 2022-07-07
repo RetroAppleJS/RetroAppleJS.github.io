@@ -7,7 +7,10 @@ While the end-user experience with this emulator hardly differs from the real ha
 
 __Most basic functions remain the same..but__  
 
+__Screen features__
 
+
+__Keyboard features__
 
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="left"/> 
 **physical keyboard** and **pop-up virtual keyboard** can be used interchangably.
