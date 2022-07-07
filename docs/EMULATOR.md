@@ -11,9 +11,9 @@ __Pasteboard feature__
 
 __CPU speed settings__
 
-__Screen settings__
-
 __Disk feature__
+
+__Screen settings__
 
 <br><br>
 
