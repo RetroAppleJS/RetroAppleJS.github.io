@@ -6,6 +6,10 @@ While the end-user experience with this emulator hardly differs from the real ha
 [documentation](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/) available.
 
 __Most basic functions remain the same..but__  
+
+
+
+<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="left"/> 
 **physical keyboard** and **pop-up virtual keyboard** can be used interchangably.
 **physical keyboard** activates when clicking inside the area of the emulated screen.
 **virtual keyboard** activates when hovering over the area of the virtual keyboard.
@@ -14,7 +18,7 @@ __Most basic functions remain the same..but__
 * **insert disk** icon allows loading any disk file found on the internet (.do, .dsk), after, perform a cold boot   
 _note: mind that most Apple II disks do not self-boot, keeping a bootable disk image at hand reach is still required._  
 
-<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40%/> 
+
 
 __A handful extra functions make the experience complete__  
 \* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1MHz computer takes this slowly.  
