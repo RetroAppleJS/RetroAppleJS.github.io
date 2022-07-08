@@ -74,6 +74,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] real-time camera capture tool - hi-res through firmware color-approximation and dithering
 - [ ] macro script runner (emulating keyboard & paddle control)
 - [ ] complete zero-page documentation (ZEROPAGE_APPLE2PLUS.md)
+- [ ] complete memory-map documentation -> share memorymap data with assembler/disassembler to generate extra context
 
 ## Contribute
 
