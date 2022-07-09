@@ -420,7 +420,8 @@
                 </form>
               </div>
               <div class=toolbox>
-                <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);apple2plus.monitor(this.name);" title="Color mode"><i class="fa fa-palette"></i></button>
+                
+                <button class=appbut                 onclick="javascript:alert('no sound implementation')" id="soundbutton"   title="Sound"><i  class="fa fa-volume-mute"></i></button>
                 <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
                 <br>
                 <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>
@@ -446,6 +447,8 @@
                   <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
                   <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#7</div>
                 </form>
+
+                <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);document.getElementById('clr').style.color=m.color;this.title=m.name" title="Color mode"><i class="fa fa-palette" id="clr"></i></button>
 
               </div>
             </div>

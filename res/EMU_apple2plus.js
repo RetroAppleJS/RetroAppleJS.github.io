@@ -24,6 +24,8 @@
 // SUCH DAMAGE.
 //
 
+//const { getParent } = require("domutils");
+
 // apple2plus.js
 
 const timestamp = new Date();
@@ -105,7 +107,7 @@ function Apple2Plus(context) {
     }
 
     this.monitor = function(type) {
-        video.setMonitor(type);
+        return video.setMonitor(type);
     }
 
     this.restart();

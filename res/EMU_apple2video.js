@@ -102,6 +102,7 @@ function Apple2Video(ctx) {
     this.setMonitor = function(mode) {
         chrome_mode = mode & 3;
         this.redraw();
+        return {"color": monoChromes[chrome_mode]?monoChromes[chrome_mode]:"#000000" , "name": monoChrome_names[chrome_mode] };
     }
 
     this.getloresCols = function() {
@@ -148,7 +149,8 @@ function Apple2Video(ctx) {
     }
 
 // Monochrome colors (index 0 = full color)
-var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+var monoChromes      = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+var monoChrome_names = ["FULL-COLOR","B&W","GREEN","AMBER"];
 
 // Lores color to RGB table. (* Hires)
 var loresCols = [
