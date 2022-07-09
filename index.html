@@ -6,9 +6,9 @@
     <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAwUExURf7///7///j4+PLy8u3t7eXl5dvb283NzcLCwrW1ta6urqenp5qamo6OjnV1dWhoaJTpFr4AAAABYktHRACIBR1IAAAACXBIWXMAAB7CAAAewgFu0HU+AAAAAXRSTlMAQObYZgAAAIFJREFUeJwtzTEKwkAQBdC9wp/NkqTcsJC0IVXKlCE3SCrBxjKI6D3sBY9g4R1EEEEbr5AD2Psn8VeP+bM7BoxkwIzhvEAe4wI3QSGnqb43RHdsr/kLRg6lt2Ek9lxIPasLkSh2+o4VCiL6ErFO3oRbA/1Wf948b5/5RBXs6n9d8wM0Ahk+0eMaYgAAAABJRU5ErkJggg==" />
     <!--link rel="stylesheet" href="res/pure.css"-->
     <!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
-    <link rel="stylesheet" href="res/fontawesome/all.css">
+    <link rel="stylesheet" href="res/COM_fontawesome/all.css">
     <link rel="stylesheet" href="res/COM_markdown.css">
-    <script type="text/javascript" src="docs/GENERATED_DOCS.js"></script>  <!-- load all the help & documentation content-->
+    <script type="text/javascript" src="res/COM_DOCS_AND_CONFIG.js"></script>  <!-- load all the help & documentation content-->
     <!--
     <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
     -->
@@ -335,7 +335,7 @@
             <style>
             .appvid
             {
-                margin-top: 85px;
+                /*margin-top: 85px;*/
                 margin-left: 162px;
                 padding: 0px;
                 background: #222266;
@@ -353,6 +353,19 @@
                 background: rgba(240, 240, 255, 0.65);
                 box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
             }
+
+            .appbox
+            {
+                font-family: "Arial";
+                font-size:13px;
+                margin:1px 1px 1px 1px;
+                padding: 6px;
+                border-radius: 5px;
+                border-style: none;
+                background: rgba(255, 255, 255, 0.8);
+            }
+            
+
             .appbut:hover
             {
                 background: rgba(255, 255, 255, 1);
@@ -380,37 +393,69 @@
             }
 
             </style>
-            <div style="padding:0px 90px">
-              <button class=appbut value="Pasteboard" onclick="javascript:onPasteboard()" title="Pasteboard"><i class="fa fa-paste"></i></button>
-              <button class=appbut value="Monitor"    onclick="javascript:this.name=(this.name?Number(this.name)+1:1);apple2plus.monitor(this.name);" title="Color mode"><i class="fa fa-palette"></i></button>
-              <button class=appbut                    onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
-              <!--
-              <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
-              <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
-              -->
-            Disk <input type="file" class=appbut id="loadfile" value="Disk" onchange="javascript:loadDisk()">
-            </div>
-            <div class="hints1" id="paste" hidden="" style="z-index:2;position:absolute;left:90px">
-            <form name="EMUboard">
-            <textarea cols=40 rows=3  placeholder="Paste here" name=boardText></textarea>
-            </form>
-            <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()">
-            <input type="button" id=Capture value="Capture" onclick="javascript:onCapture();onBoardPaste()">
-            <!--
-            <input type="button" id=CaptureBase value="hex" onclick="onCaptureBase(this)">
-            <input type="text" value="$0000►$FFFF" size=11 onkeyup="onCaptureRange(event,this,document.getElementById('CaptureBase').value)">
-            -->
-            
-            <input type="text" value="$0000" size=5 onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
-            
-            <input type="button" value="Clear" onclick="javascript:onEMUBoardClear()">
-            <input type="button" value="X" onclick="javascript:onPasteboard()">
-            <input id="debug2" style="width:400px" value="">
 
+            <div style="height:115px;padding:0px 0px 0px 0px;">
+
+              <div style="height:30px;padding:0px 90px 0px 0px;">
+                <button class=appbut value="Pasteboard" onclick="javascript:onPopup('paste')" title="Pasteboard"><i class="fa fa-paste"></i></button>
+                <button class=appbut value="Settings" onclick="javascript:onPopup('settings')" title="Settings"><i class="fa fa-sliders-h"></i></button>
+                <button class=appbut value="Devices" onclick="javascript:onPopup('devices')" title="I/O"><i class="fa fa-plug"></i></button>
+              </div>
+  
+
+              <div class="hints1" id="paste" hidden="" style="position: absolute;left: 0px;top: 32px;z-index: 2;">
+                <form name="EMUboard">
+                  <textarea cols=40 rows=5  placeholder="Paste here" name=boardText style="float:left"></textarea><br>
+                  <input type="button" value="Paste" onclick="javascript:onPasteboard();onBoardPaste()">
+                  <input type="button" id=Capture value="Capture" onclick="javascript:onCapture();onBoardPaste()">                
+                  <input type="text" value="$0000" size=5 onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
+                  <input type="button" value="Clear" onclick="javascript:onEMUBoardClear()">
+                  <input type="button" value="X" onclick="javascript:onPopup('paste')">
+                </form>
+              </div>
+  
+              <div class="hints1" id="settings" hidden="" style="left:390px;float: left;">
+
+                
+              </div>
+  
+              <div class="hints1" id="devices" hidden="" style="left:570px;">
+
+
+                <form name="DEVboard">
+
+                  <button class=appbut value="Monitor"    onclick="javascript:this.name=(this.name?Number(this.name)+1:1);apple2plus.monitor(this.name);" title="Color mode"><i class="fa fa-palette"></i></button>
+                  <button class=appbut                    onclick="javascript:pauseButton(this)" id="pausebutton" title="Pause"><i class="fa fa-pause"></i></button>
+    
+                  <button class=appbut onclick="javascript:resetButton()" id="resetbutton" value="Reset" title="Reset"><i class="fa fa-undo-alt"></i></button>
+                  <button class=appbut onclick="javascript:restartButton()" id="restartbutton" value="Restart" title="Reboot"><i class="fa fa-power-off"></i></button>
+
+
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#1</div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#2</div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#3</div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#4</div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#5</div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#6</div>
+                  <div class=appbox style="width:42px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#7</div>
+                </form>
+                
+
+                <div class=appbut style="float:left;padding:5px 5px 5px 5px;text-align:center">Drive1 <input type="file"  id="loadfile" value="Disk" onchange="javascript:loadDisk()"></div><br><br>
+                <!--
+                  <div class=appbut style="float:left;padding:5px 5px 5px 5px;text-align:center">Drive2 <input type="file"  id="loadfile" value="Disk" onchange="javascript:loadDisk()"></div>
+                -->
+
+
+              </div>
             </div>
+
             <script type="text/javascript">
-            var bColor = false;
+             var bColor = false;
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
+            function onPopup(id) { var e = document.getElementById(id); e.hidden = !e.hidden; }
+
             function onBoardPaste()
             {
               var e = EMUboard.boardText.value;
@@ -458,7 +503,7 @@
             }
 
             </script>
-            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;"></canvas>
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;"></canvas>
             <div class="appdskLED" id="dskLED1" style="left:392px;top:666px"></div>
             <div class="appdskLED" id="dskLED2" style="left:750px;top:666px"></div>
             <div class="appkbd" id="kbdimg" onmousemove=apple2keys.KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2keys.KbdHover(event)>
