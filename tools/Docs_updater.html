@@ -9,16 +9,22 @@
 <script>
 
   GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
-  function() { process_dir(this.responseText,this.responseURL) } )
+      function() { process_dir(this.responseText,this.responseURL) } )
 
   //                                                     /res/appleIIplus_bck_650.png?raw=true
   // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
 
   var js; //,last_el;
   var el_cnt = 0;
-  var linkURL = "https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/";
-  var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/";
-  var resURL = "https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/"
+
+  // https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/
+  var linkURL = "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/";
+
+  // https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/
+  var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/docs/";
+
+  // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/
+  var resURL = "https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/"
 
   function process_dir(txt,url)
   {
@@ -34,6 +40,8 @@
     {
       arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
       var url = rawURL + arr[i];
+
+      console.log("URL = "+url);
       GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
       //lst[lst.length] = arr[i];
     }
@@ -46,7 +54,10 @@
 
     //////////////////// MAKE HTML  //////////////////
     var html = Markdown2HTML(txt);
+
     html = html.replace(new RegExp('/res/','g'),resURL);
+    
+
     document.getElementById("src").innerHTML      = txt;
     document.getElementById("html_txt").innerHTML = html;
     document.getElementById("html").innerHTML     = html;
@@ -54,16 +65,21 @@
     //////////////////// MAKE MARKDOWN //////////////////
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
-    js += "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"
-      +' = "'+(html.replace(new RegExp('\"','g'),'\\"')
-                  .replace(new RegExp('\n','g'),"<br>\"\n+\"")
-              +"<br>"+"\"\n\n")
-              .replace(new RegExp('<br /><br>','g'),"<br>")
-              .replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"res/")
-              .replace(new RegExp('</h1>','g'),"</h1><hr>")
+
+    var js1 = "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"+' = "'
+    var js2 = (html.replace(new RegExp('\"','g'),'\\"').replace(new RegExp('\n','g'),"<br>\"\n+\"")+"<br>"+"\"\n\n")  
+    var js3 = js2.replace(new RegExp('<br /><br>','g'),"<br>")
+    var js4 = js3.replace(new RegExp('\\.\\.https:\\/\\/github\\.com\\/RetroAppleJS\\/RetroAppleJS\\.github\\.io\\/raw\\/main\\/res\\/','g'),"res/")
+    console.log("js4 = "+js4);
+
+
+               //.replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"res/")
+  
+    js += js1 + js4.replace(new RegExp('</h1>','g'),"</h1><hr>")
               .replace(new RegExp('</h1>','g'),"</h1><hr>")
               .replace(new RegExp('</h2>','g'),"</h2><hr>")
               .replace(new RegExp('><br>','g'),">")
+              
     el_cnt--;
 
     //js += "\nalert(typeof(_DOCS))\n";
@@ -143,7 +159,7 @@
 </table>
 <textarea id=dest style="width:1200px;height:180px"></textarea>
 <br>
-<button onclick="download('GENERATED_DOCS.js',document.getElementById('dest').value)">Download</button>
+<button onclick="download('COM_DOCS_AND_CONFIG.js',document.getElementById('dest').value)">Download</button>
 <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
   <tr>
   <td style="background-image:url('../res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;vertical-align:top">
