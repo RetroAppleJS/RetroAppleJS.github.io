@@ -10,7 +10,7 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceiv
 
 ## Getting started
 
-1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser --OR-- Check the last build on [Netlify.com](https://bright-swan-0d3fbc.netlify.app)
+1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser --OR-- Check the last build on [github.io](https://retroapplejs.github.io)
 
 
 2) Inside the assembler, tap the **'generate'** button
@@ -48,13 +48,13 @@ The debugger is composed of 5 sections
 
 ## User manuals
 
-[EMULATOR.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md)  
-[DEBUGGER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/DEBUGGER.md)  
-[ASSEMBLER.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ASSEMBLER.md)   
-[6502.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/6502.md)  
-[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
-[PERIPHERALS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/PERIPHERALS.md)  
-[TOOLS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/TOOLS.md)  
+[EMULATOR.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/EMULATOR.md)  
+[DEBUGGER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/DEBUGGER.md)  
+[ASSEMBLER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ASSEMBLER.md)   
+[6502.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/6502.md)  
+[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
+[PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
+[TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md)  
 
 Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/tools/Docs_updater.html), into a JavaScript file included in the main application, called _\_GENERATED_DOCS.js_ located [here](https://github.com/flyingzebra/AppleII-IDE/tree/main/docs). In short, do not manually update this JavaScript file.
 
@@ -74,6 +74,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] real-time camera capture tool - hi-res through firmware color-approximation and dithering
 - [ ] macro script runner (emulating keyboard & paddle control)
 - [ ] complete zero-page documentation (ZEROPAGE_APPLE2PLUS.md)
+- [ ] complete memory-map documentation -> share memorymap data with assembler/disassembler to generate extra context
 
 ## Contribute
 
@@ -81,7 +82,7 @@ This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502
 
 ### Latest developments
 
-#### interactive Apple II+ pop-up keyboard
+#### interactive Apple II+ virtual keyboard
 
 Currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list.
 feature details & status:
@@ -92,6 +93,8 @@ feature details & status:
 - [ ] REPT key
 - [ ] SHIFT keys
 - [ ] CTRL key
+
+Also to be considered: detect if host device is mouse-driven or touch-driven.  When touch-driven, hovering the keyboard is not possible without actioning a key.
 
 *Note: Only two files are impacted:*
 - *index.html*

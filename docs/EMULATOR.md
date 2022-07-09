@@ -1,17 +1,35 @@
-## EMULATOR Instructions
+## EMULATOR User Instructions
 
-<img src="/res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
-While the end-user experience with emulators hardly differ from the real hardware, there are some essential deviations, mostly to our benefit, but there are some downsides too.<br><br>
+<img src="../res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
 
-__Most basic functions remain the same__  
-\* the pop-up keyboard toggles SHIFT, CTRL and REPT, enabling key combinations  
-\* warm boot: press the reset button on the pop-up keyboard  
-\* cold boot: press the white power button on the pop-up keyboard (originally, this was a flip-switch below the keyboard)   
-\* insert disk: load any disk file found on the internet (.do, .dsk), after, perform a cold boot   
-_note: most Apple II disks do not boot, keeping a bootable disk image at hand reach is still required._  
+While the end-user experience with this emulator hardly differs from the real hardware, there are some essential deviations, mostly to accomodate contemporary user expecations, like copy-paste.  There is no point in creating an emulator that is completely offline like it was mostly the case in it's pre-internet era.  This user manual is only discussing the usability deviations of the emulator compared to the bare metal.  For the last one, there is a huge body of 
+[documentation](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/) available.
+
+__Most basic functions remain the same, but please mind the...__  
+
+__Pasteboard feature__
+
+__CPU speed settings__
+
+__Disk feature__
+
+__Screen settings__
+
+<br><br>
+
+__Keyboard features__
+
+<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="left"/>  
+
+**physical keyboard** and **pop-up virtual keyboard** can be used interchangably.
+**physical keyboard** activates when clicking inside the area of the emulated screen.
+**virtual keyboard** activates when hovering over the area of the virtual keyboard.
+**virtual keyboard** by default is configured for mouse-driven host computers where SHIFT, CTRL and REPT keys toggle on/off by means of 2 mouse clicks. 
+**white power light** on virtual keyboard acts as a power button, which causes a cold-boot. (Instead of flip-switch located below the keyboard on a real Apple II) 
+* **insert disk** icon allows loading any disk file found on the internet (.do, .dsk), after, perform a cold boot   
+_note: mind that most Apple II disks do not self-boot, keeping a bootable disk image at hand reach is still required._  
 
 
-<img src="../res/appleIIplus_kbd_650.png?raw=true" width=40%/> 
 
 __A handful extra functions make the experience complete__  
 \* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1MHz computer takes this slowly.  
