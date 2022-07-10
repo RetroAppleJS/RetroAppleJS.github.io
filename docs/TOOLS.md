@@ -6,7 +6,7 @@ In the [tools folder](../tools), we keep a collection of helpers to simulate, be
 
 This tool gathers all configuration information and documentation in one signle config file.
 
-![schema](https://www.plantuml.com/plantuml/png/ZPCnJyCm48Lt_ugR4CXgioE6efIM3aq6oePQcTfGWsj7ZGD87FyT4MA1Zn3tRP7klU_T9PdKNXnyipTCQYy4W_-LZIBneLaaZydPkVRNpNrobdViOph0kcFpKInEuO2myxwg6OOUKrK_UrVno1MbyRzfGIy0BAf0nFjtmEGX4tI4tDa7_JZJHcq00wYZO5ukDtbPp1RpyLFT9altQeqJ4ZXbucyc0fmQjnNc3Dxb1m1U_EHYKqdXrM6yytj3dODjENqdgArKRsrG-0REeKyuBVFRvLMnkbmjog9bXduGdDZlF87l2zpGFLFEkwXjHcvBdIcjYKFRhMca6d0WeprIojX4MVdrPty2)
+![schema](https://www.plantuml.com/plantuml/png/fPDVJy8m5CNVzodkau4qGF3H60AEWJuWYRmQILs7LBjsOPr_ulMx6mTI5zfYzRxShEclFUVsR5Xgkj5LBYB6DQKH15MlqoZo2xnyaodi2gTSNrRt-qyFJZe7DI1WwWX-Tln8dtYqhTqae_4iwUOCqYIPO2WEv5-t0r8XuE-tuqfLaW6NzMSuRjo7uuIGhMcVTxEbxfOpCN9TQ7A5GTmuAv-qAWwujTP5kMiUiNTMiQr-kswddO5i1quASDz-aYsXKYfWanMgxKWtFEzQv8cyHUz-xV1f4BXasMjthNFXq8rfVtHX_oFHBe8qjiHAhlZ3X8jiwQ3nA-xmpZw-bvbwaK9H1esfk-XuFbl6y-l9rRJxMEAvqO5G5OpgR5FRSz2Mfx5wiixSxjjCRJoF5-vuUdDp0bjFYt3wjg6g5mqpoQfSV080)
 
 We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  This tool is designed to read all the markdown documentation available online (from GitHub) in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation and configuration options inside the IDE.  The following diagram shows how clearly the steps:
 
