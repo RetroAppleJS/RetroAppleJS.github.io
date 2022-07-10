@@ -437,7 +437,7 @@
   
               <div class="hints1" id="settings" hidden="" style="left:570px;">
                 <form name="DEVboard">
-                  <div class=appbox style="width:45px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:45px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
                   <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
                   <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#1</div>
                   <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#2</div>
@@ -603,7 +603,7 @@
                   <br>
                   <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
                   <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
-                  <button onclick="board.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
+                  <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
                   <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
                       <i class="fa fa-arrow-circle-up"></i> to debugger</button>
