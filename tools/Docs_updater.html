@@ -8,6 +8,13 @@
 
 <script>
 
+//  ██ ███    ██ ██ ████████ 
+//  ██ ████   ██ ██    ██    
+//  ██ ██ ██  ██ ██    ██    
+//  ██ ██  ██ ██ ██    ██    
+//  ██ ██   ████ ██    ██   
+
+
   var basepath = "RetroAppleJS/RetroAppleJS.github.io";         // repository-specific
 
   var rawURL = "https://raw.githubusercontent.com/"+basepath;   // github-specific
@@ -19,14 +26,29 @@
   var rawDocsURL  = rawURL+"/main/docs/";
   var blobDocsURL = blobURL+"main/docs/";
 
-  // regexp specific
-  var regexURL = escapeRegExp(".."+resURL);
+  var regexURL = escapeRegExp(".."+resURL);                       // regexp specific
   //document.write(regexURL+"<br>");
 
-  GetHTTP(rawMainURL+"README.md",function() { process_dir(this.responseText,this.responseURL) } )
-  
   var js; //,last_el;
   var el_cnt = 0;
+
+//  ███    ███  █████  ██ ███    ██ 
+//  ████  ████ ██   ██ ██ ████   ██ 
+//  ██ ████ ██ ███████ ██ ██ ██  ██ 
+//  ██  ██  ██ ██   ██ ██ ██  ██ ██ 
+//  ██      ██ ██   ██ ██ ██   ████ 
+
+
+
+GetHTTP(rawMainURL+"README.md",function() { process_dir(this.responseText,this.responseURL) } )
+  
+
+
+//  ███    ███  █████  ██ ███    ██     ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
+//  ████  ████ ██   ██ ██ ████   ██     ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+//  ██ ████ ██ ███████ ██ ██ ██  ██     █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+//  ██  ██  ██ ██   ██ ██ ██  ██ ██     ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+//  ██      ██ ██   ██ ██ ██   ████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
  
   function process_dir(txt,url)
   {
@@ -107,7 +129,14 @@
     //download('DOCS.js',decodeURIComponent(js));
   }
 
-  function toMD(txt,url) { document.getElementById("dest").innerHTML   = HTML2Markdown(txt) }
+
+
+//  ████████ ██████   █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
+//     ██    ██   ██ ██   ██ ██ ██          ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+//     ██    ██████  ███████ ██ ██          █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+//     ██    ██   ██ ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+//     ██    ██   ██ ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
+
 
   function Markdown2HTML(md)
   {
