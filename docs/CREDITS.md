@@ -16,7 +16,7 @@ Credits
     * [Lewis Hemens](https://asciiflow.com)<br/>
       Author of Asciiflow - not part of this codebase, but great tool for Markdown diagrams !
     * [Stathis Sideris](http://ditaa.sourceforge.net)<br/>
-      Author of Ditaa diagrams, DIagrams Through Ascii Art, supported by [PlantUML](https://plantuml.com/ditaa)
+      Author of Ditaa diagrams, DIagrams Through Ascii Art, supported by [PlantUML](https://plantuml.com/ditaa) -> [PlantUML tool](http://www.plantuml.com/plantuml/uml/SyfFKj2rKt3CoKnELR1Io4ZDoSa70000)
     * [RegExp tool](https://regex101.com)
   - AppleII IDE v0
     * [Freddy Vandriessche](https://github.com/flyingzebra)<br>
