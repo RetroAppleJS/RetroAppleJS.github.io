@@ -10,7 +10,7 @@ Generally, bug reports should be in the following format:
  1. Description (Brief description of the problem)
  2. Input (input that is causing problems)
  3. Expected Output (Output that is expected)
- 4. Actual Output (Actual AppleII IDE output)
+ 4. Actual Output
 
 ## Example bug report (issue with the assembler)
 
