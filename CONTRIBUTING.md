@@ -1,7 +1,7 @@
 Contributing
 ============
 
-If you wish to contribute please read the following quick guide, but first, we want to thank all the helpful sources of code, inspiration and tooling that made this entire project possible. [CREDITS.md](../docs/CREDITS.md)
+If you wish to contribute please read the following quick guide, but first, we want to thank all the helpful sources of code, inspiration and tooling that made this entire project possible. [CREDITS.md](docs/CREDITS.md)
 
 
 # Issues (bug reporting)
@@ -91,3 +91,12 @@ We thank you in advance for your contribution!
 <!--# Joining the team
 We're looking for members to help maintaining the AppleII IDE.
 Please see [this issue]() to express interest or comment on this note.-->
+
+
+# Resource dependency tree
+
+![Application map](https://www.plantuml.com/plantuml/png/PTAzJiCm40VmlK-H4Mu8g1BC_KYfEeGE4HjITB5DwiOVbkqGU7i2neqiRxbVxkwlaxnn7gsNN569PWN5_C6-oekNOWLG0EpFDO3KwbtTzK9tAEvdXsBczaChZnDpMh875A8apjt-IRG3rPDAS7z-VJaTo-iYlKFpMuUiG_q68D1hEwTvx4BKh2qQ8zXQ8bTXEYWnu_FJuphIqcYrTBb-SifqnfIx8LbXKHAqD9_dEhVBbDl0lbskHemtlRhcL2rtRni01b03T88bjs-RkYNQiZ0Owd1oMhVzoBCUuc90TTW1Z7sVBgzsnxz6OiOu6ockYnJNRPYY_s_b1m00)
+
+![Bizzdesign](http://www.plantuml.com/plantuml/png/ZLHDRvj043rtViKexQqgbIBr4haeAROfQXj7WjmiMGkiyIQmY_OZhTJsltV1hBT0cvY3PPZtthnvit2jD97QD3MeHyPR8ac3aXQQyAgcYqLE3-I92Hc6-1DUIM5u6Gd9gSJB3_0RL2kPflWct-GFbeGFH5uHMHnOGpHzdnl5E5NgdUYh7frI-SGA-Z-uEfPFUF9lF6dRcXL4Cy7dbBNXHLTvXhCV89uKYQOLd7Bz3Ajm64-R33_db4GJ5mB0ALwyY9d-RF8B90hZ9CF5ufHD68x2V_rf20TmHj_oagf7BLgdirkcNpejFyzKxSQR6_d9XAXpyQCNkhcxp3QRhrR8hVSiJv7WUrPjkMdjr5JsKj4wtjtVBNjFi_dcZaQMkWB597cxvSbovPpPl-SO0nXvMpMc9beSJQs-tKz3mf6FCJUbMZDUASVTfQiiIsxZr8huupRJc4Tp4eWsj-iaxkbkZ2bviXhVlDlC2vtjvP61PDL11x_2ZWqZ-q5DztzNC32jlHrI1kzqG8w61tTAWb9yvvRcTWt3ENHgzXQ6adlabUTDR7aG0AXfHNc9tNFmAyShzxt0uStwQ2_m9ymYaFWyq7qY7CplVGBqRxXjUsmEr_R7DFKV)
+
+
