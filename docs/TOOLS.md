@@ -1,6 +1,6 @@
 ## TOOLS Explained
 
-In the [tools folder](https://github.com/RetroAppleJS/AppleII-IDE/tree/main/tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.
+In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.
 
 ### DOCS_updater.html
 
@@ -33,12 +33,12 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ### Monitor_palette.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/palette.png" width=30% align=left />Color graphics on the Apple II rendered only 4 distinct colors in high-resolution (green, orange, violet, blue) as a result of a cheap but smart piece of discrete logic.  Surely, owners of monochrome green or amber monitors sometimes longed for some color, but the blurry and color-bleeding TV screen rendering was more like a gimmick compared to the razor-sharp image produced by a genuine monochrome apple monitor.
+<img src="../res/palette.png" width=30% align=left />Color graphics on the Apple II rendered only 4 distinct colors in high-resolution (green, orange, violet, blue) as a result of a cheap but smart piece of discrete logic.  Surely, owners of monochrome green or amber monitors sometimes longed for some color, but the blurry and color-bleeding TV screen rendering was more like a gimmick compared to the razor-sharp image produced by a genuine monochrome apple monitor.
 
 The emulator's display offers an easy switching capability to render color, black&white, green and amber as some graphics really look nicer in color or monochrome.  e.g. fonts rendered on a hires screen produce very disturbing color fringing artifacts, which make the letters unreadable in color mode; any monochrome setting is more appropriate in this case. 
 
 This tool was made to test and assure the best image rendering approximation with these respective monitors.
-It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_apple2video.js](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/res/EMU_apple2video.js).
+It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_apple2video.js](..f/res/EMU_apple2video.js).
 
 ### Tab_ctrl_v*.html
 
@@ -54,7 +54,7 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### HGRpatternJS.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGRpatternJS.png" align=left width=50% />This tool is designed to find a color encoding strategy to tackle the typical challenges with Apple II HGR graphics.
+<img src="../res/HGRpatternJS.png" align=left width=50% />This tool is designed to find a color encoding strategy to tackle the typical challenges with Apple II HGR graphics.
 
 Major challenges to picture quality are:  
 * extreme color limitations (4 true colors + black and white)
@@ -67,18 +67,18 @@ Classic dithering algorithms as we know, simply can't cope well with all the wei
 This small app was designed to examine achievable colors for regular dithering by generating any imaginable bit pattern. Small patches or blocks of pixels, will reveal interesting features in both layers.  Since the color encoding layer has a size of 2x1 bits (wxh), in a full resolution of 280x192, e.g. rendering 4 colors + black and white brings us already down to a color resolution of only 140x192.
 
 Block size 2x2 bits
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_2x2.png" width=20% align=left />
+<img src="../res/pattern_block_2x2.png" width=20% align=left />
 
 Block size 4x2 bits
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_4x2.png" width=20% align=left />
+<img src="../res/pattern_block_4x2.png" width=20% align=left />
 
 The pattern encoding layer can only bare multiples of the color encoding block size, bringing us to a minimal size of 2x2 bits (wxh), and the next being 4x2 bits (wxh).  In the next figure, we identify color encoding conflicts.
 
 Color conflics at block size 2x2 bits
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_conflicts_2x2.png" width=20% align=left />
+<img src="../res/pattern_block_conflicts_2x2.png" width=20% align=left />
 
 Color conflics at block size 4x2 bits
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/pattern_block_conflicts_4x2.png" width=20% align=left />
+<img src="../res/pattern_block_conflicts_4x2.png" width=20% align=left />
 
 Note the high-bit on the right side, turned on or off generates different color conflicts.  According to classic dithering practice, these conflicts should be resolved by any means to keep a minimal color deviation.
 
@@ -131,7 +131,7 @@ Patterns are generated by a two formulas, the first reporting true (bit=1) or fa
 
 ### ConverHGR.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/HGR_Venus.png" align=left width=30% />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts explained in *PatternHGR.html*.   Buttons and tuning sliders will help you model the most acceptable conversion.  For developers, the challenge will be to optimize conversion quality and speed, as this very algorithm will serve inside the webcam capture tool.
+<img src="../res/HGR_Venus.png" align=left width=30% />This handy tool converts the most common image file types to an Apple II HGR color bitmaps.  Dithering achieves a way to convert images from high color-depths to lower depths, but Apple II graphics require a special twist to gracefully overcome inherent 'Wozniackian' artifacts explained in *PatternHGR.html*.   Buttons and tuning sliders will help you model the most acceptable conversion.  For developers, the challenge will be to optimize conversion quality and speed, as this very algorithm will serve inside the webcam capture tool.
 
 TODO: flow diagram
 
@@ -144,4 +144,4 @@ TODO: flow diagram
 
 ### SID_emulator.html
 
-<img src="https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/res/SID_chips.png" align=left width=30% />While emulating AppleII sound is not working out, let's put to work a crazy idea of emulating a C64-style SID chip that could bring us closer to emulating a peripheral that actually did exist for the Apple II: the [Mockingboard](https://en.wikipedia.org/wiki/Mockingboard) sound card. The Mochinboard used the AY-3-8910, a 3-voice sound chip found in the popular MSX, and later ZX Spectrum home computers.  As we speak, I am evaluating [a closer match to emulating the AY-3-8910 with JavaScript](https://github.com/alexanderk23/ayumi-js), as this could bring us to real software and a few games on the Apple II that made full use of the mockingboards capabilities.
+<img src="../res/SID_chips.png" align=left width=30% />While emulating AppleII sound is not working out, let's put to work a crazy idea of emulating a C64-style SID chip that could bring us closer to emulating a peripheral that actually did exist for the Apple II: the [Mockingboard](https://en.wikipedia.org/wiki/Mockingboard) sound card. The Mochinboard used the AY-3-8910, a 3-voice sound chip found in the popular MSX, and later ZX Spectrum home computers.  As we speak, I am evaluating [a closer match to emulating the AY-3-8910 with JavaScript](https://github.com/alexanderk23/ayumi-js), as this could bring us to real software and a few games on the Apple II that made full use of the mockingboards capabilities.
