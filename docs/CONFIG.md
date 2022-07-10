@@ -8,5 +8,9 @@
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md) 
 
-# PERIPHERALS
+# PERIPHERALS CONFIG
+
+
+# SLOT CINFIG
+
 
