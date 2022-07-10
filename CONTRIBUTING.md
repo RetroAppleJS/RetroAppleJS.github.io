@@ -91,3 +91,8 @@ We thank you in advance for your contribution!
 <!--# Joining the team
 We're looking for members to help maintaining the AppleII IDE.
 Please see [this issue]() to express interest or comment on this note.-->
+
+
+# Resource dependency tree
+
+![Application map](https://www.plantuml.com/plantuml/png/TO-x3e9G44Hxle9w2lm55D5O88MnCp4hhFYuTvUmr-3dIs7mOUnspfvaCga5we8_I-sfZH0F1z-JK_0kmdlQ2P2L1U1LOgkqvGX0FA3zKILGpwQU9-HSKfcDFq_TjTPUFc1MhXUhPN9vaSQe7V9lPLvi0KT1kx7qovXk00OAuE3uhpNFPy2jQKOZPQcVgny0)
