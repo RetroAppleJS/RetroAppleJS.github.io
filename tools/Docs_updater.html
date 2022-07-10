@@ -8,29 +8,31 @@
 
 <script>
 
-  GetHTTP("https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/README.md",
-      function() { process_dir(this.responseText,this.responseURL) } )
+  var basepath = "RetroAppleJS/RetroAppleJS.github.io";         // repository-specific
 
-  //                                                     /res/appleIIplus_bck_650.png?raw=true
-  // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/appleIIplus_bck_650.png?raw=true
+  var rawURL = "https://raw.githubusercontent.com/"+basepath;   // github-specific
+  var comURL = "https://github.com/"+basepath
 
+  var resURL      = comURL+"/raw/main/res/"                      // directory-specific
+  var blobURL     = comURL+"/blob/"
+  var rawMainURL  = rawURL+"/main/";
+  var rawDocsURL  = rawURL+"/main/docs/";
+  var blobDocsURL = blobURL+"main/docs/";
+
+  // regexp specific
+  var regexURL = escapeRegExp(".."+resURL);
+  //document.write(regexURL+"<br>");
+
+  GetHTTP(rawMainURL+"README.md",function() { process_dir(this.responseText,this.responseURL) } )
+  
   var js; //,last_el;
   var el_cnt = 0;
-
-  // https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/
-  var linkURL = "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/";
-
-  // https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/docs/
-  var rawURL = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/docs/";
-
-  // https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/
-  var resURL = "https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/"
-
+ 
   function process_dir(txt,url)
   {
     //document.write("<textarea>"+txt+"</textarea>")
 
-    var arr = txt.split(linkURL);
+    var arr = txt.split(blobDocsURL);
 
     arr[0] = ""; //alert(arr.join("\n"));
     js = "var _DOCS = new Array();\n"
@@ -39,7 +41,7 @@
     for(var i=1;i<arr.length;i++)
     {
       arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
-      var url = rawURL + arr[i];
+      var url = rawDocsURL + arr[i];
 
       console.log("URL = "+url);
       GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
@@ -69,7 +71,7 @@
     var js1 = "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"+' = "'
     var js2 = (html.replace(new RegExp('\"','g'),'\\"').replace(new RegExp('\n','g'),"<br>\"\n+\"")+"<br>"+"\"\n\n")  
     var js3 = js2.replace(new RegExp('<br /><br>','g'),"<br>")
-    var js4 = js3.replace(new RegExp('\\.\\.https:\\/\\/github\\.com\\/RetroAppleJS\\/RetroAppleJS\\.github\\.io\\/raw\\/main\\/res\\/','g'),"res/")
+    var js4 = js3.replace(new RegExp(regexURL,'g'),"res/")
     console.log("js4 = "+js4);
 
 
@@ -141,6 +143,8 @@
     element.click();
     document.body.removeChild(element);
   }
+
+  function escapeRegExp(text) { return text.replace(/([\[\/\]\{\}\(\)\*\+\?\.\,\\\\^\$\|\#])/g, '\\$1')}
 
 
 </script>
