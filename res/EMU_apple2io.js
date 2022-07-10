@@ -3,7 +3,7 @@
 // All rights reserved.
 //
 // Adapted in 2022 by Freddy Vandriessche.
-// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
 // apple2io.js
 

@@ -6,7 +6,7 @@ This is a complete AppleII+ IDE toolchain with an emulator, assembler, debugger,
 
 The idea behind this project is simple: Retrocomputing enthusiasts want to recreate their own nostalgic computer experience, with a new twist.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done on a CPU that was originally designed for calculators.
 
-Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceivingly simple instruction set**. Before getting started, I must say that this project is bearing significant codebase from several authors, which [deserve all my thanks and respect](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/CREDITS.md)  .
+Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceivingly simple instruction set**. Before getting started, I must say that this project is bearing significant codebase from several authors, which [deserve all my thanks and respect](../docs/CREDITS.md)  .
 
 ## Getting started
 
@@ -21,7 +21,7 @@ Enjoy the beauty of 8-bit computing on a 6502 CPU, it's math tricks and **deceiv
 <img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50% />
 
 <br>
-Other assembler listings can be found in this folder https://github.com/flyingzebra/AppleII-IDE/tree/main/asm_code_examples, feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
+Other assembler listings can be found in this [folder](/asm_code_examples), feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
 
 ## Module overview
 
@@ -56,7 +56,7 @@ The debugger is composed of 5 sections
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md)  
 
-Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/tools/Docs_updater.html), into a JavaScript file included in the main application, called _\_GENERATED_DOCS.js_ located [here](https://github.com/flyingzebra/AppleII-IDE/tree/main/docs). In short, do not manually update this JavaScript file.
+Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](/tools/Docs_updater.html), into a JavaScript file included in the main application, called _\_GENERATED_DOCS.js_ located [here](/docs). In short, do not manually update this JavaScript file.
 
 ## Feature wish-list
 
@@ -102,7 +102,7 @@ Also to be considered: detect if host device is mouse-driven or touch-driven.  W
 
 #### real-time audio
 
-The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [coarse-precision JavaScript timer](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
+The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [coarse-precision JavaScript timer](/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [SID chip peripheral](https://bright-swan-0d3fbc.netlify.app/tools/SID.html) to the Apple II emulator.
 
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />

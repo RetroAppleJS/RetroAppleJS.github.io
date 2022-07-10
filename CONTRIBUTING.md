@@ -1,7 +1,7 @@
 Contributing
 ============
 
-If you wish to contribute please read the following quick guide, but first, we want to thank all the helpful sources of code, inspiration and tooling that made this entire project possible. [CREDITS.md](https://github.com/RetroAppleJS/AppleII-IDE/blob/main/docs/CREDITS.md)
+If you wish to contribute please read the following quick guide, but first, we want to thank all the helpful sources of code, inspiration and tooling that made this entire project possible. [CREDITS.md](../docs/CREDITS.md)
 
 
 # Issues (bug reporting)
