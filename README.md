@@ -56,7 +56,7 @@ The debugger is composed of 5 sections
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md)  
 
-Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](https://retroapplejs.github.io/tools/ConfigFile_updater.html), into a JavaScript file included in the main application, called _\_GENERATED_DOCS.js_ located [here](/docs). In short, do not manually update this JavaScript file.
+Note that the markdown files here above must be compiled by a tool called [Docs_updater.html](https://retroapplejs.github.io/tools/ConfigFile_updater.html), into a JavaScript file included in the main application, called _COM_CONFIG.js_ located [here](/res). In short, do not manually update this JavaScript file.
 
 ## Feature wish-list
 
