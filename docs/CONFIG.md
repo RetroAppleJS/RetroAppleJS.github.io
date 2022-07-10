@@ -10,13 +10,22 @@
 
 # PERIPHERALS CONFIG
 
-
+| CODE    | NAME                                 | Description       |
+| :-----: | ------------------------------------ | ----------------- |
+| MS16K   | Microsoft 16K Language card          |                   | 
+|Disk \]\[| Apple Disk II Floppy Disk Subsystem  |                   |
+|         |                                      |                   |
+|         |                                      |                   |
+|         |                                      |                   |
+|         |                                      |                   |
+|         |                                      |                   |
+|         |                                      |                   |
 
 # SLOT CONFIG
 
 | SLOT  | PERIPHERAL | Description       |
 | :---: | ---------- | ----------------- |
-|  #0   |            |                   | 
+|  #0   | MS16K      |                   | 
 |  #1   |            |                   |
 |  #2   |            |                   |
 |  #3   |            |                   |
