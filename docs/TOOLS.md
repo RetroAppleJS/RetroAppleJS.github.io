@@ -4,7 +4,7 @@ In the [tools folder](../tools), we keep a collection of helpers to simulate, be
 
 ### ConfigFile_updater.html
 
-This tool gathers all configuration information and documentation in one signle config file.
+This tool gathers all configuration information and documentation, and packs all data together in one config file.
 
 ![schema](https://www.plantuml.com/plantuml/png/fPDVJy8m5CNVzodkau4qGF3H60AEWJuWYRmQILs7LBjsOPr_ulMx6mTI5zfYzRxShEclFUVsR5Xgkj5LBYB6DQKH15MlqoZo2xnyaodi2gTSNrRt-qyFJZe7DI1WwWX-Tln8dtYqhTqae_4iwUOCqYIPO2WEv5-t0r8XuE-tuqfLaW6NzMSuRjo7uuIGhMcVTxEbxfOpCN9TQ7A5GTmuAv-qAWwujTP5kMiUiNTMiQr-kswddO5i1quASDz-aYsXKYfWanMgxKWtFEzQv8cyHUz-xV1f4BXasMjthNFXq8rfVtHX_oFHBe8qjiHAhlZ3X8jiwQ3nA-xmpZw-bvbwaK9H1esfk-XuFbl6y-l9rRJxMEAvqO5G5OpgR5FRSz2Mfx5wiixSxjjCRJoF5-vuUdDp0bjFYt3wjg6g5mqpoQfSV080)
 
