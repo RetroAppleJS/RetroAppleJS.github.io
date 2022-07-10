@@ -2,9 +2,11 @@
 
 In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.
 
-### DOCS_updater.html
+### ConfigFile_updater.html
 
-We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  Docs_updater.html was designed to read all the markdown documentation available online in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation inside the IDE.  The following diagram shows how clearly the steps:
+This tool gathers all configuration information and documentation in one signle config file.
+
+We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  This tool is designed to read all the markdown documentation available online (from GitHub) in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation and configuration options inside the IDE.  The following diagram shows how clearly the steps:
 
 * Fetch Readme.me file from GitHub
 * extract all \*.md file links located in /docs
@@ -12,7 +14,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 * convert each to HTML and append to JavaScript file
 * preview
 * download the JavaScript file
-* overwite file in /docs folder.
+* overwite file in /res folder.
 
 
         <div style=width:800px>
@@ -29,7 +31,7 @@ We aim to have all the documentation available in markdown format, for easy onli
                           └──────────────────────────┘
         </div>
 
-/<ins> **!** </ins>\ mind that DOCS_updater.html only captures the latest version of the markdown files 2-10 min after the last edits.  This must be the time GitHub requires to update the raw files on the server.
+/<ins> **!** </ins>\ mind that this tool only captures the latest version of the markdown files 2-10 min after the last edits.  This must be the time GitHub requires to update the raw files on the server.
 
 ### Monitor_palette.html
 
