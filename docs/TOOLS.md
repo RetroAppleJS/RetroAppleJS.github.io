@@ -6,6 +6,8 @@ In the [tools folder](../tools), we keep a collection of helpers to simulate, be
 
 This tool gathers all configuration information and documentation in one signle config file.
 
+![schema](https//www.plantuml.com/plantuml/png/ZPCnJyCm48Lt_ugR4CXgioE6efIM3aq6oePQcTfGWsj7ZGD87FyT4MA1Zn3tRP7klU_T9PdKNXnyipTCQYy4W_-LZIBneLaaZydPkVRNpNrobdViOph0kcFpKInEuO2myxwg6OOUKrK_UrVno1MbyRzfGIy0BAf0nFjtmEGX4tI4tDa7_JZJHcq00wYZO5ukDtbPp1RpyLFT9altQeqJ4ZXbucyc0fmQjnNc3Dxb1m1U_EHYKqdXrM6yytj3dODjENqdgArKRsrG-0REeKyuBVFRvLMnkbmjog9bXduGdDZlF87l2zpGFLFEkwXjHcvBdIcjYKFRhMca6d0WeprIojX4MVdrPty2)
+
 We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  This tool is designed to read all the markdown documentation available online (from GitHub) in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation and configuration options inside the IDE.  The following diagram shows how clearly the steps:
 
 * Fetch Readme.me file from GitHub
