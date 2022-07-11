@@ -5,41 +5,41 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲                  ▲
           │                                    │   │                  │
-          │   Open for large ROM programs      │  2048 bytes          │
+          │   Open for large ROM programs      │  2048 Bytes          │
           │   Activated by I/O strobe (pin 20) │   │                  │
           │                                    │   │                  │
      C800 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#7           │   │                  │
-          │                                    │  256 bytes           │
+          │                                    │  256 Bytes           │
      C700 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#6           │   │                  │
-          │                                    │  256 bytes           │
+          │                                    │  256 Bytes           │
      C600 ├────────────────────────────────────┤  ─┘                 4096 bytes
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#5           │   │                  │
-          │                                    │  256 bytes           │
+          │                                    │  256 Bytes           │
      C500 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#4           │   │                  │
-          │                                    │  256 bytes           │
+          │                                    │  256 Bytes           │
      C400 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#3           │   │                  │
-          │                                    │  256 bytes           │
+          │                                    │  256 Bytes           │
      C300 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#2           │   │                  │
-          │                                    │  256 bytes           │
+          │                                    │  256 Bytes           │
      C200 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#1           │   │                  │
-          │  (No mem mapped for slot#0)        │  256 bytes           │
+          │  (No mem mapped for slot#0)        │  256 Bytes           │
      C100 └────┬───────────────────────────────┤  ─┘                  │
           C0F0 │ I/O slot #7  ─┐               │   ▲                  │
-          C0E0 │ I/O slot #6  ─┘ 16 bytes      │   │                  │
-          C0D0 │ I/O slot #5                   │  128 bytes           │
+          C0E0 │ I/O slot #6  ─┘ 16 Bytes      │   │                  │
+          C0D0 │ I/O slot #5                   │  128 Bytes           │
           C0C0 │ I/O slot #4     X 8           │   │                  │
           C0B0 │ I/O slot #3                   │   │                  │
           C0A0 │ I/O slot #2                   │   │                  │
@@ -47,7 +47,7 @@ Peripheral emulation is usually easier to achieve compared to building real hard
           C080 │ I/O slot #0                   │   │                  │
      C080 ┌────┴───────────────────────────────┤  ─┘                  │
           │  Built-in I/O locations            │   ▲                  │
-          │  (keyboard,speaker,casette,game..  │  128 bytes           │
+          │  (keyboard,speaker,casette,game..  │  128 Bytes           │
      C000 └────────────────────────────────────┘  ─┘                  ▼
   
 
