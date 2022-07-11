@@ -1,3 +1,6 @@
+# CAUTION
+
+This file was designed to contain elements to read by an update script, which is converting all the relevant markdown (.md) files to HTML format for consultation inside the application.
 
 # DOCUMENTATION  
 [EMULATOR.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/EMULATOR.md)  
