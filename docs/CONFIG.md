@@ -17,7 +17,7 @@ Any change in this document affects the **default application configuration**, o
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md) 
 
-# PERIPHERALS CONFIG
+# PERIPHERALS LIST
 
 | CODE    | NAME                                 | Description       |
 | :-----: | ------------------------------------ | ----------------- |
