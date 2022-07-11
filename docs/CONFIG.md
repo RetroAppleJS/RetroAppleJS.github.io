@@ -1,9 +1,12 @@
 # CAUTION
 
-This file was designed to contain elements to be read by an update script ([ConfigFile_updater.html](../tools/ConfigFile_updater.html)), which 
-* converts all relevant markdown (.md) files to HTML format
-* converts all the default configuration settings here below into JSON structures
-And outputs all this data into a single JavaScript include file ([COM_CONFIG.js](../res/COM_CONFIG.js))
+This file was designed to contain elements to be read by an update script ([ConfigFile_updater.html](../tools/ConfigFile_updater.html)), which  
+* converts all relevant markdown (.md) files to HTML format  
+* converts all the default configuration settings here below into JSON structures  
+
+And outputs all this data into a single JavaScript include file ([COM_CONFIG.js](../res/COM_CONFIG.js))  
+Any change in this document affects the **default application configuration**, or ultimately may cause [ConfigFile_updater.html](../tools/ConfigFile_updater.html) dysfunction !
+
 
 # DOCUMENTATION  
 [EMULATOR.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/EMULATOR.md)  
@@ -20,12 +23,7 @@ And outputs all this data into a single JavaScript include file ([COM_CONFIG.js]
 | :-----: | ------------------------------------ | ----------------- |
 | MS16K   | Microsoft 16K Language card          |                   | 
 |Disk \]\[| Apple Disk II Floppy Disk Subsystem  |                   |
-|         |                                      |                   |
-|         |                                      |                   |
-|         |                                      |                   |
-|         |                                      |                   |
-|         |                                      |                   |
-|         |                                      |                   |
+
 
 # SLOT CONFIG
 
