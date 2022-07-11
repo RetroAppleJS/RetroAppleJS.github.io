@@ -19,10 +19,10 @@ Any change in this document affects the **default application configuration**, o
 
 # PERIPHERALS LIST
 
-| CODE    | NAME                                 | I/O range   | ROM range | Slot range | User manual URL   | Description       |
-| :-----: | ------------------------------------ | ----------  | --------- | -----------|------------------ | ----------------- |
-| MS16K   | Microsoft 16K Language card          | $C8n00, 16B |           | #0         |                   |                   |
-|Disk \]\[| Apple Disk II Floppy Disk Subsystem  | $C8n00, 16B |           | #0-#7      |                   |                   |
+| CODE    | NAME                                 | I/O range   | ROM range | Slot range | Description   | Manuals           |
+| :-----: | ------------------------------------ | ----------  | --------- | -----------|-------------- | ----------------- |
+| MS16K   | Microsoft 16K Language card          | $C8n00, 16B |           | #0         |               |                   |
+|Disk \]\[| Apple Disk II Floppy Disk Subsystem  | $C8n00, 16B |           | #1-#7      |               | [user manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf) |
 
 
 # SLOT CONFIG
