@@ -19,10 +19,10 @@ Any change in this document affects the **default application configuration**, o
 
 # PERIPHERALS LIST
 
-| CODE    | NAME                                 | I/O range   | ROM range | User manual URL   | Description       |
-| :-----: | ------------------------------------ | ----------  | --------- | ----------------- | ----------------- |
-| MS16K   | Microsoft 16K Language card          | $C8n00, 16B |           |                   |                   |
-|Disk \]\[| Apple Disk II Floppy Disk Subsystem  | $C8n00, 16B |           |                   |                   |
+| CODE    | NAME                                 | I/O range   | ROM range | Slot range | User manual URL   | Description       |
+| :-----: | ------------------------------------ | ----------  | --------- | -----------|------------------ | ----------------- |
+| MS16K   | Microsoft 16K Language card          | $C8n00, 16B |           | #0         |                   |                   |
+|Disk \]\[| Apple Disk II Floppy Disk Subsystem  | $C8n00, 16B |           | #0-#7      |                   |                   |
 
 
 # SLOT CONFIG
