@@ -65,7 +65,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
   {
     var pos = text.indexOf(markers[0]); // find table start
     var str = text.substring(pos,text.length);
-    var pos2 = str.indexOf(markers[3]);
+    var pos2 = str.indexOf(markers[3])+1;
     var table = str.substring(0,pos2).replace(/\\(.)/g,"$1")
     var arr = table.split(markers[2]);
     
@@ -83,13 +83,15 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     {
 
       var row = arr[i].split(markers[1]);
-      var fieldName = trim(row[0]).replace(/\\(.)/g,"$1");
+      var fieldName = trim(row[0]).replace(/\\(.)/g,"$1")
       table_struct+=  (i==2?"":",")
                     +(isNaN(Number(fieldName))?(q+fieldName+q):fieldName)
                     +":\n {"
       for(var j=1;j<row.length-1;j++)
       {
-        table_struct+=(j==1?"":" ,")+q+header_arr[j]+q+":"+q+trim(row[j])+q+"\n"
+        table_struct+=(j==1?"":" ,")
+        +q+header_arr[j].replace(/[^0-9^A-Z^a-z^_^-]/g,"")
+        +q+":"+q+trim(row[j])+q+"\n"
       }
       table_struct+=" }\n"
     }
@@ -114,7 +116,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var arr = txt.split(blobDocsURL);    // Select all links pointing to /main/docs directory
 
     arr[0] = ""; //alert(arr.join("\n"));
-    js = "var _DOCS = new Array();\n"
+    js = "const _DOCS = new Array();\n"
 
     //var lst = [];
     for(var i=1;i<arr.length;i++)
