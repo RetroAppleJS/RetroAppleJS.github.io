@@ -1,3 +1,55 @@
+const _CFG_PCODE = {
+"MS16K":
+ {"NAME":"Microsoft 16K Language card"
+ ,"IOrange":"$C080,$C08F"
+ ,"ROMrange":""
+ ,"SLOTrange":"0"
+ ,"Manuals":""
+ }
+,"DiskII":
+ {"NAME":"Apple Disk II Floppy Disk Subsystem"
+ ,"IOrange":"$C0(8+n)0,$C0(8+n)F"
+ ,"ROMrange":"$C(n)00, $C(n)FF"
+ ,"SLOTrange":"1,2,3,4,5,6,7"
+ ,"Manuals":"[user manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf)"
+ }
+}
+
+const _CFG_SLOT = {
+0:
+ {"PCODE":"MS16K"
+ ,"DESCRIPTION":""
+ }
+,1:
+ {"PCODE":""
+ ,"DESCRIPTION":""
+ }
+,2:
+ {"PCODE":""
+ ,"DESCRIPTION":""
+ }
+,3:
+ {"PCODE":""
+ ,"DESCRIPTION":""
+ }
+,4:
+ {"PCODE":""
+ ,"DESCRIPTION":""
+ }
+,5:
+ {"PCODE":""
+ ,"DESCRIPTION":""
+ }
+,6:
+ {"PCODE":"DiskII"
+ ,"DESCRIPTION":""
+ }
+,7:
+ {"PCODE":""
+ ,"DESCRIPTION":""
+ }
+}
+
 var _DOCS = new Array();
 _DOCS["EMULATOR"] = "<h2 id=\"emulator-user-instructions\">EMULATOR User Instructions</h2><hr>"
 +"<p><img src=\"https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/appleIIplus_bck_650.png?raw=true\" width=39% align=\"left\" /></p>"
