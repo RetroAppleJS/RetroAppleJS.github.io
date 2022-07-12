@@ -22,7 +22,7 @@
 
   var resURL      = comURL+"/raw/main/res/"                      // directory-specific
   var blobURL     = comURL+"/blob/"
-  var rawMainURL  = rawURL+"/main/";
+  //var rawMainURL  = rawURL+"/main/";
   var rawDocsURL  = rawURL+"/main/docs/";
   var blobDocsURL = blobURL+"main/docs/";
 
@@ -40,12 +40,17 @@
 
 
 
-//GetHTTP(rawMainURL+"README.md",function() { process_dir(this.responseText,this.responseURL) } )
-
 GetHTTP(rawDocsURL+"CONFIG.md",function() { process_dir(this.responseText,this.responseURL) } )
-
-
+GetHTTP(rawDocsURL+"CONFIG.md",
+  function() 
+  {
+    process_table(["[PCODE]","\|","\n|","\|\n\n"],"_CFG_PCODE",this.responseText,this.responseURL);
+    process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"_CFG_SLOT",this.responseText,this.responseURL);
+  } 
+)
   
+
+
 
 
 //  ███    ███  █████  ██ ███    ██     ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
@@ -54,11 +59,59 @@ GetHTTP(rawDocsURL+"CONFIG.md",function() { process_dir(this.responseText,this.r
 //  ██  ██  ██ ██   ██ ██ ██  ██ ██     ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
 //  ██      ██ ██   ██ ██ ██   ████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
  
+
+
+  function process_table(markers,varName,text,url)
+  {
+    var pos = text.indexOf(markers[0]); // find table start
+    var str = text.substring(pos,text.length);
+    var pos2 = str.indexOf(markers[3]);
+    var table = str.substring(0,pos2).replace(/\\(.)/g,"$1")
+    var arr = table.split(markers[2]);
+    
+    // PARSE HEADERS
+    var header_arr = arr[0].split(markers[1]);
+    for(var i=0;i<header_arr.length;i++)
+      header_arr[i] = trim(header_arr[i])
+
+    // PARSE TABLE
+    var q = "\"" 
+    var table_struct = "const "+varName+" = {\n";
+    
+
+    for(var i=2;i<arr.length;i++)
+    {
+
+      var row = arr[i].split(markers[1]);
+      var fieldName = trim(row[0]).replace(/\\(.)/g,"$1");
+      table_struct+=  (i==2?"":",")
+                    +(isNaN(Number(fieldName))?(q+fieldName+q):fieldName)
+                    +":\n {"
+      for(var j=1;j<row.length-1;j++)
+      {
+        table_struct+=(j==1?"":" ,")+q+header_arr[j]+q+":"+q+trim(row[j])+q+"\n"
+      }
+      table_struct+=" }\n"
+    }
+    
+    var s = table_struct;
+    //var s="";
+    //s+= arr[0]
+    s+="\n\n";
+
+
+    // PARSE TABLE
+    //for(i=j;i<arr.length;i++)
+    
+
+    document.getElementById('dest_html').innerHTML += s;
+    document.getElementById('dest').innerHTML += s;
+  }
+
   function process_dir(txt,url)
   {
     //document.write("<textarea>"+txt+"</textarea>")
-
-    var arr = txt.split(blobDocsURL);
+    var arr = txt.split(blobDocsURL);    // Select all links pointing to /main/docs directory
 
     arr[0] = ""; //alert(arr.join("\n"));
     js = "var _DOCS = new Array();\n"
@@ -114,7 +167,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",function() { process_dir(this.responseText,this.r
     if(el_cnt==0)
     {
         js = js.replace(new RegExp("res/","g"),resURL)
-        document.getElementById("dest").innerHTML = js;
+        document.getElementById("dest").innerHTML += js;
 
         //js += "for(var i in _DOCS) {document.getElementById('dest_html').innerHTML += _DOCS[i]+'<br><hr><a href=>NEXT</a><hr><br>'}"
         eval(js);
@@ -127,8 +180,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",function() { process_dir(this.responseText,this.r
           +_DOCS[i]
           c++;
         }
-        document.getElementById('dest_html').innerHTML = s
-        document.getElementById('dest_html2').innerHTML = s
+        document.getElementById('dest_html').innerHTML += s
+        document.getElementById('dest_html2').innerHTML += s
     }
     //download('DOCS.js',decodeURIComponent(js));
   }
@@ -141,6 +194,10 @@ GetHTTP(rawDocsURL+"CONFIG.md",function() { process_dir(this.responseText,this.r
 //     ██    ██   ██ ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
 //     ██    ██   ██ ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
 
+
+  function ltrim(s) { return s.replace(/^ */,"") }
+  function rtrim(s) { return s.replace(/ *$/,"") }
+  function trim(s)  { return rtrim(ltrim(s)) }
 
   function Markdown2HTML(md)
   {
