@@ -40,6 +40,7 @@
 
 var oPROCESS = new PROCESS();
 
+
 GetHTTP(rawDocsURL+"CONFIG.md",
   function()
   {
@@ -50,9 +51,40 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
+    oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata)  // method override
+    {
+      if(typeof(this.LData[ROWname])=="undefined") this.LData[ROWname] = {};
+      switch(FIELDname)
+      {
+        case "IOrange":
+          console.log(ROWname+": "+FIELDname+" / "+FIELDdata);
+          this.LData[ROWname][FIELDname] = FIELDdata;
+        break;
+        case "ROMrange":
+          console.log(ROWname+": "+FIELDname+" / "+FIELDdata);
+          this.LData[ROWname][FIELDname] = FIELDdata;
+        break;
+      }
+    }
+
     var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
+    oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata){}; // method override
+    oPROCESS.insertDATA = function(ROWname,FIELDname,FIELDdata)  // method override
+    {
+      if(FIELDname=="PCODE")
+      {
+        var s = "";
+        if(typeof(this.LData[FIELDdata])!="undefined")
+        {
+          s+=",\"IOrange\“:\""+this.LData[FIELDdata].IOrange+"\"";
+          s+=",\"ROMrange\“:\""+this.LData[FIELDdata].ROMrange+"\"";
+        }
+        return s;  //",\"IOrange\“:\""+ this.LData[FIELDdata] + "\“,\"ROMrange\“:\"-\“";
+      }
+      return "";
+    }
     var s = oPROCESS.process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
@@ -73,7 +105,6 @@ GetHTTP(rawDocsURL+"CONFIG.md",
  
 function PROCESS()
 {
-
   this.process_table = function(markers,varName,text,url)
   {
     var pos = text.indexOf(markers[0]); // find table start
@@ -101,45 +132,46 @@ function PROCESS()
       for(var j=1;j<row.length-1;j++)
       {
         var FIELDname = header_arr[j].replace(/[^0-9^A-Z^a-z^_^-]/g,"");
-        var FIEDdata = trim(row[j]);
+        var FIELDdata = trim(row[j]);
+
+        this.linkDATA(ROWname,FIELDname,FIELDdata);
         table_struct += 
           (j==1?"":" ,")
           + q + FIELDname + q
           +":"
-          + q + FIEDdata  + q
-        //+"\n"
+          + q + FIELDdata  + q
+          + this.insertDATA(ROWname,FIELDname,FIELDdata);
       }
-      table_struct+="}\n"
+      table_struct+= "}\n"
     }
-    
     var s = table_struct;
-    s+="}\n\n";
-
+    s+= "}\n\n";
     return s;
   }
+
+  this.linkDATA = function(ROWname,FIELDname,FIELDdata) { };             // abstract method
+  this.insertDATA = function(ROWname,FIELDname,FIELDdata) { return "" }; // abstract method
+  this.LData = {};
 
   this.process_dir = function(txt,url)
   {
     //document.write("<textarea>"+txt+"</textarea>")
     var arr = txt.split(blobDocsURL);    // Select all links pointing to /main/docs directory
 
-    arr[0] = ""; //alert(arr.join("\n"));
-    js = "var _DOCS = new Array();\n"
-
-    //var lst = [];
+    arr[0] = "";
+    js = "var _DOCS = new Array();\n";
     for(var i=1;i<arr.length;i++)
     {
       arr[i] = arr[i].substring(0,arr[i].indexOf(".md")+3);
       var url = rawDocsURL + arr[i];
-
       console.log("URL = "+url);
+
       GetHTTP(url, 
       function()
       {
         s= oPROCESS.process(this.responseText,this.responseURL);
-        document.getElementById('dest_html').innerHTML += s
-        document.getElementById('dest_html2').innerHTML += s 
-
+        document.getElementById('dest_html').innerHTML += s;
+        document.getElementById('dest_html2').innerHTML += s;
       } );
       //lst[lst.length] = arr[i];
     }
@@ -154,8 +186,6 @@ function PROCESS()
     var html = Markdown2HTML(txt);
 
     html = html.replace(new RegExp('/res/','g'),resURL);
-    
-
     document.getElementById("src").innerHTML      = txt;
     document.getElementById("html_txt").innerHTML = html;
     document.getElementById("html").innerHTML     = html;
@@ -169,7 +199,6 @@ function PROCESS()
     var js3 = js2.replace(new RegExp('<br /><br>','g'),"<br>")
     var js4 = js3.replace(new RegExp(regexURL,'g'),"res/")
     console.log("js4 = "+js4);
-
 
     //.replace(new RegExp('..https://github.com/RetroAppleJS/AppleII-IDE/raw/main/res/','g'),"res/")
   
