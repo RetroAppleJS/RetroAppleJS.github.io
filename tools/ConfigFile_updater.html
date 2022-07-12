@@ -50,10 +50,13 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
-    var s = process_table(["[PCODE]","\|","\n|","\|\n\n"],"_CFG_PCODE",this.responseText,this.responseURL);
+    var s = process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    var s = process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"_CFG_SLOT",this.responseText,this.responseURL);
+    var s = process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+
+    var s = "const _CFG = {\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
     document.getElementById('dest').innerHTML += s;
   } 
 )
@@ -85,36 +88,32 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 
     // PARSE TABLE
     var q = "\"" 
-    var table_struct = "const "+varName+" = {\n";
+    var table_struct = varName+" = {\n";
     
     for(var i=2;i<arr.length;i++)
     {
       var row = arr[i].split(markers[1]);
       var ROWname = trim(row[0]).replace(/\\(.)/g,"$1")
-      table_struct+=  (i==2?"":",")
-                    +(isNaN(Number(ROWname))?(q+ROWname+q):ROWname)
-                    +":\n {"
+      table_struct+=  (i==2?" ":",")
+                     +(isNaN(Number(ROWname))?(q+ROWname+q):ROWname)
+                     +":{"
       for(var j=1;j<row.length-1;j++)
       {
         var FIELDname = header_arr[j].replace(/[^0-9^A-Z^a-z^_^-]/g,"");
-        var FIEDdata = trim(row[j])
-        table_struct+=(j==1?"":" ,")
-        + q + FIELDname + q
-        +":"
-        + q + FIEDdata  + q
-        +"\n"
+        var FIEDdata = trim(row[j]);
+        table_struct += 
+          (j==1?"":" ,")
+          + q + FIELDname + q
+          +":"
+          + q + FIEDdata  + q
+        //+"\n"
       }
-      table_struct+=" }\n"
+      table_struct+="}\n"
     }
     
     var s = table_struct;
     s+="}\n\n";
 
-    // PARSE TABLE
-    //for(i=j;i<arr.length;i++)
-    
-    //document.getElementById('dest_html').innerHTML += s;
-    
     return s
   }
 
