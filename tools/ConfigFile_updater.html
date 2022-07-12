@@ -40,12 +40,21 @@
 
 
 
-GetHTTP(rawDocsURL+"CONFIG.md",function() { process_dir(this.responseText,this.responseURL) } )
+GetHTTP(rawDocsURL+"CONFIG.md",
+  function()
+  {
+      process_dir(this.responseText,this.responseURL);
+  }
+)
+
 GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
-    process_table(["[PCODE]","\|","\n|","\|\n\n"],"_CFG_PCODE",this.responseText,this.responseURL);
-    process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"_CFG_SLOT",this.responseText,this.responseURL);
+    var s = process_table(["[PCODE]","\|","\n|","\|\n\n"],"_CFG_PCODE",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+
+    var s = process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"_CFG_SLOT",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
   } 
 )
   
@@ -81,15 +90,19 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     for(var i=2;i<arr.length;i++)
     {
       var row = arr[i].split(markers[1]);
-      var fieldName = trim(row[0]).replace(/\\(.)/g,"$1")
+      var ROWname = trim(row[0]).replace(/\\(.)/g,"$1")
       table_struct+=  (i==2?"":",")
-                    +(isNaN(Number(fieldName))?(q+fieldName+q):fieldName)
+                    +(isNaN(Number(ROWname))?(q+ROWname+q):ROWname)
                     +":\n {"
       for(var j=1;j<row.length-1;j++)
       {
+        var FIELDname = header_arr[j].replace(/[^0-9^A-Z^a-z^_^-]/g,"");
+        var FIEDdata = trim(row[j])
         table_struct+=(j==1?"":" ,")
-        +q+header_arr[j].replace(/[^0-9^A-Z^a-z^_^-]/g,"")
-        +q+":"+q+trim(row[j])+q+"\n"
+        + q + FIELDname + q
+        +":"
+        + q + FIEDdata  + q
+        +"\n"
       }
       table_struct+=" }\n"
     }
@@ -101,7 +114,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     //for(i=j;i<arr.length;i++)
     
     //document.getElementById('dest_html').innerHTML += s;
-    document.getElementById('dest').innerHTML += s;
+    
+    return s
   }
 
   function process_dir(txt,url)
@@ -119,7 +133,14 @@ GetHTTP(rawDocsURL+"CONFIG.md",
       var url = rawDocsURL + arr[i];
 
       console.log("URL = "+url);
-      GetHTTP(url, function() { process(this.responseText,this.responseURL) } );
+      GetHTTP(url, 
+      function()
+      {
+        s= process(this.responseText,this.responseURL);
+        document.getElementById('dest_html').innerHTML += s
+        document.getElementById('dest_html2').innerHTML += s 
+
+      } );
       //lst[lst.length] = arr[i];
     }
     el_cnt = i-1;
@@ -176,10 +197,9 @@ GetHTTP(rawDocsURL+"CONFIG.md",
           +_DOCS[i]
           c++;
         }
-        document.getElementById('dest_html').innerHTML += s
-        document.getElementById('dest_html2').innerHTML += s
     }
     //download('DOCS.js',decodeURIComponent(js));
+    return s;
   }
 
 
