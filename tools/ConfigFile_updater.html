@@ -78,8 +78,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
         var s = "";
         if(typeof(this.LData[FIELDdata])!="undefined")
         {
-          s+=",\"IOrange\“:\""+this.LData[FIELDdata].IOrange+"\"";
-          s+=",\"ROMrange\“:\""+this.LData[FIELDdata].ROMrange+"\"";
+          s+=",\"IOrange\“:'"+this.LData[FIELDdata].IOrange+"'";
+          s+=",\"ROMrange\“:'"+this.LData[FIELDdata].ROMrange+"'";
         }
         return s;  //",\"IOrange\“:\""+ this.LData[FIELDdata] + "\“,\"ROMrange\“:\"-\“";
       }

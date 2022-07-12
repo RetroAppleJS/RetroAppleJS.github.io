@@ -4,13 +4,13 @@ const _CFG_PCODE = {
 }
 
 const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange“:"$C080,$C08F","ROMrange“:"" ,"DESCRIPTION":""}
+ 0:{"PCODE":"MS16K","IOrange“:'$C080,$C08F',"ROMrange“:'' ,"DESCRIPTION":""}
 ,1:{"PCODE":"" ,"DESCRIPTION":""}
 ,2:{"PCODE":"" ,"DESCRIPTION":""}
 ,3:{"PCODE":"" ,"DESCRIPTION":""}
 ,4:{"PCODE":"" ,"DESCRIPTION":""}
 ,5:{"PCODE":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DiskII","IOrange“:"$C0(8+n)0,$C0(8+n)F","ROMrange“:"$C(n)00, $C(n)FF" ,"DESCRIPTION":""}
+,6:{"PCODE":"DiskII","IOrange“:'$C0(8+n)0,$C0(8+n)F',"ROMrange“:'$C(n)00, $C(n)FF' ,"DESCRIPTION":""}
 ,7:{"PCODE":"" ,"DESCRIPTION":""}
 }
 
