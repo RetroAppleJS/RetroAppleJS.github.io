@@ -29,14 +29,14 @@ Any change in this document affects the **default application configuration**, o
 
 # SLOT CONFIG
 
-|[SLOT]  | PCODE      | Description       |
+|[SLOT#] | PCODE      | Description       |
 | :----: | :--------- | :---------------- |
-|  #0    | MS16K      |                   | 
-|  #1    |            |                   |
-|  #2    |            |                   |
-|  #3    |            |                   |
-|  #4    |            |                   |
-|  #5    |            |                   |
-|  #6    | Disk \]\[  |                   |
-|  #7    |            |                   |
+|   0    | MS16K      |                   | 
+|   1    |            |                   |
+|   2    |            |                   |
+|   3    |            |                   |
+|   4    |            |                   |
+|   5    |            |                   |
+|   6    | Disk \]\[  |                   |
+|   7    |            |                   |
 
