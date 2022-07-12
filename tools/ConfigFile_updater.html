@@ -78,10 +78,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var q = "\"" 
     var table_struct = "const "+varName+" = {\n";
     
-
     for(var i=2;i<arr.length;i++)
     {
-
       var row = arr[i].split(markers[1]);
       var fieldName = trim(row[0]).replace(/\\(.)/g,"$1")
       table_struct+=  (i==2?"":",")
@@ -97,16 +95,12 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     }
     
     var s = table_struct;
-    //var s="";
-    //s+= arr[0]
     s+="\n\n";
-
 
     // PARSE TABLE
     //for(i=j;i<arr.length;i++)
     
-
-    document.getElementById('dest_html').innerHTML += s;
+    //document.getElementById('dest_html').innerHTML += s;
     document.getElementById('dest').innerHTML += s;
   }
 
