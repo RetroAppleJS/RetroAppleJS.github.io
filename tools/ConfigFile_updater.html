@@ -38,22 +38,22 @@
 //  ██  ██  ██ ██   ██ ██ ██  ██ ██ 
 //  ██      ██ ██   ██ ██ ██   ████ 
 
-
+var oPROCESS = new PROCESS();
 
 GetHTTP(rawDocsURL+"CONFIG.md",
   function()
   {
-      process_dir(this.responseText,this.responseURL);
+    oPROCESS.process_dir(this.responseText,this.responseURL);
   }
 )
 
 GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
-    var s = process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
+    var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    var s = process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
+    var s = oPROCESS.process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
     var s = "const _CFG = {\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
@@ -71,9 +71,10 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 //  ██  ██  ██ ██   ██ ██ ██  ██ ██     ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
 //  ██      ██ ██   ██ ██ ██   ████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
  
+function PROCESS()
+{
 
-
-  function process_table(markers,varName,text,url)
+  this.process_table = function(markers,varName,text,url)
   {
     var pos = text.indexOf(markers[0]); // find table start
     var str = text.substring(pos,text.length);
@@ -114,10 +115,10 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = table_struct;
     s+="}\n\n";
 
-    return s
+    return s;
   }
 
-  function process_dir(txt,url)
+  this.process_dir = function(txt,url)
   {
     //document.write("<textarea>"+txt+"</textarea>")
     var arr = txt.split(blobDocsURL);    // Select all links pointing to /main/docs directory
@@ -135,7 +136,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
       GetHTTP(url, 
       function()
       {
-        s= process(this.responseText,this.responseURL);
+        s= oPROCESS.process(this.responseText,this.responseURL);
         document.getElementById('dest_html').innerHTML += s
         document.getElementById('dest_html2').innerHTML += s 
 
@@ -145,7 +146,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     el_cnt = i-1;
   }
 
-  function process(txt,url)
+  this.process = function(txt,url)
   {
     filename = url.substring(url.lastIndexOf("/")+1,url.length);
 
@@ -201,6 +202,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     return s;
   }
 
+}
 
 
 //  ████████ ██████   █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
