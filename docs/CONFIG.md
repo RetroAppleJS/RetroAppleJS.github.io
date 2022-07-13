@@ -36,7 +36,7 @@ Any change in this document affects the **default application configuration**, o
 |   2    |            |                   |
 |   3    |            |                   |
 |   4    |            |                   |
-|   5    |            |                   |
-|   6    | DISKII     |                   |
+|   5    | DISKII     |                   |
+|   6    |            |                   |
 |   7    |            |                   |
 
