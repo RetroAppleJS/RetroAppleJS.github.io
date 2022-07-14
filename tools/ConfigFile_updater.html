@@ -78,8 +78,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
         var s = "";
         if(typeof(this.LData[FIELDdata])!="undefined")
         {
-          s+=",\"IOrange:\":\""+this.LData[FIELDdata].IOrange+"\"";
-          s+=",\"ROMrange\":\""+this.LData[FIELDdata].ROMrange+"\"";
+          s+=",\"IOrange:\":\""+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname})+"\"";
+          s+=",\"ROMrange\":\""+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname})+"\"";
         }
         return s;  //",\"IOrange\“:\""+ this.LData[FIELDdata] + "\“,\"ROMrange\“:\"-\“";
       }
@@ -244,6 +244,74 @@ function PROCESS()
   function ltrim(s) { return s.replace(/^ */,"") }
   function rtrim(s) { return s.replace(/ *$/,"") }
   function trim(s)  { return rtrim(ltrim(s)) }
+
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
+function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
+
+function extractBrackets(str)
+{
+    var reBrackets = /\((.*?)\)/g;
+    var listOfText = [];
+    var found;
+    while(found = reBrackets.exec(str))
+      listOfText.push(found[1]);
+    return listOfText;
+}
+
+function Hex2SumDec(str)
+{
+  var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+  for(var i=10;i<hextab.length;i++)
+    str = str.replace(RegExp(hextab[i],"g"),"+"+i)
+  return str.charAt(0)=="+"?str.substring(1,str.length):str;
+}
+
+  function HexSTR2NUM(str,substitutes)
+  {
+    str = str.replace(/^ */,"").replace(/ *$/,""); // trim
+    console.log("str = "+str); 
+    //if(str.charAt(0)!="$") return str;
+
+    /*
+    var arr = extractBrackets(str);
+    //console.log("arr="+arr+" str="+str+" "+extractBrackets(str));
+    for(var i=0;i<arr.length;i++)
+    {
+      arr[i] = Hex2SumDec(arr[i]);    // resolve brackets
+      //console.log("arr["+i+"] = "+arr[i]); 
+
+      for(var ii in substitutes)
+      {
+        arr[i] = arr[i].replace(RegExp(ii,"g"),substitutes[ii])
+        //console.log("str = '"+str+"'' "+extractBrackets(str));
+      }
+      console.log("arr[i] = "+arr[i]);
+
+      //alert(eval(arr[i]))
+      //var e = hextab[eval(arr[i])];
+      //console.log("arr[i] = '"+arr[i]+"' e="+e);
+    }
+    str = arr.join("");
+    */
+
+
+    for(var ii in substitutes)
+      str = str.replace(RegExp(ii,"g"),substitutes[ii])
+
+    var str = str.replace(/(\$)([0-9A-F\()])/g,"0x$2");
+
+    var arr = str.split(",");
+    for(var i=0;i<arr.length;i++)
+    {
+      arr[i] = eval(arr[i]);
+      console.log("arr[i] = "+arr[i]+" "+typeof(arr[i]));
+      arr[i] = typeof(arr[i])=="number"?("$"+arr[i].toString(16).toUpperCase()):"";
+    }
+    s = arr.join(",")
+
+    console.log("s = "+s);
+    return s;
+  }
 
   function Markdown2HTML(md)
   {
