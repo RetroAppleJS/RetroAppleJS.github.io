@@ -22,7 +22,7 @@ Any change in this document affects the **default application configuration**, o
 |[PCODE]| NAME                                   | IOrange\*           | ROMrange\*      | SLOTrange    | Manuals       |
 | :-----: | :----------------------------------- | :------------------ | :-------------- | :------------|:------------- |
 | MS16K   | Microsoft 16K Language card          | $C080,$C08F         |                 | 0            |               | 
-| DISKII  | Apple Disk II Floppy Disk Subsystem  | $C080+$10*n,$C08F+$10*n | $Cn00, $CnFF| 1,2,3,4,5,6,7| [user manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) |
+| DISKII  | Apple Disk II Floppy Disk Subsystem  | $C080+$10*n,$C08F+$10*n | $Cn00, $CnFF| 1,2,3,4,5,6,7| [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) |
 
 
 \* n = slot number on which the card is installed
