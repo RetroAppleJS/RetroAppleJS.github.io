@@ -1,0 +1,664 @@
+<html style="background-color:#B0B0B0"><head>
+    <title>Number system converter</title>
+    <meta name="keywords" content="Number system converter -debug">
+    <meta name="description" content="">
+    <meta name="author" content="Freddy Vandriessche">
+    <meta charset="utf-8">
+
+<style>
+html {height:100%; background-color: #FFFFFF; font-family: "Arial"}
+
+#topmenu {width:100%; background-color: #F0F0F0;}
+
+ul#minitabs {
+list-style: none;
+margin: 0;
+padding: 3px 0px 0px 0px;
+border-left: 1px solid #CCC;
+border-right: 1px solid #CCC;
+border-top: 1px solid #CCC;
+border-bottom: 1px solid #CCC;
+font-weight: bold;
+text-align: left;
+white-space: nowrap;
+}
+ul#minitabs li {
+display: inline;
+margin: 0 3px;
+}
+ul#minitabs a {
+text-decoration: none;
+/* padding: 0 0 3px; */
+border-bottom: 4px solid #F0F0F0;
+color: #999
+  }
+ul#minitabs a#current {
+border-color: #F60;
+color:#06F
+}
+ul#minitabs a:hover {
+border-color: #F60;
+color: #666
+}
+
+table.html_edit_table {
+  width: "100%";
+}
+
+table.html_edit_table td:nth-child(1) {
+  //border-left: 5px solid #1C6EA4;
+  border-radius: 10px 10px 10px 10px;
+  //background-color: #8AB2E4;
+  border-collapse: collapse;
+  padding-left: 2px;
+  padding-right: 2px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 150%;
+  text-align: center;
+  cursor: pointer;
+}
+
+table.html_edit_table td:nth-child(2) {
+  //background-color: #E0E0E0;
+  width: "100%";
+  border-collapse: collapse;
+  padding-left: 5px;
+  padding-right: 2px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+
+
+
+
+/*   DROPDOWN SELECTION */
+
+.dropbtn {
+  cursor: pointer;
+}
+
+.dropbtn:hover, .dropbtn:focus {
+  background-color: #E6CBC0;
+  /* border-color: #E6CBC0; */
+}
+
+#myInput {
+  box-sizing: border-box;
+  background-image: url('data:image/gif;base64,R0lGODdhFQAVAPMAAP///+/v79ra2srKyr+/v7m5uQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAFQAVAAMEbhBIKQYhQ8zNgSjFdYFDtw0hAYIjYXppIQSBoKpll7ocqgacj+olyk0sslcgVOCMgC+m8/cCSE8qjWk53NguLwuGw00GmdATkwAN+Lqdm2olGoV3IpZ9i6LTdgVpVRNcT4NkgIKHhWCHG4yOcWwRADs=');
+
+  background-position: 14px 12px;
+  background-repeat: no-repeat;
+  font-size: 16px;
+  padding: 14px 20px 12px 45px;
+  border: none;
+  border-bottom: 1px solid #ddd;
+}
+
+#myInput:focus {outline: 3px solid #ddd;}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  text-align:left;
+  background-color: #f6f6f6;
+  width: 150px;
+  overflow: auto;
+  border: 1px solid #ddd;
+  z-index: 1;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 1px 10px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown a:hover {background-color: #ddd;}
+
+.show {display: block;}
+
+
+
+/*  BUTTONS */
+
+
+* { box-sizing: border-box; }
+
+.wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  text-align:center;
+}
+
+.wrapper > * {
+  text-align:center;
+  flex: 1 1 20px;
+  max-width: 20px;
+  border: 2px solid rgb(255,255,255);
+  border-radius: 3px;
+  margin: 2px;
+  padding: 2px 8px;
+  background-color: rgb(255,255,255);
+  color: #000;
+}
+
+/*  TOOLTIPS */
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+
+</style>
+
+
+  </head>
+   <body style="background-color:#808080;height:100%;margin:0px;padding:0px" class="slider_main">
+
+  <div id="slider_title"></div>
+   <div class="slider_overlay">
+      <div id="topmenu">
+        <ul id="minitabs">
+          <li><textarea style="padding:0px;margin:0px;height:30px" id="input" rows="2" cols="50" placeholder=" Drop files here or enter text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="keypress(this.id,'frombase','charmap_input');convert(this.id,'frombase','tobase','charmap_output','output')"></textarea></li>
+          <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+          <li><textarea style="padding:0px;margin:0px;height:30px" id="output" rows="2" cols="50" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
+
+
+          <li><textarea style="padding:0px;margin:0px;height:30px" id="btoa" rows="2" cols="20" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
+
+          <li><textarea style="padding:0px;margin:0px;height:30px" id="btoa2" rows="2" cols="20" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
+        </ul>
+      </div>
+      <div id=main>
+       <div class="slidecontainer">
+       <div id=console></div>
+       <input type="range" min="2" max="256" value="64" class="slider" id="fromRange" step=1 style="width:590px;margin-top:10px;" oninput="update_base(this,'frombase','charmap_frombase');keypress('input','frombase','charmap_input');convert('input','frombase','tobase','charmap_output','output')">
+      </div>
+    <div class="wrapper" id="charmap_frombase"></div>
+    <hr>
+    <div class="wrapper" id="charmap_input"></div>  <!--style="height:60px;overflow-y:hidden;overflow-y:auto;"-->
+    <hr>
+    <div class="slidecontainer">
+       <input type="range" min="2" max="256" value="16" class="slider" id="toRange" step=1 style="width:590px;margin-top:10px;" oninput="update_base(this,'tobase','charmap_tobase');convert('input','frombase','tobase','charmap_output','output')">
+    </div>
+    <div class="wrapper" id="charmap_tobase"></div>
+    <hr>
+    <div class="wrapper" id="charmap_output"></div>
+    <br>
+
+
+    <footer><small><a href=https://github.com/RetroAppleJS/RetroAppleJS.github.io>GitHub</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href=https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md>Copyright (c) 2022, Freddy Vandriessche</a></small></footer>
+
+
+    <div id="stats"></div>
+    </div>
+      <!--textarea id="debug" cols=120 rows=20></textarea-->
+    </div>
+
+<div id=frombase hidden></div>
+<div id=tobase hidden></div>
+
+</body>
+</html>
+
+
+
+
+
+<script>
+var CONF_version="1.2.0"
+var CONF_builddate="20191207-232500"
+
+function init_gui(_o)
+{
+  document.getElementById('slider_title').outerHTML = _TITLE();
+
+	oBASE = _o;
+	update_base(document.getElementById('fromRange'),'frombase','charmap_frombase');
+  update_base(document.getElementById('toRange'),'tobase','charmap_tobase');
+  keypress('input','frombase','charmap_input');
+  convert('input','frombase','tobase','charmap_output','output');
+
+    // Setup the dnd listeners.
+  var dropZone = document.getElementById('input');
+  dropZone.addEventListener('dragover', handleDragOver, false);
+  dropZone.addEventListener('dragend', handleDragEnd, false);
+  dropZone.addEventListener('drop', handleDrop, false);
+}
+
+
+var _T = function _T(idx,mod) {
+  this.t = {get _language(){ return "NL" }
+  ,"title":"Number system converter"
+  ,"menu_convert":""
+  ,"menu_info":"Info/Contact"
+  ,"intro":""
+  ,"version":"Version "+CONF_version
+  ,"built":"Built "+CONF_builddate
+  ,get _(){return this}
+  }
+  if(idx.length>0 && typeof(this.t[idx])=="undefined") { alert(idx); return "<font color=red>"+idx+"</font>" }
+  switch(mod) {
+    case "cap": return this.t[idx].charAt(0).toUpperCase()+this.t[idx].substring(1,this.t[idx].length);
+    case "inv": { var j = {}; for(var i in t) { j[ t[i] ] = i }; return j } // inverse associative
+    default: return this.t[idx];
+  }
+}
+function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
+function _TITLE() {
+var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}#carvetext:focus {outline: none;}.slider_main {position: relative;height: 100%;}.slider_overlay {position: absolute;bottom: 0;left: 0;right: 0;background-color: #A0A0A0;overflow: hidden;width: 100%;height: 85%;transition: .5s ease;}.slider_main:hover .slider_overlay {height: 100%;}"
+
+return "<style>"+css+".slider_overlay{height: 85%}</style>"
++"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
++"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
++"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
++" &nbsp; "+(typeof(_T("built"))=="string"?_T("built"):"")+"</div>"
++"</div></center></div>"
+}
+
+// HANDLE FILE DRAG-DROP EVENTS //
+function handleDrop(evt) {
+  evt.preventDefault();  			// If dropped items aren't files, reject them
+  var dt = evt.dataTransfer;
+
+  if (dt.items) {  						// Use DataTransferItemList interface
+    for (var i = 0; i < dt.items.length; i++) {
+      if (dt.items[i].kind == "file")
+      { readFileAsArray( dt.items[i].getAsFile() , this.id ); break; }
+    }
+  } else {         						// Use DataTransfer interface
+    for (var i = 0; i < dt.files.length; i++)
+    { readFileAsArray( dt.files[i] , this.id ); break; }
+  }
+}
+
+ function handleDragOver(evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+    evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+ }
+
+function handleDragEnd(evt) {
+  // Remove all of the drag data
+  var dt = evt.dataTransfer;
+  if (dt.items) {
+    // Use DataTransferItemList interface to remove the drag data
+    for (var i = 0; i < dt.items.length; i++) {
+      dt.items.remove(i);
+    }
+  } else {
+    // Use DataTransfer interface to remove the drag data
+    evt.dataTransfer.clearData();
+  }
+}
+
+function readFileAsArray(file,dest_tag) {
+  var reader = new FileReader();
+  reader.onload = function()
+  {
+    var uint8View = new Uint8Array(reader.result);
+    var bin = Array.prototype.map.call(uint8View, function(ch) {return String.fromCharCode(ch)} ).join('');
+    document.getElementById(dest_tag).value = btoa(bin);							// overwrite drop area with base64 data
+    keypress(dest_tag,'frombase','charmap_input');										// force update (similar to a keypress)
+    convert(dest_tag,'frombase','tobase','charmap_output','output');  // force convert
+  }
+  reader.readAsArrayBuffer(file);     // read file asynchronously (triggering onload here above when ready)
+}
+
+//   HANDLE DROPDOWN MENU   //
+function dropdown_show(tag_name) {
+  document.getElementById(tag_name).classList.toggle("show");
+}
+
+function dropdown_filter(tag_name) {
+  var input, filter, ul, li, a, i;
+  input = document.getElementById("myInput");
+  filter = input.value.toUpperCase();
+  div = document.getElementById(tag_name);
+  a = div.getElementsByTagName("a");
+  for (i = 0; i < a.length; i++) {
+    txtValue = a[i].textContent || a[i].innerText;
+    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+      a[i].style.display = "";
+    } else {
+      a[i].style.display = "none";
+    }
+  }
+}
+
+function charBox(str,symbols)
+{
+	var html = "";
+  for(var i=0;i<str.length;i++)
+  {
+    var bPrint = /[\x00-\x20\x7F\x81\x8D\x8F\x90\x9D\xA0\xAD]/.test(str.charAt(i));  // is this a printable character ?
+    var bRange = symbols?(symbols.indexOf(str.charAt(i))>=0):true;
+    var attr   = bPrint?(" style='background-color:"+(bRange?"#E0E0E0":"#FF0000")+";border-color:#D0D0D0;padding:1px;opacity:0.2'")
+                       :(" style='padding:2px;"+(bRange?"":"background-color:#FF0000")+"' ");
+    var chr    = bPrint?"<small>"+("0"+str.charCodeAt(i).toString(16)).slice(-2).toUpperCase()+"</small>":("&#"+str.charCodeAt(i)+";");
+    html      += "<div"+attr+" class='tooltip'>"+chr+"<span class='tooltiptext'>("+i+") #"+str.charCodeAt(i)+" $"+("0"+str.charCodeAt(i).toString(16)).slice(-2).toUpperCase()
+                +"</span></div>";
+  }
+  return html;
+}
+
+function update_base(element,base_tagname,dest_tagname) {
+
+    document.getElementById(base_tagname).innerHTML =  element.value;
+    var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' "
+    function getbase(value) { return "<sup>"+(isNaN(value)?oBASE.getsymbols(value).length:"")+"</sup>" }
+
+    var searcher = "";
+    for(var obj in oBASE.symbols)
+      if(isNaN(obj))
+        searcher += "<a href='#' onclick=update_base({value:this.innerHTML},'"+base_tagname+"','"+dest_tagname+"');"
+        +"keypress('input','frombase','charmap_input');convert('input','frombase','tobase','charmap_output','output')>"+obj+"</a>"
+
+    html = "<div class='dropdown' "+attr+">"
+    +"<div onclick=dropdown_show('"+base_tagname+"_dropdown') class='dropbtn' >"
+    +(isNaN(element.value)?"":"BASE") + element.value.replace(/ /g,"&nbsp;") + getbase(element.value)
+    +"</div>"
+    +"<div id='"+base_tagname+"_dropdown' class='dropdown-content'>"
+    +"<input type='text' placeholder='Search..' id='myInput' onkeyup=dropdown_filter('"+base_tagname+"_dropdown')>"
+    +searcher
+    +"</div></div>"
+
+ 		document.getElementById(dest_tagname).innerHTML = html+charBox(oBASE.getsymbols(element.value));
+}
+
+function keypress(src_tag,base_tagname,dest_tagname)
+{
+		var txt  = document.getElementById(src_tag).value;
+		var valid_symbols = oBASE.getsymbols(document.getElementById(base_tagname).innerHTML);
+		var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' ";
+		var html = "<div class='dropdown' "+attr+">INPUT</div>";
+		html += charBox(txt,valid_symbols);
+    document.getElementById(dest_tagname).innerHTML = html;
+}
+
+function convert(src_tag,frombase_tag,tobase_tag,dest_tag,out_tag)
+{
+    var str      	= document.getElementById(src_tag).value;
+		var frombase 	= document.getElementById(frombase_tag).innerHTML;
+    var tobase   	= document.getElementById(tobase_tag).innerHTML;
+    var symbols		= oBASE.getsymbols(frombase);
+    var arr       = str==null?[]:str.split("");
+
+    // BTOA
+    //document.getElementById("btoa").value = btoa(document.getElementById(dest_tag).value)+" "+document.getElementById(dest_tag).value.length
+
+    for(var i=0;i<arr.length;i++)
+  		if(symbols.indexOf(arr[i])<0) arr[i] = "";
+    var regstr = arr.join("");
+
+    var outstr   = oBASE.convert(regstr,frombase,tobase);
+		var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' "
+    var excl_img = "<img style='all:initial;width:21px;height:21px' src='data:image/gif;base64,"
++"R0lGODlhFQAVAPMAANbT0+oFBfSlpf76+razswgICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAAALAAAAAAVABUAAwRhEMg5RRA06xn6/pLVYaDW"
++"nWUmril3DWILiAMxjO1JFARarjsCC3Sq8W6ez8poG5o6A2bUpxpFg1GnKxCVTpMVa3cMw23H2C512S24x8Mi+jhGiS6CvH6fP91PgIGCg4SCEQA7'>"
+
+    document.getElementById("btoa").value = btoa(str)
+    document.getElementById("btoa2").value = btoa(outstr)
+
+    var html = "<div "+attr+">OUTPUT</div>"
+               + (str.length==0?"":charBox(outstr))
+               + (str.length==regstr.length?"":excl_img);
+    document.getElementById(dest_tag).innerHTML =  html;
+    document.getElementById(out_tag).value =  outstr;
+
+    if(str.length>0)
+    {
+    try{
+      var attr2 = " style='max-width:100px' "
+      var nbsp = "&nbsp;"
+      var chk = oBASE.check(str)[0];
+    	var html = "<div class='wrapper'><div "+attr+">STATS</div>"
+      +"<div "+attr+">INPUT</div>"
+      +"<div "+attr2+">digits"+nbsp+regstr.length+"</div>"
+      +"<div "+attr2+">bad"+nbsp+(str.length-regstr.length)+"</div>"
+      +"<div "+attr2+">"+(isNaN(chk)?chk:"BASE"+chk) +"</div>"
+      +"<div "+attr+">OUTPUT</div>"
+      +"<div "+attr2+">digits"+nbsp+outstr.length+"</div>"
+      +"<div "+attr2+">bad"+nbsp+Math.ceil((str.length-regstr.length)*outstr.length/regstr.length)+"</div>"
+      +"<div "+attr2+">dif"+nbsp+(outstr.length>regstr.length?"+":"")+(Math.round(outstr.length/regstr.length*100)-100)+"%</div>"
+      +"</div>"
+      } catch(e) {alert(e)}
+      document.getElementById("stats").innerHTML =  html;
+    }
+    else document.getElementById("stats").innerHTML = "";
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// quick test, convert from base45 to base32, using custom symbols for base85 and back to base45
+var c = function(){
+this.log = function(str){ document.getElementById("console").innerHTML += "<small>"+str+"</small><br>" }
+this.info = function(str){ document.getElementById("console").innerHTML += "<small>"+str+"</small>" }
+this.clear = function(){ document.getElementById("console").innerHTML = "" }
+}
+var console = new c();
+var escapeHTML = function(unsafe) {
+  return unsafe.replace(/[&<"']/g, function(m) {
+    switch (m) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '"':
+        return '&quot;';
+      default:
+        return '&#039;';
+    }
+  });
+};
+
+//console.log(oBASE.check("0f"))
+//console.log(oBASE.selftest().replace(/\r\n/g,"<br>"));
+
+/*
+
+var n = "THIS IS A NUMBER";                 // Base 45 code = 'qr-alnum'
+console.log(n);                             // Result: 'THIS IS A NUMBER'
+
+var n = oBASE.convert(n,"qr-alnum",32);     // Base 45 to Base 32 = 'base32hex'
+console.log(n);                             // Result: '4ONI84LCTLJ1U08G1N'
+
+var s85 = oBASE.rng("[0-9][a-z][A-Z].-:+=^!/*?&<>()[]{}@%$#"); // 32/Z85 custom symbols
+var n = oBASE.convert(n,"base32hex",[s85]); // 'base2hex' to custom Base 85
+console.log(n);                             // Result: 'fnaxrZP)?5d[DG'
+
+var n = oBASE.convert(n,[s85],45);          // Custom Base 85 to Base 45 = 'qr-alnum'
+console.log(n);                             // Result: 'THIS IS A NUMBER'
+
+console.log("--------------------");
+
+o = "THIS IS A NUMBER"
+console.log(o+" ("+o.length+")");
+
+var n = oBASE.convert(o,256,16);
+console.log(escapeHTML(n)+" ("+n.length+" "+Math.round(n.length/o.length*100)+"%)");
+var n = oBASE.convert(o,256,60);
+console.log(escapeHTML(n)+" ("+n.length+" "+Math.round(n.length/o.length*100)+"%)");
+var n = oBASE.convert(o,256,64);
+console.log(escapeHTML(n)+" ("+n.length+" "+Math.round(n.length/o.length*100)+"%)");
+var n = oBASE.convert(o,256,85);
+console.log(escapeHTML(n)+" ("+n.length+" "+Math.round(n.length/o.length*100)+"%)");
+var n = oBASE.convert(o,256,91);
+console.log(escapeHTML(n)+" ("+n.length+" "+Math.round(n.length/o.length*100)+"%)");
+var n = oBASE.convert(o,256,92);
+console.log(escapeHTML(n)+" ("+n.length+" "+Math.round(n.length/o.length*100)+"%)");
+
+var s92 = oBASE.rng("[0-9][A-Z]![#-/][:-@]]^ ");
+console.log(s92+" "+s92.length)
+*/
+
+
+
+
+
+
+
+
+
+var oBASE = new function BASE() {
+
+    this.convert = function (str, fromBase, toBASE)
+    {
+      if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] } else this.fromSymbols = this.getsymbols(fromBase);
+      if(typeof(toBASE)  =='object') { this.toSymbols = toBASE[0] } else this.toSymbols = this.getsymbols(toBASE);
+      fromBase = this.fromSymbols.length; toBASE = this.toSymbols.length;
+
+      // PARSE INPUT DIGITS ARRAY
+      for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
+      var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
+
+      // BASE CONVERSION
+      for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBASE), toBASE); _p = mul(fromBase, _p, toBASE) }
+
+      // PARSE OUTPUT DIGITS ARRAY
+      for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
+      return _o.length==0?this.toSymbols[0]:_o;
+    }
+
+    this.symbols = {
+        32:function(){return this.base32hex},
+        36:["[0-9][A-Z]"],
+        45:function(){return this["qr-alnum"]},
+        58:function(){return this.Bitcoin},
+        60:function(){return this.appleII},
+        64:function(){return this["RFC 1421"]},
+        85:function(){return this["RFC 1924"]},
+        91:["[A-Z][a-z][0-9]!#$%&()*+,./:;<=>?@[]^_`{|}~\""],
+        92:["[A-Z][a-z][0-9]![#-/][:-@][]^_`[{-~]"],
+        94:["[!-~]"],
+    "low hex":   ["[0-9][a-f]"],															 // base 16
+    "geohash":   ["[0-9][b-h]jkmn[p-z]"],                      // base 32
+    "RFC 4648":  ["[A-Z][2-7]"],                               // base 32
+    "base32hex": ["[0-9][A-V]"],                               // base 32
+    "qr-alnum":  ["[0-9][A-Z] $%*+-./:"],                      // base 45
+    "Bitcoin":   ["[1-9][A-H]JKLMN[P-Z][a-k][m-z]"],           // base 58
+    "appleII":   ["[0-9][A-Z]![#-/][:-@]]^ "],                 // base 60
+    "Base64":    ["[A-Z][a-z][0-9]+/"],												 // base 64
+    "RFC 1421":  ["[A-Z][a-z][0-9]+/"],												 // base 64
+    "GUID64":    ["[A-Z][a-z][0-9]-_"],                        // base 64
+    "RFC 1924":  ["[0-9][A-Z][a-z]!#$%&()*+-;<=>?@^_`{|}~"],   // base 85
+    "JS-safe":   ["[0-9][A-Z][a-z]![#-/][:-@]\x5b\x5d[^-`][{-~]"]                  // base 92
+    }
+
+    this.getsymbols = function(base) {
+      if(typeof(base)=="undefined") return "";
+      if(typeof(this.symbols[base])=="undefined")
+        this.symbols[base] = base<95?
+          (this.rng(base<64?"[0-9][A-Z][a-z]+":"[A-Z][a-z][0-9][!-/][:-@][[-`][{-~]").substring(0,base))
+        :(this.symbols[base] = base<216?
+          this.rng("[\x20-\x7e]\x80[\x82-\x8c]\x8e[\x91-\x9c]\x9e\x9f[\xa1-\xac][\xae-\xff]").substring(0,base)
+          :this.rng("[\x00-\xff]").substring(256-base,256));
+      if(typeof(this.symbols[base])=="function")  this.symbols[base] = this.symbols[base]();             // process references
+      if(typeof(this.symbols[base])=="object")    this.symbols[base] = this.rng(this.symbols[base][0]);  // process range_replace
+      return this.symbols[base];
+    }
+
+    this.rng = function(recipe) {
+      var _a = recipe.match(/\[.-.\]/); if(_a==null) return recipe; else { _a=[_a[0].charCodeAt(1),_a[0].charCodeAt(3)];
+      return this.rng(recipe.replace(RegExp("\\[(\\x"+("0"+_a[0].toString(16)).slice(-2)+"-\\x"+_a[1].toString(16)+")\\]","g"),
+      String.fromCharCode(..." ".repeat(_a[1]-_a[0]+1).split("").map((_e,_i)=>_i+_a[0])) )) }
+    }
+
+    this.check = function(str) {
+      var _a = this.allsymbols(), _o = [], _r = 0;
+      for(var _i in _a) {
+        var _sym = this.getsymbols(_a[_i]);
+      	for(var _n=str.length-1;_n>=0 && _sym.indexOf(str.charAt(_n))>=0;_n--);
+        if(_n<0) { _r+=this.getsymbols(_o[_r-1])==_sym?-1:0; _o[_r++] = _a[_i] }
+      }
+      return _o;
+    }
+
+    this.allsymbols = function() {
+       var _a={}; for(var _o in this.symbols) _a[_o] = this.getsymbols(_o).length; 	// built-in symbols
+       for(_o=2;_o<=95;_o++) _a[_o] = this.getsymbols(_o).length; _a[256]=256;     	// symbol range 2-95 + 256 (96-255 is similar)
+       var _a = Object.keys(_a).sort(function(a,b){return _a[a]-_a[b]});   					// sort merged list
+       return _a;
+    }
+
+    this.selftest = function() {
+      var _s = "", _a = this.allsymbols();
+      for(var _i in _a) {                                                         // iterate number systems
+        var _o = {fromBase:10, toBASE:_a[_i]}, _r = this.convert("",10,_o.toBASE);
+        _s += "\r\n\oBASE.convert(n,'"+_o.fromBase+"','"+_o.toBASE+"') ["+this.fromSymbols+"] ["+this.toSymbols+"]\r\n";
+        for(var _n=0;_n<(this.fromSymbols.length+2);_n++) {                       // iterate numbers
+          var _r = this.convert(String(_n),_o.fromBase,_o.toBASE);
+          _s += _n+(String(_n)==this.convert(_r,_o.toBASE,_o.fromBase)?">":"?")+"["+_r+"] ";
+        }
+      }
+      return _s;
+    }
+
+    var add = function(x, y, base) {
+        var _m = Math.max(x.length, y.length);
+        for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
+          var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
+          var _n =  _r.push(_z % base);
+        }
+        //console.log("x:"+x+" y:"+y+" base:"+base+" _r:"+_r);
+        return _r;
+    }
+
+    var mul = function(x, pow, base) {
+        for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
+          if(x & 1) _r = add(_r, pow, base);
+          pow = add(pow, pow, base);
+        }
+        //console.log("x:"+x+" pow:"+pow+" base:"+base+" _r:"+_r);
+        return _r;
+    }
+}()
+
+init_gui(oBASE);
+
+</script>
