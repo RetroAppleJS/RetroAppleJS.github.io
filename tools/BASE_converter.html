@@ -1,11 +1,19 @@
 <html style="background-color:#B0B0B0"><head>
-    <title>Number system converter</title>
-    <meta name="keywords" content="Number system converter -debug">
-    <meta name="description" content="">
-    <meta name="author" content="Freddy Vandriessche">
-    <meta charset="utf-8">
+<title>Number system converter</title>
+<meta name="keywords" content="Number system converter -debug">
+<meta name="description" content="">
+<meta name="author" content="Freddy Vandriessche">
+<meta charset="utf-8">
 
+<!--
+   ██████ ███████ ███████ 
+  ██      ██      ██      
+  ██      ███████ ███████ 
+  ██           ██      ██ 
+   ██████ ███████ ███████
+-->
 <style>
+
 html {height:100%; background-color: #FFFFFF; font-family: "Arial"}
 
 #topmenu {width:100%; background-color: #F0F0F0;}
@@ -46,9 +54,9 @@ table.html_edit_table {
 }
 
 table.html_edit_table td:nth-child(1) {
-  //border-left: 5px solid #1C6EA4;
+  /*border-left: 5px solid #1C6EA4;*/
   border-radius: 10px 10px 10px 10px;
-  //background-color: #8AB2E4;
+  /*background-color: #8AB2E4;*/
   border-collapse: collapse;
   padding-left: 2px;
   padding-right: 2px;
@@ -60,7 +68,7 @@ table.html_edit_table td:nth-child(1) {
 }
 
 table.html_edit_table td:nth-child(2) {
-  //background-color: #E0E0E0;
+  /*background-color: #E0E0E0;*/
   width: "100%";
   border-collapse: collapse;
   padding-left: 5px;
@@ -69,12 +77,7 @@ table.html_edit_table td:nth-child(2) {
   padding-bottom: 2px;
 }
 
-
-
-
-
 /*   DROPDOWN SELECTION */
-
 .dropbtn {
   cursor: pointer;
 }
@@ -125,11 +128,7 @@ table.html_edit_table td:nth-child(2) {
 
 .show {display: block;}
 
-
-
 /*  BUTTONS */
-
-
 * { box-sizing: border-box; }
 
 .wrapper {
@@ -151,7 +150,6 @@ table.html_edit_table td:nth-child(2) {
 }
 
 /*  TOOLTIPS */
-
 .tooltip {
   position: relative;
   display: inline-block;
@@ -190,57 +188,55 @@ table.html_edit_table td:nth-child(2) {
   visibility: visible;
   opacity: 1;
 }
-
-
 </style>
+</head>
+
+<!--
+  ██   ██ ████████ ███    ███ ██      
+  ██   ██    ██    ████  ████ ██      
+  ███████    ██    ██ ████ ██ ██      
+  ██   ██    ██    ██  ██  ██ ██      
+  ██   ██    ██    ██      ██ ███████ 
+--> 
 
 
-  </head>
-   <body style="background-color:#808080;height:100%;margin:0px;padding:0px" class="slider_main">
+<body style="background-color:#808080;height:100%;margin:0px;padding:0px" class="slider_main">
 
   <div id="slider_title"></div>
-   <div class="slider_overlay">
-      <div id="topmenu">
-        <ul id="minitabs">
-          <li><textarea style="padding:0px;margin:0px;height:30px" id="input" rows="2" cols="50" placeholder=" Drop files here or enter text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="keypress(this.id,'frombase','charmap_input');convert(this.id,'frombase','tobase','charmap_output','output')"></textarea></li>
-          <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-          <li><textarea style="padding:0px;margin:0px;height:30px" id="output" rows="2" cols="50" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
-
-
-          <li><textarea style="padding:0px;margin:0px;height:30px" id="btoa" rows="2" cols="20" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
-
-          <li><textarea style="padding:0px;margin:0px;height:30px" id="btoa2" rows="2" cols="20" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
-        </ul>
-      </div>
-      <div id=main>
-       <div class="slidecontainer">
-       <div id=console></div>
-       <input type="range" min="2" max="256" value="64" class="slider" id="fromRange" step=1 style="width:590px;margin-top:10px;" oninput="update_base(this,'frombase','charmap_frombase');keypress('input','frombase','charmap_input');convert('input','frombase','tobase','charmap_output','output')">
-      </div>
+  <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+        <li><textarea style="padding:0px;margin:0px;height:30px" id="input" rows="2" cols="50" placeholder=" Drop files here or enter text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="keypress(this.id,'frombase','charmap_input');convert(this.id,'frombase','tobase','charmap_output','output')"></textarea></li>
+        <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+        <li><textarea style="padding:0px;margin:0px;height:30px" id="output" rows="2" cols="50" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
+        <li><textarea style="padding:0px;margin:0px;height:30px" id="btoa" rows="2" cols="20" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
+        <li><textarea style="padding:0px;margin:0px;height:30px" id="btoa2" rows="2" cols="20" placeholder=" Result" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea></li>
+      </ul>
+    </div>
+    <div id=main>
+      <div class="slidecontainer">
+      <div id=console></div>
+      <input type="range" min="2" max="256" value="64" class="slider" id="fromRange" step=1 style="width:590px;margin-top:10px;" oninput="update_base(this,'frombase','charmap_frombase');keypress('input','frombase','charmap_input');convert('input','frombase','tobase','charmap_output','output')">
+    </div>
     <div class="wrapper" id="charmap_frombase"></div>
     <hr>
     <div class="wrapper" id="charmap_input"></div>  <!--style="height:60px;overflow-y:hidden;overflow-y:auto;"-->
     <hr>
     <div class="slidecontainer">
-       <input type="range" min="2" max="256" value="16" class="slider" id="toRange" step=1 style="width:590px;margin-top:10px;" oninput="update_base(this,'tobase','charmap_tobase');convert('input','frombase','tobase','charmap_output','output')">
+      <input type="range" min="2" max="256" value="16" class="slider" id="toRange" step=1 style="width:590px;margin-top:10px;" oninput="update_base(this,'tobase','charmap_tobase');convert('input','frombase','tobase','charmap_output','output')">
     </div>
     <div class="wrapper" id="charmap_tobase"></div>
     <hr>
     <div class="wrapper" id="charmap_output"></div>
     <br>
-
-
     <footer><small><a href=https://github.com/RetroAppleJS/RetroAppleJS.github.io>GitHub</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href=https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md>Copyright (c) 2022, Freddy Vandriessche</a></small></footer>
-
-
     <div id="stats"></div>
     </div>
-      <!--textarea id="debug" cols=120 rows=20></textarea-->
-    </div>
+    <!--textarea id="debug" cols=120 rows=20></textarea-->
+  </div>
 
-<div id=frombase hidden></div>
-<div id=tobase hidden></div>
-
+  <div id=frombase hidden></div>
+  <div id=tobase hidden></div>
 </body>
 </html>
 
@@ -249,6 +245,12 @@ table.html_edit_table td:nth-child(2) {
 
 
 <script>
+//   ██████  ██    ██ ██     ███████  ██████ ██████  ██ ██████  ████████ ███████ 
+//  ██       ██    ██ ██     ██      ██      ██   ██ ██ ██   ██    ██    ██      
+//  ██   ███ ██    ██ ██     ███████ ██      ██████  ██ ██████     ██    ███████ 
+//  ██    ██ ██    ██ ██          ██ ██      ██   ██ ██ ██         ██         ██ 
+//   ██████   ██████  ██     ███████  ██████ ██   ██ ██ ██         ██    ███████
+
 var CONF_version="1.2.0"
 var CONF_builddate="20191207-232500"
 
@@ -542,7 +544,11 @@ console.log(s92+" "+s92.length)
 
 
 
-
+//   ██████ ██       █████  ███████ ███████     ██████  ███████ ███████ ██ ███    ██ ██ ████████ ██  ██████  ███    ██ 
+//  ██      ██      ██   ██ ██      ██          ██   ██ ██      ██      ██ ████   ██ ██    ██    ██ ██    ██ ████   ██ 
+//  ██      ██      ███████ ███████ ███████     ██   ██ █████   █████   ██ ██ ██  ██ ██    ██    ██ ██    ██ ██ ██  ██ 
+//  ██      ██      ██   ██      ██      ██     ██   ██ ██      ██      ██ ██  ██ ██ ██    ██    ██ ██    ██ ██  ██ ██ 
+//   ██████ ███████ ██   ██ ███████ ███████     ██████  ███████ ██      ██ ██   ████ ██    ██    ██  ██████  ██   ████ 
 
 
 var oBASE = new function BASE() {
