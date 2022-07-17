@@ -83,7 +83,7 @@ In conclusion, we only need a maximum of 25µs timer accuracy, which [hr-time](h
 
 
           <div style=width:800px>
-     D000 ┌────────────────────────────────────┐                      ▲ 
+     FFFF ┌────────────────────────────────────┐                      ▲ 
           │  Autostart ROM                     │  2K                  │
           │                                    │                      │
      F800 ├────────────────────────────────────┤                      │  12K
