@@ -51,40 +51,36 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
+    // METHOD TAILORING
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
       if(typeof(this.LData[ROWname])=="undefined") this.LData[ROWname] = {};
-      switch(FIELDname)
-      {
-        case "IOrange":
-          console.log(ROWname+": "+FIELDname+" / "+FIELDdata);
-          this.LData[ROWname][FIELDname] = FIELDdata;
-        break;
-        case "ROMrange":
-          console.log(ROWname+": "+FIELDname+" / "+FIELDdata);
-          this.LData[ROWname][FIELDname] = FIELDdata;
-        break;
-      }
+      if(FIELDname=="IOrange" || FIELDname=="ROMrange") this.LData[ROWname][FIELDname] = FIELDdata;
+    }
+    var bck_method = oPROCESS.changeDATA; // backup the abstract method
+    oPROCESS.changeDATA = function(ROWname,FIELDname,FIELDdata)  // method override
+    { if(FIELDname=="IOrange" || FIELDname=="ROMrange")
+          FIELDdata = FIELDdata.replace(/(\$)([0-9A-F\()])/g,"0x$2");
+      return {"FIELDname":FIELDname,"FIELDdata":FIELDdata}
     }
 
+    // EXECUTE
     var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
+    // METHOD TAILORING
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata){}; // method override
+    oPROCESS.changeDATA = bck_method; // restore the abstract method
     oPROCESS.insertDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
-      if(FIELDname=="PCODE")
-      {
-        var s = "";
-        if(typeof(this.LData[FIELDdata])!="undefined")
-        {
-          s+=",\"IOrange:\":\""+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname})+"\"";
-          s+=",\"ROMrange\":\""+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname})+"\"";
-        }
-        return s;  //",\"IOrange\“:\""+ this.LData[FIELDdata] + "\“,\"ROMrange\“:\"-\“";
-      }
-      return "";
+      var s = "";
+      if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
+          s+=",\"IOrange:\":["+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname})+"]"
+           +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname})+"]";
+      return s
     }
+
+    // EXECUTE
     var s = oPROCESS.process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
@@ -135,11 +131,12 @@ function PROCESS()
         var FIELDdata = trim(row[j]);
 
         this.linkDATA(ROWname,FIELDname,FIELDdata);
+        var d = this.changeDATA(ROWname,FIELDname,FIELDdata);
         table_struct += 
           (j==1?"":" ,")
-          + q + FIELDname + q
+          + q + d.FIELDname + q
           +":"
-          + q + FIELDdata  + q
+          + q + d.FIELDdata  + q
           + this.insertDATA(ROWname,FIELDname,FIELDdata);
       }
       table_struct+= "}\n"
@@ -149,8 +146,9 @@ function PROCESS()
     return s;
   }
 
-  this.linkDATA = function(ROWname,FIELDname,FIELDdata) { };             // abstract method
-  this.insertDATA = function(ROWname,FIELDname,FIELDdata) { return "" }; // abstract method
+  this.linkDATA = function(ROWname,FIELDname,FIELDdata) { };                                                         // abstract method
+  this.changeDATA = function(ROWname,FIELDname,FIELDdata) { return {"FIELDname":FIELDname,"FIELDdata":FIELDdata} };  // abstract method
+  this.insertDATA = function(ROWname,FIELDname,FIELDdata) { return "" };                                             // abstract method
   this.LData = {};
 
   this.process_dir = function(txt,url)
@@ -270,30 +268,6 @@ function Hex2SumDec(str)
   {
     str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     console.log("str = "+str); 
-    //if(str.charAt(0)!="$") return str;
-
-    /*
-    var arr = extractBrackets(str);
-    //console.log("arr="+arr+" str="+str+" "+extractBrackets(str));
-    for(var i=0;i<arr.length;i++)
-    {
-      arr[i] = Hex2SumDec(arr[i]);    // resolve brackets
-      //console.log("arr["+i+"] = "+arr[i]); 
-
-      for(var ii in substitutes)
-      {
-        arr[i] = arr[i].replace(RegExp(ii,"g"),substitutes[ii])
-        //console.log("str = '"+str+"'' "+extractBrackets(str));
-      }
-      console.log("arr[i] = "+arr[i]);
-
-      //alert(eval(arr[i]))
-      //var e = hextab[eval(arr[i])];
-      //console.log("arr[i] = '"+arr[i]+"' e="+e);
-    }
-    str = arr.join("");
-    */
-
 
     for(var ii in substitutes)
       str = str.replace(RegExp(ii,"g"),substitutes[ii])
@@ -305,7 +279,7 @@ function Hex2SumDec(str)
     {
       arr[i] = eval(arr[i]);
       console.log("arr[i] = "+arr[i]+" "+typeof(arr[i]));
-      arr[i] = typeof(arr[i])=="number"?("$"+arr[i].toString(16).toUpperCase()):"";
+      arr[i] = typeof(arr[i])=="number"?("0x"+arr[i].toString(16).toUpperCase()):"";
     }
     s = arr.join(",")
 
