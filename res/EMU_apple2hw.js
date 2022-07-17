@@ -2,29 +2,58 @@
 // Copyright (c) 2014 Thomas Skibo.
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
+// Adapted in 2022 by Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// THIS SOFTWARE IS PROVIDED BY AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED.  IN NO EVENT SHALL AUTHOR OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-// SUCH DAMAGE.
-//
-
 // apple2hw.js
+
+
+// APPLE II+ Memory Map
+
+// FFFF ┌────────────────────────────────────┐                      ▲ 
+//      │  Autostart ROM                     │  2K                  │
+//      │                                    │                      │
+// F800 ├────────────────────────────────────┤                      │  12K
+//      │                                    │                      │  ROM
+//      │                                    │                      │     
+//      │  Applesoft ROM                     │  10K                 │
+//      │                                    │                      │
+//      │                                    │                      ▼
+// D000 ├────────────────────────────────────┤                        
+//      │  I/O ROM/RAM                       │  2K                  ▲
+//      │                                    │                      │
+// C800 ├────────────────────────────────────┤                      │  4K
+//      │  I/O Ports                         │  2K                  │  I/O
+//      │                                    │                      ▼
+// C000 ├────────────────────────────────────┤                      
+//      │                                    │                      ▲     
+//      │                                    │                      │
+//      │                                    │                      │     
+//      │  Free                              │  24K                 │
+//      │                                    │                      │
+//      │                                    │                      │
+//      │                                    │                      │
+// 6000 ├────────────────────────────────────┤                      │
+//      │                                    │                      │     
+//      │  Hi-Res 2                          │  8K                  │
+//      │                                    │                      │
+//      │                                    │                      │
+// 4000 ├────────────────────────────────────┤                      │  48K
+//      │                                    │                      │  RAM   
+//      │  Hi-Res 1                          │  8K                  │
+//      │                                    │                      │          
+//      │                                    │                      │
+// 2000 ├────────────────────────────────────┤                      │
+//      │                                    │                      │     
+//      │  Free                              │  5K                  │
+//      │                                    │                      │
+// 0C00 ├────────────────────────────────────┤                      │
+//      │  Text & Lo-res graphics 2          │  1K                  │
+// 0800 ├────────────────────────────────────┤                      │
+//      │  Text & Lo-res graphics 1          │  1K                  │
+// 0400 ├────────────────────────────────────┤                      │
+//      │  System RAM  (zero page, stack..)  │  1K                  │
+// 0000 └────────────────────────────────────┘                      ▼
 
 function Apple2Hw(vid) {
     var RAM_SIZE =      0xc000,
@@ -62,6 +91,12 @@ function Apple2Hw(vid) {
     // a parent class called Memspace which only had read() and write()
     // methods.
     //
+
+    this.addr_decode(addr)
+    {
+
+    }
+
     this.read = function(addr) {
         var d8;
         if(this.io.ramcard.active == true && addr >= ROM_ADDR)
