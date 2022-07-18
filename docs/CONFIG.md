@@ -20,13 +20,14 @@ Any change in this document affects the **default application configuration**, o
 
 # SYSTEMS LIST
 
-|[SYSCODE]| NAME                                 | 
-| :-----: | :----------------------------------- |
-| A2      | Apple II                             |
-| A2P     | Apple II+                            |
-| A2E     | Apple IIe                            |
-| A2C     | Apple IIc                            |
-
+|[SYSCODE]| Model              | PROCESSOR  | 
+| :-----: | :----------------- | :--------- |
+| A1      | Apple I            | 6502       |
+| A2      | Apple II           | 6502       |
+| A2P     | Apple II Plus      | 6502       |
+| A2E     | Apple IIc EuroPlus | 6502       |
+| A2J     | Apple IIc J-Plus   | 6502       |
+| A2J     | Bell & Howell      | 6502       |
 
 # PERIPHERALS LIST
 
