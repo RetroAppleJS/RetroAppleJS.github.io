@@ -17,6 +17,17 @@ Any change in this document affects the **default application configuration**, o
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md) 
 
+
+# SYSTEMS LIST
+
+|[SYSCODE]| NAME                                 | 
+| :-----: | :----------------------------------- |
+| A2      | Apple II                             |
+| A2P     | Apple II+                            |
+| A2E     | Apple IIe                            |
+| A2C     | Apple IIc                            |
+
+
 # PERIPHERALS LIST
 
 |[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYSrange    | Manuals       |
