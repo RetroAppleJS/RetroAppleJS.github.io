@@ -51,15 +51,21 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
+
+    // EXECUTE
+    var s = oPROCESS.process_table(["[SCODE]","\|","\n|","\|\n\n"],"const _CFG_SCODE",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+
+
     // METHOD TAILORING
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
       if(typeof(this.LData[ROWname])=="undefined") this.LData[ROWname] = {};
-      if(FIELDname=="IOrange" || FIELDname=="ROMrange") this.LData[ROWname][FIELDname] = FIELDdata;
+      if(FIELDname=="ROMrange") this.LData[ROWname][FIELDname] = FIELDdata;
     }
     var bck_method = oPROCESS.changeDATA; // backup the abstract method
     oPROCESS.changeDATA = function(ROWname,FIELDname,FIELDdata)  // method override
-    { if(FIELDname=="IOrange" || FIELDname=="ROMrange")
+    { if(FIELDname=="ROMrange")
           FIELDdata = FIELDdata.replace(/(\$)([0-9A-F\()])/g,"0x$2");
       return {"FIELDname":FIELDname,"FIELDdata":FIELDdata}
     }
@@ -74,8 +80,9 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     oPROCESS.insertDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
       var s = "";
+      var IOrange_addr = Number(ROWname)*16+0xC800
       if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
-          s+=",\"IOrange:\":["+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname})+"]"
+          s+=",\"IOrange:\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
            +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname})+"]";
       return s
     }
@@ -84,7 +91,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = oPROCESS.process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    var s = "const _CFG = {\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
+    var s = "const _CFG = {\"SYS\":{\"A2\":false,\"A2P\":true,\"A2E\":false,\"A2C\":false},\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
     document.getElementById('dest').innerHTML += s;
   } 
 )
@@ -245,6 +252,7 @@ function PROCESS()
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
+function getHexWord(v) { return ''+hextab[Math.floor(v/0x1000)]+hextab[Math.floor((v&0x0f00)>>8)]+hextab[Math.floor((v&0xf0)>>4)]+hextab[v&0x000f] }
 
 function extractBrackets(str)
 {

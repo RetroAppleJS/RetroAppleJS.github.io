@@ -100,8 +100,6 @@ function Apple2IO(vid) {
             switch(addr)
             {
             case SPKR_TOGGLE:
-                //_o.EMU_snd_toggle.pause();
-                //_o.EMU_snd_toggle.play();
                 toggle();
                 break;
             case GFX_ON:
