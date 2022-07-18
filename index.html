@@ -814,7 +814,7 @@
                      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
                      for(var j=b[0];j<b[1];j+=parseInt("0100",16))
                      { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
-                       var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase()
+                       var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
                        blk_col[idx] = lbl[_o.sys][i][0]; blk_txt[idx] = lbl[_o.sys][i][1];
                      }
                    } //document.write(c)
