@@ -903,6 +903,7 @@
                  </table>
   
                  <script>
+                  var sys = "A2P"
                   var lbl = {
                              "A2P":{
                              "0000-00FF":["#FFFFFF","zero-page"]
@@ -916,20 +917,20 @@
                             ,"4000-5FFF":["#0000E0","HIRES2"]
                             ,"C000-CFFF":["#D0D000","I/O"]
                             ,"D000-F7FF":["#D00000","BASIC ROM"]
-                            ,"F800-FFFF":["#D00000","Monitor ROM"]
+                            ,"F800-FFFF":["#C00000","Monitor ROM"]
                             ,"0300":["","GETLN"]
                             }
                           }
   
                    // PREPARE ALL DATA
                    var blk_col = {}, blk_txt = {} //, c = ""
-                   for(var i in lbl[_CFG_SYS.sys])
+                   for(var i in lbl[sys])
                    {
                      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
                      for(var j=b[0];j<b[1];j+=parseInt("0100",16))
                      { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
                        var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
-                       blk_col[idx] = lbl[_CFG_SYS.sys][i][0]; blk_txt[idx] = lbl[_CFG_SYS.sys][i][1];
+                       blk_col[idx] = lbl[sys][i][0]; blk_txt[idx] = lbl[sys][i][1];
                      }
                    } //document.write(c)
   
@@ -951,7 +952,7 @@
                    */
   
                    // PAINT GRID
-                   for(var i in lbl[_CFG_SYS.sys])
+                   for(var i in lbl[sys])
                    {
                      var a = i.split("-");
                      if(a.length==2)
