@@ -17,12 +17,36 @@ Any change in this document affects the **default application configuration**, o
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md) 
 
+
+# SYSTEMS LIST
+
+|[SCODE]| Model              | CPU        | Speeds    |
+| :---: | :----------------- | :--------- | :-------- |
+| A1    | Apple I            | 6502       | 1.023     |
+| A2    | Apple II           | 6502       | 1.023     |
+| A2P   | Apple II Plus      | 6502       | 1.023     |
+| A2E   | Apple IIc EuroPlus | 6502       | 1.023     |
+| A2J   | Apple IIc J-Plus   | 6502       | 1.023     |
+| A2B   | Bell & Howell      | 6502       | 1.023     |
+| A3    | Apple III          | 6502B      | 1.8       |
+| A3R   | Apple III Revised  | 6502B      | 1.8       |
+| A2e   | Apple IIe          | 6502       | 1.023     |
+| A2c   | Apple IIc          | 65C02      | 1.023     |
+| A3P   | Apple III Plus     | 6502B      | 1.8       |
+| A2N   | Apple IIe Enhanced | 65C02      | 1.023     |
+| A2G   | Apple IIGS         | 65C816     | 2.8       |
+| A2c   | Apple IIc MemoryExp| 65C02      | 1.023     |
+| A2G3  | Apple IIGS ROM3    | 65C816     | 2.8       |
+| A2eP  | Apple IIe Platinum | 65C02      | 1.023     |
+| A2eC  | Apple IIe Card     | 65C02      | 1.023,1.9 |
+
+
 # PERIPHERALS LIST
 
-|[PCODE]| NAME                                   | IOrange\*           | ROMrange\*      | SLOTrange    | Manuals       |
-| :-----: | :----------------------------------- | :------------------ | :-------------- | :------------|:------------- |
-| MS16K   | Microsoft 16K Language card          | $C080,$C08F         |                 | 0            |               | 
-| DISKII  | Apple Disk II Floppy Disk Subsystem  | $C080+$10*n,$C08F+$10*n | $Cn00, $CnFF| 1,2,3,4,5,6,7| [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) |
+|[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYSrange    | Manuals       |
+| :-----: | :----------------------------------- | :-------------- | :------------|:----------- |:------------- |
+| MS16K   | Microsoft 16K Language card          |                 | 0            | A2,A2P,A2E  |               | 
+| DISKII  | Apple Disk II Floppy Disk Subsystem  |     $Cn00, $CnFF| 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) |
 
 
 \* n = slot number on which the card is installed
