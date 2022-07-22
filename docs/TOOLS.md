@@ -62,10 +62,10 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 Major challenges to picture quality are:
 
-- extreme color limitations (4 true colors + black and white)
-- a high-bit color switch ruling over an entire byte
-- convolutional color encoding
-- low pixel resolution (at today's standards)
+1) extreme color limitations (4 true colors + black and white)
+2) a high-bit color switch ruling over an entire byte
+3) convolutional color encoding
+4) low pixel resolution (at today's standards)
 
 Classic dithering algorithms as we know, simply can't cope well with all the weird stuff that happens on pixel level in an Apple II.  Trying dissociate a **color-encoding layer** and a **pattern encoding  layer** is challenging, both are seriously messed-up.  Most dithering patterns become colors, and generic color dithering algorithms can't handle anamorphous color pallettes.  While  black-and-White dithering can be achieved by means of a simple trick, **any color dithering algorithm known so far, regular or error-diffusion-based, need to be re-invented**.
 
