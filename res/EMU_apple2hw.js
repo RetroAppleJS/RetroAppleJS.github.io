@@ -100,10 +100,7 @@ function Apple2Hw(vid) {
     this.read = function(addr) {
         var d8;
         if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
-        {
-            d8 = this.io.read(addr); //  TODO let the IO read return ROM stuff !!!
-            // d8 = apple2Rom[addr - ROM_ADDR];
-        }
+            d8 = this.io.read(addr);
         else if (addr < RAM_SIZE)
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
@@ -127,9 +124,7 @@ function Apple2Hw(vid) {
                         addr.toString(16), d8.toString(16));
 
         if(this.io.ramcard &&  this.io.ramcard.active == true && addr >= ROM_ADDR)
-        {
-            d8 = this.io.write(addr,d8); 
-        }
+            d8 = this.io.write(addr,d8);
         else if (addr < RAM_SIZE) {
             ram[addr] = d8;
 
