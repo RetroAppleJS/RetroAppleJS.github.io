@@ -20,14 +20,15 @@
 
 
    .gtable {
-    height:180px;
-    margin-left:5px;
-    font-size:xx-small;
+    font-size:8px;
+    font-family:Arial;
+    border-collapse: collapse;
    }
-  .gtable tr { font-size:xx-small;padding:0px;margin:0px;width:20% }
+  .gtable tr { padding:0px;margin:0px;width:20% }
   .gtable tr td {
-    border:1px solid black;
-    width: 9px;
+    border:1px solid rgba(0, 0, 0, 0); /* grid border */
+    padding:0px;
+    width: 8px;
     position: relative;
   }
 
@@ -80,28 +81,33 @@
   ██   ██    ██    ██  ██  ██ ██      
   ██   ██    ██    ██      ██ ███████ 
 -->  
-<body onload="resize()">
+<body onload="init()">
 
-    <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;font-family:Arial">
+    <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;">
 
-    <table class=gtable style="border-collapse: collapse; position: relative;">
-    <tr><td>$0000</td><td id='m0000' class=gtip></td><td id='m0100'></td><td id='m0200'></td><td id='m0300'></td><td id='m0400'></td><td id='m0500'></td><td id='m0600'></td><td id='m0700'></td><td id='m0800'></td><td id='m0900'></td><td id='m0A00'></td><td id='m0B00'></td><td id='m0C00'></td><td id='m0D00'></td><td id='m0E00'></td><td id='m0F00'></td></tr>
-    <tr><td>$1000</td><td id='m1000'></td><td id='m1100'></td><td id='m1200'></td><td id='m1300'></td><td id='m1400'></td><td id='m1500'></td><td id='m1600'></td><td id='m1700'></td><td id='m1800'></td><td id='m1900'></td><td id='m1A00'></td><td id='m1B00'></td><td id='m1C00'></td><td id='m1D00'></td><td id='m1E00'></td><td id='m1F00'></td></tr>
-    <tr><td>$2000</td><td id='m2000'></td><td id='m2100'></td><td id='m2200'></td><td id='m2300'></td><td id='m2400'></td><td id='m2500'></td><td id='m2600'></td><td id='m2700'></td><td id='m2800'></td><td id='m2900'></td><td id='m2A00'></td><td id='m2B00'></td><td id='m2C00'></td><td id='m2D00'></td><td id='m2E00'></td><td id='m2F00'></td></tr>
-    <tr><td>$3000</td><td id='m3000'></td><td id='m3100'></td><td id='m3200'></td><td id='m3300'></td><td id='m3400'></td><td id='m3500'></td><td id='m3600'></td><td id='m3700'></td><td id='m3800'></td><td id='m3900'></td><td id='m3A00'></td><td id='m3B00'></td><td id='m3C00'></td><td id='m3D00'></td><td id='m3E00'></td><td id='m3F00'></td></tr>
-    <tr><td>$4000</td><td id='m4000'></td><td id='m4100'></td><td id='m4200'></td><td id='m4300'></td><td id='m4400'></td><td id='m4500'></td><td id='m4600'></td><td id='m4700'></td><td id='m4800'></td><td id='m4900'></td><td id='m4A00'></td><td id='m4B00'></td><td id='m4C00'></td><td id='m4D00'></td><td id='m4E00'></td><td id='m4F00'></td></tr>
-    <tr><td>$5000</td><td id='m5000'></td><td id='m5100'></td><td id='m5200'></td><td id='m5300'></td><td id='m5400'></td><td id='m5500'></td><td id='m5600'></td><td id='m5700'></td><td id='m5800'></td><td id='m5900'></td><td id='m5A00'></td><td id='m5B00'></td><td id='m5C00'></td><td id='m5D00'></td><td id='m5E00'></td><td id='m5F00'></td></tr>
-    <tr><td>$6000</td><td id='m6000'></td><td id='m6100'></td><td id='m6200'></td><td id='m6300'></td><td id='m6400'></td><td id='m6500'></td><td id='m6600'></td><td id='m6700'></td><td id='m6800'></td><td id='m6900'></td><td id='m6A00'></td><td id='m6B00'></td><td id='m6C00'></td><td id='m6D00'></td><td id='m6E00'></td><td id='m6F00'></td></tr>
-    <tr><td>$7000</td><td id='m7000'></td><td id='m7100'></td><td id='m7200'></td><td id='m7300'></td><td id='m7400'></td><td id='m7500'></td><td id='m7600'></td><td id='m7700'></td><td id='m7800'></td><td id='m7900'></td><td id='m7A00'></td><td id='m7B00'></td><td id='m7C00'></td><td id='m7D00'></td><td id='m7E00'></td><td id='m7F00'></td></tr>
-    <tr><td>$8000</td><td id='m8000'></td><td id='m8100'></td><td id='m8200'></td><td id='m8300'></td><td id='m8400'></td><td id='m8500'></td><td id='m8600'></td><td id='m8700'></td><td id='m8800'></td><td id='m8900'></td><td id='m8A00'></td><td id='m8B00'></td><td id='m8C00'></td><td id='m8D00'></td><td id='m8E00'></td><td id='m8F00'></td></tr>
-    <tr><td>$9000</td><td id='m9000'></td><td id='m9100'></td><td id='m9200'></td><td id='m9300'></td><td id='m9400'></td><td id='m9500'></td><td id='m9600'></td><td id='m9700'></td><td id='m9800'></td><td id='m9900'></td><td id='m9A00'></td><td id='m9B00'></td><td id='m9C00'></td><td id='m9D00'></td><td id='m9E00'></td><td id='m9F00'></td></tr>
-    <tr><td>$A000</td><td id='mA000'></td><td id='mA100'></td><td id='mA200'></td><td id='mA300'></td><td id='mA400'></td><td id='mA500'></td><td id='mA600'></td><td id='mA700'></td><td id='mA800'></td><td id='mA900'></td><td id='mAA00'></td><td id='mAB00'></td><td id='mAC00'></td><td id='mAD00'></td><td id='mAE00'></td><td id='mAF00'></td></tr>
-    <tr><td>$B000</td><td id='mB000'></td><td id='mB100'></td><td id='mB200'></td><td id='mB300'></td><td id='mB400'></td><td id='mB500'></td><td id='mB600'></td><td id='mB700'></td><td id='mB800'></td><td id='mB900'></td><td id='mBA00'></td><td id='mBB00'></td><td id='mBC00'></td><td id='mBD00'></td><td id='mBE00'></td><td id='mBF00'></td></tr>
-    <tr><td>$C000</td><td id='mC000'></td><td id='mC100'></td><td id='mC200'></td><td id='mC300'></td><td id='mC400'></td><td id='mC500'></td><td id='mC600'></td><td id='mC700'></td><td id='mC800'></td><td id='mC900'></td><td id='mCA00'></td><td id='mCB00'></td><td id='mCC00'></td><td id='mCD00'></td><td id='mCE00'></td><td id='mCF00'></td></tr>
-    <tr><td>$D000</td><td id='mD000'></td><td id='mD100'></td><td id='mD200'></td><td id='mD300'></td><td id='mD400'></td><td id='mD500'></td><td id='mD600'></td><td id='mD700'></td><td id='mD800'></td><td id='mD900'></td><td id='mDA00'></td><td id='mDB00'></td><td id='mDC00'></td><td id='mDD00'></td><td id='mDE00'></td><td id='mDF00'></td></tr>
-    <tr><td>$E000</td><td id='mE000'></td><td id='mE100'></td><td id='mE200'></td><td id='mE300'></td><td id='mE400'></td><td id='mE500'></td><td id='mE600'></td><td id='mE700'></td><td id='mE800'></td><td id='mE900'></td><td id='mEA00'></td><td id='mEB00'></td><td id='mEC00'></td><td id='mED00'></td><td id='mEE00'></td><td id='mEF00'></td></tr>
-    <tr><td>$F000</td><td id='mF000'></td><td id='mF100'></td><td id='mF200'></td><td id='mF300'></td><td id='mF400'></td><td id='mF500'></td><td id='mF600'></td><td id='mF700'></td><td id='mF800'></td><td id='mF900'></td><td id='mFA00'></td><td id='mFB00'></td><td id='mFC00'></td><td id='mFD00'></td><td id='mFE00'></td><td id='mFF00'></td></tr>
+      <!--
+    <table class=gtable style="float:left">
+      <tr><td>7000</td><td id='m7000'></td><td id='m7100'></td><td id='m7200'></td><td id='m7300'></td><td id='m7400'></td><td id='m7500'></td><td id='m7600'></td><td id='m7700'></td><td id='m7800'></td><td id='m7900'></td><td id='m7A00'></td><td id='m7B00'></td><td id='m7C00'></td><td id='m7D00'></td><td id='m7E00'></td><td id='m7F00'></td></tr>
+      <tr><td>6000</td><td id='m6000'></td><td id='m6100'></td><td id='m6200'></td><td id='m6300'></td><td id='m6400'></td><td id='m6500'></td><td id='m6600'></td><td id='m6700'></td><td id='m6800'></td><td id='m6900'></td><td id='m6A00'></td><td id='m6B00'></td><td id='m6C00'></td><td id='m6D00'></td><td id='m6E00'></td><td id='m6F00'></td></tr>
+      <tr><td>5000</td><td id='m5000'></td><td id='m5100'></td><td id='m5200'></td><td id='m5300'></td><td id='m5400'></td><td id='m5500'></td><td id='m5600'></td><td id='m5700'></td><td id='m5800'></td><td id='m5900'></td><td id='m5A00'></td><td id='m5B00'></td><td id='m5C00'></td><td id='m5D00'></td><td id='m5E00'></td><td id='m5F00'></td></tr>
+      <tr><td>4000</td><td id='m4000'></td><td id='m4100'></td><td id='m4200'></td><td id='m4300'></td><td id='m4400'></td><td id='m4500'></td><td id='m4600'></td><td id='m4700'></td><td id='m4800'></td><td id='m4900'></td><td id='m4A00'></td><td id='m4B00'></td><td id='m4C00'></td><td id='m4D00'></td><td id='m4E00'></td><td id='m4F00'></td></tr>
+      <tr><td>3000</td><td id='m3000'></td><td id='m3100'></td><td id='m3200'></td><td id='m3300'></td><td id='m3400'></td><td id='m3500'></td><td id='m3600'></td><td id='m3700'></td><td id='m3800'></td><td id='m3900'></td><td id='m3A00'></td><td id='m3B00'></td><td id='m3C00'></td><td id='m3D00'></td><td id='m3E00'></td><td id='m3F00'></td></tr>
+      <tr><td>2000</td><td id='m2000'></td><td id='m2100'></td><td id='m2200'></td><td id='m2300'></td><td id='m2400'></td><td id='m2500'></td><td id='m2600'></td><td id='m2700'></td><td id='m2800'></td><td id='m2900'></td><td id='m2A00'></td><td id='m2B00'></td><td id='m2C00'></td><td id='m2D00'></td><td id='m2E00'></td><td id='m2F00'></td></tr>
+      <tr><td>1000</td><td id='m1000'></td><td id='m1100'></td><td id='m1200'></td><td id='m1300'></td><td id='m1400'></td><td id='m1500'></td><td id='m1600'></td><td id='m1700'></td><td id='m1800'></td><td id='m1900'></td><td id='m1A00'></td><td id='m1B00'></td><td id='m1C00'></td><td id='m1D00'></td><td id='m1E00'></td><td id='m1F00'></td></tr>
+      <tr><td>0000</td><td id='m0000'></td><td id='m0100'></td><td id='m0200'></td><td id='m0300'></td><td id='m0400'></td><td id='m0500'></td><td id='m0600'></td><td id='m0700'></td><td id='m0800'></td><td id='m0900'></td><td id='m0A00'></td><td id='m0B00'></td><td id='m0C00'></td><td id='m0D00'></td><td id='m0E00'></td><td id='m0F00'></td></tr>
     </table>
+
+    <table class=gtable>
+      <tr><td>F000</td><td id='mF000'></td><td id='mF100'></td><td id='mF200'></td><td id='mF300'></td><td id='mF400'></td><td id='mF500'></td><td id='mF600'></td><td id='mF700'></td><td id='mF800'></td><td id='mF900'></td><td id='mFA00'></td><td id='mFB00'></td><td id='mFC00'></td><td id='mFD00'></td><td id='mFE00'></td><td id='mFF00'></td></tr>
+      <tr><td>E000</td><td id='mE000'></td><td id='mE100'></td><td id='mE200'></td><td id='mE300'></td><td id='mE400'></td><td id='mE500'></td><td id='mE600'></td><td id='mE700'></td><td id='mE800'></td><td id='mE900'></td><td id='mEA00'></td><td id='mEB00'></td><td id='mEC00'></td><td id='mED00'></td><td id='mEE00'></td><td id='mEF00'></td></tr>
+      <tr><td>D000</td><td id='mD000'></td><td id='mD100'></td><td id='mD200'></td><td id='mD300'></td><td id='mD400'></td><td id='mD500'></td><td id='mD600'></td><td id='mD700'></td><td id='mD800'></td><td id='mD900'></td><td id='mDA00'></td><td id='mDB00'></td><td id='mDC00'></td><td id='mDD00'></td><td id='mDE00'></td><td id='mDF00'></td></tr>
+      <tr><td>C000</td><td id='mC000'></td><td id='mC100'></td><td id='mC200'></td><td id='mC300'></td><td id='mC400'></td><td id='mC500'></td><td id='mC600'></td><td id='mC700'></td><td id='mC800'></td><td id='mC900'></td><td id='mCA00'></td><td id='mCB00'></td><td id='mCC00'></td><td id='mCD00'></td><td id='mCE00'></td><td id='mCF00'></td></tr>
+      <tr><td>B000</td><td id='mB000'></td><td id='mB100'></td><td id='mB200'></td><td id='mB300'></td><td id='mB400'></td><td id='mB500'></td><td id='mB600'></td><td id='mB700'></td><td id='mB800'></td><td id='mB900'></td><td id='mBA00'></td><td id='mBB00'></td><td id='mBC00'></td><td id='mBD00'></td><td id='mBE00'></td><td id='mBF00'></td></tr>
+      <tr><td>A000</td><td id='mA000'></td><td id='mA100'></td><td id='mA200'></td><td id='mA300'></td><td id='mA400'></td><td id='mA500'></td><td id='mA600'></td><td id='mA700'></td><td id='mA800'></td><td id='mA900'></td><td id='mAA00'></td><td id='mAB00'></td><td id='mAC00'></td><td id='mAD00'></td><td id='mAE00'></td><td id='mAF00'></td></tr>
+      <tr><td>9000</td><td id='m9000'></td><td id='m9100'></td><td id='m9200'></td><td id='m9300'></td><td id='m9400'></td><td id='m9500'></td><td id='m9600'></td><td id='m9700'></td><td id='m9800'></td><td id='m9900'></td><td id='m9A00'></td><td id='m9B00'></td><td id='m9C00'></td><td id='m9D00'></td><td id='m9E00'></td><td id='m9F00'></td></tr>
+      <tr><td>8000</td><td id='m8000'></td><td id='m8100'></td><td id='m8200'></td><td id='m8300'></td><td id='m8400'></td><td id='m8500'></td><td id='m8600'></td><td id='m8700'></td><td id='m8800'></td><td id='m8900'></td><td id='m8A00'></td><td id='m8B00'></td><td id='m8C00'></td><td id='m8D00'></td><td id='m8E00'></td><td id='m8F00'></td></tr>
+    </table>
+    -->
 
     <script>
     var lbl = {
@@ -114,6 +120,7 @@
               ,"0C00-1FFF":["#00D000","APPLESOFT PRG"]
               ,"2000-3FFF":["#0000FF","HIRES1"]
               ,"4000-5FFF":["#0000E0","HIRES2"]
+              ,"6000-BFFF":["rgba(0,0,0,0.1)",""]
               ,"C000-C0FF":["#B0B000","SLOT I/O"]
               ,"C100-C1FF":["#D0D000","SLOT 1 ROM"]
               ,"C200-C2FF":["#D0D000","SLOT 2 ROM"]
@@ -128,6 +135,30 @@
               ,"0300":["","GETLN"]
     }
 
+
+var oMEMGRID = new function()
+{
+  var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+  var getHexByte    = function(v) { return hextab[v>>4]+hextab[v&0xf] }
+  var getHexWord    = function(v) { return ''+hextab[v>>12]+hextab[Math.floor((v&0x0f00)>>8)]+hextab[Math.floor((v&0xf0)>>4)]+hextab[v&0x000f] }
+  var line = function(start,len,step)
+  {
+    var end = start+len*step;
+    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = getHexWord(j);
+    return a;
+  }
+
+  this.build_grid = function(start,len,step)
+  {
+    var s = "<table class=gtable style='float:left'>\n";
+    var end = start+len*step;
+    for(var i=start;i!=end;i+=step)
+      s += "<tr><td>"+getHexWord(i)+"</td><td id='m"+line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
+    return s+"</table>"
+  }
+
+  this.paint_grid = function(lbl)
+  {
     // PREPARE ALL DATA
     var blk_col = {}, blk_txt = {} //, c = ""
     for(var i in lbl)
@@ -136,10 +167,9 @@
       for(var j=b[0];j<b[1];j+=parseInt("0100",16))
       { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
         var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
-        blk_col[idx] = lbl[i][0]; blk_txt[idx] = idx+" "+lbl[i][1];
+        blk_col[idx] = lbl[i][0]; blk_txt[idx] = "$"+idx+" "+lbl[i][1];
       }
-    } //document.write(c)
-
+    }
 
     // PAINT GRID
     for(var i in lbl)
@@ -152,68 +182,59 @@
         {
           var idx = ("000"+j.toString(16)).slice(-4).toUpperCase();
           var el = document.getElementById("m"+idx);
-          if(blk_col[idx].charAt(0)=="#") el.style.backgroundColor = blk_col[idx];
+          if(el!=null)
+          {
+          if(blk_col[idx].charAt(0)=="#" || blk_col[idx].substring(0,5)=="rgba(")
+            el.style.backgroundColor = blk_col[idx];
           el.innerHTML = "<span class=gt>"+blk_txt[idx]+"</span>"
+          }
         }
       }
     }
+  }
+}()
 
+function init()
+{
+  var linestep = 4096;
+  var 
+  document.getElementById("debug2").innerHTML = oMEMGRID.build_grid(7*linestep,8,-linestep) + oMEMGRID.build_grid(15*linestep,8,-linestep);
+  //document.getElementById("debug2").innerHTML = oMEMGRID.build_grid(15*linestep,16,-linestep)
+  oMEMGRID.paint_grid(lbl);
+}
+
+   /*
     function resize()
     {
-      const table_tag = document.querySelector('table');
-      table_tag.classList.replace('gtable', 'htable'); // 
-    }     
+      //const table_tag = document.querySelector('table');
+      //table_tag.classList.replace('gtable', 'htable');
+
+      var el = document.querySelectorAll(".gtable");
+      for(var i=0;i<el.length;i++)
+      {
+        //el[i].style.height = "80px";
+        document.getElementById("debug").innerHTML = "height="+el[i].clientHeight
+      }
+
+      var el = document.querySelectorAll(".gtable tr td");
+      for(var i=0;i<el.length;i++)
+      {
+        //el[i].style.width = "8px";
+        //el[i].style.height = "8px";
+      }     
+    }  
+     */
+   
+
   </script>
+
+
+<div id="debug2"></div>
+
   </div>
 
-<style>
-  .htable {
-    height:180px;
-    margin-left:5px;
-    font-size:xx-small;
-   }
-  .htable tr { font-size:xx-small;padding:0px;margin:0px;width:20% }
-  .htable tr td {
-    border:1px solid black;
-    width: 19px;
-    height: 19px;
-    position: relative;
-  }
-
-  .htable tr td .gt {
-    position: absolute;
-    visibility: hidden;
-    width: 100px;
-    background: #fff;
-    color: #000;
-    text-align: left;
-    border-radius: 3px;
-    padding: 2px 2px;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -60px;
-    opacity: .1;
-    transition: opacity 0.3s;
-  }
-
-  .htable tr td:hover .gt  {
-    visibility: visible;
-    transition: opacity 0.3s;
-    opacity: 1;
-  }
-
-  .htable tr td .gt::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 60px;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #fff transparent transparent transparent;
-  }
-</style>
+  <textarea id="debug" style="width:1024px;height:200px" hidden></textarea>
+  
 
 </body>
 </html>
