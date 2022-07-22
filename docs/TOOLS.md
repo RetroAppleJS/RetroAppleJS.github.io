@@ -58,7 +58,7 @@ Subsequent versions of this tab control show increasingly interesting capabiliti
 
 ### HGRpatternJS.html
 
-<img src="../res/HGRpatternJS.png" align=left width=50% />This tool is designed to find a color encoding strategy to tackle the typical challenges with Apple II HGR graphics. 
+<img src="../res/HGRpatternJS.png" align=left width=50% />[This tool](https://retroapplejs.github.io/tools/HGRpatternJS.html) is designed to find a color encoding strategy to tackle the typical challenges with Apple II HGR graphics. 
 
 Major challenges to picture quality are:  
 * extreme color limitations (4 true colors + black and white)
