@@ -47,9 +47,8 @@ function PATTERN(idx,x,y)
       catch(e){ return 0 }
     }
     
-    this.prep = 4;                     // horizontal pattern repetition
+    this.prep = 4;                          // horizontal pattern repetition = 4, vertical pattern repetition = 2 (hard coded)
     this.pmax = Math.pow(2,2*this.prep)*3;  // 2 ^ (2 rows * 2 bits) * 3 high-bit combinations
-
     this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
     this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
     this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
@@ -57,10 +56,9 @@ function PATTERN(idx,x,y)
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+ Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
     this.colorSaturation = function(a) {
       var avg = Math.round((a[0]+a[1]+a[2])/3);
-      if(avg==0) return 0;
+      if(avg==0) return 0;          // prevent division by zero vvv
       return Math.round(100*this.colorDistance(a,[avg,avg,avg])/avg)
     }
-
     this.set_prep = function(bits) { this.prep = Number(bits); this.pmax = Math.pow(2,2*this.prep)*3 }
     this.calculate = function(p,x,y)
     {
