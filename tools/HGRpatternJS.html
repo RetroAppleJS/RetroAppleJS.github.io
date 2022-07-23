@@ -298,11 +298,11 @@ function gen_cell(patternID,x,y,img)
   }
 */
 
-  var pix = c[1]?"background-color:black":"";
-  var bck = (c[2]==128?"border-color:#FFE9D0":"");
+  var pix = c[0]?"background-color:black":"";
+  var bck = (c[1]==128?"border-color:#FFE9D0":"");
   var s= "<td class='"+css+"tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
   if((x+1)%7==0)
-    s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
+    s+= "<td class=tcell5 style=\""+(c[1]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
   return s;
 }
 
