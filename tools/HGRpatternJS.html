@@ -792,8 +792,9 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
       <ul id="minitabs">
 
         <li class=no_margins style=vertical-align:top;>
-          <table class=nomargins style="display:inline-block;">
-          <tr><td class=no_margins style="vertical-align:top;">
+          <table class=nomargins style="display:inline-block;vertical-align:top">
+          <tr>
+            <td class=no_margins style="vertical-align:top;">
               <div id=disp_param3 class="slider" style="width:100px;vertical-align:top"></div>
               <small>pattern </small>
               <input type="radio" name=param7 value=2 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>2</small>
@@ -801,13 +802,13 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
               <input type="radio" name=param7 value=6 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>6</small> bit
               <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
               <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
-              
-              <table class=nomargins style="border:1px solid black"><tr>
-              <td class=no_margins><input type=image  src=../res/arrow_button_left.png onclick="document.getElementById('param3').value--;update(true);"></td>
-              <td class=no_margins><input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:280px;height:20px;margin:0px 0px 0px 0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"></td>
-              <td class=no_margins><input type=image  src=../res/arrow_button_right.png onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"></td>
-              </tr><table>
-          </td></tr></table>    
+              </td></tr></tr><td>
+              <input type=image  src=../res/arrow_button_left.png onclick="document.getElementById('param3').value--;update(true);">
+              <input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:280px;height:20px;margin:0px 0px 0px 0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">
+              <input type=image  src=../res/arrow_button_right.png onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">
+          </td>
+        </tr>
+        </table>    
         </li>
         <li class=no_margins>
           <table style='display:inline-block;border:1px solid; vertical-align: top;'>
