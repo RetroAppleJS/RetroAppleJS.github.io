@@ -18,6 +18,7 @@ function PALETTE()
     this.hex_pal     = [];
     this.limit_dots  = {};
     this.mouseXY     = {"x":0,"y":0,"dx":0,"dy":0,"down":false};
+    this.bProgressbar = false;
 
     this.load        = function(p) { this.hex_pal = p }
     this.debug_data  = {};
@@ -170,23 +171,12 @@ function PALETTE()
 //  ██   ██ ██   ██ ██ ██  ██ ██ ██   ██ ██    ██ ██ ███ ██ 
 //  ██   ██ ██   ██ ██ ██   ████ ██████   ██████   ███ ███
 
-    this.newton_time = new Date();
-
-    this.newton = function(pct)
+    this.progress_time = new Date();
+    this.progress_bar = function(pct)
     {
-        if(pct == 0)
-        {
-            this.newton_time = new Date()
-            document.getElementById("hourglass").innerHTML = 
-            "<img src=../res/Apple_first_logo.png style='position:absolute;left:0px;top:0px'>"
-            +"<img id=newton src=../res/apple-logo-icon.png style='position:absolute;left:128px;top:196px;width:16px;height;16px;image-rendering:pixelated'>"
-        }
-        else
-        {
-            document.getElementById("newton").style.top = (196+pct*0.65)+"px";
-            var d = new Date();
-            console.log("pct="+pct+" "+(d-this.newton_time)+"ms")
-        }
+        if(pct == 0) this.progress_time = new Date();
+        var d = new Date();
+        console.log("pct="+pct+" "+(d-this.progress_time)+"ms")
     }
 
     this.check_process = function(obj)
@@ -200,21 +190,24 @@ function PALETTE()
         
         if(obj.rainbow_pct<100)
         {
-            obj.newton(obj.rainbow_pct);
+            obj.progress_bar(obj.rainbow_pct);
             obj.rainbow_section();
             window.setTimeout(obj.check_process,1,obj);
         }
         else
         {
-            obj.newton(obj.rainbow_pct);
+            obj.progress_bar(obj.rainbow_pct);
             obj.rainbow_section();
             obj.rainbow_find();
-
-            document.body.style.visibility = "visible" 
-            document.getElementById("hourglass").style.visibility = "hidden";
+            obj.progress_done();
         }
         obj.rainbow_pct += this.inc;
         return
+    }
+
+    this.progress_done = function()
+    {
+        console.log("process_done()")
     }
 
     this.draw_rainbow = function()
@@ -235,30 +228,18 @@ function PALETTE()
             this.dec_near_pos[i] = [0,0];           
         }
 
-        //this.process_busy = false;
-        //window.setTimeout(this.check_process,0,this);   
-
-        this.rainbow_pct = 100
-        this.rainbow_section();
-        console.log("sections done");
-        this.rainbow_find();
-        document.body.style.visibility = "visible" 
-        document.getElementById("hourglass").style.visibility = "hidden";
-
-        /*
-        this.pct = 20;
-        window.setTimeout( this.rainbow_section, 100, this );
-        this.pct = 40;
-        window.setTimeout( this.rainbow_section, 100, this );
-        this.pct = 60;
-        window.setTimeout( this.rainbow_section, 100, this );
-        this.pct = 80;
-        window.setTimeout( this.rainbow_section, 100, this );
-        this.pct = 100;
-        window.setTimeout( this.rainbow_section, 100, this );
-        this.rainbow_find();
-        */
-
+        if(this.bProgressbar)
+        {
+            this.process_busy = false;
+            window.setTimeout(this.check_process,0,this);
+        }   
+        else
+        {
+            this.rainbow_pct = 100
+            this.rainbow_section();
+            this.rainbow_find();
+            this.progress_done();
+        }
         /*
         // Find nearest greyscale + find nearest greyscale
         for(var y=0;y<height;y++)
@@ -280,7 +261,7 @@ function PALETTE()
         var from_height = this.until_height?this.until_height:0;
         this.until_height = Math.round(this.c_height*this.rainbow_pct/100);
 
-        console.log("from_height="+from_height+" this.until_height="+this.until_height)
+        //console.log("from_height="+from_height+" this.until_height="+this.until_height)
 
         // Draw color range + find nearest color pattern
         for(var y=from_height;y<this.until_height;y++)

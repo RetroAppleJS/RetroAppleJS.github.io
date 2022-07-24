@@ -52,6 +52,27 @@ for(var i=0;i<_D.YVERTL.length;i+=2)
 
 var oPATTERN = new PATTERN();
 var oPALETTE = new PALETTE();
+oPALETTE.bProgressbar = true;
+oPALETTE.progress_bar = function(pct)
+{
+  if(pct == 0)
+  {
+      this.progress_time = new Date();
+      document.getElementById("hourglass").innerHTML = 
+      "<img src=../res/Apple_first_logo.png style='position:absolute;left:0px;top:0px'>"
+      //+"<img id=newton src=../res/apple-logo-icon.png style='position:absolute;left:128px;top:196px;width:16px;height;16px;image-rendering:pixelated'>"
+      +"<img id=newton src=../res/apple-logo-1977.png style='position:absolute;left:128px;top:196px;width:20px;height;20px;image-rendering:pixelated'>"
+    
+  }
+  else
+      document.getElementById("newton").style.top = (196+pct*pct*0.0062)+"px";
+      document.getElementById("newton").style.transform = "rotate("+(pct)+"deg)";
+
+  var d = new Date();
+  //console.log("pct="+pct+" "+(d-this.progress_time)+"ms");
+}
+
+
 var custom_bmap,custom_fmla;
 var vidContext, apple2plus;
 var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
@@ -69,8 +90,6 @@ function init_gui(bRefresh)
 {
   
   status_message("init");
-
-
 
   try{ document.getElementById('slider_title').outerHTML = _TITLE() } catch(e){}  
   if(!bRefresh)
@@ -152,7 +171,15 @@ function init_gui(bRefresh)
   oPALETTE.color_depth=24;
 
  
-  oPALETTE.draw_rainbow();   // >>>>  TODO  >>>>> SHOULD CALL THE REST OF THE CODE WHEN CALCULATIONS ARE READY
+  oPALETTE.opat = _D.opat;
+  oPALETTE.draw_rainbow();
+  // when progress done
+  oPALETTE.progress_done = function()
+  {
+    document.getElementById("hourglass").style.visibility = "hidden";  // hide progress bar
+    document.body.style.visibility = "visible";                         // reveal main screen
+    update(true); // update rest of the screen
+  }
 
 
   //oPALETTE.insert_canvas({"id":"greyPalette","canvasID":[2,3],"width":_D.leftpane,"height":50});
@@ -160,9 +187,9 @@ function init_gui(bRefresh)
 
 
 
-  oPALETTE.opat = _D.opat;
+
   //status_message("update");
-  setTimeout(function(){update(true)},1);
+  //setTimeout(function(){update(true)},1);
   //update(true);
 
   //oPALETTE.draw_colormatches(oPATTERN);
@@ -758,7 +785,7 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
   </style>
 </head>
 
-<body class="slider_main" onload="oPALETTE.newton(0);setTimeout(init_gui, 100);" style="visibility:hidden;">
+<body class="slider_main" onload="oPALETTE.progress_bar(0);setTimeout(init_gui, 100);" style="visibility:hidden;">
 <div id="slider_title"></div>
  <div class="slider_overlay">
     <div id="topmenu">
