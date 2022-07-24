@@ -802,9 +802,9 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
               <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
               <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
               <br>
-              <button class=smallbutton onclick="document.getElementById('param3').value--;update(true);"><img src=../res/arrow_button_left.png><!--&larr;--></button>
+              <button class=smallbutton onclick="document.getElementById('param3').value--;update(true);"><img src=../res/arrow_button_left.png><!--&larr;--></button>&nbsp;
               <input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:290px;height:20px;margin:0px 0px 0px 0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">
-              <button class=smallbutton onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><!--&rarr;--><img src=../res/arrow_button_right.png></button>
+              &nbsp;<button class=smallbutton onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();"><!--&rarr;--><img src=../res/arrow_button_right.png></button>
           </td></tr></table>    
         </li>
         <li class=no_margins>
