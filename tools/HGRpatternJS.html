@@ -60,13 +60,12 @@ oPALETTE.progress_bar = function(pct)
       this.progress_time = new Date();
       document.getElementById("hourglass").innerHTML = 
       "<img src=../res/Apple_first_logo.png style='position:absolute;left:0px;top:0px'>"
-      //+"<img id=newton src=../res/apple-logo-icon.png style='position:absolute;left:128px;top:196px;width:16px;height;16px;image-rendering:pixelated'>"
       +"<img id=newton src=../res/apple-logo-1977.png style='position:absolute;left:128px;top:196px;width:20px;height;20px;image-rendering:pixelated'>"
     
   }
   else
       document.getElementById("newton").style.top = (196+pct*pct*0.0062)+"px";
-      document.getElementById("newton").style.transform = "rotate("+(pct)+"deg)";
+      document.getElementById("newton").style.transform = "rotate("+(2.5*pct)+"deg)";
 
   var d = new Date();
   //console.log("pct="+pct+" "+(d-this.progress_time)+"ms");
