@@ -181,7 +181,7 @@ function PALETTE()
 
     this.check_process = function(obj)
     {
-        this.inc = 2;
+        this.inc = 5;   // iterate every n%
         if(obj.process_busy) return;
         if(obj.rainbow_pct===undefined)
         {   
@@ -192,7 +192,7 @@ function PALETTE()
         {
             obj.progress_bar(obj.rainbow_pct);
             obj.rainbow_section();
-            window.setTimeout(obj.check_process,1,obj);
+            window.setTimeout(obj.check_process,200,obj);   // check every 250ms
         }
         else
         {
