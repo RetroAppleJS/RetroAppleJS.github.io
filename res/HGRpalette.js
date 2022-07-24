@@ -4,6 +4,8 @@
 //
 // HGRpalette.js
 
+const { networkInterfaces } = require("os");
+
 function PALETTE()
 {
     this.bDebug      = false;
@@ -168,6 +170,53 @@ function PALETTE()
 //  ██   ██ ██   ██ ██ ██  ██ ██ ██   ██ ██    ██ ██ ███ ██ 
 //  ██   ██ ██   ██ ██ ██   ████ ██████   ██████   ███ ███
 
+    this.newton_time = new Date();
+
+    this.newton = function(pct)
+    {
+        if(pct == 0)
+        {
+            this.newton_time = new Date()
+            document.getElementById("hourglass").innerHTML = 
+            "<img src=../res/Apple_first_logo.png style='position:absolute;left:0px;top:0px'>"
+            +"<img id=newton src=../res/apple-logo-icon.png style='position:absolute;left:128px;top:196px;width:16px;height;16px;image-rendering:pixelated'>"
+        }
+        else
+        {
+            document.getElementById("newton").style.top = (196+pct*0.65)+"px";
+            var d = new Date();
+            console.log("pct="+pct+" "+(d-this.newton_time)+"ms")
+        }
+    }
+
+    this.check_process = function(obj)
+    {
+        this.inc = 2;
+        if(obj.process_busy) return;
+        if(obj.rainbow_pct===undefined)
+        {   
+            obj.rainbow_pct = this.inc;
+        }
+        
+        if(obj.rainbow_pct<100)
+        {
+            obj.newton(obj.rainbow_pct);
+            obj.rainbow_section();
+            window.setTimeout(obj.check_process,1,obj);
+        }
+        else
+        {
+            obj.newton(obj.rainbow_pct);
+            obj.rainbow_section();
+            obj.rainbow_find();
+
+            document.body.style.visibility = "visible" 
+            document.getElementById("hourglass").style.visibility = "hidden";
+        }
+        obj.rainbow_pct += this.inc;
+        return
+    }
+
     this.draw_rainbow = function()
     {
         this.clear_layer(0);
@@ -175,8 +224,8 @@ function PALETTE()
         this.dec_near_col = [];
         this.dec_near_pos = [];
 
-        var width  = this.canvas[0].width;
-        var height = this.canvas[0].height;
+        this.c_width  = this.canvas[0].width;
+        this.c_height = this.canvas[0].height;
 
         // initialise color arrays
         for(var i=0;i<this.hex_pal.length;i++)
@@ -186,20 +235,29 @@ function PALETTE()
             this.dec_near_pos[i] = [0,0];           
         }
 
-        // Draw color range + find nearest color pattern
-        for(var y=0;y<height;y++)
-        {
-            for(var x=0;x<width;x++)
-            { 
-                var dec_cx = this.sweep_section(x,y,width,height);
-                //////////////////////////////////////////////////////
-                dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth]);  // Color depth modifier
-                //////////////////////////////////////////////////////
-                var hex_cx = this.RGB2HEX(dec_cx);
-                this.drawPixel(this.ctx[0], x, y, '#'+hex_cx.join(""));
-                this.calc_nearest(x,y,dec_cx);
-            }
-        }
+        //this.process_busy = false;
+        //window.setTimeout(this.check_process,0,this);   
+
+        this.rainbow_pct = 100
+        this.rainbow_section();
+        console.log("sections done");
+        this.rainbow_find();
+        document.body.style.visibility = "visible" 
+        document.getElementById("hourglass").style.visibility = "hidden";
+
+        /*
+        this.pct = 20;
+        window.setTimeout( this.rainbow_section, 100, this );
+        this.pct = 40;
+        window.setTimeout( this.rainbow_section, 100, this );
+        this.pct = 60;
+        window.setTimeout( this.rainbow_section, 100, this );
+        this.pct = 80;
+        window.setTimeout( this.rainbow_section, 100, this );
+        this.pct = 100;
+        window.setTimeout( this.rainbow_section, 100, this );
+        this.rainbow_find();
+        */
 
         /*
         // Find nearest greyscale + find nearest greyscale
@@ -214,6 +272,36 @@ function PALETTE()
         }
         */
 
+    }
+
+    this.rainbow_section = function()
+    {
+        this.process_busy = true;
+        var from_height = this.until_height?this.until_height:0;
+        this.until_height = Math.round(this.c_height*this.rainbow_pct/100);
+
+        console.log("from_height="+from_height+" this.until_height="+this.until_height)
+
+        // Draw color range + find nearest color pattern
+        for(var y=from_height;y<this.until_height;y++)
+        {
+            //console.log("y="+y);
+            for(var x=0;x<this.c_width;x++)
+            { 
+                var dec_cx = this.sweep_section(x,y,this.c_width,this.c_height);
+                //////////////////////////////////////////////////////
+                dec_cx = this.color_depth_transform(dec_cx,[24,this.color_depth]);  // Color depth modifier
+                //////////////////////////////////////////////////////
+                var hex_cx = this.RGB2HEX(dec_cx);
+                this.drawPixel(this.ctx[0], x, y, '#'+hex_cx.join(""));
+                this.calc_nearest(x,y,dec_cx);
+            }
+        }
+        this.process_busy = false;
+    }
+
+    this.rainbow_find = function()
+    {
         // calculate center location of closest color
         for(var i=0;i<this.dec_near_col.length;i++)
         {
@@ -230,6 +318,7 @@ function PALETTE()
         }
         bUpdate = true;     // allow new updates
     }
+
 
     this.draw_greyscale = function()
     {
