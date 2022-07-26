@@ -83,8 +83,10 @@
 -->  
 <body onload="init()">
 
-    <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;">
 
+    <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;">
+      <input type=button onclick="memscan(document.getElementById('address_decode'))"  style="font-family:Arial;font-size:11px;float:left;padding-top:3px" value="address decoder"></input>&nbsp;
+      <input type=text id="address_decode" style="width:205px" value="(adr & 0xF000)">
       <!--
     <table class=gtable style="float:left">
       <tr><td>7000</td><td id='m7000'></td><td id='m7100'></td><td id='m7200'></td><td id='m7300'></td><td id='m7400'></td><td id='m7500'></td><td id='m7600'></td><td id='m7700'></td><td id='m7800'></td><td id='m7900'></td><td id='m7A00'></td><td id='m7B00'></td><td id='m7C00'></td><td id='m7D00'></td><td id='m7E00'></td><td id='m7F00'></td></tr>
@@ -135,16 +137,30 @@
               ,"0300":["","GETLN"]
     }
 
+function memscan()
+{
+  for(var adr=0;adr<0xFFFF;adr+=0x100)
+  {
+    document.getElementById("output").innerHTML += "adr="+adr+"<br>"
+  }
+}
 
 var oMEMGRID = new function()
 {
-  var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-  var getHexByte    = function(v) { return hextab[v>>4]+hextab[v&0xf] }
-  var getHexWord    = function(v) { return ''+hextab[v>>12]+hextab[Math.floor((v&0x0f00)>>8)]+hextab[Math.floor((v&0xf0)>>4)]+hextab[v&0x000f] }
-  var line = function(start,len,step)
+    this.hextab = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+    this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+    this.getHexWord = function(v)
+    {
+        return '' + this.hextab[Math.floor(v / 0x1000)]
+                            + this.hextab[Math.floor((v & 0x0f00) / 256)]
+                            + this.hextab[Math.floor((v & 0xf0) / 16)]
+                            + this.hextab[v & 0x000f];
+    }
+
+  this.line = function(start,len,step)
   {
     var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = getHexWord(j);
+    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = this.getHexWord(j);
     return a;
   }
 
@@ -153,7 +169,7 @@ var oMEMGRID = new function()
     var s = "<table class=gtable style='float:left'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+getHexWord(i)+"</td><td id='m"+line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
+      s += "<tr><td>"+this.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
     return s+"</table>"
   }
 
@@ -197,7 +213,6 @@ var oMEMGRID = new function()
 function init()
 {
   var linestep = 4096;
-  var 
   document.getElementById("debug2").innerHTML = oMEMGRID.build_grid(7*linestep,8,-linestep) + oMEMGRID.build_grid(15*linestep,8,-linestep);
   //document.getElementById("debug2").innerHTML = oMEMGRID.build_grid(15*linestep,16,-linestep)
   oMEMGRID.paint_grid(lbl);
@@ -230,8 +245,11 @@ function init()
 
 
 <div id="debug2"></div>
+<div id="output"></div>
 
   </div>
+
+
 
   <textarea id="debug" style="width:1024px;height:200px" hidden></textarea>
   
