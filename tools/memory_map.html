@@ -139,10 +139,22 @@
 
 function memscan()
 {
+  document.getElementById("output").innerHTML = "";
+  var dv = ["<div style='font-size:10px;font-family:Arial;color:white'>","</div>"];
   for(var adr=0;adr<0xFFFF;adr+=0x100)
   {
-    document.getElementById("output").innerHTML += "adr="+adr+"<br>"
+    try{
+      var f = document.getElementById("address_decode").value;
+      var o = eval(f);
+      document.getElementById("output").innerHTML += dv[0]+"adr="+oMEMGRID.getHexWord(adr)+" o="+o+dv[1]
+    }
+    catch(e)
+    {
+      document.getElementById("output").innerHTML += "adr="+oMEMGRID.getHexWord(adr)+"<br>"
+    }
   }
+
+  //document.getElementById("output").innerHTML += ;
 }
 
 var oMEMGRID = new function()
