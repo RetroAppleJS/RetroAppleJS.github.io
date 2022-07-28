@@ -94,7 +94,21 @@ function Apple2Hw(vid) {
 
     this.addr_decode = function(addr)
     {
+        switch(addr >> 11 << 11)
+        {
 
+            case 0xF000:      //Applesoft ROM 
+            case 0xE800:
+            case 0xE000:
+            case 0xD800:
+            case 0xD000:
+
+            break
+            case 0xC800:    // port ROM/RAM
+            break;
+            case 0xC000:    // I/O ports
+            break;
+        }
     }
 
     this.read = function(addr) {
