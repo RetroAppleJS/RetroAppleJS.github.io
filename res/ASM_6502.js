@@ -749,7 +749,7 @@ function doPass(pass)
 			}
 			else
 			{
-				if (pass == 1 && sym[ofs].toLowerCase() == "equ") // FVD add EQU directive (TODO pass 2)
+				if (pass == 1 && sym[ofs] && sym[ofs].toLowerCase() == "equ") // FVD add EQU directive (TODO pass 2)
 				{
 					var v = getNumber(sym[ofs + 1]);
 					if (v == 'NaN')

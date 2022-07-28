@@ -340,7 +340,7 @@ MUL.9   LDA #$00
         STA *S0.TX
         RTS
 
-I; *** PRINT INDEX-BASED  STRING ***
+; *** PRINT INDEX-BASED  STRING ***
 ISTROUT TAX           ; INDEX-BASED STRING OUT A=INDEX
         LDY #>STR.00
         LDA #<STR.00
