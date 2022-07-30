@@ -118,7 +118,7 @@ function memscan()
 {
   document.getElementById("output").innerHTML = "";
   var dv = ["<div style='font-size:10px;font-family:Arial;color:white'>","</div>"];
-  for(var adr=0xBFFF;adr<0xC100;adr+=1)
+  for(var adr=0xBFFF;adr<0xC200;adr+=1)
   {
     try{
       var f = document.getElementById("address_decode").value;
@@ -170,38 +170,34 @@ var oMEMGRID = new function()
        ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
     }
 
-  const mem_gran = 7;  // granularity in bits
-  this.mem_gran = mem_gran;
+  const mem_gran = 8;  // granularity in bits
 
   this.build_mem_map = function()
+  {
+    for(var i in this.mem_layout)
     {
-        for(var i in this.mem_layout)
-        {
-            var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
-            console.log(a[0]+"-"+a[1]);
-
-            var s = " ("
-            for(var addr=b[0];addr<b[1];addr+=1<<mem_gran)
-            { 
-                this.mem_map[addr>>mem_gran] = this.mem_layout[i][2];
-                s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
-            }
-            console.log(s+")");
+        var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
+        var s = ""
+        for(var addr=b[0];addr<b[1];addr+=1<<mem_gran)
+        { 
+            this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
+            s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
         }
+        console.log(a[0]+"-"+a[1]+" ("+s+")");
     }
+  }
+  this.mem_pg = new Array(0x10000>>mem_gran);
 
-    this.mem_map = new Array(512);
 
-
-    this.hextab = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-    this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
-    this.getHexWord = function(v)
-    {
-        return '' + this.hextab[Math.floor(v / 0x1000)]
-                            + this.hextab[Math.floor((v & 0x0f00) / 256)]
-                            + this.hextab[Math.floor((v & 0xf0) / 16)]
-                            + this.hextab[v & 0x000f];
-    }
+  this.hextab = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+  this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+  this.getHexWord = function(v)
+  {
+    return '' + this.hextab[Math.floor(v / 0x1000)]
+                        + this.hextab[Math.floor((v & 0x0f00) / 256)]
+                        + this.hextab[Math.floor((v & 0xf0) / 16)]
+                        + this.hextab[v & 0x000f];
+  }
 
   this.line = function(start,len,step)
   {
@@ -223,7 +219,6 @@ var oMEMGRID = new function()
   {
     this.build_mem_map();
 
-
     // PREPARE ALL DATA
     var blk_col = {}, blk_txt = {} //, c = ""
     for(var i in this.mem_layout)
@@ -235,7 +230,6 @@ var oMEMGRID = new function()
         blk_col[idx] = this.mem_layout[i][0]; blk_txt[idx] = "$"+idx+" "+this.mem_layout[i][1];
       }
     }
-
 
     // PAINT GRID
     for(var i in this.mem_layout)

@@ -5,7 +5,7 @@
 // Adapted in 2022 by Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// apple2hw.js
+// apple2hw.js   (Apple II Hardware)
 
 
 // APPLE II+ Memory Map
@@ -66,7 +66,7 @@ function Apple2Hw(vid) {
         ROM_ADDR =      0xd000,
         ROM_SIZE =      0x4000;
 
-    var ram = new Array(RAM_SIZE);
+    var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
     var video = vid;
     this.io = new Apple2IO(video);
 
@@ -84,6 +84,7 @@ function Apple2Hw(vid) {
         
         // build memory map
         this.build_mem_map();
+        //this.memscan();
     }
 
     this.cycle = function() {
@@ -106,62 +107,120 @@ function Apple2Hw(vid) {
        ,"2000-3FFF":["#0000FF","HIRES1","H1"]
        ,"4000-5FFF":["#0000E0","HIRES2","H2"]
        ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
-       ,"C000-C0FF":["#B0B000","SLOT I/O","IO"]
-       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
-       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
-       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
-       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
-       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
-       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
-       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
-       ,"C800-CFFF":["#F0F000","SLOT ROM ext","SR"]         
-       ,"D000-F7FF":["#B00000","APPLESOFT ROM","AR"]
-       ,"F800-FFFF":["#D00000","MONITOR ROM","MR"]
-       //,"0300":["","GETLN","GL"]
+       ,"C000-C07F":["#B0B000","I/O","IB"]
+       ,"C080-C0FF":["#B0B000","SLOT I/O","IO"]
+       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","I1"]
+       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","I2"]
+       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","I3"]
+       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","I4"]
+       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","I5"]
+       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","I6"]
+       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","I7"]
+       ,"C800-CFFF":["#F0F000","SLOT ROM ext","IE"]
+       ,"D000-FFFF":["#D00000","MONITOR ROM","RM"]       
     }
 
-    this.mem_map = new Array(256);
+    this.hextab = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+    this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+    this.getHexWord = function(v)
+    {
+        return '' + this.hextab[Math.floor(v / 0x1000)]
+                            + this.hextab[Math.floor((v & 0x0f00) / 256)]
+                            + this.hextab[Math.floor((v & 0xf0) / 16)]
+                            + this.hextab[v & 0x000f];
+    }
+
+    this.memscan = function()
+    {
+        console.log(" ")
+        var last  = "";
+
+        //for(var addr=0xBFFF;addr<0xC102;addr+=1)
+        for(var addr=0x0000;addr<0xFFFF;addr+=1)
+        {
+            var sel = this.mem_map[addr>>mem_gran];
+            if(this.mem_map[addr>>mem_gran] != last)
+            {
+                switch(sel.charAt(0))
+                {
+                    case "I":
+                    case "S":
+                        console.log("addr="+this.getHexWord(addr)+" ("+(addr>>mem_gran)+") "+this.mem_map[addr>>mem_gran]+" !!")
+                    break;
+                    default:
+                        d8 = 0x55;
+                }
+                if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+                    console.log("addr="+this.getHexWord(addr)+" ("+(addr>>mem_gran)+") "+this.mem_map[addr>>mem_gran])
+            }
+            last = this.mem_map[addr>>mem_gran]
+        }
+    }
+
+    this.mem_map = new Array(512);
+    const mem_gran = 7;  // granularity in bits
 
     this.build_mem_map = function()
     {
+        for(var i=0;i<512;i++) this.mem_map[0] = ""
         for(var i in this.mem_layout)
         {
             var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
-            for(var addr=b[0];addr<b[1];addr+=parseInt("0100",16))
-            { 
-                this.mem_map[addr>>8] = this.mem_layout[i][2];
+            for(var addr=b[0];addr<b[1];addr+=1<<mem_gran)
+            {
 
-                console.log("("+("0000"+addr.toString(16)).slice(-4).toUpperCase()+") "
-                +(addr>>8)+" "+this.mem_layout[i][2]);
+                this.mem_map[addr>>mem_gran] = this.mem_layout[i][2];
+                //console.log("this.mem_map["+(addr>>mem_gran)+"]="+this.mem_layout[i][2])
             }
         }
     }
 
     this.read = function(addr) {
         var d8;
-
-        if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
-            d8 = this.io.read(addr);
-        else if (addr < RAM_SIZE)
-            d8 = ram[addr];
-        else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-            d8 = apple2Rom[addr - ROM_ADDR]; 
-        else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            d8 = this.io.read(addr - IO_ADDR);
+        var bOld = true;
+        addr = addr & 0xFFFF;
+        if(bOld)
+        {
+            if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
+                d8 = this.io.read(addr);
+            else if (addr < RAM_SIZE)
+                d8 = ram[addr];
+            else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+                d8 = apple2Rom[addr - ROM_ADDR];
+            else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+                d8 = this.io.read(addr - IO_ADDR);
+            else
+                d8 = 0x55;
+        }
         else
-                d8 = 0x55;  
-                /* 
-        else
-        {    
-            
-
-            switch(this.mem_map[addr>>8])
+        {
+            try
             {
-                case "IO": d8 = this.io.read(addr - IO_ADDR); break;
-                default:
-                    d8 = 0x55;
+                if (addr < RAM_SIZE) return ram[addr];
+
+                var sel = this.mem_map[addr>>mem_gran];
+                switch(sel.charAt(0))
+                {
+                    case "I":
+                    case "S":
+                        d8 = this.io.read(addr - IO_ADDR); break;
+                    case "R":
+                        if(this.io.ramcard && this.io.ramcard.active) d8 = this.io.read(addr);
+                        else d8 = apple2Rom[addr - ROM_ADDR];
+                    break;
+                    default:
+                        d8 = 0x55;
+                }
             }
-        }*/
+            catch(e)
+            {
+                //console.log("addr="+addr)
+            }
+        }
+       
+      
+        
+        
 
         return d8;
     }
