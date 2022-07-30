@@ -127,15 +127,6 @@ function Apple2Hw(vid,keys) {
             }
         }
 
-        var d1 = 0,d2 = 0;
-        for(var addr=0xD000;addr<0xFFFF;addr+=2)
-        {
-            d1=ram[addr];
-            d2=ram[addr+1];
-            if(d1==0x30 && d2==0xC0)
-                alert(this.getHexWord(addr))
-        }
-
     }
 
     this.read = function(addr) {
