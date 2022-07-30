@@ -53,17 +53,16 @@ console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms
 
 
 var ts = 0;
-var ppleIntervalHandle,vidContext,apple2plus,apple2keys,bKeyboardFocus;
+var ppleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
 var bOsc = false;
 
 
 function EMU_init()
 {
+    // INITIALISE EMULATOR
     appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext);
-    apple2keys          = new Apple2Keys();
-    document.getElementById('applescreen').addEventListener('keypress', apple2plus.keystroke);
 }
 
 function attachKeyboard(bEnable)

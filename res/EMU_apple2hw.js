@@ -55,7 +55,7 @@
 //      │  System RAM  (zero page, stack..)  │  1K                  │
 // 0000 └────────────────────────────────────┘                      ▼
 
-function Apple2Hw(vid) {
+function Apple2Hw(vid,keys) {
     var RAM_SIZE =      0xc000,
         LORES_ADDR =    0x0400,
         LORES_SIZE =    0x0800, // both pages
@@ -67,8 +67,9 @@ function Apple2Hw(vid) {
         ROM_SIZE =      0x4000;
 
     var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
-    var video = vid;
+    var video = vid;                         
     this.io = new Apple2IO(video);
+    this.keys = keys;
 
     this.irq_signal = 0;        // unused
     this.nmi_signal = 0;

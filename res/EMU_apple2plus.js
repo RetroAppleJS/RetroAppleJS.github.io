@@ -28,12 +28,12 @@
 
 // apple2plus.js
 
-const timestamp = new Date();
+//const timestamp = new Date();
 
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
     var hw = new Apple2Hw(video);
-    var keys = new Apple2Keys();
+    var keys = new Apple2Keys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
     var cpu = new Cpu6502(hw);
 
     this.reset = function() {
@@ -100,6 +100,10 @@ function Apple2Plus(context) {
 
     this.DiskObj = function() {
         return hw.io.disk2;
+    }
+
+    this.keysObj = function() {
+        return keys;
     }
 
     this.loadDisk = function(bytes) {

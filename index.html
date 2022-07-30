@@ -618,11 +618,13 @@
               return bValid;
             }
 
+            //document.getElementById("applescreen").addEventListener('keypress', apple2plus.hwObj().keystroke);
+
             </script>
-            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;"></canvas>
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onkeypress="apple2plus.keysObj().keystroke(event)"></canvas>
             <div class="appdskLED" id="dskLED1" style="left:392px;top:666px"></div>
             <div class="appdskLED" id="dskLED2" style="left:750px;top:666px"></div>
-            <div class="appkbd" id="kbdimg" onmousemove=apple2keys.KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2keys.KbdHover(event)>
+            <div class="appkbd" id="kbdimg" onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)>
               <div class="key"  id="keybox" onclick=apple2plus.keystroke(event)></div>
 
               <!--
