@@ -77,6 +77,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] complete memory-map documentation -> share memorymap data with assembler/disassembler to generate extra context
 - [ ] popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
 - [ ] slot activity monitor, CPU load monitor (displaying and logging operator efficiency)
+- [ ] add a tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
 
 ## Contribute
 
