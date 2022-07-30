@@ -6,50 +6,6 @@
 
 function Apple2Keys(hw)
 {
-    this.hw = hw;
-
-    this.keystroke = function(data)
-    {
-
-        if(data.type!="click")          // real keyboard or pasteboard ?
-        {
-            var code = this.KeyCodeHandler(data);         
-            if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
-                data.preventDefault(); // prevent space-bar from triggering page-down
-        }
-        else                            // virtual keyboard ?
-            var code = this.KbdCodeHandler(data);
-
-        if(typeof(code)=="number")       // ASCII keys ?
-            this.hw.io.keypress(code);
-        else if (typeof(code)=="string") // HARD-WIRED keys ?
-        {
-            switch(code)
-            {
-                case "RESET":
-                    //beep();
-                    resetButton();
-                break;
-                case "POWER":
-                    //beep();
-                    restartButton();
-                break;
-                case "REPT":
-                    alert("Instead of REPT, keep key down >0.5s");
-                    
-                    //o["key_rept"].style.top = y+"px";
-                    //o["key_rept"].style.left = (x-36)+"px";
-                    //o["key_rept"].style.visibility = "visible";
-                    
-                break;
-                default:
-                    alert("no function defined on key '"+code+"'");
-            }
-        }
-        else
-            alert("no key");
-    }
-
     this.KeyCodeHandler = function(data)
     {
         if (data.metaKey || data.altKey) return true;
