@@ -1,0 +1,522 @@
+/*
+____    ____          _            
+|_   \  /   _|        (_)           
+  |   \/   |   ,--.   __   _ .--.   
+  | |\  /| |  `'_\ : [  | [ `.-. |  
+ _| |_\/_| |_ // | |, | |  | | | |  
+|_____||_____|\'-;__/[___][___||__]
+ ██████ ███████ ███████ 
+██      ██      ██      
+██      ███████ ███████ 
+██           ██      ██ 
+ ██████ ███████ ███████
+*/
+
+@font-face {  font-family: 'Arcade'; src: URL('../res/ARCADE_N.TTF') format('truetype') }
+
+/*
+
+  ████████  █████  ██████  ███████ 
+     ██    ██   ██ ██   ██ ██      
+     ██    ███████ ██████  ███████ 
+     ██    ██   ██ ██   ██      ██ 
+     ██    ██   ██ ██████  ███████ 
+
+*/
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+#app ul {
+    position: relative;
+    height: 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+}
+
+#app ul a {
+    list-style: none;
+    display: grid;
+    place-items: center;
+    color: #000;
+    z-index: 1;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+#app ul .focus-el {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc(100% / 4);
+    height: 100%;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+}
+
+#app ul .focus-el.el--2 {
+    left: calc(-100% / 4);
+}
+
+#box {
+    font-family:'Arial';
+    background:#76B9CE;
+    border-radius:10px;
+}
+
+#box tr td {
+    /*display:flex;*/
+    flex-wrap:wrap;
+}
+
+.tabs > div { display:none; }
+.tabs > div.active { display:block; }
+
+/*
+
+████████  █████  ██████  ██      ███████ ███████ 
+   ██    ██   ██ ██   ██ ██      ██      ██      
+   ██    ███████ ██████  ██      █████   ███████ 
+   ██    ██   ██ ██   ██ ██      ██           ██ 
+   ██    ██   ██ ██████  ███████ ███████ ███████
+
+*/ 
+
+table { border-collapse: collapse; position: relative;}
+  */p,td,th,xmp,pre { font-family: courier,monospace; font-size: 11px; }*/
+  /*p { line-height: 1.4; white-space: nowrap; /* by popular demand */ }*/
+  figure { margin: 1em 1.5em; }
+  figure img { max-width: 100%; height: auto; }
+  figure figcaption,
+  figure p { margin: 0.5em 1.5em; font-style: italic; font-family: courier,monospace; font-size: 11px; }
+
+  table#opctable, table#opctable td, table#opctable th {
+    border:  #888 1px solid;
+  }
+  table#opctable td, table#opctable th { padding: 5px; min-width: 4em; }
+  table#opctable th {
+    whites-space: nowrap;
+    text-align: center;
+    vertical-align: top;
+    font-style: italic;
+    font-weight: normal;
+    padding: 5px;
+  }
+  table#opctable tr.lo-nibble th { font-style: normal; }
+  table#opctable td.hi-nibble, table#opctable th.hi-nibble { text-align: center; padding: 5px 0; }
+  table#opctable .lo-nibble, table#opctable .hi-nibble { color: #222; }
+  table#opctable td { background-color: #fbebaf; }
+  table#opctable td.hi-nibble,
+  table#opctable thead tr.lo-nibble th:first-child { background-color: #a6d4df; }
+  table#opctable .lo-nibble { background-color: #a7d99b; }
+  table#opctable thead tr:first-child { background-color: #ebd1be; }
+  table#opctable td, table#addressmodes td { white-space: nowrap; vertical-align: top; }
+  table#opctable td.undef { text-align: center; color: #fcf0c3; cursor: default; background-color: #fcf0c3; }
+  table#opctable td.clickable { cursor: pointer; }
+  table#opctable td.clickable:hover,
+  table#opctable td.clickable:focus { background-color: royalblue; color: white; }
+  table#opctable td.clickable:active { background-color: red; color: white; }
+
+  table#opclist a:link, table#opclist a:visited { color: #009; }
+  table#addressmodes td, table#opclist td, table#register td, table#flags td { padding: 3px;  border: none; border-width: 0; }
+  table#addressmodes td.semantics { font-style: italic; }
+
+  div.instrlayout-wrapper {
+    display: table;
+    border: #888 1px dotted;
+    padding: 7px 3px 3px 3px;
+    margin: 1.75em 0;
+  }
+  table.instrlayout { margin: 0; }
+  table.instrlayout td { border-left: #fff 2px solid; border-right: #fff 2px solid; border-top: #fff 1px solid; border-bottom: #fff 1px solid; }
+  table.instrlayout tr.g-first td:first-child,
+  table.instrlayout tr.g-last td { border-bottom: #fff 2px solid; }
+  table.instrlayout tr.g-first td:first-child,
+  table.instrlayout tr.g-first td { border-top: #fff 2px solid; }
+  table.instrlayout tr.t-half-top td:first-child,
+  table.instrlayout tr.t-half-top td { border-bottom: #fff 4px solid; }
+  table.instrlayout tr.t-half-bottom td:first-child,
+  table.instrlayout tr.t-half-bottom td { border-top: #fff 4px solid; }
+  table.instrlayout td { padding: 7px 5px; }
+  table.instrlayout th {
+    whites-space: nowrap;
+    text-align: center;
+    vertical-align: bottom;
+    font-style: italic;
+    font-weight: normal;
+    padding: 0 5px 5px 5px;
+  }
+  table.instrlayout tr.bn th { font-style: normal; font-weight: bold; }
+  table.instrlayout span.opc { color: rgba(0,0,0, 0.6); margin-right: 1.25em; }
+  table.instrlayout td.a-b { width: 6em; text-align: center; font-weight: bold; }
+  table.instrlayout tr.r-even td.a { background-color: #8bcd7b; }
+  table.instrlayout tr.r-odd td.a { background-color: #a7d99b; }
+  table.instrlayout tr.r-even td.b { background-color: #d7a580; }
+  table.instrlayout tr.r-odd td.b { background-color: #e0bb9e; }
+  table.instrlayout td.c { width: 5em; text-align: center; font-weight: bold; }
+  table.instrlayout td.c0 { background-color: #6ab7c9; }
+  table.instrlayout td.c1 { background-color: #88c5d4; }
+  table.instrlayout td.c2 { background-color: #a6d4df; }
+  table.instrlayout td.c3 { background-color: #cae5ec; }
+  table.instrlayout td.v0,
+  table.instrlayout td.v1,
+  table.instrlayout td.v2,
+  table.instrlayout td.v3,
+  table.instrlayout td.v4,
+  table.instrlayout td.v5,
+  table.instrlayout td.v6,
+  table.instrlayout td.v7 { min-width: 8.5em; }
+  table.instrlayout tr.r0 td.v0,
+  table.instrlayout tr.r0 td.v2,
+  table.instrlayout tr.r0 td.v4,
+  table.instrlayout tr.r0 td.v6 { background-color: #f7d866; }
+  table.instrlayout tr.r1 td.v0,
+  table.instrlayout tr.r1 td.v2,
+  table.instrlayout tr.r1 td.v4,
+  table.instrlayout tr.r1 td.v6 { background-color: #f9e085; }
+  table.instrlayout tr.r2 td.v0,
+  table.instrlayout tr.r2 td.v2,
+  table.instrlayout tr.r2 td.v4,
+  table.instrlayout tr.r2 td.v6 { background-color: #fae8a3; }
+  table.instrlayout tr.r0 td.v1,
+  table.instrlayout tr.r0 td.v3,
+  table.instrlayout tr.r0 td.v5,
+  table.instrlayout tr.r0 td.v7 { background-color: #fae69b; }
+  table.instrlayout tr.r1 td.v1,
+  table.instrlayout tr.r1 td.v3,
+  table.instrlayout tr.r1 td.v5,
+  table.instrlayout tr.r1 td.v7 { background-color: #fbebaf; }
+  table.instrlayout tr.r2 td.v1,
+  table.instrlayout tr.r2 td.v3,
+  table.instrlayout tr.r2 td.v5,
+  table.instrlayout tr.r2 td.v7 { background-color: #fcf0c3; }
+  table.instrlayout th span.bitwidth { color: #777; margin-left: -0.2em; margin-right: -2.2em; cursor: default; }
+
+/*
+
+   ██████  ████████ ██   ██ ███████ ██████       ██████  ██    ██ ██ 
+  ██    ██    ██    ██   ██ ██      ██   ██     ██       ██    ██ ██ 
+  ██    ██    ██    ███████ █████   ██████      ██   ███ ██    ██ ██ 
+  ██    ██    ██    ██   ██ ██      ██   ██     ██    ██ ██    ██ ██ 
+   ██████     ██    ██   ██ ███████ ██   ██      ██████   ██████  ██ 
+
+*/
+
+  .appvid
+  {
+      /*margin-top: 85px;*/
+      margin-left: 162px;
+      padding: 0px;
+      background: #222266;
+      width: 560px;
+      height: 384px;
+  }
+  .appbut
+  {
+      font-family: "Arial";
+      font-size:13px;
+      margin-left:6px;
+      padding: 6px;
+      border-radius: 10px;
+      border-style: none;
+      background: rgba(240, 240, 255, 0.65);
+      box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+  }
+
+  .appbut:hover
+  {
+      background: rgba(255, 255, 255, 1);
+  }
+
+  .appbox
+  {
+      font-family: "Arial";
+      font-size:13px;
+      margin:1px 1px 1px 1px;
+      padding: 6px;
+      border-radius: 5px;
+      border-style: none;
+      background: rgba(255, 255, 255, 0.8);
+  }
+
+  .toolbox
+  {
+    height:80px;
+    /*border:1px solid yellow;*/
+    float:left;
+  }
+
+  .appkbd
+  {
+    background-image:url('../res/appleIIplus_kbd_650.png');
+    width:650px;
+    height:257px;
+    background-size:650px 257px;
+    top: 50%;
+    left: 50%;
+    margin-left: 105px;
+    background-repeat:no-repeat;
+    image-rendering:pixelated;
+    opacity:0.5;
+  }
+
+  .key {
+  position:relative;
+  display:inline-block;
+  width:30px;
+  height:30px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  }
+
+  .appdskLED {
+    z-index:0;
+    opacity:0.5;
+    visibility:hidden;
+    position:absolute;
+    background-color:#FF5555;
+    padding:9px 16px 0px 0px;
+  }
+
+
+/*
+
+  ███    ███  █████  ██████  ██   ██ ██████   ██████  ██     ██ ███    ██ 
+  ████  ████ ██   ██ ██   ██ ██  ██  ██   ██ ██    ██ ██     ██ ████   ██ 
+  ██ ████ ██ ███████ ██████  █████   ██   ██ ██    ██ ██  █  ██ ██ ██  ██ 
+  ██  ██  ██ ██   ██ ██   ██ ██  ██  ██   ██ ██    ██ ██ ███ ██ ██  ██ ██ 
+  ██      ██ ██   ██ ██   ██ ██   ██ ██████   ██████   ███ ███  ██   ████ 
+
+*/
+
+
+.markdown_mon {
+  font-family:'Arcade';
+  font-size:8px;
+  color:#AFFFF6;
+  width:350px;
+  height:270px;
+  margin-left:105px;
+  white-space:normal;
+  word-break:break-all;
+  overflow-wrap:anywhere;
+  overflow-y:scroll;
+}
+
+.markdown_mon img {
+  -webkit-filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);
+  filter: invert(1) sepia(0.75) brightness(0.75) hue-rotate(110deg) brightness(1.3);
+}
+
+.markdown_mon hr {
+  border: 0 none;
+  color: #cccccc;
+  height: 4px;
+  padding: 0;
+}
+
+.markdown_mon a {
+  color: #AFFFF6;
+  text-decoration: underline;
+}
+
+.markdown_mon li p.first {
+  display: inline-block;
+}
+
+.markdown_mon ul, ol {
+  padding-left: 30px;
+}
+
+.markdown_mon ul :first-child, ol :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon ul :last-child, ol :last-child {
+  margin-bottom: 0;
+}
+
+.markdown_mon dl {
+  padding: 0;
+}
+
+.markdown_mon dl dt {
+  font-size: 14px;
+  font-weight: bold;
+  font-style: italic;
+  padding: 0;
+  margin: 15px 0 5px;
+}
+
+.markdown_mon dl dt:first-child {
+  padding: 0;
+}
+
+.markdown_mon dl dt > :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon dl dt > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown_mon dl dd {
+  margin: 0 0 15px;
+  padding: 0 15px;
+}
+
+.markdown_mon dl dd > :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon dl dd > :last-child {
+  margin-bottom: 0;
+}
+
+
+
+.markdown_mon blockquote > :first-child {
+  margin-top: 0;
+}
+
+.markdown_mon blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown_mon span.frame span span {
+  clear: both;
+  color: #333333;
+  display: block;
+  padding: 5px 0 0;
+}
+
+.markdown_mon span.align-center {
+  display: block;
+  overflow: hidden;
+  clear: both;
+}
+
+.markdown_mon span.align-center > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px auto 0;
+  text-align: center;
+}
+
+.markdown_mon span.align-center span img {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.markdown_mon span.align-right {
+  display: block;
+  overflow: hidden;
+  clear: both;
+}
+
+.markdown_mon span.align-right > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px 0 0;
+  text-align: right;
+}
+
+.markdown_mon span.align-right span img {
+  margin: 0;
+  text-align: right;
+}
+
+.markdown_mon span.float-left {
+  display: block;
+  margin-right: 13px;
+  overflow: hidden;
+  float: left;
+}
+
+.markdown_mon span.float-left span {
+  margin: 13px 0 0;
+}
+
+.markdown_mon span.float-right {
+  display: block;
+  margin-left: 13px;
+  overflow: hidden;
+  float: right;
+}
+
+.markdown_mon span.float-right > span {
+  display: block;
+  overflow: hidden;
+  margin: 13px auto 0;
+  text-align: right;
+}
+
+.markdown_mon blockquote table {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+  border: 1px;
+  background: transparent;
+}
+
+.markdown_mon blockquote table tr td {
+  border: 1px solid #AFFFF6;
+  margin: 0;
+  padding: 6px 13px;
+}
+
+.markdown_mon blockquote {
+  overflow: auto;
+}
+
+.markdown_mon pre code {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+  border: none;
+  background: transparent;
+}
+
+.markdown_mon .highlight pre {
+  font-size: 13px;
+  line-height: 19px;
+  overflow: auto;
+  padding: 6px 10px;
+  border-radius: 3px;
+}
+
+.markdown_mon pre {
+  border: 1px solid #AFFFF6;
+  font-size: 12px;
+  overflow: auto;
+  padding: 5px 0px 15px 0px;
+  border-radius: 3px;
+}
+
+.markdown_mon pre code, pre tt {
+  background-color: transparent;
+  border: none;
+}
+
+.markdown_mon::-webkit-scrollbar-thumb {
+  box-shadow: inset 2px 2px 5px 0 #AFFFF6;
+  border-radius: 100px;
+  width:thin;
+}
+
+.markdown_mon::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.markdown_mon::-webkit-scrollbar-corner  {
+  background-color: transparent;
+}
