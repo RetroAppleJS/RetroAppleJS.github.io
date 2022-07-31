@@ -200,6 +200,64 @@ table { border-collapse: collapse; position: relative;}
   table.instrlayout tr.r2 td.v7 { background-color: #fcf0c3; }
   table.instrlayout th span.bitwidth { color: #777; margin-left: -0.2em; margin-right: -2.2em; cursor: default; }
 
+  /*
+
+    ███    ███ ███████ ███    ███     ███    ███  █████  ██████      ████████  █████  ██████  ██      ███████ 
+    ████  ████ ██      ████  ████     ████  ████ ██   ██ ██   ██        ██    ██   ██ ██   ██ ██      ██      
+    ██ ████ ██ █████   ██ ████ ██     ██ ████ ██ ███████ ██████         ██    ███████ ██████  ██      █████   
+    ██  ██  ██ ██      ██  ██  ██     ██  ██  ██ ██   ██ ██             ██    ██   ██ ██   ██ ██      ██      
+    ██      ██ ███████ ██      ██     ██      ██ ██   ██ ██             ██    ██   ██ ██████  ███████ ███████
+
+  */
+
+  .gtable {
+    font-size:8px;
+    font-family:Arial;
+    border-collapse: collapse;
+   }
+  .gtable tr { padding:0px;margin:0px;width:20% }
+  .gtable tr td {
+    border:1px solid rgba(0, 0, 0, 0); /* grid border */
+    padding:0px;
+    width: 8px;
+    position: relative;
+  }
+
+  .gtable tr td .gt {
+    position: absolute;
+    visibility: hidden;
+    width: 100px;
+    background: #fff;
+    color: #000;
+    text-align: left;
+    border-radius: 3px;
+    padding: 2px 2px;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: .1;
+    transition: opacity 0.3s;
+  }
+
+  .gtable tr td:hover .gt  {
+    visibility: visible;
+    transition: opacity 0.3s;
+    opacity: 1;
+  }
+
+  .gtable tr td .gt::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 60px;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #fff transparent transparent transparent;
+  }
+
+
 /*
 
    ██████  ████████ ██   ██ ███████ ██████       ██████  ██    ██ ██ 
