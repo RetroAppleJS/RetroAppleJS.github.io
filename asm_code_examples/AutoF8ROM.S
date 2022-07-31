@@ -1,24 +1,24 @@
-********************************************************************************
-* Apple II                                                                     *
-* Monitor II                                                                   *
-*                                                                              *
-* Copyright 1978 by Apple Computer, Inc                                        *
-* All Rights Reserved                                                          *
-*                                                                              *
-* Steve Wozniak                                                                *
-********************************************************************************
-* Modified Nov 1978                                                            *
-* By John A                                                                    *
-********************************************************************************
-* This is a disassembly of the updated monitor ROM found in the Apple ][+.     *
-* The labels and comments come from "Autostart ROM Listing" in the Apple II    *
-* Reference Manual (starts page 136).  This is a fairly direct translation --  *
-* operands are generally formatted as they appear in the original listing.     *
-* Comments have been converted to mixed-case, but are otherwise unchanged.     *
-********************************************************************************
-* Project created by Andy McFadden, using 6502bench SourceGen v1.4.            *
-* Last updated 2019/09/22                                                      *
-********************************************************************************
+;********************************************************************************
+;* Apple II                                                                     *
+;* Monitor II                                                                   *
+;*                                                                              *
+;* Copyright 1978 by Apple Computer, Inc                                        *
+;* All Rights Reserved                                                          *
+;*                                                                              *
+;* Steve Wozniak                                                                *
+;********************************************************************************
+;* Modified Nov 1978                                                            *
+;* By John A                                                                    *
+;********************************************************************************
+;* This is a disassembly of the updated monitor ROM found in the Apple ][+.     *
+;* The labels and comments come from "Autostart ROM Listing" in the Apple II    *
+;* Reference Manual (starts page 136).  This is a fairly direct translation --  *
+;* operands are generally formatted as they appear in the original listing.     *
+;* Comments have been converted to mixed-case, but are otherwise unchanged.     *
+;********************************************************************************
+;* Project created by Andy McFadden, using 6502bench SourceGen v1.4.            *
+;* Last updated 2019/09/22                                                      *
+;********************************************************************************
 IOADR       .eq     $c000  {const}
 LOC0        .eq     $00
 LOC1        .eq     $01

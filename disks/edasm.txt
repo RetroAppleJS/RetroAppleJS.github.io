@@ -1,0 +1,13 @@
+Product name: ProDOS ASSEMBLY TOOLS
+Language: Assembler
+Hardware requirements:
+Apple II, 64K, 1 Disk drive (Minimum)
+Apple //e, 80 column, printer, second disk drive
+Operating system requirements: ProDOS
+Company name: Apple Computer
+ProDOS version of EDASM. Includes Editor, Assembler,
+Bugbyter debugger and relocating loader. It was sold by
+Apple as a Workbench series tool, and later included in
+the APDA catalog (#K2SPAT), it passed to the Resource
+Central catalog (DA-005, $35.00, May 1992).  It is now
+obsolete and no longer available from any of these.
