@@ -1,5 +1,7 @@
 var oMEMGRID = new function()
 {
+
+// FVD TODO move this piece to apple2plus.js
   this.mem_layout = {
         "0000-00FF":["#FFFFFF","ZERO-PAGE","ZP"]
        ,"0100-01FF":["#E0E0E0","STACK","ST"]
