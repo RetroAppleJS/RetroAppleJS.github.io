@@ -8,7 +8,10 @@ oASM.srcfield_bin = new Uint8Array();
 var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.srcfield)\"><i class='fa fa-indent'></i> Margin+</button>\n" +
   "<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n" +
   "<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n" +
+
+  "<select><option value='1'>1</option></select>" +
   "<button onclick=\"javascript:onSrcTransform('transform',document.forms.ass.srcfield)\">Transform</button>\n" +
+  "<button onclick=\"javascript:onSrcTransform('undo',document.forms.ass.srcfield)\">Undo</button>\n" +
   "<br>" +
   "add address lines <input type=\"checkbox\" id=\"showADR\" checked class=\"formField\">" +
   "RAM symbols <input type=\"checkbox\" id=\"showDBG_RAM\" class=\"formField\">" +
@@ -68,7 +71,7 @@ function lim3(str) {
 }
 
 function onSrcComment(dir, obj) {
-  getSrc(obj, true)
+  getSrc(obj, true);
   switch (dir) {
     case '2Space':
       for (var i = 0; i < codesrc.length; i++) {
@@ -80,20 +83,20 @@ function onSrcComment(dir, obj) {
         if (instrtab[lim3(part[0])] && part[2] != null) // first part = opcode ?
         {
           //alert(part[0] +" "+ instrtab[part[0]])
-          var off = 0
-          var opc_test = lim3(part[off])
-          var idx_val = !instrtab[opc_test][0]
-          var idx = idx_val ? (off + 1) : (off + 2) //  0 or 1 operand ?
+          var off = 0;
+          var opc_test = lim3(part[off]);
+          var idx_val = !instrtab[opc_test][0];
+          var idx = idx_val ? (off + 1) : (off + 2)       //  0 or 1 operand ?
           var spc = part[idx - 1].slice(-1);
           part[idx] = ";" + part[idx];
           codesrc[i] = part.join(" ");
         } else if (instrtab[lim3(part[1])] && part[3] != null) // second part = opcode ?
         {
           //alert(part[1] +" "+ instrtab[part[1]])
-          var off = 1
-          var opc_test = lim3(part[off])
-          var idx_val = !instrtab[opc_test][0]
-          var idx = idx_val ? (off + 1) : (off + 2) //  2 or 3 operand ?
+          var off = 1;
+          var opc_test = lim3(part[off]);
+          var idx_val = !instrtab[opc_test][0];
+          var idx = idx_val ? (off + 1) : (off + 2);     //  2 or 3 operand ?
           var spc = part[idx - 1].slice(-1);
           part[idx] = ";" + part[idx];
           codesrc[i] = part.join(" ");
@@ -107,7 +110,13 @@ function onSrcComment(dir, obj) {
 
 function onSrcTransform(dir, obj)
 {
-  alert("test")
+  getSrc(obj, true);
+  //console.log(dir)
+  //console.log(obj)
+  for (var i = 0; i < codesrc.length; i++)
+  {
+
+  }
 }
 
 function asmHelp() {

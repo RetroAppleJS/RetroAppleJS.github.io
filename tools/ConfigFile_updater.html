@@ -2,7 +2,7 @@
 <head>
     <meta charset='utf-8'>
     <script type="text/javascript" src="../res/showdown.js"></script>
-    <link rel="stylesheet" href="../res/COM_markdown.css">
+    <link rel="stylesheet" href="../res/COM_MAIN.css">
 </head>
 <body>
 
@@ -48,12 +48,16 @@ GetHTTP(rawDocsURL+"CONFIG.md",
   }
 )
 
-GetHTTP(rawDocsURL+"CONFIG.md",
+  GetHTTP(rawDocsURL+"CONFIG.md",
   function() 
   {
 
     // EXECUTE
     var s = oPROCESS.process_table(["[SCODE]","\|","\n|","\|\n\n"],"const _CFG_SCODE",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+
+    // EXECUTE
+    var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
 
@@ -93,6 +97,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
 
     var s = "const _CFG = {\"SYS\":{\"A2\":false,\"A2P\":true,\"A2E\":false,\"A2C\":false},\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
     document.getElementById('dest').innerHTML += s;
+
+
   } 
 )
   
