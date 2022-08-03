@@ -56,11 +56,6 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = oPROCESS.process_table(["[SCODE]","\|","\n|","\|\n\n"],"const _CFG_SCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    // EXECUTE
-    var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText,this.responseURL);
-    document.getElementById('dest').innerHTML += s;
-
-
     // METHOD TAILORING
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
@@ -95,10 +90,13 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = oPROCESS.process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
+    // EXECUTE
     var s = "const _CFG = {\"SYS\":{\"A2\":false,\"A2P\":true,\"A2E\":false,\"A2C\":false},\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
     document.getElementById('dest').innerHTML += s;
 
-
+    // EXECUTE
+    var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
   } 
 )
   
