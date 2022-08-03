@@ -17,8 +17,9 @@ Any change in this document affects the **default application configuration**, o
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md) 
 
+# EMULATOR
 
-# SYSTEMS LIST
+## SYSTEMS LIST
 
 |[SCODE]| Model              | CPU        | Speeds    |
 | :---: | :----------------- | :--------- | :-------- |
@@ -41,7 +42,7 @@ Any change in this document affects the **default application configuration**, o
 | A2eC  | Apple IIe Card     | 65C02      | 1.023,1.9 |
 
 
-# PERIPHERALS LIST
+## PERIPHERALS LIST
 
 |[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYSrange    | Manuals       |
 | :-----: | :----------------------------------- | :-------------- | :------------|:----------- |:------------- |
@@ -51,7 +52,7 @@ Any change in this document affects the **default application configuration**, o
 
 \* n = slot number on which the card is installed
 
-# SLOT CONFIG
+## SLOT CONFIG
 
 |[SLOT#] | PCODE      | DESCRIPTION       |
 | :----: | :--------- | :---------------- |
@@ -64,3 +65,17 @@ Any change in this document affects the **default application configuration**, o
 |   6    | DISKII     |                   |
 |   7    |            |                   |
 
+# ASSEMBLER
+
+## TRANSPILER
+
+|[NAME]  | REXEP INPUT | REGEXP OUTPUT     |
+| :----: | :---------- | :---------------- |
+|   0    | (*)         | $1                | 
+|   1    |             |                   |
+|   2    |             |                   |
+|   3    |             |                   |
+|   4    |             |                   |
+|   5    |             |                   |
+|   6    |             |                   |
+|   7    |             |                   |
