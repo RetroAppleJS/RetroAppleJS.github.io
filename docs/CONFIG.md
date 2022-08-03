@@ -69,13 +69,13 @@ Any change in this document affects the **default application configuration**, o
 
 ## TRANSPILER
 
-|[NAME]  | REXEP INPUT | REGEXP OUTPUT     |
-| :----: | :---------- | :---------------- |
-|   0    | (*)         | $1                | 
-|   1    |             |                   |
-|   2    |             |                   |
-|   3    |             |                   |
-|   4    |             |                   |
-|   5    |             |                   |
-|   6    |             |                   |
-|   7    |             |                   |
+|[TFUNCTION]| REXEP INPUT | REGEXP OUTPUT     |
+| :-------: | :---------- | :---------------- |
+|   0       | (*)         | $1                | 
+|   1       |             |                   |
+|   2       |             |                   |
+|   3       |             |                   |
+|   4       |             |                   |
+|   5       |             |                   |
+|   6       |             |                   |
+|   7       |             |                   |
