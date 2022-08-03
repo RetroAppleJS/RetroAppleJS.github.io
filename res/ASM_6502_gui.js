@@ -8,6 +8,7 @@ oASM.srcfield_bin = new Uint8Array();
 var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.srcfield)\"><i class='fa fa-indent'></i> Margin+</button>\n" +
   "<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n" +
   "<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n" +
+  "<button onclick=\"javascript:onSrcTransform('transform',document.forms.ass.srcfield)\">Transform</button>\n" +
   "<br>" +
   "add address lines <input type=\"checkbox\" id=\"showADR\" checked class=\"formField\">" +
   "RAM symbols <input type=\"checkbox\" id=\"showDBG_RAM\" class=\"formField\">" +
@@ -102,6 +103,11 @@ function onSrcComment(dir, obj) {
       obj.value = codesrc.join("\n");
       break;
   }
+}
+
+function onSrcTransform(dir, obj)
+{
+  alert("test")
 }
 
 function asmHelp() {

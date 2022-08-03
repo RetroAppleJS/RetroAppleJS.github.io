@@ -1,4 +1,8 @@
-// 6502 emulator - gui functions
+// Created in 2022 by Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
+//
+// 6502gui.js
+
 
 // conf & globals
 
