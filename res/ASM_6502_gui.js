@@ -15,7 +15,7 @@ var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.sr
   +"<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n"
   +"<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n"
 
-  +"<select onchange=\"var c=this.value.ltrim().rtrim();alert(_CFG_TFUNCTION[c]['REGXEP_INPUT']+' '+_CFG_TFUNCTION[c]['REGXEP_OUTPUT'])\">"
+  +"<select onchange=\"var c=this.value.ltrim().rtrim();alert(_CFG_TFUNCTION[c]['REGXEP_INPUT']+' '+_CFG_TFUNCTION[c]['REGEXP_OUTPUT'])\">"
   +TFUNCTION_str
   +"</select>"
   +"<input id=TFUNCTION_in style='width:50px'></input>"
