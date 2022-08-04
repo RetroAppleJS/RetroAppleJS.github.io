@@ -5,17 +5,28 @@ oASM.sym_search = function sym_search(op,adm) { return }
 oASM.srcfield_bin = new Uint8Array(); 
 
 
-var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.srcfield)\"><i class='fa fa-indent'></i> Margin+</button>\n" +
-  "<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n" +
-  "<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n" +
+var TFUNCTION_str = "";
+for(var i in _CFG_TFUNCTION)
+{
+  TFUNCTION_str += "<option value='"+i+"'>"+i+"</option>";
+}
 
-  "<select><option value='1'>1</option></select>" +
-  "<button onclick=\"javascript:onSrcTransform('transform',document.forms.ass.srcfield)\">Transform</button>\n" +
-  "<button onclick=\"javascript:onSrcTransform('undo',document.forms.ass.srcfield)\">Undo</button>\n" +
-  "<br>" +
-  "add address lines <input type=\"checkbox\" id=\"showADR\" checked class=\"formField\">" +
-  "RAM symbols <input type=\"checkbox\" id=\"showDBG_RAM\" class=\"formField\">" +
-  "ROM symbols <input type=\"checkbox\" id=\"showDBG_ROM\" class=\"formField\">"
+var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.srcfield)\"><i class='fa fa-indent'></i> Margin+</button>\n"
+  +"<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n"
+  +"<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n"
+
+  +"<select>"
+  +TFUNCTION_str
+  +"</select>"
+  +"<input id=TFUNCTION_in style='width:50px'></input>"
+  +"<input id=TFUNCTION_out style='width:50px'></input>" 
+  +"<button onclick=\"javascript:onSrcTransform('transform',document.forms.ass.srcfield)\">Transform</button>\n"
+  +"<button onclick=\"javascript:onSrcTransform('undo',document.forms.ass.srcfield)\">Undo</button>\n"
+
+  +"<br>"
+  +"add address lines <input type=\"checkbox\" id=\"showADR\" checked class=\"formField\">"
+  +"RAM symbols <input type=\"checkbox\" id=\"showDBG_RAM\" class=\"formField\">"
+  +"ROM symbols <input type=\"checkbox\" id=\"showDBG_ROM\" class=\"formField\">"
 
 function onToolBox(el) {
   var e = document.getElementById(el);
@@ -110,13 +121,32 @@ function onSrcComment(dir, obj) {
 
 function onSrcTransform(dir, obj)
 {
-  getSrc(obj, true);
-  //console.log(dir)
-  //console.log(obj)
-  for (var i = 0; i < codesrc.length; i++)
+  if(dir=="transform")
   {
+    getSrc(obj, true);
+    var tin = document.getElementById("TFUNCTION_in").value;
+    var tout = document.getElementById("TFUNCTION_out").value; 
 
+    try
+    {
+      var re = new RegExp(tin,"g");
+      for (var i = 0; i < codesrc.length; i++)
+      {
+        codesrc[i] = codesrc[i].replace(re,tout)
+      } 
+      obj.value = codesrc.join("\n");
+    }
+    catch(e)
+    {
+      console.error(e);
+    }
+    console.log(dir);
+    console.log(tin+" "+tout);
+
+    //console.log(obj)
+   
   }
+
 }
 
 function asmHelp() {
