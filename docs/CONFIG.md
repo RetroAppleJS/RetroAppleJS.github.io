@@ -71,8 +71,8 @@ Any change in this document affects the **default application configuration**, o
 
 |[TFUNCTION] | REXEP_INPUT | REGEXP_OUTPUT     |
 | :--------: | :---------- | :---------------- |
-|   0        | (*)         | $1                | 
-|   1        |             |                   |
+|   .eq      | \.eq        | EQU               | 
+|   .org     | \.org       | ORG               |
 |   2        |             |                   |
 |   3        |             |                   |
 |   4        |             |                   |
