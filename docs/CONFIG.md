@@ -69,14 +69,14 @@ Any change in this document affects the **default application configuration**, o
 
 ## TRANSPILER
 
-|[TFUNCTION] | REGXEP_INPUT | REGEXP_OUTPUT     |
-| :--------: | :----------- | :---------------- |
-|   .eq      | \\.eq         | EQU               | 
-|   .org     | \\.org        | ORG               |
-|   1        |              |                   |
-|   3        |              |                   |
-|   4        |              |                   |
-|   5        |              |                   |
-|   6        |              |                   |
-|   7        |              |                   |
+|[TFUNCTION]   | REGXEP_INPUT  | REGEXP_OUTPUT     |
+| :----------: | :------------ | :---------------- |
+|    .eq       | \\.eq         | EQU               | 
+|    .org      | \\.org        | ORG               |
+| remove{*}    | \\{[^{}]*\\}  |                   |
+|    3         |               |                   |
+|    4         |               |                   |
+|    5         |               |                   |
+|    6         |               |                   |
+|    7         |               |                   |
 
