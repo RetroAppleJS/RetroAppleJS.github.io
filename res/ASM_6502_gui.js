@@ -121,6 +121,11 @@ function onSrcComment(dir, obj) {
 
 function onSrcTransform(dir, obj)
 {
+  function upperCase(match) {
+    var result = match.toUpperCase();
+    return result;
+  }
+
   if(dir=="transform")
   {
     getSrc(obj, true);
@@ -133,7 +138,10 @@ function onSrcTransform(dir, obj)
       var re = new RegExp(tin,"g");
       for (var i = 0; i < codesrc.length; i++)
       {
-        codesrc[i] = codesrc[i].replace(re,tout)
+        //codesrc[i] = codesrc[i].replace(re,tout);
+        //  ( [a-z][a-z][a-z] )
+        // x => x[1].toUpperCase()
+        codesrc[i] = codesrc[i].replace(re,x => x.toUpperCase())
       } 
       obj.value = codesrc.join("\n");
     }
