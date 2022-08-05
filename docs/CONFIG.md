@@ -73,7 +73,7 @@ Any change in this document affects the **default application configuration**, o
 | :----------: | :------------ | :---------------- |
 |    .eq       | \\.eq         | EQU               | 
 |    .org      | \\.org        | ORG               |
-| remove{*}    | \\\{[^{}]*\\\}|                   |
+| remove{*}    | \\{[^{}]*\\}|                   |
 |    3         |               |                   |
 |    4         |               |                   |
 |    5         |               |                   |
