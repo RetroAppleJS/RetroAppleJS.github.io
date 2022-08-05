@@ -139,7 +139,7 @@ function PROCESS()
       for(var j=1;j<row.length-1;j++)
       {
         var FIELDname = header_arr[j].replace(/[^0-9^A-Z^a-z^_^-]/g,"");
-        var FIELDdata = trim(row[j]);
+        var FIELDdata = trim(row[j].replace(/\\/g,"\\\\"));
 
         this.linkDATA(ROWname,FIELDname,FIELDdata);
         var d = this.changeDATA(ROWname,FIELDname,FIELDdata);
