@@ -37,9 +37,9 @@ const _CFG_SLOT = {
 const _CFG = {"SYS":{"A2":false,"A2P":true,"A2E":false,"A2C":false},"PCODE":_CFG_PCODE,"SLOT":_CFG_SLOT};
 
 const _CFG_TFUNCTION = {
- ".eq":{"REGXEP_INPUT":"\\.eq" ,"REGEXP_OUTPUT":"EQU"}
-,".org":{"REGXEP_INPUT":"\\.org" ,"REGEXP_OUTPUT":"ORG"}
-,1:{"REGXEP_INPUT":"" ,"REGEXP_OUTPUT":""}
+ ".eq":{"REGXEP_INPUT":"\.eq" ,"REGEXP_OUTPUT":"EQU"}
+,".org":{"REGXEP_INPUT":"\.org" ,"REGEXP_OUTPUT":"ORG"}
+,"remove{*}":{"REGXEP_INPUT":"\{[^{}]*\}" ,"REGEXP_OUTPUT":""}
 ,3:{"REGXEP_INPUT":"" ,"REGEXP_OUTPUT":""}
 ,4:{"REGXEP_INPUT":"" ,"REGEXP_OUTPUT":""}
 ,5:{"REGXEP_INPUT":"" ,"REGEXP_OUTPUT":""}
