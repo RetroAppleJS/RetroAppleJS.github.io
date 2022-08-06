@@ -81,3 +81,4 @@ Any change in this document affects the **default application configuration**, o
 | hex array    | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
 |    .bulk     | \\.bulk|\\+                     | 'HEX'                               |
 
+
