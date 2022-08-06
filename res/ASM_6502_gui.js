@@ -145,7 +145,8 @@ function onSrcTransform(dir, obj)
         //codesrc[i] = codesrc[i].replace(re,eval("x => 'EQU'"))
         //codesrc[i] = codesrc[i].replace(re,eval("x => x.toUpperCase()"))
         //console.log(tout.match(/^'/))
-        codesrc[i] = codesrc[i].replace(re,eval("x => "+tout));
+        codesrc[i] = (" "+codesrc[i]+" ").replace(re,eval("x => "+tout));
+        codesrc[i] = codesrc[i].substring(1,codesrc[i].length-2)
       } 
       obj.value = codesrc.join("\n");
     }
