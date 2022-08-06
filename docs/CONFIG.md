@@ -74,9 +74,9 @@ Any change in this document affects the **default application configuration**, o
 |    .eq       | \\.eq                   | 'EQU'             | 
 |    .org      | \\.org                  | 'ORG'             |
 | remove{*}    | \\{[^{}]*\\}            | ''                |
-| upper(_3_)   |( [abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(_3)   |( [abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy])$|x.toUpperCase()|
-| upper(3_)   |^([abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(3)   |^([abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy])$|x.toUpperCase()|
+| upper(_3_)   |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(_3)   |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
+| upper(3_)   |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(3)   |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
 
 
