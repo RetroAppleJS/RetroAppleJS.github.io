@@ -18,8 +18,8 @@ var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.sr
   +"<select onchange=\"var c=this.value.ltrim().rtrim();document.getElementById('TFUNCTION_in').value=_CFG_TFUNCTION[c]['REGXEP_INPUT'];document.getElementById('TFUNCTION_out').value=_CFG_TFUNCTION[c]['REGEXP_OUTPUT']\">"
   +TFUNCTION_str
   +"</select>"
-  +"<input id=TFUNCTION_in style='width:50px'></input>"
-  +"<input id=TFUNCTION_out style='width:50px'></input>" 
+  +"<input id=TFUNCTION_in style='width:80px'></input>"
+  +"<input id=TFUNCTION_out style='width:80px'></input>" 
   +"<button onclick=\"javascript:onSrcTransform('transform',document.forms.ass.srcfield)\">Transform</button>\n"
   +"<button onclick=\"javascript:onSrcTransform('undo',document.forms.ass.srcfield)\">Undo</button>\n"
 
@@ -142,10 +142,9 @@ function onSrcTransform(dir, obj)
         //  ( [a-z][a-z][a-z] )
         // x => x[1].toUpperCase()
         //codesrc[i] = codesrc[i].replace(re,x => x.toUpperCase())
-
         //codesrc[i] = codesrc[i].replace(re,eval("x => 'EQU'"))
         //codesrc[i] = codesrc[i].replace(re,eval("x => x.toUpperCase()"))
-
+        //console.log(tout.match(/^'/))
         codesrc[i] = codesrc[i].replace(re,eval("x => "+tout));
       } 
       obj.value = codesrc.join("\n");
