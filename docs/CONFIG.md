@@ -81,5 +81,5 @@ Any change in this document affects the **default application configuration**, o
 | hex array    | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
 |    .bulk     | \\x20\\.bulk\\x20               | 'HEX'                               |
 |    +         | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
-
+|   .str       | \\x20\\.str\\x20                | 'ASC'                               |
 
