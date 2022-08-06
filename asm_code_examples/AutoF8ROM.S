@@ -1,3 +1,5 @@
+; http://tass64.sourceforge.net (assembler manual)
+
 ;********************************************************************************
 ;* Apple II                                                                     *
 ;* Monitor II                                                                   *
