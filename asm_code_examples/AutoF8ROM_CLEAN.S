@@ -430,10 +430,10 @@ RDSP1       LDA     #A0
 PWRCON      .dd2    OLDBRK
            HEX  00 E0 45
 DISKID     HEX  20 FF 00 FF 03 FF 3C
-TITLE       .str    “APPLE ][”
+TITLE      ASC   “APPLE ][”
 XLTBL      HEX  C4 C2 C1 FF C3 FF FF FF
 ; must ORG $FB19
-RTBL        .str    “AXYPS”
+RTBL       ASC   “AXYPS”
 
 PREAD       LDA     PTRIG
             LDY     #00
