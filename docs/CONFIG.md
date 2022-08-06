@@ -80,3 +80,4 @@ Any change in this document affects the **default application configuration**, o
 | upper(3)     |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
 | hex array    | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
 
+
