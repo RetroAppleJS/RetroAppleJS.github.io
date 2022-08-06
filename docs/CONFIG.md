@@ -69,14 +69,14 @@ Any change in this document affects the **default application configuration**, o
 
 ## TRANSPILER
 
-|[TFUNCTION]   | REGXEP_INPUT           | REGEXP_OUTPUT     |
-| :----------: | :--------------------- | :---------------- |
-|    .eq       | \\.eq                  | 'EQU'             | 
-|    .org      | \\.org                 | 'ORG'             |
-| remove{*}    | \\{[^{}]*\\}           | ''                |
-| upper(3)     |( [a-z][a-z][a-z][\\n ])| x.toUpperCase()   |
-|    4         |                        |                   |
-|    5         |                        |                   |
-|    6         |                        |                   |
-|    7         |                        |                   |
+|[TFUNCTION]   | REGXEP_INPUT            | REGEXP_OUTPUT     |
+| :----------: | :---------------------- | :---------------- |
+|    .eq       | \\.eq                   | 'EQU'             | 
+|    .org      | \\.org                  | 'ORG'             |
+| remove{*}    | \\{[^{}]*\\}            | ''                |
+| upper(_3_)   |( [abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(_3)   |( [abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy])$|x.toUpperCase()|
+| upper(3_)   |^([abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(3)   |^([abcdeijlnoprst][abcdehijlmnoprstv][acdeiklpqrstvxy])$|x.toUpperCase()|
+
 
