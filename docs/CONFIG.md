@@ -74,7 +74,7 @@ Any change in this document affects the **default application configuration**, o
 |    .eq       | \\.eq                  | 'EQU'             | 
 |    .org      | \\.org                 | 'ORG'             |
 | remove{*}    | \\{[^{}]*\\}           | ''                |
-| upper(3)     |( [a-z][a-z][a-z][\n ]) | x.toUpperCase()   |
+| upper(3)     |( [a-z][a-z][a-z][\\n ])| x.toUpperCase()   |
 |    4         |                        |                   |
 |    5         |                        |                   |
 |    6         |                        |                   |
