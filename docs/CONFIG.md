@@ -75,8 +75,9 @@ Any change in this document affects the **default application configuration**, o
 |    .org      | \\.org                  | 'ORG'             |
 | remove{*}    | \\{[^{}]*\\}            | ''                |
 | upper(_3_)   |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(_3)   |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
-| upper(3_)   |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(3)   |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
+| upper(_3)    |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
+| upper(3_)    |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(3)     |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
+| hex array    |\$([0-9A-F][0-9A-F]),\$  | '$1 '             |
 
 
