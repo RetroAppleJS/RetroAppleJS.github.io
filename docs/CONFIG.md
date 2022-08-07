@@ -69,19 +69,19 @@ Any change in this document affects the **default application configuration**, o
 
 ## TRANSPILER
 
-|[TFUNCTION]   | REGXEP_INPUT                    | REGEXP_OUTPUT                       |
-| :----------: | :------------------------------ | :---------------------------------- |
-|    .eq       | \\x20\\.eq\\x20                 | 'EQU'                               | 
-|    .var      | \\x20\\.var\\x20                | 'EQU'                               | 
-|    .org      | \\x20\\.org\\x20                | 'ORG'                               |
-| remove{*}    | \\{[^{}]*\\}                    | ''                                  |
-| upper(_3_)   |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(_3)    |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
-| upper(3_)    |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(3)     |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
-| hex array    | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
-|    .bulk     | \\x20\\.bulk\\x20               | 'HEX'                               |
-|    +         | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
-|   .str       | \\x20\\.str\\x20                | 'ASC'                               |
-|   *          | ^\\*                            | ';*'                                |
+|[TFUNCTION]    | COMPILER  | REGXEP_INPUT                    | REGEXP_OUTPUT                       |
+| :-----------: | :-------- | :------------------------------ | :---------------------------------- |
+|    .eq        | SourceGen | \\x20\\.eq\\x20                 | 'EQU'                               | 
+|    .var       | SourceGen | \\x20\\.var\\x20                | 'EQU'                               | 
+|    .org       | SourceGen | \\x20\\.org\\x20                | 'ORG'                               |
+|   .str        | SourceGen | \\x20\\.str\\x20                | 'ASC'                               |
+| remove'{...}' | SourceGen | \\{[^{}]*\\}                    | ''                                  |
+| upper(_3_)    | SourceGen |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(_3)     | SourceGen |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
+| upper(3_)     | SourceGen |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
+| upper(3)      | SourceGen |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
+| hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
+|    .bulk      | SourceGen | \\x20\\.bulk\\x20               | 'HEX'                               |
+|    +          | SourceGen | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
+|    *          | SourceGen | ^\\*                            | ';*'                                |
 
