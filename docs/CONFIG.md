@@ -76,7 +76,7 @@ Any change in this document affects the **default application configuration**, o
 |    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20    | 'ORG'           | Replace .org  by ORG                                                |
 |    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20    | 'ASC'           | Replace .str  by ASC                                                |
 |    .bulk      | SourceGen | \\x20\\.bulk\|\\.BULK\\x20  | 'HEX'           | Replace .bulk by HEX                                                |
-|    .fill      | SourceGen | 'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '    |x.split(',')[0]  | Substitute .fill by HEX array |
+|    .fill      | SourceGen | 'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '    |x.split(',')[0]  | Substitute .fill by HEX array |
 |    +          | SourceGen | \\x20\\+\\x20\\x20\\x20     | 'HEX'           | Replace +     by HEX                                                |
 | remove {..}   | SourceGen | \\{[^{}]*\\}                | ''              | Remove everything between accolades                                 |
 | hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                                |
