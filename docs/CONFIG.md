@@ -75,7 +75,8 @@ Any change in this document affects the **default application configuration**, o
 |    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20    | 'EQU'           | Replace .var  by EQU                                                |
 |    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20    | 'ORG'           | Replace .org  by ORG                                                |
 |    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20    | 'ASC'           | Replace .str  by ASC                                                |
-|    .bulk      | SourceGen | \\x20\\.bulk\|\\.BULK\\x20  | 'HEX'           | Replace .bulk by HEX                                                |
+|    .bulk      | SourceGen | .bulk\\x20([\\s\\S]*)$      | 'HEX'
+|    .bulk2     | SourceGen | \\x20\\.bulk\|\\.BULK\\x20  | 'HEX '+x.replace(/[,$]/g).replace(/\\s\\s+/g,' ').toUpperCase() | Replace .bulk by HEX                                                |
 |    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$      |'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '| Substitute .fill by HEX array |
 |    +          | SourceGen | \\x20\\+\\x20\\x20\\x20     | 'HEX'           | Replace +     by HEX                                                |
 | remove {..}   | SourceGen | \\{[^{}]*\\}                | ''              | Remove everything between accolades                                 |
