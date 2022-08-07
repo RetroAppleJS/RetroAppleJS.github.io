@@ -95,8 +95,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     document.getElementById('dest').innerHTML += s;
 
     // EXECUTE
-    var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText,this.responseURL);
-    document.getElementById('dest').innerHTML += s;
+    var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText.replace(/\\\|/g,"&#x7C;"),this.responseURL);
+    document.getElementById('dest').innerHTML += s.replace(/&#x7C;/g,"|");
   } 
 )
   
