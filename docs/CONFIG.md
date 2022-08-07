@@ -82,5 +82,7 @@ Any change in this document affects the **default application configuration**, o
 |    *          | SourceGen | ^\\*                            | ';*'            | Add semicolumn before any line starting with asterisk               |
 | upper_exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase() | Uppercase the entire line if the line does not contain semicolumn   |                                
 | upper_before; | SourceGen | (.*?);                          | x.toUpperCase() | Uppercase everything until bumping into a semicolumn                |
+| hex array     | SourceGen | HEX([\s\S]*)$                   |x.toUpperCase()  |                                                                     | 
+
 
 
