@@ -71,7 +71,7 @@ Any change in this document affects the **default application configuration**, o
 
 |[TFUNCTION]    | COMPILER  | REGXEP_INPUT                    | REGEXP_OUTPUT                       |
 | :-----------: | :-------- | :------------------------------ | :---------------------------------- |
-|    .eq        | SourceGen | \\x20\\.eq\\x20                 | 'EQU'                               | 
+|    .eq        | SourceGen | \\x20\\.eq\|.EQ\\x20            | 'EQU'                               | 
 |    .var       | SourceGen | \\x20\\.var\\x20                | 'EQU'                               | 
 |    .org       | SourceGen | \\x20\\.org\\x20                | 'ORG'                               |
 |   .str        | SourceGen | \\x20\\.str\\x20                | 'ASC'                               |
