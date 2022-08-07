@@ -15,7 +15,7 @@ var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.sr
   +"<button onclick=\"javascript:onSrcMargin('-',document.forms.ass.srcfield)\"><i class='fa fa-outdent'></i> Margin-</button>\n"
   +"<button onclick=\"javascript:onSrcComment('2Space',document.forms.ass.srcfield)\">Comment last 2-space indent</button>\n"
 
-  +"<select onchange=\"var c=this.value.ltrim().rtrim();document.getElementById('TFUNCTION_in').value=_CFG_TFUNCTION[c]['REGXEP_INPUT'];document.getElementById('TFUNCTION_out').value=_CFG_TFUNCTION[c]['REGEXP_OUTPUT']\">"
+  +"<select onchange=onSelectTranspiler(this)>"
   +TFUNCTION_str
   +"</select>"
   +"<input id=TFUNCTION_in style='width:80px'></input>"
@@ -27,6 +27,13 @@ var sTools = "<button onclick=\"javascript:onSrcMargin('+',document.forms.ass.sr
   +"add address lines <input type=\"checkbox\" id=\"showADR\" checked class=\"formField\">"
   +"RAM symbols <input type=\"checkbox\" id=\"showDBG_RAM\" class=\"formField\">"
   +"ROM symbols <input type=\"checkbox\" id=\"showDBG_ROM\" class=\"formField\">"
+
+function onSelectTranspiler(obj)
+{
+  var c=obj.value.ltrim().rtrim();
+  document.getElementById('TFUNCTION_in').value=_CFG_TFUNCTION[c]['REGXEP_INPUT'];
+  document.getElementById('TFUNCTION_out').value=_CFG_TFUNCTION[c]['REGEXP_OUTPUT'];
+}
 
 function onToolBox(el) {
   var e = document.getElementById(el);
