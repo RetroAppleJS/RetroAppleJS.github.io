@@ -82,5 +82,5 @@ Any change in this document affects the **default application configuration**, o
 |    .bulk     | \\x20\\.bulk\\x20               | 'HEX'                               |
 |    +         | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
 |   .str       | \\x20\\.str\\x20                | 'ASC'                               |
-|   *          | ^\*                             | ';*'                                |
+|   *          | ^\\*                            | ';*'                                |
 
