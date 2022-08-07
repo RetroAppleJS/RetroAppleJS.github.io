@@ -72,6 +72,7 @@ Any change in this document affects the **default application configuration**, o
 |[TFUNCTION]   | REGXEP_INPUT                    | REGEXP_OUTPUT                       |
 | :----------: | :------------------------------ | :---------------------------------- |
 |    .eq       | \\x20\\.eq\\x20                 | 'EQU'                               | 
+|    .var      | \\x20\\.var\\x20                | 'EQU'                               | 
 |    .org      | \\x20\\.org\\x20                | 'ORG'                               |
 | remove{*}    | \\{[^{}]*\\}                    | ''                                  |
 | upper(_3_)   |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
