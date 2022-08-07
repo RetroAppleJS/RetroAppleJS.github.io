@@ -85,7 +85,7 @@ Any change in this document affects the **default application configuration**, o
 |    +          | SourceGen | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
 |    *          | SourceGen | ^\\*                            | ';*'                                |
 | upper exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase()                     |
-| upper before; | SourceGen | (.*?);                          |                                     |
+| upper before; | SourceGen | (.*?);                          | x.toUpperCase()                     |
 
 
 
