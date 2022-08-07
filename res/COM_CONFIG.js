@@ -41,17 +41,17 @@ const _CFG_TFUNCTION = {
 ,".var":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.var|\\.VAR\\x20" ,"REGEXP_OUTPUT":"'EQU'"}
 ,".org":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.org|\\.ORG\\x20" ,"REGEXP_OUTPUT":"'ORG'"}
 ,".str":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.str|\\.STR\\x20" ,"REGEXP_OUTPUT":"'ASC'"}
-,"remove'{...}'":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\{[^{}]*\\}" ,"REGEXP_OUTPUT":"''"}
+,".bulk":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.bulk|\\.BULK\\x20" ,"REGEXP_OUTPUT":"'HEX'"}
+,"+":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\+\\x20\\x20\\x20" ,"REGEXP_OUTPUT":"'HEX'"}
+,"remove {..}":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\{[^{}]*\\}" ,"REGEXP_OUTPUT":"''"}
 ,"upper(_3_)":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
 ,"upper(_3)":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
 ,"upper(3_)":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
 ,"upper(3)":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
 ,"hex array":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\$([0-9A-Fa-f][0-9A-Fa-f][, ])" ,"REGEXP_OUTPUT":"x.substring(1,3).toUpperCase()+' '"}
-,".bulk":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.bulk\\x20" ,"REGEXP_OUTPUT":"'HEX'"}
-,"+":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\+\\x20\\x20\\x20" ,"REGEXP_OUTPUT":"'HEX'"}
 ,"*":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^\\*" ,"REGEXP_OUTPUT":"';*'"}
-,"upper exept;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^((?!;).)*$" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
-,"upper before;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(.*?);" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
+,"upper_exept;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^((?!;).)*$" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
+,"upper_before;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(.*?);" ,"REGEXP_OUTPUT":"x.toUpperCase()"}
 }
 
 var _DOCS = new Array();
