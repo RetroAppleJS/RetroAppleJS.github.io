@@ -41,8 +41,7 @@ const _CFG_TFUNCTION = {
 ,".var":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.var|\\.VAR\\x20" ,"REGEXP_OUTPUT":"'EQU'" ,"DESCRIPTION":"Replace .var  by EQU"}
 ,".org":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.org|\\.ORG\\x20" ,"REGEXP_OUTPUT":"'ORG'" ,"DESCRIPTION":"Replace .org  by ORG"}
 ,".str":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.str|\\.STR\\x20" ,"REGEXP_OUTPUT":"'ASC'" ,"DESCRIPTION":"Replace .str  by ASC"}
-,".bulk":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":".bulk\\x20([\\s\\S]*)$"}
-,".bulk2":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\.bulk|\\.BULK\\x20" ,"REGEXP_OUTPUT":"'HEX '+x.replace(/[,$]/g).replace(/\\s\\s+/g,' ').toUpperCase()" ,"DESCRIPTION":"Replace .bulk by HEX"}
+,".bulk2":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":".bulk\\x20([\\s\\S]*)$" ,"REGEXP_OUTPUT":"'HEX '+x.replace(/[,$]/g).replace(/\\s\\s+/g,' ').toUpperCase()" ,"DESCRIPTION":"Replace .bulk by HEX, remove strings and commas"}
 ,".fill":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":".fill\\x20([\\s\\S]*)$" ,"REGEXP_OUTPUT":"'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '" ,"DESCRIPTION":"Substitute .fill by HEX array"}
 ,"+":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\+\\x20\\x20\\x20" ,"REGEXP_OUTPUT":"'HEX'" ,"DESCRIPTION":"Replace +     by HEX"}
 ,"remove {..}":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\{[^{}]*\\}" ,"REGEXP_OUTPUT":"''" ,"DESCRIPTION":"Remove everything between accolades"}
