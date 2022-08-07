@@ -79,9 +79,8 @@ Any change in this document affects the **default application configuration**, o
 |    +          | SourceGen | \\x20\\+\\x20\\x20\\x20         | 'HEX'           | Replace +     by HEX                                                |
 | remove {..}   | SourceGen | \\{[^{}]*\\}                    | ''              | Remove everything between accolades                                 |
 | hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                                    |    
-|    *          | SourceGen | ^\\*                            | ';*'            |                                                                     |
-| upper_exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase() |                                                                     |
-| upper_before; | SourceGen | (.*?);                          | x.toUpperCase() |                                                                     |
-
+|    *          | SourceGen | ^\\*                            | ';*'            | Add semicolumn before any line starting with asterisk               |
+| upper_exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase() | Uppercase the entire line if the line does not contain semicolumn   |                                
+| upper_before; | SourceGen | (.*?);                          | x.toUpperCase() | Uppercase everything until bumping into a semicolumn                |
 
 
