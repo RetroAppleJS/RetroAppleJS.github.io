@@ -694,8 +694,8 @@ RDBYT2      PHA
             BNE     RDBYT2
             RTS
 
-• Clear variables
-LASTIN      .var    2F    
+;* Clear variables
+LASTIN     EQU   2F    
 
 RD2BIT      JSR     RDBIT
 RDBIT       DEY
@@ -982,8 +982,8 @@ WRBYT2      ASL     A
             BNE     WRBYT2
             RTS
 
-• Clear variables
-CHKSUM      .var    2E    
+;* Clear variables
+CHKSUM     EQU   2E    
 
 CRMON       JSR     BL1
             PLA
