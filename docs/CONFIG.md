@@ -69,23 +69,18 @@ Any change in this document affects the **default application configuration**, o
 
 ## TRANSPILER
 
-|[TFUNCTION]    | COMPILER  | REGXEP_INPUT                    | REGEXP_OUTPUT                       |
-| :-----------: | :-------- | :------------------------------ | :---------------------------------- |
-|    .eq        | SourceGen | \\x20\\.eq\|\\.EQ\\x20          | 'EQU'                               | 
-|    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20        | 'EQU'                               | 
-|    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20        | 'ORG'                               |
-|   .str        | SourceGen | \\x20\\.str\|\\.STR\\x20        | 'ASC'                               |
-|    .bulk      | SourceGen | \\x20\\.bulk\|\\.BULK\\x20      | 'HEX'                               |
-|    +          | SourceGen | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
-| remove {..}   | SourceGen | \\{[^{}]*\\}                    | ''                                  |
-| upper(_3_)    | SourceGen |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(_3)     | SourceGen |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
-| upper(3_)     | SourceGen |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
-| upper(3)      | SourceGen |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
-| hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
-|    *          | SourceGen | ^\\*                            | ';*'                                |
-| upper_exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase()                     |
-| upper_before; | SourceGen | (.*?);                          | x.toUpperCase()                     |
-
+|[TFUNCTION]    | COMPILER  | REGXEP_INPUT                    | REGEXP_OUTPUT   | DESCRIPTION                                                         |
+| :-----------: | :-------- | :------------------------------ | :-------------- | :------------------------------------------------------------------ |
+|    .eq        | SourceGen | \\x20\\.eq\|\\.EQ\\x20          | 'EQU'           | Replace .eq   by EQU                                                |
+|    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20        | 'EQU'           | Replace .var  by EQU                                                |
+|    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20        | 'ORG'           | Replace .org  by ORG                                                |
+|    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20        | 'ASC'           | Replace .str  by ASC                                                |
+|    .bulk      | SourceGen | \\x20\\.bulk\|\\.BULK\\x20      | 'HEX'           | Replace .bulk by HEX                                                |
+|    +          | SourceGen | \\x20\\+\\x20\\x20\\x20         | 'HEX'           | Replace +     by HEX                                                |
+| remove {..}   | SourceGen | \\{[^{}]*\\}                    | ''              | Remove everything between accolades                                 |
+| hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                                    |    
+|    *          | SourceGen | ^\\*                            | ';*'            | Add semicolumn before any line starting with asterisk               |
+| upper_exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase() | Uppercase the entire line if the line does not contain semicolumn   |                                
+| upper_before; | SourceGen | (.*?);                          | x.toUpperCase() | Uppercase everything until bumping into a semicolumn                |
 
 
