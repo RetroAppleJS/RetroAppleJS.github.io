@@ -77,15 +77,15 @@ Any change in this document affects the **default application configuration**, o
 |   .str        | SourceGen | \\x20\\.str\|\\.STR\\x20        | 'ASC'                               |
 |    .bulk      | SourceGen | \\x20\\.bulk\|\\.BULK\\x20      | 'HEX'                               |
 |    +          | SourceGen | \\x20\\+\\x20\\x20\\x20         | 'HEX'                               |
-| remove'{...}' | SourceGen | \\{[^{}]*\\}                    | ''                                  |
+| remove {..}   | SourceGen | \\{[^{}]*\\}                    | ''                                  |
 | upper(_3_)    | SourceGen |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
 | upper(_3)     | SourceGen |( [abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
 | upper(3_)     | SourceGen |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy] )|x.toUpperCase()|
 | upper(3)      | SourceGen |^([abcdeijlnoprst][abcdehijlmnoprstvxy][acdeiklpqrstvxy])$|x.toUpperCase()|
 | hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '   |
 |    *          | SourceGen | ^\\*                            | ';*'                                |
-| upper exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase()                     |
-| upper before; | SourceGen | (.*?);                          | x.toUpperCase()                     |
+| upper_exept;  | SourceGen | ^((?!;).)*$                     | x.toUpperCase()                     |
+| upper_before; | SourceGen | (.*?);                          | x.toUpperCase()                     |
 
 
 
