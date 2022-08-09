@@ -80,8 +80,7 @@ Any change in this document affects the **default application configuration**, o
 |    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$      |'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '| Substitute .fill by HEX array |
 | remove {..}   | SourceGen | \\{[^{}]*\\}                | ''              | Remove everything between accolades                                 |
 | hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                                |
-|    *          | SourceGen | ^\\*                        | ';*'            | Add semicolumn before any line starting with asterisk               |
-| upper_exept;  | SourceGen | ^((?!;).)*$                 | x.toUpperCase() | Uppercase the entire line if the line does not contain semicolumn   |        
-| upper_before; | SourceGen | (.*?);                      | x.toUpperCase() | Uppercase everything until bumping into a semicolumn                |
+|    *          | SourceGen | ^\\*                        | ';*'            | Add semicolumn before any line starting with asterisk               |       
+| upper_before; | SourceGen | ^[^;^\n]*                   | x.toUpperCase() | Uppercase everything until bumping into a semicolumn                |
 
 
