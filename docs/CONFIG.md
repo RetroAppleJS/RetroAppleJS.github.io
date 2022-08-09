@@ -75,9 +75,9 @@ Any change in this document affects the **default application configuration**, o
 |    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20    | 'EQU'           | Replace .var  by EQU                                                |
 |    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20    | 'ORG'           | Replace .org  by ORG                                                |
 |    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20    | 'ASC'           | Replace .str  by ASC                                                |
-|    .bulk2     | SourceGen | .bulk\\x20([\\s\\S]*)$      | 'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace .bulk by HEX, remove strings and commas|
+|    .bulk      | SourceGen | \\x20.bulk\\x20([\\s\\S]*)$ | 'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace .bulk by HEX, remove strings and commas|
+|     +         | SourceGen | \\x20\\+\\x20([\\s\\S]*)$   | 'HEX '+x.split(' + ')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace + by HEX, remove strings and commas|
 |    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$      |'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '| Substitute .fill by HEX array |
-|    +          | SourceGen | \\x20\\+\\x20\\x20\\x20     | 'HEX'           | Replace +     by HEX                                                |
 | remove {..}   | SourceGen | \\{[^{}]*\\}                | ''              | Remove everything between accolades                                 |
 | hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                                |
 |    *          | SourceGen | ^\\*                        | ';*'            | Add semicolumn before any line starting with asterisk               |
