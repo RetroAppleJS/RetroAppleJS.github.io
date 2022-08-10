@@ -182,7 +182,7 @@ SCRN2       bcc     RTMSKZ
 RTMSKZ      and     #$0f
             rts
 
-• Clear variables
+* Clear variables
 LMNEM       .var    $2c    {addr/1}
 RMNEM       .var    $2d    {addr/1}
 FORMAT      .var    $2e    {addr/1}
