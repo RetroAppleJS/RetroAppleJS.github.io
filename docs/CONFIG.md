@@ -77,9 +77,8 @@ Any change in this document affects the **default application configuration**, o
 |    .str       | SourceGen | (^[^;]*)(\\.str \\|\\.STR )(.+)       | '$1ASC$3'        | Replace .str  by ASC until ;                     |
 |    .bulk      | SourceGen | \\x20.bulk\\x20([\\s\\S]*)$           | 'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace .bulk by HEX, remove strings and commas|
 |     +         | SourceGen | \\x20\\+\\x20([\\s\\S]*)$             | 'HEX '+x.split(' + ')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace + by HEX, remove strings and commas|
-|    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$                |'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '| Substitute .fill by HEX array |
+|    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$                |'HEX'+x.split(',')[1].replace(/[ \n]/g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '| Substitute .fill by HEX array |
 | remove {..}   | SourceGen | \\{[^{}]*\\}                          | ''               | Remove everything between accolades              |
-| hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                        |
 |    *          | SourceGen | ^\\*                                  | ';*'             | Add semicolumn before any line starting with asterisk|       
 | upper_before; | SourceGen | ^[^;^\n]*                             | x.toUpperCase()  | Uppercase everything until bumping into a semicolumn|
 
