@@ -69,18 +69,18 @@ Any change in this document affects the **default application configuration**, o
 
 ## TRANSPILER
 
-|[TFUNCTION]    | COMPILER  | REGXEP_INPUT                | REGEXP_OUTPUT   | DESCRIPTION                                                         |
-| :-----------: | :-------- | :-------------------------- | :-------------- | :------------------------------------------------------------------ |
-|    .eq        | SourceGen | (^[^;^n]*)(\\.eq\\x20\\|\\.EQ\\x20)(.+)|'$1EQU$3'| Replace .eq   by EQU                                                |
-|    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20    | 'EQU'           | Replace .var  by EQU                                                |
-|    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20    | 'ORG'           | Replace .org  by ORG                                                |
-|    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20    | 'ASC'           | Replace .str  by ASC                                                |
-|    .bulk      | SourceGen | \\x20.bulk\\x20([\\s\\S]*)$ | 'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace .bulk by HEX, remove strings and commas|
-|     +         | SourceGen | \\x20\\+\\x20([\\s\\S]*)$   | 'HEX '+x.split(' + ')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace + by HEX, remove strings and commas|
-|    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$      |'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '| Substitute .fill by HEX array |
-| remove {..}   | SourceGen | \\{[^{}]*\\}                | ''              | Remove everything between accolades                                 |
-| hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                                |
-|    *          | SourceGen | ^\\*                        | ';*'            | Add semicolumn before any line starting with asterisk               |       
-| upper_before; | SourceGen | ^[^;^\n]*                   | x.toUpperCase() | Uppercase everything until bumping into a semicolumn                |
+|[TFUNCTION]    | COMPILER  | REGXEP_INPUT                          | REGEXP_OUTPUT    | DESCRIPTION                                      |
+| :-----------: | :-------- | :------------------------------------ | :--------------- | :----------------------------------------------- |
+|    .eq        | SourceGen | (^[^;]*)(\\.eq\\x20\\|\\.EQ\\x20)(.+) | '$1EQU$3'        | Replace .eq   by EQU                             |
+|    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20              | 'EQU'            | Replace .var  by EQU                             |
+|    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20              | 'ORG'            | Replace .org  by ORG                             |
+|    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20              | 'ASC'            | Replace .str  by ASC                             |
+|    .bulk      | SourceGen | \\x20.bulk\\x20([\\s\\S]*)$           | 'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace .bulk by HEX, remove strings and commas|
+|     +         | SourceGen | \\x20\\+\\x20([\\s\\S]*)$             | 'HEX '+x.split(' + ')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase() | Replace + by HEX, remove strings and commas|
+|    .fill      | SourceGen | .fill\\x20([\\s\\S]*)$                |'HEX'+x.split(',')[1].replace(/ /g,'').replace(/\\$/g,' ').toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '  | Substitute .fill by HEX array |
+| remove {..}   | SourceGen | \\{[^{}]*\\}                          | ''               | Remove everything between accolades              |
+| hex array     | SourceGen | \\$([0-9A-Fa-f][0-9A-Fa-f][, ]) |x.substring(1,3).toUpperCase()+' '|                                        |
+|    *          | SourceGen | ^\\*                                  | ';*'             | Add semicolumn before any line starting with asterisk|       
+| upper_before; | SourceGen | ^[^;^\n]*                             | x.toUpperCase()  | Uppercase everything until bumping into a semicolumn|
 
 
