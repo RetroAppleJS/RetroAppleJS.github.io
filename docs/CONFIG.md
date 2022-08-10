@@ -71,7 +71,7 @@ Any change in this document affects the **default application configuration**, o
 
 |[TFUNCTION]    | COMPILER  | REGXEP_INPUT                | REGEXP_OUTPUT   | DESCRIPTION                                                         |
 | :-----------: | :-------- | :-------------------------- | :-------------- | :------------------------------------------------------------------ |
-|    .eq        | SourceGen | \\x20\\.eq\|\\.EQ\\x20.+;   | 'EQU'           | Replace .eq   by EQU                                                |
+|    .eq        | SourceGen | (^[^;^n]*)(\\.eq\\x20\\|\\.EQ\\x20)(.+)|'$1EQU$3'| Replace .eq   by EQU                                                |
 |    .var       | SourceGen | \\x20\\.var\|\\.VAR\\x20    | 'EQU'           | Replace .var  by EQU                                                |
 |    .org       | SourceGen | \\x20\\.org\|\\.ORG\\x20    | 'ORG'           | Replace .org  by ORG                                                |
 |    .str       | SourceGen | \\x20\\.str\|\\.STR\\x20    | 'ASC'           | Replace .str  by ASC                                                |
