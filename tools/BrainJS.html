@@ -1,6 +1,6 @@
 <html>
   <head>
-  <title>NEURAL NETWORK TOOL</title>
+  <title>BrainJS - NEURAL NETWORK TOOL</title>
   <!--
 //   ______                   _               _____   ______   
 //  |_   _ \                 (_)             |_   _|.' ____ \  
@@ -37,6 +37,7 @@
     #thumbnail { border: 1px solid #077; }
     #result { font-size: 128pt; float: right; width: 120px; height: 280px; border: 5px solid #fff; text-align: center; line-height: 280px; }
     #main { background-color:#FFFFFF }
+    .rbox { border-radius: 10px; background: #F0F0F0; padding: 5px; margin:0px 2px 2px 0px;}
     .brain_logo { width: 100px; height: 100px; float:left; padding:10px }
     .popup_overlay { position: fixed; z-index:1; background: rgba(0, 0, 0, 0.2); transition: opacity 500ms; visibility: hidden; opacity: 0; top: 0; bottom: 0; left: 0; right: 0;  }
     .popup_overlay:target { visibility: visible; opacity: 1; }
@@ -44,8 +45,6 @@
     .popup h2 { margin-top: 0; color: #333; }
     .popup .close { position: absolute; top: 20px; right: 30px; transition: all 200ms; font-weight: bold; text-decoration: none;color: #333; }
     .popup .content { max-height: 40%; overflow: auto; }
-
-
     </style>
 </head>
 
@@ -144,43 +143,55 @@ function init_gui(_o)
         <tr>
             <td width="50%" class=no_margins style=vertical-align:top;>
 
-                <div>
-                    <svg class=brain_logo version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 200 200">
-                        <rect width="100%" height="200px" fill="#F3DF49"/>
-                        <text x="10" y="90" style="font-size:25px;">Training</text>
-                        <g>
-                            <polygon fill="#2E2E2C" points="104.8,110.4 134.1,133.6 134.1,148.7 94.8,163.9 74.3,164.9 58.5,143.7 73.4,123.3"/>
-                            <polygon fill="#2E2E2C" points="139.4,148.7 139.4,133.6 134.3,104.4 148.4,103.5 185,126 180.5,153.6 166.4,164"/>
-                            <polygon fill="#2E2E2C" points="163.1,167.6 137.3,153.2 101.3,166.6 142.8,177.7 148.4,186.2 155.2,186.2"/>
-                            <polygon fill="#2E2E2C" points="111.1,108.3 133.5,127 128.9,105.3"/>
-                        </g>
-                        <path  d="m105,60l38,35l38,-35l-19,0l0,-35l-38,0l0,35l-19,0z" fill="#2E2E2C"/>
-                    </svg>
-                    <a class="button" href="#popup1"><img src="data:image/gif;base64,R0lGODlhDAAMAPMAAP///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAAALAAAAAAMAAwAAwQeEEgQwrzUzrpxp5sGil52ceFJohI7pm3civRKzm4EADs="></a>
+                <svg class=brain_logo version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 200 200">
+                    <rect width="100%" height="200px" fill="#F3DF49"/>
+                    <text x="10" y="90" style="font-size:25px;">Training</text>
+                    <g>
+                        <polygon fill="#2E2E2C" points="104.8,110.4 134.1,133.6 134.1,148.7 94.8,163.9 74.3,164.9 58.5,143.7 73.4,123.3"/>
+                        <polygon fill="#2E2E2C" points="139.4,148.7 139.4,133.6 134.3,104.4 148.4,103.5 185,126 180.5,153.6 166.4,164"/>
+                        <polygon fill="#2E2E2C" points="163.1,167.6 137.3,153.2 101.3,166.6 142.8,177.7 148.4,186.2 155.2,186.2"/>
+                        <polygon fill="#2E2E2C" points="111.1,108.3 133.5,127 128.9,105.3"/>
+                    </g>
+                    <path  d="m105,60l38,35l38,-35l-19,0l0,-35l-38,0l0,35l-19,0z" fill="#2E2E2C"/>
+                </svg>
+                <div class="rbox" style="width:300px;float:left;">
+                    <a class="button" href="#popup1"><img style="width:12px;" src="data:image/gif;base64,R0lGODlhEAAQAPAAAP///2FhYSH5BAEAAAAALAAAAAAQABAAAAIohB0Zx6f84GpogiTzbRheSzldyIEVNYqo+a1m2r7vqdZtCEcVu+tGAQA7"></a>
                     <div id="popup1" class="popup_overlay">
                         <div class="popup">
                             <h2>Load MNIST training models</h2>
                             <a class="close" href="#">&times;</a>
                             <a class="content">
-                            Please upload 2 files:
+                            Get 2 files from <a href="http://yann.lecun.com/exdb/mnist/" target="_blank">MNIST</a>
                             <ul>
                                 <li>taining data (train-images.idx3-ubyte)</li>
                                 <li>label dat (train-labels-idx1-ubyte)</li>
                             </ul>
-                            here:<a href="http://yann.lecun.com/exdb/mnist/" target="_blank">MNIST</a>
+                            
                         </div>
                     </div>
-                    <input type="file"  id="dataFile" value="File" onchange="oFile.load(this.id)">train-images.idx3-ubyte & train-labels-idx1-ubyte<br>
+                    <input type="file"  id="dataFile" value="File" onchange="oFile.load(this.id)">
                     <input type="hidden" id=fileID value="">
                 </div>
-
-
-                <h1>MNIST Digits Simples</h1>
+                <br>
+                <div id="status_2051" class="rbox" style="width:144px;float:left;">
+                    <div style="color:#D05050">No images</div>
+                </div>
+                <div id="status_2049" class="rbox" style="width:144px;float:left;">
+                    <div style="color:#D05050">No labels</div>
+                </div>
+                <br>
                 <canvas id="mnistCanvas" width="280" height="280">
                     Your browser does not support the HTML5 canvas tag.
-                </canvas>            
+                </canvas>
+         
             </td>
+
+
+
             <td width="1px" class=no_margins style=background-color:black></td>
+
+
+
             <td width="50%" class=no_margins style=vertical-align:top;>
 
                 <svg class=brain_logo version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 200 200" style="width: 100px; height: 100px;">
@@ -239,26 +250,32 @@ function FILE()
             var size = event.target.result.byteLength;
             var bytes = Array(size);
 
-            var id = event.target.id;
-            event.target.data_bytes[id] = {};
-            event.target.header_data[id] = {};
+            //var id = event.target.id;
+            event.target.data_bytes = {};
+            event.target.header_data = {};
             console.log("this.fread.data_bytes("+Object.keys(event.target.data_bytes).length+")");
 
             var i = 0;
-            var hd = event.target.header_data[id];
-            var db = event.target.data_bytes[id];
-            hd.magic = data.getUint32(i); i+=4;
-            if(hd.magic==2051)
+            var magic = data.getUint32(i).toString(10); i+=4;
+            var hd = event.target.header_data[magic] = {};
+            var db = event.target.data_bytes[magic] = new Uint8Array(size);
+
+            if(magic==2051)
             {
                 hd.count = data.getUint32(i); i+=4;
                 hd.rows  = data.getUint32(i); i+=4;
                 hd.cols  = data.getUint32(i); i+=4;
                 for (var j=0; i < size; i++,j++) db[j] = data.getUint8(i);
                 display(hd,db);
+
+                document.getElementById("status_"+magic).innerHTML = "<small>"+(db.length>>20)+"Mb data loaded<br>"+hd.count+" images, size("+hd.cols+","+hd.rows+")</small>"
             }
-            else if(hd.magic==2049)
+            else if(magic==2049)
             {
                 hd.count = data.getUint32(i);
+                for (var j=0; i < size; i++,j++) db[j] = data.getUint8(i);
+
+                document.getElementById("status_"+magic).innerHTML = "<small>"+hd.count+" labels loaded</small>"
             }  
             //document.write("count="+t.count+" rows="+t.rows+" cols="+t.cols)
         }
@@ -343,11 +360,9 @@ function display(_hd,_db)
 
     var canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     var colOffset, rowOffcet;
-
     
     for (var i = 0; i < 200; i++)
     {
-        var s="";
         var idx_offset = i*sizeX*sizeY;
         var Y_offset = Math.floor(i/10)*(sizeX*sizeY*10);
         for (var x = 0; x < sizeX; x++)
@@ -356,47 +371,18 @@ function display(_hd,_db)
             {
                 var idx = x*sizeY+y;
                 var position = Y_offset + x*canvas.width+y + i*(sizeX);
-                s+="("+idx+","+idx_offset+") "
-
-                //pixels.push(dataFileBuffer[(image * 28 * 28) + (x + (y * 28)) + 16]);
-                
-                //console.log("x="+x+" y="+y+" i="+i+" color="+_db[i]);
+                //s+="("+idx+","+idx_offset+") ";
                 var pointColor = _db[idx+idx_offset];
-                //var position = (colOffset+(rowOffcet + Math.floor(i/sizeX))*canvas.width) + (i % sizeY);
-                canvasData.data[position * 4 + 0] = 255-pointColor;
-                canvasData.data[position * 4 + 1] = 255-pointColor;
-                canvasData.data[position * 4 + 2] = 255-pointColor;
-                canvasData.data[position * 4 + 3] = 255;
+                var pos = position << 2
+                canvasData.data[pos++] = 255-pointColor;
+                canvasData.data[pos++] = 255-pointColor;
+                canvasData.data[pos++] = 255-pointColor;
+                canvasData.data[pos++] = 255;
                 
             }
-            s+="\n"
-        }
-        //console.log(s)
-    }
-    ctx.putImageData(canvasData, 0, 0);
-    
-        /*
-    for (var col=0;col < 10; col++)
-    {
-        colOffset = col*sizeX;
-        //var digits = mnist[col].range(0, simplesCount-1);
-
-        for (var row=0;row < simplesCount; row++) {
-            //var digit = digits[row];
-            rowOffcet = row*sizeY;
-            for (var i = 0; i < digit.length; i++) {
-                //var pointColor = digit[i] * 255;
-                var position = (colOffset+(rowOffcet + Math.floor(i/size))*canvas.width) + (i % size);
-                canvasData.data[position * 4 + 0] = 255-pointColor;
-                canvasData.data[position * 4 + 1] = 255-pointColor;
-                canvasData.data[position * 4 + 2] = 255-pointColor;
-                canvasData.data[position * 4 + 3] = 255;
-            }
         }
     }
     ctx.putImageData(canvasData, 0, 0);
-    */
-
 }
 
 
