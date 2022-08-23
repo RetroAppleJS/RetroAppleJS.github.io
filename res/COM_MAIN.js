@@ -109,3 +109,44 @@ var oMEMGRID = new function()
     }
   }
 }()
+
+
+
+
+
+
+
+
+function GRID()
+{
+  this.build_grid = function(start,len,step)
+  {
+    var output = "<table class=gtable>\n";
+    var end = start+len*step;
+    output+="<tr><td></td>"
+    for(var i=start,s="";i!=end;i+=step)
+    {
+      output+=this.col_label(i,len,step)
+      s += "<tr>"+this.row_label(i,len,step)+"<td id='m"+this.line(i,len,1).join("'></td><td id='m")+"'></td></tr>\n";
+    }
+    output+="</tr>\n"
+    return output+s+"</table>";
+  }
+
+  this.col_label = function(i,len,step)
+  {
+    return "<td>"+(i/step)+"</td>";
+  }
+
+  this.row_label = function(i,len,step)
+  {
+    return "<td>"+(i/step)+"</td>";
+  }
+
+  this.line = function(start,len,step)
+  {
+    var end = start+len*step;
+    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = j;
+    return a;
+  }
+}
