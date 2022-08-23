@@ -15,6 +15,9 @@
   <script src="../res/MNIST_model_org.js"></script>
   <script src="../res/MNIST_model.js"></script>
 
+  <link rel="stylesheet"        href="../res/COM_MAIN.css">
+  <script type="text/javascript" src="../res/COM_MAIN.js"></script>
+
   <script src="../res/brain_browser.js"></script>
 
   <meta name="description" content="">
@@ -179,7 +182,9 @@ function init_gui(_o)
                 <div id="status_2049" class="rbox" style="width:144px;float:left;">
                     <div style="color:#D05050">No labels</div>
                 </div>
-                <br>
+                <br><br><br><br>
+                <div id="img_grid"></div>
+
                 <canvas id="mnistCanvas" width="280" height="280">
                     Your browser does not support the HTML5 canvas tag.
                 </canvas>
@@ -358,10 +363,22 @@ function display_images(_hd,_db,_idx)
     var canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     var colOffset, rowOffcet;
     
+    oGRID = new GRID();
+    document.getElementById("img_grid").innerHTML = oGRID.build_grid(0,28,28);
+    //document.getElementById("img_grid").innerHTML += "<textarea style='width:400px;height:250px'>"+oGRID.build_grid(0,28,28)+"</textarea>";
+    for(var y=0;y<28;y++)
+    {
+        for(var x=0;x<28;x++)
+        {
+            var el = document.getElementById("m"+(x+(y*28)));
+            el.style.backgroundColor = "#EEEEEE"
+        }
+    }
+
     for (var i = 0; i < 200; i++)
     {
         var idx_offset = _idx + i*sizeX*sizeY;
-        var Y_offset = Math.floor(i/10)*(sizeX*sizeY*10);
+        var Y_offset = Math.floor(i/10)*sizeX*sizeY*10;
         for (var x = 0; x < sizeX; x++)
         {
             var idx = x*sizeY;
@@ -374,6 +391,12 @@ function display_images(_hd,_db,_idx)
                 canvasData.data[pos++] = pointColor;
                 canvasData.data[pos++] = pointColor;
                 canvasData.data[pos++] = 255;
+
+                if(i==0) // TODO ADD TABLE 
+                {
+                    
+                }
+                    
             }
         }
     }
@@ -392,6 +415,11 @@ function formatBytes(bytes, decimals = 2)
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
+
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+var getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+var HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+var RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
 
 
 ///////////////////////////////////////////////////////////
