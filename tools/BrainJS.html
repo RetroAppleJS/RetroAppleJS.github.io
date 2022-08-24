@@ -270,7 +270,8 @@ function FILE()
                 hd.count = data.getUint32(i); i+=4;
                 hd.rows  = data.getUint32(i); i+=4;
                 hd.cols  = data.getUint32(i); i+=4;
-                display_images(hd,data,i);
+                hd.idx   = i;
+                display_images(hd,data);
 
                 document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" img, size("+hd.cols+","+hd.rows+")</small>"
             }
@@ -278,6 +279,7 @@ function FILE()
             {
                 hd.magic = magic;
                 hd.count = data.getUint32(i); i+=4;
+                hd.idx   = i;
                 document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" labels</small>"
             }  
             //document.write("count="+t.count+" rows="+t.rows+" cols="+t.cols)
@@ -352,7 +354,7 @@ function getMnistData(content)
 };
 
 
-function display_images(_hd,_db,_idx)
+function display_images(_hd,_db)
 {
     var simplesCount = 20;
     var sizeX = _hd.cols;
@@ -363,22 +365,46 @@ function display_images(_hd,_db,_idx)
     var canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     var colOffset, rowOffcet;
     
+    //hd.count = data.getUint32(i); i+=4;
+    //hd.rows  = data.getUint32(i); i+=4;
+    //hd.cols  = data.getUint32(i); i+=4;
+    //hd.idx   = i;
+
     oGRID = new GRID();
-    oGRID.data = _db;
-    oGRID.paint = new function(i,data,_idx)
+    oGRID.header = _hd;
+    oGRID.data  = _db;
+    oGRID.paint = function(i)
     {
-        var idx_offset = _idx + i*sizeX*sizeY;
-        var X_offset = Math.floor(i/10)*sizeX*(sizeY-1)*10;
+        var idx_offset = this.header.idx + i*this.header.cols*this.header.rows;
+        var X_offset = Math.floor(i/10)*this.header.cols*(this.header.rows-1)*10;
+        for (var y = 0; y < sizeY; y++)
+        {
+            var idx = y*this.header.cols;
+            for (var x = 0; x < sizeX; x++)
+            {
+                var position = X_offset + y*canvas.width+x+i*this.header.rows;
+                var pointColor = this.data.getUint8(idx+idx_offset+x);
+                var t_idx = x+y*28;
+                var el = document.getElementById("m"+t_idx);
+                el.style.backgroundColor = "#"+RGB2HEX([pointColor,pointColor,pointColor]).join("")
+            }
+        }
     }
     var styl = "style='display:inline-block;'"
-    var js = "onclick='oGRID.paint(document.getElementById('img_nav'),oGRID.data,"+_idx+")'"
-    document.getElementById("img_grid").innerHTML = "<div><button "+styl+">prev</button><div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div><button "+styl+">next</button><div>"
-    document.getElementById("img_grid").innerHTML += oGRID.build_grid(0,28,28);
+    var js1 = "onclick='var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);o.innerHTML=(v<=0?"+(oGRID.header.count-1)+":v-1);oGRID.paint(o.innerHTML);'";
+    var js2 = "onclick='var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);o.innerHTML=(v>="+oGRID.header.count+"?0:v+1);oGRID.paint(o.innerHTML);'";
+
+
+//  onclick='var o=document.getElementById("img_nav");var v=Number(o.innerHTML);o.innerHTML=(v<=0?60000:(v>=60000?0:v-1));oGRID.paint(o.innerHTML);'
+
+
+    document.getElementById("img_grid").innerHTML = "<div><button "+js1+" "+styl+">prev</button><div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div><button "+js2+" "+styl+">next</button><div>"
+    document.getElementById("img_grid").innerHTML += oGRID.build_grid(0,sizeY,sizeX);
     //document.getElementById("img_grid").innerHTML += "<textarea style='width:400px;height:250px'>"+oGRID.build_grid(0,28,28)+"</textarea>";
 
     for (var i = 0; i < 200; i++)
     {
-        var idx_offset = _idx + i*sizeX*sizeY;
+        var idx_offset = _hd.idx + i*sizeX*sizeY;
         var X_offset = Math.floor(i/10)*sizeX*(sizeY-1)*10;
         for (var y = 0; y < sizeY; y++)
         {
