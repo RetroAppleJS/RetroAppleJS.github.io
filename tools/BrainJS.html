@@ -41,7 +41,7 @@
     #result { font-size: 128pt; float: right; width: 120px; height: 280px; border: 5px solid #fff; text-align: center; line-height: 280px; }
     #main { background-color:#FFFFFF }
     .rbox { border-radius: 10px; background: #F0F0F0; padding: 5px; margin:0px 2px 2px 0px;}
-    .brain_logo { width: 100px; height: 100px; float:left; padding:10px }
+    .brain_logo { width: 100px; height: 100px; float:left; padding:5px }
     .popup_overlay { position: fixed; z-index:1; background: rgba(0, 0, 0, 0.2); transition: opacity 500ms; visibility: hidden; opacity: 0; top: 0; bottom: 0; left: 0; right: 0;  }
     .popup_overlay:target { visibility: visible; opacity: 1; }
     .popup { margin: 70px auto; padding: 20px; background: #fff; border-radius: 5px; width: 40%; position: relative; transition: all 5s ease-in-out;}
@@ -140,7 +140,7 @@ function init_gui(_o)
 <div id=main>
     <table>
         <tr>
-            <td width="50%" class=no_margins style=vertical-align:top;>
+            <td width="50%" class=no_margins style=vertical-align:top;padding-right:5px>
 
                 <svg class=brain_logo version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 200 200">
                     <rect width="100%" height="200px" fill="#F3DF49"/>
@@ -153,6 +153,7 @@ function init_gui(_o)
                     </g>
                     <path  d="m105,60l38,35l38,-35l-19,0l0,-35l-38,0l0,35l-19,0z" fill="#2E2E2C"/>
                 </svg>
+                <br>
                 <div class="rbox" style="width:300px;float:left;">
                     <a class="button" href="#popup1"><img style="width:12px;" src="data:image/gif;base64,R0lGODlhEAAQAPAAAP///2FhYSH5BAEAAAAALAAAAAAQABAAAAIohB0Zx6f84GpogiTzbRheSzldyIEVNYqo+a1m2r7vqdZtCEcVu+tGAQA7"></a>
                     <div id="popup1" class="popup_overlay">
@@ -165,20 +166,19 @@ function init_gui(_o)
                                 <li>taining data (train-images.idx3-ubyte)</li>
                                 <li>label dat (train-labels-idx1-ubyte)</li>
                             </ul>
-                            
                         </div>
                     </div>
                     <input type="file"  id="dataFile" value="File" onchange="oFile.load(this.id)">
                     <input type="hidden" id=fileID value="">
                 </div>
                 <br><br>
-                <div id="status_2051" class="rbox" style="width:144px;float:left;">
+                <div id="status_2051" class="rbox" style="width:149px;float:left;">
                     <div style="color:#D05050">No images</div>
                 </div>
-                <div id="status_2049" class="rbox" style="width:144px;float:left;">
+                <div id="status_2049" class="rbox" style="width:149px;float:left;">
                     <div style="color:#D05050">No labels</div>
                 </div>
-                <br><br><br><br>
+                <br><br>
                 <div id="img_grid"></div>
 
                 <canvas id="mnistCanvas" width="280" height="280">
@@ -193,7 +193,7 @@ function init_gui(_o)
 
 
 
-            <td width="50%" class=no_margins style=vertical-align:top;padding-left:5px>
+            <td width="50%" class=no_margins style=vertical-align:top;>
 
                 <svg class=brain_logo version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 200 200" style="width: 100px; height: 100px;">
                     <rect width="200px" height="200px" fill="#F3DF49"/>
@@ -228,7 +228,7 @@ function init_gui(_o)
   //  ██  ██  ██ ██   ██ ██ ██  ██ ██ 
   //  ██      ██ ██   ██ ██ ██   ████
 
-  
+var oGRID = new GRID();
 var oFile = new FILE();
 function FILE()
 {
@@ -238,7 +238,7 @@ function FILE()
         if (!file) return;
         this.fread = new FileReader();
         this.fread.id = id;
-        this.fread.data_bytes = {};
+        //this.fread.data_bytes = {};
         this.fread.header_data = {};
 
         this.fread.readAsArrayBuffer(file);
@@ -246,15 +246,14 @@ function FILE()
 
         this.fread.onload = function(event)
         {
-            
             var data = new DataView(event.target.result);
             var size = event.target.result.byteLength;
             var bytes = Array(size);
 
             //var id = event.target.id;
-            event.target.data_bytes = {};
+            //event.target.data_bytes = {};
             event.target.header_data = {};
-            console.log("this.fread.data_bytes("+Object.keys(event.target.data_bytes).length+")");
+            //console.log("this.fread.data_bytes("+Object.keys(event.target.data_bytes).length+")");
 
             var i = 0;
             var magic = data.getUint32(i); i+=4;
@@ -267,16 +266,59 @@ function FILE()
                 hd.rows  = data.getUint32(i); i+=4;
                 hd.cols  = data.getUint32(i); i+=4;
                 hd.idx   = i;
-                display_images(hd,data);
+
+                oGRID.header = hd;
+                oGRID.data  = data;
+                oGRID.paint_grid = function(i)
+                {
+                    var idx_offset = this.header.idx + i*this.header.cols*this.header.rows;
+                    for (var y = 0; y < this.header.rows; y++)
+                    {
+                        var idx = y*this.header.cols;
+                        for (var x = 0; x < this.header.cols; x++)
+                        {
+                            var pointColor = this.data.getUint8(idx+idx_offset+x);
+                            document.getElementById("m"+(x+y*this.header.cols)).style.backgroundColor 
+                            = "#"+RGB2HEX([pointColor,pointColor,pointColor]).join("")
+                        }
+                    }
+                }
 
                 document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" img, size("+hd.cols+","+hd.rows+")</small>"
+
+                var styl = "style='display:inline-block;'"
+                var js = "var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);var l=document.getElementById(\"img_lbl\")"
+                         +";l.innerHTML=typeof(oGRID.lbl)===undefined?0:oGRID.lbl[v]";
+                var js1 = "onclick='"+js+";o.innerHTML=(v<=0?"+(oGRID.header.count-1)+":v-1);oGRID.paint_grid(o.innerHTML);'";
+                var js2 = "onclick='"+js+";o.innerHTML=(v>="+oGRID.header.count+"?0:v+1);oGRID.paint_grid(o.innerHTML);'";
+                document.getElementById("img_grid").innerHTML = "<br>"
+                    +"<div class=rbox style='width:249px;float:left;text-align:center'>"
+                    +"<button "+js1+" "+styl+">prev</button>"
+                    +"<div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div>"
+                    +"<button "+js2+" "+styl+">next</button>"
+                    +"<div id=img_lbl "+styl+"></div>"
+                    +"</div><br><br>"
+                    +oGRID.build_grid(0,oGRID.header.rows,oGRID.header.cols);
+
+                oGRID.paint_grid(document.getElementById("img_nav").innerHTML);
+                // img_lbl
+
+                display_images(hd,data);
             }
             else if(magic==2049)
             {
                 hd.magic = magic;
                 hd.count = data.getUint32(i); i+=4;
                 hd.idx   = i;
-                document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" labels</small>"
+                oGRID.lbl = new Array(hd.count);
+                for(var j=0;j<hd.count;j++)
+                {
+                    i++;
+                    oGRID.lbl[j] = data.getUint8(i);
+                    
+                }
+
+                document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" labels</small>";
             }  
             //document.write("count="+t.count+" rows="+t.rows+" cols="+t.cols)
         }
@@ -359,33 +401,6 @@ function display_images(_hd,_db)
     canvas.height = sizeY*simplesCount;
     var ctx = canvas.getContext("2d");
     var canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    oGRID = new GRID();
-    oGRID.header = _hd;
-    oGRID.data  = _db;
-    oGRID.paint_grid = function(i)
-    {
-        var idx_offset = this.header.idx + i*this.header.cols*this.header.rows;
-        for (var y = 0; y < sizeY; y++)
-        {
-            var idx = y*this.header.cols;
-            for (var x = 0; x < sizeX; x++)
-            {
-                var pointColor = this.data.getUint8(idx+idx_offset+x);
-                var t_idx = x+y*this.header.cols;
-                var el = document.getElementById("m"+t_idx);
-                el.style.backgroundColor = "#"+RGB2HEX([pointColor,pointColor,pointColor]).join("")
-            }
-        }
-    }
-    var styl = "style='display:inline-block;'"
-    var js1 = "onclick='var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);o.innerHTML=(v<=0?"+(oGRID.header.count-1)+":v-1);oGRID.paint_grid(o.innerHTML);'";
-    var js2 = "onclick='var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);o.innerHTML=(v>="+oGRID.header.count+"?0:v+1);oGRID.paint_grid(o.innerHTML);'";
-    document.getElementById("img_grid").innerHTML = "<div><button "+js1+" "+styl+">prev</button><div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div><button "+js2+" "+styl+">next</button><div>"
-    document.getElementById("img_grid").innerHTML += oGRID.build_grid(0,sizeY,sizeX);
-
-    var o=document.getElementById("img_nav");
-    oGRID.paint_grid(o.innerHTML);
 
     for (var i = 0; i < 200; i++)
     {
