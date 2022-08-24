@@ -364,7 +364,16 @@ function display_images(_hd,_db,_idx)
     var colOffset, rowOffcet;
     
     oGRID = new GRID();
-    document.getElementById("img_grid").innerHTML = oGRID.build_grid(0,28,28);
+    oGRID.data = _db;
+    oGRID.paint = new function(i,data,_idx)
+    {
+        var idx_offset = _idx + i*sizeX*sizeY;
+        var X_offset = Math.floor(i/10)*sizeX*(sizeY-1)*10;
+    }
+    var styl = "style='display:inline-block;'"
+    var js = "onclick='oGRID.paint(document.getElementById('img_nav'),oGRID.data,"+_idx+")'"
+    document.getElementById("img_grid").innerHTML = "<div><button "+styl+">prev</button><div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div><button "+styl+">next</button><div>"
+    document.getElementById("img_grid").innerHTML += oGRID.build_grid(0,28,28);
     //document.getElementById("img_grid").innerHTML += "<textarea style='width:400px;height:250px'>"+oGRID.build_grid(0,28,28)+"</textarea>";
 
     for (var i = 0; i < 200; i++)
