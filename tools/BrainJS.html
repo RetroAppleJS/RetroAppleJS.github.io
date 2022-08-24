@@ -366,26 +366,18 @@ function display_images(_hd,_db,_idx)
     oGRID = new GRID();
     document.getElementById("img_grid").innerHTML = oGRID.build_grid(0,28,28);
     //document.getElementById("img_grid").innerHTML += "<textarea style='width:400px;height:250px'>"+oGRID.build_grid(0,28,28)+"</textarea>";
-    for(var y=0;y<28;y++)
-    {
-        for(var x=0;x<28;x++)
-        {
-            var el = document.getElementById("m"+(x+(y*28)));
-            el.style.backgroundColor = "#EEEEEE"
-        }
-    }
 
     for (var i = 0; i < 200; i++)
     {
         var idx_offset = _idx + i*sizeX*sizeY;
-        var Y_offset = Math.floor(i/10)*sizeX*sizeY*10;
-        for (var x = 0; x < sizeX; x++)
+        var X_offset = Math.floor(i/10)*sizeX*(sizeY-1)*10;
+        for (var y = 0; y < sizeY; y++)
         {
-            var idx = x*sizeY;
-            for (var y = 0; y < sizeY; y++)
+            var idx = y*sizeX;
+            for (var x = 0; x < sizeX; x++)
             {
-                var position = Y_offset + x*canvas.width+y+i*sizeX;
-                var pointColor = _db.getUint8(idx+idx_offset+y);
+                var position = X_offset + y*canvas.width+x+i*sizeY;
+                var pointColor = _db.getUint8(idx+idx_offset+x);
                 var pos = position << 2;
                 canvasData.data[pos++] = pointColor;
                 canvasData.data[pos++] = pointColor;
@@ -394,7 +386,10 @@ function display_images(_hd,_db,_idx)
 
                 if(i==0) // TODO ADD TABLE 
                 {
-                    
+                    var t_idx = x+y*28;
+                    //var t_idx = y+x*28;
+                    var el = document.getElementById("m"+t_idx);
+                    el.style.backgroundColor = "#"+RGB2HEX([pointColor,pointColor,pointColor]).join("")
                 }
                     
             }
