@@ -287,12 +287,8 @@ function FILE()
                 document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" img, size("+hd.cols+","+hd.rows+")</small>"
 
                 var styl = "style='display:inline-block;'"
-                var js = "var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);var l=document.getElementById(\"img_lbl\")"
-                         
-                var js1 = "onclick='"+js+";o.innerHTML=(v<=0?"+(oGRID.header.count-1)+":v-1);oGRID.paint_grid(o.innerHTML);l.innerHTML=(oGRID.lbl===undefined)?0:oGRID.lbl[o.innerHTML]'";
-                var js2 = "onclick='"+js+";o.innerHTML=(v>="+oGRID.header.count+"?0:v+1);oGRID.paint_grid(o.innerHTML);l.innerHTML=(oGRID.lbl===undefined)?0:oGRID.lbl[o.innerHTML]'";
                 document.getElementById("img_grid").innerHTML = "<br>"
-                    +"<div class=rbox style='width:249px;float:left;text-align:center'>"
+                    +"<div class=rbox style='width:300px;float:left;text-align:center'>"
                     +"<button onclick=update_lbl(-1); "+styl+">prev</button>"
                     +"<div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div>"
                     +"<button onclick=update_lbl(1); "+styl+">next</button>"
@@ -329,10 +325,10 @@ function update_lbl(step)
     var l=document.getElementById("img_lbl");
 
     if(step<0) o.innerHTML = (v<=0?oGRID.header.count-1:v-1);
-    if(step>0) o.innerHTML = (v>=oGRID.header.count?0:v+1);
+    if(step>0) o.innerHTML = (v>=oGRID.header.count-1?0:v+1);
 
     oGRID.paint_grid(o.innerHTML);
-    l.innerHTML=(oGRID.lbl===undefined)?0:oGRID.lbl[o.innerHTML];
+    l.innerHTML=(oGRID.lbl===undefined)?"&nbsp;&nbsp;No label":("&nbsp;&nbsp;label: "+oGRID.lbl[o.innerHTML]);
 }
 
 function loadFile()
