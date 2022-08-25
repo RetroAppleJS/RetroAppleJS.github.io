@@ -289,6 +289,9 @@ function FILE()
                 var styl = "style='display:inline-block;'"
                 document.getElementById("img_grid").innerHTML = "<br>"
                     +"<div class=rbox style='width:300px;float:left;text-align:center'>"
+ 
+                    +"<button onclick=train(); "+styl+">Train</button>&nbsp;&nbsp;"
+
                     +"<button onclick=update_lbl(-1); "+styl+">prev</button>"
                     +"<div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div>"
                     +"<button onclick=update_lbl(1); "+styl+">next</button>"
@@ -329,6 +332,41 @@ function update_lbl(step)
 
     oGRID.paint_grid(o.innerHTML);
     l.innerHTML=(oGRID.lbl===undefined)?"&nbsp;&nbsp;No label":("&nbsp;&nbsp;label: "+oGRID.lbl[o.innerHTML]);
+}
+
+function train()
+{
+    net = new brain.NeuralNetwork({
+        activation: 'sigmoid',
+        learningRate: 0.1
+    }) 
+
+    //alert(getTrainingData()[0].input.length)
+
+    const ourTrainingData = getTrainingData();
+    net.train(ourTrainingData)
+
+    const output = net.run(ourTrainingData[0].input);
+
+    alert(JSON.stringify(output));
+}
+
+function getTrainingData()
+{
+ return [{ "input": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+    "output": { 
+        "0": 1, 
+        "1": 0, 
+        "2": 0, 
+        "3": 0, 
+        "4": 0, 
+        "5": 0, 
+        "6": 0, 
+        "7": 0, 
+        "8": 0, 
+        "9": 0 
+        } 
+    }]
 }
 
 function loadFile()
