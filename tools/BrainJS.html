@@ -288,21 +288,19 @@ function FILE()
 
                 var styl = "style='display:inline-block;'"
                 var js = "var o=document.getElementById(\"img_nav\");var v=Number(o.innerHTML);var l=document.getElementById(\"img_lbl\")"
-                         +";l.innerHTML=typeof(oGRID.lbl)===undefined?0:oGRID.lbl[v]";
-                var js1 = "onclick='"+js+";o.innerHTML=(v<=0?"+(oGRID.header.count-1)+":v-1);oGRID.paint_grid(o.innerHTML);'";
-                var js2 = "onclick='"+js+";o.innerHTML=(v>="+oGRID.header.count+"?0:v+1);oGRID.paint_grid(o.innerHTML);'";
+                         
+                var js1 = "onclick='"+js+";o.innerHTML=(v<=0?"+(oGRID.header.count-1)+":v-1);oGRID.paint_grid(o.innerHTML);l.innerHTML=(oGRID.lbl===undefined)?0:oGRID.lbl[o.innerHTML]'";
+                var js2 = "onclick='"+js+";o.innerHTML=(v>="+oGRID.header.count+"?0:v+1);oGRID.paint_grid(o.innerHTML);l.innerHTML=(oGRID.lbl===undefined)?0:oGRID.lbl[o.innerHTML]'";
                 document.getElementById("img_grid").innerHTML = "<br>"
                     +"<div class=rbox style='width:249px;float:left;text-align:center'>"
-                    +"<button "+js1+" "+styl+">prev</button>"
+                    +"<button onclick=update_lbl(-1); "+styl+">prev</button>"
                     +"<div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div>"
-                    +"<button "+js2+" "+styl+">next</button>"
+                    +"<button onclick=update_lbl(1); "+styl+">next</button>"
                     +"<div id=img_lbl "+styl+"></div>"
                     +"</div><br><br>"
                     +oGRID.build_grid(0,oGRID.header.rows,oGRID.header.cols);
 
-                oGRID.paint_grid(document.getElementById("img_nav").innerHTML);
-                // img_lbl
-
+                update_lbl(0);
                 display_images(hd,data);
             }
             else if(magic==2049)
@@ -313,16 +311,28 @@ function FILE()
                 oGRID.lbl = new Array(hd.count);
                 for(var j=0;j<hd.count;j++)
                 {
-                    i++;
-                    oGRID.lbl[j] = data.getUint8(i);
-                    
+                    oGRID.lbl[j] = data.getUint8(i); i++;
                 }
 
+                update_lbl(0);
                 document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" labels</small>";
             }  
             //document.write("count="+t.count+" rows="+t.rows+" cols="+t.cols)
         }
     }
+}
+
+function update_lbl(step)
+{
+    var o=document.getElementById("img_nav");
+    var v=Number(o.innerHTML);
+    var l=document.getElementById("img_lbl");
+
+    if(step<0) o.innerHTML = (v<=0?oGRID.header.count-1:v-1);
+    if(step>0) o.innerHTML = (v>=oGRID.header.count?0:v+1);
+
+    oGRID.paint_grid(o.innerHTML);
+    l.innerHTML=(oGRID.lbl===undefined)?0:oGRID.lbl[o.innerHTML];
 }
 
 function loadFile()
