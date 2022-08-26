@@ -235,7 +235,7 @@ function FILE()
     this.load = function(id)
     {
         var file = document.getElementById(id).files[0];
-        if (!file) return;
+        if(!file) return;
         this.fread = new FileReader();
         this.fread.id = id;
         //this.fread.data_bytes = {};
@@ -246,32 +246,18 @@ function FILE()
 
         this.fread.onload = function(event)
         {
-            var data = new DataView(event.target.result);
-            var size = event.target.result.byteLength;
-            var bytes = Array(size);
-
-            //var id = event.target.id;
-            //event.target.data_bytes = {};
+            var data = new DataView(event.target.result,0,16);
             event.target.header_data = {};
-            //console.log("this.fread.data_bytes("+Object.keys(event.target.data_bytes).length+")");
 
-            var i = 0;
-            var magic = data.getUint32(i); i+=4;
-            var hd = event.target.header_data[magic] = {};
-
+            var magic = data.getUint32(0);
             if(magic==2051)
             {
-                hd.magic = magic;
-                hd.count = data.getUint32(i); i+=4;
-                hd.rows  = data.getUint32(i); i+=4;
-                hd.cols  = data.getUint32(i); i+=4;
-                hd.idx   = i;
+                oGRID.header = {"magic":magic,"count":data.getUint32(4),"rows":data.getUint32(8),"cols":data.getUint32(12)};
+                oGRID.data  = new DataView(event.target.result,16);
 
-                oGRID.header = hd;
-                oGRID.data  = data;
                 oGRID.paint_grid = function(i)
                 {
-                    var idx_offset = this.header.idx + i*this.header.cols*this.header.rows;
+                    var idx_offset = /*this.header.idx + */  i*this.header.cols*this.header.rows;
                     for (var y = 0; y < this.header.rows; y++)
                     {
                         var idx = y*this.header.cols;
@@ -283,15 +269,12 @@ function FILE()
                         }
                     }
                 }
-
-                document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" img, size("+hd.cols+","+hd.rows+")</small>"
+                document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(oGRID.data.byteLength)+" data loaded<br>"+oGRID.header.count+" img, size("+oGRID.header.cols+","+oGRID.header.rows+")</small>"
 
                 var styl = "style='display:inline-block;'"
                 document.getElementById("img_grid").innerHTML = "<br>"
                     +"<div class=rbox style='width:300px;float:left;text-align:center'>"
- 
-                    +"<button onclick=train(); "+styl+">Train</button>&nbsp;&nbsp;"
-
+                    +"<button id=training  onclick=train(); "+styl+" disabled>Train</button>&nbsp;&nbsp;"
                     +"<button onclick=update_lbl(-1); "+styl+">prev</button>"
                     +"<div "+styl+">&nbsp;&nbsp;<div id=img_nav "+styl+">0</div>&nbsp;&nbsp;</div>"
                     +"<button onclick=update_lbl(1); "+styl+">next</button>"
@@ -300,24 +283,46 @@ function FILE()
                     +oGRID.build_grid(0,oGRID.header.rows,oGRID.header.cols);
 
                 update_lbl(0);
-                display_images(hd,data);
+                display_images(oGRID.header,oGRID.data);
             }
             else if(magic==2049)
             {
-                hd.magic = magic;
-                hd.count = data.getUint32(i); i+=4;
-                hd.idx   = i;
-                oGRID.lbl = new Array(hd.count);
-                for(var j=0;j<hd.count;j++)
+                oGRID.lbl_header = {"magic":magic,"count":data.getUint32(4)}
+                //oGRID.lbl = new Array(oGRID.lbl_header.count);
+
+                oGRID.lbl  = new DataView(event.target.result,8);
+                oGRID.lbl_key = new Array();
+
+                for(var j=0;j<oGRID.lbl_header.count;j++)
                 {
-                    oGRID.lbl[j] = data.getUint8(i); i++;
+                    //oGRID.lbl[j] = data.getUint8(i); i++;
+                    if((oGRID.lbl_key[oGRID.lbl[j]]===undefined)==false);
+                        oGRID.lbl_key[  oGRID.lbl[j] ] = 0;
                 }
 
                 update_lbl(0);
-                document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(size)+" data loaded<br>"+hd.count+" labels</small>";
-            }  
-            //document.write("count="+t.count+" rows="+t.rows+" cols="+t.cols)
+                document.getElementById("status_"+magic).innerHTML = "<small>"+formatBytes(oGRID.lbl.byteLength)+" data loaded<br>"+oGRID.lbl_header.count+" labels</small>";
+            }
+
+            ///////////////////////////////////////
+            // check if both datasets are present
+            ///////////////////////////////////////
+
+            var bTodo = oGRID.data===undefined || oGRID.lbl===undefined;
+            if(bTodo==false)
+            {
+                var lbl_keys = Object.keys(oGRID.lbl_key).map(function(x){return x;}).join(',');
+
+                //alert(typeof(arr)+" "+arr.length+" "+arr_keys)
+                //alert(oGRID.data.length+" "+oGRID.lbl.length);
+
+                document.getElementById("training").disabled = false;
+            }
+
         }
+
+
+
     }
 }
 
@@ -331,7 +336,7 @@ function update_lbl(step)
     if(step>0) o.innerHTML = (v>=oGRID.header.count-1?0:v+1);
 
     oGRID.paint_grid(o.innerHTML);
-    l.innerHTML=(oGRID.lbl===undefined)?"&nbsp;&nbsp;No label":("&nbsp;&nbsp;label: "+oGRID.lbl[o.innerHTML]);
+    l.innerHTML=(oGRID.lbl===undefined)?"&nbsp;&nbsp;No label":("&nbsp;&nbsp;label: "+oGRID.lbl.getUint8(o.innerHTML));
 }
 
 function train()
@@ -342,9 +347,53 @@ function train()
     }) 
 
     //alert(getTrainingData()[0].input.length)
+    //net.train([
+    //  { input: { r: 0.03, g: 0.7, b: 0.5 }, output: { black: 1 } },
+    //  { input: { r: 0.16, g: 0.09, b: 0.2 }, output: { white: 1 } },
+    //  { input: { r: 0.5, g: 0.5, b: 1.0 }, output: { white: 1 } },
+    //]);
+
 
     const ourTrainingData = getTrainingData();
     net.train(ourTrainingData)
+
+    /*
+net.train(data, {
+  // Defaults values --> expected validation
+  iterations: 20000, // the maximum times to iterate the training data --> number greater than 0
+  errorThresh: 0.005, // the acceptable error percentage from training data --> number between 0 and 1
+  log: false, // true to use console.log, when a function is supplied it is used --> Either true or a function
+  logPeriod: 10, // iterations between logging out --> number greater than 0
+  learningRate: 0.3, // scales with delta to effect training rate --> number between 0 and 1
+  momentum: 0.1, // scales with next layer's change value --> number between 0 and 1
+  callback: null, // a periodic call back that can be triggered while training --> null or function
+  callbackPeriod: 10, // the number of iterations through the training data between callback calls --> number greater than 0
+  timeout: Infinity, // the max number of milliseconds to train for --> number greater than 0
+});
+
+const net = new brain.NeuralNetwork({
+  activation: 'sigmoid', // activation function
+  hiddenLayers: [4],
+  learningRate: 0.6, // global learning rate, useful when training using streams
+});
+
+{ "input": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+    "output": { 
+        Zero: 1, 
+        One: 0, 
+        Two: 0, 
+        Three: 0, 
+        Four: 0, 
+        Five: 0, 
+        Six: 0, 
+        Seven: 0, 
+        Eight: 0, 
+        Nine: 0 
+        } 
+    }
+
+*/
+
 
     const output = net.run(ourTrainingData[0].input);
 
@@ -448,7 +497,7 @@ function display_images(_hd,_db)
 
     for (var i = 0; i < 200; i++)
     {
-        var idx_offset = _hd.idx + i*sizeX*sizeY;
+        var idx_offset = /*_hd.idx + */ i*sizeX*sizeY;
         var X_offset = Math.floor(i/10)*sizeX*(sizeY-1)*10;
         for (var y = 0; y < sizeY; y++)
         {
@@ -456,7 +505,7 @@ function display_images(_hd,_db)
             for (var x = 0; x < sizeX; x++)
             {
                 var position = X_offset + y*canvas.width+x+i*sizeY;
-                var pointColor = _db.getUint8(idx+idx_offset+x);
+                var pointColor = _db.getUint8(idx_offset+idx+x);
                 var pos = position << 2;
                 canvasData.data[pos++] = pointColor;
                 canvasData.data[pos++] = pointColor;
