@@ -1,5 +1,34 @@
+function COM()
+{
+  this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+  this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+  this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+  this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+  this.getHexWord = function(v)
+  {
+    return '' + this.hextab[v >> 12]
+              + this.hextab[(v & 0x0f00)>>8]
+              + this.hextab[(v & 0xf0)>>4]
+              + this.hextab[v & 0x000f];
+  }
+  this.getHexMulti = function(v,m)
+  {
+    return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
+  }
+  this.getBinMulti = function(v,m)
+  {
+    var s = "";
+    var r = ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
+    for(var i=0;i<r.length;i++)
+      s+= ("0000"+parseInt(r.charAt(i),16).toString(2)).slice(-4)
+    return s;
+  }
+}
+
+
 var oMEMGRID = new function()
 {
+  var oCOM = new COM();
 
 // FVD TODO move this piece to apple2plus.js
   this.mem_layout = {
@@ -42,23 +71,13 @@ var oMEMGRID = new function()
         console.log(a[0]+"-"+a[1]+" ("+s+")");
     }
   }
+
   this.mem_pg = new Array(0x10000>>mem_gran);
-
-
-  this.hextab = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-  this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
-  this.getHexWord = function(v)
-  {
-    return '' + this.hextab[Math.floor(v / 0x1000)]
-              + this.hextab[Math.floor((v & 0x0f00) / 256)]
-              + this.hextab[Math.floor((v & 0xf0) / 16)]
-              + this.hextab[v & 0x000f];
-  }
 
   this.line = function(start,len,step)
   {
     var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = this.getHexWord(j);
+    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = oCOM.getHexWord(j);
     return a;
   }
 
@@ -67,7 +86,7 @@ var oMEMGRID = new function()
     var s = "<table class=gtable style='float:left'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+this.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
+      s += "<tr><td>"+oCOM.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
     return s+"</table>"
   }
 
@@ -108,7 +127,7 @@ var oMEMGRID = new function()
       }
     }
   }
-}()
+}(COM)
 
 
 

@@ -1,10 +1,7 @@
-//
-// Copyright (c) 2014 Thomas Skibo.
-// All rights reserved.
-//
-// Adapted in 2022 by Freddy Vandriessche.
+// 2022 version by Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
+// Thanks to Thomas Skibo - Copyright (c) 2014.
 // apple2main.js 
 
 
@@ -34,7 +31,7 @@ const _o = {"tools":{}
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
 _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Update
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
-
+oCOM = new COM();
 
 var ts = 0;
 var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
@@ -213,39 +210,4 @@ function loadDisk() {
 
         apple2plus.loadDisk(bytes);
     }
-}
-
-var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-
-function getHexByte(v)
-{
-	return '' + hextab[Math.floor(v / 16)] + hextab[v & 0x0f];
-}
-
-function getHexWord(v)
-{
-	return '' + hextab[Math.floor(v / 0x1000)]
-						+ hextab[Math.floor((v & 0x0f00) / 256)]
-						+ hextab[Math.floor((v & 0xf0) / 16)]
-						+ hextab[v & 0x000f];
-}
-
-function getHexMulti(v,m)
-{
-	return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
-}
-
-function getBinMulti(v,m)
-{
-	var s = "";
-	var r = ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
-  for(var i=0;i<r.length;i++)
-		s+= ("0000"+parseInt(r.charAt(i),16).toString(2)).slice(-4)
-	return s;
-}
-
-function getHexVar(v)
-{
-	if (v < 256) return getHexByte(v)
-	return getHexWord(v)
 }
