@@ -7,7 +7,12 @@
 //    | |_) | _ .--.  ,--.   __   _ .--.       | |  | (___ \_| 
 //    |  __'.[ `/'`\]`'_\ : [  | [ `.-. |  _   | |   _.____`.  
 //   _| |__) || |    // | |, | |  | | | | | |__' |  | \____) | 
-//  |_______/[___]   \'-;__/[___][___||__]`.____.'   \______.'       
+//  |_______/[___]   \'-;__/[___][___||__]`.____.'   \______.'    
+
+
+check
+https://observablehq.com/@robertleeplummerjr/brain-js-issue-751-tosvg
+
   -->
 
   <!-- Pre-trained models -->
@@ -18,7 +23,15 @@
   <link rel="stylesheet"        href="../res/COM_MAIN.css">
   <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.1.2/svg.min.js"></script>
+
+  <!--
+  <script src="../res/gpu-browser.min.js"></script>
+  <script src="https://unpkg.com/brain.js"></script>
+  -->
+  
   <script src="../res/brain_browser.js"></script>
+  
 
   <meta name="description" content="">
   <meta name="author" content="Freddy Vandriessche">
@@ -61,6 +74,7 @@
 //   ██████   ██████  ██     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
 
 /////////////////////////////////////////////////////////
+
 
 var CONF_version="";
 var CONF_builddate="";  
@@ -179,6 +193,8 @@ function init_gui(_o)
                     <div style="color:#D05050">No labels</div>
                 </div>
                 <br><br>
+                <span id="img_span"></span>
+                <textarea id="img_txt" style="width:500px;height:100px"></textarea>
                 <div id="img_grid"></div>
 
                 <canvas id="mnistCanvas" width="280" height="280">
@@ -188,9 +204,7 @@ function init_gui(_o)
             </td>
 
 
-
             <td width="1px" class=no_margins style='background-color:black;padding:1px;'></td>
-
 
 
             <td width="50%" class=no_margins style=vertical-align:top;>
@@ -229,6 +243,7 @@ function init_gui(_o)
   //  ██      ██ ██   ██ ██ ██   ████
 
 var oGRID = new GRID();
+var oTRAINING_DATA;
 var oFile = new FILE();
 function FILE()
 {
@@ -238,7 +253,6 @@ function FILE()
         if(!file) return;
         this.fread = new FileReader();
         this.fread.id = id;
-        //this.fread.data_bytes = {};
         this.fread.header_data = {};
 
         this.fread.readAsArrayBuffer(file);
@@ -257,7 +271,7 @@ function FILE()
 
                 oGRID.paint_grid = function(i)
                 {
-                    var idx_offset = /*this.header.idx + */  i*this.header.cols*this.header.rows;
+                    var idx_offset = i*this.header.cols*this.header.rows;
                     for (var y = 0; y < this.header.rows; y++)
                     {
                         var idx = y*this.header.cols;
@@ -288,16 +302,13 @@ function FILE()
             else if(magic==2049)
             {
                 oGRID.lbl_header = {"magic":magic,"count":data.getUint32(4)}
-                //oGRID.lbl = new Array(oGRID.lbl_header.count);
-
                 oGRID.lbl  = new DataView(event.target.result,8);
-                oGRID.lbl_key = new Array();
+                oGRID.lbl_key = {};
 
                 for(var j=0;j<oGRID.lbl_header.count;j++)
                 {
-                    //oGRID.lbl[j] = data.getUint8(i); i++;
-                    if((oGRID.lbl_key[oGRID.lbl[j]]===undefined)==false);
-                        oGRID.lbl_key[  oGRID.lbl[j] ] = 0;
+                    if((oGRID.lbl_key[oGRID.lbl.getUint8(j)]===undefined)==false);
+                        oGRID.lbl_key[  oGRID.lbl.getUint8(j) ] = 0;
                 }
 
                 update_lbl(0);
@@ -305,14 +316,34 @@ function FILE()
             }
 
             ///////////////////////////////////////
-            // check if both datasets are present
+            // check if both datasets are complete
             ///////////////////////////////////////
 
-            var bTodo = oGRID.data===undefined || oGRID.lbl===undefined;
-            if(bTodo==false)
+            var bIncomplete = oGRID.data===undefined || oGRID.lbl===undefined;
+            if(bIncomplete==false)
             {
-                var lbl_keys = Object.keys(oGRID.lbl_key).map(function(x){return x;}).join(',');
+                var count = oGRID.header.count;
+                count = 100;
+                oTRAINING_DATA = new Array(count);
 
+                for(var i=0;i<count;i++)
+                {
+                    var arr = new Array(oGRID.header.rows*oGRID.header.cols)
+                    for(var j=0;j<oGRID.header.rows*oGRID.header.cols;j++)
+                        arr[j] =  oGRID.data.getUint8(j);
+
+                    oTRAINING_DATA[i] = 
+                    {
+                        "input":arr,
+                        "output":{...oGRID.lbl_key} // shallow copy !!
+                    }
+                    oTRAINING_DATA[i].output[ oGRID.lbl.getUint8(i) ] = 1;
+                }
+
+                //document.write( JSON.stringify( oTRAINING_DATA).replace(/},{/g,"}<br>,{") );
+
+                //var lbl_keys = Object.keys(oGRID.lbl_key).map(function(x){return x;}).join(',');
+                //alert(lbl_keys)
                 //alert(typeof(arr)+" "+arr.length+" "+arr_keys)
                 //alert(oGRID.data.length+" "+oGRID.lbl.length);
 
@@ -341,10 +372,61 @@ function update_lbl(step)
 
 function train()
 {
+    //alert("oTRAINING_DATA.length="+oTRAINING_DATA.length)
+
+    
     net = new brain.NeuralNetwork({
-        activation: 'sigmoid',
-        learningRate: 0.1
+        //activation: 'sigmoid',
+        //learningRate: 0.1,
+        //inputSize: 28*28, hiddenLayers: 392, outputSize: 10
+        //hiddenLayers: [784, 392, 10]
+        iterations: 40,
+        //log: update_span
+        log: true
     }) 
+
+    /*
+    net = new brain.NeuralNetworkGPU({
+        //activation: 'sigmoid',
+        //learningRate: 0.1,
+        //inputSize: 28*28, hiddenLayers: 392, outputSize: 10
+        //hiddenLayers: [784, 392, 10]
+        iterations: 40,
+        log: true
+    })*/
+
+    const ourTrainingData = oTRAINING_DATA;
+    //var s = brain.utilities.toSVG(net).replace(/width="400"/g,"width=\"1000\"").replace(/height="250"/g,"width=\"800\"")
+    //document.write(s);
+    //alert(Math.round(s.length/1024/1024)+"Mb");
+    //document.getElementById("img_txt").innerHTML = s;
+    //document.getElementById("img_span").innerHTML = "<textarea style=width:500px;height:250px>"+s+"</textarea>"
+    //alert(s);
+
+
+    net.train(ourTrainingData
+    /*,{
+        // Defaults values --> expected validation
+        iterations: 20000, // the maximum times to iterate the training data --> number greater than 0
+        errorThresh: 0.005, // the acceptable error percentage from training data --> number between 0 and 1
+        log: true, // true to use console.log, when a function is supplied it is used --> Either true or a function
+        logPeriod: 10, // iterations between logging out --> number greater than 0
+        learningRate: 0.3, // scales with delta to effect training rate --> number between 0 and 1
+        momentum: 0.1, // scales with next layer's change value --> number between 0 and 1
+        callback: null, // a periodic call back that can be triggered while training --> null or function
+        callbackPeriod: 10, // the number of iterations through the training data between callback calls --> number greater than 0
+        timeout: Infinity // the max number of milliseconds to train for --> number greater than 0
+    }*/
+    ); 
+
+    document.getElementById("img_txt").innerHTML = JSON.stringify(ourTrainingData);
+    const output = net.run(oTRAINING_DATA[0].input);
+    //alert(JSON.stringify(output));
+
+
+  
+
+
 
     //alert(getTrainingData()[0].input.length)
     //net.train([
@@ -354,8 +436,10 @@ function train()
     //]);
 
 
-    const ourTrainingData = getTrainingData();
-    net.train(ourTrainingData)
+    //const ourTrainingData = getTrainingData();
+    //net.train(ourTrainingData);
+
+
 
     /*
 net.train(data, {
@@ -394,10 +478,11 @@ const net = new brain.NeuralNetwork({
 
 */
 
+}
 
-    const output = net.run(ourTrainingData[0].input);
-
-    alert(JSON.stringify(output));
+function update_span(arg)
+{
+    document.getElementById('img_span').innerHTML += JSON.stringify(arg)+"<br>";
 }
 
 function getTrainingData()
@@ -497,7 +582,7 @@ function display_images(_hd,_db)
 
     for (var i = 0; i < 200; i++)
     {
-        var idx_offset = /*_hd.idx + */ i*sizeX*sizeY;
+        var idx_offset = i*sizeX*sizeY;
         var X_offset = Math.floor(i/10)*sizeX*(sizeY-1)*10;
         for (var y = 0; y < sizeY; y++)
         {
