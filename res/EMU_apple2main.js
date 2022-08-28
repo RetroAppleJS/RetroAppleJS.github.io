@@ -4,16 +4,25 @@
 // Thanks to Thomas Skibo - Copyright (c) 2014.
 // apple2main.js 
 
-
 // TODO FVD select here which system to run (Apple2plus - Apple2e - Apple2c ??) 
 // TODO FVD transform this into OOP
 
-
+//   ________                       __          _                   
+//  |_   __  |                     [  |        / |_                 
+//    | |_ \_| _ .--..--.  __   _   | |  ,--. `| |-' .--.   _ .--.  
+//    |  _| _ [ `.-. .-. |[  | | |  | | `'_\ : | | / .'`\ \[ `/'`\] 
+//   _| |__/ | | | | | | | | \_/ |, | | // | |,| |,| \__. | | |     
+//  |________|[___||__||__]'.__.'_/[___]\'-;__/\__/ '.__.' [___]    
+//   __        _          __              _                  _      
+//  [  |  _   (_)        [  |  _         / |_               / |_    
+//   | | / ]  __   .---.  | | / ]  .--. `| |-',--.   _ .--.`| |-'   
+//   | '' <  [  | / /'`\] | '' <  ( (`\] | | `'_\ : [ `/'`\]| |     
+//   | |`\ \  | | | \__.  | |`\ \  `'.'. | |,// | |, | |    | |,    
+//  [__|  \_][___]'.___.'[__|  \_][\__) )\__/\'-;__/[___]   \__/ 
 addLoadEvent(EMU_init); // EMULATOR KICKSTART
 
 
-//const pulse1 = new Tone.PulseOscillator(1, -0.001).toDestination();
-//const pulse2 = new Tone.PulseOscillator(1, 0.001).toDestination();
+
 
 // global data initializations
 const _o = {"tools":{}
@@ -24,8 +33,6 @@ const _o = {"tools":{}
         ,"EMU_key_id":"keybox"
         ,"EMU_Updates_s":10                // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
-        ,"EMU_snd_bpulse":false
-        //new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAAIhYAQACAAgAZGF0YRAAAAAAgCCAQ4BZgIKAq3/lgP9/")
     };
 
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
@@ -33,9 +40,7 @@ _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTick
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 oCOM = new COM();
 
-var ts = 0;
 var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
-var bOsc = false;
 
 
 function EMU_init()
@@ -69,10 +74,10 @@ function restartButton() {
     apple2plus.restart();
 }
 
-function pauseButton() {
+function pauseButton()
+{
     if (appleIntervalHandle != null) {
         attachKeyboard(false);
-
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = null;
         document.getElementById('pausebutton').value = 'Resume';
@@ -86,9 +91,32 @@ function pauseButton() {
     }
 }
 
+function loadDisk()
+{
+    var file = document.getElementById('loadfile').files[0];
+    if (!file) return;
+
+    var fread = new FileReader();
+    fread.readAsArrayBuffer(file);
+    fread.onload = function(levent)
+    {
+        var data = new DataView(levent.target.result);
+        var size = levent.target.result.byteLength;
+        var bytes = Array(size);
+        for (var i = 0; i < size; i++)
+            bytes[i] = data.getUint8(i);
+
+        if (size == 143360) bytes = apple2ConvertDskToNib(bytes);
+
+        apple2plus.loadDisk(bytes);
+    }
+}
+
+
 // Convert a DSK file to a NIB image.
 //
-function apple2ConvertDskToNib(dskBytes) {
+function apple2ConvertDskToNib(dskBytes)
+{
     var sixTwo = [
         0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
         0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
@@ -187,27 +215,4 @@ function apple2ConvertDskToNib(dskBytes) {
     }
 
     return bytes;
-}
-
-function loadDisk() {
-    var file = document.getElementById('loadfile').files[0];
-
-    if (!file)
-        return;
-
-    var fread = new FileReader();
-    fread.readAsArrayBuffer(file);
-    fread.onload = function(levent) {
-        var data = new DataView(levent.target.result);
-        var size = levent.target.result.byteLength;
-
-        var bytes = Array(size);
-        for (var i = 0; i < size; i++)
-            bytes[i] = data.getUint8(i);
-
-        if (size == 143360)
-            bytes = apple2ConvertDskToNib(bytes);
-
-        apple2plus.loadDisk(bytes);
-    }
 }
