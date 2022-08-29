@@ -26,6 +26,8 @@
 
 // apple2video.js
 
+oEMU.component.Video["A2P"] = {Apple2Video};
+
 function Apple2Video(ctx) {
     var LORES1_ADDR =   0x0400,
         LORES2_ADDR =   0x0800,

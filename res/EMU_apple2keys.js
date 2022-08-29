@@ -4,6 +4,8 @@
 //
 // apple2keys.js
 
+oEMU.component.Keyboard["A2P"] = {Apple2Keys};
+
 function Apple2Keys(hw)
 {
     this.KeyCodeHandler = function(data)

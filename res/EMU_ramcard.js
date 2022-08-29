@@ -2,7 +2,9 @@
 // Copyright (c) 2022 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_ramcard.js.js
+// EMU_ramcard.js
+
+oEMU.component.IO["Ramcard"] = {RamCard};
 
 function RamCard()
 {

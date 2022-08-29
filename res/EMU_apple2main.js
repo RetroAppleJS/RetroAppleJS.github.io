@@ -1,4 +1,4 @@
-// 2022 version by Freddy Vandriessche.
+// 2022 adaptations by Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
 // Thanks to Thomas Skibo - Copyright (c) 2014.
@@ -22,11 +22,9 @@
 addLoadEvent(EMU_init); // EMULATOR KICKSTART
 
 
-
-
 // global data initializations
 const _o = {"tools":{}
-        ,"sys":"A2P"
+        ,"sys":{}
         ,"EMU_keyb_timer":false
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
@@ -34,6 +32,21 @@ const _o = {"tools":{}
         ,"EMU_Updates_s":10                // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
     };
+
+var oEMU =
+{
+     "system":{}
+    ,"component":
+    {
+         "CPU":{}
+        ,"Video":{}
+        ,"Keyboard":{}
+        ,"RAM":{}
+        ,"ROM":{}
+        ,"Speaker":{}
+        ,"IO":{}
+    }
+}
 
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
 _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Update
@@ -45,6 +58,8 @@ var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
 
 function EMU_init()
 {
+    console.log(JSON.stringify(oEMU,null,"  "));
+
     // INITIALISE EMULATOR
     appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");

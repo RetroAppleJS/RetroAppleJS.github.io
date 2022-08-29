@@ -8,6 +8,7 @@
 // apple2plus.js
 
 //const { getParent } = require("domutils");
+oEMU.system["A2P"] = true;
 
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
