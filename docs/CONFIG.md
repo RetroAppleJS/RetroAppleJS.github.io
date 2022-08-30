@@ -9,15 +9,13 @@ Any change in this document affects the **default application configuration**, o
 
 # HOW DOES IT WORK ?
 
-** TODO: ** read from CONFIG.md instead (not Readme.md) !!! 
-
 This tool gathers all configuration information and documentation, and packs all data together in one config file.
 
 ![schema](https://www.plantuml.com/plantuml/png/dPE_JiCm4CRtFCLDg9NLLcL4g2gaVs203bqHbObJQd3ig742YEFT4Kr2i6eRZ1VdhFlvlkzycHQQxdMPYOXnJMa4GMiqC1Rv0rwyoQJznYNNL-N3T-Z1oU1eJOYPuiFFVh_I9nvjP_7gTd6z76OCalbyWQ6uMPy4uqY5WFzNnwqg9GCk3s4uthaFnmcflJUxtNkJqlR7SYSYHgwItMHX83bBYsUjyYDoftLU06BzuP5yRvNS6_VhmhtJmKJsGpfc2WVuoVQ4IgY0VPghlcFEeMgsgeeyuz_kbfJwdKXawE6IfQ_3dSw4GpicuulBBZ9ekmXYfCHARldZWejquw3nQ_JXdNsqnqozIA4e0wFtBZfUtMoQCNugyBpJWL3cZEfqVx3de2tFO_LaxRdTTzUrsIfUktzCx-oSGErf7KxV6Qf6qJILhCp49m00)
 
 We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  This tool is designed to read all the markdown documentation available online (from GitHub) in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation and configuration options inside the IDE.  The following diagram shows how clearly the steps:
 
-* Fetch Readme.me file from GitHub
+* Fetch Config.md file from GitHub
 * extract all \*.md file links located in /docs
 * fetch all listed .md files
 * convert each to HTML and append to JavaScript file
@@ -28,7 +26,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
         <div style=width:800px>
         ┌──────────┐          ┌────┐ ┌───────────┐       ┌──────────────────┐
-        │Readme.md │          │*.md│ │Showdown.js│       │ COM_markdown.css │
+        │Config.md │          │*.md│ │Showdown.js│       │ COM_markdown.css │
         └────┬─────┘          └─┬──┘ └─────┬─────┘       └────────┬─────────┘
              │XmlHttp()         |XmlHttp() │include               |include
         ┌────┴─────────┐     ┌──┴──────────┴─────┐       ┌────────┴─────────┐     ┌────────────────────┐
