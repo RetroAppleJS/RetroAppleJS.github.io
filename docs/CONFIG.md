@@ -9,6 +9,8 @@ Any change in this document affects the **default application configuration**, o
 
 # HOW DOES IT WORK ?
 
+** TODO: ** read from CONFIG.md instead (not Readme.md) !!! 
+
 This tool gathers all configuration information and documentation, and packs all data together in one config file.
 
 ![schema](https://www.plantuml.com/plantuml/png/fPDHJy8m4CVVzodkoK0Q8FXe3077G1-GH5wDfAv3fbsxi0urdj_To1XpSYMhtilQIt-z__zw6sQ6RqoUI4_4XdCFdABNgGLhW6VlAYpNE8tDTVvus9x0MUSe1WoAQ81VK5Ss5uzKxYuOZMT1Dn4G1i44NN5W_weEoAM4lrV7bSwLW5ZjjkvuvTuTPwpmll_ItlT7oluGToAYPojPJHOwakCeUp4wFIBNngGP81QB4v8VICcjVhiet3hl35IxOSS8uG0_sPRK8PUmYLBTjimvRFUVxTQpZp_Lw4EEiT_FX10h4RrrroQH5kqOzaTNzD-9j0XME-9hjOgV9h6CbXOQlqSVFiHdcHRwLKdD1THwRwFz-MpfpsydDzFkSuQNbGw4F1NSH9kTFGjDF0_fYUmvxRlgsdZkBohbpGC1pg3mj72dxskgUjumKY9Fv1S0)
