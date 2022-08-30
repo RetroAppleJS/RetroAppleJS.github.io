@@ -1,6 +1,6 @@
 # CAUTION
 
-This file was designed to contain elements to be read by an update script ([ConfigFile_updater.html](../tools/ConfigFile_updater.html)), which  
+This file was designed to contain elements to be read by an update script ([ConfigFile_updater.html](https://retroapplejs.github.io//tools/ConfigFile_updater.html)), which  
 * converts all relevant markdown (.md) files to HTML format  
 * converts all the default configuration settings here below into JSON structures  
 
