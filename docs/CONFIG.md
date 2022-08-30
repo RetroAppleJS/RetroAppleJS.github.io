@@ -26,17 +26,17 @@ Any change in this document affects the **default application configuration**, o
 | A1    | Apple I            | 6502       | 1.023     |
 | A2    | Apple II           | 6502       | 1.023     |
 | A2P   | Apple II Plus      | 6502       | 1.023     |
-| A2E   | Apple IIc EuroPlus | 6502       | 1.023     |
-| A2J   | Apple IIc J-Plus   | 6502       | 1.023     |
+| A2cE  | Apple IIc EuroPlus | 6502       | 1.023     |
+| A2cJ  | Apple IIc J-Plus   | 6502       | 1.023     |
 | A2B   | Bell & Howell      | 6502       | 1.023     |
 | A3    | Apple III          | 6502B      | 1.8       |
 | A3R   | Apple III Revised  | 6502B      | 1.8       |
 | A2e   | Apple IIe          | 6502       | 1.023     |
 | A2c   | Apple IIc          | 65C02      | 1.023     |
 | A3P   | Apple III Plus     | 6502B      | 1.8       |
-| A2N   | Apple IIe Enhanced | 65C02      | 1.023     |
-| A2G   | Apple IIGS         | 65C816     | 2.8       |
-| A2c   | Apple IIc MemoryExp| 65C02      | 1.023     |
+| A2eE  | Apple IIe Enhanced | 65C02      | 1.023     |
+| A2GS  | Apple IIGS         | 65C816     | 2.8       |
+| A2cM  | Apple IIc MemoryExp| 65C02      | 1.023     |
 | A2G3  | Apple IIGS ROM3    | 65C816     | 2.8       |
 | A2eP  | Apple IIe Platinum | 65C02      | 1.023     |
 | A2eC  | Apple IIe Card     | 65C02      | 1.023,1.9 |
