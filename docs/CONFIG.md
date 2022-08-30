@@ -46,25 +46,25 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              | CPU        | Speeds    | Display  | Keyboard |
-| :---:   | :----------------- | :--------- | :-------- | :------- | :------- |
-| A1      | Apple I            | 6502       | 1.023     | A1_disp  |          |
-| A2      | Apple II           | 6502       | 1.023     | A2_disp  |          |
-| A2P     | Apple II Plus      | 6502       | 1.023     | A2_disp  |          |
-| A2EP    | Apple II EuroPlus  | 6502       | 1.023     | A2_disp  |          |
-| A2JP    | Apple II J-Plus    | 6502       | 1.023     | A2_disp  |          |
-| A2B     | Bell & Howell      | 6502       | 1.023     | A2_disp  |          |
-| A3      | Apple III          | 6502B      | 1.8       |          |          |
-| A3R     | Apple III Revised  | 6502B      | 1.8       |          |          |
-| A2e     | Apple IIe          | 6502       | 1.023     |          |          |
-| A2c     | Apple IIc          | 65C02      | 1.023     |          |          |
-| A3P     | Apple III Plus     | 6502B      | 1.8       |          |          |
-| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     |          |          |
-| A2GS    | Apple IIGS         | 65C816     | 2.8       |          |          |
-| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     |          |          |
-| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       |          |          |
-| A2eP    | Apple IIe Platinum | 65C02      | 1.023     |          |          |
-| A2eC    | Apple IIe Card     | 65C02      | 1.023,1.9 |          |          |
+|[SYSCODE]| Model              | CPU        | Speeds    | Display  | Keyboard    |
+| :---:   | :----------------- | :--------- | :-------- | :------- | :---------- |
+| A1      | Apple I            | 6502       | 1.023     | A1_disp  |             |
+| A2      | Apple II           | 6502       | 1.023     | A2_NTSC  | A2_querty   |
+| A2P     | Apple II Plus      | 6502       | 1.023     | A2_NTSC  | A2_querty   |
+| A2EP    | Apple II EuroPlus  | 6502       | 1.023     | A2_PAL   | A2_querty   |
+| A2JP    | Apple II J-Plus    | 6502       | 1.023     | A2_disp  | A2_katakana |
+| A2B     | Bell & Howell      | 6502       | 1.023     | A2_disp  |             |
+| A3      | Apple III          | 6502B      | 1.8       |          |             |
+| A3R     | Apple III Revised  | 6502B      | 1.8       |          |             |
+| A2e     | Apple IIe          | 6502       | 1.023     |          |             |
+| A2c     | Apple IIc          | 65C02      | 1.023     |          |             |
+| A3P     | Apple III Plus     | 6502B      | 1.8       |          |             |
+| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     |          |             |
+| A2GS    | Apple IIGS         | 65C816     | 2.8       |          |             |
+| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     |          |             |
+| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       |          |             |
+| A2eP    | Apple IIe Platinum | 65C02      | 1.023     |          |             |
+| A2eC    | Apple IIe Card     | 65C02      | 1.023,1.9 |          |             |
 
 
 ## PERIPHERALS LIST
