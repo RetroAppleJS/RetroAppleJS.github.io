@@ -1,4 +1,4 @@
-const _CFG_SCODE = {
+const _CFG_SYSCODE = {
  "A1":{"Model":"Apple I" ,"CPU":"6502" ,"Speeds":"1.023"}
 ,"A2":{"Model":"Apple II" ,"CPU":"6502" ,"Speeds":"1.023"}
 ,"A2P":{"Model":"Apple II Plus" ,"CPU":"6502" ,"Speeds":"1.023"}
