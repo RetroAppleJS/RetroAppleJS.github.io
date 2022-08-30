@@ -53,7 +53,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
   {
 
     // EXECUTE
-    var s = oPROCESS.process_table(["[SCODE]","\|","\n|","\|\n\n"],"const _CFG_SCODE",this.responseText,this.responseURL);
+    var s = oPROCESS.process_table(["[SYSCODE]","\|","\n|","\|\n\n"],"const _CFG_SYSCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
     // METHOD TAILORING
