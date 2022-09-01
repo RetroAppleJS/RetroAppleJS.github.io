@@ -9,15 +9,13 @@ Any change in this document affects the **default application configuration**, o
 
 # HOW DOES IT WORK ?
 
-** TODO: ** read from CONFIG.md instead (not Readme.md) !!! 
-
 This tool gathers all configuration information and documentation, and packs all data together in one config file.
 
-![schema](https://www.plantuml.com/plantuml/png/fPDHJy8m4CVVzodkoK0Q8FXe3077G1-GH5wDfAv3fbsxi0urdj_To1XpSYMhtilQIt-z__zw6sQ6RqoUI4_4XdCFdABNgGLhW6VlAYpNE8tDTVvus9x0MUSe1WoAQ81VK5Ss5uzKxYuOZMT1Dn4G1i44NN5W_weEoAM4lrV7bSwLW5ZjjkvuvTuTPwpmll_ItlT7oluGToAYPojPJHOwakCeUp4wFIBNngGP81QB4v8VICcjVhiet3hl35IxOSS8uG0_sPRK8PUmYLBTjimvRFUVxTQpZp_Lw4EEiT_FX10h4RrrroQH5kqOzaTNzD-9j0XME-9hjOgV9h6CbXOQlqSVFiHdcHRwLKdD1THwRwFz-MpfpsydDzFkSuQNbGw4F1NSH9kTFGjDF0_fYUmvxRlgsdZkBohbpGC1pg3mj72dxskgUjumKY9Fv1S0)
+![schema](https://www.plantuml.com/plantuml/png/dLDFJpen4BtlfvZJBv062B-ZCGHS_kX1IOIZaTHjaKgttUnsKUFutKrOAgoqX3ANDfE-r_TUE_t2qDoKgOoOC9H645ITrd6HCpYAJvNOFKw4kIrVuB3m10Svlh97mDPv75Skta0lwEh5quVntQITCaX6et7L2-K0Sh6EsNpmED_cWJcd3AYKOCM4wq0frBg0fIuL0w4kyNAOI5N178HKUTZLdyVkd3tZ84R4o7Vl_XjY87B8YxNHsH5oPKnM06ArEI7vsIcvqMrM5pV-jtgg6H9RNJZ08ROXTK8bv3pJJSyem6QtR3QHVq9SGV_s2FdxJ0X2CVxHNfbKUhHZqXtSk0SOtI98xKYirLAyZeNa2myQjsFvnRvjc-bt9JLbKClUXuwdzulTXtuhy7gl0w7C63Kytzhpe1tFu_JapDpdswOsdCOpgpoa4E0VL9vcuUYdcgfErEUAbQdy0G00)
 
 We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  This tool is designed to read all the markdown documentation available online (from GitHub) in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation and configuration options inside the IDE.  The following diagram shows how clearly the steps:
 
-* Fetch Readme.me file from GitHub
+* Fetch Config.md file from GitHub
 * extract all \*.md file links located in /docs
 * fetch all listed .md files
 * convert each to HTML and append to JavaScript file
@@ -28,7 +26,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
         <div style=width:800px>
         ┌──────────┐          ┌────┐ ┌───────────┐       ┌──────────────────┐
-        │Readme.md │          │*.md│ │Showdown.js│       │ COM_markdown.css │
+        │Config.md │          │*.md│ │Showdown.js│       │ COM_markdown.css │
         └────┬─────┘          └─┬──┘ └─────┬─────┘       └────────┬─────────┘
              │XmlHttp()         |XmlHttp() │include               |include
         ┌────┴─────────┐     ┌──┴──────────┴─────┐       ┌────────┴─────────┐     ┌────────────────────┐
@@ -46,25 +44,26 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              | CPU        | Speeds    |
-| :---:   | :----------------- | :--------- | :-------- |
-| A1      | Apple I            | 6502       | 1.023     |
-| A2      | Apple II           | 6502       | 1.023     |
-| A2P     | Apple II Plus      | 6502       | 1.023     |
-| A2cE    | Apple IIc EuroPlus | 6502       | 1.023     |
-| A2cJ    | Apple IIc J-Plus   | 6502       | 1.023     |
-| A2B     | Bell & Howell      | 6502       | 1.023     |
-| A3      | Apple III          | 6502B      | 1.8       |
-| A3R     | Apple III Revised  | 6502B      | 1.8       |
-| A2e     | Apple IIe          | 6502       | 1.023     |
-| A2c     | Apple IIc          | 65C02      | 1.023     |
-| A3P     | Apple III Plus     | 6502B      | 1.8       |
-| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     |
-| A2GS    | Apple IIGS         | 65C816     | 2.8       |
-| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     |
-| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       |
-| A2eP    | Apple IIe Platinum | 65C02      | 1.023     |
-| A2eC    | Apple IIe Card     | 65C02      | 1.023,1.9 |
+|[SYSCODE]| Model              | CPU        | Speeds    | Display  | ROMS | Keys & ROM    |
+| :---:   | :----------------- | :--------- | :-------- | :------- | :--- | :------------ |
+| A1      | Apple I            | 6502       | 1.023     | A1_txt   |      | A1_US         |
+| A2      | Apple II           | 6502       | 1.023     | A2_hgr   |      | A1_US         |
+| A2P     | Apple II Plus      | 6502       | 1.023     | A2_hgr   |      | A1_US         |
+| A2EP    | Apple II EuroPlus  | 6502       | 1.023     | A2_hgr   |      | A1_US         |
+| A2JP    | Apple II J-Plus    | 6502       | 1.023     | A2_hgr   |      | A2_JP         |
+| A2B     | Bell & Howell      | 6502       | 1.023     | A2_hgr   |      | A1_US_blk     |
+| A3      | Apple III          | 6502B      | 1.8       | A3_dhgr  |      | A3_US         |
+| A3R     | Apple III Revised  | 6502B      | 1.8       | A2_hgr   |      | A3_US         |
+| A2e     | Apple IIe RevA     | 6502       | 1.023     | A2_hgr   |      | A2e_US,A2e_UK,A2e_CA,A2e_FR |
+| A2e     | Apple IIe RevB     | 6502       | 1.023     | A2_dhgr  |      | A2e_US,A2e_UK,A2e_CA,A2e_FR |
+| A2c     | Apple IIc          | 65C02      | 1.023     | A2_dhgr  |      |               |
+| A3P     | Apple III Plus     | 6502B      | 1.8       | A3_dhgr  |      |               |
+| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     | A2_dhgr  |      |               |
+| A2GS    | Apple IIGS         | 65C816     | 2.8       | AGS      |      |               |
+| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     | AGS      |      |               |
+| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       | AGS      |      |               |
+| A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  |      |               |
+| A2eC    | Apple IIe Card     | 65C02      | 1.023,1.9 | A2_dhgr  |      |               |
 
 
 ## PERIPHERALS LIST
