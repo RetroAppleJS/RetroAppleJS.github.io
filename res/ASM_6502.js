@@ -709,7 +709,7 @@ function doPass(pass)
 			}
 			listing.value += paddRight(l, 6) + ' ';
 			ofs++;
-			if ((sym.length > 1) && (sym[ofs] == '='))
+			if ((sym.length > 1) && (sym[ofs] == '=' || sym[ofs] == 'EQU'))
 			{
 				ofs++;
 				listing.value += '= ';
