@@ -3,10 +3,8 @@
 ;   The WOZ Monitor for the Apple 1
 ;   Written by Steve Wozniak 1976
 ;
-;   Converted to assemble with ca65 by cbmeeks
-;
-;   Original code with comments taken from 
-;   http://www.sbprojects.com/projects/apple1/wozmon.php
+;   Converted from
+;   http://s3data.computerhistory.org/brochures/apple.applei.1976.102646518.pdf
 ;
 ;-------------------------------------------------------------------------
     
