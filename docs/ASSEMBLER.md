@@ -20,8 +20,8 @@ Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
       OPC *LL     ....	zeropage
       OPC *LL,X   ....	zeropage, X-indexed
       OPC *LL,Y   ....	zeropage, Y-indexed
-      OPC (BB,X)  ....	X-indexed, indirect
-      OPC (LL),Y  ....	indirect, Y-indexed
+      OPC (BB,X)  ....	X-indexed, indirect (mode 9)
+      OPC (LL),Y  ....	indirect, Y-indexed (mode 9)
       OPC (HHLL)  ....	indirect
       OPC BB      ....	relative
 Where HHLL is a 16bit word and LL or BB an 8 bit byte, and A is literal "A".
