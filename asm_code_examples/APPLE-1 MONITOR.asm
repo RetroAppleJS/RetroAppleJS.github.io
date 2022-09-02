@@ -99,7 +99,7 @@ NEXTCHAR        LDA     KBDCR           ; Wait for key press
                 TAX                     ; X=0
 
 SETSTOR         ASL     A               ; Leaves $7B if setting STOR mode
-SETMODE         STA     MODE            ; Set mode flags
+SETMODE         STA     *MODE           ; Set mode flags
 BLSKIP          INY                     ; Advance text index
 NEXTITEM        LDA     IN,Y            ; Get character
                 CMP     #CR
@@ -111,9 +111,9 @@ NEXTITEM        LDA     IN,Y            ; Get character
                 BEQ     SETSTOR         ; Set STOR mode. $BA will become $7B
                 CMP     #'R'
                 BEQ     RUN             ; Run the program. Forget the rest.
-                STX     L               ; Clear input value (X=0)
-                STX     H
-                STY     YSAV            ; Save Y for comparison
+                STX     *L              ; Clear input value (X=0)
+                STX     *H
+                STY     *YSAV           ; Save Y for comparison
 
 ; Here we're trying to parse a new hex value
 
@@ -131,27 +131,27 @@ DIG             ASL     A
                 ASL     A
 
                 LDX     #4              ; Shift count
-HEXSHIFT        ASL     A                ; Hex digit left, MSB to carry
-                ROL     L               ; Rotate into LSD
-                ROL     H               ; Rotate into MSD
+HEXSHIFT        ASL     A               ; Hex digit left, MSB to carry
+                ROL     *L              ; Rotate into LSD
+                ROL     *H              ; Rotate into MSD
                 DEX                     ; Done 4 shifts?
                 BNE     HEXSHIFT        ; No, loop
                 INY                     ; Advance text index
                 BNE     NEXTHEX         ; Always taken
 
-NOTHEX          CPY     YSAV            ; Was at least 1 hex digit given?
+NOTHEX          CPY     *YSAV           ; Was at least 1 hex digit given?
                 BEQ     ESCAPE          ; No! Ignore all, start from scratch
 
-                BIT     MODE            ; Test MODE byte
+                BIT     *MODE           ; Test MODE byte
                 BVC     NOTSTOR         ; B6=0 is STOR, 1 is XAM or BLOCK XAM
 
 ; STOR mode, save LSD of new hex byte
 
-                LDA     L               ; LSDs of hex data
+                LDA     *L              ; LSDs of hex data
                 STA     (STL,X)         ; Store current 'store index'(X=0)
-                INC     STL             ; Increment store index.
+                INC     *STL            ; Increment store index.
                 BNE     NEXTITEM        ; No carry!
-                INC     STH             ; Add carry to 'store index' high
+                INC     *STH            ; Add carry to 'store index' high
 
 TONEXTITEM      JMP     NEXTITEM        ; Get next command item.
 
@@ -170,9 +170,9 @@ NOTSTOR         BMI     XAMNEXT         ; B7 = 0 for XAM, 1 for BLOCK XAM
 ; We're in XAM mode now
 
                 LDX     #2              ; Copy 2 bytes
-SETADR          LDA     L-1,X           ; Copy hex data to
-                STA     STL-1,X         ; 'store index'
-                STA     XAML-1,X        ; and to 'XAM index'
+SETADR          LDA     *L-1,X          ; Copy hex data to
+                STA     *STL-1,X        ; 'store index'
+                STA     *XAML-1,X       ; and to 'XAM index'
                 DEX                     ; Next of 2 bytes
                 BNE     SETADR          ; Loop unless X = 0
 
@@ -181,9 +181,9 @@ SETADR          LDA     L-1,X           ; Copy hex data to
 NXTPRNT         BNE     PRDATA          ; NE means no address to print
                 LDA     #CR             ; Print CR first
                 JSR     ECHO
-                LDA     XAMH            ; Output high-order byte of address
+                LDA     *XAMH            ; Output high-order byte of address
                 JSR     PRBYTE
-                LDA     XAML            ; Output low-order byte of address
+                LDA     *XAML            ; Output low-order byte of address
                 JSR     PRBYTE
                 LDA     #':'            ; Print colon
                 JSR     ECHO
@@ -193,18 +193,18 @@ PRDATA          LDA     #' '            ; Print space
                 LDA     (XAML,X)        ; Get data from address (X=0)
                 JSR     PRBYTE          ; Output it in hex format
 
-XAMNEXT         STX     MODE            ; 0 -> MODE (XAM mode).
-                LDA     XAML            ; See if there is more to print
-                CMP     L
-                LDA     XAMH
-                SBC     H
+XAMNEXT         STX     *MODE           ; 0 -> MODE (XAM mode).
+                LDA     *XAML            ; See if there is more to print
+                CMP     *L
+                LDA     *XAMH
+                SBC     *H
                 BCS     TONEXTITEM      ; Not less! No more data to output
 
-                INC     XAML            ; Increment 'examine index'
+                INC     *XAML            ; Increment 'examine index'
                 BNE     MOD8CHK         ; No carry!
-                INC     XAMH
+                INC     *XAMH
 
-MOD8CHK         LDA     XAML            ; If address MOD 8 = 0 start new line
+MOD8CHK         LDA     *XAML            ; If address MOD 8 = 0 start new line
                 AND     #%00000111
                 BPL     NXTPRNT         ; Always taken.
 
