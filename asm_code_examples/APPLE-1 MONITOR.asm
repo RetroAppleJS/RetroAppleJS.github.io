@@ -24,7 +24,6 @@ YSAV            EQU      $2A             ; Used to see if hex value is given
 MODE            EQU      $2B             ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 IN              EQU      $0200           ; Input buffer ($0200 - $027F)
-
 KBD             EQU      $D010           ; PIA.A keyboard input
 KBDCR           EQU      $D011           ; PIA.A keyboard control register
 DSP             EQU      $D012           ; PIA.B display output register
@@ -80,7 +79,7 @@ ESCAPE          LDA     #'\'            ; Print prompt character
 GETLINE         LDA     #CR             ; Send CR
                 JSR     ECHO
 
-                LDY     #0+1            ; Start a new input line
+                LDY     #1              ; Start a new input line
 BACKSPACE       DEY                     ; Backup text index
                 BMI     GETLINE         ; Oops, line empty, reinitialize
 
@@ -119,7 +118,7 @@ NEXTITEM        LDA     IN,Y            ; Get character
 
 NEXTHEX         LDA     IN,Y            ; Get character for hex test
                 EOR     #$B0            ; Map digits to 0-9
-                CMP     #9+1            ; Is it a decimal digit?
+                CMP     #10             ; Is it a decimal digit?
                 BCC     DIG             ; Yes!
                 ADC     #$88            ; Map letter "A"-"F" to $FA-FF
                 CMP     #$FA            ; Hex letter?
@@ -181,9 +180,9 @@ SETADR          LDA     *L-1,X          ; Copy hex data to
 NXTPRNT         BNE     PRDATA          ; NE means no address to print
                 LDA     #CR             ; Print CR first
                 JSR     ECHO
-                LDA     *XAMH            ; Output high-order byte of address
+                LDA     *XAMH           ; Output high-order byte of address
                 JSR     PRBYTE
-                LDA     *XAML            ; Output low-order byte of address
+                LDA     *XAML           ; Output low-order byte of address
                 JSR     PRBYTE
                 LDA     #':'            ; Print colon
                 JSR     ECHO
@@ -194,17 +193,17 @@ PRDATA          LDA     #' '            ; Print space
                 JSR     PRBYTE          ; Output it in hex format
 
 XAMNEXT         STX     *MODE           ; 0 -> MODE (XAM mode).
-                LDA     *XAML            ; See if there is more to print
+                LDA     *XAML           ; See if there is more to print
                 CMP     *L
                 LDA     *XAMH
                 SBC     *H
                 BCS     TONEXTITEM      ; Not less! No more data to output
 
-                INC     *XAML            ; Increment 'examine index'
+                INC     *XAML           ; Increment 'examine index'
                 BNE     MOD8CHK         ; No carry!
                 INC     *XAMH
 
-MOD8CHK         LDA     *XAML            ; If address MOD 8 = 0 start new line
+MOD8CHK         LDA     *XAML           ; If address MOD 8 = 0 start new line
                 AND     #%00000111
                 BPL     NXTPRNT         ; Always taken.
 
@@ -226,7 +225,7 @@ PRBYTE          PHA                     ; Save A for LSD
 ;  Subroutine to print a hexadecimal digit
 ;-------------------------------------------------------------------------
 
-PRHEX           AND     #%00001111     ; Mask LSD for hex print
+PRHEX           AND     #%00001111      ; Mask LSD for hex print
                 ORA     #'0'            ; Add "0"
                 CMP     #'9'+1          ; Is it a decimal digit?
                 BCC     ECHO            ; Yes! output it
@@ -250,7 +249,7 @@ ECHO            BIT     DSP             ; DA bit (B7) cleared yet?
 
                 HEX 0000                ; Unused, what a pity
 NMI_VEC         HEX 0F00                ; NMI vector
-;RESET_VEC       .WORD RESET             ; RESET vector
+;RESET_VEC      .WORD RESET            ; RESET vector
 RESET_VEC       HEX 00FF
 IRQ_VEC         HEX 0000                ; IRQ vector
 
