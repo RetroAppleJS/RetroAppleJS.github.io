@@ -11,7 +11,7 @@ The assembler supports the following syntax:
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
 
-      OPC         ....	implied
+      OPC         ....	implied                 (mode 0)
       OPC A       ....	Accumulator             (mode 1)
       OPC #BB     ....	immediate               (mode 2)
       OPC HHLL    ....	absolute                (mode 3)
