@@ -1,10 +1,71 @@
-// 6502 assembler
-// n. landsteiner, mass:werk / electronic tradion 2005; e-tradion.net
+// 2022 adaptations by Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
+//
+// Thanks to n. landsteiner, mass:werk / electronic tradion 2005; e-tradion.net
+// ASM_6502.js
+
+function ASSEMBLER()
+{
+	const log2 = Math.log10(2);
+	const label_len = 6
+	this.getNumber = function(n)
+	{
+		var r = "NaN", err = "number malformation";
+		var c = n==null?["",""]:[n.charAt(0),n.substring(1)];
+		switch(c[0])
+		{
+			case "$":
+				if(c[1].match(/[0-9A-Fa-f]+/)[0].length==c[1].length)
+					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1}
+			break;
+			case "%":
+				if(c[1].match(/[01]+/)[0].length==c[1].length)
+					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
+			break;
+			case "0":
+				if(c[1].match(/[0-7]+/)[0].length==c[1].length)
+				{
+					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
+					r =  {"val":parseInt(c[1],8),"fmt":"OCT","bytes":b};
+				}
+			break;
+			default:
+				if((c[0]+c[1]).match(/[+\-0-9]+/)[0].length==(c[0]+c[1]).length)
+				{
+					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
+					r =  {"val":parseInt(c[0]+c[1],10),"fmt":"DEC","bytes":b};
+				}
+			break;
+		}
+		//r["str"] = "'"+n+"'";
+		return isNaN(r.val) ? {val:"NaN","err":err,"str":n} : r;
+	}
+}
+
+
+
+
+
 
 // lookup tables
 
+// mode 0:	OPC         ....	implied
+// mode 1:	OPC A       ....	Accumulator
+// mode 2:	OPC #BB     ....	immediate
+// mode 3:	OPC HHLL    ....	absolute
+// mode 4:	OPC HHLL,X  ....	absolute, X-indexed
+// mode 5:	OPC HHLL,Y  ....	absolute, Y-indexed
+// mode 6:	OPC *LL     ....	zeropage
+// mode 7:	OPC *LL,X   ....	zeropage, X-indexed
+// mode 8:	OPC *LL,Y   ....	zeropage, Y-indexed
+// mode 9:	OPC (BB,X)  ....	X-indexed, indirect
+// mode 10:	OPC (LL),Y  ....	indirect, Y-indexed
+// mode 11:	OPC (HHLL)  ....	indirect
+// mode 12:	OPC BB      ....	relative
+
 var hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
 var instrtab = {
+// mode    0   1     2     3     4     5     6     7   8   9    10    11  12
 	ADC: [-1, -1, 0x69, 0x6d, 0x7d, 0x79, 0x65, 0x75, -1, -1, 0x61, 0x71, -1],
 	AND: [-1, -1, 0x29, 0x2d, 0x3d, 0x39, 0x25, 0x35, -1, -1, 0x21, 0x31, -1],
 	ASL: [-1, 0x0a, -1, 0x0e, 0x1e, -1, 0x06, 0x16, -1, -1, -1, -1, -1],
@@ -148,6 +209,7 @@ function assemble_step()
 
 function assemble()
 {
+
 	code_pc = new Array();
 	symtab = {};
 	asm.symlink = {};
@@ -379,7 +441,7 @@ function getNumber(n)
 	var r;
 	if (c == '+' || c == '-') n = n.substring(1, n.length);
 	if (n == null) r = 0;
-	if (n.charAt(0) == '$')
+	if (n.charAt(0) == '$')					// HEX
 	{
 		for (var i = 1; i < n.length; i++)
 		{
@@ -388,7 +450,7 @@ function getNumber(n)
 		}
 		r = sgn * parseInt(n.substring(1), 16);
 	}
-	else if (n.charAt(0) == '%')
+	else if (n.charAt(0) == '%')			// BIN
 	{
 		for (var i = 1; i < n.length; i++)
 		{
@@ -397,7 +459,7 @@ function getNumber(n)
 		}
 		r = sgn * parseInt(n.substring(1), 2);
 	}
-	else if (n.charAt(0) == '0')
+	else if (n.charAt(0) == '0')			// OCTAL
 	{
 		for (var i = 1; i < n.length; i++)
 		{
@@ -438,9 +500,9 @@ function getIdentifier(n)
 		if ((c < 'A') && (c > 'Z') && (c < '0') && (c > '9') && (c != '_')) return '';
 	}
 	n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels 
-	if (n.length > 6)
+	if (n.length > oASM.label_len)
 	{
-		n = n.substring(0, 6);
+		n = n.substring(0, oASM.label_len);
 	}
 	return n;
 }
@@ -481,6 +543,7 @@ function paddRight(s, l)
 
 function doPass(pass)
 {
+	var oASM = new ASSEMBLER();
 	srcl = srcc = pc = 0;
 	var sym = getSym();
 	while (sym)
@@ -698,16 +761,16 @@ function doPass(pass)
 			displayError('syntax error:\ncharacter expected');
 			return false;
 		}
-		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)
+		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)			// assembler mnemonic or directive ? 
 		{
-			// identifier (e.g. GETADR)
+			// label
 			var l = getIdentifier(sym[0]);
 			if (l == '')
 			{
 				displayError('syntax error:\ninvalid identifier: ' + sym[0]);
 				return false;
 			}
-			listing.value += paddRight(l, 6) + ' ';
+			listing.value += paddRight(l, oASM.label_len) + ' ';
 			ofs++;
 			if ((sym.length > 1) && (sym[ofs] == '=' || sym[ofs] == 'EQU'))
 			{
@@ -724,26 +787,27 @@ function doPass(pass)
 					return false;
 				}
 				var v;
-				if (sym[2] == '*') v = pc;
-				else v = getNumber(sym[2]);
-				if (v == 'NaN')
+				if (sym[2] == '*') v = {"val":pc};
+				else v = oASM.getNumber(sym[2]);
+				if (v.val == 'NaN')
 				{
 					displayError('syntax error:\nnumber expected');
 					return false;
 				}
 				if (pass == 1)
 				{
-					symtab[l] = v;
+					symtab[l] = v.val;
 					sym_link(
 					{
 						"type": "def",
 						"PC": pc,
-						"val": v,
+						"val": v.val,
 						"sym": l,
 						"sym0": sym[0]
 					})
 				}
-				listing.value += getHexWord(v);
+				//listing.value += getHexWord(v.val);
+				listing.value += "$"+oCOM.getHexMulti(v.val,v.bytes*2);
 				sym = getSym();
 				continue;
 			}
@@ -781,7 +845,7 @@ function doPass(pass)
 					sym = getSym();
 					continue
 				}
-				padd = 7;
+				padd = oASM.label_len+1;
 			}
 		}
 		if (sym.length < ofs)
@@ -813,10 +877,9 @@ function doPass(pass)
 				return false;
 			}
 			var addr = sym[ofs + 1];
-			var mode = 0;
+			var mode = 0;  						// implied
 			if (typeof addr == 'undefined')
 			{
-				// implied
 				if (opctab[0] < 0)
 				{
 					displayError('syntax error:\nunexpected end of line');
@@ -927,7 +990,7 @@ function doPass(pass)
 						listing.value += 'A';
 						padd = 1;
 					}
-					mode = 1;
+					mode = 1;					// Accumulator
 				}
 				else if (a1 == '#')
 				{
@@ -948,7 +1011,7 @@ function doPass(pass)
 						}
 					}
 					b1 = 1;
-					mode = 2;
+					mode = 2;					// immediate
 				}
 				else if (a1 == '*')
 				{
@@ -958,7 +1021,7 @@ function doPass(pass)
 						padd = 1;
 					}
 					b1 = 1;
-					mode = 6;
+					mode = 6;					// zeropage
 				}
 				else if (a1 == '(')
 				{
@@ -968,7 +1031,7 @@ function doPass(pass)
 						padd = 1;
 					}
 					b1 = 1;
-					mode = 9;
+					mode = 9;					// X-indexed, indirect
 				}
 				else if (mactab != null && ((a1 >= '0' && a1 <= '9') || (a1 >= 'A' && a1 <= 'F')))
 				{
@@ -977,26 +1040,26 @@ function doPass(pass)
 				}
 				else
 				{
-					if (opctab != null) mode = (opctab[12] < 0) ? 3 : 12;
+					if (opctab != null) mode = (opctab[12] < 0) ? 3 : 12;		// absolute or relative
 				}
 				if (pass == 1) listing.value += addr;
 				if (mode == 9)
-				{
-					var b3 = addr.indexOf(',X)');
+				{													// X-indexed, indirect
+					var b3 = addr.indexOf(',X)');					// end position of indirect address
 					if ((b3 > 0) && (b3 == addr.length - 3))
 					{
-						mode += 1;
+						mode += 1;									// indirect, Y-indexed
 					}
 					else
 					{
-						b3 = addr.indexOf('),Y');
+						b3 = addr.indexOf('),Y');					
 						if ((b3 > 0) && (b3 == addr.length - 3))
 						{
-							mode += 2;
+							mode += 2;								// indirect
 						}
 						else
 						{
-							b3 = addr.indexOf(')');
+							b3 = addr.indexOf(')');					// end position of indirect address
 						}
 					}
 					if (b3 < 0)
