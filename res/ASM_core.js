@@ -1,9 +1,48 @@
 function ASM()
 {
 
+//	█████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
+//	██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
+//	███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████
+//	██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
+//	██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
+
+
 	const log2 = Math.log10(2);
 	const label_len = 6;
 	this.bDebug = false;
+
+	this.init = function(src)
+	{
+		this.codesrc	= src;
+		this.pass		= 0;
+		this.step		= 0;
+		this.sym		= [];
+		this.symlink_l	= 0;
+		this.symlink	= {};
+		this.symtab		= {};
+		this.code		= [];
+		this.srcl		= 0;
+		this.srcc		= 0;
+		this.pc			= 0;
+
+		this.asm = 
+		{
+			"pass":      0,
+			"step":      0,
+			"sym":       [],
+			"symlink_l": 0,
+			"symlink":   {},
+			"symtab":    {},
+			"code":      [],
+			"srcl":      0,
+			"srcc":      0,
+			"pc":        0
+		}
+	}
+
+
+
 	this.getNumber = function(n)
 	{
 		var r = "NaN", err = "number malformation";
@@ -39,11 +78,75 @@ function ASM()
 		return r;
 	}
 
+	this.getSym = function()
+	{
+		var c = this.getChar();
+		if (c == 'EOF') return null;
+		var sym = [''];
+		var s = 0;
+		var m = 0;
+		var q = 0;
+		while ((c != ';') && (c != '\n') && (c != 'EOF'))
+		{
+			if ((c == ' ') || (c == '\t'))
+			{
+				if (m > 0)
+				{
+					m = 0;
+					s++;
+					sym[s] = '';
+				}
+				if (q == 1)
+				{
+					sym[s] += c;
+				}
+			}
+			else if (c == '=')
+			{
+				if (m > 0) s++;
+				sym[s] = c;
+				m = 0;
+				s++;
+				sym[s] = '';
+			}
+			else if (c == "'")
+			{
+				sym[s] += c;
+				q = q == 0 ? 1 : 0;
+				m = 0;
+			}
+			else
+			{
+				m = 1;
+				sym[s] += c;
+			}
+			c = this.getChar();
+		}
+		while ((sym.length) && (sym[sym.length - 1] == '')) sym.length--;
+		return (c == 'EOF') ? null : sym;
+	}
 
 
+	this.getChar = function()
+	{
+		if (this.asm.srcl >= this.codesrc.length) return 'EOF';
+		if (this.asm.srcc >= this.codesrc[this.asm.srcl].length)
+		{
+			this.asm.srcc = 0;
+			this.asm.srcl++;
+			return '\n';
+		}
+		else
+		{
+			var c = this.codesrc[this.asm.srcl].charAt(this.asm.srcc);
+			this.asm.srcc++;
+			return c //.toUpperCase();
+		}
+	}
+}
 
-
-
+function DASM()
+{
 	
     //  ██████  ██ ███████  █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
     //  ██   ██ ██ ██      ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 

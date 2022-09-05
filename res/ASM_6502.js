@@ -6,7 +6,12 @@
 
 
 
-
+var oASM = new ASM();
+oASM.init();
+oASM.getHexByte = getHexByte;
+oASM.ByteAt = function ByteAt(addr) { return this.srcfield_bin }
+oASM.sym_search = function sym_search(op,adm) { return }
+oASM.srcfield_bin = new Uint8Array(); 
 
 
 
@@ -124,13 +129,7 @@ var pragma_dat = {}
 var codesrc, code, srcl, srcc, pc, symtab, listing;
 var codesrc_buf = new Array();
 var code_pc = new Array();
-var asm = {
-	"pass": 0,
-	"step": 0,
-	"sym": [],
-	"symlink_l": 0,
-	"symlink":{}
-};
+
 
 // functions
 
@@ -141,39 +140,33 @@ function assemble_step()
 	var codefield = document.getElementById('codefield');
 	//var codefield = document.forms.ass.codefield;
 	getSrc(document.forms.ass.srcfield); // Slice ASM lines -> codesrc (array)
-	var crlf = "<br>"
+	var crlf = "<br>";
 
-	if (asm.pass == 0 && asm.step == 0)
+	if (oASM.pass == 0 && oASM.step == 0)
 	{
 		// init pass 0
-		asm.symtab = {};
-		asm.symlink = {};
-		asm.symlink_l = 0;
+		oASM.init(codesrc);
 		codefield.innerHTML = ' '+crlf;
 		listing.value = '' //'starting assembly\npass 1\n';
 
-		asm.code = [];
 		// TODO : RE-WRITE DOPASS IN TAKING ONE STEP AT THE TIME !!  FVD
-
-		asm.srcl = asm.srcc = asm.pc = 0;
-		asm.sym = {};
 	}
 
-	if (asm.pass == 1 && asm.step == 0)
+	if (oASM.pass == 1 && oASM.step == 0)
 	{
 		// TODO FVD init pass 1 !!!
 	}
 
 
-	do{ asm.sym = s_getSym() } while(asm.sym!=null && asm.sym.length==0) // skip empty lines
+	do{ oASM.sym = oASM.getSym() } while(oASM.sym!=null && oASM.sym.length==0) // skip empty lines
 
-	if(asm.sym==null && asm.pass==0) { asm.pass = 1; asm.step = 0 } 
+	if(oASM.sym==null && oASM.pass==0) { oASM.pass = 1; oASM.step = 0 } 
 
-	asm.step = 1;
-	if(asm.sym!=null)
-		listing.value += "asm.sym ["+asm.sym.join(" ")+"]\n"
+	oASM.step = 1;
+	if(oASM.sym!=null)
+		listing.value += "asm.sym ["+oASM.sym.join(" ")+"]\n"
 	else
-		listing.value += "asm.pass = ["+asm.pass+"]\n"
+		listing.value += "asm.pass = ["+oASM.pass+"]\n"
 }
 
 
@@ -185,11 +178,10 @@ function assemble_step()
 
 function assemble()
 {
-	var oASM = new ASM();
 
 	code_pc = new Array();
 	symtab = {};
-	asm.symlink = {};
+	oASM.symlink = {};
 	var crlf = "<br>"
 
 	listing = document.forms.ass.listing;
@@ -301,71 +293,9 @@ function getChar()
 	}
 }
 
-function s_getChar()
-{
-	if (asm.srcl >= codesrc.length) return 'EOF';
-	if (asm.srcc >= codesrc[asm.srcl].length)
-	{
-		asm.srcc = 0;
-		asm.srcl++;
-		return '\n';
-	}
-	else
-	{
-		var c = codesrc[asm.srcl].charAt(asm.srcc);
-		asm.srcc++;
-		return c //.toUpperCase();
-	}
-}
 
-// TODO create s_getSym
-function s_getSym()
-{
-	var c = s_getChar();
-	if (c == 'EOF') return null;
-	var sym = [''];
-	var s = 0;
-	var m = 0;
-	var q = 0;
-	while ((c != ';') && (c != '\n') && (c != 'EOF'))
-	{
-		if ((c == ' ') || (c == '\t'))
-		{
-			if (m > 0)
-			{
-				m = 0;
-				s++;
-				sym[s] = '';
-			}
-			if (q == 1)
-			{
-				sym[s] += c;
-			}
-		}
-		else if (c == '=')
-		{
-			if (m > 0) s++;
-			sym[s] = c;
-			m = 0;
-			s++;
-			sym[s] = '';
-		}
-		else if (c == "'")
-		{
-			sym[s] += c;
-			q = q == 0 ? 1 : 0;
-			m = 0;
-		}
-		else
-		{
-			m = 1;
-			sym[s] += c;
-		}
-		c = s_getChar();
-	}
-	while ((sym.length) && (sym[sym.length - 1] == '')) sym.length--;
-	return (c == 'EOF') ? null : sym;
-}
+
+
 
 
 function getSym()
@@ -1294,9 +1224,9 @@ function sym_link(_obj)
 	switch (_obj.type)
 	{
 		case "loc":
-			if (typeof (asm.symlink[_obj.PC]) != "undefined") alert("double entry! "+ JSON.stringify(_obj))
+			if (typeof (oASM.symlink[_obj.PC]) != "undefined") alert("double entry! "+ JSON.stringify(_obj))
 			key = _obj.PC;
-			asm.symlink[key] = {
+				oASM.symlink[key] = {
 				"type": _obj.type,
 				"sym": _obj.sym
 			};
@@ -1304,22 +1234,22 @@ function sym_link(_obj)
 		case "def":
 			key = _obj.val
 			if (_obj.val < 256)
-				asm.symlink[key] = {
+				oASM.symlink[key] = {
 					"type": "vdef",
 					"sym": _obj.sym
 				};
 			else
-				asm.symlink[key] = {
+				oASM.symlink[key] = {
 					"type": "ldef",
 					"sym": _obj.sym
 				};
 			break;
 		default:
-			key = "i" + asm.symlink_l
-			asm.symlink[key] = _obj;
-			asm.symlink_l++;
+			key = "i" + oASM.symlink_l
+			oASM.symlink[key] = _obj;
+			oASM.symlink_l++;
 	}
-	if(_obj.call) asm.symlink[key].call = _obj.call;
+	if(_obj.call) oASM.symlink[key].call = _obj.call;
 }
 
 

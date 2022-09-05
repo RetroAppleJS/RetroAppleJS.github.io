@@ -17,7 +17,7 @@ var mem_checksum = [];
 var pstruct = {};
 var watch_data = {};
 
-var oDBG_ASM = new ASM();
+var oDBG_ASM = new DASM();
 oDBG_ASM.getHexByte = getHexByte;
 oDBG_ASM.ByteAt = ByteAt;  // inherit from DBG_6502cpu.js
 oDBG_ASM.sym_search = sym_search;

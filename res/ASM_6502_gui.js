@@ -1,8 +1,5 @@
-var oASM = new ASM();
-oASM.getHexByte = getHexByte;
-oASM.ByteAt = function ByteAt(addr) { return this.srcfield_bin}
-oASM.sym_search = function sym_search(op,adm) { return }
-oASM.srcfield_bin = new Uint8Array(); 
+
+
 
 
 var TFUNCTION_str = "";
