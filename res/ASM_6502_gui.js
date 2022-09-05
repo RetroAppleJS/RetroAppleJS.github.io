@@ -1,7 +1,3 @@
-
-
-
-
 var TFUNCTION_str = "";
 for(var i in _CFG_TFUNCTION)
 {
