@@ -23,6 +23,32 @@ function COM()
       s+= ("0000"+parseInt(r.charAt(i),16).toString(2)).slice(-4)
     return s;
   }
+
+  this.writeDisplay = function(n,v,f)
+	{
+		// n = el, v = value, f = extra HTML
+		var obj,tagname,bAppend = typeof(f)!="undefined";
+		if (document.getElementById) { obj=document.getElementById(n); tagname = obj.tagName.toUpperCase() }
+		else if (document.all) { obj=document.all[n] }
+		if(!obj) return;
+    
+		switch(tagname)
+		{
+			case "INPUT":
+				switch(f)
+				{
+					case "beforebegin":obj.value += v; break; 				    // less common
+					case "afterbegin": obj.value = v + obj.value; break;	// less common
+					case "afterend":   obj.value = v + obj.value; break;
+					case "beforeend":  obj.value += v; break;
+					default:  		   obj.value = v;
+				}
+			break;
+			default:
+				if(bAppend) obj.insertAdjacentHTML(f,v);
+				else obj.innerHTML=v;
+		}
+	}
 }
 
 

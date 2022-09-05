@@ -4,43 +4,6 @@
 // Thanks to n. landsteiner, mass:werk / electronic tradion 2005; e-tradion.net
 // ASM_6502.js
 
-function ASSEMBLER()
-{
-	const log2 = Math.log10(2);
-	const label_len = 6
-	this.getNumber = function(n)
-	{
-		var r = "NaN", err = "number malformation";
-		var c = n==null?["",""]:[n.charAt(0),n.substring(1)];
-		switch(c[0])
-		{
-			case "$":
-				if(c[1].match(/[0-9A-Fa-f]+/)[0].length==c[1].length)
-					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1}
-			break;
-			case "%":
-				if(c[1].match(/[01]+/)[0].length==c[1].length)
-					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
-			break;
-			case "0":
-				if(c[1].match(/[0-7]+/)[0].length==c[1].length)
-				{
-					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
-					r =  {"val":parseInt(c[1],8),"fmt":"OCT","bytes":b};
-				}
-			break;
-			default:
-				if((c[0]+c[1]).match(/[+\-0-9]+/)[0].length==(c[0]+c[1]).length)
-				{
-					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
-					r =  {"val":parseInt(c[0]+c[1],10),"fmt":"DEC","bytes":b};
-				}
-			break;
-		}
-		//r["str"] = "'"+n+"'";
-		return isNaN(r.val) ? {val:"NaN","err":err,"str":n} : r;
-	}
-}
 
 
 
@@ -144,9 +107,9 @@ var addrtab = {
 
 // FVD
 var macrotab = {
-	HEX: true,
-	BIN: true,
-	ASC: true
+	"HEX": true,
+	"BIN": true,
+	"ASC": true
 }
 var dbgsym = {}
 
@@ -182,6 +145,7 @@ function assemble_step()
 
 	if (asm.pass == 0 && asm.step == 0)
 	{
+		// init pass 0
 		asm.symtab = {};
 		asm.symlink = {};
 		asm.symlink_l = 0;
@@ -195,9 +159,21 @@ function assemble_step()
 		asm.sym = {};
 	}
 
-	asm.sym = s_getSym();
+	if (asm.pass == 1 && asm.step == 0)
+	{
+		// TODO FVD init pass 1 !!!
+	}
+
+
+	do{ asm.sym = s_getSym() } while(asm.sym!=null && asm.sym.length==0) // skip empty lines
+
+	if(asm.sym==null && asm.pass==0) { asm.pass = 1; asm.step = 0 } 
+
 	asm.step = 1;
-	listing.value += "asm.sym [" + asm.sym.join(" ") + "]\n"
+	if(asm.sym!=null)
+		listing.value += "asm.sym ["+asm.sym.join(" ")+"]\n"
+	else
+		listing.value += "asm.pass = ["+asm.pass+"]\n"
 }
 
 
@@ -209,6 +185,7 @@ function assemble_step()
 
 function assemble()
 {
+	var oASM = new ASM();
 
 	code_pc = new Array();
 	symtab = {};
@@ -239,7 +216,7 @@ function assemble()
 			if(showDBG.RAM || showDBG.ROM)
 			{
 				var ds = debug_symbols(showDBG);
-				listing.value += ds.listing;		// debug symbols
+				listing.value += ds.listing;		// add debug symbols
 				for(var i=0;i<ds.stream.length;i+=2)
 					code[code.length] = parseInt(ds.stream.charAt(i)+ds.stream.charAt(i+1),16);
 			}
@@ -543,7 +520,6 @@ function paddRight(s, l)
 
 function doPass(pass)
 {
-	var oASM = new ASSEMBLER();
 	srcl = srcc = pc = 0;
 	var sym = getSym();
 	while (sym)
@@ -615,25 +591,30 @@ function doPass(pass)
 		{
 			// pragma
 			var pragma = sym[0];
+		
+
+
 			//listing.value+=pragma;
 			if (pragma == '.END')
 			{
 				listing.value += pragma;
 				return true;
 			}
-			else if ((pragma != '.WORD') &&
+			else if (
+				(pragma != '.WORD') &&
 				(pragma != '.BYTE') &&
 				(pragma != '.TEXT') &&
 				(pragma != '.DEFINE') &&
 				(pragma != '.IFDEF') &&
 				(pragma != '.IFNDEF') &&
-				(pragma != '.ENDIF')
+				(pragma != '.ENDIF') &&
+				(pragma != '.SYMBOLS')
 			)
 			{
 				displayError('syntax error:\ninvalid pragma "' + pragma + '"');
 				return false;
 			}
-			if (sym.length > 2)
+			if (sym.length > 2)	// more than two operands
 			{
 				if (pass == 1)
 				{
@@ -649,7 +630,7 @@ function doPass(pass)
 					}
 				}
 			}
-			else if (sym.length == 2)
+			else if (sym.length == 2)	// two operands
 			{
 				listing.value += pragma;
 				if (pass == 2)
@@ -724,6 +705,8 @@ function doPass(pass)
 					var hi = Math.floor(v / 256) & 0xff;
 					var lo = v & 0xff;
 					code[code.length] = lo;
+
+
 					if (pragma == '.WORD')
 					{
 						code[code.length] = hi;
@@ -755,7 +738,7 @@ function doPass(pass)
 				return false;
 			}
 		}
-		else if ((c1 < 'A') || (c1 > 'Z'))
+		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))
 		{
 			listing.value += sym[0];
 			displayError('syntax error:\ncharacter expected');
@@ -856,7 +839,7 @@ function doPass(pass)
 		}
 		if (padd == 0) listing.value += '       ';
 		padd = 0;
-		if ((c1 < 'A') || (c1 > 'Z'))
+		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))
 		{
 			listing.value += sym[0];
 			displayError('syntax error:\ncharacter expected');
@@ -1245,6 +1228,8 @@ function doPass(pass)
 	return true;
 }
 
+
+
 function debug_symbols(showDBG)
 {
 	// TODO
@@ -1257,7 +1242,8 @@ function debug_symbols(showDBG)
 		if(showDBG.RAM && symtab[i]<parseInt("C000",16)
 			|| showDBG.ROM && symtab[i]>=parseInt("C000",16))
 		{
-			m = (i+" ".repeat(6-i.length)) + " = $" + getHexVar(symtab[i])
+			
+			m = (i+" ".repeat(oASM.label_len-(i.length>oASM.label_len?oASM.label_len:i.length) )) + " = $" + getHexVar(symtab[i])
 			if(alt) s += m+" ".repeat(m.length>17?1:17-m.length); else s += m+"\n";
 			alt = !alt;
 
@@ -1273,8 +1259,8 @@ function debug_symbols(showDBG)
 	str += showDBG.ROM || showDBG.RAM ? "FF" : "";  // STOP WITH HEX BYTE  = FF (=assumed - impossible - string)
 
 	var json = "{"+arr.join(",")+"}"
-  writeDisplay('watchparam',json);
-	writeDisplay('watchparam2',str);
+  	oCOM.writeDisplay('watchparam',json);
+	oCOM.writeDisplay('watchparam2',str);
 	return {"listing":s,"json":json,"stream":str};
 }
 
@@ -1308,7 +1294,7 @@ function sym_link(_obj)
 	switch (_obj.type)
 	{
 		case "loc":
-			if (typeof (asm.symlink[_obj.PC]) != "undefined") alert("double entry! ")// + JSON.stringify(_obj))
+			if (typeof (asm.symlink[_obj.PC]) != "undefined") alert("double entry! "+ JSON.stringify(_obj))
 			key = _obj.PC;
 			asm.symlink[key] = {
 				"type": _obj.type,

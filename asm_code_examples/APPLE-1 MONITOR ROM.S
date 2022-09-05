@@ -249,8 +249,8 @@ ECHO            BIT     DSP             ; DA bit (B7) cleared yet?
 
                 HEX 0000                ; Unused, what a pity
 NMI_VEC         HEX 0F00                ; NMI vector
-;RESET_VEC      .WORD RESET            ; RESET vector
-RESET_VEC       HEX 00FF
+RESET_VEC       
+                .WORD RESET             ; RESET vector
 IRQ_VEC         HEX 0000                ; IRQ vector
 
 ;-------------------------------------------------------------------------
