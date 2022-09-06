@@ -8,10 +8,6 @@
 
 var oASM = new ASM();
 oASM.init();
-oASM.getHexByte = getHexByte;
-oASM.ByteAt = function ByteAt(addr) { return this.srcfield_bin }
-oASM.sym_search = function sym_search(op,adm) { return }
-oASM.srcfield_bin = new Uint8Array(); 
 
 
 
@@ -132,43 +128,6 @@ var code_pc = new Array();
 
 
 // functions
-
-function assemble_step()
-{
-	listing = document.forms.ass.listing;
-	var showADR = document.ass.showADR.checked;
-	var codefield = document.getElementById('codefield');
-	//var codefield = document.forms.ass.codefield;
-	getSrc(document.forms.ass.srcfield); // Slice ASM lines -> codesrc (array)
-	var crlf = "<br>";
-
-	if (oASM.pass == 0 && oASM.step == 0)
-	{
-		// init pass 0
-		oASM.init(codesrc);
-		codefield.innerHTML = ' '+crlf;
-		listing.value = '' //'starting assembly\npass 1\n';
-
-		// TODO : RE-WRITE DOPASS IN TAKING ONE STEP AT THE TIME !!  FVD
-	}
-
-	if (oASM.pass == 1 && oASM.step == 0)
-	{
-		// TODO FVD init pass 1 !!!
-	}
-
-
-	do{ oASM.sym = oASM.getSym() } while(oASM.sym!=null && oASM.sym.length==0) // skip empty lines
-
-	if(oASM.sym==null && oASM.pass==0) { oASM.pass = 1; oASM.step = 0 } 
-
-	oASM.step = 1;
-	if(oASM.sym!=null)
-		listing.value += "asm.sym ["+oASM.sym.join(" ")+"]\n"
-	else
-		listing.value += "asm.pass = ["+oASM.pass+"]\n"
-}
-
 
 //   █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
 //  ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 

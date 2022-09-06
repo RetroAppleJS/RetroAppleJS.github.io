@@ -17,10 +17,15 @@ var mem_checksum = [];
 var pstruct = {};
 var watch_data = {};
 
-var oDBG_ASM = new DASM();
-oDBG_ASM.getHexByte = getHexByte;
-oDBG_ASM.ByteAt = ByteAt;  // inherit from DBG_6502cpu.js
-oDBG_ASM.sym_search = sym_search;
+var oDASM = new DASM();
+oDASM.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+oDASM.logHexByte = function(v) { h=this.hextab[v>>4]+this.hextab[v&0xf]; console.log("DBG logHexByte("+v+") = "+h); return h}
+oDASM.ByteAt = function ByteAt(addr) { return RAM[addr] }
+//oDASM.sym_search = function sym_search(op,adm) { return }
+oDASM.sym_search = sym_search;
+oDASM.srcfield_bin = new Uint8Array(); 
+
+var asm = oASM; 
 
 // lookup tables
 
@@ -163,7 +168,7 @@ function setReg(r,v) {
 	}
 }
 function setRegister(r) {
-	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(oDBG_ASM.getReg(r));
+	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(oDASM.getReg(r));
 	var v=prompt('Please enter a hex value for '+r+':', prstr);
 	v=parseInt(v,16);
 	if (isNaN(v)) return;
@@ -173,7 +178,7 @@ function setRegister(r) {
 	else v&=255;
 	setReg(r,v);
 	updateReg(r);
-	if (r=='PC') oDBG_ASM.disassemble();
+	if (r=='PC') oDASM.disassemble();
 }
 
 function setWatchByte(r) {
@@ -209,7 +214,7 @@ function writeWatchAddresses(p)
 	for(var _i in p)
 		if(p[_i]!="" && p[_i]!="null") _a[_a.length] = "'"+_i+"':'"+p[_i]+"'";
 
-  // TODO user generic function for that like oDBG_ASM.writeDisplay !!!
+  // TODO user generic function for that like oDASM.writeDisplay !!!
 	document.getElementById('watchparam').value = "{"+_a.join(",")+"}";
 }
 
@@ -228,14 +233,15 @@ function resetProcessor() {
 	resetCPU();
 	updateReg();
 	updateWatch();
-	oDBG_ASM.disassemble();
+	//console.log("resetProcessor oDASM.disassemble()")
+	//oDASM.disassemble();
 }
 
 function DBG_init() {
-	window.status='initializing ...';
+	console.log('DBG initializing ...');
 	resetProcessor();
 	loaded=true;
-	window.status='ready.';
+	console.log('DBG ready.');
 }
 
 function updateReg(r) {
@@ -246,20 +252,20 @@ function updateReg(r) {
 		updateReg('YR');
 		updateReg('SR');
 		updateReg('SP');
-		oDBG_ASM.writeDisplay('dispCycles', 'total cycles: '+processorCycles+" <small>("+processorCycles/1000+"ms)<small>");
+		oDASM.writeDisplay('dispCycles', 'total cycles: '+processorCycles+" <small>("+processorCycles/1000+"ms)<small>");
 		return;
 	}
 	var obj;
 	if (r=='PC') {
-		oDBG_ASM.writeDisplay('dispPC',getHexWord(pc));
+		oDASM.writeDisplay('dispPC',getHexWord(pc));
 	}
 	else {
-		oDBG_ASM.writeDisplay('disp'+r,''+getHexByte(oDBG_ASM.getReg(r)));
+		oDASM.writeDisplay('disp'+r,''+getHexByte(oDASM.getReg(r)));
 	}
 	if (r=='SR') {
 		for (var i=0; i<8; i++) {
 			var b=((flags&(1<<i))>0)? 1:0;
-			oDBG_ASM.writeDisplay('dispSR'+i,b);
+			oDASM.writeDisplay('dispSR'+i,b);
 		}
 	}
 }
@@ -284,8 +290,8 @@ function report_watch(obj)
 
 	//alert( parseInt(obj.ins,16)+" "+opctab[ parseInt(obj.ins,16) ][0] )
 
-  oDBG_ASM.writeDisplay('watchdisp',dispwatch,"beforeend");
-	oDBG_ASM.updateScroll('watchdisp');
+  oDASM.writeDisplay('watchdisp',dispwatch,"beforeend");
+	oDASM.updateScroll('watchdisp');
 }
 
 function updateWatch(r) {
@@ -329,10 +335,10 @@ function updateWatch(r) {
 		 var by = ByteAt(m);
  	 	 var hby = typeof(badr[1])=="undefined"? getHexByte(by) : ((by & bi)>0 ? 1:0);
 
-		 oDBG_ASM.writeDisplay('disp'+r, hby);
+		 oDASM.writeDisplay('disp'+r, hby);
 	 }
 // getMem
-	 //oDBG_ASM.writeDisplay('disp'+r, getHexWord(pc));
+	 //oDASM.writeDisplay('disp'+r, getHexWord(pc));
 }
 
 function getHexByte(v) {
@@ -584,7 +590,7 @@ function load_adr(obj)
 	v&=0xffff
 	setReg("PC",v);
 	updateReg("PC");
-	oDBG_ASM.disassemble();
+	oDASM.disassemble();
 
 }
 
@@ -603,7 +609,7 @@ function conv_bck(inp,s)
 
 
 function loadData(addr,data) {
-	window.status='loading data to '+getHexWord(addr)+' ...';
+	console.log('DBG loading data to '+getHexWord(addr)+' ...');
 	var lc='';
 	var ofs=0;
 	var mode=1;
@@ -626,7 +632,7 @@ function loadData(addr,data) {
 		else mode=1;
 	}
 	asm.endsym_addr = addr-1;  // last address of debug symbol space
-	window.status='ready.';
+	console.log('DBG ready.');
 }
 
 function toggleASCII() {
@@ -636,12 +642,12 @@ function toggleASCII() {
 }
 
 function loadRom(addr,data) {
-	window.status='loading data to '+getHexWord(addr)+' ...';
+	console.log('DBG loading data to '+getHexWord(addr)+' ...');
 	var ofs=0;
 	for (var i=0; i<data.length; i+=2) {
 		RAM[addr++]=parseInt(data.charAt(i)+data.charAt(i+1),16);
 	}
-	window.status='ready.';
+	console.log('DBG ready.');
 }
 
 function loadC64Roms() {
@@ -660,10 +666,10 @@ function loadApple2PlusRoms(str) {
 	{
 		var addr = parseInt("D000",16);
 		//var data = apple2Rom;
-		window.status='loading data to '+getHexWord(addr)+' ...';
+		console.log('DBG loading data to '+getHexWord(addr)+' ...');
 		for (var i=0; i<apple2Rom.length; i++)
 			RAM[addr++]=0x60;
-		window.status='ready.';
+		console.log('DBG ready.');
 		return;
 	}
 
@@ -671,112 +677,17 @@ function loadApple2PlusRoms(str) {
 	{
 		var addr = parseInt("D000",16);
 		var data = apple2Rom;
-		window.status='loading data to '+getHexWord(addr)+' ...';
+		console.log('DBG loading data to '+getHexWord(addr)+' ...');
 		for (var i=0; i<apple2Rom.length; i++)
 		{
 			//document.write((i%8==0?("<br>"+getHexWord(addr)+": "):" ")+getHexByte(apple2Rom[i]))
 			RAM[addr++]=apple2Rom[i];
 		}
-		window.status='ready.';
+		console.log('DBG ready.');
   }
 	else alert('Canceled');
 }
-/*
-function Apple2PlusZP() {
 
-var crlf = "\r\n"
-var s = "$00-$05 - ???"+crlf
-+"$06-$09 - Free Space"+crlf
-+"$0A-$0C - JMP to USR() User Function Routine"+crlf
-+"$0D-$17 - ???"+crlf
-+"$18     - First Data Track"+crlf
-+"$19     - First Data Sector"+crlf
-+"$1A-$1B - Shape Pointer for DRAW"+crlf
-+"$1C     - Last COLOR Used"+crlf
-+"$1D-$1E - Free Space"+crlf
-+"$1F     - ???"+crlf
-+"$20     - Left Margin (0 - 39/79, 0 is default)"+crlf
-+"$21     - Width (1 - 40/80, 40 is default, 0 crashes Applesoft)"+crlf
-+"$22     - Top Margin (0 - 23, 0 is default, 20 in graphics mode)"+crlf
-+"$23     - Bottom Margin (0 - 23, 23 is default)"+crlf
-+"$24     - Horizontal Cursor Position (0 - 39/79)"+crlf
-+"$25     - Vertical Cursor Position (0 - 23)"+crlf
-+"$26-$27 - Address of Byte Containing X,Y"+crlf
-+"$28-$29 - Base Address of Text Cursor's Position"+crlf
-+"$2A     - ???"+crlf
-+"$2B     - Boot Slot * 16"+crlf
-+"$2C     - Lo-Res HLIN/VLIN Endpoint"+crlf
-+"$2D-$2F - ???"+crlf
-+"$30     - COLOR Value * 17"+crlf
-+"$31     - ???"+crlf
-+"$32     - Text Mask ($FF = Normal, $7F = Inverse, $3F = Flashing)"+crlf
-+"$33     - Prompt Character"+crlf
-+"$34-$35 - ???"+crlf
-+"$36-$37 - Address of Output Routine"+crlf
-+"$38-$39 - Address of Input Routine"+crlf
-+"$3A-$4F - ???"+crlf
-+"$50-$51 - Result of the Conversion of the FAC to a 16-Bit Integer"+crlf
-+"$52-$66 - ???"+crlf
-+"$67-$68 - Address of Beginning of BASIC Program ($0801 is default)"+crlf
-+"$69-$6A - Address of Beginning of BASIC Variables"+crlf
-+"$6B-$6C - Address of Beginning of BASIC Arrays"+crlf
-+"$6D-$6E - Address of End of BASIC Variables"+crlf
-+"$6F-$70 - Address of End of String Data"+crlf
-+"$71-$72 - Address to Move String To"+crlf
-+"$73-$74 - Address of Beginning of String Data"+crlf
-+"$75-$76 - Current Line Number Being Executed"+crlf
-+"$77-$78 - Line Number Where END or STOP or BREAK Occurred"+crlf
-+"$79-$7A - Address of Line Number Being Executed"+crlf
-+"$7B-$7C - Current Address of DATA"+crlf
-+"$7D-$7E - Next Address of DATA"+crlf
-+"$7F-$80 - Address of Input or Data"+crlf
-+"$81-$82 - Last Used Variable's Name"+crlf
-+"$83-$84 - Last Used Variable's Address"+crlf
-+"$85-$9A - ???"+crlf
-+"$9B-$9C - Pointer for $D61A and $F7D9"+crlf
-+"$9D-$A3 - Floating Point Accumulator (FAC)"+crlf
-+"$A4     - ???"+crlf
-+"$A5-$AB - Floating Point Argument Register (ARG)"+crlf
-+"$AC-$AE - ???"+crlf
-+"$AF-$B0 - Address of End of BASIC Program"+crlf
-+"$B1-$B6 - Subroutine to Increase the String Data Pointer"+crlf
-+"$B7-$BE - Subroutine to Return the Character Pointed to by the String Data Pointer"+crlf
-+"$BF-$CD - ???"+crlf
-+"$CE-$CF - Free Space"+crlf
-+"$D0-$D3 - ???"+crlf
-+"$D4     - Error Code Flag"+crlf
-+"$D5-$D6 - ???"+crlf
-+"$D7     - Free Space"+crlf
-+"$D8     - Error Flag (Bit 7 Set if an Error Handler is Used)"+crlf
-+"$D9     - ???"+crlf
-+"$DA-$DB - Line Number Where Error Occurred"+crlf
-+"$DC-$DD - ???"+crlf
-+"$DE     - Error Code"+crlf
-+"$DF     - ???"+crlf
-+"$E0-$E1 - Horizontal Coordinate of HPLOT"+crlf
-+"$E2     - Vertical Coordinate of HPLOT"+crlf
-+"$E3     - Free Space"+crlf
-+"$E4     - HCOLOR Value (0=0, 1=42, 2=85, 3=127, 4=128, 5=170, 6=213, 7=255)"+crlf
-+"$E5     - ???"+crlf
-+"$E6     - High Byte of Address of First Byte of Where HGR is Plotted"+crlf
-+"$E7     - SCALE Value (0 = 256)"+crlf
-+"$E8-$E9 - Address of Shape Table"+crlf
-+"$EA     - DRAW/XDRAW Collision Count"+crlf
-+"$EB-$EF - Free Space"+crlf
-+"$F0     - ???"+crlf
-+"$F1     - SPEED Value (Subtracted From 256)"+crlf
-+"$F2     - ???"+crlf
-+"$F3     - Text OR Mask for Flashing Text"+crlf
-+"$F4-$F5 - Address of Error Handler (Line Number after ONERR GOTO)"+crlf
-+"$F6-$F8 - ???"+crlf
-+"$F9     - ROT Value"+crlf
-+"$FA-$FE - Free Space"+crlf
-+"$FF     - Used by Applesoft's STR$ Function"+crlf
-
-alert(s)
-
-}
-*/
 
 function RAM_checksum()
 {
@@ -786,8 +697,8 @@ function RAM_checksum()
 	{
 
 		var sum =       (!RAM[i+0]?0:RAM[i+0])+(!RAM[i+1]?0:RAM[i+1])+(!RAM[i+2]?0:RAM[i+2])+(!RAM[i+3]?0:RAM[i+3])+
-										(!RAM[i+4]?0:RAM[i+4])+(!RAM[i+5]?0:RAM[i+5])+(!RAM[i+6]?0:RAM[i+6])+(!RAM[i+7]?0:RAM[i+7])+
-								(!RAM[i+8]?0:RAM[i+8])+(!RAM[i+9]?0:RAM[i+9])+(!RAM[i+10]?0:RAM[i+10])+(!RAM[i+11]?0:RAM[i+11])+
+						(!RAM[i+4]?0:RAM[i+4])+(!RAM[i+5]?0:RAM[i+5])+(!RAM[i+6]?0:RAM[i+6])+(!RAM[i+7]?0:RAM[i+7])+
+						(!RAM[i+8]?0:RAM[i+8])+(!RAM[i+9]?0:RAM[i+9])+(!RAM[i+10]?0:RAM[i+10])+(!RAM[i+11]?0:RAM[i+11])+
 						(!RAM[i+12]?0:RAM[i+12])+(!RAM[i+13]?0:RAM[i+13])+(!RAM[i+14]?0:RAM[i+14])+(!RAM[i+15]?0:RAM[i+15])+
 						(!RAM[i+16]?0:RAM[i+16])+(!RAM[i+17]?0:RAM[i+17])+(!RAM[i+18]?0:RAM[i+18])+(!RAM[i+19]?0:RAM[i+19])+
 						(!RAM[i+20]?0:RAM[i+20])+(!RAM[i+21]?0:RAM[i+21])+(!RAM[i+22]?0:RAM[i+22])+(!RAM[i+23]?0:RAM[i+23])+
@@ -810,45 +721,45 @@ function RAM_checksum()
 						(!RAM[i+88]?0:RAM[i+88])+(!RAM[i+89]?0:RAM[i+89])+(!RAM[i+90]?0:RAM[i+90])+(!RAM[i+91]?0:RAM[i+91])+
 						(!RAM[i+92]?0:RAM[i+92])+(!RAM[i+93]?0:RAM[i+93])+(!RAM[i+94]?0:RAM[i+94])+(!RAM[i+95]?0:RAM[i+95])+
 						(!RAM[i+96]?0:RAM[i+96])+(!RAM[i+97]?0:RAM[i+97])+(!RAM[i+98]?0:RAM[i+98])+(!RAM[i+99]?0:RAM[i+99])+
-		(!RAM[i+100]?0:RAM[i+100])+(!RAM[i+101]?0:RAM[i+101])+(!RAM[i+102]?0:RAM[i+102])+(!RAM[i+103]?0:RAM[i+103])+
-		(!RAM[i+104]?0:RAM[i+104])+(!RAM[i+105]?0:RAM[i+105])+(!RAM[i+106]?0:RAM[i+106])+(!RAM[i+107]?0:RAM[i+107])+
-		(!RAM[i+108]?0:RAM[i+108])+(!RAM[i+109]?0:RAM[i+109])+(!RAM[i+110]?0:RAM[i+110])+(!RAM[i+111]?0:RAM[i+111])+
-		(!RAM[i+112]?0:RAM[i+112])+(!RAM[i+113]?0:RAM[i+113])+(!RAM[i+114]?0:RAM[i+114])+(!RAM[i+115]?0:RAM[i+115])+
-		(!RAM[i+116]?0:RAM[i+116])+(!RAM[i+117]?0:RAM[i+117])+(!RAM[i+118]?0:RAM[i+118])+(!RAM[i+119]?0:RAM[i+119])+
-		(!RAM[i+120]?0:RAM[i+120])+(!RAM[i+121]?0:RAM[i+121])+(!RAM[i+122]?0:RAM[i+122])+(!RAM[i+123]?0:RAM[i+123])+
-		(!RAM[i+124]?0:RAM[i+124])+(!RAM[i+125]?0:RAM[i+125])+(!RAM[i+126]?0:RAM[i+126])+(!RAM[i+127]?0:RAM[i+127])+
-		(!RAM[i+128]?0:RAM[i+128])+(!RAM[i+129]?0:RAM[i+129])+(!RAM[i+130]?0:RAM[i+130])+(!RAM[i+131]?0:RAM[i+131])+
-		(!RAM[i+132]?0:RAM[i+132])+(!RAM[i+133]?0:RAM[i+133])+(!RAM[i+134]?0:RAM[i+134])+(!RAM[i+135]?0:RAM[i+135])+
-		(!RAM[i+136]?0:RAM[i+136])+(!RAM[i+137]?0:RAM[i+137])+(!RAM[i+138]?0:RAM[i+138])+(!RAM[i+139]?0:RAM[i+139])+
-		(!RAM[i+140]?0:RAM[i+140])+(!RAM[i+141]?0:RAM[i+141])+(!RAM[i+142]?0:RAM[i+142])+(!RAM[i+143]?0:RAM[i+143])+
-		(!RAM[i+144]?0:RAM[i+144])+(!RAM[i+145]?0:RAM[i+145])+(!RAM[i+146]?0:RAM[i+146])+(!RAM[i+147]?0:RAM[i+147])+
-		(!RAM[i+148]?0:RAM[i+148])+(!RAM[i+149]?0:RAM[i+149])+(!RAM[i+150]?0:RAM[i+150])+(!RAM[i+151]?0:RAM[i+151])+
-		(!RAM[i+152]?0:RAM[i+152])+(!RAM[i+153]?0:RAM[i+153])+(!RAM[i+154]?0:RAM[i+154])+(!RAM[i+155]?0:RAM[i+155])+
-		(!RAM[i+156]?0:RAM[i+156])+(!RAM[i+157]?0:RAM[i+157])+(!RAM[i+158]?0:RAM[i+158])+(!RAM[i+159]?0:RAM[i+159])+
-		(!RAM[i+160]?0:RAM[i+160])+(!RAM[i+161]?0:RAM[i+161])+(!RAM[i+162]?0:RAM[i+162])+(!RAM[i+163]?0:RAM[i+163])+
-		(!RAM[i+164]?0:RAM[i+164])+(!RAM[i+165]?0:RAM[i+165])+(!RAM[i+166]?0:RAM[i+166])+(!RAM[i+167]?0:RAM[i+167])+
-		(!RAM[i+168]?0:RAM[i+168])+(!RAM[i+169]?0:RAM[i+169])+(!RAM[i+170]?0:RAM[i+170])+(!RAM[i+171]?0:RAM[i+171])+
-		(!RAM[i+172]?0:RAM[i+172])+(!RAM[i+173]?0:RAM[i+173])+(!RAM[i+174]?0:RAM[i+174])+(!RAM[i+175]?0:RAM[i+175])+
-		(!RAM[i+176]?0:RAM[i+176])+(!RAM[i+177]?0:RAM[i+177])+(!RAM[i+178]?0:RAM[i+178])+(!RAM[i+179]?0:RAM[i+179])+
-		(!RAM[i+180]?0:RAM[i+180])+(!RAM[i+181]?0:RAM[i+181])+(!RAM[i+182]?0:RAM[i+182])+(!RAM[i+183]?0:RAM[i+183])+
-		(!RAM[i+184]?0:RAM[i+184])+(!RAM[i+185]?0:RAM[i+185])+(!RAM[i+186]?0:RAM[i+186])+(!RAM[i+187]?0:RAM[i+187])+
-		(!RAM[i+188]?0:RAM[i+188])+(!RAM[i+189]?0:RAM[i+189])+(!RAM[i+190]?0:RAM[i+190])+(!RAM[i+191]?0:RAM[i+191])+
-		(!RAM[i+192]?0:RAM[i+192])+(!RAM[i+193]?0:RAM[i+193])+(!RAM[i+194]?0:RAM[i+194])+(!RAM[i+195]?0:RAM[i+195])+
-		(!RAM[i+196]?0:RAM[i+196])+(!RAM[i+197]?0:RAM[i+197])+(!RAM[i+198]?0:RAM[i+198])+(!RAM[i+199]?0:RAM[i+199])+
-		(!RAM[i+200]?0:RAM[i+200])+(!RAM[i+201]?0:RAM[i+201])+(!RAM[i+202]?0:RAM[i+202])+(!RAM[i+203]?0:RAM[i+203])+
-		(!RAM[i+204]?0:RAM[i+204])+(!RAM[i+205]?0:RAM[i+205])+(!RAM[i+206]?0:RAM[i+206])+(!RAM[i+207]?0:RAM[i+207])+
-		(!RAM[i+208]?0:RAM[i+208])+(!RAM[i+209]?0:RAM[i+209])+(!RAM[i+210]?0:RAM[i+210])+(!RAM[i+211]?0:RAM[i+211])+
-		(!RAM[i+212]?0:RAM[i+212])+(!RAM[i+213]?0:RAM[i+213])+(!RAM[i+214]?0:RAM[i+214])+(!RAM[i+215]?0:RAM[i+215])+
-		(!RAM[i+216]?0:RAM[i+216])+(!RAM[i+217]?0:RAM[i+217])+(!RAM[i+218]?0:RAM[i+218])+(!RAM[i+219]?0:RAM[i+219])+
-		(!RAM[i+220]?0:RAM[i+220])+(!RAM[i+221]?0:RAM[i+221])+(!RAM[i+222]?0:RAM[i+222])+(!RAM[i+223]?0:RAM[i+223])+
-		(!RAM[i+224]?0:RAM[i+224])+(!RAM[i+225]?0:RAM[i+225])+(!RAM[i+226]?0:RAM[i+226])+(!RAM[i+227]?0:RAM[i+227])+
-		(!RAM[i+228]?0:RAM[i+228])+(!RAM[i+229]?0:RAM[i+229])+(!RAM[i+230]?0:RAM[i+230])+(!RAM[i+231]?0:RAM[i+231])+
-		(!RAM[i+232]?0:RAM[i+232])+(!RAM[i+233]?0:RAM[i+233])+(!RAM[i+234]?0:RAM[i+234])+(!RAM[i+235]?0:RAM[i+235])+
-		(!RAM[i+236]?0:RAM[i+236])+(!RAM[i+237]?0:RAM[i+237])+(!RAM[i+238]?0:RAM[i+238])+(!RAM[i+239]?0:RAM[i+239])+
-		(!RAM[i+240]?0:RAM[i+240])+(!RAM[i+241]?0:RAM[i+241])+(!RAM[i+242]?0:RAM[i+242])+(!RAM[i+243]?0:RAM[i+243])+
-		(!RAM[i+244]?0:RAM[i+244])+(!RAM[i+245]?0:RAM[i+245])+(!RAM[i+246]?0:RAM[i+246])+(!RAM[i+247]?0:RAM[i+247])+
-		(!RAM[i+248]?0:RAM[i+248])+(!RAM[i+249]?0:RAM[i+249])+(!RAM[i+250]?0:RAM[i+250])+(!RAM[i+251]?0:RAM[i+251])+
-		(!RAM[i+252]?0:RAM[i+252])+(!RAM[i+253]?0:RAM[i+253])+(!RAM[i+254]?0:RAM[i+254])+(!RAM[i+255]?0:RAM[i+255]);
+						(!RAM[i+100]?0:RAM[i+100])+(!RAM[i+101]?0:RAM[i+101])+(!RAM[i+102]?0:RAM[i+102])+(!RAM[i+103]?0:RAM[i+103])+
+						(!RAM[i+104]?0:RAM[i+104])+(!RAM[i+105]?0:RAM[i+105])+(!RAM[i+106]?0:RAM[i+106])+(!RAM[i+107]?0:RAM[i+107])+
+						(!RAM[i+108]?0:RAM[i+108])+(!RAM[i+109]?0:RAM[i+109])+(!RAM[i+110]?0:RAM[i+110])+(!RAM[i+111]?0:RAM[i+111])+
+						(!RAM[i+112]?0:RAM[i+112])+(!RAM[i+113]?0:RAM[i+113])+(!RAM[i+114]?0:RAM[i+114])+(!RAM[i+115]?0:RAM[i+115])+
+						(!RAM[i+116]?0:RAM[i+116])+(!RAM[i+117]?0:RAM[i+117])+(!RAM[i+118]?0:RAM[i+118])+(!RAM[i+119]?0:RAM[i+119])+
+						(!RAM[i+120]?0:RAM[i+120])+(!RAM[i+121]?0:RAM[i+121])+(!RAM[i+122]?0:RAM[i+122])+(!RAM[i+123]?0:RAM[i+123])+
+						(!RAM[i+124]?0:RAM[i+124])+(!RAM[i+125]?0:RAM[i+125])+(!RAM[i+126]?0:RAM[i+126])+(!RAM[i+127]?0:RAM[i+127])+
+						(!RAM[i+128]?0:RAM[i+128])+(!RAM[i+129]?0:RAM[i+129])+(!RAM[i+130]?0:RAM[i+130])+(!RAM[i+131]?0:RAM[i+131])+
+						(!RAM[i+132]?0:RAM[i+132])+(!RAM[i+133]?0:RAM[i+133])+(!RAM[i+134]?0:RAM[i+134])+(!RAM[i+135]?0:RAM[i+135])+
+						(!RAM[i+136]?0:RAM[i+136])+(!RAM[i+137]?0:RAM[i+137])+(!RAM[i+138]?0:RAM[i+138])+(!RAM[i+139]?0:RAM[i+139])+
+						(!RAM[i+140]?0:RAM[i+140])+(!RAM[i+141]?0:RAM[i+141])+(!RAM[i+142]?0:RAM[i+142])+(!RAM[i+143]?0:RAM[i+143])+
+						(!RAM[i+144]?0:RAM[i+144])+(!RAM[i+145]?0:RAM[i+145])+(!RAM[i+146]?0:RAM[i+146])+(!RAM[i+147]?0:RAM[i+147])+
+						(!RAM[i+148]?0:RAM[i+148])+(!RAM[i+149]?0:RAM[i+149])+(!RAM[i+150]?0:RAM[i+150])+(!RAM[i+151]?0:RAM[i+151])+
+						(!RAM[i+152]?0:RAM[i+152])+(!RAM[i+153]?0:RAM[i+153])+(!RAM[i+154]?0:RAM[i+154])+(!RAM[i+155]?0:RAM[i+155])+
+						(!RAM[i+156]?0:RAM[i+156])+(!RAM[i+157]?0:RAM[i+157])+(!RAM[i+158]?0:RAM[i+158])+(!RAM[i+159]?0:RAM[i+159])+
+						(!RAM[i+160]?0:RAM[i+160])+(!RAM[i+161]?0:RAM[i+161])+(!RAM[i+162]?0:RAM[i+162])+(!RAM[i+163]?0:RAM[i+163])+
+						(!RAM[i+164]?0:RAM[i+164])+(!RAM[i+165]?0:RAM[i+165])+(!RAM[i+166]?0:RAM[i+166])+(!RAM[i+167]?0:RAM[i+167])+
+						(!RAM[i+168]?0:RAM[i+168])+(!RAM[i+169]?0:RAM[i+169])+(!RAM[i+170]?0:RAM[i+170])+(!RAM[i+171]?0:RAM[i+171])+
+						(!RAM[i+172]?0:RAM[i+172])+(!RAM[i+173]?0:RAM[i+173])+(!RAM[i+174]?0:RAM[i+174])+(!RAM[i+175]?0:RAM[i+175])+
+						(!RAM[i+176]?0:RAM[i+176])+(!RAM[i+177]?0:RAM[i+177])+(!RAM[i+178]?0:RAM[i+178])+(!RAM[i+179]?0:RAM[i+179])+
+						(!RAM[i+180]?0:RAM[i+180])+(!RAM[i+181]?0:RAM[i+181])+(!RAM[i+182]?0:RAM[i+182])+(!RAM[i+183]?0:RAM[i+183])+
+						(!RAM[i+184]?0:RAM[i+184])+(!RAM[i+185]?0:RAM[i+185])+(!RAM[i+186]?0:RAM[i+186])+(!RAM[i+187]?0:RAM[i+187])+
+						(!RAM[i+188]?0:RAM[i+188])+(!RAM[i+189]?0:RAM[i+189])+(!RAM[i+190]?0:RAM[i+190])+(!RAM[i+191]?0:RAM[i+191])+
+						(!RAM[i+192]?0:RAM[i+192])+(!RAM[i+193]?0:RAM[i+193])+(!RAM[i+194]?0:RAM[i+194])+(!RAM[i+195]?0:RAM[i+195])+
+						(!RAM[i+196]?0:RAM[i+196])+(!RAM[i+197]?0:RAM[i+197])+(!RAM[i+198]?0:RAM[i+198])+(!RAM[i+199]?0:RAM[i+199])+
+						(!RAM[i+200]?0:RAM[i+200])+(!RAM[i+201]?0:RAM[i+201])+(!RAM[i+202]?0:RAM[i+202])+(!RAM[i+203]?0:RAM[i+203])+
+						(!RAM[i+204]?0:RAM[i+204])+(!RAM[i+205]?0:RAM[i+205])+(!RAM[i+206]?0:RAM[i+206])+(!RAM[i+207]?0:RAM[i+207])+
+						(!RAM[i+208]?0:RAM[i+208])+(!RAM[i+209]?0:RAM[i+209])+(!RAM[i+210]?0:RAM[i+210])+(!RAM[i+211]?0:RAM[i+211])+
+						(!RAM[i+212]?0:RAM[i+212])+(!RAM[i+213]?0:RAM[i+213])+(!RAM[i+214]?0:RAM[i+214])+(!RAM[i+215]?0:RAM[i+215])+
+						(!RAM[i+216]?0:RAM[i+216])+(!RAM[i+217]?0:RAM[i+217])+(!RAM[i+218]?0:RAM[i+218])+(!RAM[i+219]?0:RAM[i+219])+
+						(!RAM[i+220]?0:RAM[i+220])+(!RAM[i+221]?0:RAM[i+221])+(!RAM[i+222]?0:RAM[i+222])+(!RAM[i+223]?0:RAM[i+223])+
+						(!RAM[i+224]?0:RAM[i+224])+(!RAM[i+225]?0:RAM[i+225])+(!RAM[i+226]?0:RAM[i+226])+(!RAM[i+227]?0:RAM[i+227])+
+						(!RAM[i+228]?0:RAM[i+228])+(!RAM[i+229]?0:RAM[i+229])+(!RAM[i+230]?0:RAM[i+230])+(!RAM[i+231]?0:RAM[i+231])+
+						(!RAM[i+232]?0:RAM[i+232])+(!RAM[i+233]?0:RAM[i+233])+(!RAM[i+234]?0:RAM[i+234])+(!RAM[i+235]?0:RAM[i+235])+
+						(!RAM[i+236]?0:RAM[i+236])+(!RAM[i+237]?0:RAM[i+237])+(!RAM[i+238]?0:RAM[i+238])+(!RAM[i+239]?0:RAM[i+239])+
+						(!RAM[i+240]?0:RAM[i+240])+(!RAM[i+241]?0:RAM[i+241])+(!RAM[i+242]?0:RAM[i+242])+(!RAM[i+243]?0:RAM[i+243])+
+						(!RAM[i+244]?0:RAM[i+244])+(!RAM[i+245]?0:RAM[i+245])+(!RAM[i+246]?0:RAM[i+246])+(!RAM[i+247]?0:RAM[i+247])+
+						(!RAM[i+248]?0:RAM[i+248])+(!RAM[i+249]?0:RAM[i+249])+(!RAM[i+250]?0:RAM[i+250])+(!RAM[i+251]?0:RAM[i+251])+
+						(!RAM[i+252]?0:RAM[i+252])+(!RAM[i+253]?0:RAM[i+253])+(!RAM[i+254]?0:RAM[i+254])+(!RAM[i+255]?0:RAM[i+255]);
 
 		chks[idx++] = sum;
 		//document.write("s="+sum+" ")
@@ -879,8 +790,8 @@ function debugReset()
 	processorCycles = 0;
 	dispwatch = "";
 	updateReg();
-	oDBG_ASM.writeDisplay('dispStep',"");
-	oDBG_ASM.writeDisplay('watchdisp',"");
+	oDASM.writeDisplay('dispStep',"");
+	oDASM.writeDisplay('watchdisp',"");
 }
 
 function singleStep() {
@@ -892,7 +803,8 @@ function simStep() {
 	processorLoop();
 	updateReg();
 	updateWatch();
-	oDBG_ASM.disassemble();
+	console.log("DBG simStep oDASM.disassemble()")
+	oDASM.disassemble();
 	// continous?
 	if (runThrou) {
 		runStep++;
@@ -914,76 +826,6 @@ function simStep() {
 	}
 }
 
-/*
-function DbgHelp()
-{
-return '  <p class=\"text\"> </p>\n'
-+'\n'
-+'      <h3>Instructions</h3>\n'
-+'\n'
-+'      <p class=\"text18\"> <br><b>The Display</b><br>\n'
-+'      The display shows all (yes its all there is) registers of a 6502/6510 CPU:</p>\n'
-+'      <table cellspacing=\"0\" cellpadding=\"3\" border=\"0\">\n'
-+'      <tbody><tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">PC</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Program Counter</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">A</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Accumulator</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">X</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">X Register</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">Y</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Y Register</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">SR</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Status Register</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">SP</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Stack Pointer</td></tr>\n'
-+'      </tbody></table>\n'
-+'      <p class=\"text\">The status register (SR) holds the following flags (from bit 7 to 0):</p>\n'
-+'      <table cellspacing=\"0\" cellpadding=\"3\" border=\"0\">\n'
-+'      <tbody><tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">N</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Negative</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">V</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Overflow</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">–</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">ignored</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">B</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Break</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">D</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Decimal</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">I</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Interrupt (IRQ disable)</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">Z</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Zero</td></tr>\n'
-+'      <tr><td class=\"text\">  </td><td class=\"text\" align=\"center\">C</td><td class=\"text\" nowrap=\"nowrap\">....</td><td class=\"text\">Carry</td></tr>\n'
-+'      </tbody></table>\n'
-+'      <p class=\"text18\">The line disassembler shows the current value of PC,\n'
-+'      the content of the according memory address (the next instruction\n'
-+'      followed by the operands, if any), and a disassembly of this\n'
-+'      instruction.</p>\n'
-+'      <p class=\"text18\">The cycle time display shows the ticks of exceeded CPU time (including extra cycles for branches page transitions).</p>\n'
-+'\n'
-+'      <p class=\"text18\"> <br><b>Setting the Registers</b><br>\n'
-+'      Click a registers label to set its value.<br>\n'
-+'      Click on a SR flag to flip its value.</p>\n'
-+'\n'
-+'      <p class=\"text18\"> <br><b>Memory</b><br>\n'
-+'      The emulator implements 64 k of memory for the full 16 bit address range.<br>\n'
-+'      The 6502\'s stack of 1 k range is located at 0100 to 01FF (hard wired).</p>\n'
-+'\n'
-+'      <p class=\"text18\"> <br><b>Accessing the Memory</b><br>\n'
-+'      The button \"look up mem #\" offers a quick inspection of a 16 byte range around any address.<br>\n'
-+'      You may enter any amount of hex code into the memory inspector\'s pane and load it to the specified start address.<br>Further\n'
-+'       the memory inspector lets you inspect the memory in steps of 128 (0x80)\n'
-+'       bytes (half page). You may alter the display\'s content and load it back\n'
-+'       the emulator\'s memory. (Any figures prefixed by a colon \":\" are ignored\n'
-+'       as line numbers.)<br>\n'
-+'      The \"show ASCII\" option shows the according ASCII characters at the left\n'
-+'       of each line (if applicable). Uncheck this when transfering memory to\n'
-+'      the disassembler.<br>\n'
-+'      Last there\'s an option to load the ROMs of the Commodore 64 (� CBM) to\n'
-+'      the according addresses (A000-BFFF, D000-FFFF) – for all those who can\'t\n'
-+'       help nostalgia. (Note: The emulator does not implement the C64\'s bank\n'
-+'      switching feature.)</p>\n'
-+'\n'
-+'      <p class=\"text18\"> <br><b>About the Emulator</b><br>\n'
-+'      The emulator is written in JavaScript and emulates a 65xx-family micro\n'
-+'      processor unit that was the heart of so popular micro computers as the\n'
-+'      Apple II (6502) or the Commedore 64 (6510). The most common types, the\n'
-+'      6502 and 6510 processors, are basicly the same and share the same\n'
-+'      instruction tables. (The 6510 varies from 6502 only in the\n'
-+'      implementation of 6 I/O ports at addresses 0000 and 0001.)<br>\n'
-+'      The emulator implements all legal instructions. Undefined opcodes are\n'
-+'      ignored (treated as NOP, No OPeration, with cycle time 0) – no\n'
-+'      pseudo-opcodes are implemented.<br>\n'
-+'\n'
-}
-*/
 
 addLoadEvent(DBG_init);
 // eof

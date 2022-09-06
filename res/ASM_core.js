@@ -25,23 +25,43 @@ function ASM()
 		this.srcl		= 0;
 		this.srcc		= 0;
 		this.pc			= 0;
-
-		this.asm = 
-		{
-			"pass":      0,
-			"step":      0,
-			"sym":       [],
-			"symlink_l": 0,
-			"symlink":   {},
-			"symtab":    {},
-			"code":      [],
-			"srcl":      0,
-			"srcc":      0,
-			"pc":        0
-		}
 	}
 
-
+	this.assemble_step = function()
+	{
+		listing = document.forms.ass.listing;
+		var showADR = document.ass.showADR.checked;
+		var codefield = document.getElementById('codefield');
+		//var codefield = document.forms.ass.codefield;
+		getSrc(document.forms.ass.srcfield); // Slice ASM lines -> codesrc (array)
+		var crlf = "<br>";
+	
+		if (oASM.pass == 0 && oASM.step == 0)
+		{
+			// init pass 0
+			oASM.init(codesrc);
+			codefield.innerHTML = ' '+crlf;
+			listing.value = '' //'starting assembly\npass 1\n';
+	
+			// TODO : RE-WRITE DOPASS IN TAKING ONE STEP AT THE TIME !!  FVD
+		}
+	
+		if (oASM.pass == 1 && oASM.step == 0)
+		{
+			// TODO FVD init pass 1 !!!
+		}
+	
+	
+		do{ oASM.sym = oASM.getSym() } while(oASM.sym!=null && oASM.sym.length==0) // skip empty lines
+	
+		if(oASM.sym==null && oASM.pass==0) { oASM.pass = 1; oASM.step = 0 } 
+	
+		oASM.step = 1;
+		if(oASM.sym!=null)
+			listing.value += "asm.sym ["+oASM.sym.join(" ")+"]\n"
+		else
+			listing.value += "asm.pass = ["+oASM.pass+"]\n"
+	}
 
 	this.getNumber = function(n)
 	{
@@ -129,17 +149,17 @@ function ASM()
 
 	this.getChar = function()
 	{
-		if (this.asm.srcl >= this.codesrc.length) return 'EOF';
-		if (this.asm.srcc >= this.codesrc[this.asm.srcl].length)
+		if (this.srcl >= this.codesrc.length) return 'EOF';
+		if (this.srcc >= this.codesrc[this.srcl].length)
 		{
-			this.asm.srcc = 0;
-			this.asm.srcl++;
+			this.srcc = 0;
+			this.srcl++;
 			return '\n';
 		}
 		else
 		{
-			var c = this.codesrc[this.asm.srcl].charAt(this.asm.srcc);
-			this.asm.srcc++;
+			var c = this.codesrc[this.srcl].charAt(this.srcc);
+			this.srcc++;
 			return c //.toUpperCase();
 		}
 	}
