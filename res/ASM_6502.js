@@ -300,54 +300,6 @@ function getSym()
 	return (c == 'EOF') ? null : sym;
 }
 
-/*
-function getNumber(n)
-{
-	var c = n.charAt(0);
-	var sgn = (c == '-' ? -1 : 1);
-	var r;
-	if (c == '+' || c == '-') n = n.substring(1, n.length);
-	if (n == null) r = 0;
-	if (n.charAt(0) == '$')					// HEX
-	{
-		for (var i = 1; i < n.length; i++)
-		{
-			var c = n.charAt(i);
-			if ((c < 'A') && (c > 'Z') && (c < '0') && (c > '9')) return 'NaN';
-		}
-		r = sgn * parseInt(n.substring(1), 16);
-	}
-	else if (n.charAt(0) == '%')			// BIN
-	{
-		for (var i = 1; i < n.length; i++)
-		{
-			var c = n.charAt(i);
-			if ((c != '1') && (c != '0')) return 'NaN';
-		}
-		r = sgn * parseInt(n.substring(1), 2);
-	}
-	else if (n.charAt(0) == '0')			// OCTAL
-	{
-		for (var i = 1; i < n.length; i++)
-		{
-			var c = n.charAt(i);
-			if ((c < '0') && (c > '7')) return 'NaN';
-		}
-		r = sgn * parseInt(n, 8);
-	}
-	else
-	{
-		for (var i = 1; i < n.length; i++)
-		{
-			var c = n.charAt(i);
-			if ((c < '0') && (c > '9')) return 'NaN';
-		}
-		r = sgn * parseInt(n, 10);
-	}
-	return (isNaN(r)) ? 'NaN' : r;
-}
-*/
-
 function getString(n)
 {
 	var p1 = n.indexOf("\"")+1;

@@ -65,6 +65,8 @@ function ASM()
 
 	this.getNumber = function(n)
 	{
+		// Parse prefixed strings, convert to base10 number
+
 		var r = "NaN", err = "number malformation";
 		var c = n==null?["",""]:[n.charAt(0),n.substring(1)];
 
@@ -79,7 +81,7 @@ function ASM()
 					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
 			break;
 			case "0":
-				if (c[1]=="") r =  {"val":parseInt(c[0],10),"fmt":"DEC","bytes":1}															// OCT
+				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1}															// OCT
 				else if(c[1].match(/[0-7]+/)[0].length==c[1].length)
 				{
 					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
