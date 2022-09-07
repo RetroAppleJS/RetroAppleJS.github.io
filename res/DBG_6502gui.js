@@ -19,11 +19,11 @@ var watch_data = {};
 
 var oDASM = new DASM();
 oDASM.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-oDASM.logHexByte = function(v) { h=this.hextab[v>>4]+this.hextab[v&0xf]; console.log("DBG logHexByte("+v+") = "+h); return h}
+oDASM.getHexByte = function(v) { h=this.hextab[v>>4]+this.hextab[v&0xf]; return h}
 oDASM.ByteAt = function ByteAt(addr) { return RAM[addr] }
 //oDASM.sym_search = function sym_search(op,adm) { return }
 oDASM.sym_search = sym_search;
-oDASM.srcfield_bin = new Uint8Array(); 
+//oDASM.srcfield_bin = new Uint8Array(); 
 
 var asm = oASM; 
 
