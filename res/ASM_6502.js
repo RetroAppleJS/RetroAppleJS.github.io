@@ -373,20 +373,13 @@ function doPass(pass)
 		var c1 = sym[0].charAt(0);
 		var padd = 0;
 
-		if ((sym[0] == '*' && sym[1] == '=') || sym[0].toUpperCase() == 'ORG')
+		// TODO FVD parse this as a pragma !!!
+
+		if (sym[0].toUpperCase() == 'ORG') sym = ["*","=",sym[1]]
+		if (sym[0]+sym[1]        == '*=')
 		{
 			// TODO parse numeric expression (with labels)
-
-
-
-			// set pc
-			if (sym[0].toUpperCase() == 'ORG')
-			{
-				sym[2] = sym[1];
-				sym[0] = "*"
-				sym[1] = '=';
-			}
-			if ((sym.length > 2) && (sym[1] == '='))
+			if ((sym.length > 2))
 			{
 				listing.value += '*=';
 				var a = oASM.getNumber(sym[2]).val;
