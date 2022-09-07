@@ -101,6 +101,29 @@ function ASM()
 		return r;
 	}
 
+	this.getString = function(n)
+	{
+		// extract string between quotes
+		var p1 = n.indexOf("\"")+1;
+		var p2 = n.lastIndexOf("\"");
+		return {"val":n.substring(p1,p2)};
+	}
+
+	this.getIdentifier = function(n)
+	{
+		// character validation
+		for (var i = 0; i < n.length; i++)
+		{
+			var c = n.charAt(i);
+			// TODO work with regexp
+			if ((c < 'A') && (c > 'Z') && (c < '0') && (c > '9') && (c != '_'))
+				return {"val":"","err":"syntax error:\ninvalid identifier"};
+		}
+		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
+		n = n.substring(0, this.label_len);	// truncate identifier length
+		return {"val":n};
+	}
+
 	this.getSym = function()
 	{
 		var c = this.getChar();
