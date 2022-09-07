@@ -300,32 +300,11 @@ function getSym()
 	return (c == 'EOF') ? null : sym;
 }
 
-function getString(n)
-{
-	var p1 = n.indexOf("\"")+1;
-	var p2 = n.lastIndexOf("\"")
-	return n.substring(p1,p2);
-}
-
 function getAscii(n)
 {
 	return n.charCodeAt(0) + 128;
 }
 
-function getIdentifier(n)
-{
-	for (var i = 0; i < n.length; i++)
-	{
-		var c = n.charAt(i);
-		if ((c < 'A') && (c > 'Z') && (c < '0') && (c > '9') && (c != '_')) return '';
-	}
-	n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels 
-	if (n.length > oASM.label_len)
-	{
-		n = n.substring(0, oASM.label_len);
-	}
-	return n;
-}
 
 function getOffset(n)
 {
@@ -394,18 +373,22 @@ function doPass(pass)
 		var c1 = sym[0].charAt(0);
 		var padd = 0;
 
-		if (sym[0] == '*' || sym[0].toLowerCase() == 'org')
+		if ((sym[0] == '*' && sym[1] == '=') || sym[0].toUpperCase() == 'ORG')
 		{
+			// TODO parse numeric expression (with labels)
+
+
+
 			// set pc
-			listing.value += sym[0];
-			if ((sym.length == 2) && (sym[0].toLowerCase() == 'org'))
+			if (sym[0].toUpperCase() == 'ORG')
 			{
 				sym[2] = sym[1];
+				sym[0] = "*"
 				sym[1] = '=';
 			}
 			if ((sym.length > 2) && (sym[1] == '='))
 			{
-				listing.value += ' = ';
+				listing.value += '*=';
 				var a = oASM.getNumber(sym[2]).val;
 				if (a == 'NaN')
 				{
@@ -426,6 +409,7 @@ function doPass(pass)
 				displayError('syntax error:\nassignment expected');
 				return false;
 			}
+
 			sym = getSym();
 			continue;
 		}
@@ -469,7 +453,6 @@ function doPass(pass)
 						//listing.value+=pragma_dat[".DEFINE"][sym[1]];
 						sym = getSym();
 						continue;
-						// TODO look where getIdentifier() can be skipped !!
 					}
 				}
 			}
@@ -491,7 +474,7 @@ function doPass(pass)
 						if ((v1 == '>') || (v1 == '<'))
 						{
 							bt = (v1 == '>') ? 1 : -1;
-							v = v.substr(1);
+							v = v.substring(1);
 							v1 = v.charAt(0);
 						}
 						if ((v1 == '$') || (v1 == '%') || ((v1 >= '0') && (v1 <= '9')))
@@ -507,20 +490,18 @@ function doPass(pass)
 						else if(v1 == '"')
 						{
 							// string
-							v = getString(v);
+							v = oASM.getString(v).val;
 							listing.value += '  "'+v+'"';
 							for(var i=0;i<v.length;i++)
 							{
 								code[code.length] = getAscii(v.charAt(i));
 								// TODO add listing items per 3 bytes
 							}
-
-							//alert(v);
 						}
 						else
 						{
 							// identifier
-							v = getIdentifier(v);
+							v = oASM.getIdentifier(v).val;
 							if (v == '')
 							{
 								displayError('syntax error:\ninvalid identifier');
@@ -566,7 +547,7 @@ function doPass(pass)
 				}
 				pc += (pragma == '.WORD') ? 2 : 0;
 				pc += (pragma == '.BYTE') ? 1 : 0;
-				pc += (pragma == '.TEXT') ? getString(sym[1]).length : 0;
+				pc += (pragma == '.TEXT') ? oASM.getString(sym[1]).val.length : 0;
 				sym = getSym();
 				continue;
 			}
@@ -590,7 +571,7 @@ function doPass(pass)
 		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)			// assembler mnemonic or directive ? 
 		{
 			// label
-			var l = getIdentifier(sym[0]);
+			var l = oASM.getIdentifier(sym[0]).val;
 			if (l == '')
 			{
 				displayError('syntax error:\ninvalid identifier: ' + sym[0]);
@@ -973,25 +954,24 @@ function doPass(pass)
 							// label identifier for an address location
 							var addr_offset = Number(getOffset(addr));
 							// FVD getOffset  e.g.    TEMP = $6005 + $10
-							addr = getIdentifier(addr); // FVD filter out label from address
-
+							addr = oASM.getIdentifier(addr); // FVD filter out label from address
 
 							//addr_offset = addr_offset.substring(addr.length,addr_offset.length);
 							//var ao1 = addr_offset.charAt(0);
 							//if(ao1=='+' || ao1=='-') addr_offset = Number(addr_offset)
 							//else addr_offset = 0;
 
-
-							if (addr == '')
+							if (addr.err)
 							{
-								displayError('syntax error:\ninvalid identifier');
+								displayError(addr.err);
 								return false;
 							}
-							else if (typeof symtab[addr] == 'undefined')
+							else if (typeof symtab[addr.val] == 'undefined')
 							{
-								displayError('compile error:\nundefined identifier "' + addr + '"');
+								displayError('compile error:\nundefined identifier "' + addr.val + '"');
 								return false;
 							}
+							addr = addr.val
 							oper = symtab[addr] + addr_offset;
 							listing.value += addr;
 							addr = '' + addr;
