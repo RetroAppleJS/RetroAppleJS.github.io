@@ -300,6 +300,7 @@ function getSym()
 	return (c == 'EOF') ? null : sym;
 }
 
+/*
 function getNumber(n)
 {
 	var c = n.charAt(0);
@@ -345,6 +346,7 @@ function getNumber(n)
 	}
 	return (isNaN(r)) ? 'NaN' : r;
 }
+*/
 
 function getString(n)
 {
@@ -381,8 +383,8 @@ function getOffset(n)
 	var d = n.length - c - 1;
 	if (c < 0 && d > 6) return 0;
 	nn = n.slice(-d - 1);
-	var nn = getNumber(nn);
-	return nn == "NaN" ? 0 : nn;
+	var nn = oASM.getNumber(nn);
+	return nn.val == "NaN" ? 0 : nn.val;
 }
 
 function paddRight(s, l)
@@ -452,7 +454,7 @@ function doPass(pass)
 			if ((sym.length > 2) && (sym[1] == '='))
 			{
 				listing.value += ' = ';
-				var a = getNumber(sym[2]);
+				var a = oASM.getNumber(sym[2]).val;
 				if (a == 'NaN')
 				{
 					displayError('syntax error:\nnumber expected');
@@ -543,7 +545,7 @@ function doPass(pass)
 						if ((v1 == '$') || (v1 == '%') || ((v1 >= '0') && (v1 <= '9')))
 						{
 							// number
-							v = getNumber(v);
+							v = oASM.getNumber(v).val;
 							if (v == 'NaN')
 							{
 								displayError('syntax error:\ninvalid value');
@@ -687,14 +689,14 @@ function doPass(pass)
 			{
 				if (pass == 1 && sym[ofs] && sym[ofs].toLowerCase() == "equ") // FVD add EQU directive (TODO pass 2)
 				{
-					var v = getNumber(sym[ofs + 1]);
-					if (v == 'NaN')
+					var v = oASM.getNumber(sym[ofs + 1]);
+					if (v.val == 'NaN')
 					{
 						displayError('syntax error:\nnumber expected');
 						return false;
 					}
-					symtab[l] = v;
-					listing.value += " = " + getHexWord(v);
+					symtab[l] = v.val;
+					listing.value += " = " + getHexWord(v.val);
 					sym = getSym();
 					continue
 				}
@@ -989,7 +991,7 @@ function doPass(pass)
 						if ((adp == '$') || (adp == '%') || ((adp >= '0') && (adp <= '9')))
 						{
 							// number
-							oper = getNumber(addr);
+							oper = oASM.getNumber(addr).val;
 							if (oper == 'NaN')
 							{
 								displayError('syntax error:\nnumber expected');
