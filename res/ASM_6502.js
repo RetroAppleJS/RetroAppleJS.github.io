@@ -373,7 +373,7 @@ function doPass(pass)
 		var c1 = sym[0].charAt(0);
 		var padd = 0;
 
-		// TODO FVD parse this as a pragma !!!
+		// TODO FVD parse this as a PRAGMA !!!
 
 		if (sym[0].toUpperCase() == 'ORG') sym = ["*","=",sym[1]]
 		if (sym[0]+sym[1]        == '*=')
@@ -409,31 +409,10 @@ function doPass(pass)
 		listing.value += getHexWord(pc) + ' '; // FVD TODO: do not list PC with directives like 'equ'
 		if (c1 == '.')
 		{
-			// pragma
+			var r = oASM.parse_pragma(sym);
+			if(r!=null) return r.val;
+
 			var pragma = sym[0];
-		
-
-
-			//listing.value+=pragma;
-			if (pragma == '.END')
-			{
-				listing.value += pragma;
-				return true;
-			}
-			else if (
-				(pragma != '.WORD') &&
-				(pragma != '.BYTE') &&
-				(pragma != '.TEXT') &&
-				(pragma != '.DEFINE') &&
-				(pragma != '.IFDEF') &&
-				(pragma != '.IFNDEF') &&
-				(pragma != '.ENDIF') &&
-				(pragma != '.SYMBOLS')
-			)
-			{
-				displayError('syntax error:\ninvalid pragma "' + pragma + '"');
-				return false;
-			}
 			if (sym.length > 2)	// more than two operands
 			{
 				if (pass == 1)
@@ -454,70 +433,63 @@ function doPass(pass)
 				listing.value += pragma;
 				if (pass == 2)
 				{
-					var v;
-					if (sym[1] == '*')
+					var v = sym[1];
+					var v1 = v.charAt(0);
+					var bt = 0;
+					if ((v1 == '>') || (v1 == '<'))
 					{
-						v = pc;
+						bt = (v1 == '>') ? 1 : -1;
+						v = v.substring(1);
+						v1 = v.charAt(0);
+					}
+					if ((v1 == '$') || (v1 == '%') || ((v1 >= '0') && (v1 <= '9')))
+					{
+						// number
+						v = oASM.getNumber(v).val;
+						if (v == 'NaN')
+						{
+							displayError('syntax error:\ninvalid value');
+							return false;
+						}
+					}
+					else if(v1 == '"')
+					{
+						// string
+						v = oASM.getString(v).val;
+						listing.value += '  "'+v+'"';
+						for(var i=0;i<v.length;i++)
+						{
+							code[code.length] = getAscii(v.charAt(i));
+							// TODO add listing items per 3 bytes
+						}
 					}
 					else
 					{
-						v = sym[1];
-						var v1 = v.charAt(0);
-						var bt = 0;
-						if ((v1 == '>') || (v1 == '<'))
+						// identifier
+						v = oASM.getIdentifier(v).val;
+						if (v == '')
 						{
-							bt = (v1 == '>') ? 1 : -1;
-							v = v.substring(1);
-							v1 = v.charAt(0);
+							displayError('syntax error:\ninvalid identifier');
+							return false;
 						}
-						if ((v1 == '$') || (v1 == '%') || ((v1 >= '0') && (v1 <= '9')))
+						else if (typeof symtab[v] == 'undefined')
 						{
-							// number
-							v = oASM.getNumber(v).val;
-							if (v == 'NaN')
-							{
-								displayError('syntax error:\ninvalid value');
-								return false;
-							}
+							displayError('compile error:\nundefined identifier: "' + v + '"');
+							return false;
 						}
-						else if(v1 == '"')
-						{
-							// string
-							v = oASM.getString(v).val;
-							listing.value += '  "'+v+'"';
-							for(var i=0;i<v.length;i++)
-							{
-								code[code.length] = getAscii(v.charAt(i));
-								// TODO add listing items per 3 bytes
-							}
-						}
-						else
-						{
-							// identifier
-							v = oASM.getIdentifier(v).val;
-							if (v == '')
-							{
-								displayError('syntax error:\ninvalid identifier');
-								return false;
-							}
-							else if (typeof symtab[v] == 'undefined')
-							{
-								displayError('compile error:\nundefined identifier: "' + v + '"');
-								return false;
-							}
-							v = symtab[v];
-						}
-						if (bt < 0)
-						{
-							// lo-byte
-							v &= 0xff;
-						}
-						else if (bt > 0)
-						{
-							// hi-byte
-							v = Math.floor(v / 256) & 0xff;
-						}
+						v = symtab[v];
 					}
+					if (bt < 0)
+					{
+						// lo-byte
+						v &= 0xff;
+					}
+					else if (bt > 0)
+					{
+						// hi-byte
+						v = Math.floor(v / 256) & 0xff;
+					}
+					
 					v &= 0xffff;
 					var hi = Math.floor(v / 256) & 0xff;
 					var lo = v & 0xff;
