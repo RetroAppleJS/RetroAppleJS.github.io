@@ -189,6 +189,36 @@ function ASM()
 			return c //.toUpperCase();
 		}
 	}
+
+	this.parse_pragma = function(sym)
+	{
+		switch(sym[0])
+		{
+			case ".END":
+				listing.value += sym[0];
+				return {"val":true};
+			case ".WORD":
+				break;
+			case ".BYTE":
+				break;
+			case ".TEXT":
+				break;
+			case ".DEFINE":
+				break;
+			case ".IFDEF":
+				break;
+			case ".IFNDEF":
+				break;
+			case ".ENDIF":
+				break;
+			case ".SYMBOLS":
+				break;
+			default:
+				displayError('syntax error:\ninvalid pragma "' + sym[0] + '"');
+				return false;
+		}
+		return null;
+	}
 }
 
 function DASM()
