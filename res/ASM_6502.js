@@ -115,9 +115,6 @@ var macrotab = {
 var dbgsym = {}
 
 
-var pragma_dat = {}
-
-
 
 
 // globals
@@ -352,21 +349,6 @@ function doPass(pass)
 			sym = getSym();
 			continue;
 		}
-		//if(pass==1) {
-		// parse pragma
-		if (sym[0] != ".DEFINE")
-		{
-			if (pragma_dat[".DEFINE"] != null)
-			{
-				for (var i in sym)
-				{
-					var match = pragma_dat[".DEFINE"][sym]
-					if (match != null)
-						sym[i] = match;
-				}
-			}
-		}
-		//}
 
 		pc &= 0xffff;
 		var ofs = 0;
@@ -409,26 +391,29 @@ function doPass(pass)
 		listing.value += getHexWord(pc) + ' '; // FVD TODO: do not list PC with directives like 'equ'
 		if (c1 == '.')
 		{
-			var r = oASM.parse_pragma(sym);
-			if(r!=null) return r.val;
+			var r = oASM.parse_pragma(sym,pass);
+			if(r!=null) return r.val; else sym = getSym();
 
 			var pragma = sym[0];
+
+			/*
 			if (sym.length > 2)	// more than two operands
 			{
 				if (pass == 1)
 				{
 					if (pragma == '.DEFINE')
 					{
-						if (typeof (pragma_dat[".DEFINE"]) == "undefined")
-							pragma_dat[".DEFINE"] = {};
-						pragma_dat[".DEFINE"][sym[1]] = sym.slice(2, sym.length).join(" ")
-						//listing.value+=pragma_dat[".DEFINE"][sym[1]];
+						if (typeof (oASM.pragma_sym[".DEFINE"]) == "undefined")
+							oASM.pragma_sym[".DEFINE"] = {};
+						oASM.pragma_sym[".DEFINE"][sym[1]] = sym.slice(2, sym.length).join(" ")
+						//listing.value+=oASM.pragma_sym[".DEFINE"][sym[1]];
 						sym = getSym();
 						continue;
 					}
 				}
 			}
-			else if (sym.length == 2)	// two operands
+			*/
+			if (sym.length == 2)	// two operands
 			{
 				listing.value += pragma;
 				if (pass == 2)

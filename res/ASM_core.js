@@ -11,6 +11,7 @@ function ASM()
 	const log2 = Math.log10(2);
 	const label_len = 6;
 	this.bDebug = false;
+	this.pragma_sym = {};
 
 	this.init = function(src)
 	{
@@ -190,7 +191,7 @@ function ASM()
 		}
 	}
 
-	this.parse_pragma = function(sym)
+	this.parse_pragma = function(sym,pass)
 	{
 		switch(sym[0])
 		{
@@ -204,6 +205,13 @@ function ASM()
 			case ".TEXT":
 				break;
 			case ".DEFINE":
+				if (sym.length >= 2 && pass==1)	// more than two operands
+				{
+					if (typeof (this.pragma_sym[".DEFINE"]) == "undefined")
+						this.pragma_sym[".DEFINE"] = {};
+					this.pragma_sym[".DEFINE"][sym[1]] = sym.slice(2, sym.length).join(" ");
+					return {"val":true};
+				}				
 				break;
 			case ".IFDEF":
 				break;
