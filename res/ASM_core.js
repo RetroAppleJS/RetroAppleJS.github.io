@@ -3,7 +3,7 @@
 function ASM()
 {
 
-//	█████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
+//   █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
 //	██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
 //	███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████
 //	██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
@@ -39,31 +39,31 @@ function ASM()
 		getSrc(document.forms.ass.srcfield); // Slice ASM lines -> codesrc (array)
 		var crlf = "<br>";
 	
-		if (oASM.pass == 0 && oASM.step == 0)
+		if (this.pass == 0 && this.step == 0)
 		{
 			// init pass 0
-			oASM.init(codesrc);
+			this.init(codesrc);
 			codefield.innerHTML = ' '+crlf;
 			listing.value = '' //'starting assembly\npass 1\n';
 	
 			// TODO : RE-WRITE DOPASS IN TAKING ONE STEP AT THE TIME !!  FVD
 		}
 	
-		if (oASM.pass == 1 && oASM.step == 0)
+		if (this.pass == 1 && this.step == 0)
 		{
 			// TODO FVD init pass 1 !!!
 		}
 	
 	
-		do{ oASM.sym = oASM.getSym() } while(oASM.sym!=null && oASM.sym.length==0) // skip empty lines
+		do{ this.sym = this.getSym() } while(this.sym!=null && this.sym.length==0) // skip empty lines
 	
-		if(oASM.sym==null && oASM.pass==0) { oASM.pass = 1; oASM.step = 0 } 
+		if(this.sym==null && this.pass==0) { this.pass = 1; this.step = 0 } 
 	
-		oASM.step = 1;
-		if(oASM.sym!=null)
-			listing.value += "asm.sym ["+oASM.sym.join(" ")+"]\n"
+		this.step = 1;
+		if(this.sym!=null)
+			listing.value += "asm.sym ["+this.sym.join(" ")+"]\n"
 		else
-			listing.value += "asm.pass = ["+oASM.pass+"]\n"
+			listing.value += "asm.pass = ["+this.pass+"]\n"
 	}
 
 
@@ -84,6 +84,9 @@ function ASM()
 				,{"val":"0","err":"+"}
 				,{"val":">$FEFF","err":"+"}
 				,{"val":"<$FEFF","err":"+"}
+				,{"val":"\"A\"","err":"+"}
+				,{"val":"\"AB\"","err":"+"}
+				,{"val":"\"ABC\"","err":"-"}
 				];
 
 		for(var i=0,s="";i<data.length;i++)
@@ -105,23 +108,23 @@ function ASM()
 		if(n!=null)  c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
 		switch(c[0])
 		{
-			case ">": 
+			case ">":		// HI-BYTE
 				r = this.getNumber(n.substring(1));
 				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
 				break;
-			case "<":
+			case "<":		// LO-BYTE
 				r = this.getNumber(n.substring(1));
 				r.val = r.val & 0xff; r.bytes = 1;
 				break;
-			case "-":
+			case "-":		// NEGATIVE
 				r = this.getNumber(n.substring(1));
 				r.val=-r.val;
 				break;
-			case "$":																		// HEX
+			case "$":		// HEX
 				if(c[1].match(/[0-9A-Fa-f]+/)[0].length==c[1].length)
 					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1};
 				break;
-			case "%":																		// BIN
+			case "%":		// BIN
 				if(c[1].match(/[01]+/)[0].length==c[1].length)
 					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
 				break;
@@ -133,18 +136,25 @@ function ASM()
 				}
 				break;
 			case "[1-9]":	// DEC
-			if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1}
-																			
+				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1}													
 				if(n.match(/[+\-0-9]+/)[0].length==n.length)
 				{
 					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
 					r =  {"val":parseInt(n,10),"fmt":"DEC","bytes":b};
 				}
 				break;
+			case "\"":		// ASCII
+				var p = c[1].lastIndexOf("\"");
+			case "'":
+				var s = c[1].substring(0,p?p:c[1].lastIndexOf("'"));
+				for(var i=s.length-1,v=0;i>=0;i--)
+					v += s.charCodeAt(s.length-1-i) << (8*i);
+				r =  {"val":v,"fmt":"ASC","bytes":s.length};
+				break;
 			default:
-				err = "no category"	
 		}
-		r = isNaN(r.val) ? {val:"NaN","err":err,"str":n} : r;
+		if(r.bytes>2) r.err = "range error"
+		r = isNaN(r.val) ? {val:"NaN","str":n,"err":err} : r;
 		if(this.bDebug) console.log("getNumber('"+n+"') = "+JSON.stringify(r));
 		return r;
 	}
@@ -152,8 +162,8 @@ function ASM()
 	this.getString = function(n)
 	{
 		// extract string between quotes
-		var p1 = n.indexOf("\"")+1;
-		var p2 = n.lastIndexOf("\"");
+		var p1 = n.indexOf(/["']/)+1;
+		var p2 = n.lastIndexOf(/["']/);
 		return {"val":n.substring(p1,p2)};
 	}
 
