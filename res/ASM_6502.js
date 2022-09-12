@@ -9,7 +9,7 @@
 var oASM = new ASM();
 oASM.init();
 
-//document.write("<br><br><br>"+oASM.getNumber_selftest());
+document.write("<br><br><br>"+oASM.getNumber_selftest());
 
 
 
