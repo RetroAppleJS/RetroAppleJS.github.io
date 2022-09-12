@@ -1,3 +1,5 @@
+//const e = require("express");
+
 function ASM()
 {
 
@@ -64,38 +66,83 @@ function ASM()
 			listing.value += "asm.pass = ["+oASM.pass+"]\n"
 	}
 
+
+	this.getNumber_selftest = function()
+	{
+		this.bDebug = false;
+		var data = [
+				 {"val":"$FF","err":"+"}
+				,{"val":"$100","err":"+"}
+				,{"val":"$FG","err":"-"}
+				,{"val":"%11111111","err":"+"}
+				,{"val":"%100000000","err":"+"}
+				,{"val":"%-1","err":"-"}
+				,{"val":"0377","err":"+"}
+				,{"val":"0400","err":"+"}
+				,{"val":"255","err":"+"}
+				,{"val":"-256","err":"+"}
+				,{"val":"0","err":"+"}
+				,{"val":">$FEFF","err":"+"}
+				,{"val":"<$FEFF","err":"+"}
+				];
+
+		for(var i=0,s="";i<data.length;i++)
+		{
+			var r = this.getNumber(data[i].val);
+			var c = data[i].err.charAt(0);
+			s+= "<font"+((r.err?c=="+":c=="-")?" color=red":"")+">"
+			+"getNumber('"+data[i].val+"') = "+JSON.stringify(r)
+			+"</font><br>\n"
+		}
+		this.bDebug = false;
+		return s;
+	}
+
 	this.getNumber = function(n)
 	{
 		// Parse prefixed strings, convert to base10 number
-
-		var r = "NaN", err = "number malformation";
-		var c = n==null?["",""]:[n.charAt(0),n.substring(1)];
-
+		var r = "NaN", err = "number malformation", c = n==null?["",""]:[n.charAt(0),n.substring(1)];
+		if(n!=null)  c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
 		switch(c[0])
 		{
+			case ">": 
+				r = this.getNumber(n.substring(1));
+				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
+				break;
+			case "<":
+				r = this.getNumber(n.substring(1));
+				r.val = r.val & 0xff; r.bytes = 1;
+				break;
+			case "-":
+				r = this.getNumber(n.substring(1));
+				r.val=-r.val;
+				break;
 			case "$":																		// HEX
 				if(c[1].match(/[0-9A-Fa-f]+/)[0].length==c[1].length)
-					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1}
-			break;
+					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1};
+				break;
 			case "%":																		// BIN
 				if(c[1].match(/[01]+/)[0].length==c[1].length)
 					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
-			break;
-			case "0":
-				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1}															// OCT
-				else if(c[1].match(/[0-7]+/)[0].length==c[1].length)
+				break;
+			case "0":		// OCT
+				if(c[1].match(/[0-7]+/)[0].length==c[1].length)
 				{
 					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
 					r =  {"val":parseInt(c[1],8),"fmt":"OCT","bytes":b};
 				}
-			break;
-			default:																		// DEC
-				if((c[0]+c[1]).match(/[+\-0-9]+/)!=null && (c[0]+c[1]).match(/[+\-0-9]+/)[0].length==(c[0]+c[1]).length)
+				break;
+			case "[1-9]":	// DEC
+			if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1}
+																			
+				if(n.match(/[+\-0-9]+/)[0].length==n.length)
 				{
 					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
-					r =  {"val":parseInt(c[0]+c[1],10),"fmt":"DEC","bytes":b};
+					r =  {"val":parseInt(n,10),"fmt":"DEC","bytes":b};
 				}
-			break;
+				break;
+			default:
+				err = "no category"	
 		}
 		r = isNaN(r.val) ? {val:"NaN","err":err,"str":n} : r;
 		if(this.bDebug) console.log("getNumber('"+n+"') = "+JSON.stringify(r));
@@ -199,6 +246,26 @@ function ASM()
 				listing.value += sym[0];
 				return {"val":true};
 			case ".WORD":
+				// process all other symbols !
+				// expect ANY aritmetic expression 
+				// from which the outcome is 2 bytes long
+				// e.g. $FFFF
+				// e.g. %01010
+				// e.g. >ADR - generates only one byte !
+				// e.g. *12
+				// e.g. >$FFFF - generates only one byte !
+
+
+				if(sym.length != 2) return
+				if(pass==2)
+				{
+					code[code.length] = hi;
+					listing.value += ' $' + getHexWord(v) + '            ' + getHexByte(lo) + ' ' + getHexByte(hi);
+					return
+				}
+				listing.value += ' ' + sym[1];
+				pc += 2;
+				return {"val":true};
 				break;
 			case ".BYTE":
 				break;
@@ -223,7 +290,7 @@ function ASM()
 				break;
 			default:
 				displayError('syntax error:\ninvalid pragma "' + sym[0] + '"');
-				return false;
+				return;
 		}
 		return null;
 	}

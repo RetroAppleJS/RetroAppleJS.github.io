@@ -9,6 +9,8 @@
 var oASM = new ASM();
 oASM.init();
 
+//document.write("<br><br><br>"+oASM.getNumber_selftest());
+
 
 
 // lookup tables
@@ -437,7 +439,7 @@ function doPass(pass)
 							return false;
 						}
 					}
-					else if(v1 == '"')
+					else if(v1 == '"')	// ASCII
 					{
 						// string
 						v = oASM.getString(v).val;
@@ -472,7 +474,8 @@ function doPass(pass)
 					else if (bt > 0)
 					{
 						// hi-byte
-						v = Math.floor(v / 256) & 0xff;
+						//v = Math.floor(v / 256) & 0xff;
+						v = (v >> 8) & 0xff;
 					}
 					
 					v &= 0xffff;
@@ -481,12 +484,13 @@ function doPass(pass)
 					code[code.length] = lo;
 
 
-					if (pragma == '.WORD')
-					{
-						code[code.length] = hi;
-						listing.value += ' $' + getHexWord(v) + '            ' + getHexByte(lo) + ' ' + getHexByte(hi);
-					}
-					else if (pragma == '.BYTE')
+					//if (pragma == '.WORD')
+					//{
+					//	code[code.length] = hi;
+					//	listing.value += ' $' + getHexWord(v) + '            ' + getHexByte(lo) + ' ' + getHexByte(hi);
+					//}
+					//else
+					if (pragma == '.BYTE')
 					{
 						listing.value += ' $' + getHexByte(lo) + '              ' + getHexByte(lo);
 					}
@@ -495,7 +499,7 @@ function doPass(pass)
 				{
 					listing.value += ' ' + sym[1];
 				}
-				pc += (pragma == '.WORD') ? 2 : 0;
+				//pc += (pragma == '.WORD') ? 2 : 0;
 				pc += (pragma == '.BYTE') ? 1 : 0;
 				pc += (pragma == '.TEXT') ? oASM.getString(sym[1]).val.length : 0;
 				sym = getSym();
