@@ -1122,6 +1122,9 @@ function JSON_stringify(_o)
 }
 */
 
+var hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+
+
 function getHexByte(v)
 {
 	return '' + hextab[Math.floor(v / 16)] + hextab[v & 0x0f];
