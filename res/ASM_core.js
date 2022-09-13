@@ -93,6 +93,7 @@ function ASM()
 				,{"val":"-256","err":"+"}
 				,{"val":"+256","err":"+"}
 				,{"val":"0","err":"+"}
+				,{"val":0,"err":"-"}
 				,{"val":">$FEFF","err":"+"}
 				,{"val":"<$FEFF","err":"+"}
 				,{"val":"\"A\"","err":"+"}
@@ -124,7 +125,7 @@ function ASM()
 	// Parse prefixed strings & return base10 equivalent
 	this.getNumber = function(n)   
 	{
-		var r = "NaN", err = "number malformation", c = n==null?["",""]:[n.charAt(0),n.substring(1)];
+		var r = "NaN", err = "number malformation", c = n==null || typeof(n)!="string"?["",""]:[n.charAt(0),n.substring(1)];
 		if(n!=null) c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
 		switch(c[0])
 		{
@@ -177,7 +178,7 @@ function ASM()
 				break;
 			default:
 		}
-		if(r.bytes>2) r.err = "range error"
+		if(r.bytes>2) r.err = "number range error"
 		r = isNaN(r.val) ? {val:"NaN","str":n,"err":err} : r;
 
 		r.hex = this.getHexWord(r.val);
