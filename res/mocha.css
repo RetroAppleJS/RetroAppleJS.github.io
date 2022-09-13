@@ -1,4 +1,3 @@
-
 @charset "utf-8";
 
 body {
@@ -6,9 +5,9 @@ body {
 }
 
 #mocha {
-    font: 20px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
-    margin: 60px 0px;   /* margin: 60px 50px; */
-  }
+  font: 20px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  margin: 60px 50px;
+}
 
 #mocha ul,
 #mocha li {
@@ -147,10 +146,10 @@ body {
   margin: 5px;
   padding: 15px;
   border: 1px solid #eee;
-  max-width: 85%;
+  max-width: 85%; /*(1)*/
   max-width: -webkit-calc(100% - 42px);
   max-width: -moz-calc(100% - 42px);
-  max-width: calc(100% - 42px);
+  max-width: calc(100% - 42px); /*(2)*/
   max-height: 300px;
   word-wrap: break-word;
   border-bottom-color: #ddd;
@@ -176,6 +175,11 @@ body {
   max-height: none;
 }
 
+/**
+ * (1): approximate for browsers not supporting calc
+ * (2): 42 = 2*15 + 2*10 + 2*1 (padding + margin + border)
+ *      ^^ seriously
+ */
 #mocha .test pre {
   display: block;
   float: left;
@@ -184,10 +188,10 @@ body {
   margin: 5px;
   padding: 15px;
   border: 1px solid #eee;
-  max-width: 85%;
+  max-width: 85%; /*(1)*/
   max-width: -webkit-calc(100% - 42px);
   max-width: -moz-calc(100% - 42px);
-  max-width: calc(100% - 42px);
+  max-width: calc(100% - 42px); /*(2)*/
   word-wrap: break-word;
   border-bottom-color: #ddd;
   -webkit-box-shadow: 0 1px 3px #eee;
@@ -256,7 +260,7 @@ body {
 #mocha-stats {
   position: fixed;
   top: 15px;
-  /*right: 10px;*/
+  right: 10px;
   font-size: 12px;
   margin: 0;
   color: #888;
@@ -266,6 +270,12 @@ body {
 #mocha-stats .progress {
   float: right;
   padding-top: 0;
+
+  /**
+   * Set safe initial values, so mochas .progress does not inherit these
+   * properties from Bootstrap .progress (which causes .progress height to
+   * equal line height set in Bootstrap).
+   */
   height: auto;
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
@@ -298,7 +308,6 @@ body {
   height: 40px;
 }
 
-
 #mocha code .comment { color: #ddd; }
 #mocha code .init { color: #2f6fad; }
 #mocha code .string { color: #5890ad; }
@@ -314,4 +323,3 @@ body {
     position: absolute;
   }
 }
-

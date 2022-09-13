@@ -6,8 +6,15 @@
     <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAwUExURf7///7///j4+PLy8u3t7eXl5dvb283NzcLCwrW1ta6urqenp5qamo6OjnV1dWhoaJTpFr4AAAABYktHRACIBR1IAAAACXBIWXMAAB7CAAAewgFu0HU+AAAAAXRSTlMAQObYZgAAAIFJREFUeJwtzTEKwkAQBdC9wp/NkqTcsJC0IVXKlCE3SCrBxjKI6D3sBY9g4R1EEEEbr5AD2Psn8VeP+bM7BoxkwIzhvEAe4wI3QSGnqb43RHdsr/kLRg6lt2Ek9lxIPasLkSh2+o4VCiL6ErFO3oRbA/1Wf948b5/5RBXs6n9d8wM0Ahk+0eMaYgAAAABJRU5ErkJggg==" />
     <!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
     <link rel="stylesheet" href="res/COM_fontawesome/all.css">
-    <link rel="stylesheet"        href="res/COM_MAIN.css">
+    <link rel="stylesheet" href="res/COM_MAIN.css">
+
     <link rel="stylesheet" href="res/mocha.css" />
+    <style> /* mocha.css style corrector */
+    #mocha { margin: 60px 0px }
+    #mocha-stats { right: auto }
+    </style>
+    <script src="res/chai.js"></script>
+    <script src="res/mocha.js"></script>
 
     <script type="text/javascript" src="res/COM_MAIN.js"></script>
     <script type="text/javascript" src="res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
@@ -15,6 +22,8 @@
     <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
     -->
     <script type="text/javascript" src='res/COM_gsap.js'></script>
+
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 
@@ -187,6 +196,10 @@
     }
 </script>
 </head>
+
+
+
+
 <!--
    ____    ____          _            
   |_   \  /   _|        (_)           
@@ -201,18 +214,12 @@
   ██   ██    ██    ██      ██ ███████ 
 -->  
 <body>
-
   <div id="mocha"></div>
-
-  <script src="res/chai.js"></script>
-  <script src="res/mocha.js"></script>
   <script>
-    
-      mocha.setup('bdd');
-      mocha.checkLeaks();
-      mocha.run();
-      
-  </script>
+    mocha.setup('bdd');
+    mocha.checkLeaks();
+    mocha.run();
+</script>
 
   <table id=box style=width:450px;margin-top:0px>
     <tr>
