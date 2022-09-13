@@ -81,7 +81,7 @@ function ASM()
 
 		this.bDebug = false;
 		var data = [
-				 {"val":"$FF","err":"+"}
+				 /*{"val":"$FF","err":"+"}
 				,{"val":"$100","err":"+"}
 				,{"val":"$FG","err":"-"}
 				,{"val":"%11111111","err":"+"}
@@ -92,7 +92,7 @@ function ASM()
 				,{"val":"255","err":"+"}
 				,{"val":"-256","err":"+"}
 				,{"val":"+256","err":"+"}
-				,{"val":"0","err":"+"}
+				,*/{"val":"0","err":"+"}
 				,{"val":0,"err":"-"}
 				,{"val":">$FEFF","err":"+"}
 				,{"val":"<$FEFF","err":"+"}
@@ -108,6 +108,7 @@ function ASM()
 				,{"val":"\"\"","err":"-"}
 				,{"val":"","err":"-"}
 				,{"val":"\"ABC\"","err":"-"}
+				,{"val":"$ç","err":"-"}
 				];
 
 		for(var i=0,s="";i<data.length;i++)
@@ -145,23 +146,23 @@ function ASM()
 				r = this.getNumber(n.substring(1));
 				break;					
 			case "$":		// HEX
-				if(c[1].match(/[0-9A-Fa-f]+/)[0].length==c[1].length)
+				if(this.validate(c[1],"[0-9A-Fa-f]+"))
 					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1};
 				break;
 			case "%":		// BIN
-				if(c[1].match(/[01]+/)[0].length==c[1].length)
+				if(this.validate(c[1],"[01]+"))
 					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
 				break;
 			case "0":		// OCT
-				if(c[1].match(/[0-7]+/)[0].length==c[1].length)
+				if(this.validate(c[1],"[0-7]+"))
 				{
 					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
 					r =  {"val":parseInt(c[1],8),"fmt":"OCT","bytes":b};
 				}
 				break;
 			case "[1-9]":	// DEC
-				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1}													
-				if(n.match(/[+\-0-9]+/)[0].length==n.length)
+				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1};
+				if(this.validate(n,"[+\-0-9]+"))
 				{
 					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
 					r =  {"val":parseInt(n,10),"fmt":"DEC","bytes":b};
@@ -185,6 +186,13 @@ function ASM()
 
 		if(this.bDebug) console.log("getNumber("+n+") = "+JSON.stringify(r));
 		return r;
+	}
+
+	this.validate = function(v,rule)
+	{
+		var m = v.match(rule);
+		if(m!=null && v.match(rule)[0].length==v.length) return true
+		return false;
 	}
 
 	this.getString = function(n)
