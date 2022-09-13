@@ -81,7 +81,6 @@ function ASM()
 
 		this.bDebug = false;
 		var data = [
-			/*
 				 {"val":"$FF","err":"+"}
 				,{"val":"$100","err":"+"}
 				,{"val":"$FG","err":"-"}
@@ -104,7 +103,7 @@ function ASM()
 				,{"val":"'\"''","err":"+"}
 				,{"val":"''\"'","err":"+"}				
 				,{"val":"'\"'","err":"+"}
-				,*/{"val":"''","err":"-"}
+				,{"val":"''","err":"-"}
 				,{"val":"\"\"","err":"-"}
 				,{"val":"","err":"-"}
 				,{"val":"\"ABC\"","err":"-"}
@@ -171,8 +170,9 @@ function ASM()
 				var p = c[1].lastIndexOf("\"");
 			case "'":
 				var s = c[1].substring(0,p?p:c[1].lastIndexOf("'"));
-				for(var i=s.length-1,v=0;i>=0;i--)
-					v += s.charCodeAt(s.length-1-i) << (8*i);
+				if(s.length>0) 
+					for(var i=s.length-1,v=0;i>=0;i--)
+						v += s.charCodeAt(s.length-1-i) << (8*i);
 				r =  {"val":v,"fmt":"ASC","bytes":s.length};
 				break;
 			default:
