@@ -86,6 +86,7 @@ function ASM()
 				,{"val":"<$FEFF","err":"+"}
 				,{"val":"\"A\"","err":"+"}
 				,{"val":"\"AB\"","err":"+"}
+				,{"val":"\"\"'\"","err":"+"}
 				,{"val":"\"ABC\"","err":"-"}
 				];
 
@@ -94,16 +95,16 @@ function ASM()
 			var r = this.getNumber(data[i].val);
 			var c = data[i].err.charAt(0);
 			s+= "<font"+((r.err?c=="+":c=="-")?" color=red":"")+">"
-			+"getNumber('"+data[i].val+"') = "+JSON.stringify(r)
+			+"getNumber("+data[i].val+") = "+JSON.stringify(r)
 			+"</font><br>\n"
 		}
 		this.bDebug = false;
 		return s;
 	}
 
-	this.getNumber = function(n)
+	// Parse prefixed strings & return base10 equivalent
+	this.getNumber = function(n)   
 	{
-		// Parse prefixed strings, convert to base10 number
 		var r = "NaN", err = "number malformation", c = n==null?["",""]:[n.charAt(0),n.substring(1)];
 		if(n!=null)  c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
 		switch(c[0])
@@ -155,15 +156,15 @@ function ASM()
 		}
 		if(r.bytes>2) r.err = "range error"
 		r = isNaN(r.val) ? {val:"NaN","str":n,"err":err} : r;
-		if(this.bDebug) console.log("getNumber('"+n+"') = "+JSON.stringify(r));
+		if(this.bDebug) console.log("getNumber("+n+") = "+JSON.stringify(r));
 		return r;
 	}
 
 	this.getString = function(n)
 	{
 		// extract string between quotes
-		var p1 = n.indexOf(/["']/)+1;
-		var p2 = n.lastIndexOf(/["']/);
+		var p1 = n.indexOf("'")+1;
+		var p2 = n.lastIndexOf("'");
 		return {"val":n.substring(p1,p2)};
 	}
 
