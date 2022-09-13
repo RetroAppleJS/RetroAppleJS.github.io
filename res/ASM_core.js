@@ -66,11 +66,22 @@ function ASM()
 			listing.value += "asm.pass = ["+this.pass+"]\n"
 	}
 
+	this.hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+
+	this.getHexWord = function(v)
+	{
+		return '' + this.hextab[Math.floor(v / 0x1000)]
+							+ this.hextab[Math.floor((v & 0x0f00) / 256)]
+							+ this.hextab[Math.floor((v & 0xf0) / 16)]
+							+ this.hextab[v & 0x000f];
+	}
 
 	this.getNumber_selftest = function()
 	{
+
 		this.bDebug = false;
 		var data = [
+			/*
 				 {"val":"$FF","err":"+"}
 				,{"val":"$100","err":"+"}
 				,{"val":"$FG","err":"-"}
@@ -81,12 +92,21 @@ function ASM()
 				,{"val":"0400","err":"+"}
 				,{"val":"255","err":"+"}
 				,{"val":"-256","err":"+"}
+				,{"val":"+256","err":"+"}
 				,{"val":"0","err":"+"}
 				,{"val":">$FEFF","err":"+"}
 				,{"val":"<$FEFF","err":"+"}
 				,{"val":"\"A\"","err":"+"}
 				,{"val":"\"AB\"","err":"+"}
 				,{"val":"\"\"'\"","err":"+"}
+				,{"val":"\"'\"\"","err":"+"}
+				,{"val":"\"'\"","err":"+"}
+				,{"val":"'\"''","err":"+"}
+				,{"val":"''\"'","err":"+"}				
+				,{"val":"'\"'","err":"+"}
+				,*/{"val":"''","err":"-"}
+				,{"val":"\"\"","err":"-"}
+				,{"val":"","err":"-"}
 				,{"val":"\"ABC\"","err":"-"}
 				];
 
@@ -106,7 +126,7 @@ function ASM()
 	this.getNumber = function(n)   
 	{
 		var r = "NaN", err = "number malformation", c = n==null?["",""]:[n.charAt(0),n.substring(1)];
-		if(n!=null)  c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
+		if(n!=null) c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
 		switch(c[0])
 		{
 			case ">":		// HI-BYTE
@@ -116,11 +136,14 @@ function ASM()
 			case "<":		// LO-BYTE
 				r = this.getNumber(n.substring(1));
 				r.val = r.val & 0xff; r.bytes = 1;
-				break;
+				break;			
 			case "-":		// NEGATIVE
 				r = this.getNumber(n.substring(1));
 				r.val=-r.val;
 				break;
+			case "+":		// POSITIVE
+				r = this.getNumber(n.substring(1));
+				break;					
 			case "$":		// HEX
 				if(c[1].match(/[0-9A-Fa-f]+/)[0].length==c[1].length)
 					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1};
@@ -156,6 +179,9 @@ function ASM()
 		}
 		if(r.bytes>2) r.err = "range error"
 		r = isNaN(r.val) ? {val:"NaN","str":n,"err":err} : r;
+
+		r.hex = this.getHexWord(r.val);
+
 		if(this.bDebug) console.log("getNumber("+n+") = "+JSON.stringify(r));
 		return r;
 	}
