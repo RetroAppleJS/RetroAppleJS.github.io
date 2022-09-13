@@ -78,10 +78,9 @@ function ASM()
 
 	this.getNumber_selftest = function()
 	{
-
 		this.bDebug = false;
 		var data = [
-				 /*{"val":"$FF","err":"+"}
+				 {"val":"$FF","err":"+"}
 				,{"val":"$100","err":"+"}
 				,{"val":"$FG","err":"-"}
 				,{"val":"%11111111","err":"+"}
@@ -92,7 +91,7 @@ function ASM()
 				,{"val":"255","err":"+"}
 				,{"val":"-256","err":"+"}
 				,{"val":"+256","err":"+"}
-				,*/{"val":"0","err":"+"}
+				,{"val":"0","err":"+"}
 				,{"val":0,"err":"-"}
 				,{"val":">$FEFF","err":"+"}
 				,{"val":"<$FEFF","err":"+"}
@@ -162,7 +161,7 @@ function ASM()
 				break;
 			case "[1-9]":	// DEC
 				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1};
-				if(this.validate(n,"[+\-0-9]+"))
+				if(this.validate(n,"[+\\-0-9]+"))
 				{
 					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
 					r =  {"val":parseInt(n,10),"fmt":"DEC","bytes":b};
