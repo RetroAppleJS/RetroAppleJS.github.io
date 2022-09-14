@@ -31,6 +31,7 @@
     #mocha { margin: 200px 50px }
     #mocha-stats { top:30px;  right: auto }
     */
+    #mocha { overflow: scroll; height:400px }
     #mocha-stats { top:30px;   }
     </style>
   <style>
@@ -121,7 +122,7 @@ function init_gui(_o)
         <table class=no_margins style='display:inline-block;border:0px solid; vertical-align: top;'>
           <tr>
             <td style="vertical-align:top;border:1px solid;width:200px">
-              <button onclick="mocha_test();">Start</button>
+              <button onclick="print_mocha( oASM._test_exec() )">Start</button>
             </td>
           </tr>
         </table>
@@ -141,16 +142,17 @@ function init_gui(_o)
         <script src="../res/chai.js"></script>
         <script src="../res/mocha.js"></script>
 
+        <script type="text/javascript" src="../res/ASM_core.js"></script>
         <script class="mocha-init">
 
+      var oASM = new ASM();
+      oASM._test_exec = test_exec;
 
-        function mocha_test()
-        {
-            
-            mocha.setup('bdd');
-            mocha.checkLeaks();
 
-            const assert = chai.assert;
+      /*
+      mocha.setup('bdd');
+      mocha.checkLeaks();
+                 var assert = chai.assert;
             describe("ASM()",function(){
 
                 it("nice message",function()
@@ -159,9 +161,71 @@ function init_gui(_o)
                 })
 
             })
-
             mocha.run();
+      */
+
+      function test_exec()
+      {
+        var s = "";
+        for(var i in this)
+        {
+          if(typeof(this[i])=="function")
+          {
+            var str = this[i].toString();
+            var p1 = str.indexOf("(");
+            var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
+            
+            var bTestData = this._test_data[i]!=null;
+            s+=i+str.substring(p1,p2)+" "+(bTestData?"TEST DATA FOUND!":"")
+            +"<br>"
+            if(bTestData)
+            {
+              var fn = this._test_data[i];
+              s+= "&nbsp;&nbsp;"+fn.length+" available tests<br>"
+              for(var tst=0;tst<fn.length;tst++)
+              {
+              
+                // GATHER FUNCTION ARGUMENTS
+                var arglist = fn[tst].in;
+                for(var al=0,as="";al<arglist.length;al++)
+                {
+                  var thisarg = arglist[al] // detect type !
+                  switch(typeof(thisarg))
+                  {
+                    case "string":
+                      thisarg = "\""+thisarg.replace(/"/g,"\\\"")+"\""
+                    break;
+                  }
+                  as += thisarg+",";
+                }
+
+                // GATHER TEST CONDITIONS
+                var tstlist = fn[tst].out
+                var ts = "var r = ("+tstlist.join(") && (")+")";
+
+                var f = "var out = oASM."+i+"("+as.substring(0,as.length-1)+");"
+                        +ts+";"
+                
+                eval(f);
+                f = f+" "+r
+
+                var tg = r?["",""]:["<font color=red>","</font>"];
+
+                s+= tg[0]+"&nbsp;&nbsp;test"+tst+" "+f+tg[1]+"<br>"
+              }
+            }
+            +"<br>"
+          }
         }
+        return s;
+	    }
+
+      function print_mocha(str)
+      {
+        document.getElementById("mocha").innerHTML += str;
+      }
+
+
         </script>
 
       </td>
