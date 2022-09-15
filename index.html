@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="res/COM_fontawesome/all.css">
     <link rel="stylesheet" href="res/COM_MAIN.css">
 
+    <!--
     <link rel="stylesheet" href="res/mocha.css" />
     <style> /* mocha.css style corrector */
     #mocha { margin: 60px 0px }
@@ -15,6 +16,7 @@
     </style>
     <script src="res/chai.js"></script>
     <script src="res/mocha.js"></script>
+    -->
 
     <script type="text/javascript" src="res/COM_MAIN.js"></script>
     <script type="text/javascript" src="res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
@@ -216,9 +218,12 @@
 <body>
   <div id="mocha"></div>
   <script>
+  if(typeof(mocha)=="object")
+  {
     mocha.setup('bdd');
     mocha.checkLeaks();
     mocha.run();
+  }
 </script>
 
   <table id=box style=width:450px;margin-top:0px>
