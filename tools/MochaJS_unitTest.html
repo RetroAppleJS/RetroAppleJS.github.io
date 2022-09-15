@@ -31,7 +31,7 @@
     #mocha { margin: 200px 50px }
     #mocha-stats { top:30px;  right: auto }
     */
-    #mocha { overflow: scroll; height:400px }
+    #mocha { overflow: scroll; height:400px; width:1000px }
     #mocha-stats { top:30px;   }
     </style>
   <style>
@@ -149,20 +149,34 @@ function init_gui(_o)
       oASM._test_exec = test_exec;
 
 
-      /*
+
       mocha.setup('bdd');
-      mocha.checkLeaks();
-                 var assert = chai.assert;
-            describe("ASM()",function(){
-
-                it("nice message",function()
+      //mocha.checkLeaks();
+      var assert = chai.assert;
+      
+              
+                  //eval("assert.isOk(   oASM.getNumber(\"$FF\").err==null ,'hello')  ")
+                  //assert.deepEqual( oASM.getNumber("$FF"), { "val": 255, "fmt":"HEX", "bytes": 1 });
+            var fn1 = function(){
+                it('should parse HEX numbers',function()
                 {
-                assert.equal('hello','hello')
-                })
+                  assert.notExists(oASM.getNumber("$FF").err, 'there was no error');
+                  assert.deepEqual(oASM.getNumber("$FF"), { "val": 255, "fmt":"HEX", "bytes": 1 });
+                  assert.notExists(oASM.getNumber("$100").err,'there was no error');
+                  assert.deepEqual(oASM.getNumber("$100"), { "val": 256, "fmt":"HEX", "bytes": 2 });
+                });
+                it('should parse BIN numbers',function()
+                {
+                  assert.notExists(oASM.getNumber("%11111111").err, 'there was no error');
+                  assert.notExists(oASM.getNumber("%100000000").err,'there was no error');
+                });
 
-            })
+            }
+
+            describe("ASM().getNumber()",fn1)
+       
+
             mocha.run();
-      */
 
       function test_exec()
       {
@@ -207,12 +221,14 @@ function init_gui(_o)
                         +ts+";"
                 
                 eval(f);
-                f = f+" "+r
+                f = f+" "+r;
 
                 var tg = r?["",""]:["<font color=red>","</font>"];
 
                 s+= tg[0]+"&nbsp;&nbsp;test"+tst+" "+f+tg[1]+"<br>"
               }
+
+              
             }
             +"<br>"
           }
