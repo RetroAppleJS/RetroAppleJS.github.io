@@ -1,9 +1,3 @@
-<!--  TODO remap urls to relative 
-
-e.g.   https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/HGR_Venus.png
-
--->
-
 <html>
 <head>
     <meta charset='utf-8'>
@@ -181,9 +175,12 @@ function PROCESS()
       var url = rawDocsURL + arr[i];
       console.log("URL = "+url);
 
+
       GetHTTP(url, 
       function()
       {
+        // file:///Users/Owner/Documents/GitHub/RetroAppleJS.github.io/tools/..
+
         s= oPROCESS.process(this.responseText,this.responseURL);
         document.getElementById('dest_html').innerHTML += s;
         document.getElementById('dest_html2').innerHTML += s;
@@ -209,21 +206,17 @@ function PROCESS()
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
 
-    var js1 = "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"+' = "'
-    var js2 = (html.replace(new RegExp('\"','g'),'\\"').replace(new RegExp('\n','g'),"<br>\"\n+\"")+"<br>"+"\"\n\n")  
-    var js3 = js2.replace(new RegExp('<br /><br>','g'),"<br>")
-    var js4 = js3.replace(new RegExp(regexURL,'g'),"res/")
-    console.log("js4 = "+js4);
+    var js1 = "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"+" = \"";
+    var js2 = (html.replace(new RegExp('\"','g'),'\\"').replace(new RegExp('\n','g'),"<br>\"\n+\"")+"<br>"+"\"\n\n");
+    var js3 = js2.replace(new RegExp('<br /><br>','g'),"<br>");
+    var js4 = js3.replace(new RegExp(regexURL,'g'),"res/");
 
-    //.replace(new RegExp('..https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/','g'),"res/")
-
-    //https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/HGR_Venus.png
+    //console.log("js4 = "+js4);
   
     js += js1 + js4.replace(new RegExp('</h1>','g'),"</h1><hr>")
               .replace(new RegExp('</h1>','g'),"</h1><hr>")
               .replace(new RegExp('</h2>','g'),"</h2><hr>")
               .replace(new RegExp('><br>','g'),">")
-              .replace(new RegExp('..https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/','g'),"res/")
               
     el_cnt--;
 
@@ -259,9 +252,9 @@ function PROCESS()
 //     ██    ██   ██ ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
 
 
-  function ltrim(s) { return s.replace(/^ */,"") }
-  function rtrim(s) { return s.replace(/ *$/,"") }
-  function trim(s)  { return rtrim(ltrim(s)) }
+function ltrim(s) { return s.replace(/^ */,"") }
+function rtrim(s) { return s.replace(/ *$/,"") }
+function trim(s)  { return rtrim(ltrim(s)) }
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
