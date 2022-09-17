@@ -152,10 +152,6 @@ function init_gui(_o)
 
       oASM._test_exec = test_exec;
 
-
-      
-
-
       function test_exec(_mocha)
       {
         var name = this.constructor.name;
@@ -194,7 +190,6 @@ function init_gui(_o)
               s+= "&nbsp;&nbsp;"+fn.length+" available tests<br>"
               for(var tst=0;tst<fn.length;tst++)
               {
-              
                 // GATHER FUNCTION ARGUMENTS
                 var arglist = fn[tst].in;
                 for(var al=0,as="";al<arglist.length;al++)
@@ -220,7 +215,6 @@ function init_gui(_o)
                 f = f+" "+r;
 
                 var tg = r?["",""]:["<font color=red>","</font>"];
-
                 s+= tg[0]+"&nbsp;&nbsp;test"+tst+" "+f+tg[1]+"<br>"
               }
 
