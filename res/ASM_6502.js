@@ -9,8 +9,6 @@
 var oASM = new ASM();
 oASM.init();
 
-document.write("<br><br><br>"+oASM.getNumber_selftest());
-
 
 
 // lookup tables
