@@ -76,6 +76,7 @@ function ASM()
 							+ this.hextab[v & 0x000f];
 	}
 
+	/*
 	this.getNumber_selftest = function()
 	{
 		this.bDebug = false;
@@ -121,28 +122,111 @@ function ASM()
 		this.bDebug = false;
 		return s;
 	}
+*/
+
+	this._test_data = {
+		"getNumber":
+	   [{in:["$FF"],out:["out.err==null","out.val==255"]}
+	   ,{in:["$100"],out:["out.err==null"]}
+	   ,{in:["$FG"],out:["out.err!=null"]}
+	   ,{in:["%11111111"],out:["out.err==null"]}
+	   ,{in:["%100000000"],out:["out.err==null"]}
+	   ,{in:["%-1"],out:["out.err!=null"]}
+	   ,{in:["0377"],out:["out.err==null"]}
+	   ,{in:["0400"],out:["out.err==null"]}
+	   ,{in:["255"],out:["out.err==null"]}
+	   ,{in:["-256"],out:["out.err==null"]}
+	   ,{in:["+256"],out:["out.err==null"]}
+	   ,{in:["0"],out:["out.err==null"]}
+	   ,{in:[0],out:["out.err!=null"]}
+	   ,{in:[">$FEFF"],out:["out.err==null"]}
+	   ,{in:["<$FEFF"],out:["out.err==null"]}
+	   ,{in:["\"A\""],out:["out.err==null"]}
+	   ,{in:["\"AB\""],out:["out.err==null"]}
+	   ,{in:["\"\"'\""],out:["out.err==null"]}
+	   ,{in:["\"'\"\""],out:["out.err==null"]}
+	   ,{in:["\"'\""],out:["out.err==null"]}
+	   ,{in:["'\"''"],out:["out.err==null"]}
+	   ,{in:["''\"'"],out:["out.err==null"]}				
+	   ,{in:["'\"'"],out:["out.err==null"]}
+	   ,{in:["''"],out:["out.err!=null"]}
+	   ,{in:["\"\""],out:["out.err!=null"]}
+	   ,{in:[""],out:["out.err!=null"]}
+	   ,{in:["\"ABC\""],out:["out.err!=null"]}
+	   ,{in:["$ç"],out:["out.err!=null"]}
+	   ]};
+
+	//_o.chai.assert.notExists(oASM.getNumber("%11111111").err, 'there was no error');
+
+	this.mocha_test = function(_o)
+	{
+		// https://www.chaijs.com/api/assert/#method_deepequal
+
+		Object.prototype.filter =   function (arr) { 
+			var val = this,r = {};
+			arr.forEach(function(v, i) { r[v] = val[v] });
+			return r;
+		}
+
+		describe("ASM",function()
+		{
+			describe("getNumber",function()
+			{
+				it('parses HEX numbers',function()
+				{
+					_o.chai.assert.deepEqual(oASM.getNumber("$FF"), { "val": 255, "fmt":"HEX", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber("$100"),{ "val": 256, "fmt":"HEX", "bytes": 2 });
+					_o.chai.assert.deepEqual(oASM.getNumber("-$1"), { "val": -1, "fmt":"HEX", "bytes": 1 });
+					_o.chai.assert.equal(    oASM.getNumber("$-1").err,'number malformation','wrong location for a sign');
+				});
+				it('parses BIN numbers',function()
+				{
+					_o.chai.assert.deepEqual(oASM.getNumber("%11111111"), { "val": 255, "fmt":"BIN", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber("%100000000"),{ "val": 256, "fmt":"BIN", "bytes": 2 });
+					_o.chai.assert.deepEqual(oASM.getNumber("+%1"),       { val: 1, fmt: 'BIN', bytes: 1 },'plus sign ignored');
+					_o.chai.assert.equal(    oASM.getNumber("%-1").err,'number malformation','wrong location for a sign');
+				});
+				it('parses OCT numbers',function()
+				{
+					_o.chai.assert.deepEqual(oASM.getNumber("0377"),  { "val": 255, "fmt":"OCT", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber("0400"),  { "val": 256, "fmt":"OCT", "bytes": 2 });
+					_o.chai.assert.deepEqual(oASM.getNumber("-01"),   { "val": -1, "fmt":"OCT", "bytes": 1 });
+					_o.chai.assert.equal(    oASM.getNumber("0+1").err,'number malformation','wrong location for a sign');
+				});
+				it('parses DEC numbers',function()
+				{
+					_o.chai.assert.deepEqual(oASM.getNumber("255"), { "val": 255, "fmt":"DEC", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber("-256"),{ "val": -256, "fmt":"DEC", "bytes": 2 });
+					_o.chai.assert.deepEqual(oASM.getNumber("0"),   { "val": 0, "fmt":"DEC", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber(0).filter(["val","err"]),{ "val": "NaN", "err":"number malformation" });
+				});
+			})
+		})
+	}
+	
+	
 
 	// Parse prefixed strings & return base10 equivalent
-	this.getNumber = function(n)   
+	this.getNumber = function(str)   
 	{
-		var r = "NaN", err = "number malformation", c = n==null || typeof(n)!="string"?["",""]:[n.charAt(0),n.substring(1)];
-		if(n!=null) c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
+		var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
+		if(str!=null) c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
 		switch(c[0])
 		{
 			case ">":		// HI-BYTE
-				r = this.getNumber(n.substring(1));
+				r = this.getNumber(str.substring(1));
 				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
 				break;
 			case "<":		// LO-BYTE
-				r = this.getNumber(n.substring(1));
+				r = this.getNumber(str.substring(1));
 				r.val = r.val & 0xff; r.bytes = 1;
 				break;			
 			case "-":		// NEGATIVE
-				r = this.getNumber(n.substring(1));
+				r = this.getNumber(str.substring(1));
 				r.val=-r.val;
 				break;
 			case "+":		// POSITIVE
-				r = this.getNumber(n.substring(1));
+				r = this.getNumber(str.substring(1));
 				break;					
 			case "$":		// HEX
 				if(this.validate(c[1],"[0-9A-Fa-f]+"))
@@ -161,10 +245,10 @@ function ASM()
 				break;
 			case "[1-9]":	// DEC
 				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1};
-				if(this.validate(n,"[+\\-0-9]+"))
+				if(this.validate(str,"[+\\-0-9]+"))
 				{
-					var b = (Math.log10(Math.abs(parseInt(n,10)))/log2>>3)+1;
-					r =  {"val":parseInt(n,10),"fmt":"DEC","bytes":b};
+					var b = (Math.log10(Math.abs(parseInt(str,10)))/log2>>3)+1;
+					r =  {"val":parseInt(str,10),"fmt":"DEC","bytes":b};
 				}
 				break;
 			case "\"":		// ASCII
@@ -179,11 +263,11 @@ function ASM()
 			default:
 		}
 		if(r.bytes>2) r.err = "number range error"
-		r = isNaN(r.val) ? {val:"NaN","str":n,"err":err} : r;
+		r = isNaN(r.val) ? {val:"NaN","str":str,"err":err} : r;
 
-		r.hex = this.getHexWord(r.val);
+		//r.hex = this.getHexWord(r.val);
 
-		if(this.bDebug) console.log("getNumber("+n+") = "+JSON.stringify(r));
+		if(this.bDebug) console.log("getNumber("+str+") = "+JSON.stringify(r));
 		return r;
 	}
 
