@@ -147,6 +147,9 @@ function init_gui(_o)
 
       var oASM = new ASM();
       mocha.setup('bdd');
+
+
+
       oASM.mocha_test({"chai":chai})
       mocha.run();
 
@@ -191,6 +194,8 @@ function init_gui(_o)
               for(var tst=0;tst<fn.length;tst++)
               {
                 // GATHER FUNCTION ARGUMENTS
+                if(fn[tst]===undefined) continue;
+
                 var arglist = fn[tst].in;
                 for(var al=0,as="";al<arglist.length;al++)
                 {
