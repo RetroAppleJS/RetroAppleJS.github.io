@@ -156,28 +156,16 @@ function ASM()
 	   ,{in:["$ç"],out:["out.err!=null"]}
 	   ]};
 
-	//_o.chai.assert.notExists(oASM.getNumber("%11111111").err, 'there was no error');
-
 	this.mocha_test = function(_o)
 	{
-		
-
-
 		// https://www.chaijs.com/api/assert/#method_deepequal
 
-		Object.prototype.filter =   function (arr) { 
+		Object.prototype.filter = function (arr) { 
 			var val = this,r = {};
-			arr.forEach(function(v, i) { if(typeof(val[v])!="undefined") r[v] = val[v] });
+			arr.forEach(function(v, i) { if(typeof(val[v])!="undefined") r[v] = val[v]});
 			return r;
 		}
 		Object.prototype._f =   function () { return this.filter(["val","fmt","bytes","err"]) };
-
-		/*
-		alert( JSON.stringify( oASM.getNumber("\"\"").filter(["val","err"]) ));
-		var str = "\"\""
-		var m = typeof(str)=="string"?str.match(/(["']).*(["'])/):null;
-		alert(m.length)
-		*/
 		
 		describe("ASM",function()
 		{
@@ -185,36 +173,36 @@ function ASM()
 			{
 				it('parses HEX numbers',function()
 				{
-					_o.chai.assert.deepEqual(oASM.getNumber("$FF")._f(), { "val": 255, "fmt":"HEX", "bytes": 1 });
-					_o.chai.assert.deepEqual(oASM.getNumber("$100")._f(),{ "val": 256, "fmt":"HEX", "bytes": 2 });
-					_o.chai.assert.deepEqual(oASM.getNumber("-$1")._f(), { "val": -1, "fmt":"HEX", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber("$FF")._f(), {"val":255,"fmt":"HEX","bytes":1});
+					_o.chai.assert.deepEqual(oASM.getNumber("$100")._f(),{"val":256,"fmt":"HEX","bytes":2});
+					_o.chai.assert.deepEqual(oASM.getNumber("-$1")._f(), {"val":-1,"fmt":"HEX","bytes":1});
 					_o.chai.assert.equal(    oASM.getNumber("$-1").err,'number malformation','wrong location for a sign');
-					_o.chai.assert.deepEqual(oASM.getNumber(">$FEFF")._f(),{ val: 254, fmt: 'HEX', bytes: 1 });
-					_o.chai.assert.deepEqual(oASM.getNumber("<$FEFF")._f(),{ val: 255, fmt: 'HEX', bytes: 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber(">$FEFF")._f(),{"val":254,"fmt":"HEX","bytes":1});
+					_o.chai.assert.deepEqual(oASM.getNumber("<$FEFF")._f(),{"val":255,"fmt":"HEX","bytes":1});
 					_o.chai.assert.deepEqual(oASM.getNumber("$FEFFF")._f(),{"val":1044479,"fmt":"HEX","bytes":3,"err":"number range error"});
 				});
 				it('parses BIN numbers',function()
 				{
-					_o.chai.assert.deepEqual(oASM.getNumber("%11111111")._f(), { "val": 255, "fmt":"BIN", "bytes": 1 });
-					_o.chai.assert.deepEqual(oASM.getNumber("%100000000")._f(),{ "val": 256, "fmt":"BIN", "bytes": 2 });
-					_o.chai.assert.deepEqual(oASM.getNumber("+%1")._f(),       { val: 1, fmt: 'BIN', bytes: 1 },'plus sign ignored');
+					_o.chai.assert.deepEqual(oASM.getNumber("%11111111")._f(), {"val":255,"fmt":"BIN","bytes":1});
+					_o.chai.assert.deepEqual(oASM.getNumber("%100000000")._f(),{"val":256,"fmt":"BIN","bytes":2});
+					_o.chai.assert.deepEqual(oASM.getNumber("+%1")._f(),       {"val":1,"fmt":"BIN","bytes":1 },'plus sign ignored');
 					_o.chai.assert.equal(    oASM.getNumber("%-1").err,'number malformation','wrong location for a sign');
 				});
 				it('parses OCT numbers',function()
 				{
-					_o.chai.assert.deepEqual(oASM.getNumber("0377")._f(),  { "val": 255, "fmt":"OCT", "bytes": 1 });
-					_o.chai.assert.deepEqual(oASM.getNumber("0400")._f(),  { "val": 256, "fmt":"OCT", "bytes": 2 });
-					_o.chai.assert.deepEqual(oASM.getNumber("-01")._f(),   { "val": -1, "fmt":"OCT", "bytes": 1 });
+					_o.chai.assert.deepEqual(oASM.getNumber("0377")._f(),  {"val":255,"fmt":"OCT","bytes":1});
+					_o.chai.assert.deepEqual(oASM.getNumber("0400")._f(),  {"val":256,"fmt":"OCT","bytes":2});
+					_o.chai.assert.deepEqual(oASM.getNumber("-01")._f(),   {"val":-1,"fmt":"OCT","bytes":1});
 					_o.chai.assert.equal(    oASM.getNumber("0+1").err,'number malformation','wrong location for a sign');
 				});
 				it('parses DEC numbers',function()
 				{
-					_o.chai.assert.deepEqual(oASM.getNumber("255")._f(), { "val": 255, "fmt":"DEC", "bytes": 1 });
-					_o.chai.assert.deepEqual(oASM.getNumber("-256")._f(),{ "val": -256, "fmt":"DEC", "bytes": 2 });
-					_o.chai.assert.deepEqual(oASM.getNumber("0")._f(),   { "val": 0, "fmt":"DEC", "bytes": 1 });
-					_o.chai.assert.deepEqual(oASM.getNumber(0).filter(["val","err"]),{ "val": "NaN", "err":"number malformation" });
+					_o.chai.assert.deepEqual(oASM.getNumber("255")._f(), {"val":255,"fmt":"DEC","bytes":1});
+					_o.chai.assert.deepEqual(oASM.getNumber("-256")._f(),{"val":-256,"fmt":"DEC","bytes":2});
+					_o.chai.assert.deepEqual(oASM.getNumber("0")._f(),   {"val":0,"fmt":"DEC","bytes":1});
+					_o.chai.assert.deepEqual(oASM.getNumber(0).filter(["val","err"]),{"val":"NaN","err":"number malformation"});
 				});
-				it('parses ASCII characters',function()
+				it('parses ASCII encoding',function()
 				{
 					_o.chai.assert.deepEqual(oASM.getNumber('"A"')._f(), 	{val:65,fmt:'ASC',bytes:1});
 					_o.chai.assert.deepEqual(oASM.getNumber('"AB"')._f(),	{val:16706,fmt:'ASC',bytes:2});
@@ -235,8 +223,6 @@ function ASM()
 		
 
 	}
-	
-	
 
 	// Parse prefixed strings & return base10 equivalent
 	this.getNumber = function(str)   
@@ -301,8 +287,7 @@ function ASM()
 		if(m!=null && m.length!=3) err = "open quote"
 
 		r = isNaN(r.val) ? {val:"NaN","str":str,"err":err} : r;
-		//r.hex = this.getHexWord(r.val);
-
+		r.hex = this.getHexWord(r.val);
 
 		if(this.bDebug) console.log("getNumber("+str+") = "+JSON.stringify(r));
 		return r;
