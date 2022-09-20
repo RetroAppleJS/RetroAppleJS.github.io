@@ -167,7 +167,6 @@ function ASM()
 		}
 		Object.prototype._f =   function () { return this.filter(["val","fmt","bytes","err"]) };
 		
-
 		describe("ASM",function()
 		{
 			describe("getNumber",function()
