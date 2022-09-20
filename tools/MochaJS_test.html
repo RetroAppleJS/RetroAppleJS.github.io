@@ -152,30 +152,40 @@ function init_gui(_o)
             var s = "<div style=\"font-family:'Helvetica'; font-weight: 200; font-size:15px\">"
             for(var _proto in _this) // walk through prototypes
             {
+              
               if(typeof(_this[_proto])=="function" 
               && _this[_proto].toString().indexOf("[native code]")<0
               && _this[_proto].toString().indexOf("this.")>=0
               && typeof(this.excluded_protos[_proto])=="undefined")
               {
-                
                 var str = _this[_proto].toString();
-                var p1 = str.indexOf("(");
-                var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
-                this.stats[str.substring(p1,p2)] = {};
+                s += _proto+extract_method(str)+"<br>";
 
-
-
-
-                s += _proto+str.substring(p1,p2)+"<br>";
-
-
-
+                this.stats[extract_method(str)] = {};
+                var inst = "new "+_proto+"();"
+                var __this = eval(inst);
+                for(var _method in __this)
+                {
+                  if(typeof(__this[_method])=="function")
+                  {
+                    s += "&nbsp;&nbsp;&nbsp;"
+                    +_method
+                    +extract_method(__this[_method].toString())+"<br>"
+                  }
+                }
               }
             }
             print_mocha(s+"</div>");
-
           }
         }
+
+        function extract_method(str)
+        {
+
+          var p1 = str.indexOf("(");
+          var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
+          return str.substring(p1,p2)
+        } 
 
         function print_mocha(str)
         {
