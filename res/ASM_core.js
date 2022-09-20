@@ -76,54 +76,6 @@ function ASM()
 							+ this.hextab[v & 0x000f];
 	}
 
-	/*
-	this.getNumber_selftest = function()
-	{
-		this.bDebug = false;
-		var data = [
-				 {"val":"$FF","err":"+"}
-				,{"val":"$100","err":"+"}
-				,{"val":"$FG","err":"-"}
-				,{"val":"%11111111","err":"+"}
-				,{"val":"%100000000","err":"+"}
-				,{"val":"%-1","err":"-"}
-				,{"val":"0377","err":"+"}
-				,{"val":"0400","err":"+"}
-				,{"val":"255","err":"+"}
-				,{"val":"-256","err":"+"}
-				,{"val":"+256","err":"+"}
-				,{"val":"0","err":"+"}
-				,{"val":0,"err":"-"}
-				,{"val":">$FEFF","err":"+"}
-				,{"val":"<$FEFF","err":"+"}
-				,{"val":"\"A\"","err":"+"}
-				,{"val":"\"AB\"","err":"+"}
-				,{"val":"\"\"'\"","err":"+"}
-				,{"val":"\"'\"\"","err":"+"}
-				,{"val":"\"'\"","err":"+"}
-				,{"val":"'\"''","err":"+"}
-				,{"val":"''\"'","err":"+"}				
-				,{"val":"'\"'","err":"+"}
-				,{"val":"''","err":"-"}
-				,{"val":"\"\"","err":"-"}
-				,{"val":"","err":"-"}
-				,{"val":"\"ABC\"","err":"-"}
-				,{"val":"$ç","err":"-"}
-				];
-
-		for(var i=0,s="";i<data.length;i++)
-		{
-			var r = this.getNumber(data[i].val);
-			var c = data[i].err.charAt(0);
-			s+= "<font"+((r.err?c=="+":c=="-")?" color=red":"")+">"
-			+"getNumber("+data[i].val+") = "+JSON.stringify(r)
-			+"</font><br>\n"
-		}
-		this.bDebug = false;
-		return s;
-	}
-*/
-
 	this._test_data = {
 		"getNumber":
 	   [{in:["$FF"],out:["out.err==null","out.val==255"]}
