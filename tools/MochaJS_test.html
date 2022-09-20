@@ -31,11 +31,12 @@
     #mocha { margin: 200px 50px }
     #mocha-stats { top:30px;  right: auto }
     */
-    #mocha { overflow: scroll; height:400px; width:1000px; }
+    #mocha { overflow: scroll; height:400px; width: 600px; float: left; }
     #mocha::-webkit-scrollbar { background-color: transparent }
     #mocha::-webkit-scrollbar-thumb { background-color: white; border-radius: 5px; }
     #mocha::-webkit-scrollbar-corner { background: transparent }
     #mocha-stats { top:30px;   }
+    #obj-inspector { overflow: scroll; height:400px; width: 400px; float: left ; border:'black 1px solid';vertical-align: top; }
     </style>
   <style>
   html {height:100%;font-family:"Arial"}
@@ -140,12 +141,25 @@ function init_gui(_o)
     <tr>
       <td class=no_margins style="vertical-align:top;">
         <div id="mocha"></div>
+        <div id="obj-inspector">TEST</div>
         <script type="text/javascript" src="../res/ASM_core.js"></script>
         <script class="mocha-init">
 
-        function OBJ_INSPECTOR()
+        function OBJ_INSPECTOR(_mocha)
         {
-          this.excluded_protos = {"_T":true}
+          /*
+          var _s = _mocha.suite.suites
+          for(var j=0;j<_s.length;j++)
+          {
+              if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
+              {
+                for(var i=0,_si={};i<_s.length;i++)     // retrieve methods e.g. getNumber
+                    _si[ _s[j].title+"."+_s[j].suites[i].title ] = true;
+              }
+          }
+          */
+
+          this.excluded_protos = {"_T":true,"Mocha":true}
           this.stats = {};
           this.scan = function(_this)
           {
@@ -177,7 +191,7 @@ function init_gui(_o)
                 }
               }
             }
-            print_mocha(s+"</div>");
+            return s+"</div>";
           }
         }
 
@@ -192,14 +206,11 @@ function init_gui(_o)
         {
             document.getElementById("mocha").innerHTML += str;
         }
+    </script>
 
-      var oObj_inspector = new OBJ_INSPECTOR();
-      oObj_inspector.scan(this);
+<script src="../res/chai.js"></script>
+<script src="../res/mocha.js"></script>
 
-      </script>
-
-      <script src="../res/chai.js"></script>
-      <script src="../res/mocha.js"></script>
 
       <script>
 
@@ -207,6 +218,19 @@ function init_gui(_o)
       mocha.setup('bdd');
       oASM.mocha_test({"chai":chai})
       mocha.run();
+
+
+      var oObj_inspector = new OBJ_INSPECTOR();
+      document.getElementById("obj-inspector").innerHTML = oObj_inspector.scan(this) 
+      //print_mocha( s );
+
+      //print_mocha( "TEST" );
+
+      </script>
+
+
+      <script>
+
 
       oASM._test_exec = test_exec;
 
