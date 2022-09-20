@@ -136,43 +136,75 @@ function init_gui(_o)
   <table class=nomargins style='display:inline-block;border:1px solid gray; vertical-align: top;color:white'>
     <tr>
       <td class=no_margins style="vertical-align:top;">
-
-
         <div id="mocha"></div>
-        <script src="../res/chai.js"></script>
-        <script src="../res/mocha.js"></script>
-
         <script type="text/javascript" src="../res/ASM_core.js"></script>
         <script class="mocha-init">
 
+        function OBJ_INSPECTOR()
+        {
+          this.excluded_methods = {"_T":true}
+          this.stats = {};
+          this.scan = function(_this)
+          {
+            //var s = "<div style=\"font: 15px/1 'Helvetica Neue', Helvetica, Arial, sans-serif;\"; font-weight: 200;>";
+            var s = "<div style=\"font-family:'Helvetica'; font-weight: 200; font-size:15px\">"
+            for(var _method in _this)
+            {
+              if(typeof(_this[_method])=="function" 
+              && _this[_method].toString().indexOf("[native code]")<0
+              && typeof(this.excluded_methods[_method])=="undefined"
+              && _this[_method].toString().indexOf("this.")>=0)
+              {
+                
+                var str = _this[_method].toString();
+                var p1 = str.indexOf("(");
+                var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
+                this.stats[str.substring(p1,p2)] = {};
+
+                s += _method+str.substring(p1,p2)+"<br>";
+              }
+            }
+            print_mocha(s+"</div>");
+
+          }
+        }
+
+        function print_mocha(str)
+        {
+            document.getElementById("mocha").innerHTML += str;
+        }
+
+      var oObj_inspector = new OBJ_INSPECTOR();
+      oObj_inspector.scan(this);
+
+      </script>
+
+      <script src="../res/chai.js"></script>
+      <script src="../res/mocha.js"></script>
+
+      <script>
+
       var oASM = new ASM();
       mocha.setup('bdd');
-
-
-
       oASM.mocha_test({"chai":chai})
       mocha.run();
 
       oASM._test_exec = test_exec;
 
+
+
       function test_exec(_mocha)
       {
-        var name = this.constructor.name;
-
         // TODO check descriptions from mocha against all class methods !
         var _s = _mocha.suite.suites
         for(var j=0;j<_s.length;j++)
         {
-            if(_s[j].title == this.constructor.name)    // retrieve constructor .e.g. ASM
+            if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
             {
-                for(var i=0,_si={};i<_s.length;i++)     // retrieve method e.g. getNumber
-                {
-                    _si[ _s[j].suites[i].title ] = true;
-                    //print_mocha(_s[j].suites[i].title+"***<br>");
-                }
+              for(var i=0,_si={};i<_s.length;i++)     // retrieve methods e.g. getNumber
+                  _si[ _s[j].suites[i].title ] = true;
             }
         }
-
 
         var s = "";
         for(var _method in this)
@@ -183,11 +215,9 @@ function init_gui(_o)
             var p1 = str.indexOf("(");
             var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
             
-            //var bTestData = this._test_data[i]!=null;
-            var bTestData = _si[_method]
-            s+=_method+str.substring(p1,p2)+" "+(bTestData?"TEST DATA FOUND!":"")
+            s+=_method+str.substring(p1,p2)+" "+(_si[_method]?"TEST DATA FOUND!":"")
             +"<br>"
-            if(bTestData)
+            if(_si[_method])
             {
               var fn = this._test_data[_method];
               s+= "&nbsp;&nbsp;"+fn.length+" available tests<br>"
@@ -212,8 +242,7 @@ function init_gui(_o)
                 // GATHER TEST CONDITIONS
                 var tstlist = fn[tst].out
                 var ts = "var r = ("+tstlist.join(") && (")+")";
-
-                var f = "var out = oASM."+_method+"("+as.substring(0,as.length-1)+");"
+                var f  = "var out = oASM."+_method+"("+as.substring(0,as.length-1)+");"
                         +ts+";"
                 
                 eval(f);
@@ -222,22 +251,13 @@ function init_gui(_o)
                 var tg = r?["",""]:["<font color=red>","</font>"];
                 s+= tg[0]+"&nbsp;&nbsp;test"+tst+" "+f+tg[1]+"<br>"
               }
-
-              
             }
             +"<br>"
           }
         }
         return s;
 	    }
-
-        function print_mocha(str)
-        {
-            document.getElementById("mocha").innerHTML += str;
-        }
-
-        </script>
-
+      </script>
       </td>
     </tr>
   </table>
