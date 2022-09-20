@@ -141,23 +141,24 @@ function init_gui(_o)
     <tr>
       <td class=no_margins style="vertical-align:top;">
         <div id="mocha"></div>
-        <div id="obj-inspector">TEST</div>
+        <div id="obj-inspector"></div>
         <script type="text/javascript" src="../res/ASM_core.js"></script>
         <script class="mocha-init">
 
         function OBJ_INSPECTOR(_mocha)
         {
-          /*
+          
           var _s = _mocha.suite.suites
           for(var j=0;j<_s.length;j++)
           {
-              if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
+              //if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
               {
                 for(var i=0,_si={};i<_s.length;i++)     // retrieve methods e.g. getNumber
                     _si[ _s[j].title+"."+_s[j].suites[i].title ] = true;
               }
           }
-          */
+          document.getElementById("obj-inspector").innerHTML += JSON.stringify(_si)+"<br><br>"
+          
 
           this.excluded_protos = {"_T":true,"Mocha":true}
           this.stats = {};
@@ -220,8 +221,8 @@ function init_gui(_o)
       mocha.run();
 
 
-      var oObj_inspector = new OBJ_INSPECTOR();
-      document.getElementById("obj-inspector").innerHTML = oObj_inspector.scan(this) 
+      var oObj_inspector = new OBJ_INSPECTOR(mocha);
+      document.getElementById("obj-inspector").innerHTML += oObj_inspector.scan(this) 
       //print_mocha( s );
 
       //print_mocha( "TEST" );
