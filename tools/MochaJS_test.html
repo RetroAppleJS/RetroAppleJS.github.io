@@ -149,27 +149,29 @@ function init_gui(_o)
           this.stats = {};
           this.scan = function(_this)
           {
+            Object.prototype.methodName = function () {
+              var p1 = this.indexOf("(");
+              var p2 = p1+this.substring(p1,this.length).indexOf(")")+1;
+              return this.substring(p1,p2)
+            }
+
             var s = "<div style=\"font-family:'Helvetica'; font-weight: 200; font-size:15px\">"
             for(var _proto in _this) // walk through prototypes
             {
-              
               if(typeof(_this[_proto])=="function" 
               && _this[_proto].toString().indexOf("[native code]")<0
               && _this[_proto].toString().indexOf("this.")>=0
               && typeof(this.excluded_protos[_proto])=="undefined")
               {
                 var str = _this[_proto].toString();
-                s += _proto+extract_method(str)+"<br>";
-
+                s += _proto+extract_method(str) + "<br>";
                 this.stats[extract_method(str)] = {};
-                var inst = "new "+_proto+"();"
-                var __this = eval(inst);
+                var __this = eval("new "+_proto+"()");
                 for(var _method in __this)
                 {
                   if(typeof(__this[_method])=="function")
                   {
-                    s += "&nbsp;&nbsp;&nbsp;"
-                    +_method
+                    s += "&nbsp;&nbsp;&nbsp;<small>"+_proto+"</small> - "+_method
                     +extract_method(__this[_method].toString())+"<br>"
                   }
                 }
@@ -181,7 +183,6 @@ function init_gui(_o)
 
         function extract_method(str)
         {
-
           var p1 = str.indexOf("(");
           var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
           return str.substring(p1,p2)
