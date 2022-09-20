@@ -31,8 +31,13 @@
     #mocha { margin: 200px 50px }
     #mocha-stats { top:30px;  right: auto }
     */
-    #mocha { overflow: scroll; height:400px; width:1000px }
-    #mocha-stats { top:30px;   }
+    #mocha { overflow: scroll; height:400px; width:1000px; }
+    #mocha::-webkit-scrollbar { background-color: transparent }
+    #mocha::-webkit-scrollbar-thumb { background-color: white; border-radius: 5px; }
+    #mocha::-webkit-scrollbar-corner { background: transparent }
+
+
+  #mocha-stats { top:30px;   }
     </style>
   <style>
   html {height:100%;font-family:"Arial"}
@@ -142,26 +147,31 @@ function init_gui(_o)
 
         function OBJ_INSPECTOR()
         {
-          this.excluded_methods = {"_T":true}
+          this.excluded_protos = {"_T":true}
           this.stats = {};
           this.scan = function(_this)
           {
-            //var s = "<div style=\"font: 15px/1 'Helvetica Neue', Helvetica, Arial, sans-serif;\"; font-weight: 200;>";
             var s = "<div style=\"font-family:'Helvetica'; font-weight: 200; font-size:15px\">"
-            for(var _method in _this)
+            for(var _proto in _this) // walk through prototypes
             {
-              if(typeof(_this[_method])=="function" 
-              && _this[_method].toString().indexOf("[native code]")<0
-              && typeof(this.excluded_methods[_method])=="undefined"
-              && _this[_method].toString().indexOf("this.")>=0)
+              if(typeof(_this[_proto])=="function" 
+              && _this[_proto].toString().indexOf("[native code]")<0
+              && _this[_proto].toString().indexOf("this.")>=0
+              && typeof(this.excluded_protos[_proto])=="undefined")
               {
                 
-                var str = _this[_method].toString();
+                var str = _this[_proto].toString();
                 var p1 = str.indexOf("(");
                 var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
                 this.stats[str.substring(p1,p2)] = {};
 
-                s += _method+str.substring(p1,p2)+"<br>";
+
+
+
+                s += _proto+str.substring(p1,p2)+"<br>";
+
+
+
               }
             }
             print_mocha(s+"</div>");
@@ -207,19 +217,19 @@ function init_gui(_o)
         }
 
         var s = "";
-        for(var _method in this)
+        for(var _proto in this)
         {
-          if(typeof(this[_method])=="function")
+          if(typeof(this[_proto])=="function")
           {
-            var str = this[_method].toString();
+            var str = this[_proto].toString();
             var p1 = str.indexOf("(");
             var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
             
-            s+=_method+str.substring(p1,p2)+" "+(_si[_method]?"TEST DATA FOUND!":"")
+            s+=_proto+str.substring(p1,p2)+" "+(_si[_proto]?"TEST DATA FOUND!":"")
             +"<br>"
-            if(_si[_method])
+            if(_si[_proto])
             {
-              var fn = this._test_data[_method];
+              var fn = this._test_data[_proto];
               s+= "&nbsp;&nbsp;"+fn.length+" available tests<br>"
               for(var tst=0;tst<fn.length;tst++)
               {
@@ -242,7 +252,7 @@ function init_gui(_o)
                 // GATHER TEST CONDITIONS
                 var tstlist = fn[tst].out
                 var ts = "var r = ("+tstlist.join(") && (")+")";
-                var f  = "var out = oASM."+_method+"("+as.substring(0,as.length-1)+");"
+                var f  = "var out = oASM."+_proto+"("+as.substring(0,as.length-1)+");"
                         +ts+";"
                 
                 eval(f);
