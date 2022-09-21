@@ -188,7 +188,7 @@ function init_gui(_o)
             var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
             return str.substring(p1,p2)
           } 
-          this.excluded_protos = {"_T":true,"Mocha":true}
+          this.excluded_protos = {"_T":true,"Mocha":true,"_f":true,"methodName":true,"filter":true}
           this.stats = {};
           this.scan = function(_this)
           {
@@ -212,7 +212,8 @@ function init_gui(_o)
                 var __this = eval("new "+_proto+"()");
                 for(var _method in __this)
                 {
-                  if(typeof(__this[_method])=="function")
+                  if(typeof(__this[_method])=="function"
+                  && typeof(this.excluded_protos[_method])=="undefined")
                   {
                     s += "&nbsp;&nbsp;&nbsp;<small>"+_proto+"</small> - "+_method
                     +this.extract_method(__this[_method].toString())+"<br>";
