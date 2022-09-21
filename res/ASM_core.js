@@ -76,38 +76,6 @@ function ASM()
 							+ this.hextab[v & 0x000f];
 	}
 
-	this._test_data = {
-		"getNumber":
-	   [{in:["$FF"],out:["out.err==null","out.val==255"]}
-	   ,{in:["$100"],out:["out.err==null"]}
-	   ,{in:["$FG"],out:["out.err!=null"]}
-	   ,{in:["%11111111"],out:["out.err==null"]}
-	   ,{in:["%100000000"],out:["out.err==null"]}
-	   ,{in:["%-1"],out:["out.err!=null"]}
-	   ,{in:["0377"],out:["out.err==null"]}
-	   ,{in:["0400"],out:["out.err==null"]}
-	   ,{in:["255"],out:["out.err==null"]}
-	   ,{in:["-256"],out:["out.err==null"]}
-	   ,{in:["+256"],out:["out.err==null"]}
-	   ,{in:["0"],out:["out.err==null"]}
-	   ,{in:[0],out:["out.err!=null"]}
-	   ,{in:[">$FEFF"],out:["out.err==null"]}
-	   ,{in:["<$FEFF"],out:["out.err==null"]}
-	   ,{in:["\"A\""],out:["out.err==null"]}
-	   ,{in:["\"AB\""],out:["out.err==null"]}
-	   ,{in:["\"\"'\""],out:["out.err==null"]}
-	   ,{in:["\"'\"\""],out:["out.err==null"]}
-	   ,{in:["\"'\""],out:["out.err==null"]}
-	   ,{in:["'\"''"],out:["out.err==null"]}
-	   ,{in:["''\"'"],out:["out.err==null"]}				
-	   ,{in:["'\"'"],out:["out.err==null"]}
-	   ,{in:["''"],out:["out.err!=null"]}
-	   ,{in:["\"\""],out:["out.err!=null"]}
-	   ,{in:[""],out:["out.err!=null"]}
-	   ,{in:["\"ABC\""],out:["out.err!=null"]}
-	   ,{in:["$ç"],out:["out.err!=null"]}
-	   ]};
-
 	this.mocha_test = function(_o)
 	{
 		// https://www.chaijs.com/api/assert/#method_deepequal
