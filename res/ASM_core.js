@@ -117,8 +117,9 @@ function ASM()
 			arr.forEach(function(v, i) { if(typeof(val[v])!="undefined") r[v] = val[v]});
 			return r;
 		}
-		Object.prototype._f =   function () { return this.filter(["val","fmt","bytes","err"]) };
-		var _a = _o.chai.assert
+		// shortened default filter expression
+		Object.prototype._f = function() {return this.filter(["val","fmt","bytes","err"])};
+		var _a = _o.chai.assert; // shortened assert expression
 
 		describe("ASM",function()
 		{
