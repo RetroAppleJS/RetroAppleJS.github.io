@@ -890,7 +890,7 @@ function DASM()
     this.AddressingModeTmpl = function(adr_mode,narr)
 	{
 		var s = "";
-	  switch(adr_mode)
+	  	switch(adr_mode)
 		{
 			case "acc":
 			s += "A<sub>"+narr.AC+"h</sub>";
@@ -963,7 +963,7 @@ function DASM()
 
     this.BitGrid = function(cfg)
 	{
-	  var c = cfg.rw;
+		var c = cfg.rw;
 		var bv = cfg["value"];
 		var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
 		var b = cfg["rnames"]==null || cfg["rnames"].length==0?["7","6","5","4","3","2","1","0"]:cfg["rnames"];
@@ -986,7 +986,8 @@ function DASM()
 		+"</div>\r\n"
 	}
 
-    this.writeDisplay = function(n,v,f) {
+    this.writeDisplay = function(n,v,f)
+	{
 		// n = el, v = value, f = extra HTML
 		var obj,tagname,bAppend = typeof(f)!="undefined";
 		if (document.getElementById) {
