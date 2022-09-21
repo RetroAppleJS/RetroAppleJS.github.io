@@ -145,20 +145,24 @@ function init_gui(_o)
         <script type="text/javascript" src="../res/ASM_core.js"></script>
         <script class="mocha-init">
 
-        function OBJ_INSPECTOR(_mocha)
+        function OBJ_INSPECTOR()
         {
-          
-          var _s = _mocha.suite.suites
-          for(var j=0;j<_s.length;j++)
+          this.suites_idx = {};
+          this.load_mocha = function(_mocha)
           {
-              //if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
-              {
-                for(var i=0,_si={};i<_s.length;i++)     // retrieve methods e.g. getNumber
-                    _si[ _s[j].title+"."+_s[j].suites[i].title ] = true;
-              }
+            
+            var _s = _mocha.suite.suites;
+            for(var j=0;j<_s.length;j++)
+            {
+                //if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
+                {
+                  for(var i=0;i<_s.length;i++)     // retrieve methods e.g. getNumber
+                      this.suites_idx[ _s[j].title+"."+_s[j].suites[i].title ] = true;
+                }
+            }
+            document.getElementById("obj-inspector").innerHTML += JSON.stringify(this.suites_idx)+"<br><br>"  
           }
-          document.getElementById("obj-inspector").innerHTML += JSON.stringify(_si)+"<br><br>"
-          
+
 
           this.excluded_protos = {"_T":true,"Mocha":true}
           this.stats = {};
@@ -221,7 +225,8 @@ function init_gui(_o)
       mocha.run();
 
 
-      var oObj_inspector = new OBJ_INSPECTOR(mocha);
+      var oObj_inspector = new OBJ_INSPECTOR();
+      oObj_inspector.load_mocha(mocha);
       document.getElementById("obj-inspector").innerHTML += oObj_inspector.scan(this) 
       //print_mocha( s );
 
@@ -259,9 +264,9 @@ function init_gui(_o)
             var p1 = str.indexOf("(");
             var p2 = p1+str.substring(p1,str.length).indexOf(")")+1;
             
-            s+=_proto+str.substring(p1,p2)+" "+(_si[_proto]?"TEST DATA FOUND!":"")
+            s+=_proto+str.substring(p1,p2)+" "+(this.suites_idx[_proto]?"TEST DATA FOUND!":"")
             +"<br>"
-            if(_si[_proto])
+            if(this.suites_idx[_proto])
             {
               var fn = this._test_data[_proto];
               s+= "&nbsp;&nbsp;"+fn.length+" available tests<br>"
