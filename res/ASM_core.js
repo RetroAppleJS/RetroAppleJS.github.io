@@ -79,14 +79,11 @@ function ASM()
 	this.mocha_test = function(_o)
 	{
 		// https://www.chaijs.com/api/assert/#method_deepequal
-
-		Object.prototype.filter = function (arr) { 
-			var val = this,r = {};
+		Object.prototype.f = function (arr) { 
+			var val = this,r = {},arr = arr===undefined?["val","fmt","bytes","err"]:arr;
 			arr.forEach(function(v, i) { if(typeof(val[v])!="undefined") r[v] = val[v]});
 			return r;
 		}
-		// shortened default filter expression
-		Object.prototype._f = function() {return this.filter(["val","fmt","bytes","err"])};
 		var _a = _o.chai.assert; // shortened assert expression
 
 		describe("ASM",function()
@@ -95,55 +92,53 @@ function ASM()
 			{
 				it('parses HEX numbers',function()
 				{
-					_a.deepEqual(oASM.getNumber("$FF")._f(), {"val":255,"fmt":"HEX","bytes":1});
-					_a.deepEqual(oASM.getNumber("$100")._f(),{"val":256,"fmt":"HEX","bytes":2});
-					_a.deepEqual(oASM.getNumber("-$1")._f(), {"val":-1,"fmt":"HEX","bytes":1});
+					_a.deepEqual(oASM.getNumber("$FF").f(), {"val":255,"fmt":"HEX","bytes":1});
+					_a.deepEqual(oASM.getNumber("$100").f(),{"val":256,"fmt":"HEX","bytes":2});
+					_a.deepEqual(oASM.getNumber("-$1").f(), {"val":-1,"fmt":"HEX","bytes":1});
 					_a.equal(    oASM.getNumber("$-1").err,'number malformation','wrong location for a sign');
-					_a.deepEqual(oASM.getNumber(">$FEFF")._f(),{"val":254,"fmt":"HEX","bytes":1});
-					_a.deepEqual(oASM.getNumber("<$FEFF")._f(),{"val":255,"fmt":"HEX","bytes":1});
-					_a.deepEqual(oASM.getNumber("$FEFFF")._f(),{"val":1044479,"fmt":"HEX","bytes":3,"err":"number range error"});
+					_a.deepEqual(oASM.getNumber(">$FEFF").f(),{"val":254,"fmt":"HEX","bytes":1});
+					_a.deepEqual(oASM.getNumber("<$FEFF").f(),{"val":255,"fmt":"HEX","bytes":1});
+					_a.deepEqual(oASM.getNumber("$FEFFF").f(),{"val":1044479,"fmt":"HEX","bytes":3,"err":"number range error"});
 				});
 				it('parses BIN numbers',function()
 				{
-					_a.deepEqual(oASM.getNumber("%11111111")._f(), {"val":255,"fmt":"BIN","bytes":1});
-					_a.deepEqual(oASM.getNumber("%100000000")._f(),{"val":256,"fmt":"BIN","bytes":2});
-					_a.deepEqual(oASM.getNumber("+%1")._f(),       {"val":1,"fmt":"BIN","bytes":1 },'plus sign ignored');
+					_a.deepEqual(oASM.getNumber("%11111111").f(), {"val":255,"fmt":"BIN","bytes":1});
+					_a.deepEqual(oASM.getNumber("%100000000").f(),{"val":256,"fmt":"BIN","bytes":2});
+					_a.deepEqual(oASM.getNumber("+%1").f(),       {"val":1,"fmt":"BIN","bytes":1 },'plus sign ignored');
 					_a.equal(    oASM.getNumber("%-1").err,'number malformation','wrong location for a sign');
 				});
 				it('parses OCT numbers',function()
 				{
-					_a.deepEqual(oASM.getNumber("0377")._f(),  {"val":255,"fmt":"OCT","bytes":1});
-					_a.deepEqual(oASM.getNumber("0400")._f(),  {"val":256,"fmt":"OCT","bytes":2});
-					_a.deepEqual(oASM.getNumber("-01")._f(),   {"val":-1,"fmt":"OCT","bytes":1});
+					_a.deepEqual(oASM.getNumber("0377").f(),  {"val":255,"fmt":"OCT","bytes":1});
+					_a.deepEqual(oASM.getNumber("0400").f(),  {"val":256,"fmt":"OCT","bytes":2});
+					_a.deepEqual(oASM.getNumber("-01").f(),   {"val":-1,"fmt":"OCT","bytes":1});
 					_a.equal(    oASM.getNumber("0+1").err,'number malformation','wrong location for a sign');
 				});
 				it('parses DEC numbers',function()
 				{
-					_a.deepEqual(oASM.getNumber("255")._f(), {"val":255,"fmt":"DEC","bytes":1});
-					_a.deepEqual(oASM.getNumber("-256")._f(),{"val":-256,"fmt":"DEC","bytes":2});
-					_a.deepEqual(oASM.getNumber("0")._f(),   {"val":0,"fmt":"DEC","bytes":1});
-					_a.deepEqual(oASM.getNumber(0).filter(["val","err"]),{"val":"NaN","err":"number malformation"});
+					_a.deepEqual(oASM.getNumber("255").f(), {"val":255,"fmt":"DEC","bytes":1});
+					_a.deepEqual(oASM.getNumber("-256").f(),{"val":-256,"fmt":"DEC","bytes":2});
+					_a.deepEqual(oASM.getNumber("0").f(),   {"val":0,"fmt":"DEC","bytes":1});
+					_a.deepEqual(oASM.getNumber(0).f(["val","err"]),{"val":"NaN","err":"number malformation"});
 				});
 				it('parses ASCII encoding',function()
 				{
-					_a.deepEqual(oASM.getNumber('"A"')._f(), 	{val:65,fmt:'ASC',bytes:1});
-					_a.deepEqual(oASM.getNumber('"AB"')._f(),	{val:16706,fmt:'ASC',bytes:2});
-					_a.deepEqual(oASM.getNumber("\"\"'\"")._f(),{val:8743,fmt:'ASC',bytes:2});
-					_a.deepEqual(oASM.getNumber("\"'\"\"")._f(),{val:10018,fmt:'ASC',bytes:2});
-					_a.deepEqual(oASM.getNumber("\"'\"")._f(),	{val:39,fmt:'ASC',bytes:1});
-					_a.deepEqual(oASM.getNumber("'\"''")._f(),	{val:8743,fmt:'ASC',bytes:2});
-					_a.deepEqual(oASM.getNumber("''\"'")._f(),	{val:10018,fmt:'ASC',bytes:2});
-					_a.deepEqual(oASM.getNumber("'\"'")._f(),	{val:34,fmt:'ASC',bytes:1});
-					_a.deepEqual(oASM.getNumber("''").filter(["val","err"]),{"val":"NaN","err":"number malformation"});
-					_a.deepEqual(oASM.getNumber("\"\"").filter(["val","err"]),{"val":"NaN","err":"number malformation"});
-					_a.deepEqual(oASM.getNumber("").filter(["val","err"]),{"val":"NaN","err":"number malformation"});
-					_a.deepEqual(oASM.getNumber("\"ABC\"")._f(),{"val":4276803,"fmt":"ASC","bytes":3,"err":"number range error"});				
-					_a.deepEqual(oASM.getNumber("\"A").filter(["val"]),	{"val":"NaN"} );
+					_a.deepEqual(oASM.getNumber('"A"').f(), 	{val:65,fmt:'ASC',bytes:1});
+					_a.deepEqual(oASM.getNumber('"AB"').f(),	{val:16706,fmt:'ASC',bytes:2});
+					_a.deepEqual(oASM.getNumber("\"\"'\"").f(),{val:8743,fmt:'ASC',bytes:2});
+					_a.deepEqual(oASM.getNumber("\"'\"\"").f(),{val:10018,fmt:'ASC',bytes:2});
+					_a.deepEqual(oASM.getNumber("\"'\"").f(),	{val:39,fmt:'ASC',bytes:1});
+					_a.deepEqual(oASM.getNumber("'\"''").f(),	{val:8743,fmt:'ASC',bytes:2});
+					_a.deepEqual(oASM.getNumber("''\"'").f(),	{val:10018,fmt:'ASC',bytes:2});
+					_a.deepEqual(oASM.getNumber("'\"'").f(),	{val:34,fmt:'ASC',bytes:1});
+					_a.deepEqual(oASM.getNumber("''").f(["val","err"]),{"val":"NaN","err":"number malformation"});
+					_a.deepEqual(oASM.getNumber("\"\"").f(["val","err"]),{"val":"NaN","err":"number malformation"});
+					_a.deepEqual(oASM.getNumber("").f(["val","err"]),{"val":"NaN","err":"number malformation"});
+					_a.deepEqual(oASM.getNumber("\"ABC\"").f(),{"val":4276803,"fmt":"ASC","bytes":3,"err":"number range error"});				
+					_a.deepEqual(oASM.getNumber("\"A").f(["val"]),	{"val":"NaN"} );
 				});				
 			})
 		})
-		
-
 	}
 
 	// Parse prefixed strings & return base10 equivalent
@@ -986,8 +981,7 @@ function DASM()
 		+"</div>\r\n"
 	}
 
-    this.writeDisplay = function(n,v,f)
-	{
+    this.writeDisplay = function(n,v,f){
 		// n = el, v = value, f = extra HTML
 		var obj,tagname,bAppend = typeof(f)!="undefined";
 		if (document.getElementById) {
