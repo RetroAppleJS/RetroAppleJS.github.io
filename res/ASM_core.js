@@ -156,7 +156,7 @@ function ASM()
 	this.getNumber = function(str)   
 	{
 		var flipbits = function (v, digits) {
-			return ~v & (Math.pow(2, digits) - 1);
+			return ~v & (Math.pow(2, digits) - 1)+1;
 		}
 
 		var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
@@ -174,9 +174,9 @@ function ASM()
 			case "-":		// NEGATIVE
 				if(str.split("-").length>2) { r.err = "number malformation"; break}
 				r = this.getNumber(str.substring(1));
-				if(r.val>128 && r.val<256) r.bytes++ // make this generic code (detect MSB ! of the upper byte)
-				if(r.val>32768 && r.val<65536) r.bytes++ // make this generic code
-				r.val=flipbits(r.val, r.bytes*8)+1; // 2's complement !!
+				var bin_digits = r.bytes<<3;
+				r.bytes += (r.val >> (bin_digits-1)) & 1; 	// MSB triggers the need for extra byte
+				r.val = (~r.val&(1<<bin_digits)-1)+1; 		// 2's complement !!
 				break;
 			case "+":		// POSITIVE
 				r = this.getNumber(str.substring(1));
