@@ -177,7 +177,15 @@ function init_gui(_o)
                 //if(_s[j].title == this.constructor.name)    // retrieve constructors .e.g. ASM
                 {
                   for(var i=0;i<_s.length;i++)     // retrieve methods e.g. getNumber
-                      this.suites_idx[ _s[j].title+"."+(_s[j].suites[i]===undefined?"":_s[j].suites[i].title) ] = true;
+                  {
+                    var tcount = [];
+                    for(var h=0;h<_s[j].suites[i].tests.length;h++)
+                      tcount[h] = _s[j].suites[i].tests[h].body.split("\t_a.").length-1
+
+                      this.suites_idx[ _s[j].title+"."+(_s[j].suites[i]===undefined?"":_s[j].suites[i].title) ] 
+                      = [_s[j].suites[i].tests.length,tcount];
+                      
+                  }
                 }
             }
             document.getElementById("obj-inspector").innerHTML += JSON.stringify(this.suites_idx)+"<br><br>"  
