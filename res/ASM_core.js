@@ -88,6 +88,15 @@ function ASM()
 
 		describe("ASM",function()
 		{
+			
+			describe("validate",function()
+			{
+				it('validates HEX numbers',function(){ _a.equal(oASM.validate("0123456789ABCDEF","[0-9A-Fa-f]+"),true,"HEX numbers") });
+				it('matches BIN numbers',function(){ _a.equal(oASM.validate("10","[01]+"),true,"BIN numbers") });
+				it('matches OCT numbers',function(){ _a.equal(oASM.validate("01234567","[0-7]+"),true,"OCT numbers") });
+				it('matches DEC numbers',function(){ _a.equal(oASM.validate("0123456789","[0-9]+"),true,"DEC numbers") });
+			})
+
 			describe("getNumber",function()
 			{
 				it('parses HEX numbers',function()
@@ -122,8 +131,10 @@ function ASM()
 					_a.deepEqual(oASM.getNumber("256").f(),{"val":256,"fmt":"DEC","bytes":2},"edge case 2 byte DEC");
 					_a.deepEqual(oASM.getNumber("-1").f(), {"val":255,"fmt":"DEC","bytes":1},"negative DEC");
 					_a.deepEqual(oASM.getNumber("-128").f(), {"val":128,"fmt":"DEC","bytes":1},"negative 1 byte DEC");
-					_a.deepEqual(oASM.getNumber("-129").f(), {"val":65407,"fmt":"DEC","bytes":2},"negative 2 byte DEC");
-					_a.deepEqual(oASM.getNumber("-32768").f(), {"val":32768,"fmt":"DEC","bytes":2},"negative 2 byte DEC");
+					_a.deepEqual(oASM.getNumber("-129").f(), {"val":65407,"fmt":"DEC","bytes":2},"-129 negative 2 byte DEC");
+					_a.deepEqual(oASM.getNumber("-256").f(), {"val":65280,"fmt":"DEC","bytes":2},"-256 negative 2 byte DEC");
+					//65407
+					_a.deepEqual(oASM.getNumber("-32768").f(), {"val":32768,"fmt":"DEC","bytes":2},"-32768 negative 2 byte DEC");
 					_a.equal(oASM.getNumber("-32769").err, 'number range error',"negative 3 byte DEC");
 					_a.deepEqual(oASM.getNumber(">256").f(),{"val":1,"fmt":"DEC","bytes":1},"DEC high byte");
 					_a.deepEqual(oASM.getNumber("<256").f(),{"val":0,"fmt":"DEC","bytes":1},"DEC low byte = 0");
@@ -149,15 +160,15 @@ function ASM()
 					_a.deepEqual(oASM.getNumber("\"A").f(["val"]),{"val":"NaN"},"unclosed double quote" );
 				});				
 			})
+			
+
 		})
 	}
 
 	// Parse prefixed strings & return base10 equivalent
 	this.getNumber = function(str)   
 	{
-		var flipbits = function (v, digits) {
-			return ~v & (Math.pow(2, digits) - 1)+1;
-		}
+
 
 		var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
 		if(str!=null) c[0] = c[0].match(/[1-9]/)!=null || (c[0]=="0" && c[1]=="")? "[1-9]" : c[0];	
@@ -174,9 +185,8 @@ function ASM()
 			case "-":		// NEGATIVE
 				if(str.split("-").length>2) { r.err = "number malformation"; break}
 				r = this.getNumber(str.substring(1));
-				var bin_digits = r.bytes<<3;
-				r.bytes += (r.val >> (bin_digits-1)) & 1; 	// MSB triggers the need for extra byte
-				r.val = (~r.val&(1<<bin_digits)-1)+1; 		// 2's complement !!
+				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
+				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				break;
 			case "+":		// POSITIVE
 				r = this.getNumber(str.substring(1));
@@ -198,7 +208,7 @@ function ASM()
 				break;
 			case "[1-9]":	// DEC
 				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1};
-				if(this.validate(str,"[+\\-0-9]+"))
+				if(this.validate(str,"[0-9]+"))
 				{
 					var b = (Math.log10(Math.abs(parseInt(str,10)))/log2>>3)+1;
 					r =  {"val":parseInt(str,10),"fmt":"DEC","bytes":b};
