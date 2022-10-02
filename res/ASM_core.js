@@ -88,14 +88,13 @@ function ASM()
 
 		describe("ASM",function()
 		{
-			
 			describe("validate",function()
 			{
 				it('validates HEX numbers',function(){ _a.equal(oASM.validate("0123456789ABCDEF","[0-9A-Fa-f]+"),true,"HEX numbers") });
 				it('matches BIN numbers',function(){ _a.equal(oASM.validate("10","[01]+"),true,"BIN numbers") });
 				it('matches OCT numbers',function(){ _a.equal(oASM.validate("01234567","[0-7]+"),true,"OCT numbers") });
 				it('matches DEC numbers',function(){ _a.equal(oASM.validate("0123456789","[0-9]+"),true,"DEC numbers") });
-			})
+			});
 
 			describe("getNumber",function()
 			{
