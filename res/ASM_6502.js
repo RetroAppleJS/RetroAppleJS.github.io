@@ -119,7 +119,7 @@ var dbgsym = {}
 
 // globals
 
-var codesrc, code, srcl, srcc, pc, symtab, listing;
+var codesrc, code, srcl, srcc, pc, listing;
 var codesrc_buf = new Array();
 var code_pc = new Array();
 
@@ -136,7 +136,7 @@ function assemble()
 {
 
 	code_pc = new Array();
-	symtab = {};
+	oASM.symtab = {};
 	oASM.symlink = {};
 	var crlf = "<br>"
 
@@ -451,18 +451,18 @@ function doPass(pass)
 					else
 					{
 						// identifier
-						v = oASM.getIdentifier(v).val;
+						v = oASM.getID(v).val;
 						if (v == '')
 						{
 							displayError('syntax error:\ninvalid identifier');
 							return false;
 						}
-						else if (typeof symtab[v] == 'undefined')
+						else if (typeof oASM.symtab[v] == 'undefined')
 						{
 							displayError('compile error:\nundefined identifier: "' + v + '"');
 							return false;
 						}
-						v = symtab[v];
+						v = oASM.symtab[v];
 					}
 					if (bt < 0)
 					{
@@ -523,7 +523,7 @@ function doPass(pass)
 		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)			// assembler mnemonic or directive ? 
 		{
 			// label
-			var l = oASM.getIdentifier(sym[0]).val;
+			var l = oASM.getID(sym[0]).val;
 			if (l == '')
 			{
 				displayError('syntax error:\ninvalid identifier: ' + sym[0]);
@@ -555,7 +555,7 @@ function doPass(pass)
 				}
 				if (pass == 1)
 				{
-					symtab[l] = v.val;
+					oASM.symtab[l] = v.val;
 					sym_link(
 					{
 						"type": "def",
@@ -580,14 +580,14 @@ function doPass(pass)
 						displayError('syntax error:\nnumber expected');
 						return false;
 					}
-					symtab[l] = v.val;
+					oASM.symtab[l] = v.val;
 					listing.value += " = " + getHexWord(v.val);
 					sym = getSym();
 					continue
 				}
 				if (pass == 1)
 				{
-					symtab[l] = pc; // assign program counter to label
+					oASM.symtab[l] = pc; // assign program counter to label
 					sym_link(
 					{
 						"type": "loc",
@@ -858,19 +858,28 @@ function doPass(pass)
 					{
 						code[code.length] = instr;
 					}
+
+
 					if (mode > 1)
 					{
 						// operand
 						addr = addr.substring(b1, b2);
+
+						var e = oASM.getExpression(addr);
+						
+
 						var bt = 0;
 						var adp = addr.charAt(0); // address prefix
+
+						alert(e+" "+adp);
+
 						var oper = 0;
 						if ((adp == '>') || (adp == '<'))
 						{
 							bt = (adp == '>') ? 1 : -1;
 							listing.value += adp;
 							padd++;
-							addr = addr.substr(1);
+							addr = addr.substring(1);
 							adp = addr.charAt(0);
 						}
 						if ((adp == '$') || (adp == '%') || ((adp >= '0') && (adp <= '9')))
@@ -887,11 +896,11 @@ function doPass(pass)
 							listing.value += s;
 							padd += s.length;
 						}
-						else if (adp == '\'')
+						else if (adp == '\'' || adp == "\"")
 						{
 							// ascii character
 							a1 = addr.charAt(1);
-							var num_offset = Number(getOffset(addr));
+							var num_offset = Number(oASM.getOffset(addr));
 
 							listing.value += addr;
 							oper = getAscii(a1) + num_offset;
@@ -904,9 +913,9 @@ function doPass(pass)
 						else
 						{
 							// label identifier for an address location
-							var addr_offset = Number(getOffset(addr));
+							var addr_offset = Number(oASM.getOffset(addr));
 							// FVD getOffset  e.g.    TEMP = $6005 + $10
-							addr = oASM.getIdentifier(addr); // FVD filter out label from address
+							addr = oASM.getID(addr); // FVD filter out label from address
 
 							//addr_offset = addr_offset.substring(addr.length,addr_offset.length);
 							//var ao1 = addr_offset.charAt(0);
@@ -918,17 +927,19 @@ function doPass(pass)
 								displayError(addr.err);
 								return false;
 							}
-							else if (typeof symtab[addr.val] == 'undefined')
+							else if (typeof oASM.symtab[addr.val] == 'undefined')
 							{
 								displayError('compile error:\nundefined identifier "' + addr.val + '"');
 								return false;
 							}
 							addr = addr.val
-							oper = symtab[addr] + addr_offset;
+							oper = oASM.symtab[addr] + addr_offset;
 							listing.value += addr;
 							addr = '' + addr;
 							padd += addr.length;
 						}
+
+						
 						if (bt < 0)
 						{
 							// lo-byte
@@ -1012,13 +1023,13 @@ function debug_symbols(showDBG)
 	function q(str) { return "\""+str+"\"" };
 	var arr = [], alt = true, str = "";
 	str += showDBG.ROM || showDBG.RAM ? "FAFF" : "";
-	for (var i in symtab)
+	for (var i in oASM.symtab)
 	{
-		if(showDBG.RAM && symtab[i]<parseInt("C000",16)
-			|| showDBG.ROM && symtab[i]>=parseInt("C000",16))
+		if(showDBG.RAM && oASM.symtab[i]<parseInt("C000",16)
+			|| showDBG.ROM && oASM.symtab[i]>=parseInt("C000",16))
 		{
 			
-			m = (i+" ".repeat(oASM.label_len-(i.length>oASM.label_len?oASM.label_len:i.length) )) + " = $" + getHexVar(symtab[i])
+			m = (i+" ".repeat(oASM.label_len-(i.length>oASM.label_len?oASM.label_len:i.length) )) + " = $" + getHexVar(oASM.symtab[i])
 			if(alt) s += m+" ".repeat(m.length>17?1:17-m.length); else s += m+"\n";
 			alt = !alt;
 
@@ -1026,7 +1037,7 @@ function debug_symbols(showDBG)
 			//.toUpperCase().replace(/Q/g,"O").replace(/0/g,"O").replace(/U/g,"V")
 			//,{"dbg":true,"slen":6,"glen":6,"blen":4,"s.defc":".","c":"123456789ABCDEFGHIJKLMNOPRSTVWXYZ ."});
 			,{"dbg":false,"slen":6,"glen":3,"wlen":4,"defc":"_","c":"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .-_"}) // max = F9FF
-			var adr = getHexWord(symtab[i]);
+			var adr = getHexWord(oASM.symtab[i]);
 			str += lbl + adr;
 		}
 
