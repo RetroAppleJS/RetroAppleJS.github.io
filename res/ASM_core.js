@@ -153,18 +153,24 @@ function ASM()
 					_a.deepEqual(oASM.getNumber("'\"''").f(),	{val:8743,fmt:'ASC',bytes:2},"double + single quote");
 					_a.deepEqual(oASM.getNumber("''\"'").f(),	{val:10018,fmt:'ASC',bytes:2},"single quote + double quote");
 					_a.deepEqual(oASM.getNumber("'\"'").f(),	{val:34,fmt:'ASC',bytes:1},"double quote");
-					_a.deepEqual(oASM.getNumber("''").f(["val","err"]),{"val":"NaN","err":"number malformation"},"empty");
-					_a.deepEqual(oASM.getNumber("\"\"").f(["val","err"]),{"val":"NaN","err":"number malformation"},"empty");
-					_a.deepEqual(oASM.getNumber("").f(["val","err"]),{"val":"NaN","err":"number malformation"},"empty");
-					_a.deepEqual(oASM.getNumber().f(["val","err"]),{"val":"NaN","err":"number malformation"},"empty");
-					_a.deepEqual(oASM.getNumber("\"ABC\"").f(),	{"val":4276803,"fmt":"ASC","bytes":3,"err":"number range error"},"ASCII too large");				
-					_a.deepEqual(oASM.getNumber("\"A").f(["val"]),{"val":"NaN"},"unclosed double quote" );
+					_a.deepEqual(oASM.getNumber("''").f(["val","err"]),{val:"NaN","err":"number malformation"},"empty");
+					_a.deepEqual(oASM.getNumber("\"\"").f(["val","err"]),{val:"NaN","err":"number malformation"},"empty");
+					_a.deepEqual(oASM.getNumber("").f(["val","err"]),{val:"NaN","err":"number malformation"},"empty");
+					_a.deepEqual(oASM.getNumber().f(["val","err"]),{val:"NaN","err":"number malformation"},"empty");
+					_a.deepEqual(oASM.getNumber("\"ABC\"").f(),	{val:4276803,"fmt":"ASC","bytes":3,"err":"number range error"},"ASCII too large");				
+					_a.deepEqual(oASM.getNumber("\"A").f(["val"]),{val:"NaN"},"unclosed double quote" );
 				});
 				
 				it('parses VARIABLES',function()
 				{
+					
+
 					oASM.symtab={"VARIAB":10};
 					_a.deepEqual(oASM.getNumber("VARIAB").f(),{val:10,fmt:'ID',bytes:1},"variable");
+					_a.deepEqual(oASM.getNumber("VARIAA").f(["val","err"]),{val:"NaN",err:"compile error:\nidentifier does not exist"},"variable");
+
+					
+
 				});					
 
 			})
@@ -234,7 +240,10 @@ function ASM()
 				break;
 			default:
 				if(this.validate(str,"[A-Z0-9_]+")) // IDENTIFIER
+				{
 					r = this.getIdentifier(str);
+					err = r.err;
+				}
 		}
 		if(r.bytes>2) r.err = "number range error";
 		var m = typeof(str)=="string"?str.match(/(["']).*(["'])/):null;
@@ -368,7 +377,7 @@ this.MathParser.prototype.parse = function(e)
 	this.getIdentifier = function(n)
 	{
 		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
-		if(this.validate(n,"[A-Z0-9_]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
+		if(this.validate(n,"[A-Z0-9_]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\nmalformed identifier"}
 
 		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
 		n = n.substring(0, this.label_len);	// truncate identifier length
