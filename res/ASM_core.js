@@ -30,6 +30,7 @@ function ASM()
 		this.srcl		= 0;
 		this.srcc		= 0;
 		this.pc			= 0;
+		this.label_len  = label_len;
 	}
 
 	this.assemble_step = function()
@@ -359,11 +360,10 @@ this.MathParser.prototype.parse = function(e)
 	}
 */
 
-	this.getID = function(n)
+	this.getID = function(n) // get rid of this function
 	{
 		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
-		if(this.validate(n,"[A-Za-z0-9_]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
-
+		if(this.validate(n,"[A-Za-z0-9_.]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
 		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
 		n = n.substring(0, this.label_len);	// truncate identifier length
 		return {"val":n};
@@ -372,12 +372,11 @@ this.MathParser.prototype.parse = function(e)
 	this.getIdentifier = function(n)
 	{
 		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
-		if(this.validate(n,"[A-Z0-9_]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\nmalformed identifier"}
+		if(this.validate(n,"[A-Za-z0-9_.]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\nmalformed identifier"}
 
 		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
 		n = n.substring(0, this.label_len);	// truncate identifier length
 		if(oASM.symtab[n] === undefined) return {"val":"NaN","fmt":"ID","err":"compile error:\nidentifier does not exist"}
-
 
 		var b = (Math.log10(Math.abs( oASM.symtab[n] ))/log2>>3)+1;
 		return {"val":oASM.symtab[n],"fmt":"ID","bytes":b};
