@@ -418,7 +418,12 @@ function doPass(pass)
 				listing.value += pragma;
 				if (pass == 2)
 				{
+
+					
 					var v = sym[1];
+					//v = oASM.getNumber(v).val;
+					
+					
 					var v1 = v.charAt(0);
 					var bt = 0;
 					if ((v1 == '>') || (v1 == '<'))
@@ -464,6 +469,10 @@ function doPass(pass)
 						}
 						v = oASM.symtab[v];
 					}
+					
+
+
+
 					if (bt < 0)
 					{
 						// lo-byte
@@ -871,7 +880,7 @@ function doPass(pass)
 						var bt = 0;
 						var adp = addr.charAt(0); // address prefix
 
-						alert(e+" "+adp);
+						//alert(e+" "+adp);
 
 						var oper = 0;
 						if ((adp == '>') || (adp == '<'))

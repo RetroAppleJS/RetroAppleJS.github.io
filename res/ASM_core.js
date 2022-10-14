@@ -163,14 +163,9 @@ function ASM()
 				
 				it('parses VARIABLES',function()
 				{
-					
-
 					oASM.symtab={"VARIAB":10};
 					_a.deepEqual(oASM.getNumber("VARIAB").f(),{val:10,fmt:'ID',bytes:1},"variable");
 					_a.deepEqual(oASM.getNumber("VARIAA").f(["val","err"]),{val:"NaN",err:"compile error:\nidentifier does not exist"},"variable");
-
-					
-
 				});					
 
 			})
@@ -367,7 +362,7 @@ this.MathParser.prototype.parse = function(e)
 	this.getID = function(n)
 	{
 		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
-		if(this.validate(n,"[A-Z0-9_]")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
+		if(this.validate(n,"[A-Za-z0-9_]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
 
 		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
 		n = n.substring(0, this.label_len);	// truncate identifier length
