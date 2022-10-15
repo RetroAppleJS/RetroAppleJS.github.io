@@ -420,7 +420,6 @@ function Cpu6502(hwobj) {
             d8 = rol_instr(d8);
             writeByte(operand, d8);
             break;
-
         case 0x30:        /* BMI */
             if ((p & P_N) != 0)
                 branch_instr(operand);
@@ -456,7 +455,6 @@ function Cpu6502(hwobj) {
             d8 = rol_instr(d8);
             writeByte(operand + x, d8);
             break;
-
         case 0x40:        /* RTI */
             p = (pull() & ~P_B) | P_1;
             pc = pull();
@@ -497,7 +495,6 @@ function Cpu6502(hwobj) {
             d8 = lsr_instr(d8);
             writeByte(operand, d8);
             break;
-
         case 0x50:        /* BVC */
             if ((p & P_V) == 0)
                 branch_instr(operand);
@@ -533,7 +530,6 @@ function Cpu6502(hwobj) {
             d8 = lsr_instr(d8);
             writeByte(operand + x, d8);
             break;
-
         case 0x60:        /* RTS */
             pc = pull();
             pc |= pull() << 8;
@@ -575,7 +571,6 @@ function Cpu6502(hwobj) {
             d8 = ror_instr(d8);
             writeByte(operand, d8);
             break;
-
         case 0x70:        /* BVS */
             if ((p & P_V) != 0)
                 branch_instr(operand);
@@ -611,7 +606,6 @@ function Cpu6502(hwobj) {
             d8 = ror_instr(d8);
             writeByte(operand + x, d8);
             break;
-
         case 0x81:        /* STA (ind, X) */
             addr = ind_x(operand);
             writeByte(addr, a);
@@ -642,7 +636,6 @@ function Cpu6502(hwobj) {
         case 0x8e:        /* STX absolute */
             writeByte(operand, x);
             break;
-
         case 0x90:        /* BCC */
             if ((p & P_C) == 0)
                 branch_instr(operand);
@@ -673,7 +666,6 @@ function Cpu6502(hwobj) {
         case 0x9d:        /* STA absolute, X */
             writeByte(operand + x, a);
             break;
-
         case 0xa0:        /* LDY imm */
             y = operand;
             set_nz(y);
@@ -770,7 +762,6 @@ function Cpu6502(hwobj) {
             x = readByte(operand + y);
             set_nz(x);
             break;
-
         case 0xc0:        /* CPY imm */
             cmp_instr(y, operand);
             break;
@@ -816,7 +807,6 @@ function Cpu6502(hwobj) {
             writeByte(operand, d8);
             set_nz(d8);
             break;
-
         case 0xd0:        /* BNE */
             if ((p & P_Z) == 0)
                 branch_instr(operand);
@@ -853,7 +843,6 @@ function Cpu6502(hwobj) {
             writeByte(addr, d8);
             set_nz(d8);
             break;
-
         case 0xe0:        /* CPX imm */
             cmp_instr(x, operand);
             break;
@@ -897,7 +886,6 @@ function Cpu6502(hwobj) {
             writeByte(operand, d8);
             set_nz(d8);
             break;
-
         case 0xf0:        /* BEQ */
             if ((p & P_Z) != 0)
                 branch_instr(operand);
