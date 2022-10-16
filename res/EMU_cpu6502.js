@@ -337,7 +337,6 @@ function Cpu6502(hwobj) {
             d8 = asl_instr(d8);
             writeByte(operand, d8);
             break;
-
         case 0x10:        /* BPL */
             if ((p & P_N) == 0)
                 branch_instr(operand);
@@ -373,7 +372,6 @@ function Cpu6502(hwobj) {
             d8 = asl_instr(d8);
             writeByte(operand + x, d8);
             break;
-
         case 0x20:        /* JSR absolute */
             pc--;
             push(pc >> 8);
