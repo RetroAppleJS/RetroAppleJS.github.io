@@ -174,6 +174,7 @@ var loresCols = [
 ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
 ];
 
+/*
 var hiresCols = [
  ["#000000","#000000","#000000","#000000","Black"]
 ,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]
@@ -182,6 +183,16 @@ var hiresCols = [
 ,["#2FBC1A","#575757","#375752","#564F37","Light Green"]
 ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]
 ];
+*/
+
+var hiresCols = [
+    ["#000000","#000000","#000000","#000000","Black"]
+   ,["#D143E6","#A8A8A8","#69A89E","#A6986A","Purple"]
+   ,["#2F96E6","#8E8E8E","#598E85","#8C8059","Medium Blue"]
+   ,["#D06B1A","#717171","#47716B","#706748","Orange"]
+   ,["#30BD1B","#575757","#375752","#564F37","Light Green"]
+   ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]
+   ];
 
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
