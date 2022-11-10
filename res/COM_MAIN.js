@@ -54,7 +54,7 @@ function COM()
 
 var oMEMGRID = new function()
 {
-  var oCOM = new COM();
+  this.oCOM = new COM();
 
 // FVD TODO move this piece to apple2plus.js
   this.mem_layout = {
@@ -103,7 +103,7 @@ var oMEMGRID = new function()
   this.line = function(start,len,step)
   {
     var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = oCOM.getHexWord(j);
+    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = this.oCOM.getHexWord(j);
     return a;
   }
 
@@ -112,7 +112,7 @@ var oMEMGRID = new function()
     var s = "<table class=gtable style='float:left'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+oCOM.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
+      s += "<tr><td>"+this.oCOM.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
     return s+"</table>"
   }
 

@@ -66,9 +66,9 @@ function memscan()
       {
         document.getElementById("output").innerHTML += 
         dv[0]
-        +"adr="+oMEMGRID.getHexWord(adr)
+        +"adr="+oCOM.getHexWord(adr)
         +" o="+o
-        +" "+oMEMGRID.mem_map[adr>>oMEMGRID.mem_gran]
+        +" "+oMEMGRID.oCOM.mem_map[adr>>oMEMGRID.mem_gran]
         +dv[1]
         last = oMEMGRID.mem_map[adr>>oMEMGRID.mem_gran];
       }
@@ -76,7 +76,7 @@ function memscan()
     }
     catch(e)
     {
-      document.getElementById("output").innerHTML += "adr="+oMEMGRID.getHexWord(adr)+"<br>"
+      document.getElementById("output").innerHTML += "adr="+oMEMGRID.oCOM.getHexWord(adr)+"<br>"
     }
   }
 
