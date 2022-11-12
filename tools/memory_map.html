@@ -72,7 +72,6 @@ function memscan()
         +dv[1]
         last = oMEMGRID.mem_map[adr>>oMEMGRID.mem_gran];
       }
-      
     }
     catch(e)
     {
@@ -91,7 +90,6 @@ function init()
   document.getElementById("debug2").innerHTML = 
     oMEMGRID.build_grid(7*linestep,8,-linestep) 
   + oMEMGRID.build_grid(15*linestep,8,-linestep);
-
   oMEMGRID.paint_grid();
 }
 
