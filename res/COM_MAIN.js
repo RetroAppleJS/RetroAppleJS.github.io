@@ -4,6 +4,7 @@ function COM()
   this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
   this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
   this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+
   this.getHexWord = function(v)
   {
     return '' + this.hextab[v >> 12]
@@ -11,10 +12,12 @@ function COM()
               + this.hextab[(v & 0xf0)>>4]
               + this.hextab[v & 0x000f];
   }
+
   this.getHexMulti = function(v,m)
   {
     return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
   }
+
   this.getBinMulti = function(v,m)
   {
     var s = "";
@@ -51,12 +54,11 @@ function COM()
 	}
 }
 
-
 var oMEMGRID = new function()
 {
   this.oCOM = new COM();
 
-// FVD TODO move this piece to apple2plus.js
+  // FVD TODO move this piece to apple2plus.js
   this.mem_layout = {
         "0000-00FF":["#FFFFFF","ZERO-PAGE","ZP"]
        ,"0100-01FF":["#E0E0E0","STACK","ST"]
@@ -88,11 +90,10 @@ var oMEMGRID = new function()
     for(var i in this.mem_layout)
     {
         var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
-        var s = ""
-        for(var addr=b[0];addr<b[1];addr+=1<<mem_gran)
+        for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
         { 
-            this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
-            s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
+          this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
+          s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
         }
         console.log(a[0]+"-"+a[1]+" ("+s+")");
     }
@@ -145,22 +146,15 @@ var oMEMGRID = new function()
           var el = document.getElementById("m"+idx);
           if(el!=null)
           {
-          if(blk_col[idx].charAt(0)=="#" || blk_col[idx].substring(0,5)=="rgba(")
-            el.style.backgroundColor = blk_col[idx];
-          el.innerHTML = "<span class=gt>"+blk_txt[idx]+"</span>"
+            if(blk_col[idx].charAt(0)=="#" || blk_col[idx].substring(0,5)=="rgba(")
+              el.style.backgroundColor = blk_col[idx];
+            el.innerHTML = "<span class=gt>"+blk_txt[idx]+"</span>"
           }
         }
       }
     }
   }
 }(COM)
-
-
-
-
-
-
-
 
 function GRID()
 {
