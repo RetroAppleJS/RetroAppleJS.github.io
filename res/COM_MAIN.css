@@ -298,11 +298,14 @@ table { border-collapse: collapse; position: relative;}
   {
       font-family: "Arial";
       font-size:13px;
+      padding:5px 5px 5px 5px;
       margin:1px 1px 1px 1px;
       padding: 6px;
       border-radius: 5px;
       border-style: none;
       background: rgba(255, 255, 255, 0.8);
+      float:left;
+      text-align:center;
   }
 
   .toolbox

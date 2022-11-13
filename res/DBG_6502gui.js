@@ -214,7 +214,7 @@ function writeWatchAddresses(p)
 	for(var _i in p)
 		if(p[_i]!="" && p[_i]!="null") _a[_a.length] = "'"+_i+"':'"+p[_i]+"'";
 
-  // TODO user generic function for that like oDASM.writeDisplay !!!
+	// TODO user generic function for that like oDASM.writeDisplay !!!
 	document.getElementById('watchparam').value = "{"+_a.join(",")+"}";
 }
 
@@ -282,7 +282,7 @@ function report_watch(obj)
 	var bBase = typeof(obj.base_adr)=="number"
 	var ads = "$"+(obj.adr<256?getHexByte(obj.adr):getHexWord(obj.adr));
 
-  dispwatch = obj.type+" - "
+	dispwatch = obj.type+" - "
 	+sym_search(ads,obj.type)
 	+" = "+getHexByte(obj.val)+"h "
 	+(bBase?("("+obj.base_adr.toString(16).toUpperCase()+"h)"):"")
@@ -290,7 +290,7 @@ function report_watch(obj)
 
 	//alert( parseInt(obj.ins,16)+" "+opctab[ parseInt(obj.ins,16) ][0] )
 
-  oDASM.writeDisplay('watchdisp',dispwatch,"beforeend");
+	oDASM.writeDisplay('watchdisp',dispwatch,"beforeend");
 	oDASM.updateScroll('watchdisp');
 }
 
@@ -379,22 +379,6 @@ function sym_search(op,adm)
 	return op+"<small>["+adm+"]</small>";
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function memLookup() {
 	var v=prompt('Please enter an address (0000-FFFF):');
 	if (v==null) return;
@@ -464,9 +448,8 @@ function showMem() {
 	}
 }
 
-function loadMem() {
-
-
+function loadMem()
+{
 	var addr = parseInt(document.getElementById('memAddr').value,16)
 	//var addr=parseInt(document.MemLoader.memAddr.value,16);
 

@@ -60,28 +60,28 @@ var oMEMGRID = new function()
 
   // FVD TODO move this piece to apple2plus.js
   this.mem_layout = {
-        "0000-00FF":["#FFFFFF","ZERO-PAGE","ZP"]
-       ,"0100-01FF":["#E0E0E0","STACK","ST"]
-       ,"0200-02FF":["#00D000","GETLN buffer","BU"]
-       ,"0300-03FF":["#00D000","VECTORS","VC"]
-       ,"0400-07FF":["#DF48FF","TXT1/LORES1","T1"]
-       ,"0800-0BFF":["#D040E0","TXT2/LORES2","T2"]
-       ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
-       ,"2000-3FFF":["#0000FF","HIRES1","H1"]
-       ,"4000-5FFF":["#0000E0","HIRES2","H2"]
-       ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
-       ,"C000-C07F":["#B0B000","I/O","IB"]
-       ,"C080-C0FF":["#B0B000","SLOT I/O","IO"]
-       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
-       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
-       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
-       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
-       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
-       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
-       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
-       ,"C800-CFFF":["#F0F000","SLOT ROM ext","SR"]
-       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
-    }
+    "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
+   ,"0100-01FF":["#D0D0D0","STACK","ST"]
+   ,"0200-02FF":["#00D000","GETLN buffer","BU"]
+   ,"0300-03FF":["#00D000","VECTORS","VC"]
+   ,"0400-07FF":["#D000D0","TXT1/LORES1","T1"]
+   ,"0800-0BFF":["#D000D0","TXT2/LORES2","T2"]
+   ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
+   ,"2000-3FFF":["#0000D0","HIRES1","H1"]
+   ,"4000-5FFF":["#0000D0","HIRES2","H2"]
+   ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
+   ,"C000-C07F":["#D0D000","I/O","IB"]
+   ,"C080-C0FF":["#D0D000","SLOT I/O","IO"]
+   ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
+   ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
+   ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
+   ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
+   ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
+   ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
+   ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
+   ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
+   ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
+}
 
   const mem_gran = 8;  // block granularity in bits
 
@@ -89,13 +89,13 @@ var oMEMGRID = new function()
   {
     for(var i in this.mem_layout)
     {
-        var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
-        for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
-        { 
-          this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
-          s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
-        }
-        console.log(a[0]+"-"+a[1]+" ("+s+")");
+      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
+      for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
+      { 
+        this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
+        s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
+      }
+      console.log(a[0]+"-"+a[1]+" ("+s+")");
     }
   }
 

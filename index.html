@@ -311,15 +311,15 @@
   
               <div class="hints1" id="settings" hidden="" style="left:570px;">
                 <form name="DEVboard">
-                  <div class=appbox style="width:45px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#1</div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#2</div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#3</div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#4</div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#5</div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
-                  <div class=appbox style="width:36px;height:80px;float:left;padding:5px 5px 5px 5px;text-align:center">#7</div>
+                  <div class=appbox style="width:45px;height:80px;">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:36px;height:80px;">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:36px;height:80px;">#1</div>
+                  <div class=appbox style="width:36px;height:80px;">#2</div>
+                  <div class=appbox style="width:36px;height:80px;">#3</div>
+                  <div class=appbox style="width:36px;height:80px;">#4</div>
+                  <div class=appbox style="width:36px;height:80px;">#5</div>
+                  <div class=appbox style="width:36px;height:80px;">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:36px;height:80px;">#7</div>
                 </form>
 
                 <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);document.getElementById('clr').style.color=m.color;this.title=m.name" title="Color mode"><i class="fa fa-palette" id="clr"></i></button>
@@ -643,6 +643,13 @@
                  </div>
                  <div style="float:left">
   
+
+<!--
+
+Generate grid
+
+-->
+
                  <table class=gtable>
                  <tr><td>$0000</td><td id='m0000' class=gtip></td><td id='m0100'></td><td id='m0200'></td><td id='m0300'></td><td id='m0400'></td><td id='m0500'></td><td id='m0600'></td><td id='m0700'></td><td id='m0800'></td><td id='m0900'></td><td id='m0A00'></td><td id='m0B00'></td><td id='m0C00'></td><td id='m0D00'></td><td id='m0E00'></td><td id='m0F00'></td></tr>
                  <tr><td>$1000</td><td id='m1000'></td><td id='m1100'></td><td id='m1200'></td><td id='m1300'></td><td id='m1400'></td><td id='m1500'></td><td id='m1600'></td><td id='m1700'></td><td id='m1800'></td><td id='m1900'></td><td id='m1A00'></td><td id='m1B00'></td><td id='m1C00'></td><td id='m1D00'></td><td id='m1E00'></td><td id='m1F00'></td></tr>
