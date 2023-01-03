@@ -19,7 +19,7 @@ var watch_data = {};
 
 var oDASM = new DASM();
 oDASM.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-oDASM.getHexByte = function(v) { h=this.hextab[v>>4]+this.hextab[v&0xf]; return h}
+oDASM.getHexByte = oCOM.getHexByte;
 oDASM.ByteAt = function ByteAt(addr) { return RAM[addr] }
 //oDASM.sym_search = function sym_search(op,adm) { return }
 oDASM.sym_search = sym_search;
@@ -168,7 +168,7 @@ function setReg(r,v) {
 	}
 }
 function setRegister(r) {
-	var prstr= (r=='PC')? getHexWord(pc) : getHexByte(oDASM.getReg(r));
+	var prstr= (r=='PC')? oCOM.getHexWord(pc) : oCOM.getHexByte(oDASM.getReg(r));
 	var v=prompt('Please enter a hex value for '+r+':', prstr);
 	v=parseInt(v,16);
 	if (isNaN(v)) return;
@@ -257,10 +257,10 @@ function updateReg(r) {
 	}
 	var obj;
 	if (r=='PC') {
-		oDASM.writeDisplay('dispPC',getHexWord(pc));
+		oDASM.writeDisplay('dispPC',oCOM.getHexWord(pc));
 	}
 	else {
-		oDASM.writeDisplay('disp'+r,''+getHexByte(oDASM.getReg(r)));
+		oDASM.writeDisplay('disp'+r,''+oCOM.getHexByte(oDASM.getReg(r)));
 	}
 	if (r=='SR') {
 		for (var i=0; i<8; i++) {
@@ -280,11 +280,11 @@ function report_watch(obj)
 	if(allow_instr.indexOf(instr)<0) return;
 
 	var bBase = typeof(obj.base_adr)=="number"
-	var ads = "$"+(obj.adr<256?getHexByte(obj.adr):getHexWord(obj.adr));
+	var ads = "$"+(obj.adr<256?oCOM.getHexByte(obj.adr):oCOM.getHexWord(obj.adr));
 
 	dispwatch = obj.type+" - "
 	+sym_search(ads,obj.type)
-	+" = "+getHexByte(obj.val)+"h "
+	+" = "+oCOM.getHexByte(obj.val)+"h "
 	+(bBase?("("+obj.base_adr.toString(16).toUpperCase()+"h)"):"")
 	+"<br>"
 
@@ -333,20 +333,12 @@ function updateWatch(r) {
 		 //var b=getHexWord(m);
 		 var bi = 1<<badr[1];
 		 var by = ByteAt(m);
- 	 	 var hby = typeof(badr[1])=="undefined"? getHexByte(by) : ((by & bi)>0 ? 1:0);
+ 	 	 var hby = typeof(badr[1])=="undefined"? oCOM.getHexByte(by) : ((by & bi)>0 ? 1:0);
 
 		 oDASM.writeDisplay('disp'+r, hby);
 	 }
 // getMem
 	 //oDASM.writeDisplay('disp'+r, getHexWord(pc));
-}
-
-function getHexByte(v) {
-	return ''+hextab[Math.floor(v/16)]+hextab[v&0x0f];
-}
-
-function getHexWord(v) {
-	return ''+hextab[Math.floor(v/0x1000)]+hextab[Math.floor((v&0x0f00)/256)]+hextab[Math.floor((v&0xf0)/16)]+hextab[v&0x000f];
 }
 
 function sym_search(op,adm)
@@ -390,13 +382,13 @@ function memLookup() {
 	else {
 		m=Math.abs(Math.floor(m))&0xfff0;
 		var s='';
-		var b1=getHexWord(m);
-		var b2=getHexWord(m+15);
+		var b1=oCOM.getHexWord(m);
+		var b2=oCOM.getHexWord(m+15);
 		s+=b1+': ';
 		for (var i=0; i<16; i++) {
-			s+=getHexByte(ByteAt(m+i));
+			s+=oCOM.getHexByte(ByteAt(m+i));
 			if (i==7) {
-				s+='\n'+getHexWord(m+8)+': ';
+				s+='\n'+oCOM.getHexWord(m+8)+': ';
 			}
 			else if (i<15) {
 				s+=' ';
@@ -426,9 +418,9 @@ function showMem() {
 					document.getElementById('mem').value=s+'\n';
 					return
 				}
-				if (i%8==0) s+=':'+getHexWord(da)+'  ';
+				if (i%8==0) s+=':'+oCOM.getHexWord(da)+'  ';
 				var b=ByteAt(da);
-				s+=getHexByte(b);
+				s+=oCOM.getHexByte(b);
 				if (showASCII) {
 					s2+= ((b>=32) && (b<=126))? String.fromCharCode(b) : '.';
 				}
@@ -486,12 +478,12 @@ function loadWatch()
 	asm.symlink = new Array();
 
 	var maxwatch = 256 * 6;  // assume maximum 256 labels
-	if(getHexByte(RAM[asm.endsym_addr])!="FF") return;
+	if(oCOM.getHexByte(RAM[asm.endsym_addr])!="FF") return;
 	for(var i=asm.endsym_addr-1;i>asm.endsym_addr-maxwatch;i-=6)
 	{
-		var w2 = getHexWord(RAM[i-1]*256+RAM[i]);        // ADDRESS
+		var w2 = oCOM.getHexWord(RAM[i-1]*256+RAM[i]);        // ADDRESS
 		if(w2=="FAFF") { i=0; continue; };
-		var w1 = getHexWord(RAM[i-5]*256+RAM[i-4]) + getHexWord(RAM[i-3]*256+RAM[i-2]);
+		var w1 = oCOM.getHexWord(RAM[i-5]*256+RAM[i-4]) + oCOM.getHexWord(RAM[i-3]*256+RAM[i-2]);
 		var lbl = conv_bck(w1,{"dbg":false,"slen":6,"glen":3,"wlen":4,"defc":"_","c":"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .-_"}) // max = F9FF
 		if(bDebug) document.write(lbl+"["+w1+"] $"+w2+"<br>");
 		asm.symlink[parseInt(w2,16)] = lbl
@@ -592,7 +584,7 @@ function conv_bck(inp,s)
 
 
 function loadData(addr,data) {
-	console.log('DBG loading data to '+getHexWord(addr)+' ...');
+	console.log('DBG loading data to '+oCOM.getHexWord(addr)+' ...');
 	var lc='';
 	var ofs=0;
 	var mode=1;
@@ -625,7 +617,7 @@ function toggleASCII() {
 }
 
 function loadRom(addr,data) {
-	console.log('DBG loading data to '+getHexWord(addr)+' ...');
+	console.log('DBG loading data to '+oCOM.getHexWord(addr)+' ...');
 	var ofs=0;
 	for (var i=0; i<data.length; i+=2) {
 		RAM[addr++]=parseInt(data.charAt(i)+data.charAt(i+1),16);
@@ -649,7 +641,7 @@ function loadApple2PlusRoms(str) {
 	{
 		var addr = parseInt("D000",16);
 		//var data = apple2Rom;
-		console.log('DBG loading data to '+getHexWord(addr)+' ...');
+		console.log('DBG loading data to '+oCOM.getHexWord(addr)+' ...');
 		for (var i=0; i<apple2Rom.length; i++)
 			RAM[addr++]=0x60;
 		console.log('DBG ready.');
@@ -660,10 +652,10 @@ function loadApple2PlusRoms(str) {
 	{
 		var addr = parseInt("D000",16);
 		var data = apple2Rom;
-		console.log('DBG loading data to '+getHexWord(addr)+' ...');
+		console.log('DBG loading data to '+oCOM.getHexWord(addr)+' ...');
 		for (var i=0; i<apple2Rom.length; i++)
 		{
-			//document.write((i%8==0?("<br>"+getHexWord(addr)+": "):" ")+getHexByte(apple2Rom[i]))
+			//document.write((i%8==0?("<br>"+oCOM.getHexWord(addr)+": "):" ")+oCOM.getHexByte(apple2Rom[i]))
 			RAM[addr++]=apple2Rom[i];
 		}
 		console.log('DBG ready.');
