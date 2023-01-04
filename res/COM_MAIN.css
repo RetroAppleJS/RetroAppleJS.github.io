@@ -214,6 +214,7 @@ table { border-collapse: collapse; position: relative;}
     font-size:8px;
     font-family:Arial;
     border-collapse: collapse;
+    padding:0px;
    }
   .gtable tr { padding:0px;margin:0px;width:20% }
   .gtable tr td {
@@ -298,7 +299,6 @@ table { border-collapse: collapse; position: relative;}
   {
       font-family: "Arial";
       font-size:13px;
-      padding:5px 5px 5px 5px;
       margin:1px 1px 1px 1px;
       padding: 6px;
       border-radius: 5px;

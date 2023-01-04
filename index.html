@@ -294,7 +294,6 @@
                 </form>
               </div>
               <div class=toolbox>
-                
                 <button class=appbut                 onclick="javascript:alert('no sound implementation')" id="soundbutton"   title="Sound"><i  class="fa fa-volume-mute"></i></button>
                 <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
                 <br>
@@ -308,26 +307,47 @@
                 -->
                 </div>
               </div>
-  
-              <div class="hints1" id="settings" hidden="" style="left:570px;">
+
+              <div class="hints1" id="settings" hidden="">
+
+                <style>
+
+                </style>
+                <div class=toolbox><div class=appbox style="padding:0px 6px 0px 6px;" title="Memory map"><div id="mem_map"></div></div></div>
+
                 <form name="DEVboard">
-                  <div class=appbox style="width:45px;height:80px;">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
-                  <div class=appbox style="width:36px;height:80px;">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
-                  <div class=appbox style="width:36px;height:80px;">#1</div>
-                  <div class=appbox style="width:36px;height:80px;">#2</div>
-                  <div class=appbox style="width:36px;height:80px;">#3</div>
-                  <div class=appbox style="width:36px;height:80px;">#4</div>
-                  <div class=appbox style="width:36px;height:80px;">#5</div>
-                  <div class=appbox style="width:36px;height:80px;">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0"><i class="fa fa-cog"></i></button></div>
-                  <div class=appbox style="width:36px;height:80px;">#7</div>
+                  <div class=appbox style="width:45px;height:80px;" title="Slot">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#1</div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#2</div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#3</div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#4</div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#5</div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#6"><i class="fa fa-cog"></i></button></div>
+                  <div class=appbox style="width:36px;height:80px;" title="Slot">#7</div>
                 </form>
-
                 <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);document.getElementById('clr').style.color=m.color;this.title=m.name" title="Color mode"><i class="fa fa-palette" id="clr"></i></button>
-
+                
+                
               </div>
+
+ 
+
+
+              
             </div>
 
             <script type="text/javascript">
+
+            addLoadEvent(mem_map());
+            function mem_map()
+            {
+              var linestep = 4096;
+                document.getElementById("mem_map").innerHTML = 
+                  oMEMGRID.build_grid(7*linestep,8,-linestep) 
+                + oMEMGRID.build_grid(15*linestep,8,-linestep);
+                oMEMGRID.paint_grid();
+            }
+
              var bColor = false;
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
             function onPopup(id) { var e = document.getElementById(id); e.hidden = !e.hidden; }

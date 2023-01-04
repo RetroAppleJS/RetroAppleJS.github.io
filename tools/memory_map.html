@@ -21,11 +21,11 @@
   ██   ██    ██    ██      ██ ███████ 
 -->  
 <body onload="init()">
-
-
     <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;">
       <input type=button onclick="memscan(document.getElementById('address_decode'))"  style="font-family:Arial;font-size:11px;float:left;padding-top:3px" value="address decoder"></input>&nbsp;
       <input type=text id="address_decode" style="width:205px" value="(adr & 0xF000)">
+    </div>
+    
       <!--
     <table class=gtable style="float:left">
       <tr><td>7000</td><td id='m7000'></td><td id='m7100'></td><td id='m7200'></td><td id='m7300'></td><td id='m7400'></td><td id='m7500'></td><td id='m7600'></td><td id='m7700'></td><td id='m7800'></td><td id='m7900'></td><td id='m7A00'></td><td id='m7B00'></td><td id='m7C00'></td><td id='m7D00'></td><td id='m7E00'></td><td id='m7F00'></td></tr>
@@ -83,7 +83,7 @@ function memscan()
 }
 
 
-
+// build grid
 function init()
 {
   var linestep = 4096;
@@ -118,12 +118,8 @@ function init()
 
   </script>
 
-
-<div id="debug2"></div>
-<div id="output"></div>
-
-  </div>
-
+  <div id="debug2"></div>
+  <div id="output"></div>
 
 
   <textarea id="debug" style="width:1024px;height:200px" hidden></textarea>
