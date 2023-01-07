@@ -311,8 +311,9 @@
               <div class="hints1" id="settings" hidden="">
                 <div class=toolbox>
                   <div class=appbox title="CPU" style="height:80px;padding:0px 6px 0px 6px;">
-                    CPU<br>
-                    Load <input id="cpu_pct" value="" size="3">
+                    CPU
+
+                    <br>Load <input id="cpu_pct" value="" size="3">
                     <div id="cpu_monitor">
                     
                     </div>
@@ -321,9 +322,8 @@
                   
                   <div class=appbox style="height:80px;width:340px;padding:0px 6px 0px 6px;" title="Memory map"><div style="float:left">MEM</div><div id="mem_map"></div></div>
                   <div class=appbox style="height:80px;padding:0px 6px 0px 6px;">
-                   
+        
                       SLOTS
-                    
                     <form name="DEVboard">
                       <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
                       <div class=appbox style="width:36px;" title="Slot">#1</div>
@@ -336,8 +336,10 @@
                     </form>
                 
                 </div>
-                <button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);document.getElementById('clr').style.color=m.color;this.title=m.name" title="Color mode"><i class="fa fa-palette" id="clr"></i></button>
-                
+                <div class=appbox style="height:80px;padding:0px 6px 0px 6px;">
+                  SCREEN
+                  <br><button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);document.getElementById('clr').style.color=m.color;this.title=m.name" title="Color mode"><i class="fa fa-palette" id="clr"></i></button>
+                </div>
               </div>
             </div>
           </div>
