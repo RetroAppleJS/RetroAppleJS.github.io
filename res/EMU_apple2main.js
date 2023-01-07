@@ -29,8 +29,9 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
-        ,"EMU_Updates_s":10                // Emulator intervals per second       
+        ,"EMU_Updates_s":10                 // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+        ,"CPU_Dutycycle_check_s":1          // CPU duty cycle measurements per second
     };
 
 var oEMU =
@@ -46,10 +47,14 @@ var oEMU =
         ,"Speaker":{}
         ,"IO":{}
     }
+    ,"stats":{}
 }
 
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
 _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Update
+oEMU.stats.CPU_Intervals_per_DutyCyle = Math.round(_o.EMU_Updates_s / _o.CPU_Dutycycle_check_s)
+oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 oCOM = new COM();
 
