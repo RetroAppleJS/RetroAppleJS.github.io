@@ -310,12 +310,31 @@
 
               <div class="hints1" id="settings" hidden="">
                 <div class=toolbox>
-                  <div class=appbox title="CPU" style="height:80px;padding:0px 6px 0px 6px;">
-                    CPU
+                  <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
+                    CPU<div class="appbut" style="width:30px"><i class="fa fa-stop-circle" onclick="onPopUpClass(this,'fa-sync-alt','fa-stop-circle')"></i></div>
+                    <div id="cpu_mon">
+                      <div style="width:100px">
+                        <div style="float:left;"><input type="range" min="0" max="60" value="30" class="slider" id="myRange" onchange="slider_update(60)" style="width:60px;">&nbsp;</div>
+                        <div id="slider_1" style="padding:0px;"></div>
+                      </div>
+                      <br>Load <input id="cpu_pct" value="" size="4">
+                      <script>
+                        function slider_update(max)
+                        {
+                          var el = document.getElementById("myRange").getBoundingClientRect()
+                          var pct = 2*document.getElementById("myRange").value/max;
+                          var pos = [el.left+4+pct*((el.right-el.left)-17),el.top+2-10]
+                          document.getElementById("slider_1").innerHTML = Math.round(pct*10)*10+"%";
+                          //document.getElementById("slider_1").style="position:absolute; left:"+pos[0]+"px; top:"+pos[1]+"px;";
 
-                    <br>Load <input id="cpu_pct" value="" size="3">
-                    <div id="cpu_monitor">
-                    
+                          _o.CPU_ClockTicks = Math.round( (_o.CPU_ClocksTicks_s*pct) / _o.EMU_Updates_s );
+                        }
+
+                      </script>
+                      <div id="cpu_monitor">
+                        
+                      
+                      </div>
                     </div>
 
                 </div>
@@ -359,6 +378,20 @@
              var bColor = false;
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
             function onPopup(id) { var e = document.getElementById(id); e.hidden = !e.hidden; }
+
+            function onPopUpClass(id,class1,class2)
+            {
+              id.hidden = !id.hidden;
+              if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
+             }
+
+            function isHidden(el)
+            {
+              var style = window.getComputedStyle(el);
+              return (style.display === 'none')
+            }
+
+
 
             function onBoardPaste()
             {
