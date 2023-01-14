@@ -31,7 +31,7 @@ const _o = {"tools":{}
         ,"EMU_key_id":"keybox"
         ,"EMU_Updates_s":10                 // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
-        ,"CPU_Dutycycle_check_s":1          // CPU duty cycle measurements per second
+        ,"CPU_Dutycycle_check_s":2          // CPU duty cycle measurements per second
     };
 
 var oEMU =
