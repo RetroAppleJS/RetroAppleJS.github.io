@@ -311,13 +311,14 @@
               <div class="hints1" id="settings" hidden="">
                 <div class=toolbox>
                   <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
-                    CPU<div class="appbut" style="width:30px"><i class="fa fa-stop-circle" onclick="onPopUpClass(this,'fa-sync-alt','fa-stop-circle')"></i></div>
-                    <div id="cpu_mon">
-                      <div style="width:100px">
-                        <div style="float:left;"><input type="range" min="0" max="60" value="30" class="slider" id="myRange" onchange="slider_update(60)" style="width:60px;">&nbsp;</div>
-                        <div id="slider_1" style="padding:0px;"></div>
+                    CPU
+                    <div id="cpu_mon" style="font-family:monospace;font-size:11px">
+                      <div style="width:100px;float:none">
+                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;"><input type="range" min="0" max="70" value="35" class="slider" id="myRange" onchange="slider_update(70)" style="width:65px"></div>
+                        <div id="slider_1" style="padding:0px 0px 0px 0px;">Speed</div>
                       </div>
-                      <br>Load <input id="cpu_pct" value="" size="4">
+                      <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px">Load <i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oEMU.bCPU_monitoring=!!this.hidden;document.getElementById('cpu_pct').value='';"></i><input id="cpu_pct" value="" size="4"></div>
+
                       <script>
                         function slider_update(max)
                         {
@@ -383,7 +384,7 @@
             {
               id.hidden = !id.hidden;
               if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
-             }
+            }
 
             function isHidden(el)
             {

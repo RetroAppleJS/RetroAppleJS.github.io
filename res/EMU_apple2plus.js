@@ -28,20 +28,23 @@ function Apple2Plus(context) {
     }
 
     this.cycle = function(n) {
-        //if(oEMU.CPU_dutycycle_time===undefined) { oEMU.CPU_dutycycle_time = 0; oEMU.CPU_dutycycle_idx = 0 }
-        var pt = performance.now();
+        var pn = performance.now();
         while (n-- > 0) {
             hw.cycle();
             video.cycle();
             cpu.cycle();
         }
-        oEMU.CPU_dutycycle_time += Math.round(performance.now()-pt);
-        oEMU.CPU_dutycycle_idx++;
 
-        if(oEMU.CPU_dutycycle_idx > oEMU.stats.CPU_Intervals_per_DutyCyle)
+        // measure CPU load over x intervals
+        if(oEMU.bCPU_monitoring==true)
         {
-            document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.CPU_Intervals_per_DutyCyle / _o.EMU_IntervalTime_ms *100)+"%"
-            oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+            oEMU.CPU_dutycycle_time += Math.round(performance.now()-pn);
+            oEMU.CPU_dutycycle_idx++;
+            if(oEMU.CPU_dutycycle_idx > oEMU.stats.CPU_Intervals_per_DutyCyle)
+            {
+                document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.CPU_Intervals_per_DutyCyle / _o.EMU_IntervalTime_ms *100) + "%"
+                oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+            }
         }
     }
 
