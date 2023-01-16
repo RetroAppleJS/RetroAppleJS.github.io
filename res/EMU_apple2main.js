@@ -31,7 +31,7 @@ const _o = {"tools":{}
         ,"EMU_key_id":"keybox"
         ,"EMU_Updates_s":10                 // Emulator intervals per second       
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
-        ,"CPU_Dutycycle_check_s":2          // CPU duty cycle measurements per second
+        ,"CPU_Dutycycle_check_s":1          // CPU duty cycle measurements per second
     };
 
 var oEMU =
@@ -56,7 +56,7 @@ oEMU.stats.CPU_Intervals_per_DutyCyle = Math.round(_o.EMU_Updates_s / _o.CPU_Dut
 oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
 
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
-oCOM = new COM();
+//oCOM = new COM();
 
 var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
 
@@ -68,7 +68,7 @@ function EMU_init()
     // INITIALISE EMULATOR
     appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");
-    apple2plus          = new Apple2Plus(vidContext);
+    apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
 }
 
 function attachKeyboard(bEnable)

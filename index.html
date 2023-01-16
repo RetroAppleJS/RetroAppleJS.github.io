@@ -311,31 +311,34 @@
               <div class="hints1" id="settings" hidden="">
                 <div class=toolbox>
                   <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
-                    CPU
-                    <div id="cpu_mon" style="font-family:monospace;font-size:11px">
-                      <div style="width:100px;float:none">
-                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;"><input type="range" min="0" max="70" value="35" class="slider" id="myRange" onchange="slider_update(70)" style="width:65px"></div>
-                        <div id="slider_1" style="padding:0px 0px 0px 0px;">Speed</div>
-                      </div>
-                      <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px">Load <i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oEMU.bCPU_monitoring=!!this.hidden;document.getElementById('cpu_pct').value='';"></i><input id="cpu_pct" value="" size="4"></div>
+                    SYSTEM
+                    <div style="font-family:arial;font-size:11px">
 
+                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;"><div id="cpu_component" style="float:left;border:0px solid;padding:3px"></div>load&nbsp;<i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oEMU.bCPU_monitoring=!!this.hidden;document.getElementById('cpu_pct').value='';"></i><input id="cpu_pct" value="" size="4"></div>
+                        <br>
+                        <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="slider_update(this,70)" style="width:65px">
+                        <div id="all_components"></div>
                       <script>
-                        function slider_update(max)
+                        function slider_update(obj,max)
                         {
-                          var el = document.getElementById("myRange").getBoundingClientRect()
-                          var pct = 2*document.getElementById("myRange").value/max;
+                          var el = obj.getBoundingClientRect()
+                          var pct = 2*obj.value/max;
                           var pos = [el.left+4+pct*((el.right-el.left)-17),el.top+2-10]
-                          document.getElementById("slider_1").innerHTML = Math.round(pct*10)*10+"%";
-                          //document.getElementById("slider_1").style="position:absolute; left:"+pos[0]+"px; top:"+pos[1]+"px;";
-
+                          document.getElementById("slider_1v").innerHTML = Math.round(pct*10)*10+"%";
                           _o.CPU_ClockTicks = Math.round( (_o.CPU_ClocksTicks_s*pct) / _o.EMU_Updates_s );
                         }
 
+                        function system_tab_update()
+                        {
+                          document.getElementById("cpu_component").innerHTML = _CFG_SYSCODE["A2P"].CPU;
+                          document.getElementById("all_components").innerHTML = ""
+                          //_CFG_SYSCODE[oEMU.system.Video].Display
+                          +_CFG_SYSCODE["A2P"].Display+" Vid <i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i><br>"
+                          +_CFG_SYSCODE["A2P"].KeysROM+" Kbd <i class='fa fa-keyboard' title='Keyboard'></i>"
+                        }
                       </script>
-                      <div id="cpu_monitor">
-                        
-                      
-                      </div>
+
                     </div>
 
                 </div>
@@ -355,10 +358,6 @@
                       <div class=appbox style="width:36px;" title="Slot">#7</div>
                     </form>
                 
-                </div>
-                <div class=appbox style="height:80px;padding:0px 6px 0px 6px;">
-                  SCREEN
-                  <br><button class=appbut value="Monitor" onclick="javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);document.getElementById('clr').style.color=m.color;this.title=m.name" title="Color mode"><i class="fa fa-palette" id="clr"></i></button>
                 </div>
               </div>
             </div>

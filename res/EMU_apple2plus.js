@@ -8,7 +8,7 @@
 // apple2plus.js
 
 //const { getParent } = require("domutils");
-oEMU.system["A2P"] = true;
+oEMU.system["A2P"] = {/*  config overrides */};
 
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
@@ -20,32 +20,37 @@ function Apple2Plus(context) {
         hw.reset();
         cpu.reset();
         video.reset();
+        system_tab_update();
     }
 
     this.restart = function() {
         hw.restart();
         this.reset();
+        system_tab_update();
+    }
+
+    this.dashboard_refresh = function(args)
+    {
+        oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.pn);
+        oEMU.CPU_dutycycle_idx++;
+        if(oEMU.CPU_dutycycle_idx > oEMU.stats.CPU_Intervals_per_DutyCyle)
+        {
+            document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.CPU_Intervals_per_DutyCyle / _o.EMU_IntervalTime_ms *100) + "%"
+            oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+        }
     }
 
     this.cycle = function(n) {
-        var pn = performance.now();
+        var args = {"pn":performance.now()};
         while (n-- > 0) {
             hw.cycle();
             video.cycle();
             cpu.cycle();
         }
 
-        // measure CPU load over x intervals
+        // display dashboard parameters
         if(oEMU.bCPU_monitoring==true)
-        {
-            oEMU.CPU_dutycycle_time += Math.round(performance.now()-pn);
-            oEMU.CPU_dutycycle_idx++;
-            if(oEMU.CPU_dutycycle_idx > oEMU.stats.CPU_Intervals_per_DutyCyle)
-            {
-                document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.CPU_Intervals_per_DutyCyle / _o.EMU_IntervalTime_ms *100) + "%"
-                oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
-            }
-        }
+            this.dashboard_refresh(args);
     }
 
     this.keystroke = function(data)

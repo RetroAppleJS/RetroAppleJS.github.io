@@ -53,6 +53,7 @@ function COM()
 		}
 	}
 }
+oCOM = new COM();
 
 var oMEMGRID = new function()
 {
