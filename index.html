@@ -335,7 +335,7 @@
                           document.getElementById("all_components").innerHTML = ""
                           //_CFG_SYSCODE[oEMU.system.Video].Display
                           +_CFG_SYSCODE["A2P"].Display+" Vid <i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i><br>"
-                          +_CFG_SYSCODE["A2P"].KeysROM+" Kbd <i class='fa fa-keyboard' title='Keyboard'></i>"
+                          +_CFG_SYSCODE["A2P"].KeysROM+" Kbd <i class='fa fa-keyboard' title='Keyboard'></i><i class='fa fa-cog'></i>"
                         }
                       </script>
 
@@ -343,7 +343,11 @@
 
                 </div>
                   
-                  <div class=appbox style="height:80px;width:340px;padding:0px 6px 0px 6px;" title="Memory map"><div style="float:left">MEM</div><div id="mem_map"></div></div>
+                  <div class=appbox style="height:80px;width:340px;padding:0px 6px 0px 6px;" title="Memory map">
+                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oEMU.bMEM_monitoring=!!this.hidden;"></i></div>
+                    <div id="mem_map"></div>
+                  </div>
+
                   <div class=appbox style="height:80px;padding:0px 6px 0px 6px;">
         
                       SLOTS
@@ -373,6 +377,11 @@
                   oMEMGRID.build_grid(7*linestep,8,-linestep) 
                 + oMEMGRID.build_grid(15*linestep,8,-linestep);
                 oMEMGRID.paint_grid();
+            }
+
+            function update_mem_map()
+            {
+              
             }
 
              var bColor = false;

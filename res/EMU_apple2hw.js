@@ -36,7 +36,7 @@ function Apple2Hw(vid,keys) {
             ram[i] = Math.floor(Math.random() * 256.0);
         
         // build memory map
-        this.build_mem_map();
+        //this.build_mem_map();
         //this.memscan();
     }
 
@@ -44,11 +44,14 @@ function Apple2Hw(vid,keys) {
         this.io.cycle();
     }
 
+    this.mem_mon = [];
+
     // Memspace interface for cpu6502.  If I wanted to bother, I'd have
     // a parent class called Memspace which only had read() and write()
     // methods.
     //
 
+    /*
     this.mem_layout = {
         "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
        ,"0100-01FF":["#D0D0D0","STACK","ST"]
@@ -72,6 +75,7 @@ function Apple2Hw(vid,keys) {
        ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
        ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
     }
+    
 
     this.hextab = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
     this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
@@ -82,6 +86,7 @@ function Apple2Hw(vid,keys) {
                             + this.hextab[Math.floor((v & 0xf0) / 16)]
                             + this.hextab[v & 0x000f];
     }
+
 
     this.memscan = function()
     {
@@ -110,9 +115,10 @@ function Apple2Hw(vid,keys) {
         }
     }
 
+ 
     this.mem_map = new Array(512);
-    const mem_gran = 7;  // granularity in bits
 
+    const mem_gran = 7;  // granularity in bits
     this.build_mem_map = function()
     {
         for(var i=0;i<512;i++) this.mem_map[0] = ""
@@ -121,20 +127,21 @@ function Apple2Hw(vid,keys) {
             var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
             for(var addr=b[0];addr<b[1];addr+=1<<mem_gran)
             {
-
                 this.mem_map[addr>>mem_gran] = this.mem_layout[i][2];
                 //console.log("this.mem_map["+(addr>>mem_gran)+"]="+this.mem_layout[i][2])
             }
         }
 
     }
+    */
 
-    this.read = function(addr) {
+    this.read = function(addr)
+    {
         var d8;
-        var bOld = true;
+        //var bOld = true;
         addr = addr & 0xFFFF;
-        if(bOld)
-        {
+        //if(bOld)
+        //{
             if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
                 d8 = this.io.read(addr);
             else if (addr < RAM_SIZE)
@@ -145,7 +152,9 @@ function Apple2Hw(vid,keys) {
                 d8 = this.io.read(addr - IO_ADDR);
             else
                 d8 = 0x55;
-        }
+     
+        //}
+        /*
         else
         {
             try
@@ -171,15 +180,14 @@ function Apple2Hw(vid,keys) {
                 //console.log("addr="+addr)
             }
         }
+        */
        
-      
-        
-        
 
         return d8;
     }
 
-    this.write = function(addr, d8) {
+    this.write = function(addr, d8)
+    {
         if (d8 < 0 || d8 > 0xff)
             console.err("apple2hw.write(%s %s) d8 too big!",
                         addr.toString(16), d8.toString(16));
@@ -197,10 +205,12 @@ function Apple2Hw(vid,keys) {
         }
         else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             this.io.write(addr - IO_ADDR, d8);
+
+        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;    
     }
 
     // Give Video a reference to memory.
     video.vidram = ram;
 
-    this.restart();
+    //this.restart();  // FVD not sure if I may remove this, but could trigger double restart unintentionally
 }

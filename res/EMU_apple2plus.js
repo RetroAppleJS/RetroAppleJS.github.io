@@ -31,17 +31,34 @@ function Apple2Plus(context) {
 
     this.dashboard_refresh = function(args)
     {
-        oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.pn);
+        oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
         oEMU.CPU_dutycycle_idx++;
         if(oEMU.CPU_dutycycle_idx > oEMU.stats.CPU_Intervals_per_DutyCyle)
         {
             document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.CPU_Intervals_per_DutyCyle / _o.EMU_IntervalTime_ms *100) + "%"
             oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
         }
+        oMEMGRID.paint_grid();
+
+        for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)
+        {
+            if(hw.mem_mon[i]) 
+            {
+                //document.getElementById("m"+).
+                var id = oCOM.getHexByte(i);
+                el = document.getElementById("m"+id+"00");
+                el.style.backgroundColor = "#FFFFFF";
+                //document.getElementById("m"+id+"00");
+                //console.log("m"+id+"00")
+            }
+        }
+        
+        //document.getElementById("m7000").style.backgroundColor = "#FFFFFF";
     }
 
     this.cycle = function(n) {
-        var args = {"pn":performance.now()};
+        var args = {"cpu_chrono":performance.now()};
+        hw.mem_mon = [];
         while (n-- > 0) {
             hw.cycle();
             video.cycle();

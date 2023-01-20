@@ -53,6 +53,7 @@ function COM()
 		}
 	}
 }
+
 oCOM = new COM();
 
 var oMEMGRID = new function()
@@ -85,6 +86,7 @@ var oMEMGRID = new function()
 }
 
   const mem_gran = 8;  // block granularity in bits
+  this.mem_gran = mem_gran;
 
   this.build_mem_map = function()
   {
