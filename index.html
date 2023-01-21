@@ -167,19 +167,7 @@
         }
     }
 
-    ////////////////////////////
-    // ONLOAD EVENT SEQUENCER //
-    ////////////////////////////
 
-    function addLoadEvent(func)
-    {
-        console.log("addLoadEvent("+func.name+")");
-        var oldonload = window.onload;
-        if (typeof window.onload != "function")
-          window.onload = func;
-        else
-        { window.onload = function() { if (oldonload) oldonload(); func() } }
-    }
     
     function toggle()
     {
@@ -369,7 +357,7 @@
 
             <script type="text/javascript">
 
-            addLoadEvent(mem_map);
+            oCOM.addLoadEvent(mem_map);
             function mem_map()
             {
               var linestep = 4096;

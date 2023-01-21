@@ -33,10 +33,10 @@ function Apple2Plus(context) {
     {
         oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
         oEMU.CPU_dutycycle_idx++;
-        if(oEMU.CPU_dutycycle_idx > oEMU.stats.CPU_Intervals_per_DutyCyle)
+        if(oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
             // update CPU load display
-            document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.CPU_Intervals_per_DutyCyle / _o.EMU_IntervalTime_ms *100) + "%"
+            document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
             oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
 
             // update memory map
@@ -51,7 +51,6 @@ function Apple2Plus(context) {
                     //console.log("m"+id+"00")
                 }
             }
-
         }
     }
 

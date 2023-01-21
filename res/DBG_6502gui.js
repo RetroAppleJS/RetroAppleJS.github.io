@@ -238,10 +238,10 @@ function resetProcessor() {
 }
 
 function DBG_init() {
-	console.log('DBG initializing ...');
+	//console.log('DBG initializing ...');
 	resetProcessor();
 	loaded=true;
-	console.log('DBG ready.');
+	//console.log('DBG ready.');
 }
 
 function updateReg(r) {
@@ -802,5 +802,5 @@ function simStep() {
 }
 
 
-addLoadEvent(DBG_init);
+oCOM.addLoadEvent(DBG_init);
 // eof

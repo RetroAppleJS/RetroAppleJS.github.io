@@ -27,11 +27,17 @@ function COM()
     return s;
   }
 
+  /////// GUI FUNCTIONS ///////
+
+  /////////////////////////////////////
+  // WRITE VALUES TO ANY TAG ELEMENT //
+  /////////////////////////////////////
+
   this.writeDisplay = function(n,v,f)
 	{
 		// n = el, v = value, f = extra HTML
 		var obj,tagname,bAppend = typeof(f)!="undefined";
-		if (document.getElementById) { obj=document.getElementById(n); tagname = obj.tagName.toUpperCase() }
+		if(document.getElementById) { obj=document.getElementById(n); tagname = obj.tagName.toUpperCase() }
 		else if (document.all) { obj=document.all[n] }
 		if(!obj) return;
     
@@ -52,6 +58,30 @@ function COM()
 				else obj.innerHTML=v;
 		}
 	}
+
+    ////////////////////////////
+    // ONLOAD EVENT SEQUENCER //
+    ////////////////////////////
+
+    this.addLoadEvent = function(func)
+    {
+        //console.log("addLoadEvent("+func.name+")");
+        var oldonload = window.onload;
+        if (typeof window.onload != "function")
+          window.onload = func;
+        else
+        { window.onload = function() { if (oldonload) oldonload(); func() } }
+    }
+
+    /////////////////////////////////
+    // DASHBOARD REFRESH SEQUENCER //
+    /////////////////////////////////
+
+    this.addRefreshEvent = function(func)
+    {
+      console.log("addRefreshEvent("+func.name+")");
+    }
+
 }
 
 oCOM = new COM();
@@ -98,7 +128,7 @@ var oMEMGRID = new function()
         this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
         s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
       }
-      console.log(a[0]+"-"+a[1]+" ("+s+")");
+      //console.log(a[0]+"-"+a[1]+" ("+s+")");
     }
   }
 
