@@ -381,10 +381,10 @@
 
             function update_mem_map()
             {
-              
+
             }
 
-             var bColor = false;
+            var bColor = false;
             function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
             function onPopup(id) { var e = document.getElementById(id); e.hidden = !e.hidden; }
 
@@ -399,8 +399,6 @@
               var style = window.getComputedStyle(el);
               return (style.display === 'none')
             }
-
-
 
             function onBoardPaste()
             {
@@ -514,16 +512,6 @@
               //ass.listing.value = e;
               
               var s = "";
-              for(var _i=0;_i<e.length;_i++)
-              {
-                //alert(e)
-
-                  //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
-                  //apple2OnKeyPress(event);
-                  //var code = apple2plus.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
-                  //if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
-                  //apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
-              }
             }
             function onASMBoardClear() { ASMboard.boardText.value = "" }; 
           </script>
