@@ -72,50 +72,52 @@ NEXTCMD         LDA #0                  ;Clear begin and end values
                 STA HEX2L
                 STA HEX2H
 
-NEXTCHR         INX
-                LDA IN,X
-                CMP #$D2
-                BEQ READ
-                CMP #$D7
-                BEQ WRITE
-                CMP #$AE
-                BEQ SEP
-                CMP #CR
-                BEQ GOESC
-                CMP #$A0
+NEXTCHR         INX                     ;Increment input pointer
+                LDA IN,X                ;Get next char from input line
+                CMP #$D2                ;Read command? “R”
+                BEQ READ                ;Yes!
+                CMP #$D7                ;Write command? “W”
+                BEQ WRITE               ;Yes! (note: CY=1)
+                CMP #$AE                ;Separator?”.”
+                BEQ SEP                 ;Yes!
+                CMP #CR                 ;End of line?
+                BEQ GOESC               ;Escape to monitor! We’re done
+                CMP #$A0                ;Ignore spaces: ” “
                 BEQ NEXTCHR
-                EOR #$B0
-                CMP #9+1
-                BCC DIG
-                ADC #$88
-                CMP #$FA
-                BCC WOZACI
+                EOR #$B0                ;Map digits to 0-9 “0”
+                CMP #9+1                ;Is it a decimal digit?
+                BCC DIG                 ;Yes!
+                ADC #$88                ;Map letter “A”-”F” to $FA-$FF
+                CMP #$FA                ;Hex letter?
+                BCC WOZACI              ;No! Character not hex!
 
-DIG             ASL
+DIG             ASL                     ;Hex digit to MSD of A
                 ASL
                 ASL
                 ASL
 
-                LDY #4
-HEXSHIFT        ASL
-                ROL HEX1L
-                ROL HEX1H
-                DEY
-                BNE HEXSHIFT
-                BEQ NEXTCHR
+                LDY #4                  ;Shift count
+HEXSHIFT        ASL                     ;Hex digit left, MSB to carry
+                ROL HEX1L               ;Rotate into LSD
+                ROL HEX1H               ;Rotate into MSD
+                DEY                     ;Done 4 shifts?
+                BNE HEXSHIFT            ;No! Loop
+                BEQ NEXTCHR             ;Handle next character
 
 ;-------------------------------------------------------------------------
 ; Return to monitor, prints \ first
 ;-------------------------------------------------------------------------
 
-GOESC           JMP ESCAPE
+GOESC           JMP ESCAPE              ;Escape back to monitor
 
 ;-------------------------------------------------------------------------
 ; Separating . found. Copy HEX1 to Hex2. Doesn’t clear HEX1!!!
 ;-------------------------------------------------------------------------
 
-SEP             LDA HEX1L
+SEP             LDA HEX1L               ;Copy hex value 1 to hex value 2
                 STA HEX2L
-                
+                LDA HEX1H
+                STA HEX2H
+                BCS NEXTCHR             ;Always taken!
 
 ;-------------------------------------------------------------------------
