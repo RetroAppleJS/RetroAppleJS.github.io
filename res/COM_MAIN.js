@@ -27,7 +27,9 @@ function COM()
     return s;
   }
 
-  /////// GUI FUNCTIONS ///////
+
+  /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
+
 
   /////////////////////////////////////
   // WRITE VALUES TO ANY TAG ELEMENT //
@@ -65,7 +67,7 @@ function COM()
 
     this.addLoadEvent = function(func)
     {
-        //console.log("addLoadEvent("+func.name+")");
+        console.log("addLoadEvent("+func.name+")");
         var oldonload = window.onload;
         if (typeof window.onload != "function")
           window.onload = func;
@@ -77,9 +79,12 @@ function COM()
     // DASHBOARD REFRESH SEQUENCER //
     /////////////////////////////////
 
+    // array of functions is called at the pace of EMU_DashboardRefresh_s = Dashboard updates per second   
+    this.RefreshEvent_arr = {};
     this.addRefreshEvent = function(func)
     {
       console.log("addRefreshEvent("+func.name+")");
+      this.RefreshEvent_arr[ func.name ] = {"active":true,"function":func}
     }
 
 }
