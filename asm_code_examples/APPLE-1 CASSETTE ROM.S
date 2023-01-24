@@ -129,7 +129,7 @@ WRITE           LDA #64
 
 WRNXT           DEY
                 LDX #0
-                LDA (*HEX2L,X)
+                LDA (HEX2L,X)
 
                 LDX #$10                ;(8*2) Shift 8 bits (decremented twice)
 WBITLOOP        ASL A               
@@ -167,7 +167,7 @@ RDBIT           PHA
                 LDY #57
                 DEX
                 BNE RDBIT
-                STA (*HEX2L,X)
+                STA (HEX2L,X)
 
                 JSR INCADDR
                 LDY #53
