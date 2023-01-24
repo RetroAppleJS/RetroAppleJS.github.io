@@ -263,9 +263,9 @@ function ASM()
 	{
 		var a = n.lastIndexOf("+");
 		var b = n.lastIndexOf("-");
-		var c = a >= 0 && b < 0 ? a : b;
-		var d = n.length - c - 1;
-		if (c < 0 && d > 6) return 0;
+		var c = a >= 0 && b < 0 ? a : b; // position of sign 
+		var d = n.length - c - 1;		 // length of expression before the sign
+		if (c < 0 && d > 6 || c < 0) return 0;	 
 		nn = n.slice(-d - 1);
 		var nn = this.getNumber(nn);
 		return nn.val == "NaN" ? 0 : nn.val;
