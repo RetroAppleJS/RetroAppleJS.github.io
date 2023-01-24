@@ -18,8 +18,8 @@ HEX1L           EQU      $24             ; Last "opened" location Low
 HEX1H           EQU      $25             ; Last "opened" location High
 HEX2L           EQU      $26             ; Store address Low
 HEX2H           EQU      $27             ; Store address High
-SAVEINDEX       EQU      $28             ; Hex value parsing Low
-LASTSTATE       EQU      $29             ; Hex value parsing High
+SAVIDX          EQU      $28             ; Hex value parsing Low
+LSTSTA          EQU      $29             ; Hex value parsing High
 
 IN              EQU      $0200           ; Input buffer ($0200 - $027F)
 FLIP            EQU      $C000           ; Output flip-flop
@@ -48,7 +48,7 @@ WOZACI          LDA    #$AA              ;Print the Tape prompt “*”
                 LDA    #CR               ;And drop the cursor one line
                 JSR    ECHO
                 LDY    #$FF              ;Reset the input buffer index
-NEXTCHAR        INY
+NXTCHR          INY
 KBDWAIT         LDA    KBDCR             ;Wait for a key
                 BPL    KBDWAIT           ;Still no key!
 
@@ -58,7 +58,7 @@ KBDWAIT         LDA    KBDCR             ;Wait for a key
                 CMP #ESC
                 BEQ WOZACI               ;Start from scratch if ESC!
                 CMP #CR
-                BNE NEXTCHAR             ;Read keys until CR
+                BNE NXTCHR             ;Read keys until CR
 
                 LDX #$FF                 ;Initialize parse buffer pointer
 
@@ -66,13 +66,13 @@ KBDWAIT         LDA    KBDCR             ;Wait for a key
 ; Start parsing first or a new tape command
 ;-------------------------------------------------------------------------
 
-NEXTCMD         LDA #0                  ;Clear begin and end values
-                STA HEX1L
-                STA HEX1H
-                STA HEX2L
-                STA HEX2H
+NXTCMD          LDA #0                  ;Clear begin and end values
+                STA *HEX1L
+                STA *HEX1H
+                STA *HEX2L
+                STA *HEX2H
 
-NEXTCHR         INX                     ;Increment input pointer
+NXTCH1          INX                     ;Increment input pointer
                 LDA IN,X                ;Get next char from input line
                 CMP #$D2                ;Read command? “R”
                 BEQ READ                ;Yes!
@@ -83,7 +83,7 @@ NEXTCHR         INX                     ;Increment input pointer
                 CMP #CR                 ;End of line?
                 BEQ GOESC               ;Escape to monitor! We’re done
                 CMP #$A0                ;Ignore spaces: ” “
-                BEQ NEXTCHR
+                BEQ NXTCH1
                 EOR #$B0                ;Map digits to 0-9 “0”
                 CMP #$0A                ;(9+1) Is it a decimal digit?
                 BCC DIG                 ;Yes!
@@ -98,11 +98,11 @@ DIG             ASL A                    ;Hex digit to MSD of A
 
                 LDY #4                  ;Shift count
 HEXSHIFT        ASL A                   ;Hex digit left, MSB to carry
-                ROL HEX1L               ;Rotate into LSD
-                ROL HEX1H               ;Rotate into MSD
+                ROL *HEX1L              ;Rotate into LSD
+                ROL *HEX1H              ;Rotate into MSD
                 DEY                     ;Done 4 shifts?
                 BNE HEXSHIFT            ;No! Loop
-                BEQ NEXTCHR             ;Handle next character
+                BEQ NXTCH1              ;Handle next character
 
 ;-------------------------------------------------------------------------
 ; Return to monitor, prints \ first
@@ -114,11 +114,11 @@ GOESC           JMP ESCAPE              ;Escape back to monitor
 ; Separating . found. Copy HEX1 to Hex2. Doesn’t clear HEX1!!!
 ;-------------------------------------------------------------------------
 
-SEP             LDA HEX1L               ;Copy hex value 1 to hex value 2
-                STA HEX2L
-                LDA HEX1H
-                STA HEX2H
-                BCS NEXTCHR             ;Always taken!
+SEP             LDA *HEX1L               ;Copy hex value 1 to hex value 2
+                STA *HEX2L
+                LDA *HEX1H
+                STA *HEX2H
+                BCS NXTCH1             ;Always taken!
 
 ;-------------------------------------------------------------------------
 ; Write a block of memory to tape
@@ -127,9 +127,9 @@ SEP             LDA HEX1L               ;Copy hex value 1 to hex value 2
 WRITE           LDA #64
                 JSR WHEADER
 
-WRNEXT          DEY
+WRNXT           DEY
                 LDX #0
-                LDA (HEX2L,X)
+                LDA (*HEX2L,X)
 
                 LDX #$10                ;(8*2) Shift 8 bits (decremented twice)
 WBITLOOP        ASL A               
@@ -138,10 +138,10 @@ WBITLOOP        ASL A
 
                 JSR INCADDR
                 LDY #30
-                BCC WRNEXT
+                BCC WRNXT
 
-RESTIDX         LDX SAVEINDEX
-                BCS NEXTCMD
+RESTIDX         LDX *SAVIDX
+                BCS NXTCMD
 
 ;-------------------------------------------------------------------------
 ; Read from tape
@@ -167,7 +167,7 @@ RDBIT           PHA
                 LDY #57
                 DEX
                 BNE RDBIT
-                STA (HEX2L,X)
+                STA (*HEX2L,X)
 
                 JSR INCADDR
                 LDY #53
@@ -177,9 +177,9 @@ RDBIT           PHA
 FULLCYCLE       JSR CMPLEVEL
 CMPLEVEL        DEY
                 LDA TAPEIN
-                CMP LASTSTATE
+                CMP *LSTSTA
                 BEQ CMPLEVEL
-                STA LASTSTATE
+                STA *LSTSTA
 
                 CPY #128
                 RTS 
@@ -198,7 +198,7 @@ CMPLEVEL        DEY
 ; routine to trigger the reading of the actual data.
 ;-------------------------------------------------------------------------
 
-WHEADER         STX SAVEINDEX           ;Save index in input line
+WHEADER         STX *SAVIDX             ;Save index in input line
 HCOUNT          LDY #66                 ;Extra long delay
                 JSR WDELAY              ;CY is constantly 1, writing a 1
                 BNE HCOUNT              ;Do this 64 * 256 time! 
@@ -233,13 +233,13 @@ WRITE1          LDY FLIP,X
 ; Increment current address and compare with last address
 ;-------------------------------------------------------------------------
 
-INCADDR         LDA HEX2L
-                CMP HEX1L
+INCADDR         LDA *HEX2L
+                CMP *HEX1L
                 LDA HEX2H
-                SBC HEX1H 
-                INC HEX2L
+                SBC *HEX1H 
+                INC *HEX2L
                 BNE NOCARRY
-                INC HEX2H
+                INC *HEX2H
 NOCARRY         RTS
 
 ;-------------------------------------------------------------------------
