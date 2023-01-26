@@ -272,27 +272,9 @@ function ASM()
 		nn = n.slice(-d - 1);
 		var nn = this.getNumber(nn);
 		return nn.val == "NaN" ? 0 : nn.val;
-	}
-
-	this.getExpression = function(str)
-	{
-		var exp = str.split(new RegExp("[+\\-\\*^%~]","g"));
-		// resolve minus sign in first character
-		if(str.charAt(0)=="-") { exp[0]=""; exp[1]="+"+exp[1]} 
-		var nexp = "",l=0;
-		for(var i=0;i<exp.length;i++)
-		{
-			l+=exp[i].length+1;
-			var oper = str.charAt(l-1);
-			exp[i] = this.getNumber(exp[i]).val;
-			nexp += exp[i]+oper;
-		}
-		var parser = new this.MathParser();
-		console.log(str+" >> this.MathParser().parse('"+nexp+"') = "+parser.parse(nexp))
-		return this.getNumber(parser.parse(nexp)+"").val;
 	}	
 
-	this.new_getExpression = function(str)
+	this.getExpression = function(str)
 	{
 		var exp = str.split(new RegExp("[+\\-\\*^%~]","g"));
 		var r = "NaN";

@@ -915,7 +915,7 @@ function doPass(pass)
 					{
 						// operand
 						addr = addr.substring(b1, b2);
-						var e = oASM.new_getExpression(addr);
+						var e = oASM.getExpression(addr);
 						listing.value += addr;
 						//padd += e.bytes*2;
 						padd += addr.length;
