@@ -235,11 +235,14 @@ function ASM()
 				r =  {"val":v,"fmt":"ASC","bytes":s.length};
 				break;
 			default:
-				if(this.validate(str,"[A-Z0-9_]+")) // IDENTIFIER
+				if(this.validate(str,"[A-Za-z0-9_]+")) // IDENTIFIER
 				{
 					r = this.getIdentifier(str);
 					err = r.err;
 				}
+				// TODO DEBUG !!!
+				if(str=="")
+					r = {"val":0,"fmt":"DEC","bytes":1};
 		}
 		if(r.bytes>2) r.err = "number range error";
 		var m = typeof(str)=="string"?str.match(/(["']).*(["'])/):null;
@@ -274,6 +277,8 @@ function ASM()
 	this.getExpression = function(str)
 	{
 		var exp = str.split(new RegExp("[+\\-\\*^%~]","g"));
+		// resolve minus sign in first character
+		if(str.charAt(0)=="-") { exp[0]=""; exp[1]="+"+exp[1]} 
 		var nexp = "",l=0;
 		for(var i=0;i<exp.length;i++)
 		{
@@ -283,8 +288,48 @@ function ASM()
 			nexp += exp[i]+oper;
 		}
 		var parser = new this.MathParser();
-		return parser.parse(nexp);
+		console.log(str+" >> this.MathParser().parse('"+nexp+"') = "+parser.parse(nexp))
+		return this.getNumber(parser.parse(nexp)+"").val;
 	}	
+
+	this.new_getExpression = function(str)
+	{
+		var exp = str.split(new RegExp("[+\\-\\*^%~]","g"));
+		var r = "NaN";
+		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
+		switch(c[0])
+		{
+			case ">":		// HI-BYTE
+				r = this.new_getExpression(str.substring(1));
+				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
+				return r;
+			case "<":		// LO-BYTE
+				r = this.new_getExpression(str.substring(1));
+				r.val = r.val & 0xff; r.bytes = 1;
+				return r;
+			case "-":
+				r = this.new_getExpression(str.substring(1));
+				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
+				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
+				return r;
+			default:
+				var nexp = "",l=0;
+				for(var i=0;i<exp.length;i++)
+				{
+					l+=exp[i].length+1;
+					var oper = str.charAt(l-1);
+					var e = this.getNumber(exp[i]);
+					exp[i] = e.val;
+					r.err += e.err+"|"
+					nexp += exp[i]+oper;
+				}
+
+				var parser = new this.MathParser();
+				console.log(str+" >> this.MathParser().parse('"+nexp+"') = "+parser.parse(nexp))
+				var e = this.getNumber(parser.parse(nexp)+"")
+				return {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
+		}	
+	}
 
 //+ Carlos R. L. Rodrigues
 //@ http://jsfromhell.com/classes/math-parser [rev. #3]

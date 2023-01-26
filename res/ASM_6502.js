@@ -869,131 +869,76 @@ function doPass(pass)
 					}
 
 
+
+
+
+					function TEMP_EXPRESSION2(addr,e,padd,listing,mode,pc)
+					{
+						listing.value += addr;
+						padd += e.bytes;
+						if (e.err)
+						{
+							displayError(e.err);
+							return false;
+						}
+						oper = e.val;
+
+						var l = listing.value.length;
+						switch(mode)
+						{
+							case 4:
+							case 7:  listing.value += ',X'; break;
+							case 5:
+							case 8:  listing.value += ',Y'; break;
+							case 9:  listing.value += ')'; break;
+							case 10: listing.value += ',X)'; break;
+							case 11: listing.value += '),Y'; break;
+							case 12: oper = oper - ((pc + 2) & 0xffff);
+									if ((oper > 127) || (oper < -128))
+									{ displayError('error: branch target out of range'); return false; }
+						}
+						padd += listing.value.length - l;
+
+						return {"padd":padd,"listing":listing,"oper":oper}
+					}
+
+
+
+
+
+
+
+
+
+
 					if (mode > 1)
 					{
 						// operand
 						addr = addr.substring(b1, b2);
+						var e = oASM.new_getExpression(addr);
+						listing.value += addr;
+						//padd += e.bytes*2;
+						padd += addr.length;
 
-						var e = oASM.getExpression(addr);
+						if (e.err) { displayError(e.err); return false; }
+						oper = e.val;
+						var l = listing.value.length;
 						
-
-						var bt = 0;
-						var adp = addr.charAt(0); // address prefix
-
-						//alert(e+" "+adp);
-
-						var oper = 0;
-						if ((adp == '>') || (adp == '<'))
+						switch(mode)
 						{
-							bt = (adp == '>') ? 1 : -1;
-							listing.value += adp;
-							padd++;
-							addr = addr.substring(1);
-							adp = addr.charAt(0);
+							case 4:
+							case 7:  listing.value += ',X'; break;
+							case 5:
+							case 8:  listing.value += ',Y'; break;
+							case 9:  listing.value += ')'; break;
+							case 10: listing.value += ',X)'; break;
+							case 11: listing.value += '),Y'; break;
+							case 12: oper = oper - ((pc + 2) & 0xffff);
+									if ((oper > 127) || (oper < -128))
+									{ displayError('error: branch target out of range'); return false; }
 						}
-						if ((adp == '$') || (adp == '%') || ((adp >= '0') && (adp <= '9')))
-						{
-							// number
-							oper = oASM.getNumber(addr).val;
-							if (oper == 'NaN')
-							{
-								displayError('syntax error:\nnumber expected');
-								return false;
-							}
-							oper &= 0xffff;
-							var s = (steptab[mode] > 2) ? '$' + getHexWord(oper) : '$' + getHexByte(oper);
-							listing.value += s;
-							padd += s.length;
-						}
-						else if (adp == '\'' || adp == "\"")
-						{
-							// ascii character
-							a1 = addr.charAt(1);
-							var num_offset = Number(oASM.getOffset(addr));
-
-							listing.value += addr;
-							oper = getAscii(a1) + num_offset;
-							if (num_offset > 0) padd += String(num_offset).length + 1;
-							var num_offset = 0;
-							//  var s='$'+getHexByte(oper);
-							//  listing.value+=s;
-							//  padd+=s.length;
-						}
-						else
-						{
-							// label identifier for an address location
-							var addr_offset = Number(oASM.getOffset(addr));
-							// FVD getOffset  e.g.    TEMP = $6005 + $10
-							addr = oASM.getID(addr); // FVD filter out label from address
-
-							//addr_offset = addr_offset.substring(addr.length,addr_offset.length);
-							//var ao1 = addr_offset.charAt(0);
-							//if(ao1=='+' || ao1=='-') addr_offset = Number(addr_offset)
-							//else addr_offset = 0;
-
-							if (addr.err)
-							{
-								displayError(addr.err);
-								return false;
-							}
-							else if (typeof oASM.symtab[addr.val] == 'undefined')
-							{
-								displayError('compile error:\nundefined identifier "' + addr.val + '"');
-								return false;
-							}
-							addr = addr.val
-							oper = oASM.symtab[addr] + addr_offset;
-							listing.value += addr;
-							addr = '' + addr;
-							padd += addr.length;
-						}
-
-						
-						if (bt < 0)
-						{
-							// lo-byte
-							oper &= 0xff;
-						}
-						else if (bt > 0)
-						{
-							// hi-byte
-							oper = Math.floor(oper / 256) & 0xff;
-						}
-						if (mode == 12)
-						{
-							// rel
-							oper = oper - ((pc + 2) & 0xffff);
-							if ((oper > 127) || (oper < -128))
-							{
-								displayError('error: branch target out of range');
-								return false;
-							}
-						}
-						if ((mode == 4) || (mode == 7))
-						{
-							listing.value += ',X';
-							padd += 2;
-						}
-						else if ((mode == 5) || (mode == 8))
-						{
-							listing.value += ',Y';
-							padd += 2;
-						}
-						else if (mode == 9)
-						{
-							listing.value += ')';
-							padd += 1;
-						}
-						else if (mode == 10)
-						{
-							listing.value += ',X)';
-							padd += 3;
-						}
-						else if (mode == 11)
-						{
-							listing.value += '),Y';
-							padd += 3;
-						}
+						//listing.value += " ("+(listing.value.length - l)+")"
+						padd += (listing.value.length - l);
 					}
 					// compile
 
