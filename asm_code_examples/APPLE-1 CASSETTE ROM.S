@@ -235,7 +235,7 @@ WRITE1          LDY FLIP,X
 
 INCADDR         LDA *HEX2L
                 CMP *HEX1L
-                LDA HEX2H
+                LDA *HEX2H
                 SBC *HEX1H 
                 INC *HEX2L
                 BNE NOCARRY
