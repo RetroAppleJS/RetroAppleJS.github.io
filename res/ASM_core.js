@@ -630,8 +630,6 @@ function DASM()
     }
 
 
-
-
     this.getReg = function(r) {
         switch (r) {
             case 'PC' : return pc;
@@ -1150,6 +1148,8 @@ function DASM()
 		+"</div>\r\n"
 	}
 
+	this.writeDisplay = oCOM.writeDisplay;
+	/*
     this.writeDisplay = function(n,v,f){
 		// n = el, v = value, f = extra HTML
 		var obj,tagname,bAppend = typeof(f)!="undefined";
@@ -1178,6 +1178,7 @@ function DASM()
 				else obj.innerHTML=v;
 		}
 	}
+	*/
 
     this.updateScroll = function(el)
 	{
@@ -1199,5 +1200,4 @@ function DASM()
     {
         console.log("sym_search("+op+","+adm+") requires an inheritant")
     }
-
 }

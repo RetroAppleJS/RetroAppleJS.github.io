@@ -869,48 +869,6 @@ function doPass(pass)
 					}
 
 
-
-
-
-					function TEMP_EXPRESSION2(addr,e,padd,listing,mode,pc)
-					{
-						listing.value += addr;
-						padd += e.bytes;
-						if (e.err)
-						{
-							displayError(e.err);
-							return false;
-						}
-						oper = e.val;
-
-						var l = listing.value.length;
-						switch(mode)
-						{
-							case 4:
-							case 7:  listing.value += ',X'; break;
-							case 5:
-							case 8:  listing.value += ',Y'; break;
-							case 9:  listing.value += ')'; break;
-							case 10: listing.value += ',X)'; break;
-							case 11: listing.value += '),Y'; break;
-							case 12: oper = oper - ((pc + 2) & 0xffff);
-									if ((oper > 127) || (oper < -128))
-									{ displayError('error: branch target out of range'); return false; }
-						}
-						padd += listing.value.length - l;
-
-						return {"padd":padd,"listing":listing,"oper":oper}
-					}
-
-
-
-
-
-
-
-
-
-
 					if (mode > 1)
 					{
 						// operand
@@ -937,7 +895,7 @@ function doPass(pass)
 									if ((oper > 127) || (oper < -128))
 									{ displayError('error: branch target out of range'); return false; }
 						}
-						//listing.value += " ("+(listing.value.length - l)+")"
+						//listing.value += " ("+(instr)+")"
 						padd += (listing.value.length - l);
 					}
 					// compile
