@@ -90,7 +90,8 @@ var instrtab = {
 
 var steptab = [1, 1, 2, 3, 3, 3, 2, 2, 2, 3, 2, 2, 2];
 
-var addrtab = {
+
+var addrtab = {	// unused right now
 	imp: 0,
 	acc: 1,
 	imm: 2,
@@ -119,7 +120,7 @@ var dbgsym = {}
 
 // globals
 
-var codesrc, code, srcl, srcc, pc, listing;
+var codesrc, srcl, srcc, pc, listing;
 var codesrc_buf = new Array();
 var code_pc = new Array();
 
@@ -153,7 +154,7 @@ function assemble()
 	//listing.value = 'starting assembly\npass 1\n';
 	var pass1 = false;
 	var pass2 = false;
-	code = [];
+	oASM.clear_code();
 	pass1 = doPass(1);
 	if (pass1)
 	{
@@ -166,21 +167,22 @@ function assemble()
 				var ds = debug_symbols(showDBG);
 				listing.value += ds.listing;		// add debug symbols
 				for(var i=0;i<ds.stream.length;i+=2)
-					code[code.length] = parseInt(ds.stream.charAt(i)+ds.stream.charAt(i+1),16);
+				oASM.write_code(parseInt(ds.stream.charAt(i)+ds.stream.charAt(i+1),16));
 			}
 			c = '';
 			var n = 0;
-			for (var i = 0; i < code.length; i++)
+			var l = oASM.get_code_len();
+			for (var i = 0; i < l; i++)
 			{
 				var new_pc = code_pc[i];
-				if (new_pc > 0) pc = new_pc + code.length - i - 1
+				if (new_pc > 0) pc = new_pc + l - i - 1
 				if (((n > 0) && (n % 8 == 0)) || new_pc > 0)
 				{
 					c += (i == 0 ? '' : crlf)
-					+ (showADR == 1 && (code.length - i - 1) >= 0 ? (getHexWord(pc - code.length + i + 1) + ': ') : '');
+					+ (showADR == 1 && (l - i - 1) >= 0 ? (getHexWord(pc - l + i + 1) + ': ') : '');
 					n = 0;
 				}
-				c += getHexByte(code[i]) + ' ';
+				c += getHexByte(oASM.read_code(i)) + ' ';
 				n++;
 			}
 			codefield.innerHTML = c;
@@ -201,6 +203,7 @@ function assemble()
 function displayError(er)
 {
 	listing.value += '\n' + er + '\n';
+	return false;
 }
 
 /////////////////////////////////////////
@@ -302,7 +305,6 @@ function getAscii(n)
 	return n.charCodeAt(0) + 128;
 }
 
-
 function getOffset(n)
 {
 	var a = n.lastIndexOf("+");
@@ -376,7 +378,7 @@ function doPass(pass)
 					return false;
 				}
 				listing.value += '$' + getHexWord(a);
-				code_pc[code.length] = a;
+				code_pc[oASM.get_code_len()] = a;
 				pc = a;
 			}
 			else
@@ -449,7 +451,7 @@ function doPass(pass)
 						listing.value += '  "'+v+'"';
 						for(var i=0;i<v.length;i++)
 						{
-							code[code.length] = getAscii(v.charAt(i));
+							oASM.write_code( getAscii(v.charAt(i)) );
 							// TODO add listing items per 3 bytes
 						}
 					}
@@ -488,12 +490,12 @@ function doPass(pass)
 					v &= 0xffff;
 					var hi = Math.floor(v / 256) & 0xff;
 					var lo = v & 0xff;
-					code[code.length] = lo;
+					oASM.write_code( lo );
 
 
 					//if (pragma == '.WORD')
 					//{
-					//	code[code.length] = hi;
+					//	oASM.write_code( hi );
 					//	listing.value += ' $' + getHexWord(v) + '            ' + getHexByte(lo) + ' ' + getHexByte(hi);
 					//}
 					//else
@@ -611,7 +613,7 @@ function doPass(pass)
 				else
 				{
 					sym = getSym();
-					continue
+					continue;
 				}
 				padd = oASM.label_len+1;
 			}
@@ -657,7 +659,7 @@ function doPass(pass)
 				{
 					// compile
 					listing.value += '            ' + getHexByte(opctab[0]);
-					code[code.length] = opctab[0];
+					oASM.write_code( opctab[0] );
 				}
 				pc++;
 			}
@@ -671,8 +673,6 @@ function doPass(pass)
 			}
 			else if (mactab != null) // MACRO CODE
 			{
-
-
 				function getByteArray(arg)
 				{
 					str = arg.replace(/[^A-Fa-f0-9]/g, "");
@@ -712,7 +712,7 @@ function doPass(pass)
 						if (pass == 1) listing.value += arg
 						if (pass == 2)
 						{
-							code = code.concat(dat)
+							oASM.concat_code(dat);
 							listing.value += arg;
 						}
 						pc += dat.length;
@@ -724,7 +724,7 @@ function doPass(pass)
 						if (pass == 1) listing.value += arg
 						if (pass == 2)
 						{
-							code = code.concat(dat)
+							oASM.concat_code(dat);
 							listing.value += arg;
 						}
 						pc += dat.length;
@@ -739,7 +739,7 @@ function doPass(pass)
 							dat[i] = getAscii(arg.charAt(i));
 						if (pass == 2)
 						{
-							code = code.concat(dat);
+							oASM.concat_code(dat);
 							listing.value += "\"" + arg + "\"";
 						}
 						pc += dat.length;
@@ -765,6 +765,7 @@ function doPass(pass)
 					a2 = addr.charAt(1);
 					if (pass == 2)
 					{
+						/*
 						var a2 = addr.charAt(1);
 						//if(a2=='\'') { listing.value+='#\''+addr.charAt(2)+'\'';padd=4; }
 						if (a2 == '\'')
@@ -777,6 +778,7 @@ function doPass(pass)
 							listing.value += a1;
 							padd = 1;
 						}
+						*/
 					}
 					b1 = 1;
 					mode = 2;					// immediate
@@ -857,48 +859,77 @@ function doPass(pass)
 				}
 				if (pass == 2)
 				{
+					// encode OPCODE instruction
 					var instr = opctab[mode];
-					if (instr < 0)
-					{
-						displayError('compile error:\ninvalid address mode for ' + opc);
-						return false;
-					}
-					else
-					{
-						code[code.length] = instr;
-					}
-
+					if (instr >= 0) oASM.write_code( instr );
+					else return displayError('compile error:\ninvalid address mode for ' + opc);
 
 					if (mode > 1)
 					{
 						// operand
 						addr = addr.substring(b1, b2);
 						var e = oASM.getExpression(addr);
-						listing.value += addr;
-						//padd += e.bytes*2;
-						padd += addr.length;
 
-						if (e.err) { displayError(e.err); return false; }
-						oper = e.val;
-						var l = listing.value.length;
-						
-						switch(mode)
+						this.listing_rewrite = true;
+						if(this.listing_rewrite)
 						{
-							case 4:
-							case 7:  listing.value += ',X'; break;
-							case 5:
-							case 8:  listing.value += ',Y'; break;
-							case 9:  listing.value += ')'; break;
-							case 10: listing.value += ',X)'; break;
-							case 11: listing.value += '),Y'; break;
-							case 12: oper = oper - ((pc + 2) & 0xffff);
-									if ((oper > 127) || (oper < -128))
-									{ displayError('error: branch target out of range'); return false; }
+							var lg = listing_gen({"opcode":"","val":e.val,"pc":pc})
+							listing.value += lg;
+							padd += lg.length;
 						}
-						//listing.value += " ("+(instr)+")"
+						else
+						{
+							listing.value += addr;
+							padd += addr.length;
+						}
+
+						if (e.err) { return displayError(e.err) }
+						oper = e.val;
+						if(mode == 12)
+						{
+							oper = oper-((pc + 2) & 0xffff);
+						}
+						var l = listing.value.length;
+
+						//listing.value += " ("+(a1+" "+a2+" "+oCOM.getHexMulti(e.val,e.bytes*2))+")"
 						padd += (listing.value.length - l);
 					}
 					// compile
+
+					function listing_gen(a)
+					{
+						switch(mode)
+						{
+							case 0:	 return r(a,"OPC");				// implied
+							case 1:	 return r(a,"OPC A");			// accumulator
+							case 2:  return r(a,"OPC #$LL");		// immediate
+							case 3:  return r(a,"OPC $HHLL");		// absolute
+							case 4:  return r(a,"OPC $HHLL,X");		// absolute, X-indexed
+							case 5:  return r(a,"OPC $HHLL,Y");		// absolute, Y-indexed
+							case 6:  return r(a,"OPC *$LL");		// zeropage
+							case 7:  return r(a,"OPC *$LL,X");		// zeropage, X-indexed
+							case 8:  return r(a,"OPC *$LL,Y");		// zeropage, Y-indexed
+							case 9:  return r(a,"OPC ($LL,X)");		// X-indexed, indirect
+							case 10: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
+							case 11: return r(a,"OPC ($HHLL)");		// indirect
+							case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
+							//case 12: return r(a,"OPC $BB");			// relative
+							case 13: /* PROCESS MACRO ARGUMENT ? */
+						}
+						function r(a,fmt)
+						{
+							if(fmt.match("BB")!=null)
+							{
+								var rel = a.val-((a.pc + 2) & 0xffff);
+								if (rel > 127 || rel < -128) { displayError('error: branch target out of range') }
+								fmt = fmt.replace("BB",oCOM.getHexByte((~rel&(1<<8)-1)+1));
+							}
+							fmt = fmt.replace("OPC",a.opcode);
+							fmt = fmt.replace("LL",oCOM.getHexByte(a.val & 0xFF));
+							fmt = fmt.replace("HH",oCOM.getHexByte(a.val >> 8));
+							return fmt;
+						}
+					}
 
 					//listing.value += "(" + mode + ")";
 
@@ -907,12 +938,12 @@ function doPass(pass)
 					if (mode > 1)
 					{
 						var op = oper & 0xff;
-						code[code.length] = op;
+						oASM.write_code( op );
 						listing.value += ' ' + getHexByte(op);
 						if (steptab[mode] > 2)
 						{
 							op = (Math.floor(oper / 256)) & 0xff;
-							code[code.length] = op;
+							oASM.write_code( op );
 							listing.value += ' ' + getHexByte(op);
 						}
 					}

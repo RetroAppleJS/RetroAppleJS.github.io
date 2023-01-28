@@ -1,6 +1,7 @@
 //const e = require("express");
 
 const { split } = require("lodash");
+const { connectableObservableDescriptor } = require("rxjs/internal/observable/ConnectableObservable");
 
 function ASM()
 {
@@ -20,6 +21,8 @@ function ASM()
 	this.init = function(src)
 	{
 		this.codesrc	= src;
+		this.codedst    = new Uint8Array();
+		this.codedst_len = 0;
 		this.pass		= 0;
 		this.step		= 0;
 		this.sym		= [];
@@ -31,6 +34,8 @@ function ASM()
 		this.srcc		= 0;
 		this.pc			= 0;
 		this.label_len  = label_len;
+		this.listing_rewrite = true;
+		this.bDebug 	= false;
 	}
 
 	this.assemble_step = function()
@@ -67,16 +72,6 @@ function ASM()
 			listing.value += "asm.sym ["+this.sym.join(" ")+"]\n"
 		else
 			listing.value += "asm.pass = ["+this.pass+"]\n"
-	}
-
-	this.hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
-
-	this.getHexWord = function(v)
-	{
-		return '' + this.hextab[Math.floor(v / 0x1000)]
-							+ this.hextab[Math.floor((v & 0x0f00) / 256)]
-							+ this.hextab[Math.floor((v & 0xf0) / 16)]
-							+ this.hextab[v & 0x000f];
 	}
 
 	this.mocha_test = function(_o)
@@ -235,7 +230,7 @@ function ASM()
 				r =  {"val":v,"fmt":"ASC","bytes":s.length};
 				break;
 			default:
-				if(this.validate(str,"[A-Za-z0-9_]+")) // IDENTIFIER
+				if(this.validate(str,"[A-Za-z0-9_.\-]+")) // IDENTIFIER
 				{
 					r = this.getIdentifier(str);
 					err = r.err;
@@ -276,25 +271,27 @@ function ASM()
 
 	this.getExpression = function(str)
 	{
-		var exp = str.split(new RegExp("[+\\-\\*^%~]","g"));
+		var exp = str.split(new RegExp("[+\\-\\*^~]","g"));  // slice at math operators to dig out deeper numbers and symbols
 		var r = "NaN";
 		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
 		switch(c[0])
 		{
 			case ">":		// HI-BYTE
-				r = this.new_getExpression(str.substring(1));
+				r = this.getExpression(str.substring(1));
 				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
 				return r;
 			case "<":		// LO-BYTE
-				r = this.new_getExpression(str.substring(1));
+				r = this.getExpression(str.substring(1));
 				r.val = r.val & 0xff; r.bytes = 1;
 				return r;
 			case "-":
-				r = this.new_getExpression(str.substring(1));
+				r = this.getExpression(str.substring(1));
 				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
 				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				return r;
 			default:
+				//if(str=="'%'")
+				//	console.log("DEBUG THIS");
 				var nexp = "",l=0;
 				for(var i=0;i<exp.length;i++)
 				{
@@ -531,6 +528,53 @@ this.MathParser.prototype.parse = function(e)
 		}
 		return null;
 	}
+
+	this.read_code = function(idx)
+	{
+		return this.codedst[idx];
+	}
+
+	this.write_code = function(byte)
+	{
+		this.codedst[this.codedst_len] = byte;
+		this.codedst_len++;
+		if(this.bDebug) console.log("write_code("+this.getHexByte(byte)+")")
+		if(byte==2)
+			console.log("DEBUG")
+	}
+
+	this.concat_code = function(byte_array)
+	{
+		for(var i=0;i<byte_array.length;i++)
+		{
+			this.codedst[ this.codedst_len++ ] = byte_array[i];
+		}
+
+		if(this.bDebug)
+		{
+			for(var i=0,s="";i<byte_array.length;i++) s+= this.getHexByte(byte_array[i])
+			console.log("write_code("+this.getHexByte(byte)+")")
+		}
+	}
+
+	this.get_code_len = function()
+	{
+		return this.codedst_len;
+	}
+	this.clear_code = function()
+	{
+		this.codedst_len = 0;
+		this.codedst = new Uint8Array(65536);	// 64K buffer
+	}
+
+    this.updateScroll = function(el)
+	{
+		el.scrollTop = el.scrollHeight;
+	}
+
+	this.hextab = oCOM.hextab;
+	this.getHexByte = oCOM.getHexByte;
+	this.getHexWord = oCOM.getHexWord;
 }
 
 function DASM()
@@ -1123,6 +1167,7 @@ function DASM()
 		return s;
 	}
 
+
     this.BitGrid = function(cfg)
 	{
 		var c = cfg.rw;
@@ -1182,8 +1227,7 @@ function DASM()
 
     this.updateScroll = function(el)
 	{
-		var element = document.getElementById(el);
-		element.scrollTop = element.scrollHeight;
+		el.scrollTop = el.scrollHeight;
 	}
 
     this.getHexByte = function(v)

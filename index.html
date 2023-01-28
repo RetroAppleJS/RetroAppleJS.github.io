@@ -580,7 +580,7 @@
                   <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                   <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
     
-                  <button onclick="oASM.assemble_step();"><i class="fa fa-road"></i> trace</button>
+                  <button onclick="oASM.assemble_step();oASM.updateScroll(document.getElementsByName('listing')[0])"><i class="fa fa-road"></i> trace</button>
     
                 </td>
                 <td valign=top>

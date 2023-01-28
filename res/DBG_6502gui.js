@@ -291,7 +291,7 @@ function report_watch(obj)
 	//alert( parseInt(obj.ins,16)+" "+opctab[ parseInt(obj.ins,16) ][0] )
 
 	oDASM.writeDisplay('watchdisp',dispwatch,"beforeend");
-	oDASM.updateScroll('watchdisp');
+	oDASM.updateScroll(document.getElementById('watchdisp'));
 }
 
 function updateWatch(r) {
