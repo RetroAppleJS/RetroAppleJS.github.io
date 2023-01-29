@@ -343,6 +343,7 @@ function doPass(pass)
 {
 	srcl = srcc = pc = 0;
 	var sym = getSym();
+	listing.value = "";
 	while (sym)
 	{
 		if(listing.value.length>0) listing.value += '\n';
@@ -365,7 +366,7 @@ function doPass(pass)
 			// TODO parse numeric expression (with labels)
 			if ((sym.length > 2))
 			{
-				listing.value += '*=';
+				//listing.value += '*=';
 				var a = oASM.getNumber(sym[2]).val;
 				if (a == 'NaN')
 				{
@@ -377,7 +378,9 @@ function doPass(pass)
 					displayError('syntax error:\ntoo many arguments');
 					return false;
 				}
-				listing.value += '$' + getHexWord(a);
+				listing.value += listing_gen(-1,{"val":"*= $"+getHexWord(a)})
+
+				//listing.value += '$' + getHexWord(a);
 				code_pc[oASM.get_code_len()] = a;
 				pc = a;
 			}
@@ -420,7 +423,8 @@ function doPass(pass)
 			*/
 			if (sym.length == 2)	// two operands
 			{
-				listing.value += pragma;
+				//listing.value += pragma;
+				listing.value += listing_gen(-1,{"val":pragma})
 				if (pass == 2)
 				{
 
@@ -528,13 +532,13 @@ function doPass(pass)
 				return false;
 			}
 		}
-		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))
+		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))					
 		{
 			listing.value += sym[0];
 			displayError('syntax error:\ncharacter expected');
 			return false;
 		}
-		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)			// assembler mnemonic or directive ? 
+		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)			// no assembler mnemonic or directive ? (probably a label)
 		{
 			// label
 			var l = oASM.getID(sym[0]).val;
@@ -940,7 +944,7 @@ function listing_gen(mode,a)
 {
 	switch(mode)
 	{
-		case -1: return "";						// empty
+		case -1: return a.val;					// PRAGMA
 		case 0:	 return r(a,"OPC");				// implied
 		case 1:	 return r(a,"OPC A");			// accumulator
 		case 2:  return r(a,"OPC #$LL");		// immediate
@@ -954,7 +958,7 @@ function listing_gen(mode,a)
 		case 10: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
 		case 11: return r(a,"OPC ($HHLL)");		// indirect
 		case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
-		//case 12: return r(a,"OPC $BB");			// relative
+		//case 12: return r(a,"OPC $BB");		// relative
 		case 13: /* PROCESS MACRO ARGUMENT ? */
 	}
 	function r(a,fmt)
