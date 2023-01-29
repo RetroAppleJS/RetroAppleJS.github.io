@@ -6,9 +6,6 @@
 
 
 
-var oASM = new ASM();
-oASM.init();
-
 
 
 // lookup tables
@@ -116,6 +113,8 @@ var macrotab = {
 var dbgsym = {}
 
 
+var oASM = new ASM();
+oASM.init({"instrtab":instrtab});
 
 
 // globals
@@ -338,6 +337,11 @@ function paddRight(s, l)
 //  ██   ██ ██    ██ ██████  ███████ ███████ ███████ 
 //  ██   ██ ██    ██ ██      ██   ██      ██      ██ 
 //  ██████   ██████  ██      ██   ██ ███████ ███████ 
+
+
+
+
+
 
 function doPass(pass)
 {

@@ -18,17 +18,18 @@ function ASM()
 	this.bDebug = false;
 	this.pragma_sym = {};
 
-	this.init = function(src)
+	this.init = function(a)
 	{
-		this.codesrc	= src;
+		this.codesrc	= a.src;
 		this.codedst    = new Uint8Array();
 		this.codedst_len = 0;
 		this.pass		= 0;
 		this.step		= 0;
 		this.sym		= [];
 		this.symlink_l	= 0;
-		this.symlink	= {};
-		this.symtab		= {};
+		this.symlink	= {};	// table of label values
+		this.symtab		= {};	// table of labels
+		this.instrtab	= a.instrtab;	// table of mnemonics
 		this.code		= [];
 		this.srcl		= 0;
 		this.srcc		= 0;
@@ -50,7 +51,8 @@ function ASM()
 		if (this.pass == 0 && this.step == 0)
 		{
 			// init pass 0
-			this.init(codesrc);
+			// FVD TODO find another way to init instrtab
+			this.init({"src":codesrc,"instrtab":this.instrtab});
 			codefield.innerHTML = ' '+crlf;
 			listing.value = '' //'starting assembly\npass 1\n';
 	
@@ -69,9 +71,26 @@ function ASM()
 	
 		this.step = 1;
 		if(this.sym!=null)
-			listing.value += "asm.sym ["+this.sym.join(" ")+"]\n"
+		{
+			var tag = this.code_tagger(this.sym).join(" ")
+			listing.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag+"]\n"
+		}
 		else
 			listing.value += "asm.pass = ["+this.pass+"]\n"
+	}
+
+	this.code_tagger = function(sym)
+	{
+		var arr = [];
+		// first symbol can be only (mnemonic, pragma or label)
+		if(this.instrtab[sym[0]]!=null)
+		{
+			arr[0] = "MNE";
+		}
+		else
+			arr[0] = "---";
+
+		return arr;
 	}
 
 	this.mocha_test = function(_o)
