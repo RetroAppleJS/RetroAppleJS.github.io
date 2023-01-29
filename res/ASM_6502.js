@@ -390,7 +390,10 @@ function doPass(pass)
 			sym = getSym();
 			continue;
 		}
+
+		// List PROGRAM COUNTER (PC)
 		listing.value += getHexWord(pc) + ' '; // FVD TODO: do not list PC with directives like 'equ'
+
 		if (c1 == '.')
 		{
 			var r = oASM.parse_pragma(sym,pass);
@@ -540,6 +543,7 @@ function doPass(pass)
 				displayError('syntax error:\ninvalid identifier: ' + sym[0]);
 				return false;
 			}
+			// List LABEL
 			listing.value += paddRight(l, oASM.label_len) + ' ';
 			ofs++;
 			if ((sym.length > 1) && (sym[ofs] == '=' || sym[ofs] == 'EQU'))
@@ -636,7 +640,9 @@ function doPass(pass)
 		{
 			// opcode
 			var opc = sym[ofs];
-			listing.value += opc + ' ';
+			// SUBSTITUTED BY listing_gen()
+			//listing.value += opc + ' ';
+			
 			var opctab = instrtab[opc];
 			//FVD
 			var mactab = macrotab[opc];
@@ -658,7 +664,8 @@ function doPass(pass)
 				else if (pass == 2)
 				{
 					// compile
-					listing.value += '            ' + getHexByte(opctab[0]);
+					//listing.value += '            ' + getHexByte(opctab[0]);
+					listing.value += listing_gen(mode,{"opcode":opc+'         '+getHexByte(opctab[0])})
 					oASM.write_code( opctab[0] );
 				}
 				pc++;
@@ -753,18 +760,21 @@ function doPass(pass)
 				var b2 = addr.length;
 				if (addr == 'A')
 				{
+					mode = 1;					// Accumulator
 					if (pass == 2)
 					{
-						listing.value += 'A';
-						padd = 1;
+						listing.value += listing_gen(mode,{"opcode":opc})
+						padd = 4+1;
+						//listing.value += 'A';
+						//padd = 1;
 					}
-					mode = 1;					// Accumulator
 				}
 				else if (a1 == '#')
 				{
 					a2 = addr.charAt(1);
 					if (pass == 2)
 					{
+						// SUBSTITUTED BY listing_gen()
 						/*
 						var a2 = addr.charAt(1);
 						//if(a2=='\'') { listing.value+='#\''+addr.charAt(2)+'\'';padd=4; }
@@ -785,11 +795,14 @@ function doPass(pass)
 				}
 				else if (a1 == '*')
 				{
+					// SUBSTITUTED BY listing_gen()
+					/*
 					if (pass == 2)
 					{
 						listing.value += a1;
 						padd = 1;
 					}
+					*/
 					b1 = 1;
 					mode = 6;					// zeropage
 				}
@@ -864,6 +877,7 @@ function doPass(pass)
 					if (instr >= 0) oASM.write_code( instr );
 					else return displayError('compile error:\ninvalid address mode for ' + opc);
 
+
 					if (mode > 1)
 					{
 						// operand
@@ -873,7 +887,7 @@ function doPass(pass)
 						this.listing_rewrite = true;
 						if(this.listing_rewrite)
 						{
-							var lg = listing_gen({"opcode":"","val":e.val,"pc":pc})
+							var lg = listing_gen(mode,{"opcode":opc,"val":e.val,"pc":pc})
 							listing.value += lg;
 							padd += lg.length;
 						}
@@ -895,41 +909,6 @@ function doPass(pass)
 						padd += (listing.value.length - l);
 					}
 					// compile
-
-					function listing_gen(a)
-					{
-						switch(mode)
-						{
-							case 0:	 return r(a,"OPC");				// implied
-							case 1:	 return r(a,"OPC A");			// accumulator
-							case 2:  return r(a,"OPC #$LL");		// immediate
-							case 3:  return r(a,"OPC $HHLL");		// absolute
-							case 4:  return r(a,"OPC $HHLL,X");		// absolute, X-indexed
-							case 5:  return r(a,"OPC $HHLL,Y");		// absolute, Y-indexed
-							case 6:  return r(a,"OPC *$LL");		// zeropage
-							case 7:  return r(a,"OPC *$LL,X");		// zeropage, X-indexed
-							case 8:  return r(a,"OPC *$LL,Y");		// zeropage, Y-indexed
-							case 9:  return r(a,"OPC ($LL,X)");		// X-indexed, indirect
-							case 10: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
-							case 11: return r(a,"OPC ($HHLL)");		// indirect
-							case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
-							//case 12: return r(a,"OPC $BB");			// relative
-							case 13: /* PROCESS MACRO ARGUMENT ? */
-						}
-						function r(a,fmt)
-						{
-							if(fmt.match("BB")!=null)
-							{
-								var rel = a.val-((a.pc + 2) & 0xffff);
-								if (rel > 127 || rel < -128) { displayError('error: branch target out of range') }
-								fmt = fmt.replace("BB",oCOM.getHexByte((~rel&(1<<8)-1)+1));
-							}
-							fmt = fmt.replace("OPC",a.opcode);
-							fmt = fmt.replace("LL",oCOM.getHexByte(a.val & 0xFF));
-							fmt = fmt.replace("HH",oCOM.getHexByte(a.val >> 8));
-							return fmt;
-						}
-					}
 
 					//listing.value += "(" + mode + ")";
 
@@ -957,7 +936,41 @@ function doPass(pass)
 	return true;
 }
 
-
+function listing_gen(mode,a)
+{
+	switch(mode)
+	{
+		case -1: return "";						// empty
+		case 0:	 return r(a,"OPC");				// implied
+		case 1:	 return r(a,"OPC A");			// accumulator
+		case 2:  return r(a,"OPC #$LL");		// immediate
+		case 3:  return r(a,"OPC $HHLL");		// absolute
+		case 4:  return r(a,"OPC $HHLL,X");		// absolute, X-indexed
+		case 5:  return r(a,"OPC $HHLL,Y");		// absolute, Y-indexed
+		case 6:  return r(a,"OPC *$LL");		// zeropage
+		case 7:  return r(a,"OPC *$LL,X");		// zeropage, X-indexed
+		case 8:  return r(a,"OPC *$LL,Y");		// zeropage, Y-indexed
+		case 9:  return r(a,"OPC ($LL,X)");		// X-indexed, indirect
+		case 10: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
+		case 11: return r(a,"OPC ($HHLL)");		// indirect
+		case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
+		//case 12: return r(a,"OPC $BB");			// relative
+		case 13: /* PROCESS MACRO ARGUMENT ? */
+	}
+	function r(a,fmt)
+	{
+		if(fmt.match("BB")!=null)
+		{
+			var rel = a.val-((a.pc + 2) & 0xffff);
+			if (rel > 127 || rel < -128) { displayError('error: branch target out of range') }
+			fmt = fmt.replace("BB",oCOM.getHexByte((~rel&(1<<8)-1)+1));
+		}
+		fmt = fmt.replace("OPC",a.opcode);
+		fmt = fmt.replace("LL",oCOM.getHexByte(a.val & 0xFF));
+		fmt = fmt.replace("HH",oCOM.getHexByte(a.val >> 8));
+		return fmt;
+	}
+}
 
 function debug_symbols(showDBG)
 {
