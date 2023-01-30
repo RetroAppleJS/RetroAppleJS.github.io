@@ -17,10 +17,30 @@ function ASM()
 	const label_len = 6;
 	this.bDebug = false;
 	this.pragma_sym = {};
+	this.mnemonics = {};    // table of mnemonics
+	this.crlf = "<br>";
+
 
 	this.init = function(a)
 	{
-		this.codesrc	= a.src;
+		if(a!=null)
+		{
+			if(a.label_len!=null) 		this.label_len	 = a.label_len;
+
+			if(a.codefield_el!=null) 	this.codefield_el  = a.codefield_el; // el: binary pane
+			if(a.srcfield_el!=null)
+			{
+				this.srcfield_el = a.srcfield_el;					// el: input pane
+				this.codesrc = this.getSrc(this.srcfield_el,false); // Slice ASM lines -> codesrc (array)
+				this.codefield_el.innerHTML = ' '+this.crlf;				// clear binary pane
+			}
+			if(a.listing_el!=null)
+			{
+				this.listing_el  = a.listing_el; // el: output pane
+				this.listing_el.value = '';  // clear output pane
+			}
+
+		} 
 		this.codedst    = new Uint8Array();
 		this.codedst_len = 0;
 		this.pass		= 0;
@@ -29,7 +49,6 @@ function ASM()
 		this.symlink_l	= 0;
 		this.symlink	= {};	// table of label values
 		this.symtab		= {};	// table of labels
-		this.instrtab	= a.instrtab;	// table of mnemonics
 		this.code		= [];
 		this.srcl		= 0;
 		this.srcc		= 0;
@@ -39,23 +58,19 @@ function ASM()
 		this.bDebug 	= false;
 	}
 
-	this.assemble_step = function()
+	this.assemble_step = function(srcfield_el,listing_el,codefield_el)
 	{
-		listing = document.forms.ass.listing;
+		if(this.pass==null)
+			this.init({"srcfield_el":srcfield_el,"listing_el":listing_el,"codefield_el":codefield_el});
+		
+		//listing = document.forms.ass.listing;
 		var showADR = document.ass.showADR.checked;
-		var codefield = document.getElementById('codefield');
-		//var codefield = document.forms.ass.codefield;
-		getSrc(document.forms.ass.srcfield); // Slice ASM lines -> codesrc (array)
-		var crlf = "<br>";
+
 	
 		if (this.pass == 0 && this.step == 0)
 		{
 			// init pass 0
-			// FVD TODO find another way to init instrtab
-			this.init({"src":codesrc,"instrtab":this.instrtab});
-			codefield.innerHTML = ' '+crlf;
-			listing.value = '' //'starting assembly\npass 1\n';
-	
+			this.listing_el.value = 'pass 1\n';
 			// TODO : RE-WRITE DOPASS IN TAKING ONE STEP AT THE TIME !!  FVD
 		}
 	
@@ -73,17 +88,17 @@ function ASM()
 		if(this.sym!=null)
 		{
 			var tag = this.code_tagger(this.sym).join(" ")
-			listing.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag+"]\n"
+			this.listing_el.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag+"]\n"
 		}
 		else
-			listing.value += "asm.pass = ["+this.pass+"]\n"
+			this.listing_el.value += "asm.pass = ["+this.pass+"]\n"
 	}
 
 	this.code_tagger = function(sym)
 	{
 		var arr = [];
 		// first symbol can be only (mnemonic, pragma or label)
-		if(this.instrtab[sym[0]]!=null)
+		if(this.mnemonics[sym[0]]!=null)
 		{
 			arr[0] = "MNE";
 		}
@@ -91,6 +106,30 @@ function ASM()
 			arr[0] = "---";
 
 		return arr;
+	}
+
+	// Slice ASM lines -> codesrc (array)
+	this.getSrc = function(formfield, bComments)
+	{
+		if (formfield.value.indexOf('\r\n') >= 0)
+		{
+			codesrc = formfield.value.split('\r\n');
+		}
+		else if (formfield.value.indexOf('\r') >= 0)
+		{
+			codesrc = formfield.value.split('\r');
+		}
+		else
+		{
+			codesrc = formfield.value.split('\n');
+		}
+		//FVD remove all comments
+		if (!bComments)
+		{
+			for (var i = 0; i < codesrc.length; i++)
+				codesrc[i] = codesrc[i].split(";")[0]
+		}
+		return codesrc;
 	}
 
 	this.mocha_test = function(_o)

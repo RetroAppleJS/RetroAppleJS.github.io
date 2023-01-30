@@ -114,7 +114,7 @@ var dbgsym = {}
 
 
 var oASM = new ASM();
-oASM.init({"instrtab":instrtab});
+oASM.mnemonics = instrtab;
 
 
 // globals
@@ -197,6 +197,8 @@ function assemble()
 		listing.value += '\nfailed.\n';
 		alert('6502 Assembler:\nfailed (see listing).');
 	}
+
+	oASM.pass = null;
 }
 
 function displayError(er)

@@ -569,7 +569,7 @@
     .END
                   </textarea>
                   <br>
-                  <button onclick="assemble()/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
+                  <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
                   <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
                   <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
@@ -580,7 +580,7 @@
                   <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                   <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
     
-                  <button onclick="oASM.assemble_step();oASM.updateScroll(document.getElementsByName('listing')[0])"><i class="fa fa-road"></i> trace</button>
+                  <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));oASM.updateScroll(document.getElementsByName('listing')[0])"><i class="fa fa-road"></i> trace</button>
     
                 </td>
                 <td valign=top>
