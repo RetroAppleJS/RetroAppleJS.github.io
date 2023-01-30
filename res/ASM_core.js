@@ -17,7 +17,8 @@ function ASM()
 	const label_len = 6;
 	this.bDebug = false;
 	this.pragma_sym = {};
-	this.mnemonics = {};    // table of mnemonics
+	this.mnemonics  = {};
+
 	this.crlf = "<br>";
 
 
@@ -63,29 +64,23 @@ function ASM()
 		if(this.pass==null)
 			this.init({"srcfield_el":srcfield_el,"listing_el":listing_el,"codefield_el":codefield_el});
 		
-		//listing = document.forms.ass.listing;
 		var showADR = document.ass.showADR.checked;
 
-	
 		if (this.pass == 0 && this.step == 0)
-		{
-			// init pass 0
-			this.listing_el.value = 'pass 1\n';
-			// TODO : RE-WRITE DOPASS IN TAKING ONE STEP AT THE TIME !!  FVD
-		}
-	
+			this.listing_el.value += 'pass 1\n';
+
 		if (this.pass == 1 && this.step == 0)
-		{
-			// TODO FVD init pass 1 !!!
-		}
+			this.listing_el.value += 'pass 2\n';
 	
+		// skip empty lines
+		do{ this.sym = this.getSym() } while(this.sym!=null && this.sym.length==0)
+
+		this.step++;
+
+		// detect end of pass 0
+		if(this.sym==null && this.pass==0) { this.pass = 1; this.step = 0 }
 	
-		do{ this.sym = this.getSym() } while(this.sym!=null && this.sym.length==0) // skip empty lines
-	
-		if(this.sym==null && this.pass==0) { this.pass = 1; this.step = 0 } 
-	
-		this.step = 1;
-		if(this.sym!=null)
+		if(this.sym != null)
 		{
 			var tag = this.code_tagger(this.sym).join(" ")
 			this.listing_el.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag+"]\n"
@@ -101,6 +96,10 @@ function ASM()
 		if(this.mnemonics[sym[0]]!=null)
 		{
 			arr[0] = "MNE";
+		}
+		else if(this.pragma_sym[sym[0]]!=null )
+		{
+			arr[0] = "PGM";
 		}
 		else
 			arr[0] = "---";
@@ -628,6 +627,13 @@ this.MathParser.prototype.parse = function(e)
     this.updateScroll = function(el)
 	{
 		el.scrollTop = el.scrollHeight;
+	}
+
+	this.concat_json = function(json1,json2)
+	{
+		var json3 = json1;
+		for(var i in json2) json3[i] = json2[i];
+		return json3;
 	}
 
 	this.hextab = oCOM.hextab;

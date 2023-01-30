@@ -115,6 +115,22 @@ var dbgsym = {}
 
 var oASM = new ASM();
 oASM.mnemonics = instrtab;
+oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,macrotab)
+oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
+	{
+		 ".END":true
+		,".EQ":true
+		,".WORD":true
+		,".BYTE":true
+		,".TEXT":true
+		,".DEFINE":true
+		,".IFDEF":true
+		,".IFNDEF":true
+		,".ENDIF":true
+		,".SYMBOLS":true
+		
+		,"EQU":true
+	});
 
 
 // globals
