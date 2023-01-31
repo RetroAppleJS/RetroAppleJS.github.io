@@ -97,9 +97,23 @@ function ASM()
 		{
 			arr[0] = "MNE";
 		}
+		else if (this.mnemonics[sym[1]]!=null) // check mnemonic preceeded by LBL
+		{
+			arr[0] = "LBL";
+			arr[1] = "MNE";
+		}
 		else if(this.pragma_sym[sym[0]]!=null )
 		{
 			arr[0] = "PGM";
+		}
+		else if(this.pragma_sym[sym[0]+" "+sym[1]] || this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas
+		{
+			arr[0] = "PGM";
+		}
+		else if( this.pragma_sym[sym[1]]!=null ) // check pragma preceeded by LBL
+		{
+			arr[0] = "LBL";
+			arr[1] = "PGM";
 		}
 		else
 			arr[0] = "---";
@@ -500,6 +514,16 @@ this.MathParser.prototype.parse = function(e)
 				q = q == 0 ? 1 : 0;
 				m = 0;
 			}
+			/*
+			else if (c == "*" && this.peekChar() == "=")
+			{
+				this.srcc++;
+				m = 0;
+				sym[s] += "*=";
+				s++;
+				sym[s] += "";
+			}
+			*/
 			else
 			{
 				m = 1;
@@ -523,10 +547,15 @@ this.MathParser.prototype.parse = function(e)
 		}
 		else
 		{
-			var c = this.codesrc[this.srcl].charAt(this.srcc);
+			var c = this.peekChar();
 			this.srcc++;
 			return c //.toUpperCase();
 		}
+	}
+
+	this.peekChar = function()
+	{
+		return this.codesrc[this.srcl].charAt(this.srcc);
 	}
 
 	this.parse_pragma = function(sym,pass)

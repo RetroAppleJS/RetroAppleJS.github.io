@@ -119,7 +119,6 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,macrotab)
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 	{
 		 ".END":true
-		,".EQ":true
 		,".WORD":true
 		,".BYTE":true
 		,".TEXT":true
@@ -128,8 +127,10 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 		,".IFNDEF":true
 		,".ENDIF":true
 		,".SYMBOLS":true
-		
+		,".EQ":true
 		,"EQU":true
+		,"* =":true // space means something for code_tagger()
+		," =":true
 	});
 
 
