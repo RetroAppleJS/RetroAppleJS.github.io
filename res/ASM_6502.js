@@ -129,8 +129,9 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 		,".SYMBOLS":true
 		,".EQ":true
 		,"EQU":true
-		,"* =":true // space means something for code_tagger()
-		," =":true
+						// space means something for code_tagger()
+		,"* =":true		// sym[0] = '*'    & sym[1] = '=' 
+		," =":true  	// sym[0] (ignore) & sym[1] = '='
 	});
 
 

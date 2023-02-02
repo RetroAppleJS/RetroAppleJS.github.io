@@ -217,6 +217,19 @@
 </script>
 -->
 
+<script>
+function COM_PopupHTML(txt)
+{
+  var e = onPopup('COM_popup');
+  document.getElementById('COM_popup_text').innerHTML =  !e.hidden?txt:"";
+}
+</script>
+
+  <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
+  <div class="appbut" onclick="onPopup('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+  <div id=COM_popup_text></div>
+  </div>
+
   <table id=box style=width:450px;margin-top:0px>
     <tr>
       <td valign=top>
@@ -238,13 +251,13 @@
         <!-- tab content -->
         <div class="tabs">
           <div id="tab1" style="height:1300px;width:1300px;background-image:url('res/appleIIplus_bck_650_v2.png');background-size:1300px;background-repeat:no-repeat;image-rendering:pixelated;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
-          <!--
-            ███████ ███    ███ ██    ██ ██       █████  ████████  ██████  ██████  
-            ██      ████  ████ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
-            █████   ██ ████ ██ ██    ██ ██      ███████    ██    ██    ██ ██████  
-            ██      ██  ██  ██ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
-            ███████ ██      ██  ██████  ███████ ██   ██    ██     ██████  ██   ██  
-          -->
+            <!--
+              ███████ ███    ███ ██    ██ ██       █████  ████████  ██████  ██████  
+              ██      ████  ████ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
+              █████   ██ ████ ██ ██    ██ ██      ███████    ██    ██    ██ ██████  
+              ██      ██  ██  ██ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
+              ███████ ██      ██  ██████  ███████ ██   ██    ██     ██████  ██   ██  
+            -->
 
             <script type="text/javascript" src="res/EMU_apple2main.js"></script>
             <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
@@ -258,90 +271,72 @@
             <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
             <script type="text/javascript" src="res/jsSID.js"></script>            
 
-            <style>
- 
-
-            </style>
-
-            <div style="height:115px;padding:0px 0px 0px 0px;">
+            <div style="height:115px;padding:0px 0px 0px 0px;z-index:1">
 
               <div style="height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Tools" onclick="javascript:onPopup('paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
                 <button class=appbut value="Settings" onclick="javascript:onPopup('settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
               </div>
   
-              <div class="hints1" id="paste" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <!--  TOOLS (PASTEBOARD) -->
+              <div class="hints1" id="paste" hidden="" >
                 <div class=toolbox>
                 <form name="EMUboard">
                   <textarea cols=40 rows=4  placeholder="Paste here" name=boardText style="float:left"></textarea><br>
-                  <input type="button"  value="Paste"              onclick="javascript:onPasteboard();onBoardPaste()">
+                  <input type="button"  value="Paste"              onclick="javascript:onPopup('paste');onBoardPaste()">
                   <input type="button"  value="Capture" id=Capture onclick="javascript:onCapture();onBoardPaste()">                
                   <input type="text"    value="$0000" size=5       onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
                   <input type="button"  value="Clear"              onclick="javascript:onEMUBoardClear()">
                   <input type="button"  value="X"                  onclick="javascript:onPopup('paste')">
                 </form>
-              </div>
-              <div class=toolbox>
-                <button class=appbut                 onclick="javascript:alert('no sound implementation')" id="soundbutton"   title="Sound"><i  class="fa fa-volume-mute"></i></button>
-                <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
-                <br>
-                <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>
-                <button class=appbut value="Restart" onclick="javascript:restartButton()"   id="restartbutton" title="Reboot"><i class="fa fa-power-off"></i></button>
-              </div>
-              <div class=toolbox>
-                <div class=appbut style="padding:5px 5px 5px 5px;margin-top:5px;text-align:center"><button class=appbut value="Drive1" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <input type="file"  id="loadfile" value="Disk" onchange="javascript:loadDisk()"></div>
-                <!--
-                <div class=appbut style="padding:5px 5px 5px 5px;margin-top:5px;text-align:center">Drive2 <input type="file"  id="loadfile" value="Disk" onchange="javascript:loadDisk()"></div>
-                -->
                 </div>
+                <div class=toolbox>
+                  <button class=appbut                 onclick="javascript:alert('no sound implementation')" id="soundbutton"   title="Sound"><i  class="fa fa-volume-mute"></i></button>
+                  <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
+                  <br>
+                  <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>
+                  <button class=appbut value="Restart" onclick="javascript:restartButton()"   id="restartbutton" title="Reboot"><i class="fa fa-power-off"></i></button>
+                </div>
+                <div class=toolbox>
+                  <div class=appbut style="padding:5px 5px 5px 5px;margin-top:5px;text-align:center"><button class=appbut value="Drive1" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <input type="file"  id="loadfile" value="Disk" onchange="javascript:loadDisk()"></div>
+                  <!--
+                  <div class=appbut style="padding:5px 5px 5px 5px;margin-top:5px;text-align:center">Drive2 <input type="file"  id="loadfile" value="Disk" onchange="javascript:loadDisk()"></div>
+                  -->
+                  </div>
               </div>
 
+              <!--  SETTINGS -->
+
+              <!--  style="position:absolute;left:0px;top:32px;z-index:2;height:80px;" -->
               <div class="hints1" id="settings" hidden="">
                 <div class=toolbox>
                   <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
                     SETTINGS
                     <div style="font-family:arial;font-size:11px">
                       
-
-                      <!--
-                      <select name="cars" id="cars">
-                        <optgroup label="Swedish Cars">
-                          <option value="volvo">Volvo</option>
-                          <option value="saab">Saab</option>
-                        </optgroup>
-                        <optgroup label="German Cars">
-                          <option value="mercedes">Mercedes</option>
-                          <option value="audi">Audi</option>
-                        </optgroup>
-                      </select>
-                      -->
-
-                    <script>
-
-
-
-                      var s = "<select name='cars' id='cars' onchange='EMU_change_system(this)'>"
-                      for(var i in _CFG_SYSCODE)
-                      {
-                        s+= "<option value='"+i+"' "+(i=="A2P"?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
-                      }
-                      s += "</select>"
-                      document.write(s);
-
-                      function EMU_change_system(obj)
-                      {
-                        var s = "";
-                        for(var i in _CFG_SYSCODE[obj.value])
+                      <script>
+                        var s = "<select name='EMU_system' id='EMU_system' onchange='EMU_change_system(this)'>"
+                        for(var i in _CFG_SYSCODE)
                         {
-                          if(i!="Model" && i!="ROMS")
-                          s+= i+":"+_CFG_SYSCODE[obj.value][i]+"<br>"
+                          s+= "<option value='"+i+"' "+(i=="A2P"?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
                         }
-                        document.getElementById("EMU_system_param").innerHTML = s;
-                      }
+                        s += "</select>"
+                        document.write(s);
 
-                    </script>
-                    <div id="EMU_system_param"></div>
+                        function EMU_change_system(obj)
+                        {
+                          var s = "";
+                          for(var i in _CFG_SYSCODE[obj.value])
+                          {
+                            if(i!="Model" && i!="ROMS")
+                            s+= i+":"+_CFG_SYSCODE[obj.value][i]+"<br>"
+                          }
+                          document.getElementById("EMU_system_param").innerHTML = s;
+                        }
+                      </script>
 
+                      <div id="EMU_system_param" style="float:left"></div>
+                      <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                     </div>
 
                   </div>
@@ -398,10 +393,12 @@
                       <div class=appbox style="width:36px;" title="Slot">#7</div>
                     </form>
                 
+                  </div>
                 </div>
               </div>
+
+
             </div>
-          </div>
 
             <script type="text/javascript">
 
@@ -415,14 +412,12 @@
                 oMEMGRID.paint_grid();
             }
 
-            function UMU_update_mem_map()
+            function EMU_update_mem_map()
             {
 
             }
 
-            var bColor = false;
-            function onPasteboard() { var e = document.getElementById('paste'); e.hidden = !e.hidden; }
-            function onPopup(id) { var e = document.getElementById(id); e.hidden = !e.hidden; }
+            function onPopup(id) { var e = document.getElementById(id); e.hidden = !e.hidden; return e }
 
             function onPopUpClass(id,class1,class2)
             {
@@ -533,7 +528,6 @@
             <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()"><input type="button" value="Clear" onclick="javascript:onASMBoardClear()"><input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
             </div>
           <script type="text/javascript">
-            var bColor = false;
             function onASMPasteboard() { var e = document.getElementById('bytecodepaste'); e.hidden = !e.hidden; }
             function onASMBoardPaste()
             {
@@ -571,7 +565,7 @@
                   <br>
                   <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
                   <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
-                  <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPasteboard();COM_switchTab('tab1')">
+                  <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';onPopup('paste');COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
                   <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
                       <i class="fa fa-arrow-circle-up"></i> to debugger</button>

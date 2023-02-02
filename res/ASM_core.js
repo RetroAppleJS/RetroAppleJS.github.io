@@ -33,7 +33,7 @@ function ASM()
 			{
 				this.srcfield_el = a.srcfield_el;					// el: input pane
 				this.codesrc = this.getSrc(this.srcfield_el,false); // Slice ASM lines -> codesrc (array)
-				this.codefield_el.innerHTML = ' '+this.crlf;				// clear binary pane
+				this.codefield_el.innerHTML = ' '+this.crlf;		// clear binary pane
 			}
 			if(a.listing_el!=null)
 			{
@@ -82,33 +82,48 @@ function ASM()
 	
 		if(this.sym != null)
 		{
-			var tag = this.code_tagger(this.sym).join(" ")
-			this.listing_el.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag+"]\n"
+			var s = "";
+			var tag = this.statement_tagger(this.sym)
+			if(tag[0]=="LBL")
+			{
+				this.symtab[this.sym[0]] = this.pc;
+				//s+=" symtab[\""+this.sym[0]+"\"] = $"+this.getHexWord(this.pc)+"\n";
+			}
+			this.listing_el.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag.join(" ")+"]\n"
+								 +s
 		}
 		else
 			this.listing_el.value += "asm.pass = ["+this.pass+"]\n"
 	}
 
-	this.code_tagger = function(sym)
+	this.statement_tagger = function(sym)
 	{
 		var arr = [];
 		// first symbol can be only (mnemonic, pragma or label)
 		if(this.mnemonics[sym[0]]!=null)
 		{
 			arr[0] = "MNE";
+			if(sym[1]!=null)	arr[1] = "OPR";
+				//arr[1] = sym[1]!="A" ? "VAL" : "ACC";   // LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
 		}
 		else if (this.mnemonics[sym[1]]!=null) // check mnemonic preceeded by LBL
 		{
-			arr[0] = "LBL";
+			arr[0] = "LBL"; // TODO store label !!!!
 			arr[1] = "MNE";
+			if(sym[2]!=null) arr[2] = "OPR" 
+				//arr[2] = sym[2]!="A" ? "VAL" : "ACC";	// LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
 		}
 		else if(this.pragma_sym[sym[0]]!=null )
 		{
 			arr[0] = "PGM";
 		}
-		else if(this.pragma_sym[sym[0]+" "+sym[1]] || this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas
+		//else if(this.pragma_sym[sym[0]+" "+sym[1]] {}
+		else if ( this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas
 		{
-			arr[0] = "PGM";
+			//arr[0] = sym[0]=="*"?"PC":"LBL";  // LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
+			arr[0] = "LBL";
+			arr[1] = "PGM";
+			arr[2] = "OPR";
 		}
 		else if( this.pragma_sym[sym[1]]!=null ) // check pragma preceeded by LBL
 		{
@@ -119,6 +134,13 @@ function ASM()
 			arr[0] = "---";
 
 		return arr;
+	}
+
+	this.mnemonic_tagger = function(mne,opr)
+	{
+		if(opr=="A") return 1;
+		if(opr.charAt(0)=="#") return 2;
+		
 	}
 
 	// Slice ASM lines -> codesrc (array)
