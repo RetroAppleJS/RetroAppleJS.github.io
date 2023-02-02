@@ -36,19 +36,25 @@ function Apple2Plus(context) {
         if(oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
             // update CPU load display
-            document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+
+            if(oEMU.bCPU_monitoring)
+                document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+            
             oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
 
             // update memory map
-            oMEMGRID.paint_grid();                      // clear memory map
-            for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
+            if(oEMU.bMEM_monitoring)
             {
-                if(hw.mem_mon[i]) 
+                oMEMGRID.paint_grid();                      // clear memory map
+                for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
                 {
-                    var id = oCOM.getHexByte(i);
-                    el = document.getElementById("m"+id+"00");
-                    el.style.backgroundColor = "#FFFFFF";
-                    //console.log("m"+id+"00")
+                    if(hw.mem_mon[i]) 
+                    {
+                        var id = oCOM.getHexByte(i);
+                        el = document.getElementById("m"+id+"00");
+                        el.style.backgroundColor = "#FFFFFF";
+                        //console.log("m"+id+"00")
+                    }
                 }
             }
         }
@@ -64,7 +70,7 @@ function Apple2Plus(context) {
         }
 
         // display dashboard parameters
-        if(oEMU.bCPU_monitoring==true)
+        if(oEMU.bCPU_monitoring==true || oEMU.bMEM_monitoring==true)
             this.dashboard_refresh(args);
     }
 
