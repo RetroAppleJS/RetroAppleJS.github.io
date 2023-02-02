@@ -307,36 +307,43 @@ function COM_PopupHTML(txt)
 
               <!--  SETTINGS -->
 
-              <!--  style="position:absolute;left:0px;top:32px;z-index:2;height:80px;" -->
+              <div class="hints1" id="settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <!-- PUSH PANE DOWN IF OTHER PANE APPEARS
               <div class="hints1" id="settings" hidden="">
+                -->
                 <div class=toolbox>
                   <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
                     SETTINGS
                     <div style="font-family:arial;font-size:11px">
                       
                       <script>
-                        var s = "<select name='EMU_system' id='EMU_system' onchange='EMU_change_system(this)'>"
+                        var def = "A2P"
+                        var s = "<select name='EMU_system' id='EMU_system' onchange=\"document.getElementById('EMU_system_param').innerHTML=EMU_change_system(this.value)\">"
                         for(var i in _CFG_SYSCODE)
-                        {
-                          s+= "<option value='"+i+"' "+(i=="A2P"?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
-                        }
-                        s += "</select>"
-                        document.write(s);
+                          s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
+                        document.write(s+"</select>");
 
-                        function EMU_change_system(obj)
+                        //oCOM.addLoadEvent(EMU_mem_map);
+                        function EMU_change_system(val)
                         {
                           var s = "";
-                          for(var i in _CFG_SYSCODE[obj.value])
+                          for(var i in _CFG_SYSCODE[val])
                           {
                             if(i!="Model" && i!="ROMS")
-                            s+= i+":"+_CFG_SYSCODE[obj.value][i]+"<br>"
+                            s+= i+":"+_CFG_SYSCODE[val][i]+"<br>"
                           }
-                          document.getElementById("EMU_system_param").innerHTML = s;
+                          return s;
                         }
-                      </script>
 
-                      <div id="EMU_system_param" style="float:left"></div>
+                       
+                      </script>
+                      <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="onPopup('EMU_system_param')"></i>
+                      <!--
                       <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
+                      -->
+                      <div id="EMU_system_param" hidden="" style="inline-size: 150px;;word-break:break-all;">
+                      <script>document.write(EMU_change_system(def))</script>
+                      </div>
                     </div>
 
                   </div>
