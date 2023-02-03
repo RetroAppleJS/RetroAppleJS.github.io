@@ -36,15 +36,13 @@ function Apple2Plus(context) {
         if(oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
             // update CPU load display
-
             if(oEMU.bCPU_monitoring)
                 document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
-            
-            oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
 
-            // update memory map
+                // update memory map
             if(oEMU.bMEM_monitoring)
             {
+                //oMEMGRID.set = true;
                 oMEMGRID.paint_grid();                      // clear memory map
                 for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
                 {
@@ -57,6 +55,9 @@ function Apple2Plus(context) {
                     }
                 }
             }
+            //else if(oMEMGRID.set) { oMEMGRID.paint_grid(); oMEMGRID.set = false;   }
+
+            oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
         }
     }
 
@@ -71,7 +72,7 @@ function Apple2Plus(context) {
 
         // display dashboard parameters
         if(oEMU.bCPU_monitoring==true || oEMU.bMEM_monitoring==true)
-            this.dashboard_refresh(args);
+        this.dashboard_refresh(args);
     }
 
     this.keystroke = function(data)
