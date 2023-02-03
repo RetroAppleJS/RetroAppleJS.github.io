@@ -801,6 +801,5 @@ function simStep() {
 	}
 }
 
-
-oCOM.addLoadEvent(DBG_init);
+oCOM.addToEventStack("onload",DBG_init);
 // eof

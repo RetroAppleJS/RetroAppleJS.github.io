@@ -19,8 +19,8 @@
 //   | '' <  [  | / /'`\] | '' <  ( (`\] | | `'_\ : [ `/'`\]| |     
 //   | |`\ \  | | | \__.  | |`\ \  `'.'. | |,// | |, | |    | |,    
 //  [__|  \_][___]'.___.'[__|  \_][\__) )\__/\'-;__/[___]   \__/ 
-oCOM.addLoadEvent(EMU_init); // EMULATOR KICKSTART
 
+oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
 // global data initializations
 const _o = {"tools":{}

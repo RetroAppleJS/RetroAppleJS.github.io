@@ -65,14 +65,13 @@ function COM()
     // ONLOAD EVENT SEQUENCER //
     ////////////////////////////
 
-    this.addLoadEvent = function(func)
+    this.addToEventStack = function(event,func)
     {
-        console.log("addLoadEvent("+func.name+")");
-        var oldonload = window.onload;
-        if (typeof window.onload != "function")
-          window.onload = func;
-        else
-        { window.onload = function() { if (oldonload) oldonload(); func() } }
+      console.log("addToEventStack("+event+" "+func.name+")");
+      if(o_event==null) var o_event = {};
+      o_event[event] = window[event];
+      if (typeof window[event] != "function") window[event] = func;
+      else { window[event] = function() { if (o_event[event]) o_event[event](); func() } };
     }
 
     /////////////////////////////////

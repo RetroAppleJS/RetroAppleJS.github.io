@@ -56,8 +56,12 @@
     animDuration  = 0.1;
     var liContainer,liEls,slideEl_1,slideEl_2 
 
-    window.addEventListener("load", COM_switchTab);
-    window.addEventListener("hashchange", COM_switchTab);
+    oCOM.addToEventStack("onload",COM_switchTab);
+    oCOM.addToEventStack("onhashchange",COM_switchTab);
+
+    //oCOM.addLoadEvent(COM_switchTab);
+    //oCOM.addHashChangeEvent(COM_switchTab);
+    //window.addEventListener("hashchange", COM_switchTab);
 
     ////////////////////////////
     // TAB EVENT HANDLER      //
@@ -323,7 +327,7 @@ function COM_PopupHTML(txt)
                           s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
                         document.write(s+"</select>");
 
-                        //oCOM.addLoadEvent(EMU_mem_map);
+                        //oCOM.addToEventStack("load",EMU_mem_map);
                         function EMU_change_system(val)
                         {
                           var s = "";
@@ -409,7 +413,7 @@ function COM_PopupHTML(txt)
 
             <script type="text/javascript">
 
-            oCOM.addLoadEvent(EMU_mem_map);
+            oCOM.addToEventStack("onload",EMU_mem_map)
             function EMU_mem_map()
             {
               var linestep = 4096;
