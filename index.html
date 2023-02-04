@@ -357,12 +357,10 @@ function COM_PopupHTML(txt)
                     <div style="font-family:arial;font-size:11px">
 
                         <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;">
-
-                          <div id="cpu_component" style="float:left;border:0px solid;padding:3px"></div>
-                          load&nbsp;
-                          <i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>
-                          <input id="cpu_pct" value="" size="4"></div>
-
+                          <div id="cpu_component" style="float:left;border:0px solid;padding-top:1px;"></div>&nbsp;load
+                          <i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
+                          <input id="cpu_pct" value="" size="4" style="background:transparent;border: none;">
+                        </div>
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
                         <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="slider_update(this,70)" style="width:65px">
