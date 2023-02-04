@@ -6,7 +6,8 @@
 
 oEMU.component.CPU["6502"] = {Cpu6502};
 
-function Cpu6502(hwobj) {
+function Cpu6502(hwobj)
+{
     // 6502 constants.
     var STACK_ADDR =    0x0100,
         NMI_VECTOR =    0xfffa,
@@ -338,8 +339,7 @@ function Cpu6502(hwobj) {
             writeByte(operand, d8);
             break;
         case 0x10:        /* BPL */
-            if ((p & P_N) == 0)
-                branch_instr(operand);
+            if ((p & P_N) == 0) branch_instr(operand);
             break;
         case 0x11:        /* ORA (ind),Y */
             addr = ind_y(operand);
@@ -419,8 +419,7 @@ function Cpu6502(hwobj) {
             writeByte(operand, d8);
             break;
         case 0x30:        /* BMI */
-            if ((p & P_N) != 0)
-                branch_instr(operand);
+            if ((p & P_N) != 0) branch_instr(operand);
             break;
         case 0x31:        /* AND (ind),Y */
             addr = ind_y(operand);
@@ -494,8 +493,7 @@ function Cpu6502(hwobj) {
             writeByte(operand, d8);
             break;
         case 0x50:        /* BVC */
-            if ((p & P_V) == 0)
-                branch_instr(operand);
+            if ((p & P_V) == 0) branch_instr(operand);
             break;
         case 0x51:        /* EOR (indirect), Y */
             addr = ind_y(operand);
@@ -570,8 +568,7 @@ function Cpu6502(hwobj) {
             writeByte(operand, d8);
             break;
         case 0x70:        /* BVS */
-            if ((p & P_V) != 0)
-                branch_instr(operand);
+            if ((p & P_V) != 0) branch_instr(operand);
             break;
         case 0x71:        /* ADC (indirect),Y */
             addr = ind_y(operand);
@@ -635,8 +632,7 @@ function Cpu6502(hwobj) {
             writeByte(operand, x);
             break;
         case 0x90:        /* BCC */
-            if ((p & P_C) == 0)
-                branch_instr(operand);
+            if ((p & P_C) == 0) branch_instr(operand);
             break;
         case 0x91:        /* STA (ind),Y */
             addr = ind_y(operand);
@@ -714,10 +710,8 @@ function Cpu6502(hwobj) {
             x = readByte(operand);
             set_nz(x);
             break;
-
         case 0xb0:        /* BCS */
-            if ((p & P_C) != 0)
-                branch_instr(operand);
+            if ((p & P_C) != 0) branch_instr(operand);
             break;
         case 0xb1:        /* LDA (ind),Y */
             addr = ind_y(operand);
@@ -806,8 +800,7 @@ function Cpu6502(hwobj) {
             set_nz(d8);
             break;
         case 0xd0:        /* BNE */
-            if ((p & P_Z) == 0)
-                branch_instr(operand);
+            if ((p & P_Z) == 0) branch_instr(operand);
             break;
         case 0xd1:        /* CMP (ind),Y */
             addr = ind_y(operand);
@@ -885,8 +878,7 @@ function Cpu6502(hwobj) {
             set_nz(d8);
             break;
         case 0xf0:        /* BEQ */
-            if ((p & P_Z) != 0)
-                branch_instr(operand);
+            if ((p & P_Z) != 0) branch_instr(operand);
             break;
         case 0xf1:        /* SBC (ind),Y */
             addr = ind_y(operand);
