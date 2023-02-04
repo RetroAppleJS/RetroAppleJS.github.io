@@ -69,6 +69,9 @@ function EMU_init()
     appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
+
+    oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
 }
 
 function attachKeyboard(bEnable)

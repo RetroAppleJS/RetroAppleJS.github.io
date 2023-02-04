@@ -29,12 +29,38 @@ function Apple2Plus(context) {
         system_tab_update();
     }
 
+    this.CPU_monitoring = function()
+    {
+        document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+    }
+
+    this.MEM_monitoring = function()
+    {
+        oMEMGRID.paint_grid();                      // clear memory map
+        for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
+        {
+            if(hw.mem_mon[i]) 
+            {
+                var id = oCOM.getHexByte(i);
+                el = document.getElementById("m"+id+"00");
+                el.style.backgroundColor = "#FFFFFF";
+                //console.log("m"+id+"00")
+            }
+        }        
+    }
+
     this.dashboard_refresh = function(args)
     {
         oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
         oEMU.CPU_dutycycle_idx++;
         if(oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
+            for(var _o in oCOM.RefreshEvent_arr)
+            {
+                if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
+            }
+
+/*
             // update CPU load display
             if(oEMU.bCPU_monitoring)
                 document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
@@ -56,6 +82,7 @@ function Apple2Plus(context) {
                 }
             }
             //else if(oMEMGRID.set) { oMEMGRID.paint_grid(); oMEMGRID.set = false;   }
+            */
 
             oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
         }
@@ -71,8 +98,8 @@ function Apple2Plus(context) {
         }
 
         // display dashboard parameters
-        if(oEMU.bCPU_monitoring==true || oEMU.bMEM_monitoring==true)
-        this.dashboard_refresh(args);
+        if(oCOM.bRefreshEvent)
+            this.dashboard_refresh(args);
     }
 
     this.keystroke = function(data)

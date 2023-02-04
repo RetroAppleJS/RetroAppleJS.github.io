@@ -61,9 +61,9 @@ function COM()
 		}
 	}
 
-    ////////////////////////////
-    // ONLOAD EVENT SEQUENCER //
-    ////////////////////////////
+    /////////////////////
+    // EVENT SEQUENCER //
+    /////////////////////
 
     this.addToEventStack = function(event,func)
     {
@@ -74,18 +74,34 @@ function COM()
       else { window[event] = function() { if (o_event[event]) o_event[event](); func() } };
     }
 
+    
     /////////////////////////////////
     // DASHBOARD REFRESH SEQUENCER //
     /////////////////////////////////
 
     // array of functions is called at the pace of EMU_DashboardRefresh_s = Dashboard updates per second   
     this.RefreshEvent_arr = {};
-    this.addRefreshEvent = function(func)
+    this.bRefreshEvent = false;
+
+    this.addRefreshEvent = function(func,name,active)
     {
-      console.log("addRefreshEvent("+func.name+")");
-      this.RefreshEvent_arr[ func.name ] = {"active":true,"function":func}
+      console.log("addRefreshEvent("+name+")");
+      this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
+      this.checkActiveEvents();
+    }
+    this.toggleRefreshEvent = function(name)
+    {
+      this.RefreshEvent_arr[ name ].active = !this.RefreshEvent_arr[ name ].active;
+      this.checkActiveEvents();
     }
 
+    this.checkActiveEvents = function()
+    {
+      var bActive = false;
+      for(var _o in this.RefreshEvent_arr)
+        if(this.RefreshEvent_arr[_o].active) bActive = true;
+      this.bRefreshEvent = bActive;
+    }
 }
 
 oCOM = new COM();

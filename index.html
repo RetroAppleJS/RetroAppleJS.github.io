@@ -356,7 +356,13 @@ function COM_PopupHTML(txt)
                     SYSTEM
                     <div style="font-family:arial;font-size:11px">
 
-                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;"><div id="cpu_component" style="float:left;border:0px solid;padding:3px"></div>load&nbsp;<i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oEMU.bCPU_monitoring=!!this.hidden;document.getElementById('cpu_pct').value='';"></i><input id="cpu_pct" value="" size="4"></div>
+                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;">
+
+                          <div id="cpu_component" style="float:left;border:0px solid;padding:3px"></div>
+                          load&nbsp;
+                          <i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>
+                          <input id="cpu_pct" value="" size="4"></div>
+
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
                         <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="slider_update(this,70)" style="width:65px">
@@ -386,7 +392,7 @@ function COM_PopupHTML(txt)
                 </div>
                   
                   <div class=appbox style="height:80px;width:340px;padding:0px 6px 0px 6px;" title="Memory map">
-                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oEMU.bMEM_monitoring=!!this.hidden;oMEMGRID.paint_grid();"></i></div>
+                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('MEM_monitoring');oMEMGRID.paint_grid();"></i></div>
                     <div id="EMU_mem_map"></div>
                   </div>
 
