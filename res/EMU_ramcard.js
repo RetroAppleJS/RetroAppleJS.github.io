@@ -4,7 +4,7 @@
 //
 // EMU_ramcard.js
 
-oEMU.component.IO["Ramcard"] = {RamCard};
+oEMU.component.IO["RamCard"] = {RamCard};
 
 function RamCard()
 {

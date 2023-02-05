@@ -26,6 +26,8 @@
 
 // EMU_appledisk2.js
 
+oEMU.component.IO["AppleDisk"] = {AppleDisk2};
+
 function AppleDisk2() {
 
     var MOTOR_OFF =     0x08,

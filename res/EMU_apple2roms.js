@@ -7,6 +7,8 @@
 // http://www.txbobsc.com/scsc/scdocumentor/index.html#toc  >> APPLESOFT ROM
 // https://6502disassembly.com/a2-rom/AutoF8ROM.html  >> AUTOSTART ROM
 
+oEMU.component.ROM["A2P"] = true;
+
 const apple2Rom = new Uint8Array([
         0x6d, 0xd8, 0x65, 0xd7, 0xf8, 0xdc, 0x94, 0xd9,
         0xb1, 0xdb, 0x30, 0xf3, 0xd8, 0xdf, 0xe1, 0xdb,
