@@ -48,7 +48,6 @@ function Apple2Plus(context) {
                 //s+= id+"00<br>"
             }
         }
-
         //COM_PopupHTML(s);
         //document.getElementById('COM_popup_text').innerHTML = s;
 
