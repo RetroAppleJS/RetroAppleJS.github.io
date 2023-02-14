@@ -214,7 +214,6 @@ function Apple2Plus(context) {
         0x3F2:[0,"SOFTEV","vECtor For wArm stArt"],
         0x3F4:[0,"PWREDUP","this must = EOR #A5 oF SOFTEV+1"],
         0x3F8:[0,"USRADR"]
-
     }
 /*
 
