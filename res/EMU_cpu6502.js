@@ -33,13 +33,41 @@ function Cpu6502(hwobj)
     var sp = 0xff;
     var p = P_I | P_1;
     var pc = RESET_VECTOR;
+    var cnt = 0;
+
+    var bBOOT = true;
+    var RAMidx = {};
 
     function readByte(addr) {
         return hw.read(addr);
     }
 
     function writeByte(addr, d8) {
+        
         hw.write(addr, d8);
+
+        /*
+        var a = oCOM.getHexWord(addr);
+        var d = oCOM.getHexByte(d8)
+        RAMidx[a] = d;
+
+        if(bBOOT == true && (a == "004E" || a == "004F"))
+        { 
+            bBOOT = false;
+            var cnt = 0;
+            for(var i in RAMidx)
+                cnt++;
+            console.log(cnt);
+            console.log(JSON.stringify(RAMidx));
+        }
+        */
+
+        /*
+        cnt++;
+        
+        if(a != "004E" && a != "004F")
+            console.log(cnt+" - hw.write("+oCOM.getHexWord(addr)+","+oCOM.getHexByte(d8)+")");
+        */
     }
 
     function readWord(addr) {

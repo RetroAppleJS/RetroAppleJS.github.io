@@ -358,7 +358,7 @@ function COM_PopupHTML(html)
 
                         <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;">
                           <div id="cpu_component" style="float:left;border:0px solid;padding-top:1px;"></div>&nbsp;load
-                          <i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
+                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
                           <input id="cpu_pct" value="" size="4" style="background:transparent;border: none;">
                         </div>
                         <br>
@@ -390,7 +390,7 @@ function COM_PopupHTML(html)
                 </div>
                   
                   <div class=appbox style="height:80px;width:340px;padding:0px 6px 0px 6px;" title="Memory map">
-                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('MEM_monitoring');oMEMGRID.paint_grid();"></i></div>
+                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" id="MEM_monitoring" onclick="onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('MEM_monitoring');oMEMGRID.paint_grid();"></i></div>
                     <div id="EMU_mem_map"></div>
                   </div>
 

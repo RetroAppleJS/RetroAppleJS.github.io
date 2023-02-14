@@ -44,7 +44,7 @@ function Apple2Hw(vid,keys) {
         this.io.cycle();
     }
 
-    this.mem_mon = [];
+    this.mem_mon = {};
 
     // Memspace interface for cpu6502.  If I wanted to bother, I'd have
     // a parent class called Memspace which only had read() and write()
@@ -206,7 +206,12 @@ function Apple2Hw(vid,keys) {
         else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             this.io.write(addr - IO_ADDR, d8);
 
-        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;    
+        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
+    }
+
+    this.clear_mem_mon = function()
+    {
+        this.mem_mon = {}
     }
 
     // Give Video a reference to memory.

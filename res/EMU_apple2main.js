@@ -72,6 +72,18 @@ function EMU_init()
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
+    
+    var bBOOTmon = false;
+    if(bBOOTmon)
+    {
+        document.getElementById("COM_popup").hidden = false; // show COM popup
+        document.getElementById("settings").hidden = false;     // show settings tab
+        onPopUpClass(document.getElementById('MEM_monitoring'),'fa-stop-circle','fa-sync-alt'); // activate monitoring
+        //oCOM.toggleRefreshEvent('MEM_monitoring');  // immediately refresh memory map
+    }
+
+    oCOM.toggleRefreshEvent('MEM_monitoring');
+
 }
 
 function attachKeyboard(bEnable)

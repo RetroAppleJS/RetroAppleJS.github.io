@@ -37,6 +37,7 @@ function Apple2Plus(context) {
     this.MEM_monitoring = function()
     {
         oMEMGRID.paint_grid();                      // clear memory map
+        //var s = "";
         for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
         {
             if(hw.mem_mon[i]) 
@@ -44,9 +45,14 @@ function Apple2Plus(context) {
                 var id = oCOM.getHexByte(i);
                 el = document.getElementById("m"+id+"00");
                 el.style.backgroundColor = "#FFFFFF";
-                //console.log("m"+id+"00")
+                //s+= id+"00<br>"
             }
-        }        
+        }
+
+        //COM_PopupHTML(s);
+        //document.getElementById('COM_popup_text').innerHTML = s;
+
+        hw.clear_mem_mon();
     }
 
     this.dashboard_refresh = function(args)
@@ -55,42 +61,13 @@ function Apple2Plus(context) {
         oEMU.CPU_dutycycle_idx++;
         if(oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
-            for(var _o in oCOM.RefreshEvent_arr)
-            {
-                if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
-            }
-
-/*
-            // update CPU load display
-            if(oEMU.bCPU_monitoring)
-                document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
-
-                // update memory map
-            if(oEMU.bMEM_monitoring)
-            {
-                //oMEMGRID.set = true;
-                oMEMGRID.paint_grid();                      // clear memory map
-                for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
-                {
-                    if(hw.mem_mon[i]) 
-                    {
-                        var id = oCOM.getHexByte(i);
-                        el = document.getElementById("m"+id+"00");
-                        el.style.backgroundColor = "#FFFFFF";
-                        //console.log("m"+id+"00")
-                    }
-                }
-            }
-            //else if(oMEMGRID.set) { oMEMGRID.paint_grid(); oMEMGRID.set = false;   }
-            */
-
+            for(var _o in oCOM.RefreshEvent_arr) if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
             oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
         }
     }
 
     this.cycle = function(n) {
         var args = {"cpu_chrono":performance.now()};
-        hw.mem_mon = [];
         while (n-- > 0) {
             hw.cycle();
             video.cycle();

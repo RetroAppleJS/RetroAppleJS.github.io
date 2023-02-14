@@ -89,6 +89,7 @@ function COM()
       this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
       this.checkActiveEvents();
     }
+    
     this.toggleRefreshEvent = function(name)
     {
       this.RefreshEvent_arr[ name ].active = !this.RefreshEvent_arr[ name ].active;
