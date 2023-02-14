@@ -12,9 +12,9 @@ oEMU.system["A2P"] = {/*  config overrides */};
 
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
-    var hw = new Apple2Hw(video);
+    var hw   = new Apple2Hw(video);
     var keys = new Apple2Keys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
-    var cpu = new Cpu6502(hw);
+    var cpu  = new Cpu6502(hw);
 
     this.reset = function() {
         hw.reset();
@@ -54,6 +54,12 @@ function Apple2Plus(context) {
 
         hw.clear_mem_mon();
     }
+
+    this.enable_MEM_monitoring = function(b)
+    {
+        hw.bMon = b;
+    }
+
 
     this.dashboard_refresh = function(args)
     {
@@ -106,11 +112,9 @@ function Apple2Plus(context) {
                 break;
                 case "REPT":
                     alert("Instead of REPT, keep key down >0.5s");
-                    
                     //o["key_rept"].style.top = y+"px";
                     //o["key_rept"].style.left = (x-36)+"px";
                     //o["key_rept"].style.visibility = "visible";
-                    
                 break;
                 default:
                     alert("no function defined on key '"+code+"'");

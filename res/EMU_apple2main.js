@@ -76,13 +76,11 @@ function EMU_init()
     var bBOOTmon = false;
     if(bBOOTmon)
     {
-        document.getElementById("COM_popup").hidden = false; // show COM popup
+        document.getElementById("COM_popup").hidden = false;    // show COM popup
         document.getElementById("settings").hidden = false;     // show settings tab
         onPopUpClass(document.getElementById('MEM_monitoring'),'fa-stop-circle','fa-sync-alt'); // activate monitoring
-        //oCOM.toggleRefreshEvent('MEM_monitoring');  // immediately refresh memory map
+        oCOM.toggleRefreshEvent('MEM_monitoring');  // immediately refresh memory map
     }
-
-    oCOM.toggleRefreshEvent('MEM_monitoring');
 
 }
 
