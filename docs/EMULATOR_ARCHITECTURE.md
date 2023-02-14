@@ -3,7 +3,7 @@
 ### Modular setup
 
 The emulator was made modular for extensibility.  Adding or tweaking virtual hardware features should be achieved with ease.
-Therefore, we have additional code to detect, classify, test, initialise and keep all the virtual hardware in check, also known as the kernal boot.
+Therefore, an additional piece of codebase framework was developed to detect, classify, test, initialise and keep all the virtual hardware in check.  This framework is very similar to how OS kernals are built and assure a safe boot sequence regardless of any dysfunctioning virtual hardware components or peripherals.  As RAM memory is just one of the many hardware components, some operating systems may even boot with RAM.  The Apple II+ for instance does not make it to the blinking prompt without writing approximately in 1240 different RAM memory locations.  Memory mapped I/O including text output is mainly the reason why the Apple II+ needs a minimum of 2KBytes of RAM.
 
 The kernal boot process 
 - **inventorise eligible components**  All self-declared include files are classified and validated after which they are listed as elibible emulator components.  Only eligible components listed as such can activated into the current configuration, even if the current is loaded from a preset configuration, non-eligible components simply will never run.
@@ -11,6 +11,9 @@ The kernal boot process
 - **preset configurations** called SYTEMS, presented as a dropdown menu. Each time a preset is selected, it overwrites the current configuration
 
       <div style=width:800px>
+          
+          
+          
           index.html
           ┌────────────────────────────────────────┐      ▲                  ▲
           │ - list eligible components in oEMU     │      │                  │
