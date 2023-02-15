@@ -42,11 +42,11 @@ function Apple2Hw(vid,keys) {
 
     this.cycle = function() {
         this.io.cycle();
-        //this.bMon = oCOM.RefreshEvent_arr.MEM_monitoring.active;
+        //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
 
     this.mem_mon = {};
-    this.bMon = false;
+    this.bMEM_monitoring = false;
 
     // Memspace interface for cpu6502.  If I wanted to bother, I'd have
     // a parent class called Memspace which only had read() and write()
@@ -208,7 +208,7 @@ function Apple2Hw(vid,keys) {
         else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             this.io.write(addr - IO_ADDR, d8);
 
-        if( this.bMon )
+        if( this.bMEM_monitoring )
             this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
     }
 

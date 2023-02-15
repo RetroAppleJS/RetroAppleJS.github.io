@@ -56,7 +56,7 @@ function Apple2Plus(context) {
 
     this.enable_MEM_monitoring = function(b)
     {
-        hw.bMon = b;
+        hw.bMEM_monitoring = b;
     }
 
 
