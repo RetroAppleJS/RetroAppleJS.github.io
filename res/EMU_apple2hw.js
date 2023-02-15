@@ -212,11 +212,6 @@ function Apple2Hw(vid,keys) {
             this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
     }
 
-    this.clear_mem_mon = function()
-    {
-        this.mem_mon = {}
-    }
-
     // Give Video a reference to memory.
     video.vidram = ram;
 
