@@ -1,6 +1,7 @@
 ## PERIPHERAL interfacing Explained
 
-As we can ignore the electrical and signal layer, our only real concern is software compatibility, which comes down to minding about the entire memory map dedicated to I/O, which is exactly 4K wide  (between $C000 - $D000). Here is an enlarged map of this memory space :
+As we can ignore the electrical and signal layer of the peripheral interface, our only real concern is software compatibility.
+We only need to mind about the memory map dedicated to I/O, called memory-mapped I/O, which is exactly 4K wide  (between $C000 - $D000). Here is an enlarged map of this memory space :
 
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲                  ▲
