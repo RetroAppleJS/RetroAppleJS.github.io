@@ -36,7 +36,7 @@ There must not be any white space in any part of an instruction's address.
  	>            ....	HI-byte portion
  
 #### Labels and Identifiers
-Identifiers must begin with a letter [A-Z] and contain letters, digits, and the underscore [A-Z0-9_]. Only the first 6 characters are significant.
+Identifiers must begin with a letter [A-Za-z] and contain capital or lowercase letters, digits, and the underscore [A-Za-z0-9_]. Only the first 6 characters are significant.
 
 All identifiers, numbers, opcodes, and pragmas are case insensitive and translated to upper case. Identifiers must not be the same as valid opcodes.
 
