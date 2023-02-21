@@ -11,7 +11,7 @@ Any change in this document affects the **default application configuration**, o
 
 This tool gathers all configuration information and documentation, and packs all data together in one config file.
 
-![schema](http://www.plantuml.com/plantuml/uml/dLDFJpen4BtlfvZJBv062B-ZCGHS_kX1IOIZaTHjaKgttUnsKUFutKrOAgoqX3ANDfE-r_TUE_t2qDoKgOoOC9H645ITrd6HCpYAJvNOFKw4kIrVuB3m10Svlh97mDPv75Skta0lwEh5quVntQITCaX6et7L2-K0Sh6EsNpmED_cWJcd3AYKOCM4wq0frBg0fIuL0w4kyNAOI5N178HKUTZLdyVkd3tZ84R4o7Vl_XjY87B8YxNHsH5oPKnM06ArEI7vsIcvqMrM5pV-jtgg6H9RNJZ08ROXTK8bv3pJJSyem6QtR3QHVq9SGV_s2FdxJ0X2CVxHNfbKUhHZqXtSk0SOtI98xKYirLAyZeNa2myQjsFvnRvjc-bt9JLbKClUXuwdzulTXtuhy7gl0w7C63Kytzhpe1tFu_JapDpdswOsdCOpgpoa4E0VL9vcuUYdcgfErEUAbQdy0G00)
+![schema](http://www.plantuml.com/plantuml/png/dLLFJpen4BtlfvZJBv062B-ZCGHS_kX1IOIZaTHjaKffDzk26iVlRh9B1QGbbBbiC-bxVU-ra-qQImlBXAKqWQXgDOwBdC5XFbNcrZWIzdRz0lk59pZ8yP4T0gxEuxZoyKPwGLyl7JyCxqRD5ODiC1XMlLWE81Vhc4nxZzCo3omuPK2b12ScNWTAePO6vdgj60XraPUzH00koeEGAW_t3UUntUVsU8WHCGcTktk668diSxEqEZz2BgpD3I1MYnEIdxsIQ-rwTN3jVwEZwcV6vX4Ei8-jIPrH2GNFTJqm2h3PVZQRn3iXmQ1_UuJylIO4eHZ_Q2xiIWQqOzRktVW76FqYoC6MLAkvU1qAoMS1D9PZ-SM-NPlfToKrPN2GVGYTZkzdsmVzPl1wfmDXdJDgUL7Q2w0zr-FrvCqyvDkbrX-d4wSyfX3W7rIU9l7efmDLhQJB5Ij_93y0)
 
 We aim to have all the documentation available in markdown format, for easy online access and editing in GitHub.  This tool is designed to read all the markdown documentation available online (from GitHub) in this project, and compile a JavaScript include file that would provide a perfect copy of all the available documentation and configuration options inside the IDE.  The following diagram shows how clearly the steps:
 
