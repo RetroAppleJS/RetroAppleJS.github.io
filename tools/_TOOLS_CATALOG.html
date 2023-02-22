@@ -11,15 +11,19 @@
         height: 100px;
         width: 100px;
         background-size: cover;
+        /*background-color: black;*/
         text-decoration: none;
         color: white;
         display: inline-block;
         margin: 20px;
-        border-radius: 24px;
+        border-radius: 10px;
+        /* border-radius: 24px;*/
         position: relative;
       }
   
       .icons a:before,
+
+      /*
       .icons a:after {
         content: '';
         position: absolute;
@@ -29,11 +33,13 @@
         height: 100%;
         background: inherit;
         border-radius: 100%;
+
         -webkit-transform: scaleX(2) scaleY(1.05);
         transform: scaleX(2) scaleY(1.05);
         clip: rect(0, 66px, 100px, 34px);
         z-index: -1;
       }
+      */
   
       .icons a:after {
         -webkit-transform: scaleY(2) scaleX(1.05) rotate(90deg);
@@ -45,12 +51,25 @@
       }
 </style>
 
+<div class="icons">
+    <a href="/tools/Monitor_palette.html" style="background-image: url(/res/palette.png);"></a>
+    <div>Monitor_palette</div>
+</div>
 
+<div class="icons">
+    <a href="/tools/keyboardJS.html" style="background-image: url(/res/appleIIplus_kbd_650.png);"></a>
+    <div>keyboardJS</div>
+</div>
 
-        <div class="icons">
-            <a href="/tools/keyboardJS.html" style="background-image: url(/res/appleIIplus_kbd_650.png);"></a>
-            <div>TEST</div>
-        </div>
+<div class="icons">
+    <a href="/tools/HGRpatternJS.html" style="background-image: url(/res/HGRpatternJS.png);"></a>
+    <div>HGRpatternJS</div>
+</div>
+
+<div class="icons">
+    <a href="" style="background-color:black"</a>
+    <div>HGRpatternJS</div>
+</div>
 
     </body>
 </html>
