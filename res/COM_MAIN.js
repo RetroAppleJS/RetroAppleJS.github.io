@@ -165,7 +165,7 @@ var oMEMGRID = new function()
 
   this.build_grid = function(start,len,step)
   {
-    var s = "<table class=gtable style='display: inline-block;'>\n";
+    var s = "<table class=gtable style='display:inline-block;'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
       s += "<tr><td>"+this.oCOM.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
