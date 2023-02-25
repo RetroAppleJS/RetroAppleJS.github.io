@@ -213,7 +213,7 @@ table { border-collapse: collapse; position: relative;}
   .gtable {
     font-size:8px;
     font-family:Arial;
-    border-collapse: collapse;
+    border-collapse: separate;
     padding:0px;
    }
   .gtable tr { padding:0px;margin:0px;width:20% }
