@@ -98,8 +98,8 @@ There must be white space between a label and a opcode and the opcode and any op
 ## FEATURE wish-list
 
 .DFB or .DB  = **D**e**F**ine **B**yte *(borrowed from Merlin-16)*
-##### Listing:
-      example >> .DFB expression,expression,expression,...
+##### Example:
+      .DFB expression,expression,expression,...
       
 
 
