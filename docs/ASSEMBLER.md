@@ -101,7 +101,7 @@ There must be white space between a label and a opcode and the opcode and any op
 ##### Example:
       .DFB expression,expression,expression,...
       
-.DS  = **D**fine **S**torage *(borrowed from Merlin-16)*
+.DS  = **D**efine **S**torage *(borrowed from Merlin-16)*
 ##### Example:
       .DS expression1                ; zero out [expression1] bytes of memory
       .DS expression1,expression2    ; put [expression2] in [expression1] bytes of memory
