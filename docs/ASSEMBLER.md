@@ -97,7 +97,5 @@ There must be white space between a label and a opcode and the opcode and any op
 
 ## FEATURE wish-list
 
-(borrowed from Merlin-16)
-.DFB or .DB  = **D**e**F**ine **B**yte
-
-
+.DFB or .DB  = **D**e**F**ine **B**yte *(borrowed from Merlin-16)*
+      example >> .DFB expression,expression,expression,...
