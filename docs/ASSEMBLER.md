@@ -94,3 +94,10 @@ There must be white space between a label and a opcode and the opcode and any op
 ##### Object Code:
       A2 00 8A 9D 00 04 A9 01
       9D 00 D8 E8 D0 F4 60
+
+## FEATURE wish-list
+
+(borrowed from Merlin-16)
+.DFB or .DB  = **D**e**F**ine **B**yte
+
+
