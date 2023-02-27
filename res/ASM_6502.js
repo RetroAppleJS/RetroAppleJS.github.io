@@ -451,8 +451,6 @@ function doPass(pass)
 				listing.value += listing_gen(-1,{"val":pragma})
 				if (pass == 2)
 				{
-
-					
 					var v = sym[1];
 					//v = oASM.getNumber(v).val;
 					
