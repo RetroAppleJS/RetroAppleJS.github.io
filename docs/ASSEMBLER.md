@@ -94,3 +94,16 @@ There must be white space between a label and a opcode and the opcode and any op
 ##### Object Code:
       A2 00 8A 9D 00 04 A9 01
       9D 00 D8 E8 D0 F4 60
+
+## FEATURE wish-list
+
+.DFB or .DB  = **D**e**F**ine **B**yte *(borrowed from Merlin-16)*
+##### Example:
+      .DFB expression,expression,expression,...
+      
+.DS  = **D**efine **S**torage *(borrowed from Merlin-16)*
+##### Example:
+      .DS expression1                ; zero out [expression1] bytes of memory
+      .DS expression1,expression2    ; put [expression2] in [expression1] bytes of memory
+      .DS \                          ; zero out until next page of memory
+      .DS \,expression2              ; put [expression2] until next page of memory
