@@ -618,8 +618,6 @@ this.MathParser.prototype.parse = function(e)
 				var e = this.getExpression(arr[i]);
 				arr[i] = e.val+"";
 
-					
-				
 				if(pass==2)
 				{
 					
