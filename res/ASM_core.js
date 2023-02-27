@@ -611,6 +611,34 @@ this.MathParser.prototype.parse = function(e)
 				break;
 			case ".BYTE":
 				break;
+			case ".DS":
+				var arr = sym.slice(1).join("").split(",");
+				var i = arr.length-1
+				var n = arr[i];
+				var e = this.getExpression(arr[i]);
+				arr[i] = e.val+"";
+
+					
+				
+				if(pass==2)
+				{
+					
+					for(var i=0;i<arr.length;i++)
+					{
+						var e = this.getExpression(arr[i]);
+						arr[i] = e.val+"";
+						//if (e.err) { return displayError(e.err) }
+						//	oper = e.val;
+					}
+					//alert(pass+".DS "+arr.join(","));
+				}
+
+				pc += e.val;
+				listing.value += sym[0]+' ' + arr.join(",");
+
+				//oASM.getExpression(addr);
+				return {"val":true};
+				break;
 			case ".TEXT":
 				break;
 			case ".DEFINE":
