@@ -2,7 +2,7 @@
 // Copyright (c) 2021 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// apple2keys.js
+// EMU_apple2keys.js
 
 oEMU.component.Keyboard["A2P"] = {Apple2Keys};
 
@@ -36,23 +36,26 @@ function Apple2Keys(hw)
 
     this.KbdButtonLocator = function(data)
     {
+        var pos = document.getElementById('kbdimg').offsetTop-503;
+        //alert(pos-503)
+        
         var w = 30;
         var xoff = 39;
         var yoff = 228;
         var x = data.pageX-775;
-        var y = data.pageY-750;
+        var y = data.pageY-750 - pos;
         var xc = 0;
         var yc = Math.floor(y/47.5)+5;
         y = Math.round(yc*47.5-212.5)+yoff;
         
         switch(yc)
         {
-            case 0: xc = Math.floor(x/47+13.5); x = xc>0 ? xc*47+xoff : xoff                                ; break;                 
+            case 0: xc = Math.floor(x/47+13.5); x = xc>0 ? xc*47+xoff : xoff                                ; break;
             case 1: xc = Math.floor(x/47+14.1); x = xc>0 ? xc*47+xoff-23 : xoff-23; w=xc>11?55:w            ; break;
             case 2: xc = Math.floor(x/47+13.8); x = xc>0 ? xc*47+xoff-11 : xoff-11                          ; break;
-            case 3: xc = Math.floor(x/47+13.4); x = xc>0 ? xc*47+xoff+12 : xoff-10; w=xc<=0 || xc>10 ? 55:w ; break;  
+            case 3: xc = Math.floor(x/47+13.4); x = xc>0 ? xc*47+xoff+12 : xoff-10; w=xc<=0 || xc>10 ? 55:w ; break;
             case 4: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30               ; break;
-            case 5: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30; yc--         ; break;                                ; break;
+            case 5: xc = Math.floor(x/47+13.4); x = xc>0 ? xoff+106 : xoff-5  ; w=xc>0?360:30; yc--         ; break;
         }
         return {"x":x,"y":y,"xc":xc,"yc":yc,"w":w}
     }
@@ -60,19 +63,22 @@ function Apple2Keys(hw)
     this.KbdCodeHandler = function(data)
     {
       var keymap = {0:[0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xB0,0xBA,0xAD,"RESET"],
-                      1:[0x9B,0xD1,0xD7,0xC5,0xD2,0xD4,0xD9,0xD5,0xC9,0xCF,0xD0,"REPT",0x8D],
-                      2:["CTRL",0xC1,0xD3,0xC4,0xC6,0xC7,0xC8,0xCA,0xCB,0xCC,0xBB,0x88,0x95],
-                      3:["LSHIFT",0xDA,0xD8,0xC3,0xD6,0xC2,0xCE,0xCD,0xAC,0xAE,0xAF,"RSHIFT","RSHIFT"],
-                      4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
+                    1:[0x9B,0xD1,0xD7,0xC5,0xD2,0xD4,0xD9,0xD5,0xC9,0xCF,0xD0,"REPT",0x8D],
+                    2:["CTRL",0xC1,0xD3,0xC4,0xC6,0xC7,0xC8,0xCA,0xCB,0xCC,0xBB,0x88,0x95],
+                    3:["LSHIFT",0xDA,0xD8,0xC3,0xD6,0xC2,0xCE,0xCD,0xAC,0xAE,0xAF,"RSHIFT","RSHIFT"],
+                    4:["POWER","",0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0,0xA0]
                     }
         var loc = this.KbdButtonLocator(data);
         return keymap[loc.yc][loc.xc];
     }
 
     this.KbdHover = function(event)
-    {    
+    {        
         var loc = this.KbdButtonLocator(event);
         document.getElementById(_o.EMU_key_id).style.width = loc.w+"px";
+
+        var pos = document.getElementById('kbdimg').offsetTop-503;
+        //alert(pos)
 
         switch(event.type)
         {
@@ -99,7 +105,7 @@ function Apple2Keys(hw)
         document.getElementById(_o.EMU_kbd_id).style.opacity=0;
         document.getElementById(_o.EMU_key_id).style.display="none";
         _o.EMU_keyb_active = false;
-        _o.EMU_keyb_timer = false;
+        _o.EMU_keyb_timer  = false;
     }
 
 }
