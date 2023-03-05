@@ -55,14 +55,50 @@ function _TITLE() {
     +"</div></center></div>"
 }
 
+const _o = {"tools":{}
+        ,"sys":{}
+        ,"EMU_keyb_timer":false
+        ,"EMU_keyb_active":false
+        ,"EMU_kbd_id":"kbdimg"
+        ,"EMU_key_id":"keybox"
+        ,"EMU_Updates_s":10                 // Emulator intervals per second 
+        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
+        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+    };
+
+var oEMU = {};
+oEMU.component = {"Keyboard":["A2P"]};
+var keys = {}
+
+
 function init_gui(_o)
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
+  keys = new Apple2Keys();
 }
+
+var keystroke = function(data)
+{
+    if(data.type!="click")          // real keyboard or pasteboard ?
+    {
+        var code = keys.KeyCodeHandler(data);         
+        if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
+            data.preventDefault(); // prevent space-bar from triggering page-down
+        alert("data.keyCode="+data.keyCode)
+    }
+    else                            // virtual keyboard ?
+    {
+        var code = keys.KbdCodeHandler(data);
+    }
+}
+
+window.onkeypress = keystroke;
 
 /////////////////////////////////////////////////////////
 
 </script>
+<link rel="stylesheet" href="../res/COM_MAIN.css">
+<script type="text/javascript" src="../res/EMU_apple2keys.js"></script>
 
 <body class="slider_main" onload="init_gui();" style="background-color:#B0B0B0">
     <div id="slider_title"></div>
@@ -77,7 +113,12 @@ function init_gui(_o)
     </div>
     <div id=main>
 
-<img src=../res/appleIIplus_kbd_650.png id=keyimg style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;user-drag:none;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+
+    
+       
+    <div class="appkbd" id="kbdimg" onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)>
+    <div class="key"  id="keybox" onclick=keystroke(event)></div>
+
 
     </div>
 </div>
