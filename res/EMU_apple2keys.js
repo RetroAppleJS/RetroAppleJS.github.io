@@ -8,6 +8,51 @@ oEMU.component.Keyboard["A2P"] = {Apple2Keys};
 
 function Apple2Keys(hw)
 {
+    this.hw = hw;
+
+    // basic keystroke event handler without hardwired buttons
+    // hardwiring should be done by letting hardware class override this method
+
+    this.keystroke = function(data)
+    {
+        if(data.type!="click")          // real keyboard or pasteboard ?
+        {
+            var code = this.KeyCodeHandler(data);         
+            if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
+                data.preventDefault(); // prevent space-bar from triggering page-down
+        }
+        else                            // virtual keyboard ?
+            var code = this.KbdCodeHandler(data);
+
+        if(typeof(code)=="number")       // ASCII keys ?
+        {
+            try { this.hw.io.keypress(code) }
+            catch(e)
+                { alert("override Apple2Keys -> keystroke()")  }
+
+        }
+        else if (typeof(code)=="string") // HARD-WIRED keys ?
+        {
+            switch(code)
+            {
+                case "RESET":
+                    alert("override Apple2Keys -> keystroke()")
+                break;
+                case "POWER":
+                    alert("override Apple2Keys -> keystroke()")
+                break;
+                case "REPT":
+                    alert("override Apple2Keys -> keystroke()")
+                break;
+                default:
+                    alert("override Apple2Keys -> keystroke()")
+            }
+        }
+        else
+            alert("no key");
+    }
+
+
     this.KeyCodeHandler = function(data)
     {
         if (data.metaKey || data.altKey) return true;
@@ -46,6 +91,7 @@ function Apple2Keys(hw)
         var y = data.pageY-750 - pos;
         var xc = 0;
         var yc = Math.floor(y/47.5)+5;
+
         y = Math.round(yc*47.5-212.5)+yoff;
         
         switch(yc)

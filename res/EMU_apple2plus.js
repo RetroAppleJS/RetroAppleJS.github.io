@@ -84,16 +84,19 @@ function Apple2Plus(context) {
             this.dashboard_refresh(args);
     }
 
-    this.keystroke = function(data)
+    // override keys object
+
+    /*
+    keys.keystroke = function(data)
     {
         if(data.type!="click")          // real keyboard or pasteboard ?
         {
-            var code = keys.KeyCodeHandler(data);         
+            var code = this.KeyCodeHandler(data);         
             if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
                 data.preventDefault(); // prevent space-bar from triggering page-down
         }
         else                            // virtual keyboard ?
-            var code = keys.KbdCodeHandler(data);
+            var code = this.KbdCodeHandler(data);
 
         if(typeof(code)=="number")       // ASCII keys ?
             hw.io.keypress(code);
@@ -122,6 +125,7 @@ function Apple2Plus(context) {
         else
             alert("no key");
     }
+    */
 
     this.DiskObj = function() {
         return hw.io.disk2;
