@@ -2,11 +2,11 @@
 // Copyright (c) 2021 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_apple2keys.js
+// EMU_A2Pkeys.js
 
-oEMU.component.Keyboard["A2P"] = {Apple2Keys};
+oEMU.component.Keyboard["A2P"] = {A2PKeys};
 
-function Apple2Keys(hw)
+function A2PKeys(hw)
 {
     this.hw = hw;
 
@@ -28,7 +28,7 @@ function Apple2Keys(hw)
         {
             try { this.hw.io.keypress(code) }
             catch(e)
-                { alert("override Apple2Keys -> keystroke()")  }
+                { alert("override A2PKeys -> keystroke()")  }
 
         }
         else if (typeof(code)=="string") // HARD-WIRED keys ?
@@ -36,16 +36,16 @@ function Apple2Keys(hw)
             switch(code)
             {
                 case "RESET":
-                    alert("override Apple2Keys -> keystroke()")
+                    alert("override A2PKeys -> keystroke()")
                 break;
                 case "POWER":
-                    alert("override Apple2Keys -> keystroke()")
+                    alert("override A2PKeys -> keystroke()")
                 break;
                 case "REPT":
-                    alert("override Apple2Keys -> keystroke()")
+                    alert("override A2PKeys -> keystroke()")
                 break;
                 default:
-                    alert("override Apple2Keys -> keystroke()")
+                    alert("override A2PKeys -> keystroke()")
             }
         }
         else

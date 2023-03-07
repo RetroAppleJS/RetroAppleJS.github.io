@@ -13,7 +13,7 @@ oEMU.system["A2P"] = {/*  config overrides */};
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
     var hw   = new Apple2Hw(video);
-    var keys = new Apple2Keys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
+    var keys = new A2PKeys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
     var cpu  = new Cpu6502(hw);
 
     this.reset = function() {
@@ -85,8 +85,6 @@ function Apple2Plus(context) {
     }
 
     // override keys object
-
-    /*
     keys.keystroke = function(data)
     {
         if(data.type!="click")          // real keyboard or pasteboard ?
@@ -125,7 +123,6 @@ function Apple2Plus(context) {
         else
             alert("no key");
     }
-    */
 
     this.DiskObj = function() {
         return hw.io.disk2;

@@ -74,25 +74,10 @@ var keys = {}
 function init_gui(_o)
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
-  keys = new Apple2Keys();
+  keys = new A2PKeys();
 }
 
-var keystroke = function(data)
-{
-    if(data.type!="click")          // real keyboard or pasteboard ?
-    {
-        var code = keys.KeyCodeHandler(data);         
-        if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
-            data.preventDefault(); // prevent space-bar from triggering page-down
-        alert("data.keyCode="+data.keyCode)
-    }
-    else                            // virtual keyboard ?
-    {
-        var code = keys.KbdCodeHandler(data);
-    }
-}
-
-window.onkeypress = keystroke;
+window.onkeypress = keys.keystroke;
 
 /////////////////////////////////////////////////////////
 
@@ -100,7 +85,7 @@ window.onkeypress = keystroke;
 <link rel="stylesheet" href="../res/COM_MAIN.css">
 <script type="text/javascript" src="../res/EMU_apple2keys.js"></script>
 
-<body class="slider_main" onload="init_gui();" style="background-color:#B0B0B0">
+<body class="slider_main" onload="init_gui();" onkeydown=keys.keystroke(event)  style="background-color:#B0B0B0">
     <div id="slider_title"></div>
 
     <div class="slider_overlay">
@@ -114,10 +99,12 @@ window.onkeypress = keystroke;
     <div id=main>
 
 
-    
+    <br><br><br><br><br><br><br><br><br><br>
+    <br><br><br><br><br><br><br><br><br><br>
+    <br><br><br>
        
     <div class="appkbd" id="kbdimg" onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)>
-    <div class="key"  id="keybox" onclick=keystroke(event)></div>
+    <div class="key"  id="keybox" onclick=keys.keystroke(event)></div>
 
 
     </div>
