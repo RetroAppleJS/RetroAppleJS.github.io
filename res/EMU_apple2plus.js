@@ -13,8 +13,14 @@ oEMU.system["A2P"] = {/*  config overrides */};
 function Apple2Plus(context) {
     var video = new Apple2Video(context);
     var hw   = new Apple2Hw(video);
-    var keys = new A2Pkeys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
+    var keys = typeof(A2Pkeys)=="undefined" ? {
+        keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
+       ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
+       ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
+          } : new A2Pkeys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
     var cpu  = new Cpu6502(hw);
+
+    keys.KbdHTML();
 
     this.reset = function() {
         hw.reset();

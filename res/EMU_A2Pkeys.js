@@ -28,7 +28,7 @@ function A2Pkeys(hw)
         {
             try { this.hw.io.keypress(code) }
             catch(e)
-                { alert("override A2PKeys -> keystroke()")  }
+                { alert("override A2Pkeys -> keystroke()")  }
 
         }
         else if (typeof(code)=="string") // HARD-WIRED keys ?
@@ -36,16 +36,16 @@ function A2Pkeys(hw)
             switch(code)
             {
                 case "RESET":
-                    alert("override A2PKeys -> keystroke()")
+                    alert("override A2Pkeys -> keystroke()")
                 break;
                 case "POWER":
-                    alert("override A2PKeys -> keystroke()")
+                    alert("override A2Pkeys -> keystroke()")
                 break;
                 case "REPT":
-                    alert("override A2PKeys -> keystroke()")
+                    alert("override A2Pkeys -> keystroke()")
                 break;
                 default:
-                    alert("override A2PKeys -> keystroke()")
+                    alert("override A2Pkeys -> keystroke()")
             }
         }
         else
@@ -152,6 +152,52 @@ function A2Pkeys(hw)
         document.getElementById(_o.EMU_key_id).style.display="none";
         _o.EMU_keyb_active = false;
         _o.EMU_keyb_timer  = false;
+    }
+
+    this.KbdHTML = function()
+    {
+        var s = "<style>"
+    +".appkbd"
+    +"{"
+
+        +"  background-image:url('res/appleIIplus_kbd_650.png');"
+
+        //+"  background-image:url('../res/appleIIplus_kbd_650.png');"
+        +"  width:650px;"
+        +"  height:257px;"
+        +"  background-size:650px 257px;"
+        +"  top: 50%;"
+        +"  left: 50%;"
+        +"  margin-left: 105px;"
+        +"  background-repeat:no-repeat;"
+        +"  image-rendering:pixelated;"
+        +"  opacity:0.5;"
+    +"}"
+    +""
+    +".key {"
+        +"position:relative;"
+        +"display:inline-block;"
+        +"width:30px;"
+        +"height:30px;"
+        +"background: rgba(255, 255, 255, 0.5);"
+        +"border-radius: 3px;"
+        +"}"
+    +"</style>"
+    +"<div class='appkbd' id='kbdimg' onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)>"
+    +"<div class='key'  id='keybox' onclick=apple2plus.keysObj().keystroke(event)></div>"
+
+//    <!--
+//  <div class="key"  id="keybox"                                        onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+//
+//    <div class="key"  id="key_rept"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+//    <div class="key"  id="key_ctrl"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+//    <div class="key"  id="key_lshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
+//    <div class="key"  id="key_rshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>  
+//    -->
+  +"</div>"
+
+        document.getElementById("kbd").innerHTML = s;
+
     }
 
 }

@@ -222,10 +222,14 @@
 -->
 
 <script>
-function COM_PopupHTML(html)
+function COM_PopupHTML(html,s)
 {
   var e = onPopup('COM_popup');
+  if(s) { setTimeout( COM_PopupHTML,s*1000 ); e.hidden = false  };
+  if(html==null) e.hidden = true;
+
   document.getElementById('COM_popup_text').innerHTML =  !e.hidden?html:"";
+  
 }
 </script>
 
@@ -271,9 +275,10 @@ function COM_PopupHTML(html)
             <script type="text/javascript" src="res/EMU_ramcard.js"></script>
             <script type="text/javascript" src="res/EMU_apple2io.js"></script>
             <script type="text/javascript" src="res/EMU_apple2hw.js"></script>
-            
+            <!--
             <script type="text/javascript" src="res/EMU_A2Pkeys.js"></script>
-            
+            -->
+            <script type="text/javascript" src="res/EMU_A2Pkeys.js"></script>
             <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
             <script type="text/javascript" src="res/jsSID.js"></script>            
 
@@ -503,19 +508,15 @@ function COM_PopupHTML(html)
             <div class="appdskLED" id="dskLED1" style="left:392px;top:666px"></div>
             <div class="appdskLED" id="dskLED2" style="left:750px;top:666px"></div>
 
-            
-            <div class="appkbd" id="kbdimg" onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)>
-              <div class="key"  id="keybox" onclick=apple2plus.keysObj().keystroke(event)></div>
+            <div id='kbd'></div>
 
-              <!--
-            <div class="key"  id="keybox"                                        onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
 
-              <div class="key"  id="key_rept"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-              <div class="key"  id="key_ctrl"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-              <div class="key"  id="key_lshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-              <div class="key"  id="key_rshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>  
-              -->
-            </div>
+
+
+
+
+
+
             <!--
             <br>
             <img src=res/appleIIplus_kbd_650.png id=kbdimg style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;user-drag:none;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;" ontouchstart=apple2OnKeyHover_b(event) onclick=apple2OnKeyHover_b(event) onmousemove=apple2OnKeyHover_b(event) onmouseover="apple2OnKeyHover_b(event)" onmouseout="apple2OnKeyHover_b(event)">
