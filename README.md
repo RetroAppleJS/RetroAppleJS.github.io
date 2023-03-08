@@ -100,7 +100,7 @@ Also to be considered: detect if host device is mouse-driven or touch-driven.  W
 
 *Note: Only two files are impacted:*
 - *index.html*
-- *res/EMU_apple2keys.js*
+- *res/EMU_AP2keys.js*
 
 #### real-time audio
 
