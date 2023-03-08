@@ -4,9 +4,9 @@
 //
 // EMU_A2Pkeys.js
 
-oEMU.component.Keyboard["A2P"] = {A2PKeys};
+oEMU.component.Keyboard["A2P"] = {A2Pkeys};
 
-function A2PKeys(hw)
+function A2Pkeys(hw)
 {
     this.hw = hw;
 
