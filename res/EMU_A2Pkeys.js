@@ -154,15 +154,13 @@ function A2Pkeys(hw)
         _o.EMU_keyb_timer  = false;
     }
 
-    this.KbdHTML = function()
+    this.KbdHTML = function(path,kbd_events,key_events)
     {
         var s = "<style>"
     +".appkbd"
     +"{"
 
-        +"  background-image:url('res/appleIIplus_kbd_650.png');"
-
-        //+"  background-image:url('../res/appleIIplus_kbd_650.png');"
+        +"  background-image:url('"+path+"appleIIplus_kbd_650.png');"
         +"  width:650px;"
         +"  height:257px;"
         +"  background-size:650px 257px;"
@@ -183,8 +181,9 @@ function A2Pkeys(hw)
         +"border-radius: 3px;"
         +"}"
     +"</style>"
-    +"<div class='appkbd' id='kbdimg' onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)>"
-    +"<div class='key'  id='keybox' onclick=apple2plus.keysObj().keystroke(event)></div>"
+    +"<div class='appkbd' id='kbdimg' "+kbd_events+">"
+    +"<div class='key'  id='keybox' "+key_events+"></div>"
+
 
 //    <!--
 //  <div class="key"  id="keybox"                                        onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
@@ -196,7 +195,10 @@ function A2Pkeys(hw)
 //    -->
   +"</div>"
 
+    if(document.getElementById("kbd"))
         document.getElementById("kbd").innerHTML = s;
+    else
+        document.write(s);
 
     }
 

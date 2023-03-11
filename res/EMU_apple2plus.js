@@ -20,7 +20,9 @@ function Apple2Plus(context) {
           } : new A2Pkeys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
     var cpu  = new Cpu6502(hw);
 
-    keys.KbdHTML();
+    keys.KbdHTML("res/"
+    ,"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)"
+    ,"onclick=apple2plus.keysObj().keystroke(event)");
 
     this.reset = function() {
         hw.reset();
