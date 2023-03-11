@@ -2,7 +2,6 @@
     <head>
         <title>KeyboardJS - KEYBOARD MAPPING TOOL</title>
     </head>
-    <script type="text/javascript" src="../res/EMU_A2Pkeys.js"></script>
 <script>
 //   ██████  ██    ██ ██     ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
 //  ██       ██    ██ ██     ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
@@ -55,7 +54,10 @@ function _TITLE() {
     +" &nbsp; "+(typeof(_T("built"))=="string"?_T("built"):"")+"</div>"
     +"</div></center></div>"
 }
+</script>
 
+<script type="text/javascript" src="../res/EMU_A2Pkeys.js"></script>
+<script>
 const _o = {"tools":{}
         ,"sys":{}
         ,"EMU_keyb_timer":false
@@ -70,16 +72,16 @@ const _o = {"tools":{}
 var oEMU = {};
 oEMU.component = {"Keyboard":["A2P"]};
 var keys = new A2Pkeys();
-var binnerHTML = true;
+var innerHTML = true;
 
 function init_gui(_o)
 {
     document.getElementById('slider_title').outerHTML = _TITLE();
-    if(binnerHTML)
+    if(innerHTML)
     {
-        keys.KbdHTML("../res/"
-        ,"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
-        ,"onclick=keys.keystroke(event)");
+        keys.KbdHTML({id:"kbd",path:"../res/"
+        ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
+        ,key_events:"onclick=keys.keystroke(event)"});
     }
 }
 
@@ -105,11 +107,11 @@ window.onkeypress = keys.keystroke;
         <br><br><br><br><br><br><br><br>
         <br><br><br><br><br><br><br><br>
         <script>
-        if(!binnerHTML)
+        if(!innerHTML)
         {
-            keys.KbdHTML("../res/"
-            ,"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
-            ,"onclick=keys.keystroke(event)");
+            keys.KbdHTML({path:"../res/"
+            ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
+            ,key_events:"onclick=keys.keystroke(event)"});
         }
         </script>
         <div id='kbd'></div>

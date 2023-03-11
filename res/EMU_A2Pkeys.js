@@ -4,6 +4,7 @@
 //
 // EMU_A2Pkeys.js
 
+if(!oEMU) var oEMU = {component:{Keyboard:[]}}
 oEMU.component.Keyboard["A2P"] = {A2Pkeys};
 
 function A2Pkeys(hw)
@@ -154,13 +155,13 @@ function A2Pkeys(hw)
         _o.EMU_keyb_timer  = false;
     }
 
-    this.KbdHTML = function(path,kbd_events,key_events)
+    this.KbdHTML = function(args)
     {
         var s = "<style>"
     +".appkbd"
     +"{"
 
-        +"  background-image:url('"+path+"appleIIplus_kbd_650.png');"
+        +"  background-image:url('"+args.path+"appleIIplus_kbd_650.png');"
         +"  width:650px;"
         +"  height:257px;"
         +"  background-size:650px 257px;"
@@ -181,8 +182,8 @@ function A2Pkeys(hw)
         +"border-radius: 3px;"
         +"}"
     +"</style>"
-    +"<div class='appkbd' id='kbdimg' "+kbd_events+">"
-    +"<div class='key'  id='keybox' "+key_events+"></div>"
+    +"<div class='appkbd' id='kbdimg' "+args.kbd_events+">"
+    +"<div class='key'  id='keybox' "+args.key_events+"></div>"
 
 
 //    <!--
@@ -195,8 +196,8 @@ function A2Pkeys(hw)
 //    -->
   +"</div>"
 
-    if(document.getElementById("kbd"))
-        document.getElementById("kbd").innerHTML = s;
+    if(args.id && document.getElementById(args.id))
+        document.getElementById(args.id).innerHTML = s;
     else
         document.write(s);
 
