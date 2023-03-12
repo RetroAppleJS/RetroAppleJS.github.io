@@ -10,7 +10,7 @@ oEMU.component.Keyboard["A2P"] = {A2Pkeys};
 function A2Pkeys(hw)
 {
     this.hw = hw;
-    this.o = typeof(_o)=="undefined"?{"EMU_keyb_timer":false,"EMU_keyb_active":false,"EMU_kbd_id":"kbdimg","EMU_key_id":"keybox"}:_o;
+    this.o = typeof(_o)=="undefined"?{"EMU_keyb_timer":false,"EMU_keyb_active":false,EMU_kbd_id:"kbdimg",EMU_key_id:"keybox",kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)",key_events:"onclick=keys.keystroke(event)"}:_o;
 
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
@@ -124,7 +124,6 @@ function A2Pkeys(hw)
     {
         var loc = this.KbdButtonLocator(event);
         document.getElementById(this.o.EMU_key_id).style.width = loc.w+"px";
-
         var pos = document.getElementById('kbdimg').offsetTop-503;
         //alert(pos)
 
@@ -140,24 +139,32 @@ function A2Pkeys(hw)
             break;        
             case "mouseout":
                 this.o.EMU_keyb_timer = false;
-                setTimeout( this.KbdHover_out, 2000);
+                setTimeout( this.KbdHover_out , 2000, this);
             break;
             //case "touchstart":
         }
         //document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
     }
 
-    this.KbdHover_out = function()
+    this.KbdHover_out = function(t)
     {
-        if(this.o.EMU_keyb_timer == true) return;
-        document.getElementById(this.o.EMU_kbd_id).style.opacity=0;
-        document.getElementById(this.o.EMU_key_id).style.display="none";
-        this.o.EMU_keyb_active = false;
-        this.o.EMU_keyb_timer  = false;
+        if(t.o.EMU_keyb_timer == true) return;
+        document.getElementById(t.o.EMU_kbd_id).style.opacity=0;
+        document.getElementById(t.o.EMU_key_id).style.display="none";
+        t.o.EMU_keyb_active = false;
+        t.o.EMU_keyb_timer  = false;
+    }
+
+    this.defaults = function(args,arr)
+    {
+        for(var i=0;i<arr.length;i++)
+            if(!args[arr[i]]) args[arr[i]] = this.o[arr[i]];
     }
 
     this.KbdHTML = function(args)
     {
+        this.defaults(args,["kbd_events","key_events","EMU_key_id"]);
+
         var s = "<style>"
     +".appkbd"
     +"{"
