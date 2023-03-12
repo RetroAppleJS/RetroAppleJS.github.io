@@ -1,0 +1,13 @@
+<html>
+    <head>
+        <title>KeyboardJS - KEYBOARD MAPPING TOOL</title>
+    </head>
+    <script type="text/javascript" src="../res/EMU_A2Pkeys.js"></script>
+    <script>
+        var keys = new A2Pkeys();
+        keys.KbdHTML({path:"../res/"
+        ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
+        ,key_events:"onclick=keys.keystroke(event)"});
+    </script>
+</body>
+</html>

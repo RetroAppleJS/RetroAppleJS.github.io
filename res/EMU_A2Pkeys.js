@@ -10,6 +10,7 @@ oEMU.component.Keyboard["A2P"] = {A2Pkeys};
 function A2Pkeys(hw)
 {
     this.hw = hw;
+    this.o = typeof(_o)=="undefined"?{"EMU_keyb_timer":false,"EMU_keyb_active":false,"EMU_kbd_id":"kbdimg","EMU_key_id":"keybox"}:_o;
 
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
@@ -120,9 +121,9 @@ function A2Pkeys(hw)
     }
 
     this.KbdHover = function(event)
-    {        
+    {
         var loc = this.KbdButtonLocator(event);
-        document.getElementById(_o.EMU_key_id).style.width = loc.w+"px";
+        document.getElementById(this.o.EMU_key_id).style.width = loc.w+"px";
 
         var pos = document.getElementById('kbdimg').offsetTop-503;
         //alert(pos)
@@ -130,15 +131,15 @@ function A2Pkeys(hw)
         switch(event.type)
         {
             case "mousemove":
-                document.getElementById(_o.EMU_kbd_id).style.opacity=1;
-                document.getElementById(_o.EMU_key_id).style.display="";
-                document.getElementById(_o.EMU_key_id).style.top = loc.y+"px";
-                document.getElementById(_o.EMU_key_id).style.left = loc.x+"px";
-                _o.EMU_keyb_active = true;
-                _o.EMU_keyb_timer = true;
+                document.getElementById(this.o.EMU_kbd_id).style.opacity=1;
+                document.getElementById(this.o.EMU_key_id).style.display="";
+                document.getElementById(this.o.EMU_key_id).style.top = loc.y+"px";
+                document.getElementById(this.o.EMU_key_id).style.left = loc.x+"px";
+                this.o.EMU_keyb_active = true;
+                this.o.EMU_keyb_timer = true;
             break;        
             case "mouseout":
-                _o.EMU_keyb_timer = false;
+                this.o.EMU_keyb_timer = false;
                 setTimeout( this.KbdHover_out, 2000);
             break;
             //case "touchstart":
@@ -148,11 +149,11 @@ function A2Pkeys(hw)
 
     this.KbdHover_out = function()
     {
-        if(_o.EMU_keyb_timer == true) return;
-        document.getElementById(_o.EMU_kbd_id).style.opacity=0;
-        document.getElementById(_o.EMU_key_id).style.display="none";
-        _o.EMU_keyb_active = false;
-        _o.EMU_keyb_timer  = false;
+        if(this.o.EMU_keyb_timer == true) return;
+        document.getElementById(this.o.EMU_kbd_id).style.opacity=0;
+        document.getElementById(this.o.EMU_key_id).style.display="none";
+        this.o.EMU_keyb_active = false;
+        this.o.EMU_keyb_timer  = false;
     }
 
     this.KbdHTML = function(args)
