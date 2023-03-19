@@ -1,6 +1,6 @@
 console.log('Hello TensorFlow');
 
-import {MnistData} from 'data.js';
+import {MnistData} from './data.js';
 
 async function showExamples(data) {
   // Create a container in the visor
