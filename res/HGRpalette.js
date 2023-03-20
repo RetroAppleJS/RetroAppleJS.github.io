@@ -4,7 +4,7 @@
 //
 // HGRpalette.js
 
-const { networkInterfaces } = require("os");
+//const { networkInterfaces } = require("os");
 
 function PALETTE()
 {
