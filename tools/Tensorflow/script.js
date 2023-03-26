@@ -36,4 +36,5 @@ async function run() {
   await data.load();
   await showExamples(data);
 }
+
 document.addEventListener('DOMContentLoaded', run);
