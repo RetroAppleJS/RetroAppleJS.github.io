@@ -1,0 +1,273 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="/public/style.css">
+        <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+        <link rel="shortcut icon" type="image/x-icon" href="/public/favicon.ico" />
+        <script src="/public/help.js" type="module"></script>
+        <title>NoiseCraft Help Page</title>
+    </head>
+    <body>
+
+        <div id="helpcontents" class="pagecontents">
+            <h1>NoiseCraft Help Page</h1>
+
+            <h2>Introduction</h2>
+            <p>
+            NoiseCraft is a visual programming language for sound synthesis and music that runs
+            in your web browser, loosely inspired by Pure Data and Max/MSP. It's a tool that allows you to build your
+            own synthesizer by creating new nodes and connecting them together. By connecting nodes together,
+            you control how audio data and control signals flow from one
+            node to another and how sound is generated. NoiseCraft is ideally suited to play with additive,
+            subtractive and FM synthesis.
+            </p>
+
+            <p>
+            For those who are new to synthesizers and sound synthesis,
+            <a href="https://gizmodo.com/a-beginners-guide-to-the-synth-1736978695">A Beginner's Guide to the Synth</a>
+            is a good introduction to the basic concepts involved.
+            Please don't hesitate to ask any question, offer feedback or report bugs, by
+            <a href="https://github.com/maximecb/noisecraft/issues">opening an issue</a> on our
+            GitHub repository. We also welcome open source contributors, although we ask that you please communicate
+            with us first before opening pull requests for new features, as we are selective as to what changes will
+            be merged.
+            </p>
+
+            <h2>The Basics</h2>
+
+            <h3>Starting Audio Generation</h3>
+            <p>
+            To start generating audio, press the "Play" button in the top-right corner of the page. You can also press
+            the spacebar to start and stop generating audio. Note that projects using the <code>MidiIn</code> node may not
+            produce any sound until you press keys on your keyboard or on a <a href=#midi_support>MIDI controller</a>.
+            Also note that NoiseCraft has been primarily tested and works most reliably with the Chrome web browser.
+            </p>
+
+            <h3>Keyboard Shortcuts</h3>
+            <p>
+            NoiseCraft defines a few useful keyboard shortcuts. On macOS the command key is used instead of control:
+            </p>
+            <ul>
+                <li>Ctrl + A: select all</li>
+                <li>Ctrl + C: copy selected nodes</li>
+                <li>Ctrl + X: cut selected nodes</li>
+                <li>Ctrl + V: paste at cursor position</li>
+                <li>Ctrl + S: save project to file</li>
+                <li>Ctrl + Z: undo</li>
+                <li>Ctrl + Y: redo</li>
+                <li>Delete: delete selected nodes</li>
+                <li>Spacebar: start/stop generating audio</li>
+            </ul>
+
+            <h3>Creating New Nodes</h3>
+            <p>
+            Clicking on empty space in the editor will make a dialog menu pop up which allows you to select the
+            kind of node you want to create. Once the node is created, you can drag it around by clicking on the
+            node's name and holding the left mouse button as you move the mouse.
+            </p>
+
+            <h3>Node Types</h3>
+            Each node has input ports on the left, output ports on the right, and performs some operation
+            internally. Nodes like Add and Mul will add and multiply two input signals together. <code>Sine</code>,
+            <code>Saw</code>, <code>Pulse</code> and <code>Noise</code> are oscillators (signal sources). The
+            <code>AudioOut</code> node takes a left and right signal and plays
+            it back on your speakers.
+
+            <h3>Connecting Nodes</h3>
+            <p>
+            Nodes can have input and output ports, represented by orange boxes. By convention, the input ports of
+            a node are always on the left side, and the output ports are on the right. You can only connect output
+            ports to input ports. One output can be connected to multiple inputs, but each in put can only be
+            connected to one output. To make a connection, simply click on the first port to connect, and then
+            on the second. A new curved line representing the connection will appear.
+            </p>
+
+            <p>
+            NoiseCraft does audio synthesis through virtual analog modeling. All values coming out of a node's
+            output port are floating-point value that can fluctuate over time. Typically, these values are in
+            the range from -1 to 1, or from 0 to 1, but this can vary from one node type to another. Knobs,
+            for example, can be configured to output values in any desired range.
+            </p>
+
+            <p>
+            Connections or wires can have different colors. The colors are meant to make it easier to tell them
+            apart visually. The color of the wires is not completely random, it is dependent on the output port
+            they are coming from.
+            All the wires coming from the same output will have the same color. The color associated with an
+            output port is decided based on the node type and the name of the output port, so that two nodes
+            of the same type will produce outputs of the same color.
+            </p>
+
+            <h3>Selecting Nodes</h3>
+            <p>
+            To select one or more nodes, press and hold the left mouse button, a red selection box will appear.
+            You can then move the mouse while holding the left mouse button pressed to select the nodes you want.
+            Release the mouse button when done and the selected nodes will remain highlighted. To deselect the
+            nodes, click any empty space in the editor.
+            </p>
+
+            <h3>Moving Nodes</h3>
+            <p>
+            To move a node, click on the node's name and hold down the mouse button while moving the mouse.
+            </p>
+
+            <h3>Deleting Nodes</h3>
+            <p>
+            You can delete nodes by first selecting them and then pressing the delete key.
+            </p>
+
+            <h3>Removing Connections</h3>
+            <p>
+            To break connections, you can click on the input-side port
+            associated with that connection. This will break the connection, and leave you holding a dangling
+            wire which you can then reconnect to an input port on another node. You can also drop the
+            dangling connection by clicking on an empty part of the canvas.
+            <p>
+
+            <p>
+            It's also possible to override existing connections. In NoiseCraft, output-side ports can be
+            connected to multiple inputs, but input-side ports can can only be connected to one thing.
+            When you try to connect an output port to an input port that already is connected to something,
+            this will remove the previous connection on that input port and override it with the new
+            connection you just made.
+            </p>
+
+            <h3>Editing Node Parameters</h3>
+            <p>
+            Double-clicking on a node's name will make a Node Parameters menu specific to this node pop up.
+            This allows you to edit advanced parameters, such as the minimum and maximum value a knob can output,
+            or the output range of a <code>Sine</code> oscillator.
+            </p>
+
+            <h3>Copying and Pasting</h3>
+            <p>
+            One or more nodes can be copied by first selecting the nodes you want to copy, and then
+            pressing Ctrl+C (Command+C on macOS). You can then paste the nodes at the location of your
+            mouse pointer by pressing Ctrl+V (Command+V on macOS). You can copy and paste nodes
+            between different browser tabs, which makes it possible to reuse useful parts of
+            other projects.
+            </p>
+
+            <h3>Zooming In and Out</h3>
+            <p>
+            At this time, there is no zoom feature built into NoiseCraft itself. However, most web
+            browsers allow you to zoom in and out on a webpage with Ctrl+Minus and Ctrl+Plus. This
+            works fairly well to zoom out on larger projects.
+            </p>
+
+            <h2>Examples</h2>
+
+            This section contains some simple example projects which can serve as mini tutorials to
+            help you get started.
+
+            <h3>Producing Sound</h3>
+            <p>
+            In order to produce a sound, we need to connect an audio signal source to an audio output. The
+            <a href="https://noisecraft.app/161">simplest possible graph</a> that you could make to do this
+            involves connecting a <code>Noise</code> node directly to an <code>AudioOut</code> node. Try
+            creating this simple graph, and then press the Play button in the top-right corner.
+            </p>
+
+            <h3>Volume Knob</h3>
+            <p>
+            It's useful to be able to change the amplitude (intensity) of a signal. An easy way to do this
+            is to multiply that signal by some number. In <a href="https://noisecraft.app/162">this example</a>,
+            we multiply the output of a <code>Noise</code> node by some factor that is controlled by a
+            <code>Knob</code> node. You can
+            change the value that the knob outputs by clicking on the knob, holding the mouse button
+            down and moving your mouse up and down. Knobs, by default, produce values between 0 and 1.
+            However, you can change the output range of a knob by double clicking on its name (where it
+            says "Knob") and editing the node's parameters.
+            </p>
+
+            <h3>Low Frequency Oscillators (LFOs)</h3>
+            <p>
+            The <code>Sine</code>, <code>Saw</code> and <code>Tri</code> oscillator nodes can be used as LFOs.
+            You can double-click on these nodes to edit their minimum and maximum output range,
+            and then use their output to modulate the parameters of other nodes. In this simple example,
+            we use a sine LFO to <a href="https://noisecraft.app/164">modulate the cutoff</a> of a low-pass
+            filter.
+            </p>
+
+            <h3>Sequencers</h3>
+            <p>
+            Sequencers can be used to automatically play a sequence of notes, or for automation.
+            Each sequencer contains 8 patterns that can be selected using the buttons numbered 1
+            through 8. The patterns can be extended or shortened in length. The frequency output
+            of the sequencer corresponds to a note on the currently selected scale, and can be
+            used to <a href="https://noisecraft.app/243">drive an oscillator</a>. A simple detuning
+            effect can be achieved by multiplying the frequency by a value or by adding to it.
+            </p>
+
+            <!--
+            <h3>Playing Some Notes</h3>
+            <p>
+            The MidiIn node allows you to get pitch and gate inputs for notes played on a computer keyboard
+            or MIDI input device. The pitch value is the frequency of the note played. The gate value is one
+            when a key is held down, or zero otherwise.
+            </p>
+
+            <p>
+            This <a href="#31">example graph</a> uses the pitch value to directly control
+            a sawtooth wave oscillator. The gate value is then multiplied by the oscillator's output, so
+            that you only hear a sound when a note is playing.
+            </p>
+
+            <p>Press the play button in the top-right corner, and then try pressing the A to L keys on
+            your keyboard to produce sound. You can also shift one octave up or down with the Z and X keys.
+            If you want to use a MIDI input device, you should connect this device to your computer
+            before loading up NoiseCraft (or refresh the page).
+            </p>
+            -->
+
+            <h2>MIDI Support</h2>
+            <h3>Keyboard and Sequencers</h3>
+            <p>
+            NoiseCraft can receive input from MIDI keyboards, sequencers and other types of MIDI devices. The
+            <code>MidiIn</code> node, by default, will connect to every MIDI device on your system and receive notes.
+            </p>
+            <p>
+            Should you want to receive MIDI signals from multiple devices, either to interface with multiple controllers
+            or external sequencers, or with a program such as ORCA, you can create multiple <code>MidiIn</code>
+            nodes and assign each input node to a different MIDI channel. To do so, double-click on a <code>MidiIn</code>
+            node and set the <code>chanNo</code> value to the MIDI channel you wish to receive from.
+            </p>
+
+            <h3>Mapping Controls</h3>
+            <p>
+            You can map virtual knobs in NoiseCraft to physical knobs or faders on a MIDI device by
+            double-clicking on the virtual knob and then moving the physical knob you want to map to.
+            You can also map knobs to the mod wheel or pitch bend wheel of a MIDI keyboard. In cases
+            where you can't easily physically move a specific physical control to bind it, it's also
+            possible to double-click on a knob's header to open the node parameters menu, and then
+            manually edit the <code>controlId</code> parameter.
+            </p>
+
+            <h3>Unmapping Controls</h3>
+            <p>
+            To unmap a MIDI control from a virtual knob, double click the knob node and then click outside of
+            the mapping dialog or press the escape key.
+            </p>
+
+            <h3>Clock Signal Output</h3>
+            <p>
+            The <code>ClockOut</code> node allows you to broadcast a clock signal from NoiseCraft to every MIDI
+            device you have connected. This makes it possible to jam with external devices such as drum machines
+            while keeping the
+            rhythm synchronized. Simply connect a <code>Clock</code> node to a <code>ClockOut</code>. The
+            rate of clock pulses coming out of <code>Clock</code> nodes is 24 PPQ (pulses per quarter node) which
+            matches the rate set by the MIDI specification. If you need a different output rate for the clock
+            output, you can use a <code>ClockDiv</code> (clock divider) node.
+            </p>
+
+            <h3>Supported Devices</h3>
+            <p>
+            Most MIDI controllers should work with NoiseCraft out of the box, but if you are looking to purchase
+            new equipment, I have personally tested the Novation Launch Control, which has multiple mappable knobs,
+            the M-Audio KeyStation 88, the Akai MPK Mini and the Arturia KeyStep.
+            </p>
+
+        </div>
+
+    </body>
+</html>

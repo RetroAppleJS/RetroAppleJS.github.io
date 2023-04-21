@@ -1,0 +1,68 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="
+        NoiseCraft is an open source, visual programming language and platform for
+        sound synthesis and music making, with the goal of creating a community for
+        the open exchange of musical ideas. The design is loosely inspired by
+        PureData, Max/MSP as well as other visual programming languages.
+        NoiseCraft is built on technologies such as the Web Audio and Web MIDI APIs, and
+        runs in a web browser. The plan is for the app to remain free to use and ad-free
+        for the foreseeable future.
+        ">
+        <link rel="stylesheet" href="/public/style.css">
+        <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
+        <link rel="shortcut icon" type="image/x-icon" href="/public/favicon.ico" />
+        <script src="/public/main.js" type="module"></script>
+        <title><%= pageTitle %></title>
+    </head>
+    <body>
+    <div class="layout">
+
+        <div class="top_bar">
+            <div class="top_menu">
+                <div class="logo_text">NoiseCraft</div>
+                <a class="menu_link" id="btn_new" href="/#new" target="_blank">New</a>
+                <div class="menu_button" id="btn_open">Open</div>
+                <div class="menu_button" id="btn_save">Save</div>
+                <div class="menu_button" id="btn_share">Share</div>
+                <a class="menu_link" href="/browse" target="_blank">Browse</a>
+                <a class="menu_link" href="/help" target="_blank">Help</a>
+                <a class="menu_link" href="https://github.com/maximecb/noisecraft" target="_blank">GitHub</a>
+            </div>
+
+            <div class="top_buttons">
+                <div class="menu_button" id="btn_play">
+                    <svg width="100%" height="100%" viewBox="0 0 60 25">
+                        <path d="M 4,7 15,13 4,19 Z" style="fill: #FFF" />
+                        <text x="21" y="19.5" style="font: 18 sans-serif; fill: #FFF">Play</text>
+                    </svg>
+                </div>
+                <div class="menu_button" style="display:none" id="btn_stop">
+                    <svg width="100%" height="100%" viewBox="0 0 60 25">
+                        <rect x="4" y="7.5" width="11" height="11" style="fill: #FFF" />
+                        <text x="21" y="19.5" style="font: 18 sans-serif; fill: #FFF">Stop</text>
+                    </svg>
+                </div>
+                <div id="btn_login" style="cursor: pointer; color: #FA0; margin: 4px; padding: 4px;">[Log in]</div>
+                <div id="btn_user" style="cursor: pointer; display: none; color: #FA0; margin: 4px; padding: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Edit tab, graph editing -->
+        <div id="editor_div" style="flex-grow: 1; padding:0; margin:0; overflow: scroll;">
+            <div id="graph_div"></div>
+
+            <svg id="graph_svg" version="1.1">
+            </svg>
+
+            <div id="graph_bg_text">
+                Click the empty space to create a new node
+            </div>
+
+            <input type="text" id="project_title" size=50 maxlength=50 value="">
+        </div>
+
+    </div>
+    </body>
+</html>
