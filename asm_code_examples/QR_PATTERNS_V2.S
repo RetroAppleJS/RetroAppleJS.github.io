@@ -50,15 +50,8 @@ PI.1    RTS
 
 PI.2    LDA DEB_LV
         CMP #$01
-        BMI PI.3
-        JSR M.CRDO
-        LDA #$08        ;  PRINT PATTERN:
-        JSR ISTROUT
-        LDA PATNUM
-        JSR M.PRBYTE
-        JSR M.OUTSP
-        LDA PATNUM      ; PRINT 'FORMULA'
-        JSR ISTROUT
+        BMI PI.3        ;  DEBUG LEVEL <1 ?
+        JSR DEB.1
         JSR M.KPRESS
         CMP #$D1
         BEQ PM.1
@@ -367,7 +360,7 @@ IS2.03  INY
 IS2.05  LDA ($AB),Y
 IS2.06  RTS
 
-;*** DEBUG TRACE 1 ***
+;*** MAIN MENU ***
 DEB.0   LDA #$0E        ;  PRINT [QR-MASK] <ANYKEY>NEXT <Q>QUIT
         JSR ISTROUT
 
@@ -413,6 +406,16 @@ DEB.0   LDA #$0E        ;  PRINT [QR-MASK] <ANYKEY>NEXT <Q>QUIT
         LDA #<M.SELHGR
         JSR M.PRBYTE
         RTS
+
+;*** DEBUG TRACE 1 ***
+DEB.1   JSR M.CRDO
+        LDA #$08        ;  PRINT PATTERN:
+        JSR ISTROUT
+        LDA PATNUM
+        JSR M.PRBYTE
+        JSR M.OUTSP
+        LDA PATNUM      ; PRINT 'FORMULA'
+        JSR ISTROUT
 
 ;*** DEBUG TRACE 2 ***
 DEB.2   LDA DEB_LV
