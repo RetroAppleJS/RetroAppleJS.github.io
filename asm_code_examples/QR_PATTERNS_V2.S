@@ -492,7 +492,7 @@ STR.00  ASC "(X+Y)%2"               ;0
         HEX 00
         ASC ":MASK(0-7) "           ;C
         HEX 00
-        ASC ":SIZE(1-13) CALLS>"    ;D
+        ASC ":SIZE(1-13-34) CALLS>" ;D
         HEX 00
         ASC "[QR-MASK] <N>EXT <Q>UIT VARS> "   ;E
         HEX 00
