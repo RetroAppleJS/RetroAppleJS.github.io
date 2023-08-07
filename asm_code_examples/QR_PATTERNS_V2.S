@@ -35,29 +35,29 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 PINTRO  JSR M.TEXT
         JSR DEB.0
         JSR M.KPRESS
-        CMP #$D1      ; 'Q'
-        BEQ PI.1
-
+        CMP #$D1       ; PRESSED 'Q' ?
+        BEQ PM.1
         JSR HGRWIP
         LDX #$00
 PI.0    STX PATNUM
-        JSR PI.2
+
+PI.1    LDA DEB_LV
+        CMP #$01
+        BMI PI.2        ;  DEBUG LEVEL <1 ?
+        JSR DEB.1
+        JSR M.KPRESS
+        CMP #$D1        ; PRESSED 'Q' ?
+        BEQ PM.1
+PI.2    LDA #$00
+        STA *S2.TX
+        STA *S2.TY
+        JSR PMAIN       ; EXEC BUSINESS LOGIC
         LDX PATNUM
         INX
         CPX #$08        ; LOOP THROUGH 8 MASKS
         BNE PI.0
-PI.1    RTS
-
-PI.2    LDA DEB_LV
-        CMP #$01
-        BMI PI.3        ;  DEBUG LEVEL <1 ?
-        JSR DEB.1
-        JSR M.KPRESS
-        CMP #$D1
-        BEQ PM.1
-PI.3    LDA #$00
-        STA *S2.TX
-        STA *S2.TY
+        JSR M.CRDO
+        JMP PINTRO      ; GO BACK TO MAIN MENU
 
 PMAIN   JSR PM.2        ; BUSINESS LOGIC
         JSR DEB.2       ; DEBUG
@@ -387,9 +387,9 @@ DEB.0   LDA #$0E        ;  PRINT [QR-MASK] <ANYKEY>NEXT <Q>QUIT
 
         LDA #$0A        ;  PRINT UNIT:
         JSR ISTROUT
-        LDA #>PI.2
+        LDA #>PI.1
         JSR M.PRBYTE
-        LDA #<PI.2
+        LDA #<PI.1
         JSR M.PRBYTE
 
         LDA #$0F        ;  PRINT WIPE:
