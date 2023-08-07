@@ -50,13 +50,20 @@ USRCMD    LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
           LDA #<USRCMD-1
           PHA
 UCM.00    JSR M.KPRESS
-          CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT
+        
+;          JSR M.PRBYTE
+
+          ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
+          CMP #$CD
           BEQ CYGFX
-          CMP #'H'
+          ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
+          CMP #$C8
           BEQ HELP
-          CMP #'W'
+          ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
+          CMP #$D7
           BEQ HGRWIP
-          CMP #'I'
+          ;CMP #'I'      ; ('I'=C9 not 49) correct compiler !!
+          CMP #$C9
           BNE UCM.00
           JMP QR_IMP
 
