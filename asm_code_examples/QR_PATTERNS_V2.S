@@ -17,7 +17,6 @@ HGR.BITS  = $1C
 ;*****************
 
 ; TODO - RAPID GFX (CACHE POS ?)
-; TODO - PUT INTRO INTO DEBUG ROUTINE
 
 S2.TX        = $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
 S2.TY        = $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
@@ -397,13 +396,6 @@ DEB.0   LDA #$0E        ;  PRINT [QR-MASK] <ANYKEY>NEXT <Q>QUIT
         JSR M.PRBYTE
         LDA #<HGRWIP
         JSR M.PRBYTE
-
-        LDA #$10        ;  PRINT HGR:
-        JSR ISTROUT
-        LDA #>M.SELHGR
-        JSR M.PRBYTE
-        LDA #<M.SELHGR
-        JSR M.PRBYTE
         RTS
 
 ;*** DEBUG TRACE 1 ***
@@ -505,6 +497,4 @@ STR.00  ASC "(X+Y)%2"             ;0
         ASC "[QR-MASK] <ANYKEY>NEXT <Q>QUIT VARS> "   ;E
         HEX 00
         ASC " WIPE:"              ;F
-        HEX 00
-        ASC " HGR:"               ;10
         HEX 00
