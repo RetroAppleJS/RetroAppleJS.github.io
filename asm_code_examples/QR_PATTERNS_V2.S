@@ -78,7 +78,6 @@ PM.2    LDX *S2.TX
         LDA PATNUM      ; PATTERN CASE SWITCH
         JSR PATDIS
         STA *S1.TX      ; STORE FORMULA RESULT
-
         BEQ PM.3
         LDY #$7F
         JMP PM.4
