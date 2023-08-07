@@ -466,35 +466,35 @@ PATNUM  HEX 00          ; CALCULATION MODE
 CH_IDX  HEX 00
 
 ; *** STRING DATA ***
-STR.00  ASC "(X+Y)%2"             ;0
+STR.00  ASC "(X+Y)%2"               ;0
         HEX 00
-        ASC "X%2"                 ;1
+        ASC "X%2"                   ;1
         HEX 00
-        ASC "Y%3"                 ;2
+        ASC "Y%3"                   ;2
         HEX 00
-        ASC "(X+Y)%3"             ;3
+        ASC "(X+Y)%3"               ;3
         HEX 00
-        ASC "(X/2 + Y/3) % 2"     ;4
+        ASC "(X/2 + Y/3) % 2"       ;4
         HEX 00
-        ASC "(X*Y)%2 + (X*Y)%3"   ;5
+        ASC "(X*Y)%2 + (X*Y)%3"     ;5
         HEX 00
-        ASC "((X*Y)%2+(X*Y)%3)%2" ;6
+        ASC "((X*Y)%2+(X*Y)%3)%2"   ;6
         HEX 00
-        ASC "((X*Y)%3+(X+Y)%2)%2" ;7
+        ASC "((X*Y)%3+(X+Y)%2)%2"   ;7
         HEX 00
-        ASC "PATTERN:"            ;8
+        ASC "PATTERN:"              ;8
         HEX 00
-        ASC "X*Y="                ;9
+        ASC "X*Y="                  ;9
         HEX 00
-        ASC " UNIT:"              ;A
+        ASC " UNIT:"                ;A
         HEX 00
-        ASC ":DEBUG(0-2) "        ;B
+        ASC ":DEBUG(0-2) "          ;B
         HEX 00
-        ASC ":MASK(0-7) "         ;C
+        ASC ":MASK(0-7) "           ;C
         HEX 00
-        ASC ":SIZE(1-13) CALLS>"  ;D
+        ASC ":SIZE(1-13) CALLS>"    ;D
         HEX 00
-        ASC "[QR-MASK] <ANYKEY>NEXT <Q>QUIT VARS> "   ;E
+        ASC "[QR-MASK] <N>EXT <Q>UIT VARS> "   ;E
         HEX 00
-        ASC " WIPE:"              ;F
+        ASC " WIPE:"                ;F
         HEX 00
