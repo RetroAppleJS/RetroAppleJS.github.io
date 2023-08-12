@@ -328,38 +328,20 @@ function COM_PopupHTML(html,s)
                     <div style="font-family:arial;font-size:11px">
                       
                       <script>
-                        var def = "A2P"
-                        var s = "<select name='EMU_system' id='EMU_system' onchange=\"document.getElementById('EMU_system_param').innerHTML=EMU_change_system(this.value)\">"
-                        for(var i in _CFG_SYSCODE)
-                          s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
-                        document.write(s+"</select>");
-
-                        //oCOM.addToEventStack("load",EMU_mem_map);
-                        function EMU_change_system(val)
-                        {
-                          var s = "";
-                          for(var i in _CFG_SYSCODE[val])
-                          {
-                            if(i!="Model" && i!="ROMS")
-                            s+= i+":"+_CFG_SYSCODE[val][i]+"<br>"
-                          }
-                          return s;
-                        }
-
-                       
+                        document.write(oCOM.SystemSelect('EMU_system_param'));
                       </script>
                       <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('EMU_system_param')"></i>
                       <!--
                       <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                       -->
-                      <div id="EMU_system_param" hidden="" style="inline-size: 150px;;word-break:break-all;">
-                      <script>document.write(EMU_change_system(def))</script>
+                      <div id="EMU_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
+
                       </div>
                     </div>
 
                   </div>
 
-                  <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
+                  <div class=appbox title="SYSTEM" style="text-align:left;padding:0px 6px 0px 6px;">
                     SYSTEM
                     <div style="font-family:arial;font-size:11px">
 
@@ -559,37 +541,20 @@ function COM_PopupHTML(html,s)
             <div class="hints1" id="ASM_settings" hidden="">
               -->
               <div class=toolbox>
-                <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
+                <div class=appbox title="System" style="text-align:left;padding:0px 6px 0px 6px;">
                   PRESETS
                   <div style="font-family:arial;font-size:11px">
                     
-                    <script>
-                      var def = "A2P"
-                      var s = "<select name='EMU_system' id='EMU_system' onchange=\"document.getElementById('EMU_system_param').innerHTML=EMU_change_system(this.value)\">"
-                      for(var i in _CFG_SYSCODE)
-                        s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
-                      document.write(s+"</select>");
-
-                      //oCOM.addToEventStack("load",EMU_mem_map);
-                      function EMU_change_system(val)
-                      {
-                        var s = "";
-                        for(var i in _CFG_SYSCODE[val])
-                        {
-                          if(i!="Model" && i!="ROMS")
-                          s+= i+":"+_CFG_SYSCODE[val][i]+"<br>"
-                        }
-                        return s;
-                      }
+                      <script>
+                        document.write(oCOM.SystemSelect('ASM_system_param'));
+                      </script>
 
                       
-                    </script>
                     <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('ASM_system_param')"></i>
                     <!--
                     <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                     -->
                     <div id="ASM_system_param" hidden="" style="inline-size: 150px;;word-break:break-all;">
-                    <script>document.write(EMU_change_system(def))</script>
                     </div>
                   </div>
 

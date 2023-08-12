@@ -70,6 +70,26 @@ function COM()
     if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
   }
 
+  this.SystemSelect = function(id)
+  {
+    var def = "A2P"
+    var s = "<select onchange=\"document.getElementById('EMU_system_param').innerHTML=oCOM.onSystemSelect(this.value)\">"
+    for(var i in _CFG_SYSCODE)
+      s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
+    return(s+"</select>");
+  }
+
+  this.onSystemSelect = function(val)
+  {
+    var s = "";
+    for(var i in _CFG_SYSCODE[val])
+    {
+      if(i!="Model" && i!="ROMS")
+      s+= i+":"+_CFG_SYSCODE[val][i]+"<br>"
+    }
+    return s;
+  }
+
     /////////////////////
     // EVENT SEQUENCER //
     /////////////////////
