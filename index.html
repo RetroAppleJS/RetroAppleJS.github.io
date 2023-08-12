@@ -285,12 +285,12 @@ function COM_PopupHTML(html,s)
             <div style="height:115px;padding:0px 0px 0px 0px;z-index:1">
 
               <div style="height:30px;padding:0px 90px 0px 0px;">
-                <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('EMU_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
-                <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+                <button class=appbut value="Tools"   onclick="javascript:oCOM.onPopup('EMU_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
+                <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('EMU_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
               </div>
   
               <!--  TOOLS (PASTEBOARD) -->
-              <div class="hints1" id="EMU_paste" hidden="" >
+              <div class="hints1" id="EMU_paste" hidden="">
                 <div class=toolbox>
                 <form name="EMUboard">
                   <textarea cols=40 rows=4  placeholder="Paste here" name=boardText style="float:left"></textarea><br>
@@ -318,9 +318,9 @@ function COM_PopupHTML(html,s)
 
               <!--  SETTINGS -->
 
-              <div class="hints1" id="settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <div class="hints1" id="EMU_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
               <!-- PUSH PANE DOWN IF OTHER PANE APPEARS
-              <div class="hints1" id="settings" hidden="">
+              <div class="hints1" id="EMU_settings" hidden="">
                 -->
                 <div class=toolbox>
                   <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
@@ -536,9 +536,12 @@ function COM_PopupHTML(html,s)
 
           <div style="padding:0px 90px">
             <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
+            <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
           </div>
 
-          <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;left:90px">
+          <!--  ASM TOOLS -->
+
+          <div class="hints1" id="ASM_paste" hidden="" style="z-index:1;position:absolute;margin-top:3px">
             <div class=toolbox>
             <form name="ASMboard">
               <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
@@ -549,19 +552,54 @@ function COM_PopupHTML(html,s)
             </div>
           </div>
 
+          <!--  ASM SETTINGS -->
+
+          <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+            <!-- PUSH PANE DOWN IF OTHER PANE APPEARS
+            <div class="hints1" id="ASM_settings" hidden="">
+              -->
+              <div class=toolbox>
+                <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
+                  PRESETS
+                  <div style="font-family:arial;font-size:11px">
+                    
+                    <script>
+                      var def = "A2P"
+                      var s = "<select name='EMU_system' id='EMU_system' onchange=\"document.getElementById('EMU_system_param').innerHTML=EMU_change_system(this.value)\">"
+                      for(var i in _CFG_SYSCODE)
+                        s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
+                      document.write(s+"</select>");
+
+                      //oCOM.addToEventStack("load",EMU_mem_map);
+                      function EMU_change_system(val)
+                      {
+                        var s = "";
+                        for(var i in _CFG_SYSCODE[val])
+                        {
+                          if(i!="Model" && i!="ROMS")
+                          s+= i+":"+_CFG_SYSCODE[val][i]+"<br>"
+                        }
+                        return s;
+                      }
+
+                      
+                    </script>
+                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('ASM_system_param')"></i>
+                    <!--
+                    <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
+                    -->
+                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;;word-break:break-all;">
+                    <script>document.write(EMU_change_system(def))</script>
+                    </div>
+                  </div>
+
+                </div>
+              </div>  
+
+          </div>
 
 
 
-
-
-          <!--div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;left:90px">
-            <form name="ASMboard">
-            <textarea cols=40 rows=3  placeholder="Paste ByteCode here" name=boardText></textarea>
-            </form>
-            <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
-            <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
-            <input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
-            </div!-->
           <script type="text/javascript">
             function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
             function onASMBoardPaste()
