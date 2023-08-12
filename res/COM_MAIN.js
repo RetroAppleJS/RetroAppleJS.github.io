@@ -61,6 +61,15 @@ function COM()
 		}
 	}
 
+  this.onPopup = function(id)
+  { var e = document.getElementById(id); e.hidden = !e.hidden; return e }
+
+  this.onPopUpClass = function(id,class1,class2)
+  {
+    id.hidden = !id.hidden;
+    if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
+  }
+
     /////////////////////
     // EVENT SEQUENCER //
     /////////////////////

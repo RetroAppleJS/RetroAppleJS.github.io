@@ -39,7 +39,7 @@ S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
-        JSR M.HGR
+        JSR M.HGR       ; SET HIRES MODE 1 + CLEAR SCREEN  
 
         LDA #$02
         JSR ISTROUT       ; PRINT INDEX-BASED STRING (A=INDEX)
@@ -82,7 +82,7 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 TST     LDA #$00        ; A = INDEX
 TST.0   JSR FNTADR      ; calculate font address pointer (*S0.TX=lo *S0.TY=hi)
-        ;JSR TXTFNT      ; display font in text format
+        ;JSR TXTFNT     ; display font in text format
         JSR GFXFNT
         LDA #$04        
         JSR ISTROUT     ; display description
@@ -204,7 +204,7 @@ MUL5        ROR     *ACL,X          ;(ORIGINAL SRC: DFB #$76, DFB #$50)
             DEY
             BNE     MUL2
             RTS
-;MUL6        LDA #$00  ; turn all fields to zero
+;MUL6        LDA #$00               ; turn all fields to zero
 ;            LDY #$05
 ;MUL7        DEY
 ;            STA (ACL),Y
