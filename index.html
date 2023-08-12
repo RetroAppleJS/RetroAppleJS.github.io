@@ -535,17 +535,33 @@ function COM_PopupHTML(html,s)
     
 
           <div style="padding:0px 90px">
-            <!--button class=appbut value="pasteboard" onclick="javascript:onASMPasteboard()" title="ByteCode pasteboard"><i class="fa fa-paste"></i></!--button-->
-
             <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
-
           </div>
+
           <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;left:90px">
+            <div class=toolbox>
+            <form name="ASMboard">
+              <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
+              <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
+              <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
+              <input type="button"  value="X" onclick="javascript:oCOM.onPopup('ASM_paste')">
+            </form>
+            </div>
+          </div>
+
+
+
+
+
+
+          <!--div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;left:90px">
             <form name="ASMboard">
             <textarea cols=40 rows=3  placeholder="Paste ByteCode here" name=boardText></textarea>
             </form>
-            <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()"><input type="button" value="Clear" onclick="javascript:onASMBoardClear()"><input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
-            </div>
+            <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
+            <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
+            <input type="button" value="Hide" onclick="javascript:onASMPasteboard()">
+            </div!-->
           <script type="text/javascript">
             function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
             function onASMBoardPaste()
