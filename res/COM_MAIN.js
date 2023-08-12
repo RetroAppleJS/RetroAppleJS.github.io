@@ -73,7 +73,7 @@ function COM()
   this.SystemSelect = function(id)
   {
     var def = "A2P"
-    var s = "<select onchange=\"document.getElementById('EMU_system_param').innerHTML=oCOM.onSystemSelect(this.value)\">"
+    var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value)\">"
     for(var i in _CFG_SYSCODE)
       s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
     return(s+"</select>");
