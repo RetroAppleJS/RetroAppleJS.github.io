@@ -79,6 +79,7 @@ ____    ____          _
 
 .tabs > div { display:none; }
 .tabs > div.active { display:block; }
+.tabdata { height:0px; visibility: hidden; }
 
 /*
 
