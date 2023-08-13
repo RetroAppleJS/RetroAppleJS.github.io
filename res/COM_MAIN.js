@@ -84,7 +84,17 @@ function COM()
     for(var i in _CFG_SYSCODE[val])
     {
       if(i!="Model" && i!="ROMS")
-      s+= i+":"+_CFG_SYSCODE[val][i]+"<br>"
+      {
+        if(_CFG_SYSCODE[val][i] && _CFG_SYSCODE[val][i].split(",").length>1)
+        {
+          s+=i+":"
+          +"<button onclick=''><i class='fa fa-arrow-alt-circle-left'></i></button>"
+          +_CFG_SYSCODE[val][i].split(",")[0]  // TODO NAVIGATE THROUGH OPTIONS
+          +"<button onclick=''><i class='fa fa-arrow-alt-circle-right'></i></button>";
+        }
+        else
+          s+= i+":"+_CFG_SYSCODE[val][i]+"<br>";
+      }
     }
     return s;
   }
