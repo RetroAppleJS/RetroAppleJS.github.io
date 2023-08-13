@@ -25,11 +25,7 @@
     -->
     <script type="text/javascript" src='res/COM_gsap.js'></script>
 
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-
-
 
     <script id="rendered-js">
       
@@ -259,6 +255,7 @@ function COM_PopupHTML(html,s)
         <!-- tab content -->
         <div class="tabs">
           <div id="tab1" style="height:1300px;width:1300px;background-image:url('res/appleIIplus_bck_650_v2.png');background-size:1300px;background-repeat:no-repeat;image-rendering:pixelated;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+            <!--form name="tab1" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
             <!--
               ███████ ███    ███ ██    ██ ██       █████  ████████  ██████  ██████  
               ██      ████  ████ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
@@ -317,7 +314,6 @@ function COM_PopupHTML(html,s)
               </div>
 
               <!--  SETTINGS -->
-
               <div class="hints1" id="EMU_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
               <!-- PUSH PANE DOWN IF OTHER PANE APPEARS
               <div class="hints1" id="EMU_settings" hidden="">
@@ -500,6 +496,7 @@ function COM_PopupHTML(html,s)
             
           </div>
           <div id="tab2" style="height:1024px;width:700px">
+          <!--form name="tab2" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
           <!--
             █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
             ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
@@ -512,7 +509,6 @@ function COM_PopupHTML(html,s)
           <script type="text/javascript" src="res/ASM_6502.js"></script>
           <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
           <link rel="stylesheet"        href="res/ASM_6502.css">
-    
 
           <div style="padding:0px 90px">
             <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
@@ -543,16 +539,18 @@ function COM_PopupHTML(html,s)
                   PRESETS
                   <div style="font-family:arial;font-size:11px">
                     
-                      <script>
-                        document.write(oCOM.SystemSelect('ASM_system_param'));
-                      </script>
-
+                    <script!-->
+                      document.write(oCOM.SystemSelect('ASM_system_param'));
+                    </script>
                       
-                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('ASM_system_param')"></i>
+                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('ASM_system_param');document.getElementById('ASM_system_param')=oCOM.onSystemSelect()"></i>
                     <!--
                     <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                     -->
-                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;"></div>
+                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
+                      <!--  TODO PRELOAD COMBOBOX ONLOAD !-->
+                      <!--script>oCOM.addToEventStack()</script!-->
+                    </div>
                   </div>
 
                 </div>
@@ -643,6 +641,7 @@ function COM_PopupHTML(html,s)
 
           </div>
           <div id="tab3" style="height:250px;width:700px">
+            <!--form name="tab3" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
           <!--
             ██████  ███████ ██████  ██    ██  ██████   ██████  ███████ ██████ 
             ██   ██ ██      ██   ██ ██    ██ ██       ██       ██      ██   ██
