@@ -70,9 +70,8 @@ function COM()
     if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
   }
 
-  this.SystemSelect = function(id)
+  this.SystemSelect = function(id,def)
   {
-    var def = "A2P"
     var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value)\">"
     for(var i in _CFG_SYSCODE)
       s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"

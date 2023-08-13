@@ -324,13 +324,17 @@ function COM_PopupHTML(html,s)
                     <div style="font-family:arial;font-size:11px">
                       
                       <script>
-                        document.write(oCOM.SystemSelect('EMU_system_param'));
-                      </script>
+                       document.write(oCOM.SystemSelect('EMU_system_param',_CFG_TAB["tab1"].SYS));
+                     </script>
+
                       <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('EMU_system_param')"></i>
                       <!--
                       <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                       -->
-                      <div id="EMU_system_param" hidden="" style="inline-size: 150px;word-break:break-all;"></div>
+                      <div id="EMU_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
+                        <!--  PRELOAD SYSTEM INFO !-->
+                        <script>document.write( oCOM.onSystemSelect(_CFG_TAB["tab1"].SYS) )</script>
+                      </div>
                     </div>
 
                   </div>
@@ -539,8 +543,9 @@ function COM_PopupHTML(html,s)
                   PRESETS
                   <div style="font-family:arial;font-size:11px">
                     
-                    <script!-->
-                      document.write(oCOM.SystemSelect('ASM_system_param'));
+                    <script>
+                       _CFG_TAB["tab2"].SYS = _CFG_TAB["tab2"].DEF_SYS;
+                      document.write(oCOM.SystemSelect('ASM_system_param',_CFG_TAB["tab2"].SYS));
                     </script>
                       
                     <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('ASM_system_param');document.getElementById('ASM_system_param')=oCOM.onSystemSelect()"></i>
@@ -548,8 +553,8 @@ function COM_PopupHTML(html,s)
                     <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                     -->
                     <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
-                      <!--  TODO PRELOAD COMBOBOX ONLOAD !-->
-                      <!--script>oCOM.addToEventStack()</script!-->
+                      <!--  PRELOAD SYSTEM INFO !-->
+                      <script>document.write( oCOM.onSystemSelect(_CFG_TAB["tab2"].SYS) )</script>
                     </div>
                   </div>
 
