@@ -324,8 +324,8 @@ function COM_PopupHTML(html,s)
                     <div style="font-family:arial;font-size:11px">
                       
                       <script>
-                       _CFG_TAB["tab1"].SYS = _CFG_TAB["tab1"].DEF_SYS;
-                       //alert("_CFG_TAB['tab1'].SYS = "+_CFG_TAB["tab1"].SYS)
+                       _TABS["tab1"].SYS = _TABS["tab1"].DEF_SYS;
+                       //alert("_TABS['tab1'].SYS = "+_TABS["tab1"].SYS)
                        document.write(oCOM.SystemSelect('EMU_system_param',"tab1"));
                      </script>
 
@@ -335,7 +335,7 @@ function COM_PopupHTML(html,s)
                       -->
                       <div id="EMU_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
                         <!--  PRELOAD SYSTEM INFO !-->
-                        <script>document.write( oCOM.onSystemSelect(_CFG_TAB["tab1"]["SYS"],"tab1") )</script>
+                        <script>document.write( oCOM.onSystemSelect(_TABS["tab1"]["SYS"],"tab1") )</script>
                       </div>
                     </div>
 
@@ -546,7 +546,7 @@ function COM_PopupHTML(html,s)
                   <div style="font-family:arial;font-size:11px">
                     
                     <script>
-                      _CFG_TAB["tab2"].SYS = _CFG_TAB["tab2"].DEF_SYS;
+                      _TABS["tab2"].SYS = _TABS["tab2"].DEF_SYS;
                       document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
                     </script>
                       
@@ -556,7 +556,7 @@ function COM_PopupHTML(html,s)
                     -->
                     <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
                       <!--  PRELOAD SYSTEM INFO !-->
-                      <script>document.write( oCOM.onSystemSelect(_CFG_TAB["tab2"].SYS,"tab2") )</script>
+                      <script>document.write( oCOM.onSystemSelect(_TABS["tab2"].SYS,"tab2") )</script>
                     </div>
                   </div>
 

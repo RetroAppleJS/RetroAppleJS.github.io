@@ -37,8 +37,6 @@ const _CFG_SLOT = {
 
 const _CFG = {"SYS":{"A2":false,"A2P":true,"A2E":false,"A2C":false},"PCODE":_CFG_PCODE,"SLOT":_CFG_SLOT};
 
-var _CFG_TAB = {"tab1":{"title":"Emulator","DEF_SYS":"A2P"}","tab2":{"title":"Assembler","DEF_SYS":"A2P"}","tab3":{"title":"Debugger","DEF_SYS":"A2P"}","tab4":{"title":"Manual"}"}
-
 const _CFG_TFUNCTION = {
  ".eq":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.eq |\\.EQ )(.+)" ,"REGEXP_OUTPUT":"'$1EQU$3'" ,"DESCRIPTION":"Replace .eq   by EQU until ;"}
 ,".var":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.var |\\.VAR )(.+)" ,"REGEXP_OUTPUT":"'$1EQU$3'" ,"DESCRIPTION":"Replace .var  by EQU until ;"}
@@ -51,6 +49,13 @@ const _CFG_TFUNCTION = {
 ,"*":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^\\*" ,"REGEXP_OUTPUT":"';*'" ,"DESCRIPTION":"Add semicolumn before any line starting with asterisk"}
 ,"upper_before;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^[^;^n]*" ,"REGEXP_OUTPUT":"x.toUpperCase()" ,"DESCRIPTION":"Uppercase everything until bumping into a semicolumn"}
 }
+
+var _TABS = {
+    "tab1":{"title":"Emulator","DEF_SYS":"A2P"}
+   ,"tab2":{"title":"Assembler","DEF_SYS":"A2P"}
+   ,"tab3":{"title":"Debugger","DEF_SYS":"A2P"}
+   ,"tab4":{"title":"Manual"}
+};
 
 var _DOCS = new Array();
 _DOCS["EMULATOR"] = "<h2 id=\"emulator-user-instructions\">EMULATOR User Instructions</h2><hr>"

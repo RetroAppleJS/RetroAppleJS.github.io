@@ -72,7 +72,7 @@ function COM()
 
   this.SystemSelect = function(id,tab)
   {
-    var def = _CFG_TAB[tab]["SYS"];
+    var def = _TABS[tab]["SYS"];
     var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value,'"+tab+"')\">";
     for(var i in _CFG_SYSCODE)
       s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>";
@@ -81,7 +81,7 @@ function COM()
 
   this.onSystemSelect = function(val,tab)
   {
-    _CFG_TAB[tab].SYS = val;
+    _TABS[tab].SYS = val;
 
     var s = "";
     for(var i in _CFG_SYSCODE[val])
@@ -108,18 +108,18 @@ function COM()
 
   this.onSysOptionSelect = function(option,tab,up_dn)
   {
-    var sys = _CFG_TAB[tab]["SYS"];
+    var sys = _TABS[tab]["SYS"];
     var arr = _CFG_SYSCODE[sys][option].split(",");
     var idx = 0;
-    if(typeof(_CFG_TAB[tab][option])!="undefined")
+    if(typeof(_TABS[tab][option])!="undefined")
     {
       for(var i=0;i<arr.length;i++)
-        if(arr[i]==_CFG_TAB[tab][option]) idx=i;
+        if(arr[i]==_TABS[tab][option]) idx=i;
       idx += up_dn;
       if(idx<0) idx=arr.length-1;
       if(idx==arr.length) idx=0;
     }
-    _CFG_TAB[tab][option] = arr[idx];
+    _TABS[tab][option] = arr[idx];
     var name = tab+"_"+option;
     var el = document.getElementsByName(name);
     if(el.length>0)
@@ -128,7 +128,7 @@ function COM()
     //var el = el[0];
     //el.value = arr[idx]
     //.val.value = arr[idx];
-    //alert("_CFG_TAB['"+tab+"']['"+option+"'] = '"+arr[idx]+"'");
+    //alert("_TABS['"+tab+"']['"+option+"'] = '"+arr[idx]+"'");
   }
 
     /////////////////////
