@@ -37,6 +37,13 @@ const _CFG_SLOT = {
 
 const _CFG = {"SYS":{"A2":false,"A2P":true,"A2E":false,"A2C":false},"PCODE":_CFG_PCODE,"SLOT":_CFG_SLOT};
 
+const _CFG_TAB = {
+    "tab1":{"title":"Emulator","DEF_SYS":"A2P"}
+   ,"tab2":{"title":"Assembler","DEF_SYS":"A2P"}
+   ,"tab3":{"title":"Debugger","DEF_SYS":"A2P"}
+   ,"tab4":{"title":"Manual"}
+};
+
 const _CFG_TFUNCTION = {
  ".eq":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.eq |\\.EQ )(.+)" ,"REGEXP_OUTPUT":"'$1EQU$3'" ,"DESCRIPTION":"Replace .eq   by EQU until ;"}
 ,".var":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.var |\\.VAR )(.+)" ,"REGEXP_OUTPUT":"'$1EQU$3'" ,"DESCRIPTION":"Replace .var  by EQU until ;"}
