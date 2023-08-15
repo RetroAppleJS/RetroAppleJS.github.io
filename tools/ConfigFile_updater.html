@@ -95,18 +95,6 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     document.getElementById('dest').innerHTML += s;
 
     // EXECUTE
-    var s = "var _CFG_TAB = {"
-    +"\"tab1\":{\"title\":\"Emulator\",\"DEF_SYS\":\"A2P\"}\""
-    +",\"tab2\":{\"title\":\"Assembler\",\"DEF_SYS\":\"A2P\"}\""
-    +",\"tab3\":{\"title\":\"Debugger\",\"DEF_SYS\":\"A2P\"}\""
-    +",\"tab4\":{\"title\":\"Manual\"}\""
-    +"}\n\n";
-    document.getElementById('dest').innerHTML += s;
-
-    var s = "var _CFG_TAB = {\"SYS\":{\"A2\":false,\"A2P\":true,\"A2E\":false,\"A2C\":false},\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
-    document.getElementById('dest').innerHTML += s;
-
-    // EXECUTE
     var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText.replace(/\\\|/g,"&#x7C;"),this.responseURL);
     document.getElementById('dest').innerHTML += s.replace(/&#x7C;/g,"|");
 
@@ -115,7 +103,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     +",\"tab2\":{\"title\":\"Assembler\",\"DEF_SYS\":\"A2P\"}"
     +",\"tab3\":{\"title\":\"Debugger\",\"DEF_SYS\":\"A2P\"}"
     +",\"tab4\":{\"title\":\"Manual\"}"
-    +"};";
+    +"}\n\n";
     document.getElementById('dest').innerHTML += s;
   } 
 )
