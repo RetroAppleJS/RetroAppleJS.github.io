@@ -70,16 +70,19 @@ function COM()
     if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
   }
 
-  this.SystemSelect = function(id,def)
+  this.SystemSelect = function(id,tab)
   {
-    var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value)\">"
+    var def = _CFG_TAB[tab]["SYS"];
+    var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value,'"+tab+"')\">";
     for(var i in _CFG_SYSCODE)
-      s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>"
+      s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>";
     return(s+"</select>");
   }
 
-  this.onSystemSelect = function(val)
+  this.onSystemSelect = function(val,tab)
   {
+    _CFG_TAB[tab].SYS = val;
+
     var s = "";
     for(var i in _CFG_SYSCODE[val])
     {
@@ -87,16 +90,45 @@ function COM()
       {
         if(_CFG_SYSCODE[val][i] && _CFG_SYSCODE[val][i].split(",").length>1)
         {
-          s+=i+":"
-          +"<button onclick=''><i class='fa fa-arrow-alt-circle-left'></i></button>"
-          +_CFG_SYSCODE[val][i].split(",")[0]  // TODO NAVIGATE THROUGH OPTIONS
-          +"<button onclick=''><i class='fa fa-arrow-alt-circle-right'></i></button>";
+          this.onSysOptionSelect(i,tab,0);
+          var name = tab+"_"+i
+          s+="<div style=display:flex;>"
+          +i+":"
+          +"<button onclick=oCOM.onSysOptionSelect('"+i+"','"+tab+"',-1)><i class='fa fa-arrow-alt-circle-left'></i></button>"
+          +"<input name='"+name+"' value='"+_CFG_SYSCODE[val][i].split(",")[0]+"' size=7>"  // TODO NAVIGATE THROUGH OPTIONS
+          +"<button onclick=oCOM.onSysOptionSelect('"+i+"','"+tab+"',1)><i class='fa fa-arrow-alt-circle-right'></i></button>"
+          +"</div>"
         }
         else
           s+= i+":"+_CFG_SYSCODE[val][i]+"<br>";
       }
     }
     return s;
+  }
+
+  this.onSysOptionSelect = function(option,tab,up_dn)
+  {
+    var sys = _CFG_TAB[tab]["SYS"];
+    var arr = _CFG_SYSCODE[sys][option].split(",");
+    var idx = 0;
+    if(typeof(_CFG_TAB[tab][option])!="undefined")
+    {
+      for(var i=0;i<arr.length;i++)
+        if(arr[i]==_CFG_TAB[tab][option]) idx=i;
+      idx += up_dn;
+      if(idx<0) idx=arr.length-1;
+      if(idx==arr.length) idx=0;
+    }
+    _CFG_TAB[tab][option] = arr[idx];
+    var name = tab+"_"+option;
+    var el = document.getElementsByName(name);
+    if(el.length>0)
+      el[0].value = arr[idx];
+
+    //var el = el[0];
+    //el.value = arr[idx]
+    //.val.value = arr[idx];
+    //alert("_CFG_TAB['"+tab+"']['"+option+"'] = '"+arr[idx]+"'");
   }
 
     /////////////////////
