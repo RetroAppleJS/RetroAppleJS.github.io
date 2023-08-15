@@ -51,11 +51,11 @@ const _CFG_TFUNCTION = {
 }
 
 var _TABS = {
-    "tab1":{"title":"Emulator","DEF_SYS":"A2P"}
-   ,"tab2":{"title":"Assembler","DEF_SYS":"A2P"}
-   ,"tab3":{"title":"Debugger","DEF_SYS":"A2P"}
-   ,"tab4":{"title":"Manual"}
-};
+"tab1":{"title":"Emulator","DEF_SYS":"A2P"}
+,"tab2":{"title":"Assembler","DEF_SYS":"A2P"}
+,"tab3":{"title":"Debugger","DEF_SYS":"A2P"}
+,"tab4":{"title":"Manual"}
+}
 
 var _DOCS = new Array();
 _DOCS["EMULATOR"] = "<h2 id=\"emulator-user-instructions\">EMULATOR User Instructions</h2><hr>"
