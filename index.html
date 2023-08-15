@@ -319,7 +319,8 @@ function COM_PopupHTML(html,s)
               <div class="hints1" id="EMU_settings" hidden="">
                 -->
                 <div class=toolbox>
-                  <div class=appbox title="CPU" style="text-align:left;padding:0px 6px 0px 6px;">
+                  <!--
+                  <div class=appbox title="SYSTEM" style="text-align:left;padding:0px 6px 0px 6px;">
                     PRESETS
                     <div style="font-family:arial;font-size:11px">
                       
@@ -330,17 +331,14 @@ function COM_PopupHTML(html,s)
                      </script>
 
                       <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('EMU_system_param')"></i>
-                      <!--
-                      <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
-                      -->
+  
                       <div id="EMU_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
-                        <!--  PRELOAD SYSTEM INFO !-->
+                       
                         <script>document.write( oCOM.onSystemSelect(_TABS["tab1"]["SYS"],"tab1") )</script>
                       </div>
                     </div>
-
                   </div>
-
+-->
                   <div class=appbox title="SYSTEM" style="text-align:left;padding:0px 6px 0px 6px;">
                     SYSTEM
                     <div style="font-family:arial;font-size:11px">
