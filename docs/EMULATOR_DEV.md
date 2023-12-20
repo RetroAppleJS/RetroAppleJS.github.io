@@ -4,7 +4,7 @@
 
 [index.html](/index.html)
 ```javascript
-var object = apple2plus.monitor(this.name) // this.name = integer number cyling between 0-3
+var datastructure = apple2plus.monitor(this.name) // this.name = integer number cyling between 0-3
 ```
 
 [EMU_apple2plus.js](/res/EMU_apple2plus.js)
