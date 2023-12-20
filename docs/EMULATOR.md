@@ -18,6 +18,10 @@ __Disk feature__
 
 __Screen settings__
 
+**color mode**
+<img src="../res/doc_emu_system_pane.png?raw=true" width=40% align="left"/> 
+
+
 <br><br>
 
 __Keyboard features__
