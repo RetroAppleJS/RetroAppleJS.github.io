@@ -89,7 +89,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 |   6    | DISKII     |                   |                    |
 |   7    |            |                   |                    |
 
-## COLOR MONITOR
+## COLOR MODES
 
 |[CHROMA] | COL_num  | COL_name   |
 | :-----: | :------ | :---------- |
