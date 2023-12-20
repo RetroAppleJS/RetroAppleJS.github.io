@@ -2,6 +2,7 @@
 
 **color mode**
 
-index.html >> apple2plus.monitor(this.name)
+[index.html](\index.html)
+apple2plus.monitor(this.name)
 
 
