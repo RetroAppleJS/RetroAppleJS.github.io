@@ -88,7 +88,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 |   5    |            |                   |                    |
 |   6    | DISKII     |                   |                    |
 |   7    |            |                   |                    |
-|        |            |                   |                    |
+| 'MON'  |            |                   |                    |
 
 # ASSEMBLER
 
