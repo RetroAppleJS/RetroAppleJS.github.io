@@ -104,7 +104,11 @@ function Apple2Video(ctx) {
     this.setMonitor = function(mode) {
         chrome_mode = mode & 3;
         this.redraw();
-        return {"color": monoChromes[chrome_mode]?monoChromes[chrome_mode]:"#000000" , "name": monoChrome_names[chrome_mode] };
+        return {
+             "color": _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#000000"
+            ,"name": _CFG_CHROMA[chrome_mode].COL_name
+        };
+        //return {"color": monoChromes[chrome_mode]?monoChromes[chrome_mode]:"#000000" , "name": monoChrome_names[chrome_mode] };
     }
 
     this.getloresCols = function() {
@@ -130,7 +134,7 @@ function Apple2Video(ctx) {
         ctx.fillRect(col * 14, row * 16, 14, 16);
 
         // Color for white pixels.
-        ctx.fillStyle = monoChromes[chrome_mode]?monoChromes[chrome_mode]:"#ffffff";
+        ctx.fillStyle = _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#ffffff";
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
         for (var y = 0; y < 8; y++) {
@@ -151,8 +155,8 @@ function Apple2Video(ctx) {
     }
 
 // Monochrome colors (index 0 = full color)
-var monoChromes      = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
-var monoChrome_names = ["FULL-COLOR","B&W","GREEN","AMBER"];
+//var monoChromes      = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+//var monoChrome_names = ["FULL-COLOR","B&W","GREEN","AMBER"];
 
 // Lores color to RGB table. (* Hires)
 var loresCols = [
