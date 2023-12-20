@@ -9,7 +9,7 @@ Any change in this document affects the **default application configuration**, o
 
 # HOW DOES IT WORK ?
 
-This tool gathers all configuration information and documentation, and packs all data together in one config file.
+[ConfigFile_updater.html](../tools/ConfigFile_updater.html) gathers all configuration information and documentation, and packs all data together in one config file.
 
 ![schema](http://www.plantuml.com/plantuml/png/dLLFJpen4BtlfvZJBv062B-ZCGHS_kX1IOIZaTHjaKffDzk26iVlRh9B1QGbbBbiC-bxVU-ra-qQImlBXAKqWQXgDOwBdC5XFbNcrZWIzdRz0lk59pZ8yP4T0gxEuxZoyKPwGLyl7JyCxqRD5ODiC1XMlLWE81Vhc4nxZzCo3omuPK2b12ScNWTAePO6vdgj60XraPUzH00koeEGAW_t3UUntUVsU8WHCGcTktk668diSxEqEZz2BgpD3I1MYnEIdxsIQ-rwTN3jVwEZwcV6vX4Ei8-jIPrH2GNFTJqm2h3PVZQRn3iXmQ1_UuJylIO4eHZ_Q2xiIWQqOzRktVW76FqYoC6MLAkvU1qAoMS1D9PZ-SM-NPlfToKrPN2GVGYTZkzdsmVzPl1wfmDXdJDgUL7Q2w0zr-FrvCqyvDkbrX-d4wSyfX3W7rIU9l7efmDLhQJB5Ij_93y0)
 
