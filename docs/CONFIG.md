@@ -78,16 +78,17 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SLOT CONFIG
 
-|[SLOT#] | PCODE      | DESCRIPTION       |
-| :----: | :--------- | :---------------- |
-|   0    | MS16K      |                   | 
-|   1    |            |                   |
-|   2    |            |                   |
-|   3    |            |                   |
-|   4    |            |                   |
-|   5    |            |                   |
-|   6    | DISKII     |                   |
-|   7    |            |                   |
+|[SLOT#] | PCODE      | SWITCHES          |  DESCRIPTION       |
+| :----: | :--------- | :---------------- | :----------------- |
+|   0    | MS16K      |                   |                    |
+|   1    |            |                   |                    |
+|   2    |            |                   |                    |
+|   3    |            |                   |                    |
+|   4    |            |                   |                    |
+|   5    |            |                   |                    |
+|   6    | DISKII     |                   |                    |
+|   7    |            |                   |                    |
+|        |            |                   |                    |
 
 # ASSEMBLER
 
