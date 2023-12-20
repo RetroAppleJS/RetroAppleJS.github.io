@@ -88,7 +88,15 @@ We aim to have all the documentation available in markdown format, for easy onli
 |   5    |            |                   |                    |
 |   6    | DISKII     |                   |                    |
 |   7    |            |                   |                    |
-|        |            |                   |                    |
+
+## COLOR MODES
+
+|[CHROMA] | COL_num  | COL_name   |
+| :-----: | :------ | :---------- |
+|   0     |         | FULL-COLOR  |
+|   1     | #FFFFFF | B&W         |
+|   2     | #A0FFF0 | GREEN       |
+|   3     | #FCE7A1 | AMBER       |
 
 # ASSEMBLER
 
