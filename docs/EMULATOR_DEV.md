@@ -29,7 +29,7 @@ this.setMonitor = function(mode) {
 
 Config file is generated from following markdown file: [CONFIG.md](/docs/CONFIG.md)
 
-[CONFIG.md](/res/COM_CONFIG.js)
+[COM_CONFIG.js](/res/COM_CONFIG.js)
 ```javascript
 const _CFG_CHROMA = {
  0:{"COL_num":"" ,"COL_name":"FULL-COLOR"}
