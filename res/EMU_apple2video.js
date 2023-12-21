@@ -129,17 +129,16 @@ function Apple2Video(ctx) {
     function drawChar(col, row, d8) {
 
         // Black out entire character
-        ctx.fillStyle = "#000000";
+        ctx.fillStyle = loresCols[0][0];
         ctx.fillRect(col * 14, row * 16, 14, 16);
 
-        // Color for white pixels.
-        ctx.fillStyle = _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#ffffff";
+        // Color for character pixels.
+        ctx.fillStyle = getPixelColor(0, 0, 1, 1, 1, 0)
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
         for (var y = 0; y < 8; y++) {
             var bits = apple2CharRom[offs + y];
             
-
             // Inverse or flashing?
             if ((d8 & 0xc0) == 0x00 ||
                 ((d8 & 0xc0) == 0x40 && flash_on))
@@ -217,6 +216,14 @@ var hiresCols = [
     //
     function getPixelColor(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
+
+        // _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#ffffff";
+        if(_CFG_CHROMA[chrome_mode].COL_num)
+        {
+            if(me!=0) return _CFG_CHROMA[chrome_mode].COL_num;
+            else return loresCols[0][0];    // Black
+        }
+
         // If pixel is set and either adjacent pixels are set, it's white.
         if (me != 0 && (left != 0 || right != 0))
             return loresCols[15][0];  // White
@@ -256,8 +263,7 @@ var hiresCols = [
     }
 
     function drawPixel(x, y, left, me, right, b7) {
-        
-        ctx.fillStyle = getPixelColor(x, y, left, me, right, b7)
+        ctx.fillStyle = getPixelColor(x, y, left, me, right, b7);
         ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
     }
 
