@@ -2,6 +2,8 @@
 
 **color mode**
 
+When the palette button is clicked, the following function is called 
+
 [index.html](/index.html)
 ```javascript
 var datastructure = apple2plus.monitor(this.name) // this.name = integer number cyling between 0-3
@@ -25,7 +27,9 @@ this.setMonitor = function(mode) {
 }
 ```
 
-[COM_CONFIG.js](/res/COM_CONFIG.js)
+Config file is generated from following markdown file: [CONFIG.md](/docs/CONFIG.md)
+
+[CONFIG.md](/res/COM_CONFIG.js)
 ```javascript
 const _CFG_CHROMA = {
  0:{"COL_num":"" ,"COL_name":"FULL-COLOR"}
