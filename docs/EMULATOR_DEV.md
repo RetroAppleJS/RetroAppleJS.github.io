@@ -9,20 +9,20 @@ var datastructure = apple2plus.monitor(this.name) // this.name = integer number 
 
 [EMU_apple2plus.js](/res/EMU_apple2plus.js)
 ```javascript
- this.monitor = function(type) {
-        return video.setMonitor(type);
-    }
+this.monitor = function(type) {
+      return video.setMonitor(type);
+}
 ```
 [EMU_apple2video.js](/res/EMU_apple2video.js)
 ```javascript
-    this.setMonitor = function(mode) {
-        chrome_mode = mode & 3;
-        this.redraw();
-        return {
-             "color": _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#000000"
-            ,"name": _CFG_CHROMA[chrome_mode].COL_name
-        };
-    }
+this.setMonitor = function(mode) {
+    chrome_mode = mode & 3;
+    this.redraw();
+    return {
+         "color": _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#000000"
+        ,"name": _CFG_CHROMA[chrome_mode].COL_name
+    };
+}
 ```
 
 [COM_CONFIG.js](/res/COM_CONFIG.js)
