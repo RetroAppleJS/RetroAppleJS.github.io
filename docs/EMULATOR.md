@@ -20,8 +20,7 @@ __Screen settings__
 
 **color mode**
 <br>
-<img src="../res/doc_emu_system_pane.png?raw=true" width=10%  align="left"/> On the emulators system pane, the color pallet button allows cycling through color modes (color, black&white, green, amber).  This button comes in handy wherever the Apple II color encoding becomes disturbing (e.g. font display in HGR graphics).
-Please find coding documentation about "color mode" here [EMULATOR_DEV.md](EMULATOR_DEV.md)
+<img src="../res/doc_emu_system_pane.png?raw=true" width=10%  align="left"/> On the emulator's system pane, the colour pallet button allows cycling through colour modes (colour, black & white, green, amber). This button is handy wherever the Apple II colour encoding becomes disturbing (e.g. font display in HGR graphics). Please find coding documentation about "color mode" here [EMULATOR_DEV.md](EMULATOR_DEV.md)
 
 <br><br>
 
