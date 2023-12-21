@@ -198,10 +198,7 @@ var hiresCols = [
     function drawLores(col, row, d8) {
         var m = chrome_mode?chrome_mode:0;
         ctx.fillStyle = loresCols[d8 & 0x0f][m]
-        ctx.fillRect(col * 14, row * 16, 14, 8);
-
-        ctx.fillStyle = loresCols[d8 >> 4][m]
-        ctx.fillRect(col * 14, row * 16 + 8, 14, 8);
+        ctx.fillRect(col * 14, row * 16, 14, 16);
     }
 
     // Convoluted way of plotting hires colors.
@@ -217,10 +214,9 @@ var hiresCols = [
     function getPixelColor(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
 
-        // _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#ffffff";
-        if(_CFG_CHROMA[chrome_mode].COL_num)
+        if(_CFG_CHROMA[chrome_mode].COL_num)  // monochrome mode ?
         {
-            if(me!=0) return _CFG_CHROMA[chrome_mode].COL_num;
+            if(me!=0) return _CFG_CHROMA[chrome_mode].COL_num; // Monochrome color
             else return loresCols[0][0];    // Black
         }
 
