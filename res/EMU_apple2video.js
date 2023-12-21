@@ -211,6 +211,10 @@ var hiresCols = [
     // right != 0, pixel to the right is set
     // b7 != 0, the relevant byte in hires memory has bit 7 set
     //
+
+    // rename to A2_hgr_color
+    //           A2_txt_color
+    //           A2_lores_color
     function getPixelColor(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
 
