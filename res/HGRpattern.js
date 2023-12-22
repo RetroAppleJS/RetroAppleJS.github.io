@@ -197,7 +197,7 @@ function PATTERN(idx,x,y)
     var doubles = {};
     for(var p=0;p<this.pmax;p++)
     {
-      var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+      var c = this.color(p,colorFN);    // calculate average color of patternID, by borrowing hgr_PixelColor function from emulator
       var csh = "#"+RGB2HEX(c).join("");
 
       if(typeof(doubles[csh])!="number"                                                         // inventorize doubles
@@ -283,7 +283,7 @@ function PATTERN(idx,x,y)
     {
       if(this.calculate(p,0,0)[0]!=null)
       {
-        var c = this.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+        var c = this.color(p,apple2plus.video.hgr_PixelColor);    // calculate average color of patternID, by borrowing hgr_PixelColor function from emulator
         var cc = typeof(this.criteria[p])=="object"?this.criteria[p]:{};
 
         var m=["0b",0,"0b",0]
