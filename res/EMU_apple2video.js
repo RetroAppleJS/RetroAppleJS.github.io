@@ -122,18 +122,18 @@ function Apple2Video(ctx) {
         return loresCols[idx][column] = val;
     }
 
-    this.getPixelColor = getPixelColor;
+    this.hgr_PixelColor = hgr_PixelColor;
 
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
-    function drawChar(col, row, d8) {
+    function text_Draw(col, row, d8) {
 
         // Black out entire character
-        ctx.fillStyle = loresCols[0][0];
+        ctx.fillStyle = text_PixelColor(0);
         ctx.fillRect(col * 14, row * 16, 14, 16);
 
         // Color for character pixels.
-        ctx.fillStyle = getPixelColor(0, 0, 1, 1, 1, 0)
+        ctx.fillStyle = text_PixelColor(1);
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
         for (var y = 0; y < 8; y++) {
@@ -195,9 +195,8 @@ var hiresCols = [
 
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
-    function drawLores(col, row, d8) {
-        var m = chrome_mode?chrome_mode:0;
-        ctx.fillStyle = loresCols[d8 & 0x0f][m]
+    function lores_Draw(col, row, d8) {
+        ctx.fillStyle = lores_PixelColor(d8);
         ctx.fillRect(col * 14, row * 16, 14, 16);
     }
 
@@ -212,16 +211,29 @@ var hiresCols = [
     // b7 != 0, the relevant byte in hires memory has bit 7 set
     //
 
-    // TODO rename to A2_hgr_color
-    //      create    A2_txt_color
-    //      create    A2_lores_color
-    function getPixelColor(x, y, left, me, right, b7) {
+    // TODO rename to hgr_PixelColor
+    //      create    text_PixelColor
+    //      create    lores_PixelColor
+
+    function text_PixelColor(me)
+    {
+        // White or monochrome color
+        if(me!=0) return _CFG_CHROMA[chrome_mode].COL_num ? _CFG_CHROMA[chrome_mode].COL_num : loresCols[15][0];
+        else return loresCols[0][0];    // Black
+    }
+
+    function lores_PixelColor(d8) {
+        var m = chrome_mode?chrome_mode:0;
+        return loresCols[d8 & 0x0f][m];
+    }
+
+    function hgr_PixelColor(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
 
-        if(_CFG_CHROMA[chrome_mode].COL_num)  // monochrome mode ?
+        if(_CFG_CHROMA[chrome_mode].COL_num)
         {
-            if(me!=0) return _CFG_CHROMA[chrome_mode].COL_num; // Monochrome color
-            else return loresCols[0][0];    // Black
+            if (me != 0) return _CFG_CHROMA[chrome_mode].COL_num;
+            else return loresCols[0][0];
         }
 
         // If pixel is set and either adjacent pixels are set, it's white.
@@ -262,10 +274,12 @@ var hiresCols = [
            return loresCols[0][0];    // Black
     }
 
-    function drawPixel(x, y, left, me, right, b7) {
-        ctx.fillStyle = getPixelColor(x, y, left, me, right, b7);
+    /*
+    function hgr_drawPixel(x, y, left, me, right, b7) {
+        ctx.fillStyle = hgr_PixelColor(x, y, left, me, right, b7);
         ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
     }
+    */
 
     // Draw a hires memory location, ends up redrawing pixels
     // to the left and right of the byte.
@@ -273,21 +287,23 @@ var hiresCols = [
     // col is [0..39], y is [0..191].
     //
     // Needs byte left and right of the location to handle
-    // weird color algorithm (see drawPixel()).  If column is
+    // weird color algorithm (see hgr_drawPixel()).  If column is
     // leftmost or rightmost, use zero for non-existant adjacent bytes.
     //
-    function drawHires(col, y, d8_l, d8, d8_r) {
+    function hgr_Draw(col, y, d8_l, d8, d8_r) {
         // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
-        //
         // { d8_r[0:1], d8[0:6], d8_l[5:6] }
         var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
 
-        // Draw pixels including one pixel to the left and to the right
-        // of hires byte.
-        //
+        // Draw pixels including one pixel to the left and to the right of hires byte.
         for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
             if (x >= 0 && x < 280 && y < (mix_mode?160:192))
-                drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+            {
+                //                              x  y  left pix  this pix  right pix bit7
+                ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
+            }
+            //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
             b >>= 1;
         }
     }
@@ -324,7 +340,7 @@ var hiresCols = [
             if (col < 39)
                 d8_r = this.vidram[addr + 1];
 
-            drawHires(col, y, d8_l, d8, d8_r);
+            hgr_Draw(col, y, d8_l, d8, d8_r);
         }
         else if (addr >= (page2_mode ? LORES2_ADDR : LORES1_ADDR) &&
                 addr < (page2_mode ? LORES2_ADDR : LORES1_ADDR) + LPAGE_SIZE) {
@@ -345,41 +361,12 @@ var hiresCols = [
             if (gfx_mode && (!mix_mode || row < 20)) {
                 // LO-RES Graphics.
                 if (!hires_mode)
-                    drawLores(col, row, d8);
+                    lores_Draw(col, row, d8);
             }
             else {
                 // Text mode
-                // console.log("Apple2Video().write(%s %s): text md write.",
-                //            addr.toString(16), d8.toString(16));
-
-                /*
-                if(d8!=96)
-                {
-                    var h = (d8-128).toString(16);
-
-                    board.logText.value += 
-                    (h=="20"?"":"\n")
-                    +"["+col+","+row+"]"
-                    +h
-                    +" '"+String.fromCharCode(d8-128)+"' "
-
-                    if(col==charFlow.prev.col && row==charFlow.prev.col)
-                    {
-                        board.logText.value += '"'+ board.captureText.value  +'"> '
-
-                        board.captureText.value 
-                        = board.captureText.value.substring(0,board.captureText.value.length-3)
-                        + board.captureText.value.slice(-1)
-                        + String.fromCharCode(d8-128);
-                        
-
-                        board.logText.value += '"'+ board.captureText.value  +'"'
-                    }
-                }
-                */
-                drawChar(col, row, d8);
+                text_Draw(col, row, d8);
                 charFlow.prev = {"col":col,"row":row,"d8":d8}
-
             }
         }
     } // write()
@@ -397,7 +384,7 @@ var hiresCols = [
 
                     // Redraw flashing characters.
                     if ((d8 & 0xc0) == 0x40)
-                        drawChar(col, row, d8);
+                        text_Draw(col, row, d8);
                     
                 }
         }
@@ -427,17 +414,17 @@ var hiresCols = [
                             if (col < 39)
                                 d8_r = this.vidram[addr + 1];
 
-                            drawHires(col, row * 8 + y, d8_l, d8, d8_r);
+                            hgr_Draw(col, row * 8 + y, d8_l, d8, d8_r);
                         }
                     } else {
                         // LORES graphics
                         addr += page2_mode ? LORES2_ADDR : LORES1_ADDR;
-                        drawLores(col, row, this.vidram[addr]);
+                        lores_Draw(col, row, this.vidram[addr]);
                     }
                 } else {
                     // Text
                     addr += page2_mode ? LORES2_ADDR : LORES1_ADDR;
-                    drawChar(col, row, this.vidram[addr]);
+                    text_Draw(col, row, this.vidram[addr]);
                 }
             }
     }
