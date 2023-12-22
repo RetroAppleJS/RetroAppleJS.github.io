@@ -225,8 +225,6 @@ function Apple2Video(ctx) {
         }
     }
 
-
-
     function text_PixelColor(me)
     {
         // White or monochrome color
@@ -302,7 +300,6 @@ function Apple2Video(ctx) {
             // Hidden by text in mix-mode?
             if (y >= 160 && mix_mode)
                 return;
-
             if ((addr & 0x07f) < 40)
                 ;
             else if ((addr & 0x07f) < 80)
