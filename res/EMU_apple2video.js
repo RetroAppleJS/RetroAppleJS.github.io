@@ -124,6 +124,36 @@ function Apple2Video(ctx) {
 
     this.hgr_PixelColor = hgr_PixelColor;
 
+    // Lores color to RGB table. (* Hires)
+    var loresCols = [
+    ["#000000","#000000","#000000","#000000","Black"]  // *
+    ,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
+    ,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
+    ,["#D143E6","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
+    ,["#006940","#383838","#233835","#383324","Dark Green"] 
+    ,["#808080","#808080","#508078","#7E7451","Grey 1"] 
+    ,["#2F96E6","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
+    ,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
+    ,["#405400","#313131","#1F312E","#312D1F","Brown"] 
+    ,["#D06B1A","#717171","#47716B","#706748","Orange"]  // *
+    ,["#808080","#808080","#508078","#7E7451","Grey 2"] 
+    ,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
+    ,["#30BD1B","#575757","#375752","#564F37","Light Green"]  // *
+    ,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
+    ,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
+    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
+    ];
+
+    var hiresCols = [
+     loresCols[0]
+    ,loresCols[3]
+    ,loresCols[6]
+    ,loresCols[9]
+    ,loresCols[12]
+    ,loresCols[15]
+    ];
+
+
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function text_Draw(col, row, d8) {
@@ -152,47 +182,6 @@ function Apple2Video(ctx) {
         }
     }
 
-
-// Lores color to RGB table. (* Hires)
-var loresCols = [
- ["#000000","#000000","#000000","#000000","Black"]  // *
-,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
-,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
-,["#D143E6","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
-,["#006940","#383838","#233835","#383324","Dark Green"] 
-,["#808080","#808080","#508078","#7E7451","Grey 1"] 
-,["#2F96E6","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
-,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
-,["#405400","#313131","#1F312E","#312D1F","Brown"] 
-,["#D06B1A","#717171","#47716B","#706748","Orange"]  // *
-,["#808080","#808080","#508078","#7E7451","Grey 2"] 
-,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
-,["#30BD1B","#575757","#375752","#564F37","Light Green"]  // *
-,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
-,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
-,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
-];
-
-/*
-var hiresCols = [
- ["#000000","#000000","#000000","#000000","Black"]
-,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]
-,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]
-,["#D06A1A","#717171","#47716B","#706748","Orange"]
-,["#2FBC1A","#575757","#375752","#564F37","Light Green"]
-,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]
-];
-*/
-
-var hiresCols = [
-    loresCols[0]
-   ,loresCols[3]
-   ,loresCols[6]
-   ,loresCols[9]
-   ,loresCols[12]
-   ,loresCols[15]
-   ];
-
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function lores_Draw(col, row, d8) {
@@ -200,8 +189,16 @@ var hiresCols = [
         ctx.fillRect(col * 14, row * 16, 14, 16);
     }
 
-    // Convoluted way of plotting hires colors.
+    // Draw a hires memory location, ends up redrawing pixels
+    // to the left and right of the byte.
     //
+    // col is [0..39], y is [0..191].
+    //
+    // Needs byte left and right of the location to handle
+    // weird color algorithm (see hgr_drawPixel()).  If column is
+    // leftmost or rightmost, use zero for non-existant adjacent bytes.
+    
+    // Convoluted way of plotting hires colors.
     // coordinates: x is [0..279], y is [0..191]
     //
     // The rest are integers treated as booleans:
@@ -210,10 +207,25 @@ var hiresCols = [
     // right != 0, pixel to the right is set
     // b7 != 0, the relevant byte in hires memory has bit 7 set
     //
+    function hgr_Draw(col, y, d8_l, d8, d8_r) {
+        // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
+        // { d8_r[0:1], d8[0:6], d8_l[5:6] }
+        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
 
-    // TODO rename to hgr_PixelColor
-    //      create    text_PixelColor
-    //      create    lores_PixelColor
+        // Draw pixels including one pixel to the left and to the right of hires byte.
+        for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
+            if (x >= 0 && x < 280 && y < (mix_mode?160:192))
+            {
+                //                              x  y  left pix  this pix  right pix bit7
+                ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
+            }
+            //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+            b >>= 1;
+        }
+    }
+
+
 
     function text_PixelColor(me)
     {
@@ -272,40 +284,6 @@ var hiresCols = [
         // Else it's black.
         else
            return loresCols[0][0];    // Black
-    }
-
-    /*
-    function hgr_drawPixel(x, y, left, me, right, b7) {
-        ctx.fillStyle = hgr_PixelColor(x, y, left, me, right, b7);
-        ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
-    }
-    */
-
-    // Draw a hires memory location, ends up redrawing pixels
-    // to the left and right of the byte.
-    //
-    // col is [0..39], y is [0..191].
-    //
-    // Needs byte left and right of the location to handle
-    // weird color algorithm (see hgr_drawPixel()).  If column is
-    // leftmost or rightmost, use zero for non-existant adjacent bytes.
-    //
-    function hgr_Draw(col, y, d8_l, d8, d8_r) {
-        // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
-        // { d8_r[0:1], d8[0:6], d8_l[5:6] }
-        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
-
-        // Draw pixels including one pixel to the left and to the right of hires byte.
-        for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
-            if (x >= 0 && x < 280 && y < (mix_mode?160:192))
-            {
-                //                              x  y  left pix  this pix  right pix bit7
-                ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
-                ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
-            }
-            //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
-            b >>= 1;
-        }
     }
 
     // Called if a write lands in any possible video RAM area.
