@@ -45,6 +45,12 @@ var _D =
               +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
               +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
 }
+const _CFG_CHROMA = {
+ 0:{"COL_num":"" ,"COL_name":"FULL-COLOR"}
+,1:{"COL_num":"#FFFFFF" ,"COL_name":"B&W"}
+,2:{"COL_num":"#A0FFF0" ,"COL_name":"GREEN"}
+,3:{"COL_num":"#FCE7A1" ,"COL_name":"AMBER"}
+}
 var yref = new Array();
 for(var i=0;i<_D.YVERTL.length;i+=2)
   yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
@@ -62,7 +68,6 @@ oPALETTE.progress_bar = function(pct)
       document.getElementById("hourglass").innerHTML = 
       "<img src=../res/Apple_first_logo.png style='position:absolute;left:0px;top:0px'>"
       +"<img id=newton src=../res/apple-logo-1977.png style='position:absolute;left:128px;top:196px;width:20px;height;20px;image-rendering:pixelated'>"
-    
   }
   else
       document.getElementById("newton").style.top = (196+pct*pct*0.0062)+"px";
@@ -113,7 +118,7 @@ function init_gui(bRefresh)
   //   _| |_  _/ /   \ \_  _| |_      _| |_    _| |__/ | _| |  \ \_  _| |_\   |_  
   //  |_____||____| |____||_____|    |_____|  |________||____| |___||_____|\____| 
 
-  oPATTERN.colorFN = apple2plus.video.getPixelColor;
+  oPATTERN.colorFN = apple2plus.video.hgr_PixelColor;
   oPATTERN.set_prep(bRefresh?oPATTERN.prep:_D.prep);
 
   oPATTERN.criteria_desc = {
@@ -137,7 +142,7 @@ function init_gui(bRefresh)
     oPATTERN.criteria = {};
   }  
 
-  oPATTERN.add_criteria(apple2plus.video.getPixelColor)
+  oPATTERN.add_criteria(apple2plus.video.hgr_PixelColor)
   oPATTERN.filterExcl = _D.filterExcl;
 
   /*
@@ -163,7 +168,7 @@ function init_gui(bRefresh)
   oPALETTE.hex_pal = [];
   for(var p=0;p<oPATTERN.pmax;p++)
   {
-    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var c = oPATTERN.color(p,apple2plus.video.hgr_PixelColor);    // calculate average color of patternID, by borrowing hgr_PixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
     oPALETTE.hex_pal[p] = csh;   // inventorize palette colors from every pattern
   }
@@ -274,7 +279,7 @@ function generate_GRIDS()
   var pmax = oPATTERN.pmax;
   for(var p=0;p<pmax;p++)
   {
-    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var c = oPATTERN.color(p,apple2plus.video.hgr_PixelColor);    // calculate average color of patternID, by borrowing hgr_PixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
     var csp = [Math.round(100*c[0]/255),Math.round(100*c[1]/255),Math.round(100*c[2]/255)];
     var cc = oPATTERN.criteria[p];
@@ -329,7 +334,7 @@ function gen_cell(patternID,x,y,img)
     var me = custom_bmap[x][y][0];
     var right = x>=(oPATTERN.bmapx-1) ? false : custom_bmap[x+1][y][0];
     var b7 = custom_bmap[x][y][1]==128?1:0;
-    //var col = getPixelColor_HGR(x, y, left, me, right, b7)
+    //var col = hgr_PixelColor_HGR(x, y, left, me, right, b7)
     //var alt = "<span class=tooltiptext style=color:"+col+";font-size:8px>"+col+"("+[left,me,right,b7].join(",")+")</span>";
     var css = "tooltip "
     var alt = "";
@@ -438,7 +443,7 @@ function generate_HGR()
   var pmax = oPATTERN.pmax;
   for(var p=_D.opat,dx=0,dy=0;p<pmax;p++)
   {
-    var c = oPATTERN.color(p,apple2plus.video.getPixelColor);    // calculate average color of patternID, by borrowing getPixelColor function from emulator
+    var c = oPATTERN.color(p,apple2plus.video.hgr_PixelColor);    // calculate average color of patternID, by borrowing hgr_PixelColor function from emulator
     var csh = "#"+RGB2HEX(c).join("");
     var cc = oPATTERN.criteria[p];
 
