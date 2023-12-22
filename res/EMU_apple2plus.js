@@ -144,6 +144,10 @@ function Apple2Plus(context) {
         hw.io.disk2.diskBytes = bytes;
     }
 
+    this.dumpDisk = function() {
+        hw.io.disk2.dump();
+    }
+
     this.monitor = function(type) {
         return video.setMonitor(type);
     }

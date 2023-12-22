@@ -84,8 +84,25 @@ function AppleDisk2() {
         else document.getElementById("dskLED1").style.visibility = "hidden";
     }
 
+this.dump = function()
+{
+    
+    for(var _t=0;_t<35;_t++)
+    {
+        var s="track"+_t+" ";
+        for(var _offset=0;_offset<TRACK_SIZE;_offset++)
+        {
+            var idx = _t * TRACK_SIZE + _offset
+            var n = this.diskBytes[idx] ^ 255
+            s += n.toString(16).toUpperCase();
+            if((idx%8)==7) s+= " ";
+        }
+        console.log(s);
+    }
+}
+
     this.read = function(addr) {
-        // console.log("AppleDisk2: read %s", addr.toString(16));
+        //console.log("AppleDisk2: read %s", addr.toString(16));
 
         if (addr < 0x08) {
             // Stepper motor on.
@@ -114,7 +131,7 @@ function AppleDisk2() {
             switch (addr) {
             case MOTOR_OFF:
                 motor = 0;
-                this.update()
+                this.update();
                 break;
             case MOTOR_ON:
                 motor = 1;

@@ -86,7 +86,10 @@ function Apple2IO(vid) {
         else if (addr >= KEY_STROBE && addr < KEY_STROBE + 0x10)
             key &= 0x7f;
         else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
-            return this.disk2.read(addr - DISK_IO);
+        {
+            var o = this.disk2.read(addr - DISK_IO);
+            return o;
+        }
         else if (this.disk2.diskBytes && addr >= DISK_PROM &&
                  addr < DISK_PROM + DISK_PROM_SIZE)
             return disk2Rom[addr - DISK_PROM];
