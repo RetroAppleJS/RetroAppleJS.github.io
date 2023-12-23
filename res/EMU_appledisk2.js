@@ -84,22 +84,28 @@ function AppleDisk2() {
         else document.getElementById("dskLED1").style.visibility = "hidden";
     }
 
-this.dump = function()
-{
-    
-    for(var _t=0;_t<35;_t++)
+    this.dump = function()
     {
-        var s="track"+_t+" ";
-        for(var _offset=0;_offset<TRACK_SIZE;_offset++)
+        for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
         {
-            var idx = _t * TRACK_SIZE + _offset
-            var n = this.diskBytes[idx] ^ 255
-            s += n.toString(16).toUpperCase();
-            if((idx%8)==7) s+= " ";
+            console.log("track $"+oCOM.getHexByte(_t));
+            var SECTOR_SIZE = TRACK_SIZE / 16;
+            for(var _s=0;_s<16;_s++)
+            {
+                console.log("sector $"+oCOM.getHexByte(_s));
+                // ITERATE THROUGH SECTORS
+                var s = "";
+                for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
+                {
+                    var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+                    var n = this.diskBytes[idx]// ^ 255
+                    s += oCOM.getHexByte(n);
+                    if((idx%4)==3) s+= " ";
+                }
+                console.log(s);
+            }
         }
-        console.log(s);
     }
-}
 
     this.read = function(addr) {
         //console.log("AppleDisk2: read %s", addr.toString(16));
