@@ -255,14 +255,14 @@ function apple2ConvertDskToNib(dskBytes)
             // Encode nibbilized data.
             var prev = 0;
             for (i = 0; i < 86; i++) {
-                bytes[offs++] = sixTwo[prev ^ prenib[256 + 85 - i]];
+                addBytes([ sixTwo[prev ^ prenib[256 + 85 - i]] ]);
                 prev = prenib[256 + 85 - i];
             }
             for (i = 0; i < 256; i++) {
-                bytes[offs++] = sixTwo[prev ^ prenib[i]];
+                addBytes([ sixTwo[prev ^ prenib[i]] ]);
                 prev = prenib[i];
             }
-            bytes[offs++] = sixTwo[prev];
+            addBytes([ sixTwo[prev] ]);
 
             // Data field epilogue
             addBytes([0xde,0xaa,0xeb]);
