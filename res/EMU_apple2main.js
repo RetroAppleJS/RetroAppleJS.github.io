@@ -141,12 +141,37 @@ function loadDisk()
         for (var i = 0; i < size; i++)
             bytes[i] = data.getUint8(i);
 
+        //dumpdisk(bytes);
+
         if (size == 143360) bytes = apple2ConvertDskToNib(bytes);
 
         apple2plus.loadDisk(bytes);
     }
 }
 
+function dumpdisk(bytes)
+{
+    var TRACK_SIZE =    6656;
+    for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
+    {
+        console.log("track $"+oCOM.getHexByte(_t));
+        var SECTOR_SIZE = TRACK_SIZE / 16;
+        for(var _s=0;_s<16;_s++)
+        {
+            console.log("sector $"+oCOM.getHexByte(_s));
+            // ITERATE THROUGH SECTORS
+            var s = "";
+            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
+            {
+                var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+                var n = bytes[idx]// ^ 255
+                s += oCOM.getHexByte(n);
+                if((idx%4)==3) s+= " ";
+            }
+            console.log(s);
+        }
+    }
+}
 
 // Convert a DSK file to a NIB image.
 //
@@ -161,48 +186,49 @@ function apple2ConvertDskToNib(dskBytes)
         0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
         0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
         0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff ];
-    var secSkew = [ 0, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 15 ];
+    var secSkew = [ 0x0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf ];
     var bytes = new Array(232960);
     var prenib = new Array(342);
     var offs;
 
     // Odd-even encoding for sector headers.
-    function oddEven(b) {
-        bytes[offs++] = 0xaa | (b >> 1);
-        bytes[offs++] = 0xaa | b;
+    function oddEven(b)
+    {
+        return [0xaa | (b >> 1),0xaa | b]
+    }
+
+    function inv_oddEven(b1,b2) {
+        return (((b1<<1)+1) & b2)
+    }
+
+    function addBytes(b_arr)
+    {
+        for(var i=0;i<b_arr.length;i++)
+            bytes[offs++] = b_arr[i];
     }
 
     for (var track = 0; track < 35; track++) {
         offs = track * 6656;
         for (var sec = 0; sec < 16; sec++) {
 
-            // "Sync" bytes.
-            for (var i = 0; i < 20; i++)
-                bytes[offs++] = 0xff;
+            // 20 Sync bytes
+            addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
 
             // Addr field prologue
-            bytes[offs++] = 0xd5;
-            bytes[offs++] = 0xaa;
-            bytes[offs++] = 0x96;
-
-            oddEven(254);               // Volume
-            oddEven(track);
-            oddEven(sec);
-            oddEven(254 ^ track ^ sec); // checksum
+            addBytes([0xd5,0xaa,0x96]);
+            addBytes(oddEven(254));               // Volume
+            addBytes(oddEven(track));
+            addBytes(oddEven(sec));
+            addBytes(oddEven(254 ^ track ^ sec)); // checksum
 
             // Addr field epilogue
-            bytes[offs++] = 0xde;
-            bytes[offs++] = 0xaa;
-            bytes[offs++] = 0xeb;
+            addBytes([0xde,0xaa,0xeb]);
 
-            // Sync bytes
-            for (i = 0; i < 20; i++)
-                bytes[offs++] = 0xff;
+            // 20 Sync bytes
+            addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
 
             // Data field prologue
-            bytes[offs++] = 0xd5;
-            bytes[offs++] = 0xaa;
-            bytes[offs++] = 0xad;
+            addBytes([0xd5,0xaa,0xad]);
 
             // Start by prenibbilizing
             var doffs = secSkew[sec] * 256 + track * 4096;
@@ -239,14 +265,12 @@ function apple2ConvertDskToNib(dskBytes)
             bytes[offs++] = sixTwo[prev];
 
             // Data field epilogue
-            bytes[offs++] = 0xde;
-            bytes[offs++] = 0xaa;
-            bytes[offs++] = 0xeb;
+            addBytes([0xde,0xaa,0xeb]);
         }
 
-        // fill out with sync bytes.
-        while (offs < (track + 1) * 6656)
-            bytes[offs++] = 0xff;
+        // fill out with sync bytes until end of track.
+        var bytes2EOT = (track+1)*6656 - offs;
+        addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) )
     }
 
     return bytes;
