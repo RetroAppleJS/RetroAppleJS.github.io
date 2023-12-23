@@ -21,10 +21,11 @@ function COM()
   this.getBinMulti = function(v,m)
   {
     var s = "";
-    var r = ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
-    for(var i=0;i<r.length;i++)
-      s+= ("0000"+parseInt(r.charAt(i),16).toString(2)).slice(-4)
-    return s;
+    var r = ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase();
+    //for(var i=0;i<r.length;i++)
+    //  s+= ("0000"+parseInt(r.charAt(i),16).toString(2)).slice(-4)
+    //return s;
+    return r;
   }
 
 
