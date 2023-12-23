@@ -141,7 +141,7 @@ function loadDisk()
         for (var i = 0; i < size; i++)
             bytes[i] = data.getUint8(i);
 
-        //dumpdisk(bytes);
+        dumpdisk(bytes);
 
         if (size == 143360) bytes = apple2ConvertDskToNib(bytes);
 
@@ -274,4 +274,9 @@ function apple2ConvertDskToNib(dskBytes)
     }
 
     return bytes;
+}
+
+function apple2ConvertNibToDsk(nibBytes)
+{
+    alert("test")
 }
