@@ -141,10 +141,9 @@ function loadDisk()
         for (var i = 0; i < size; i++)
             bytes[i] = data.getUint8(i);
 
-        dumpdisk(bytes);
+        //dumpdisk(bytes);
 
         if (size == 143360) bytes = apple2ConvertDskToNib(bytes);
-
         apple2plus.loadDisk(bytes);
     }
 }
@@ -192,12 +191,13 @@ function apple2ConvertDskToNib(dskBytes)
     var offs;
 
     // Odd-even encoding for sector headers.
-    function oddEven(b)
+    function split_OddEven(b)
     {
         return [0xaa | (b >> 1),0xaa | b]
     }
 
-    function inv_oddEven(b1,b2) {
+    function join_OddEven(b1,b2)
+    {
         return (((b1<<1)+1) & b2)
     }
 
@@ -216,10 +216,11 @@ function apple2ConvertDskToNib(dskBytes)
 
             // Addr field prologue
             addBytes([0xd5,0xaa,0x96]);
-            addBytes(oddEven(254));               // Volume
-            addBytes(oddEven(track));
-            addBytes(oddEven(sec));
-            addBytes(oddEven(254 ^ track ^ sec)); // checksum
+
+            addBytes(split_OddEven(254));                 // Volume
+            addBytes(split_OddEven(track));               // Track
+            addBytes(split_OddEven(sec));                 // Sector
+            addBytes(split_OddEven(254 ^ track ^ sec));   // Checksum
 
             // Addr field epilogue
             addBytes([0xde,0xaa,0xeb]);
@@ -234,7 +235,6 @@ function apple2ConvertDskToNib(dskBytes)
             var doffs = secSkew[sec] * 256 + track * 4096;
             for (i = 0; i < 256; i++) {
                 var d8 = dskBytes[doffs + i];
-
                 prenib[i] = (d8 >> 2);
 
                 if (i < 86)
@@ -269,10 +269,9 @@ function apple2ConvertDskToNib(dskBytes)
         }
 
         // fill out with sync bytes until end of track.
-        var bytes2EOT = (track+1)*6656 - offs;
-        addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) )
+        var bytes2EOT = (track+1) * 6656 - offs;
+        addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) );
     }
-
     return bytes;
 }
 

@@ -71,6 +71,51 @@ function COM()
     if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
   }
 
+  this.Download = function(fileName, data)
+  {
+    var ui8 = new Uint8Array(data.length);
+    for(var i=0;i<data.length;i++)
+      ui8[i] = data[i];
+    var url, mimeType = 'application/octet-stream';
+    var blob = new Blob([ui8], {type: mimeType});
+    var url = window.URL.createObjectURL(blob);
+    downloadURL(url, fileName);
+    setTimeout(function() {
+      return window.URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  function downloadURL(data, fileName) {
+    var a;
+    a = document.createElement('a');
+    a.href = data;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.style = 'display: none';
+    a.click();
+    a.remove();
+  };
+
+  this.UploadData = new Array();
+  this.Upload = function(elementId)
+  {
+      this.UploadData = [];
+      var file = document.getElementById(elementId).files[0];
+      if (!file) return;
+      oCOM.UploadName = file.name;
+
+      var fread = new FileReader();
+      fread.readAsArrayBuffer(file);
+      fread.onload = function(levent)
+      {
+          var data = new DataView(levent.target.result);
+          var size = levent.target.result.byteLength;
+          //this.UploadData = Array(size);
+          for (var i = 0; i < size; i++)
+            oCOM.UploadData[i] = data.getUint8(i);
+      }
+  }
+
   this.SystemSelect = function(id,tab)
   {
     var def = _TABS[tab]["SYS"];
