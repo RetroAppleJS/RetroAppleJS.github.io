@@ -6,9 +6,8 @@
     //   ██████   ██████  ██     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
     /////////////////////////////////////////////////////////
     
-    
-    var CONF_version="";
-    var CONF_builddate="";  
+    if(CONF_version===null) var CONF_version="";
+    if(CONF_builddate===null) var CONF_builddate="";
     var _T = function _T(idx,mod)
     {
         this.t = {
