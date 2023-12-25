@@ -1,0 +1,122 @@
+<html>
+    <head>
+        <title>KeyboardJS - KEYBOARD MAPPING TOOL</title>
+    </head>
+    <script type="text/javascript" src="TOO_Header.js"></script>
+    <script type="text/javascript" src="../res/EMU_A2Pkeys.js"></script>
+    <body onkeydown=keys.keystroke(event) onload="init()">
+
+    <div id="slider_title"></div>
+
+    <div class="slider_overlay">
+        <div id="topmenu">
+        <ul id="minitabs">
+            <li class=no_margins style=vertical-align:top;>
+            <!--TEST-->
+        </li>
+    </ul>
+    </div>
+
+<div style="width:560;height:384;background-color:black;" id="screen">
+</div>
+    <div id="debug"></div>
+    
+
+    <script>
+        var hw = {"io":{
+            "keypress":
+            function(code)
+            {
+
+                
+                oTxtScr.cursor_next();
+                //alert("0x"+code.toString(16).toUpperCase());
+                console.log(oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1])
+            }
+        }}
+
+
+        var keys = new A2Pkeys(hw);
+        keys.KbdHTML({path:"../res/",Yoffset:40});
+
+
+
+        var numrows = 24, numcols = 40;
+        var arr = new Uint8Array(numrows * numcols).fill(0);
+
+        var oTxtScr = new function()
+        {
+            this.numrows = 24
+            this.numcols = 40;
+            this.cursor_cnt = 0;
+            this.cursor_pos = [0,0]
+            this.arr = new Uint8Array(this.numrows * this.numcols).fill(0);
+            this.get = function(x,y) { return this.arr[x+y*this.numrows] }
+            this.put = function(x,y,val) { this.arr[x+y*this.numrows] = val}
+            this.cursor_next = function()
+            {
+                 this.cursor_cnt += 1
+                 this.cursor_pos[0] = this.cursor_cnt % this.numcols;
+                 this.cursor_pos[1] = Math.floor(this.cursor_cnt / this.numcols);
+            }
+        }
+
+        
+
+        //arr[3 + 1 * numrows] = 1; // col = 3, row = 1
+
+
+        var xm=ym=xs=ys=xn=yn=c=0,ascii="";
+        //var myImage = new Image();
+        //myImage.id = 'imgId';
+        //myImage.src = "../res/appleIIplus_font.gif";
+        //document.getElementById("screen").appendChild(myImage);
+
+        var ascii = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ !\"#$%&'()*+,-./0123456789:<=>?"
+        var acode = [0xA3
+                    ,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,0xD0,0xD1,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA
+                    ,0x00 // [
+                    ,0x00 // \
+                    ,0x00 // ]
+                    ,0xDB // ^
+                    ,0xBD // _
+                    ,0xA0 //  
+                    ,0xB8 // !
+                    ,0xDE // "
+                    ,0xA3 // #
+                    ,0xA4 // $
+                    ,0xDE // %
+                ]
+
+        function init()
+        {
+            document.getElementById('slider_title').outerHTML = _TITLE();
+            
+            var img = document.getElementById('chars');
+            //img.style.visibility =  'hidden';  
+
+            xn = 16;
+            yn = 12;
+
+            ym = img.height;
+            xm = img.width;  
+            ys = Math.round(ym/yn);
+            xs = Math.round(xm/xn);
+        }
+
+        function img_handler(curx,cury,c)
+        {
+            //document.getElementById("debug").innerHTML += (x+" "+y+" - ");
+            var x = c%xn;
+            var y = Math.floor(c/xn);
+            var is = "inset("+(y*ys-1)+"px "+(xm-(x*xs+xs))+"px "+(ym-(y*ys+ys)+2)+"px "+(x*xs)+"px)"; // top right bottom left
+            document.getElementById("chars").style.clipPath = is;
+
+            document.getElementById("chars").style.position = "relative";
+            document.getElementById("chars").style.left = -x*xs;
+            document.getElementById("chars").style.top = -y*ys;
+        }
+    </script>
+        <img id=chars src="../res/appleIIplus_font.gif" hidden>
+    </body>
+</html>
