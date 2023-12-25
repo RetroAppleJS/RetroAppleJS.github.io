@@ -8,6 +8,7 @@
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
   .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
     </style>
+  <link rel="stylesheet" href="../res/COM_fontawesome/all.css">  
 </head>
 
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
@@ -68,7 +69,7 @@ var nib_dsk_bytes = new Array();
 function dl()
 {
   nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
-  oCOM.Download(oCOM.UploadName.replace(".DSK",".NIB"),nib_dsk_bytes)
+  oCOM.Download(oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"),nib_dsk_bytes)
 }
 
 </script>
@@ -79,11 +80,10 @@ function dl()
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile')"></li>
+        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile')" accept=".dsk"></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li>          
-          <button onclick="dl()">Download</button>
-        </li>
+        <li><button class=appbut value="Dump" onclick="dumpdisk(oCOM.UploadData)" id="dumpbutton" title="Dump"><i  class="fa fa-cube"></i></button></li>
+        <li><button onclick="dl()">Download .NIB</button></li>
         <li><div class=no_margins id=status></div></li>
       </ul>
     </div>
