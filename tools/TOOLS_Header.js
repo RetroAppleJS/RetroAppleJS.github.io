@@ -6,8 +6,6 @@
     //   ██████   ██████  ██     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
     /////////////////////////////////////////////////////////
     
-    if(CONF_version===null) var CONF_version="";
-    if(CONF_builddate===null) var CONF_builddate="";
     var _T = function _T(idx,mod)
     {
         this.t = {
@@ -16,8 +14,8 @@
             ,"menu_convert":""
             ,"menu_info":"Info/Contact"
             ,"intro":""
-            ,"version":(CONF_version?("Version "+CONF_version):"")
-            ,"built":(CONF_builddate?("Built "+CONF_builddate):"")
+            ,"version":(typeof(CONF_version)=="undefined"?"":("Version "+CONF_version))
+            ,"built":(typeof(CONF_builddate)=="undefined"?"":("Built "+CONF_builddate))
             ,get _(){return this}
         }
         if(idx.length>0 && typeof(this.t[idx])=="undefined") { alert(idx); return "<font color=red>"+idx+"</font>" }
@@ -30,7 +28,7 @@
     }
     function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
     function _TITLE() {
-        var hight_pct = 6;
+        var hight_pct = 7;
         var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
         +"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
         +"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
