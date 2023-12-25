@@ -26,7 +26,8 @@ var nib_dsk_bytes = new Array();
 function dl()
 {
   nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
-  oCOM.Download(oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"),nib_dsk_bytes)
+  var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
+  oCOM.Download(fileName,nib_dsk_bytes)
 }
 </script>
 

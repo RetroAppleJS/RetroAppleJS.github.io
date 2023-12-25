@@ -144,6 +144,10 @@ function Apple2Plus(context) {
         hw.io.disk2.diskBytes = bytes;
     }
 
+    this.Disksref = function(bytes) {
+        return hw.io.disk2.diskBytes;
+    }   
+
     this.dumpDisk = function() {
         hw.io.disk2.dump();
     }
