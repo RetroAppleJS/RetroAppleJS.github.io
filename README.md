@@ -1,4 +1,4 @@
-# The Apple II+ IDE
+# The comprehesive Apple II+ emulator, assebler & debugger in plain JavaScript 
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
