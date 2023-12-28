@@ -4,6 +4,32 @@
   html {height:100%;font-family:"Arial"}
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
   .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+  .icons {
+    width:150px;
+    float: left;
+}
+.icons a {
+    height: 100px;
+    width: 100px;
+    background-size: cover;
+    /*background-color: black;*/
+    text-decoration: none;
+    color: white;
+    display: inline-block;
+    margin: 20px;
+    border-radius: 10px;
+    /* border-radius: 24px;*/
+    position: relative;
+    }
+    .icons a:before,  
+    .icons a:after {
+    -webkit-transform: scaleY(2) scaleX(1.05) rotate(90deg);
+    transform: scaleY(2) scaleX(1.05) rotate(90deg);
+    }
+    .icons div {
+    text-align: center;
+    font-family: Arial;
+    }  
     </style>
   <link rel="stylesheet" href="../res/COM_fontawesome/all.css">  
 </head>
