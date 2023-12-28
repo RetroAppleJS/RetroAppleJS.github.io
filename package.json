@@ -3,4 +3,5 @@
   "version": "1.0.0",
   "author": "Freddy Vandriessche"
   "homepage": "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/README.md"
+  "main": "index.html",
 }
