@@ -12,6 +12,6 @@ updates:
 
 - package-ecosystem: "npm"
   # Files stored in `app` directory
-  directory: "/res"
+  directory: "/res" # Location of package manifests
   schedule:
     interval: "weekly" 
