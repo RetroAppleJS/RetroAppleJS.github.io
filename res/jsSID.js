@@ -35,6 +35,7 @@ function jsSID(bufferlen, background_noise)
     else {
         var jsSID_audioCtx = new webkitAudioContext();
     }
+    
     var samplerate = jsSID_audioCtx.sampleRate;
     if (typeof jsSID_audioCtx.createJavaScriptNode === 'function') {
         var jsSID_scriptNode = jsSID_audioCtx.createJavaScriptNode(bufferlen, 0, 1);
