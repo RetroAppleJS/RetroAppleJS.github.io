@@ -9,3 +9,9 @@ updates:
     directory: "/.github" # Location of package manifests
     schedule:
       interval: "weekly"
+
+- package-ecosystem: "npm"
+  # Files stored in `app` directory
+  directory: "/res"
+  schedule:
+    interval: "weekly" 
