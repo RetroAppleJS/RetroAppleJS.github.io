@@ -2,6 +2,9 @@
 //(Year 2016) http://hermit.sidrip.com
 
 
+//  !!! CHECK https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
+
+
 function playSID(sidurl, subtune) {
     //convenience function to create default-named jsSID object and play in one call, easily includable as inline JS function call in HTML
     if (typeof SIDplayer === 'undefined')
