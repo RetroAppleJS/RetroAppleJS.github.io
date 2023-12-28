@@ -1,8 +1,7 @@
 //jsSID by Hermit (Mihaly Horvath) : a javascript SID emulator and player for the Web Audio API
 //(Year 2016) http://hermit.sidrip.com
 
-
-//  !!! CHECK https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
+// check https://github.com/jhohertz/jsSID
 
 
 function playSID(sidurl, subtune) {
@@ -30,15 +29,12 @@ function jsSID(bufferlen, background_noise)
     this.year = '2016';
 
     //create Web Audio context and scriptNode at jsSID object initialization (at the moment only mono output)
-
     if (typeof AudioContext !== 'undefined') {
         var jsSID_audioCtx = new AudioContext();
     }
     else {
         var jsSID_audioCtx = new webkitAudioContext();
     }
-    var jsSID_audioCtx = {};
-
     var samplerate = jsSID_audioCtx.sampleRate;
     if (typeof jsSID_audioCtx.createJavaScriptNode === 'function') {
         var jsSID_scriptNode = jsSID_audioCtx.createJavaScriptNode(bufferlen, 0, 1);
