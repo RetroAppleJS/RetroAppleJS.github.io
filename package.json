@@ -1,7 +1,11 @@
 {
   "name": "RetroAppleJS",
   "version": "1.0.0",
-  "author": "Freddy Vandriessche"
-  "homepage": "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/README.md"
+  "private": false,
   "main": "index.html",
+  "author": "Freddy Vandriessche",
+  "homepage": "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/README.md",
+  "dependencies": {
+    "actions-toolkit": "^1.6.0"
+  }
 }
