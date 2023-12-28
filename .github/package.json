@@ -1,6 +1,11 @@
 {
   "name": "RetroAppleJS",
   "version": "1.0.0",
-  "lockfileVersion": 1,
-  "requires": false
+  "private": false,
+  "main": "index.html",
+  "author": "Freddy Vandriessche",
+  "homepage": "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/README.md",
+  "dependencies": {
+    "fontawesome": "^5.15.3"
+  }
 }
