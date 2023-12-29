@@ -9,17 +9,12 @@
     <div id="slider_title"></div>
 
     <div class="slider_overlay">
-        <div id="topmenu">
-        <ul id="minitabs">
-            <li class=no_margins style=vertical-align:top;>
-            <!--TEST-->
-        </li>
-    </ul>
-    </div>
+        <div id="topmenu"></div>
 
-<div style="margin-left:150px;width:560;height:384;background-color:black;" id="screen">
-</div>
-    <div id="result"></div>
+<div id="main">
+<div style="float:left;margin-left:150px;width:560;height:384;background-color:black;" id="screen"></div>
+<div id="dump" style="border:1px solid;width:400px;height:382px;overflow-x:hidden;overflow-y:auto;"></div>
+<div id="kbd"></div>
     
 
     <script>
@@ -29,18 +24,17 @@
             "keypress":
             function(code)
             {
-
-                
                 oTxtScr.cursor_next();
                 //alert("0x"+code.toString(16).toUpperCase());
-                console.log(oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1])
+                var id = document.getElementById("dump");
+                id.innerHTML += oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1]+"<br>"
+                //console.log(oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1])
             }
         }}
 
 
         var keys = new A2Pkeys(hw);
-        keys.KbdHTML({path:"../res/","Yoffset":40});
-
+        keys.KbdHTML({"id":"kbd","path":"../res/","Yoffset":40});        // Paste keyboard HTML code
 
 
         var numrows = 24, numcols = 40;
@@ -119,6 +113,8 @@
             document.getElementById("chars").style.top = -y*ys;
         }
     </script>
-        <img id=chars src="../res/appleIIplus_font.gif" hidden>
+    </div>
+
+    <img id=chars src="../res/appleIIplus_font.gif" hidden>
     </body>
 </html>
