@@ -150,14 +150,15 @@ function loadDisk()
 
 function dumpdisk(bytes)
 {
+    var s_arr = [];
     var TRACK_SIZE =    6656;
     for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
     {
-        console.log("track $"+oCOM.getHexByte(_t));
+        s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
         var SECTOR_SIZE = TRACK_SIZE / 16;
         for(var _s=0;_s<16;_s++)
         {
-            console.log("sector $"+oCOM.getHexByte(_s));
+            s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s)
             // ITERATE THROUGH SECTORS
             var s = "";
             for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
@@ -167,9 +168,10 @@ function dumpdisk(bytes)
                 s += oCOM.getHexByte(n);
                 if((idx%4)==3) s+= " ";
             }
-            console.log(s);
+            s_arr[s_arr.length] += s;
         }
     }
+    return s_arr;
 }
 
 // Convert a DSK file to a NIB image.
