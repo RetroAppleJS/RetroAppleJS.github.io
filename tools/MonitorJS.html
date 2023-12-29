@@ -1,3 +1,4 @@
+<script type="text/javascript" src="TOOLS_Header.js"></script>
 <style>
 body {
     font-family: 'Trebuchet MS', sans-serif;
@@ -10,6 +11,18 @@ body {
     font-weight: bold;
 }
 </style>
+
+<head>
+    <title>APPLE II color palette code generator</title>
+</head>
+<body onload="document.getElementById('slider_title').outerHTML = _TITLE()">
+
+    <div id="slider_title"></div>
+    <div class="slider_overlay">
+      <div id="topmenu">
+      </div>
+      <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
 <script>
 
 var monoNames   = ["color","b/w","green","amber"];
@@ -115,7 +128,6 @@ function loreschroma()
         return s;
 }
 
-document.write("<h1>APPLE II color palette code generator</h1>");
 document.write("<h3>insert into <a href=https://github.com/RetroAppleJS/AppleII-IDE/blob/main/res/EMU_apple2video.js>EMU_apple2video.js</a></h3>");
 document.write("<pre style=border-style:solid;padding:20px>")
 document.write('// Monochrome colors (index 0 = full color)<br>');
@@ -152,3 +164,7 @@ s+="<tr style=height:0px></tr>"
  s+= "</table>"
  document.write(s)
 </script>
+
+        </div>
+    </div>
+</body>
