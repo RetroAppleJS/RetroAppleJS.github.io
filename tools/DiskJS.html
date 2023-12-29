@@ -50,7 +50,6 @@ function dumpdisk(bytes)
             s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s);
             // ITERATE THROUGH SECTORS
             var s = "";
-
             for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
             {
                 var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
@@ -59,14 +58,14 @@ function dumpdisk(bytes)
                 s += oCOM.getHexByte(n);
                 if((idx%4)==3) s+= " ";
             }
+            if(nulls.count>255) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
             nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
             nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
             var color = "#"+oCOM.getHexMulti(nulls.count,2)+oCOM.getHexMulti(nulls.count,2)+"00";
             disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
-            nulls.count = 0;
-
-            s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk","DSK"]';
+            s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
             s_arr[s_arr.length] = s;
+            nulls.count = 0;
         }
     }
 
