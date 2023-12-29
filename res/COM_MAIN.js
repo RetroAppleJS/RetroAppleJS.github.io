@@ -228,8 +228,6 @@ var oMEMGRID = new function()
 {
   this.oCOM = new COM();
 
-  // FVD TODO move this piece to apple2plus.js
-
   const mem_gran = 8;  // block granularity in bits
   this.mem_gran = mem_gran;
 
@@ -237,10 +235,11 @@ var oMEMGRID = new function()
   {
     for(var i in layout)
     {
-      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
+      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16),a[0].length];
       for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
       { 
         this.mem_pg[addr>>mem_gran] = layout[i][2];
+        console.log("this.mem_pg["+(addr>>mem_gran)+"] = "+layout[i][2]);
         s += (addr>>mem_gran)+"="+layout[i][2]+" ";
       }
       //console.log(a[0]+"-"+a[1]+" ("+s+")");
@@ -249,36 +248,41 @@ var oMEMGRID = new function()
 
   this.mem_pg = new Array(0x10000>>mem_gran);
 
-  this.line = function(start,len,step)
+  this.line = function(start,len,step,digits)
   {
     var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = this.oCOM.getHexWord(j);
+    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = this.oCOM.getHexMulti(j,digits);
     return a;
   }
 
-  this.build_grid = function(start,len,step,bit_width)
+  this.build_grid = function(start,len,step,digits)
   {
-    if(bit_width==="undefined") bit_width = 16;
+    if(digits==="undefined") digits = 4;
     var s = "<table class=gtable style='display:inline-block;'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+this.oCOM.getHexMulti(i,Math.ceil(bit_width/4))+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
+      s += "<tr><td>"+this.oCOM.getHexMulti(i,digits)+"</td>"
+              +"<td id='m"+this.line(i,16,256,digits).join("'></td><td id='m")+"'></td></tr>\n";
     return s+"</table>"
   }
 
   this.paint_grid = function(layout)
   {
-    this.build_mem_map(layout);
+    this.build_mem_map(layout);  // populate this.mem_pg array (not for display, but later lookup)
 
-    // PREPARE ALL DATA
+    // PREPARE DISPLAY DATA
     var blk_col = {}, blk_txt = {} //, c = ""
     for(var i in layout)
     {
-      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
-      for(var j=b[0];j<b[1];j+=parseInt("0100",16))
+      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16),a[0].length];
+      for(var j=b[0];j<b[1];j+=parseInt("0100",16)) // iterate through layout address range
       { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
-        var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
-        blk_col[idx] = layout[i][0]; blk_txt[idx] = "$"+idx+" "+layout[i][1];
+        //var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
+        var idx = this.oCOM.getHexMulti(j,b[2]); // address index
+        blk_col[idx] = layout[i][0];             // populate background colors (indexed by address)
+        blk_txt[idx] = "$"+idx+" "+layout[i][1]; // populate popup texts (indexed by address)
+        console.log("blk_col["+idx+"] = "+layout[i][0]);
+        console.log("blk_txt["+idx+"] = $"+idx+" "+layout[i][1]);
       }
     }
 
@@ -288,10 +292,11 @@ var oMEMGRID = new function()
       var a = i.split("-");
       if(a.length==2)
       {
-        var b = [parseInt(a[0],16),parseInt(a[1],16)];
+        var b = [parseInt(a[0],16),parseInt(a[1],16),a[0].length];
         for(var j=b[0];j<b[1];j+=parseInt("0100",16))
         {
-          var idx = ("000"+j.toString(16)).slice(-4).toUpperCase();
+          //var idx = ("000"+j.toString(16)).slice(-4).toUpperCase();
+          var idx = this.oCOM.getHexMulti(j,b[2]);
           var el = document.getElementById("m"+idx);
           if(el!=null)
           {

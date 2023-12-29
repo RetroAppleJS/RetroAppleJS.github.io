@@ -16,17 +16,12 @@ var CONF_builddate="20231224-140000"
 
 var dsk_bytes = new Array();
 var nib_dsk_bytes = new Array();
+var disk_address_bits = Math.ceil(Math.log10(256*16*35) / Math.log10(2));
+var disk_address_digits = Math.ceil(disk_address_bits/4);
 
 
 function init_gui(_o) { 
   document.getElementById('slider_title').outerHTML = _TITLE(); 
-
-  var disk_address_bits = Math.ceil(Math.log10(256*16*35) / Math.log10(2));
-  var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
-
-  document.getElementById("debug2").innerHTML = 
-    oMEMGRID.build_grid(34*linestep,35,-linestep,disk_address_bits);  // start, len, step, bits
-  oMEMGRID.paint_grid(disk_layout);
 }
 
 function dl()
@@ -36,34 +31,56 @@ function dl()
   oCOM.Download(fileName,nib_dsk_bytes)
 }
 
+
+
 function dumpdisk(bytes)
 {
     var s_arr = [];
-    var TRACK_SIZE =    6656;
+
+    var nulls = {"start":"","end":"","count":0};
+    var SECTOR_SIZE = 256;
+    var TRACK_SIZE =  SECTOR_SIZE * 16;
     for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
     {
         s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
-        var SECTOR_SIZE = 256;
+        
         for(var _s=0;_s<16;_s++)
         {
-            s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s)
+            
+            s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s);
             // ITERATE THROUGH SECTORS
             var s = "";
+
             for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
             {
                 var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
                 var n = bytes[idx]// ^ 255
+                if(n==0) nulls.count++
                 s += oCOM.getHexByte(n);
                 if((idx%4)==3) s+= " ";
             }
+            nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
+            nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
+            var color = "#"+oCOM.getHexMulti(nulls.count,2)+oCOM.getHexMulti(nulls.count,2)+"00";
+            disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk","DSK"];
+            nulls.count = 0;
+
+            s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk","DSK"]';
             s_arr[s_arr.length] = s;
         }
     }
+
+    var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
+    document.getElementById("debug2").innerHTML = 
+    oMEMGRID.build_grid(34*linestep,35,-linestep,disk_address_digits);  // start, len, step, bits
+    oMEMGRID.paint_grid(disk_layout);
+
     return s_arr;
 }
 
 
 var disk_layout = {
+  /*
         "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
        ,"0100-01FF":["#D0D0D0","STACK","ST"]
        ,"0200-02FF":["#00D000","GETLN buffer","BU"]
@@ -84,7 +101,8 @@ var disk_layout = {
        ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
        ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
        ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
-       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
+       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]    
+       */   
     }
 </script>
 
