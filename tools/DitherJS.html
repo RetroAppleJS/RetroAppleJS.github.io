@@ -1,13 +1,8 @@
-
-1. nearest color / dither<br>
-2. byte color conflics viewer<br>
-3. conflict swapper / image mover left-right (7 bits)<br>
-
-
 <!doctype html>
 <html>
 <head>
-<title>ditherjs demo</title>
+<title>DitherJS demo</title>
+<script type="text/javascript" src="TOOLS_Header.js"></script>
 <script src="../res/ditherjs.js"></script>
 <style>
 body, html {
@@ -67,7 +62,20 @@ text-shadow: 1px 1px #000;
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
-<body onload=update_dither(true)>
+<body onload="document.getElementById('slider_title').outerHTML=_TITLE();update_dither(true)">
+    <div id="slider_title"></div>
+    <div class="slider_overlay">
+      <div id="topmenu">
+        1. nearest color / dither<br>
+        2. byte color conflics viewer<br>
+        3. conflict swapper / image mover left-right (7 bits)<br>
+      </div>
+      <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+
+
+
+
 <table border=1>
 <tr>
     <td class="org"></td>
@@ -189,5 +197,7 @@ function update_dither(bInit)
     }
 }
 </script>
+    </div>
+    </div>
 </body>
 </html>
