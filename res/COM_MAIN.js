@@ -226,6 +226,7 @@ oCOM = new COM();
 
 var oMEMGRID = new function()
 {
+  if(typeof(this.bDebug)=="undefined") this.bDebug = false;
   this.oCOM = new COM();
 
   const mem_gran = 8;  // block granularity in bits
@@ -239,7 +240,7 @@ var oMEMGRID = new function()
       for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
       { 
         this.mem_pg[addr>>mem_gran] = layout[i][2];
-        console.log("this.mem_pg["+(addr>>mem_gran)+"] = "+layout[i][2]);
+        if(this.bDebug) console.log("this.mem_pg["+(addr>>mem_gran)+"] = "+layout[i][2]);
         s += (addr>>mem_gran)+"="+layout[i][2]+" ";
       }
       //console.log(a[0]+"-"+a[1]+" ("+s+")");
@@ -257,7 +258,7 @@ var oMEMGRID = new function()
 
   this.build_grid = function(start,len,step,digits)
   {
-    if(digits==="undefined") digits = 4;
+    if(typeof(digits)=="undefined") digits = 4;
     var s = "<table class=gtable style='display:inline-block;'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
@@ -281,8 +282,8 @@ var oMEMGRID = new function()
         var idx = this.oCOM.getHexMulti(j,b[2]); // address index
         blk_col[idx] = layout[i][0];             // populate background colors (indexed by address)
         blk_txt[idx] = "$"+idx+" "+layout[i][1]; // populate popup texts (indexed by address)
-        console.log("blk_col["+idx+"] = "+layout[i][0]);
-        console.log("blk_txt["+idx+"] = $"+idx+" "+layout[i][1]);
+        if(this.bDebug) console.log("blk_col["+idx+"] = "+layout[i][0]);
+        if(this.bDebug) console.log("blk_txt["+idx+"] = $"+idx+" "+layout[i][1]);
       }
     }
 
