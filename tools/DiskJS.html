@@ -23,6 +23,33 @@ function dl()
   var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
   oCOM.Download(fileName,nib_dsk_bytes)
 }
+
+function dumpdisk(bytes)
+{
+    var s_arr = [];
+    var TRACK_SIZE =    6656;
+    for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
+    {
+        s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
+        var SECTOR_SIZE = TRACK_SIZE / 16;
+        for(var _s=0;_s<16;_s++)
+        {
+            s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s)
+            // ITERATE THROUGH SECTORS
+            var s = "";
+            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
+            {
+                var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+                var n = bytes[idx]// ^ 255
+                s += oCOM.getHexByte(n);
+                if((idx%4)==3) s+= " ";
+            }
+            s_arr[s_arr.length] += s;
+        }
+    }
+    return s_arr;
+}
+
 </script>
 
 <body class="slider_main" onload="init_gui();">

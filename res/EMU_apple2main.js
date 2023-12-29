@@ -148,32 +148,6 @@ function loadDisk()
     }
 }
 
-function dumpdisk(bytes)
-{
-    var s_arr = [];
-    var TRACK_SIZE =    6656;
-    for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
-    {
-        s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
-        var SECTOR_SIZE = TRACK_SIZE / 16;
-        for(var _s=0;_s<16;_s++)
-        {
-            s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s)
-            // ITERATE THROUGH SECTORS
-            var s = "";
-            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
-            {
-                var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
-                var n = bytes[idx]// ^ 255
-                s += oCOM.getHexByte(n);
-                if((idx%4)==3) s+= " ";
-            }
-            s_arr[s_arr.length] += s;
-        }
-    }
-    return s_arr;
-}
-
 // Convert a DSK file to a NIB image.
 //
 function apple2ConvertDskToNib(dskBytes)
@@ -193,21 +167,9 @@ function apple2ConvertDskToNib(dskBytes)
     var offs;
 
     // Odd-even encoding for sector headers.
-    function split_OddEven(b)
-    {
-        return [0xaa | (b >> 1),0xaa | b]
-    }
-
-    function join_OddEven(b1,b2)
-    {
-        return (((b1<<1)+1) & b2)
-    }
-
-    function addBytes(b_arr)
-    {
-        for(var i=0;i<b_arr.length;i++)
-            bytes[offs++] = b_arr[i];
-    }
+    function split_OddEven(b) { return [0xaa | (b >> 1),0xaa | b] }
+    function join_OddEven(b1,b2) { return (((b1<<1)+1) & b2) }
+    function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
 
     for (var track = 0; track < 35; track++) {
         offs = track * 6656;
@@ -264,7 +226,7 @@ function apple2ConvertDskToNib(dskBytes)
                 addBytes([ sixTwo[prev ^ prenib[i]] ]);
                 prev = prenib[i];
             }
-            addBytes([ sixTwo[prev] ]);
+            addBytes([ sixTwo[prev] ]); // add one byte
 
             // Data field epilogue
             addBytes([0xde,0xaa,0xeb]);
