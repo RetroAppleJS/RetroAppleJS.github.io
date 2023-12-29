@@ -1,8 +1,7 @@
-https://jsbench.me
-https://onlinepngtools.com/convert-png-to-base64
-
 <html>
 <head>
+    <TITLE>Apple II Dithering simulator</TITLE>
+    <script type="text/javascript" src="TOOLS_Header.js"></script>
     <script>
       
 //  ██ ███    ██ ██ ████████ 
@@ -419,6 +418,9 @@ background: #fff;
 </style>
 </head>
 
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/COM_CONFIG.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2main.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
@@ -426,8 +428,14 @@ background: #fff;
 <script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
 
 
-<body onload=update_dither(true)>
-<body>
+<body onload="document.getElementById('slider_title').outerHTML=_TITLE();update_dither(true);">
+<div id="slider_title"></div>
+<div class="slider_overlay">
+    <div id="topmenu">
+    </div>
+    <div id=main style="height:100%;width:100%;overflow-x:auto;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+
 <table border=1>
 <tr>
     <td><big>DITHERED ON APPLE</big></td>
@@ -1452,5 +1460,7 @@ for(var i in d)
 
 
 </script>
+        </div>
+    </div>
 </body>
 </html>
