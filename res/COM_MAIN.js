@@ -229,42 +229,19 @@ var oMEMGRID = new function()
   this.oCOM = new COM();
 
   // FVD TODO move this piece to apple2plus.js
-  this.mem_layout = {
-    "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
-   ,"0100-01FF":["#D0D0D0","STACK","ST"]
-   ,"0200-02FF":["#00D000","GETLN buffer","BU"]
-   ,"0300-03FF":["#00D000","VECTORS","VC"]
-   ,"0400-07FF":["#D000D0","TXT1/LORES1","T1"]
-   ,"0800-0BFF":["#D000D0","TXT2/LORES2","T2"]
-   ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
-   ,"2000-3FFF":["#0000D0","HIRES1","H1"]
-   ,"4000-5FFF":["#0000D0","HIRES2","H2"]
-   ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
-   ,"C000-C07F":["#D0D000","I/O","IB"]
-   ,"C080-C0FF":["#D0D000","SLOT I/O","IO"]
-   ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
-   ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
-   ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
-   ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
-   ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
-   ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
-   ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
-   ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
-   ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
-}
 
   const mem_gran = 8;  // block granularity in bits
   this.mem_gran = mem_gran;
 
-  this.build_mem_map = function()
+  this.build_mem_map = function(layout)
   {
-    for(var i in this.mem_layout)
+    for(var i in layout)
     {
       var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
       for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
       { 
-        this.mem_pg[addr>>mem_gran] = this.mem_layout[i][2];
-        s += (addr>>mem_gran)+"="+this.mem_layout[i][2]+" ";
+        this.mem_pg[addr>>mem_gran] = layout[i][2];
+        s += (addr>>mem_gran)+"="+layout[i][2]+" ";
       }
       //console.log(a[0]+"-"+a[1]+" ("+s+")");
     }
@@ -279,33 +256,34 @@ var oMEMGRID = new function()
     return a;
   }
 
-  this.build_grid = function(start,len,step)
+  this.build_grid = function(start,len,step,bit_width)
   {
+    if(bit_width==="undefined") bit_width = 16;
     var s = "<table class=gtable style='display:inline-block;'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+this.oCOM.getHexWord(i)+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
+      s += "<tr><td>"+this.oCOM.getHexMulti(i,Math.ceil(bit_width/4))+"</td><td id='m"+this.line(i,16,256).join("'></td><td id='m")+"'></td></tr>\n";
     return s+"</table>"
   }
 
-  this.paint_grid = function()
+  this.paint_grid = function(layout)
   {
-    this.build_mem_map();
+    this.build_mem_map(layout);
 
     // PREPARE ALL DATA
     var blk_col = {}, blk_txt = {} //, c = ""
-    for(var i in this.mem_layout)
+    for(var i in layout)
     {
       var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16)];
       for(var j=b[0];j<b[1];j+=parseInt("0100",16))
       { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
         var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
-        blk_col[idx] = this.mem_layout[i][0]; blk_txt[idx] = "$"+idx+" "+this.mem_layout[i][1];
+        blk_col[idx] = layout[i][0]; blk_txt[idx] = "$"+idx+" "+layout[i][1];
       }
     }
 
     // PAINT GRID
-    for(var i in this.mem_layout)
+    for(var i in layout)
     {
       var a = i.split("-");
       if(a.length==2)

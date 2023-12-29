@@ -8,17 +8,29 @@
 // apple2plus.js
 
 //const { getParent } = require("domutils");
+if(oEMU===undefined) var oEMU = {"system":{"A2P":{}}};
 oEMU.system["A2P"] = {/*  config overrides */};
 
 function Apple2Plus(context) {
-    var video = new Apple2Video(context);
-    var hw   = new Apple2Hw(video);
+    if(context===undefined)
+    { console.log("running Apple2Plus without video context") }
+    else
+    {
+        var video = new Apple2Video(context);
+        var hw   = new Apple2Hw(video);
+    }
+
+    if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
+
     var keys = typeof(A2Pkeys)=="undefined" ? {
         keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
        ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
        ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
           } : new A2Pkeys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
-    var cpu  = new Cpu6502(hw);
+
+    if(typeof(Cpu6502)=="undefined")
+          { console.log("running Apple2Plus without CPU") }
+    else var cpu  = new Cpu6502(hw);
 
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)"
@@ -156,7 +168,8 @@ function Apple2Plus(context) {
         return video.setMonitor(type);
     }
 
-    this.restart(); // restart the AppleII+
+    if(typeof(hw)!="undefined")
+        this.restart(); // restart the AppleII+
 
     this.mem_layout = {
         "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]

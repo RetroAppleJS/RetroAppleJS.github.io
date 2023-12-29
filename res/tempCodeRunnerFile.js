@@ -1,1 +1,1 @@
-FULL-
+apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems

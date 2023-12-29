@@ -380,7 +380,7 @@ function COM_PopupHTML(html,s)
                 </div>
                   
                   <div class=appbox style="width:340px;padding:0px 6px 0px 6px;" title="Memory map">
-                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" id="MEM_monitoring" onclick="oCOM.onPopUpClass(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid();"></i></div>
+                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" id="MEM_monitoring" onclick="oCOM.onPopUpClass(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);"></i></div>
                     <div id="EMU_mem_map"></div>
                   </div>
 
@@ -414,7 +414,7 @@ function COM_PopupHTML(html,s)
                 document.getElementById("EMU_mem_map").innerHTML = 
                   oMEMGRID.build_grid(7*linestep,8,-linestep) 
                 + oMEMGRID.build_grid(15*linestep,8,-linestep);
-                oMEMGRID.paint_grid();
+                oMEMGRID.paint_grid(apple2plus.mem_layout);
             }
 
             function EMU_update_mem_map()
@@ -772,38 +772,14 @@ function COM_PopupHTML(html,s)
                     <!-- END DASHBOARD -->
                  </div>
                  <div style="float:left" id="DBG_mem_map">
-<!--
 
-Generate grid
-
--->
-                 <!--
-                 <table class=gtable>
-                 <tr><td>$0000</td><td id='m0000' class=gtip></td><td id='m0100'></td><td id='m0200'></td><td id='m0300'></td><td id='m0400'></td><td id='m0500'></td><td id='m0600'></td><td id='m0700'></td><td id='m0800'></td><td id='m0900'></td><td id='m0A00'></td><td id='m0B00'></td><td id='m0C00'></td><td id='m0D00'></td><td id='m0E00'></td><td id='m0F00'></td></tr>
-                 <tr><td>$1000</td><td id='m1000'></td><td id='m1100'></td><td id='m1200'></td><td id='m1300'></td><td id='m1400'></td><td id='m1500'></td><td id='m1600'></td><td id='m1700'></td><td id='m1800'></td><td id='m1900'></td><td id='m1A00'></td><td id='m1B00'></td><td id='m1C00'></td><td id='m1D00'></td><td id='m1E00'></td><td id='m1F00'></td></tr>
-                 <tr><td>$2000</td><td id='m2000'></td><td id='m2100'></td><td id='m2200'></td><td id='m2300'></td><td id='m2400'></td><td id='m2500'></td><td id='m2600'></td><td id='m2700'></td><td id='m2800'></td><td id='m2900'></td><td id='m2A00'></td><td id='m2B00'></td><td id='m2C00'></td><td id='m2D00'></td><td id='m2E00'></td><td id='m2F00'></td></tr>
-                 <tr><td>$3000</td><td id='m3000'></td><td id='m3100'></td><td id='m3200'></td><td id='m3300'></td><td id='m3400'></td><td id='m3500'></td><td id='m3600'></td><td id='m3700'></td><td id='m3800'></td><td id='m3900'></td><td id='m3A00'></td><td id='m3B00'></td><td id='m3C00'></td><td id='m3D00'></td><td id='m3E00'></td><td id='m3F00'></td></tr>
-                 <tr><td>$4000</td><td id='m4000'></td><td id='m4100'></td><td id='m4200'></td><td id='m4300'></td><td id='m4400'></td><td id='m4500'></td><td id='m4600'></td><td id='m4700'></td><td id='m4800'></td><td id='m4900'></td><td id='m4A00'></td><td id='m4B00'></td><td id='m4C00'></td><td id='m4D00'></td><td id='m4E00'></td><td id='m4F00'></td></tr>
-                 <tr><td>$5000</td><td id='m5000'></td><td id='m5100'></td><td id='m5200'></td><td id='m5300'></td><td id='m5400'></td><td id='m5500'></td><td id='m5600'></td><td id='m5700'></td><td id='m5800'></td><td id='m5900'></td><td id='m5A00'></td><td id='m5B00'></td><td id='m5C00'></td><td id='m5D00'></td><td id='m5E00'></td><td id='m5F00'></td></tr>
-                 <tr><td>$6000</td><td id='m6000'></td><td id='m6100'></td><td id='m6200'></td><td id='m6300'></td><td id='m6400'></td><td id='m6500'></td><td id='m6600'></td><td id='m6700'></td><td id='m6800'></td><td id='m6900'></td><td id='m6A00'></td><td id='m6B00'></td><td id='m6C00'></td><td id='m6D00'></td><td id='m6E00'></td><td id='m6F00'></td></tr>
-                 <tr><td>$7000</td><td id='m7000'></td><td id='m7100'></td><td id='m7200'></td><td id='m7300'></td><td id='m7400'></td><td id='m7500'></td><td id='m7600'></td><td id='m7700'></td><td id='m7800'></td><td id='m7900'></td><td id='m7A00'></td><td id='m7B00'></td><td id='m7C00'></td><td id='m7D00'></td><td id='m7E00'></td><td id='m7F00'></td></tr>
-                 <tr><td>$8000</td><td id='m8000'></td><td id='m8100'></td><td id='m8200'></td><td id='m8300'></td><td id='m8400'></td><td id='m8500'></td><td id='m8600'></td><td id='m8700'></td><td id='m8800'></td><td id='m8900'></td><td id='m8A00'></td><td id='m8B00'></td><td id='m8C00'></td><td id='m8D00'></td><td id='m8E00'></td><td id='m8F00'></td></tr>
-                 <tr><td>$9000</td><td id='m9000'></td><td id='m9100'></td><td id='m9200'></td><td id='m9300'></td><td id='m9400'></td><td id='m9500'></td><td id='m9600'></td><td id='m9700'></td><td id='m9800'></td><td id='m9900'></td><td id='m9A00'></td><td id='m9B00'></td><td id='m9C00'></td><td id='m9D00'></td><td id='m9E00'></td><td id='m9F00'></td></tr>
-                 <tr><td>$A000</td><td id='mA000'></td><td id='mA100'></td><td id='mA200'></td><td id='mA300'></td><td id='mA400'></td><td id='mA500'></td><td id='mA600'></td><td id='mA700'></td><td id='mA800'></td><td id='mA900'></td><td id='mAA00'></td><td id='mAB00'></td><td id='mAC00'></td><td id='mAD00'></td><td id='mAE00'></td><td id='mAF00'></td></tr>
-                 <tr><td>$B000</td><td id='mB000'></td><td id='mB100'></td><td id='mB200'></td><td id='mB300'></td><td id='mB400'></td><td id='mB500'></td><td id='mB600'></td><td id='mB700'></td><td id='mB800'></td><td id='mB900'></td><td id='mBA00'></td><td id='mBB00'></td><td id='mBC00'></td><td id='mBD00'></td><td id='mBE00'></td><td id='mBF00'></td></tr>
-                 <tr><td>$C000</td><td id='mC000'></td><td id='mC100'></td><td id='mC200'></td><td id='mC300'></td><td id='mC400'></td><td id='mC500'></td><td id='mC600'></td><td id='mC700'></td><td id='mC800'></td><td id='mC900'></td><td id='mCA00'></td><td id='mCB00'></td><td id='mCC00'></td><td id='mCD00'></td><td id='mCE00'></td><td id='mCF00'></td></tr>
-                 <tr><td>$D000</td><td id='mD000'></td><td id='mD100'></td><td id='mD200'></td><td id='mD300'></td><td id='mD400'></td><td id='mD500'></td><td id='mD600'></td><td id='mD700'></td><td id='mD800'></td><td id='mD900'></td><td id='mDA00'></td><td id='mDB00'></td><td id='mDC00'></td><td id='mDD00'></td><td id='mDE00'></td><td id='mDF00'></td></tr>
-                 <tr><td>$E000</td><td id='mE000'></td><td id='mE100'></td><td id='mE200'></td><td id='mE300'></td><td id='mE400'></td><td id='mE500'></td><td id='mE600'></td><td id='mE700'></td><td id='mE800'></td><td id='mE900'></td><td id='mEA00'></td><td id='mEB00'></td><td id='mEC00'></td><td id='mED00'></td><td id='mEE00'></td><td id='mEF00'></td></tr>
-                 <tr><td>$F000</td><td id='mF000'></td><td id='mF100'></td><td id='mF200'></td><td id='mF300'></td><td id='mF400'></td><td id='mF500'></td><td id='mF600'></td><td id='mF700'></td><td id='mF800'></td><td id='mF900'></td><td id='mFA00'></td><td id='mFB00'></td><td id='mFC00'></td><td id='mFD00'></td><td id='mFE00'></td><td id='mFF00'></td></tr>
-                </table>
-                -->
                  </div>
                  <script>
                   var linestep = 4096;
                   document.getElementById("DBG_mem_map").innerHTML = 
                     oMEMGRID.build_grid(7*linestep,8,-linestep) 
                   + oMEMGRID.build_grid(15*linestep,8,-linestep);
-                  oMEMGRID.paint_grid();
+                  oMEMGRID.paint_grid(oCOM.mem_layout);
 
 
                   var sys = "A2P"

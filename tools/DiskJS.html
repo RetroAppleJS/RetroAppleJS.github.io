@@ -3,6 +3,7 @@
   <meta name="description" content="">
   <meta name="author" content="Freddy Vandriessche">
   <meta charset="utf-8"> 
+  <link rel="stylesheet"        href="../res/COM_MAIN.css">
 </head>
 
 <script type="text/javascript" src="TOOLS_Header.js"></script>
@@ -10,12 +11,23 @@
 <script type="text/javascript" src="../res/EMU_apple2main.js"></script>
 
 <script>
-function init_gui(_o) { document.getElementById('slider_title').outerHTML = _TITLE(); }
-var CONF_version="1.0.0"
+var CONF_version="1.0.1"
 var CONF_builddate="20231224-140000" 
 
 var dsk_bytes = new Array();
 var nib_dsk_bytes = new Array();
+
+
+function init_gui(_o) { 
+  document.getElementById('slider_title').outerHTML = _TITLE(); 
+
+  var disk_address_bits = Math.ceil(Math.log10(256*16*35) / Math.log10(2));
+  var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
+
+  document.getElementById("debug2").innerHTML = 
+    oMEMGRID.build_grid(34*linestep,35,-linestep,disk_address_bits);  // start, len, step, bits
+  oMEMGRID.paint_grid(disk_layout);
+}
 
 function dl()
 {
@@ -31,7 +43,7 @@ function dumpdisk(bytes)
     for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
     {
         s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
-        var SECTOR_SIZE = TRACK_SIZE / 16;
+        var SECTOR_SIZE = 256;
         for(var _s=0;_s<16;_s++)
         {
             s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s)
@@ -50,6 +62,30 @@ function dumpdisk(bytes)
     return s_arr;
 }
 
+
+var disk_layout = {
+        "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
+       ,"0100-01FF":["#D0D0D0","STACK","ST"]
+       ,"0200-02FF":["#00D000","GETLN buffer","BU"]
+       ,"0300-03FF":["#00D000","VECTORS","VC"]
+       ,"0400-07FF":["#D000D0","TXT1/LORES1","T1"]
+       ,"0800-0BFF":["#D000D0","TXT2/LORES2","T2"]
+       ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
+       ,"2000-3FFF":["#0000D0","HIRES1","H1"]
+       ,"4000-5FFF":["#0000D0","HIRES2","H2"]
+       ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
+       ,"C000-C07F":["#D0D000","I/O","IB"]
+       ,"C080-C0FF":["#D0D000","SLOT I/O","IO"]
+       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
+       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
+       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
+       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
+       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
+       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
+       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
+       ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
+       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
+    }
 </script>
 
 <body class="slider_main" onload="init_gui();">
@@ -63,11 +99,17 @@ function dumpdisk(bytes)
         <li><button class=appbut value="Dump" onclick="document.getElementById('dump').innerHTML=dumpdisk(oCOM.UploadData).join('<br>')" id="dumpbutton" title="Dump">Dump layout</button></li>
         <li><button onclick="dl()">Download .NIB</button></li>
         <li><div class=no_margins id=status></div></li>
+        <li><a target=_blank href=http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system#:~:text=Apple%20DOS%203.3%20disks%20were,sectors)%20using%20a%20GCR%20encoding.>docs</a></li>
       </ul>
     </div>
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
       <img alt="" style="margin:20px;width:256px;float:left;image-rendering: pixelated;" src="../res/apple-disk-ii_256.png">
-      <div id="dump" style="border:1px solid;width:600px;height:500px;overflow-x:hidden;overflow-y:auto;"></div>
+      <div id="debug2" sytle=""></div>
+      <div id="output" sytle=""></div>
+      <div id="dump" style="border:1px solid;width:600px;height:200px;overflow-x:hidden;overflow-y:auto;"></div>
+
+
+
     </div>
   </div>
 </body>

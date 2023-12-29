@@ -4,6 +4,7 @@
     <title>Apple II+ memory map</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">  
     <link rel="stylesheet"        href="../../res/COM_MAIN.css">
+    <script type="text/javascript" src="../../res/EMU_apple2plus.js"></script>
     <script type="text/javascript" src="../../res/COM_MAIN.js"></script>
 
 </head>
@@ -52,6 +53,8 @@
 
     <script>
 
+var apple2plus = new Apple2Plus(); // allow instantiating other systems
+
 var last = "";
 function memscan()
 {
@@ -90,7 +93,7 @@ function init()
   document.getElementById("debug2").innerHTML = 
     oMEMGRID.build_grid(7*linestep,8,-linestep) 
   + oMEMGRID.build_grid(15*linestep,8,-linestep);
-  oMEMGRID.paint_grid();
+  oMEMGRID.paint_grid(apple2plus.mem_layout);
 }
 
    /*
