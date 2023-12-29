@@ -1,5 +1,5 @@
 <html style="background-color:#B0B0B0"><head>
-  <title>APPLE II DISK TOOL</title>
+  <title>APPLE II DISK TOOL - convert .dsk to .nib</title>
   <meta name="description" content="">
   <meta name="author" content="Freddy Vandriessche">
   <meta charset="utf-8"> 
@@ -44,7 +44,7 @@ function dumpdisk(bytes)
                 s += oCOM.getHexByte(n);
                 if((idx%4)==3) s+= " ";
             }
-            s_arr[s_arr.length] += s;
+            s_arr[s_arr.length] = s;
         }
     }
     return s_arr;
