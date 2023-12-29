@@ -61,7 +61,7 @@ function dumpdisk(bytes)
             if(nulls.count>255) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
             nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
             nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
-            var color = "#"+oCOM.getHexMulti(nulls.count,2)+oCOM.getHexMulti(nulls.count,2)+"00";
+            var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
             disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
             s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
             s_arr[s_arr.length] = s;
