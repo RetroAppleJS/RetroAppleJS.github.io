@@ -16,8 +16,9 @@ var CONF_builddate="20231224-140000"
 
 var dsk_bytes = new Array();
 var nib_dsk_bytes = new Array();
-var disk_address_bits = Math.ceil(Math.log10(256*16*35) / Math.log10(2));
-var disk_address_digits = Math.ceil(disk_address_bits/4);
+var SECTOR_SIZE = 256;
+var SECTORS_PER_TRACK = 16;
+var TRACKS_PER_DISK = 35;
 
 
 function init_gui(_o) { 
@@ -36,29 +37,28 @@ function dl()
 function dumpdisk(bytes)
 {
     var s_arr = [];
-
     var nulls = {"start":"","end":"","count":0};
-    var SECTOR_SIZE = 256;
-    var TRACK_SIZE =  SECTOR_SIZE * 16;
-    for(var _t=0;_t<35;_t++)  // ITERATE THROUGH TRACKS
+    var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
+    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+
+    for(var _t=0;_t<TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
     {
         s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
-        
-        for(var _s=0;_s<16;_s++)
+        for(var _s=0;_s<SECTORS_PER_TRACK;_s++)
         {
-            
             s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s);
             // ITERATE THROUGH SECTORS
             var s = "";
             for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
             {
                 var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
-                var n = bytes[idx]// ^ 255
+                var n = bytes[idx];
                 if(n==0) nulls.count++
                 s += oCOM.getHexByte(n);
                 if((idx%4)==3) s+= " ";
             }
-            if(nulls.count>255) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
+            if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
             nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
             nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
             var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
@@ -68,13 +68,40 @@ function dumpdisk(bytes)
             nulls.count = 0;
         }
     }
-
-    var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
-    document.getElementById("debug2").innerHTML = 
-    oMEMGRID.build_grid(34*linestep,35,-linestep,disk_address_digits);  // start, len, step, bits
-    oMEMGRID.paint_grid(disk_layout);
-
     return s_arr;
+}
+
+
+
+function dumpdisk2(bytes)
+{
+    var nulls = {"start":"","end":"","count":0};
+    var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
+    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+    for(var _t=0;_t<TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
+    {   
+        for(var _s=0;_s<SECTORS_PER_TRACK;_s++)
+        {
+            // ITERATE THROUGH SECTORS
+            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
+            {
+                var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+                var n = bytes[idx];
+                if(n==0) nulls.count++; // count the nulls in one sector
+            }
+            if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
+            nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
+            nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
+            var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
+            disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
+            nulls.count = 0;
+        }
+    }
+    var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
+    el = document.getElementById("output");
+    el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep,disk_address_digits);  // start, len, step, bits
+    oMEMGRID.paint_grid(disk_layout);
 }
 
 
@@ -111,21 +138,24 @@ var disk_layout = {
   <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile')" accept=".dsk"></li>
-        <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><button class=appbut value="Dump" onclick="document.getElementById('dump').innerHTML=dumpdisk(oCOM.UploadData).join('<br>')" id="dumpbutton" title="Dump">Dump layout</button></li>
+        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk2);" accept=".dsk"></li>
+        <li><img onMouseOver="this.style.cursor='pointer'" onclick="document.getElementById('dump').innerHTML=dumpdisk(oCOM.UploadData).join('<br>');" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><button onclick="dl()">Download .NIB</button></li>
-        <li><div class=no_margins id=status></div></li>
-        <li><a target=_blank href=http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system#:~:text=Apple%20DOS%203.3%20disks%20were,sectors)%20using%20a%20GCR%20encoding.>docs</a></li>
+        <li>&nbsp;&nbsp;<a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a></li>
       </ul>
     </div>
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
-      <img alt="" style="margin:20px;width:256px;float:left;image-rendering: pixelated;" src="../res/apple-disk-ii_256.png">
-      <div id="debug2" sytle=""></div>
-      <div id="output" sytle=""></div>
-      <div id="dump" style="border:1px solid;width:600px;height:200px;overflow-x:hidden;overflow-y:auto;"></div>
+      <table>
+      <tr>
+        <td><img style="margin:20px;width:256px;float:left;image-rendering:pixelated;" src="../res/apple-disk-ii_256.png"></td>
+        <td rowspan="2" valign="top"><div id="output"></div></td>
+      </tr>
+      <tr>
+          <td><div id="dump" style="font-size:x-small;width:296px;height:120px;float:left;overflow-x:hidden;overflow-y:auto;"></div></td>
+      </tr>
+      </table>
 
-
+      
 
     </div>
   </div>

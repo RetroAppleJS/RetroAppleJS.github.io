@@ -97,23 +97,32 @@ function COM()
   };
 
   this.UploadData = new Array();
-  this.Upload = function(elementId)
+  this.Upload = function(elementId,callback)
   {
       this.UploadData = [];
       var file = document.getElementById(elementId).files[0];
       if (!file) return;
       oCOM.UploadName = file.name;
 
-      var fread = new FileReader();
-      fread.readAsArrayBuffer(file);
-      fread.onload = function(levent)
+      this.fread = new FileReader();
+      this.fread.readAsArrayBuffer(file);
+      if(typeof(callback)!="function") callback = function() { alert("test") }; // override if needed
+      else this.callback = callback;
+
+      function handleEvent(obj)
       {
-          var data = new DataView(levent.target.result);
-          var size = levent.target.result.byteLength;
-          //this.UploadData = Array(size);
-          for (var i = 0; i < size; i++)
-            oCOM.UploadData[i] = data.getUint8(i);
+          return function(levent)
+          {
+            var data = new DataView(levent.target.result);
+            var size = levent.target.result.byteLength;
+            this.UploadData = Array(size);
+            for (var i = 0; i < size; i++)
+              obj.UploadData[i] = data.getUint8(i);
+            obj.callback(obj.UploadData);
+          }
       }
+      this.fread.addEventListener('load',handleEvent(this));
+
   }
 
   this.SystemSelect = function(id,tab)
