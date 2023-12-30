@@ -99,8 +99,9 @@ function dumpdisk2(bytes)
         }
     }
     var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
+    oMEMGRID.conf_grid.digits = disk_address_digits;
     el = document.getElementById("output");
-    el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep,disk_address_digits);  // start, len, step, bits
+    el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep);  // start, len, step, bits
     oMEMGRID.paint_grid(disk_layout);
 }
 

@@ -411,10 +411,10 @@ function COM_PopupHTML(html,s)
             function EMU_mem_map()
             {
               var linestep = 4096;
-                document.getElementById("EMU_mem_map").innerHTML = 
-                  oMEMGRID.build_grid(7*linestep,8,-linestep) 
-                + oMEMGRID.build_grid(15*linestep,8,-linestep);
-                oMEMGRID.paint_grid(apple2plus.mem_layout);
+              document.getElementById("EMU_mem_map").innerHTML = 
+                oMEMGRID.build_grid(7*linestep,8,-linestep) 
+              + oMEMGRID.build_grid(15*linestep,8,-linestep);
+              oMEMGRID.paint_grid(apple2plus.mem_layout);
             }
 
             function EMU_update_mem_map()
@@ -779,10 +779,11 @@ function COM_PopupHTML(html,s)
                  function DBG_mem_map()
                  {
                     var linestep = 4096;
-                  document.getElementById("DBG_mem_map").innerHTML = 
-                    oMEMGRID.build_grid(7*linestep,8,-linestep) 
-                  + oMEMGRID.build_grid(15*linestep,8,-linestep);
-                  oMEMGRID.paint_grid(apple2plus.mem_layout);
+                    oMEMGRID.conf_grid.id_prefix = "n";
+                    document.getElementById("DBG_mem_map").innerHTML = 
+                      oMEMGRID.build_grid(7*linestep,8,-linestep) 
+                    + oMEMGRID.build_grid(15*linestep,8,-linestep);
+                    oMEMGRID.paint_grid(apple2plus.mem_layout);
                 }
                 </script>
             </div>
