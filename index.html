@@ -411,6 +411,7 @@ function COM_PopupHTML(html,s)
             function EMU_mem_map()
             {
               var linestep = 4096;
+              var cnf = {id_prefix:"m",digits:4}
               document.getElementById("EMU_mem_map").innerHTML = 
                 oMEMGRID.build_grid(7*linestep,8,-linestep) 
               + oMEMGRID.build_grid(15*linestep,8,-linestep);
@@ -779,11 +780,11 @@ function COM_PopupHTML(html,s)
                  function DBG_mem_map()
                  {
                     var linestep = 4096;
-                    oMEMGRID.conf_grid.id_prefix = "n";
+                    var cnf = {id_prefix:"d",digits:4}
                     document.getElementById("DBG_mem_map").innerHTML = 
-                      oMEMGRID.build_grid(7*linestep,8,-linestep) 
-                    + oMEMGRID.build_grid(15*linestep,8,-linestep);
-                    oMEMGRID.paint_grid(apple2plus.mem_layout);
+                      oMEMGRID.build_grid(7*linestep,8,-linestep,cnf) 
+                    + oMEMGRID.build_grid(15*linestep,8,-linestep,cnf);
+                    oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
                 }
                 </script>
             </div>

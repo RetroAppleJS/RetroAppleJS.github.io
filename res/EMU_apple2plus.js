@@ -63,7 +63,7 @@ function Apple2Plus(context) {
             if(hw.mem_mon[i]) 
             {
                 var id = oCOM.getHexByte(i);
-                el = document.getElementById("m"+id+"00");
+                el = document.getElementById( oMEMGRID.conf_grid.id_prefix + id + "00" );
                 el.style.backgroundColor = "#FFFFFF";
                 //s+= id+"00<br>"
             }

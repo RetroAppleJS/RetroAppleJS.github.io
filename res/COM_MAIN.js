@@ -266,19 +266,18 @@ var oMEMGRID = new function()
   }
 
   this.conf_grid = {id_prefix:"m",digits:4};
-  this.build_grid = function(start,len,step)
+  this.build_grid = function(start,len,step,cnf)
   {
-    var dig = this.conf_grid.digits;
-    var fix = this.conf_grid.id_prefix;
+    if(cnf===undefined) var cnf = this.conf_grid;
     var s = "<table class=gtable style='display:inline-block;'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+this.oCOM.getHexMulti(i,dig)+"</td>"
-              +"<td id='"+fix+this.line(i,16,256,dig).join("'></td><td id='"+fix)+"'></td></tr>\n";
+      s += "<tr><td>"+this.oCOM.getHexMulti(i,cnf.digits)+"</td>"
+              +"<td id='"+cnf.id_prefix+this.line(i,16,256,cnf.digits).join("'></td><td id='"+cnf.id_prefix)+"'></td></tr>\n";
     return s+"</table>"
   }
 
-  this.paint_grid = function(layout)
+  this.paint_grid = function(layout,cnf)
   {
     var fix = this.conf_grid.id_prefix;
     this.build_mem_map(layout);  // populate this.mem_pg array (not for display, but later lookup)
