@@ -15,17 +15,6 @@ The emulator's display offers an easy switching capability to render color, blac
 This tool was made to test and assure the best image rendering approximation with these respective monitors.
 It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_apple2video.js](..f/res/EMU_apple2video.js).
 
-### Tab_ctrl_v*.html
-
-This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier.  e.g. www.example.com/index.html#tab1
-Subsequent versions of this tab control show increasingly interesting capabilities and design options.
-
-|         | pop-out<br>menu | sub-<br>menu | anima-<br>tion |
-|:-------:|:------------:|:---------:|:-------------:|
-| v0      | -            | -         | -            |
-| v1      | YES          | -         | -            |
-| v2      | YES          | YES       | -            |
-| v3      | -            |           | YES          |
 
 ### HGRpatternJS.html
 
@@ -121,3 +110,19 @@ TODO: flow diagram
 ### SIDchipJS.html
 
 <img src="../res/SID_chips.png" align=left width=30% />While emulating AppleII sound is not working out, let's put to work a crazy idea of emulating a C64-style SID chip that could bring us closer to emulating a peripheral that actually did exist for the Apple II: the [Mockingboard](https://en.wikipedia.org/wiki/Mockingboard) sound card. The Mochinboard used the AY-3-8910, a 3-voice sound chip found in the popular MSX, and later ZX Spectrum home computers.  As we speak, I am evaluating [a closer match to emulating the AY-3-8910 with JavaScript](https://github.com/alexanderk23/ayumi-js), as this could bring us to real software and a few games on the Apple II that made full use of the mockingboards capabilities.
+
+
+### GUI MODULES Explained ###
+
+### Tab_ctrl_v*.html
+
+This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier.  e.g. www.example.com/index.html#tab1
+Subsequent versions of this tab control show increasingly interesting capabilities and design options.
+
+|         | pop-out<br>menu | sub-<br>menu | anima-<br>tion |
+|:-------:|:------------:|:---------:|:-------------:|
+| v0      | -            | -         | -            |
+| v1      | YES          | -         | -            |
+| v2      | YES          | YES       | -            |
+| v3      | -            |           | YES          |
+
