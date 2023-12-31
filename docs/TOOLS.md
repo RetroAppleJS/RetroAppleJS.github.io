@@ -1,6 +1,6 @@
 ## TOOLS Explained
 
-In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.  Discover all the entire online TOOLS CATALOG [here](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html).
+In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.  Discover here the entire [TOOLS CATALOG](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html).
 
 ### ConfigFile_updater.html
 
@@ -115,7 +115,7 @@ TODO: flow diagram
 
 ### GUI MODULES Explained ###
 
-Similar to the tool catalog demonstrating particular emulator functions, the GUI modules focus on the development of GUI components like tabs, memory maps, visual keyboard. Discover all the entire online GUI CATALOG [here](https://retroapplejs.github.io/tools/GUI_CATALOG.html).
+Similar to the tool catalog demonstrating particular emulator functions, the GUI modules focus on the development of GUI components like tabs, memory maps, visual keyboard. Discover here the entire [GUI CATALOG](https://retroapplejs.github.io/tools/GUI_CATALOG.html).
 
 ### Tab_ctrl_v*.html
 
