@@ -117,6 +117,11 @@ TODO: flow diagram
 
 Similar to the tool catalog demonstrating particular emulator functions, the GUI modules focus on the development of GUI components like tabs, memory maps, visual keyboard. Discover here the entire [GUI CATALOG](https://retroapplejs.github.io/tools/GUI_CATALOG.html).
 
+### FontJS.html
+
+Pictograms from Fontawesome are widely used in this project to generate all sorts of buttons.
+Not all codes generate visible pictograms, therefore this tool to see which are usable and which are not.  
+
 ### Tab_ctrl_v*.html
 
 This is a fully client-side tab controller that remembers the last clicked tab after a page reload, based on the URI fragment identifier.  e.g. www.example.com/index.html#tab1
