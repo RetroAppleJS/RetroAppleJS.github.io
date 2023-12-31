@@ -1,6 +1,6 @@
 ## TOOLS Explained
 
-In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.  Discover all the entire online TOOLS CATALOG [here](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html).
+In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.  Discover here the entire [TOOLS CATALOG](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html).
 
 ### ConfigFile_updater.html
 
@@ -111,11 +111,16 @@ TODO: flow diagram
 
 <img src="../res/SID_chips.png" align=left width=30% />While emulating AppleII sound is not working out, let's put to work a crazy idea of emulating a C64-style SID chip that could bring us closer to emulating a peripheral that actually did exist for the Apple II: the [Mockingboard](https://en.wikipedia.org/wiki/Mockingboard) sound card. The Mochinboard used the AY-3-8910, a 3-voice sound chip found in the popular MSX, and later ZX Spectrum home computers.  As we speak, I am evaluating [a closer match to emulating the AY-3-8910 with JavaScript](https://github.com/alexanderk23/ayumi-js), as this could bring us to real software and a few games on the Apple II that made full use of the mockingboards capabilities.
 
+---
 
+## GUI MODULES Explained
 
-### GUI MODULES Explained ###
+Similar to the tool catalog demonstrating particular emulator functions, the GUI modules focus on the development of GUI components like tabs, memory maps, visual keyboard. Discover here the entire [GUI CATALOG](https://retroapplejs.github.io/tools/GUI_CATALOG.html).
 
-Similar to the tool catalog demonstrating particular emulator functions, the GUI modules focus on the development of GUI components like tabs, memory maps, visual keyboard. Discover all the entire online GUI CATALOG [here](https://retroapplejs.github.io/tools/GUI_CATALOG.html).
+### FontJS.html
+
+Pictograms from Fontawesome are widely used in this project to generate all sorts of buttons.
+Not all codes generate visible pictograms, therefore this tool to see which are usable and which are not.  
 
 ### Tab_ctrl_v*.html
 
