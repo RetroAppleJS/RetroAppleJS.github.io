@@ -107,6 +107,10 @@ TODO: flow diagram
 <img src='../res/camera.png' align=left width=30% />
 The camera capture tool speaks for itself.  It enables your laptops camera, and transforms that into an Apple II graphics bitmap. 
 
+
+
+
+
 ### DiskJS.html
 
 <img src="../res/apple-disk-ii_256.png" align=left width=30% />The emulator natively works with __.nib formatted disk images__.  Therefore, it can read .nib files from your local hard drive to the emulator's memory and download .nib files raw from memory.   The emulator also accepts loading .dsk image files, but it always does that by converting from .dsk format to .nib before storing the image in memory.
