@@ -105,7 +105,10 @@ TODO: flow diagram
 ### Camera_capture.html
 
 
-### 
+### DiskJS.html
+
+<img src="../res/apple-disk-ii_256" align=left width=90% />The emulator natively works with .nib formatted disk images.  Therefore it can read .nib files from your local hard drive to to the emulators memory, and also snapshot from memory a .nib file on the fly.  The emultor also accepts loading .dsk images files, but it does that always by converting from .dsk format to .nib before storing the image into memory.
+This tool roughtly does the same thing plus some extra functions like making a full hex dump and displaying a (16x35) heat map laying out 16 columns (sectors) and 35 rows (tracks).
 
 ### SIDchipJS.html
 
