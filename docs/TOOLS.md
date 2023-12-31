@@ -4,7 +4,7 @@ In the [tools folder](../tools), we keep a collection of helpers to simulate, be
 
 ### ConfigFile_updater.html
 
-Check documentation here : [Config.md](Config.md)
+Check documentation here : [CONFIG.md](CONFIG.md)
 
 ### Monitor_palette.html
 
