@@ -1,6 +1,6 @@
 ## TOOLS Explained
 
-In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.  Discover all the entire online tools catalog [here](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html)
+In the [tools folder](../tools), we keep a collection of helpers to simulate, better understand or automate processes supporting the development of the IDE.  Every tool is designed to run in the browser, just like the IDE, using HTML/CSS/JavaScript.  Discover all the entire online tools catalog [here](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html).
 
 ### ConfigFile_updater.html
 
