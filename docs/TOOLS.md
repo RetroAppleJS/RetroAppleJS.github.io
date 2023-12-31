@@ -104,7 +104,7 @@ TODO: flow diagram
 
 ### Camera_capture.html
 
-<img src='../res/camera.png' align=left width=30% />
+<img src='../res/camera.png' align=left width=20% />
 The camera capture tool enables your default laptops camera, and transforms that into an Apple II graphics bitmap. The image trasformation can be optimised or tweaked by means of several parameters like dithering options, color depth, brightness, contast etc..
 
 ### DiskJS.html
