@@ -64,7 +64,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
 - [ ] pasteboard scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [ ] interactive Apple II+ pop-up keyboard
-- [ ] save disk image, and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
+- [ ] save disk image in .dsk format (convert internal .nib format to .dsk), and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
 - [x] develop documentation tool to generate HTML from Markdown-formatted files
 - [ ] apple sound, including diskdrive noise
 - [ ] paddle/mouse capture
