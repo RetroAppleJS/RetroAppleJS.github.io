@@ -104,8 +104,8 @@ TODO: flow diagram
 
 ### Camera_capture.html
 
-<img src='../res/camera.png' align=left width=30% />
-The camera capture tool speaks for itself.  It enables your laptops camera, and transforms that into an Apple II graphics bitmap. 
+<img src='../res/camera.png' align=left width=20% />
+The camera capture tool enables your default laptops camera, and transform that into an Apple II graphics bitmap. The image trasformation can be optimised or tweaked by means of several parameters like dithering options, color corrections, brightness and contast. The bitmap can be exported as a hex number stream that can be pasted directly into the assembler prompt which, puts all image data right at it's graphics mapped I/O locations.
 
 ### DiskJS.html
 
