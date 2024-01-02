@@ -19,10 +19,37 @@ var nib_dsk_bytes = new Array();
 var SECTOR_SIZE = 256;
 var SECTORS_PER_TRACK = 16;
 var TRACKS_PER_DISK = 35;
-
+var HEX_PCT = Array(101);
 
 function init_gui(_o) { 
-  document.getElementById('slider_title').outerHTML = _TITLE(); 
+  document.getElementById('slider_title').outerHTML = _TITLE();
+
+  // initialise heat map colors
+  var col_arr = ["#430054","#403F87","#2D788E","#2CA984","#7DD552","#FDEA27"];
+  //var col_arr = ["#0000FF","#44984C","#B6C41F","#FF9400","#FF0000","#FB94F8"];
+  //var col_arr = ["#64D4FF","#8BDEDF","#8EDAA6","#BFD080","#F2C98F","#FEAC86"];
+
+  
+
+  for(var i=0;i<100;i++)
+  {
+      var rng = 100/(col_arr.length-1);
+      var sec_idx = Math.floor(i/rng);                      // color range section index
+      var sec_pct = Math.round(Math.floor(i%rng)*100/rng);  // interpolation percentage
+      var rgb_rng = [ oCOM.HEX2RGB(col_arr[sec_idx]) , oCOM.HEX2RGB(col_arr[sec_idx+1]) ];
+      HEX_PCT[i] = "#"+oCOM.RGB2HEX( interpolate_arr( rgb_rng[0] , rgb_rng[1] , sec_pct) ).join("");
+
+      //document.write(i+" "+sec_idx+" "+sec_pct+" #"+HEX_PCT[i]+" <div style=height:20px;width:20px;background-color:"+HEX_PCT[i]+"></div><br>");
+  }
+  HEX_PCT[100] = col_arr[col_arr.length-1];
+}
+
+function interpolate_arr(arr1,arr2,pct)
+{
+  var arr = Array(arr1.length);
+  for(var i=0;i<arr.length;i++)
+    arr[i] = Math.round(arr1[i] + (arr2[i]-arr1[i])*pct/100);
+  return arr;
 }
 
 function dl()
@@ -64,18 +91,80 @@ function dumpdisk(bytes)
             var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
             disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
             s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
-            s_arr[s_arr.length] = s;
+            if(oCOM.getHexByte(_t)=="11")  // Volume Table of Contents (VTOC)
+            {
+              s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
+              s_arr[s_arr.length] = s;
+            }
+            else
+            {
+              s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
+              s_arr[s_arr.length] = s;
+            }
             nulls.count = 0;
         }
     }
     return s_arr;
 }
 
+var VTOC = {
+                "$00":   "not used"
+                ,"$01":   "track number of first catalog sector"
+                ,"$02":   "sector number of first catalog sector"
+                ,"$03":   "release number of DOS used to INIT this disk"
+                ,"$04-05":"not used"
+                ,"$06":   "Diskette volume number (1-254)"
+                ,"$07-26":"not used"
+                ,"$27":   "maximum number of track/sector pairs which will fit in one file track/sector list sector (122 for 256 byte sectors)"
+                ,"$28-2F":"not used"
+                ,"$30":   "last track where sectors were allocated"
+                ,"$31":   "direction of track allocation (+1 or -1)"
+                ,"$32-33":"not used"
+                ,"$34":   "number of tracks per diskette (normally 35)"
+                ,"$35":   "number of sectors per track (13 or 16)"  
+                ,"$36-37":"number of bytes per sector (LO/HI format)"
+                ,"$38-3B":"bit map of free sectors in track 0"
+                ,"$3C-3F":"bit map of free sectors in track 1"
+                ,"$40-43":"bit map of free sectors in track 2"
+                ,"$44-47":"bit map of free sectors in track 3"
+                ,"$48-4B":"bit map of free sectors in track 4"
+                ,"$4C-4F":"bit map of free sectors in track 5"
+                ,"$50-53":"bit map of free sectors in track 6"
+                ,"$54-57":"bit map of free sectors in track 7"
+                ,"$58-5B":"bit map of free sectors in track 8"
+                ,"$5C-5F":"bit map of free sectors in track 9"
+                ,"$60-63":"bit map of free sectors in track 10"
+                ,"$64-67":"bit map of free sectors in track 11"
+                ,"$68-6B":"bit map of free sectors in track 12"
+                ,"$6C-6F":"bit map of free sectors in track 13"
+                ,"$70-73":"bit map of free sectors in track 14"
+                ,"$74-77":"bit map of free sectors in track 15"
+                ,"$78-7B":"bit map of free sectors in track 16"
+                ,"$7C-7F":"bit map of free sectors in track 17"
+                ,"$80-83":"bit map of free sectors in track 18"
+                ,"$84-87":"bit map of free sectors in track 19"
+                ,"$88-8B":"bit map of free sectors in track 20"
+                ,"$8C-8F":"bit map of free sectors in track 21"
+                ,"$90-93":"bit map of free sectors in track 22"
+                ,"$94-97":"bit map of free sectors in track 23"
+                ,"$98-9B":"bit map of free sectors in track 24"
+                ,"$9C-9F":"bit map of free sectors in track 25"
+                ,"$A0-A3":"bit map of free sectors in track 26"
+                ,"$A4-A7":"bit map of free sectors in track 27"
+                ,"$A8-AB":"bit map of free sectors in track 28"
+                ,"$AC-AF":"bit map of free sectors in track 29"
+                ,"$B0-B3":"bit map of free sectors in track 30"
+                ,"$B4-B7":"bit map of free sectors in track 31"
+                ,"$B8-BB":"bit map of free sectors in track 32"
+                ,"$BC-BF":"bit map of free sectors in track 33"
+                ,"$C0-C3":"bit map of free sectors in track 34"
+                ,"$C4-FF":" bit maps for additional tracks if there are more than 35 tracks per diskette"
+               }
 
 
-function dumpdisk2(bytes)
+function dumpdisk_GRID(bytes)
 {
-    var nulls = {"start":"","end":"","count":0};
+    var nulls = {"start":"","end":"","count":0,"max":256};
     var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
     var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
     var disk_address_digits = Math.ceil(disk_address_bits/4);
@@ -90,11 +179,12 @@ function dumpdisk2(bytes)
                 var n = bytes[idx];
                 if(n==0) nulls.count++; // count the nulls in one sector
             }
-            if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
+            //if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
             nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
             nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
-            var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
-            disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
+            var pct = Math.round((nulls.count/nulls.max)*100);
+            var color = HEX_PCT[pct];
+            disk_layout[nulls.start+"-"+nulls.end] = [color,"T$"+oCOM.getHexByte(_t)+" S$"+oCOM.getHexByte(_s)+" %"+Math.round(100*(1-nulls.count/256)),"DSK"];
             nulls.count = 0;
         }
     }
@@ -106,31 +196,7 @@ function dumpdisk2(bytes)
 }
 
 
-var disk_layout = {
-  /*
-        "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
-       ,"0100-01FF":["#D0D0D0","STACK","ST"]
-       ,"0200-02FF":["#00D000","GETLN buffer","BU"]
-       ,"0300-03FF":["#00D000","VECTORS","VC"]
-       ,"0400-07FF":["#D000D0","TXT1/LORES1","T1"]
-       ,"0800-0BFF":["#D000D0","TXT2/LORES2","T2"]
-       ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
-       ,"2000-3FFF":["#0000D0","HIRES1","H1"]
-       ,"4000-5FFF":["#0000D0","HIRES2","H2"]
-       ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
-       ,"C000-C07F":["#D0D000","I/O","IB"]
-       ,"C080-C0FF":["#D0D000","SLOT I/O","IO"]
-       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
-       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
-       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
-       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
-       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
-       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
-       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
-       ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
-       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]    
-       */   
-    }
+var disk_layout = { }
 </script>
 
 <body class="slider_main" onload="init_gui();">
@@ -139,7 +205,7 @@ var disk_layout = {
   <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk2);" accept=".dsk"></li>
+        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk_GRID);" accept=".dsk"></li>
         <li><img onMouseOver="this.style.cursor='pointer'" onclick="document.getElementById('dump').innerHTML=dumpdisk(oCOM.UploadData).join('<br>');" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><button onclick="dl()">Download .NIB</button></li>
         <li>&nbsp;&nbsp;<a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a></li>
