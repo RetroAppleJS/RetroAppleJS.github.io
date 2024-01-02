@@ -19,6 +19,7 @@ var nib_dsk_bytes = new Array();
 var SECTOR_SIZE = 256;
 var SECTORS_PER_TRACK = 16;
 var TRACKS_PER_DISK = 35;
+var VTOC_TRACK = 17; 
 var HEX_PCT = Array(101);
 
 function init_gui(_o) { 
@@ -91,7 +92,7 @@ function dumpdisk(bytes)
             var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
             disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
             s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
-            if(oCOM.getHexByte(_t)=="11")  // Volume Table of Contents (VTOC)
+            if(oCOM.getHexByte(_t)==oCOM.getHexByte(VTOC_TRACK))  // Volume Table of Contents (VTOC)
             {
               s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
               s_arr[s_arr.length] = s;
@@ -182,7 +183,7 @@ function dumpdisk_GRID(bytes)
             //if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
             nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
             nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
-            var pct = Math.round((nulls.count/nulls.max)*100);
+            var pct = 100-Math.round((nulls.count/nulls.max)*100);
             var color = HEX_PCT[pct];
             disk_layout[nulls.start+"-"+nulls.end] = [color,"T$"+oCOM.getHexByte(_t)+" S$"+oCOM.getHexByte(_s)+" %"+Math.round(100*(1-nulls.count/256)),"DSK"];
             nulls.count = 0;
@@ -193,6 +194,17 @@ function dumpdisk_GRID(bytes)
     el = document.getElementById("output");
     el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep);  // start, len, step, bits
     oMEMGRID.paint_grid(disk_layout);
+
+    var s = "";
+    var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
+    var addr_track = oCOM.getHexMulti(VTOC_TRACK * TRACK_SIZE,disk_address_digits); // find row position of VTOC
+    for (var i = 0, row; row = table.rows[i]; i++)
+    {
+      var firstcol = row.cells[0].innerHTML;
+      if(firstcol==addr_track)
+          row.cells[0].innerHTML = "<font color=#FF8080>"+firstcol+"<font>";
+    }
+    //document.write(s)
 }
 
 

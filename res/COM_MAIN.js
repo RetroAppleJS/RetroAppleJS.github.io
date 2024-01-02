@@ -269,7 +269,7 @@ var oMEMGRID = new function()
   this.build_grid = function(start,len,step,cnf)
   {
     if(cnf===undefined) var cnf = this.conf_grid;
-    var s = "<table class=gtable style='display:inline-block;'>\n";
+    var s = "<table class=gtable style='display:inline-block;' id='gtable_"+cnf.id_prefix+"'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
       s += "<tr><td>"+this.oCOM.getHexMulti(i,cnf.digits)+"</td>"
