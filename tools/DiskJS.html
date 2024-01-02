@@ -11,7 +11,7 @@
 <script type="text/javascript" src="../res/EMU_apple2main.js"></script>
 
 <script>
-var CONF_version="1.0.2"
+var CONF_version="1.1.0"
 var CONF_builddate="20231231-180000" 
 
 var dsk_bytes = new Array();
@@ -20,6 +20,7 @@ var SECTOR_SIZE = 256;
 var SECTORS_PER_TRACK = 16;
 var TRACKS_PER_DISK = 35;
 var VTOC_TRACK = 17; 
+var VTOC_SECTOR = 0; 
 var HEX_PCT = Array(101);
 
 function init_gui(_o) { 
@@ -73,29 +74,63 @@ function dumpdisk(bytes)
     for(var _t=0;_t<TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
     {
         s_arr[s_arr.length] = "track $"+oCOM.getHexByte(_t);
-        for(var _s=0;_s<SECTORS_PER_TRACK;_s++)
+        for(var _s=0;_s<SECTORS_PER_TRACK;_s++)  // ITERATE THROUGH SECTORS
         {
             s_arr[s_arr.length] = "sector $"+oCOM.getHexByte(_s);
-            // ITERATE THROUGH SECTORS
             var s = "";
-            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
+            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)  // ITERATE THROUGH BYTES IN SECTOR
             {
                 var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
                 var n = bytes[idx];
                 if(n==0) nulls.count++
-                s += oCOM.getHexByte(n);
+                s += oCOM.getHexByte(n);  // dump 1 byte from disk
                 if((idx%4)==3) s+= " ";
             }
-            if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
+
             nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
             nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
             var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
             disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
             s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
-            if(oCOM.getHexByte(_t)==oCOM.getHexByte(VTOC_TRACK))  // Volume Table of Contents (VTOC)
-            {
-              s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
+
+            s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
               s_arr[s_arr.length] = s;
+
+            if(_t == VTOC_TRACK && _s == VTOC_SECTOR)  // PARSE Volume Table of Contents (VTOC)
+            {
+              for(var rng in VTOC)
+              {
+                
+
+                var vts = "";
+                var rng_txt = rng.replace(/\$/g,"");
+                var rng_pair = rng_txt.split("-").length==2?
+                      [parseInt(rng_txt.split("-")[0],16),parseInt(rng_txt.split("-")[1],16)]
+                      :[parseInt(rng_txt,16),parseInt(rng_txt,16)];
+
+                var fmt_naming = {"$":"HEX","U":"DEC","S":"SIG","L":"LEN","B":"BEN","%":"BIN"};
+                var fmt_pre = VTOC[rng].substring(2,1);
+
+                var str = "";
+                for(var i=rng_pair[0];i<=rng_pair[1];i++)
+                {
+                  var _offset = i;
+                  var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+
+                  if(fmt_pre=="L" || fmt_pre=="B")
+                  {
+                    var n = bytes[idx]*256 + bytes[idx+1];
+                    i++;
+                  }
+                  else
+                    var n = bytes[idx];
+
+                  str += fmtNumber( n ,fmt_naming[fmt_pre]).str + " "
+                  //vts += fmtnumber(   )+" "
+                //document.write(rng_txt+" "+rng_arr[0]+" "+rng_arr[1]+"<br>");
+                }
+                s_arr[s_arr.length] = str + " = " + "<b>" + VTOC[rng].slice(3) +"</b>";
+              }
             }
             else
             {
@@ -108,58 +143,71 @@ function dumpdisk(bytes)
     return s_arr;
 }
 
-var VTOC = {
-                "$00":   "not used"
-                ,"$01":   "track number of first catalog sector"
-                ,"$02":   "sector number of first catalog sector"
-                ,"$03":   "release number of DOS used to INIT this disk"
-                ,"$04-05":"not used"
-                ,"$06":   "Diskette volume number (1-254)"
-                ,"$07-26":"not used"
-                ,"$27":   "maximum number of track/sector pairs which will fit in one file track/sector list sector (122 for 256 byte sectors)"
-                ,"$28-2F":"not used"
-                ,"$30":   "last track where sectors were allocated"
-                ,"$31":   "direction of track allocation (+1 or -1)"
-                ,"$32-33":"not used"
-                ,"$34":   "number of tracks per diskette (normally 35)"
-                ,"$35":   "number of sectors per track (13 or 16)"  
-                ,"$36-37":"number of bytes per sector (LO/HI format)"
-                ,"$38-3B":"bit map of free sectors in track 0"
-                ,"$3C-3F":"bit map of free sectors in track 1"
-                ,"$40-43":"bit map of free sectors in track 2"
-                ,"$44-47":"bit map of free sectors in track 3"
-                ,"$48-4B":"bit map of free sectors in track 4"
-                ,"$4C-4F":"bit map of free sectors in track 5"
-                ,"$50-53":"bit map of free sectors in track 6"
-                ,"$54-57":"bit map of free sectors in track 7"
-                ,"$58-5B":"bit map of free sectors in track 8"
-                ,"$5C-5F":"bit map of free sectors in track 9"
-                ,"$60-63":"bit map of free sectors in track 10"
-                ,"$64-67":"bit map of free sectors in track 11"
-                ,"$68-6B":"bit map of free sectors in track 12"
-                ,"$6C-6F":"bit map of free sectors in track 13"
-                ,"$70-73":"bit map of free sectors in track 14"
-                ,"$74-77":"bit map of free sectors in track 15"
-                ,"$78-7B":"bit map of free sectors in track 16"
-                ,"$7C-7F":"bit map of free sectors in track 17"
-                ,"$80-83":"bit map of free sectors in track 18"
-                ,"$84-87":"bit map of free sectors in track 19"
-                ,"$88-8B":"bit map of free sectors in track 20"
-                ,"$8C-8F":"bit map of free sectors in track 21"
-                ,"$90-93":"bit map of free sectors in track 22"
-                ,"$94-97":"bit map of free sectors in track 23"
-                ,"$98-9B":"bit map of free sectors in track 24"
-                ,"$9C-9F":"bit map of free sectors in track 25"
-                ,"$A0-A3":"bit map of free sectors in track 26"
-                ,"$A4-A7":"bit map of free sectors in track 27"
-                ,"$A8-AB":"bit map of free sectors in track 28"
-                ,"$AC-AF":"bit map of free sectors in track 29"
-                ,"$B0-B3":"bit map of free sectors in track 30"
-                ,"$B4-B7":"bit map of free sectors in track 31"
-                ,"$B8-BB":"bit map of free sectors in track 32"
-                ,"$BC-BF":"bit map of free sectors in track 33"
-                ,"$C0-C3":"bit map of free sectors in track 34"
-                ,"$C4-FF":" bit maps for additional tracks if there are more than 35 tracks per diskette"
+var fmtNumber = function(num,fmt)
+{
+    var r = {"val":num,"str":"","bytes":Math.floor(num/256)+1,"fmt":fmt}
+    switch(r.fmt)
+    {
+      case "HEX": r.str = "$"+oCOM.getHexMulti(r.val,r.bytes*2); return r; // hex
+      case "DEC": r.str = r.val+""; return r;                          // unsigned decimal
+      case "SIG": r.str = (~r.val&(1<<(r.bytes*8))-1)+1; return r;     // 2's complement !!
+      case "LEN": r.str = "$"+oCOM.getHexByte((r.val>>8)&0xFF) + oCOM.getHexByte(r.val&0xFF); return r;    // Little-endian hex
+      case "BEN": r.str = "$"+oCOM.getHexByte(r.val&0xFF) + oCOM.getHexByte((r.val>>8)&0xFF); return r;   // Big-endian hex
+      case "BIN": r.str = "%"+oCOM.getBinMulti(r.val,r.bytes*8); return r;
+    }
+}
+
+var VTOC = {     "$00":    "[$]not used"
+                ,"$01":    "[U]track number of first catalog sector"
+                ,"$02":    "[U]sector number of first catalog sector"
+                ,"$03":    "[U]release number of DOS used to INIT this disk"
+                ,"$04-$05":"[$]not used"
+                ,"$06":    "[U]Diskette volume number (1-254)"
+                ,"$07-$26":"[$]not used"
+                ,"$27":    "[U]maximum number of track/sector pairs which will fit in one file track/sector list sector (122 for 256 byte sectors)"
+                ,"$28-$2F":"[$]not used"
+                ,"$30":    "[U]last track where sectors were allocated"
+                ,"$31":    "[S]direction of track allocation (+1 or -1)"
+                ,"$32-$33":"[$]not used"
+                ,"$34":    "[U]number of tracks per diskette (normally 35)"
+                ,"$35":    "[U]number of sectors per track (13 or 16)"  
+                ,"$36-$37":"[L]number of bytes per sector (LO/HI format)"
+                ,"$38-$3B":"[%]bit map of free sectors in track 0"
+                ,"$3C-$3F":"[%]bit map of free sectors in track 1"
+                ,"$40-$43":"[%]bit map of free sectors in track 2"
+                ,"$44-$47":"[%]bit map of free sectors in track 3"
+                ,"$48-$4B":"[%]bit map of free sectors in track 4"
+                ,"$4C-$4F":"[%]bit map of free sectors in track 5"
+                ,"$50-$53":"[%]bit map of free sectors in track 6"
+                ,"$54-$57":"[%]bit map of free sectors in track 7"
+                ,"$58-$5B":"[%]bit map of free sectors in track 8"
+                ,"$5C-$5F":"[%]bit map of free sectors in track 9"
+                ,"$60-$63":"[%]bit map of free sectors in track 10"
+                ,"$64-$67":"[%]bit map of free sectors in track 11"
+                ,"$68-$6B":"[%]bit map of free sectors in track 12"
+                ,"$6C-$6F":"[%]bit map of free sectors in track 13"
+                ,"$70-$73":"[%]bit map of free sectors in track 14"
+                ,"$74-$77":"[%]bit map of free sectors in track 15"
+                ,"$78-$7B":"[%]bit map of free sectors in track 16"
+                ,"$7C-$7F":"[%]bit map of free sectors in track 17"
+                ,"$80-$83":"[%]bit map of free sectors in track 18"
+                ,"$84-$87":"[%]bit map of free sectors in track 19"
+                ,"$88-$8B":"[%]bit map of free sectors in track 20"
+                ,"$8C-$8F":"[%]bit map of free sectors in track 21"
+                ,"$90-$93":"[%]bit map of free sectors in track 22"
+                ,"$94-$97":"[%]bit map of free sectors in track 23"
+                ,"$98-$9B":"[%]bit map of free sectors in track 24"
+                ,"$9C-$9F":"[%]bit map of free sectors in track 25"
+                ,"$A0-$A3":"[%]bit map of free sectors in track 26"
+                ,"$A4-$A7":"[%]bit map of free sectors in track 27"
+                ,"$A8-$AB":"[%]bit map of free sectors in track 28"
+                ,"$AC-$AF":"[%]bit map of free sectors in track 29"
+                ,"$B0-$B3":"[%]bit map of free sectors in track 30"
+                ,"$B4-$B7":"[%]bit map of free sectors in track 31"
+                ,"$B8-$BB":"[%]bit map of free sectors in track 32"
+                ,"$BC-$BF":"[%]bit map of free sectors in track 33"
+                ,"$C0-$C3":"[%]bit map of free sectors in track 34"
+                ,"$C4-$FF":"[%]bit maps for additional tracks if there are more than 35 tracks per diskette"
                }
 
 
