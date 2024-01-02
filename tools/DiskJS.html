@@ -81,12 +81,10 @@ function parse_disk(_t,_s,bytes)
     }
     var el = document.getElementById(oMEMGRID.conf_grid.id_prefix + addr_track);
     if(el!=null) el.style.backgroundColor = "#FF8080";  // colouring grid cell
-  
   }
 
   if(_t == VTOC_TRACK && _s == VTOC_SECTOR)  // PARSE Volume Table of Contents (VTOC)
   {
-
     s_arr[s_arr.length] = "<font color='maroon'>";
     for(var rng in VTOC)
     {
@@ -100,12 +98,7 @@ function parse_disk(_t,_s,bytes)
       {
         var _offset = i;
         var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
-        if(fmt_pre=="L" || fmt_pre=="B")
-        {
-          var n = bytes[idx]*256 + bytes[idx+1];
-          i++;
-        }
-        else var n = bytes[idx];
+        if(fmt_pre=="L" || fmt_pre=="B") { var n = bytes[idx]*256 + bytes[idx+1]; i++; } else var n = bytes[idx];
         str += oFMT.fmtNumber( n ,fmt_names[fmt_pre]).str + " ";
       }
       s_arr[s_arr.length] = str + " = " + "<b>" + VTOC[rng].slice(3) + "</b>";
