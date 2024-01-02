@@ -11,7 +11,7 @@
 <script type="text/javascript" src="../res/EMU_apple2main.js"></script>
 
 <script>
-var CONF_version="1.1.0"
+var CONF_version="1.1.1"
 var CONF_builddate="20231231-180000" 
 
 var dsk_bytes = new Array();
@@ -27,7 +27,8 @@ function init_gui(_o) {
   document.getElementById('slider_title').outerHTML = _TITLE();
 
   // initialise heat map colors
-  var col_arr = ["#430054","#403F87","#2D788E","#2CA984","#7DD552","#FDEA27"];
+  //var col_arr = ["#430054","#403F87","#2D788E","#2CA984","#7DD552","#FDEA27"];
+  var col_arr = ["#2D788E","#2CA984","#7DD552","#FDEA27"];
   //var col_arr = ["#0000FF","#44984C","#B6C41F","#FF9400","#FF0000","#FB94F8"];
   //var col_arr = ["#64D4FF","#8BDEDF","#8EDAA6","#BFD080","#F2C98F","#FEAC86"];
 
@@ -40,9 +41,9 @@ function init_gui(_o) {
       var sec_pct = Math.round(Math.floor(i%rng)*100/rng);  // interpolation percentage
       var rgb_rng = [ oCOM.HEX2RGB(col_arr[sec_idx]) , oCOM.HEX2RGB(col_arr[sec_idx+1]) ];
       HEX_PCT[i] = "#"+oCOM.RGB2HEX( interpolate_arr( rgb_rng[0] , rgb_rng[1] , sec_pct) ).join("");
-
       //document.write(i+" "+sec_idx+" "+sec_pct+" #"+HEX_PCT[i]+" <div style=height:20px;width:20px;background-color:"+HEX_PCT[i]+"></div><br>");
   }
+  HEX_PCT[0] = "#000000"
   HEX_PCT[100] = col_arr[col_arr.length-1];
 }
 
@@ -61,6 +62,83 @@ function dl()
   oCOM.Download(fileName,nib_dsk_bytes)
 }
 
+function parse_disk(_t,_s,bytes)
+{
+  var s_arr = new Array();
+  
+  if(_t==0 && _s==0)
+  {
+    // COLOR VTOC SECTOR
+    var s = "";
+    var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
+    var addr_track = oCOM.getHexMulti(VTOC_TRACK * TRACK_SIZE,disk_address_digits); // find row position of VTOC
+    for (var i = 0, row; row = table.rows[i]; i++)
+    {
+      var firstcol = row.cells[0].innerHTML;
+      if(firstcol==addr_track)
+          row.cells[0].innerHTML = "<font color='maroon'>"+firstcol+"<font>";
+    }
+
+    var el = document.getElementById(oMEMGRID.conf_grid.id_prefix + addr_track);
+    if(el!=null)
+    {
+        el.style.backgroundColor = "#800000";
+    }
+  }
+
+  if(_t == VTOC_TRACK && _s == VTOC_SECTOR)  // PARSE Volume Table of Contents (VTOC)
+  {
+    var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
+    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+
+    s_arr[s_arr.length] = "<font color='maroon'>";
+    for(var rng in VTOC)
+    {
+      var rng_txt = rng.replace(/\$/g,"");
+      var rng_pair = rng_txt.split("-").length==2 ? [parseInt(rng_txt.split("-")[0],16),parseInt(rng_txt.split("-")[1],16)] : [parseInt(rng_txt,16),parseInt(rng_txt,16)];
+      var fmt_names = {"$":"HEX","U":"DEC","S":"SIG","L":"LEN","B":"BEN","%":"BIN"};
+      var fmt_pre = VTOC[rng].substring(2,1);
+
+      var str = "";
+      for(var i=rng_pair[0];i<=rng_pair[1];i++)
+      {
+        var _offset = i;
+        var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+        if(fmt_pre=="L" || fmt_pre=="B")
+        {
+          var n = bytes[idx]*256 + bytes[idx+1];
+          i++;
+        }
+        else var n = bytes[idx];
+        str += oFMT.fmtNumber( n ,fmt_names[fmt_pre]).str + " ";
+      }
+      s_arr[s_arr.length] = str + " = " + "<b>" + VTOC[rng].slice(3) + "</b>";
+    }
+    s_arr[s_arr.length] = "</font>";
+  }
+  return s_arr;
+}
+
+var oFMT = new function()
+{
+  this.fmtNumber = function(num,fmt)
+  {
+    var r = {"val":num,"str":"","bytes":Math.floor(num/256)+1,"fmt":fmt}
+    switch(r.fmt)
+    {
+      case "HEX": r.str = "$"+oCOM.getHexMulti(r.val,r.bytes*2); return r; // hex
+      case "DEC": r.str = r.val+""; return r;                              // unsigned decimal
+      case "SIG": r.str = (~r.val&(1<<(r.bytes*8))-1)+1; return r;         // 2's complement !!
+      case "LEN": r.str = ((r.val>>8)&0xFF) + (r.val&0xFF)*256; return r;  // Little-endian unsigned decimal
+      case "BEN": r.str = ((r.val>>8)&0xFF)*256 + (r.val&0xFF); return r;  // Big-endian unsigned decimal
+      case "BIN": r.str = "%"+oCOM.getBinMulti(r.val,r.bytes*8); return r; // binary
+      default: 
+        return this.fmtExtension(r,fmt);
+    }
+  }
+  this.fmtExtension = function() {}
+}
 
 
 function dumpdisk(bytes)
@@ -94,68 +172,16 @@ function dumpdisk(bytes)
             s_arr[s_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
 
             s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
-              s_arr[s_arr.length] = s;
+            s_arr[s_arr.length] = s;
 
-            if(_t == VTOC_TRACK && _s == VTOC_SECTOR)  // PARSE Volume Table of Contents (VTOC)
-            {
-              for(var rng in VTOC)
-              {
-                
-
-                var vts = "";
-                var rng_txt = rng.replace(/\$/g,"");
-                var rng_pair = rng_txt.split("-").length==2?
-                      [parseInt(rng_txt.split("-")[0],16),parseInt(rng_txt.split("-")[1],16)]
-                      :[parseInt(rng_txt,16),parseInt(rng_txt,16)];
-
-                var fmt_naming = {"$":"HEX","U":"DEC","S":"SIG","L":"LEN","B":"BEN","%":"BIN"};
-                var fmt_pre = VTOC[rng].substring(2,1);
-
-                var str = "";
-                for(var i=rng_pair[0];i<=rng_pair[1];i++)
-                {
-                  var _offset = i;
-                  var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
-
-                  if(fmt_pre=="L" || fmt_pre=="B")
-                  {
-                    var n = bytes[idx]*256 + bytes[idx+1];
-                    i++;
-                  }
-                  else
-                    var n = bytes[idx];
-
-                  str += fmtNumber( n ,fmt_naming[fmt_pre]).str + " "
-                  //vts += fmtnumber(   )+" "
-                //document.write(rng_txt+" "+rng_arr[0]+" "+rng_arr[1]+"<br>");
-                }
-                s_arr[s_arr.length] = str + " = " + "<b>" + VTOC[rng].slice(3) +"</b>";
-              }
-            }
-            else
-            {
-              s_arr[s_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
-              s_arr[s_arr.length] = s;
-            }
+            s_arr.push(parse_disk(_t,_s,bytes).join("<br>"));
             nulls.count = 0;
-        }
+        } 
     }
     return s_arr;
 }
 
-var fmtNumber = function(num,fmt)
-{
-    var r = {"val":num,"str":"","bytes":Math.floor(num/256)+1,"fmt":fmt}
-    switch(r.fmt)
-    {
-      case "HEX": r.str = "$"+oCOM.getHexMulti(r.val,r.bytes*2); return r; // hex
-      case "DEC": r.str = r.val+""; return r;                          // unsigned decimal
-      case "SIG": r.str = (~r.val&(1<<(r.bytes*8))-1)+1; return r;     // 2's complement !!
-      case "LEN": r.str = "$"+oCOM.getHexByte((r.val>>8)&0xFF) + oCOM.getHexByte(r.val&0xFF); return r;    // Little-endian hex
-      case "BEN": r.str = "$"+oCOM.getHexByte(r.val&0xFF) + oCOM.getHexByte((r.val>>8)&0xFF); return r;   // Big-endian hex
-      case "BIN": r.str = "%"+oCOM.getBinMulti(r.val,r.bytes*8); return r;
-    }
-}
+
 
 var VTOC = {     "$00":    "[$]not used"
                 ,"$01":    "[U]track number of first catalog sector"
@@ -242,16 +268,6 @@ function dumpdisk_GRID(bytes)
     el = document.getElementById("output");
     el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep);  // start, len, step, bits
     oMEMGRID.paint_grid(disk_layout);
-
-    var s = "";
-    var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
-    var addr_track = oCOM.getHexMulti(VTOC_TRACK * TRACK_SIZE,disk_address_digits); // find row position of VTOC
-    for (var i = 0, row; row = table.rows[i]; i++)
-    {
-      var firstcol = row.cells[0].innerHTML;
-      if(firstcol==addr_track)
-          row.cells[0].innerHTML = "<font color=#FF8080>"+firstcol+"<font>";
-    }
     //document.write(s)
 }
 
