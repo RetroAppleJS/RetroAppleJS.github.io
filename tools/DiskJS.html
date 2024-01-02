@@ -59,7 +59,7 @@ function dl()
 {
   nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
   var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
-  oCOM.Download(fileName,nib_dsk_bytes)
+  oCOM.Download(fileName,nib_dsk_bytes);
 }
 
 function parse_disk(_t,_s,bytes)
@@ -181,8 +181,6 @@ function dumpdisk(bytes)
     return s_arr;
 }
 
-
-
 var VTOC = {     "$00":    "[$]not used"
                 ,"$01":    "[U]track number of first catalog sector"
                 ,"$02":    "[U]sector number of first catalog sector"
@@ -271,7 +269,6 @@ function dumpdisk_GRID(bytes)
     //document.write(s)
 }
 
-
 var disk_layout = { }
 </script>
 
@@ -297,10 +294,8 @@ var disk_layout = { }
           <td><div id="dump" style="font-size:x-small;width:296px;height:120px;float:left;overflow-x:hidden;overflow-y:auto;"></div></td>
       </tr>
       </table>
-
-      
-
     </div>
   </div>
+
 </body>
 </html>
