@@ -32,8 +32,6 @@ function init_gui(_o) {
   //var col_arr = ["#0000FF","#44984C","#B6C41F","#FF9400","#FF0000","#FB94F8"];
   //var col_arr = ["#64D4FF","#8BDEDF","#8EDAA6","#BFD080","#F2C98F","#FEAC86"];
 
-  
-
   for(var i=0;i<100;i++)
   {
       var rng = 100/(col_arr.length-1);
@@ -65,6 +63,9 @@ function dl()
 function parse_disk(_t,_s,bytes)
 {
   var s_arr = new Array();
+  var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
+  var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
+  var disk_address_digits = Math.ceil(disk_address_bits/4);
   
   if(_t==0 && _s==0)
   {
@@ -76,21 +77,15 @@ function parse_disk(_t,_s,bytes)
     {
       var firstcol = row.cells[0].innerHTML;
       if(firstcol==addr_track)
-          row.cells[0].innerHTML = "<font color='maroon'>"+firstcol+"<font>";
+          row.cells[0].innerHTML = "<font color='maroon'>"+firstcol+"<font>"; // colouring grid label
     }
-
     var el = document.getElementById(oMEMGRID.conf_grid.id_prefix + addr_track);
-    if(el!=null)
-    {
-        el.style.backgroundColor = "#800000";
-    }
+    if(el!=null) el.style.backgroundColor = "#FF8080";  // colouring grid cell
+  
   }
 
   if(_t == VTOC_TRACK && _s == VTOC_SECTOR)  // PARSE Volume Table of Contents (VTOC)
   {
-    var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
-    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
-    var disk_address_digits = Math.ceil(disk_address_bits/4);
 
     s_arr[s_arr.length] = "<font color='maroon'>";
     for(var rng in VTOC)
