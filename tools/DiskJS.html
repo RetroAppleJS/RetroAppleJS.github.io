@@ -113,18 +113,18 @@ var oDISK = new function()
       log_arr[log_arr.length] = "<font color='maroon'>";
       for(var r in toc)
       {
-        var rng = toc[r][0]
-        var rng_txt = rng.replace(/\$/g,"");
-        var rng_arr = this.HEXRange2Array(rng_txt);
+        // POPULATE VTOC DATA
+        var rng_arr = this.HEXRange2Array(toc[r][0]);
         var _offset =  this.byte_offset(track,sector,geo);
-        toc[r][3] = dsk_data.slice( _offset+rng_arr[0] , _offset+rng_arr[rng_arr.length-1]+1 ); // take slice between first and last from range 
+        this.DOS3_m.VTOC[r][3] = dsk_data.slice( _offset+rng_arr[0] , _offset+rng_arr[rng_arr.length-1]+1 ); // take slice between first and last from range 
 
+        // LOGGING
         var str = "";
+        log_arr[log_arr.length] = "<b>VTOC PARSING RESULTS</b>"
         for(var _i=0 ; _i<rng_arr.length ; _i++)
         {
-          var n = toc[r][3][_i];
           if(toc[r][1]=="LEN" || toc[r][1]=="BEN") { n = toc[r][2][_i]*256 + toc[r][2][_i+1]; _i++ } // grab 2 values if big-endian or little-endian
-          str += oFMT.fmtNumber( n ,toc[r][1] ).str + " ";
+          str += oFMT.fmtNumber( toc[r][3][_i] ,toc[r][1] ).str + " ";
         }
         log_arr[log_arr.length] = str + " = " + "<b>" + toc[r][2] + "</b>";
       }
@@ -232,10 +232,10 @@ function dumpdisk(bytes)
     var geo = oDISK.DOS3_m.DISK_GEO;
 
     var nulls = {"start":"","end":"","count":0};
-    var TRACK_SIZE =  geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK;
-    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*geo.TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
     var disk_address_digits = Math.ceil(disk_address_bits/4);
 
+    // LOGGING ONLY
     for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
     {
         log_arr[log_arr.length] = "track $"+oCOM.getHexByte(_t);
@@ -248,14 +248,8 @@ function dumpdisk(bytes)
                 var n = bytes[idx];
                 if(n==0) nulls.count++;
                 s += oCOM.getHexByte(n);  // dump 1 byte from disk
-                if((idx%4)==3) s+= " ";
+                if((idx%4)==3) s+= " ";   // add space each 4 bytes for readability
             }
-
-            nulls.start = oCOM.getHexMulti(_offset , disk_address_digits);
-            nulls.end   = oCOM.getHexMulti(_offset + geo.SECTOR_SIZE , disk_address_digits);
-            var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
-            disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
-            log_arr[log_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
 
             log_arr[log_arr.length] = "RAW SECTOR DATA ("+geo.SECTOR_SIZE+"bytes)";
             log_arr[log_arr.length] = s;
@@ -277,29 +271,32 @@ function dumpdisk_GRID(bytes)
 {
     var geo = oDISK.DOS3_m.DISK_GEO;
     var nulls = {"start":"","end":"","count":0,"max":256};
-    var TRACK_SIZE =  geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK;
-    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*geo.TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
     var disk_address_digits = Math.ceil(disk_address_bits/4);
+    var disk_layout = { };
+
+    // PREPARE HEATMAP DATA (in disk_layout)
     for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
     {   
         for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)
         {
             // ITERATE THROUGH SECTORS
-            for(var _offset=0;_offset<geo.SECTOR_SIZE;_offset++)
+            var _offset = oDISK.byte_offset(_t,_s,geo)
+            for(var _i=0;_i<geo.SECTOR_SIZE;_i++)
             {
-                var idx = _t * TRACK_SIZE + _s * geo.SECTOR_SIZE + _offset;
+                var idx = _offset + _i;
                 var n = bytes[idx];
                 if(n==0) nulls.count++; // count the nulls in one sector
             }
-            //if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
-            nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*geo.SECTOR_SIZE,disk_address_digits);
-            nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*geo.SECTOR_SIZE + geo.SECTOR_SIZE),disk_address_digits);
+            nulls.start = oCOM.getHexMulti(_offset , disk_address_digits);
+            nulls.end   = oCOM.getHexMulti(_offset + geo.SECTOR_SIZE , disk_address_digits);
             var pct = 100-Math.round((nulls.count/nulls.max)*100);
             var color = HEX_PCT[pct];
             disk_layout[nulls.start+"-"+nulls.end] = [color,"T$"+oCOM.getHexByte(_t)+" S$"+oCOM.getHexByte(_s)+" %"+Math.round(100*(1-nulls.count/256)),"DSK"];
             nulls.count = 0;
         }
     }
+
     var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
     oMEMGRID.conf_grid.digits = disk_address_digits;
     el = document.getElementById("output");
@@ -307,8 +304,6 @@ function dumpdisk_GRID(bytes)
     oMEMGRID.paint_grid(disk_layout);
     //document.write(s)
 }
-
-var disk_layout = { }
 </script>
 
 <body class="slider_main" onload="init_gui();">
