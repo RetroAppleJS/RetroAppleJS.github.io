@@ -81,7 +81,7 @@ var oDISK = new function()
     return Array.from({length:lim[1]-lim[0]+1}, (e, i)=>i+lim[0]);
   }
 
-  this.DOS3_parse = function(track,sector,dsk_data)
+  this.DOS3_parse = function(dsk_data)
   {
     var geo = this.DOS3_m.DISK_GEO;
     var toc = this.DOS3_m.VTOC;
@@ -92,44 +92,46 @@ var oDISK = new function()
     var disk_address_digits = Math.ceil(disk_address_bits/4);
     
     // HIGHLITE VTOC SECTOR
-    if(track==0 && sector==0)
+ 
+    var track = sector = 0;
+    var s = "";
+    var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
+    var addr_track = oCOM.getHexMulti(this.byte_offset(geo.VTOC_TRACK,0,geo),disk_address_digits); // find row position of VTOC
+    for (var i = 0, row; row = table.rows[i]; i++)
     {
-      var s = "";
-      var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
-      var addr_track = oCOM.getHexMulti(this.byte_offset(geo.VTOC_TRACK,0,geo),disk_address_digits); // find row position of VTOC
-      for (var i = 0, row; row = table.rows[i]; i++)
-      {
-        var firstcol = row.cells[0].innerHTML;
-        if(firstcol==addr_track)
-            row.cells[0].innerHTML = "<font color='maroon'>"+firstcol+"<font>"; // colouring grid label
-      }
-      var el = document.getElementById(oMEMGRID.conf_grid.id_prefix + addr_track);
-      if(el!=null) el.style.backgroundColor = "#FF8080";  // colouring grid cell
+      var firstcol = row.cells[0].innerHTML;
+      if(firstcol==addr_track)
+          row.cells[0].innerHTML = "<font color='maroon'>"+firstcol+"<font>"; // colouring grid label
     }
+    var el = document.getElementById(oMEMGRID.conf_grid.id_prefix + addr_track);
+    if(el!=null) el.style.backgroundColor = "#FF8080";  // colouring grid cell
+    
+
 
     // PARSE Volume Table of Contents (VTOC)
-    if(track == geo.VTOC_TRACK && sector == geo.VTOC_SECTOR)  
-    {
-      log_arr[log_arr.length] = "<font color='maroon'>";
-      for(var r in toc)
-      {
-        // POPULATE VTOC DATA
-        var rng_arr = this.HEXRange2Array(toc[r][0]);
-        var _offset =  this.byte_offset(track,sector,geo);
-        this.DOS3_m.VTOC[r][3] = dsk_data.slice( _offset+rng_arr[0] , _offset+rng_arr[rng_arr.length-1]+1 ); // take slice between first and last from range 
+    var track = geo.VTOC_TRACK;
+    var sector = geo.VTOC_SECTOR;
 
-        // LOGGING
-        var str = "";
-        log_arr[log_arr.length] = "<b>VTOC PARSING RESULTS</b>"
-        for(var _i=0 ; _i<rng_arr.length ; _i++)
-        {
-          if(toc[r][1]=="LEN" || toc[r][1]=="BEN") { n = toc[r][2][_i]*256 + toc[r][2][_i+1]; _i++ } // grab 2 values if big-endian or little-endian
-          str += oFMT.fmtNumber( toc[r][3][_i] ,toc[r][1] ).str + " ";
-        }
-        log_arr[log_arr.length] = str + " = " + "<b>" + toc[r][2] + "</b>";
+    log_arr[log_arr.length] = "<font color='maroon'>";
+    log_arr[log_arr.length] = "<b>VTOC PARSING RESULTS</b>"
+    for(var r in toc)
+    {
+      // POPULATE VTOC DATA
+      var rng_arr = this.HEXRange2Array(toc[r][0]);
+      var _offset =  this.byte_offset(track,sector,geo);
+      this.DOS3_m.VTOC[r][3] = dsk_data.slice( _offset+rng_arr[0] , _offset+rng_arr[rng_arr.length-1]+1 ); // take slice between first and last from range 
+
+      // LOGGING
+      var str = "";
+      for(var _i=0 ; _i<rng_arr.length ; _i++)
+      {
+        if(toc[r][1]=="LEN" || toc[r][1]=="BEN") { n = toc[r][2][_i]*256 + toc[r][2][_i+1]; _i++ } // grab 2 values if big-endian or little-endian
+        str += oFMT.fmtNumber( toc[r][3][_i] ,toc[r][1] ).str + " ";
       }
-      log_arr[log_arr.length] = "</font>";
+      log_arr[log_arr.length] = str + " = " + "<b>" + toc[r][2] + "</b>";
     }
+    log_arr[log_arr.length] = "</font>";
+    
     return {"data":this.DOS3_m,"logs":log_arr} 
   }
 
@@ -225,50 +227,10 @@ var oFMT = new function()
 
 function dumpdisk(bytes)
 {
-    var log_arr = [];
-    var detected = oDISK.detect(bytes);
-    log_arr[log_arr.length] = detected["DOS 3.3"]+"% likely DOS 3.3";
+   /////////////
+   // HEATMAP //
+   /////////////
 
-    var geo = oDISK.DOS3_m.DISK_GEO;
-
-    var nulls = {"start":"","end":"","count":0};
-    var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
-    var disk_address_digits = Math.ceil(disk_address_bits/4);
-
-    // LOGGING ONLY
-    for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
-    {
-        log_arr[log_arr.length] = "track $"+oCOM.getHexByte(_t);
-        for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)  // ITERATE THROUGH SECTORS
-        {
-            log_arr[log_arr.length] = "sector $"+oCOM.getHexByte(_s);
-            var _offset = oDISK.byte_offset(_t,_s,geo), s="";
-            for(var idx=_offset; idx<_offset+geo.SECTOR_SIZE ; idx++)  // READ ENTIRE SECTOR
-            {
-                var n = bytes[idx];
-                if(n==0) nulls.count++;
-                s += oCOM.getHexByte(n);  // dump 1 byte from disk
-                if((idx%4)==3) s+= " ";   // add space each 4 bytes for readability
-            }
-
-            log_arr[log_arr.length] = "RAW SECTOR DATA ("+geo.SECTOR_SIZE+"bytes)";
-            log_arr[log_arr.length] = s;
-
-            if(detected["DOS 3.3"]>99)
-            {
-              var _o = oDISK.DOS3_parse(_t,_s,bytes);    // PARSE DISK DATA
-              log_arr.push(_o.logs.join("<br>"));
-            }
-            //else if(_s==0) log_arr[log_arr.length] = "<br>PARSER SKIPPED - POOR MATCH<br>";
-
-            nulls.count = 0;
-        } 
-    }
-    return log_arr;
-}
-
-function dumpdisk_GRID(bytes)
-{
     var geo = oDISK.DOS3_m.DISK_GEO;
     var nulls = {"start":"","end":"","count":0,"max":256};
     var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
@@ -296,14 +258,63 @@ function dumpdisk_GRID(bytes)
             nulls.count = 0;
         }
     }
-
+    // DISPLAY HEATMAP
     var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
     oMEMGRID.conf_grid.digits = disk_address_digits;
     el = document.getElementById("output");
     el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep);  // start, len, step, bits
     oMEMGRID.paint_grid(disk_layout);
-    //document.write(s)
+
+
+
+   /////////////
+   // LOGGING //
+   /////////////
+
+    var log_arr = [];
+    var geo = oDISK.DOS3_m.DISK_GEO;
+    var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+
+    // LOGGING ONLY
+    for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
+    {
+        log_arr[log_arr.length] = "track $"+oCOM.getHexByte(_t);
+        for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)  // ITERATE THROUGH SECTORS
+        {
+            log_arr[log_arr.length] = "sector $"+oCOM.getHexByte(_s);
+            var _offset = oDISK.byte_offset(_t,_s,geo), s="";
+            for(var idx=_offset; idx<_offset+geo.SECTOR_SIZE ; idx++)  // READ ENTIRE SECTOR
+            {
+                var n = bytes[idx];
+                s += oCOM.getHexByte(n);  // dump 1 byte from disk
+                if((idx%4)==3) s+= " ";   // add space each 4 bytes for readability
+            }
+            log_arr[log_arr.length] = "RAW SECTOR DATA ("+geo.SECTOR_SIZE+"bytes)";
+            log_arr[log_arr.length] = s;
+        }
+    }
+    document.getElementById('dump').innerHTML = log_arr.join("<br>")
 }
+
+function parsedisk(bytes)
+{
+  var log_arr = [];
+  var detected = oDISK.detect(bytes);
+  log_arr[log_arr.length] = detected["DOS 3.3"]+"% likely DOS 3.3";
+
+  if(detected["DOS 3.3"]>99)
+  {
+    var _o = oDISK.DOS3_parse(bytes);    // PARSE DISK DATA
+    log_arr.push(_o.logs.join("<br>"));
+  }
+  //else if(_s==0) log_arr[log_arr.length] = "<br>PARSER SKIPPED - POOR MATCH<br>";
+  
+
+
+  document.getElementById('dump').innerHTML = log_arr.join("<br>");
+}
+
 </script>
 
 <body class="slider_main" onload="init_gui();">
@@ -312,8 +323,8 @@ function dumpdisk_GRID(bytes)
   <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk_GRID);" accept=".dsk"></li>
-        <li><img onMouseOver="this.style.cursor='pointer'" onclick="document.getElementById('dump').innerHTML=dumpdisk(oCOM.UploadData).join('<br>');" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk);" accept=".dsk"></li>
+        <li><img onMouseOver="this.style.cursor='pointer'" onclick="document.getElementById('dump').innerHTML=parsedisk(oCOM.UploadData).join('<br>');" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><button onclick="dl()">Download .NIB</button></li>
         <li>&nbsp;&nbsp;<a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a>
                         <a target=_blank href="http://mirrors.apple2.org.za/apple.cabi.net/FAQs.and.INFO/A2.CSA2.FAQS.IN.HTML/apple.II.dos.and.prodos.mi.html">[more]</a></li>
