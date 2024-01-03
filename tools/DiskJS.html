@@ -11,16 +11,11 @@
 <script type="text/javascript" src="../res/EMU_apple2main.js"></script>
 
 <script>
-var CONF_version="1.1.2"
+var CONF_version="1.1.3"
 var CONF_builddate="20231231-180000" 
 
 var dsk_bytes = new Array();
 var nib_dsk_bytes = new Array();
-var SECTOR_SIZE = 256;
-var SECTORS_PER_TRACK = 16;
-var TRACKS_PER_DISK = 35;
-var VTOC_TRACK = 17; 
-var VTOC_SECTOR = 0; 
 var HEX_PCT = Array(101);
 
 function init_gui(_o) { 
@@ -62,6 +57,30 @@ function dl()
 
 var oDISK = new function()
 {
+  this.detect = function(dsk_data)
+  {
+    var result_arr = {};
+
+    // check if DOS 3.3
+    var pct = 0;
+    var geo = this.DOS3_m.DISK_GEO;
+    var offset_arr = this.HEXRange2Array( this.DOS3_m.VTOC.DOS_VER[0] );  // e.g. transforms "$04-$05" into [4,5]
+    var DOS_VER = dsk_data[ this.byte_offset(geo.VTOC_TRACK,geo.VTOC_SECTOR,geo) + offset_arr[0] ];
+    if(DOS_VER==3) pct += Math.round((1 - 1/255)*10000)/100;
+    result_arr["DOS 3.3"] = pct;
+
+    return result_arr;
+  }
+
+  this.byte_offset = function(track,sector,geo) { return track * geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK + sector * geo.SECTOR_SIZE }
+
+  this.HEXRange2Array = function(rng)
+  {
+    var txt = rng.replace(/\$/g,"");
+    var lim = txt.split("-").length==2 ? [parseInt(txt.split("-")[0],16),parseInt(txt.split("-")[1],16)] : [parseInt(txt,16),parseInt(txt,16)];
+    return Array.from({length:lim[1]-lim[0]+1}, (e, i)=>i+lim[0]);
+  }
+
   this.DOS3_parse = function(track,sector,dsk_data)
   {
     var geo = this.DOS3_m.DISK_GEO;
@@ -77,7 +96,7 @@ var oDISK = new function()
     {
       var s = "";
       var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
-      var addr_track = oCOM.getHexMulti(geo.VTOC_TRACK * TRACK_SIZE,disk_address_digits); // find row position of VTOC
+      var addr_track = oCOM.getHexMulti(this.byte_offset(geo.VTOC_TRACK,0,geo),disk_address_digits); // find row position of VTOC
       for (var i = 0, row; row = table.rows[i]; i++)
       {
         var firstcol = row.cells[0].innerHTML;
@@ -96,15 +115,15 @@ var oDISK = new function()
       {
         var rng = toc[r][0]
         var rng_txt = rng.replace(/\$/g,"");
-        var rng_pair = rng_txt.split("-").length==2 ? [parseInt(rng_txt.split("-")[0],16),parseInt(rng_txt.split("-")[1],16)] : [parseInt(rng_txt,16),parseInt(rng_txt,16)];
-        var sec_idx = track * TRACK_SIZE + sector * SECTOR_SIZE
-        toc[r][3] = dsk_data.slice(sec_idx+rng_pair[0],sec_idx+rng_pair[1]+1);
+        var rng_arr = this.HEXRange2Array(rng_txt);
+        var _offset =  this.byte_offset(track,sector,geo);
+        toc[r][3] = dsk_data.slice( _offset+rng_arr[0] , _offset+rng_arr[rng_arr.length-1]+1 ); // take slice between first and last from range 
 
         var str = "";
-        for(var _offset=0 ; _offset<toc[r][3].length ; _offset++)
+        for(var _i=0 ; _i<rng_arr.length ; _i++)
         {
-          var n = toc[r][3][_offset];
-          if(toc[r][1]=="LEN" || toc[r][1]=="BEN") { n = toc[r][2][_offset]*256 + toc[r][2][_offset+1]; _offset++ }
+          var n = toc[r][3][_i];
+          if(toc[r][1]=="LEN" || toc[r][1]=="BEN") { n = toc[r][2][_i]*256 + toc[r][2][_i+1]; _i++ } // grab 2 values if big-endian or little-endian
           str += oFMT.fmtNumber( n ,toc[r][1] ).str + " ";
         }
         log_arr[log_arr.length] = str + " = " + "<b>" + toc[r][2] + "</b>";
@@ -130,8 +149,8 @@ var oDISK = new function()
     // LABELS
    ,"VTOC":
     {"U1":        ["$00"    ,"HEX","not used - usually $04"]
-    ,"1CAT_T":    ["$01"    ,"DEC","track number of first catalog sector"]
-    ,"1CAT_S":    ["$02"    ,"DEC","sector number of first catalog sector"]
+    ,"1CAT_T":    ["$01"    ,"DEC","track number of first catalog entry"]
+    ,"1CAT_S":    ["$02"    ,"DEC","sector number of first catalog entry"]
     ,"DOS_VER":   ["$03"    ,"DEC","DOS release, as written by INIT (3 for DOS3.3)"]
     ,"U2":        ["$04-$05","HEX","not used"]
     ,"VOL":       ["$06"    ,"DEC","Disk volume number (1-254)"]
@@ -207,39 +226,47 @@ var oFMT = new function()
 function dumpdisk(bytes)
 {
     var log_arr = [];
+    var detected = oDISK.detect(bytes);
+    log_arr[log_arr.length] = detected["DOS 3.3"]+"% likely DOS 3.3";
+
+    var geo = oDISK.DOS3_m.DISK_GEO;
+
     var nulls = {"start":"","end":"","count":0};
-    var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
-    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
+    var TRACK_SIZE =  geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK;
+    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*geo.TRACKS_PER_DISK) / Math.log10(2));
     var disk_address_digits = Math.ceil(disk_address_bits/4);
 
-    for(var _t=0;_t<TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
+    for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
     {
         log_arr[log_arr.length] = "track $"+oCOM.getHexByte(_t);
-        for(var _s=0;_s<SECTORS_PER_TRACK;_s++)  // ITERATE THROUGH SECTORS
+        for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)  // ITERATE THROUGH SECTORS
         {
             log_arr[log_arr.length] = "sector $"+oCOM.getHexByte(_s);
-            var s = "";
-            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)  // ITERATE THROUGH BYTES IN SECTOR
+            var _offset = oDISK.byte_offset(_t,_s,geo), s="";
+            for(var idx=_offset; idx<_offset+geo.SECTOR_SIZE ; idx++)  // READ ENTIRE SECTOR
             {
-                var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
                 var n = bytes[idx];
-                if(n==0) nulls.count++
+                if(n==0) nulls.count++;
                 s += oCOM.getHexByte(n);  // dump 1 byte from disk
                 if((idx%4)==3) s+= " ";
             }
 
-            nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
-            nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
+            nulls.start = oCOM.getHexMulti(_offset , disk_address_digits);
+            nulls.end   = oCOM.getHexMulti(_offset + geo.SECTOR_SIZE , disk_address_digits);
             var color = "#"+oCOM.getHexMulti(255-nulls.count,2)+oCOM.getHexMulti(255-nulls.count,2)+"00";
             disk_layout[nulls.start+"-"+nulls.end] = [color,"Disk "+oCOM.getHexMulti(nulls.count,2),"DSK"];
             log_arr[log_arr.length] = 'layout["'+nulls.start+"-"+nulls.end+'"] = ["'+color+'","Disk '+oCOM.getHexMulti(nulls.count,2)+',"DSK"]';
 
-            log_arr[log_arr.length] = "RAW SECTOR DATA ("+SECTOR_SIZE+"bytes)";
+            log_arr[log_arr.length] = "RAW SECTOR DATA ("+geo.SECTOR_SIZE+"bytes)";
             log_arr[log_arr.length] = s;
 
-            var _o = oDISK.DOS3_parse(_t,_s,bytes);    // PARSE DISK DATA
+            if(detected["DOS 3.3"]>99)
+            {
+              var _o = oDISK.DOS3_parse(_t,_s,bytes);    // PARSE DISK DATA
+              log_arr.push(_o.logs.join("<br>"));
+            }
+            //else if(_s==0) log_arr[log_arr.length] = "<br>PARSER SKIPPED - POOR MATCH<br>";
 
-            log_arr.push(_o.logs.join("<br>"));
             nulls.count = 0;
         } 
     }
@@ -248,24 +275,25 @@ function dumpdisk(bytes)
 
 function dumpdisk_GRID(bytes)
 {
+    var geo = oDISK.DOS3_m.DISK_GEO;
     var nulls = {"start":"","end":"","count":0,"max":256};
-    var TRACK_SIZE =  SECTOR_SIZE * SECTORS_PER_TRACK;
-    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*TRACKS_PER_DISK) / Math.log10(2));
+    var TRACK_SIZE =  geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK;
+    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*geo.TRACKS_PER_DISK) / Math.log10(2));
     var disk_address_digits = Math.ceil(disk_address_bits/4);
-    for(var _t=0;_t<TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
+    for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
     {   
-        for(var _s=0;_s<SECTORS_PER_TRACK;_s++)
+        for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)
         {
             // ITERATE THROUGH SECTORS
-            for(var _offset=0;_offset<SECTOR_SIZE;_offset++)
+            for(var _offset=0;_offset<geo.SECTOR_SIZE;_offset++)
             {
-                var idx = _t * TRACK_SIZE + _s * SECTOR_SIZE + _offset;
+                var idx = _t * TRACK_SIZE + _s * geo.SECTOR_SIZE + _offset;
                 var n = bytes[idx];
                 if(n==0) nulls.count++; // count the nulls in one sector
             }
             //if(nulls.count>127) nulls.count--; // mitigate overflow (hex goes back to 00 if 256)
-            nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*SECTOR_SIZE,disk_address_digits);
-            nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*SECTOR_SIZE + SECTOR_SIZE),disk_address_digits);
+            nulls.start = oCOM.getHexMulti(_t*TRACK_SIZE + _s*geo.SECTOR_SIZE,disk_address_digits);
+            nulls.end   = oCOM.getHexMulti((_t*TRACK_SIZE + _s*geo.SECTOR_SIZE + geo.SECTOR_SIZE),disk_address_digits);
             var pct = 100-Math.round((nulls.count/nulls.max)*100);
             var color = HEX_PCT[pct];
             disk_layout[nulls.start+"-"+nulls.end] = [color,"T$"+oCOM.getHexByte(_t)+" S$"+oCOM.getHexByte(_s)+" %"+Math.round(100*(1-nulls.count/256)),"DSK"];
