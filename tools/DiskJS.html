@@ -129,21 +129,21 @@ var oDISK = new function()
 
     // LABELS
    ,"VTOC":
-    {"U1":        ["$00","HEX","not used"]
-    ,"1CAT_T":    ["$01","DEC","track number of first catalog sector"]
-    ,"1CAT_S":    ["$02","DEC","sector number of first catalog sector"]
-    ,"DOS_VER":   ["$03","DEC","release number of DOS used to INIT this disk"]
+    {"U1":        ["$00"    ,"HEX","not used - usually $04"]
+    ,"1CAT_T":    ["$01"    ,"DEC","track number of first catalog sector"]
+    ,"1CAT_S":    ["$02"    ,"DEC","sector number of first catalog sector"]
+    ,"DOS_VER":   ["$03"    ,"DEC","DOS release, as written by INIT (3 for DOS3.3)"]
     ,"U2":        ["$04-$05","HEX","not used"]
-    ,"VOL":       ["$06","DEC","Diskette volume number (1-254)"]
+    ,"VOL":       ["$06"    ,"DEC","Disk volume number (1-254)"]
     ,"U3":        ["$07-$26","HEX","not used"]
-    ,"TS_PAIRS":  ["$27","DEC","maximum number of track/sector pairs which will fit in one file track/sector list sector (122 for 256 byte sectors)"]
+    ,"TS_PAIRS":  ["$27"    ,"DEC","maximum number of track/sector pairs which will fit in one file track/sector list sector (122 for 256 byte sectors)"]
     ,"U4":        ["$28-$2F","HEX","not used"]
-    ,"LCAT_T":    ["$30","DEC","last track where sectors were allocated"]
-    ,"DIR_T":     ["$31","SIG","direction of track allocation (+1 or -1)"]
+    ,"LCAT_T":    ["$30"    ,"DEC","last track where sectors were allocated"]
+    ,"DIR_T":     ["$31"    ,"SIG","direction of track allocation (-1 inward, +1 outward)"]
     ,"U5":        ["$32-$33","HEX","not used"]
-    ,"T":         ["$34","DEC","number of tracks per diskette (normally 35)"]
-    ,"SIG":       ["$35","DEC","number of sectors per track (13 or 16)"]
-    ,"BYTES_S":   ["$36-$37","LEN","number of bytes per sector (LO/HI format)"]
+    ,"T":         ["$34"    ,"DEC","number of tracks per diskette (normally 35)"]
+    ,"SIG":       ["$35"    ,"DEC","number of sectors per track (13 or 16)"]
+    ,"BYTES_S":   ["$36-$37","LEN","number of bytes per sector (LO/HI format - normally $100)"]
     ,"BM0":       ["$38-$3B","BIN","bit map of free sectors in track 0"]
     ,"BM1":       ["$3C-$3F","BIN","bit map of free sectors in track 1"]
     ,"BM2":       ["$40-$43","BIN","bit map of free sectors in track 2"]
@@ -179,7 +179,7 @@ var oDISK = new function()
     ,"BM32":      ["$B8-$BB","BIN","bit map of free sectors in track 32"]
     ,"BM33":      ["$BC-$BF","BIN","bit map of free sectors in track 33"]
     ,"BM34":      ["$C0-$C3","BIN","bit map of free sectors in track 34"]
-    ,"BM35N":     ["$C4-$FF","BIN","bit maps for additional tracks if there are more than 35 tracks per diskette"]
+    ,"BM35N":     ["$C4-$FF","BIN","bit maps for additional tracks if there are more than 35 tracks per disk"]
     } 
   }
 }
@@ -292,7 +292,8 @@ var disk_layout = { }
         <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk_GRID);" accept=".dsk"></li>
         <li><img onMouseOver="this.style.cursor='pointer'" onclick="document.getElementById('dump').innerHTML=dumpdisk(oCOM.UploadData).join('<br>');" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><button onclick="dl()">Download .NIB</button></li>
-        <li>&nbsp;&nbsp;<a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a></li>
+        <li>&nbsp;&nbsp;<a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a>
+                        <a target=_blank href="http://mirrors.apple2.org.za/apple.cabi.net/FAQs.and.INFO/A2.CSA2.FAQS.IN.HTML/apple.II.dos.and.prodos.mi.html">[more]</a></li>
       </ul>
     </div>
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
