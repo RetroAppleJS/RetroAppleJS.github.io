@@ -39,27 +39,13 @@ function AppleDisk2()
         q7 = 0;
     }
 
-    this.hide = function()
+    this.update = function(drv1)    // private function
     {
-        //this.bHidden = true;
-        document.getElementById("dskLED1").style.visibility = "hidden"; 
+        if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
+        if(motor==1) { document.getElementById("dskLED"+(drv1+1)).style.visibility = "visible"; }
+        else document.getElementById("dskLED"+(drv1+1)).style.visibility = "hidden";
     }
-
-    this.update = function()
-    {
-        if(_o.EMU_keyb_active) return;
-        
-
-        // FVD - we have only drive 0 here, TODO mount drive 1 and action the LED
-        //if(_o.EMU_keyb_timer) 
-        //{ 
-        //    document.getElementById("dskLED1").style.visibility = "hidden"; 
-        //    return
-        //}
-
-        if(motor==1) { document.getElementById("dskLED1").style.visibility = "visible"; }
-        else document.getElementById("dskLED1").style.visibility = "hidden";
-    }
+    
 
 //  ██████  ███████  █████  ██████  
 //  ██   ██ ██      ██   ██ ██   ██ 
@@ -97,11 +83,11 @@ function AppleDisk2()
             switch (addr) {
             case MOTOR_OFF:
                 motor = 0;
-                this.update();
+                this.update(drv1);
                 break;
             case MOTOR_ON:
                 motor = 1;
-                this.update()
+                this.update(drv1)
                 break;
             case DRV0EN:
                 drv1 = 0;
