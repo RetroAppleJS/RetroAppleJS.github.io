@@ -2,33 +2,16 @@
 // Copyright (c) 2014 Thomas Skibo.
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
+// Adapted in 2022 by Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// THIS SOFTWARE IS PROVIDED BY AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED.  IN NO EVENT SHALL AUTHOR OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-// SUCH DAMAGE.
-//
+// EMU_apple2disk2.js
 
-// EMU_appledisk2.js
 
 oEMU.component.IO["AppleDisk"] = {AppleDisk2};
 
-function AppleDisk2() {
+function AppleDisk2()
+{
 
     var MOTOR_OFF =     0x08,
         MOTOR_ON =      0x09,
@@ -62,12 +45,6 @@ function AppleDisk2() {
         document.getElementById("dskLED1").style.visibility = "hidden"; 
     }
 
-    //this.show = function()
-    //{
-    //    this.bHidden = false;
-        //this.update();
-    //}
-
     this.update = function()
     {
         if(_o.EMU_keyb_active) return;
@@ -83,6 +60,12 @@ function AppleDisk2() {
         if(motor==1) { document.getElementById("dskLED1").style.visibility = "visible"; }
         else document.getElementById("dskLED1").style.visibility = "hidden";
     }
+
+//  ██████  ███████  █████  ██████  
+//  ██   ██ ██      ██   ██ ██   ██ 
+//  ██████  █████   ███████ ██   ██ 
+//  ██   ██ ██      ██   ██ ██   ██ 
+//  ██   ██ ███████ ██   ██ ██████  
 
     this.read = function(addr) {
         //console.log("AppleDisk2: read %s", addr.toString(16));
@@ -164,10 +147,113 @@ function AppleDisk2() {
         return 0x00;
     } // read
 
+
+//  ██     ██ ██████  ██ ████████ ███████ 
+//  ██     ██ ██   ██ ██    ██    ██      
+//  ██  █  ██ ██████  ██    ██    █████   
+//  ██ ███ ██ ██   ██ ██    ██    ██      
+//   ███ ███  ██   ██ ██    ██    ███████ 
+
+
     this.write = function(addr, d8) {
         // console.log("AppleDisk2: write %s %s", addr.toString(16),
         //            d8.toString(16));
         if (addr == Q6H)
             data_latch = d8;
     }
+
+//  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
+//  ██   ██ ██      ██  ██           ██     ████   ██ ██ ██   ██ 
+//  ██   ██ ███████ █████        █████      ██ ██  ██ ██ ██████  
+//  ██   ██      ██ ██  ██      ██          ██  ██ ██ ██ ██   ██ 
+//  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
+
+    this.convertDsk2Nib = function(dskBytes)
+    {
+        var sixTwo = [
+            0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
+            0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
+            0xb4, 0xb5, 0xb6, 0xb7, 0xb9, 0xba, 0xbb, 0xbc,
+            0xbd, 0xbe, 0xbf, 0xcb, 0xcd, 0xce, 0xcf, 0xd3,
+            0xd6, 0xd7, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde,
+            0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
+            0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
+            0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff ];
+        var secSkew = [ 0x0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf ];
+        var bytes = new Array(232960);
+        var prenib = new Array(342);
+        var offs;
+  
+        // Odd-even encoding for sector headers.
+        function split_OddEven(b) { return [0xaa | (b >> 1),0xaa | b] }
+        function join_OddEven(b1,b2) { return (((b1<<1)+1) & b2) }
+        function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
+  
+        for (var track = 0; track < 35; track++) {
+            offs = track * 6656;
+            for (var sec = 0; sec < 16; sec++) {
+  
+                // 20 Sync bytes
+                addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
+  
+                // Addr field prologue
+                addBytes([0xd5,0xaa,0x96]);
+  
+                addBytes(split_OddEven(254));                 // Volume
+                addBytes(split_OddEven(track));               // Track
+                addBytes(split_OddEven(sec));                 // Sector
+                addBytes(split_OddEven(254 ^ track ^ sec));   // Checksum
+  
+                // Addr field epilogue
+                addBytes([0xde,0xaa,0xeb]);
+  
+                // 20 Sync bytes
+                addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
+  
+                // Data field prologue
+                addBytes([0xd5,0xaa,0xad]);
+  
+                // Start by prenibbilizing
+                var doffs = secSkew[sec] * 256 + track * 4096;
+                for (i = 0; i < 256; i++) {
+                    var d8 = dskBytes[doffs + i];
+                    prenib[i] = (d8 >> 2);
+  
+                    if (i < 86)
+                        prenib[256 + 85 - i] =
+                            ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
+                    else if (i < 172)
+                        prenib[256 + 171 - i] |=
+                            (((d8 & 0x02) << 1) | ((d8 & 0x01) << 3));
+                    else
+                        prenib[256 + 257 - i] |=
+                            (((d8 & 0x02) << 3) | ((d8 & 0x01) << 5));
+  
+                    if (i < 2)
+                        prenib[257 - i] |=
+                            (((d8 & 0x02) << 3) | ((d8 & 0x01) << 5));
+                }
+  
+                // Encode nibbilized data.
+                var prev = 0;
+                for (i = 0; i < 86; i++) {
+                    addBytes([ sixTwo[prev ^ prenib[256 + 85 - i]] ]);
+                    prev = prenib[256 + 85 - i];
+                }
+                for (i = 0; i < 256; i++) {
+                    addBytes([ sixTwo[prev ^ prenib[i]] ]);
+                    prev = prenib[i];
+                }
+                addBytes([ sixTwo[prev] ]); // add one byte
+  
+                // Data field epilogue
+                addBytes([0xde,0xaa,0xeb]);
+            }
+  
+            // fill out with sync bytes until end of track.
+            var bytes2EOT = (track+1) * 6656 - offs;
+            addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) );
+        }
+        return bytes;
+    }    
 }
