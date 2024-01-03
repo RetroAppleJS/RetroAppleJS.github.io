@@ -11,6 +11,14 @@
 <script type="text/javascript" src="../res/EMU_apple2main.js"></script>
 
 <script>
+//   ______   _____   ______   ___  ____    _________    ___      ___   _____     
+//  |_   _ `.|_   _|.' ____ \ |_  ||_  _|  |  _   _  | .'   `.  .'   `.|_   _|    
+//    | | `. \ | |  | (___ \_|  | |_/ /    |_/ | | \_|/  .-.  \/  .-.  \ | |      
+//    | |  | | | |   _.____`.   |  __'.        | |    | |   | || |   | | | |   _  
+//   _| |_.' /_| |_ | \____) | _| |  \ \_     _| |_   \  `-'  /\  `-'  /_| |__/ | 
+//  |______.'|_____| \______.'|____||____|   |_____|   `.___.'  `.___.'|________| 
+//                                                                                
+
 var CONF_version="1.1.3"
 var CONF_builddate="20231231-180000" 
 
@@ -40,23 +48,27 @@ function init_gui(_o) {
   HEX_PCT[100] = col_arr[col_arr.length-1];
 }
 
-function interpolate_arr(arr1,arr2,pct)
-{
-  var arr = Array(arr1.length);
-  for(var i=0;i<arr.length;i++)
-    arr[i] = Math.round(arr1[i] + (arr2[i]-arr1[i])*pct/100);
-  return arr;
-}
 
-function dl()
-{
-  nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
-  var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
-  oCOM.Download(fileName,nib_dsk_bytes);
-}
+
+
+
+
+
+//   ██████ ██       █████  ███████ ███████     ██████  ███████ ███████ 
+//  ██      ██      ██   ██ ██      ██          ██   ██ ██      ██      
+//  ██      ██      ███████ ███████ ███████     ██   ██ █████   █████   
+//  ██      ██      ██   ██      ██      ██     ██   ██ ██      ██      
+//   ██████ ███████ ██   ██ ███████ ███████     ██████  ███████ ██      
+
 
 var oDISK = new function()
 {
+//  ██████  ███████ ████████ ███████  ██████ ████████ 
+//  ██   ██ ██         ██    ██      ██         ██    
+//  ██   ██ █████      ██    █████   ██         ██    
+//  ██   ██ ██         ██    ██      ██         ██    
+//  ██████  ███████    ██    ███████  ██████    ██    
+
   this.detect = function(dsk_data)
   {
     var result_arr = {};
@@ -72,14 +84,11 @@ var oDISK = new function()
     return result_arr;
   }
 
-  this.byte_offset = function(track,sector,geo) { return track * geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK + sector * geo.SECTOR_SIZE }
-
-  this.HEXRange2Array = function(rng)
-  {
-    var txt = rng.replace(/\$/g,"");
-    var lim = txt.split("-").length==2 ? [parseInt(txt.split("-")[0],16),parseInt(txt.split("-")[1],16)] : [parseInt(txt,16),parseInt(txt,16)];
-    return Array.from({length:lim[1]-lim[0]+1}, (e, i)=>i+lim[0]);
-  }
+//  ██████   █████  ██████  ███████ ███████     ███    ███ ███████ ████████ ██   ██  ██████  ██████  
+//  ██   ██ ██   ██ ██   ██ ██      ██          ████  ████ ██         ██    ██   ██ ██    ██ ██   ██ 
+//  ██████  ███████ ██████  ███████ █████       ██ ████ ██ █████      ██    ███████ ██    ██ ██   ██ 
+//  ██      ██   ██ ██   ██      ██ ██          ██  ██  ██ ██         ██    ██   ██ ██    ██ ██   ██ 
+//  ██      ██   ██ ██   ██ ███████ ███████     ██      ██ ███████    ██    ██   ██  ██████  ██████  
 
   this.DOS3_parse = function(dsk_data)
   {
@@ -91,7 +100,9 @@ var oDISK = new function()
     var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*geo.TRACKS_PER_DISK) / Math.log10(2));
     var disk_address_digits = Math.ceil(disk_address_bits/4);
     
-    // HIGHLITE VTOC SECTOR
+    ////////////////////////////////////////
+    // HIGHLITE VTOC SECTOR ON MEMORY MAP //
+    ////////////////////////////////////////
  
     var track = sector = 0;
     var s = "";
@@ -108,7 +119,10 @@ var oDISK = new function()
     
 
 
-    // PARSE Volume Table of Contents (VTOC)
+    //////////////////////////////
+    // COLLECT VTOC INFORMATION //
+    //////////////////////////////
+
     var track = geo.VTOC_TRACK;
     var sector = geo.VTOC_SECTOR;
 
@@ -135,7 +149,21 @@ var oDISK = new function()
     return {"data":this.DOS3_m,"logs":log_arr} 
   }
 
-  // META DATA
+  this.byte_offset = function(track,sector,geo) { return track * geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK + sector * geo.SECTOR_SIZE }
+
+  this.HEXRange2Array = function(rng)
+  {
+    var txt = rng.replace(/\$/g,"");
+    var lim = txt.split("-").length==2 ? [parseInt(txt.split("-")[0],16),parseInt(txt.split("-")[1],16)] : [parseInt(txt,16),parseInt(txt,16)];
+    return Array.from({length:lim[1]-lim[0]+1}, (e, i)=>i+lim[0]);
+  }
+
+//  ███    ███ ███████ ████████  █████      ██████   █████  ████████  █████  
+//  ████  ████ ██         ██    ██   ██     ██   ██ ██   ██    ██    ██   ██ 
+//  ██ ████ ██ █████      ██    ███████     ██   ██ ███████    ██    ███████ 
+//  ██  ██  ██ ██         ██    ██   ██     ██   ██ ██   ██    ██    ██   ██ 
+//  ██      ██ ███████    ██    ██   ██     ██████  ██   ██    ██    ██   ██ 
+
   this.DOS3_m =
   {
     // GEOMETRY
@@ -205,25 +233,14 @@ var oDISK = new function()
   }
 }
 
-var oFMT = new function()
-{
-  this.fmtNumber = function(num,fmt)
-  {
-    var r = {"val":num,"str":"","bytes":Math.floor(num/256)+1,"fmt":fmt}
-    switch(r.fmt)
-    {
-      case "HEX": r.str = "$"+oCOM.getHexMulti(r.val,r.bytes*2); return r; // hex
-      case "DEC": r.str = r.val+""; return r;                              // unsigned decimal
-      case "SIG": r.str = (~r.val)+1; return r;                            // inverse 2's complement !!
-      case "LEN": r.str = ((r.val>>8)&0xFF) + (r.val&0xFF)*256; return r;  // Little-endian unsigned decimal
-      case "BEN": r.str = ((r.val>>8)&0xFF)*256 + (r.val&0xFF); return r;  // Big-endian unsigned decimal
-      case "BIN": r.str = "%"+oCOM.getBinMulti(r.val,r.bytes*8); return r; // binary
-      default: 
-        return this.fmtExtension(r,fmt);
-    }
-  }
-  this.fmtExtension = function(r,fmt) { return r }
-}
+
+
+
+//  ██████  ██    ██ ███    ███ ██████       ██████  ██████  ███████ 
+//  ██   ██ ██    ██ ████  ████ ██   ██     ██    ██ ██   ██ ██      
+//  ██   ██ ██    ██ ██ ████ ██ ██████      ██    ██ ██████  ███████ 
+//  ██   ██ ██    ██ ██  ██  ██ ██          ██    ██ ██           ██ 
+//  ██████   ██████  ██      ██ ██           ██████  ██      ███████ 
 
 function dumpdisk(bytes)
 {
@@ -297,6 +314,12 @@ function dumpdisk(bytes)
     document.getElementById('dump').innerHTML = log_arr.join("<br>")
 }
 
+//   ██████  █████  ██      ██          ██████   █████  ██████  ███████ ███████ ██████  
+//  ██      ██   ██ ██      ██          ██   ██ ██   ██ ██   ██ ██      ██      ██   ██ 
+//  ██      ███████ ██      ██          ██████  ███████ ██████  ███████ █████   ██████  
+//  ██      ██   ██ ██      ██          ██      ██   ██ ██   ██      ██ ██      ██   ██ 
+//   ██████ ██   ██ ███████ ███████     ██      ██   ██ ██   ██ ███████ ███████ ██   ██ 
+
 function parsedisk(bytes)
 {
   var log_arr = [];
@@ -314,6 +337,50 @@ function parsedisk(bytes)
 
   document.getElementById('dump').innerHTML = log_arr.join("<br>");
 }
+
+
+
+//  ████████ ██████   █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
+//     ██    ██   ██ ██   ██ ██ ██          ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+//     ██    ██████  ███████ ██ ██          █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+//     ██    ██   ██ ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+//     ██    ██   ██ ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
+
+var oFMT = new function()
+{
+  this.fmtNumber = function(num,fmt)
+  {
+    var r = {"val":num,"str":"","bytes":Math.floor(num/256)+1,"fmt":fmt}
+    switch(r.fmt)
+    {
+      case "HEX": r.str = "$"+oCOM.getHexMulti(r.val,r.bytes*2); return r; // hex
+      case "DEC": r.str = r.val+""; return r;                              // unsigned decimal
+      case "SIG": r.str = (~r.val)+1; return r;                            // inverse 2's complement !!
+      case "LEN": r.str = ((r.val>>8)&0xFF) + (r.val&0xFF)*256; return r;  // Little-endian unsigned decimal
+      case "BEN": r.str = ((r.val>>8)&0xFF)*256 + (r.val&0xFF); return r;  // Big-endian unsigned decimal
+      case "BIN": r.str = "%"+oCOM.getBinMulti(r.val,r.bytes*8); return r; // binary
+      default: 
+        return this.fmtExtension(r,fmt);
+    }
+  }
+  this.fmtExtension = function(r,fmt) { return r }
+}
+
+function interpolate_arr(arr1,arr2,pct)
+{
+  var arr = Array(arr1.length);
+  for(var i=0;i<arr.length;i++)
+    arr[i] = Math.round(arr1[i] + (arr2[i]-arr1[i])*pct/100);
+  return arr;
+}
+
+function dl()
+{
+  nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
+  var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
+  oCOM.Download(fileName,nib_dsk_bytes);
+}
+
 
 </script>
 
