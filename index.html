@@ -282,8 +282,8 @@ function COM_PopupHTML(html,s)
             <div style="height:115px;padding:0px 0px 0px 0px;z-index:1">
 
               <div style="height:30px;padding:0px 90px 0px 0px;">
+                                <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('EMU_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
                 <button class=appbut value="Tools"   onclick="javascript:oCOM.onPopup('EMU_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
-                <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('EMU_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
               </div>
   
               <!--  TOOLS (PASTEBOARD) -->
@@ -520,21 +520,8 @@ function COM_PopupHTML(html,s)
           <link rel="stylesheet"        href="res/ASM_6502.css">
 
           <div style="padding:0px 90px">
-            <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
             <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-          </div>
-
-          <!--  ASM TOOLS -->
-
-          <div class="hints1" id="ASM_paste" hidden="" style="z-index:1;position:absolute;margin-top:3px">
-            <div class=toolbox>
-            <form name="ASMboard">
-              <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
-              <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
-              <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
-              <input type="button" value="X" onclick="javascript:oCOM.onPopup('ASM_paste')">
-            </form>
-            </div>
+            <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
           </div>
 
           <!--  ASM SETTINGS -->
@@ -568,6 +555,18 @@ function COM_PopupHTML(html,s)
 
           </div>
 
+          <!--  ASM TOOLS -->
+
+          <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;margin-top:3px">
+            <div class=toolbox>
+            <form name="ASMboard">
+              <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
+              <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
+              <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
+              <input type="button" value="X" onclick="javascript:oCOM.onPopup('ASM_paste')">
+            </form>
+            </div>
+          </div>
 
 
           <script type="text/javascript">
