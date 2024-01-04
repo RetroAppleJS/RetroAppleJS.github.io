@@ -7,11 +7,9 @@
 //
 // EMU_apple2disk2.js
 
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{}}};
-oEMU.component.IO["AppleDisk"] = {AppleDisk2};
-
-function AppleDisk2()
+function AppleDisk2(driveNr)
 {
 
     var MOTOR_OFF =     0x08,
@@ -28,7 +26,8 @@ function AppleDisk2()
     var motor = 0, drv1 = 0, q6 = 0, q7 = 0;
     var offset = 0;
 
-    this.diskBytes = null;
+    this.diskBytes = null;      // disk content
+    this.driveNr = driveNr===undefined?"D1":driveNr;
     this.bHidden = false;
 
     this.reset = function() {

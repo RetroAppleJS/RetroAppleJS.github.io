@@ -8,7 +8,7 @@
 
 <script type="text/javascript" src="TOOLS_Header.js"></script>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2main.js"></script>
+<script type="text/javascript" src="../res/EMU_appledisk2.js"></script>
 
 <script>
 //   ______     _          __        _________               __   
@@ -156,7 +156,7 @@ var oDISK = new function()
 //  ██   ██      ██ ██  ██      ██          ██  ██ ██ ██ ██   ██ 
 //  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
 
-  this.convertDsk2Nib(dskBytes)
+  this.convertDsk2Nib = function(dskBytes)
   {
       var sixTwo = [
           0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
@@ -454,7 +454,8 @@ function parsedisk(bytes)
 
 function download_nib()
 {
-  nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
+  nib_dsk_bytes = oEMU.component.IO["AppleDisk"].convertDsk2Nib(oCOM.UploadData); 
+  // nib_dsk_bytes = apple2ConvertDskToNib(oCOM.UploadData);
   var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
   oCOM.Download(fileName,nib_dsk_bytes);
 }
