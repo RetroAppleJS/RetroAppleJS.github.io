@@ -9,7 +9,7 @@
 
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 
-function AppleDisk2(driveNr)
+function AppleDisk2(drive)
 {
 
     var MOTOR_OFF =     0x08,
@@ -27,7 +27,7 @@ function AppleDisk2(driveNr)
     var offset = 0;
 
     this.diskBytes = null;      // disk content
-    this.driveNr = driveNr===undefined?"D1":driveNr;
+    this.drive = drive===undefined?"D1":drive;
     this.bHidden = false;
 
     this.reset = function() {
@@ -39,13 +39,17 @@ function AppleDisk2(driveNr)
         q7 = 0;
     }
 
-    this.update = function(drv1)    // private function
+    this.update = function(drive)    // private function
     {
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
-        if(motor==1) { document.getElementById("dskLED"+(drv1+1)).style.visibility = "visible"; }
-        else document.getElementById("dskLED"+(drv1+1)).style.visibility = "hidden";
+        if(motor==1) { document.getElementById("dskLED_"+drive).style.visibility = "visible"; }
+        else document.getElementById("dskLED_"+drive).style.visibility = "hidden";
     }
     
+    this.hide = function(drive)
+    {
+        document.getElementById("dskLED_"+drive).style.visibility = "hidden";
+    }
 
 //  ██████  ███████  █████  ██████  
 //  ██   ██ ██      ██   ██ ██   ██ 
@@ -83,11 +87,11 @@ function AppleDisk2(driveNr)
             switch (addr) {
             case MOTOR_OFF:
                 motor = 0;
-                this.update(drv1);
+                this.update(this.drive);
                 break;
             case MOTOR_ON:
                 motor = 1;
-                this.update(drv1)
+                this.update(this.drive);
                 break;
             case DRV0EN:
                 drv1 = 0;

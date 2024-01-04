@@ -33,7 +33,7 @@ function Apple2Plus(context) {
     else var cpu  = new Cpu6502(hw);
 
     keys.KbdHTML({id:"kbd",path:"res/"
-                ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide() onmouseout=apple2plus.keysObj().KbdHover(event)"
+                ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
                 ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
 
     this.reset = function() {
