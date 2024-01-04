@@ -28,6 +28,41 @@ function COM()
     return r;
   }
 
+  this.base_convert = function (str, fromBase, toBase)
+  {
+    if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
+    if(typeof(toBase)  =='object') { this.toSymbols = toBase[0] }
+    fromBase = this.fromSymbols.length; toBase = this.toSymbols.length;
+
+    // PARSE INPUT DIGITS ARRAY
+    for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
+    var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
+
+    // BASE CONVERSION
+    for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBase), toBase); _p = mul(fromBase, _p, toBase) }
+
+    // PARSE OUTPUT DIGITS ARRAY
+    for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
+    return _o.length==0?this.toSymbols[0]:_o;
+  }
+
+  var add = function(x, y, base) {
+      var _m = Math.max(x.length, y.length);
+      for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
+        var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
+        var _n =  _r.push(_z % base);
+      }
+      return _r;
+  }
+
+  var mul = function(x, pow, base) {
+      for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
+        if(x & 1) _r = add(_r, pow, base);
+        pow = add(pow, pow, base);
+      }
+      return _r;
+  }
+
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 

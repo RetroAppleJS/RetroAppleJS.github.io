@@ -576,7 +576,7 @@ function conv_bck(inp,s)
 	for(var i=inp.length-s.wlen,str="";i>=0;i-=s.wlen)
 	{
 		var w = parseInt(inp.substring(i,i+s.wlen),16);
-		str=oBASE.convert(inp.substring(i,i+s.wlen),["0123456789ABCDEF"],[s.c])+str;
+		str=oCOM.base_convert(inp.substring(i,i+s.wlen),["0123456789ABCDEF"],[s.c])+str;
 		//for(var j=0;j<(s.glen);j++) { str = s.c.charAt(w % l) + str; w /= l; }
 	}
 	return str.replace(/^\s+|\s+$/g,'');

@@ -8,6 +8,7 @@
 // EMU_apple2disk2.js
 
 
+if(oEMU===undefined) var oEMU = {"component":{"IO":{}}};
 oEMU.component.IO["AppleDisk"] = {AppleDisk2};
 
 function AppleDisk2()

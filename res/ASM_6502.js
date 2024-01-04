@@ -1049,8 +1049,8 @@ function conv(inp,s)
 		//if(s.dbg) document.write("$"+getHexMulti(n,s.wlen)+" "+n+" %"+getBinMulti(n,s.wlen) +"<br>")
 		//var w = getHexMulti(n,s.wlen);
 
-		var w = ("0".repeat(s.wlen)+oBASE.convert(inp.substring(i,i+s.glen),[s.c],["0123456789ABCDEF"])).slice(-s.wlen);
-		if(s.dbg) document.write("oBASE["+w+"]");
+		var w = ("0".repeat(s.wlen)+oCOM.base_convert(inp.substring(i,i+s.glen),[s.c],["0123456789ABCDEF"])).slice(-s.wlen);
+		if(s.dbg) document.write("oCOM.base_convert["+w+"]");
 		str+=w;
 	}
 	return str;
