@@ -59,12 +59,13 @@ function Apple2IO(vid) {
         ANALOG_IN3 =    0x67,
         ANALOG_CLR =    0x70;
 
-    // MAP DISK TO SLOT#6
+    // MAP DISK I/O TO SLOT#6 MEMORY
     var DISK_IO =       SLOT_IO[6],
         DISK_IO_SIZE =  SLT_IO_SIZE,
         DISK_PROM =     SLOT_PROM[6],
         DISK_PROM_SIZE = SLT_PROM_SIZE;
  
+    // MAP RAMCARD I/O TO SLOT#0 MEMORY
     var MEM_RAMCARD_IO =  SLOT_IO[0],
         MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
 
