@@ -138,20 +138,6 @@ function RamCard()
 
 }
 
-// SiteMinder SP6
-// Kubernetes development
-// Postman API
-// Token security knowledge (Jason Web Tokens)
-// Siteminder understanding
-
-
-// propose new timeframe
-// around midday  3-4 PM
-// Lionel
-
-// Grant Clements
-// Jeoffrey Lemoine
-
 // replacement of Brahma Reddy
 
 /*  EXAMPLE CODE
@@ -216,9 +202,6 @@ JSR M.OUTSP
 RTS
 
 
-
-
-
 CALL-151
 6000: AD 83 C0 AD 83 C0 A9 12 
 6008: 8D 00 E0 A9 34 8D 00 D0 
@@ -236,13 +219,5 @@ CALL-151
 6068: 00 E0 AE 00 D0 AC 00 E0 
 6070: AD 81 C0 AD 81 C0 20 40 
 6078: F9 20 57 DB 60 
-
-
-
-
-
-
-
-
 */
 
