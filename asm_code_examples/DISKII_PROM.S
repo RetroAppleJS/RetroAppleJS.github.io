@@ -55,7 +55,7 @@ L04     LDA   SLOTIO,X      ; TRIGGER I/O
         LDA   #$56          ; LOAD WAITING TIME
         JSR   M.WAIT        ; WAIT 1.9664s
         DEY
-        BPL   L04            ; LOOP #$50 (80) times
+        BPL   L04           ; LOOP #$50 (80) times
         STA   *$26          ; LORES cursor row address (LO)      
         STA   *$3D          ; DOS register  
         STA   *$41          ; DOS register
@@ -79,16 +79,16 @@ L10     LDA   SLOTIO+12,X   ; LOAD I/O
         PLP                 ; PULL processor status from stack
         BCC   L05           ; LOOP IF CARRY CLEAR
         EOR   #$AD
-        BEQ   L14           ; JUMP IF EQUAL
+        BEQ   L15           ; JUMP IF EQUAL
         BNE   L05
 L11     LDY   #$03
 L12     STA   *$40          ; DOS register
-        LDA   SLOTIO+12,X   ; LOAD I/O
+L13     LDA   SLOTIO+12,X   ; LOAD I/O
         BPL   L13           ; JUMP IF POS
         ROL   A              
         STA   *$3C           
-L13     LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L13           ; LOOP IF POS
+L14     LDA   SLOTIO+12,X   ; LOAD I/O
+        BPL   L14           ; LOOP IF POS
         AND   *$3C
         DEY
         BNE   L12           ; LOOP IF NOT EQUAL
@@ -99,31 +99,31 @@ L13     LDA   SLOTIO+12,X   ; LOAD I/O
         CMP   *$41          ; DOS REGISTER            
         BNE   L05           ; LOOP IF NOT EQUAL
         BCS   L06           ; LOOP IF CARRY SET
-L14     LDY   #$56          ; POINTER
-L15     STY   *$3C          ; DOS REGISTER
-L16     LDY   SLOTIO+12,X   ; LOAD I/O      
-        BPL   L16
+L15     LDY   #$56          ; POINTER
+L16     STY   *$3C          ; DOS REGISTER
+L17     LDY   SLOTIO+12,X   ; LOAD I/O      
+        BPL   L17
         EOR   $02D6,Y       ; Plain memory
         LDY   *$3C          ; DOS REGISTER         
         DEY                 
         STA   $0300,Y       ; Plain memory    
-        BNE   L15         
-L17     STY   *$3C          ; DOS REGISTER           
-L18     LDY   SLOTIO+12,X   ; LOAD I/O        
-        BPL   L18         
+        BNE   L16         
+L18     STY   *$3C          ; DOS REGISTER           
+L19     LDY   SLOTIO+12,X   ; LOAD I/O        
+        BPL   L19         
         EOR   $02D6,Y       ; Plain memory
         LDY   *$3C          ; DOS REGISTER           
         STA   ($26),Y       ; LORES cursor row address (LO)
         INY                 
-        BNE   L17         
- L19    LDY   SLOTIO+12,X   ; LOAD I/O        
-        BPL   L19         
+        BNE   L18         
+ L20    LDY   SLOTIO+12,X   ; LOAD I/O        
+        BPL   L20         
         EOR   $02D6,Y       ; Plain memory       
- L20    BNE   L05         
+ L21    BNE   L05         
         LDY   #$00          
- L21    LDX   #$56          
- L22    DEX                 
-        BMI   L21           ; LOOP 86 times (delay)     
+ L22    LDX   #$56          
+ L23    DEX                 
+        BMI   L22           ; LOOP 86 times (delay)     
         LDA   ($26),Y       ; LORES cursor row address (LO)       
         LSR   $0300,X       ; Plain memory       
         ROL   A             
@@ -131,11 +131,11 @@ L18     LDY   SLOTIO+12,X   ; LOAD I/O
         ROL   A              
         STA   ($26),Y       ; LORES cursor row address (LO)       
         INY                 
-        BNE   L22
+        BNE   L23
         INC   *$27          ; LORES cursor row address (HI)           
         INC   *$3D          ; DOS register
         LDA   *$3D          ; DOS register           
         CMP   $0800         ; Beginning of BASIC Program
         LDX   *LSLOT           
-        BCC   L20         
+        BCC   L21         
         JMP   $0801         ; Beginning of BASIC Program
