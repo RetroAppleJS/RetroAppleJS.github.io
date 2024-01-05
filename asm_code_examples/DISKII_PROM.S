@@ -7,22 +7,22 @@ M.WAIT = $FCA8 ; ROM WAIT
         LDX   #$20
         LDY   #$00
         LDX   #$03
-L1      STX   *$3C          ; DOS register
+L01     STX   *$3C          ; DOS register
         TXA
         ASL   A
         BIT   *$3C          ; DOS register 
-        BEQ   L3
+        BEQ   L03
         ORA   *$3C          ; DOS register 
         EOR   #$FF          ; 255
         AND   #$7E          ; 126
-L2      BCS   L3
+L02     BCS   L03
         LSR   A   
-        BNE   L2
+        BNE   L02
         TYA 
         STA   $0356,X       ; Plain memory 
         INY  
-L3      INX   
-        BPL   L1
+L03     INX   
+        BPL   L01
         JSR   $FF58         ; RTS (in ROM)       
         TSX                 
         LDA   $0100,X       ; Stack       
@@ -37,7 +37,7 @@ L3      INX
         LDA   SLOTIO+10,X   ; TRIGGER I/O
         LDA   SLOTIO+9,X    ; TRIGGER I/O
         LDY   #$50          ; 80
-L4      LDA   SLOTIO,X      ; TRIGGER I/O
+L04     LDA   SLOTIO,X      ; TRIGGER I/O
         TYA
         AND   #$03          ; 3
         ASL   A             ; *2
@@ -47,75 +47,75 @@ L4      LDA   SLOTIO,X      ; TRIGGER I/O
         LDA   #$56          ; LOAD WAITING TIME
         JSR   M.WAIT        ; WAIT 1.9664s
         DEY
-        BPL   L4            ; LOOP #$50 (80) times
+        BPL   L04            ; LOOP #$50 (80) times
         STA   *$26          ; LORES cursor row address (LO)      
         STA   *$3D          ; DOS register  
         STA   *$41          ; DOS register
         LDA   #$08
         STA   *$27          ; LORES cursor row address (HI)
-L5      CLC
-L55     PHP
-L6      LDA   SLOTIO+12,X   ; LOAD I/O      
-        BPL   L6            ; LOOP IF NEG
-L7      EOR   #$D5
-        BNE   L6            ; LOOP IF NEG
-L8      LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L8            ; LOOP IF POS
+L05     CLC
+L06     PHP                 ; PUSH Processor status on stack
+L07     LDA   SLOTIO+12,X   ; LOAD I/O      
+        BPL   L07            ; LOOP IF NEG
+L08     EOR   #$D5
+        BNE   L07            ; LOOP IF NEG
+L09     LDA   SLOTIO+12,X   ; LOAD I/O
+        BPL   L09            ; LOOP IF POS
         CMP   #$AA
-        BNE   L7            ; LOOP IF NEG      
+        BNE   L08            ; LOOP IF NEG      
         NOP
-L9      LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L9            ; LOOP IF POS
+L10     LDA   SLOTIO+12,X   ; LOAD I/O
+        BPL   L10            ; LOOP IF POS
         CMP   #$96
-        BEQ   L10           ; JUMP IF =150 
-        PLP
-        BCC   L5            ; LOOP IF CARRY CLEAR
+        BEQ   L11           ; JUMP IF =150 
+        PLP                 ; PULL processor status from stack
+        BCC   L05            ; LOOP IF CARRY CLEAR
         EOR   #$AD
-        BEQ   L13
-        BNE   L5
-L10     LDY   #$03
-L11     STA   *$40          ; DOS register
+        BEQ   L14           ; JUMP IF EQUAL
+        BNE   L05
+L11     LDY   #$03
+L12     STA   *$40          ; DOS register
         LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L12           ; JUMP IF POS
+        BPL   L13           ; JUMP IF POS
         ROL   A              
         STA   *$3C           
-L12     LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L12
+L13     LDA   SLOTIO+12,X   ; LOAD I/O
+        BPL   L13           ; LOOP IF POS
         AND   *$3C
         DEY
-        BNE   L11           ; LOOP IF NEG
-        PLP
+        BNE   L12           ; LOOP IF NOT EQUAL
+        PLP                 ; PULL processor status from stack
         CMP   *$3D          ; CMP DOS register
-        BNE   L5
+        BNE   L05            ; LOOP IF NOT EQUAL
         LDA   *$40          ; DOS REGISTER          
         CMP   *$41          ; DOS REGISTER            
-        BNE   L5
-        BCS   L55
-L13     LDY   #$56          ; POINTER
-L14     STY   *$3C          ; DOS REGISTER
-L15     LDY   SLOTIO+12,X   ; LOAD I/O      
-        BPL   L15
+        BNE   L05            ; LOOP IF NOT EQUAL
+        BCS   L06           ; LOOP IF CARRY SET
+L14     LDY   #$56          ; POINTER
+L15     STY   *$3C          ; DOS REGISTER
+L16     LDY   SLOTIO+12,X   ; LOAD I/O      
+        BPL   L16
         EOR   $02D6,Y       ; Plain memory
         LDY   *$3C          ; DOS REGISTER         
         DEY                 
         STA   $0300,Y       ; Plain memory    
-        BNE   L14         
- L16    STY   *$3C          ; DOS REGISTER           
-        LDY   SLOTIO+12,X       
-        BPL   $C6BC         
+        BNE   L15         
+L17     STY   *$3C          ; DOS REGISTER           
+L18     LDY   SLOTIO+12,X   ; LOAD I/O        
+        BPL   L18         
         EOR   $02D6,Y       ; Plain memory
         LDY   *$3C          ; DOS REGISTER           
         STA   ($26),Y       ; LORES cursor row address (LO)
         INY                 
-        BNE   L16         
- L17    LDY   LOTIO+12,X       
-        BPL   L17         
+        BNE   L17         
+ L19    LDY   SLOTIO+12,X   ; LOAD I/O        
+        BPL   L19         
         EOR   $02D6,Y       ; Plain memory       
- L18    BNE   L5         
+ L20    BNE   L05         
         LDY   #$00          
- L19    LDX   #$56          
- L20    DEX                 
-        BMI   L19           ; LOOP 86 times (delay)     
+ L21    LDX   #$56          
+ L22    DEX                 
+        BMI   L21           ; LOOP 86 times (delay)     
         LDA   ($26),Y       ; LORES cursor row address (LO)       
         LSR   $0300,X       ; Plain memory       
         ROL   A             
@@ -123,11 +123,11 @@ L15     LDY   SLOTIO+12,X   ; LOAD I/O
         ROL   A              
         STA   ($26),Y       ; LORES cursor row address (LO)       
         INY                 
-        BNE   L20
+        BNE   L22
         INC   *$27          ; LORES cursor row address (HI)           
         INC   *$3D          ; DOS register
         LDA   *$3D          ; DOS register           
         CMP   $0800         ; Beginning of BASIC Program
         LDX   *LSLOT           
-        BCC   L18         
+        BCC   L20         
         JMP   $0801         ; Beginning of BASIC Program
