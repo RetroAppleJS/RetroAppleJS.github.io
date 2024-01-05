@@ -1,24 +1,25 @@
 ORG   $C600
 
 LSLOT  = $2B   ; Last booted slot number * 16
-SLOTIO  = $C080 ; Slot I/O
+SLOTIO = $C080 ; Slot I/O
+M.WAIT = $FCA8 ; ROM WAIT
 
         LDX   #$20
         LDY   #$00
         LDX   #$03
-L1      STX   *$3C
+L1      STX   *$3C          ; DOS register
         TXA
         ASL   A
-        BIT   *$3C
+        BIT   *$3C          ; DOS register 
         BEQ   L3
-        ORA   *$3C 
-        EOR   #$FF
-        AND   #$7E
+        ORA   *$3C          ; DOS register 
+        EOR   #$FF          ; 255
+        AND   #$7E          ; 126
 L2      BCS   L3
         LSR   A   
         BNE   L2
         TYA 
-        STA   $0356,X
+        STA   $0356,X       ; Plain memory 
         INY  
 L3      INX   
         BPL   L1
@@ -35,16 +36,16 @@ L3      INX
         LDA   SLOTIO+12,X   ; TRIGGER I/O
         LDA   SLOTIO+10,X   ; TRIGGER I/O
         LDA   SLOTIO+9,X    ; TRIGGER I/O
-        LDY   #$50
+        LDY   #$50          ; 80
 L4      LDA   SLOTIO,X      ; TRIGGER I/O
         TYA
-        AND   #$03
+        AND   #$03          ; 3
         ASL   A             ; *2
         ORA   *LSLOT          
         TAX
         LDA   SLOTIO+1,X    ; TRIGGER I/O
         LDA   #$56          ; LOAD WAITING TIME
-        JSR   $FCA8         ; WAIT 1.9664s
+        JSR   M.WAIT        ; WAIT 1.9664s
         DEY
         BPL   L4            ; LOOP #$50 (80) times
         STA   *$26          ; LORES cursor row address (LO)      
@@ -86,47 +87,47 @@ L12     LDA   SLOTIO+12,X   ; LOAD I/O
         PLP
         CMP   *$3D          ; CMP DOS register
         BNE   L5
-        LDA   *$40           
-        CMP   *$41           
+        LDA   *$40          ; DOS REGISTER          
+        CMP   *$41          ; DOS REGISTER            
         BNE   L5
         BCS   L55
-L13     LDY   #$56
-        STY   *$3C
-L14     LDY   SLOTIO+12,X   ; LOAD I/O      
-        BPL   L14
-        EOR   $02D6,Y
-        LDY   *$3C           
+L13     LDY   #$56          ; POINTER
+L14     STY   *$3C          ; DOS REGISTER
+L15     LDY   SLOTIO+12,X   ; LOAD I/O      
+        BPL   L15
+        EOR   $02D6,Y       ; Plain memory
+        LDY   *$3C          ; DOS REGISTER         
         DEY                 
-        STA   $0300,Y       
-        BNE   $C6A8         
-        STY   *$3C           
-        LDY   $C08C,X       
+        STA   $0300,Y       ; Plain memory    
+        BNE   L14         
+ L16    STY   *$3C          ; DOS REGISTER           
+        LDY   SLOTIO+12,X       
         BPL   $C6BC         
-        EOR   $02D6,Y
-        LDY   *$3C           
-        STA   ($26),Y       
+        EOR   $02D6,Y       ; Plain memory
+        LDY   *$3C          ; DOS REGISTER           
+        STA   ($26),Y       ; LORES cursor row address (LO)
         INY                 
-        BNE   $C6BA         
-        LDY   $C08C,X       
-        BPL   $C6CB         
-        EOR   $02D6,Y       
-        BNE   $C65C         
+        BNE   L16         
+ L17    LDY   LOTIO+12,X       
+        BPL   L17         
+        EOR   $02D6,Y       ; Plain memory       
+ L18    BNE   L5         
         LDY   #$00          
-        LDX   #$56          
-        DEX                 
-        BMI   $C6D7         
-        LDA   ($26),Y       
-        LSR   $0300,X       
+ L19    LDX   #$56          
+ L20    DEX                 
+        BMI   L19           ; LOOP 86 times (delay)     
+        LDA   ($26),Y       ; LORES cursor row address (LO)       
+        LSR   $0300,X       ; Plain memory       
         ROL   A             
-        LSR   $0300,X       
+        LSR   $0300,X       ; Plain memory       
         ROL   A              
-        STA   ($26),Y       
+        STA   ($26),Y       ; LORES cursor row address (LO)       
         INY                 
-        BNE   $C6D9
-        INC   *$27           
-        INC   *$3D           
-        LDA   *$3D           
-        CMP   $0800         
-        LDX   *$2B           
-        BCC   $C6D3         
+        BNE   L20
+        INC   *$27          ; LORES cursor row address (HI)           
+        INC   *$3D          ; DOS register
+        LDA   *$3D          ; DOS register           
+        CMP   $0800         ; Beginning of BASIC Program
+        LDX   *LSLOT           
+        BCC   L18         
         JMP   $0801         ; Beginning of BASIC Program
