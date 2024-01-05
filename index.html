@@ -288,7 +288,7 @@ function COM_PopupHTML(html,s)
                 <form name="EMUboard">
                   <textarea cols=40 rows=4  placeholder="Paste here" name=boardText style="float:left"></textarea><br>
                   <input type="button"  value="Paste"              onclick="javascript:oCOM.onPopup('EMU_paste');onBoardPaste()">
-                  <input type="button"  value="Capture" id=Capture onclick="javascript:onCapture();onBoardPaste()">                
+                  <input type="button"  value="Capture" id=Capture onclick="javascript:onCapture()">                
                   <input type="text"    value="$0000" size=5       onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
                   <input type="button"  value="Clear"              onclick="javascript:onEMUBoardClear()">
                   <input type="button"  value="X"                  onclick="javascript:oCOM.onPopup('EMU_paste')">
@@ -384,7 +384,7 @@ function COM_PopupHTML(html,s)
         
                       SLOTS
                     <form name="DEVboard">
-                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">game<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">board<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
                       <div class=appbox style="width:36px;" title="Slot">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
                       <div class=appbox style="width:36px;" title="Slot">#1</div>
                       <div class=appbox style="width:36px;" title="Slot">#2</div>
@@ -417,7 +417,7 @@ function COM_PopupHTML(html,s)
 
             function EMU_update_mem_map()
             {
-
+              // TODO refresh memory map (efficiently please !!)
             }
 
             function isHidden(el)
@@ -440,6 +440,26 @@ function COM_PopupHTML(html,s)
                   apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
               }
             }
+
+            function onCapture()
+            {
+                var hw = apple2plus.hwObj();
+                var s = "";
+                for(var y=0;y<24;y++)
+                {
+                  for(var x=0;x<40;x++)
+                  {
+                      // calculate TEXT address from x & y text coordinates
+                      var adr = 0x0400 + (y-(y&0xF8) << 7) + (y&0xF8) * 5 + x;
+                      var b = hw.read(adr);
+                      s += b>=160 && b<=223 ? String.fromCharCode(b-128) : " "; // filter out chars out of range
+                  }
+                  s+="\r"
+                }
+                EMUboard.boardText.value = s;
+                
+            }
+
             function onEMUBoardClear() { EMUboard.boardText.value = "" };  
             function onCaptureBase(tag)
             {

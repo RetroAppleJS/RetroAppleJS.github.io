@@ -13,7 +13,7 @@ oEMU.system["A2P"] = {/*  config overrides */};
 
 function Apple2Plus(context) {
     if(context===undefined)
-    { console.log("running Apple2Plus without video context") }
+    { console.log("running Apple2Plus without video or hardware context") }
     else
     {
         var video = new Apple2Video(context);
@@ -150,6 +150,10 @@ function Apple2Plus(context) {
 
     this.keysObj = function() {
         return keys;
+    }
+
+    this.hwObj = function() {
+        return hw;
     }
 
     this.loadDisk = function(bytes) {
