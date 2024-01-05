@@ -56,20 +56,20 @@ L04     LDA   SLOTIO,X      ; TRIGGER I/O
 L05     CLC
 L06     PHP                 ; PUSH Processor status on stack
 L07     LDA   SLOTIO+12,X   ; LOAD I/O      
-        BPL   L07            ; LOOP IF NEG
+        BPL   L07           ; LOOP IF NEG
 L08     EOR   #$D5
-        BNE   L07            ; LOOP IF NEG
+        BNE   L07           ; LOOP IF NEG
 L09     LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L09            ; LOOP IF POS
+        BPL   L09           ; LOOP IF POS
         CMP   #$AA
-        BNE   L08            ; LOOP IF NEG      
+        BNE   L08           ; LOOP IF NEG      
         NOP
 L10     LDA   SLOTIO+12,X   ; LOAD I/O
-        BPL   L10            ; LOOP IF POS
+        BPL   L10           ; LOOP IF POS
         CMP   #$96
         BEQ   L11           ; JUMP IF =150 
         PLP                 ; PULL processor status from stack
-        BCC   L05            ; LOOP IF CARRY CLEAR
+        BCC   L05           ; LOOP IF CARRY CLEAR
         EOR   #$AD
         BEQ   L14           ; JUMP IF EQUAL
         BNE   L05
@@ -86,10 +86,10 @@ L13     LDA   SLOTIO+12,X   ; LOAD I/O
         BNE   L12           ; LOOP IF NOT EQUAL
         PLP                 ; PULL processor status from stack
         CMP   *$3D          ; CMP DOS register
-        BNE   L05            ; LOOP IF NOT EQUAL
+        BNE   L05           ; LOOP IF NOT EQUAL
         LDA   *$40          ; DOS REGISTER          
         CMP   *$41          ; DOS REGISTER            
-        BNE   L05            ; LOOP IF NOT EQUAL
+        BNE   L05           ; LOOP IF NOT EQUAL
         BCS   L06           ; LOOP IF CARRY SET
 L14     LDY   #$56          ; POINTER
 L15     STY   *$3C          ; DOS REGISTER
