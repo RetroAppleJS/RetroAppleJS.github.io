@@ -59,13 +59,11 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [x] better top-menu tabbing function (using _URI fragment identifiers_, enabling module stickiness or direct URL to module)
 - [ ] better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
 - [ ] pasteboard scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [ ] interactive Apple II+ pop-up keyboard
 - [ ] save disk image in .dsk format (convert internal .nib format to .dsk), and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
-- [x] develop documentation tool to generate HTML from Markdown-formatted files
 - [ ] apple sound, including diskdrive noise
 - [ ] paddle/mouse capture
 - [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
