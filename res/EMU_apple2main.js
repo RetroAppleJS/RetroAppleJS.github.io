@@ -126,24 +126,46 @@ function pauseButton()
     }
 }
 
-function loadDisk()
+function loadDisk(drv)
 {
-    var file = document.getElementById('loadfile').files[0];
+    var file = document.getElementById('loadfile_'+drv).files[0];
     if (!file) return;
 
-    var fread = new FileReader();
-    fread.readAsArrayBuffer(file);
-    fread.onload = function(levent)
+    switch(drv)
     {
-        var data = new DataView(levent.target.result);
-        var size = levent.target.result.byteLength;
-        var bytes = Array(size);
-        for (var i = 0; i < size; i++)
-            bytes[i] = data.getUint8(i);
-
-        //dumpdisk(bytes);
-
-        if (size == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
-        apple2plus.loadDisk(bytes);
+        case "D1":
+            var fread1 = new FileReader();
+            fread1.readAsArrayBuffer(file);
+            fread1.onload = function(levent)
+            {
+                var data = new DataView(levent.target.result);
+                var size = levent.target.result.byteLength;
+                var bytes = Array(size);
+                for (var i = 0; i < size; i++)
+                    bytes[i] = data.getUint8(i);
+        
+                //dumpdisk(bytes);
+        
+                if (size == 143360) bytes = apple2plus.DiskObj("D1").convertDsk2Nib(bytes);
+                apple2plus.loadDisk(bytes,"D1");
+            }            
+        break;
+        case "D2":
+            var fread2 = new FileReader();
+            fread2.readAsArrayBuffer(file);
+            fread2.onload = function(levent)
+            {
+                var data = new DataView(levent.target.result);
+                var size = levent.target.result.byteLength;
+                var bytes = Array(size);
+                for (var i = 0; i < size; i++)
+                    bytes[i] = data.getUint8(i);
+        
+                //dumpdisk(bytes);
+        
+                if (size == 143360) bytes = apple2plus.DiskObj("D2").convertDsk2Nib(bytes);
+                apple2plus.loadDisk(bytes,"D2");
+            }            
+        break; 
     }
 }
