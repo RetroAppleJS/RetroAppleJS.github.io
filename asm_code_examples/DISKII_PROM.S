@@ -1,3 +1,11 @@
+;*************************************
+;***     APPLE DISK II PROM        ***
+;***        DISASSEMBLY            ***
+;***    COPYRIGHT (C) 2024 BY      ***
+;***       FREDDY VANDRIESSCHE     ***
+;***     MIT LICENSE APPLICABLE    ***
+;*************************************
+
 ORG   $C600
 
 LSLOT  = $2B   ; Last booted slot number * 16
