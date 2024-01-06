@@ -72,6 +72,7 @@ function Apple2IO(vid) {
     var video = vid;
     var key = 0x00;
 
+    // disk and ramcard objects are created here
     if(typeof(AppleDisk2)!="undefined") this.disk2 = new AppleDisk2();
     if(typeof(RamCard)!="undefined") this.ramcard = new RamCard();
  

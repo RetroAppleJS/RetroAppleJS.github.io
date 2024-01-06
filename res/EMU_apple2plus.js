@@ -157,13 +157,13 @@ function Apple2Plus(context) {
     }
 
     this.loadDisk = function(bytes,drive) {
-        var drv1 = Number(drive.slice(1))-1;
+        var drv = Number(drive.slice(1))-1;
         hw.io.disk2.diskBytes = bytes;
     }  
 
     this.dumpDisk = function(drive) {
-        var drv1 = Number(drive.slice(1))-1;
-        hw.io.disk2.dump(drv1);
+        var drv = Number(drive.slice(1))-1;
+        hw.io.disk2.dump(drv);
     }
 
     this.monitor = function(type) {
