@@ -146,7 +146,7 @@ function loadDisk(drv)
         
                 //dumpdisk(bytes);
         
-                if (size == 143360) bytes = apple2plus.DiskObj("D1").convertDsk2Nib(bytes);
+                if (size == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
                 apple2plus.loadDisk(bytes,"D1");
             }            
         break;
@@ -163,7 +163,7 @@ function loadDisk(drv)
         
                 //dumpdisk(bytes);
         
-                if (size == 143360) bytes = apple2plus.DiskObj("D2").convertDsk2Nib(bytes);
+                if (size == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
                 apple2plus.loadDisk(bytes,"D2");
             }            
         break; 

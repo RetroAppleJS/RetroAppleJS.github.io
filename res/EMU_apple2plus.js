@@ -144,8 +144,8 @@ function Apple2Plus(context) {
             alert("no key");
     }
 
-    this.DiskObj = function(drv) {
-        return hw.io.disk2[drv];
+    this.DiskObj = function() {
+        return hw.io.disk2;
     }
 
     this.keysObj = function() {
@@ -156,12 +156,14 @@ function Apple2Plus(context) {
         return hw;
     }
 
-    this.loadDisk = function(bytes,drv) {
-        hw.io.disk2[drv].diskBytes = bytes;
+    this.loadDisk = function(bytes,drive) {
+        var drv1 = Number(drive.slice(1))-1;
+        hw.io.disk2.diskBytes = bytes;
     }  
 
-    this.dumpDisk = function(drv) {
-        hw.io.disk2[drv].dump();
+    this.dumpDisk = function(drive) {
+        var drv1 = Number(drive.slice(1))-1;
+        hw.io.disk2.dump(drv1);
     }
 
     this.monitor = function(type) {

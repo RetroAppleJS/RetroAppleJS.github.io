@@ -9,7 +9,7 @@
 
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 
-function AppleDisk2(drive)
+function AppleDisk2()
 {
 
     var MOTOR_OFF =     0x08,
@@ -22,28 +22,28 @@ function AppleDisk2(drive)
         Q7H =           0x0f;
     var TRACK_SIZE =    6656;
 
-    var track = 20, phase = 0, data_latch = 0;
-    var motor = 0, drv1 = 0, q6 = 0, q7 = 0;
+    var track = 20, phase = 0, data_latch = [0,0];
+    var motor = 0, q6 = 0, q7 = 0;
     var offset = 0;
 
-    this.diskBytes = null;      // disk content
-    this.drive = drive===undefined?"D1":drive;
+    this.diskBytes = [null,null];      // disk content
+    this.drv1 = 0;
     this.bHidden = false;
 
     this.reset = function() {
         phase = 0;
         motor = 0;
-        drv1 = 0;
+        this.drv1 = 0;
         offset = 0;
         q6 = 0;
         q7 = 0;
     }
 
-    this.update = function(drive)    // private function
+    this.update = function()    // private function
     {
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
-        if(motor==1) { document.getElementById("dskLED_"+drive).style.visibility = "visible"; }
-        else document.getElementById("dskLED_"+drive).style.visibility = "hidden";
+        if(motor==1) { document.getElementById("dskLED_D"+(this.drv1+1)).style.visibility = "visible"; }
+        else document.getElementById("dskLED_D"+(this.drv1+1)).style.visibility = "hidden";
     }
     
     this.hide = function(drive)
@@ -87,35 +87,37 @@ function AppleDisk2(drive)
             switch (addr) {
             case MOTOR_OFF:
                 motor = 0;
-                this.update(this.drive);
+                this.update();
                 break;
             case MOTOR_ON:
                 motor = 1;
-                this.update(this.drive);
+                this.update();
                 break;
             case DRV0EN:
-                drv1 = 0;
+                this.drv1 = 0;
+                //console.log("select drv1 = 0")
                 break;
             case DRV1EN:
-                drv1 = 1;
+                this.drv1 = 1;
                 break;
             case Q6L:
                 q6 = 0;
                 // Strobe Data Latch for I/O
-                if (!this.diskBytes || !motor || drv1)
+                if (!this.diskBytes[this.drv1] || !motor)
                     return 0xff;
-                else {
+                else if (this.drv1==0 || this.drv1==1)
+                {
                     if (++offset == TRACK_SIZE)
                         offset = 0;
                     if (q7) {
                         // Write to disk.  Sortof works!
-                        this.diskBytes[track * TRACK_SIZE + offset] =
-                            data_latch;
-                        return data_latch; // ???
+                        this.diskBytes[this.drv1][track * TRACK_SIZE + offset] =
+                            data_latch[this.drv1];
+                        return data_latch[this.drv1]; // ???
                     }
                     else
                         // Read from disk.
-                        return this.diskBytes[track * TRACK_SIZE + offset];
+                        return this.diskBytes[this.drv1][track * TRACK_SIZE + offset];
                 }
                 // NOTREACHED
             case Q6H:
@@ -149,7 +151,7 @@ function AppleDisk2(drive)
         // console.log("AppleDisk2: write %s %s", addr.toString(16),
         //            d8.toString(16));
         if (addr == Q6H)
-            data_latch = d8;
+            data_latch[this.drv1] = d8;
     }
 
 //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  

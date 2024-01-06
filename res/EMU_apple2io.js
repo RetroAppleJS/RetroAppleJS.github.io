@@ -72,29 +72,26 @@ function Apple2IO(vid) {
     var video = vid;
     var key = 0x00;
 
-    if(typeof(AppleDisk2)!="undefined") this.disk2 = {"D1":new AppleDisk2(),"D2":new AppleDisk2()};
+    if(typeof(AppleDisk2)!="undefined") this.disk2 = new AppleDisk2();
     if(typeof(RamCard)!="undefined") this.ramcard = new RamCard();
  
     this.reset = function() {
         key = 0x00;
-        this.disk2.D1.reset();
-        this.disk2.D2.reset();
+        this.disk2.reset();
     }
     
-    this.read = function(addr,drv)
+    this.read = function(addr)
     {
-        if(drv===undefined) drv = "D1";
-
         if (addr >= KEY_DATA && addr < KEY_DATA + 0x10)
             return key;
         else if (addr >= KEY_STROBE && addr < KEY_STROBE + 0x10)
             key &= 0x7f;
         else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
         {
-            var o = this.disk2[drv].read(addr - DISK_IO);
+            var o = this.disk2.read(addr - DISK_IO);
             return o;
         }
-        else if (this.disk2[drv].diskBytes && addr >= DISK_PROM &&
+        else if (this.disk2.diskBytes && addr >= DISK_PROM &&
                  addr < DISK_PROM + DISK_PROM_SIZE)
             return disk2Rom[addr - DISK_PROM];
         else if(this.ramcard.active  // RAMCARD SOFT SWITCHES
@@ -138,12 +135,10 @@ function Apple2IO(vid) {
         return 0x00;
     }
 
-    this.write = function(addr, d8, drv)
+    this.write = function(addr, d8)
     {
-        if(drv===undefined) drv = "D1";
-
         if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
-            this.disk2["drv"].write(addr - DISK_IO, d8);
+            this.disk2.write(addr - DISK_IO, d8);
         else if(this.ramcard.active &&
             addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             return this.ramcard.write(addr - ROM_ADDR,d8)
@@ -160,6 +155,7 @@ function Apple2IO(vid) {
     }
 
     this.loadDisk = function(bytes,drv) {
-        this.disk2.loadDisk(bytes,drv);
+        //this.disk2.loadDisk(bytes,drv);
+        alert("AppleDisk2() does not have a method called loadDisk")
     }
 }
