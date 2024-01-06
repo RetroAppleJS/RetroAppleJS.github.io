@@ -92,7 +92,7 @@ function Apple2IO(vid) {
             var o = this.disk2.read(addr - DISK_IO);
             return o;
         }
-        else if (this.disk2.diskBytes && addr >= DISK_PROM &&
+        else if (this.disk2.diskBytes[this.disk2.drv] && addr >= DISK_PROM &&
                  addr < DISK_PROM + DISK_PROM_SIZE)
             return disk2Rom[addr - DISK_PROM];
         else if(this.ramcard.active  // RAMCARD SOFT SWITCHES

@@ -41,23 +41,25 @@ function AppleDisk2()
         ,"offset":0
     }];
 
-    this.diskBytes = null;      // disk content
+    this.diskBytes = [null,null];      // disk content
     this.drv = 0;
     this.bHidden = false;
 
     this.reset = function() {
-        var drv = this.drv = 0;
-        this.o[drv].phase = 0;
-        this.o[drv].motor = 0;
-        this.o[drv].offset = 0;
-        this.o[drv].q6 = 0;
-        this.o[drv].q7 = 0;
-        drv = 1;
-        this.o[drv].phase = 0;
-        this.o[drv].motor = 0;
-        this.o[drv].offset = 0;
-        this.o[drv].q6 = 0;
-        this.o[drv].q7 = 0;
+
+        this.o[0].phase = 0;
+        this.o[0].motor = 0;
+        this.o[0].q6 = 0;
+        this.o[0].q7 = 0;
+        this.o[0].offset = 0;
+
+        this.o[1].phase = 0;
+        this.o[1].motor = 0;
+        this.o[1].q6 = 0;
+        this.o[1].q7 = 0;
+        this.o[1].offset = 0;
+
+        this.drv = 0;
     }
 
     this.update = function()    // private function
@@ -124,7 +126,7 @@ function AppleDisk2()
             case Q6L:
                 this.o[drv].q6 = 0;
                 // Strobe Data Latch for I/O
-                if (!this.diskBytes || !this.o[drv].motor)
+                if (!this.diskBytes[drv] || !this.o[drv].motor)
                     return 0xff;
                 else if (this.drv==0 || this.drv==1)
                 {
@@ -132,13 +134,13 @@ function AppleDisk2()
                         this.o[drv].offset = 0;
                     if (this.o[drv].q7) {
                         // Write to disk.  Sortof works!
-                        this.diskBytes[this.o[drv].track * TRACK_SIZE + this.o[drv].offset] =
+                        this.diskBytes[drv][this.o[drv].track * TRACK_SIZE + this.o[drv].offset] =
                             this.o[drv].data_latch;
                         return this.o[drv].data_latch; // ???
                     }
                     else
                         // Read from disk.
-                        return this.diskBytes[this.o[drv].track * TRACK_SIZE + this.o[drv].offset];
+                        return this.diskBytes[drv][this.o[drv].track * TRACK_SIZE + this.o[drv].offset];
                 }
                 // NOTREACHED
             case Q6H:

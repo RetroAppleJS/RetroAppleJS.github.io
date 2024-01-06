@@ -158,7 +158,7 @@ function Apple2Plus(context) {
 
     this.loadDisk = function(bytes,drive) {
         var drv = Number(drive.slice(1))-1;
-        hw.io.disk2.diskBytes = bytes;
+        hw.io.disk2.diskBytes[ drv ] = bytes;
     }  
 
     this.dumpDisk = function(drive) {
