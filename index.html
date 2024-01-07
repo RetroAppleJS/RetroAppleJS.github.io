@@ -390,22 +390,61 @@ function COM_PopupHTML(html,s)
                     <div id="EMU_mem_map"></div>
                   </div>
 
-                  <div class=appbox style="height:80px;padding:0px 6px 0px 6px;">
+                  <div class=appbox style="text-align:left;height:80px;padding:0px 6px 0px 6px;">
         
-                      SLOTS
+                    SLOTS
                     <form name="DEVboard">
-                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">board<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
-                      <div class=appbox style="width:36px;" title="Slot">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
-                      <div class=appbox style="width:36px;" title="Slot">#1</div>
-                      <div class=appbox style="width:36px;" title="Slot">#2</div>
-                      <div class=appbox style="width:36px;" title="Slot">#3</div>
-                      <div class=appbox style="width:36px;" title="Slot">#4</div>
-                      <div class=appbox style="width:36px;" title="Slot">#5</div>
-                      <div class=appbox style="width:36px;" title="Slot">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#6"><i class="fa fa-cog"></i></button></div>
-                      <div class=appbox style="width:36px;" title="Slot">#7</div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">board<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure On-Board Slot" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#0<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#0" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#1</div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#2</div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#3</div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#4</div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#5</div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#6<br><button class=appbut onclick="javascript:" id="resetbutton" title="Configure Slot#6" style="margin-left:0px"><i class="fa fa-cog"></i></button></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;" title="Slot">#7</div>
                     </form>
                 
                   </div>
+
+                  
+                  <div class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                  <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
+                  <div style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                    <input type="range" min="0" max="250" value="0" class="slider" onchange="slider_scroll(this,250)" style="width:250px">
+                    <i class="fa fa-arrow-circle-left"></i>32<i class="fa fa-arrow-circle-right"></i>
+                  </div>
+                
+              <script>
+                    function slider_scroll(obj,max)
+                    {
+                        var pct = Math.round(1000*obj.value/max)/10;
+
+                        // Plot Line
+                        var canvas = slider_canvas;
+                        var ctx = slider_scroll_ctx;
+
+                        ctx.font = "8px Arial";
+                        //ctx.font = "8px Tahoma";
+                        //ctx.font = "8px MS Sans Serif";
+                        ctx.fillText("1A2B", 10, 50-3);
+                        ctx.fillText("3C4D", 10, 58-3);
+
+                        ctx.strokeStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.moveTo(0, 40);
+                        ctx.lineTo(300, 40);
+                        ctx.stroke();
+
+                        //ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                    const slider_canvas = document.getElementById("scopeCanvas");
+                    const slider_scroll_ctx = slider_canvas.getContext("2d");
+                  </script>
+
+                  </div>
+                 
+
                 </div>
               </div>
 

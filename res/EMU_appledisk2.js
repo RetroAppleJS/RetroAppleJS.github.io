@@ -31,6 +31,7 @@ function AppleDisk2()
         ,"q6":0
         ,"q7":0
         ,"offset":0
+        ,"stats":{"motor":0}
     },{
         "track":20
         ,"phase":0
@@ -39,6 +40,7 @@ function AppleDisk2()
         ,"q6":0
         ,"q7":0
         ,"offset":0
+        ,"stats":{"motor":0}
     }];
 
     this.diskBytes = [null,null];      // disk content
@@ -62,7 +64,7 @@ function AppleDisk2()
         this.drv = 0;
     }
 
-    this.update = function()    // private function
+    this.update = function()    // overridable function
     {
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
         if(this.o[this.drv].motor==1) { document.getElementById("dskLED_D"+(this.drv+1)).style.visibility = "visible"; }
@@ -115,10 +117,11 @@ function AppleDisk2()
             case MOTOR_ON:
                 this.o[drv].motor = 1;
                 this.update();
+                this.o[drv].stats.motor++;
+                console.log(this.o[drv].stats.motor);
                 break;
             case DRV0EN:
                 this.drv = 0;
-                //console.log("select drv = 0")
                 break;
             case DRV1EN:
                 this.drv = 1;
@@ -128,24 +131,24 @@ function AppleDisk2()
                 // Strobe Data Latch for I/O
                 if (!this.diskBytes[drv] || !this.o[drv].motor)
                     return 0xff;
-                else if (this.drv==0 || this.drv==1)
+                else
                 {
-                    if (++this.o[drv].offset == TRACK_SIZE)
-                        this.o[drv].offset = 0;
-                    if (this.o[drv].q7) {
-                        // Write to disk.  Sortof works!
-                        this.diskBytes[drv][this.o[drv].track * TRACK_SIZE + this.o[drv].offset] =
-                            this.o[drv].data_latch;
-                        return this.o[drv].data_latch; // ???
+                    if (++this.o[drv].offset == TRACK_SIZE) this.o[drv].offset = 0;
+                    var loc = this.o[drv].track * TRACK_SIZE + this.o[drv].offset;
+                    if (this.o[drv].q7)
+                    {
+                        // Write to disk.
+                        this.diskBytes[drv][loc] = this.o[drv].data_latch;
+                        return this.o[drv].data_latch;
                     }
                     else
                         // Read from disk.
-                        return this.diskBytes[drv][this.o[drv].track * TRACK_SIZE + this.o[drv].offset];
+                        return this.diskBytes[drv][loc];
                 }
                 // NOTREACHED
             case Q6H:
-                // Load data latch.  Also sense write-protect but defaults
-                // to zero below anyway.
+                // Load data latch.  Also sense write-protect
+                // but defaults to zero below anyway.
                 this.o[drv].q6 = 1;
                 break;
             case Q7L:
@@ -170,11 +173,9 @@ function AppleDisk2()
 //   ███ ███  ██   ██ ██    ██    ███████ 
 
 
-    this.write = function(addr, d8) {
-        // console.log("AppleDisk2: write %s %s", addr.toString(16),
-        //            d8.toString(16));
-        if (addr == Q6H)
-            this.o[drv].data_latch = d8;
+    this.write = function(addr, d8)
+    {
+        if (addr == Q6H) this.o[drv].data_latch = d8;
     }
 
 //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  

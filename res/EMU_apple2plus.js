@@ -74,6 +74,11 @@ function Apple2Plus(context) {
         hw.mem_mon = {}
     }
 
+    this.DSK_monitoring = function()
+    {
+        
+    }
+
     this.enable_MEM_monitoring = function(b)
     {
         hw.bMEM_monitoring = b;
