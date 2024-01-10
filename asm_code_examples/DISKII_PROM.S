@@ -1,7 +1,6 @@
 ;*************************************
 ;***     APPLE DISK II PROM        ***
-;***        DISASSEMBLY            ***
-;***    COPYRIGHT (C) 2024 BY      ***
+;***        DISASSEMBLY BY         ***
 ;***       FREDDY VANDRIESSCHE     ***
 ;***     MIT LICENSE APPLICABLE    ***
 ;*************************************
