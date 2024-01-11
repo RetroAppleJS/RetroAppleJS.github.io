@@ -295,7 +295,7 @@ function COM_PopupHTML(html,s)
                 </form>
                 </div>
                 <div class=toolbox>
-                  <button class=appbut                 onclick="javascript:alert('no sound implementation')" id="soundbutton"   title="Sound"><i  class="fa fa-volume-mute"></i></button>
+                  <button class=appbut                 onclick="javascript:oCOM.onPopUpClass(document.getElementById('soundbutton'),'fa-volume-up','fa-volume-mute');oCOM.toggleRefreshEvent('SND_trigger');"  title="Sound"><i id="soundbutton" class="fa fa-volume-mute"></i></button>
                   <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
                   <br>
                   <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>
@@ -412,7 +412,7 @@ function COM_PopupHTML(html,s)
                   <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
                   <div style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
                     <input type="range" min="0" max="250" value="0" class="slider" onchange="slider_scroll(this,250)" style="width:250px">
-                    <i class="fa fa-arrow-circle-left"></i>32<i class="fa fa-arrow-circle-right"></i>
+                    <i class="fa fa-arrow-circle-left"></i>932<i class="fa fa-arrow-circle-right"></i>
                   </div>
                 
               <script>
