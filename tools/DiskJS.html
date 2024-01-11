@@ -473,24 +473,19 @@ function download_nib()
 
 function GCR_lookup(fmt)
 {
-  var s = new Array();
-  var tbl = new Array();
+  //var s = new Array();
+  var tbl1 = [];
+  var tbl2 = [];
   switch(fmt)
   {
     case "16-sector":
-      s[s.length]  = "<div style='overflow:scroll; height:400px;'>"
-      s[s.length] = "CALCULATION FROM SCRATCH"
-      var j = 0;
+      var j = 0; 
       for(var i=128;i<256;i++)
       {
         var str = oCOM.getBinMulti(i,8);
         if(str.indexOf("000")<0) 
-        { 
-          s[s.length] = (j++)+" "+str+" "+oCOM.getHexByte(i);
-        }
+            tbl1[tbl1.length] = [j++,str,"$"+oCOM.getHexByte(i)];
       }
-
-      s[s.length] = "--------------"
 
       var str = "00>036C 01>036D 02>0370 03>0371 04>0373 " 
       +"05>0374 06>0375 07>037C 08>037D 09>0381 "
@@ -506,16 +501,36 @@ function GCR_lookup(fmt)
       +"37>03CC 38>03CD 39>03CF 3A>03D0 3B>03D1 "
       +"3C>03D2 3D>03D3 3E>03D4 3F>03D5"
 
-      s[s.length] = "EXTRACT FROM ROM"
       var j = 0;
       var sa = str.split(" ");
       for(var i=0;i<sa.length;i++)
       {
-        var d =  oCOM.base_convert(sa[i].split(">")[1],["0123456789ABCDEF"],["0123456789"])
+        var d =  oCOM.base_convert(sa[i].split(">")[1],["0123456789ABCDEF"],["0123456789"]);
         var e = (d-876)+0x96;
-        s[s.length] = (j++)+" "+oCOM.getBinMulti(e,8) +" "+ oCOM.getHexByte(e);
+        var v = oCOM.getHexByte(e)
+        tbl2[tbl2.length] = [j++,oCOM.getBinMulti(e,8),"$"+v];
       }
-      s[s.length]  = "</div>"
+
+      var ss1 = "";
+      for(var i=0;i<tbl1.length;i++)
+        ss1 += "<tr><td>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+    
+      var ss2 = "";
+      for(var i=0;i<tbl2.length;i++)
+        ss2 += "<tr><td>"+tbl2[i].join("</td><td>")+"</td></tr>\n";
+
+      var s = "<style>.tbl tr td {padding:0px 5px 0px 5px}</style>" 
+      s += "<div style='overflow:scroll; height:600px;float:left;'>";
+      s +=    "CALCULATION";
+      s +=    "<table class=tbl border=1>\n"+ss1+"</table>";
+      s +=    "</div>";
+ 
+      s +=    "<div style='overflow:scroll; height:600px;padding-left:20px'>";
+      s +=    "ROM EXTRACT"; 
+      s +=    "<table class=tbl border=1>\n"+ss2+"</table>";
+      s +=    "</div>";
+
+      
     break;
   }
 
@@ -586,7 +601,7 @@ function interpolate_arr(arr1,arr2,pct)
         <li>&nbsp;&nbsp;
           <a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a>
           <a target=_blank href="http://mirrors.apple2.org.za/apple.cabi.net/FAQs.and.INFO/A2.CSA2.FAQS.IN.HTML/apple.II.dos.and.prodos.mi.html">[more]</a></li>
-          <li><button onclick="document.getElementById('output').innerHTML+=GCR_lookup('16-sector').join('<br>')">GCR table</button></li>
+          <li><button onclick="document.getElementById('output').innerHTML+=GCR_lookup('16-sector')">GCR table</button></li>
       </ul>
     </div>
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
