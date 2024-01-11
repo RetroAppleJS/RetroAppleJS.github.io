@@ -533,7 +533,8 @@ function GCR_lookup(fmt)
         else
         {
           tbl1[i][0] = "";
-          ss1 += "<tr><td style='background-color:red'>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+          //ss1 += "<tr><td style='background-color:red'>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+          ss1 += "<tr><td>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
         }
       }
     
@@ -543,15 +544,18 @@ function GCR_lookup(fmt)
           ss2 += "<tr><td>"+tbl2[i].join("</td><td>")+"</td></tr>\n";
       }
 
-      var s = "<style>.tbl tr td {padding:0px 5px 0px 5px}</style>" 
-      s += "<div style='overflow:scroll; height:600px;float:left;'>";
+      var s = "<style>" 
+      s +=    ".tbl tr td {padding:0px 5px 0px 5px; font-size:11px;}"
+      s +=    ".tbl {margin:0px 10px 0px 0px;}"
+      s +=    "</style>"
+      s +=    "<div style='overflow:scroll; height:600px;float:left;'>";
       s +=    "CALCULATION";
-      s +=    "<table class=tbl border=1>\n"+ss1+"</table>";
+      s +=    "<table class=tbl border=0>\n"+ss1+"</table>";
       s +=    "</div>";
  
       s +=    "<div style='overflow:scroll; height:600px;padding-left:20px'>";
       s +=    "ROM EXTRACT"; 
-      s +=    "<table class=tbl border=1>\n"+ss2+"</table>";
+      s +=    "<table class=tbl border=0>\n"+ss2+"</table>";
       s +=    "</div>";
 
       
