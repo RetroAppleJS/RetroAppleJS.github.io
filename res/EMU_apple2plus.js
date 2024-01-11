@@ -74,24 +74,63 @@ function Apple2Plus(context) {
         hw.mem_mon = {}
     }
 
-    this.DSK_monitoring = function()
-    {
-        
-    }
-
     this.enable_MEM_monitoring = function(b)
     {
         hw.bMEM_monitoring = b;
     }
 
+    //const snd_spin  = new Audio('res/DiskII_spin.wav');
+    //snd_spin.createBufferSource();
+    //snd_spin.loop = true;
+
+    /*
+    const audioCtx = new window.AudioContext();
+    const source = audioCtx.createBufferSource();
+    const arrayBuffer = await fetch('res/DiskII_spin.wav').then((res) => res.arrayBuffer());
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    source.buffer = audioBuffer;
+    source.loop = true;
+    */
+
+
+
+
+
+    this.DSK_monitoring = function()
+    {
+        var d2 = hw.io.disk2;
+        // TODO activate some leds
+    }
+
+   const startOscillator = async() =>
+   {
+        audioContext = new AudioContext();
+        await audioContext.audioWorklet.addModule('worklet7oscillator.js')
+        speaker = new AudioWorkletNode(audioContext,'oscillator');
+        speaker.connect(audioContext.destination)
+   }
+
+
+
+    this.SND_trigger = function()
+    {
+
+        var d2 = hw.io.disk2;
+        if(d2.o[0].motor==1)
+        {
+            // BROWSERS DO NOT MANAGE TO LOOP SOUNDS !!
+        }
+  
+    }
 
     this.dashboard_refresh = function(args)
     {
         oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
         oEMU.CPU_dutycycle_idx++;
-        if(oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
+        if(oCOM.bRefreshEvent && oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
-            for(var _o in oCOM.RefreshEvent_arr) if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
+            for(var _o in oCOM.RefreshEvent_arr)
+                if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
             oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
         }
     }

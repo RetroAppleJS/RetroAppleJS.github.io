@@ -47,6 +47,11 @@ function AppleDisk2()
     this.drv = 0;
     this.bHidden = false;
 
+    this.logs = [];
+    this.logs_idx = 0;
+    this.prev_name = "";
+    this.prev_name_cnt = 0;
+
     this.reset = function() {
 
         this.o[0].phase = 0;
@@ -69,6 +74,34 @@ function AppleDisk2()
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
         if(this.o[this.drv].motor==1) { document.getElementById("dskLED_D"+(this.drv+1)).style.visibility = "visible"; }
         else document.getElementById("dskLED_D"+(this.drv+1)).style.visibility = "hidden";
+    }
+
+    this.update_logs = function(name)    // overridable function
+    {
+        /*
+        name += " track"+this.o[this.drv].track;
+
+        if(this.prev_name != name)
+        {
+            var n = this.prev_name.split(" ")[0];
+            if(this.prev_name != "") 
+            {
+                if(this.o[this.drv][n]===undefined)
+                console.log(this.prev_name+" ["+this.prev_name_cnt+"]");
+                else
+                    console.log(this.prev_name+" "+(this.o[this.drv][n])+" ["+this.prev_name_cnt+"]");
+            }
+            this.prev_name_cnt = 1;
+        }
+        else this.prev_name_cnt++
+
+        this.prev_name = name;
+        */
+    }
+
+    this.update_logs_drv = function()
+    {
+        console.log("D"+(this.drv+1));
     }
     
     this.hide = function(drive)
@@ -93,17 +126,25 @@ function AppleDisk2()
                 if (((this.o[drv].phase + 1) & 3) == p) {
                     // Ascending order, track arm moves inward.
                     this.o[drv].phase = p;
+                    this.update_logs("phase");
                     if ((this.o[drv].phase & 1) == 0) {
                         if (++this.o[drv].track >= 35)
-                            this.o[drv].track = 35;
+                        {
+                            this.o[drv].track = 35; // CLICK! CLICK! CLICK!
+                            this.update_logs("CLICK !");
+                        }
                     }
                 }
                 else if (((this.o[drv].phase - 1) & 3) == p) {
                     // Descending order, track arm moves outward.
                     this.o[drv].phase = p;
+                    this.update_logs("phase");
                     if ((this.o[drv].phase & 1) == 0) {
                         if (--this.o[drv].track < 0)
+                        {
                             this.o[drv].track = 0; // CLICK! CLICK! CLICK!
+                            this.update_logs("CLICK !");
+                        }
                     }
                 }
             }
@@ -112,22 +153,28 @@ function AppleDisk2()
             switch (addr) {
             case MOTOR_OFF:
                 this.o[drv].motor = 0;
-                this.update();
+                //this.update();
+                this.update_logs("motor");
+                this.logs_idx++;
                 break;
             case MOTOR_ON:
                 this.o[drv].motor = 1;
-                this.update();
-                this.o[drv].stats.motor++;
-                console.log(this.o[drv].stats.motor);
+                //this.update();
+                //this.o[drv].stats.motor++;
+                this.update_logs("motor");
+                //console.log(this.o[drv].stats.motor);
                 break;
             case DRV0EN:
                 this.drv = 0;
+                this.update_logs_drv();
                 break;
             case DRV1EN:
                 this.drv = 1;
+                this.update_logs_drv();
                 break;
             case Q6L:
                 this.o[drv].q6 = 0;
+                this.update_logs("q6");
                 // Strobe Data Latch for I/O
                 if (!this.diskBytes[drv] || !this.o[drv].motor)
                     return 0xff;
@@ -150,15 +197,20 @@ function AppleDisk2()
                 // Load data latch.  Also sense write-protect
                 // but defaults to zero below anyway.
                 this.o[drv].q6 = 1;
+                this.update_logs("q6");
                 break;
             case Q7L:
                 // Prepare latch for input.
                 this.o[drv].q7 = 0;
+                this.update_logs("q7");
                 break;
             case Q7H:
                 // Prepare latch for output.
                 this.o[drv].q7 = 1;
+                this.update_logs("q7");
                 break;
+            default:
+                console.log("unknown "+oCOM.getHexByte(addr))
             }
         }
 
@@ -175,7 +227,7 @@ function AppleDisk2()
 
     this.write = function(addr, d8)
     {
-        if (addr == Q6H) this.o[drv].data_latch = d8;
+        if (addr == Q6H) this.o[this.drv].data_latch = d8;
     }
 
 //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
@@ -186,7 +238,8 @@ function AppleDisk2()
 
     this.convertDsk2Nib = function(dskBytes)
     {
-        var sixTwo = [
+        // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
+        var sixTwo = [  
             0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
             0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
             0xb4, 0xb5, 0xb6, 0xb7, 0xb9, 0xba, 0xbb, 0xbc,
