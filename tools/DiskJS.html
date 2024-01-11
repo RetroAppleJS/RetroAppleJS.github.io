@@ -476,6 +476,7 @@ function GCR_lookup(fmt)
   //var s = new Array();
   var tbl1 = [];
   var tbl2 = [];
+  var idx  = {};
   switch(fmt)
   {
     case "16-sector":
@@ -484,7 +485,11 @@ function GCR_lookup(fmt)
       {
         var str = oCOM.getBinMulti(i,8);
         if(str.indexOf("000")<0) 
-            tbl1[tbl1.length] = [j++,str,"$"+oCOM.getHexByte(i)];
+        {
+          var v = "$"+oCOM.getHexByte(i);
+          tbl1[tbl1.length] = [j++,str,v];
+        }
+
       }
 
       var str = "00>036C 01>036D 02>0370 03>0371 04>0373 " 
@@ -507,17 +512,36 @@ function GCR_lookup(fmt)
       {
         var d =  oCOM.base_convert(sa[i].split(">")[1],["0123456789ABCDEF"],["0123456789"]);
         var e = (d-876)+0x96;
-        var v = oCOM.getHexByte(e)
-        tbl2[tbl2.length] = [j++,oCOM.getBinMulti(e,8),"$"+v];
+        var v = "$"+oCOM.getHexByte(e);
+        tbl2[tbl2.length] = [j++,oCOM.getBinMulti(e,8),v];
+        idx[v] = true;
       }
 
-      var ss1 = "";
+      //var s = "";
+      //for(var i in idx) s+= i+" ";
+      //alert(s);
+
+
+      var ss1 = ""; var j = 0;
       for(var i=0;i<tbl1.length;i++)
-        ss1 += "<tr><td>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+      {
+        if(idx[ tbl1[i][2] ])
+        {
+          tbl1[i][0] = j++;
+          ss1 += "<tr><td>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+        }
+        else
+        {
+          tbl1[i][0] = "";
+          ss1 += "<tr><td style='background-color:red'>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+        }
+      }
     
       var ss2 = "";
       for(var i=0;i<tbl2.length;i++)
-        ss2 += "<tr><td>"+tbl2[i].join("</td><td>")+"</td></tr>\n";
+      {
+          ss2 += "<tr><td>"+tbl2[i].join("</td><td>")+"</td></tr>\n";
+      }
 
       var s = "<style>.tbl tr td {padding:0px 5px 0px 5px}</style>" 
       s += "<div style='overflow:scroll; height:600px;float:left;'>";
