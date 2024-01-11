@@ -65,7 +65,7 @@ L04     LDA   SLOTIO,X      ; TRIGGER I/O
         BPL   L04           ; LOOP #$50 (80) times
         STA   *$26          ; LORES cursor row address (LO)      
         STA   *DOS.2        ; DOS register  
-        STA   *DOS.4          ; DOS register
+        STA   *DOS.4        ; DOS register
         LDA   #$08
         STA   *$27          ; LORES cursor row address (HI)
 L05     CLC
