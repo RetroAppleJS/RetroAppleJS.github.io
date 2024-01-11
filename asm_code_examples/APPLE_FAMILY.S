@@ -96,7 +96,7 @@ PB.0   PHA            ;save the value on stack
        JSR M.COUT     ;print character on screen
        PLA            ;restore value
        ASL A          ;shift msb out into carry
-       BNE PB.0      ;if msb was the extra index bit, a is now zero, otherwise continue loop
+       BNE PB.0       ;if msb was the extra index bit, a is now zero, otherwise continue loop
        PLA
        RTS            ;by this way all 8 bits of a are processed even if a=0
 
