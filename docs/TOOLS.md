@@ -111,6 +111,8 @@ The camera capture tool enables your default laptops camera, and transform that 
 
 <img src="../res/apple-disk-ii_256.png" align=left width=30% />The emulator natively works with __.nib formatted disk images__.  Therefore, it can read .nib files from your local hard drive to the emulator's memory and download .nib files raw from memory.   The emulator also accepts loading .dsk image files, but it always does that by converting from .dsk format to .nib before storing the image in memory.
 This tool does the same thing, plus some extra functions like making a full hex dump and displaying a (16x35) heat map laying out 16 columns (sectors) and 35 rows (tracks).
+Another button "GCR table" explains the essential difference between the .dsk and .nib file format.  During the design of the interface card to the Apple II disk drives, a clever workaround was found to overcome the high cost associated with hard sector formatting that besides additional sensors, required extra driver chips to assure accurate spin control.  Soft sector formatting however required writing some extra bits on the disk to keep the location of the magnetic bits in sync with expected time windows for sequential magnetic pickup.  GCR = Group Code Recording is an encoding method allowing this sort of soft alignment encoding.
+
 
 ### SIDchipJS.html
 
