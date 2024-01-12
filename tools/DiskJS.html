@@ -534,8 +534,8 @@ function GCR_lookup(fmt)
         {
           tbl1[i][0] = "";
           //ss1 += "<tr><td style='background-color:red'>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
-          ss1 += "<tr><td>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
-        }
+          ss1 += "<tr><td style=background-color:rgba(255,0,0,0.1)>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+        } 
       }
     
       var ss2 = "";
@@ -549,7 +549,7 @@ function GCR_lookup(fmt)
       s +=    ".tbl {margin:0px 10px 0px 0px;}"
       s +=    "</style>"
       s +=    "<div style='overflow:scroll; height:600px;float:left;'>";
-      s +=    "&nbsp;&nbsp;&nbsp;CALCULATION";
+      s +=    "&nbsp;&nbsp;COMPUTED";
       s +=    "<table class=tbl border=0>\n"+ss1+"</table>";
       s +=    "</div>";
  
