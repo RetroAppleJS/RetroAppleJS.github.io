@@ -286,21 +286,12 @@ function AppleDisk2()
                 var doffs = secSkew[sec] * 256 + track * 4096;
                 for (i = 0; i < 256; i++) {
                     var d8 = dskBytes[doffs + i];
+
                     prenib[i] = (d8 >> 2);
-  
-                    if (i < 86)
-                        prenib[256 + 85 - i] =
-                            ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
-                    else if (i < 172)
-                        prenib[256 + 171 - i] |=
-                            (((d8 & 0x02) << 1) | ((d8 & 0x01) << 3));
-                    else
-                        prenib[256 + 257 - i] |=
-                            (((d8 & 0x02) << 3) | ((d8 & 0x01) << 5));
-  
-                    if (i < 2)
-                        prenib[257 - i] |=
-                            (((d8 & 0x02) << 3) | ((d8 & 0x01) << 5));
+                    if      (i < 86)    prenib[256 + 85  - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
+                    else if (i < 172)   prenib[256 + 171 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);
+                    else                prenib[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
+                    if      (i < 2)     prenib[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
                 }
   
                 // Encode nibbilized data.
@@ -313,7 +304,7 @@ function AppleDisk2()
                     addBytes([ sixTwo[prev ^ prenib[i]] ]);
                     prev = prenib[i];
                 }
-                addBytes([ sixTwo[prev] ]); // add one byte
+                addBytes([ sixTwo[prev] ]); // add the last remaining byte
   
                 // Data field epilogue
                 addBytes([0xde,0xaa,0xeb]);
