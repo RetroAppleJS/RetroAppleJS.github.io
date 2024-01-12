@@ -15,7 +15,7 @@ DOS.2   = $3D  ; VARIABLE 2
 DOS.3   = $40  ; VARIABLE 3
 DOS.4   = $41  ; VARIABLE 4
 
-; Build lookup table (values 0>63)
+; Build GCR lookup table (values 0-63)
 ; ranging from 036C > 03D5
 
         LDX   #$20          ; 32
