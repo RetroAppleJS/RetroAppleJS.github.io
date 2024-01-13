@@ -3,8 +3,11 @@
   <title>ayumi.js</title>
   <script type="text/javascript" src="ayumi.js"></script>
   <script type="text/javascript" src="pako_inflate.min.js"></script>
-  <button onclick="start()">START</button>
+
   <script defer type="text/javascript">
+
+  function PLAY()
+  {
     var psgdump;
     var frameCount;
     var frameRate;
@@ -105,9 +108,11 @@
 
         console.log(offset, frameCount, loopFrame, clockRate, frameRate, trackName, authorName);
     }
+}
   </script>
 </head>
 
 <body>
+    <button onclick="PLAY()">START</button>
 </body>
 </html>
