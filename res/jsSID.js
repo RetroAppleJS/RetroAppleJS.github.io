@@ -3,19 +3,21 @@
 
 // check https://github.com/jhohertz/jsSID
 
+function construct_SID()
+{
+    if (typeof SIDplayer === 'undefined') SIDplayer = new jsSID(16384,0.0005);  
+}
 
 function playSID(sidurl, subtune) {
     //convenience function to create default-named jsSID object and play in one call, easily includable as inline JS function call in HTML
-    if (typeof SIDplayer === 'undefined')
-        SIDplayer = new jsSID(16384,0.0005);
+    construct_SID();
     //create the object if doesn't exist yet
     SIDplayer.loadstart(sidurl, subtune);
 }
 
 function playSID_b64(b64, subtune) {
     //convenience function to create default-named jsSID object and play in one call, easily includable as inline JS function call in HTML
-    if (typeof SIDplayer === 'undefined')
-        SIDplayer = new jsSID(16384,0.0005);
+    construct_SID();
     //create the object if doesn't exist yet
     SIDplayer.loadstart_b64(b64, subtune);
 }
@@ -85,6 +87,11 @@ function jsSID(bufferlen, background_noise)
         return bytes;
     }
 
+    this._ArrayTobase64 = function bufferToBase64(bytes) 
+    {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
+    }
+  
     this.loadinit_b64 = function(b64, subt)
     {
         loaded = 0;
