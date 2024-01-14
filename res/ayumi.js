@@ -196,7 +196,7 @@ Ayumi.prototype.updateMixer = function() {
 }
 
 // FVD 14-01-2024
-Ayumi.prototype.pause = function()
+Ayumi.prototype.stop = function()
 {
   this.configure(true,0,0);
 }
