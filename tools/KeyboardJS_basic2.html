@@ -12,8 +12,11 @@
         <div id="topmenu"></div>
 
 <div id="main">
-<div style="float:left;margin-left:150px;width:560;height:384;background-color:black;" id="screen"></div>
-<div id="dump" style="border:1px solid;width:400px;height:382px;overflow-x:hidden;overflow-y:auto;"></div>
+
+    <div style="float:left;margin-left:150px;width:560;height:384;background-color:white;" id="screen">
+    </div>
+
+<div id="dump" style="font-size:10px;border:1px solid;width:400px;height:382px;overflow-x:hidden;overflow-y:auto;"></div>
 <div id="kbd"></div>
     
 
@@ -27,8 +30,10 @@
                 oTxtScr.cursor_next();
                 //alert("0x"+code.toString(16).toUpperCase());
                 var id = document.getElementById("dump");
-                id.innerHTML += oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1]+"<br>"
+                id.innerHTML += "0x"+code.toString(16).toUpperCase()+" "+oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1]+"<br>"
                 //console.log(oTxtScr.cursor_pos[0]+","+oTxtScr.cursor_pos[1])
+
+                id.scrollTop = id.scrollHeight;
             }
         }}
 
@@ -98,6 +103,59 @@
             xm = img.width;  
             ys = Math.round(ym/yn);
             xs = Math.round(xm/xn);
+
+            /////////////////////////////////////
+
+
+        var scrDiv = [2,1];
+        var scMem = Array(scrDiv[0]).fill(null).map(() => Array(scrDiv[1]));
+        scMem[0,0] = "A"
+        scMem[1,0] = "Z"
+        scMem[2,0] = "_"
+        scMem[3,0] = "+"
+
+        for(var y=0;y<scrDiv[1];y++)
+        {
+            for(var x=0;x<scrDiv[0];x++)
+            {
+                var sco     = [x,y];
+                var key     = scMem[x,y]?scMem[x,y]:" "
+                var keyMap  ="@ABCDEFGHIJKLMNO"
+                            +"PQRSTUVWXYZ[\\]^_"
+                            +" !\"#$%&'()*+,-./"
+                            +"0123456789:;<=>?"
+
+                var imgSize  = [224,192];
+                var imgDiv   = [16,12];
+
+                var charSize = [imgSize[0]/16,imgSize[1]/12];
+                var charpos = 64 + 64 + keyMap.indexOf(key);
+                var charco   = [charpos%imgDiv[0],Math.floor(charpos/imgDiv[0])];
+
+                var x1 = (imgDiv[0]-charco[0]-1)*imgSize[0]/imgDiv[0];
+                var y1 = (imgDiv[1]-charco[1]-1)*imgSize[1]/imgDiv[1];
+                var x2 = charSize[0]*charco[0];
+                var y2  = charSize[1]*charco[1];
+
+                var el_s = document.getElementById("screen");
+                el_s.innerHTML += "<img id='c"+sco[0]+"."+sco[1]+"' src='../res/appleIIplus_font.gif'>";
+                var el = document.getElementById("c"+sco[0]+"."+sco[1]);
+                el.style.clipPath="inset("+y2+"px "+x1+"px "+y1+"px "+x2+"px)";
+
+                el.style.position = "absolute"
+                el.style.left = 10 + sco[0]*charSize[0];
+                el.style.top = -160 + sco[1]*charSize[1];
+    /*
+                el.style.position = "relative"
+                el.style.left = (-charco[0]+sco[0])*charSize[0];
+                el.style.top = -charco[1]*charSize[1];
+    */
+            }
+        }
+
+
+
+
         }
 
         function img_handler(curx,cury,c)
