@@ -1,7 +1,17 @@
+<!--
+//   ____    ____                __        _                  __                                     __     _____   ______   
+//  |_   \  /   _|              [  |  _   (_)                [  |                                   |  ]   |_   _|.' ____ \  
+//    |   \/   |   .--.   .---.  | | / ]  __   _ .--.   .--./)| |.--.    .--.   ,--.   _ .--.   .--.| |      | |  | (___ \_| 
+//    | |\  /| | / .'`\ \/ /'`\] | '' <  [  | [ `.-. | / /'`\;| '/'`\ \/ .'`\ \`'_\ : [ `/'`\]/ /'`\' |  _   | |   _.____`.  
+//   _| |_\/_| |_| \__. || \__.  | |`\ \  | |  | | | | \ \._//|  \__/ || \__. |// | |, | |    | \__/  | | |__' |  | \____) | 
+//  |_____||_____|'.__.' '.___.'[__|  \_][___][___||__].',__`[__;.__.'  '.__.' \'-;__/[___]    '.__.;__]`.____.'   \______.' 
+//                                                    ( ( __))                                                              
+-->
+
 <html>
     <html style="background-color:#B0B0B0"><head>
         <title>Mockingboard Emulator</title>
-        <meta name="description" content="">
+        <meta name="description" content="Highly precise emulation of AY-3-8910 and YM2149 sound chips.">
         <meta name="author" content="Freddy Vandriessche">
         <meta charset="utf-8"> 
         <link rel="stylesheet"        href="../res/COM_MAIN.css">
@@ -12,8 +22,6 @@
       
 
   <script defer type="text/javascript">
-
-
 
 
     var CONF_version="0.0.2";
@@ -31,6 +39,12 @@
     var regs = [];
     var ayumi = new Ayumi;
     var audioContext;
+
+//   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
+//  ██       ██    ██ ██     ██      ██    ██ ████   ██    ██    ██   ██ ██    ██ ██      ██      
+//  ██   ███ ██    ██ ██     ██      ██    ██ ██ ██  ██    ██    ██████  ██    ██ ██      ███████ 
+//  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██    ██    ██   ██ ██    ██ ██           ██ 
+//   ██████   ██████  ██      ██████  ██████  ██   ████    ██    ██   ██  ██████  ███████ ███████ 
 
     function init_gui(_o)
     { 
@@ -69,27 +83,6 @@
         oReq.send();
     }
 
-    function load_b64(b64)
-    {
-        var arrayBuffer = _base64ToArray(b64);
-        if(arrayBuffer)
-        {
-            var fym = new Uint8Array(arrayBuffer);
-            psgdump = pako.inflate(fym);
-        }
-    }
-
-    function _base64ToArray(base64)
-    {
-        var binary_string = window.atob(base64);
-        var len = binary_string.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) {
-            bytes[i] = binary_string.charCodeAt(i);
-        }
-        return bytes;
-    }
-
     function showvol(pos)
     {
         document.getElementById('voldisp').innerHTML = pos;
@@ -102,6 +95,11 @@
         ayumi.setMasterVolume(scale);
     }
 
+//  ██████  ██       █████  ██    ██ ███████ ██████  
+//  ██   ██ ██      ██   ██  ██  ██  ██      ██   ██ 
+//  ██████  ██      ███████   ████   █████   ██████  
+//  ██      ██      ██   ██    ██    ██      ██   ██ 
+//  ██      ███████ ██   ██    ██    ███████ ██   ██ 
 
     updateState = function(renderer, r)
     {
@@ -180,6 +178,12 @@
         console.log(offset, frameCount, loopFrame, clockRate, frameRate, trackName, authorName);
     }
 
+//  ██████  ███████ ███    ███  ██████      ███████  ██████  ███    ██  ██████  
+//  ██   ██ ██      ████  ████ ██    ██     ██      ██    ██ ████   ██ ██       
+//  ██   ██ █████   ██ ████ ██ ██    ██     ███████ ██    ██ ██ ██  ██ ██   ███ 
+//  ██   ██ ██      ██  ██  ██ ██    ██          ██ ██    ██ ██  ██ ██ ██    ██ 
+//  ██████  ███████ ██      ██  ██████      ███████  ██████  ██   ████  ██████  
+
     var d_fym = 
     "eNrtXU1sXNUVnrE9tmf8W1QiEw/gRaTQNlAHBIQ2HqfdtFUXYIRKUBFSFE8ouCEpAQJNdrGDVDVjlxZX"
     +"6o8nBKkxTRYl6ZYF2cSgrqp60lWQN121cbopqEK0977z3nn3nbnvef5/PN+HZ9493z33fvfcd8+byft"
@@ -248,12 +252,41 @@
     +"+Qv8hf5i/xF/iJ/kb/IXwAAgPYBrgkAAAAAAAAAAAAAAAAAAAAAAAAALY7/AQDQrhiELnShC10crxAv"
     +"4kW8iBfxIl7Ei3gRL+JFvIgX8QIAAHQE/g8gc9bR"
 
+// ████████  █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
+//    ██    ██   ██ ██ ██          ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+//    ██    ███████ ██ ██          █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+//    ██    ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+//    ██    ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
 
+    function load_b64(b64)
+    {
+        var arrayBuffer = _base64ToArray(b64);
+        if(arrayBuffer)
+        {
+            var fym = new Uint8Array(arrayBuffer);
+            psgdump = pako.inflate(fym);
+        }
+    }
 
+    function _base64ToArray(base64)
+    {
+        var binary_string = window.atob(base64);
+        var len = binary_string.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes;
+    }
     
   </script>
-
-
+<!--
+//  ██   ██ ████████ ███    ███ ██      
+//  ██   ██    ██    ████  ████ ██      
+//  ███████    ██    ██ ████ ██ ██      
+//  ██   ██    ██    ██  ██  ██ ██      
+//  ██   ██    ██    ██      ██ ███████ 
+-->
 <body class="slider_main" onload="init_gui();">
 
 <div id="slider_title"></div>
