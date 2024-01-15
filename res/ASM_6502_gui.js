@@ -1,3 +1,23 @@
+function ASM_init()
+{
+    oCOM.URLP.parse(document.location.toString());
+    var d = oCOM.URLP.uri["d"];
+    if(d===undefined || d.length==0) return null;
+
+    var ab = oCOM.base64ToArrayBuffer(d);
+    if(ab==null) return null;
+
+    const inflator = new pako.Inflate();
+    inflator.push(ab);
+
+    var txt = inflator.result;
+    if(txt===undefined) return null;
+
+    var enc = new TextDecoder("utf-8");
+    var txt = enc.decode(txt);
+    document.forms.ass.srcfield.value = txt;
+}
+
 var TFUNCTION_str = "";
 for(var i in _CFG_TFUNCTION)
 {
@@ -488,3 +508,5 @@ function asmHelp() {
     '      </tr>' +
     '      </tbody></table>'
 }
+
+oCOM.addToEventStack("onload",ASM_init);

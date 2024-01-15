@@ -28,6 +28,22 @@ function COM()
     return r;
   }
 
+  this.base64ToArrayBuffer = function(base64)
+  {
+      try{ var binary_string = window.atob(base64); } catch(e) { return null }
+      var len = binary_string.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) {
+          bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes;
+  }
+
+  this.ArrayBufferTobase64 = function(bytes) 
+  {
+      return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
+  }
+
   this.base_convert = function (str, fromBase, toBase)
   {
     if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
@@ -220,6 +236,58 @@ function COM()
     //.val.value = arr[idx];
     //alert("_TABS['"+tab+"']['"+option+"'] = '"+arr[idx]+"'");
   }
+
+    /////////////////////
+    // URL PARSER      //
+    /////////////////////
+
+  this.URLP =
+  {
+    url:"",
+    uri:{},
+    merge: function (_uri1,_uri2)
+    {
+      var _o = new Array();
+      for(_i in _uri1)
+        _o[_i] = _uri1[_i];
+      for(_i in _uri2)
+        _o[_i] = _uri2[_i]; 
+      return _o[_i];
+    },
+    addURI: function (_uri2)
+    {
+      for(_i in _uri2)
+        if(_uri2[_i])
+          this.uri[_i] = _uri2[_i];
+        else
+          delete this.uri[_i];
+    },
+    getURI: function ()
+    {
+      var _str = ""
+      for(_i in this.uri)
+      {
+        if(this.uri[_i])
+          _str += (_str?"&":"?") + _i + "=" + this.uri[_i];
+      }
+      return _str;
+    },
+    parse: function (_url)
+    {
+      var _ppos = _url.lastIndexOf("#");
+      if(_ppos>0) _url = _url.substring(0,_ppos);
+      var _urlarr = _url?_url.split("?"):new Array("","");
+      var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
+      this.url = _urlarr[0];
+  
+      this.uri = new Array();
+      for(var _i=0;_i<_urlargs.length;_i++)
+        if(_urlargs[_i])
+          this.uri[_urlargs[_i].split("=")[0]] = _urlargs[_i].split("=")[1];
+    }
+  }
+
+
 
     /////////////////////
     // EVENT SEQUENCER //
