@@ -16,7 +16,7 @@
 
 
 
-    var CONF_version="1.0.0";
+    var CONF_version="1.0.1";
     var CONF_builddate="20240114-190000";
 
 
@@ -66,7 +66,12 @@
                 var dump = deflator.result
 
                 var l2 = dump.byteLength;
-                var l3 = _ArrayTobase64(dump).length;
+
+                try {  var l3 = _ArrayTobase64(dump).length; }
+                catch({ name, message })
+                {   
+                    alert("_ArrayTobase64:"+name+" "+message);
+                }
 
 
                 //alert(l1+"->"+l2+" ("+(Math.round(10000*l2/l1)/100)+"%) BASE64:"+l3+" ("+(Math.round(10000*l3/l1)/100)+"%)");
