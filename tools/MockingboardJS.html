@@ -95,6 +95,13 @@
         document.getElementById('voldisp').innerHTML = pos;
     }
 
+    function change_volume(pos)
+    {
+        document.getElementById('voldisp').innerHTML = pos;
+        var scale = Math.round(pos/100*255);
+        ayumi.setMasterVolume(scale);
+    }
+
 
     updateState = function(renderer, r)
     {
@@ -264,7 +271,7 @@
             </table>
         </li>
         <li>volume:
-            <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="showvol(this.value);" onchange="for(var i=0;i<ayumi.channels.length;i++){ayumi.setVolume(0,Math.round(this.value/100*255))};showvol(this.value);"></input>
+            <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="change_volume(this.value);" onchange="change_volume(this.value);"></input>
             <span id="voldisp">100</span>%<br/>
         </li>
     </ul>

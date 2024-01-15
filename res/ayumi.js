@@ -65,6 +65,7 @@ Ayumi = function() {
 
   this.left = 0.0;
   this.right = 0.0;
+  this.mastervolume = 1.0;
 
   this.interpolatorLeft = {
    c: new Float64Array(4),
@@ -236,6 +237,11 @@ Ayumi.prototype.setMixer = function(index, tOff, nOff, eOn) {
   this.channels[index].eOn = eOn & 1;
 }
 
+Ayumi.prototype.setMasterVolume = function(volume)
+{
+    this.mastervolume = volume>1?1:(volume<0)?0:volume/0xff;
+}
+
 Ayumi.prototype.setVolume = function(index, volume) {
   this.channels[index].volume = volume & 0x0f;
 }
@@ -341,7 +347,7 @@ Ayumi.prototype.decimate = function(x) {
   for(var i = 0; i < DECIMATE_FACTOR; i++) {
     x[FIR_SIZE - DECIMATE_FACTOR + i] = x[i];
   }
-  return y;
+  return y * this.mastervolume;
 }
 
 Ayumi.prototype.process = function() {
@@ -377,13 +383,13 @@ Ayumi.prototype.process = function() {
       yRight[3] = this.right;
 
       y1 = yLeft[2] - yLeft[0];
-      cLeft[0] = 0.5 * yLeft[1] + 0.25 * (yLeft[0] + yLeft[2]);
-      cLeft[1] = 0.5 * y1;
-      cLeft[2] = 0.25 * (yLeft[3] - yLeft[1] - y1);
+      cLeft[0] = 0.5  * yLeft[1]    + 0.25 * (yLeft[0]  + yLeft[2]);
+      cLeft[1] = 0.5  * y1;
+      cLeft[2] = 0.25 * (yLeft[3]   - yLeft[1] - y1);
 
       y1 = yRight[2] - yRight[0];
-      cRight[0] = 0.5 * yRight[1] + 0.25 * (yRight[0] + yRight[2]);
-      cRight[1] = 0.5 * y1;
+      cRight[0] = 0.5  * yRight[1]  + 0.25 * (yRight[0] + yRight[2]);
+      cRight[1] = 0.5  * y1;
       cRight[2] = 0.25 * (yRight[3] - yRight[1] - y1);
     }
     firLeft[i] = (cLeft[2] * this.x + cLeft[1]) * this.x + cLeft[0];
