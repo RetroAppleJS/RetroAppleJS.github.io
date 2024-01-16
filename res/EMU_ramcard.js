@@ -4,7 +4,8 @@
 //
 // EMU_ramcard.js
 
-oEMU.component.IO["RamCard"] = {RamCard};
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":new RamCard()}}}
+else oEMU.component.IO.RamCard = new RamCard();
 
 function RamCard()
 {
@@ -137,8 +138,6 @@ function RamCard()
     this.RAMCARD = new Uint8Array(8192);  // 8K  
 
 }
-
-// replacement of Brahma Reddy
 
 /*  EXAMPLE CODE
 

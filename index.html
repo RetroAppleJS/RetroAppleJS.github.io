@@ -295,17 +295,32 @@ function COM_PopupHTML(html,s)
                   <button class=appbut                 onclick="javascript:oCOM.onPopUpClass(document.getElementById('soundbutton'),'fa-volume-up','fa-volume-mute');oCOM.toggleRefreshEvent('SND_trigger');"  title="Sound"><i id="soundbutton" class="fa fa-volume-mute"></i></button>
                   <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
                   <br>
-                  <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>
-                  <button class=appbut value="Restart" onclick="javascript:restartButton()"   id="restartbutton" title="Reboot"><i class="fa fa-power-off"></i></button>
+                  <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>                  
+                  <button class=appbut value="Restart" onclick="javascript:restartButton()"   id="restartbutton" title="Restart"><i class="fa fa-power-off"></i></button>
                 </div>
                 <div class=toolbox>
                     <div class=appbut style="padding:5px 5px 0px 5px;margin-top:0px;text-align:center">
-                      <button class=appbut value="Drive1" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <input type="file"  id="loadfile_D1" value="Disk1" onchange="javascript:loadDisk('D1')">
+
+
+                      <button class=appbut value="Drive1" onclick="javascript:document.getElementById('f_D1').reset();loadDisk_fromFile(null,'D1')" onmouseover="this.innerHTML='Eject'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <form id="f_D1" style="display:inline;"><input type="file"  id="loadfile_D1" onchange="javascript:loadDisk_fromFile(this,'D1')"></form>
                       <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
                     </div>
                     <div class=appbut style="padding:0px 5px 5px 5px;margin-top:0px;text-align:center">
-                      <button class=appbut value="Drive2" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive2'">Drive1</button> <input type="file"  id="loadfile_D2" value="Disk2" onchange="javascript:loadDisk('D2')">
+                    
+                      <button class=appbut value="Drive2" onclick="javascript:document.getElementById('f_D2').reset();loadDisk_fromFile(null,'D2')" onmouseover="this.innerHTML='Eject'" onmouseout="this.innerHTML='Drive2'">Drive1</button> <form id="f_D2" style="display:inline;"><input type="file"  id="loadfile_D2" onchange="javascript:loadDisk_fromFile(this,'D2')"></form>
                       <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+
+  
+
+                      <!--
+                      <button class=appbut value="Drive1" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <input type="file"  id="loadfile_D1" value="Disk1" onchange="javascript:loadDisk_fromFile(this,'D1')">
+                      <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                    </div>
+                    <div class=appbut style="padding:0px 5px 5px 5px;margin-top:0px;text-align:center">
+                      <button class=appbut value="Drive2" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive2'">Drive1</button> <input type="file"  id="loadfile_D2" value="Disk2" onchange="javascript:loadDisk_fromFile(this,'D2')">
+                      <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                      -->
+
                     </div>
                  </div>
                  <!--

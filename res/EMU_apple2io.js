@@ -72,9 +72,8 @@ function Apple2IO(vid) {
     var video = vid;
     var key = 0x00;
 
-    // disk and ramcard objects are created here
-    if(typeof(AppleDisk2)!="undefined") this.disk2 = new AppleDisk2();
-    if(typeof(RamCard)!="undefined") this.ramcard = new RamCard();
+    this.disk2 = oEMU.component.IO.AppleDisk; // temporarily work with local objects
+    this.ramcard = oEMU.component.IO.RamCard; // TODO: USE ROOT OBJECTS INSTEAD
  
     this.reset = function() {
         key = 0x00;

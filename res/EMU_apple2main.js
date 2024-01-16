@@ -65,7 +65,7 @@ var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
 
 function EMU_init()
 {
-    console.log(JSON.stringify(oEMU,null,"  "));
+    //console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE EMULATOR
     appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
@@ -86,6 +86,20 @@ function EMU_init()
         oCOM.toggleRefreshEvent('MEM_monitoring');  // immediately refresh memory map
     }
 
+    // LOAD DISK IMAGE VIA URI PARAMETER (if any)
+    oCOM.URL.parse(document.location.toString());
+    var dsk = oCOM.URL.uri["dsk1"];
+    if(dsk===undefined || dsk.length==0) return null;
+
+    var db = oCOM.base64ToArrayBuffer(dsk);
+    if(db==null) return null;
+
+    const inflator = new pako.Inflate();
+    inflator.push(db);
+
+    var dd = inflator.result;
+    if(dd===undefined) return null;
+    loadDisk_fromBuffer(dd,"D1");
 }
 
 function attachKeyboard(bEnable)
@@ -128,9 +142,10 @@ function pauseButton()
     }
 }
 
-function loadDisk(drv)
+function loadDisk_fromFile(file_obj,drv)
 {
-    var file = document.getElementById('loadfile_'+drv).files[0];
+    if(file_obj==null) {apple2plus.loadDisk([],drv); return;}
+    var file = file_obj.files[0];
     if (!file) return;
 
     switch(drv)
@@ -170,4 +185,11 @@ function loadDisk(drv)
             }            
         break; 
     }
+}
+
+function loadDisk_fromBuffer(arr_buffer,drv)
+{
+    var bytes = Array.from(arr_buffer);
+    if (bytes.length == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
+    apple2plus.loadDisk(bytes,"D1");
 }

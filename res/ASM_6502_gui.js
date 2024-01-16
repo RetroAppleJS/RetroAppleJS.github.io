@@ -1,5 +1,6 @@
 function ASM_init()
 {
+    // LOAD ASSEMBLER CODE VIA URI PARAMETER (if any)
     oCOM.URL.parse(document.location.toString());
     var asm = oCOM.URL.uri["asm"];
     if(asm===undefined || asm.length==0) return null;

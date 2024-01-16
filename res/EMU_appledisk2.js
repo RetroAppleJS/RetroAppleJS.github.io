@@ -8,6 +8,7 @@
 // EMU_apple2disk2.js
 
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
+else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
 function AppleDisk2()
 {
