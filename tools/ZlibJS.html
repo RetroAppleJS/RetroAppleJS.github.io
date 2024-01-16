@@ -5,6 +5,7 @@
         <meta name="author" content="Freddy Vandriessche">
         <meta charset="utf-8"> 
         <link rel="stylesheet"        href="../res/COM_MAIN.css">
+        <script type="text/javascript" src="../res/COM_MAIN.js"></script>
         <script type="text/javascript" src="TOOLS_Header.js"></script>
         <script type="text/javascript" src="../res/pako_inflate.min.js"></script>
         <script type="text/javascript" src="../res/pako_deflate.min.js"></script>
@@ -13,13 +14,10 @@
 
   <script defer type="text/javascript">
 
-
-
-
-    var CONF_version="1.0.1";
+    var CONF_version="1.1.1";
     var CONF_builddate="20240114-190000";
 
-
+    var filename = "";
 
     function init_gui(_o)
     { 
@@ -28,11 +26,24 @@
 
     function load_file(file_obj)
     {
+        var json_txt = oCOM.trim(document.getElementById("JSON").value);
+        var json_txt = json_txt.replace(/(\r\n|\n|\r)/gm,"");
+        var json_txt = json_txt.replace(/(\\)/gm,'\\\\');
+
+        if(json_txt.slice(-1)==",") json_txt = json_txt.slice(0,-1);
+        json_txt = "["+json_txt+"]";
+        console.log(json_txt);
+
+        try{ var j = JSON.parse(json_txt) }
+        catch({ n,m }) { alert("parse error:"+n+" "+m); return null }
+        
         var blob = window.URL.createObjectURL(file_obj)
         var oReq = new XMLHttpRequest();
-        var e = file_obj.name.split(".");
-        ext = "."+e[e.length-1];
-        ext = ext.toLowerCase(ext);
+        filename = file_obj.name
+
+            var e = filename.split(".");
+            ext = "."+e[e.length-1];
+            ext = ext.toLowerCase(ext);
 
         oReq.open('GET', blob, true);
         oReq.responseType = 'arraybuffer';
@@ -56,34 +67,42 @@
             var arrayBuffer = oReq.response;
             if(arrayBuffer)
             {
-
+                // COMPRESSION ALGORITHM
                 var l1 = arrayBuffer.byteLength 
                 var fym = new Uint8Array(arrayBuffer);
-                //var dump = pako.deflate( fym);
-
                 const deflator = new pako.Deflate( { level: 9} );
                 deflator.push(fym, true);
                 var dump = deflator.result
-
                 var l2 = dump.byteLength;
-
                 try {  var l3 = _ArrayTobase64(dump).length; }
-                catch({ name, message })
-                {   
-                    alert("_ArrayTobase64:"+name+" "+message);
-                }
-
+                catch({ n, m }) { alert("_ArrayTobase64:"+n+" "+m) }
 
                 //alert(l1+"->"+l2+" ("+(Math.round(10000*l2/l1)/100)+"%) BASE64:"+l3+" ("+(Math.round(10000*l3/l1)/100)+"%)");
 
-                var uri = _ArrayTobase64(dump);
-                var url = "../index.html?d="+uri+"#tab2";
+                // APPLY FILE EXTENTION MAPPING (according to JSON input)
+                
+                var url = document.getElementById("url").value;
+                var uri_arg="d";
+                var uri_hash = "";
+                for(var i=0;i<j.length;i++)
+                {
+                    //alert("EXT="+j[i].URI + "REGEXP="+j[i].RegExp);
+                    var r_str = j[i].regexp;
+                    var r = new RegExp(r_str,"i");
+                    var m = filename.match(r);
+                    if(m!=null)
+                    {
+                        uri_arg = j[i].URI ? j[i].URI.replace(/=/,"") : "";
+                        uri_hash = j[i].hash ? j[i].hash.replace(/#/,"") : "";
+                    }
+                }
 
-                var link = "<br><a target=_blank href="+url+">ASSEMBLER URI "+timeStampInMs+"</a>"
+                // CONSTRUCT URL AND URI
+                var uri = _ArrayTobase64(dump);
+                var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
+                var link = "<br><a target=_blank href="+url+">URL (format:"+m+"  bytes:"+url.length+")</a>"
                 var el = document.getElementById("output");
                 el.innerHTML += link;
-
-
             }
         }
         oReq.send();
@@ -122,10 +141,11 @@
 <div id="slider_title"></div>
 <div class="slider_overlay">
     <div id="topmenu">
+    <!--   BUTTON BAR -->
+    <!--
     <ul id="minitabs">
         <li>
-            <!--   BUTTON BAR -->
-            <!--
+
             <table class=no_margins style='display:inline-block;border:0px solid;vertical-align:top;'>
                 <tr>
                     <td style="vertical-align:top;border:1px solid;width:200px">
@@ -133,9 +153,9 @@
                     </td>
                 </tr>
             </table>
-            -->
         </li>
     </ul>
+    -->
     </div>
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
     <table>
@@ -150,7 +170,14 @@
     </tr>
     <tr>
         <td>
-            <div id="dump" style="font-size:x-small;width:296px;height:120px;float:left;overflow-x:hidden;overflow-y:auto;">
+            FILEext. - URI mapping<br>
+            <textarea id=JSON style="float:left;width:320px;height:50px;resize:vertical;">
+{"regexp":"\.(?:s)$"  ,"URI":"asm=" ,"hash":"#tab2"},
+{"regexp":"\.(?:dsk)$","URI":"dsk1=","hash":"#tab1"},
+            </textarea><br>
+            BASE URL <input id="url" value="../index.html" style="width:200px;float:right">
+            <br>
+            <div id="dump" style="font-size:x-small;width:296px;height:120px;overflow-x:hidden;overflow-y:auto;">
             </div>
         </td>
     </tr>

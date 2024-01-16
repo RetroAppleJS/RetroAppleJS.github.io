@@ -1,10 +1,10 @@
 function ASM_init()
 {
-    oCOM.URLP.parse(document.location.toString());
-    var d = oCOM.URLP.uri["d"];
-    if(d===undefined || d.length==0) return null;
+    oCOM.URL.parse(document.location.toString());
+    var asm = oCOM.URL.uri["asm"];
+    if(asm===undefined || asm.length==0) return null;
 
-    var ab = oCOM.base64ToArrayBuffer(d);
+    var ab = oCOM.base64ToArrayBuffer(asm);
     if(ab==null) return null;
 
     const inflator = new pako.Inflate();

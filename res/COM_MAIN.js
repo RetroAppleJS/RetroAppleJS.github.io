@@ -79,6 +79,9 @@ function COM()
       return _r;
   }
 
+  this.ltrim = function(s) { return s.replace(/^ */,"") }
+  this.rtrim = function(s) { return s.replace(/ *$/,"") }
+  this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -241,10 +244,11 @@ function COM()
     // URL PARSER      //
     /////////////////////
 
-  this.URLP =
+  this.URL =
   {
     url:"",
     uri:{},
+    hash:"",
     merge: function (_uri1,_uri2)
     {
       var _o = new Array();
@@ -275,7 +279,7 @@ function COM()
     parse: function (_url)
     {
       var _ppos = _url.lastIndexOf("#");
-      if(_ppos>0) _url = _url.substring(0,_ppos);
+      if(_ppos>0) { _url = _url.substring(0,_ppos); this.hash = _url.hash }
       var _urlarr = _url?_url.split("?"):new Array("","");
       var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
       this.url = _urlarr[0];
