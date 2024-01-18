@@ -407,7 +407,7 @@ function COM_PopupHTML(html,s)
                     </div>
                   </div>
                 </div>
-                
+
               </div>
 
               <script>
@@ -579,65 +579,56 @@ function COM_PopupHTML(html,s)
             <!--  ASM SETTINGS -->
 
             <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
-              <!-- PUSH PANE DOWN IF OTHER PANE APPEARS
-              <div class="hints1" id="ASM_settings" hidden="">
-                -->
-                <div class=toolbox>
-                  <div class=appbox title="System" style="text-align:left;padding:0px 6px 0px 6px;">
-                    PRESETS
-                    <div style="font-family:arial;font-size:11px">
+              <div class=toolbox>
+                <div class=appbox title="System" style="text-align:left;padding:0px 6px 0px 6px;">
+                  PRESETS
+                  <div style="font-family:arial;font-size:11px">
+                    
+                    <script>
+                      _TABS["tab2"].SYS = _TABS["tab2"].DEF_SYS;
+                      document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
+                    </script>
                       
-                      <script>
-                        _TABS["tab2"].SYS = _TABS["tab2"].DEF_SYS;
-                        document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
-                      </script>
-                        
-                      <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('ASM_system_param');/*document.getElementById('ASM_system_param').innerHTML=oCOM.onSystemSelect()*/"></i>
-                      <!--
-                      <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
-                      -->
-                      <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
-                        <!--  PRELOAD SYSTEM INFO !-->
-                        <script>document.write( oCOM.onSystemSelect(_TABS["tab2"].SYS,"tab2") )</script>
-                      </div>
+                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('ASM_system_param');"></i>
+                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
+                      <!--  PRELOAD SYSTEM INFO !-->
+                      <script>document.write( oCOM.onSystemSelect(_TABS["tab2"].SYS,"tab2") )</script>
                     </div>
-
                   </div>
-                </div>  
-
+                </div>
+              </div>
             </div>
 
             <!--  ASM TOOLS -->
 
             <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;margin-top:3px">
               <div class=toolbox>
-              <form name="ASMboard">
-                <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
-                <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
-                <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
-                <input type="button" value="X" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')">
-              </form>
+                <form name="ASMboard">
+                  <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
+                  <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
+                  <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
+                  <input type="button" value="X" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')">
+                </form>
               </div>
             </div>
 
-
             <script type="text/javascript">
-              function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
-              function onASMBoardPaste()
-              {
-                var e = ASMboard.boardText.value.toUpperCase(); 
-                e = e.replace(/^.*[!-\/;-@G-~].*$/gm,"");   // remove each line with incompliant characters
-                e = e.replace(/[\r\n ]/g,"");               // remove all <cr> <lf> <spaces>                
-                e = e.replace(/([0-9A-F]{4}:)/g,"\n$1");    // introduce linefeed
-                e = e.replace(/([0-9A-F]{2})/g," $1");      // equally separate bytes
-                e = e.replace(/ ([0-9A-F]{2}) ([0-9A-F]{2}): /g,"$1$2:"); // re-join 16-bit addresses
-                e = e.replace(/^[\s\n]/g,"");               // remove heading spaces and linefeeds
-                ass.srcfield.value = e;
-                //ass.listing.value = e;
-                
-                var s = "";
-              }
-              function onASMBoardClear() { ASMboard.boardText.value = "" }; 
+            function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
+            function onASMBoardPaste()
+            {
+              var e = ASMboard.boardText.value.toUpperCase(); 
+              e = e.replace(/^.*[!-\/;-@G-~].*$/gm,"");   // remove each line with incompliant characters
+              e = e.replace(/[\r\n ]/g,"");               // remove all [cr] [lf] [spaces]                
+              e = e.replace(/([0-9A-F]{4}:)/g,"\n$1");    // introduce linefeed
+              e = e.replace(/([0-9A-F]{2})/g," $1");      // equally separate bytes
+              e = e.replace(/ ([0-9A-F]{2}) ([0-9A-F]{2}): /g,"$1$2:"); // re-join 16-bit addresses
+              e = e.replace(/^[\s\n]/g,"");               // remove heading spaces and linefeeds
+              ass.srcfield.value = e;
+              //ass.listing.value = e;
+              
+              var s = "";
+            }
+            function onASMBoardClear() { ASMboard.boardText.value = "" }; 
             </script>
 
             <form name="ass" onsubmit="return false">
@@ -646,15 +637,15 @@ function COM_PopupHTML(html,s)
                   <td valign=top style="display:flex;flex-wrap:wrap;width:340px">
                     <!-- LEFT PANE -->
                     <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>*=$6000
-            LDX #0
-      Label1 TXA
-            STA $0400,X
-            LDA #1
-            STA $D800,X
-            INX
-            BNE Label1
-            RTS
-      .END
+                          LDX #0
+                    Label1 TXA
+                          STA $0400,X
+                          LDA #1
+                          STA $D800,X
+                          INX
+                          BNE Label1
+                          RTS
+                    .END
                     </textarea>
                     <br>
                     <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
@@ -694,15 +685,12 @@ function COM_PopupHTML(html,s)
             </form>
 
             <script>
-              function syncScroll(element1, element2) {
-                element2.scrollTop = element1.scrollTop;
-              }
-    
+            function syncScroll(element1, element2) { element2.scrollTop = element1.scrollTop; }
             </script>
 
           </div>
-          <div id="tab3" style="height:250px;width:700px">
-            <!--form name="tab3" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
+
+
           <!--
             ██████  ███████ ██████  ██    ██  ██████   ██████  ███████ ██████ 
             ██   ██ ██      ██   ██ ██    ██ ██       ██       ██      ██   ██
@@ -710,252 +698,223 @@ function COM_PopupHTML(html,s)
             ██   ██ ██      ██   ██ ██    ██ ██    ██ ██    ██ ██      ██   ██
             ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
           -->
+          <div id="tab3" style="height:250px;width:700px">
 
-        <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
-        <script type="text/javascript" src="res/DBG_6502gui.js"></script>
-        <link rel="stylesheet"        href="res/DBG_6502.css">
-  
-        <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
-          <tr>
-              <td>
-            <form action="#" onsubmit="singleStep(); return false"></form>
-            <form name="MemLoader" onsubmit="showMem();return false"></form>
-            <textarea id="mem" name="mem" rows="16" cols="62" wrap="virtual" hidden=""></textarea>
-              </td>
-          </tr>
-          <tr>
-              <td>
-              <div>
-                <!-- LEFT PANE -->
-                       <div class="displayLr" style="float:left;width:250px;height:200px;font-size:small/*;border-style:solid;border-width:1px;border-color:yellow*/">
-                   <div id="dispStep" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
-                   <div style="width:248px;height:4px"></div>
-                   <div id="watchdisp" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
-                 </div>
-                 <!-- RIGHT PANE -->
-                 <div style="float:left;/*border-style:solid;border-width:1px;border-color:yellow;*/">
-                   <!-- BEGIN DASHBOARD -->
-                  <div id="regdisp" class="regdisp"></div>
-                   <table class=dtable>
-                             <tr>
-                                 <td><a onclick="setRegister('PC'); return false;" onfocus="if(this.blur) this.blur();" title="set PC">PC</a></td>
-                                 <td>&nbsp;</td>
-                                 <td><a onclick="setRegister('AC'); return false;" onfocus="if(this.blur) this.blur();" title="set AC">A</a></td>
-                                 <td><a onclick="setRegister('XR'); return false;" onfocus="if(this.blur) this.blur();" title="set XR">X</a></td>
-                                 <td><a onclick="setRegister('YR'); return false;" onfocus="if(this.blur) this.blur();" title="set YR">Y</a></td>
-                                 <td><a onclick="setRegister('SR'); return false;" onfocus="if(this.blur) this.blur();" title="set SR">SR</a></td>
-                                 <td><a onclick="setRegister('SP'); return false;" onfocus="if(this.blur) this.blur();" title="set SP">SP</a></td>
-                             </tr>
-                             <tr>
-                                 <td><div id="dispPC" class="displayLr" onclick="setRegister('PC'); return false;" style="cursor: pointer;">0000</div></td>
-                                 <td>&nbsp;</td>
-                                 <td><div id="dispAC" class="displayLr">00</div></td>
-                                 <td><div id="dispXR" class="displayLr">00</div></td>
-                                 <td><div id="dispYR" class="displayLr">00</div></td>
-                                 <td><div id="dispSR" class="displayLr">20</div></td>
-                                 <td><div id="dispSP" class="displayLr">FF</div></td>
-                             </tr>
-                         </table>
-                         <table class=dtable>
-                             <tr>
-                                 <td><a onclick="flipSRBit(7); return false;" onfocus="if(this.blur) this.blur();" title="flip Negative flag">N</a></td>
-                                 <td><a onclick="flipSRBit(6); return false;" onfocus="if(this.blur) this.blur();" title="flip Overflow flag">V</a></td>
-                                 <td><a onclick="flipSRBit(5); return false;" onfocus="if(this.blur) this.blur();" title="flip bit 5 (ignored)">-</a></td>
-                                 <td><a onclick="flipSRBit(4); return false;" onfocus="if(this.blur) this.blur();" title="flip Break flag">B</a></td>
-                                 <td><a onclick="flipSRBit(3); return false;" onfocus="if(this.blur) this.blur();" title="flip Decimal flag">D</a></td>
-                                 <td><a onclick="flipSRBit(2); return false;" onfocus="if(this.blur) this.blur();" title="flip Interrupt flag">I</a></td>
-                                 <td><a onclick="flipSRBit(1); return false;" onfocus="if(this.blur) this.blur();" title="flip Zero flag">Z</a></td>
-                                 <td><a onclick="flipSRBit(0); return false;" onfocus="if(this.blur) this.blur();" title="flip Carry flag">C</a></td>
-                             </tr>
-                             <tr>
-                                 <td><div id="dispSR7" class="displayLr">0</div></td>
-                                 <td><div id="dispSR6" class="displayLr">0</div></td>
-                                 <td><div id="dispSR5" class="displayLr">1</div></td>
-                                 <td><div id="dispSR4" class="displayLr">0</div></td>
-                                 <td><div id="dispSR3" class="displayLr">0</div></td>
-                                 <td><div id="dispSR2" class="displayLr">0</div></td>
-                                 <td><div id="dispSR1" class="displayLr">0</div></td>
-                                 <td><div id="dispSR0" class="displayLr">0</div></td>
-                             </tr>
-                         </table>
-                         <table class=dtable>
-                             <tr>
-                                 <td><a onclick="setWatchByte('AD'); return false;" onfocus="if(this.blur) this.blur();" title="set AD">AD</a></td>
-                                 <td>&nbsp;</td>
-                                 <td><a onclick="setWatchByte('R1'); return false;" onfocus="if(this.blur) this.blur();" title="set R1">R1</a></td>
-                                 <td><a onclick="setWatchByte('R2'); return false;" onfocus="if(this.blur) this.blur();" title="set R2">R2</a></td>
-                                 <td><a onclick="setWatchByte('R3'); return false;" onfocus="if(this.blur) this.blur();" title="set R3">R3</a></td>
-                                 <td><a onclick="setWatchByte('R4'); return false;" onfocus="if(this.blur) this.blur();" title="set R4">R4</a></td>
-                                 <td><a onclick="setWatchByte('R5'); return false;" onfocus="if(this.blur) this.blur();" title="set R5">R5</a></td>
-                                 <td><a onclick="setWatchByte('R6'); return false;" onfocus="if(this.blur) this.blur();" title="set R6">R6</a></td>
-                             </tr>
-                             <tr>
-                                 <td><div id="dispAD" class="displayLr" onclick="setWatch('AD'); return false;" style="cursor: pointer;">0000</div></td>
-                                 <td>&nbsp;</td>
-                                 <td><div id="dispR1" class="displayLr">00</div></td>
-                                 <td><div id="dispR2" class="displayLr">00</div></td>
-                                 <td><div id="dispR3" class="displayLr">00</div></td>
-                                 <td><div id="dispR4" class="displayLr">00</div></td>
-                                 <td><div id="dispR5" class="displayLr">00</div></td>
-                                 <td><div id="dispR6" class="displayLr">00</div></td>
-                             </tr>
-                         </table>
-                         <table class=dtable>
-                             <tr>
-                                 <td><a onclick="setwatchBit(7); return false;" onfocus="if(this.blur) this.blur();" title="bit7">7</a></td>
-                                 <td><a onclick="setwatchBit(6); return false;" onfocus="if(this.blur) this.blur();" title="bit6">6</a></td>
-                                 <td><a onclick="setwatchBit(5); return false;" onfocus="if(this.blur) this.blur();" title="bit5">5</a></td>
-                                 <td><a onclick="setwatchBit(4); return false;" onfocus="if(this.blur) this.blur();" title="bit4">4</a></td>
-                                 <td><a onclick="setwatchBit(3); return false;" onfocus="if(this.blur) this.blur();" title="bit3">3</a></td>
-                                 <td><a onclick="setwatchBit(2); return false;" onfocus="if(this.blur) this.blur();" title="bit2">2</a></td>
-                                 <td><a onclick="setwatchBit(1); return false;" onfocus="if(this.blur) this.blur();" title="bit1">1</a></td>
-                                 <td><a onclick="setwatchBit(0); return false;" onfocus="if(this.blur) this.blur();" title="bit0">0</a></td>
-                             </tr>
-                      <td><div id="disp7" class="displayLr">0</div></td>
-                      <td><div id="disp6" class="displayLr">0</div></td>
-                      <td><div id="disp5" class="displayLr">0</div></td>
-                      <td><div id="disp4" class="displayLr">0</div></td>
-                      <td><div id="disp3" class="displayLr">0</div></td>
-                      <td><div id="disp2" class="displayLr">0</div></td>
-                      <td><div id="disp1" class="displayLr">0</div></td>
-                      <td><div id="disp0" class="displayLr">0</div></td>
-                             </tr>
-                         </table>
-  
+            <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
+            <script type="text/javascript" src="res/DBG_6502gui.js"></script>
+            <link rel="stylesheet"        href="res/DBG_6502.css">
+      
+            <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+              <tr>
+                <td>
+                  <form action="#" onsubmit="singleStep(); return false"></form>
+                  <form name="MemLoader" onsubmit="showMem();return false"></form>
+                  <textarea id="mem" name="mem" rows="16" cols="62" wrap="virtual" hidden=""></textarea>
+                </td>
+              </tr>
+              <tr>
+                <td>
+              
+                  <!-- LEFT PANE -->
+                  <div class="displayLr" style="float:left;width:250px;height:200px;font-size:small/*;border-style:solid;border-width:1px;border-color:yellow*/">
+                    <div id="dispStep" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
+                    <div style="width:248px;height:4px"></div>
+                    <div id="watchdisp" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
+                  </div>
+                  <!-- RIGHT PANE -->
+                  <div style="float:left;/*border-style:solid;border-width:1px;border-color:yellow;*/">
+
+                    <!-- BEGIN DASHBOARD -->
+                    <div id="regdisp" class="regdisp"></div>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="setRegister('PC'); return false;" onfocus="if(this.blur) this.blur();" title="set PC">PC</a></td>
+                        <td>&nbsp;</td>
+                        <td><a onclick="setRegister('AC'); return false;" onfocus="if(this.blur) this.blur();" title="set AC">A</a></td>
+                        <td><a onclick="setRegister('XR'); return false;" onfocus="if(this.blur) this.blur();" title="set XR">X</a></td>
+                        <td><a onclick="setRegister('YR'); return false;" onfocus="if(this.blur) this.blur();" title="set YR">Y</a></td>
+                        <td><a onclick="setRegister('SR'); return false;" onfocus="if(this.blur) this.blur();" title="set SR">SR</a></td>
+                        <td><a onclick="setRegister('SP'); return false;" onfocus="if(this.blur) this.blur();" title="set SP">SP</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="dispPC" class="displayLr" onclick="setRegister('PC');return false;" style="cursor: pointer;">0000</div></td>
+                        <td>&nbsp;</td>
+                        <td><div id="dispAC" class="displayLr">00</div></td>
+                        <td><div id="dispXR" class="displayLr">00</div></td>
+                        <td><div id="dispYR" class="displayLr">00</div></td>
+                        <td><div id="dispSR" class="displayLr">20</div></td>
+                        <td><div id="dispSP" class="displayLr">FF</div></td>
+                      </tr>
+                    </table>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="flipSRBit(7); return false;" onfocus="if(this.blur) this.blur();" title="flip Negative flag">N</a></td>
+                        <td><a onclick="flipSRBit(6); return false;" onfocus="if(this.blur) this.blur();" title="flip Overflow flag">V</a></td>
+                        <td><a onclick="flipSRBit(5); return false;" onfocus="if(this.blur) this.blur();" title="flip bit 5 (ignored)">-</a></td>
+                        <td><a onclick="flipSRBit(4); return false;" onfocus="if(this.blur) this.blur();" title="flip Break flag">B</a></td>
+                        <td><a onclick="flipSRBit(3); return false;" onfocus="if(this.blur) this.blur();" title="flip Decimal flag">D</a></td>
+                        <td><a onclick="flipSRBit(2); return false;" onfocus="if(this.blur) this.blur();" title="flip Interrupt flag">I</a></td>
+                        <td><a onclick="flipSRBit(1); return false;" onfocus="if(this.blur) this.blur();" title="flip Zero flag">Z</a></td>
+                        <td><a onclick="flipSRBit(0); return false;" onfocus="if(this.blur) this.blur();" title="flip Carry flag">C</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="dispSR7" class="displayLr">0</div></td>
+                        <td><div id="dispSR6" class="displayLr">0</div></td>
+                        <td><div id="dispSR5" class="displayLr">1</div></td>
+                        <td><div id="dispSR4" class="displayLr">0</div></td>
+                        <td><div id="dispSR3" class="displayLr">0</div></td>
+                        <td><div id="dispSR2" class="displayLr">0</div></td>
+                        <td><div id="dispSR1" class="displayLr">0</div></td>
+                        <td><div id="dispSR0" class="displayLr">0</div></td>
+                      </tr>
+                    </table>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="setWatchByte('AD'); return false;" onfocus="if(this.blur) this.blur();" title="set AD">AD</a></td>
+                        <td>&nbsp;</td>
+                        <td><a onclick="setWatchByte('R1'); return false;" onfocus="if(this.blur) this.blur();" title="set R1">R1</a></td>
+                        <td><a onclick="setWatchByte('R2'); return false;" onfocus="if(this.blur) this.blur();" title="set R2">R2</a></td>
+                        <td><a onclick="setWatchByte('R3'); return false;" onfocus="if(this.blur) this.blur();" title="set R3">R3</a></td>
+                        <td><a onclick="setWatchByte('R4'); return false;" onfocus="if(this.blur) this.blur();" title="set R4">R4</a></td>
+                        <td><a onclick="setWatchByte('R5'); return false;" onfocus="if(this.blur) this.blur();" title="set R5">R5</a></td>
+                        <td><a onclick="setWatchByte('R6'); return false;" onfocus="if(this.blur) this.blur();" title="set R6">R6</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="dispAD" class="displayLr" onclick="setWatch('AD'); return false;" style="cursor: pointer;">0000</div></td>
+                        <td>&nbsp;</td>
+                        <td><div id="dispR1" class="displayLr">00</div></td>
+                        <td><div id="dispR2" class="displayLr">00</div></td>
+                        <td><div id="dispR3" class="displayLr">00</div></td>
+                        <td><div id="dispR4" class="displayLr">00</div></td>
+                        <td><div id="dispR5" class="displayLr">00</div></td>
+                        <td><div id="dispR6" class="displayLr">00</div></td>
+                      </tr>
+                    </table>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="setwatchBit(7); return false;" onfocus="if(this.blur) this.blur();" title="bit7">7</a></td>
+                        <td><a onclick="setwatchBit(6); return false;" onfocus="if(this.blur) this.blur();" title="bit6">6</a></td>
+                        <td><a onclick="setwatchBit(5); return false;" onfocus="if(this.blur) this.blur();" title="bit5">5</a></td>
+                        <td><a onclick="setwatchBit(4); return false;" onfocus="if(this.blur) this.blur();" title="bit4">4</a></td>
+                        <td><a onclick="setwatchBit(3); return false;" onfocus="if(this.blur) this.blur();" title="bit3">3</a></td>
+                        <td><a onclick="setwatchBit(2); return false;" onfocus="if(this.blur) this.blur();" title="bit2">2</a></td>
+                        <td><a onclick="setwatchBit(1); return false;" onfocus="if(this.blur) this.blur();" title="bit1">1</a></td>
+                        <td><a onclick="setwatchBit(0); return false;" onfocus="if(this.blur) this.blur();" title="bit0">0</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="disp7" class="displayLr">0</div></td>
+                        <td><div id="disp6" class="displayLr">0</div></td>
+                        <td><div id="disp5" class="displayLr">0</div></td>
+                        <td><div id="disp4" class="displayLr">0</div></td>
+                        <td><div id="disp3" class="displayLr">0</div></td>
+                        <td><div id="disp2" class="displayLr">0</div></td>
+                        <td><div id="disp1" class="displayLr">0</div></td>
+                        <td><div id="disp0" class="displayLr">0</div></td>
+                      </tr>
+                    </table>
                     <!-- END DASHBOARD -->
-                 </div>
-                 <div style="float:left" id="DBG_mem_map">
 
-                 </div>
-                 <script>
-                  oCOM.addToEventStack("onload",DBG_mem_map)
-                 function DBG_mem_map()
-                 {
-                    var linestep = 4096;
-                    var cnf = {id_prefix:"d",digits:4}
-                    document.getElementById("DBG_mem_map").innerHTML = 
-                      oMEMGRID.build_grid(7*linestep,8,-linestep,cnf) 
-                    + oMEMGRID.build_grid(15*linestep,8,-linestep,cnf);
-                    oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
-                }
-                </script>
-            </div>
-              </td>
-          </tr>
-        <tr>
-          <td>
-            <!--div style="float:left;">start&nbsp;$</div><div onclick='chage_adr(this)' style="border-style: solid;border-width:1px; width:100px;">6000</div-->
-            <input type="text" id="memAddr" name="memAddr" size="4" value="6000" hidden="" style="float:left;">
-  
-            <script>
-            var oBASE = new function() {
-                this.convert = function (str, fromBase, toBase)
-                {
-                  if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
-                  if(typeof(toBase)  =='object') { this.toSymbols = toBase[0] }
-                  fromBase = this.fromSymbols.length; toBase = this.toSymbols.length;
+                  </div>
+                  <!-- END RIGHT PANE -->
 
-                  // PARSE INPUT DIGITS ARRAY
-                  for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
-                  var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
+                  <div style="float:left" id="DBG_mem_map"></div>
 
-                  // BASE CONVERSION
-                  for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBase), toBase); _p = mul(fromBase, _p, toBase) }
+                  <script>
+                    oCOM.addToEventStack("onload",DBG_mem_map)
+                  function DBG_mem_map()
+                  {
+                      var linestep = 4096;
+                      var cnf = {id_prefix:"d",digits:4}
+                      document.getElementById("DBG_mem_map").innerHTML = 
+                        oMEMGRID.build_grid(7*linestep,8,-linestep,cnf) 
+                      + oMEMGRID.build_grid(15*linestep,8,-linestep,cnf);
+                      oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
+                  }
+                  </script>
+                 
 
-                  // PARSE OUTPUT DIGITS ARRAY
-                  for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
-                  return _o.length==0?this.toSymbols[0]:_o;
-                }
+                </td>
+              </tr>
 
-                var add = function(x, y, base) {
-                    var _m = Math.max(x.length, y.length);
-                    for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
-                      var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
-                      var _n =  _r.push(_z % base);
-                    }
-                    return _r;
-                }
+              <!-- BUTTON BAR 1-->
+              <tr>
+                <td>
+                  <input type="text" id="memAddr" name="memAddr" size="4" value="6000" hidden="" style="float:left;">
+                  <button onclick="debugReset();load_adr(this)" style="float:left">
+                    <i class="fa fa-truck"></i> load at addr</button>
+                  <button onclick="singleStep()" style="float:left;">
+                    <i class="fa fa-paw"></i> step
+                  </button>
+                </td>
+              </tr>
 
-                var mul = function(x, pow, base) {
-                    for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
-                      if(x & 1) _r = add(_r, pow, base);
-                      pow = add(pow, pow, base);
-                    }
-                    return _r;
-                }
-            }()
-            </script>
+              <!-- BUTTON BAR 2-->
+              <tr>
+                <td>
+                  <button onclick="javascript:onToolBox('DbgTools')">
+                    <i class="fa fa-wrench"></i> tools & config
+                  </button>
+                  <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
+                    <i class="fa fa-book"></i> help
+                  </button>
 
-            <!--button style="float:left"><i class="fa fa-play"></i>start at $6000</button-->
-            <button onclick="debugReset();load_adr(this)" style="float:left">
-              <i class="fa fa-truck"></i> load at addr</button>
-            <button onclick="singleStep()" style="float:left;"><i class="fa fa-paw">
-              </i> step</button>
-          </td>
-        </tr>
-          <tr>
-              <td>
-                  <button onclick="javascript:onToolBox('DbgTools')"><i class="fa fa-wrench">
-              </i> tools & config</button>
-              <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
-                  <!--button onclick="onhelp(DbgHelp(),document.getElementById('debugfield'));"-->
-  
-              <i class="fa fa-book"></i> help</!--button>
                   <div id="DbgTools" hidden="">
-                      <input type="button" value="continous run" class="isButton" onclick="run()">
-              <input type="button" value="reset debugger" class="isButton" onclick="debugReset()">
-                      <input type="button" value="look up mem #" class="isButton" onclick="memLookup()">
-                      <input type="button" value="reset CPU" class="isButton" onclick="masterReset()">
-                      show ASCII <input type="checkbox" id="showASCII" value="1" class="formField"><br>
-                      <input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
-              <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
-              <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
-              <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS,document.getElementById('debugfield'))">
-              <input type="button" value="memory MAP" class="isButton" onclick="RAM_checksum()">
-                      <iframe name="c64loader" border="0" framespacing="0" marginwidth="0" marginheight="0" width="0" height="0" frameborder="0"></iframe>
-                      <input type="button" value="&nbsp;show memory&nbsp;" class="isButton" onclick="showMem()">
-                      <div id="dispCycles" class="displayLr">total cycles: 0</div>
-              <input id="watchparam" value="" style="width:300px">
-              <input id="watchparam2" value="" style="width:300px">
+                    <input type="button" value="continous run" class="isButton" onclick="run()">
+                    <input type="button" value="reset debugger" class="isButton" onclick="debugReset()">
+                    <input type="button" value="look up mem #" class="isButton" onclick="memLookup()">
+                    <input type="button" value="reset CPU" class="isButton" onclick="masterReset()">
+                    show ASCII <input type="checkbox" id="showASCII" value="1" class="formField"><br>
+                    <input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
+                    <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
+                    <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
+                    <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS,document.getElementById('debugfield'))">
+                    <input type="button" value="memory MAP" class="isButton" onclick="RAM_checksum()">
+                    <iframe name="c64loader" border="0" framespacing="0" marginwidth="0" marginheight="0" width="0" height="0" frameborder="0"></iframe>
+                    <input type="button" value="&nbsp;show memory&nbsp;" class="isButton" onclick="showMem()">
+                    <div id="dispCycles" class="displayLr">total cycles: 0</div>
+                    <input id="watchparam" value="" style="width:300px">
+                    <input id="watchparam2" value="" style="width:300px">
                   </div>
-              </td>
-          </tr>
-          <tr>
-              <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
-                  <div style="height:90px">
-                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                  <div style="height:90px"></div>
                   <div id="debugfield" contenteditable="true" class="markdown_mon"
                       style="width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
-                  <div>
+                  </div>
                   <!--textarea name="debugfield" hidden=""></!--textarea-->
-                  <div style="height:180px">
-                  </div>
-                  </div>
-              </td>
-          </tr>
-      </table>
-
-
+                  <div style="height:180px"></div>
+                </td>
+              </tr>
+            </table>
           </div>
-          <div id="tab4" style="height:1000px;width:700px">
+
           <!--
             ███    ███  █████  ███    ██ ██    ██  █████  ██
             ████  ████ ██   ██ ████   ██ ██    ██ ██   ██ ██
             ██ ████ ██ ███████ ██ ██  ██ ██    ██ ███████ ██
             ██  ██  ██ ██   ██ ██  ██ ██ ██    ██ ██   ██ ██
             ██      ██ ██   ██ ██   ████  ██████  ██   ██ ███████ 
-          -->  
-          <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
-            <tr>
-            <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
-              <div style="height:90px"></div>
-              <div id=manual contenteditable="true" class="markdown_mon"><script>document.write(_DOCS['6502'].replace(/https\:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g,""))</script></div>
-              <div style="height:180px"></div>
-            </td>
-          </tr>
-          </table>
+          --> 
 
+          <div id="tab4" style="height:1000px;width:700px">
+            <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+              <tr>
+                <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                  <div style="height:90px"></div>
+                  <div id=manual contenteditable="true" class="markdown_mon"><script>document.write(_DOCS['6502'].replace(/https\:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g,""))</script></div>
+                  <div style="height:180px"></div>
+                </td>
+              </tr>
+            </table>
           </div>
+          
         </div>
       </td>
   </tr>
