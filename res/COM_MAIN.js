@@ -39,9 +39,18 @@ function COM()
       return bytes;
   }
 
-  this.ArrayBufferTobase64 = function(bytes) 
+  this.ArrayBufferTobase64 = function(buffer) 
   {
-      return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
+      //return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
+
+      var binary = '';
+      var bytes = new Uint8Array( buffer );
+      var len = buffer.byteLength;
+      for (var i = 0; i < len; i++) {
+          binary += String.fromCharCode( buffer[ i ] );
+      }
+      return window.btoa( binary );
+
   }
 
   this.base_convert = function (str, fromBase, toBase)
@@ -116,14 +125,36 @@ function COM()
 		}
 	}
 
+  this.POPUP = {
+    id:"",
+    states:{},
+    rules:{},
+    el: function(id) { return document.getElementById(id) },
+    addRule: function(id,function_obj) { this.rules[id] = function_obj },
+    runRule: function(id) { this.id = id; this.rules[id](this) },
+    update_state: function(id,el){ this.states[id] = el.hidden },
+    on: function(id) { this.states[id] = this.el(id).hidden = false },
+    off: function(id) { this.states[id] = this.el(id).hidden = true },
+    toggle: function(id) { var e=this.el(id); this.states[id] = e.hidden = !e.hidden ;return e },
+    toggle_class: function(el,class1,class2)
+    {
+      this.toggle(el.id);
+      if(el.hidden) {el.classList.remove(class2);el.classList.add(class1)}
+      else {el.classList.remove(class1);el.classList.add(class2)}
+    }
+  } 
+ 
+  /*
   this.onPopup = function(id)
   { var e = document.getElementById(id); e.hidden = !e.hidden; return e }
-
+*/
+  /*
   this.onPopUpClass = function(id,class1,class2)
   {
     id.hidden = !id.hidden;
     if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
   }
+  */
 
   this.Download = function(fileName, data)
   {
@@ -262,7 +293,7 @@ function COM()
     {
       for(_i in _uri2)
         if(_uri2[_i])
-          this.uri[_i] = _uri2[_i];
+          this.uri[_i] = _uri2[_i]; // add or override
         else
           delete this.uri[_i];
     },

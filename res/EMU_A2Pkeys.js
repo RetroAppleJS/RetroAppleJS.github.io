@@ -4,61 +4,101 @@
 //
 // EMU_A2Pkeys.js
 
+
+// TODO: how handle shift + key (remember keyup & down state of each key ???)
+
+
 if(!oEMU) var oEMU = {component:{Keyboard:[]}}
 oEMU.component.Keyboard["A2P"] = {A2Pkeys};
 
 function A2Pkeys(hw)
 {
     this.hw = hw;
-    this.o = typeof(_o)=="undefined"?{"EMU_keyb_timer":false,"EMU_keyb_active":false,EMU_kbd_id:"kbdimg",EMU_key_id:"keybox",kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)",key_events:"onclick=keys.keystroke(event)"}:_o;
-
+    this.bDebug = false;
+    this.o = typeof(_o)=="undefined"?
+    {"EMU_keyb_timer":false
+    ,"EMU_keyb_active":false
+    ,EMU_kbd_id:"kbdimg"
+    ,EMU_key_id:"keybox"
+    ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
+    ,key_events:"onclick=keys.keystroke(event)"
+    ,"KBD_Xoff":-6
+    ,"KBD_Yoff":-50   
+    }:_o;
+    this.o.kbd_map = new Array();
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
 
+
     this.keystroke = function(data)
     {
-        if(data.type!="click")          // real keyboard or pasteboard ?
+        var combo_keys = {16:"SHIFT",17:"CTRL",18:"ALT",20:"CAPSLCK",27:"ESC",91:"CMD"};
+        this.debug(data);
+        if(data.type=="keydown")
+        {
+            if(typeof(combo_keys[data.keyCode])=="string") { this.o.kbd_map[data.keyCode]=combo_keys[data.keyCode]; return; }
+        }
+        if(data.type=="keyup")
+        {
+            if(typeof(combo_keys[data.keyCode])=="string") { delete this.o.kbd_map[data.keyCode]; return; }
+        }
+        
+
+        var s="";
+        for(var i in combo_keys) s+= combo_keys[i];
+
+        if(data.type!="click")           // real keyboard or pasteboard ?
         {
             var code = this.KeyCodeHandler(data);         
             if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
-                data.preventDefault(); // prevent space-bar from triggering page-down
+                data.preventDefault();   // prevent space-bar from triggering page-down
         }
-        else                            // virtual keyboard ?
+        else                             // virtual keyboard ?
             var code = this.KbdCodeHandler(data);
 
         if(typeof(code)=="number")       // ASCII keys ?
         {
-            try { this.hw.io.keypress(code) }
-            catch(e)
-                { alert("override A2Pkeys -> keystroke()")  }
-
+            try { this.hw.io.keypress(code) } catch(e) { alert("override A2Pkeys -> keystroke("+code+")") }
         }
         else if (typeof(code)=="string") // HARD-WIRED keys ?
         {
             switch(code)
             {
                 case "RESET":
-                    alert("override A2Pkeys -> keystroke()")
-                break;
                 case "POWER":
-                    alert("override A2Pkeys -> keystroke()")
-                break;
                 case "REPT":
-                    alert("override A2Pkeys -> keystroke()")
-                break;
+                    alert("override A2Pkeys -> keystroke("+code+")"); break;
                 default:
-                    alert("override A2Pkeys -> keystroke()")
+                    alert("override A2Pkeys -> keystroke("+code+")");
             }
         }
         else
-            alert("no key");
+            alert("no key (code="+code+")");
     }
 
+    this.debug = function(data)
+    {
+        if(this.bDebug) 
+        {
+            document.getElementById("key_debug").value 
+                = "data.charCode="+data.charCode
+                +" data.keyCode="+data.keyCode
+                +" o.kbd_map = "+JSON.stringify(this.o.kbd_map);
+        }
+    }
 
     this.KeyCodeHandler = function(data)
     {
         if (data.metaKey || data.altKey) return true;
         var code = data.charCode != 0 ? data.charCode : data.keyCode;
+
+        this.debug(data);
+        //alert(data.keyCode)
+        if (data.charCode == 0 && data.keyCode == 192) // comma
+            code = 0x23;
+
+        if (data.charCode == 0 && data.keyCode == 221) // comma
+            code = 0x24;    
 
         // left arrow
         if (data.charCode == 0 && data.keyCode == 37)
@@ -83,17 +123,17 @@ function A2Pkeys(hw)
 
     this.KbdButtonLocator = function(data)
     {
-        var pos = document.getElementById('kbdimg').offsetTop-503;
-        //alert(pos-503)
+        //alert(this.o.Yoffset)
+        var pos = document.getElementById('kbdimg').offsetTop-503 // 503
+        //var pos = document.getElementById('kbdimg').offsetTop-503+this.o.KBD_Yoff
         
         var w = 30;
         var xoff = 39;
         var yoff = 228;
-        var x = data.pageX-775;
-        var y = data.pageY-750 - pos;
+        var x = data.pageX-775 + this.o.KBD_Xoff;
+        var y = data.pageY-750 + (this.o.KBD_Yoff?this.o.KBD_Yoff:0) - pos ;
         var xc = 0;
         var yc = Math.floor(y/47.5)+5;
-
         y = Math.round(yc*47.5-212.5)+yoff;
         
         switch(yc)
@@ -124,8 +164,6 @@ function A2Pkeys(hw)
     {
         var loc = this.KbdButtonLocator(event);
         document.getElementById(this.o.EMU_key_id).style.width = loc.w+"px";
-        var pos = document.getElementById('kbdimg').offsetTop-503;
-        //alert(pos)
 
         switch(event.type)
         {
@@ -143,7 +181,10 @@ function A2Pkeys(hw)
             break;
             //case "touchstart":
         }
-        //document.getElementById("key_debug").value = "pageX="+event.pageX+" pageY="+event.pageY+" x="+x+" y="+y+" xc="+xc+" yc="+yc
+        if(this.bDebug) 
+            document.getElementById("key_debug").value 
+                = "pageX="+event.pageX+" pageY="+event.pageY
+                 +" loc.x="+loc.x+" loc.y="+loc.y;
     }
 
     this.KbdHover_out = function(t)
@@ -158,17 +199,19 @@ function A2Pkeys(hw)
     this.defaults = function(args,arr)
     {
         for(var i=0;i<arr.length;i++)
-            if(!args[arr[i]]) args[arr[i]] = this.o[arr[i]];
+        {
+            if(args[arr[i]])
+                 this.o[arr[i]] = args[arr[i]];
+        }  
     }
 
     this.KbdHTML = function(args)
     {
-        this.defaults(args,["kbd_events","key_events","EMU_key_id"]);
+        this.defaults(args,["kbd_events","key_events","EMU_key_id","KBD_Yoff"]);
 
         var s = "<style>"
     +".appkbd"
     +"{"
-
         +"  background-image:url('"+args.path+"appleIIplus_kbd_650.png');"
         +"  width:650px;"
         +"  height:257px;"
@@ -190,8 +233,8 @@ function A2Pkeys(hw)
         +"border-radius: 3px;"
         +"}"
     +"</style>"
-    +"<div class='appkbd' id='kbdimg' "+args.kbd_events+">"
-    +"<div class='key'  id='keybox' "+args.key_events+"></div>"
+    +"<div class='appkbd' id='kbdimg' "+this.o.kbd_events+">"
+    +"<div class='key'  id='keybox' "+this.o.key_events+"></div>"
 
 
 //    <!--
@@ -210,5 +253,4 @@ function A2Pkeys(hw)
         document.write(s);
 
     }
-
 }

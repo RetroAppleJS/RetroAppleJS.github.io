@@ -217,7 +217,7 @@
 <script>
 function COM_PopupHTML(html,s)
 {
-  var e = oCOM.onPopup('COM_popup');
+  var e = oCOM.POPUP.toggle('COM_popup');
   if(s) { setTimeout( COM_PopupHTML,s*1000 ); e.hidden = false  };
   if(html==null) e.hidden = true;
 
@@ -227,7 +227,7 @@ function COM_PopupHTML(html,s)
 </script>
 
   <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
-  <div class="appbut" onclick="oCOM.onPopup('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+  <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
   <div id=COM_popup_text></div>
   </div>
 
@@ -275,24 +275,24 @@ function COM_PopupHTML(html,s)
             <div style="height:115px;padding:0px 0px 0px 0px;z-index:1">
 
               <div style="height:30px;padding:0px 90px 0px 0px;">
-                                <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('EMU_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-                <button class=appbut value="Tools"   onclick="javascript:oCOM.onPopup('EMU_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
+                <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab1.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab1.2');" title="Tools"><i class="fa fa-toolbox"></i></button>
               </div>
   
               <!--  TOOLS (PASTEBOARD) -->
-              <div class="hints1" id="EMU_paste" hidden="">
+              <div class="hints1" id="tab1.2" hidden="">
                 <div class=toolbox>
                 <form name="EMUboard">
-                  <textarea cols=40 rows=4  placeholder="Paste here" name=boardText style="float:left"></textarea><br>
-                  <input type="button"  value="Paste"              onclick="javascript:oCOM.onPopup('EMU_paste');onBoardPaste()">
+                  <textarea cols=40 rows=4 placeholder="Paste here" name=boardText style="float:left"></textarea><br>
+                  <input type="button"  value="Paste"              onclick="javascript:oCOM.POPUP.trigger('tab1.2');onBoardPaste()">
                   <input type="button"  value="Capture" id=Capture onclick="javascript:onCapture()">                
                   <input type="text"    value="$0000" size=5       onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
                   <input type="button"  value="Clear"              onclick="javascript:onEMUBoardClear()">
-                  <input type="button"  value="X"                  onclick="javascript:oCOM.onPopup('EMU_paste')">
+                  <input type="button"  value="X"                  onclick="javascript:oCOM.POPUP.off('tab1.2')">
                 </form>
                 </div>
                 <div class=toolbox>
-                  <button class=appbut                 onclick="javascript:oCOM.onPopUpClass(document.getElementById('soundbutton'),'fa-volume-up','fa-volume-mute');oCOM.toggleRefreshEvent('SND_trigger');"  title="Sound"><i id="soundbutton" class="fa fa-volume-mute"></i></button>
+                  <button class=appbut                 onclick="javascript:oCOM.POPUP.toggle_class(document.getElementById('soundbutton'),'fa-volume-up','fa-volume-mute');oCOM.toggleRefreshEvent('SND_trigger');"  title="Sound"><i id="soundbutton" class="fa fa-volume-mute"></i></button>
                   <button class=appbut                 onclick="javascript:pauseButton(this)" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
                   <br>
                   <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>                  
@@ -301,16 +301,18 @@ function COM_PopupHTML(html,s)
                 <div class=toolbox>
                     <div class=appbut style="padding:5px 5px 0px 5px;margin-top:0px;text-align:center">
 
-
-                      <button class=appbut value="Drive1" onclick="javascript:document.getElementById('f_D1').reset();loadDisk_fromFile(null,'D1')" onmouseover="this.innerHTML='Eject'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <form id="f_D1" style="display:inline;"><input type="file"  id="loadfile_D1" onchange="javascript:loadDisk_fromFile(this,'D1')"></form>
-                      <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                      <form action="index.html" id="f_D1" style="display:inline;">
+                        <input type=submit action="index.html" method=get class=appbut value="Drive1" onclick="this.submit()" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive1'">
+                        <input type="file" name="dsk1" id="loadfile_D1" onchange="javascript:loadDisk_fromFile(this,'D1')">
+                        <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                      
                     </div>
                     <div class=appbut style="padding:0px 5px 5px 5px;margin-top:0px;text-align:center">
                     
-                      <button class=appbut value="Drive2" onclick="javascript:document.getElementById('f_D2').reset();loadDisk_fromFile(null,'D2')" onmouseover="this.innerHTML='Eject'" onmouseout="this.innerHTML='Drive2'">Drive1</button> <form id="f_D2" style="display:inline;"><input type="file"  id="loadfile_D2" onchange="javascript:loadDisk_fromFile(this,'D2')"></form>
-                      <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
-
-  
+                        <input type=submit action="index.html" method=get class=appbut value="Drive2" onclick="this.submit()" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive2'">
+                        <input type="file" name="dsk2" id="loadfile_D2" onchange="javascript:loadDisk_fromFile(this,'D2')">
+                        <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                      </form>
 
                       <!--
                       <button class=appbut value="Drive1" onclick="javascript:restartButton()" onmouseover="this.innerHTML='Restart'" onmouseout="this.innerHTML='Drive1'">Drive1</button> <input type="file"  id="loadfile_D1" value="Disk1" onchange="javascript:loadDisk_fromFile(this,'D1')">
@@ -335,9 +337,9 @@ function COM_PopupHTML(html,s)
               </div>
 
               <!--  SETTINGS -->
-              <div class="hints1" id="EMU_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <div class="hints1" id="tab1.1" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
               <!-- PUSH PANE DOWN IF OTHER PANE APPEARS
-              <div class="hints1" id="EMU_settings" hidden="">
+              <div class="hints1" id="tab1.1" hidden="">
                 -->
                 <div class=toolbox>
                   <!--
@@ -351,7 +353,7 @@ function COM_PopupHTML(html,s)
                        document.write(oCOM.SystemSelect('EMU_system_param',"tab1"));
                      </script>
 
-                      <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('EMU_system_param')"></i>
+                      <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('EMU_system_param')"></i>
   
                       <div id="EMU_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
                        
@@ -366,7 +368,7 @@ function COM_PopupHTML(html,s)
 
                         <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;">
                           <div id="cpu_component" style="float:left;border:0px solid;padding-top:1px;"></div>&nbsp;load
-                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="oCOM.onPopUpClass(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
+                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
                           <input id="cpu_pct" value="" size="4" style="background:transparent;border: none;">
                         </div>
                         <br>
@@ -374,6 +376,15 @@ function COM_PopupHTML(html,s)
                         <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="slider_update(this,70)" style="width:65px">
                         <div id="all_components"></div>
                       <script>
+                        oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
+                        oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
+
+                        function fSubmit(id)
+                        {
+                          var el = document.getElementById(id);
+                          el.submit();
+                        }
+
                         function slider_update(obj,max)
                         {
                           var el = obj.getBoundingClientRect()
@@ -398,7 +409,7 @@ function COM_PopupHTML(html,s)
                 </div>
                   
                   <div class=appbox style="width:340px;padding:0px 6px 0px 6px;" title="Memory map">
-                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" id="MEM_monitoring" onclick="oCOM.onPopUpClass(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);"></i></div>
+                    <div style="float:left">MEM<br><i class="fa fa-sync-alt" id="MEM_monitoring" onclick="oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);"></i></div>
                     <div id="EMU_mem_map"></div>
                   </div>
 
@@ -597,8 +608,8 @@ function COM_PopupHTML(html,s)
           <link rel="stylesheet"        href="res/ASM_6502.css">
 
           <div style="padding:0px 90px">
-            <button class=appbut value="Settings" onclick="javascript:oCOM.onPopup('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-            <button class=appbut value="Tools" onclick="javascript:oCOM.onPopup('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
+            <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+            <button class=appbut value="Tools" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
           </div>
 
           <!--  ASM SETTINGS -->
@@ -617,7 +628,7 @@ function COM_PopupHTML(html,s)
                       document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
                     </script>
                       
-                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.onPopup('ASM_system_param');/*document.getElementById('ASM_system_param').innerHTML=oCOM.onSystemSelect()*/"></i>
+                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('ASM_system_param');/*document.getElementById('ASM_system_param').innerHTML=oCOM.onSystemSelect()*/"></i>
                     <!--
                     <i class="fa fa-info-circle" onclick="var key=document.getElementById('EMU_system').value;t=JSON.stringify(_CFG_SYSCODE[key],null,'&nbsp;&nbsp;').replace(/\n/g,'<br>');COM_PopupHTML(t)"></i>
                     -->
@@ -640,7 +651,7 @@ function COM_PopupHTML(html,s)
               <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
               <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
               <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
-              <input type="button" value="X" onclick="javascript:oCOM.onPopup('ASM_paste')">
+              <input type="button" value="X" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')">
             </form>
             </div>
           </div>
@@ -684,7 +695,7 @@ function COM_PopupHTML(html,s)
                   <br>
                   <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
                   <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
-                  <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';oCOM.onPopup('EMU_paste');COM_switchTab('tab1')">
+                  <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';oCOM.POPUP.toggle('tab1.2');COM_switchTab('tab1')">
                     <i class="fa fa-arrow-circle-up"></i> to emulator</button>
                   <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
                       <i class="fa fa-arrow-circle-up"></i> to debugger</button>

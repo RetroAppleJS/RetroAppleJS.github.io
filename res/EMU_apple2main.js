@@ -82,7 +82,7 @@ function EMU_init()
     {
         document.getElementById("COM_popup").hidden = false;    // show COM popup
         document.getElementById("settings").hidden = false;     // show settings tab
-        oCOM.onPopUpClass(document.getElementById('MEM_monitoring'),'fa-stop-circle','fa-sync-alt'); // activate monitoring
+        oCOM.POPUP.toggle_class(document.getElementById('MEM_monitoring'),'fa-stop-circle','fa-sync-alt'); // activate monitoring
         oCOM.toggleRefreshEvent('MEM_monitoring');  // immediately refresh memory map
     }
 

@@ -73,8 +73,8 @@
                 deflator.push(fym, true);
                 var dump = deflator.result
                 var l2 = dump.byteLength;
-                try {  var l3 = _ArrayTobase64(dump).length; }
-                catch({ n, m }) { alert("_ArrayTobase64:"+n+" "+m) }
+                try {  var l3 = oCOM.ArrayBufferTobase64(dump).length; }
+                catch({ n, m }) { alert("ArrayBufferTobase64:"+n+" "+m) }
 
                 //alert(l1+"->"+l2+" ("+(Math.round(10000*l2/l1)/100)+"%) BASE64:"+l3+" ("+(Math.round(10000*l3/l1)/100)+"%)");
 
@@ -97,9 +97,13 @@
                 }
 
                 // CONSTRUCT URL AND URI
-                var uri = _ArrayTobase64(dump);
+                var browsers = {"safari":80000,"firefox":65536,"chrome":2083,"edge":2083,"opera":1000000};
+                var uri = oCOM.ArrayBufferTobase64(dump);
                 var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
-                var link = "<br><a target=_blank href="+url+">URL (format:"+m+"  bytes:"+url.length+")</a>"
+                var s = "";
+                for(var i in browsers) s += "<div style=float:left title=\"max. "+browsers[i]+" bytes\" ><img style='width:12px;margin-right:5px' src=../res/i_"+i+".png><br><img src=../res/"+(url.length<=browsers[i]?"i_ok.png":"i_nok.png")+" style=width:10px;padding-left:3px></div>"
+                var link = "<div style='border:1px solid rgb(0,0,0,0)'><a target=_blank href="+url+">URL <small>(format:"+m+" bytes:"+url.length+" efficiency:"+(100-Math.round(100*url.length/l1))+"%)<small></a>"+s+"</div>";
+ 
                 var el = document.getElementById("output");
                 el.innerHTML += link;
             }
@@ -109,28 +113,12 @@
 
     function load_b64(b64)
     {
-        var arrayBuffer = _base64ToArray(b64);
+        var arrayBuffer = oCOM.base64ToArrayBuffer(b64);
         if(arrayBuffer)
         {
             var fym = new Uint8Array(arrayBuffer);
             psgdump = pako.inflate(fym);
         }
-    }
-
-    _base64ToArray = function(base64)
-    {
-        var binary_string = window.atob(base64);
-        var len = binary_string.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) {
-            bytes[i] = binary_string.charCodeAt(i);
-        }
-        return bytes;
-    }
-
-    _ArrayTobase64 = function(bytes) 
-    {
-        return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
     }
   </script>
 
@@ -164,6 +152,7 @@
             <br>
             <button onclick="document.getElementById('getFile').click()">Load file</button>
             <input type='file' id="getFile" style="display:none" onchange="load_file(this.files[0]);">
+            <br><br>
             <div id="output"></div>
         </td>
     </tr>
