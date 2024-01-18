@@ -88,7 +88,7 @@ function EMU_init()
 
     // LOAD DISK IMAGE VIA URI PARAMETER (if any)
     oCOM.URL.parse(document.location.toString());
-    var dsk = oCOM.URL.uri["dsk1"];
+    var dsk = oCOM.URL.uri["D1"];
     if(dsk===undefined || dsk.length==0) return null;
 
     var db = oCOM.base64ToArrayBuffer(dsk);
@@ -148,6 +148,8 @@ function loadDisk_fromFile(file_obj,drv)
     var file = file_obj.files[0];
     if (!file) return;
 
+    highlight_appbut(file_obj,true);
+
     switch(drv)
     {
         case "D1":
@@ -187,9 +189,35 @@ function loadDisk_fromFile(file_obj,drv)
     }
 }
 
-function loadDisk_fromBuffer(arr_buffer,drv)
+function loadDisk_fromBuffer(arr_buffer,dsk)
 {
     var bytes = Array.from(arr_buffer);
     if (bytes.length == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
     apple2plus.loadDisk(bytes,"D1");
+    highlight_appbut(document.getElementById("file_"+dsk),true);
+}
+
+function ejectDisk(el,dsk)
+{
+  var fe = document.getElementById("file_"+dsk);
+  fe.value = "";
+
+  var d = oCOM.URL.uri[dsk];
+  if(d)
+  {
+    // URI is filled
+    el.type='submit';
+    el.submit();
+  }
+  else
+  {
+    highlight_appbut(el,false);
+    el.type='button';
+  }
+}
+
+
+function highlight_appbut(el,bool)
+{
+    el.parentElement.style.backgroundColor = bool?"rgb(255,255,255,0.95)":""
 }

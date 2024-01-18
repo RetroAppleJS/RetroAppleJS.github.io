@@ -164,10 +164,12 @@ function COM()
     var url, mimeType = 'application/octet-stream';
     var blob = new Blob([ui8], {type: mimeType});
     var url = window.URL.createObjectURL(blob);
+
+    console.log("downloadURL('"+ul+"', '"+fileName+"')")
     downloadURL(url, fileName);
     setTimeout(function() {
       return window.URL.revokeObjectURL(url);
-    }, 1000);
+    }, 2000);
   }
 
   function downloadURL(data, fileName) {
@@ -315,10 +317,15 @@ function COM()
       var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
       this.url = _urlarr[0];
   
-      this.uri = new Array();
+      this.uri = {};
       for(var _i=0;_i<_urlargs.length;_i++)
-        if(_urlargs[_i])
-          this.uri[_urlargs[_i].split("=")[0]] = _urlargs[_i].split("=")[1];
+      {
+        if(!(_urlargs[_i]===undefined))
+        {
+          var a = _urlargs[_i].split("=");
+          this.uri[ a[0] ] = a[1];
+        }
+      }
     }
   }
 

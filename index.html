@@ -185,8 +185,6 @@
 </head>
 
 
-
-
 <!--
    ____    ____          _            
   |_   \  /   _|        (_)           
@@ -303,21 +301,24 @@ function COM_PopupHTML(html,s)
                 </div>
                 <!--  DISK TOOLBOX -->
                 <div class=toolbox>
-                  <form action="index.html" id="f_D1" style="display:inline;">
+                  
 
                     <div class=appbut style="padding:5px 5px 0px 5px;margin-top:0px;text-align:center">
-                        <input type=submit action="index.html" method=get class=appbut value="Drive1" onclick="this.submit()" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive1'">
-                        <input type="file" name="dsk1" id="loadfile_D1" onchange="javascript:loadDisk_fromFile(this,'D1')">
-                        <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                      <form action="index.html" id="f_D1" style="display:inline;">
+                        <input type=button method=get class=appbut value="Drive1" onclick="ejectDisk(this,'D1')" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive1'">
+                        <input type="file" name="D1" id="file_D1" onchange="javascript:loadDisk_fromFile(this,'D1')">
+                      </form>
+                      <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dump_D1" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
                     </div>
 
                     <div class=appbut style="padding:0px 5px 5px 5px;margin-top:0px;text-align:center">
-                        <input type=submit action="index.html" method=get class=appbut value="Drive2" onclick="this.submit()" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive2'">
-                        <input type="file" name="dsk2" id="loadfile_D2" onchange="javascript:loadDisk_fromFile(this,'D2')">
-                        <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])" id="dumpbutton" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
+                      <form action="index.html" id="f_D2" style="display:inline;">
+                        <input type=button method=get class=appbut value="Drive2" onclick="ejectDisk(this,'D2')" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive2'">
+                        <input type="file" name="D2" id="file_D2" onchange="javascript:loadDisk_fromFile(this,'D2')">
+                      </form>
+                      <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dump_D2" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
                     </div>
 
-                  </form>
                 </div>
               </div>
 
@@ -342,12 +343,6 @@ function COM_PopupHTML(html,s)
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
                         oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
-
-                        function fSubmit(id)
-                        {
-                          var el = document.getElementById(id);
-                          el.submit();
-                        }
 
                         function slider_update(obj,max)
                         {
