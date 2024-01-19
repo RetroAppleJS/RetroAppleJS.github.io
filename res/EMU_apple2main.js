@@ -65,6 +65,7 @@ var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
 
 function EMU_init()
 {
+    //oCOM.POPUP.html("HELLO WORLD");
     //console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE EMULATOR

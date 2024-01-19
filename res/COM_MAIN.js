@@ -129,18 +129,27 @@ function COM()
     id:"",
     states:{},
     rules:{},
+    target_id:{"html":"COM_popup","html_txt":"COM_popup_text"},
     el: function(id) { return document.getElementById(id) },
     addRule: function(id,function_obj) { this.rules[id] = function_obj },
     runRule: function(id) { this.id = id; this.rules[id](this) },
     update_state: function(id,el){ this.states[id] = el.hidden },
     on: function(id) { this.states[id] = this.el(id).hidden = false },
     off: function(id) { this.states[id] = this.el(id).hidden = true },
-    toggle: function(id) { var e=this.el(id); this.states[id] = e.hidden = !e.hidden ;return e },
+    toggle: function(id) { var e=this.el(id); if(e===undefined) return null; this.states[id] = e.hidden = !e.hidden ;return e },
     toggle_class: function(el,class1,class2)
     {
       this.toggle(el.id);
       if(el.hidden) {el.classList.remove(class2);el.classList.add(class1)}
       else {el.classList.remove(class1);el.classList.add(class2)}
+    },
+    html: function(html,ttl)
+    {
+      var e = oCOM.POPUP.toggle(this.target_id.html);
+      if(e==null) return null;
+      if(html==null) e.hidden = true;
+      if(ttl) { setTimeout( COM_PopupHTML,ttl*1000 ); e.hidden = false  };
+      document.getElementById(this.target_id.html_txt).innerHTML = !e.hidden?html:"";
     }
   } 
  

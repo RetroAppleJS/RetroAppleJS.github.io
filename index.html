@@ -212,16 +212,6 @@
 </script>
 -->
 
-<script>
-function COM_PopupHTML(html,s)
-{
-  var e = oCOM.POPUP.toggle('COM_popup');
-  if(s) { setTimeout( COM_PopupHTML,s*1000 ); e.hidden = false  };
-  if(html==null) e.hidden = true;
-
-  document.getElementById('COM_popup_text').innerHTML =  !e.hidden?html:"";
-  
-}
 </script>
 
   <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
