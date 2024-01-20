@@ -701,11 +701,6 @@ this.MathParser.prototype.parse = function(e)
 		this.codedst = new Uint8Array(65536);	// 64K buffer
 	}
 
-    this.updateScroll = function(el)
-	{
-		el.scrollTop = el.scrollHeight;
-	}
-
 	this.concat_json = function(json1,json2)
 	{
 		var json3 = json1;
@@ -800,7 +795,10 @@ function DASM()
         this.writeShow('regdisp',adr,ops,disas);
         //this.writeDisplay('dispStep',dispmem);
         this.writeDisplay('dispStep',disp,"beforeend");
-        this.updateScroll('dispStep');
+
+		//var el = document.getElementById("dispStep");
+        //el.scrollTop = el.scrollHeight;
+		this.updateScroll('dispStep');
 
         var dispmem_arr = dispmem.split("<br>");
         if(dispmem_arr.length>5)
@@ -1366,8 +1364,9 @@ function DASM()
 	}
 	*/
 
-    this.updateScroll = function(el)
+    this.updateScroll = function(id)
 	{
+		var el = document.getElementById(id);
 		el.scrollTop = el.scrollHeight;
 	}
 

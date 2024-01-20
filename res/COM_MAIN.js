@@ -174,7 +174,7 @@ function COM()
     var blob = new Blob([ui8], {type: mimeType});
     var url = window.URL.createObjectURL(blob);
 
-    console.log("downloadURL('"+ul+"', '"+fileName+"')")
+    console.log("downloadURL('"+url+"', '"+fileName+"')")
     downloadURL(url, fileName);
     setTimeout(function() {
       return window.URL.revokeObjectURL(url);

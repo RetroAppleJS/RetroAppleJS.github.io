@@ -1,0 +1,1258 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+-->
+
+<html style="background-color:#B0B0B0"><head>
+  <title>APPLE II DISK TOOL - convert .dsk to .nib</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8"> 
+  <link rel="stylesheet"        href="../res/COM_MAIN.css">
+</head>
+
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+
+
+<script>
+var CONF_version="1.1.5"
+var CONF_builddate="20231231-180000" 
+
+
+
+function init_gui(_o)
+{ 
+  document.getElementById('slider_title').outerHTML = _TITLE();
+
+  var el = document.getElementById("src").value;
+  var arr = el.split("\n");
+
+  var out_el = document.getElementById("output")
+
+  for(var i=0;i<arr.length;i++)
+  {
+    arr[i] = oCOM.trim(arr[i])
+    var adr = arr[i].slice(0,4);
+    var hexcode = arr[i].slice(5,11);
+    hexcode = hexcode.slice(0,2)+" "+hexcode.slice(2,4)+" "+hexcode.slice(4,6)
+    out_el.innerHTML += adr+": "+hexcode+"<br>";
+  }
+}
+
+</script>
+
+
+
+
+
+
+<!--
+   ____    ____          _            
+  |_   \  /   _|        (_)           
+    |   \/   |   ,--.   __   _ .--.   
+    | |\  /| |  `'_\ : [  | [ `.-. |  
+   _| |_\/_| |_ // | |, | |  | | | |  
+  |_____||_____|\'-;__/[___][___||__]
+  ██   ██ ████████ ███    ███ ██      
+  ██   ██    ██    ████  ████ ██      
+  ███████    ██    ██ ████ ██ ██      
+  ██   ██    ██    ██  ██  ██ ██      
+  ██   ██    ██    ██      ██ ███████ 
+-->  
+
+<body class="slider_main" onload="init_gui();">
+
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+        <li>
+
+
+        </li>
+      </ul>
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+
+<div style="float:left">
+<textarea id=src style="width:500px;height:500px">
+    055D	00            	BRK                           
+    055E	00            	BRK                           
+    055F	00            	BRK                           
+    0560	00            	BRK                           
+    0561	00            	BRK                           
+    0562	00            	BRK                           
+    0563	00            	BRK                           
+    0564	00            	BRK                           
+    0565	00            	BRK                           
+    0566	00            	BRK                           
+    0567	00            	BRK                           
+    0568	00            	BRK                           
+    0569	00            	BRK                           
+    056A	00            	BRK                           
+    056B	00            	BRK                           
+    056C	00            	BRK                           
+    056D	00            	BRK                           
+    056E	00            	BRK                           
+    056F	00            	BRK                           
+    0570	00            	BRK                           
+    0571	00            	BRK                           
+    0572	00            	BRK                           
+    0573	00            	BRK                           
+    0574	00            	BRK                           
+    0575	00            	BRK                           
+    0576	00            	BRK                           
+    0577	00            	BRK                           
+    0578	00            	BRK                           
+    0579	00            	BRK                           
+    057A	00            	BRK                           
+    057B	00            	BRK                           
+    057C	00            	BRK                           
+    057D	00            	BRK                           
+    057E	00            	BRK                           
+    057F	00            	BRK                           
+    0580	00            	BRK                           
+    0581	00            	BRK                           
+    0582	00            	BRK                           
+    0583	00            	BRK                           
+    0584	00            	BRK                           
+    0585	00            	BRK                           
+    0586	00            	BRK                           
+    0587	F0F0          	BEQ $0579                     
+    0589	F0F0          	BEQ $057B                     
+    058B	F0F0          	BEQ $057D                     
+    058D	F0F0          	BEQ $057F                     
+    058F	F0F0          	BEQ $0581                     
+    0591	F0F0          	BEQ $0583                     
+    0593	F0F0          	BEQ $0585                     
+    0595	F0F0          	BEQ $0587                     
+    0597	F0F0          	BEQ $0589                     
+    0599	F0F0          	BEQ $058B                     
+    059B	F0F0          	BEQ $058D                     
+    059D	F0F0          	BEQ $058F                     
+    059F	F0F0          	BEQ $0591                     
+    05A1	00            	BRK                           
+    05A2	00            	BRK                           
+    05A3	00            	BRK                           
+    05A4	00            	BRK                           
+    05A5	00            	BRK                           
+    05A6	00            	BRK                           
+    05A7	00            	BRK                           
+    05A8	00            	BRK                           
+    05A9	00            	BRK                           
+    05AA	00            	BRK                           
+    05AB	00            	BRK                           
+    05AC	00            	BRK                           
+    05AD	00            	BRK                           
+    05AE	00            	BRK                           
+    05AF	FFFF0F        	ISB $0FFF,x                   
+    05B2	0F0F0F        	SLO $0F0F                     
+    05B5	0F0F0F        	SLO $0F0F                     
+    05B8	FFF00F        	ISB $0FF0,x                   
+    05BB	FFF00F        	ISB $0FF0,x                   
+    05BE	0F000F        	SLO $0F00                     
+    05C1	F00F          	BEQ $05D2                     
+    05C3	F0FF          	BEQ $05C4                     
+    05C5	0FFFFF        	SLO $FFFF                     
+    05C8	FF0000        	ISB tgi_color_black,x         
+    05CB	00            	BRK                           
+    05CC	00            	BRK                           
+    05CD	00            	BRK                           
+    05CE	00            	BRK                           
+    05CF	00            	BRK                           
+    05D0	00            	BRK                           
+    05D1	00            	BRK                           
+    05D2	00            	BRK                           
+    05D3	00            	BRK                           
+    05D4	00            	BRK                           
+    05D5	00            	BRK                           
+    05D6	00            	BRK                           
+    05D7	00            	BRK                           
+    05D8	00            	BRK                           
+    05D9	00            	BRK                           
+    05DA	00            	BRK                           
+    05DB	00            	BRK                           
+    05DC	00            	BRK                           
+    05DD	00            	BRK                           
+    05DE	00            	BRK                           
+    05DF	00            	BRK                           
+    05E0	00            	BRK                           
+    05E1	00            	BRK                           
+    05E2	00            	BRK                           
+    05E3	00            	BRK                           
+    05E4	00            	BRK                           
+    05E5	00            	BRK                           
+    05E6	00            	BRK                           
+    05E7	00            	BRK                           
+    05E8	00            	BRK                           
+    05E9	00            	BRK                           
+    05EA	00            	BRK                           
+    05EB	00            	BRK                           
+    05EC	00            	BRK                           
+    05ED	00            	BRK                           
+    05EE	00            	BRK                           
+    05EF	00            	BRK                           
+    05F0	00            	BRK                           
+    05F1	00            	BRK                           
+    05F2	00            	BRK                           
+    05F3	00            	BRK                           
+    05F4	00            	BRK                           
+    05F5	00            	BRK                           
+    05F6	00            	BRK                           
+    05F7	00            	BRK                           
+    05F8	00            	BRK                           
+    05F9	00            	BRK                           
+    05FA	00            	BRK                           
+    05FB	00            	BRK                           
+    05FC	00            	BRK                           
+    05FD	00            	BRK                           
+    05FE	00            	BRK                           
+    05FF	00            	BRK                           
+    0600	00            	BRK                           
+    0601	00            	BRK                           
+    0602	00            	BRK                           
+    0603	00            	BRK                           
+    0604	00            	BRK                           
+    0605	00            	BRK                           
+    0606	00            	BRK                           
+    0607	FFFF0F        	ISB $0FFF,x                   
+    060A	0F0F0F        	SLO $0F0F                     
+    060D	0F0F0F        	SLO $0F0F                     
+    0610	FFFFFF        	ISB $FFFF,x                   
+    0613	0FFF0F        	SLO $0FFF                     
+    0616	FF0F0F        	ISB $0F0F,x                   
+    0619	0F0F0F        	SLO $0F0F                     
+    061C	0F0FFF        	SLO $FF0F                     
+    061F	FFFF00        	ISB $00FF,x                   
+    0622	00            	BRK                           
+    0623	00            	BRK                           
+    0624	00            	BRK                           
+    0625	00            	BRK                           
+    0626	00            	BRK                           
+    0627	00            	BRK                           
+    0628	00            	BRK                           
+    0629	00            	BRK                           
+    062A	00            	BRK                           
+    062B	00            	BRK                           
+    062C	00            	BRK                           
+    062D	00            	BRK                           
+    062E	00            	BRK                           
+    062F	FFFF00        	ISB $00FF,x                   
+    0632	FF0F0F        	ISB $0F0F,x                   
+    0635	0FFF00        	SLO $00FF                     
+    0638	FF0F00        	ISB $000F,x                   
+    063B	FFF00F        	ISB $0FF0,x                   
+    063E	00            	BRK                           
+    063F	F000          	BEQ $0641                     
+    0641	FFFFFF        	ISB $FFFF,x                   
+    0644	F0FF          	BEQ $0645                     
+    0646	FFFFFF        	ISB $FFFF,x                   
+    0649	00            	BRK                           
+    064A	00            	BRK                           
+    064B	00            	BRK                           
+    064C	00            	BRK                           
+    064D	00            	BRK                           
+    064E	00            	BRK                           
+    064F	00            	BRK                           
+    0650	00            	BRK                           
+    0651	00            	BRK                           
+    0652	00            	BRK                           
+    0653	00            	BRK                           
+    0654	00            	BRK                           
+    0655	00            	BRK                           
+    0656	00            	BRK                           
+    0657	00            	BRK                           
+    0658	00            	BRK                           
+    0659	00            	BRK                           
+    065A	00            	BRK                           
+    065B	00            	BRK                           
+    065C	00            	BRK                           
+    065D	00            	BRK                           
+    065E	00            	BRK                           
+    065F	00            	BRK                           
+    0660	00            	BRK                           
+    0661	00            	BRK                           
+    0662	00            	BRK                           
+    0663	00            	BRK                           
+    0664	00            	BRK                           
+    0665	00            	BRK                           
+    0666	00            	BRK                           
+    0667	00            	BRK                           
+    0668	00            	BRK                           
+    0669	00            	BRK                           
+    066A	00            	BRK                           
+    066B	00            	BRK                           
+    066C	00            	BRK                           
+    066D	00            	BRK                           
+    066E	00            	BRK                           
+    066F	00            	BRK                           
+    0670	00            	BRK                           
+    0671	00            	BRK                           
+    0672	00            	BRK                           
+    0673	00            	BRK                           
+    0674	00            	BRK                           
+    0675	00            	BRK                           
+    0676	00            	BRK                           
+    0677	00            	BRK                           
+    0678	00            	BRK                           
+    0679	00            	BRK                           
+    067A	00            	BRK                           
+    067B	00            	BRK                           
+    067C	00            	BRK                           
+    067D	00            	BRK                           
+    067E	00            	BRK                           
+    067F	00            	BRK                           
+    0680	00            	BRK                           
+    0681	00            	BRK                           
+    0682	00            	BRK                           
+    0683	00            	BRK                           
+    0684	00            	BRK                           
+    0685	00            	BRK                           
+    0686	00            	BRK                           
+    0687	FFFF00        	ISB $00FF,x                   
+    068A	FF0F0F        	ISB $0F0F,x                   
+    068D	0FFF00        	SLO $00FF                     
+    0690	FFF0FF        	ISB $FFF0,x                   
+    0693	0F0FF0        	SLO $F00F                     
+    0696	FF00FF        	ISB $FF00,x                   
+    0699	0F0F0F        	SLO $0F0F                     
+    069C	FF00FF        	ISB $FF00,x                   
+    069F	FFFF00        	ISB $00FF,x                   
+    06A2	00            	BRK                           
+    06A3	00            	BRK                           
+    06A4	00            	BRK                           
+    06A5	00            	BRK                           
+    06A6	00            	BRK                           
+    06A7	00            	BRK                           
+    06A8	00            	BRK                           
+    06A9	00            	BRK                           
+    06AA	00            	BRK                           
+    06AB	00            	BRK                           
+    06AC	00            	BRK                           
+    06AD	00            	BRK                           
+    06AE	00            	BRK                           
+    06AF	FFFF00        	ISB $00FF,x                   
+    06B2	FF0000        	ISB tgi_color_black,x         
+    06B5	00            	BRK                           
+    06B6	FF00FF        	ISB $FF00,x                   
+    06B9	0FFFF0        	SLO $F0FF                     
+    06BC	F00F          	BEQ $06CD                     
+    06BE	F0F0          	BEQ $06B0                     
+    06C0	FFFFFF        	ISB $FFFF,x                   
+    06C3	F0F0          	BEQ $06B5                     
+    06C5	0FFFFF        	SLO $FFFF                     
+    06C8	FF0000        	ISB tgi_color_black,x         
+    06CB	00            	BRK                           
+    06CC	00            	BRK                           
+    06CD	00            	BRK                           
+    06CE	00            	BRK                           
+    06CF	00            	BRK                           
+    06D0	00            	BRK                           
+    06D1	00            	BRK                           
+    06D2	00            	BRK                           
+    06D3	00            	BRK                           
+    06D4	00            	BRK                           
+    06D5	00            	BRK                           
+    06D6	00            	BRK                           
+    06D7	00            	BRK                           
+    06D8	00            	BRK                           
+    06D9	00            	BRK                           
+    06DA	00            	BRK                           
+    06DB	00            	BRK                           
+    06DC	00            	BRK                           
+    06DD	00            	BRK                           
+    06DE	00            	BRK                           
+    06DF	00            	BRK                           
+    06E0	00            	BRK                           
+    06E1	00            	BRK                           
+    06E2	00            	BRK                           
+    06E3	00            	BRK                           
+    06E4	00            	BRK                           
+    06E5	00            	BRK                           
+    06E6	00            	BRK                           
+    06E7	00            	BRK                           
+    06E8	00            	BRK                           
+    06E9	00            	BRK                           
+    06EA	00            	BRK                           
+    06EB	00            	BRK                           
+    06EC	00            	BRK                           
+    06ED	00            	BRK                           
+    06EE	00            	BRK                           
+    06EF	00            	BRK                           
+    06F0	00            	BRK                           
+    06F1	00            	BRK                           
+    06F2	00            	BRK                           
+    06F3	00            	BRK                           
+    06F4	00            	BRK                           
+    06F5	00            	BRK                           
+    06F6	00            	BRK                           
+    06F7	00            	BRK                           
+    06F8	00            	BRK                           
+    06F9	00            	BRK                           
+    06FA	00            	BRK                           
+    06FB	00            	BRK                           
+    06FC	00            	BRK                           
+    06FD	00            	BRK                           
+    06FE	00            	BRK                           
+    06FF	00            	BRK                           
+    0700	00            	BRK                           
+    0701	00            	BRK                           
+    0702	00            	BRK                           
+    0703	00            	BRK                           
+    0704	00            	BRK                           
+    0705	00            	BRK                           
+    0706	00            	BRK                           
+    0707	FFFF00        	ISB $00FF,x                   
+    070A	FF0000        	ISB tgi_color_black,x         
+    070D	00            	BRK                           
+    070E	FF00FF        	ISB $FF00,x                   
+    0711	0FFFF0        	SLO $F0FF                     
+    0714	0F00FF        	SLO $FF00                     
+    0717	00            	BRK                           
+    0718	FF0000        	ISB tgi_color_black,x         
+    071B	00            	BRK                           
+    071C	FF00FF        	ISB $FF00,x                   
+    071F	FFFF00        	ISB $00FF,x                   
+    0722	00            	BRK                           
+    0723	00            	BRK                           
+    0724	00            	BRK                           
+    0725	00            	BRK                           
+    0726	00            	BRK                           
+    0727	00            	BRK                           
+    0728	00            	BRK                           
+    0729	00            	BRK                           
+    072A	00            	BRK                           
+    072B	00            	BRK                           
+    072C	00            	BRK                           
+    072D	00            	BRK                           
+    072E	00            	BRK                           
+    072F	FFFF00        	ISB $00FF,x                   
+    0732	0F0F0F        	SLO $0F0F                     
+    0735	0F0F00        	SLO $000F                     
+    0738	FF0F00        	ISB $000F,x                   
+    073B	F00F          	BEQ $074C                     
+    073D	00            	BRK                           
+    073E	F0FF          	BEQ $073F                     
+    0740	00            	BRK                           
+    0741	00            	BRK                           
+    0742	F0FF          	BEQ $0743                     
+    0744	F000          	BEQ $0746                     
+    0746	FFFFFF        	ISB $FFFF,x                   
+    0749	00            	BRK                           
+    074A	00            	BRK                           
+    074B	00            	BRK                           
+    074C	00            	BRK                           
+    074D	00            	BRK                           
+    074E	00            	BRK                           
+    074F	00            	BRK                           
+    0750	00            	BRK                           
+    0751	00            	BRK                           
+    0752	00            	BRK                           
+    0753	00            	BRK                           
+    0754	00            	BRK                           
+    0755	00            	BRK                           
+    0756	00            	BRK                           
+    0757	00            	BRK                           
+    0758	00            	BRK                           
+    0759	00            	BRK                           
+    075A	00            	BRK                           
+    075B	00            	BRK                           
+    075C	00            	BRK                           
+    075D	00            	BRK                           
+    075E	00            	BRK                           
+    075F	00            	BRK                           
+    0760	00            	BRK                           
+    0761	00            	BRK                           
+    0762	00            	BRK                           
+    0763	00            	BRK                           
+    0764	00            	BRK                           
+    0765	00            	BRK                           
+    0766	00            	BRK                           
+    0767	00            	BRK                           
+    0768	00            	BRK                           
+    0769	00            	BRK                           
+    076A	00            	BRK                           
+    076B	00            	BRK                           
+    076C	00            	BRK                           
+    076D	00            	BRK                           
+    076E	00            	BRK                           
+    076F	00            	BRK                           
+    0770	00            	BRK                           
+    0771	00            	BRK                           
+    0772	00            	BRK                           
+    0773	00            	BRK                           
+    0774	00            	BRK                           
+    0775	00            	BRK                           
+    0776	00            	BRK                           
+    0777	00            	BRK                           
+    0778	00            	BRK                           
+    0779	00            	BRK                           
+    077A	00            	BRK                           
+    077B	00            	BRK                           
+    077C	00            	BRK                           
+    077D	00            	BRK                           
+    077E	00            	BRK                           
+    077F	00            	BRK                           
+    0780	00            	BRK                           
+    0781	00            	BRK                           
+    0782	00            	BRK                           
+    0783	00            	BRK                           
+    0784	00            	BRK                           
+    0785	00            	BRK                           
+    0786	00            	BRK                           
+    0787	FFFF00        	ISB $00FF,x                   
+    078A	0F0F0F        	SLO $0F0F                     
+    078D	0F0F00        	SLO $000F                     
+    0790	FF0FF0        	ISB $F00F,x                   
+    0793	0FF00F        	SLO $0FF0                     
+    0796	FF000F        	ISB $0F00,x                   
+    0799	0F0F0F        	SLO $0F0F                     
+    079C	0F00FF        	SLO $FF00                     
+    079F	FFFF00        	ISB $00FF,x                   
+    07A2	00            	BRK                           
+    07A3	00            	BRK                           
+    07A4	00            	BRK                           
+    07A5	00            	BRK                           
+    07A6	00            	BRK                           
+    07A7	00            	BRK                           
+    07A8	00            	BRK                           
+    07A9	00            	BRK                           
+    07AA	00            	BRK                           
+    07AB	00            	BRK                           
+    07AC	00            	BRK                           
+    07AD	00            	BRK                           
+    07AE	00            	BRK                           
+    07AF	FFFFFF        	ISB $FFFF,x                   
+    07B2	FFFFFF        	ISB $FFFF,x                   
+    07B5	FFFFFF        	ISB $FFFF,x                   
+    07B8	FFFFFF        	ISB $FFFF,x                   
+    07BB	FFFFFF        	ISB $FFFF,x                   
+    07BE	FFFFFF        	ISB $FFFF,x                   
+    07C1	FFFFFF        	ISB $FFFF,x                   
+    07C4	FFFFFF        	ISB $FFFF,x                   
+    07C7	FFFF00        	ISB $00FF,x                   
+    07CA	00            	BRK                           
+    07CB	00            	BRK                           
+    07CC	00            	BRK                           
+    07CD	00            	BRK                           
+    07CE	00            	BRK                           
+    07CF	00            	BRK                           
+    07D0	00            	BRK                           
+    07D1	00            	BRK                           
+    07D2	00            	BRK                           
+    07D3	00            	BRK                           
+    07D4	00            	BRK                           
+    07D5	00            	BRK                           
+    07D6	00            	BRK                           
+    07D7	00            	BRK                           
+    07D8	00            	BRK                           
+    07D9	00            	BRK                           
+    07DA	00            	BRK                           
+    07DB	00            	BRK                           
+    07DC	00            	BRK                           
+    07DD	00            	BRK                           
+    07DE	00            	BRK                           
+    07DF	00            	BRK                           
+    07E0	00            	BRK                           
+    07E1	00            	BRK                           
+    07E2	00            	BRK                           
+    07E3	00            	BRK                           
+    07E4	00            	BRK                           
+    07E5	00            	BRK                           
+    07E6	00            	BRK                           
+    07E7	00            	BRK                           
+    07E8	00            	BRK                           
+    07E9	00            	BRK                           
+    07EA	00            	BRK                           
+    07EB	00            	BRK                           
+    07EC	00            	BRK                           
+    07ED	00            	BRK                           
+    07EE	00            	BRK                           
+    07EF	00            	BRK                           
+    07F0	00            	BRK                           
+    07F1	00            	BRK                           
+    07F2	00            	BRK                           
+    07F3	00            	BRK                           
+    07F4	00            	BRK                           
+    07F5	00            	BRK                           
+    07F6	00            	BRK                           
+    07F7	00            	BRK                           
+    07F8	00            	BRK                           
+    07F9	00            	BRK                           
+    07FA	00            	BRK                           
+    07FB	00            	BRK                           
+    07FC	00            	BRK                           
+    07FD	00            	BRK                           
+    07FE	00            	BRK                           
+    07FF	00            	BRK                           
+    0800	00            	BRK                           ; __STACKSIZE__
+    0801	00            	BRK                           
+    0802	00            	BRK                           
+    0803	A2FF          	LDX #$FF                      ; __MAIN_START__
+    0805	9A            	TXS                           
+    0806	201C30        	JSR $301C                     
+    0809	20A82A        	JSR zerobss                   
+    080C	20D61F        	JSR callmain                  
+    080F	A21C          	LDX #$1C                      ; tgi_libref
+    0811	A908          	LDA #$08                      
+    0813	20F91F        	JSR $1FF9                     
+    0816	2C82C0        	BIT $C082                     
+    0819	20ED1F        	JSR donelib                   
+    081C	A202          	LDX #$02                      
+    081E	BD0D30        	LDA $300D,x                   
+    0821	9DF203        	STA $03F2,x                   
+    0824	CA            	DEX                           
+    0825	10F7          	BPL $081E                     
+    0827	A219          	LDX #$19                      
+    0829	BDF32F        	LDA $2FF3,x                   
+    082C	9580          	STA sp,x                      
+    082E	CA            	DEX                           
+    082F	10F8          	BPL $0829                     
+    0831	A2FF          	LDX #$FF                      
+    0833	9A            	TXS                           
+    0834	4C322F        	JMP done                      
+    0837	2C82C0        	BIT $C082                     ; COUT
+    083A	20EDFD        	JSR $FDED                     
+    083D	2C80C0        	BIT $C080                     
+    0840	60            	RTS                           
+    0841	A254          	LDX #$54                      ; _main
+    0843	A912          	LDA #$12                      
+    0845	8D2A30        	STA $302A                     
+    0848	8E2B30        	STX $302B                     
+    084B	A900          	LDA #$00                      
+    084D	8D2C30        	STA $302C                     
+    0850	8D2D30        	STA $302D                     
+    0853	A957          	LDA #$57                      
+    0855	A22D          	LDX #$2D                      
+    0857	203A25        	JSR _puts                     
+    085A	203020        	JSR decsp4                    
+    085D	A910          	LDA #$10                      
+    085F	A002          	LDY #$02                      
+    0861	9180          	STA (sp),y                    
+    0863	C8            	INY                           
+    0864	A930          	LDA #$30                      
+    0866	9180          	STA (sp),y                    
+    0868	AD2C30        	LDA $302C                     
+    086B	A000          	LDY #$00                      
+    086D	9180          	STA (sp),y                    
+    086F	C8            	INY                           
+    0870	AD2D30        	LDA $302D                     
+    0873	9180          	STA (sp),y                    
+    0875	ADDC2E        	LDA __DESTRUCTOR_TABLE__      
+    0878	AEDD2E        	LDX __DESTRUCTOR_TABLE__+1    
+    087B	20550C        	JSR _QrTinyWriteAlphanumeric  
+    087E	18            	CLC                           
+    087F	6D2C30        	ADC $302C                     
+    0882	8D2C30        	STA $302C                     
+    0885	8A            	TXA                           
+    0886	6D2D30        	ADC $302D                     
+    0889	8D2D30        	STA $302D                     
+    088C	203020        	JSR decsp4                    
+    088F	A910          	LDA #$10                      
+    0891	A002          	LDY #$02                      
+    0893	9180          	STA (sp),y                    
+    0895	C8            	INY                           
+    0896	A930          	LDA #$30                      
+    0898	9180          	STA (sp),y                    
+    089A	AD2C30        	LDA $302C                     
+    089D	A000          	LDY #$00                      
+    089F	9180          	STA (sp),y                    
+    08A1	C8            	INY                           
+    08A2	AD2D30        	LDA $302D                     
+    08A5	9180          	STA (sp),y                    
+    08A7	AD2A30        	LDA $302A                     
+    08AA	AE2B30        	LDX $302B                     
+    08AD	201310        	JSR _QrTinyGenerate           
+    08B0	8D2E30        	STA $302E                     
+    08B3	A933          	LDA #$33                      
+    08B5	A22D          	LDX #$2D                      
+    08B7	200825        	JSR pushax                    
+    08BA	AD2E30        	LDA $302E                     
+    08BD	200625        	JSR pusha0                    
+    08C0	A004          	LDY #$04                      
+    08C2	20B624        	JSR _printf                   
+    08C5	AD2E30        	LDA $302E                     
+    08C8	F0FE          	BEQ $08C8                     
+    08CA	A200          	LDX #$00                      
+    08CC	A909          	LDA #$09                      
+    08CE	8D3330        	STA $3033                     
+    08D1	8E3430        	STX $3034                     
+    08D4	8D3530        	STA $3035                     
+    08D7	8E3630        	STX $3036                     
+    08DA	A9BC          	LDA #$BC                      
+    08DC	A22F          	LDX #$2F                      
+    08DE	201927        	JSR _tgi_install              
+    08E1	208A28        	JSR _tgi_init                 
+    08E4	208D2F        	JSR tgi_clear                 
+    08E7	A903          	LDA #$03                      
+    08E9	20E928        	JSR _tgi_setcolor             
+    08EC	203D20        	JSR decsp6                    
+    08EF	AD3330        	LDA $3033                     
+    08F2	AE3430        	LDX $3034                     
+    08F5	38            	SEC                           
+    08F6	E902          	SBC #$02                      
+    08F8	B001          	BCS $08FB                     
+    08FA	CA            	DEX                           
+    08FB	A004          	LDY #$04                      
+    08FD	9180          	STA (sp),y                    
+    08FF	C8            	INY                           
+    0900	8A            	TXA                           
+    0901	9180          	STA (sp),y                    
+    0903	AD3530        	LDA $3035                     
+    0906	AE3630        	LDX $3036                     
+    0909	38            	SEC                           
+    090A	E902          	SBC #$02                      
+    090C	B001          	BCS $090F                     
+    090E	CA            	DEX                           
+    090F	A002          	LDY #$02                      
+    0911	9180          	STA (sp),y                    
+    0913	C8            	INY                           
+    0914	8A            	TXA                           
+    0915	9180          	STA (sp),y                    
+    0917	AD3330        	LDA $3033                     
+    091A	AE3430        	LDX $3034                     
+    091D	18            	CLC                           
+    091E	6915          	ADC #$15                      
+    0920	9002          	BCC $0924                     
+    0922	E8            	INX                           
+    0923	18            	CLC                           
+    0924	6902          	ADC #$02                      
+    0926	9001          	BCC $0929                     
+    0928	E8            	INX                           
+    0929	A000          	LDY #$00                      
+    092B	9180          	STA (sp),y                    
+    092D	C8            	INY                           
+    092E	8A            	TXA                           
+    092F	9180          	STA (sp),y                    
+    0931	AD3530        	LDA $3035                     
+    0934	AE3630        	LDX $3036                     
+    0937	18            	CLC                           
+    0938	6915          	ADC #$15                      
+    093A	9002          	BCC $093E                     
+    093C	E8            	INX                           
+    093D	18            	CLC                           
+    093E	6902          	ADC #$02                      
+    0940	9001          	BCC $0943                     
+    0942	E8            	INX                           
+    0943	209827        	JSR _tgi_bar                  
+    0946	A900          	LDA #$00                      
+    0948	8D3130        	STA $3031                     
+    094B	8D3230        	STA $3032                     
+    094E	AD3130        	LDA $3031                     
+    0951	C915          	CMP #$15                      
+    0953	AD3230        	LDA $3032                     
+    0956	E900          	SBC #$00                      
+    0958	5002          	BVC $095C                     
+    095A	4980          	EOR #$80                      
+    095C	0A            	ASL                           
+    095D	90FE          	BCC $095D                     
+    095F	A900          	LDA #$00                      
+    0961	8D2F30        	STA $302F                     
+    0964	8D3030        	STA $3030                     
+    0967	AD2F30        	LDA $302F                     
+    096A	C915          	CMP #$15                      
+    096C	AD3030        	LDA $3030                     
+    096F	E900          	SBC #$00                      
+    0971	5002          	BVC $0975                     
+    0973	4980          	EOR #$80                      
+    0975	107D          	BPL $09F4                     
+    0977	203D20        	JSR decsp6                    
+    097A	A910          	LDA #$10                      
+    097C	A004          	LDY #$04                      
+    097E	9180          	STA (sp),y                    
+    0980	C8            	INY                           
+    0981	A930          	LDA #$30                      
+    0983	9180          	STA (sp),y                    
+    0985	AD2A30        	LDA $302A                     
+    0988	A002          	LDY #$02                      
+    098A	9180          	STA (sp),y                    
+    098C	C8            	INY                           
+    098D	AD2B30        	LDA $302B                     
+    0990	9180          	STA (sp),y                    
+    0992	AD2F30        	LDA $302F                     
+    0995	A000          	LDY #$00                      
+    0997	9180          	STA (sp),y                    
+    0999	C8            	INY                           
+    099A	AD3030        	LDA $3030                     
+    099D	9180          	STA (sp),y                    
+    099F	AD3130        	LDA $3031                     
+    09A2	AE3230        	LDX $3032                     
+    09A5	207C12        	JSR _QrTinyModuleGet          
+    09A8	8D3730        	STA M0009                     
+    09AB	8E3830        	STX M0009+1                   
+    09AE	AD3730        	LDA M0009                     
+    09B1	0D3830        	ORA M0009+1                   
+    09B4	F005          	BEQ $09BB                     
+    09B6	A900          	LDA #$00                      
+    09B8	4CBD09        	JMP $09BD                     
+    09BB	A903          	LDA #$03                      
+    09BD	20E928        	JSR _tgi_setcolor             
+    09C0	AD2F30        	LDA $302F                     
+    09C3	18            	CLC                           
+    09C4	6D3330        	ADC $3033                     
+    09C7	48            	PHA                           
+    09C8	AD3030        	LDA $3030                     
+    09CB	6D3430        	ADC $3034                     
+    09CE	AA            	TAX                           
+    09CF	68            	PLA                           
+    09D0	200825        	JSR pushax                    
+    09D3	AD3130        	LDA $3031                     
+    09D6	18            	CLC                           
+    09D7	6D3530        	ADC $3035                     
+    09DA	48            	PHA                           
+    09DB	AD3230        	LDA $3032                     
+    09DE	6D3630        	ADC $3036                     
+    09E1	AA            	TAX                           
+    09E2	68            	PLA                           
+    09E3	20FC28        	JSR _tgi_setpixel             
+    09E6	EE2F30        	INC $302F                     
+    09E9	F003          	BEQ $09EE                     
+    09EB	4C6709        	JMP $0967                     
+    09EE	EE3030        	INC $3030                     
+    09F1	4C6709        	JMP $0967                     
+    09F4	EE3130        	INC $3031                     
+    09F7	F003          	BEQ $09FC                     
+    09F9	4C4E09        	JMP $094E                     
+    09FC	EE3230        	INC $3032                     
+    09FF	4C4E09        	JMP $094E                     
+    0A02	200825        	JSR pushax                    ; _QrTinyWriteNumeric
+    0A05	A001          	LDY #$01                      
+    0A07	B180          	LDA (sp),y                    
+    0A09	AA            	TAX                           
+    0A0A	88            	DEY                           
+    0A0B	B180          	LDA (sp),y                    
+    0A0D	20C726        	JSR _strlen                   
+    0A10	8D3930        	STA M0001                     
+    0A13	8E3A30        	STX M0001+1                   
+    0A16	A900          	LDA #$00                      
+    0A18	8D3B30        	STA M0002                     
+    0A1B	8D3C30        	STA M0002+1                   
+    0A1E	204A20        	JSR decsp8                    
+    0A21	A00D          	LDY #$0D                      
+    0A23	B180          	LDA (sp),y                    
+    0A25	AA            	TAX                           
+    0A26	88            	DEY                           
+    0A27	B180          	LDA (sp),y                    
+    0A29	A006          	LDY #$06                      
+    0A2B	9180          	STA (sp),y                    
+    0A2D	C8            	INY                           
+    0A2E	8A            	TXA                           
+    0A2F	9180          	STA (sp),y                    
+    0A31	A00B          	LDY #$0B                      
+    0A33	B180          	LDA (sp),y                    
+    0A35	AA            	TAX                           
+    0A36	88            	DEY                           
+    0A37	B180          	LDA (sp),y                    
+    0A39	18            	CLC                           
+    0A3A	6D3B30        	ADC M0002                     
+    0A3D	48            	PHA                           
+    0A3E	8A            	TXA                           
+    0A3F	6D3C30        	ADC M0002+1                   
+    0A42	AA            	TAX                           
+    0A43	68            	PLA                           
+    0A44	A004          	LDY #$04                      
+    0A46	9180          	STA (sp),y                    
+    0A48	C8            	INY                           
+    0A49	8A            	TXA                           
+    0A4A	9180          	STA (sp),y                    
+    0A4C	A200          	LDX #$00                      
+    0A4E	A000          	LDY #$00                      
+    0A50	A901          	LDA #$01                      
+    0A52	9180          	STA (sp),y                    
+    0A54	8A            	TXA                           
+    0A55	C8            	INY                           
+    0A56	9180          	STA (sp),y                    
+    0A58	C8            	INY                           
+    0A59	9180          	STA (sp),y                    
+    0A5B	C8            	INY                           
+    0A5C	9180          	STA (sp),y                    
+    0A5E	A904          	LDA #$04                      
+    0A60	205D13        	JSR _QrTinyBufferAppend       
+    0A63	18            	CLC                           
+    0A64	6D3B30        	ADC M0002                     
+    0A67	8D3B30        	STA M0002                     
+    0A6A	8A            	TXA                           
+    0A6B	6D3C30        	ADC M0002+1                   
+    0A6E	8D3C30        	STA M0002+1                   
+    0A71	204A20        	JSR decsp8                    
+    0A74	A00D          	LDY #$0D                      
+    0A76	B180          	LDA (sp),y                    
+    0A78	AA            	TAX                           
+    0A79	88            	DEY                           
+    0A7A	B180          	LDA (sp),y                    
+    0A7C	A006          	LDY #$06                      
+    0A7E	9180          	STA (sp),y                    
+    0A80	C8            	INY                           
+    0A81	8A            	TXA                           
+    0A82	9180          	STA (sp),y                    
+    0A84	A00B          	LDY #$0B                      
+    0A86	B180          	LDA (sp),y                    
+    0A88	AA            	TAX                           
+    0A89	88            	DEY                           
+    0A8A	B180          	LDA (sp),y                    
+    0A8C	18            	CLC                           
+    0A8D	6D3B30        	ADC M0002                     
+    0A90	48            	PHA                           
+    0A91	8A            	TXA                           
+    0A92	6D3C30        	ADC M0002+1                   
+    0A95	AA            	TAX                           
+    0A96	68            	PLA                           
+    0A97	A004          	LDY #$04                      
+    0A99	9180          	STA (sp),y                    
+    0A9B	C8            	INY                           
+    0A9C	8A            	TXA                           
+    0A9D	9180          	STA (sp),y                    
+    0A9F	AD3930        	LDA M0001                     
+    0AA2	AE3A30        	LDX M0001+1                   
+    0AA5	A000          	LDY #$00                      
+    0AA7	8482          	STY sreg                      
+    0AA9	8483          	STY sreg+1                    
+    0AAB	208B26        	JSR steax0sp                  
+    0AAE	A200          	LDX #$00                      
+    0AB0	A90A          	LDA #$0A                      
+    0AB2	205D13        	JSR _QrTinyBufferAppend       
+    0AB5	18            	CLC                           
+    0AB6	6D3B30        	ADC M0002                     
+    0AB9	8D3B30        	STA M0002                     
+    0ABC	8A            	TXA                           
+    0ABD	6D3C30        	ADC M0002+1                   
+    0AC0	8D3C30        	STA M0002+1                   
+    0AC3	A900          	LDA #$00                      
+    0AC5	8D3D30        	STA M0003                     
+    0AC8	8D3E30        	STA M0003+1                   
+    0ACB	AD3D30        	LDA M0003                     
+    0ACE	CD3930        	CMP M0001                     
+    0AD1	AD3E30        	LDA M0003+1                   
+    0AD4	ED3A30        	SBC M0001+1                   
+    0AD7	9003          	BCC $0ADC                     
+    0AD9	4C4C0C        	JMP $0C4C                     
+    0ADC	AD3930        	LDA M0001                     
+    0ADF	38            	SEC                           
+    0AE0	ED3D30        	SBC M0003                     
+    0AE3	48            	PHA                           
+    0AE4	AD3A30        	LDA M0001+1                   
+    0AE7	ED3E30        	SBC M0003+1                   
+    0AEA	AA            	TAX                           
+    0AEB	68            	PLA                           
+    0AEC	C904          	CMP #$04                      
+    0AEE	8A            	TXA                           
+    0AEF	E900          	SBC #$00                      
+    0AF1	9007          	BCC $0AFA                     
+    0AF3	A200          	LDX #$00                      
+    0AF5	A903          	LDA #$03                      
+    0AF7	4C0A0B        	JMP $0B0A                     
+    0AFA	AD3930        	LDA M0001                     
+    0AFD	38            	SEC                           
+    0AFE	ED3D30        	SBC M0003                     
+    0B01	48            	PHA                           
+    0B02	AD3A30        	LDA M0001+1                   
+    0B05	ED3E30        	SBC M0003+1                   
+    0B08	AA            	TAX                           
+    0B09	68            	PLA                           
+    0B0A	8D3F30        	STA M0004                     
+    0B0D	8E4030        	STX M0004+1                   
+    0B10	A001          	LDY #$01                      
+    0B12	B180          	LDA (sp),y                    
+    0B14	AA            	TAX                           
+    0B15	88            	DEY                           
+    0B16	B180          	LDA (sp),y                    
+    0B18	18            	CLC                           
+    0B19	6D3D30        	ADC M0003                     
+    0B1C	8588          	STA ptr1                      
+    0B1E	8A            	TXA                           
+    0B1F	6D3E30        	ADC M0003+1                   
+    0B22	8589          	STA ptr1+1                    
+    0B24	A200          	LDX #$00                      
+    0B26	B188          	LDA (ptr1),y                  
+    0B28	38            	SEC                           
+    0B29	E930          	SBC #$30                      
+    0B2B	B001          	BCS $0B2E                     
+    0B2D	CA            	DEX                           
+    0B2E	8D4130        	STA M0005                     
+    0B31	8E4230        	STX M0005+1                   
+    0B34	A200          	LDX #$00                      
+    0B36	A904          	LDA #$04                      
+    0B38	8D4330        	STA M0006                     
+    0B3B	8E4430        	STX M0006+1                   
+    0B3E	AD3F30        	LDA M0004                     
+    0B41	C902          	CMP #$02                      
+    0B43	AD4030        	LDA M0004+1                   
+    0B46	E900          	SBC #$00                      
+    0B48	9049          	BCC $0B93                     
+    0B4A	AD4130        	LDA M0005                     
+    0B4D	AE4230        	LDX M0005+1                   
+    0B50	202424        	JSR mulax10                   
+    0B53	8582          	STA sreg                      
+    0B55	8683          	STX sreg+1                    
+    0B57	AD3D30        	LDA M0003                     
+    0B5A	AE3E30        	LDX M0003+1                   
+    0B5D	18            	CLC                           
+    0B5E	6901          	ADC #$01                      
+    0B60	9002          	BCC $0B64                     
+    0B62	E8            	INX                           
+    0B63	18            	CLC                           
+    0B64	7180          	ADC (sp),y                    
+    0B66	8588          	STA ptr1                      
+    0B68	8A            	TXA                           
+    0B69	C8            	INY                           
+    0B6A	7180          	ADC (sp),y                    
+    0B6C	8589          	STA ptr1+1                    
+    0B6E	88            	DEY                           
+    0B6F	B188          	LDA (ptr1),y                  
+    0B71	18            	CLC                           
+    0B72	6582          	ADC sreg                      
+    0B74	A683          	LDX sreg+1                    
+    0B76	9001          	BCC $0B79                     
+    0B78	E8            	INX                           
+    0B79	38            	SEC                           
+    0B7A	E930          	SBC #$30                      
+    0B7C	B001          	BCS $0B7F                     
+    0B7E	CA            	DEX                           
+    0B7F	8D4130        	STA M0005                     
+    0B82	8E4230        	STX M0005+1                   
+    0B85	A903          	LDA #$03                      
+    0B87	18            	CLC                           
+    0B88	6D4330        	ADC M0006                     
+    0B8B	8D4330        	STA M0006                     
+    0B8E	9003          	BCC $0B93                     
+    0B90	EE4430        	INC M0006+1                   
+    0B93	AD3F30        	LDA M0004                     
+    0B96	C903          	CMP #$03                      
+    0B98	AD4030        	LDA M0004+1                   
+    0B9B	E900          	SBC #$00                      
+    0B9D	9049          	BCC $0BE8                     
+    0B9F	AD4130        	LDA M0005                     
+    0BA2	AE4230        	LDX M0005+1                   
+    0BA5	202424        	JSR mulax10                   
+    0BA8	8582          	STA sreg                      
+    0BAA	8683          	STX sreg+1                    
+    0BAC	AD3D30        	LDA M0003                     
+    0BAF	AE3E30        	LDX M0003+1                   
+    0BB2	18            	CLC                           
+    0BB3	6902          	ADC #$02                      
+    0BB5	9002          	BCC $0BB9                     
+    0BB7	E8            	INX                           
+    0BB8	18            	CLC                           
+    0BB9	7180          	ADC (sp),y                    
+    0BBB	8588          	STA ptr1                      
+    0BBD	8A            	TXA                           
+    0BBE	C8            	INY                           
+    0BBF	7180          	ADC (sp),y                    
+    0BC1	8589          	STA ptr1+1                    
+    0BC3	88            	DEY                           
+    0BC4	B188          	LDA (ptr1),y                  
+    0BC6	18            	CLC                           
+    0BC7	6582          	ADC sreg                      
+    0BC9	A683          	LDX sreg+1                    
+    0BCB	9001          	BCC $0BCE                     
+    0BCD	E8            	INX                           
+    0BCE	38            	SEC                           
+    0BCF	E930          	SBC #$30                      
+    0BD1	B001          	BCS $0BD4                     
+    0BD3	CA            	DEX                           
+    0BD4	8D4130        	STA M0005                     
+    0BD7	8E4230        	STX M0005+1                   
+    0BDA	A903          	LDA #$03                      
+    0BDC	18            	CLC                           
+    0BDD	6D4330        	ADC M0006                     
+    0BE0	8D4330        	STA M0006                     
+    0BE3	9003          	BCC $0BE8                     
+    0BE5	EE4430        	INC M0006+1                   
+    0BE8	204A20        	JSR decsp8                    
+    0BEB	A00D          	LDY #$0D                      
+    0BED	B180          	LDA (sp),y                    
+    0BEF	AA            	TAX                           
+    0BF0	88            	DEY                           
+    0BF1	B180          	LDA (sp),y                    
+    0BF3	A006          	LDY #$06                      
+    0BF5	9180          	STA (sp),y                    
+    0BF7	C8            	INY                           
+    0BF8	8A            	TXA                           
+    0BF9	9180          	STA (sp),y                    
+    0BFB	A00B          	LDY #$0B                      
+    0BFD	B180          	LDA (sp),y                    
+    0BFF	AA            	TAX                           
+    0C00	88            	DEY                           ; __LC_SIZE__
+    0C01	B180          	LDA (sp),y                    
+    0C03	18            	CLC                           
+    0C04	6D3B30        	ADC M0002                     
+    0C07	48            	PHA                           
+    0C08	8A            	TXA                           
+    0C09	6D3C30        	ADC M0002+1                   
+    0C0C	AA            	TAX                           
+    0C0D	68            	PLA                           
+    0C0E	A004          	LDY #$04                      
+    0C10	9180          	STA (sp),y                    
+    0C12	C8            	INY                           
+    0C13	8A            	TXA                           
+    0C14	9180          	STA (sp),y                    
+    0C16	AD4130        	LDA M0005                     
+    0C19	AE4230        	LDX M0005+1                   
+    0C1C	20C91F        	JSR axlong                    
+    0C1F	208B26        	JSR steax0sp                  
+    0C22	AD4330        	LDA M0006                     
+    0C25	AE4430        	LDX M0006+1                   
+    0C28	205D13        	JSR _QrTinyBufferAppend       
+    0C2B	18            	CLC                           
+    0C2C	6D3B30        	ADC M0002                     
+    0C2F	8D3B30        	STA M0002                     
+    0C32	8A            	TXA                           
+    0C33	6D3C30        	ADC M0002+1                   
+    0C36	8D3C30        	STA M0002+1                   
+    0C39	AD3F30        	LDA M0004                     
+    0C3C	18            	CLC                           
+    0C3D	6D3D30        	ADC M0003                     
+    0C40	8D3D30        	STA M0003                     
+    0C43	AD4030        	LDA M0004+1                   
+    0C46	6D3E30        	ADC M0003+1                   
+    0C49	4CC80A        	JMP $0AC8                     
+    0C4C	AD3B30        	LDA M0002                     
+    0C4F	AE3C30        	LDX M0002+1                   
+    0C52	4C4621        	JMP incsp6                    
+    0C55	200825        	JSR pushax                    ; _QrTinyWriteAlphanumeric
+    0C58	A001          	LDY #$01                      
+    0C5A	B180          	LDA (sp),y                    
+    0C5C	AA            	TAX                           
+    0C5D	88            	DEY                           
+    0C5E	B180          	LDA (sp),y                    
+    0C60	20C726        	JSR _strlen                   
+    0C63	8D4530        	STA $3045                     
+    0C66	8E4630        	STX $3046                     
+    0C69	A900          	LDA #$00                      
+    0C6B	8D4730        	STA $3047                     
+    0C6E	8D4830        	STA $3048                     
+    0C71	204A20        	JSR decsp8                    
+    0C74	A00D          	LDY #$0D                      
+    0C76	B180          	LDA (sp),y                    
+    0C78	AA            	TAX                           
+    0C79	88            	DEY                           
+    0C7A	B180          	LDA (sp),y                    
+    0C7C	A006          	LDY #$06                      
+    0C7E	9180          	STA (sp),y                    
+    0C80	C8            	INY                           
+    0C81	8A            	TXA                           
+    0C82	9180          	STA (sp),y                    
+    0C84	A00B          	LDY #$0B                      
+    0C86	B180          	LDA (sp),y                    
+    0C88	AA            	TAX                           
+    0C89	88            	DEY                           
+    0C8A	B180          	LDA (sp),y                    
+    0C8C	18            	CLC                           
+    0C8D	6D4730        	ADC $3047                     
+    0C90	48            	PHA                           
+    0C91	8A            	TXA                           
+    0C92	6D4830        	ADC $3048                     
+    0C95	AA            	TAX                           
+    0C96	68            	PLA                           
+    0C97	A004          	LDY #$04                      
+    0C99	9180          	STA (sp),y                    
+    0C9B	C8            	INY                           
+    0C9C	8A            	TXA                           
+    0C9D	9180          	STA (sp),y                    
+    0C9F	A200          	LDX #$00                      
+    0CA1	A000          	LDY #$00                      
+    0CA3	A902          	LDA #$02                      
+    0CA5	9180          	STA (sp),y                    
+    0CA7	8A            	TXA                           
+    0CA8	C8            	INY                           
+    0CA9	9180          	STA (sp),y                    
+    0CAB	C8            	INY                           
+    0CAC	9180          	STA (sp),y                    
+    0CAE	C8            	INY                           
+    0CAF	9180          	STA (sp),y                    
+    0CB1	A904          	LDA #$04                      
+    0CB3	205D13        	JSR _QrTinyBufferAppend       
+    0CB6	18            	CLC                           
+    0CB7	6D4730        	ADC $3047                     
+    0CBA	8D4730        	STA $3047                     
+    0CBD	8A            	TXA                           
+    0CBE	6D4830        	ADC $3048                     
+    0CC1	8D4830        	STA $3048                     
+    0CC4	204A20        	JSR decsp8                    
+    0CC7	A00D          	LDY #$0D                      
+    0CC9	B180          	LDA (sp),y                    
+    0CCB	AA            	TAX                           
+    0CCC	88            	DEY                           
+    0CCD	B180          	LDA (sp),y                    
+    0CCF	A006          	LDY #$06                      
+    0CD1	9180          	STA (sp),y                    
+    0CD3	C8            	INY                           
+    0CD4	8A            	TXA                           
+    0CD5	9180          	STA (sp),y                    
+    0CD7	A00B          	LDY #$0B                      
+    0CD9	B180          	LDA (sp),y                    
+    0CDB	AA            	TAX                           
+    0CDC	88            	DEY                           
+    0CDD	B180          	LDA (sp),y                    
+    0CDF	18            	CLC                           
+    0CE0	6D4730        	ADC $3047                     
+    0CE3	48            	PHA                           
+    0CE4	8A            	TXA                           
+    0CE5	6D4830        	ADC $3048                     
+    0CE8	AA            	TAX                           
+    0CE9	68            	PLA                           
+    0CEA	A004          	LDY #$04                      
+    0CEC	9180          	STA (sp),y                    
+    0CEE	C8            	INY                           
+    0CEF	8A            	TXA                           
+    0CF0	9180          	STA (sp),y                    
+    0CF2	AD4530        	LDA $3045                     
+    0CF5	AE4630        	LDX $3046                     
+    0CF8	A000          	LDY #$00                      
+    0CFA	8482          	STY sreg                      
+    0CFC	8483          	STY sreg+1                    
+    0CFE	208B26        	JSR steax0sp                  
+    0D01	A200          	LDX #$00                      
+    0D03	A909          	LDA #$09                      
+    0D05	205D13        	JSR _QrTinyBufferAppend       
+    0D08	18            	CLC                           
+    0D09	6D4730        	ADC $3047                     
+    0D0C	8D4730        	STA $3047                     
+    0D0F	8A            	TXA                           
+    0D10	6D4830        	ADC $3048                     
+    0D13	8D4830        	STA $3048                     
+    0D16	A900          	LDA #$00                      
+    0D18	8D4930        	STA $3049                     
+    0D1B	8D4A30        	STA $304A                     
+    0D1E	AD4930        	LDA $3049                     
+    0D21	CD4530        	CMP $3045                     
+    0D24	AD4A30        	LDA $304A                     
+    0D27	ED4630        	SBC $3046                     
+    0D2A	9003          	BCC $0D2F                     
+    0D2C	4CBD0E        	JMP $0EBD                     
+    0D2F	AD4530        	LDA $3045                     
+    0D32	38            	SEC                           
+    0D33	ED4930        	SBC $3049                     
+    0D36	48            	PHA                           
+    0D37	AD4630        	LDA $3046                     
+    0D3A	ED4A30        	SBC $304A                     
+    0D3D	AA            	TAX                           
+    0D3E	68            	PLA                           
+    0D3F	C903          	CMP #$03                      
+    0D41	8A            	TXA                           
+    0D42	E900          	SBC #$00                      
+    0D44	9007          	BCC $0D4D                     
+    0D46	A200          	LDX #$00                      
+    0D48	A902          	LDA #$02                      
+    0D4A	4C5D0D        	JMP $0D5D                     
+    0D4D	AD4530        	LDA $3045                     
+    0D50	38            	SEC                           
+    0D51	ED4930        	SBC $3049                     
+    0D54	48            	PHA                           
+    0D55	AD4630        	LDA $3046                     
+    0D58	ED4A30        	SBC $304A                     
+    0D5B	AA            	TAX                           
+    0D5C	68            	PLA                           
+    
+</textarea>
+</div>
+<div id="output" style="width:300px;height:500px;overflow-y:auto"></div>
+
+    </div>
+  </div>
+
+</body>
+</html>
