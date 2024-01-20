@@ -2,10 +2,9 @@
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
-Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. All you need is: download this project and run index.html locally on any browser.
-The idea behind is simple: if you want to recreate your nostalgic computer experience with a new twist, this is a project for you. Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the only way to get something done gracefully on a low-spec CPU originally designed for calculators.
+Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. This project **runs as-is, locally on any browser, no server required** The idea is simple: if you want to recreate your nostalgic computer experience with a new twist, this project is for you. Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the way to get something done gracefully on a low-spec CPU originally designed for calculators.
 
-Before getting started, this project bears codebase from several authors, which [deserve all our respect](/docs/CREDITS.md). Still today, many qualify the Apple II line as the best educational platform available to learn about computer hardware, operating systems, firmware, expansion architecture and low-level software development, which this project is trying to demonstrate. So, enjoy the beauty of 8-bit computing on a 6502 CPU, its math tricks and **deceivingly simple** instruction set.
+Before getting started, this project bears a codebase from several authors, which [deserve all respect](/docs/CREDITS.md). Still today, many qualify the Apple II line as the best educational platform available to learn about computer hardware, operating systems, firmware, expansion architecture and low-level software development, which this project can demonstrate. So, enjoy the beauty of 8-bit computing on a 6502 CPU, its math tricks and **deceivingly simple** instruction set.
 
 ## Getting started
 
