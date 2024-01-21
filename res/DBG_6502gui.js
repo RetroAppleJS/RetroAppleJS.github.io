@@ -282,6 +282,8 @@ function report_watch(obj)
 	var bBase = typeof(obj.base_adr)=="number"
 	var ads = "$"+(obj.adr<256?oCOM.getHexByte(obj.adr):oCOM.getHexWord(obj.adr));
 
+	// TODO CHECK IF STORE OR LOAD !!
+
 	dispwatch = obj.type+" - "
 	+sym_search(ads,obj.type)
 	+" = "+oCOM.getHexByte(obj.val)+"h "

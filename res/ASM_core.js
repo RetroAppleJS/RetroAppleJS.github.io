@@ -922,20 +922,20 @@ function DASM()
 					s += this.StatusRegister({"rw":["R","","","","","","",""]})
 			break;
 			case "BNE":
-					var bv = this.getReg("SR").toString(2);
-					var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
-					s = "Branch if Not Equal<br>"
-					s +="<div>zero-bit "+bv2.charAt(6)+" ≠ 1 ? "
-						+(bv2.charAt(6)!="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>"
-					s += this.StatusRegister({"rw":["","","","","","","R",""]})
+				var bv = this.getReg("SR").toString(2);
+				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
+				s = "Branch if Not Equal<br>";
+				s +="<div>zero-bit "+bv2.charAt(6)+" ≠ 1 ? "
+					+(bv2.charAt(6)!="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>"
+				s += this.StatusRegister({"rw":["","","","","","","R",""]})
 			break;
 			case "BPL":
-					var bv = this.getReg("SR").toString(2);
-					var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
-					s = "Branch on Result Minus<br>"
-					s +="<div>negative-bit "+bv2.charAt(0)+" ≠ 1 ? "
-						+(bv2.charAt(0)!="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>"
-					s += this.StatusRegister({"rw":["R","","","","","","",""]})
+				var bv = this.getReg("SR").toString(2);
+				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
+				s = "Branch on Result Minus<br>";
+				s +="<div>negative-bit "+bv2.charAt(0)+" ≠ 1 ? "
+					+(bv2.charAt(0)!="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
+				s += this.StatusRegister({"rw":["R","","","","","","",""]});
 			break;
 			case "BRK":
 				s = "Force Break<br>"
@@ -943,47 +943,47 @@ function DASM()
 				// interrupt,push PC+2, push SR
 			break;
 			case "BVC":
-					var bv = this.getReg("SR").toString(2);
-					var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
-					s = "Branch on Overflow Clear<br>"
-					s +="<div>overflow-bit "+bv2.charAt(7)+" = 0 ? "
-						+(bv2.charAt(7)=="0" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>"
-					s += this.StatusRegister({"rw":["","","","","","","","R"]})
+				var bv = this.getReg("SR").toString(2);
+				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
+				s = "Branch on Overflow Clear<br>";
+				s +="<div>overflow-bit "+bv2.charAt(7)+" = 0 ? "
+					+(bv2.charAt(7)=="0" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
+				s += this.StatusRegister({"rw":["","","","","","","","R"]});
 			break;
 			case "BVS":
-					var bv = this.getReg("SR").toString(2);
-					var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
-					s = "Branch on Overflow Set<br>"
-					s +="<div>overflow-bit "+bv2.charAt(7)+" = 1 ? "
-						+(bv2.charAt(7)=="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>"
-					s += this.StatusRegister({"rw":["","","","","","","","R"]})
+				var bv = this.getReg("SR").toString(2);
+				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
+				s = "Branch on Overflow Set<br>";
+				s +="<div>overflow-bit "+bv2.charAt(7)+" = 1 ? "
+					+(bv2.charAt(7)=="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
+				s += this.StatusRegister({"rw":["","","","","","","","R"]});
 			break;
 			case "CLC":
-			s = "Clear carry flag<br>"
-			s+= "C = 0"
-			s+= this.StatusRegister({"rw":["","","","","","","","W"]});
+				s = "Clear carry flag<br>";
+				s+= "C = 0";
+				s+= this.StatusRegister({"rw":["","","","","","","","W"]});
 			break;
 			case "CLD":
-			s = "Clear decimal flag<br>"
-			s+= "D = 0"
-			s+= this.StatusRegister({"rw":["","","","","W","","",""]});
+				s = "Clear decimal flag<br>";
+				s+= "D = 0";
+				s+= this.StatusRegister({"rw":["","","","","W","","",""]});
 			break;
 			case "CLI":
-			s = "Clear interrupt disable bit<br>"
-			s+= "I = 0"
-			s+= this.StatusRegister({"rw":["","","","","","W","",""]});
+				s = "Clear interrupt disable bit<br>";
+				s+= "I = 0";
+				s+= this.StatusRegister({"rw":["","","","","","W","",""]});
 			break;
 			case "CLV":
-			s = "Clear overflow flag<br>"
-			s+= "V = 0"
-			s+= this.StatusRegister({"rw":["","W","","","","","",""]});
+				s = "Clear overflow flag<br>";
+				s+= "V = 0";
+				s+= this.StatusRegister({"rw":["","W","","","","","",""]});
 			break;
 			case "CMP":
-			s = "Compare"
-			var opc ={"C9":"imm","C5":"zpg","D5":"zpx","CD":"abs","DD":"abx","D9":"aby","C1":"inx","D1":"iny"};
-			s +=" - ["+opc[ops[0]]+"]<br>"
-			s += "A<sub>"+nreg.AC+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" ?<br>\r\n"
-			s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
+				s = "Compare";
+				var opc ={"C9":"imm","C5":"zpg","D5":"zpx","CD":"abs","DD":"abx","D9":"aby","C1":"inx","D1":"iny"};
+				s +=" - ["+opc[ops[0]]+"]<br>";
+				s += "A<sub>"+nreg.AC+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" ?<br>\r\n";
+				s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
 			break;
 			case "CPX":
 			// TODO
@@ -1009,12 +1009,12 @@ function DASM()
 				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "EOR":
-			s = "Exclusive-OR"
-			var opc ={"49":"imm","45":"zpg","55":"zpx","4D":"abs","5D":"abx","59":"aby","41":"inx","51":"iny"};
-			s+=" - ["+opc[ops[0]]+"]<br>"
-			s += "A = A<sub>"+nreg.AC+"h</sub> ⊕ "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n"
-			s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-			s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
+				s = "Exclusive-OR"
+				var opc ={"49":"imm","45":"zpg","55":"zpx","4D":"abs","5D":"abx","59":"aby","41":"inx","51":"iny"};
+				s+=" - ["+opc[ops[0]]+"]<br>"
+				s += "A = A<sub>"+nreg.AC+"h</sub> ⊕ "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n"
+				s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
+				s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
 			break;
 			case "INC":
 				s = "Increment"
@@ -1040,11 +1040,11 @@ function DASM()
 				s += "PC = "+this.AddressingModeTmpl(opc[ops[0]],nreg)//.split("<sub>#")[0]
 			break;
 			case "JSR":
-				if(typeof(opc)=="undefined") s = "Jump Subroutine"
+				if(typeof(opc)=="undefined") s = "Jump Subroutine";
 				var opc ={"20":"abs"};
-				s +=" - ["+opc[ops[0]]+"]<br>"
+				s +=" - ["+opc[ops[0]]+"]<br>";
 				s += "PC = "+this.AddressingModeTmpl(opc[ops[0]],nreg).split("<sub>#")[0]
-				   +"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-2<br>"
+				   +"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-2<br>";
 			break;
 			case "LDY":
 				if(typeof(opc)=="undefined") var opc = {"title":"Load Y Register","reg":"YR","A0":"imm","A4":"zpg","B4":"zpx","AC":"abs","BC":"abx"};
@@ -1052,151 +1052,151 @@ function DASM()
 				if(typeof(opc)=="undefined") var opc = {"title":"Load X Register","reg":"XR","A2":"imm","A6":"zpg","B6":"zpy","AE":"abs","BE":"aby"};
 			case "LDA":
 				if(typeof(opc)=="undefined") var opc = {"title":"Load Accumulator","reg":"AC","A9":"imm","A5":"zpg","B5":"zpx","AD":"abs","BD":"abx","B9":"aby","A1":"inx","B1":"iny"};
-				s+=opc.title+" - ["+opc[ops[0]]+"]<br>"
-				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
+				s+=opc.title+" - ["+opc[ops[0]]+"]<br>";
+				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
 				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "LSR":
-				s = "Logical Shift Right"
+				s = "Logical Shift Right";
 				var opc ={"4A":"acc","46":"zpg","56":"zpx","4E":"abs","5E":"abx"};
-				s+=" - ["+opc[ops[0]]+"]<br>"
+				s+=" - ["+opc[ops[0]]+"]<br>";
 				//s += "A = >> "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				var prefix = this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div>&#x2B95;</div>"
-				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("AC")&1,"reg":"carry"} )
+				var prefix = this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div>&#x2B95;</div>";
+				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("AC")&1,"reg":"carry"} );
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
 				s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
 			break;
 			case "NOP":
-				s = "No operation"
+				s = "No operation";
 			break;
 			case "ORA":
-			s = "Exclusive-OR"
-			var opc ={"09":"imm","05":"zpg","15":"zpx","0D":"abs","1D":"abx","19":"aby","01":"inx","11":"iny"};
-			s+=" - ["+opc[ops[0]]+"]<br>"
-			s += "A = A<sub>"+nreg.AC+"h</sub> | "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n"
-			s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-			s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
+				s = "Exclusive-OR";
+				var opc ={"09":"imm","05":"zpg","15":"zpx","0D":"abs","1D":"abx","19":"aby","01":"inx","11":"iny"};
+				s+=" - ["+opc[ops[0]]+"]<br>";
+				s += "A = A<sub>"+nreg.AC+"h</sub> | "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n";
+				s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
+				s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
 			break;
 			case "PHA":
-			s = "Push Accumulator on Stack<br>"
-			s += "[$1"+nreg.SP+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)))+"h</sub> = A<sub>"+nreg.AC+"h</sub>"
-				 +"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-1<br>"
+				s = "Push Accumulator on Stack<br>";
+				s += "[$1"+nreg.SP+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)))+"h</sub> = A<sub>"+nreg.AC+"h</sub>";
+				+"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-1<br>";
 			break;
 			case "PHP":
-			s = "Push Processor Status on Stack<br>"
-			s += "[$1"+nreg.SP+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)))+"h</sub> = PS<sub>"+nreg.SR+"h</sub>"
-				 +"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-1<br>"
+				s = "Push Processor Status on Stack<br>";
+				s += "[$1"+nreg.SP+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)))+"h</sub> = PS<sub>"+nreg.SR+"h</sub>";
+				+"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-1<br>";
 			break;
 			case "PLA":
-			s = "Pull Accumulator from Stack<br>"
-			s += "SP = SP<sub>"+nreg.SP+"h</sub>+1"
-			s += "&nbsp;A<sub>"+nreg.AC+"h</sub> = [$"+(parseInt(nreg.SP,16)+256+1).toString(16).toUpperCase()+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)+1))+"h</sub>"
+				s = "Pull Accumulator from Stack<br>";
+				s += "SP = SP<sub>"+nreg.SP+"h</sub>+1";
+				s += "&nbsp;A<sub>"+nreg.AC+"h</sub> = [$"+(parseInt(nreg.SP,16)+256+1).toString(16).toUpperCase()+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)+1))+"h</sub>";
 			break;
 			case "PLP":
-			s = "Pull Processor Status from Stack<br>"
-			s += "SP = SP<sub>"+nreg.SP+"h</sub>+1"
-			s += "&nbsp;PS<sub>"+nreg.SR+"h</sub> = [$"+(parseInt(nreg.SP,16)+256+1).toString(16).toUpperCase()+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)+1))+"h</sub>"
-			s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
+				s = "Pull Processor Status from Stack<br>";
+				s += "SP = SP<sub>"+nreg.SP+"h</sub>+1";
+				s += "&nbsp;PS<sub>"+nreg.SR+"h</sub> = [$"+(parseInt(nreg.SP,16)+256+1).toString(16).toUpperCase()+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)+1))+"h</sub>";
+				s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
 			break;
 			case "ROL":
-				s = "Rotate Left"
+				s = "Rotate Left";
 				var opc ={"2A":"acc","26":"zpg","36":"zpx","2E":"abs","3E":"abx"};
-				s+=" - ["+opc[ops[0]]+"]<br>"
+				s+=" - ["+opc[ops[0]]+"]<br>";
 				//s += "A = << "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B05;</div>"
-				var postfix = "<div>&#x2B05;</div>"+this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )
+				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B05;</div>";
+				var postfix = "<div>&#x2B05;</div>"+this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} );
 				s += this.BitGrid({"pretfix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
 				s += this.StatusRegister({"rw":["W","W","W","","","","",""]});
 			break;
 			case "ROR":
-				s = "Rotate Right"
+				s = "Rotate Right";
 				var opc ={"6A":"acc","66":"zpg","76":"zpx","6E":"abs","7E":"abx"};
-				s+=" - ["+opc[ops[0]]+"]<br>"
+				s+=" - ["+opc[ops[0]]+"]<br>";
 				//s += "A = >> "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B95;</div>"
-				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )
+				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B95;</div>";
+				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} );
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
 				s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
 			break;
 			case "RTI":
-			  s = "Return from Interrupt<br>"
+			  	s = "Return from Interrupt<br>";
 				// TODO PULL SR ???
 				s+= "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>"
-				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>"
-				 s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
+				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>";
+				s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
 			break;
 			case "RTS":
-			  s = "Return from subroutine<br>"
+			  	s = "Return from subroutine<br>";
 				s+= "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>"
-				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>"
+				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>";
 			break;
 			case "SBC":
-			s = "Substract with borrow"
-			var opc ={"E9":"imm","E5":"zpg","F5":"zpx","ED":"abs","FD":"abx","E9":"aby","E1":"inx","F1":"iny"};
-			s+=" - ["+opc[ops[0]]+"]<br>"
-			s += "A = A<sub>"+nreg.AC+"h</sub> - "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" - C<sub>"+(this.getReg("SR")&1)+"</sub><br>"
+				s = "Substract with borrow";
+				var opc ={"E9":"imm","E5":"zpg","F5":"zpx","ED":"abs","FD":"abx","E9":"aby","E1":"inx","F1":"iny"};
+				s+=" - ["+opc[ops[0]]+"]<br>";
+				s += "A = A<sub>"+nreg.AC+"h</sub> - "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" - C<sub>"+(this.getReg("SR")&1)+"</sub><br>";
 			break;
 			case "SEC":
-			s = "Set carry flag<br>"
-			s+= "C = 1"
-			s+= this.StatusRegister({"rw":["","","","","","","","W"]});
+				s = "Set carry flag<br>";
+				s+= "C = 1";
+				s+= this.StatusRegister({"rw":["","","","","","","","W"]});
 			break;
 			case "SED":
-			s = "Set decimal flag<br>"
-			s+= "D = 1"
-			s += this.StatusRegister({"rw":["","","","","W","","",""]});
+				s = "Set decimal flag<br>";
+				s+= "D = 1";
+				s += this.StatusRegister({"rw":["","","","","W","","",""]});
 			break;
 			case "SEI":
-			s = "Set interrupt disable flag<br>"
-			s+= "I = 1"
-			s += this.StatusRegister({"rw":["","","","","","W","",""]});
+				s = "Set interrupt disable flag<br>";
+				s+= "I = 1";
+				s += this.StatusRegister({"rw":["","","","","","W","",""]});
 			break;
 			case "STA":
-				s = "Store Accumulator"
+				s = "Store Accumulator";
 				var opc ={"85":"zpg","95":"zpx","8D":"abs","9D":"abx","99":"aby","81":"inx","91":"iny"};
-				s+=" - ["+opc[ops[0]]+"]<br>"
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg)+" = A<sub>"+nreg.AC+"h</sub><br>"
+				s+=" - ["+opc[ops[0]]+"]<br>";
+				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.AC+"h</sub><br>";
 			break;
 			case "STX":
 				s = "Store X"
 				var opc ={"86":"zpg","96":"zpy","8E":"abs"};
-				s+=" - ["+opc[ops[0]]+"]<br>"
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg)+" = A<sub>"+nreg.XR+"h</sub><br>"
+				s+=" - ["+opc[ops[0]]+"]<br>";
+				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.XR+"h</sub><br>";
 			break;
 			case "STY":
-				s = "Store Y"
+				s = "Store Y";
 				var opc ={"84":"zpg","94":"zpx","8C":"abs"};
-				s+=" - ["+opc[ops[0]]+"]<br>"
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg)+" = A<sub>"+nreg.YR+"h</sub><br>"
+				s+=" - ["+opc[ops[0]]+"]<br>";
+				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.YR+"h</sub><br>";
 			break;
 			case "TAX":
-				s = "Transfer Accumulator to X<br>"
-				s +="<div>X = A<sub>"+nreg.AC+"h<sub></div>"
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]})
+				s = "Transfer Accumulator to X<br>";
+				s +="<div>X = A<sub>"+nreg.AC+"h<sub></div>";
+				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "TAY":
-				s = "Transfer Accumulator to Y<br>"
-				s +="<div>Y = A<sub>"+nreg.AC+"h<sub></div>"
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]})
+				s = "Transfer Accumulator to Y<br>";
+				s +="<div>Y = A<sub>"+nreg.AC+"h<sub></div>";
+				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "TSX":
-			  s = "Transfer stack pointer to X"
-				s +="<div>X = SP<sub>"+nreg.SP+"h<sub></div>"
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]})
+			  s = "Transfer stack pointer to X";
+				s +="<div>X = SP<sub>"+nreg.SP+"h<sub></div>";
+				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "TXA":
-				s = "Transfer X to Accumulator<br>"
-				s +="<div>A = X<sub>"+nreg.XR+"h<sub></div>"
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]})
+				s = "Transfer X to Accumulator<br>";
+				s +="<div>A = X<sub>"+nreg.XR+"h<sub></div>";
+				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "TXS":
-			  s = "Transfer X to stack pointer"
-				s +="<div>SP = X<sub>"+nreg.XR+"h<sub></div>"
+			  s = "Transfer X to stack pointer";
+				s +="<div>SP = X<sub>"+nreg.XR+"h<sub></div>";
 			break;
 			case "TYA":
-				s = "Transfer Y to Accumulator<br>"
-				s +="<div>A = Y<sub>"+nreg.YR+"h<sub></div>"
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]})
+				s = "Transfer Y to Accumulator<br>";
+				s +="<div>A = Y<sub>"+nreg.YR+"h<sub></div>";
+				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			default:
 					s = "";
@@ -1229,7 +1229,7 @@ function DASM()
 		return nb;
 	}
 
-    this.AddressingModeTmpl = function(adr_mode,narr)
+    this.AddressingModeTmpl = function(adr_mode,narr,rw_mode)
 	{
 		var s = "";
 	  	switch(adr_mode)
@@ -1246,7 +1246,10 @@ function DASM()
 			var adr = parseInt(narr.ops[1],16);
 			narr["mem"]=this.ByteAt( adr );
 			s += "[$"+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-			report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
+			if(rw_mode=="w")
+				report_watch({"type":adr_mode,"adr":adr,"val":narr["AC"],"ins":narr.ops[0]});
+			else
+				report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "abs":
 			adr = parseInt(narr.ops[2]+narr.ops[1],16)
@@ -1255,24 +1258,43 @@ function DASM()
 			report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "zpx":
-			s += "$"+narr.ops[1]+",X";
+				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
+				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
+				s += "["+narr.ops[1]+"+"+narr.XR+"+"+narr.carry+"] = "
+					+adr.toString(16).toUpperCase()+"h"
+				narr["mem"]=this.ByteAt( adr );
+				if(rw_mode=="w")
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["AC"],"ins":narr.ops[0]});
+				else
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "zpy":
-			s += "$"+narr.ops[1]+",Y";
+				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
+				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
+				s += "["+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+"] = "
+					+adr.toString(16).toUpperCase()+"h"
+				narr["mem"]=this.ByteAt( adr );
+				if(rw_mode=="w")
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["AC"],"ins":narr.ops[0]});
+				else
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "abx":
-			var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-			adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
-			narr["mem"]=this.ByteAt( adr );
-			s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.XR+"+"+narr.carry+"] = "
-			+adr.toString(16).toUpperCase()+"h"
-			report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
+				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
+				narr["mem"]=this.ByteAt( adr );
+				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.XR+"+"+narr.carry+"] = "
+				+adr.toString(16).toUpperCase()+"h"
+				if(rw_mode=="w")
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["AC"],"ins":narr.ops[0]});
+				else
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "aby":
 			var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 			adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
 			narr["mem"]=this.ByteAt( adr );
-			s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+" = "
+			s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+"] = "
 			+adr.toString(16).toUpperCase()+"h"
 			report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
