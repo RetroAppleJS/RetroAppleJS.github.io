@@ -833,7 +833,7 @@ function DASM()
 		for(var i=0;i<8;i++)
 			s += ("<div class=regbox>"
 			+"<div class=regadr>"+b[i]+"</div>"
-			+"<div class=regbyte"+(c[i].replace("R","_green").replace("W","_red"))+">"+bv2.charAt(i)+"</div>"
+			+"<div class=regbyte"+(c[i].replace("R","_green").replace("W","_red").replace("B","_yellow"))+">"+bv2.charAt(i)+"</div>"
 			+"</div>"
 			);
 		s+= "</div></div>";
@@ -862,6 +862,7 @@ function DASM()
 				var opc ={"69":"imm","65":"zpg","75":"zpx","6D":"abs","7D":"abx","79":"aby","61":"inx","71":"iny"};
 				s+=" - ["+opc[ops[0]]+"]<br>"
 				s += "A = A<sub>"+nreg.AC+"h</sub> + "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" + C<sub>"+(this.getReg("SR")&1)+"</sub><br>"
+				s += this.StatusRegister({"rw":["W","W","","","","","W","R"]})
 			break;
 			case "AND":
 				s = "And"
@@ -870,6 +871,7 @@ function DASM()
 				s += "A = A<sub>"+nreg.AC+"h</sub> & "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n"
 				s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
 				s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
+				// TODO READ CARRY IF INDEXED !!!
 			break;
 			case "ASL":
 				s = "Arithmetic Shift Left"
@@ -880,7 +882,11 @@ function DASM()
 				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B05;</div>"
 				var postfix = "<div>&#x2B05;</div>"+this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div><small>&nbsp;"+this.getHexByte(nreg["mem"])+"h</small></div>"
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":nreg["mem"].toString(2),"rw":["","","","","","","",""]});
-				s += this.StatusRegister({"rw":["W","W","","","","","","W"]})
+				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" || opc[ops[0]]=="zpx" || opc[ops[0]]=="zpy" ? "B":"W";
+				s += this.StatusRegister({"rw":["W","W","","","","","",c]});
+
+				// TODO SAME FOR ROL !!!
+
 			break;
 			case "BCC":
 					var bv = this.getReg("SR").toString(2);

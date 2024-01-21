@@ -49,6 +49,17 @@
     background-color:#00D000
   }
 
+  .regbyte_yellow
+  {
+    /*  @extend .regbyte */;
+    flex-shrink: 0;
+    height: 16px;
+    width: 25px;
+    border-style: solid;
+    border-width: 1px;
+    background-color:#D0D000
+  }
+
   .regadr {
     font-size:xx-small;
   }
