@@ -1054,7 +1054,9 @@ function DASM()
 				if(typeof(opc)=="undefined") var opc = {"title":"Load Accumulator","reg":"AC","A9":"imm","A5":"zpg","B5":"zpx","AD":"abs","BD":"abx","B9":"aby","A1":"inx","B1":"iny"};
 				s+=opc.title+" - ["+opc[ops[0]]+"]<br>";
 				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
+				
+				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" || opc[ops[0]]=="zpx" || opc[ops[0]]=="zpy" ? "R":""	// READS CARRY TO ADD TO X OR Y INDEX !!
+				s += this.StatusRegister({"rw":["W","","","","","","W",c]});
 			break;
 			case "LSR":
 				s = "Logical Shift Right";
@@ -1156,6 +1158,11 @@ function DASM()
 				var opc ={"85":"zpg","95":"zpx","8D":"abs","9D":"abx","99":"aby","81":"inx","91":"iny"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
 				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.AC+"h</sub><br>";
+				if(opc[ops[0]]=="abx"
+				|| opc[ops[0]]=="aby"
+				|| opc[ops[0]]=="zpx"
+				|| opc[ops[0]]=="zpy")	// READS CARRY TO ADD TO X OR Y INDEX !!
+					s += this.StatusRegister({"rw":["","","","","","","","R"]});
 			break;
 			case "STX":
 				s = "Store X"
