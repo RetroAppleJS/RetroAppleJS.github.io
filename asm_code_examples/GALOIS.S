@@ -3,6 +3,7 @@
 ; Generate logTable and expTable for GF(256) over $11B
 ; For consistency, both logarithm and exponent of zero are taken as zeroes; really this is 0 == a^(-inf).
 ; The real tables begin with entry 1 == a^0, both at index 1.
+; http://forum.6502.org/viewtopic.php?f=2&t=6099&view=previous
 
 TMP =  $50
 
@@ -11,13 +12,12 @@ GF_INI  LDA #$00
         STA EXPTAB      ; STZ expTable
         LDA #1
         TAX
+        CLC
   
-LOOP    TAY             ; store matching pair of entries
-        STA EXPTAB,X
-        STA *TMP
-        TXA
+LOOP    TAY
+        STA EXPTAB,X    ; store matching pair of entries
         STA LOGTAB,Y
-        LDA *TMP
+        
         ASL A           ; calculate next exponent
         BCC L1
         EOR #$1B        ; and the next index
