@@ -795,10 +795,7 @@ function DASM()
         this.writeShow('regdisp',adr,ops,disas);
         //this.writeDisplay('dispStep',dispmem);
         this.writeDisplay('dispStep',disp,"beforeend");
-
-		//var el = document.getElementById("dispStep");
-        //el.scrollTop = el.scrollHeight;
-		this.updateScroll('dispStep');
+		this.updateScroll(document.getElementById('dispStep'));
 
         var dispmem_arr = dispmem.split("<br>");
         if(dispmem_arr.length>5)
@@ -1364,9 +1361,8 @@ function DASM()
 	}
 	*/
 
-    this.updateScroll = function(id)
+    this.updateScroll = function(el)
 	{
-		var el = document.getElementById(id);
 		el.scrollTop = el.scrollHeight;
 	}
 
