@@ -1070,9 +1070,7 @@ function DASM()
 				var opc ={"4A":"acc","46":"zpg","56":"zpx","4E":"abs","5E":"abx"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
 				//s += "A = >> "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-
 				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
-
 				var prefix = this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div>&#x2B95;</div>";
 				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("AC")&1,"reg":"carry"} );
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
@@ -1270,20 +1268,23 @@ function DASM()
 				report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "zpx":
+				// operand is zeropage address; effective address is address incremented by X without carry ** 
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
+				adr = base_adr+parseInt(narr.XR,16);
 				s += "["+narr.ops[1]+"+"+narr.XR+"] = "+adr.toString(16).toUpperCase()+"h"
 				narr["mem"]=this.ByteAt( adr );
 				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "zpy":
+				// operand is zeropage address; effective address is address incremented by Y without carry ** 
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
+				adr = base_adr+parseInt(narr.YR,16);
 				s += "["+narr.ops[1]+"+"+narr.YR+"] = "+adr.toString(16).toUpperCase()+"h"
 				narr["mem"]=this.ByteAt( adr );
 				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "abx":
+				// operand is address; effective address is address incremented by X with carry **  
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
 				narr["mem"]=this.ByteAt( adr );
@@ -1292,6 +1293,7 @@ function DASM()
 				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "aby":
+				// operand is address; effective address is address incremented by Y with carry **  
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
 				narr["mem"]=this.ByteAt( adr );
