@@ -728,6 +728,7 @@ function DASM()
 	var op1=this.getHexByte(this.ByteAt(pc+1));
 	var op2=this.getHexByte(this.ByteAt(pc+2));
 	var adr=getHexWord(pc);
+	if(instr=="") {alert("no instruction ?"); return }
 	var ops=this.getHexByte(instr);
 	var disas=opctab[instr][0];
 	var adm=opctab[instr][1];
@@ -824,7 +825,8 @@ function DASM()
 
     this.StatusRegister = function(cfg)
 	{
-	  var c = cfg.rw;
+	  	var c = cfg.rw;
+		if(c.join("")=="") return "";
 		var bv = this.getReg("SR").toString(2);
 		var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
 		var a = ["N","V",".","B","D","I","Z","C"];
@@ -882,7 +884,7 @@ function DASM()
 				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B05;</div>"
 				var postfix = "<div>&#x2B05;</div>"+this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div><small>&nbsp;"+this.getHexByte(nreg["mem"])+"h</small></div>"
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":nreg["mem"].toString(2),"rw":["","","","","","","",""]});
-				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" || opc[ops[0]]=="zpx" || opc[ops[0]]=="zpy" ? "B":"W";
+				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "B":"W";
 				s += this.StatusRegister({"rw":["W","W","","","","","",c]});
 
 				// TODO SAME FOR ROL !!!
@@ -1060,8 +1062,7 @@ function DASM()
 				if(typeof(opc)=="undefined") var opc = {"title":"Load Accumulator","reg":"AC","A9":"imm","A5":"zpg","B5":"zpx","AD":"abs","BD":"abx","B9":"aby","A1":"inx","B1":"iny"};
 				s+=opc.title+" - ["+opc[ops[0]]+"]<br>";
 				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
-				
-				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" || opc[ops[0]]=="zpx" || opc[ops[0]]=="zpy" ? "R":""	// READS CARRY TO ADD TO X OR Y INDEX !!
+				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "R":""	// READS CARRY TO ADD TO X OR Y INDEX !!
 				s += this.StatusRegister({"rw":["W","","","","","","W",c]});
 			break;
 			case "LSR":
@@ -1069,10 +1070,14 @@ function DASM()
 				var opc ={"4A":"acc","46":"zpg","56":"zpx","4E":"abs","5E":"abx"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
 				//s += "A = >> "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
+
+				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
+
 				var prefix = this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div>&#x2B95;</div>";
 				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("AC")&1,"reg":"carry"} );
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
-				s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
+				
+				//s += this.StatusRegister({"rw":["W","","","","","","W","W"]});  // runs out of screen
 			break;
 			case "NOP":
 				s = "No operation";
@@ -1164,11 +1169,8 @@ function DASM()
 				var opc ={"85":"zpg","95":"zpx","8D":"abs","9D":"abx","99":"aby","81":"inx","91":"iny"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
 				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.AC+"h</sub><br>";
-				if(opc[ops[0]]=="abx"
-				|| opc[ops[0]]=="aby"
-				|| opc[ops[0]]=="zpx"
-				|| opc[ops[0]]=="zpy")	// READS CARRY TO ADD TO X OR Y INDEX !!
-					s += this.StatusRegister({"rw":["","","","","","","","R"]});
+				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "R" : ""
+				s += this.StatusRegister({"rw":["","","","","","","",c]});
 			break;
 			case "STX":
 				s = "Store X"
@@ -1193,7 +1195,7 @@ function DASM()
 				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
 			case "TSX":
-			  s = "Transfer stack pointer to X";
+			  	s = "Transfer stack pointer to X";
 				s +="<div>X = SP<sub>"+nreg.SP+"h<sub></div>";
 				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
 			break;
@@ -1248,49 +1250,38 @@ function DASM()
 	  	switch(adr_mode)
 		{
 			case "acc":
-			s += "A<sub>"+narr.AC+"h</sub>";
-			narr["mem"]=this.getReg("AC");
+				s += "A<sub>"+narr.AC+"h</sub>";
+				narr["mem"]=this.getReg("AC");
 			break;
 			case "imm":
-			narr["mem"]=parseInt(narr.ops[1],16);
-			s += "#"+narr.ops[1]+"h";
+				narr["mem"]=parseInt(narr.ops[1],16);
+				s += "#"+narr.ops[1]+"h";
 			break;
 			case "zpg":
-			var adr = parseInt(narr.ops[1],16);
-			narr["mem"]=this.ByteAt( adr );
-			s += "[$"+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-			if(rw_mode=="w")
-				report_watch({"type":adr_mode,"adr":adr,"val":narr["AC"],"ins":narr.ops[0]});
-			else
-				report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
+				var adr = parseInt(narr.ops[1],16);
+				narr["mem"]=this.ByteAt( adr );
+				s += "[$"+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
+				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "abs":
-			adr = parseInt(narr.ops[2]+narr.ops[1],16)
-			narr["mem"]=this.ByteAt( adr );
-			s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-			report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
+				adr = parseInt(narr.ops[2]+narr.ops[1],16)
+				narr["mem"]=this.ByteAt( adr );
+				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
+				report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "zpx":
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
-				s += "["+narr.ops[1]+"+"+narr.XR+"+"+narr.carry+"] = "
-					+adr.toString(16).toUpperCase()+"h"
+				s += "["+narr.ops[1]+"+"+narr.XR+"] = "+adr.toString(16).toUpperCase()+"h"
 				narr["mem"]=this.ByteAt( adr );
-				if(rw_mode=="w")
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["AC"],"ins":narr.ops[0]});
-				else
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "zpy":
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
-				s += "["+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+"] = "
-					+adr.toString(16).toUpperCase()+"h"
+				s += "["+narr.ops[1]+"+"+narr.YR+"] = "+adr.toString(16).toUpperCase()+"h"
 				narr["mem"]=this.ByteAt( adr );
-				if(rw_mode=="w")
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["AC"],"ins":narr.ops[0]});
-				else
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "abx":
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
@@ -1298,41 +1289,38 @@ function DASM()
 				narr["mem"]=this.ByteAt( adr );
 				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.XR+"+"+narr.carry+"] = "
 				+adr.toString(16).toUpperCase()+"h"
-				if(rw_mode=="w")
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["AC"],"ins":narr.ops[0]});
-				else
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "aby":
-			var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-			adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
-			narr["mem"]=this.ByteAt( adr );
-			s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+"] = "
-			+adr.toString(16).toUpperCase()+"h"
-			report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
+				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
+				narr["mem"]=this.ByteAt( adr );
+				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+"] = "
+				+adr.toString(16).toUpperCase()+"h"
+				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "iny":
-			var adr = parseInt(narr.ops[1],16);
-			var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256
-			narr["mem"]=this.ByteAt(rel + parseInt(narr.YR,16));
-			s += "[$"+getHexWord(rel)+"+"+narr.YR+"h]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-			report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				var adr = parseInt(narr.ops[1],16);
+				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256
+				narr["mem"]=this.ByteAt(rel + parseInt(narr.YR,16));
+				s += "[$"+getHexWord(rel)+"+"+narr.YR+"h]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
+				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			case "inx":
-			var adr = parseInt(narr.ops[1],16);
-			var idx = parseInt(narr.XR,16);
-			var rel = this.ByteAt(adr+idx)+this.ByteAt(adr+idx+1)*256
-			narr["mem"]=this.ByteAt(rel);
-			s += "[[$"+narr.ops[1]+"+"+idx+"]<sub>"+getHexWord(rel)+"h</sub>] = "+this.getHexByte(narr["mem"])+"h";
-			report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				var adr = parseInt(narr.ops[1],16);
+				var idx = parseInt(narr.XR,16);
+				var rel = this.ByteAt(adr+idx)+this.ByteAt(adr+idx+1)*256
+				narr["mem"]=this.ByteAt(rel);
+				s += "[[$"+narr.ops[1]+"+"+idx+"]<sub>"+getHexWord(rel)+"h</sub>] = "+this.getHexByte(narr["mem"])+"h";
+				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			//case "rel":
 			//break;
 			case "ind":
-			var adr = parseInt(narr.ops[2]+narr.ops[1],16);
-			var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256;
-			narr["mem"]=rel;
-			s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+getHexWord(narr["mem"])+"h</sub>";
+				var adr = parseInt(narr.ops[2]+narr.ops[1],16);
+				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256;
+				narr["mem"]=rel;
+				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+getHexWord(narr["mem"])+"h</sub>";
 			break;
 		}
 		return s;

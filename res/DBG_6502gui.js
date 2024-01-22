@@ -276,7 +276,7 @@ function report_watch(obj)
 	try { var instr = opctab[ parseInt(obj.ins,16) ][0] }
 	catch(e){  alert("not found "+obj.ins+" "+parseInt(obj.ins,16)) ; var instr = "" }
 
-	var allow_instr = "LDA LDX LDY STA STX STY INC CMP CPX CPY";
+	var allow_instr = "CMP CPX CPY INC LDA LDX LDY LSR STA STX STY";
 	if(allow_instr.indexOf(instr)<0) return;
 
 	var bBase = typeof(obj.base_adr)=="number"
