@@ -1261,7 +1261,7 @@ function DASM()
 				var adr = parseInt(narr.ops[1],16);
 				narr["mem"]=this.ByteAt( adr );
 				s += "[$"+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"],"ins":narr.ops[0]});
+				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "abs":
 				adr = parseInt(narr.ops[2]+narr.ops[1],16)
