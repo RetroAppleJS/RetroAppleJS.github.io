@@ -1074,7 +1074,6 @@ function DASM()
 				var prefix = this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div>&#x2B95;</div>";
 				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("AC")&1,"reg":"carry"} );
 				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
-				
 				//s += this.StatusRegister({"rw":["W","","","","","","W","W"]});  // runs out of screen
 			break;
 			case "NOP":
@@ -1265,7 +1264,7 @@ function DASM()
 				adr = parseInt(narr.ops[2]+narr.ops[1],16)
 				narr["mem"]=this.ByteAt( adr );
 				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				report_watch({"type":adr_mode,"adr":adr,"val":narr["mem"],"ins":narr.ops[0]});
+				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "zpx":
 				// operand is zeropage address; effective address is address incremented by X without carry ** 
@@ -1288,8 +1287,7 @@ function DASM()
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
 				narr["mem"]=this.ByteAt( adr );
-				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.XR+"+"+narr.carry+"] = "
-				+adr.toString(16).toUpperCase()+"h"
+				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.XR+"] = "+adr.toString(16).toUpperCase()+"h";
 				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "aby":
@@ -1297,8 +1295,7 @@ function DASM()
 				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
 				narr["mem"]=this.ByteAt( adr );
-				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"+"+narr.carry+"] = "
-				+adr.toString(16).toUpperCase()+"h"
+				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"] = "+adr.toString(16).toUpperCase()+"h";
 				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "iny":

@@ -180,14 +180,23 @@ function opASL(x) {
 	RAM[addr] = tbyte
 }
 function opLSR(x) {
+/*
+    function lsr_instr(d8) {
+        p = ((d8 & 0x01) != 0) ? (p | P_C) : (p & ~P_C);
+        d8 >>= 1;
+
+		p = ((d8 & 0x80) != 0) ? p | P_N : p & ~P_N;
+		p = ((d8 == 0) != 0) ? p | P_Z : p & ~P_Z;
+
+        return d8;
+    }	
+*/
+
 	var addr=x();
 	var tbyte=ByteAt(addr);
 	flags &=~(fCAR+fNEG+fZER);
 	flags |=tbyte&1;
-	if (tbyte=tbyte>>1) {}
-	else {
-		flags |=fZER;
-	}
+	if (tbyte=tbyte>>1) {} else flags |=fZER;
 	RAM[addr]=tbyte;
 }
 function opBCL(x) {

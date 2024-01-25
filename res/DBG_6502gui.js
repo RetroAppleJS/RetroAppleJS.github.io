@@ -286,7 +286,7 @@ function report_watch(obj)
 
 	dispwatch = obj.type+" - "
 	+sym_search(ads,obj.type)
-	+" = "+oCOM.getHexByte(obj.val)+"h "
+	+" = "+obj.val+"h "
 	+(bBase?("("+obj.base_adr.toString(16).toUpperCase()+"h)"):"")
 	+"<br>"
 

@@ -118,7 +118,7 @@ function Cpu6502(hwobj)
     }
 
     function lsr_instr(d8) {
-        set_flag(P_C, d8 & 0x01);
+        set_flag(P_C, d8 & 0x01);   //[flag,cond] //  p = ((d8 & 0x01) != 0) ? (p | P_C) : (p & ~P_C);
         d8 >>= 1;
         set_nz(d8);
         return d8;
