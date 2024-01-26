@@ -8,13 +8,13 @@ Before getting started, this project bears a codebase from several authors, whic
 
 ## Getting started
 
-1) Copy (locally, on your desktop) the entire repository or unzip the .zip package on your desktop, and open index.html on any JavaScript capable browser --OR-- Check the last build on [github.io](https://retroapplejs.github.io)
+Install: Since this web app does not require any back-end web server, just download the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
+Run w/o install: [github.io](https://retroapplejs.github.io)
 
-
-2) Inside the assembler, tap the **'generate'** button
-3) Tap the **'to emulator'** button
-4) Inside the emulator, tap the **'paste'** button
-5) Type **G6000** to run the code at address 6000h, that's it !
+1) Inside the assembler, tap the **'generate'** button
+2) Tap the **'to emulator'** button
+3) Inside the emulator, tap the **'paste'** button
+4) Type **G6000** to run the code at address 6000h, that's it !
 
 <img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50% />
 
