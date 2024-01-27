@@ -7,7 +7,7 @@ Before starting, this project contains snippets from a few authors who [deserve 
 
 ## Getting started
 
-Install: Since this web app does not require any back-end web server, just download the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
+Since this web app does not require any back-end web server, just download the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
 Run w/o install: [github.io](https://retroapplejs.github.io)
 
 1) Inside the assembler, tap the **'generate'** button
