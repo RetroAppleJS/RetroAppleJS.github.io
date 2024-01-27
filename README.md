@@ -3,7 +3,7 @@
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
 
 Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. This project **runs as-is, locally on any browser, no server required**.  Back in 1980, a few chaps like me were passionate about coding on the Apple II+, and machine coding was the way to get something done gracefully on a low-spec CPU originally designed for calculators.
-Before starting, this project was made possible by several [authors](/docs/CREDITS.md), but first and foremost, we like to pay tribute to the creators of the Apple II for giving us the time of our lives. Even for those unfamiliar with the Apple II, this is an incredible educational platform to learn about computer hardware, operating systems, firmware, expansion architecture, and low-level software development. So, enjoy the beauty of 8-bit computing on a 6502 CPU, its math tricks, and **deceivingly simple** instruction set.
+Before starting, this project was made possible by several [authors](/docs/CREDITS.md), but first and foremost, we like to pay tribute to the creators of the Apple II for giving us the time of our lives. Even for those unfamiliar with the Apple II, it's a great platform to learn about computer hardware, operating systems, firmware, expansion architecture, and low-level software development. So, enjoy the beauty of 8-bit computing on a 6502 CPU, its math tricks, and **deceivingly simple** instruction set.
 
 ## Getting started
 
