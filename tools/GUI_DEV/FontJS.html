@@ -1,12 +1,178 @@
-<link rel="stylesheet" href="../../res/COM_fontawesome/all.css">
-<script>
+<!--
 //   ________                 _      _____   ______   
 //  |_   __  |               / |_   |_   _|.' ____ \  
 //    | |_ \_|.--.   _ .--. `| |-'    | |  | (___ \_| 
 //    |  _| / .'`\ \[ `.-. | | |  _   | |   _.____`.  
 //   _| |_  | \__. | | | | | | |,| |__' |  | \____) | 
 //  |_____|  '.__.' [___||__]\__/`.____.'   \______.' 
-// 
+// Copyright (c) 2022 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+-->
+
+<head>
+    <title>Font generator</title>
+    <script type="text/javascript" src="../TOOLS_Header.js"></script>
+    <link rel="stylesheet" href="../../res/COM_fontawesome/all.css">
+    <style>
+        canvas
+        {
+            border: 1px solid #000000;
+            margin-right: 2px;
+        }
+    </style>
+</head>
+<body onload="document.getElementById('slider_title').outerHTML=_TITLE();update()">
+
+    <div id="slider_title">
+    </div>
+    <div class="slider_overlay">
+      <div id="topmenu">
+      </div>
+      <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+
+
+      </div>
+    </div>
+</body>
+
+
+<script> 
+var CONF_version="0.0.1"
+var CONF_builddate="20240128-090000" 
+
+function update(_t)
+{
+    if(_t===undefined) var idx = "fontawesome";
+    else var idx = _t.value;
+
+    var el = document.getElementById("main");
+    var s = fonts[idx].render();
+    el.innerHTML = s.join("<br>");
+
+    var elt = document.getElementById("topmenu");
+    var s = "";
+    for(var i in fonts)
+    {
+        s += "<option>"+i+"</option>";
+    }
+    elt.innerHTML = "<select onchange=update(this)>"+s+"</select>";
+}
+
+var fonts = 
+{
+    "fontawesome":
+    {
+        "render":
+        function()
+        {
+            var s = new Array(arr.length);
+            for(var i=0;i<arr.length;i++)
+                s[i] = "<i class='fa "+arr[i]+"'></i>"
+                +"&nbsp;&nbsp;&lt;i class=\"fa&nbsp;"+arr[i]+"\"\&gt;&lt;/i\&gt;"
+            return s;
+        }
+    },
+    "Courier":
+    {
+        "render":
+        function()
+        {
+            var min = [256,""];
+            var rng = [32,8192];
+            var f = "Courier";
+
+            var s = new Array(rng[1]-rng[0]+2);
+            var ii = 0;
+            s[ii++] = "<div style=font-family:'"+f+"'>";
+            for(var i=rng[0];i<(rng[1]+1);i++)
+            {
+                var c = String.fromCharCode(i);
+                var b = testChar(c,f);
+                var l = "&#"+i+";&nbsp;&nbsp;&amp;#"+i+"; brightness["+b+"]";
+                if(b<min[0])
+                { 
+                    min[0] = b;
+                    min[1] = l;
+                    s[ii++] = l; 
+                }
+                //s[ii++] = l;
+            }
+            s[ii++] = "</div>";
+            alert(min[1])
+            return s;
+        }        
+    }
+}
+
+
+
+
+
+
+const BG_COLOR = "white";
+const CHAR_COLOR = "black";
+const char = "#";
+const width = 30;
+const height = 32;
+
+const tag = (tag, props = {}) => Object.assign(document.createElement(tag), props);
+const append = (el, ...sibs) => sibs.reduce((el, sib)=>(el.appendChild(sib), el), el);
+
+const sC2Lin = (val) => {
+    val /= 255;
+    return val <= 0.04045 ? val / 12.92 : ((val + 0.055) / 1.055) ** 2.4;
+}
+const RGB2Gama = (r, g, b) => {
+    return sC2Lin(r) * 0.212655 +
+           sC2Lin(g) * 0.715158 +
+           sC2Lin(b) * 0.072187;
+}
+const brightToHex = b => {
+    b = Math.round(b);
+    const hex = b.toString(16).padStart(2,"0");
+    return "#" + hex + hex + hex;
+}
+
+function charBrightness(ctx, char, color = CHAR_COLOR, bgColor = BG_COLOR) {
+    //ctx.font = "10px Courier New";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = color;
+    ctx.fillText(char, width / 2, height * (1.9 / 3));
+    const d = ctx.getImageData(0, 0, width, height).data;
+    
+    var bSum = 0, i = 0;
+    while (i < d.length) {
+        bSum += RGB2Gama(d[i++], d[i++], d[i++]);
+        i++;
+    }
+    const meanGam = bSum / (d.length / 4);
+      return (meanGam <= 0.0031308 ? 
+          meanGam * 12.92 : 
+          1.055 * meanGam ** (1 / 2.4) - 0.055) * 255;
+}
+function testChar(char,font)
+{
+    const can1 = tag("canvas", {width, height});
+    const can2 = tag("canvas", {width, height});
+    const ctx1 = can1.getContext("2d");
+    //const ctx2 = can2.getContext("2d");
+    ctx1.font = "10px "+font;
+
+    const bright = charBrightness(ctx1, char);
+    //console.log("Brightness: '" + char + "' " + Math.round(bright));
+    //ctx2.fillStyle = brightToHex(bright);
+    //ctx2.fillRect(0, 0, width, height);
+    //append(document.body, can1, can2);
+    return Math.round(bright*100)/100;
+}
+
+
+
 var arr = ["fa-10x"
 ,"fa-1x"
 ,"fa-2x"
@@ -1501,8 +1667,4 @@ var arr = ["fa-10x"
 ,"fa-youtube"
 ,"fa-youtube-square"
 ,"fa-zhihu"]
-
-for(var i=0;i<arr.length;i++)
-    document.write("<i class='fa "+arr[i]+"'></i>"
-    +"&nbsp;&nbsp;&lt;i class=\"fa&nbsp;"+arr[i]+"\"\&gt;&lt;/i\&gt;<br>")
 </script>
