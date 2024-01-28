@@ -1,81 +1,98 @@
-<body onload="body_loadHander()" >
+<!--
+//
+// Copyright (c) 2022 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+// QRcodeJS.html
+-->
 
-  <style>
-    #byte_content {
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+<style>
+body {
+    font-family: 'Trebuchet MS', sans-serif;
+}
+.text
+{
+    font-family: 'Trebuchet MS', sans-serif; 
+    font-size:13px;
+    -webkit-font-smoothing:none;
+    font-weight: bold;
+}
+#byte_content {
       margin: 5px 0;
       max-height: 100px;
       overflow-y: auto;
       overflow-x: hidden;
-    }
-    #byte_range { margin-top: 5px; }
-  </style>
+}
+#byte_range { margin-top: 5px; }
+#qr { font-family: 'Courier New'}
+</style>
 
-<h1>QR Code Generator</h1>
+<head>
+    <title>QR code generator</title>
+</head>
+<body onload="document.getElementById('slider_title').outerHTML = _TITLE();body_loadHander()">
 
-<div class="section1">
+    <div id="slider_title"></div>
+    <div class="slider_overlay">
+      <div id="topmenu">
+      </div>
+      <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
-  <form name="qrForm">
-    <span>TypeNumber:</span>
-    <select name="t"></select>
-    <span>ErrorCorrectionLevel:</span>
-    <select name="e">
-      <option value="L" selected="selected">L(7%)</option>
-      <option value="M">M(15%)</option>
-      <option value="Q">Q(25%)</option>
-      <option value="H">H(30%)</option>
-    </select>
-    <span>Mode:</span>
-    <select name="m">
-      <option value="Numeric">Numeric</option>
-      <option value="Alphanumeric">Alphanumeric</option>
-      <option value="Byte" selected>Byte</option>
-      <option value="Kanji">Kanji</option>
-    </select>
-    <span>Multibyte:</span>
-    <select name="mb">
-      <option value="default">None</option>
-      <option value="SJIS">SJIS</option>
-      <option value="UTF-8" selected>UTF-8</option>
-    </select>
-    <br/>
-    <textarea name="msg" rows="10" cols="40">here comes qr!</textarea>
-    <br/>
-    <input type="button" value="update" onclick="update_qrcode('qrForm')"/>
-    <div id="qr"></div>
-  </form>
-</div>
+
+        <div class="section1">
+
+          <form name="qrForm">
+            <span>TypeNumber:</span>
+            <select name="t"></select>
+            <span>ErrorCorrectionLevel:</span>
+            <select name="e">
+              <option value="L" selected="selected">L(7%)</option>
+              <option value="M">M(15%)</option>
+              <option value="Q">Q(25%)</option>
+              <option value="H">H(30%)</option>
+            </select>
+            <span>Mode:</span>
+            <select name="m">
+              <option value="Numeric">Numeric</option>
+              <option value="Alphanumeric">Alphanumeric</option>
+              <option value="Byte" selected>Byte</option>
+              <option value="Kanji">Kanji</option>
+            </select>
+            <span>Multibyte:</span>
+            <select name="mb">
+              <option value="default">None</option>
+              <option value="SJIS">SJIS</option>
+              <option value="UTF-8" selected>UTF-8</option>
+            </select>
+            <br/>
+            <textarea name="msg" rows="10" cols="40">here comes qr!</textarea>
+            <br/>
+            <input type="button" value="update" onclick="update_qrcode('qrForm')"/>
+            <div id="qr"></div>
+          </form>
+        </div>
+
+      </div>
+    </div>
 </body>
 
-
 <script>
-  var maxl = 2950;
-  var maxl = 2000;
-  var maxqr = 30;
-  </script>
 
-<script>
-//---------------------------------------------------------------------
-//
-// QR Code Generator for JavaScript
-//
-// Copyright (c) 2009 Kazuhiko Arase
-//
-// URL: https://kazuhikoarase.github.io/qrcode-generator/js/demo/
-//
-// Licensed under the MIT license:
-//  http://www.opensource.org/licenses/mit-license.php
-//
-// The word 'QR Code' is registered trademark of
-// DENSO WAVE INCORPORATED
-//  http://www.denso-wave.com/qrcode/faqpatent-e.html
-//
-//---------------------------------------------------------------------
+
+var CONF_version="0.0.1"
+var CONF_builddate="20240128-090000" 
 
 var qrcode = function() {
 
-  //---------------------------------------------------------------------
-  // qrcode
-  //---------------------------------------------------------------------
+//---------------------------------------------------------------------
+// QR Code Generator for JavaScript
+// Forked from Kazuhiko Arase
+// URL: https://kazuhikoarase.github.io/qrcode-generator/js/demo/
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//---------------------------------------------------------------------
 
   /**
    * qrcode
@@ -2133,16 +2150,15 @@ var draw_qrcode = function(text, typeNumber, errorCorrectionLevel) {
 // QRCODE CREATE
 ////////////////////////////////////////////////////////
 
-var create_qrcode = function(text, typeNumber,
-    errorCorrectionLevel, mode, mb) {
-
+var create_qrcode = function(text, typeNumber,errorCorrectionLevel, mode, mb)
+{
   qrcode.stringToBytes = qrcode.stringToBytesFuncs[mb];
 
   var qr = qrcode(typeNumber || 4, errorCorrectionLevel || 'M');
   qr.addData(text, mode);
   qr.make();
 
-    return qr.createImageBits()
+  return qr.createImageBits()
 };
 
 var update_qrcode = function(formName) {
@@ -2153,8 +2169,8 @@ var update_qrcode = function(formName) {
   var e = form.elements['e'].value;
   var m = form.elements['m'].value;
   var mb = form.elements['mb'].value;
-  document.getElementById('qr').innerHTML =
-    create_qrcode(text, t, e, m, mb);
+
+  document.getElementById('qr').innerHTML = create_qrcode(text, t, e, m, mb);
 
     //alert("t="+t+" e="+e+" m="+m+" mb="+mb)
     //create_qrcode(text, 0, "L", "Byte", "UTF-8");
