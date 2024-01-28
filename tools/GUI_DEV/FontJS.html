@@ -14,11 +14,13 @@
     <script type="text/javascript" src="../TOOLS_Header.js"></script>
     <link rel="stylesheet" href="../../res/COM_fontawesome/all.css">
     <style>
+        @font-face {  font-family: 'Arcade'; src: URL('../../res/ARCADE_N.TTF') format('truetype') }
         canvas
         {
             border: 1px solid #000000;
             margin-right: 2px;
         }
+        .readable { font-family:Courier }
     </style>
 </head>
 <body onload="document.getElementById('slider_title').outerHTML=_TITLE();update()">
@@ -73,40 +75,38 @@ var fonts =
             return s;
         }
     },
-    "Courier":
-    {
-        "render":
-        function()
-        {
-            var min = [256,""];
-            var rng = [32,8192];
-            var f = "Courier";
-
-            var s = new Array(rng[1]-rng[0]+2);
-            var ii = 0;
-            s[ii++] = "<div style=font-family:'"+f+"'>";
-            for(var i=rng[0];i<(rng[1]+1);i++)
-            {
-                var c = String.fromCharCode(i);
-                var b = testChar(c,f);
-                var l = "&#"+i+";&nbsp;&nbsp;&amp;#"+i+"; brightness["+b+"]";
-                if(b<min[0])
-                { 
-                    min[0] = b;
-                    min[1] = l;
-                    s[ii++] = l; 
-                }
-                //s[ii++] = l;
-            }
-            s[ii++] = "</div>";
-            alert(min[1])
-            return s;
-        }        
-    }
+    "Courier": { "render": function() { return regular_font("Courier",[32,8192])} },
+    "Wingdings": { "render": function() { return regular_font("Wingdings",[32,8192])} },
+    "Arcade": { "render": function() { return regular_font("Arcade",[32,512])} }
 }
 
 
-
+function regular_font(fnt,rng)
+{
+    var min = [256,""];
+    var s = new Array(rng[1]-rng[0]+2);
+    var ii = 0;
+    s[ii++] = "<div style=font-family:'"+fnt+"'>";
+    for(var i=rng[0];i<(rng[1]+1);i++)
+    {
+        var c = String.fromCharCode(i);
+        var b = testChar(c,fnt);
+        var l = "&#"+i+";"
+                +"<font class=readable>"
+                +"&nbsp;&nbsp;&amp;#"+i+"; brightness["+b+"]"
+                +"</font>"
+        if(b<min[0])
+        { 
+            min[0] = b;
+            min[1] = l;
+            s[ii++] = l; 
+        }
+        //s[ii++] = l;
+    }
+    s[ii++] = "</div>";
+    //alert(min[1])
+    return s;
+}
 
 
 
@@ -158,16 +158,16 @@ function charBrightness(ctx, char, color = CHAR_COLOR, bgColor = BG_COLOR) {
 function testChar(char,font)
 {
     const can1 = tag("canvas", {width, height});
-    const can2 = tag("canvas", {width, height});
     const ctx1 = can1.getContext("2d");
-    //const ctx2 = can2.getContext("2d");
-    ctx1.font = "10px "+font;
-
+    ctx1.font = "30px "+font;
     const bright = charBrightness(ctx1, char);
+
+    const can2 = tag("canvas", {width, height});
+    const ctx2 = can2.getContext("2d");
     //console.log("Brightness: '" + char + "' " + Math.round(bright));
-    //ctx2.fillStyle = brightToHex(bright);
-    //ctx2.fillRect(0, 0, width, height);
-    //append(document.body, can1, can2);
+    ctx2.fillStyle = brightToHex(bright);
+    ctx2.fillRect(0, 0, width, height);
+    append(document.body, can1, can2);
     return Math.round(bright*100)/100;
 }
 
