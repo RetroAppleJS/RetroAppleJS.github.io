@@ -25,8 +25,12 @@ body {
       overflow-x: hidden;
 }
 #byte_range { margin-top: 5px; }
-#qr { font-family: 'Courier New'}
+#qr { font-family: 'Arcade'; font-size: 8px; margin-left:80px }
+@font-face {  font-family: 'Arcade'; src: URL('../res/ARCADE_N.TTF') format('truetype') }
 </style>
+<script>
+  var plotchar = ["&#224;","&nbsp;"];
+</script>
 
 <head>
     <title>QR code generator</title>
@@ -78,8 +82,6 @@ body {
 </body>
 
 <script>
-
-
 var CONF_version="0.0.1"
 var CONF_builddate="20240128-090000" 
 
@@ -535,7 +537,7 @@ var qrcode = function() {
 
         var line = ""
         for (var c = 0; c < _this.getModuleCount(); c += 1) {
-          line += _this.isDark(r, c)? '*' : '_';
+          line += _this.isDark(r, c)? plotchar[0] : plotchar[1];
         }
         qrHtml += line + "<br>"
       }
