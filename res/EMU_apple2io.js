@@ -72,9 +72,12 @@ function Apple2IO(vid) {
     var video = vid;
     var key = 0x00;
 
-    this.disk2 = oEMU.component.IO.AppleDisk; // temporarily work with local objects
-    this.ramcard = oEMU.component.IO.RamCard; // TODO: USE ROOT OBJECTS INSTEAD
- 
+    if(oEMU.component.IO)
+    {
+        this.disk2 = oEMU.component.IO.AppleDisk; // temporarily work with local objects
+        this.ramcard = oEMU.component.IO.RamCard; // TODO: USE ROOT OBJECTS INSTEAD
+    }
+
     this.reset = function() {
         key = 0x00;
         this.disk2.reset();
