@@ -4,7 +4,9 @@
 // Thanks to Thomas Skibo - Copyright (c) 2014.
 // cpu6502.js
 
-oEMU.component.CPU["6502"] = {Cpu6502};
+//oEMU.component.CPU["6502"] = {Cpu6502};
+if(oEMU===undefined) var oEMU = {"component":{"CPU":{"6502":new Cpu6502()}}}
+else oEMU.component.CPU["6502"] = new Cpu6502();
 
 function Cpu6502(hwobj)
 {
