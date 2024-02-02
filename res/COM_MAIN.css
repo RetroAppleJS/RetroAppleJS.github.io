@@ -92,8 +92,8 @@ ____    ____          _
 */ 
 
 table { border-collapse: collapse; position: relative;}
-  */p,td,th,xmp,pre { font-family: courier,monospace; font-size: 11px; }*/
-  /*p { line-height: 1.4; white-space: nowrap; /* by popular demand */ }*/
+  /*p,td,th,xmp,pre { font-family: courier,monospace; font-size: 11px; }*/
+  /*p { line-height: 1.4; white-space: nowrap; /* by popular demand }*/
   figure { margin: 1em 1.5em; }
   figure img { max-width: 100%; height: auto; }
   figure figcaption,
@@ -104,7 +104,7 @@ table { border-collapse: collapse; position: relative;}
   }
   table#opctable td, table#opctable th { padding: 5px; min-width: 4em; }
   table#opctable th {
-    whites-space: nowrap;
+    white-space: nowrap;
     text-align: center;
     vertical-align: top;
     font-style: italic;
@@ -148,7 +148,7 @@ table { border-collapse: collapse; position: relative;}
   table.instrlayout tr.t-half-bottom td { border-top: #fff 4px solid; }
   table.instrlayout td { padding: 7px 5px; }
   table.instrlayout th {
-    whites-space: nowrap;
+    white-space: nowrap;
     text-align: center;
     vertical-align: bottom;
     font-style: italic;
