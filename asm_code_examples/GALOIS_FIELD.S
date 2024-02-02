@@ -111,7 +111,7 @@ GFD1    RTS
 GF_INI  LDA #$01
         LDX #$00
   
-LOOP    ;JSR DB_EXP       ; D E B U G
+LOOP    JSR DB_EXP       ; D E B U G
         STA EXPTAB,X    ; store exponents
         TAY
         TXA
