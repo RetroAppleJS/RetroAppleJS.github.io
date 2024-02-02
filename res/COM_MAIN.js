@@ -68,25 +68,27 @@ function COM()
 
     // PARSE OUTPUT DIGITS ARRAY
     for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
+
+    var add = function(x, y, base) {
+        var _m = Math.max(x.length, y.length);
+        for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
+          var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
+          var _n =  _r.push(_z % base);
+        }
+        return _r;
+    }
+
+    var mul = function(x, pow, base) {
+        for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
+          if(x & 1) _r = add(_r, pow, base);
+          pow = add(pow, pow, base);
+        }
+        return _r;
+    }
+
     return _o.length==0?this.toSymbols[0]:_o;
   }
 
-  var add = function(x, y, base) {
-      var _m = Math.max(x.length, y.length);
-      for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
-        var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
-        var _n =  _r.push(_z % base);
-      }
-      return _r;
-  }
-
-  var mul = function(x, pow, base) {
-      for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
-        if(x & 1) _r = add(_r, pow, base);
-        pow = add(pow, pow, base);
-      }
-      return _r;
-  }
 
   this.ltrim = function(s) { return s.replace(/^ */,"") }
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
@@ -151,19 +153,19 @@ function COM()
       if(ttl) { setTimeout( COM_PopupHTML,ttl*1000 ); e.hidden = false  };
       document.getElementById(this.target_id.html_txt).innerHTML = !e.hidden?html:"";
     }
-  } 
- 
-  /*
-  this.onPopup = function(id)
-  { var e = document.getElementById(id); e.hidden = !e.hidden; return e }
-*/
-  /*
-  this.onPopUpClass = function(id,class1,class2)
-  {
-    id.hidden = !id.hidden;
-    if(id.hidden) {id.classList.remove(class2);id.classList.add(class1)} else {id.classList.remove(class1);id.classList.add(class2)}
   }
-  */
+
+  // oCOM.GetHTTP(url, function() { process(this.responseText,this.responseURL) })
+ 
+  this.GetHTTP = function(url,callback_function)
+  {
+    // random value (workaround to avoid caching)
+    var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = callback_function;
+    xhttp.open("GET", url+r);
+    xhttp.send();
+  }
 
   this.Download = function(fileName, data)
   {
