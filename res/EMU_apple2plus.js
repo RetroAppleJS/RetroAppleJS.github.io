@@ -7,7 +7,6 @@
 //
 // apple2plus.js
 
-//const { getParent } = require("domutils");
 if(oEMU===undefined) var oEMU = {"system":{"A2P":{}}};
 oEMU.system["A2P"] = {/*  config overrides */};
 
@@ -79,38 +78,11 @@ function Apple2Plus(context) {
         hw.bMEM_monitoring = b;
     }
 
-    //const snd_spin  = new Audio('res/DiskII_spin.wav');
-    //snd_spin.createBufferSource();
-    //snd_spin.loop = true;
-
-    /*
-    const audioCtx = new window.AudioContext();
-    const source = audioCtx.createBufferSource();
-    const arrayBuffer = await fetch('res/DiskII_spin.wav').then((res) => res.arrayBuffer());
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    source.buffer = audioBuffer;
-    source.loop = true;
-    */
-
-
-
-
-
     this.DSK_monitoring = function()
     {
         var d2 = hw.io.disk2;
         // TODO activate some leds
     }
-
-   const startOscillator = async() =>
-   {
-        audioContext = new AudioContext();
-        await audioContext.audioWorklet.addModule('worklet7oscillator.js')
-        speaker = new AudioWorkletNode(audioContext,'oscillator');
-        speaker.connect(audioContext.destination)
-   }
-
-
 
     this.SND_trigger = function()
     {
