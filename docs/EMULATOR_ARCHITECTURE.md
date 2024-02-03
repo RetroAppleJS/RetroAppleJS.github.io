@@ -10,19 +10,4 @@ The kernel boot process
 - **initialise current configuration** (a datastructure that describes all the components currently in use, before this config is loaded, it is checked against the eligible components)  Components can be turned on and off, but they can only be turned on, if they are marked as eligible component.
 - **preset configurations** called SYTEMS, presented as a dropdown menu. Each time a preset is selected, it overwrites the current configuration
 
-      <div style=width:800px>
-          
-          
-          
-          index.html
-          ┌────────────────────────────────────────┐      ▲                  ▲
-          │ - list eligible components in oEMU     │      │                  │
-          │ - find key method endpoints (e.g. init)│      │                  │
-          │ - validate eligible components in oEMU │      │                  │
-          │                                        │      │                  │
-          ├────────────────────────────────────────┤     ─┘                  │
-        
-          └────────────────────────────────────┘  ─┘                         ▼
-  
-
-          </div>
+![schema](http://www.plantuml.com/plantuml/png/HO_F2i8m3CRlUOeKTt05mJytPR07yEv1F1GNky2sbbeHtzui5dTBFdw_j5_xp2xbaQTkT15Cxcaa7DZtsIVt0HDJk5FtIeJL8uHrvPAl0T6yUnuaazKqMmaaghWvw6JjTHNTG3uHJJSK1Xj50N5HkOWgMEIPOGtqbgwumTrFegbJhport2p80ipJ_zS0zdZH-1n2F86MsDVG2bHAVm40)
