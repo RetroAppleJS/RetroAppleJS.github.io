@@ -10,4 +10,6 @@ The kernel boot process
 - **initialise current configuration** (a datastructure that describes all the components currently in use, before this config is loaded, it is checked against the eligible components)  Components can be turned on and off, but they can only be turned on, if they are marked as eligible component.
 - **preset configurations** called SYTEMS, presented as a dropdown menu. Each time a preset is selected, it overwrites the current configuration
 
-![schema](http://www.plantuml.com/plantuml/png/HO_F2i8m3CRlUOeKTt05mJytPR07yEv1F1GNky2sbbeHtzui5dTBFdw_j5_xp2xbaQTkT15Cxcaa7DZtsIVt0HDJk5FtIeJL8uHrvPAl0T6yUnuaazKqMmaaghWvw6JjTHNTG3uHJJSK1Xj50N5HkOWgMEIPOGtqbgwumTrFegbJhport2p80ipJ_zS0zdZH-1n2F86MsDVG2bHAVm40)
+![schema](https://www.plantuml.com/plantuml/png/HO_F2i8m3CRlUOeKTt05mJytPR07yEv1F1GNky2sbbeHtzui5dTBFdw_j5_xp2xbaQTkT15Cxcaa7DZtsIVt0HDJk5FtIeJL8uHrvPAl0T6yUnuaazKqMmaaghWvw6JjTHNTG3uHJJSK1Xj50N5HkOWgMEIPOGtqbgwumTrFegbJhport2p80ipJ_zS0zdZH-1n2F86MsDVG2bHAVm40)
+
+![schema](https://www.plantuml.com/plantuml/png/PP91Jy9048Nl-ojUE6aC978aOl20DxY01nCJidR7jgRTRNQca0Rzxqvt4p1wMURDlZTyqtR5OgFqRMEAnZBZEOHxd0tm6deKrgDdKiLqf6WRDBKdLZsRwM4PWxfErikel4CPGzzflLpg8LNjIuQ4agIYE2OEXr-JAtkaSKPh_P2J_6_eTAh77NJ2PjZQbcvkLQ-zG_X00ZRV6HmlJ17dX8QD_c5md2bp_19EwicvICofeVvTQ0bC8XHL9XDV8qgDBjP7AmHdnUOjQY-m9IL6a2_Yq0cv3BoJgAkZKwvJY4uPJS9x-9ggUNp4IIyMLnJepMEwIjsyhJ761o74kgnaNFbloW3xzMvlo3kCpcoVxAkQauR-5i5xAfJjpKkulCZm_gbDdarW6Tjvuj7Tnt8xro9JhdImVXi_)
