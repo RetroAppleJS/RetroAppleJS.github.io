@@ -93,6 +93,13 @@ function COM()
   this.ltrim = function(s) { return s.replace(/^ */,"") }
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
+ 
+  this.uuid = function()  // UUID v4
+  {
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
