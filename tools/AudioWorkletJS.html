@@ -1,28 +1,43 @@
+<!--
+
+  https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
+
+  https://atornblad.se/generating-sound-in-modern-web-audio-api
+-->
+
 <!doctype html>
 <html>
-
-<button onclick="start()">START</button>
+<a href="https://atornblad.se/generating-sound-in-modern-web-audio-api">article</a>
+<button id="button-start">START</button>
 <script>
 
+// Create the audio context
+const audio = new AudioContext();
 
 
-function start()
+
+
+
+
+// A simplem onLoad handler. It also handles user gesture to unlock the audio
+// playback.
+window.addEventListener('load', async () =>
 {
-  const context = new AudioContext();
-  // Loads module script via AudioWorklet.
-  context.audioWorklet.addModule('gain-processor.js').then(() => {
-    let oscillator = new OscillatorNode(context);
-
-    // After the resolution of module loading, an AudioWorkletNode can be
-    // constructed.
-    let gainWorkletNode = new AudioWorkletNode(context, 'gain-processor');
-
-    // AudioWorkletNode can be interoperable with other native AudioNodes.
-    oscillator.connect(gainWorkletNode).connect(context.destination);
-    oscillator.start();
-  });
+  await audio.audioWorklet.addModule('player-worklet.js');        // Load an audio worklet
+  const player = new AudioWorkletNode(audio, 'player-worklet');   // Create a player
+  player.connect(audio.destination);   // Connect the player to the audio context
 
 
-}
+  var el = document.getElementById('button-start');
+  el.addEventListener('click', async () =>
+  {
+    audio.resume();
+    player.port.postMessage({ type: 'play'});
+
+  }, false);
+
+
+
+});
 </script>
 </html>
