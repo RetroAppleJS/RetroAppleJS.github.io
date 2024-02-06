@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+
+<button onclick="start()">START</button>
+<script>
+
+
+
+function start()
+{
+  const context = new AudioContext();
+  // Loads module script via AudioWorklet.
+  context.audioWorklet.addModule('gain-processor.js').then(() => {
+    let oscillator = new OscillatorNode(context);
+
+    // After the resolution of module loading, an AudioWorkletNode can be
+    // constructed.
+    let gainWorkletNode = new AudioWorkletNode(context, 'gain-processor');
+
+    // AudioWorkletNode can be interoperable with other native AudioNodes.
+    oscillator.connect(gainWorkletNode).connect(context.destination);
+    oscillator.start();
+  });
+
+
+}
+</script>
+</html>
