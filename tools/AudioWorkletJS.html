@@ -1,43 +1,42 @@
 <!--
-
   https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
-
   https://atornblad.se/generating-sound-in-modern-web-audio-api
 -->
 
 <!doctype html>
 <html>
-<a href="https://atornblad.se/generating-sound-in-modern-web-audio-api">article</a>
-<button id="button-start">START</button>
-<script>
 
+<body>
+<a href="https://atornblad.se/generating-sound-in-modern-web-audio-api">article</a>
+<button id="button-start" onclick="beep()">BEEP</button>
+<!--
+<button id="button-start" onclick="sample()">SAMPLE</button>
+-->
+<script>
 // Create the audio context
 const audio = new AudioContext();
+audio.suspend();
+var player;
 
-
-
-
-
-
-// A simplem onLoad handler. It also handles user gesture to unlock the audio
-// playback.
+// A simple onLoad handler. It also handles user gesture to unlock the audio playback.
 window.addEventListener('load', async () =>
 {
   await audio.audioWorklet.addModule('player-worklet.js');        // Load an audio worklet
-  const player = new AudioWorkletNode(audio, 'player-worklet');   // Create a player
+  player = new AudioWorkletNode(audio,'player-worklet');   // Create a player
   player.connect(audio.destination);   // Connect the player to the audio context
-
-
-  var el = document.getElementById('button-start');
-  el.addEventListener('click', async () =>
-  {
-    audio.resume();
-    player.port.postMessage({ type: 'play'});
-
-  }, false);
-
-
-
 });
+
+function beep()
+{
+  //alert(audio.state);
+  if(audio.state == "running") audio.suspend();
+  if(audio.state == "suspended")  audio.resume();
+
+  player.port.postMessage({ type:'play' });
+  player.port.onmessage = (e) => console.log(e.data); // log messages from within the worklet
+  //player.disconnect();   // Disconnect the player to the audio context
+}
+
 </script>
+</body>
 </html>
