@@ -1,4 +1,5 @@
-class PlayerWorklet extends AudioWorkletProcessor {
+class PlayerWorklet extends AudioWorkletProcessor
+{
     constructor()
     {
         super();
