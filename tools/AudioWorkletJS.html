@@ -5,15 +5,51 @@
 
 <!doctype html>
 <html>
+<style>
+table {
+  border-collapse: collapse;
+  border: 1px solid black;
+}
 
+table td {
+  border: 1px solid black;
+}
+</style>
 <body>
 <a href="https://atornblad.se/generating-sound-in-modern-web-audio-api">article</a>
-<button id="button-start" onclick="beep()">BEEP</button>
+<button id="button-run" onclick="this.innerHTML=audio.state=='running'?'SUSPENDED':'RUNNING';audio.state=='suspended'?audio.resume():audio.suspend();">START</button>
+<button id="button-start" onclick="beep()">PLAY</button>
 
 <script>
+
+
+const _o =
+{      
+     "EMU_Updates_s":10                 // Emulator intervals per second  (100ms)
+    ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second
+    ,"EMU_SampleRate":25600             // Speaker Emulation Sample rate (must be an integer factor of CPU_ClocksTicks_s)      
+    ,"EMU_WorkletChannelLen":128
+    ,"EMU_WorkletLoops":20
+    ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+};
+
   // Create the audio context
-  const audio = new AudioContext();
-  var player;
+  const audio = new AudioContext({
+  latencyHint: 'interactive',
+  sampleRate: _o.EMU_SampleRate
+});
+
+
+  // how many cycles of 128 samples fit in 10ms ?
+  // cycles = rate/s --> rate/10ms = rate / EMU_Updates_s
+
+
+
+  //alert(_o.EMU_SampleRate / _o.EMU_Updates_s / 128);
+
+  // _o.EMU_SampleRate = WorkletLoops * 128 samples * 10 cycles/s
+
+  var player, el, lapse;
 
   // A simple onLoad handler. It also handles user gesture to unlock the audio playback.
   window.addEventListener('load', async () =>
@@ -22,15 +58,60 @@
     await audio.audioWorklet.addModule('player-worklet.js');  // Load an audio worklet
     player = new AudioWorkletNode(audio,'player-worklet');    // Create a player
     player.connect(audio.destination);                        // Connect the player to the audio context
+    sample_rate_table();
+    el = document.getElementById("button-start");
   });
 
   function beep()
   {
-    if(audio.state == "running") audio.suspend();
-    if(audio.state == "suspended")  audio.resume();
-    player.port.postMessage({ type:'play' });
-    player.port.onmessage = (e) => console.log(e.data); // log messages from within the worklet
+
+    //el.innerHTML = "pause";
+    //if(audio.state == "running") audio.suspend();
+    //if(audio.state == "suspended")  audio.resume();
+
+    var phase = 0;
+    var audio_data = new Array(128 * 200);
+
+    var s = new Array(audio_data.length);
+    for(var i=audio_data.length-1;i>=0;i--)
+    {
+      phase = ((i*2)%128)/128;
+      audio_data[i] = Math.sin(phase*Math.PI*2);
+      //s[i] = Math.round(phase*100)/100;
+    }
+    //document.getElementById("dump").innerHTML += s.join(" ");
+
+    //player.port.postMessage({ type:'data', audio: audio_data });
+    player.port.postMessage({ type:'append', audio: audio_data });
+    lapse = performance.now();
+
+    player.port.onmessage = (e) => 
+    {
+      console.log(e.data); // log messages from within the worklet
+      if(e.data.message=="buffer empty")
+      {
+        lapse = performance.now()-lapse;
+        document.getElementById("dump").innerHTML += "<br>"+lapse+"ms";
+        //player.port.postMessage({ type:'play' });
+        //el.innerHTML = "PLAY";
+      }
+    }
+
+    //if(audio.state=='suspended') el.innerHTML = "PLAY";
+  }
+
+  function sample_rate_table()
+  {
+    var s = "<table><tr><td>Cycles<br>at "+_o.WorkletChannelLen+" samples/cycle</td><td>SampleRate<br>KHz</td></tr>"
+    for(var i=25600;i<50000;i+=_o.EMU_WorkletChannelLen*_o.EMU_Updates_s)
+    {
+      var val = i / _o.EMU_Updates_s / _o.EMU_WorkletChannelLen;
+      s+= "<tr><td>"+val+"</td><td>"+i+"</td></tr>"
+    }
+    s += "</table>"
+    document.getElementById("dump").innerHTML = s;
   }
 </script>
+<div id="dump"></div>
 </body>
 </html>
