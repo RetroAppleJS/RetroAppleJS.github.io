@@ -1,117 +1,188 @@
 <!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//        _                     __   _                                       
+//       / \                   |  ] (_)                                      
+//      / _ \    __   _    .--.| |  __   .--.                                
+//     / ___ \  [  | | | / /'`\' | [  |/ .'`\ \                              
+//   _/ /   \ \_ | \_/ |,| \__/  |  | || \__. |                              
+//  |____| |____|'.__.'_/ '.__.;__][___]'.__.'                               
+//   ____      ____              __       __         _      _____   ______   
+//  |_  _|    |_  _|            [  |  _  [  |       / |_   |_   _|.' ____ \  
+//    \ \  /\  / / .--.   _ .--. | | / ]  | | .---.`| |-'    | |  | (___ \_| 
+//     \ \/  \/ // .'`\ \[ `/'`\]| '' <   | |/ /__\\| |  _   | |   _.____`.  
+//      \  /\  / | \__. | | |    | |`\ \  | || \__.,| |,| |__' |  | \____) | 
+//       \/  \/   '.__.' [___]  [__|  \_][___]'.__.'\__/`.____.'   \______.' 
+//                                                        
+-->
+
+<!--
   https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
   https://atornblad.se/generating-sound-in-modern-web-audio-api
 -->
 
-<!doctype html>
-<html>
-<style>
-table {
-  border-collapse: collapse;
-  border: 1px solid black;
-}
 
-table td {
-  border: 1px solid black;
-}
-</style>
-<body>
-<a href="https://atornblad.se/generating-sound-in-modern-web-audio-api">article</a>
-<button id="button-run" onclick="this.innerHTML=audio.state=='running'?'SUSPENDED':'RUNNING';audio.state=='suspended'?audio.resume():audio.suspend();">START</button>
-<button id="button-start" onclick="beep()">PLAY</button>
-
+  
+  
+  <!--
+  <button id="button-run" onclick="this.innerHTML=audio.state=='running'?'SUSPENDED':'RUNNING';audio.state=='suspended'?audio.resume():audio.suspend();">START WORKLET</button>
+  <button onclick="trigger()">PLAY</button>
+  -->
+  
 <script>
 
+var CONF_version="1.0.0";
+var CONF_builddate="20240802-130000";
 
-const _o =
+var _o =
 {      
-     "EMU_Updates_s":10                 // Emulator intervals per second  (100ms)
-    ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second
-    ,"EMU_SampleRate":25600             // Speaker Emulation Sample rate (must be an integer factor of CPU_ClocksTicks_s)      
-    ,"EMU_WorkletChannelLen":128
-    ,"EMU_WorkletLoops":20
-    ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+     "EMU_Updates_s"    :2              // Emulator intervals per second  (100ms)
+    ,"EMU_AWblockL"     :128            // Length of 1 AudioWorklet data block.  Currently, audio data blocks are always 128 frames long = 128 32-bit floating-point samples for each channel
+    ,"EMU_AWblockN"     :20             // Number of AudioWorklet data blocks in buffer
+    ,"EMU_SampleRate"   :25600          // Speaker Emulation Sample rate (must be an integer factor of CPU_ClocksTicks_s)      
 };
 
-  // Create the audio context
-  const audio = new AudioContext({
-  latencyHint: 'interactive',
-  sampleRate: _o.EMU_SampleRate
-});
+// Create the audio context
+const oLap = new time_keeper();
+var audio,player;
+var bDebug = true;
 
+async function init(callback)
+{
+  audio = new AudioContext({ latencyHint: 'interactive', sampleRate: _o.EMU_SampleRate });
+  await audio.audioWorklet.addModule('player-worklet.js');  // Load an audio worklet
+  player = new AudioWorkletNode(audio,'player-worklet');    // Create a player
+  player.connect(audio.destination);                        // Connect the player to the audio context 
+  if(callback) callback();
+}
 
-  // how many cycles of 128 samples fit in 10ms ?
-  // cycles = rate/s --> rate/10ms = rate / EMU_Updates_s
+function trigger(args)
+{
+  var bInit = (args && _o.EMU_SampleRate != args.samplerate)    // init at sample rate change
+            || audio===undefined                    // init when audio context is absent
+            && (audio && audio.state != "running"); // don't init when running
+  if(bDebug) document.getElementById("dump").innerHTML += "<br>trigger"+(bInit?" - init":"");
 
-
-
-  //alert(_o.EMU_SampleRate / _o.EMU_Updates_s / 128);
-
-  // _o.EMU_SampleRate = WorkletLoops * 128 samples * 10 cycles/s
-
-  var player, el, lapse;
-
-  // A simple onLoad handler. It also handles user gesture to unlock the audio playback.
-  window.addEventListener('load', async () =>
-  {
-    audio.suspend();
-    await audio.audioWorklet.addModule('player-worklet.js');  // Load an audio worklet
-    player = new AudioWorkletNode(audio,'player-worklet');    // Create a player
-    player.connect(audio.destination);                        // Connect the player to the audio context
-    sample_rate_table();
-    el = document.getElementById("button-start");
-  });
-
-  function beep()
-  {
-
-    //el.innerHTML = "pause";
-    //if(audio.state == "running") audio.suspend();
-    //if(audio.state == "suspended")  audio.resume();
-
-    var phase = 0;
-    var audio_data = new Array(128 * 200);
-
-    var s = new Array(audio_data.length);
-    for(var i=audio_data.length-1;i>=0;i--)
-    {
-      phase = ((i*2)%128)/128;
-      audio_data[i] = Math.sin(phase*Math.PI*2);
-      //s[i] = Math.round(phase*100)/100;
-    }
-    //document.getElementById("dump").innerHTML += s.join(" ");
-
-    //player.port.postMessage({ type:'data', audio: audio_data });
-    player.port.postMessage({ type:'append', audio: audio_data });
-    lapse = performance.now();
-
-    player.port.onmessage = (e) => 
-    {
-      console.log(e.data); // log messages from within the worklet
-      if(e.data.message=="buffer empty")
-      {
-        lapse = performance.now()-lapse;
-        document.getElementById("dump").innerHTML += "<br>"+lapse+"ms";
-        //player.port.postMessage({ type:'play' });
-        //el.innerHTML = "PLAY";
-      }
-    }
-
-    //if(audio.state=='suspended') el.innerHTML = "PLAY";
+  if(args)
+  {  
+    _o.EMU_AWblockN = args.blocks;
+    _o.EMU_SampleRate = args.samplerate;
   }
 
-  function sample_rate_table()
+  if(bInit) init(play); else play();
+}
+
+function play()
+{
+  var audio_data = calc_wave( _o.EMU_AWblockN * _o.EMU_AWblockL, 4 );
+  player.port.postMessage({ type:'append', audio: audio_data });    // append data to audio buffer
+  if(audio.state!="running") { oLap.chrono(true); audio.resume() };
+
+  player.port.onmessage = (e) => 
   {
-    var s = "<table><tr><td>Cycles<br>at "+_o.WorkletChannelLen+" samples/cycle</td><td>SampleRate<br>KHz</td></tr>"
-    for(var i=25600;i<50000;i+=_o.EMU_WorkletChannelLen*_o.EMU_Updates_s)
+    if(e.data.message=="empty")
     {
-      var val = i / _o.EMU_Updates_s / _o.EMU_WorkletChannelLen;
-      s+= "<tr><td>"+val+"</td><td>"+i+"</td></tr>"
+      var lap = oLap.chrono(false);
+      if(bDebug) document.getElementById("dump").innerHTML += "<br>"+lap+"ms";
+      audio.suspend();
     }
-    s += "</table>"
-    document.getElementById("dump").innerHTML = s;
   }
+}
+
+function calc_wave(len,fac)
+{
+  var audio_data = new Array(len);
+  for(var i=len-1;i>=0;i--)
+  {
+    var phase = ((i*fac)%128)/128;
+    audio_data[i] = Math.sin(phase*Math.PI*2);
+  }
+  return audio_data;
+}
+
+function time_keeper()
+{
+    this.start = 0;
+    this.chrono = function(bStart)
+    {
+    if(bStart==true && this.start==0)
+    {
+      this.start = performance.now();
+      return null;
+    }
+    else 
+    {
+      var lap = performance.now() - this.start;
+      this.start = 0;
+      return Math.round(lap)+" ";
+    }      
+  }
+}
+
+function html()
+{
+  var s = "<style>"
+  +"table { float:left; margin:10px; border-collapse: collapse; border: 1px solid black; font-family:'Arial' }\n"
+  +"table td { border: 1px solid black; }\n"
+  +"</style>"
+  +"<table><tr valign=top><td>#Blocks<small><br>"+_o.EMU_AWblockL+" samp./block<br>"+_o.EMU_Updates_s+" intervals/sec<small></td>"
+  +"<td>Samplerate<br><small>samp./sec</small></td>"
+  +"<td>Duration<small><br>ms</small></td>"
+  +"</tr>"
+  for(var i=12800;i<50000;i+=_o.EMU_AWblockL*_o.EMU_Updates_s)
+  {
+    var val = i / _o.EMU_Updates_s / _o.EMU_AWblockL;
+    s+= "<tr>"
+      +"<td>"+val+"<small> * "+_o.EMU_AWblockL+" * "+_o.EMU_Updates_s+"</small></td>"
+      +"<td>"+i+"</td>"
+      +"<td>"+(1000/_o.EMU_Updates_s)+"</td>"
+      +"<td><button onclick=trigger({blocks:"+val+",samplerate:"+i+"})>PLAY</button></td>"
+      +"</tr>"
+  }
+  s += "</table>"
+  document.getElementById("table").innerHTML = s;
+}
 </script>
-<div id="dump"></div>
-</body>
+
+
+
+<!doctype html>
+<html style="background-color:#B0B0B0">
+<head>
+    <title>Audio Worklet</title>
+    <meta name="description" content="Apple II Speaker emulator">
+    <meta name="author" content="Freddy Vandriessche">
+    <meta charset="utf-8"> 
+    <script type="text/javascript" src="../res/COM_MAIN.css"></script>
+    <script type="text/javascript" src="TOOLS_Header.js"></script>
+</head>
+<body class="slider_main" onload="html();document.getElementById('slider_title').outerHTML = _TITLE();">
+
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+      <div id="topmenu">
+          <ul id="minitabs" style="font-family:Courier">
+              <li>
+                <a href="https://atornblad.se/generating-sound-in-modern-web-audio-api" target="_blank">article</a>
+              </li>        
+          </ul>
+      </div>
+      <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+      <table>
+      <tr>
+          <td><img style="margin-left:100px;margin-right:100px;width:200px;float:left;image-rendering:pixelated;" src="../res/AudioWorklet_icon.png"></td>
+          <td rowspan="2" valign="top" id="dump"></td>
+      </tr>
+      <tr>
+          <td>
+              <div id="table" style="font-size:x-small;width:396px;height:220px;float:left;overflow-x:hidden;overflow-y:auto;">
+              </div>
+          </td>
+      </tr>
+      </table>
+      </div>
+  </div>
+    
+  </body>
 </html>
