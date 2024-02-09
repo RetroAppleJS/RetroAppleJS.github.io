@@ -79,7 +79,7 @@ function AppleSpeaker()
     this.play = function()
     {
         // 4348 (-4)  - calculated =  4352
-        console.log("cnt"+this.cnt);
+        //console.log("cnt"+this.cnt);
         this.cnt=0;
         this.pos = this.data.length;
 
