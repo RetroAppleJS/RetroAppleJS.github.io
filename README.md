@@ -101,7 +101,7 @@ Also to be considered: detect if host device is mouse-driven or touch-driven.  W
 
 #### real-time audio
 
-The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [coarse-precision JavaScript timer](/docs/EMULATOR.md) and the way [JavaScript sound production is 'scheduled'](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64.  As a matter of fact, I seriously consider adding a virtual [AY-3-8910 and YM2149 sound chip](https://retroapplejs.github.io/tools/ayumi-js-master/) used on the mockingboard or [SID chip](https://retroapplejs.github.io/tools/SID_emulator.html) peripheral to the Apple II emulator.
+The simple ability from the Apple II to produce a 'click' sound by activating a circuit to transition the speaker voltage from 0V to 1V and the other way around seems deceivingly simple to emulate.  The main reasons are the [coarse-precision JavaScript timer](/docs/EMULATOR.md) and the scheduling approach [JavaScript took to produce sound](https://www.html5rocks.com/en/tutorials/audio/scheduling/), just like the SID chip did on a Commodore 64. Even if emulating the [AY-3-8910 and YM2149 sound chip](https://retroapplejs.github.io/tools/ayumi-js-master/) used on the mockingboard or even as crazy as virtualising a [SID chip](https://retroapplejs.github.io/tools/SIDchipJS.html) as a peripheral to the Apple II emulator intuitively felt like an easier journey, .
 
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
