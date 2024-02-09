@@ -30,7 +30,6 @@ function AppleSpeaker()
 
     this.init = async function(bEnable)
     {
-        
         if(bEnable)
         {
             this.audio = new AudioContext({ latencyHint: 'interactive', sampleRate: this.samplerate });
@@ -78,6 +77,8 @@ function AppleSpeaker()
 
     this.play = function()
     {
+        if(this.audio.state!="running") return;
+
         // 4348 (-4)  - calculated =  4352
         //console.log("cnt"+this.cnt);
         this.cnt=0;
