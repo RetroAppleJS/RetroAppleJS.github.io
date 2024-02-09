@@ -77,7 +77,7 @@ function AppleSpeaker()
 
     this.play = function()
     {
-        if(this.audio.state!="running") return;
+        if(!this.audio || this.audio.state!="running") return;
 
         // 4348 (-4)  - calculated =  4352
         //console.log("cnt"+this.cnt);
