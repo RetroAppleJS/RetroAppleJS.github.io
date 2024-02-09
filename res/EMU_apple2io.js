@@ -107,7 +107,7 @@ function Apple2IO(vid) {
             switch(addr)
             {
             case SPKR_TOGGLE:
-                toggle();
+                oEMU.component.IO.AppleSpeaker.toggle();
                 break;
             case GFX_ON:
                 video.setGfx(true);

@@ -46,7 +46,6 @@ var oEMU =
         ,"Keyboard":{}
         ,"RAM":{}
         ,"ROM":{}
-        ,"Speaker":{}
         ,"IO":{}
     }
     ,"stats":{}
@@ -76,7 +75,7 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.SND_trigger,"SND_trigger",false);
+    //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
     
     var bBOOTmon = false;
     if(bBOOTmon)

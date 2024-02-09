@@ -1,0 +1,265 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//        _                       __                                           
+//       / \                     [  |                                          
+//      / _ \    _ .--.   _ .--.  | | .---.                                    
+//     / ___ \  [ '/'`\ \[ '/'`\ \| |/ /__\\                                   
+//   _/ /   \ \_ | \__/ | | \__/ || || \__.,                                   
+//  |____| |____|| ;.__/  | ;.__/[___]'.__.'                                   
+//    ______    [__|     [__|        __                       _____   ______   
+//  .' ____ \                       [  |  _                  |_   _|.' ____ \  
+//  | (___ \_|_ .--.   .---.  ,--.   | | / ] .---.  _ .--.     | |  | (___ \_| 
+//   _.____`.[ '/'`\ \/ /__\\`'_\ :  | '' < / /__\\[ `/'`\]_   | |   _.____`.  
+//  | \____) || \__/ || \__.,// | |, | |`\ \| \__., | |   | |__' |  | \____) | 
+//   \______.'| ;.__/  '.__.'\'-;__/[__|  \_]'.__.'[___]  `.____.'   \______.' 
+//           [__|                                                              
+-->
+
+<html>
+    <html style="background-color:#B0B0B0">
+    <head>
+        <title>Apple2 Speaker Emulator</title>
+        <meta name="description" content="Apple II Speaker emulator">
+        <meta name="author" content="Freddy Vandriessche">
+        <meta charset="utf-8"> 
+        <script type="text/javascript" src="../res/COM_MAIN.js"></script>
+        <script>
+            // usually initialised by EMU_apple2main.js
+
+
+            const _o =
+            {      
+                 "EMU_Updates_s":10                 // Emulator intervals per second  (100ms)
+                ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second
+                ,"EMU_SampleRate":25000             // Speaker Emulation Sample rate (must be an integer factor of CPU_ClocksTicks_s)      
+                ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+            };
+
+            var oEMU =
+            {
+                "system":{}
+                ,"component":
+                {
+                     "RAM":{}
+                    ,"IO":{}
+                }
+                ,"stats":{}
+            }
+        </script>
+
+        <script type="text/javascript" src="../res/EMU_apple2spk.js"></script>
+        <script type="text/javascript" src="TOOLS_Header.js"></script>
+      </head>
+      
+  <script>
+
+
+    var CONF_version="0.0.2";
+    var CONF_builddate="20240114-190000";
+
+    var psgdump;
+    var frameCount;
+    var frameRate;
+    var ptr = 0;
+    var offset;
+    var frame = 0;
+    var loopFrame = 0;
+    var sampleRate = 40000;
+    var clockRate = 0;
+    var regs = [];
+    var audioContext;
+    var freq = 0;
+    var toggle_freq = 0;
+    var wavecnt = 0;
+
+
+    var appleIntervalHandle,applespeaker;
+
+//   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
+//  ██       ██    ██ ██     ██      ██    ██ ████   ██    ██    ██   ██ ██    ██ ██      ██      
+//  ██   ███ ██    ██ ██     ██      ██    ██ ██ ██  ██    ██    ██████  ██    ██ ██      ███████ 
+//  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██    ██    ██   ██ ██    ██ ██           ██ 
+//   ██████   ██████  ██      ██████  ██████  ██   ████    ██    ██   ██  ██████  ███████ ███████ 
+
+    function init_gui()
+    { 
+        document.getElementById('slider_title').outerHTML = _TITLE();
+        _o.EMU_IntervalTime_ms = 1000 / _o.EMU_Updates_s;                // Emulator Intervals per milisecond
+        _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s;     // CPU clockTicks per Cycle
+        oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+        oEMU.stats.EMU_DashboardRefresh_cy = Math.round(_o.EMU_Updates_s / _o.EMU_DashboardRefresh_s) // Dashboard refreshes per Cycle
+
+        console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
+
+        // INIT THE EMULATOR
+
+        
+
+        //apple2vm["A2P"]  = new Apple2Plus(vidContext);                  // Add AppleIIplus VM object
+        //apple2vm.A2P.IO  = new Apple2IO();
+        //apple2vm.A2P.IO["AppleSpeaker"] = new AppleSpeaker();
+
+        //oCOM.addRefreshEvent(apple2vm.A2P.SPK_monitoring,"SPK_monitoring",true);
+
+        change_volume(document.getElementById("setvol").value)
+        change_freq(document.getElementById("setfreq").value)
+    }
+
+    function EMU_start_stop()
+    {
+        if (appleIntervalHandle != null)
+        {
+            window.clearInterval(appleIntervalHandle);
+            appleIntervalHandle = null;
+            document.getElementById('startbutton').innerHTML = 'Resume';
+        } 
+        else
+        {
+            if(applespeaker===undefined) applespeaker = new AppleSpeaker();
+            appleIntervalHandle = window.setInterval("appleInterval()",_o.EMU_IntervalTime_ms);
+            document.getElementById('startbutton').innerHTML = 'Stop';
+        }
+    }
+
+    function change_volume(pos)
+    {
+        var s = "";
+        var m = 3;
+        for(var i=0;i<(m-pos.length);i++) s+= "&nbsp;";
+        document.getElementById('voldisp').innerHTML = s+pos;
+    }
+
+
+    function change_freq(pos)
+    {
+        var s = "";
+        var m = 5;
+        for(var i=0;i<(m-pos.length);i++) s+= "&nbsp;";
+        document.getElementById('freqdisp').innerHTML = s+pos;
+
+        freq = pos;
+        toggle_freq = Math.round(_o.CPU_ClocksTicks_s / freq / 2);
+    }  
+
+//  ██████  ██       █████  ██    ██ ███████ ██████  
+//  ██   ██ ██      ██   ██  ██  ██  ██      ██   ██ 
+//  ██████  ██      ███████   ████   █████   ██████  
+//  ██      ██      ██   ██    ██    ██      ██   ██ 
+//  ██      ███████ ██   ██    ██    ███████ ██   ██ 
+
+
+function appleInterval()
+{
+    // cycle
+    var n = _o.CPU_ClockTicks;
+    var args = {"cpu_chrono":performance.now()};
+    //var freq = 40005;  // Hz
+    var toggle_freq = Math.round(_o.CPU_ClocksTicks_s / freq / 2);
+
+    console.log("toggle_freq="+toggle_freq);
+
+    applespeaker.toggle(n);
+    while (n-- > 0)
+    {
+        applespeaker.cycle(n); 
+        if(wavecnt % toggle_freq == 0) applespeaker.toggle(n);
+        wavecnt = wavecnt == (toggle_freq-1) ? 0 : wavecnt + 1;
+        
+    }
+
+    
+    for(var i=applespeaker.buffer.length-1;i>=applespeaker.buffer.length-40;i--)
+    {
+        var num = new Number( applespeaker.buffer[i] );
+        var bin = oCOM.getBinMulti(num,8);
+        console.log(i+": "+bin);
+    }
+
+    for(var i=40;i>=0;i--)
+    {
+        var num = new Number( applespeaker.buffer[i] );
+        var bin = oCOM.getBinMulti(num,8);
+        console.log(i+": "+bin);
+    }
+
+    //EMU_start_stop();
+    //arguments
+    
+
+    if(oCOM.bRefreshEvent)
+            dashboard_refresh(args);
+}
+
+var dashboard_refresh = function(args)
+{
+    oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
+    oEMU.CPU_dutycycle_idx++;
+    if(oCOM.bRefreshEvent && oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
+    {
+        for(var _o in oCOM.RefreshEvent_arr)
+            if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
+        oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+    }
+}
+
+
+
+
+
+  </script>
+<!--
+//  ██   ██ ████████ ███    ███ ██      
+//  ██   ██    ██    ████  ████ ██      
+//  ███████    ██    ██ ████ ██ ██      
+//  ██   ██    ██    ██  ██  ██ ██      
+//  ██   ██    ██    ██      ██ ███████ 
+-->
+<body class="slider_main" onload="init_gui();">
+
+<div id="slider_title"></div>
+<div class="slider_overlay">
+    <div id="topmenu">
+        <ul id="minitabs" style="font-family:Courier">
+            <li>
+                <table class=no_margins style='display:inline-block;border:0px solid;vertical-align:top;'>
+                    <tr>
+                        <td style="vertical-align:top;border:1px solid;width:50px">
+                            <button id=startbutton onclick="EMU_start_stop()">Start</button>
+                        </td>
+                    </tr>
+                </table>
+            </li>
+            <li>volume:
+                <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="change_volume(this.value);" onchange="change_volume(this.value);"></input>
+                <span id="voldisp">100</span>%
+            </li>
+            <li>frequency:
+                <input id="setfreq" type="range" min="0" max="10000" value="10000" step="10" oninput="change_freq(this.value);" onchange="change_freq(this.value);" style="width:500px"></input>
+                <span id="freqdisp">100</span>Hz
+            </li>        
+        </ul>
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+    <table>
+    <tr>
+        <td><img style="margin:20px;width:256px;float:left;image-rendering:pixelated;" src="../res/speaker.png"></td>
+        <td rowspan="2" valign="top">
+            TEST
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div id="dump" style="font-size:x-small;width:296px;height:120px;float:left;overflow-x:hidden;overflow-y:auto;">
+            </div>
+        </td>
+    </tr>
+    </table>
+    </div>
+</div>
+  
+</body>
+
+
+</html>

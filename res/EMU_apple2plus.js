@@ -17,6 +17,7 @@ function Apple2Plus(context) {
     {
         var video = new Apple2Video(context);
         var hw   = new Apple2Hw(video);
+        var snd  = oEMU.component.IO.AppleSpeaker;
     }
 
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
@@ -35,14 +36,16 @@ function Apple2Plus(context) {
                 ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
                 ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
 
-    this.reset = function() {
+    this.reset = function()
+    {
         hw.reset();
         cpu.reset();
         video.reset();
         system_tab_update();
     }
 
-    this.restart = function() {
+    this.restart = function()
+    {
         hw.restart();
         this.reset();
         system_tab_update();
@@ -84,15 +87,17 @@ function Apple2Plus(context) {
         // TODO activate some leds
     }
 
-    this.SND_trigger = function()
+    this.SND_monitoring = function()
     {
+        // show sound bars
 
+        /*
         var d2 = hw.io.disk2;
         if(d2.o[0].motor==1)
         {
             // BROWSERS DO NOT MANAGE TO LOOP SOUNDS !!
         }
-  
+        */
     }
 
     this.dashboard_refresh = function(args)
@@ -113,7 +118,9 @@ function Apple2Plus(context) {
             hw.cycle();
             video.cycle();
             cpu.cycle();
+            snd.cycle(n);
         }
+        snd.play();
 
         // display dashboard parameters
         if(oCOM.bRefreshEvent)

@@ -19,7 +19,7 @@ function Apple2Hw(vid,keys) {
         ROM_SIZE =      0x4000;
 
     var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
-    var video = vid;                         
+    var video = vid;                        
     this.io = new Apple2IO(video);
     this.keys = keys;
 
