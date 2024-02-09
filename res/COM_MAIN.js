@@ -149,15 +149,15 @@ function COM()
     toggle_class: function(el,class1,class2)
     {
       this.toggle(el.id);
-      if(el.hidden) {el.classList.remove(class2);el.classList.add(class1)}
-      else {el.classList.remove(class1);el.classList.add(class2)}
+      if(el.hidden) {el.classList.remove(class2);el.classList.add(class1);this.states[el.id]=class1}
+      else {el.classList.remove(class1);el.classList.add(class2);this.states[el.id]=class2}
     },
     html: function(html,ttl)
     {
       var e = oCOM.POPUP.toggle(this.target_id.html);
       if(e==null) return null;
       if(html==null) e.hidden = true;
-      if(ttl) { setTimeout( COM_PopupHTML,ttl*1000 ); e.hidden = false  };
+      if(ttl) { setTimeout( COM_PopupHTML,ttl*1000 ); e.hidden = false };
       document.getElementById(this.target_id.html_txt).innerHTML = !e.hidden?html:"";
     }
   }

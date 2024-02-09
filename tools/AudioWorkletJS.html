@@ -37,10 +37,12 @@ var CONF_builddate="20240802-130000";
 
 var _o =
 {      
-     "EMU_Updates_s"    :2              // Emulator intervals per second  (100ms)
+     "EMU_Updates_s"    :10              // Emulator intervals per second  (100ms)
     ,"EMU_AWblockL"     :128            // Length of 1 AudioWorklet data block.  Currently, audio data blocks are always 128 frames long = 128 32-bit floating-point samples for each channel
-    ,"EMU_AWblockN"     :20             // Number of AudioWorklet data blocks in buffer
-    ,"EMU_SampleRate"   :25600          // Speaker Emulation Sample rate (must be an integer factor of CPU_ClocksTicks_s)      
+    ,"EMU_AWblockN"     :34             // Number of AudioWorklet data blocks in buffer
+    ,"EMU_SampleRate"   :43520          // Speaker Emulation Sample rate (must be an integer factor of CPU_ClocksTicks_s)          
+    //,"CPU_ClocksTicks_s":1023000        // CPU clocksTicks per second
+    ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
 };
 
 // Create the audio context
@@ -129,14 +131,29 @@ function html()
   +"<table><tr valign=top><td>#Blocks<small><br>"+_o.EMU_AWblockL+" samp./block<br>"+_o.EMU_Updates_s+" intervals/sec<small></td>"
   +"<td>Samplerate<br><small>samp./sec</small></td>"
   +"<td>Duration<small><br>ms</small></td>"
+  +"<td>CPU cycles<small><br>per Tick</small></td>"
   +"</tr>"
-  for(var i=12800;i<50000;i+=_o.EMU_AWblockL*_o.EMU_Updates_s)
+
+  var mindev = [1,false];
+  for(var i=12800;i<55000;i+=_o.EMU_AWblockL*_o.EMU_Updates_s)
   {
     var val = i / _o.EMU_Updates_s / _o.EMU_AWblockL;
+    var ticks = _o.CPU_ClocksTicks_s / i;
+    var dev = ((ticks%1)>0.5?(1-(ticks%1)):(ticks%1));
+    mindev[1] = false;
+    if(dev<mindev[0])
+    {
+      mindev[0] = dev;
+      mindev[1] = true;
+    }
     s+= "<tr>"
       +"<td>"+val+"<small> * "+_o.EMU_AWblockL+" * "+_o.EMU_Updates_s+"</small></td>"
       +"<td>"+i+"</td>"
       +"<td>"+(1000/_o.EMU_Updates_s)+"</td>"
+      +"<td "+(mindev[1]?"style='background-color:#FF0000'":"")+">"
+      +"<small>"+(Math.round(ticks*1000)/1000)+" "+(Math.round(dev*1000)/1000)+"</small>"
+      //+"<small>"+(Math.round(ticks)*)+"</small>"
+      +"</td>"
       +"<td><button onclick=trigger({blocks:"+val+",samplerate:"+i+"})>PLAY</button></td>"
       +"</tr>"
   }
