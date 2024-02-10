@@ -13,9 +13,11 @@ class EmulatorWorklet extends AudioWorkletProcessor
         switch(e.data.type)
         {
             case "append":
-                this.sampleData  =  e.data.audio.concat(this.sampleData);
+                //this.port.postMessage({ message: 'idx='+this.sampleIndex+"/"+this.sampleData.length });
+                //this.sampleData  =  e.data.audio.concat(this.sampleData);
+                this.sampleData  =  e.data.audio;
                 this.sampleIndex += e.data.audio.length - 1;
-            break;         
+            break;      
         }
     }
 
@@ -25,7 +27,7 @@ class EmulatorWorklet extends AudioWorkletProcessor
         if(this.sampleIndex > 0)
         { 
             this.sampleIndex--;    // sampleIndex = 0 means buffer empty
-            if(this.sampleIndex==0) { this.sampleData = new Array(); this.port.postMessage({ message: 'empty' }); }
+            //if(this.sampleIndex==0) { this.sampleData = new Array(); this.port.postMessage({ message: 'empty' }); }
             return sample;
         }
         else return 0.0

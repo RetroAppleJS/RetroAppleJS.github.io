@@ -12,11 +12,12 @@ function AppleSpeaker()
 {
     // every bit in this array represents speaker status 0 or 1 for one emulator cycle
     //this.buffer = new Uint8Array(_o.CPU_ClocksTicks_s / _o.EMU_Updates_s / 8);
-    this.bDebug     = true;
+    this.bDebug     = false;
     this.state      = 0;             
     this.AWblockL   = 128;        // Length of 1 AudioWorklet data block.  Currently, audio data blocks are always 128 frames long = 128 32-bit floating-point samples for each channel
     this.AWblockN   = 34;         // Number of AudioWorklet data blocks in buffer
-    this.samplerate = 43520;      // Speaker Emulation Sample rate (must be an integer factor of block length)
+    //this.samplerate = 43520;      // Speaker Emulation Sample rate (must be an integer factor of block length)
+    this.samplerate = 44100;      // Speaker Emulation Sample rate (must be an integer factor of block length)
     this.data = new Array(this.AWblockL * this.AWblockN);
 
     this.tickCycle = Math.round(_o.CPU_ClocksTicks_s / this.samplerate); // Ticks per emulator cycle
@@ -58,30 +59,29 @@ function AppleSpeaker()
             this.pval = this.val;
             this.val = this.state-0.5;
 
-           
-            if(this.val==this.pval)
-            { 
-                ccnt++;
-                if(ccnt > 100)
-                {
-                    floatval *= 0.99
-                }
-            }
-            else
-            {
-                floatval = this.val;
-                ccnt = 0;
-            }
-            this.data[this.pos] = floatval;
+            this.data[this.pos] = this.filter(this.val)
 
             if(this.cnt==1)
                 this.data_i[ this.val ] = this.data_i[ this.val ]===undefined?1:(this.data_i[ this.val ]+1);
         }
     }
 
-    this.filter = function()
+    this.filter = function(inp)
     {
-
+        if(inp==this.pval)
+        { 
+            ccnt++;
+            if(ccnt > 100)
+            {
+                floatval *= 0.99
+            }
+        }
+        else
+        {
+            floatval = inp;
+            ccnt = 0;
+        }
+        return floatval;
     }
 
     this.toggle = function()
@@ -115,12 +115,15 @@ function AppleSpeaker()
 
         this.player.port.onmessage = (e) => 
         {
-            if(e.data.message=="empty")
-            {
+            EMUboard.boardText.value = e.data.message;
+
+            
+
+            //if(e.data.message=="empty")
+            //{
                 //var lap = oLap.chrono(false);
-                //if(this.bDebug) document.getElementById("debug").innerHTML += e.data.message+"<br>"//+lap+"ms";
-                
-            }
+                //if(this.bDebug) document.getElementById("debug").innerHTML += e.data.message+"<br>"//+lap+"ms";  
+            //}
         }
     }
 }
