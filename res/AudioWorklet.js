@@ -4,46 +4,52 @@ class EmulatorWorklet extends AudioWorkletProcessor
     {
         super();
         this.port.onmessage = this.onmessage.bind(this);
-        this.sampleData = new Array();
-        this.sampleIndex    = 0;
+        this.sampleData  = [];
+        this.sampleIndex = 0;
+        this.dbg         = [];
     }
 
     onmessage(e)
     {
         switch(e.data.type)
         {
-            case "append":
-                //this.port.postMessage({ message: 'idx='+this.sampleIndex+"/"+this.sampleData.length });
-                //this.sampleData  =  e.data.audio.concat(this.sampleData);
-                this.sampleData  =  e.data.audio;
-                this.sampleIndex += e.data.audio.length - 1;
-            break;      
+            case "load":
+                this.debug(0);
+                this.sampleData  = e.data.audio;
+                this.sampleIndex = this.sampleData.length - 1;
+            break;
         }
     }
 
     nextOutput()
     {
-        const sample = this.sampleData[ this.sampleIndex ];
-        if(this.sampleIndex > 0)
-        { 
-            this.sampleIndex--;    // sampleIndex = 0 means buffer empty
-            //if(this.sampleIndex==0) { this.sampleData = new Array(); this.port.postMessage({ message: 'empty' }); }
-            return sample;
-        }
-        else return 0.0
+        this.debug(1);
+        return this.sampleData[ this.sampleIndex==0?0:this.sampleIndex-- ]
     }
 
     process(inputs, outputs)
     {
         const output = outputs[0];
-        const channel = output[0];    //this.port.postMessage({ message: 'l='+channel.length });
-
-        for (let i = 0; i < channel.length; ++i)
-        {
-            const value = this.nextOutput();
-            channel[i] = value;
-        }
+        const channel = output[0];
+        for (var i = 0; i < channel.length; ++i)
+            channel[i] = this.nextOutput();
         return true;
+    }
+
+    debug(idx)
+    {
+        switch(idx)
+        {
+            case 0:
+                this.dbg[1] = this.dbg[1]===undefined ? 0 : ((this.dbg[1] + 1) % 3);
+                if(this.dbg[1]==0)
+                    this.port.postMessage({ message: 'buffer '+(this.sampleIndex - this.dbg[0]) });
+                this.dbg[0] = 0;
+            break;
+            case 1:
+                this.dbg[0] += this.sampleIndex==0?1:0;
+            break;
+        }
     }
 }
 

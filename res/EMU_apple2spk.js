@@ -15,9 +15,12 @@ function AppleSpeaker()
     this.bDebug     = false;
     this.state      = 0;             
     this.AWblockL   = 128;        // Length of 1 AudioWorklet data block.  Currently, audio data blocks are always 128 frames long = 128 32-bit floating-point samples for each channel
-    this.AWblockN   = 34;         // Number of AudioWorklet data blocks in buffer
-    //this.samplerate = 43520;      // Speaker Emulation Sample rate (must be an integer factor of block length)
-    this.samplerate = 44100;      // Speaker Emulation Sample rate (must be an integer factor of block length)
+    //this.AWblockN   = 34;         // Number of AudioWorklet data blocks in buffer
+    //this.samplerate = 44100;      // Speaker Emulation Sample rate (must be an integer factor of block length)
+    this.AWblockN   = 17;         // Number of AudioWorklet data blocks in buffer
+    this.samplerate = 21050;      // Speaker Emulation Sample rate (must be an integer factor of block length)
+
+
     this.data = new Array(this.AWblockL * this.AWblockN);
 
     this.tickCycle = Math.round(_o.CPU_ClocksTicks_s / this.samplerate); // Ticks per emulator cycle
@@ -71,10 +74,7 @@ function AppleSpeaker()
         if(inp==this.pval)
         { 
             ccnt++;
-            if(ccnt > 100)
-            {
-                floatval *= 0.99
-            }
+            if(ccnt > 100) floatval *= 0.99
         }
         else
         {
@@ -101,9 +101,7 @@ function AppleSpeaker()
             //console.log("pos="+this.pos); //document.getElementById("debug").innerHTML += "pos="+this.pos+"<br>"
             var s = "";
             for(var i in this.data_i)
-            {
                 s += i+" x"+this.data_i[i]+"  ";
-            }
             console.log(s);
             this.data_i = {}
         }
@@ -111,19 +109,12 @@ function AppleSpeaker()
         this.cnt = (this.cnt%10) + 1;
         this.pos = this.data.length;
 
-        this.player.port.postMessage({ type:'append', audio: this.data });
+        this.player.port.postMessage({ type:'load', audio: this.data });
 
         this.player.port.onmessage = (e) => 
         {
-            EMUboard.boardText.value = e.data.message;
-
-            
-
-            //if(e.data.message=="empty")
-            //{
-                //var lap = oLap.chrono(false);
-                //if(this.bDebug) document.getElementById("debug").innerHTML += e.data.message+"<br>"//+lap+"ms";  
-            //}
+            //document.getElementById("debug").style.display = "inline"
+            document.getElementById("debug").value = e.data.message;
         }
     }
 }
