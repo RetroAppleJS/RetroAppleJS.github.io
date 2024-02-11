@@ -1,0 +1,26 @@
+<html>
+<input id=addr value="0000">
+<textarea id=inp></textarea>
+<button onclick=main()>submit</button>
+<script>
+function main()
+{
+var addr = document.getElementById("addr").value
+var inp = document.getElementById("inp").value
+addr = parseInt(addr,16);
+for(i=0;i<inp.length;i+=2)
+{
+   var b8 = (i/2)%8
+   var Bs = inp.substring(i,i+2);
+   if(b8==0) document.write("<br>"+zfill((addr+i/2).toString(16).toUpperCase(),4)+":")
+   document.write(zfill(Bs.toString(16),2)+" ")
+}
+
+alert(addr)
+}
+
+function zfill(str,n)
+{ return ("00000000"+ str).slice(-n) }
+
+</script>
+</html>

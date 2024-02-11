@@ -60,7 +60,6 @@ APID    JSR DBG.2
 
         JSR APMAIN    ; Narrow down (00)
 
-        JSR DBG.4
         LDA AF_OUT
         JSR PBIN       ; OUTPUT VALUE (BIT)
         RTS
@@ -96,7 +95,7 @@ PB.0   PHA            ;save the value on stack
        JSR M.COUT     ;print character on screen
        PLA            ;restore value
        ASL A          ;shift msb out into carry
-       BNE PB.0       ;if msb was the extra index bit, a is now zero, otherwise continue loop
+       BNE PB.0      ;if msb was the extra index bit, a is now zero, otherwise continue loop
        PLA
        RTS            ;by this way all 8 bits of a are processed even if a=0
 
@@ -105,28 +104,17 @@ PB.0   PHA            ;save the value on stack
 AF_OUT  HEX 00  ; OUTPUT
 
 ; IDENTITY MAP HAS 7 bits (ruling out)
-PAT_M   HEX 38EA06AD8A0A000000        ; PATTERN MAP
+PAT_M   HEX 38EA06AD8AEAE00000        ; PATTERN MAP
 CMP_M   HEX 8186F8FBFDB7A7C4A0        ; COMPATIBILITY MAP
 
-STR.00  ASC "[APPLE-FAMILY CHECKUP] BITMAP SPECS:"
+STR.00  ASC "[APPLE-CHECK]"
         .BYTE $0A
+        ASC "OUTPUT 7:2GS 6:IIC 5:IIEO 4:IIEE"
         .BYTE $0A
-        ASC "_7_ _6_ _5__ _4__ _3_ _2_ _1_ _0_"
-        .BYTE $0A
-        ASC "2GS IIC IIEO IIEE IIE /// ][+ ]["
-        .BYTE $0A
+        ASC "BITMAP 3:IIE 2:/// 1:][+ 0:]["
         .BYTE $00
 STR.01  HEX 0A
         ASC "ID VECTOR_ TST ___MASK____ _OUTPUT_"
-        .BYTE $0A
-        .BYTE $00
-STR.02  HEX A0A0A0A0A0A0A0A0
-        HEX A0A0A0A0A0A0A0A0
-        HEX A0A0A0A0A0A0A0A0
-        HEX A0A0A0
-        ASC "--------"
-        .BYTE $0A
-        ASC "OUTPUT BITMAP [76543210] ="
         HEX 00
 ;*********************************************************
 
@@ -183,19 +171,17 @@ DBG.1   JSR M.CRDO
 DBG.2   LDY #<STR.00    ; init pointer
         STY *S0.TX
         LDY #>STR.00    ; init pointer
-        JMP DBG.X
+        STY *S0.TY
+        JSR STROUT
+        JSR M.CRDO
+        RTS
 
 DBG.3   LDY #<STR.01    ; init pointer
         STY *S0.TX
         LDY #>STR.01    ; init pointer
-        JMP DBG.X
-
-DBG.4   LDY #<STR.02    ; init pointer
-        STY *S0.TX
-        LDY #>STR.02    ; init pointer
-
-DBG.X   STY *S0.TY
+        STY *S0.TY
         JSR STROUT
+        JSR M.CRDO
         RTS
 
 STROUT LDY #$00
