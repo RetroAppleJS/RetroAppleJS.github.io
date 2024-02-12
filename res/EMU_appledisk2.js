@@ -70,11 +70,13 @@ function AppleDisk2()
         this.drv = 0;
     }
 
+    this.DSK_led = new Array(2);
+
     this.update = function()    // overridable function
     {
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
-        if(this.o[this.drv].motor==1) { document.getElementById("dskLED_D"+(this.drv+1)).style.visibility = "visible"; }
-        else document.getElementById("dskLED_D"+(this.drv+1)).style.visibility = "hidden";
+        if(this.o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
+        else this.DSK_led[this.drv].style.visibility = "hidden";
     }
 
     this.update_logs = function(name)    // overridable function

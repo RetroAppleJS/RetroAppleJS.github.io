@@ -74,8 +74,11 @@ function EMU_init()
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
+
+    oEMU.component.IO.AppleDisk.DSK_led[0] = document.getElementById("dskLED_D1");
+    oEMU.component.IO.AppleDisk.DSK_led[1] = document.getElementById("dskLED_D2");
     
     var bBOOTmon = false;
     if(bBOOTmon)

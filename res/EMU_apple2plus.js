@@ -83,7 +83,9 @@ function Apple2Plus(context) {
 
     this.DSK_monitoring = function()
     {
-        var d2 = hw.io.disk2;
+        oEMU.component.IO.AppleDisk.update();
+
+        //var d2 = hw.io.disk2;
         // TODO activate some leds
     }
 
