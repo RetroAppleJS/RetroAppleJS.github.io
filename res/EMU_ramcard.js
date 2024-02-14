@@ -63,7 +63,7 @@ function RamCard()
             var sw = this.softswitch[this.softswitch_pos];
             if(sw.RAMCARD)
             {
-                d8 = this.BANK[sw.BANK1?0:1][addr];
+                d8 = BANK_MEM[sw.BANK1?0:1][addr];
                 if(this.bDebug) console.log("BANK"+(sw.BANK1?1:2)+" read $#"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));
             }
             else d8 = apple2Rom[addr];  
@@ -73,7 +73,7 @@ function RamCard()
             var sw = this.softswitch[this.softswitch_pos];
             if(sw.RAMCARD)
             {
-                d8 = this.RAMCARD[addr-RAMCARD];
+                d8 = RAMCARD_MEM[addr-RAMCARD];
                 if(this.bDebug) console.log("RAMCARD read #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
             }
             else d8 = apple2Rom[addr];
@@ -89,7 +89,7 @@ function RamCard()
             var sw = this.softswitch[this.softswitch_pos];
             if(sw.WE && this.NEXT)
             {
-                this.BANK[sw.BANK1?0:1][addr] = d8;
+                BANK_MEM[sw.BANK1?0:1][addr] = d8;
                 if(this.bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));
             } 
             else if(this.bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));       
@@ -99,7 +99,7 @@ function RamCard()
             var sw = this.softswitch[this.softswitch_pos];
             if(sw.WE && this.NEXT)
             {
-                this.RAMCARD[addr-RAMCARD] = d8;
+                RAMCARD_MEM[addr-RAMCARD] = d8;
                 if(this.bDebug) console.log("RAMCARD write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
             }
             else if(this.bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
@@ -108,8 +108,8 @@ function RamCard()
         return 0;
     }    
 
-    this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-    this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
+    var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+    this.getHexByte    = function(v) { return hextab[v>>4]+hextab[v&0xf] }
     this.getHexWord = function(v)
     {
         return '' + hextab[Math.floor(v / 0x1000)]
@@ -126,7 +126,7 @@ function RamCard()
 //  ██████  ██   ██ ██   ████ ██   ██      ██     ██████       ███████ 
  
 
-    this.BANK = [ new Uint8Array(4096), new Uint8Array(4096) ];  // 2 * 4K
+    var BANK_MEM = [ new Uint8Array(4096), new Uint8Array(4096) ];  // 2 * 4K
    
 
 //  ██████   █████  ███    ███  ██████  █████  ██████  ██████      ██████   █████  ███    ███ 
@@ -135,7 +135,7 @@ function RamCard()
 //  ██   ██ ██   ██ ██  ██  ██ ██      ██   ██ ██   ██ ██   ██     ██   ██ ██   ██ ██  ██  ██ 
 //  ██   ██ ██   ██ ██      ██  ██████ ██   ██ ██   ██ ██████      ██   ██ ██   ██ ██      ██
 
-    this.RAMCARD = new Uint8Array(8192);  // 8K  
+    RAMCARD_MEM = new Uint8Array(8192);  // 8K  
 
 }
 
