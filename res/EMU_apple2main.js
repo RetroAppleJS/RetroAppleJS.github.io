@@ -85,7 +85,8 @@ function EMU_init()
         else this.DSK_led[this.drv].style.visibility = "hidden";
     }
     
-    // overrides function that defines conditions for an active emulator keyboard (should stop capture emulator keyboard events when focused on tabs other than the emulator)
+    // overrides function that defines conditions for having an active emulator keyboard
+    // (should stop capture emulator keyboard events when focused on tabs other than the emulator)
     oEMU.component.Keyboard["isActive"] = function() { return document.getElementById("tab1").checked }
 
     var bBOOTmon = false;

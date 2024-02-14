@@ -73,7 +73,7 @@ function AppleDisk2()
 
     this.getDataObj = function() { return o }
 
-    this.update = function()    // overridable function to update drive status on gui
+    this.update = function()    // overridable function to update drive status (LED)
     {
     }
 
