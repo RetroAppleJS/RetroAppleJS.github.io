@@ -106,9 +106,14 @@ YLOOKH   HEX   0004080c1014181c
 
 ;* Masks for current color (even/odd), e.g. 55 2a 55 2a ...
 ;* Updated whenever the color changes.
-COLLIN   .DS   40
+;COLLIN   .DS   40    ; DS reserves space for string storage data.
+COLLIN  HEX 0000000000000000
+        HEX 0000000000000000
+        HEX 0000000000000000
+        HEX 0000000000000000
+        HEX 0000000000000000
 
-         PG_ALIGN
+PG_ALIGN
 rastx0l  ds    NUM_ROWS
          PG_ALIGN
 rastx0h  ds    NUM_ROWS
