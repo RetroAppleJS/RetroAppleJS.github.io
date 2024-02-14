@@ -84,7 +84,8 @@ function Apple2Plus(context) {
 
     this.DSK_monitoring = function()
     {
-        oEMU.component.IO.AppleDisk.update();
+        var o = oEMU.component.IO.AppleDisk.getDataObj();
+        oEMU.component.IO.AppleDisk.update(o);
 
         //var d2 = hw.io.disk2;
         // TODO activate some leds
@@ -103,7 +104,7 @@ function Apple2Plus(context) {
         */
     }
 
-    this.dashboard_refresh = function(args)
+    var dashboard_refresh = function(args)
     {
         oEMU.component.CPU.dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
         oEMU.component.CPU.dutycycle_idx++;
@@ -129,7 +130,7 @@ function Apple2Plus(context) {
 
         // display dashboard parameters
         if(oCOM.bRefreshEvent)
-            this.dashboard_refresh(args);
+            dashboard_refresh(args);
     }
 
     this.attachKeyboard = function(bEnable)

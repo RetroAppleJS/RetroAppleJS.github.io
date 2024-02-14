@@ -71,11 +71,10 @@ function AppleDisk2()
 
     this.DSK_led = new Array(2);
 
-    this.update = function()    // overridable function
+    this.getDataObj = function() { return o }
+
+    this.update = function()    // overridable function to update drive status on gui
     {
-        if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
-        if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
-        else this.DSK_led[this.drv].style.visibility = "hidden";
     }
 
     this.update_logs = function(name)    // overridable function

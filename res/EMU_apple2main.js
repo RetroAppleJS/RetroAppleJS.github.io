@@ -72,11 +72,18 @@ function EMU_init()
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
     oEMU.component.IO.AppleDisk.DSK_led[0] = document.getElementById("dskLED_D1");
     oEMU.component.IO.AppleDisk.DSK_led[1] = document.getElementById("dskLED_D2");
+
+    oEMU.component.IO.AppleDisk.update = function(o)
+    {
+        if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
+        if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
+        else this.DSK_led[this.drv].style.visibility = "hidden";
+    }
     
     // overrides function that defines conditions for an active emulator keyboard (should stop capture emulator keyboard events when focused on tabs other than the emulator)
     oEMU.component.Keyboard["isActive"] = function() { return document.getElementById("tab1").checked }
