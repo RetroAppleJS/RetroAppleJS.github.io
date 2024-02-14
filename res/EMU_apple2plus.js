@@ -54,7 +54,7 @@ function Apple2Plus(context) {
 
     this.CPU_monitoring = function()
     {
-        document.getElementById("cpu_pct").value = Math.round(oEMU.CPU_dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+        document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
     }
 
     this.MEM_monitoring = function()
@@ -105,13 +105,13 @@ function Apple2Plus(context) {
 
     this.dashboard_refresh = function(args)
     {
-        oEMU.CPU_dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
-        oEMU.CPU_dutycycle_idx++;
-        if(oCOM.bRefreshEvent && oEMU.CPU_dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
+        oEMU.component.CPU.dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
+        oEMU.component.CPU.dutycycle_idx++;
+        if(oCOM.bRefreshEvent && oEMU.component.CPU.dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
         {
             for(var _o in oCOM.RefreshEvent_arr)
                 if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
-            oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+            oEMU.component.CPU.dutycycle_time = oEMU.component.CPU.dutycycle_idx = 0;
         }
     }
 

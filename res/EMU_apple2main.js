@@ -54,7 +54,8 @@ var oEMU =
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
 _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Cycle
 oEMU.stats.EMU_DashboardRefresh_cy = Math.round(_o.EMU_Updates_s / _o.EMU_DashboardRefresh_s) // Dashboard refreshes per Cycle
-oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
+oEMU.component.CPU["dutycycle_time"] = 0;
+oEMU.component.CPU["dutycycle_idx"] = 0;
 
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 //oCOM = new COM();
@@ -64,12 +65,7 @@ var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus;
 
 function EMU_init()
 {
-    oCOM.POPUP.html(JSON.stringify(oEMU,null,"  "));
-    //console.log(JSON.stringify(oEMU,null,"  "));
-
     // INITIALISE APPLE II+ EMULATOR
-
-    
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
@@ -93,6 +89,9 @@ function EMU_init()
         oCOM.POPUP.toggle_class(document.getElementById('MEM_monitoring'),'fa-stop-circle','fa-sync-alt'); // activate monitoring
         oCOM.toggleRefreshEvent('MEM_monitoring');  // immediately refresh memory map
     }
+
+    //oCOM.POPUP.html(JSON.stringify(oEMU,null," "));
+    console.log(JSON.stringify(oEMU,null,"  "));
 
     // LOAD DISK IMAGE VIA URI PARAMETER (if any)
     oCOM.URL.parse(document.location.toString());
