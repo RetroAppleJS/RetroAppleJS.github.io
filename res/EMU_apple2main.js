@@ -64,7 +64,7 @@ var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus;
 
 function EMU_init()
 {
-    //oCOM.POPUP.html("HELLO WORLD");
+    oCOM.POPUP.html(JSON.stringify(oEMU,null,"  "));
     //console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE APPLE II+ EMULATOR
@@ -109,23 +109,6 @@ function EMU_init()
     if(dd===undefined) return null;
     loadDisk_fromBuffer(dd,"D1");
 }
-
-/*
-function attachKeyboard(bEnable)
-{
-    if(bEnable) window.onkeypress  = apple2plus.keystroke;
-    else window.onkeypress  = null;
-}
-
-// TODO rename to sreenIntervalFunc
-function appleInterval()
-{
-    apple2plus.cycle(_o.CPU_ClockTicks);
-    // TODO: SET KEYBOARDFOCUS STATE ONLY ON TAB CHANGE EVENT
-    bKeyboardFocus = document.getElementById("tab1").checked;
-    attachKeyboard(bKeyboardFocus);
-}
-*/
 
 function resetButton() {
     apple2plus.reset();

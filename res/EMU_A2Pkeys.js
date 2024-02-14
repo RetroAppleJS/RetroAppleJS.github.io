@@ -29,7 +29,7 @@ function A2Pkeys(hw)
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
 
-    this.active = function() { return true } // always active by default
+    this.isActive = function() { return true } // always active by default
 
     this.cycle = function(systemObj,bEnable)
     {

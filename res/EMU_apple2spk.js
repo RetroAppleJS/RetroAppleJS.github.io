@@ -20,7 +20,7 @@ function AppleSpeaker()
     this.AWblockN   = 17;         // Number of AudioWorklet data blocks in buffer
     this.samplerate = 21050;      // Speaker Emulation Sample rate (must be an integer factor of block length)
 
-    this.data = new Array(this.AWblockL * this.AWblockN);
+    //this.data = new Array(this.AWblockL * this.AWblockN);
 
     this.tickCycle = Math.round(_o.CPU_ClocksTicks_s / this.samplerate); // Ticks per emulator cycle
     // 20*128 samp / 25600 samp/sec  = 0.1 sec = length of one EMULATOR cycle
@@ -28,9 +28,9 @@ function AppleSpeaker()
     //alert(Math.round(this.tickCycle))
     this.audio = null;
     this.player = null;
-    this.data = new Array(this.AWblockL * this.AWblockN - 4).fill(0);
+    var data = new Array(this.AWblockL * this.AWblockN - 4).fill(0);
     this.cnt = 0;
-    this.data_i = {};
+    var data_i = {};
     var ccnt = 0;
     var floatval = 0;
 
@@ -61,10 +61,10 @@ function AppleSpeaker()
             this.pval = this.val;
             this.val = this.state-0.5;
 
-            this.data[this.pos] = this.filter(this.val)
+            data[this.pos] = this.filter(this.val)
 
             if(this.cnt==1)
-                this.data_i[ this.val ] = this.data_i[ this.val ]===undefined?1:(this.data_i[ this.val ]+1);
+                data_i[ this.val ] = data_i[ this.val ]===undefined?1:(data_i[ this.val ]+1);
         }
     }
 
@@ -99,16 +99,16 @@ function AppleSpeaker()
         {
             //console.log("pos="+this.pos); //document.getElementById("debug").innerHTML += "pos="+this.pos+"<br>"
             var s = "";
-            for(var i in this.data_i)
-                s += i+" x"+this.data_i[i]+"  ";
+            for(var i in data_i)
+                s += i+" x"+data_i[i]+"  ";
             console.log(s);
-            this.data_i = {}
+            data_i = {}
         }
 
         this.cnt = (this.cnt%10) + 1;
-        this.pos = this.data.length;
+        this.pos = data.length;
 
-        this.player.port.postMessage({ type:'load', audio: this.data });
+        this.player.port.postMessage({ type:'load', audio: data });
 
         this.player.port.onmessage = (e) => 
         {
