@@ -59,7 +59,7 @@ oEMU.CPU_dutycycle_time = oEMU.CPU_dutycycle_idx = 0;
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 //oCOM = new COM();
 
-var appleIntervalHandle,vidContext,apple2plus,bKeyboardFocus;
+var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus;
 
 
 function EMU_init()
@@ -67,19 +67,24 @@ function EMU_init()
     //oCOM.POPUP.html("HELLO WORLD");
     //console.log(JSON.stringify(oEMU,null,"  "));
 
-    // INITIALISE EMULATOR
-    appleIntervalHandle = window.setInterval(appleInterval,_o.EMU_IntervalTime_ms);
+    // INITIALISE APPLE II+ EMULATOR
+
+    
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
+    appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
+    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",false);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
     oEMU.component.IO.AppleDisk.DSK_led[0] = document.getElementById("dskLED_D1");
     oEMU.component.IO.AppleDisk.DSK_led[1] = document.getElementById("dskLED_D2");
     
+    // overrides function that defines conditions for an active emulator keyboard (should stop capture emulator keyboard events when focused on tabs other than the emulator)
+    oEMU.component.Keyboard["isActive"] = function() { return document.getElementById("tab1").checked }
+
     var bBOOTmon = false;
     if(bBOOTmon)
     {
@@ -105,6 +110,7 @@ function EMU_init()
     loadDisk_fromBuffer(dd,"D1");
 }
 
+/*
 function attachKeyboard(bEnable)
 {
     if(bEnable) window.onkeypress  = apple2plus.keystroke;
@@ -119,6 +125,7 @@ function appleInterval()
     bKeyboardFocus = document.getElementById("tab1").checked;
     attachKeyboard(bKeyboardFocus);
 }
+*/
 
 function resetButton() {
     apple2plus.reset();
@@ -218,7 +225,6 @@ function ejectDisk(el,dsk)
     el.type='button';
   }
 }
-
 
 function highlight_appbut(el,bool)
 {

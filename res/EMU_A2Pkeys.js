@@ -29,6 +29,13 @@ function A2Pkeys(hw)
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
 
+    this.active = function() { return true } // always active by default
+
+    this.cycle = function(systemObj,bEnable)
+    {
+        if(this.isActive()) window.onkeypress  = systemObj.keystroke;
+        else window.onkeypress  = null;
+    }
 
     this.keystroke = function(data)
     {
@@ -43,7 +50,6 @@ function A2Pkeys(hw)
             if(typeof(combo_keys[data.keyCode])=="string") { delete this.o.kbd_map[data.keyCode]; return; }
         }
         
-
         var s="";
         for(var i in combo_keys) s+= combo_keys[i];
 

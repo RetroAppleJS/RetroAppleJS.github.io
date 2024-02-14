@@ -26,7 +26,7 @@ function Apple2Plus(context) {
         keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
        ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
        ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
-          } : new A2Pkeys(hw);   // Apple2plus keys ?  FVD TODO >> configure class here, as it is apple2plus specific !
+          } : new A2Pkeys(hw);
 
     if(typeof(Cpu6502)=="undefined")
           { console.log("running Apple2Plus without CPU") }
@@ -35,6 +35,7 @@ function Apple2Plus(context) {
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
                 ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
+
 
     this.reset = function()
     {
@@ -124,9 +125,17 @@ function Apple2Plus(context) {
         }
         snd.play();
 
+        keys.cycle(this);
+
         // display dashboard parameters
         if(oCOM.bRefreshEvent)
             this.dashboard_refresh(args);
+    }
+
+    this.attachKeyboard = function(bEnable)
+    {
+        if(bEnable) window.onkeypress  = this.keystroke;
+        else window.onkeypress  = null;
     }
 
     // override keys object
