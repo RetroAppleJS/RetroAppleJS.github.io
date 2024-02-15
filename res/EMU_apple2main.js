@@ -70,6 +70,12 @@ function EMU_init()
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
+    oEMU.component.Keyboard.KbdHTML({id:"kbd",path:"res/"
+                ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
+                ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
+
+    
+
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
@@ -87,7 +93,12 @@ function EMU_init()
     
     // overrides function that defines conditions for having an active emulator keyboard
     // (should stop capture emulator keyboard events when focused on tabs other than the emulator)
-    oEMU.component.Keyboard["isActive"] = function() { return document.getElementById("tab1").checked }
+    oEMU.component.Keyboard.isActive = function(bool)
+    {
+        if(bool===undefined) return document.getElementById("tab1").checked;
+        else var b = bool;
+        return b;
+    }
 
     var bBOOTmon = false;
     if(bBOOTmon)
@@ -128,15 +139,14 @@ function restartButton() {
 function pauseButton()
 {
     if (appleIntervalHandle != null) {
-        attachKeyboard(false);
+        oEMU.component.Keyboard.isActive(false);
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = null;
         document.getElementById('pausebutton').value = 'Resume';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
     } else {
-        attachKeyboard(true);
-        appleIntervalHandle = window.setInterval("appleInterval()",
-        _o.EMU_IntervalTime_ms);
+        oEMU.component.Keyboard.isActive(true);
+        appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
         document.getElementById('pausebutton').value = 'Pause ';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
     }

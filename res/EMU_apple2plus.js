@@ -10,7 +10,8 @@
 if(oEMU===undefined) var oEMU = {"system":{"A2P":{}}};
 oEMU.system["A2P"] = {/*  config overrides */};
 
-function Apple2Plus(context) {
+function Apple2Plus(context)
+{
     if(context===undefined)
     { console.log("running Apple2Plus without video or hardware context") }
     else
@@ -18,24 +19,70 @@ function Apple2Plus(context) {
         var video = new Apple2Video(context);
         var hw   = new Apple2Hw(video);
         var snd  = oEMU.component.IO.AppleSpeaker;
+        var keys = oEMU.component.Keyboard;
+
+            // override keys object
+    keys.keystroke = function(data)
+    {
+        if(this.isActive()==false) return; 
+        if(data.type!="click")          // real keyboard or pasteboard ?
+        {
+            var code = this.KeyCodeHandler(data);         
+            if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
+                data.preventDefault(); // prevent space-bar from triggering page-down
+        }
+        else                            // virtual keyboard ?
+            var code = this.KbdCodeHandler(data);
+
+        if(typeof(code)=="number")       // ASCII keys ?
+            hw.io.keypress(code);
+        else if (typeof(code)=="string") // HARD-WIRED keys ?
+        {
+            switch(code)
+            {
+                case "RESET":
+                    //beep();
+                    resetButton();
+                break;
+                case "POWER":
+                    //beep();
+                    restartButton();
+                break;
+                case "REPT":
+                    alert("Instead of REPT, keep key down >0.5s");
+                    //o["key_rept"].style.top = y+"px";
+                    //o["key_rept"].style.left = (x-36)+"px";
+                    //o["key_rept"].style.visibility = "visible";
+                break;
+                default:
+                    alert("no function defined on key '"+code+"'");
+            }
+        }
+        else
+            alert("no key");
+    }
     }
 
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
 
+    
+    /*
     var keys = typeof(A2Pkeys)=="undefined" ? {
         keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
        ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
        ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
           } : new A2Pkeys(hw);
+    */
 
     if(typeof(Cpu6502)=="undefined")
           { console.log("running Apple2Plus without CPU") }
     else var cpu  = new Cpu6502(hw);
 
+    /*
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
                 ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
-
+    */
 
     this.reset = function()
     {
@@ -133,51 +180,13 @@ function Apple2Plus(context) {
             dashboard_refresh(args);
     }
 
+    /*
     this.attachKeyboard = function(bEnable)
     {
         if(bEnable) window.onkeypress  = this.keystroke;
         else window.onkeypress  = null;
     }
-
-    // override keys object
-    keys.keystroke = function(data)
-    {
-        if(data.type!="click")          // real keyboard or pasteboard ?
-        {
-            var code = this.KeyCodeHandler(data);         
-            if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
-                data.preventDefault(); // prevent space-bar from triggering page-down
-        }
-        else                            // virtual keyboard ?
-            var code = this.KbdCodeHandler(data);
-
-        if(typeof(code)=="number")       // ASCII keys ?
-            hw.io.keypress(code);
-        else if (typeof(code)=="string") // HARD-WIRED keys ?
-        {
-            switch(code)
-            {
-                case "RESET":
-                    //beep();
-                    resetButton();
-                break;
-                case "POWER":
-                    //beep();
-                    restartButton();
-                break;
-                case "REPT":
-                    alert("Instead of REPT, keep key down >0.5s");
-                    //o["key_rept"].style.top = y+"px";
-                    //o["key_rept"].style.left = (x-36)+"px";
-                    //o["key_rept"].style.visibility = "visible";
-                break;
-                default:
-                    alert("no function defined on key '"+code+"'");
-            }
-        }
-        else
-            alert("no key");
-    }
+    */
 
     this.DiskObj = function() {
         return hw.io.disk2;

@@ -7,12 +7,13 @@
 //
 // apple2io.js
 
+if(oEMU===undefined) var oEMU = {"component":{"IO":new Apple2IO()}}
+//else oEMU.component.IO = new Apple2IO();
 
 function Apple2IO(vid) {
 
     const ROM_ADDR =      0xD000;
     const ROM_SIZE =      0x4000;
-
 
     // Slot I/O addresses
     const SLOT_IO =    [0x80,

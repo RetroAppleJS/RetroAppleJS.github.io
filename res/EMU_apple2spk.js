@@ -5,7 +5,7 @@
 // EMU_apple2spk.js  (Apple II Speaker)
                                       
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleSpeaker":new AppleSpeaker()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleSpeaker":new AppleSpeaker()}}}
 else oEMU.component.IO.AppleSpeaker = new AppleSpeaker();
 
 function AppleSpeaker()

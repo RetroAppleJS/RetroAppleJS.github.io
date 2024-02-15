@@ -4,16 +4,20 @@
 //
 // EMU_A2Pkeys.js
 
-
 // TODO: how handle shift + key (remember keyup & down state of each key ???)
 
+if(oEMU===undefined) var oEMU =
+    {"component":{"Keyboard":
+        { keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
+         ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
+         ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
+        }
+    }}
+else oEMU.component.Keyboard = new A2Pkeys();
 
-if(!oEMU) var oEMU = {component:{Keyboard:[]}}
-oEMU.component.Keyboard["A2P"] = {A2Pkeys};
-
-function A2Pkeys(hw)
+function A2Pkeys()
 {
-    this.hw = hw;
+    //this.hw = hw;
     this.bDebug = false;
     this.o = typeof(_o)=="undefined"?
     {"EMU_keyb_timer":false
@@ -29,7 +33,7 @@ function A2Pkeys(hw)
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
 
-    this.isActive = function() { return true } // always active by default
+    this.isActive = function(bool) { return bool } // always active by default
 
     this.cycle = function(systemObj,bEnable)
     {
@@ -39,6 +43,7 @@ function A2Pkeys(hw)
 
     this.keystroke = function(data)
     {
+        if(this.isActive()==false) return; 
         var combo_keys = {16:"SHIFT",17:"CTRL",18:"ALT",20:"CAPSLCK",27:"ESC",91:"CMD"};
         this.debug(data);
         if(data.type=="keydown")
@@ -64,7 +69,9 @@ function A2Pkeys(hw)
 
         if(typeof(code)=="number")       // ASCII keys ?
         {
-            try { this.hw.io.keypress(code) } catch(e) { alert("override A2Pkeys -> keystroke("+code+")") }
+            //try { this.hw.io.keypress(code) } catch(e) { alert("override A2Pkeys -> keystroke("+code+")") }
+            try { oEMU.component.IO.keypress(code) } catch(e) { alert("override A2Pkeys -> keystroke("+code+")") }
+            
         }
         else if (typeof(code)=="string") // HARD-WIRED keys ?
         {
