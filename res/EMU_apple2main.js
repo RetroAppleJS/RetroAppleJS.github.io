@@ -73,11 +73,10 @@ function EMU_init()
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:[],active:false},"AppleDisk");
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},cycle:function(){},keystroke:function(){}},"A2Pkeys");
 
-    if(disk2.active) keys.KbdHTML({id:"kbd",path:"res/"
-                ,kbd_events:"onmousemove=keys.KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=keys.KbdHover(event)"
+    var s = disk2.active ? "apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2')":"" 
+    keys.KbdHTML({id:"kbd",path:"res/"
+                ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
                 ,key_events:"onclick=keys.keystroke(event)"});
-
-    
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
