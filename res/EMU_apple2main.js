@@ -60,7 +60,7 @@ oEMU.component.CPU["dutycycle_idx"] = 0;
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 //oCOM = new COM();
 
-var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus;
+var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus,keys;
 
 
 function EMU_init()
@@ -71,10 +71,11 @@ function EMU_init()
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:[],active:false},"AppleDisk");
+    keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},cycle:function(){},keystroke:function(){}},"A2Pkeys");
 
-    if(disk2.active) oEMU.component.Keyboard.KbdHTML({id:"kbd",path:"res/"
-                ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
-                ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
+    if(disk2.active) keys.KbdHTML({id:"kbd",path:"res/"
+                ,kbd_events:"onmousemove=keys.KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=keys.KbdHover(event)"
+                ,key_events:"onclick=keys.keystroke(event)"});
 
     
 

@@ -76,12 +76,6 @@ function Apple2IO(vid) {
     this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
     this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
 
-    //if(oEMU.component.IO)
-    //{
-        //this.disk2 = oEMU.component.IO.AppleDisk; // temporarily work with local objects
-        //this.ramcard = oEMU.component.IO.RamCard; // TODO: USE ROOT OBJECTS INSTEAD
-    //}
-
     this.reset = function() {
         key = 0x00;
         this.disk2.reset();

@@ -104,7 +104,7 @@ function COM()
   this.default = function(src_obj,default_obj,message)  // create default object when main object is missing
   {
     var cn = this.default.caller.name;
-    if(src_obj===undefined) { console.warn(cn+" : proceeding without "+message); return default_obj }
+    if(src_obj===undefined || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
     return src_obj;
   }
 

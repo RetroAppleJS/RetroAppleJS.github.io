@@ -46,6 +46,7 @@ function AppleDisk2()
 
     this.diskBytes = [null,null];      // disk content
     this.drv = 0;
+    this.active = true;
 
     //var logs = [];
     //var logs_idx = 0;
