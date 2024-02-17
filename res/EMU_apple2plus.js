@@ -18,8 +18,9 @@ function Apple2Plus(context)
     {
         var video = new Apple2Video(context);
         var hw   = new Apple2Hw(video);
-        var snd  = oEMU.component.IO.AppleSpeaker;
         var keys = oEMU.component.Keyboard;
+        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
+        var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{getDataObj:function(){},update:function(){}},"AppleDisk");
 
             // override keys object
     keys.keystroke = function(data)
@@ -131,8 +132,8 @@ function Apple2Plus(context)
 
     this.DSK_monitoring = function()
     {
-        var o = oEMU.component.IO.AppleDisk.getDataObj();
-        oEMU.component.IO.AppleDisk.update(o);
+        var o = disk2.getDataObj();
+        disk2.update(o);
 
         //var d2 = hw.io.disk2;
         // TODO activate some leds

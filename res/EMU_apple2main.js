@@ -70,7 +70,9 @@ function EMU_init()
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
-    oEMU.component.Keyboard.KbdHTML({id:"kbd",path:"res/"
+    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:[],active:false},"AppleDisk");
+
+    if(disk2.active) oEMU.component.Keyboard.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=apple2plus.keysObj().KbdHover(event);apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2') onmouseout=apple2plus.keysObj().KbdHover(event)"
                 ,key_events:"onclick=apple2plus.keysObj().keystroke(event)"});
 
@@ -81,10 +83,10 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
-    oEMU.component.IO.AppleDisk.DSK_led[0] = document.getElementById("dskLED_D1");
-    oEMU.component.IO.AppleDisk.DSK_led[1] = document.getElementById("dskLED_D2");
+    disk2.DSK_led[0] = document.getElementById("dskLED_D1");
+    disk2.DSK_led[1] = document.getElementById("dskLED_D2");
 
-    oEMU.component.IO.AppleDisk.update = function(o)
+    disk2.update = function(o)
     {
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
         if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
@@ -154,7 +156,9 @@ function pauseButton()
 
 function loadDisk_fromFile(file_obj,drv)
 {
-    if(file_obj==null) {apple2plus.loadDisk([],drv); return;}
+    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
+
+    if(file_obj==null || disk2.active==false) {apple2plus.loadDisk([],drv); return}
     var file = file_obj.files[0];
     if (!file) return;
 
@@ -175,7 +179,7 @@ function loadDisk_fromFile(file_obj,drv)
         
                 //dumpdisk(bytes);
         
-                if (size == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
+                if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
                 apple2plus.loadDisk(bytes,"D1");
             }            
         break;
@@ -192,7 +196,7 @@ function loadDisk_fromFile(file_obj,drv)
         
                 //dumpdisk(bytes);
         
-                if (size == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
+                if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
                 apple2plus.loadDisk(bytes,"D2");
             }            
         break; 
@@ -201,8 +205,11 @@ function loadDisk_fromFile(file_obj,drv)
 
 function loadDisk_fromBuffer(arr_buffer,dsk)
 {
+    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
+    if(disk2.active==false) return;
+
     var bytes = Array.from(arr_buffer);
-    if (bytes.length == 143360) bytes = apple2plus.DiskObj().convertDsk2Nib(bytes);
+    if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
     apple2plus.loadDisk(bytes,"D1");
     highlight_appbut(document.getElementById("file_"+dsk),true);
 }

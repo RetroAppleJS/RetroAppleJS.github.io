@@ -101,6 +101,13 @@ function COM()
     );
   }
 
+  this.default = function(src_obj,default_obj,message)  // create default object when main object is missing
+  {
+    var cn = this.default.caller.name;
+    if(src_obj===undefined) { console.warn(cn+" : proceeding without "+message); return default_obj }
+    return src_obj;
+  }
+
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -176,6 +183,8 @@ function COM()
 
   this.Download = function(fileName, data)
   {
+    if(data.length===undefined) return;
+
     var ui8 = new Uint8Array(data.length);
     for(var i=0;i<data.length;i++)
       ui8[i] = data[i];

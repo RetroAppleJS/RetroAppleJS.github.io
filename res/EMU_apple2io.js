@@ -72,12 +72,15 @@ function Apple2IO(vid) {
 
     var video = vid;
     var key = 0x00;
+    var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
+    this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
+    this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
 
-    if(oEMU.component.IO)
-    {
-        this.disk2 = oEMU.component.IO.AppleDisk; // temporarily work with local objects
-        this.ramcard = oEMU.component.IO.RamCard; // TODO: USE ROOT OBJECTS INSTEAD
-    }
+    //if(oEMU.component.IO)
+    //{
+        //this.disk2 = oEMU.component.IO.AppleDisk; // temporarily work with local objects
+        //this.ramcard = oEMU.component.IO.RamCard; // TODO: USE ROOT OBJECTS INSTEAD
+    //}
 
     this.reset = function() {
         key = 0x00;
@@ -108,7 +111,7 @@ function Apple2IO(vid) {
             switch(addr)
             {
             case SPKR_TOGGLE:
-                oEMU.component.IO.AppleSpeaker.toggle();
+                snd.toggle();
                 break;
             case GFX_ON:
                 video.setGfx(true);
