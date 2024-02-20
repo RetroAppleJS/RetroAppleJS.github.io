@@ -311,20 +311,11 @@
                         </div>
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
-                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="slider_update(this,70)" style="width:65px">
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="CPU_slider_update(this,70)" style="width:65px">
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
                         oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
-
-                        function slider_update(obj,max)
-                        {
-                          var el = obj.getBoundingClientRect()
-                          var pct = 2*obj.value/max;
-                          var pos = [el.left+4+pct*((el.right-el.left)-17),el.top+2-10]
-                          document.getElementById("slider_1v").innerHTML = Math.round(pct*10)*10+"%";
-                          _o.CPU_ClockTicks = Math.round( (_o.CPU_ClocksTicks_s*pct) / _o.EMU_Updates_s );
-                        }
 
                         function system_tab_update()
                         {

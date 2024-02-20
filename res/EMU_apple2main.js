@@ -78,23 +78,33 @@ function EMU_init()
                 ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
                 ,key_events:"onclick=keys.keystroke(event)"});
 
-    oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
-    //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
-
-    disk2.DSK_led[0] = document.getElementById("dskLED_D1");
-    disk2.DSK_led[1] = document.getElementById("dskLED_D2");
-
-    disk2.update = function(o)
+    // OVERRIDE SEVERAL OBJECTS TO INTERACT WITH SPECIFIC GUI DATA
+    apple2plus.CPU_monitoring = function()  // override
     {
+        document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+    }
+
+    disk2.diskNoise_speed_update = function(pct)  // override
+    {
+        var dsk = oEMU.component.IO.AppleDisk;
+        var cent = 1200 * Math.log2(pct/100);
+        dsk.playSound.detune.value = cent;
+        //console.log("pct="+pct+" cent="+cent);
+    }
+
+    disk2.update = function(o)  // override
+    {    
         var dsk = apple2plus.DiskObj();
         if(o[this.drv].motor==1)
         {
             dsk.playback("DiskII_spin",{start:true});
+            //dsk.playback("Beep",{start:true});
         }
         else
+        {
             dsk.playback("DiskII_spin",{start:false});
+            //dsk.playback("Beep",{start:false});
+        }
 
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
         if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
@@ -103,12 +113,20 @@ function EMU_init()
     
     // overrides function that defines conditions for having an active emulator keyboard
     // (should stop capture emulator keyboard events when focused on tabs other than the emulator)
-    oEMU.component.Keyboard.isActive = function(bool)
+    oEMU.component.Keyboard.isActive = function(bool)  // override
     {
         if(bool===undefined) return document.getElementById("tab1").checked;
         else var b = bool;
         return b;
     }
+
+    disk2.DSK_led[0] = document.getElementById("dskLED_D1");
+    disk2.DSK_led[1] = document.getElementById("dskLED_D2");
+
+    oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
+    //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
     var bBOOTmon = false;
     if(bBOOTmon)
@@ -136,6 +154,17 @@ function EMU_init()
     var dd = inflator.result;
     if(dd===undefined) return null;
     loadDisk_fromBuffer(dd,"D1");
+}
+
+function CPU_slider_update(obj,max)
+{
+  //var el = obj.getBoundingClientRect()
+  var pct = 2*obj.value/max;
+  //var pos = [el.left+4+pct*((el.right-el.left)-17),el.top+2-10]
+  document.getElementById("slider_1v").innerHTML = Math.round(pct*10)*10+"%";
+  _o.CPU_ClockTicks = Math.round( (_o.CPU_ClocksTicks_s*pct) / _o.EMU_Updates_s );
+
+  oEMU.component.IO.AppleDisk.diskNoise_speed_update(pct*100);
 }
 
 function resetButton() {

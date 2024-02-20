@@ -101,9 +101,8 @@ function Apple2Plus(context)
         system_tab_update();
     }
 
-    this.CPU_monitoring = function()
+    this.CPU_monitoring = function()  // overridable by GUI update function
     {
-        document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
     }
 
     this.MEM_monitoring = function()
