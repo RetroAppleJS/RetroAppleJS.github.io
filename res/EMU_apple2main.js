@@ -86,9 +86,9 @@ function EMU_init()
 
     disk2.diskNoise_speed_update = function(pct)  // override
     {
-        var dsk = oEMU.component.IO.AppleDisk;
+        //var dsk = oEMU.component.IO.AppleDisk;
         var cent = 1200 * Math.log2(pct/100);
-        dsk.playSound.detune.value = cent;
+        this.playSound.detune.value = cent;
         //console.log("pct="+pct+" cent="+cent);
     }
 
@@ -162,8 +162,14 @@ function CPU_slider_update(obj,max)
   var pct = 2*obj.value/max;
   //var pos = [el.left+4+pct*((el.right-el.left)-17),el.top+2-10]
   document.getElementById("slider_1v").innerHTML = Math.round(pct*10)*10+"%";
-  _o.CPU_ClockTicks = Math.round( (_o.CPU_ClocksTicks_s*pct) / _o.EMU_Updates_s );
 
+  //_o.CPU_ClocksTicks_s = Math.round(1000000 * pct);
+  _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
+  
+  //alert(_o.CPU_ClockTicks);
+
+  window.clearInterval(appleIntervalHandle);
+  appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
   oEMU.component.IO.AppleDisk.diskNoise_speed_update(pct*100);
 }
 
