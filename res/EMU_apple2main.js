@@ -88,6 +88,14 @@ function EMU_init()
 
     disk2.update = function(o)
     {
+        var dsk = apple2plus.DiskObj();
+        if(o[this.drv].motor==1)
+        {
+            dsk.playback("DiskII_spin",{start:true});
+        }
+        else
+            dsk.playback("DiskII_spin",{start:false});
+
         if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
         if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
         else this.DSK_led[this.drv].style.visibility = "hidden";
