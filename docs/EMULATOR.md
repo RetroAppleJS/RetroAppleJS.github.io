@@ -74,7 +74,7 @@ JavaScript does not provide 1µs timing precision, but we have a workaround.  Th
 ![plantuml](http://www.plantuml.com/plantuml/png/ZOunJyCm48Lt_ugdJ21rE0yPs48g445YwifYdAjguTYMVMaGYFzEI8iQcDZkdhxtz3L5J9PnyChwQ5y1L7V3w8t4ZC6u01zZUWwFvcXsDhiasB5qGJWVZR-whc0AjeJ9oG69iuizD17Iw0lZfaRSxmiBIDaOh2lyTtvoeO_JQKQh75_68ci75mBdHM9XsXM3Kt8HpsmyRbFoZAw34UYdX_S5klybM9_rw6AdMXncZbIhbqDlvgmXjTLm1HM_iVrHLUsIVT16VyvCVVw_UKt_QMXQTLJ3eHy7_mK0)
 
   
-__Impossible sound emulation__  
+__Seemingly impossible sound emulation__  
 However simple sound production was designed on the Apple II, since 1997, JavaScript maintained **1ms** as the **highest achievable timing accuracy**.  While the 6502 CPU was clocked at approximately 1MHz, we need a 1000-fold more accuracy than JavaScript can provide today.  JavaScript simply cannot implement any timer-driven sound above it's nyquist maximum of 500Hz, while a typical Apple II Beep sound is 1KHz.
 
 W3C recently started to worry about this limitation by proposing a new spec called ["High Resolution Time"](https://w3c.github.io/hr-time/) or [hr-time](https://w3c.github.io/hr-time/), but because of alleged malicious capability like [CACHE-ATTACKS] and [SPECTRE], W3C recommends to purposefully mess-up it's timers accuracy by reducing resolution, adding jitter, or by any other means that probably never will provide us anything near to 1µs clock accuracy.
