@@ -58,19 +58,15 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [ ] better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
-- [ ] pasteboard scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [ ] paddle/mouse capture
 - [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
-- [ ] real-time camera capture tool - hi-res through firmware color-approximation and dithering
-- [ ] macro script runner (emulating keyboard & paddle control)
-- [ ] complete zero-page documentation (ZEROPAGE_APPLE2PLUS.md)
-- [ ] complete memory-map documentation -> share memorymap data with assembler/disassembler to generate extra context
+- [ ] pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
+- [ ] complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
 - [ ] popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
-- [ ] slot activity monitor, CPU load monitor (displaying and logging operator efficiency)
-- [ ] add a tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
+- [ ] slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
+- [ ] better document assembler code located in asm_code_examples
 
 ## Contribute
 
