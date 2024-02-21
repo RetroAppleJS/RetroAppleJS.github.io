@@ -78,7 +78,7 @@ function EMU_init()
                 ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
                 ,key_events:"onclick=keys.keystroke(event)"});
 
-    // OVERRIDE SEVERAL OBJECTS TO INTERACT WITH SPECIFIC GUI DATA
+    // OVERRIDE SEVERAL OBJECTS TO INTERACT WITH SPECIFIC GUI OBJECTS
     apple2plus.CPU_monitoring = function()  // override
     {
         document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
@@ -221,7 +221,6 @@ function loadDisk_fromFile(file_obj,drv)
                     bytes[i] = data.getUint8(i);
         
                 //dumpdisk(bytes);
-        
                 if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
                 apple2plus.loadDisk(bytes,"D1");
             }            
@@ -238,7 +237,6 @@ function loadDisk_fromFile(file_obj,drv)
                     bytes[i] = data.getUint8(i);
         
                 //dumpdisk(bytes);
-        
                 if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
                 apple2plus.loadDisk(bytes,"D2");
             }            

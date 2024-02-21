@@ -133,20 +133,24 @@ function AppleDisk2()
                         if (++o[drv].track >= 35)
                         {
                             o[drv].track = 35; // CLICK! CLICK! CLICK!
-                            this.update_logs("CLICK !");
+                            this.diskNoise_sequence("click",o[drv].track);
+                            //this.update_logs("CLICK !");
                         }
+                        else this.diskNoise_sequence("shortswipe",o[drv].track);
                     }
                 }
                 else if (((o[drv].phase - 1) & 3) == p) {
                     // Descending order, track arm moves outward.
                     o[drv].phase = p;
-                    this.update_logs("phase");
+                    //this.update_logs("phase");
                     if ((o[drv].phase & 1) == 0) {
                         if (--o[drv].track < 0)
                         {
                             o[drv].track = 0; // CLICK! CLICK! CLICK!
-                            this.update_logs("CLICK !");
+                            this.diskNoise_sequence("click",o[drv].track);
+                            //this.update_logs("CLICK !");
                         }
+                        else this.diskNoise_sequence("shortswipe",o[drv].track);
                     }
                 }
             }
@@ -155,15 +159,17 @@ function AppleDisk2()
             switch (addr) {
             case MOTOR_OFF:
                 o[drv].motor = 0;
+                this.diskNoise_sequence("spin",false);
                 //this.update();
-                this.update_logs("motor");
+                //this.update_logs("motor");
                 //logs_idx++;
                 break;
             case MOTOR_ON:
                 o[drv].motor = 1;
+                this.diskNoise_sequence("spin",true);
                 //this.update();
                 //o[drv].stats.motor++;
-                this.update_logs("motor");
+                //this.update_logs("motor");
                 //console.log(o[drv].stats.motor);
                 break;
             case DRV0EN:
@@ -354,10 +360,21 @@ function AppleDisk2()
     +"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"}
     }
 
+    var seq =
+    {
+         "spin":        {arr:["DiskII_spinup","DiskII_spin","DiskII_spindown"],method:"seq"}
+        ,"shortswipe":  {arr:["DiskII_shortswipe"],method:"trig"}
+        ,"longswipe":   {arr:["DiskII_longswipe"],method:"seq"}
+        ,"click":       {arr:["DiskII_click"],method:"trig"}
+    }
+
     // DiskII_spinup
     this.sampleRate = 21050;
     const ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: this.sampleRate });
     ctx.sampleRate = this.sampleRate;
+    this.GainNode = ctx.createGain();                          // GainNode object
+    this.AudioBufferSourceNode  = ctx.createBufferSource();    // AudioBufferSourceNode object
+    var noise_status = {started:false,connected:false}
 
     async function load_all(samplesDS)
     {
@@ -375,32 +392,50 @@ function AppleDisk2()
         return audioBuffer;
     }
 
-    // GainNode object
-    this.gainNode = ctx.createGain();
-    // AudioBufferSourceNode object
-    this.playSound  = ctx.createBufferSource();
-
-    var noise_status = {started:false,connected:false}
-
-
     this.playback = function(name,arg)
     {
         if(noise_status.started==false)
         {
             noise_status.started=true;
-            this.playSound.buffer = samples_struct[name].audio;
-            this.playSound.start(ctx.currentTime)
+            this.AudioBufferSourceNode.buffer = samples_struct[name].audio;
+            this.AudioBufferSourceNode.start(ctx.currentTime)
         }
         
-        if(arg.start==true && noise_status.connected==false) { this.playSound.connect(this.gainNode); this.gainNode.connect(ctx.destination); noise_status.connected=true }
-        if(arg.start==false && noise_status.connected==true) { this.playSound.disconnect(this.gainNode); this.gainNode.disconnect(ctx.destination); noise_status.connected=false }
+        // set patch cables from source -> GainNode -> destination
+        if(arg.start==true && noise_status.connected==false) { this.AudioBufferSourceNode.connect(this.GainNode); this.GainNode.connect(ctx.destination); noise_status.connected=true }
+        if(arg.start==false && noise_status.connected==true) { this.AudioBufferSourceNode.disconnect(this.GainNode); this.GainNode.disconnect(ctx.destination); noise_status.connected=false }
 
-        this.gainNode.gain.value = 0.1;
-        //this.playSound.detune.value = 0;
-        this.playSound.loop = samples_struct[name].loop;
+        this.GainNode.gain.value = 0.1;
+        //this.AudioBufferSourceNode.detune.value = 0;
+        this.AudioBufferSourceNode.loop = samples_struct[name].loop;
     }
 
     this.diskNoise_speed_update = function(pct){}      // overridable function - tune disk noise to CPU clock 
+    
+    var dtime = [performance.now(),performance.now()];
+    this.diskNoise_sequence = function(name,action)
+    {
+        dtime[1] = dtime[0];
+        dtime[0] = performance.now();
+        var dt = Math.round(dtime[0]-dtime[1]);
+
+        switch(name)
+        {
+            case "spin":
+            break;
+            case "shortswipe":
+            break;
+            case "longswipe":
+            break;
+            case "click":
+                //this.AudioBufferSourceNode.buffer = null
+                //this.AudioBufferSourceNode.buffer = samples_struct["DiskII_click"].audio;
+                //this.playback("DiskII_click",true);
+            break;
+        }
+        console.log("name="+name+" action="+action+" t="+dt);
+    }
+    
 
     load_all(samples_struct).then((response) => 
     { 

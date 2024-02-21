@@ -18,12 +18,13 @@ function AppleSpeaker()
     //AWblockN   = 34;         // Number of AudioWorklet data blocks in buffer
     //samplerate = 44100;      // Speaker Emulation Sample rate (must be an integer factor of block length)
     var AWblockN   = 17;         // Number of AudioWorklet data blocks in buffer
-    var samplerate = 21050;      // Speaker Emulation Sample rate (must be an integer factor of block length)
+    var samplerate = 21760;      // Speaker Emulation Sample rate (must be an integer factor of block length)
 
     //this.data = new Array(AWblockL * AWblockN);
 
     this.tickCycle = Math.round(_o.CPU_ClocksTicks_s / samplerate); // Ticks per emulator cycle
-    // 20*128 samp / 25600 samp/sec  = 0.1 sec = length of one EMULATOR cycle
+    // 17*128 samp / 21760 samp/sec  = 0.1 sec = length of one EMULATOR cycle
+    // 1MHz / 0.02176 = 45.955 samples --> 46 clock cycles / sample
 
     //alert(Math.round(this.tickCycle))
     this.audio = null;
