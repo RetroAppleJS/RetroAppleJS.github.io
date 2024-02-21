@@ -422,6 +422,7 @@ function AppleDisk2()
         switch(name)
         {
             case "spin":
+                this.playback("DiskII_spin",{"start":action});
             break;
             case "shortswipe":
             break;
