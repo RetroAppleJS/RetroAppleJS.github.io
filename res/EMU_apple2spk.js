@@ -35,23 +35,21 @@ function AppleSpeaker()
     var ccnt = 0;
     var floatval = 0;
 
-    //var js = "AudioWorklet.js"
-    var js = "data:@file/javascript;base64,Y2xhc3MgRW11bGF0b3JXb3JrbGV0IGV4dGVuZHMgQXVkaW9Xb3JrbGV0UHJvY2Vzc29yCnsKICAgIGNvbnN0cnVjdG9yKCkKICAgIHsKICAgICAgICBzdXBlcigpOwogICAgICAgIHRoaXMucG9ydC5vbm1lc3NhZ2UgPSB0aGlzLm9ubWVzc2FnZS5iaW5kKHRoaXMpOwogICAgICAgIHRoaXMuc2FtcGxlRGF0YSAgPS"
-    +"BbXTsKICAgICAgICB0aGlzLnNhbXBsZUluZGV4ID0gMDsKICAgICAgICB0aGlzLmRiZyAgICAgICAgID0gW107CiAgICB9CgogICAgb25tZXNzYWdlKGUpCiAgICB7CiAgICAgICAgc3dpdGNoKGUuZGF0YS50eXBlKQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAibG9hZCI6CiAgICAgICAgICAgICAgICB0aGlzLmRlYnVnKDApOwogICAgICAgICAgICAgICAgd"
-    +"Ghpcy5zYW1wbGVEYXRhICA9IGUuZGF0YS5hdWRpbzsKICAgICAgICAgICAgICAgIHRoaXMuc2FtcGxlSW5kZXggPSB0aGlzLnNhbXBsZURhdGEubGVuZ3RoIC0gMTsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgfQogICAgfQoKICAgIG5leHRPdXRwdXQoKQogICAgewogICAgICAgIHRoaXMuZGVidWcoMSk7CiAgICAgICAgcmV0dXJuIHRoaXMuc2FtcGxlRGF0"
-    +"YVsgdGhpcy5zYW1wbGVJbmRleD09MD8wOnRoaXMuc2FtcGxlSW5kZXgtLSBdCiAgICB9CgogICAgcHJvY2VzcyhpbnB1dHMsIG91dHB1dHMpCiAgICB7CiAgICAgICAgY29uc3Qgb3V0cHV0ID0gb3V0cHV0c1swXTsKICAgICAgICBjb25zdCBjaGFubmVsID0gb3V0cHV0WzBdOwogICAgICAgIGZvciAodmFyIGkgPSAwOyBpIDwgY2hhbm5lbC5sZW5ndGg7ICsraSk"
-    +"KICAgICAgICAgICAgY2hhbm5lbFtpXSA9IHRoaXMubmV4dE91dHB1dCgpOwogICAgICAgIHJldHVybiB0cnVlOwogICAgfQoKICAgIGRlYnVnKGlkeCkKICAgIHsKICAgICAgICBzd2l0Y2goaWR4KQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAwOgogICAgICAgICAgICAgICAgdGhpcy5kYmdbMV0gPSB0aGlzLmRiZ1sxXT09PXVuZGVmaW5lZCA/IDAgOiAoKH"
-    +"RoaXMuZGJnWzFdICsgMSkgJSAzKTsKICAgICAgICAgICAgICAgIGlmKHRoaXMuZGJnWzFdPT0wKQogICAgICAgICAgICAgICAgICAgIHRoaXMucG9ydC5wb3N0TWVzc2FnZSh7IG1lc3NhZ2U6ICdidWZmZXIgJysodGhpcy5zYW1wbGVJbmRleCAtIHRoaXMuZGJnWzBdKSB9KTsKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdID0gMDsKICAgICAgICAgICAgYnJlY"
-    +"Ws7CiAgICAgICAgICAgIGNhc2UgMToKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdICs9IHRoaXMuc2FtcGxlSW5kZXg9PTA/MTowOwogICAgICAgICAgICBicmVhazsKICAgICAgICB9CiAgICB9Cn0KCnJlZ2lzdGVyUHJvY2Vzc29yKCdlbXVsYXRvci13b3JrbGV0JywgRW11bGF0b3JXb3JrbGV0KTs="
+    var js = "res/AudioWorklet.js"
+    //var js = "data:@file/javascript;base64,"
+    //+"Y2xhc3MgRW11bGF0b3JXb3JrbGV0IGV4dGVuZHMgQXVkaW9Xb3JrbGV0UHJvY2Vzc29yCnsKICAgIGNvbnN0cnVjdG9yKCkKICAgIHsKICAgICAgICBzdXBlcigpOwogICAgICAgIHRoaXMucG9ydC5vbm1lc3NhZ2UgPSB0aGlzLm9ubWVzc2FnZS5iaW5kKHRoaXMpOwogICAgICAgIHRoaXMuc2FtcGxlRGF0YSAgPSBbXTsKICAgICAgICB0aGlzLnNhbXBsZUluZGV4ID0gMDsKICAgICAgICB0aGlzLmRiZyAgICAgICAgID0gW107CiAgICB9CgogICAgb25tZXNzYWdlKGUpCiAgICB7CiAgICAgICAgc3dpdGNoKGUuZGF0YS50eXBlKQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAibG9hZCI6CiAgICAgICAgICAgICAgICB0aGlzLmRlYnVnKDApOwogICAgICAgICA"
+    //+"gICAgICAgdGhpcy5zYW1wbGVEYXRhICA9IGUuZGF0YS5hdWRpbzsKICAgICAgICAgICAgICAgIHRoaXMuc2FtcGxlSW5kZXggPSB0aGlzLnNhbXBsZURhdGEubGVuZ3RoIC0gMTsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgfQogICAgfQoKICAgIG5leHRPdXRwdXQoKQogICAgewogICAgICAgIHRoaXMuZGVidWcoMSk7CiAgICAgICAgcmV0dXJuIHRoaXMuc2FtcGxlRGF0YVsgdGhpcy5zYW1wbGVJbmRleD09MD8wOnRoaXMuc2FtcGxlSW5kZXgtLSBdCiAgICB9CgogICAgcHJvY2VzcyhpbnB1dHMsIG91dHB1dHMpCiAgICB7CiAgICAgICAgY29uc3Qgb3V0cHV0ID0gb3V0cHV0c1swXTsKICAgICAgICBjb25zdCBjaGFubmVsID0gb3V0cHV0WzBdOwogICAgIC"
+    //+"AgIGZvciAodmFyIGkgPSAwOyBpIDwgY2hhbm5lbC5sZW5ndGg7ICsraSkKICAgICAgICAgICAgY2hhbm5lbFtpXSA9IHRoaXMubmV4dE91dHB1dCgpOwogICAgICAgIHJldHVybiB0cnVlOwogICAgfQoKICAgIGRlYnVnKGlkeCkKICAgIHsKICAgICAgICBzd2l0Y2goaWR4KQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAwOgogICAgICAgICAgICAgICAgdGhpcy5kYmdbMV0gPSB0aGlzLmRiZ1sxXT09PXVuZGVmaW5lZCA/IDAgOiAoKHRoaXMuZGJnWzFdICsgMSkgJSAzKTsKICAgICAgICAgICAgICAgIGlmKHRoaXMuZGJnWzFdPT0wKQogICAgICAgICAgICAgICAgICAgIHRoaXMucG9ydC5wb3N0TWVzc2FnZSh7IG1lc3NhZ2U6ICdidWZmZXIgJysodGhpcy5zY"
+    //+"W1wbGVJbmRleCAtIHRoaXMuZGJnWzBdKSB9KTsKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdID0gMDsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgIGNhc2UgMToKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdICs9IHRoaXMuc2FtcGxlSW5kZXg9PTA/MTowOwogICAgICAgICAgICBicmVhazsKICAgICAgICB9CiAgICB9Cn0KCnJlZ2lzdGVyUHJvY2Vzc29yKCdlbXVsYXRvci13b3JrbGV0JywgRW11bGF0b3JXb3JrbGV0KTs="
 
     this.init = async function(bEnable)
     {
         if(bEnable)
         {
             this.audio = new AudioContext({ latencyHint: 'interactive', sampleRate: samplerate });
-            await this.audio.audioWorklet.addModule(js);                            // Load an audio worklet
-            this.player = new AudioWorkletNode(this.audio,'emulator-worklet');      // Create a player
-            this.player.connect(this.audio.destination);                            // Connect the player to the audio context     
+            await this.audio.audioWorklet.addModule(js);       // Load an audio worklet
+            this.player = new AudioWorkletNode(this.audio,'emulator-worklet');    // Create a player
+            this.player.connect(this.audio.destination);                          // Connect the player to the audio context     
         }
         else
         {
