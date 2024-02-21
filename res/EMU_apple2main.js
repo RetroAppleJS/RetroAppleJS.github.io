@@ -175,6 +175,12 @@ function CPU_slider_update(obj,max)
   oEMU.component.IO.AppleDisk.diskNoise_speed_update(pct*100);
 }
 
+function SoundButton(id)
+{
+    oEMU.component.IO.AppleSpeaker.init(oCOM.POPUP.states[id]=='fa-volume-up');
+    oEMU.component.IO.AppleDisk.init(oCOM.POPUP.states[id]=='fa-volume-up'?'load':"unload");
+}
+
 function resetButton() {
     apple2plus.reset();
 }

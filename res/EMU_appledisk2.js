@@ -53,6 +53,49 @@ function AppleDisk2()
     //var prev_name = "";
     //var prev_name_cnt = 0;
 
+    var ctx;
+    var noise_status = {started:false,connected:false};
+    this.init = function(step)
+    {
+        switch(step)
+        {
+            case "load":
+                for(var sample in samples_struct)   // check if data is already loaded
+                    if( typeof(samples_struct[sample].audio) != "undefined") return;
+
+                ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: this.sampleRate });
+                load_all(samples_struct).then((response) => 
+                { 
+                    var i = 0;
+                    for(var sample in samples_struct)
+                    {
+                        samples_struct[sample].audio = response[i++];
+                        samples_struct[sample].audio.sampleRate = this.sampleRate;
+                        //delete samples_struct[sample].src;    // free .wav file memory space (keep audio)
+                    }
+                    this.init("audio_on");
+                });
+            break;
+
+            case "unload":
+                this.init("audio_off");
+            break;
+
+            case "audio_on":
+                //console.log(step);
+                this.sampleRate = 21050;
+                ctx.sampleRate = this.sampleRate;
+                this.GainNode = ctx.createGain();                          // GainNode object
+                this.AudioBufferSourceNode  = ctx.createBufferSource();    // AudioBufferSourceNode object
+            break;
+
+            case "audio_off":
+                console.log(step);
+                ctx.close();
+            break;
+        }
+    }
+
     this.reset = function() {
 
         o[0].phase = 0;
@@ -369,13 +412,6 @@ function AppleDisk2()
     }
 
     // DiskII_spinup
-    this.sampleRate = 21050;
-    const ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: this.sampleRate });
-    ctx.sampleRate = this.sampleRate;
-    this.GainNode = ctx.createGain();                          // GainNode object
-    this.AudioBufferSourceNode  = ctx.createBufferSource();    // AudioBufferSourceNode object
-    var noise_status = {started:false,connected:false}
-
     async function load_all(samplesDS)
     {
         const audioBuffers = [];
@@ -436,17 +472,4 @@ function AppleDisk2()
         }
         console.log("name="+name+" action="+action+" t="+dt);
     }
-    
-
-    load_all(samples_struct).then((response) => 
-    { 
-        var i = 0;
-        for(var sample in samples_struct)
-        {
-            samples_struct[sample].audio = response[i++];
-            samples_struct[sample].audio.sampleRate = this.sampleRate;
-            delete samples_struct[sample].src;    // free .wav file memory space (keep audio)
-        }
-    });
-
 }
