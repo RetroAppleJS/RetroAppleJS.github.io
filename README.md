@@ -61,9 +61,6 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] better document assembler code located in asm_code_examples
 - [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
 - [ ] pasteboard scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
-- [ ] interactive Apple II+ pop-up keyboard
-- [ ] save disk image in .dsk format (convert internal .nib format to .dsk), and perhaps tweak the diskdrive into booting non-bootable disks (on a second drive)
-- [ ] apple sound, including diskdrive noise
 - [ ] paddle/mouse capture
 - [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
@@ -101,7 +98,7 @@ Also to be considered: detect if host device is mouse-driven or touch-driven.  W
 
 #### real-time audio
 
-The simple ability of the Apple II to produce a soft-switch-activated real-time 'click', transitioning the speaker voltage from 0V to 1V and back turned out quite hard to mimic.  The main reasons are the [coarse-precision JavaScript timer](/docs/EMULATOR.md) and the scheduling approach [JavaScript took on audio interfacing](https://www.html5rocks.com/en/tutorials/audio/scheduling/), similar to the SID chip on the Commodore 64.  Even if emulating the [AY-3-8910 and YM2149 sound chip](https://retroapplejs.github.io/tools/MockingboardJS.html) used on the mockingboard or even as crazy as squeezing in a [SID chip emulator](https://retroapplejs.github.io/tools/SIDchipJS.html) as a peripheral felt more intuitive.  Chromium authors developed in 2017 a modern thread model for JavaScript audio - called [AudioWorklet](https://retroapplejs.github.io/tools/AudioWorkletJS.html) - that became a cross-browser standard by now. Real-time audio remains impossible, but AudioWorklets provide reasonable jitter stability, and reasonably short buffer delays.
+The simple ability of the Apple II to produce a soft-switch-activated real-time 'click', transitioning the speaker voltage from 0V to 1V and back turned out tricky to mimic.  The main reasons are the [coarse-precision JavaScript timer](/docs/EMULATOR.md) and the scheduling approach [JavaScript took on audio interfacing](https://www.html5rocks.com/en/tutorials/audio/scheduling/), similar to the SID chip on the Commodore 64.  Even if emulating the [AY-3-8910 and YM2149 sound chip](https://retroapplejs.github.io/tools/MockingboardJS.html) used on the mockingboard or even as crazy as squeezing in a [SID chip emulator](https://retroapplejs.github.io/tools/SIDchipJS.html) as a peripheral felt more intuitive for quite a while, but Chromium authors developed in 2017 a modern thread model for JavaScript audio - called [AudioWorklet](https://retroapplejs.github.io/tools/AudioWorkletJS.html) - that became a cross-browser standard by now. Real-time audio remains impossible, but a buffering method using AudioWorklets provides reasonable jitter stability, and reasonably short buffer delays.
 
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
