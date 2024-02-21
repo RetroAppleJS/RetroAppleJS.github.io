@@ -92,10 +92,6 @@ Also to be considered: detect if host device is mouse-driven or touch-driven.  W
 - *index.html*
 - *res/EMU_AP2keys.js*
 
-#### real-time audio
-
-The simple ability of the Apple II to produce a soft-switch-activated real-time 'click', transitioning the speaker voltage from 0V to 1V and back turned out tricky to mimic.  The main reasons are the [coarse-precision JavaScript timer](/docs/EMULATOR.md) and the scheduling approach [JavaScript took on audio interfacing](https://www.html5rocks.com/en/tutorials/audio/scheduling/), similar to the SID chip on the Commodore 64.  Even if emulating the [AY-3-8910 and YM2149 sound chip](https://retroapplejs.github.io/tools/MockingboardJS.html) used on the mockingboard or even as crazy as squeezing in a [SID chip emulator](https://retroapplejs.github.io/tools/SIDchipJS.html) as a peripheral felt more intuitive for quite a while, but Chromium authors developed in 2017 a modern thread model for JavaScript audio - called [AudioWorklet](https://retroapplejs.github.io/tools/AudioWorkletJS.html) - that became a cross-browser standard by now. Real-time audio remains impossible, but a buffering method using AudioWorklets provides reasonable jitter stability, and reasonably short buffer delays.
-
 #### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
 Apple II wizards out there, anyone familiar with emulating any of these popular cards ? 
