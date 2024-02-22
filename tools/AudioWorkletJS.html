@@ -301,11 +301,10 @@ function s_beep()   // BEEP
 {
     s_player = new AudioWorkletNode(s_audio,'emulator-worklet');    // Create a s_player
     s_player.connect(s_audio.destination);
-    
-    
-
     if(typeof(s_player)!="undefined" && typeof(s_audio)!="undefined" && s_audio.state!="suspended")
-        s_player.port.postMessage({ type:'load', audio: s_data });
+    {
+      s_player.port.postMessage({ type:'load', audio: s_data });
+    }
 }
 
 function s_play(name)
