@@ -4,7 +4,7 @@ class PlayerWorklet extends AudioWorkletProcessor
     {
         super();
         this.port.onmessage = this.onmessage.bind(this);
-        this.sampleData = new Array();
+        this.sampleData     = [];
         this.sampleIndex    = 0;
     }
 
@@ -15,7 +15,10 @@ class PlayerWorklet extends AudioWorkletProcessor
             case "append":
                 this.sampleData  =  e.data.audio.concat(this.sampleData);
                 this.sampleIndex += e.data.audio.length - 1;
-            break;         
+            break;
+            case "clear":
+                this.sampleData = [];
+            break;     
         }
     }
 
