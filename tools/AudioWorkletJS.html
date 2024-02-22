@@ -21,19 +21,17 @@
   https://googlechromelabs.github.io/web-audio-samples/audio-worklet/
   https://atornblad.se/generating-sound-in-modern-web-audio-api
 -->
-
-
-  
-  
-  <!--
-  <button id="button-run" onclick="this.innerHTML=audio.state=='running'?'SUSPENDED':'RUNNING';audio.state=='suspended'?audio.resume():audio.suspend();">START WORKLET</button>
-  <button onclick="trigger()">PLAY</button>
-  -->
   
 <script>
 
 var CONF_version="1.0.0";
 var CONF_builddate="20240802-130000";
+
+//  ██████  ██    ██ ███████ ███████ ███████ ██████  
+//  ██   ██ ██    ██ ██      ██      ██      ██   ██ 
+//  ██████  ██    ██ █████   █████   █████   ██████  
+//  ██   ██ ██    ██ ██      ██      ██      ██   ██ 
+//  ██████   ██████  ██      ██      ███████ ██   ██ 
 
 var _o =
 {      
@@ -46,12 +44,10 @@ var _o =
 };
 
 // Create the audio context
-const oLap = new time_keeper();
-var audio,player;
+const oLap = new b_time_keeper();
+var b_audio,b_player;
 var bDebug = true;
-
-//var worklet_src = "player-worklet.js";  // generates CORS error
-var worklet_js = "data:text/javascript;base64,"
+var b_worklet_js = "data:text/javascript;base64,"
 +"Y2xhc3MgUGxheWVyV29ya2xldCBleHRlbmRzIEF1ZGlvV29ya2xldFByb2Nlc3Nvcntjb25zdHJ1"
 +"Y3Rvcigpe3N1cGVyKCksdGhpcy5wb3J0Lm9ubWVzc2FnZT10aGlzLm9ubWVzc2FnZS5iaW5kKHRo"
 +"aXMpLHRoaXMuc2FtcGxlRGF0YT1bXSx0aGlzLnNhbXBsZUluZGV4PTB9b25tZXNzYWdlKGUpeyJh"
@@ -63,21 +59,22 @@ var worklet_js = "data:text/javascript;base64,"
 +"Z2U6ImVtcHR5In0pKSxlKTowfXByb2Nlc3MoZSx0KXtsZXQgcz10WzBdLGE9c1swXTtmb3IobGV0"
 +"IGw9MDtsPGEubGVuZ3RoOysrbCl7bGV0IHA9dGhpcy5uZXh0T3V0cHV0KCk7YVtsXT1wfXJldHVy"
 +"biEwfX1yZWdpc3RlclByb2Nlc3NvcigicGxheWVyLXdvcmtsZXQiLFBsYXllcldvcmtsZXQpOw=="
+//var b_worklet_src = "player-worklet.js";  // generates CORS error in Chrome & Firefox
 
-async function init(callback)
+async function b_init(callback)
 {
-  audio = new AudioContext({ latencyHint: 'interactive', sampleRate: _o.EMU_SampleRate });
-  await audio.audioWorklet.addModule(worklet_js);           // Load an audio worklet
-  player = new AudioWorkletNode(audio,'player-worklet');    // Create a player
-  player.connect(audio.destination);                        // Connect the player to the audio context 
+  b_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: _o.EMU_SampleRate });
+  await b_audio.audioWorklet.addModule(b_worklet_js);           // Load an audio worklet
+  b_player = new AudioWorkletNode(b_audio,'player-worklet');    // Create a player
+  b_player.connect(b_audio.destination);                        // Connect the player to the audio context 
   if(callback) callback();
 }
 
-function trigger(args)
+function b_trigger(args)
 {
   var bInit = (args && _o.EMU_SampleRate != args.samplerate)    // init at sample rate change
-            || audio===undefined                    // init when audio context is absent
-            && (audio && audio.state != "running"); // don't init when running
+            || b_audio===undefined                    // init when audio context is absent
+            && (b_audio && b_audio.state != "running"); // don't init when running
   if(bDebug) document.getElementById("dump").innerHTML += "<br>trigger"+(bInit?" - init":"");
 
   if(args)
@@ -86,27 +83,27 @@ function trigger(args)
     _o.EMU_SampleRate = args.samplerate;
   }
 
-  if(bInit) init(play); else play();
+  if(bInit) b_init(b_play); else b_play();
 }
 
-function play()
+function b_play()
 {
-  var audio_data = calc_wave( _o.EMU_AWblockN * _o.EMU_AWblockL, 4 );
-  player.port.postMessage({ type:'append', audio: audio_data });    // append data to audio buffer
-  if(audio.state!="running") { oLap.chrono(true); audio.resume() };
+  var audio_data = b_calc_wave( _o.EMU_AWblockN * _o.EMU_AWblockL, 4 );
+  b_player.port.postMessage({ type:'append', audio: audio_data });    // append data to audio buffer
+  if(b_audio.state!="running") { oLap.chrono(true); b_audio.resume() };
 
-  player.port.onmessage = (e) => 
+  b_player.port.onmessage = (e) => 
   {
     if(e.data.message=="empty")
     {
       var lap = oLap.chrono(false);
       if(bDebug) document.getElementById("dump").innerHTML += "<br>"+lap+"ms";
-      audio.suspend();
+      b_audio.suspend();
     }
   }
 }
 
-function calc_wave(len,fac)
+function b_calc_wave(len,fac)
 {
   var audio_data = new Array(len);
   for(var i=len-1;i>=0;i--)
@@ -117,7 +114,7 @@ function calc_wave(len,fac)
   return audio_data;
 }
 
-function time_keeper()
+function b_time_keeper()
 {
     this.start = 0;
     this.chrono = function(bStart)
@@ -136,7 +133,7 @@ function time_keeper()
   }
 }
 
-function html()
+function b_html()
 {
   var s = "<style>"
   +"table { float:left; margin:10px; border-collapse: collapse; border: 1px solid black; font-family:'Arial' }\n"
@@ -168,14 +165,25 @@ function html()
       +"<small>"+(Math.round(ticks*1000)/1000)+" "+(Math.round(dev*1000)/1000)+"</small>"
       //+"<small>"+(Math.round(ticks)*)+"</small>"
       +"</td>"
-      +"<td><button onclick=trigger({blocks:"+val+",samplerate:"+i+"})>PLAY</button></td>"
+      +"<td><button onclick=b_trigger({blocks:"+val+",samplerate:"+i+"})>PLAY</button></td>"
       +"</tr>"
   }
   s += "</table>"
+  
   document.getElementById("table").innerHTML = s;
 }
 </script>
 
+
+<script>
+//  ███████ ███████  ██████  ███████ ███    ██  ██████ ███████ ██████  
+//  ██      ██      ██    ██ ██      ████   ██ ██      ██      ██   ██ 
+//  ███████ █████   ██    ██ █████   ██ ██  ██ ██      █████   ██████  
+//       ██ ██      ██ ▄▄ ██ ██      ██  ██ ██ ██      ██      ██   ██ 
+//  ███████ ███████  ██████  ███████ ██   ████  ██████ ███████ ██   ██ 
+//                      ▀▀                                             
+
+</script>
 
 
 <!doctype html>
@@ -184,14 +192,15 @@ function html()
     <title>Audio Worklet</title>
     <meta name="description" content="Apple II Speaker emulator">
     <meta name="author" content="Freddy Vandriessche">
-    <meta charset="utf-8"> 
+    <meta charset="utf-8">
     <link rel="stylesheet" href="../res/COM_MAIN.css">
     <script type="text/javascript" src="TOOLS_Header.js"></script>
 </head>
-<body class="slider_main" onload="html();document.getElementById('slider_title').outerHTML = _TITLE();">
+<body class="slider_main" onload="b_html();document.getElementById('slider_title').outerHTML = _TITLE();">
 
   <div id="slider_title"></div>
   <div class="slider_overlay">
+
       <div id="topmenu">
           <ul id="minitabs" style="font-family:Courier">
               <li>
@@ -199,21 +208,37 @@ function html()
               </li>        
           </ul>
       </div>
+
       <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
-      <table>
-      <tr>
-          <td><img style="margin-left:100px;margin-right:100px;width:200px;float:left;image-rendering:pixelated;" src="../res/AudioWorklet_icon.png"></td>
-          <td rowspan="2" valign="top" id="dump"></td>
-      </tr>
-      <tr>
-          <td>
-              <div id="table" style="font-size:x-small;width:396px;height:220px;float:left;overflow-x:hidden;overflow-y:auto;">
-              </div>
-          </td>
-      </tr>
-      </table>
+        
+        <table>
+        <tr><td colspan="2"><big>LIFO BUFFER WORKLET</big></td></tr>
+        <tr>
+            <td><img style="margin-left:100px;margin-right:100px;width:200px;float:left;image-rendering:pixelated;" src="../res/AudioWorklet_icon.png"></td>
+            <td rowspan="2" valign="top" id="dump"></td>
+        </tr>
+        <tr>
+            <td>
+                <div id="table" style="font-size:x-small;width:396px;height:220px;float:left;overflow-x:hidden;overflow-y:auto;">
+                </div>
+            </td>
+        </tr>
+        </table>
+
+        <!--  -----------------------------------------------------------------------  -->
+        
+        <table>
+          <tr><td colspan="2"><big>SAMPLE SEQUENCER WORKLET</big></td></tr>
+          <tr>
+            <td>
+
+              <button onclick="var b=this.innerHTML=='OFF';this.innerHTML=b?'ON':'OFF';if(b)init('audio_ctx').then(()=>init('audio_worklet')); else init('off').then(()=>{})">OFF</button>
+              <button onclick="beep()">beep</button>
+
+            </td>
+          </tr>
+        </table>
       </div>
-  </div>
-    
-  </body>
+  </div>    
+</body>
 </html>
