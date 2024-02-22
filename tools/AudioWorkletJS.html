@@ -50,10 +50,24 @@ const oLap = new time_keeper();
 var audio,player;
 var bDebug = true;
 
+//var worklet_src = "player-worklet.js";  // generates CORS error
+var worklet_js = "data:text/javascript;base64,"
++"Y2xhc3MgUGxheWVyV29ya2xldCBleHRlbmRzIEF1ZGlvV29ya2xldFByb2Nlc3Nvcntjb25zdHJ1"
++"Y3Rvcigpe3N1cGVyKCksdGhpcy5wb3J0Lm9ubWVzc2FnZT10aGlzLm9ubWVzc2FnZS5iaW5kKHRo"
++"aXMpLHRoaXMuc2FtcGxlRGF0YT1bXSx0aGlzLnNhbXBsZUluZGV4PTB9b25tZXNzYWdlKGUpeyJh"
++"cHBlbmQiPT09ZS5kYXRhLnR5cGUmJih0aGlzLnNhbXBsZURhdGE9ZS5kYXRhLmF1ZGlvLmNvbmNh"
++"dCh0aGlzLnNhbXBsZURhdGEpLHRoaXMuc2FtcGxlSW5kZXgrPWUuZGF0YS5hdWRpby5sZW5ndGgt"
++"MSl9bmV4dE91dHB1dCgpe2xldCBlPXRoaXMuc2FtcGxlRGF0YVt0aGlzLnNhbXBsZUluZGV4XTty"
++"ZXR1cm4gdGhpcy5zYW1wbGVJbmRleD4wPyh0aGlzLnNhbXBsZUluZGV4LS0sMD09dGhpcy5zYW1w"
++"bGVJbmRleCYmKHRoaXMuc2FtcGxlRGF0YT1bXSx0aGlzLnBvcnQucG9zdE1lc3NhZ2Uoe21lc3Nh"
++"Z2U6ImVtcHR5In0pKSxlKTowfXByb2Nlc3MoZSx0KXtsZXQgcz10WzBdLGE9c1swXTtmb3IobGV0"
++"IGw9MDtsPGEubGVuZ3RoOysrbCl7bGV0IHA9dGhpcy5uZXh0T3V0cHV0KCk7YVtsXT1wfXJldHVy"
++"biEwfX1yZWdpc3RlclByb2Nlc3NvcigicGxheWVyLXdvcmtsZXQiLFBsYXllcldvcmtsZXQpOw=="
+
 async function init(callback)
 {
   audio = new AudioContext({ latencyHint: 'interactive', sampleRate: _o.EMU_SampleRate });
-  await audio.audioWorklet.addModule('player-worklet.js');  // Load an audio worklet
+  await audio.audioWorklet.addModule(worklet_js);           // Load an audio worklet
   player = new AudioWorkletNode(audio,'player-worklet');    // Create a player
   player.connect(audio.destination);                        // Connect the player to the audio context 
   if(callback) callback();
@@ -171,7 +185,7 @@ function html()
     <meta name="description" content="Apple II Speaker emulator">
     <meta name="author" content="Freddy Vandriessche">
     <meta charset="utf-8"> 
-    <script type="text/javascript" src="../res/COM_MAIN.css"></script>
+    <link rel="stylesheet" href="../res/COM_MAIN.css">
     <script type="text/javascript" src="TOOLS_Header.js"></script>
 </head>
 <body class="slider_main" onload="html();document.getElementById('slider_title').outerHTML = _TITLE();">
