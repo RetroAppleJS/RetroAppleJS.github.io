@@ -183,6 +183,52 @@ function b_html()
 //  ███████ ███████  ██████  ███████ ██   ████  ██████ ███████ ██   ██ 
 //                      ▀▀                                             
 
+var s_worklet_js = "data:text/javascript;base64,"
+    +"Y2xhc3MgRW11bGF0b3JXb3JrbGV0IGV4dGVuZHMgQXVkaW9Xb3JrbGV0UHJvY2Vzc29yCnsKICAg"
+    +"IGNvbnN0cnVjdG9yKCkKICAgIHsKICAgICAgICBzdXBlcigpOwogICAgICAgIHRoaXMucG9ydC5v"
+    +"bm1lc3NhZ2UgPSB0aGlzLm9ubWVzc2FnZS5iaW5kKHRoaXMpOwogICAgICAgIHRoaXMuc0QgID0g"
+    +"W107CiAgICAgICAgdGhpcy5zSSA9IDA7CiAgICB9CgogICAgb25tZXNzYWdlKGUpCiAgICB7CiAg"
+    +"ICAgICAgc3dpdGNoKGUuZGF0YS50eXBlKQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAibG9h"
+    +"ZCI6CiAgICAgICAgICAgICAgICB0aGlzLnNEICA9IGUuZGF0YS5hdWRpbzsKICAgICAgICAgICAg"
+    +"ICAgIHRoaXMuc0kgPSB0aGlzLnNELmxlbmd0aCAtIDE7CiAgICAgICAgICAgIGJyZWFrOwogICAg"
+    +"ICAgIH0KICAgIH0KCiAgICBuZXh0b3V0KCkKICAgIHsKICAgICAgICByZXR1cm4gdGhpcy5zRFsg"
+    +"dGhpcy5zST09MD8wOnRoaXMuc0ktLSBdCiAgICB9CgogICAgcHJvY2VzcyhpbnB1dHMsIG91dHMp"
+    +"CiAgICB7CiAgICAgICAgY29uc3Qgb3V0ID0gb3V0c1swXTsKICAgICAgICBjb25zdCBjaCA9IG91"
+    +"dFswXTsKICAgICAgICBmb3IgKHZhciBpID0gMDsgaSA8IGNoLmxlbmd0aDsgKytpKQogICAgICAg"
+    +"ICAgICBjaFtpXSA9IHRoaXMubmV4dG91dCgpOwogICAgICAgIHJldHVybiB0cnVlOwogICAgfQp9"
+    +"CgpyZWdpc3RlclByb2Nlc3NvcignZW11bGF0b3Itd29ya2xldCcsIEVtdWxhdG9yV29ya2xldCk7"
+//var js = "../res/audioWorklet.js"  // generates CORS ERROR in Chrome & Firefox!
+
+var s_audio,s_player,s_data = new Array(20*128).fill(0);
+for(var i=0;i<s_data.length;i++) s_data[i] = Math.sin(i/10)*0.1;
+
+async function s_init(action) 
+{
+    switch(action)
+    {
+        case "audio_ctx":
+            if(s_audio===undefined)
+            {
+                s_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: 21760 },"apple_speaker");
+                await s_audio.audioWorklet.addModule(s_worklet_js);       // Load an s_audio worklet
+            } else s_audio.resume();
+        break;
+        case "audio_worklet":
+            s_player = new AudioWorkletNode(s_audio,'emulator-worklet');    // Create a s_player
+            s_player.connect(s_audio.destination); 
+        break;
+        case "off":
+            s_player.disconnect();
+            s_audio.suspend();
+        break;
+    }
+}
+
+function s_beep()
+{
+    if(typeof(s_player)!="undefined" && typeof(s_audio)!="undefined" && s_audio.state!="suspended")
+        s_player.port.postMessage({ type:'load', audio: s_data });
+}
 </script>
 
 
@@ -232,8 +278,8 @@ function b_html()
           <tr>
             <td>
 
-              <button onclick="var b=this.innerHTML=='OFF';this.innerHTML=b?'ON':'OFF';if(b)init('audio_ctx').then(()=>init('audio_worklet')); else init('off').then(()=>{})">OFF</button>
-              <button onclick="beep()">beep</button>
+              SOUND: <button onclick="var b=this.innerHTML=='OFF';this.innerHTML=b?'ON':'OFF';if(b)s_init('audio_ctx').then(()=>s_init('audio_worklet')); else s_init('off').then(()=>{})">OFF</button>
+              <button onclick="s_beep()">beep</button>
 
             </td>
           </tr>
