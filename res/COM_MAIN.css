@@ -12,7 +12,11 @@ ____    ____          _
  ██████ ███████ ███████
 */
 
-@font-face {  font-family: 'Arcade'; src: URL('../res/ARCADE_N.TTF') format('truetype') }
+@font-face
+{
+   font-family: Arcade;
+   src: URL('../res/ARCADE_N.TTF') format('truetype');
+}
 
 /*
 
