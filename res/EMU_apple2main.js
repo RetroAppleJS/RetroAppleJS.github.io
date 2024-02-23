@@ -147,54 +147,39 @@ function EMU_init()
 
     // LOAD DISK IMAGE FROM DISK DIRECTORY
     var dir_filename = oCOM.URL.uri["D1_DIR"];
-    if(dir_filename!=0)
+    if(typeof(dir_filename)!="undefined" && dir_filename!=0)
     {
         var dir = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/disks/"
         dir += dir_filename;
 
-        GetHTTP(dir,"arraybuffer",
-            function()
+        oCOM.GetHTTP(dir,"arraybuffer",
+        function()
+        {
+            var arraybuffer = this.response;
+            var ui8 = new Uint8Array(arraybuffer);
+            if(arraybuffer.byteLength<100)
             {
-                var arraybuffer = this.response;
-                var ui8 = new Uint8Array(arraybuffer);
-
-                if(arraybuffer.byteLength<100)
-                {
-                    var enc = new TextDecoder("utf-8");
-                    console.warning("ERROR LOADING DISK: "+enc.decode(ui8));
-                }
-                else loadDisk_fromBuffer(ui8,"D1");
-            })
+                var enc = new TextDecoder("utf-8");
+                console.warn("ERROR LOADING DISK: "+enc.decode(ui8));
+            }
+            else loadDisk_fromBuffer(ui8,"D1");
+        })
     }
 
-
-
-
-
-
     var dsk = oCOM.URL.uri["D1"];
-    if(dsk===undefined || dsk.length==0) return null;
 
-    var db = oCOM.base64ToArrayBuffer(dsk);
-    if(db==null) return null;
-
-    const inflator = new pako.Inflate();
-    inflator.push(db);
-
-    var dd = inflator.result;
-    if(dd===undefined) return null;
-    loadDisk_fromBuffer(dd,"D1");
-}
-
-function GetHTTP(url,responsetype,callback_function)
-{
-  // random value (workaround to avoid caching)
-  var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
-  const xhttp = new XMLHttpRequest();
-  xhttp.responseType = responsetype;    // check: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType
-  xhttp.onload = callback_function;
-  xhttp.open("GET", url+r);
-  xhttp.send();
+    if(typeof(dsk)!="undefined" && dsk.length!=0)
+    {
+        var db = oCOM.base64ToArrayBuffer(dsk);
+        if(db!=null)
+        {
+            const inflator = new pako.Inflate();
+            inflator.push(db);
+            var dd = inflator.result;
+            if(typeof(dd)!="undefined")
+                loadDisk_fromBuffer(dd,"D1");
+        }
+    }
 }
 
 function CPU_slider_update(obj,max)

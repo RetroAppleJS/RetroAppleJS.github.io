@@ -13,7 +13,7 @@ oEMU.system["A2P"] = {/*  config overrides */};
 function Apple2Plus(context)
 {
     if(context===undefined)
-    { console.warning("running Apple2Plus without video or hardware context") }
+    { console.warn("running Apple2Plus without video or hardware context") }
     else
     {
         var video = new Apple2Video(context);
