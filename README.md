@@ -7,12 +7,12 @@ Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE t
 Back in 1980, a few young chaps like me were passionate about coding on the Apple II+.  Machine coding was the way to get something done gracefully on the 6502, a low-cost & spec CPU originally designed for calculators.  Before starting, several [authors](/docs/CREDITS.md) made this project possible, mainly as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  So, enjoy the beauty of 8-bit computing on a 6502 CPU, its math tricks, and **deceivingly simple** instruction set.
 
 ## Install / Run
-
-Bear in mind that in this project source code = directly executable code in your browser.  
+  
 ### **install:**
-by downloading the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
+Bear in mind that in this project source code = directly executable code in your browser.
+Hence, download the entire repo on (unzipping the .zip file) locally and run index.html on any JavaScript capable browser.  
 ### **w/o install:**
-run the last GitHub build here ==> [github.io](https://retroapplejs.github.io)
+run the last GitHub build right here ==> [github.io](https://retroapplejs.github.io)
 
 ## Getting started
 
