@@ -144,6 +144,34 @@ function EMU_init()
 
     // LOAD DISK IMAGE VIA URI PARAMETER (if any)
     oCOM.URL.parse(document.location.toString());
+
+    // LOAD DISK IMAGE FROM DISK DIRECTORY
+    var dir_filename = oCOM.URL.uri["D1_DIR"];
+    if(dir_filename!=0)
+    {
+        var dir = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/disks/"
+        dir += dir_filename;
+
+        GetHTTP(dir,"arraybuffer",
+            function()
+            {
+                var arraybuffer = this.response;
+                var ui8 = new Uint8Array(arraybuffer);
+
+                if(arraybuffer.byteLength<100)
+                {
+                    var enc = new TextDecoder("utf-8");
+                    console.warning("ERROR LOADING DISK: "+enc.decode(ui8));
+                }
+                else loadDisk_fromBuffer(ui8,"D1");
+            })
+    }
+
+
+
+
+
+
     var dsk = oCOM.URL.uri["D1"];
     if(dsk===undefined || dsk.length==0) return null;
 
@@ -156,6 +184,17 @@ function EMU_init()
     var dd = inflator.result;
     if(dd===undefined) return null;
     loadDisk_fromBuffer(dd,"D1");
+}
+
+function GetHTTP(url,responsetype,callback_function)
+{
+  // random value (workaround to avoid caching)
+  var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
+  const xhttp = new XMLHttpRequest();
+  xhttp.responseType = responsetype;    // check: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType
+  xhttp.onload = callback_function;
+  xhttp.open("GET", url+r);
+  xhttp.send();
 }
 
 function CPU_slider_update(obj,max)
@@ -177,8 +216,13 @@ function CPU_slider_update(obj,max)
 
 function SoundButton(id)
 {
-    oEMU.component.IO.AppleSpeaker.init(oCOM.POPUP.states[id]=='fa-volume-up');
+    oEMU.component.IO.AppleSpeaker.init(oCOM.POPUP.states[id]=='fa-volume-up')
+    .then(()=> { oEMU.component.IO.AppleSpeaker.post_init() } );
+
+
+
     oEMU.component.IO.AppleDisk.init(oCOM.POPUP.states[id]=='fa-volume-up'?'load':"unload");
+    console.log("done")
 }
 
 function resetButton() {
