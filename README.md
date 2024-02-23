@@ -9,7 +9,7 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 ## Install & Run
   
 - **install:** Bear in mind that in this project source code = directly executable code in your browser.  Hence, __download__ the entire repo on (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser.
-- **w/o install:** __Run__ the last GitHub build right here ==> [github.io](https://retroapplejs.github.io)
+- **w/o install:**  ==> [Run the last GitHub build right here](https://retroapplejs.github.io)
 
 ## Getting started
 
