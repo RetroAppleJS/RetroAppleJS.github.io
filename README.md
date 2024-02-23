@@ -1,15 +1,17 @@
 # Apple II+ emulator, assebler & debugger in JavaScript 
 
-<img src="/res/appleIIplus_bck_650.png?raw=true" width=40% align="left" />
+<img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" />
 
 Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. Yes indeed, this project **runs as-is, locally on any browser, no server required**.
 
 Back in 1980, a few young chaps like me were passionate about coding on the Apple II+.  Machine coding was the way to get something done gracefully on the 6502, a low-cost & spec CPU originally designed for calculators.  Before starting, several [authors](/docs/CREDITS.md) made this project possible, mainly as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  So, enjoy the beauty of 8-bit computing on a 6502 CPU, its math tricks, and **deceivingly simple** instruction set.
 
-## Getting started
+## Install & Run
+  
+- **install:** Bear in mind that in this project source code = directly executable code in your browser.  Hence, __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser.
+- **w/o install:**  ==> [Run the last GitHub build right here](https://retroapplejs.github.io)
 
-Since this web app does not require any back-end web server, just download the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
-Run w/o install: [github.io](https://retroapplejs.github.io)
+## Getting started
 
 1) Inside the assembler, tap the **'generate'** button
 2) Tap the **'to emulator'** button
@@ -47,8 +49,8 @@ The debugger is composed of 5 sections
 ## User manuals
 
 [EMULATOR.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/EMULATOR.md)  
-[DEBUGGER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/DEBUGGER.md)  
-[ASSEMBLER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ASSEMBLER.md)   
+[ASSEMBLER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ASSEMBLER.md)
+[DEBUGGER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/DEBUGGER.md)     
 [6502.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/6502.md)  
 [ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
