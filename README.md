@@ -8,11 +8,8 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 
 ## Install / Run
   
-### **install:**
-Bear in mind that in this project source code = directly executable code in your browser.
-Hence, download the entire repo on (unzipping the .zip file) locally and run index.html on any JavaScript capable browser.  
-### **w/o install:**
-run the last GitHub build right here ==> [github.io](https://retroapplejs.github.io)
+- **install:** Bear in mind that in this project source code = directly executable code in your browser.  Hence, download the entire repo on (unzipping the .zip file) locally and run index.html on any JavaScript capable browser.
+- **w/o install:** Run the last GitHub build right here ==> [github.io](https://retroapplejs.github.io)
 
 ## Getting started
 
