@@ -245,12 +245,12 @@ async function s_init(action)
               s_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: 21760 },"apple_speaker");
               s_gain  = s_audio.createGain();
               s_gain.gain.value = 0.1;
-              await s_audio.audioWorklet.addModule(s_worklet_js);       // Load an s_audio worklet
+              await s_audio.audioWorklet.addModule(s_worklet_js); // Load an s_audio worklet
           } else s_audio.resume();
         break;
 
         case "audio_buffer":
-          for(var sample in samples_struct)   // check if any data is already loaded -> if so, skip!
+          for(var sample in samples_struct) // check if any data is already loaded -> if so, skip!
               if( typeof(samples_struct[sample].audio) != "undefined") return;
 
           s_load_all(samples_struct).then((response) => 
@@ -309,13 +309,48 @@ function s_beep()   // BEEP
 
 function s_play(name)
 {
-  s_buffers[name] = s_audio.createBufferSource();                 // create buffers
+  s_buffers[name]         = s_audio.createBufferSource();         // create buffers
+  //s_buffers[name].onended = onEnded;
   s_buffers[name].buffer  = samples_struct[name].audio;           // fill buffers
   s_buffers[name].connect(s_gain).connect(s_audio.destination);   // connect buffers -> gain -> destination (patch cables)
-  //s_buffers[name].loop = samples_struct[name].loop;               // configure loop parameter
+  s_buffers[name].loop = samples_struct[name].loop;             // configure loop parameter
 
-  //s_audio.resume();
+  //if(disk_seq[name].arr.length < i)
+  //  s_buffers[name].addEventListener("ended", s_sequence(seq));
+
   s_buffers[name].start(s_audio.currentTime);
+}
+
+function s_sequence(seq)
+{
+  switch(seq)
+  {
+    case "spin":
+      switch(s_inc(seq))
+      {
+        case 0: 
+          s_play("DiskII_spinup");
+          s_buffers["DiskII_spinup"].addEventListener("ended", function()
+          { 
+            s_play("DiskII_spin");
+          });
+        break;
+       case 1:
+          s_buffers["DiskII_spin"].stop(0);
+          s_play("DiskII_spindown");
+          delete disk_seq["spin"].idx
+       break;
+      }
+    break;
+
+    case 
+  }
+}
+
+function s_inc(seq)
+{
+  disk_seq[seq].idx = (disk_seq[seq].idx===undefined)?0:disk_seq[seq].idx+1;
+  return disk_seq[seq].idx
 }
 </script>
 
@@ -368,7 +403,10 @@ function s_play(name)
                 <button onclick="s_beep()">beep</button>
                 <script>
                   for(i in samples_struct)
-                    document.write("<br><button onclick=s_play('"+i+"')>"+i+"</button>")
+                    document.write("<br><button onclick=s_play('"+i+"')>"+i+"</button>");
+                  document.write("<br>");
+                  for(i in disk_seq)
+                    document.write("<br><button onclick=s_sequence('"+i+"')>"+i+"</button>");
                 </script>
             </td>
           </tr>
