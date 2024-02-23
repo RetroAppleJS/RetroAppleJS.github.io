@@ -55,9 +55,9 @@ function AppleDisk2()
 
     var ctx;
     var noise_status = {started:false,connected:false};
-    this.init = function(step)
+    this.init = function(action)
     {
-        switch(step)
+        switch(action)
         {
             case "load":
                 for(var sample in samples_struct)   // check if data is already loaded

@@ -27,36 +27,101 @@ function AppleSpeaker()
     // 1MHz / 0.02176 = 45.955 samples --> 46 clock cycles / sample
 
     //alert(Math.round(this.tickCycle))
-    this.audio = null;
-    this.player = null;
+    //this.audio = null;
+    //this.player = null;
     var data = new Array(AWblockL * AWblockN - 4).fill(0);
     var cnt = 0;
     var data_i = {};
     var ccnt = 0;
     var floatval = 0;
-
-    var js = "res/AudioWorklet.js"
-    //var js = "data:@file/javascript;base64,"
-    //+"Y2xhc3MgRW11bGF0b3JXb3JrbGV0IGV4dGVuZHMgQXVkaW9Xb3JrbGV0UHJvY2Vzc29yCnsKICAgIGNvbnN0cnVjdG9yKCkKICAgIHsKICAgICAgICBzdXBlcigpOwogICAgICAgIHRoaXMucG9ydC5vbm1lc3NhZ2UgPSB0aGlzLm9ubWVzc2FnZS5iaW5kKHRoaXMpOwogICAgICAgIHRoaXMuc2FtcGxlRGF0YSAgPSBbXTsKICAgICAgICB0aGlzLnNhbXBsZUluZGV4ID0gMDsKICAgICAgICB0aGlzLmRiZyAgICAgICAgID0gW107CiAgICB9CgogICAgb25tZXNzYWdlKGUpCiAgICB7CiAgICAgICAgc3dpdGNoKGUuZGF0YS50eXBlKQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAibG9hZCI6CiAgICAgICAgICAgICAgICB0aGlzLmRlYnVnKDApOwogICAgICAgICA"
-    //+"gICAgICAgdGhpcy5zYW1wbGVEYXRhICA9IGUuZGF0YS5hdWRpbzsKICAgICAgICAgICAgICAgIHRoaXMuc2FtcGxlSW5kZXggPSB0aGlzLnNhbXBsZURhdGEubGVuZ3RoIC0gMTsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgfQogICAgfQoKICAgIG5leHRPdXRwdXQoKQogICAgewogICAgICAgIHRoaXMuZGVidWcoMSk7CiAgICAgICAgcmV0dXJuIHRoaXMuc2FtcGxlRGF0YVsgdGhpcy5zYW1wbGVJbmRleD09MD8wOnRoaXMuc2FtcGxlSW5kZXgtLSBdCiAgICB9CgogICAgcHJvY2VzcyhpbnB1dHMsIG91dHB1dHMpCiAgICB7CiAgICAgICAgY29uc3Qgb3V0cHV0ID0gb3V0cHV0c1swXTsKICAgICAgICBjb25zdCBjaGFubmVsID0gb3V0cHV0WzBdOwogICAgIC"
-    //+"AgIGZvciAodmFyIGkgPSAwOyBpIDwgY2hhbm5lbC5sZW5ndGg7ICsraSkKICAgICAgICAgICAgY2hhbm5lbFtpXSA9IHRoaXMubmV4dE91dHB1dCgpOwogICAgICAgIHJldHVybiB0cnVlOwogICAgfQoKICAgIGRlYnVnKGlkeCkKICAgIHsKICAgICAgICBzd2l0Y2goaWR4KQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAwOgogICAgICAgICAgICAgICAgdGhpcy5kYmdbMV0gPSB0aGlzLmRiZ1sxXT09PXVuZGVmaW5lZCA/IDAgOiAoKHRoaXMuZGJnWzFdICsgMSkgJSAzKTsKICAgICAgICAgICAgICAgIGlmKHRoaXMuZGJnWzFdPT0wKQogICAgICAgICAgICAgICAgICAgIHRoaXMucG9ydC5wb3N0TWVzc2FnZSh7IG1lc3NhZ2U6ICdidWZmZXIgJysodGhpcy5zY"
-    //+"W1wbGVJbmRleCAtIHRoaXMuZGJnWzBdKSB9KTsKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdID0gMDsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgIGNhc2UgMToKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdICs9IHRoaXMuc2FtcGxlSW5kZXg9PTA/MTowOwogICAgICAgICAgICBicmVhazsKICAgICAgICB9CiAgICB9Cn0KCnJlZ2lzdGVyUHJvY2Vzc29yKCdlbXVsYXRvci13b3JrbGV0JywgRW11bGF0b3JXb3JrbGV0KTs="
-
-    this.init = async function(bEnable)
+    
+    var js = "data:text/javascript;base64,"
+    +"Y2xhc3MgRW11bGF0b3JXb3JrbGV0IGV4dGVuZHMgQXVkaW9Xb3JrbGV0UHJvY2Vzc29yCnsKICAg"
+    +"IGNvbnN0cnVjdG9yKCkKICAgIHsKICAgICAgICBzdXBlcigpOwogICAgICAgIHRoaXMucG9ydC5v"
+    +"bm1lc3NhZ2UgPSB0aGlzLm9ubWVzc2FnZS5iaW5kKHRoaXMpOwogICAgICAgIHRoaXMuc2FtcGxl"
+    +"RGF0YSAgPSBbXTsKICAgICAgICB0aGlzLnNhbXBsZUluZGV4ID0gMDsKICAgICAgICB0aGlzLmRi"
+    +"ZyAgICAgICAgID0gW107CiAgICB9CgogICAgb25tZXNzYWdlKGUpCiAgICB7CiAgICAgICAgc3dp"
+    +"dGNoKGUuZGF0YS50eXBlKQogICAgICAgIHsKICAgICAgICAgICAgY2FzZSAibG9hZCI6CiAgICAg"
+    +"ICAgICAgICAgICB0aGlzLmRlYnVnKDApOwogICAgICAgICAgICAgICAgdGhpcy5zYW1wbGVEYXRh"
+    +"ICA9IGUuZGF0YS5hdWRpbzsKICAgICAgICAgICAgICAgIHRoaXMuc2FtcGxlSW5kZXggPSB0aGlz"
+    +"LnNhbXBsZURhdGEubGVuZ3RoIC0gMTsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgfQogICAg"
+    +"fQoKICAgIG5leHRPdXRwdXQoKQogICAgewogICAgICAgIHRoaXMuZGVidWcoMSk7CiAgICAgICAg"
+    +"cmV0dXJuIHRoaXMuc2FtcGxlRGF0YVsgdGhpcy5zYW1wbGVJbmRleD09MD8wOnRoaXMuc2FtcGxl"
+    +"SW5kZXgtLSBdCiAgICB9CgogICAgcHJvY2VzcyhpbnB1dHMsIG91dHB1dHMpCiAgICB7CiAgICAg"
+    +"ICAgY29uc3Qgb3V0cHV0ID0gb3V0cHV0c1swXTsKICAgICAgICBjb25zdCBjaGFubmVsID0gb3V0"
+    +"cHV0WzBdOwogICAgICAgIGZvciAodmFyIGkgPSAwOyBpIDwgY2hhbm5lbC5sZW5ndGg7ICsraSkK"
+    +"ICAgICAgICAgICAgY2hhbm5lbFtpXSA9IHRoaXMubmV4dE91dHB1dCgpOwogICAgICAgIHJldHVy"
+    +"biB0cnVlOwogICAgfQoKICAgIGRlYnVnKGlkeCkKICAgIHsKICAgICAgICBzd2l0Y2goaWR4KQog"
+    +"ICAgICAgIHsKICAgICAgICAgICAgY2FzZSAwOgogICAgICAgICAgICAgICAgdGhpcy5kYmdbMV0g"
+    +"PSB0aGlzLmRiZ1sxXT09PXVuZGVmaW5lZCA_IDAgOiAoKHRoaXMuZGJnWzFdICsgMSkgJSAzKTsK"
+    +"ICAgICAgICAgICAgICAgIGlmKHRoaXMuZGJnWzFdPT0wKQogICAgICAgICAgICAgICAgICAgIHRo"
+    +"aXMucG9ydC5wb3N0TWVzc2FnZSh7IG1lc3NhZ2U6ICdidWZmZXIgJysodGhpcy5zYW1wbGVJbmRl"
+    +"eCAtIHRoaXMuZGJnWzBdKSB9KTsKICAgICAgICAgICAgICAgIHRoaXMuZGJnWzBdID0gMDsKICAg"
+    +"ICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgIGNhc2UgMToKICAgICAgICAgICAgICAgIHRoaXMu"
+    +"ZGJnWzBdICs9IHRoaXMuc2FtcGxlSW5kZXg9PTA_MTowOwogICAgICAgICAgICBicmVhazsKICAg"
+    +"ICAgICB9CiAgICB9Cn0KCnJlZ2lzdGVyUHJvY2Vzc29yKCdlbXVsYXRvci13b3JrbGV0JywgRW11"
+    +"bGF0b3JXb3JrbGV0KTs"
+    //var js = "res/AudioWorklet.js"
+    
+    this.init = async function(action)
     {
-        if(bEnable)
+        switch(action)
         {
-            this.audio = new AudioContext({ latencyHint: 'interactive', sampleRate: samplerate });
-            await this.audio.audioWorklet.addModule(js);       // Load an audio worklet
-            this.player = new AudioWorkletNode(this.audio,'emulator-worklet');    // Create a player
-            this.player.connect(this.audio.destination);                          // Connect the player to the audio context     
+            case "audio_ctx":
+              if(this.audio===undefined)
+              {
+                  this.audio = new AudioContext({ latencyHint: 'interactive', sampleRate: samplerate },"apple_speaker");
+                  await this.audio.audioWorklet.addModule(js);                        // Load an audio worklet
+              } else this.audio.resume();
+            break;
+            case "audio_on":
+                this.player = new AudioWorkletNode(this.audio,'emulator-worklet');    // Create a player
+                this.player.connect(this.audio.destination);                          // Connect the player to the audio context                  
+            break;
+            case "audio_off":
+                this.player.disconnect();
+                this.audio.suspend();
+            break; 
+        }
+    } 
+
+    /*
+    this.init = async function(action,callback)
+    {
+        if(action==true)
+        {
+            this.audio = new AudioContext({ latencyHint: 'interactive', sampleRate: samplerate },"apple_speaker") 
+            try 
+            { 
+                //this.player = new AudioWorkletNode(this.audio,'emulator-worklet');    // Create a player
+            }
+            catch
+            {
+                
+                //await this.audio.audioWorklet.addModule({
+                //    url: js,
+                //    crossOrigin: null
+                //    });       // Load an audio worklet
+                
+                await this.audio.audioWorklet.addModule(js);       // Load an audio worklet  
+                //await this.audio.
+            }
+
         }
         else
         {
             this.player.disconnect();
             this.audio.suspend();
         }
+        if(callback) callback();
     }
+
+    this.post_init = function()
+    {
+        this.player = new AudioWorkletNode(this.audio,'emulator-worklet');    // Create a player
+        this.player.connect(this.audio.destination);                          // Connect the player to the audio context   
+    }
+    */
 
     this.cycle = function(n)
     {

@@ -201,12 +201,13 @@ function CPU_slider_update(obj,max)
 
 function SoundButton(id)
 {
-    oEMU.component.IO.AppleSpeaker.init(oCOM.POPUP.states[id]=='fa-volume-up')
-    .then(()=> { oEMU.component.IO.AppleSpeaker.post_init() } );
+    if(oCOM.POPUP.states[id]=='fa-volume-up')
+    {
+        oEMU.component.IO.AppleSpeaker.init("audio_ctx")
+            .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  }); 
+    }
+    else oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
 
-
-
-    oEMU.component.IO.AppleDisk.init(oCOM.POPUP.states[id]=='fa-volume-up'?'load':"unload");
     console.log("done")
 }
 
