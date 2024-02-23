@@ -8,8 +8,9 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 
 ## Getting started
 
-Since this web app does not require any back-end web server, just download the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
-Run w/o install: [github.io](https://retroapplejs.github.io)
+Bear in mind that in this project source code = directly executable code in your browser.  
+**install:**  by downloading the entire repo on (unzipping the .zip file) locally and run index.html on a JavaScript capable browser.  
+**w/o install:**: run the last GitHub build here ==> [github.io](https://retroapplejs.github.io)
 
 1) Inside the assembler, tap the **'generate'** button
 2) Tap the **'to emulator'** button
