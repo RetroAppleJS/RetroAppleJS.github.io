@@ -245,7 +245,7 @@ async function s_init(action)
               s_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: 21760 },"apple_speaker");
               s_gain  = s_audio.createGain();
               s_gain.gain.value = 0.1;
-              await s_audio.audioWorklet.addModule(s_worklet_js); // Load an s_audio worklet
+              s_audio.audioWorklet.addModule(s_worklet_js); // Load an s_audio worklet
           } else s_audio.resume();
         break;
 
@@ -342,8 +342,6 @@ function s_sequence(seq)
        break;
       }
     break;
-
-    case 
   }
 }
 
