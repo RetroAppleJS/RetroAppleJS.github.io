@@ -242,10 +242,10 @@ async function s_init(action)
         case "audio_ctx":
           if(s_audio===undefined)
           {
-              s_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: 21760 },"apple_speaker");
-              s_gain  = s_audio.createGain();
-              s_gain.gain.value = 0.1;
-              s_audio.audioWorklet.addModule(s_worklet_js); // Load an s_audio worklet
+            s_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: 21760 },"apple_speaker");
+            s_gain  = s_audio.createGain();
+            s_gain.gain.value = 0.1;
+            s_audio.audioWorklet.addModule(s_worklet_js); // Load an s_audio worklet
           } else s_audio.resume();
         break;
 
@@ -255,13 +255,13 @@ async function s_init(action)
 
           s_load_all(samples_struct).then((response) => 
           { 
-              var i = 0;
-              for(var name in samples_struct)
-              {
-                  samples_struct[name].audio = response[i++];
-                  samples_struct[name].audio.sampleRate = this.sampleRate;
-                  delete samples_struct[sample].src;    // free .wav file memory space (keep audio)
-              }
+            var i = 0;
+            for(var name in samples_struct)
+            {
+              samples_struct[name].audio = response[i++];
+              samples_struct[name].audio.sampleRate = this.sampleRate;
+              delete samples_struct[sample].src;    // free .wav file memory space (keep audio)
+            }
           });
           // fill buffer ( ctx.createBufferSource )
         break;
@@ -275,18 +275,18 @@ async function s_init(action)
 
 async function s_load_all(samplesDS)
 {
-    const audioBuffers = [];
-    for(const path in samplesDS)
-      audioBuffers.push( await s_getFile("data:@file/wav;base64,"+samplesDS[path].src) );
-    return audioBuffers;
+  const audioBuffers = [];
+  for(const path in samplesDS)
+    audioBuffers.push( await s_getFile("data:@file/wav;base64,"+samplesDS[path].src) );
+  return audioBuffers;
 }
 
 async function s_getFile(samplePath)
 {
-    const response    = await fetch(samplePath);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await s_audio.decodeAudioData(arrayBuffer);
-    return audioBuffer;
+  const response    = await fetch(samplePath);
+  const arrayBuffer = await response.arrayBuffer();
+  const audioBuffer = await s_audio.decodeAudioData(arrayBuffer);
+  return audioBuffer;
 }
 
 function s_button(t)  // ON-OFF
@@ -299,12 +299,12 @@ function s_button(t)  // ON-OFF
 
 function s_beep()   // BEEP
 {
-    s_player = new AudioWorkletNode(s_audio,'emulator-worklet');    // Create a s_player
-    s_player.connect(s_audio.destination);
-    if(typeof(s_player)!="undefined" && typeof(s_audio)!="undefined" && s_audio.state!="suspended")
-    {
-      s_player.port.postMessage({ type:'load', audio: s_data });
-    }
+  s_player = new AudioWorkletNode(s_audio,'emulator-worklet');    // Create a s_player
+  s_player.connect(s_audio.destination);
+  if(typeof(s_player)!="undefined" && typeof(s_audio)!="undefined" && s_audio.state!="suspended")
+  {
+    s_player.port.postMessage({ type:'load', audio: s_data });
+  }
 }
 
 function s_play(name)
