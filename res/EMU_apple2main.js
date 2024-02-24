@@ -88,7 +88,7 @@ function EMU_init()
     {
         //var dsk = oEMU.component.IO.AppleDisk;
         var cent = 1200 * Math.log2(pct/100);
-        this.playSound.detune.value = cent;
+        this.player.detune.value = cent;
         //console.log("pct="+pct+" cent="+cent);
     }
 
@@ -204,9 +204,15 @@ function SoundButton(id)
     if(oCOM.POPUP.states[id]=='fa-volume-up')
     {
         oEMU.component.IO.AppleSpeaker.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  }); 
+            .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
+        oEMU.component.IO.AppleDisk.init("audio_ctx")
+            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer")  });
     }
-    else oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
+    else
+    {
+        oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
+        oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
+    }
 
     console.log("done")
 }
