@@ -467,7 +467,7 @@ function AppleDisk2()
              "spinup":o.motor=="STILL" && l.status!="MOTOR_OFF" && o.status=="MOTOR_ON"
             ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
             ,"longswipe":oSwp==true && o.rept==10
-            ,"click":o.status=="CLICK"
+            //,"click":o.status=="CLICK_IN" && o.status=="CLICK_OUT"
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
         if(decision.spinup) var bSpin = true;
