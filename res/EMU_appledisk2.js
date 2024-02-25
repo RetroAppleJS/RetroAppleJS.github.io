@@ -455,18 +455,24 @@ function AppleDisk2()
       return audioBuffer;
     }
     
-    this.diskNoise_d = {motor:"OFF",arm:"OFF",status:"",rept:0,last:{}};
+    this.diskNoise_d = {motor:"STILL",arm:"OFF",status:"",rept:0,last:{}};
     var get_action = function(o)
     {
         var l = o.last;
         var lSwp = l.status=="ARM_OUT" || l.status=="ARM_IN";   // last status
         var oSwp = o.status=="ARM_OUT" || o.status=="ARM_IN";   // current status
 
-        return {
-                     "shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
-                    ,"longswipe":oSwp==true && o.rept==10
-               }
-    };
+        var decision = 
+        {
+             "spinup":o.motor=="STILL" && l.status!="MOTOR_OFF" && o.status=="MOTOR_ON"
+            ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
+            ,"longswipe":oSwp==true && o.rept==10
+            ,"click":o.status=="CLICK"
+            ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
+        }
+        if(decision.spinup) var bSpin = true;
+        return decision;
+    }
 
     this.diskNoise_status_update = function(status)
     {
@@ -475,12 +481,39 @@ function AppleDisk2()
         var action = get_action(this.diskNoise_d);
         if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
 
+        if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL"
+
+        if(status!="MOTOR_OFF" && status!="SPINDOWN")
+        {
+            this.diskNoise_d.motor = "ON";
+        }
+
+        if(status=="MOTOR_OFF")
+        {            
+            this.diskNoise_d.motor = "OFF";
+            setTimeout( this.spindown , 2000, this);
+        }
+
         //if(this.diskNoise_d.bRep==false)
-         console.log("diskNoise:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
+        //if(this.diskNoise_d.status!="MOTOR_OFF")
+        //   console.log("diskNoise:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
+
+        if(action.spinup) console.log("diskNoise: SPIN UP");
         if(action.longswipe) console.log("diskNoise: LONG SWIPE");
         if(action.shortswipe) console.log("diskNoise: SHORT SWIPE ("+(this.diskNoise_d.last.rept+1)+")");
+        if(action.click) console.log("diskNoise: CLICK");
+        if(action.spindown) console.log("diskNoise: SPIN DOWN");
 
         this.diskNoise_d.last = {}; this.diskNoise_d.last = {...this.diskNoise_d};
+    }
+    this.spindown = function(t)
+    {
+        if(t.diskNoise_d.motor=="OFF")
+        {
+            t.diskNoise_d.motor=="STILL";
+            t.diskNoise_status_update("SPINDOWN");
+        }
+        //t.diskNoise_d.motor = "OFF";
     }
 
     this.diskNoise_speed_update = function(pct){}      // overridable function - tune disk noise to CPU clock 
