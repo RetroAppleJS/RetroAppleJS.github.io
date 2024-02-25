@@ -72,9 +72,13 @@ function Apple2IO(vid) {
 
     var video = vid;
     var key = 0x00;
-    var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
-    this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
-    this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
+    
+    if(typeof(oEMU.component.IO)!="undefined")
+    {
+        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
+        this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
+        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
+    }
 
     this.reset = function() {
         key = 0x00;
