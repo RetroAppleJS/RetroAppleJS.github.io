@@ -173,13 +173,13 @@ function AppleDisk2()
                         {
                             o[drv].track = 35; // CLICK! CLICK! CLICK!
                             this.diskNoise_status_update("CLICK_OUT");
-                            this.diskNoise_sequence("click",o[drv].track);
+                            //this.diskNoise_sequence("click",o[drv].track);
                             //this.update_logs("CLICK !");
                         }
                         else
                         {
                             this.diskNoise_status_update("ARM_OUT");
-                            this.diskNoise_sequence("shortswipe",o[drv].track);
+                            //this.diskNoise_sequence("shortswipe",o[drv].track);
                         }
                     }
                 }
@@ -191,12 +191,12 @@ function AppleDisk2()
                         if (--o[drv].track < 0)
                         {
                             o[drv].track = 0; // CLICK! CLICK! CLICK!
-                            this.diskNoise_sequence("click",o[drv].track);
+                            //this.diskNoise_sequence("click",o[drv].track);
                             this.diskNoise_status_update("CLICK_IN");
                         }
                         else
                         {
-                            this.diskNoise_sequence("shortswipe",o[drv].track);
+                            //this.diskNoise_sequence("shortswipe",o[drv].track);
                             this.diskNoise_status_update("ARM_IN");
                         }
                     }
@@ -209,8 +209,8 @@ function AppleDisk2()
                 o[drv].motor = 1;
                 this.diskNoise_status_update("MOTOR_ON");
 
-                this.diskNoise_sequence("spin",0);
-                this.timer_set("spin",500);
+                //this.diskNoise_sequence("spin",0);
+                //this.timer_set("spin",500);
                 
                 //this.update();
                 //o[drv].stats.motor++;
@@ -227,7 +227,7 @@ function AppleDisk2()
                 }
                 else
                 {
-                    this.diskNoise_sequence("spin",1);
+                    //this.diskNoise_sequence("spin",1);
                     //console.log("MOTOR OFF: STOP spinning")
                 }
 
@@ -464,10 +464,10 @@ function AppleDisk2()
 
         var decision = 
         {
-             "spinup":o.motor=="STILL" && l.status!="MOTOR_OFF" && o.status=="MOTOR_ON"
+             "spinup":(o.motor=="STILL" && o.status=="MOTOR_ON") || (l.status!="MOTOR_OFF" && o.status=="MOTOR_ON")
             ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
             ,"longswipe":oSwp==true && o.rept==10
-            //,"click":o.status=="CLICK_IN" && o.status=="CLICK_OUT"
+            ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
         if(decision.spinup) var bSpin = true;
@@ -478,15 +478,15 @@ function AppleDisk2()
     {
         this.diskNoise_d.status = status;
         this.diskNoise_d.bRep   = this.diskNoise_d.last.status==status;
+
         var action = get_action(this.diskNoise_d);
+
         if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
 
         if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL"
 
         if(status!="MOTOR_OFF" && status!="SPINDOWN")
-        {
             this.diskNoise_d.motor = "ON";
-        }
 
         if(status=="MOTOR_OFF")
         {            
@@ -496,13 +496,36 @@ function AppleDisk2()
 
         //if(this.diskNoise_d.bRep==false)
         //if(this.diskNoise_d.status!="MOTOR_OFF")
-        //   console.log("diskNoise:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
+           console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
 
-        if(action.spinup) console.log("diskNoise: SPIN UP");
-        if(action.longswipe) console.log("diskNoise: LONG SWIPE");
-        if(action.shortswipe) console.log("diskNoise: SHORT SWIPE ("+(this.diskNoise_d.last.rept+1)+")");
-        if(action.click) console.log("diskNoise: CLICK");
-        if(action.spindown) console.log("diskNoise: SPIN DOWN");
+        if(action.spinup)
+        {
+            console.log("diskNoise: SPIN UP");
+            this.diskNoise_sequence("spinup");
+        }
+        if(action.longswipe)
+        {
+            this.play("DiskII_longswipe");
+            console.log("diskNoise: LONG SWIPE");
+        }
+        if(action.shortswipe)
+        {
+            this.play("DiskII_shortswipe");
+            console.log("diskNoise: SHORT SWIPE ("+(this.diskNoise_d.last.rept+1)+")");
+        }
+
+
+
+        if(action.click)
+        {
+            this.play("DiskII_click");
+            console.log("diskNoise: CLICK");
+        }
+        if(action.spindown)
+        {
+            console.log("diskNoise: SPIN DOWN");
+            this.diskNoise_sequence("spindown");
+        }
 
         this.diskNoise_d.last = {}; this.diskNoise_d.last = {...this.diskNoise_d};
     }
@@ -535,32 +558,27 @@ function AppleDisk2()
         return status;
     }
 
-    this.diskNoise_sequence = function(seq,start_step)
+    this.diskNoise_sequence = function(seq)
     {
-        if(start_step==disk_seq[seq]) return;
-        var step = start_step===undefined?disk_seq[seq]:start_step;
-        if(step===undefined) disk_seq[seq] = 0;
+        //if(start_step==disk_seq[seq]) return;
+        //var step = start_step===undefined?disk_seq[seq]:start_step;
+        //if(step===undefined) disk_seq[seq] = 0;
 
         switch(seq)
         {
-            case "spin":
-                switch(step)
-                {
-                    case 0:
-                        this.play("DiskII_spinup");
-                        this.buffers["DiskII_spinup"].addEventListener("ended", function()
-                        { 
-                            //disk_seq[seq];
-                            oEMU.component.IO.AppleDisk.play("DiskII_spin");
-                            oEMU.component.IO.AppleDisk.stop("DiskII_spinup");
-                        });
-                    break;
-                    case 2:
-                        this.play("DiskII_spindown");
-                        this.stop("DiskII_spinup");
-                        this.stop("DiskII_spin");
-                    break;
-                }
+            case "spinup":
+                this.play("DiskII_spinup");
+                this.buffers["DiskII_spinup"].addEventListener("ended", function()
+                { 
+                    //disk_seq[seq];
+                    oEMU.component.IO.AppleDisk.play("DiskII_spin");
+                    oEMU.component.IO.AppleDisk.stop("DiskII_spinup");
+                });
+            break;
+            case "spindown":
+                this.play("DiskII_spindown");
+                this.stop("DiskII_spinup");
+                this.stop("DiskII_spin");
             break;
         }
     }
