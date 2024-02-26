@@ -424,14 +424,6 @@ function AppleDisk2()
     {loop:true,src:"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"}
     }
-
-    var disk_seq =
-    {
-         "spin":        {arr:["DiskII_spinup","DiskII_spin","DiskII_spindown"],method:"seq"}
-        ,"shortswipe":  {arr:["DiskII_shortswipe"],method:"trig"}
-        ,"longswipe":   {arr:["DiskII_longswipe"],method:"seq"}
-        ,"click":       {arr:["DiskII_click"],method:"trig"}
-    }
  
     this.s_load_all = async function(samplesDS)
     {
@@ -464,7 +456,8 @@ function AppleDisk2()
 
         var decision = 
         {
-             "spinup":(o.motor=="STILL" && o.status=="MOTOR_ON") || (l.status!="MOTOR_OFF" && o.status=="MOTOR_ON")
+             "spinup":(o.motor=="STILL" && o.status=="MOTOR_ON") 
+                  || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
             ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
             ,"longswipe":oSwp==true && o.rept==10
             ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
@@ -479,29 +472,27 @@ function AppleDisk2()
         this.diskNoise_d.status = status;
         this.diskNoise_d.bRep   = this.diskNoise_d.last.status==status;
 
+                //debug:MOTOR_ON ->0 [CLICK_IN,19]
+                if(status=="MOTOR_ON" && this.diskNoise_d.last.status=="CLICK_IN")
+                console.warn("HELP !!!!!!!!!!!!!!!!!!!!!!")
+
         var action = get_action(this.diskNoise_d);
 
         if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
-
         if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL"
-
-        if(status!="MOTOR_OFF" && status!="SPINDOWN")
-            this.diskNoise_d.motor = "ON";
-
+        if(status!="MOTOR_OFF" && status!="SPINDOWN") this.diskNoise_d.motor = "ON";
         if(status=="MOTOR_OFF")
         {            
             this.diskNoise_d.motor = "OFF";
             setTimeout( this.spindown , 2000, this);
         }
-
-        //if(this.diskNoise_d.bRep==false)
-        //if(this.diskNoise_d.status!="MOTOR_OFF")
-           console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
+        
+        console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
 
         if(action.spinup)
         {
+            this.play("DiskII_spin");
             console.log("diskNoise: SPIN UP");
-            this.diskNoise_sequence("spinup");
         }
         if(action.longswipe)
         {
@@ -514,8 +505,6 @@ function AppleDisk2()
             console.log("diskNoise: SHORT SWIPE ("+(this.diskNoise_d.last.rept+1)+")");
         }
 
-
-
         if(action.click)
         {
             this.play("DiskII_click");
@@ -523,8 +512,9 @@ function AppleDisk2()
         }
         if(action.spindown)
         {
+            this.stop("DiskII_spin");
+            this.play("DiskII_spindown");
             console.log("diskNoise: SPIN DOWN");
-            this.diskNoise_sequence("spindown");
         }
 
         this.diskNoise_d.last = {}; this.diskNoise_d.last = {...this.diskNoise_d};
@@ -558,6 +548,7 @@ function AppleDisk2()
         return status;
     }
 
+    /*
     this.diskNoise_sequence = function(seq)
     {
         //if(start_step==disk_seq[seq]) return;
@@ -567,25 +558,23 @@ function AppleDisk2()
         switch(seq)
         {
             case "spinup":
-                this.play("DiskII_spinup");
+                this.play("DiskII_spin");
+                
                 this.buffers["DiskII_spinup"].addEventListener("ended", function()
                 { 
                     //disk_seq[seq];
                     oEMU.component.IO.AppleDisk.play("DiskII_spin");
                     oEMU.component.IO.AppleDisk.stop("DiskII_spinup");
                 });
-            break;
-            case "spindown":
-                this.play("DiskII_spindown");
-                this.stop("DiskII_spinup");
-                this.stop("DiskII_spin");
+                
             break;
         }
     }
+    */
 
     this.play = function(name,arg)
     {
-      //console.log("play('"+name+"') - "+(arg?arg:""));
+      console.log("play('"+name+"')");
       this.buffers[name]        = this.audio.createBufferSource();           // create buffers
       this.buffers[name].buffer = samples_struct[name].audio;                // fill buffers
       this.buffers[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
@@ -595,8 +584,9 @@ function AppleDisk2()
 
     this.stop = function(name,arg)
     {
-      //console.log("stop('"+name+"') - "+(arg?arg:""));
-      this.buffers[name].stop(0);
+      console.log("stop('"+name+"')");
+      this.buffers[name].loop = false;
+      this.buffers[name].stop();
     }
 
 }
