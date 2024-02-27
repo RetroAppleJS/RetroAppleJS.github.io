@@ -215,6 +215,9 @@ function SoundButton(id)
         oEMU.component.IO.AppleDisk.diskNoise_enable = false;
         oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
         oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
+
+        //oEMU.component.IO.AppleDisk.diskNoise_d.last={}; // remind about spinning up
+        oEMU.component.IO.AppleDisk.diskNoise_d.motor="STILL";
     }
 
     console.log("done")
