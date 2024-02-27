@@ -399,6 +399,9 @@ function AppleDisk2()
             ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
+        if(o.motor=="OFF" && (decision.shortswipe || decision.longswipe || decision.click)) 
+        decision.spinup = true;
+    
         return decision;
     }
 
@@ -419,7 +422,8 @@ function AppleDisk2()
         if(status!="MOTOR_OFF" && status!="SPINDOWN") this.diskNoise_d.motor = "ON";
         if(status=="MOTOR_OFF")
         {            
-            if(this.diskNoise_d.status.motor=="ON")  this.diskNoise_d.motor = "OFF";
+            //if(this.diskNoise_d.status.motor=="ON")  
+            this.diskNoise_d.motor = "OFF";
             setTimeout( this.spindown , 1500, this); // only spindown if MOTOR does not switch ON during cutoff period
         }
         //console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
