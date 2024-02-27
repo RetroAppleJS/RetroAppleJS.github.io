@@ -180,6 +180,8 @@ function EMU_init()
                 loadDisk_fromBuffer(dd,"D1");
         }
     }
+
+    document.getElementById("soundbutton").parentElement.disabled = false;
 }
 
 function CPU_slider_update(obj,max)
@@ -206,7 +208,7 @@ function SoundButton(id)
         oEMU.component.IO.AppleSpeaker.init("audio_ctx")
             .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
         oEMU.component.IO.AppleDisk.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer")  });
+            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
     }
     else
     {

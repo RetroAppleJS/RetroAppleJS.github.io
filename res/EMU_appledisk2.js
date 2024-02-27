@@ -471,6 +471,7 @@ function AppleDisk2()
 
     this.play = function(name)
     {
+      if(this.audio===undefined) return;
       //console.log("play('"+name+"')");
       this.buffers[name]        = this.audio.createBufferSource();           // create buffers
       this.buffers[name].buffer = samples_struct[name].audio;                // fill buffers
