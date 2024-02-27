@@ -180,8 +180,6 @@ function EMU_init()
                 loadDisk_fromBuffer(dd,"D1");
         }
     }
-
-    document.getElementById("soundbutton").parentElement.disabled = false;
 }
 
 function CPU_slider_update(obj,max)
@@ -208,10 +206,13 @@ function SoundButton(id)
         oEMU.component.IO.AppleSpeaker.init("audio_ctx")
             .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
         oEMU.component.IO.AppleDisk.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
+            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") 
+            oEMU.component.IO.AppleDisk.diskNoise_enable = true;
+        });
     }
     else
     {
+        oEMU.component.IO.AppleDisk.diskNoise_enable = false;
         oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
         oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
     }

@@ -407,7 +407,7 @@ function AppleDisk2()
       return audioBuffer;
     }
     
-    this.diskNoise_d = {motor:"STILL",arm:"OFF",status:"",rept:0,last:{}};
+    this.diskNoise_d = {motor:"STILL",status:"",rept:0,last:{}};
     var get_action = function(o)
     {
         var l = o.last;
@@ -416,7 +416,7 @@ function AppleDisk2()
 
         var decision = 
         {
-             "spinup":(o.motor=="STILL" && o.status=="MOTOR_ON") 
+             "spinup":(o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
                   || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
             ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
             ,"longswipe":oSwp==true && o.rept==10
@@ -424,11 +424,17 @@ function AppleDisk2()
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
         if(decision.spinup) var bSpin = true;
+        if(decision.spindown && bSpin) delete bSpin;
+
         return decision;
     }
 
+    this.diskNoise_enable = false;
+
     this.diskNoise_status_update = function(status)
     {
+        if(this.diskNoise_enable==false) return;
+
         this.diskNoise_d.status = status;
         this.diskNoise_d.bRep   = this.diskNoise_d.last.status==status;
 
@@ -486,28 +492,4 @@ function AppleDisk2()
       this.buffers[name].loop = false;
       this.buffers[name].stop();
     }
-
-    /*
-    this.diskNoise_sequence = function(seq)
-    {
-        //if(start_step==disk_seq[seq]) return;
-        //var step = start_step===undefined?disk_seq[seq]:start_step;
-        //if(step===undefined) disk_seq[seq] = 0;
-
-        switch(seq)
-        {
-            case "spinup":
-                this.play("DiskII_spin");
-                
-                this.buffers["DiskII_spinup"].addEventListener("ended", function()
-                { 
-                    //disk_seq[seq];
-                    oEMU.component.IO.AppleDisk.play("DiskII_spin");
-                    oEMU.component.IO.AppleDisk.stop("DiskII_spinup");
-                });
-                
-            break;
-        }
-    }
-    */
 }
