@@ -401,6 +401,9 @@ function AppleDisk2()
         //if(l.motor=="ON" && (decision.shortswipe || decision.longswipe || decision.click)) 
         //    decision.spinup = true;
 
+        o.motor = o.satus=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON"
+        //if(o.status!="MOTOR_OFF" && o.status!="SPINDOWN") o.motor = "ON";
+
         return decision;
     }
 
@@ -418,11 +421,11 @@ function AppleDisk2()
 
         if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
         if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL";
-        if(status!="MOTOR_OFF" && status!="SPINDOWN")
-        {
+        //if(status!="MOTOR_OFF" && status!="SPINDOWN")
+        //{
             //if(this.diskNoise_d.motor=="OFF") action.spinup = true; 
-            this.diskNoise_d.motor = "ON";
-        }
+            //this.diskNoise_d.motor = "ON";
+        //}
 
         if(status=="MOTOR_OFF")
         {            
