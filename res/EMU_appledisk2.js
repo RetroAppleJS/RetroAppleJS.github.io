@@ -382,19 +382,23 @@ function AppleDisk2()
       return audioBuffer;
     }
     
-    this.dN = {motor:"STILL",status:"",rept:0,last:{}};
+    this.diskNoise_d = {motor:"STILL",status:"",rept:0,last:{}};
     var get_action = function(o)
     {
         var l = o.last;
+        var lSwp = l.status=="ARM_OUT" || l.status=="ARM_IN";   // last status
+        var oSwp = o.status=="ARM_OUT" || o.status=="ARM_IN";   // current status
+
         var decision = 
         {
              "spinup":(o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
                   || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
-            ,"shortswipe":(l.status=="ARM_OUT" || l.status=="ARM_IN") && o.bRep==false && l.bRep==true && l.rept<10
-            ,"longswipe":(o.status=="ARM_OUT" || o.status=="ARM_IN") && o.rept==10
+            ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
+            ,"longswipe":oSwp==true && o.rept==10
             ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
+        o.motor = o.satus=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
         return decision;
     }
 
@@ -404,16 +408,26 @@ function AppleDisk2()
     {
         if(this.diskNoise_enable==false) return;
 
-        this.dN.status = status;
-        this.dN.bRep   = this.dN.last.status==status;
-        var action = get_action(this.dN);   //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
+        this.diskNoise_d.status = status;
+        this.diskNoise_d.bRep   = this.diskNoise_d.last.status==status;
 
-        this.dN.motor = this.dN.status=="SHUTDOWN"?"STILL"
-            :(this.dN.satus=="MOTOR_OFF" || this.dN.status=="SPINDOWN" ? "OFF" : "ON");
+        var action = get_action(this.diskNoise_d);
+        //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
 
-        if(this.dN.bRep) this.dN.rept++; else this.dN.rept = 0;
-        if(this.dN.status=="MOTOR_OFF") setTimeout( this.spindown , 1000, this); // only spindown if MOTOR does not switch ON during cutoff period
- 
+        if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
+        if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL";
+        if(status=="MOTOR_OFF")
+        {            
+            //if(this.diskNoise_d.status.motor=="ON")  
+            this.diskNoise_d.motor = "OFF";
+            setTimeout( this.dN_spindown , 1000, this); // only spindown if MOTOR does not switch ON during cutoff period
+        }
+
+        //this.dN.motor = this.dN.status=="SPINDOWN"?"STILL":
+        //    (this.dN.satus=="MOTOR_OFF" || this.dN.status=="SPINDOWN" ? "OFF" : "ON");
+
+        //console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
+
         if(action.spinup)       this.play("DiskII_spin");
         if(action.longswipe)    this.play("DiskII_longswipe");
         if(action.shortswipe)   this.play("DiskII_shortswipe");
@@ -425,9 +439,9 @@ function AppleDisk2()
             console.log("diskNoise: SPIN DOWN");
         }
 
-        this.dN.last = {}; this.dN.last = {...this.dN};
+        this.diskNoise_d.last = {}; this.diskNoise_d.last = {...this.diskNoise_d};
     }
-    this.spindown = function(t)
+    this.dN_spindown = function(t)
     {
         if(t.diskNoise_d.motor=="OFF")
         {
