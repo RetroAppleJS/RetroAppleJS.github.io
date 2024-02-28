@@ -393,15 +393,14 @@ function AppleDisk2()
         {
              "spinup":(o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
                   || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
-                  //|| (o.status=="MOTOR_OFF" && o.status=="MOTOR_ON" && o.motor=="OFF")
             ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
             ,"longswipe":oSwp==true && o.rept==10
             ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
-        if(o.motor=="OFF" && (decision.shortswipe || decision.longswipe || decision.click)) 
-        decision.spinup = true;
-    
+        //if(l.motor=="ON" && (decision.shortswipe || decision.longswipe || decision.click)) 
+        //    decision.spinup = true;
+
         return decision;
     }
 
@@ -419,12 +418,17 @@ function AppleDisk2()
 
         if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
         if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL";
-        if(status!="MOTOR_OFF" && status!="SPINDOWN") this.diskNoise_d.motor = "ON";
+        if(status!="MOTOR_OFF" && status!="SPINDOWN")
+        {
+            //if(this.diskNoise_d.motor=="OFF") action.spinup = true; 
+            this.diskNoise_d.motor = "ON";
+        }
+
         if(status=="MOTOR_OFF")
         {            
             //if(this.diskNoise_d.status.motor=="ON")  
             this.diskNoise_d.motor = "OFF";
-            setTimeout( this.spindown , 1500, this); // only spindown if MOTOR does not switch ON during cutoff period
+            setTimeout( this.spindown , 1000, this); // only spindown if MOTOR does not switch ON during cutoff period
         }
         //console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
 
