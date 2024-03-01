@@ -92,7 +92,7 @@ function EMU_init()
         //console.log("pct="+pct+" cent="+cent);
     }
 
-    disk2.update = function(o)  // override
+    disk2.GUI_update = function(o)  // override
     {    
         /*
         var dsk = apple2plus.DiskObj();

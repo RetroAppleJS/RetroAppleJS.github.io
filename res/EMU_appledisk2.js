@@ -113,7 +113,7 @@ function AppleDisk2()
 
     this.getDataObj = function() { return o }
 
-    this.update = function()    // overridable function to update drive status (LED)
+    this.GUI_update = function()    // overridable function to update drive status (LED)
     {
     }
 
@@ -426,14 +426,14 @@ function AppleDisk2()
 
         //console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
 
-        if(action.spinup)       this.play("DiskII_spin");
-        if(action.longswipe)    this.play("DiskII_longswipe");
-        if(action.shortswipe)   this.play("DiskII_shortswipe");
-        if(action.click)        this.play("DiskII_click");
+        if(action.spinup)       this.dN_play("DiskII_spin");
+        if(action.longswipe)    this.dN_play("DiskII_longswipe");
+        if(action.shortswipe)   this.dN_play("DiskII_shortswipe");
+        if(action.click)        this.dN_play("DiskII_click");
         if(action.spindown)
         {
-            this.stop("DiskII_spin");
-            this.play("DiskII_spindown");
+            this.dN_stop("DiskII_spin");
+            this.dN_play("DiskII_spindown");
             console.log("diskNoise: SPIN DOWN");
         }
 
@@ -450,8 +450,7 @@ function AppleDisk2()
 
     this.dN_speed_update = function(pct){}      // overridable function - tune disk noise to CPU clock 
 
-
-    this.play = function(name)
+    this.dN_play = function(name)
     {
       if(this.audio===undefined) return;
       //console.log("play('"+name+"')");
@@ -463,11 +462,11 @@ function AppleDisk2()
       this.buffers[name].start(this.audio.currentTime);
     }
 
-    this.stop = function(name)
+    this.dN_stop = function(name)
     {
       //console.log("stop('"+name+"')");
       this.buffers[name].loop = false;
-      this.buffers[name].stop();
+      this.buffers[name].dN_stop();
     }
 
 

@@ -133,7 +133,7 @@ function Apple2Plus(context)
     this.DSK_monitoring = function()
     {
         var o = disk2.getDataObj();
-        disk2.update(o);
+        disk2.GUI_update(o);
 
         //var d2 = hw.io.disk2;
         // TODO activate some leds
