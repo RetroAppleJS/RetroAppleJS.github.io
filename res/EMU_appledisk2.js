@@ -362,6 +362,7 @@ function AppleDisk2()
 //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
 //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
+    this.diskNoise_d = {motor:"STILL",status:"",detune:0,rept:0,last:{}};
  
     this.s_load_all = async function(samplesDS)
     {
@@ -382,7 +383,6 @@ function AppleDisk2()
       return audioBuffer;
     }
     
-    this.diskNoise_d = {motor:"STILL",status:"",rept:0,last:{}};
     var get_action = function(o)
     {
         var l = o.last;
@@ -450,7 +450,8 @@ function AppleDisk2()
         }
     }
 
-    this.diskNoise_speed_update = function(pct){}      // overridable function - tune disk noise to CPU clock 
+    this.dN_speed_update = function(pct){}      // overridable function - tune disk noise to CPU clock 
+
 
     this.play = function(name)
     {
@@ -460,6 +461,7 @@ function AppleDisk2()
       this.buffers[name].buffer = samples_struct[name].audio;                // fill buffers
       this.buffers[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
       this.buffers[name].loop   = samples_struct[name].loop;                 // configure loop parameter
+      this.buffers[name].detune.value = this.diskNoise_d.detune;             // tune according to CPU clock
       this.buffers[name].start(this.audio.currentTime);
     }
 
