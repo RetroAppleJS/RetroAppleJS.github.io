@@ -398,8 +398,14 @@ function AppleDisk2()
             ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
             ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
         }
-        o.motor = o.satus=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
         return decision;
+    }
+
+    this.set_action = function(o)
+    {
+        o.motor = o.satus=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
+        if(o.bRep) o.rept++; else o.rept = 0;
+        if(o.status=="SHUTDOWN") o.motor = "STILL";
     }
 
     this.dN_status_update = function(status)
@@ -409,11 +415,10 @@ function AppleDisk2()
         this.dNd.status = status;
         this.dNd.bRep   = this.dNd.last.status==status;
 
-        var action = get_action(this.dNd);
-        //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
+        var action = get_action(this.dNd);  //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
+        this.set_action(this.dNd)
 
-        if(this.dNd.bRep) this.dNd.rept++; else this.dNd.rept = 0;
-        if(status=="SHUTDOWN") this.dNd.motor = "STILL";
+        //if(status=="SHUTDOWN") this.dNd.motor = "STILL";
         if(status=="MOTOR_OFF")
         {            
             //if(this.dNd.status.motor=="ON")  
@@ -454,11 +459,11 @@ function AppleDisk2()
     {
       if(this.audio===undefined) return;
       //console.log("play('"+name+"')");
-      this.buffers[name]        = this.audio.createBufferSource();           // create buffers
-      this.buffers[name].buffer = dN_samples[name].audio;                // fill buffers
+      this.buffers[name]        = this.audio.createBufferSource();  // create buffers
+      this.buffers[name].buffer = dN_samples[name].audio;           // fill buffers
       this.buffers[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
-      this.buffers[name].loop   = dN_samples[name].loop;                 // configure loop parameter
-      this.buffers[name].detune.value = this.dNd.detune;             // tune according to CPU clock
+      this.buffers[name].loop           = dN_samples[name].loop;    // configure loop parameter
+      this.buffers[name].detune.value   = this.dNd.detune;          // tune according to CPU clock
       this.buffers[name].start(this.audio.currentTime);
     }
 
@@ -466,7 +471,7 @@ function AppleDisk2()
     {
       //console.log("stop('"+name+"')");
       this.buffers[name].loop = false;
-      this.buffers[name].dN_stop();
+      this.buffers[name].stop();
     }
 
 
