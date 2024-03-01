@@ -401,7 +401,7 @@ function AppleDisk2()
         return decision;
     }
 
-    this.set_action = function(o)
+    var set_action = function(o)
     {
         o.motor = o.satus=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
         if(o.bRep) o.rept++; else o.rept = 0;
@@ -416,7 +416,7 @@ function AppleDisk2()
         this.dNd.bRep   = this.dNd.last.status==status;
 
         var action = get_action(this.dNd);  //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
-        this.set_action(this.dNd)
+        set_action(this.dNd)
 
         //if(status=="SHUTDOWN") this.dNd.motor = "STILL";
         if(status=="MOTOR_OFF")
