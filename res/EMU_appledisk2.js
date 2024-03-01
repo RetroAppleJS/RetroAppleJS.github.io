@@ -68,17 +68,17 @@ function AppleDisk2()
                 } else this.audio.resume();
             break;
             case "audio_buffer":
-                for(var sample in samples_struct) // check if any data is already loaded -> if so, skip!
-                    if( typeof(samples_struct[sample].audio) != "undefined") return;
+                for(var sample in dN_samples) // check if any data is already loaded -> if so, skip!
+                    if( typeof(dN_samples[sample].audio) != "undefined") return;
 
-                this.s_load_all(samples_struct).then((response) => 
+                this.s_load_all(dN_samples).then((response) => 
                 { 
                     var i = 0;
-                    for(var name in samples_struct)
+                    for(var name in dN_samples)
                     {
-                        samples_struct[name].audio = response[i++];
-                        samples_struct[name].audio.sampleRate = this.sampleRate;
-                        delete samples_struct[sample].src;    // free .wav file memory space (keep audio)
+                        dN_samples[name].audio = response[i++];
+                        dN_samples[name].audio.sampleRate = this.sampleRate;
+                        delete dN_samples[sample].src;    // free .wav file memory space (keep audio)
                     }
                 });
             break;
@@ -173,9 +173,9 @@ function AppleDisk2()
                         if (++o[drv].track >= 35)
                         {
                             o[drv].track = 35; // CLICK! CLICK! CLICK!
-                            this.diskNoise_status_update("CLICK_OUT");
+                            this.dN_status_update("CLICK_OUT");
                         }
-                        else this.diskNoise_status_update("ARM_OUT");
+                        else this.dN_status_update("ARM_OUT");
                     }
                 }
                 else if (((o[drv].phase - 1) & 3) == p) {
@@ -185,9 +185,9 @@ function AppleDisk2()
                         if (--o[drv].track < 0)
                         {
                             o[drv].track = 0; // CLICK! CLICK! CLICK!
-                            this.diskNoise_status_update("CLICK_IN");
+                            this.dN_status_update("CLICK_IN");
                         }
-                        else this.diskNoise_status_update("ARM_IN");
+                        else this.dN_status_update("ARM_IN");
                     }
                 }
             }
@@ -196,11 +196,11 @@ function AppleDisk2()
             switch (addr) {
             case MOTOR_ON:
                 o[drv].motor = 1;
-                this.diskNoise_status_update("MOTOR_ON");
+                this.dN_status_update("MOTOR_ON");
                 break;
             case MOTOR_OFF:
                 o[drv].motor = 0;
-                this.diskNoise_status_update("MOTOR_OFF");
+                this.dN_status_update("MOTOR_OFF");
                 break;                
             case DRV0EN:
                 this.drv = 0;
@@ -362,7 +362,7 @@ function AppleDisk2()
 //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
 //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
-    this.diskNoise_d = {enable:false,motor:"STILL",status:"",detune:0,rept:0,last:{}};
+    this.dNd = {enable:false,motor:"STILL",status:"",detune:0,rept:0,last:{}};
 
     this.s_load_all = async function(samplesDS)
     {
@@ -402,29 +402,29 @@ function AppleDisk2()
         return decision;
     }
 
-    this.diskNoise_status_update = function(status)
+    this.dN_status_update = function(status)
     {
-        if(this.diskNoise_d.enable==false) return;
+        if(this.dNd.enable==false) return;
 
-        this.diskNoise_d.status = status;
-        this.diskNoise_d.bRep   = this.diskNoise_d.last.status==status;
+        this.dNd.status = status;
+        this.dNd.bRep   = this.dNd.last.status==status;
 
-        var action = get_action(this.diskNoise_d);
+        var action = get_action(this.dNd);
         //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
 
-        if(this.diskNoise_d.bRep) this.diskNoise_d.rept++; else this.diskNoise_d.rept = 0;
-        if(status=="SHUTDOWN") this.diskNoise_d.motor = "STILL";
+        if(this.dNd.bRep) this.dNd.rept++; else this.dNd.rept = 0;
+        if(status=="SHUTDOWN") this.dNd.motor = "STILL";
         if(status=="MOTOR_OFF")
         {            
-            //if(this.diskNoise_d.status.motor=="ON")  
-            this.diskNoise_d.motor = "OFF";
+            //if(this.dNd.status.motor=="ON")  
+            this.dNd.motor = "OFF";
             setTimeout( this.dN_spindown , 1000, this); // only spindown if MOTOR does not switch ON during cutoff period
         }
 
         //this.dN.motor = this.dN.status=="SPINDOWN"?"STILL":
         //    (this.dN.satus=="MOTOR_OFF" || this.dN.status=="SPINDOWN" ? "OFF" : "ON");
 
-        //console.log("debug:"+status+" ->"+this.diskNoise_d.rept+ " ["+this.diskNoise_d.last.status+","+this.diskNoise_d.last.rept+"]");
+        //console.log("debug:"+status+" ->"+this.dNd.rept+ " ["+this.dNd.last.status+","+this.dNd.last.rept+"]");
 
         if(action.spinup)       this.dN_play("DiskII_spin");
         if(action.longswipe)    this.dN_play("DiskII_longswipe");
@@ -437,14 +437,14 @@ function AppleDisk2()
             console.log("diskNoise: SPIN DOWN");
         }
 
-        this.diskNoise_d.last = {}; this.diskNoise_d.last = {...this.diskNoise_d};
+        this.dNd.last = {}; this.dNd.last = {...this.dNd};
     }
     this.dN_spindown = function(t)
     {
-        if(t.diskNoise_d.motor=="OFF")
+        if(t.dNd.motor=="OFF")
         {
-            t.diskNoise_d.motor=="STILL";
-            t.diskNoise_status_update("SPINDOWN");
+            t.dNd.motor=="STILL";
+            t.dN_status_update("SPINDOWN");
         }
     }
 
@@ -455,10 +455,10 @@ function AppleDisk2()
       if(this.audio===undefined) return;
       //console.log("play('"+name+"')");
       this.buffers[name]        = this.audio.createBufferSource();           // create buffers
-      this.buffers[name].buffer = samples_struct[name].audio;                // fill buffers
+      this.buffers[name].buffer = dN_samples[name].audio;                // fill buffers
       this.buffers[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
-      this.buffers[name].loop   = samples_struct[name].loop;                 // configure loop parameter
-      this.buffers[name].detune.value = this.diskNoise_d.detune;             // tune according to CPU clock
+      this.buffers[name].loop   = dN_samples[name].loop;                 // configure loop parameter
+      this.buffers[name].detune.value = this.dNd.detune;             // tune according to CPU clock
       this.buffers[name].start(this.audio.currentTime);
     }
 
@@ -472,7 +472,7 @@ function AppleDisk2()
 
    // 32bit float WAV files converted to base64
 
-   var samples_struct =
+   var dN_samples =
    {
    "DiskII_spinup":
    {src:"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"}

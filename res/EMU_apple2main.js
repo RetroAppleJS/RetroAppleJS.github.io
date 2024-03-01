@@ -88,7 +88,7 @@ function EMU_init()
     {
         //var dsk = oEMU.component.IO.AppleDisk;
         var cent = 1200 * Math.log2(pct/100);
-        this.diskNoise_d.detune = cent;
+        this.dNd.detune = cent;
         //console.log("pct="+pct+" cent="+cent);
     }
 
@@ -206,18 +206,18 @@ function SoundButton(id)
         oEMU.component.IO.AppleSpeaker.init("audio_ctx")
             .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
         oEMU.component.IO.AppleDisk.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") 
-            oEMU.component.IO.AppleDisk.diskNoise_d.enable = true;
+            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer");
+            oEMU.component.IO.AppleDisk.dNd.enable = true;
         });
     }
     else
     {
-        oEMU.component.IO.AppleDisk.diskNoise_d.enable = false;
+        oEMU.component.IO.AppleDisk.dNd.enable = false;
         oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
         oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
 
-        //oEMU.component.IO.AppleDisk.diskNoise_d.last={}; // remind about spinning up
-        oEMU.component.IO.AppleDisk.diskNoise_d.motor="STILL";
+        //oEMU.component.IO.AppleDisk.dNd.last={}; // remind about spinning up
+        oEMU.component.IO.AppleDisk.dNd.motor="STILL";
     }
 
     console.log("done")
