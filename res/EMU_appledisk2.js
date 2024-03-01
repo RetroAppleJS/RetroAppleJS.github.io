@@ -362,8 +362,8 @@ function AppleDisk2()
 //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
 //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
-    this.diskNoise_d = {motor:"STILL",status:"",detune:0,rept:0,last:{}};
- 
+    this.diskNoise_d = {enable:false,motor:"STILL",status:"",detune:0,rept:0,last:{}};
+
     this.s_load_all = async function(samplesDS)
     {
         const audioBuffers = [];
@@ -402,11 +402,9 @@ function AppleDisk2()
         return decision;
     }
 
-    this.diskNoise_enable = false;
-
     this.diskNoise_status_update = function(status)
     {
-        if(this.diskNoise_enable==false) return;
+        if(this.diskNoise_d.enable==false) return;
 
         this.diskNoise_d.status = status;
         this.diskNoise_d.bRep   = this.diskNoise_d.last.status==status;

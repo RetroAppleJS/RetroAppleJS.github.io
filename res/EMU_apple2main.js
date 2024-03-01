@@ -207,12 +207,12 @@ function SoundButton(id)
             .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
         oEMU.component.IO.AppleDisk.init("audio_ctx")
             .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") 
-            oEMU.component.IO.AppleDisk.diskNoise_enable = true;
+            oEMU.component.IO.AppleDisk.diskNoise_d.enable = true;
         });
     }
     else
     {
-        oEMU.component.IO.AppleDisk.diskNoise_enable = false;
+        oEMU.component.IO.AppleDisk.diskNoise_d.enable = false;
         oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
         oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
 
