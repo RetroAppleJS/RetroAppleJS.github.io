@@ -1,8 +1,4 @@
-//
-// Copyright (c) 2014 Thomas Skibo.
-// All rights reserved.
-//
-// Adapted in 2022 by Freddy Vandriessche.
+// 2022 Adaptation by Freddy Vandriessche, from Thomas Skibo.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
 // EMU_apple2disk2.js
@@ -47,11 +43,6 @@ function AppleDisk2()
     this.diskBytes = [null,null];      // disk content
     this.drv = 0;
     this.active = true;
-
-    //var logs = [];
-    //var logs_idx = 0;
-    //var prev_name = "";
-    //var prev_name_cnt = 0;
 
     this.buffers={};
     this.init = async function(action)
@@ -382,30 +373,31 @@ function AppleDisk2()
       const audioBuffer = await this.audio.decodeAudioData(arrayBuffer);
       return audioBuffer;
     }
-    
-    var get_action = function(o)
-    {
-        var l = o.last;
-        var lSwp = l.status=="ARM_OUT" || l.status=="ARM_IN";   // last status
-        var oSwp = o.status=="ARM_OUT" || o.status=="ARM_IN";   // current status
 
-        var decision = 
-        {
-             "spinup":(o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
-                  || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
-            ,"shortswipe":lSwp==true && o.bRep==false && l.bRep==true && l.rept<10
-            ,"longswipe":oSwp==true && o.rept==10
-            ,"click":o.status=="CLICK_IN" || o.status=="CLICK_OUT"
-            ,"spindown":o.status=="SPINDOWN" && l.status=="MOTOR_OFF"
-        }
-        return decision;
+    this.dN_launcher = function()
+    {
+        var o = this.dNd;
+        var l = o.last;
+
+        //console.log(o.status);
+
+        if(o.status=="CLICK_IN" || o.status=="CLICK_OUT")                   return this.dN_play("DiskII_click");
+        if((l.status=="ARM_OUT" || l.status=="ARM_IN")==true 
+            && o.bRep==false && l.bRep==true && l.rept<10)                  return this.dN_play("DiskII_shortswipe");
+        if((o.status=="ARM_OUT" || o.status=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
+        if(o.status=="SPINDOWN" && l.status=="MOTOR_OFF") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown") }
+        if(o.status=="MOTOR_OFF" && l.status=="MOTOR_ON") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
+        if((o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
+            || (l.status=="SPINDOWN" && o.status=="MOTOR_ON"))              return this.dN_play("DiskII_spin");
+        return null;  
     }
 
     var set_action = function(o)
     {
-        o.motor = o.satus=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
         if(o.bRep) o.rept++; else o.rept = 0;
+        o.motor = o.status=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
         if(o.status=="SHUTDOWN") o.motor = "STILL";
+        if(o.status=="MOTOR_OFF") o.motor = "OFF";
     }
 
     this.dN_status_update = function(status)
@@ -414,36 +406,15 @@ function AppleDisk2()
 
         this.dNd.status = status;
         this.dNd.bRep   = this.dNd.last.status==status;
+        var act = this.dN_launcher();
 
-        var action = get_action(this.dNd);  //for(var i in action) action[i]==true?console.log("diskNoise: "+i.toUpperCase()):"";
-        set_action(this.dNd)
+        set_action(this.dNd);
 
-        //if(status=="SHUTDOWN") this.dNd.motor = "STILL";
-        if(status=="MOTOR_OFF")
-        {            
-            //if(this.dNd.status.motor=="ON")  
-            this.dNd.motor = "OFF";
-            setTimeout( this.dN_spindown , 1000, this); // only spindown if MOTOR does not switch ON during cutoff period
-        }
-
-        //this.dN.motor = this.dN.status=="SPINDOWN"?"STILL":
-        //    (this.dN.satus=="MOTOR_OFF" || this.dN.status=="SPINDOWN" ? "OFF" : "ON");
-
-        //console.log("debug:"+status+" ->"+this.dNd.rept+ " ["+this.dNd.last.status+","+this.dNd.last.rept+"]");
-
-        if(action.spinup)       this.dN_play("DiskII_spin");
-        if(action.longswipe)    this.dN_play("DiskII_longswipe");
-        if(action.shortswipe)   this.dN_play("DiskII_shortswipe");
-        if(action.click)        this.dN_play("DiskII_click");
-        if(action.spindown)
-        {
-            this.dN_stop("DiskII_spin");
-            this.dN_play("DiskII_spindown");
-            console.log("diskNoise: SPIN DOWN");
-        }
+        if(this.dNd.motor != this.dNd.last.motor) console.log(this.dNd.motor);
 
         this.dNd.last = {}; this.dNd.last = {...this.dNd};
     }
+
     this.dN_spindown = function(t)
     {
         if(t.dNd.motor=="OFF")
@@ -457,8 +428,10 @@ function AppleDisk2()
 
     this.dN_play = function(name)
     {
-      if(this.audio===undefined) return;
-      //console.log("play('"+name+"')");
+      if(this.audio===undefined || name==null) return;
+
+      if(bDebug) { console.log("play('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
+
       this.buffers[name]        = this.audio.createBufferSource();  // create buffers
       this.buffers[name].buffer = dN_samples[name].audio;           // fill buffers
       this.buffers[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
@@ -469,7 +442,10 @@ function AppleDisk2()
 
     this.dN_stop = function(name)
     {
-      //console.log("stop('"+name+"')");
+      if(name==null) return;
+
+      if(bDebug) { console.log("stop('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
+
       this.buffers[name].loop = false;
       this.buffers[name].stop();
     }
