@@ -234,13 +234,8 @@ function pauseButton()
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
 
         document.getElementById("soundbutton").parentElement.disabled = true;
-        //oEMU.component.IO.AppleDisk.dNd.enable = false;
-
         var ov = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"
         if(ov==true) AudioButton(null,false);
-        
-        //alert(oCOM.POPUP.states["soundbutton"])
-
     } else {
         oEMU.component.Keyboard.isActive(true);
         appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
@@ -248,13 +243,8 @@ function pauseButton()
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
 
         document.getElementById("soundbutton").parentElement.disabled = false;
-
-        //alert(oCOM.POPUP.states["soundbutton"])
-
         var ov = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"
         AudioButton(null,ov);
-
-        //oEMU.component.IO.AppleDisk.dNd.enable = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"?true:false;
     }
 }
 
