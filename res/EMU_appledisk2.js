@@ -57,6 +57,7 @@ function AppleDisk2()
                     this.gain.gain.value = 0.1;
                     //this.audio.audioWorklet.addModule(s_worklet_js); // Load an this.audio worklet
                 } else this.audio.resume();
+                this.dNd.enable = true;
             break;
             case "audio_buffer":
                 for(var sample in dN_samples) // check if any data is already loaded -> if so, skip!
@@ -74,10 +75,11 @@ function AppleDisk2()
                 });
             break;
             case "audio_off":
+                this.dNd.enable = false;
                 if(this.audio===undefined) return;
                 this.gain.disconnect(this.audio.destination);
                 for(var name in this.buffers)
-                    this.buffers[name].disconnect(this.gain);
+                    try{ this.buffers[name].disconnect(this.gain) } catch(e) { console.warn("this.buffers['"+name+"'].disconnect(this.gain)") }
                 this.audio.suspend();
             break;
         }
@@ -164,9 +166,9 @@ function AppleDisk2()
                         if (++o[drv].track >= 35)
                         {
                             o[drv].track = 35; // CLICK! CLICK! CLICK!
-                            this.dN_status_update("CLICK_OUT");
+                            this.dN_update("CLICK_OUT");
                         }
-                        else this.dN_status_update("ARM_OUT");
+                        else this.dN_update("ARM_OUT");
                     }
                 }
                 else if (((o[drv].phase - 1) & 3) == p) {
@@ -176,9 +178,9 @@ function AppleDisk2()
                         if (--o[drv].track < 0)
                         {
                             o[drv].track = 0; // CLICK! CLICK! CLICK!
-                            this.dN_status_update("CLICK_IN");
+                            this.dN_update("CLICK_IN");
                         }
-                        else this.dN_status_update("ARM_IN");
+                        else this.dN_update("ARM_IN");
                     }
                 }
             }
@@ -187,11 +189,11 @@ function AppleDisk2()
             switch (addr) {
             case MOTOR_ON:
                 o[drv].motor = 1;
-                this.dN_status_update("MOTOR_ON");
+                this.dN_update("MOTOR_ON");
                 break;
             case MOTOR_OFF:
                 o[drv].motor = 0;
-                this.dN_status_update("MOTOR_OFF");
+                this.dN_update("MOTOR_OFF");
                 break;                
             case DRV0EN:
                 this.drv = 0;
@@ -374,53 +376,65 @@ function AppleDisk2()
       return audioBuffer;
     }
 
-    this.dN_launcher = function()
+    this.dN_update = function(status)
+    {
+        this.dNd.status = status;
+        this.dNd.bRep   = this.dNd.last.status==status;
+
+        this.dN_launcher(); // TODO
+        set_action(this.dNd);
+
+        //if(this.dNd.motor != this.dNd.last.motor) console.log(this.dNd.motor);
+
+        this.dNd.last = {}; this.dNd.last = {...this.dNd};
+    }
+
+    this.dN_launcher = function(active)
     {
         var o = this.dNd;
         var l = o.last;
 
         //console.log(o.status);
+        if(o.enable==true)
+        {
+            //o.enable = true;
+            if(l.enable==false && o.enable==true && o.motor=="ON")  return this.dN_play("DiskII_spin");
 
-        if(o.status=="CLICK_IN" || o.status=="CLICK_OUT")                   return this.dN_play("DiskII_click");
-        if((l.status=="ARM_OUT" || l.status=="ARM_IN")==true 
-            && o.bRep==false && l.bRep==true && l.rept<10)                  return this.dN_play("DiskII_shortswipe");
-        if((o.status=="ARM_OUT" || o.status=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
-        if(o.status=="SPINDOWN" && l.status=="MOTOR_OFF") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown") }
-        if(o.status=="MOTOR_OFF" && l.status=="MOTOR_ON") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
-        if((o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
-            || (l.status=="SPINDOWN" && o.status=="MOTOR_ON"))              return this.dN_play("DiskII_spin");
-        return null;  
+
+            if(o.status=="CLICK_IN" || o.status=="CLICK_OUT")                   return this.dN_play("DiskII_click");
+            if((l.status=="ARM_OUT" || l.status=="ARM_IN")==true 
+                && o.bRep==false && l.bRep==true && l.rept<10)                  return this.dN_play("DiskII_shortswipe");
+            if((o.status=="ARM_OUT" || o.status=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
+            if(l.status=="MOTOR_OFF" && o.status=="SPINDOWN") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown") }
+
+            if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
+
+            if((o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
+                || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")             
+                || (l.enable==false && o.enable==true && o.motor=="ON"))        return this.dN_play("DiskII_spin");
+            return null;
+        }
+        else
+        {
+            //o.enable = false;
+            if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
+            //if(l.enable==true && o.enable==false) return this.dN_stop("DiskII_spin");
+        }
     }
 
     var set_action = function(o)
     {
         if(o.bRep) o.rept++; else o.rept = 0;
-        o.motor = o.status=="MOTOR_OFF" || o.status=="SPINDOWN" ? "OFF" : "ON";
-        if(o.status=="SHUTDOWN") o.motor = "STILL";
-        if(o.status=="MOTOR_OFF") o.motor = "OFF";
-    }
-
-    this.dN_status_update = function(status)
-    {
-        if(this.dNd.enable==false) return;
-
-        this.dNd.status = status;
-        this.dNd.bRep   = this.dNd.last.status==status;
-        var act = this.dN_launcher();
-
-        set_action(this.dNd);
-
-        if(this.dNd.motor != this.dNd.last.motor) console.log(this.dNd.motor);
-
-        this.dNd.last = {}; this.dNd.last = {...this.dNd};
+        //o.motor = o.status=="MOTOR_OFF" ? "OFF" : "ON";
+        if(o.status=="MOTOR_ON") o.motor = "ON";
     }
 
     this.dN_spindown = function(t)
     {
-        if(t.dNd.motor=="OFF")
+        if(t.dNd.motor=="ON")
         {
-            t.dNd.motor=="STILL";
-            t.dN_status_update("SPINDOWN");
+            t.dNd.motor=="OFF";
+            t.dN_update("SPINDOWN");
         }
     }
 
