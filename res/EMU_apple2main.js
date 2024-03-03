@@ -199,28 +199,21 @@ function CPU_slider_update(obj,max)
   oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
 }
 
-function SoundButton(id)
+function AudioButton(id,override)
 {
-    if(oCOM.POPUP.states[id]=='fa-volume-up')
+    var b = override===undefined?(oCOM.POPUP.states[id]=='fa-volume-up'):override
+    if(b)
     {
         oEMU.component.IO.AppleSpeaker.init("audio_ctx")
             .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
         oEMU.component.IO.AppleDisk.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer");
-            oEMU.component.IO.AppleDisk.dNd.enable = true;
-        });
+            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
     }
     else
     {
-        oEMU.component.IO.AppleDisk.dNd.enable = false;
         oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
         oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
-
-        //oEMU.component.IO.AppleDisk.dNd.last={}; // remind about spinning up
-        oEMU.component.IO.AppleDisk.dNd.motor="STILL";
     }
-
-    console.log("done")
 }
 
 function resetButton() {
@@ -239,11 +232,29 @@ function pauseButton()
         appleIntervalHandle = null;
         document.getElementById('pausebutton').value = 'Resume';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
+
+        document.getElementById("soundbutton").parentElement.disabled = true;
+        //oEMU.component.IO.AppleDisk.dNd.enable = false;
+
+        var ov = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"
+        if(ov==true) AudioButton(null,false);
+        
+        //alert(oCOM.POPUP.states["soundbutton"])
+
     } else {
         oEMU.component.Keyboard.isActive(true);
         appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
         document.getElementById('pausebutton').value = 'Pause ';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
+
+        document.getElementById("soundbutton").parentElement.disabled = false;
+
+        //alert(oCOM.POPUP.states["soundbutton"])
+
+        var ov = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"
+        AudioButton(null,ov);
+
+        //oEMU.component.IO.AppleDisk.dNd.enable = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"?true:false;
     }
 }
 

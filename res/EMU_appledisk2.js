@@ -381,7 +381,7 @@ function AppleDisk2()
         this.dNd.status = status;
         this.dNd.bRep   = this.dNd.last.status==status;
 
-        this.dN_launcher(); // TODO
+        this.dN_launcher();
         set_action(this.dNd);
 
         //if(this.dNd.motor != this.dNd.last.motor) console.log(this.dNd.motor);
