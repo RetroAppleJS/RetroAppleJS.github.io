@@ -64,13 +64,6 @@ const _CFG_TFUNCTION = {
 ,"upper_before;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^[^;^n]*" ,"REGEXP_OUTPUT":"x.toUpperCase()" ,"DESCRIPTION":"Uppercase everything until bumping into a semicolumn"}
 }
 
-var _TABS = {
-"tab1":{"title":"Emulator","DEF_SYS":"A2P"}
-,"tab2":{"title":"Assembler","DEF_SYS":"A2P"}
-,"tab3":{"title":"Debugger","DEF_SYS":"A2P"}
-,"tab4":{"title":"Manual"}
-}
-
 var _DOCS = new Array();
 _DOCS["ASSEMBLER"] = "<h2 id=\"assembler-instructions\">ASSEMBLER Instructions</h2><hr>"
 +"<p>This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to accompany the emulator To get your source code compiled:</p>"

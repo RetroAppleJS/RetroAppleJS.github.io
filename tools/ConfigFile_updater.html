@@ -109,14 +109,6 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     // EXECUTE
     var s = oPROCESS.process_table(["[TFUNCTION]","\|","\n|","\|\n\n"],"const _CFG_TFUNCTION",this.responseText.replace(/\\\|/g,"&#x7C;"),this.responseURL);
     document.getElementById('dest').innerHTML += s.replace(/&#x7C;/g,"|");
-
-    var s = "var _TABS = {\n"
-    +"\"tab1\":{\"title\":\"Emulator\",\"DEF_SYS\":\"A2P\"}\n"
-    +",\"tab2\":{\"title\":\"Assembler\",\"DEF_SYS\":\"A2P\"}\n"
-    +",\"tab3\":{\"title\":\"Debugger\",\"DEF_SYS\":\"A2P\"}\n"
-    +",\"tab4\":{\"title\":\"Manual\"}\n"
-    +"}\n\n";
-    document.getElementById('dest').innerHTML += s;
   } 
 )
   
