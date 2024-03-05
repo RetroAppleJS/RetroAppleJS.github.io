@@ -134,22 +134,11 @@ function Apple2Plus(context)
     {
         var o = disk2.getDataObj();
         disk2.GUI_update(o);
-
-        //var d2 = hw.io.disk2;
-        // TODO activate some leds
     }
 
     this.SND_monitoring = function()
     {
-        // show sound bars
-
-        /*
-        var d2 = hw.io.disk2;
-        if(d2.o[0].motor==1)
-        {
-            // BROWSERS DO NOT MANAGE TO LOOP SOUNDS !!
-        }
-        */
+        // TODO show sound bars
     }
 
     var dashboard_refresh = function(args)

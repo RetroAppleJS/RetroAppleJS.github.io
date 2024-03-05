@@ -22,6 +22,8 @@
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
+var oEMUI = new EMUI();
+
 // global data initializations
 const _o = {"tools":{}
         ,"sys":{}
@@ -65,6 +67,34 @@ var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus,keys;
 
 function EMU_init()
 {
+    // LOAD ANY CONFIGURATION VIA URI
+    oCOM.URL.parse(document.location.toString());
+
+    var def_sys = _TABS.tab1.DEF_SYS;
+
+    for(var uri in oCOM.URL.uri)
+    {
+        switch(uri)
+        {
+            case "sys":
+                for(var i in oEMU.system) oEMU.system[i]["active"] = false;
+                oEMU.system[oCOM.URL.uri[uri]] = {active:true};
+                for(var i in _TABS) _TABS[i].DEF_SYS = oCOM.URL.uri[uri];
+            break;
+            case "active":
+                // TODO pre-configure pause button
+            break;
+            case "mute":
+                oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
+                oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct()
+            break;
+        }
+        // TODO
+        // oEMU.system["A2P"]
+    }
+
+    console.log(JSON.stringify(oEMU,null,"  "));
+
     // INITIALISE APPLE II+ EMULATOR
     vidContext          = document.getElementById('applescreen').getContext("2d");
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
@@ -140,12 +170,9 @@ function EMU_init()
     }
 
     //oCOM.POPUP.html(JSON.stringify(oEMU,null," "));
-    console.log(JSON.stringify(oEMU,null,"  "));
+
 
     // LOAD DISK IMAGE VIA URI PARAMETER (if any)
-    oCOM.URL.parse(document.location.toString());
-
-    // LOAD DISK IMAGE FROM DISK DIRECTORY
     var dir_filename = oCOM.URL.uri["D1_DIR"];
     if(typeof(dir_filename)!="undefined" && dir_filename!=0)
     {
@@ -199,7 +226,60 @@ function CPU_slider_update(obj,max)
   oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
 }
 
-function AudioButton(id,override)
+
+function EMUI()
+{
+    this.muteBtn = function(arg)
+    {
+        this.muteArg = arg;
+        oCOM.POPUP.toggle_class(document.getElementById(arg.id),arg.class1,arg.class2);
+        return this
+    }
+
+    this.muteAct = function(arg)
+    {
+        if(arg===undefined) arg = this.muteArg;
+        var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+        if(b)
+        {
+            oEMU.component.IO.AppleSpeaker.init("audio_ctx")
+                .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
+            oEMU.component.IO.AppleDisk.init("audio_ctx")
+                .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
+        }
+        else
+        {
+            oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
+            oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
+        }        
+    }
+
+    this.pauseBtn = function()
+    {
+        if (appleIntervalHandle != null) {
+            oEMU.component.Keyboard.isActive(false);
+            window.clearInterval(appleIntervalHandle);
+            appleIntervalHandle = null;
+            document.getElementById('pausebutton').value = 'Resume';
+            document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
+    
+            document.getElementById("mutebutton").parentElement.disabled = true;
+            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
+            if(ov==true) AudioButton(null,false);
+        } else {
+            oEMU.component.Keyboard.isActive(true);
+            appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+            document.getElementById('pausebutton').value = 'Pause ';
+            document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
+    
+            document.getElementById("mutebutton").parentElement.disabled = false;
+            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
+            AudioButton(null,ov);
+        }
+    } 
+}
+
+function muteButton(id,override)
 {
     var b = override===undefined?(oCOM.POPUP.states[id]=='fa-volume-up'):override
     if(b)
@@ -216,14 +296,6 @@ function AudioButton(id,override)
     }
 }
 
-function resetButton() {
-    apple2plus.reset();
-}
-
-function restartButton() {
-    apple2plus.restart();
-}
-
 function pauseButton()
 {
     if (appleIntervalHandle != null) {
@@ -233,8 +305,8 @@ function pauseButton()
         document.getElementById('pausebutton').value = 'Resume';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
 
-        document.getElementById("soundbutton").parentElement.disabled = true;
-        var ov = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"
+        document.getElementById("mutebutton").parentElement.disabled = true;
+        var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
         if(ov==true) AudioButton(null,false);
     } else {
         oEMU.component.Keyboard.isActive(true);
@@ -242,10 +314,18 @@ function pauseButton()
         document.getElementById('pausebutton').value = 'Pause ';
         document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
 
-        document.getElementById("soundbutton").parentElement.disabled = false;
-        var ov = oCOM.POPUP.states["soundbutton"]=="fa-volume-up"
+        document.getElementById("mutebutton").parentElement.disabled = false;
+        var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
         AudioButton(null,ov);
     }
+}
+
+function resetButton() {
+    apple2plus.reset();
+}
+
+function restartButton() {
+    apple2plus.restart();
 }
 
 function loadDisk_fromFile(file_obj,drv)

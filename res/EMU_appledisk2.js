@@ -77,7 +77,7 @@ function AppleDisk2()
             case "audio_off":
                 this.dNd.enable = false;
                 if(this.audio===undefined) return;
-                this.gain.disconnect(this.audio.destination);
+                //try{ this.gain.disconnect(this.audio.destination) } catch(e) { console.warn("this.gain.disconnect(this.audio.destination)") }
                 for(var name in this.buffers)
                     try{ this.buffers[name].disconnect(this.gain) } catch(e) { console.warn("this.buffers['"+name+"'].disconnect(this.gain)") }
                 this.audio.suspend();
