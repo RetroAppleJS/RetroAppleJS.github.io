@@ -79,7 +79,8 @@ function AppleDisk2()
                 if(this.audio===undefined) return;
                 //try{ this.gain.disconnect(this.audio.destination) } catch(e) { console.warn("this.gain.disconnect(this.audio.destination)") }
                 for(var name in this.buffers)
-                    try{ this.buffers[name].disconnect(this.gain) } catch(e) { console.warn("this.buffers['"+name+"'].disconnect(this.gain)") }
+                    if(this.buffers[name].loop) try{ this.buffers[name].disconnect(this.gain) } catch(e) { console.warn("this.buffers['"+name+"'].disconnect(this.gain)") }
+  
                 this.audio.suspend();
             break;
         }

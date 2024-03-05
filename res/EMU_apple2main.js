@@ -232,7 +232,10 @@ function EMUI()
     this.muteBtn = function(arg)
     {
         this.muteArg = arg;
-        oCOM.POPUP.toggle_class(document.getElementById(arg.id),arg.class1,arg.class2);
+        if(arg.override===undefined)
+            oCOM.POPUP.toggle_class(document.getElementById(arg.id),arg.class1,arg.class2);
+        else    
+            oCOM.POPUP.toggle_class
         return this
     }
 
@@ -254,31 +257,36 @@ function EMUI()
         }        
     }
 
-    this.pauseBtn = function()
+    this.pauseBtn = function(arg)
     {
         if (appleIntervalHandle != null) {
             oEMU.component.Keyboard.isActive(false);
             window.clearInterval(appleIntervalHandle);
             appleIntervalHandle = null;
-            document.getElementById('pausebutton').value = 'Resume';
-            document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
-    
-            document.getElementById("mutebutton").parentElement.disabled = true;
-            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
-            if(ov==true) AudioButton(null,false);
+            document.getElementById(arg.id).value = 'Resume';
+            document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
         } else {
             oEMU.component.Keyboard.isActive(true);
             appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-            document.getElementById('pausebutton').value = 'Pause ';
-            document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
-    
+            document.getElementById(arg.id).value = 'Pause ';
+            document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class2+'"></i>';
+        }
+
+        if (appleIntervalHandle != null) {
+
             document.getElementById("mutebutton").parentElement.disabled = false;
-            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
-            AudioButton(null,ov);
+            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up";
+            oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:ov}).muteAct();
+
+        } else {
+
+            document.getElementById("mutebutton").parentElement.disabled = true;
+            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up";
+            if(ov==true) oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:false}).muteAct();
         }
     } 
 }
-
+/*
 function muteButton(id,override)
 {
     var b = override===undefined?(oCOM.POPUP.states[id]=='fa-volume-up'):override
@@ -319,6 +327,7 @@ function pauseButton()
         AudioButton(null,ov);
     }
 }
+*/
 
 function resetButton() {
     apple2plus.reset();

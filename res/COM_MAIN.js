@@ -153,11 +153,17 @@ function COM()
     on: function(id) { this.states[id] = this.el(id).hidden = false },
     off: function(id) { this.states[id] = this.el(id).hidden = true },
     toggle: function(id) { var e=this.el(id); if(e===undefined) return null; this.states[id] = e.hidden = !e.hidden ;return e },
+    set_class: function(el,class1,class2,bool)
+    {
+      this.states[el.id] = bool;
+      el.hidden = bool;
+      if(bool) {el.classList.remove(class2);el.classList.add(class1);this.states[el.id]=class1}
+      else {el.classList.remove(class1);el.classList.add(class2);this.states[el.id]=class2}
+    },
     toggle_class: function(el,class1,class2)
     {
       this.toggle(el.id);
-      if(el.hidden) {el.classList.remove(class2);el.classList.add(class1);this.states[el.id]=class1}
-      else {el.classList.remove(class1);el.classList.add(class2);this.states[el.id]=class2}
+      this.set_class(el,class1,class2,el.hidden);
     },
     html: function(html,ttl)
     {
