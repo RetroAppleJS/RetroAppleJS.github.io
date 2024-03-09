@@ -1,0 +1,297 @@
+<!--
+//
+// Copyright (c) 2023 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+//   ________  __   __    _           _    _             _____   ______   
+//  |_   __  |[  | [  |  (_)         / |_ (_)           |_   _|.' ____ \  
+//    | |_ \_| | |  | |  __  _ .--. `| |-'__   .---.      | |  | (___ \_| 
+//    |  _| _  | |  | | [  |[ '/'`\ \| | [  | / /'`\] _   | |   _.____`.  
+//   _| |__/ | | |  | |  | | | \__/ || |, | | | \__. | |__' |  | \____) | 
+//  |________|[___][___][___]| ;.__/ \__/[___]'.___.'`.____.'   \______.' 
+//                          [__|                                          
+-->
+
+
+<html style="background-color:#B0B0B0"><head>
+  <title>ELLIPTIC CURVE CRYPTOGRAPHY</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+  <style>
+  html {height:100%;font-family:"Arial"}
+  body {background-color:#808080;height:100%;margin:0px;padding:0px}
+
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+    </style>
+</head>
+
+<script type="text/javascript" src="../res/COM_CONFIG.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2main.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+<script type="text/javascript" src="../res/HGRpalette.js"></script>
+<script type="text/javascript" src="../res/HGRpattern.js"></script>
+
+<script>
+var CONF_version="";
+var CONF_builddate="";  
+
+var _D = 
+{
+     "cam_x":256
+    ,"cam_y":192
+    ,"YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
+              +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
+              +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
+    ,"YVERTH":"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+}
+
+var yref = new Array();
+  for(var i=0;i<_D.YVERTL.length;i+=2)
+    yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
+               +parseInt( _D.YVERTL.substring(i,i+2),16);
+
+var vidContext, apple2plus;
+var oPALETTE = new PALETTE();
+var oPATTERN = new PATTERN();
+
+function init_gui(_o)
+{
+  document.getElementById('slider_title').outerHTML = _TITLE();
+  vidContext          = document.getElementById('applescreen').getContext("2d");
+  apple2plus          = new Apple2Plus(vidContext);
+  
+  for(var i=8192;i<16384;i++)      // clear video RAM
+    apple2plus.hw.write(i,0);
+
+  // Monochrome colors (index 0 = full color)
+  var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
+
+  // Lores color to RGB table. (* Hires)
+  var loresCols = [
+  ["#000000","#000000","#000000","#000000","Black"]  // *
+  ,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
+  ,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
+  ,["#D043E5","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
+  ,["#006940","#383838","#233835","#383324","Dark Green"] 
+  ,["#808080","#808080","#508078","#7E7451","Grey 1"] 
+  ,["#2F95E5","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
+  ,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
+  ,["#405400","#313131","#1F312E","#312D1F","Brown"] 
+  ,["#D06A1A","#717171","#47716B","#706748","Orange"]  // *
+  ,["#808080","#808080","#508078","#7E7451","Grey 2"] 
+  ,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
+  ,["#2FBC1A","#575757","#375752","#564F37","Light Green"]  // *
+  ,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
+  ,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
+  ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
+  ];
+
+  function pattern(idx,j,i)
+  {
+    switch(idx)
+    {
+      case 0: return  [0,false];                 // black 1 
+      case 1: return  [4,(j%2 || !(j%8))==0];    // green 
+      case 2: return  [3,(j+1)%2==0];            // purple
+      case 3: return  [15,!(j%8)==0];            // white 1  
+      case 4: return  [0,j%8==0];                // black 2
+      case 5: return  [9,j%2==0];                // orange
+      case 6: return  [2,((j+1)%2 && j%8)==0];   // blue
+      case 7: return  [15,true];                 // white2 2
+    }
+  }
+
+  function maskPixel(byt,bit)
+  {
+    return byt&8 | byt&bit;
+  }
+
+  function isCollision(rbyt,wbyt)   // check color collitions
+  {
+    if(rbyt|wbyt==0) return false;
+  }
+
+  function isCol(x,y)
+  { return x%8==0 ? "red":"white" }
+    
+  function PRINTByte(by)
+  {
+    var sa = ("0000000"+by.toString(2)).slice(-8).split("");
+    //sa = sa.reverse();
+    var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
+    return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
+  }
+
+  // draw dithering patterns 
+  // apple2plus.hw.write(8192,5);
+  // apple2plus.hw.write(8194,1);
+
+  oPALETTE.dec_pal      = [];
+  
+  var w = 0;
+  for(var i in _D.palette)
+  {
+    var idx = _D.palette[i].idx;
+    oPALETTE.dec_pal[idx] = oPALETTE.HEX2RGB(_D.palette[i].col);  // create fast palette
+    //if(_D.palette[i].pat[0]>w) w=_D.palette[i].pat[0];
+    //console.log("dec_pal["+idx+"] = oPALETTE.HEX2RGB("+_D.palette[i].col+") " +oPALETTE.HEX2RGB(_D.palette[i].col).join(" ")+" ("+i+")")
+  }
+
+
+  var input = [13,23,29]
+  var result = oPALETTE.calc_nearest_IDX_ERR(input)
+  console.log("input="+input+" idx="+result[0]+" error="+result[1]+" --> ["+oPALETTE.dec_pal[result[0]]+"]");
+}
+
+function Apple2Plus(context)
+{
+  this.video = new Apple2Video(context);
+  this.hw    = new Apple2Hw(this.video);
+  // Switch on Apple II Hi-Res graphics
+  this.video.reset();
+  this.video.setGfx(true);
+  this.video.setHires(true);
+  this.video.redraw();
+}
+
+// Overloading the setPixel function to accomodate patterning
+function setPixel_HGR(x,y,patternID)
+{
+    // find address and bit location
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    apple2plus.hw.write(adr,wbyt);                    // write byte 
+}
+
+function wipe_HGR(byte)
+{
+    // find address and bit location
+    //var adr = yref[y] + Math.floor(x/7);              // find address 
+    //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    for(var adr=8192;adr<16384;adr++)
+      apple2plus.hw.write(adr,byte);                    // write byte 
+}
+
+
+/////////////////////////////////////////////////////////
+
+var CONF_version="";
+var CONF_builddate="";  
+var _T = function _T(idx,mod) {
+this.t = {get _language(){ return "NL" }
+,"title":document.title
+,"menu_convert":""
+,"menu_info":"Info/Contact"
+,"intro":""
+,"version":(CONF_version?("Version "+CONF_version):"")
+,"built":(CONF_builddate?("Built "+CONF_builddate):"")
+,get _(){return this}
+}
+if(idx.length>0 && typeof(this.t[idx])=="undefined") { alert(idx); return "<font color=red>"+idx+"</font>" }
+switch(mod) {
+  case "cap": return this.t[idx].charAt(0).toUpperCase()+this.t[idx].substring(1,this.t[idx].length);
+  case "inv": { var j = {}; for(var i in t) { j[ t[i] ] = i }; return j } // inverse associative
+  default: return this.t[idx];
+}
+}
+function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
+function _TITLE() {
+var hight_pct = 6;
+var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
++"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
++"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
++"#carvetext:focus {outline: none;}.slider_main {position: relative;height: 100%;}"
++".slider_overlay {position: absolute;bottom: 0;left: 0;right: 0;background-color: #A0A0A0;overflow: hidden;width: 100%;height: 85%;transition: .5s ease;}"
+//+".slider_main:hover "
++".slider_overlay {height: 100%;}"
++"#topmenu{width:100%;background-color:#f0f0f0}"
++"ul#minitabs{list-style:none;margin:0;padding:3px 0 0 0;border-left:1px solid #ccc;border-right:1px solid #ccc;border-top:1px solid #ccc;border-bottom:1px solid #ccc;font-weight:700;text-align:left;white-space:nowrap}ul#minitabs li{display:inline;margin:0 3px}ul#minitabs a{text-decoration:none;color:#999}ul#minitabs a#current{border-color:#f60;color:#06f}ul#minitabs a:hover{border-color:#f60;color:#666}"
+
+return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
++"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
++"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
++"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
++" &nbsp; "+(typeof(_T("built"))=="string"?_T("built"):"")+"</div>"
++"</div></center></div>"
+}
+
+
+</script>
+
+ <body class="slider_main" onload=init_gui()>
+
+<div id="slider_title"></div>
+ <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+
+        <li><input type=button id=cam_button value="Draw curve" onclick="draw_curve()"></li>
+        <!--
+        <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+        <li><input type=button value="x" onclick=""></li>
+        -->
+      </ul>
+    </div>
+    <div id=main>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.24/webcam.js"></script>
+
+<!-- -->
+<table><tr>
+  <td style=vertical-align:top;><div id="my_camera"></div><div id="results"></div>
+    <div id=debug style="overflow:scroll; height:400px;"></div></td>
+  <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
+</tr></table>
+
+<!-- Code to handle taking the snapshot and displaying it locally -->
+<script language="JavaScript">
+
+// Configure a few settings and attach camera
+var bCamera = false;
+var bSound  = false;
+
+function update(bRender)
+{
+  setTimeout(function(){status_message("update")},10);
+  document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
+  if(document.getElementById("param3"))
+  {
+      var dot_idx   = Number(document.getElementById("param3").value);
+  }
+}
+
+var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
+
+
+function draw_curve()
+{
+  //for(var i=8192;i<16384;i++)      // clear video RAM
+  //  apple2plus.hw.write(i,i%255);
+
+  wipe_HGR(0);
+
+  for(var x=0;x<(280/4);x++)
+    for(var y=0;y<(192/4);y++)
+    {
+      setPixel_HGR(x*4,y*4);
+      setPixel_HGR(x*4+1,y*4);
+    }
+      
+}
+
+
+</script>
+
+
+  </div>
+  </div>
+
+  <div id=debug></div>
+</body>
+</html>
