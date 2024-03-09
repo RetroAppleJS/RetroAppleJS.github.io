@@ -10,6 +10,8 @@
 //   _| |__/ | | |  | |  | | | \__/ || |, | | | \__. | |__' |  | \____) | 
 //  |________|[___][___][___]| ;.__/ \__/[___]'.___.'`.____.'   \______.' 
 //                          [__|                                          
+
+references: http://jsxgraph.uni-bayreuth.de/wiki/index.php?title=Elliptic_curves
 -->
 
 
@@ -32,12 +34,10 @@
 <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
-<script type="text/javascript" src="../res/HGRpalette.js"></script>
-<script type="text/javascript" src="../res/HGRpattern.js"></script>
-
 <script>
-var CONF_version="";
-var CONF_builddate="";  
+
+var CONF_version="0.0.1";
+var CONF_builddate="20240309-230000"; 
 
 var _D = 
 {
@@ -57,8 +57,6 @@ var yref = new Array();
                +parseInt( _D.YVERTL.substring(i,i+2),16);
 
 var vidContext, apple2plus;
-var oPALETTE = new PALETTE();
-var oPATTERN = new PATTERN();
 
 function init_gui(_o)
 {
@@ -66,8 +64,8 @@ function init_gui(_o)
   vidContext          = document.getElementById('applescreen').getContext("2d");
   apple2plus          = new Apple2Plus(vidContext);
   
-  for(var i=8192;i<16384;i++)      // clear video RAM
-    apple2plus.hw.write(i,0);
+  //for(var i=8192;i<16384;i++)      // clear video RAM
+  //  apple2plus.hw.write(i,0);
 
   // Monochrome colors (index 0 = full color)
   var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
@@ -127,26 +125,7 @@ function init_gui(_o)
     var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
     return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
   }
-
-  // draw dithering patterns 
-  // apple2plus.hw.write(8192,5);
-  // apple2plus.hw.write(8194,1);
-
-  oPALETTE.dec_pal      = [];
   
-  var w = 0;
-  for(var i in _D.palette)
-  {
-    var idx = _D.palette[i].idx;
-    oPALETTE.dec_pal[idx] = oPALETTE.HEX2RGB(_D.palette[i].col);  // create fast palette
-    //if(_D.palette[i].pat[0]>w) w=_D.palette[i].pat[0];
-    //console.log("dec_pal["+idx+"] = oPALETTE.HEX2RGB("+_D.palette[i].col+") " +oPALETTE.HEX2RGB(_D.palette[i].col).join(" ")+" ("+i+")")
-  }
-
-
-  var input = [13,23,29]
-  var result = oPALETTE.calc_nearest_IDX_ERR(input)
-  console.log("input="+input+" idx="+result[0]+" error="+result[1]+" --> ["+oPALETTE.dec_pal[result[0]]+"]");
 }
 
 function Apple2Plus(context)
@@ -244,30 +223,25 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
 
 <!-- -->
 <table><tr>
-  <td style=vertical-align:top;><div id="my_camera"></div><div id="results"></div>
-    <div id=debug style="overflow:scroll; height:400px;"></div></td>
   <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
 </tr></table>
+<div id="status"></div>
 
 <!-- Code to handle taking the snapshot and displaying it locally -->
 <script language="JavaScript">
 
-// Configure a few settings and attach camera
-var bCamera = false;
-var bSound  = false;
 
-function update(bRender)
-{
-  setTimeout(function(){status_message("update")},10);
-  document.getElementById("param3").max = oPALETTE.hex_pal.length-1;      // set slider range
-  if(document.getElementById("param3"))
-  {
-      var dot_idx   = Number(document.getElementById("param3").value);
-  }
-}
 
 var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
 
+
+function ECC(x)
+  {
+      var a = 3.51
+      var b = -2.6
+
+      return  Math.sqrt( Math.pow(x,3) + a*x + b );
+  }
 
 function draw_curve()
 {
@@ -276,13 +250,25 @@ function draw_curve()
 
   wipe_HGR(0);
 
-  for(var x=0;x<(280/4);x++)
-    for(var y=0;y<(192/4);y++)
+  for(var x=0;x<280;x++)
+  {
+      var y = Math.round( ECC((x-280/2)/100)*20+100 );
+
+      if(y>=0 && y<192) setPixel_HGR(Math.round(x),Math.round(y));
+
+      console.log("x="+x+" y="+Math.round(y*1000)/1000)
+  }
+
+
+/*
+    for(var y=0;y<192;y++)
     {
+      //if()
+
       setPixel_HGR(x*4,y*4);
-      setPixel_HGR(x*4+1,y*4);
+      //setPixel_HGR(x*4+1,y*4);
     }
-      
+*/    
 }
 
 
