@@ -238,11 +238,24 @@ var status_message = function(str) { document.getElementById("status").innerHTML
 
 function ECC(x)
 {
-      var a = 10;
-      var b = 1.51;
+      var a = -1;
+      var b = 0;
       return  Math.sqrt( x*x*x + a*x + b );
 }
 
+function ECC2(x,y)
+{
+  var a = 1;
+  var b = 4;
+
+  var d = (y*y) - (x*x*x + a*x + b);
+  //console.log("("+x+","+y+") = "+d);
+  return d<(Math.abs(y)*0.16) && d>(-Math.abs(y)*0.16)?1:0;
+}
+
+
+var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
+var gx = {xmin:0,xmax:280-1,ymax:0,ymin:192-1}
 
 function draw_curve()
 {
@@ -251,26 +264,45 @@ function draw_curve()
 
   wipe_HGR(0);
 
-  var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
-  var gx = {xmin:0,xmax:280-1,ymax:0,ymin:192-1}
+
   var x=y=0;
+  /*
   for(var xi=gx.xmin;xi<gx.xmax;xi++)
   {
-      var x  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
-      
-      var yi  = Math.round( ECC(x) );
+      var xf  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
+      var yi  = ECC(xf);
 
-      var y = gx.ymin + ((yi -ax.ymin)/(ax.ymax-ax.ymin)) * (gx.ymax-gx.ymin);
-
-      if(x>=gx.xmin && x<=gx.xmax && y>=gx.ymax && y<=gx.ymin)
-      {
-        setPixel_HGR(Math.round(x),Math.round(yi));
-        console.log("x="+Math.round(x)+" y="+Math.round(y))
-      }
-      //else console.warn("x="+Math.round(x*1000)/1000+" y="+Math.round(y*1000)/1000)
+      var y = 50+gx.ymin + ((yi -ax.ymin)/(ax.ymax-ax.ymin)) * (gx.ymax-gx.ymin);
+      var x = xi;
+      plot(x,y);
   }
+  */
+
+  for(var xi=gx.xmin;xi<=gx.xmax;xi++)
+  {
+    for(var yi=gx.ymax;yi<=gx.ymin;yi++)
+    {
+        var xf  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
+        var yf  = ax.ymin + ((yi-gx.ymin)/(gx.ymax-gx.ymin)) * (ax.ymax-ax.ymin);
+
+        if(ECC2(xf,yf))
+        {
+          plot(xi,yi);
+        }
+    }
+  }
+
 }
 
+function plot(x,y)
+{
+  if(x>=gx.xmin && x<=gx.xmax && y>=gx.ymax && y<=gx.ymin)
+  {
+    setPixel_HGR(Math.round(x),Math.round(y));
+    //console.log("x="+Math.round(x)+" y="+Math.round(y))
+  }
+  //else console.warn("x="+Math.round(x*1000)/1000+" y="+Math.round(y*1000)/1000)
+}
 
 
 </script>
