@@ -126,6 +126,7 @@ function init_gui(_o)
     return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
   }
   
+  draw_curve();
 }
 
 function Apple2Plus(context)
@@ -236,12 +237,12 @@ var status_message = function(str) { document.getElementById("status").innerHTML
 
 
 function ECC(x)
-  {
-      var a = 3.51
-      var b = -2.6
+{
+      var a = 10;
+      var b = 1.51;
+      return  Math.sqrt( x*x*x + a*x + b );
+}
 
-      return  Math.sqrt( Math.pow(x,3) + a*x + b );
-  }
 
 function draw_curve()
 {
@@ -250,26 +251,26 @@ function draw_curve()
 
   wipe_HGR(0);
 
-  for(var x=0;x<280;x++)
+  var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
+  var gx = {xmin:0,xmax:280-1,ymax:0,ymin:192-1}
+  var x=y=0;
+  for(var xi=gx.xmin;xi<gx.xmax;xi++)
   {
-      var y = Math.round( ECC((x-280/2)/100)*20+100 );
+      var x  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
+      
+      var yi  = Math.round( ECC(x) );
 
-      if(y>=0 && y<192) setPixel_HGR(Math.round(x),Math.round(y));
+      var y = gx.ymin + ((yi -ax.ymin)/(ax.ymax-ax.ymin)) * (gx.ymax-gx.ymin);
 
-      console.log("x="+x+" y="+Math.round(y*1000)/1000)
+      if(x>=gx.xmin && x<=gx.xmax && y>=gx.ymax && y<=gx.ymin)
+      {
+        setPixel_HGR(Math.round(x),Math.round(yi));
+        console.log("x="+Math.round(x)+" y="+Math.round(y))
+      }
+      //else console.warn("x="+Math.round(x*1000)/1000+" y="+Math.round(y*1000)/1000)
   }
-
-
-/*
-    for(var y=0;y<192;y++)
-    {
-      //if()
-
-      setPixel_HGR(x*4,y*4);
-      //setPixel_HGR(x*4+1,y*4);
-    }
-*/    
 }
+
 
 
 </script>
