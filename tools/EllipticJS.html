@@ -122,11 +122,14 @@ function init_gui(_o)
   {
     var sa = ("0000000"+by.toString(2)).slice(-8).split("");
     //sa = sa.reverse();
+
     var styl = " style='padding:5px;border:1px solid;font-family:Arial'"
     return "<table style='border-collapse: collapse;'><tr><td"+styl+">"+sa.join("</td><td"+styl+">")+"</td></tr></table>"
   }
   
-  draw_curve();
+  document.getElementById("param1").value = p.a;
+  document.getElementById("param2").value = p.b;
+  change_param(['a','b'],["param1","param2"],['param1_v','param2_v']);
 }
 
 function Apple2Plus(context)
@@ -211,6 +214,12 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
     <div id="topmenu">
       <ul id="minitabs">
 
+        <li>
+          a <input id="param1" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['a'],[this.id],['param1_v']);" onchange="change_param(['a'],[this.id],['param1_v']);"></input><div id="param1_v"  style="display:inline"></div>
+        </li>
+        <li>  
+          b <input id="param2" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['b'],[this.id],['param2_v']);" onchange="change_param(['b'],[this.id],['param2_v']);"></input><div id="param2_v" style="display:inline"></div>
+        </li>
          <!--
         <li><input type=button id=cam_button value="Draw curve" onclick="draw_curve()"></li>
        
@@ -232,53 +241,23 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
 <!-- Code to handle taking the snapshot and displaying it locally -->
 <script language="JavaScript">
 
-
-
 var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
 
 
-function ECC(x)
-{
-      var a = -1;
-      var b = 0;
-      return  Math.sqrt( x*x*x + a*x + b );
-}
-
-function ECC2(x,y)
-{
-  var a = 1;
-  var b = 4;
-
-  var d = (y*y) - (x*x*x + a*x + b);
-  //console.log("("+x+","+y+") = "+d);
-  return d<(Math.abs(y)*0.16) && d>(-Math.abs(y)*0.16)?1:0;
-}
 
 
 var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
-var gx = {xmin:0,xmax:280-1,ymax:0,ymin:192-1}
+var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
+var p = {a:-1.5,b:3,update:false};
+
 
 function draw_curve()
 {
   //for(var i=8192;i<16384;i++)      // clear video RAM
   //  apple2plus.hw.write(i,i%255);
 
+  p.update = false;
   wipe_HGR(0);
-
-
-  var x=y=0;
-  /*
-  for(var xi=gx.xmin;xi<gx.xmax;xi++)
-  {
-      var xf  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
-      var yi  = ECC(xf);
-
-      var y = 50+gx.ymin + ((yi -ax.ymin)/(ax.ymax-ax.ymin)) * (gx.ymax-gx.ymin);
-      var x = xi;
-      plot(x,y);
-  }
-  */
-
   for(var xi=gx.xmin;xi<=gx.xmax;xi++)
   {
     for(var yi=gx.ymax;yi<=gx.ymin;yi++)
@@ -286,13 +265,21 @@ function draw_curve()
         var xf  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
         var yf  = ax.ymin + ((yi-gx.ymin)/(gx.ymax-gx.ymin)) * (ax.ymax-ax.ymin);
 
-        if(ECC2(xf,yf))
-        {
-          plot(xi,yi);
-        }
+        if(ECC(xf,yf)) plot(xi,yi);
     }
   }
 
+}
+
+function ECC(x,y)
+{
+  var a = p.a;
+  var b = p.b;
+
+  var d = (y*y) - (x*x*x + a*x + b);
+  
+  //console.log("("+x+","+y+") = "+d);
+  return d<(Math.abs(y)*0.16) && d>(-Math.abs(y)*0.16)?1:0;
 }
 
 function plot(x,y)
@@ -304,6 +291,20 @@ function plot(x,y)
   }
   //else console.warn("x="+Math.round(x*1000)/1000+" y="+Math.round(y*1000)/1000)
 }
+
+function change_param(v,elv,id)
+{  
+  for(var i=0;i<v.length;i++)
+  {
+    p[v[i]] = document.getElementById(elv[i]).value;
+    var e = document.getElementById(id[i]);
+    e.innerHTML = p[v[i]]
+  }
+
+  if(p.update==false) setTimeout(draw_curve, 500);
+  p.update = true;
+}
+
 
 
 </script>
