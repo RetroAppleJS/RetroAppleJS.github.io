@@ -11,7 +11,11 @@
 //  |________|[___][___][___]| ;.__/ \__/[___]'.___.'`.____.'   \______.' 
 //                          [__|                                          
 
-references: http://jsxgraph.uni-bayreuth.de/wiki/index.php?title=Elliptic_curves
+references: 
+plotter:  http://jsxgraph.uni-bayreuth.de/wiki/index.php?title=Elliptic_curves
+plotter:  https://www.desmos.com/calculator/ialhd71we3
+doc:      https://cryptobook.nakov.com/asymmetric-key-ciphers/elliptic-curve-cryptography-ecc
+
 -->
 
 
@@ -40,8 +44,9 @@ var CONF_version="0.0.1";
 var CONF_builddate="20240309-230000"; 
 
 var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
-var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
-var p = {a:-1.5 , b:2 ,acc:0.25 ,update:false};
+var gx = {xmin:0,xmax:191,ymax:0,ymin:191}
+//var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
+var p = {a:-2 , b:3 ,acc:0.25 ,update:false};
 
 var _D = 
 {
@@ -217,14 +222,14 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
       <ul id="minitabs">
 
         <li>
-          a[<div id="param1_v"  style="display:inline"></div>]<input id="param1" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['a'],[this.id],['param1_v']);" onchange="change_param(['a'],[this.id],['param1_v']);"></input>
+          a[<div id="param1_v"  style="display:inline"></div>]<input id="param1" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['a'],[this.id],['param1_v']);" onchange="change_param(['a'],[this.id],['param1_v']);" style="width:300px"></input>
         </li>
         <li>  
-          b[<div id="param2_v" style="display:inline"></div>]<input id="param2" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['b'],[this.id],['param2_v']);" onchange="change_param(['b'],[this.id],['param2_v']);"></input>
+          b[<div id="param2_v" style="display:inline"></div>]<input id="param2" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['b'],[this.id],['param2_v']);" onchange="change_param(['b'],[this.id],['param2_v']);" style="width:300px"></input>
         </li>
-         <!--
+         <!-- 
         <li><input type=button id=cam_button value="Draw curve" onclick="draw_curve()"></li>
-       
+        
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><input type=button value="x" onclick=""></li>
         -->
@@ -279,6 +284,11 @@ function draw_curve()
   ii = 0;
 }
 
+var mod = function (n, m) {
+    var remain = n % m;
+    return Math.floor(remain >= 0 ? remain : remain + m);
+};
+
 var ii = 0;
 var s = new Array();
 
@@ -289,6 +299,7 @@ function ECC(x,y)
 
   var y2 = y*y
   var fml = (x*x*x + a*x + b);
+  //var fml = (x*x*x + mod(7,17));
 
   var d = Math.abs(y2 - fml);                    // Difference
   var acc = Math.abs(y)*p.acc;                   // Dot accuracy
