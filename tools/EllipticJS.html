@@ -14,6 +14,7 @@
 references: 
 plotter:  http://jsxgraph.uni-bayreuth.de/wiki/index.php?title=Elliptic_curves
 plotter:  https://www.desmos.com/calculator/ialhd71we3
+doc easy: https://medium.com/@peterreid_12788/part-2-is-elliptic-curve-cryptography-ecc-a-step-towards-something-more-understanding-ecc-3c933d3922e
 doc:      https://cryptobook.nakov.com/asymmetric-key-ciphers/elliptic-curve-cryptography-ecc
 
 -->
@@ -43,11 +44,9 @@ doc:      https://cryptobook.nakov.com/asymmetric-key-ciphers/elliptic-curve-cry
 var CONF_version="0.0.1";
 var CONF_builddate="20240309-230000"; 
 
-var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
-var gx = {xmin:0,xmax:191,ymax:0,ymin:191}
-//var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
-var p = {a:-2 , b:3 ,acc:0.25 ,update:false};
 
+
+var bDebug = false;
 var _D = 
 {
      "YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
@@ -136,7 +135,9 @@ function init_gui(_o)
   
   document.getElementById("param1").value = p.a;
   document.getElementById("param2").value = p.b;
-  change_param(['a','b'],["param1","param2"],['param1_v','param2_v']);
+  document.getElementById("PrvKey").value = p.d;
+
+  change_param(['a','b','d'],["param1","param2","PrvKey"],['param1_v','param2_v']);
 }
 
 function Apple2Plus(context)
@@ -246,7 +247,12 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
     <td>
       <div id="dump" style="overflow-y: scroll; height:400px;"></div>
     </td>
-  </tr></table>
+  </tr>
+  <tr>
+    <td>private key<input id="PrvKey" value=""></input></td>
+    <td><button onclick="calc_PubKey()">calculate PubKey</button></td>
+  </tr>
+ </table>
   <div id="status"></div>
 
 
@@ -254,11 +260,6 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
 <script language="JavaScript">
 
 var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
-
-
-
-
-
 
 
 function draw_curve()
@@ -274,14 +275,15 @@ function draw_curve()
     {
         var xf  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
         var yf  = ax.ymin + ((yi-gx.ymin)/(gx.ymax-gx.ymin)) * (ax.ymax-ax.ymin);
-
         if(ECC(xf,yf)) plot(xi,yi);
     }
   }
-  document.getElementById("dump").innerHTML = "<small>"+s.join("<br>")+"</small>"
-  //s.length = 0;
-  s.length = 0; 
-  ii = 0;
+
+
+    document.getElementById("dump").innerHTML = "<small>"+s.join("<br>")+"</small>"
+    //s.length = 0;
+    s.length = 0; 
+    ii = 0;
 }
 
 var mod = function (n, m) {
@@ -304,9 +306,10 @@ function ECC(x,y)
   var d = Math.abs(y2 - fml);                    // Difference
   var acc = Math.abs(y)*p.acc;                   // Dot accuracy
   var bDot = d<acc?1:0
-  if(bDot) s[ii++] = pr(x,3)+"<sup>3</sup>+"+a+"*x + "+b+" = "+pr(y2,3);
+  if(bDebug && bDot) s[ii++] = pr(x,3)+"<sup>3</sup>+"+a+"*x + "+b+" = "+pr(y2,3);
   return bDot;
 }
+
 
 function plot(x,y)
 {
@@ -323,8 +326,11 @@ function change_param(v,elv,id)
   for(var i=0;i<v.length;i++)
   {
     p[v[i]] = Number(document.getElementById(elv[i]).value);
-    var e = document.getElementById(id[i]);
-    e.innerHTML = p[v[i]];
+    if(id[i])
+    {
+      var e = document.getElementById(id[i]);
+      e.innerHTML = p[v[i]];
+    }
   }
 
   if(p.update==false) setTimeout(draw_curve, 500);
@@ -337,6 +343,45 @@ function pr(v,p)
   return Math.round(v*pow)/pow;
 }
 
+
+function ECC_derivative1(x1,y1)
+{
+  return (3*x1*x1 + p.a)
+}
+
+function ECC_derivative2(x1,y1)
+{
+  return 2*y1
+}
+
+
+var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
+var gx = {xmin:0,xmax:191,ymax:0,ymin:191}
+//var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
+//var p = {a:-2 , b:3 ,acc:0.25 ,update:false};
+ 
+
+// a & b = curve parameters
+// d = private key
+// p = modulus (finit field)
+// P = base point or generator point (x1,y1) (random number ?)
+// Q = public key
+
+var p = {a:2 , b:2 , p:17, P:[5,1] , d:3 ,acc:0.25 ,update:false};
+
+function calc_PubKey()
+{
+  change_param(['a','b','d'],["param1","param2","PrvKey"],['param1_v','param2_v']);
+
+  // calculate slope s
+  var m = ECC_derivative1(p.P[0],p.P[1]) / ECC_derivative2(p.P[0],p.P[1]) % p.p;
+  s[ii++] = "s="+ECC_derivative1(p.P[0],p.P[1])+"/"+ECC_derivative2(p.P[0],p.P[1])+" mod "+p.p;
+  s[ii++] = "s="+m
+
+  s[ii++] = "x3="+m+"^2 - "+p.a+" mod "+p.p
+  s[ii++] = "x3="+(m*m-p.a)%p.p
+
+}
 
 </script>
 
