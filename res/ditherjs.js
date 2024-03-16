@@ -137,15 +137,18 @@ var DitherJS = function DitherJS(selector,opt) {
         /**
         * Perform an ordered dither on the image
         * */
-        this.orderedDither = function(in_imgdata)
+        this.orderedDither = function(in_imgdata,w,h,step,ratio)
         {
             // Create a new empty image
             var out_imgdata = ctx.createImageData(in_imgdata);
             var d = new Uint8ClampedArray(in_imgdata.data);
             // Step
-            var step = self.opt.step===undefined?2:(self.opt.step-1)*2+1;
+
+            var step = (step-1)*2+1;
+            var ratio = ratio + 3;
             // Ratio >=1
-            var ratio = self.opt.ratio===undefined?6:(self.opt.ratio+3)
+            //var ratio = self.opt.ratio===undefined?6:(self.opt.ratio+3)
+
 
             //document.getElementById("debug").innerHTML = self.opt.ratio+" "+ratio
             //console.log(ratio+" "+self.opt.ratio);
@@ -161,9 +164,11 @@ var DitherJS = function DitherJS(selector,opt) {
             var ms = 0;
             while (i >>= 1) ms++;
 
-            for (var y=0;y<h;y += step) {
-                for (var x=0;x<w;x += step) {
-                    var i = (4*x) + (4*y*w);
+            for (var y=0;y<h;y+=step)
+            {
+                for (var x=0;x<w;x+=step)
+                {
+                    var i = (x << ms) + (y*w << ms);
 
                     // Define bytes
                     var r = i;
@@ -202,15 +207,17 @@ var DitherJS = function DitherJS(selector,opt) {
         /**
         * Perform an error diffusion dither on the image
         * */
-        this.errorDiffusionDither = function(in_imgdata) {
+        this.errorDiffusionDither = function(in_imgdata,w,h,step,ratio)
+        {
             // Create a new empty image
             var out_imgdata = ctx.createImageData(in_imgdata);
             var d = new Uint8ClampedArray(in_imgdata.data);
             var out = new Uint8ClampedArray(in_imgdata.data);
             // Step
-            var step = self.opt.step;
+            //var step = self.opt.step;
             // Ratio >=1
-            var ratio = self.opt.ratio?self.opt.ratio:1/16;
+            //var ratio = self.opt.ratio?self.opt.ratio:1/16;
+            var ratio = 0.02 + ratio / 150
 
             for (var y=0;y<h;y += step)
             {
@@ -305,7 +312,6 @@ var DitherJS = function DitherJS(selector,opt) {
         // Take image size
         var h = el.clientHeight;
         var w = el.clientWidth;
-        
         var ctx = this.getContext(el);
         
         // Put the picture in
@@ -314,10 +320,13 @@ var DitherJS = function DitherJS(selector,opt) {
         // Pick image data
         var in_image = ctx.getImageData(0,0,w,h);
         var ditherCtx = this;
+
+        var step = self.opt.step===undefined?1:self.opt.step;
+        var ratio = self.opt.ratio===undefined?7:self.opt.ratio;
         switch(self.opt.algorithm)
         {
-            case 'errorDiffusion':  var out_image = ditherCtx.errorDiffusionDither(in_image); break;
-            case 'ordered':         var out_image = ditherCtx.orderedDither(in_image); break;
+            case 'errorDiffusion':  var out_image = ditherCtx.errorDiffusionDither(in_image,w,h,step,ratio); break;
+            case 'ordered':         var out_image = ditherCtx.orderedDither(in_image,w,h,step,ratio); break;
             default: new Error('Not a valid algorithm');
         }
 
