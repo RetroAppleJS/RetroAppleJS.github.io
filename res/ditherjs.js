@@ -28,6 +28,23 @@ var DitherJS = function DitherJS(selector,opt) {
         }
     };
 
+    var deb = {}
+    this.d = function(a,b)
+    {
+        deb[a]=[b,deb[a]===undefined?0:deb[a][1]+1];
+    }
+
+    this.ser_d = function()
+    {
+        var a=[];
+        var i =0;
+        for(var i in deb)
+        {
+            a[i++]=i+" "+deb[a][0]+"("+deb[a][1]+")";
+        }
+    } 
+
+
     /**
     * Main
     * */
@@ -46,8 +63,8 @@ var DitherJS = function DitherJS(selector,opt) {
     /**
     * This does all the dirty things
     * */
-    this._dither = function(el) {
-
+    this._dither = function(el)
+    {
         /**
         * Return a distance of two colors ina three dimensional space
         * @param array
@@ -58,9 +75,9 @@ var DitherJS = function DitherJS(selector,opt) {
             //if (a == null) return b;
             //if (b == null) return a;
             return Math.sqrt( 
-                Math.pow( ((a[0]) - (b[0])),2 )
-                + Math.pow( ((a[1]) - (b[1])),2 ) 
-                + Math.pow( ((a[2]) - (b[2])),2 )
+                  (a[0] - b[0]) ** 2 
+                + (a[1] - b[1]) ** 2 
+                + (a[2] - b[2]) ** 2
             );
         };
 
@@ -69,28 +86,17 @@ var DitherJS = function DitherJS(selector,opt) {
         * @param array - the color
         * @return i - the index of the coloser color
         * */
-        this.approximateColor = function(color) {
-            var palette = self.opt.palette;
-            var findIndex = function(fun,arg,list,min) {
-                if (list.length == 2) {
-                    if (fun(arg,min) <= fun(arg,list[1])) {
-                        return min;
-                    }else {
-                        return list[1];
-                    }
-                } else {
-                    //var hd = list[0];
-                    var tl = list.slice(1);
-                    if (fun(arg,min) <= fun(arg,list[1])) {
-                        min = min; 
-                    } else {
-                        min = list[1];
-                    }
-                    return findIndex(fun,arg,tl,min);
-                }
-            };
-            var found_color = findIndex(ditherCtx.colorDistance,color,palette,palette[0]);
-            return found_color;
+        this.approximateColor = function(color)
+        {
+            palette = self.opt.palette;
+            //var found_color = findIndex(ditherCtx.colorDistance,color,self.opt.palette,palette[0]);
+            return findIndex(ditherCtx.colorDistance,color,self.opt.palette,palette[0]);
+        }
+
+        function findIndex(fun,arg,list,min)
+        {
+            var m = fun(arg,min) <= fun(arg,list[1]) ? min : list[1];
+            return list.length == 2 ? m:findIndex(fun,arg,list.slice(1),m);
         }
 
         /**
@@ -131,14 +137,18 @@ var DitherJS = function DitherJS(selector,opt) {
         /**
         * Perform an ordered dither on the image
         * */
-        this.orderedDither = function(in_imgdata) {
+        this.orderedDither = function(in_imgdata)
+        {
             // Create a new empty image
             var out_imgdata = ctx.createImageData(in_imgdata);
             var d = new Uint8ClampedArray(in_imgdata.data);
             // Step
-            var step = self.opt.step;
+            var step = self.opt.step===undefined?2:(self.opt.step-1)*2+1;
             // Ratio >=1
-            var ratio = self.opt.ratio?self.opt.ratio:3;
+            var ratio = self.opt.ratio===undefined?6:(self.opt.ratio+3)
+
+            //document.getElementById("debug").innerHTML = self.opt.ratio+" "+ratio
+            //console.log(ratio+" "+self.opt.ratio);
             // Threshold Matrix
             var m = new Array(
                 [  1,  9,  3, 11 ],
@@ -146,6 +156,10 @@ var DitherJS = function DitherJS(selector,opt) {
                 [  4, 12,  2, 10 ],
                 [ 16,  8, 14,  6 ]
             );
+
+            var l = i = m[0].length;
+            var ms = 0;
+            while (i >>= 1) ms++;
 
             for (var y=0;y<h;y += step) {
                 for (var x=0;x<w;x += step) {
@@ -155,35 +169,28 @@ var DitherJS = function DitherJS(selector,opt) {
                     var r = i;
                     var g = i+1;
                     var b = i+2;
-                    var a = i+3;
+                    //var a = i+3;
 
                     d[r] += m[x%4][y%4] * ratio; 
-                    d[g] += m[x%4][y%4] * ratio; 
-                    d[b] += m[x%4][y%4] * ratio; 
+                    d[g] += m[x%4][y%4] * ratio;
+                    d[b] += m[x%4][y%4] * ratio;
 
-                    //var tr = threshold(d[r]);
-                    //var tg = threshold(d[g]);
-                    //var tb = threshold(d[b]);
+                    //this.d("m["+x+"%4]["+y+"%4] * "ratio",)
+
                     var color = new Array(d[r],d[g],d[b]); 
                     var approx = ditherCtx.approximateColor(color);
-                    var tr = approx[0];
-                    var tg = approx[1];
-                    var tb = approx[2];
-
-                    // d[r] = t;
-                    // d[g] = t;
-                    // d[b] = t;
 
                     // Draw a block
-                    for (var dx=0;dx<step;dx++){
-                        for (var dy=0;dy<step;dy++){
-                            var di = i + (4 * dx) + (4 * w * dy);
+                    var st = step<<2;
+                    for (var dx=0;dx<st;dx+=4){
+                        for (var dy=0;dy<st;dy+=4)
+                        {
+                            var di = i + ( dx) + ( w * dy);
 
                             // Draw pixel
-                            d[di] = tr;
-                            d[di+1] = tg;
-                            d[di+2] = tb;
-
+                            d[di++] = approx[0];
+                            d[di++] = approx[1];
+                            d[di]   = approx[2];
                         }
                     }
                 }
@@ -205,8 +212,10 @@ var DitherJS = function DitherJS(selector,opt) {
             // Ratio >=1
             var ratio = self.opt.ratio?self.opt.ratio:1/16;
 
-            for (var y=0;y<h;y += step) {
-                for (var x=0;x<w;x += step) {
+            for (var y=0;y<h;y += step)
+            {
+                for (var x=0;x<w;x += step)
+                {
                     var i = (4*x) + (4*y*w);
                     
                     var $i = function(x,y) {
@@ -217,7 +226,7 @@ var DitherJS = function DitherJS(selector,opt) {
                     var r = i;
                     var g = i+1;
                     var b = i+2;
-                    var a = i+3;
+                    //var a = i+3;
 
                     var color = new Array(d[r],d[g],d[b]); 
                     var approx = ditherCtx.approximateColor(color);
@@ -248,19 +257,40 @@ var DitherJS = function DitherJS(selector,opt) {
                     var tg = approx[1];
                     var tb = approx[2];
 
+                    /*
                     // Draw a block
-                    for (var dx=0;dx<step;dx++){
-                        for (var dy=0;dy<step;dy++){
+                    for (var dx=0;dx<step;dx++)
+                    {
+                        for (var dy=0;dy<step;dy++)
+                        {
                             var di = i + (4 * dx) + (4 * w * dy);
 
                             // Draw pixel
                             out[di] = tr;
                             out[di+1] = tg;
                             out[di+2] = tb;
-
                         }
                     }
+                    */
+
+                    // Draw a block
+                    for (var dx=0;dx<step;dx++)
+                    {
+                        for (var dy=0;dy<step;dy++)
+                        {
+                            var di = i + (4 * dx) + (4 * w * dy);
+                            //out.push(approx[0],approx[1],approx[3]);
+                            // Draw pixel
+                            out[di] = tr;
+                            out[di+1] = tg;
+                            out[di+2] = tb;
+                        }
+                    }
+
                 }
+
+
+
             }
             out_imgdata.data.set(out);
             return out_imgdata;

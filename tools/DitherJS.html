@@ -78,6 +78,7 @@ text-shadow: 1px 1px #000;
         1. nearest color / dither<br>
         2. byte color conflics viewer<br>
         3. conflict swapper / image mover left-right (7 bits)<br>
+        <div id="debug"></div>
       </div>
       <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
@@ -85,14 +86,14 @@ text-shadow: 1px 1px #000;
 
 
 
-<table border=1>
+<table>
 <tr>
     <td class="org"></td>
     <td class="palette"></td>
     <td width=500>
-        <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="5" value="3" class="slider" id="step" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="8" value="2" class="slider" id="step"  step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
-        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="20" value="6" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range"           min="0" max="15" value="7" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
         <div>
             <select id="dither_method" onchange=update_dither()>
@@ -111,6 +112,9 @@ text-shadow: 1px 1px #000;
     <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
 
 <script>
+var CONF_version="1.0.1"
+var CONF_builddate="20240316-220000" 
+
 var dither, options;
 var loresCols = [];
 var HGRpalette = [];
@@ -169,9 +173,9 @@ function update_dither(bInit)
     switch(dither_method)
     {
         case "ordered": 
-            el.setAttribute("min",1);
-            el.setAttribute("max",20);
-            el.setAttribute("step",.5);
+            el.setAttribute("min",0);
+            el.setAttribute("max",15);
+            el.setAttribute("step",1);
         break;
         case "errorDiffusion":
             el.setAttribute("min",0.01);
