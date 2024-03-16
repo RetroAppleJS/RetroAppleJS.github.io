@@ -217,7 +217,7 @@ var DitherJS = function DitherJS(selector,opt) {
             //var step = self.opt.step;
             // Ratio >=1
             //var ratio = self.opt.ratio?self.opt.ratio:1/16;
-            var ratio = 0.02 + ratio / 150
+            var ratio = 0.02 + ratio / 150;
 
             for (var y=0;y<h;y += step)
             {
