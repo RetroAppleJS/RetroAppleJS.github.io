@@ -134,9 +134,12 @@ var DitherJS = function DitherJS(selector,opt) {
             return ctx;    
         }
 
+        
         /**
         * Perform an ordered dither on the image
         * */
+
+        /*
         this.orderedDither = function(in_imgdata,w,h,step,ratio)
         {
             // Create a new empty image
@@ -203,6 +206,76 @@ var DitherJS = function DitherJS(selector,opt) {
             out_imgdata.data.set(d);
             return out_imgdata;
         };
+        */
+
+
+        this.orderedDither = function(in_imgdata,w,h,step,ratio)
+        {
+            //alert(w)
+            // Create a new empty image
+            var out_imgdata = ctx.createImageData(in_imgdata);
+            var d = new Uint8ClampedArray(in_imgdata.data);
+            // Step
+
+            var step = (step-1)*2+1;
+            var ratio = ratio + 3;
+            // Ratio >=1
+            //var ratio = self.opt.ratio===undefined?6:(self.opt.ratio+3)
+
+
+            //document.getElementById("debug").innerHTML = self.opt.ratio+" "+ratio
+            //console.log(ratio+" "+self.opt.ratio);
+            // Threshold Matrix
+            var m = new Array(
+                [  1,  9,  3, 11 ],
+                [ 13,  5, 15,  7 ],
+                [  4, 12,  2, 10 ],
+                [ 16,  8, 14,  6 ]
+            );
+
+            var l = i = m[0].length;
+            var ms = 0;
+            while (i >>= 1) ms++;
+
+            for (var y=0;y<h;y+=step)
+            {
+                for (var x=0;x<w;x+=step)
+                {
+                    var i = (x << ms) + (y*w << ms);
+
+                    // Define bytes
+                    var r = i;
+                    var g = i+1;
+                    var b = i+2;
+                    //var a = i+3;
+
+                    d[r] += m[x%4][y%4] * ratio; 
+                    d[g] += m[x%4][y%4] * ratio;
+                    d[b] += m[x%4][y%4] * ratio;
+
+                    //this.d("m["+x+"%4]["+y+"%4] * "ratio",)
+
+                    var color = new Array(d[r],d[g],d[b]); 
+                    var approx = ditherCtx.approximateColor(color);
+
+                    // Draw a block
+                    var st = step<<2;
+                    for (var dx=0;dx<st;dx+=4){
+                        for (var dy=0;dy<st;dy+=4)
+                        {
+                            var di = i + ( dx) + ( w * dy);
+
+                            // Draw pixel
+                            d[di++] = approx[0];
+                            d[di++] = approx[1];
+                            d[di]   = approx[2];
+                        }
+                    }
+                }
+            }
+            out_imgdata.data.set(d);
+            return out_imgdata;
+        };        
 
         /**
         * Perform an error diffusion dither on the image
