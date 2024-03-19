@@ -92,9 +92,14 @@ text-shadow: 1px 1px #000;
     <td class="org"></td>
     <td class="palette"></td>
     <td width=500>
-        <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="8" value="2" class="slider" id="step"  step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="8" value="2"  class="slider" id="step"  step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
         <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range"           min="0" max="15" value="7" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
+        <br><br>
+        <div style='float:left'>
+            <div style=display:inline>FastPalette&nbsp;</div><input type="checkbox" id="FP_enable" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' oninput="document.getElementById('FP_bits').disabled=(!this.checked);update_dither()">
+            <div style=display:inline id="buffer_d">123</div>&nbsp;bits&nbsp;<input type="range"  id="FP_bits" min="2" max="8" value="6"  class="slider" id="ratio" step=1 style="width:100px;margin-left:5px;" oninput="update_dither()" disabled>
+        </div>
         <br><br>
         <div>
             <select id="dither_method" onchange=update_dither()>
@@ -156,12 +161,8 @@ function Apple2Plus(context)
   HEX2RGB(hiresCols[5][0])
   ];
   
-
   //console.log(lku_prec.toString(16)+" "+lku_prec.toString(2));
   //console.log(lku_msk.toString(16)+" "+lku_msk.toString(2));
-
-
-
 
   function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
 
@@ -187,6 +188,12 @@ function update_dither(bInit)
     document.getElementById("step_dsp").innerHTML = step;
     var ratio = Number(document.getElementById("ratio").value);
     document.getElementById("ratio_dsp").innerHTML = Math.round(ratio*100)/100;
+
+    var FP_enable = document.getElementById("FP_enable").checked;
+
+    var FP_bits = document.getElementById("FP_bits").value;
+    document.getElementById("buffer_d").innerHTML = FP_bits;
+
     var dither_method = document.getElementById("dither_method").value;
 
     options = {
