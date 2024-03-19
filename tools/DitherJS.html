@@ -13,6 +13,7 @@
 <title>DitherJS demo</title>
 <script type="text/javascript" src="TOOLS_Header.js"></script>
 <script src="../res/ditherjs.js"></script>
+<script src="../res/COM_MAIN.js"></script>
 <style>
 body, html {
 font-family: 'Arial';
@@ -122,6 +123,12 @@ var CONF_builddate="20240316-220000"
 var dither, options;
 var loresCols = [];
 var HGRpalette = [];
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+const lku_bits      = 5;
+const lku_prec      = 1<<lku_bits;
+const lku_msk       = (lku_prec-1)<<(8-lku_bits);
+var HGRlookup       = new Uint8ClampedArray( lku_prec * lku_prec * lku_prec );
+var HGRpalette_idx  = {};
 
 var vidContext, apple2plus;
 function Apple2Plus(context)
@@ -148,9 +155,26 @@ function Apple2Plus(context)
   HEX2RGB(hiresCols[4][0]),
   HEX2RGB(hiresCols[5][0])
   ];
+  
 
-  function HEX2RGB(hex) {
-  var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+  //console.log(lku_prec.toString(16)+" "+lku_prec.toString(2));
+  //console.log(lku_msk.toString(16)+" "+lku_msk.toString(2));
+
+
+
+
+  function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
+
+  function RGB2HEX(dec)
+  {
+    return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] 
+  }
+
+  function HEX2RGB(hex)
+  {
+    //var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF];
+    var n=parseInt(hex.slice(1),16); return new Uint8ClampedArray( [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] );
+  }
 }
 
 function update_dither(bInit)
@@ -192,7 +216,6 @@ function update_dither(bInit)
     var elw = document.querySelectorAll(".wrapper")[0];
     var elo = document.querySelectorAll(".org")[0];
     var elp = document.querySelectorAll(".palette")[0];
-
     if(bInit)
     {
         var src = el.src;
@@ -205,12 +228,17 @@ function update_dither(bInit)
         s+= "</table>\n";
         elp.innerHTML = s;
 
-        dither = new DitherJS('.dither',options);
+        dither = new DitherJS(options);
+        var elements = document.querySelectorAll('.dither');
+        for (var i=0;i<elements.length;i++) dither._refreshDither(elements[i]);
     }
     else
     {
         elw.innerHTML = elo.innerHTML.replace("src","class='background dither' src");
-        dither = new DitherJS('.dither',options);     
+
+        dither.init(options);
+        var elements = document.querySelectorAll('.dither');
+        for (var i=0;i<elements.length;i++) dither._refreshDither(elements[i]);
     }
 }
 </script>
