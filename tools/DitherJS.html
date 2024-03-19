@@ -91,7 +91,8 @@ text-shadow: 1px 1px #000;
 <tr>
     <td class="org"></td>
     <td class="palette"></td>
-    <td width=500>
+    <td width=500 valign="top">
+        <br>
         <div style=float:left;>Step&nbsp;&nbsp;</div>&nbsp;&nbsp;<div id=step_dsp style=float:left;>123 </div><div style=float:left;><input type="range" min="1" max="8" value="2"  class="slider" id="step"  step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
         <br><br>
         <div style=float:left;>Ratio&nbsp;&nbsp;</div><div id=ratio_dsp style=float:left;>123 </div><div style=float:left;><input type="range"           min="0" max="15" value="7" class="slider" id="ratio" step=1 style="width:400px;margin-left:5px;" oninput="update_dither()"></div>
@@ -99,8 +100,9 @@ text-shadow: 1px 1px #000;
         <div style='float:left'>
             <div style=display:inline>FastPalette&nbsp;</div><input type="checkbox" id="FP_enable" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' oninput="document.getElementById('FP_bits').disabled=(!this.checked);update_dither()">
             <div style=display:inline id="buffer_d">123</div>&nbsp;bits&nbsp;<input type="range"  id="FP_bits" min="2" max="8" value="6"  class="slider" id="ratio" step=1 style="width:100px;margin-left:5px;" oninput="update_dither()" disabled>
+            <div style=display:inline id="perf_disp"></div>
         </div>
-        <br><br>
+        <br><br><br>
         <div>
             <select id="dither_method" onchange=update_dither()>
                 <option value="ordered" selected>ordered</option>
@@ -122,11 +124,11 @@ text-shadow: 1px 1px #000;
     <canvas class="appvid" id="applescreen" style="width:280px;height:192px"></canvas>
 
 <script>
-var CONF_version="1.0.1"
+var CONF_version="2.0.0"
 var CONF_builddate="20240316-220000" 
 
 var dither, options;
-var loresCols = [];
+var loresCols  = [];
 var HGRpalette = [];
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
 const lku_bits      = 5;
@@ -191,7 +193,7 @@ function update_dither(bInit)
 
     var FP_enable = document.getElementById("FP_enable").checked;
 
-    var FP_bits = document.getElementById("FP_bits").value;
+    var FP_bits = Number(document.getElementById("FP_bits").value);
     document.getElementById("buffer_d").innerHTML = FP_bits;
 
     var dither_method = document.getElementById("dither_method").value;
@@ -201,7 +203,9 @@ function update_dither(bInit)
                 "className": "dither",
                 "palette": HGRpalette,
                 "algorithm":dither_method,
-                "ratio":ratio
+                "ratio":ratio,
+                "FP_enable":FP_enable,
+                "FP_bits":FP_bits
             };
 
     var el = document.getElementById("ratio");
@@ -247,9 +251,10 @@ function update_dither(bInit)
         var elements = document.querySelectorAll('.dither');
         for (var i=0;i<elements.length;i++) dither._refreshDither(elements[i]);
     }
+    document.getElementById("perf_disp").innerHTML = dither.perf_disp;
 }
 </script>
     </div>
-    </div>
+  </div>
 </body>
 </html>
