@@ -34,11 +34,12 @@ var DitherJS = function DitherJS(opt)
             var start_time = Date.now();
             this._dither(el);
             var d = Date.now()-start_time;
-            this.perf_disp = "Microtime: "+d+"ms";
+            this.perf_disp = "Microtime: "+d+"ms Buffer:"+Math.pow(1<<this.opt.FP_bits,3)/1024+"KB";
 
         //}
     };
 
+    
     /**
     * This does all the dirty things
     * */

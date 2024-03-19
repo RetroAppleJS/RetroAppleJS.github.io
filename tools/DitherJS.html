@@ -76,9 +76,11 @@ text-shadow: 1px 1px #000;
     <div id="slider_title"></div>
     <div class="slider_overlay">
       <div id="topmenu">
+        <!--
         1. nearest color / dither<br>
         2. byte color conflics viewer<br>
         3. conflict swapper / image mover left-right (7 bits)<br>
+        -->
         <div id="debug"></div>
       </div>
       <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
@@ -118,13 +120,10 @@ text-shadow: 1px 1px #000;
 
 </div>
 
-<!--
-    <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
--->
-    <canvas class="appvid" id="applescreen" style="width:280px;height:192px"></canvas>
+<canvas class="appvid" id="applescreen" style="width:280px;height:192px"></canvas>
 
 <script>
-var CONF_version="2.0.0"
+var CONF_version="2.0.1"
 var CONF_builddate="20240316-220000" 
 
 var dither, options;
