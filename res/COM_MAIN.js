@@ -3,7 +3,17 @@ function COM()
   this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
   this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
   this.HEX2RGB       = function(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
-  this.RGB2HEX       = function(dec) { return [this.getHexByte(dec[0]),this.getHexByte(dec[1]),this.getHexByte(dec[2])] }
+  this.RGB2HEX       = function(color) { return [this.getHexByte(color[0]),this.getHexByte(color[1]),this.getHexByte(color[2])] }
+  this.RGB2IDX       = function(color,sig_bits)
+  {
+      const msk = (1<<sig_bits)-1, scl = (8-sig_bits);
+      return (((color[2]>>scl)&msk)<<sig_bits<<sig_bits) | (((color[1]>>scl)&msk)<<sig_bits) | ((color[0]>>scl)&msk)
+  }  
+  this.IDX2RGB       = function(idx,sig_bits)
+  {
+      const msk = (1<<sig_bits)-1, scl = (8-sig_bits);
+      return [(idx & msk)<<scl,((idx>>sig_bits) & msk)<<scl,((idx>>sig_bits>>sig_bits) & msk)<<scl];
+  }
 
   this.getHexWord = function(v)
   {
@@ -149,16 +159,19 @@ function COM()
     el: function(id) { return document.getElementById(id) },
     addRule: function(id,function_obj) { this.rules[id] = function_obj },
     runRule: function(id) { this.id = id; this.rules[id](this) },
+    get_state: function(id){ return this.states[id]===undefined?this.el(id).classList.item(1):this.states[id]},
     update_state: function(id,el){ this.states[id] = el.hidden },
     on: function(id) { this.states[id] = this.el(id).hidden = false },
     off: function(id) { this.states[id] = this.el(id).hidden = true },
-    toggle: function(id) { var e=this.el(id); if(e===undefined) return null; this.states[id] = e.hidden = !e.hidden ;return e },
+    toggle: function(id) { var el=this.el(id); if(el===undefined) return null; this.states[id] = el.hidden = !el.hidden ;return el },
+    //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
     set_class: function(el,class1,class2,bool)
     {
-      this.states[el.id] = bool;
       el.hidden = bool;
-      if(bool) {el.classList.remove(class2);el.classList.add(class1);this.states[el.id]=class1}
-      else {el.classList.remove(class1);el.classList.add(class2);this.states[el.id]=class2}
+      if(bool) {el.classList.replace(class2,class1);this.states[el.id]=class1}
+      else {el.classList.replace(class1,class2);this.states[el.id]=class2}
+      //if(bool) {el.classList.remove(class2);el.classList.add(class1);this.states[el.id]=class1}
+      //else {el.classList.remove(class1);el.classList.add(class2);this.states[el.id]=class2}
     },
     toggle_class: function(el,class1,class2)
     {
