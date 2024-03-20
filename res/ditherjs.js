@@ -39,7 +39,7 @@ var DitherJS = function DitherJS(opt)
         //}
     };
 
-    
+
     /**
     * This does all the dirty things
     * */
@@ -117,32 +117,30 @@ var DitherJS = function DitherJS(opt)
         * */
         this.orderedDither = function(in_imgdata,w,h,step,ratio)
         {
-            var out_imgdata = ctx.createImageData(in_imgdata);
             var d = new Uint8ClampedArray(in_imgdata.data);
             var step = (step-1)*2+1;
             var ratio = ratio + 3;
 
-            var m = new Array(
+            const m = Array(
                 [  1,  9,  3, 11 ],
                 [ 13,  5, 15,  7 ],
                 [  4, 12,  2, 10 ],
                 [ 16,  8, 14,  6 ]
             );
+            var ml = m[0].length;
 
             var ms = 0;
-            var i = m[0].length;
-            while (i >>= 1) ms++;
-
+            while (ml>>=1) ms++;   // number significant bits in column count
+            
             for (var y=0;y<h;y+=step)
             {
                 for (var x=0;x<w;x+=step)
                 {
-                    var i = (x << ms) + (y*w << ms);
+                    var i = (x + y*w) << ms;
                     var inc = m[x&3][y&3] * ratio;
                     const increment = (el) => el + inc;
                     var rgb = d.slice(i,i+3).map(increment);
 
-                    
                     if(this.opt.FP_enable)
                         var approx = this.approximateColor_fast(rgb,this.opt.palette);
                     else
@@ -150,105 +148,114 @@ var DitherJS = function DitherJS(opt)
 
                     // Draw a block
                     var st = step<<2;
-                    //console.log(i)
-                    for (var dx=0;dx<st;dx+=4){
+                    for (var dx=0;dx<st;dx+=4)
+                    {
                         for (var dy=0;dy<st;dy+=4)
                         {
-                            var di = i + dx + w * dy;
-
-                            // Draw pixel
-                            d[di++] = approx[0];
-                            d[di++] = approx[1];
-                            d[di]   = approx[2];
+                            var di = i + dy * w + dx;
+                            d[di]   = approx[0];
+                            d[di+1] = approx[1];
+                            d[di+2] = approx[2];
                         }
                     }
                 }
             }
-            out_imgdata.data.set(d);
-            return out_imgdata;
-        };  
+            return this.image_out(d,in_imgdata)
+        }
 
         /**
         * Perform an error diffusion dither on the image
         * */
+
+        this.minmax_v = [0,0]
+        this.minmax = function(arr)
+        {
+            for(var i=arr.length-1;i>=0;i--)
+            {
+                if(arr[i]>this.minmax_v[1]) this.minmax_v[1]=arr[i];
+                if(arr[i]<this.minmax_v[0]) this.minmax_v[0]=arr[i];
+            }
+        }
+
         this.errorDiffusionDither = function(in_imgdata,w,h,step,ratio)
         {
-            // Create a new empty image
-            var out_imgdata = ctx.createImageData(in_imgdata);
             var d = new Uint8ClampedArray(in_imgdata.data);
-            var out = new Uint8ClampedArray(in_imgdata.data);
-            // Step
-            //var step = this.opt.step;
-            // Ratio >=1
-            //var ratio = this.opt.ratio?this.opt.ratio:1/16;
+            const m = new Uint8ClampedArray([7,3,5,1]);
+            var ml = m.length;
+            var q = new Array(3*ml);
+            
+            ms = 0;
+            while (ml>>=1) ms++;   // multipication substitute by shift left 
             var ratio = 0.02 + ratio / 150;
+
+            let $i = function(x,y)
+            {
+                var out = (x + y*w) << ms;
+                return out;
+            }
 
             for (var y=0;y<h;y += step)
             {
                 for (var x=0;x<w;x += step)
                 {
-                    var i = (4*x) + (4*y*w);
-                    
-                    var $i = function(x,y) {
-                        return (4*x) + (4*y*w);
-                    };
-
-                    // Define bytes
-                    var r = i;
-                    var g = i+1;
-                    var b = i+2;
-                    //var a = i+3;
-
-                    var color = new Array(d[r],d[g],d[b]);
+                    var i = $i(x,y);
+                    var rgb = d.slice(i,i+3);
                     if(this.opt.FP_enable)
-                        var approx = this.approximateColor_fast(color,this.opt.palette);
+                        var approx = this.approximateColor_fast(rgb,this.opt.palette);
                     else
-                        var approx = this.approximateColor(color,this.opt.palette);
+                        var approx = this.approximateColor(rgb,this.opt.palette);
 
-                    var q = [];
-                    q[r] = d[r] - approx[0];
-                    q[g] = d[g] - approx[1];
-                    q[b] = d[b] - approx[2];
+                    // calculate the error
+                    rgb.map((val,index) => 
+                    {
+                        var i = index<<2;
+                        q[i]   = m[0] * (val - approx[index])*ratio
+                        q[i+1] = m[1] * (val - approx[index])*ratio
+                        q[i+2] = m[2] * (val - approx[index])*ratio
+                        q[i+3] = m[3] * (val - approx[index])*ratio
+                    });
+                    //this.minmax(q);
                                      
                     // Diffuse the error
-                    d[$i(x+step,y)] =  d[$i(x+step,y)] + 7 * ratio * q[r];
-                    d[$i(x-step,y+1)] =  d[$i(x-1,y+step)] + 3 * ratio * q[r];
-                    d[$i(x,y+step)] =  d[$i(x,y+step)] + 5 * ratio * q[r];
-                    d[$i(x+step,y+step)] =  d[$i(x+1,y+step)] + 1 * ratio * q[r];
+                    d[$i(x+step,y)] =  d[$i(x+step,y)] + q[0];
+                    d[$i(x-step,y+1)] =  d[$i(x-1,y+step)] + q[1];
+                    d[$i(x,y+step)] =  d[$i(x,y+step)] + q[2];
+                    d[$i(x+step,y+step)] =  d[$i(x+1,y+step)] + q[3];
 
-                    d[$i(x+step,y)+1] =  d[$i(x+step,y)+1] + 7 * ratio * q[g];
-                    d[$i(x-step,y+step)+1] =  d[$i(x-step,y+step)+1] + 3 * ratio * q[g];
-                    d[$i(x,y+step)+1] =  d[$i(x,y+step)+1] + 5 * ratio * q[g];
-                    d[$i(x+step,y+step)+1] =  d[$i(x+step,y+step)+1] + 1 * ratio * q[g];
+                    d[$i(x+step,y)+1] =  d[$i(x+step,y)+1] + q[4];
+                    d[$i(x-step,y+step)+1] =  d[$i(x-step,y+step)+1] + q[5];
+                    d[$i(x,y+step)+1] =  d[$i(x,y+step)+1] + q[6];
+                    d[$i(x+step,y+step)+1] =  d[$i(x+step,y+step)+1] + q[7];
 
-                    d[$i(x+step,y)+2] =  d[$i(x+step,y)+2] + 7 * ratio * q[b];
-                    d[$i(x-step,y+step)+2] =  d[$i(x-step,y+step)+2] + 3 * ratio * q[b];
-                    d[$i(x,y+step)+2] =  d[$i(x,y+step)+2] + 5 * ratio * q[b];
-                    d[$i(x+step,y+step)+2] =  d[$i(x+step,y+step)+2] + 1 * ratio * q[b];
+                    d[$i(x+step,y)+2] =  d[$i(x+step,y)+2] + q[8];
+                    d[$i(x-step,y+step)+2] =  d[$i(x-step,y+step)+2] + q[9];
+                    d[$i(x,y+step)+2] =  d[$i(x,y+step)+2] + q[10];
+                    d[$i(x+step,y+step)+2] =  d[$i(x+step,y+step)+2] + q[11];
 
-                    // Color
-                    var tr = approx[0];
-                    var tg = approx[1];
-                    var tb = approx[2];
-
-                    // Draw a block
-                    for (var dx=0;dx<step;dx++)
-                    {
-                        for (var dy=0;dy<step;dy++)
-                        {
-                            var di = i + (4 * dx) + (4 * w * dy);
-                            //out.push(approx[0],approx[1],approx[3]);
-                            // Draw pixel
-                            out[di] = tr;
-                            out[di+1] = tg;
-                            out[di+2] = tb;
-                        }
-                    }
+                   // Draw a block
+                   var st = step<<2;
+                   for (var dx=0;dx<st;dx+=4)
+                   {
+                       for (var dy=0;dy<st;dy+=4)
+                       {
+                           var di = i + dy * w + dx;
+                           d[di]   = approx[0];
+                           d[di+1] = approx[1];
+                           d[di+2] = approx[2];
+                       }
+                   }
                 }
             }
-            out_imgdata.data.set(out);
-            return out_imgdata;
+            //console.log(this.minmax_v[0]+" "+this.minmax_v[1])
+            return this.image_out(d,in_imgdata)
         };
+
+        this.image_out = function(img_d,img_i)  // overridable
+        {
+            var out_imgdata = ctx.createImageData(img_i);
+            out_imgdata.data.set(img_d);
+            return out_imgdata;
+        }
 
         this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
         this.getHexByte    = function(v) { return this.hextab[v>>4]+this.hextab[v&0xf] }
