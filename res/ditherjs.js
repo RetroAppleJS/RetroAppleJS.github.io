@@ -74,15 +74,6 @@ var DitherJS = function DitherJS(opt)
             return out;
         }
 
-
-        /**
-        * Threshold function
-        * */
-        var threshold = function(value) {
-            var result = value < 127 ? 0 : 255;
-            return result;            
-        };
-
         /**
         * Given an image element substitute it with a canvas
         * and return the context
@@ -100,10 +91,6 @@ var DitherJS = function DitherJS(opt)
             // Inherit classes
             canvas.className = el.className;
             canvas.className = canvas.className.replace(this.opt.className,' ');
-            // Inherit Styles
-
-            // Turn it off
-            //canvas.style.visibility = "hidden";
 
             // Get the context
             var ctx = canvas.getContext('2d');
@@ -147,6 +134,10 @@ var DitherJS = function DitherJS(opt)
                         var approx = this.approximateColor(rgb,this.opt.palette);
 
                     // Draw a block
+                    
+
+                    //this.image_block(d,approx,i);
+
                     var st = step<<2;
                     for (var dx=0;dx<st;dx+=4)
                     {
@@ -158,6 +149,7 @@ var DitherJS = function DitherJS(opt)
                             d[di+2] = approx[2];
                         }
                     }
+                    
                 }
             }
             return this.image_out(d,in_imgdata)
@@ -166,17 +158,6 @@ var DitherJS = function DitherJS(opt)
         /**
         * Perform an error diffusion dither on the image
         * */
-
-        this.minmax_v = [0,0]
-        this.minmax = function(arr)
-        {
-            for(var i=arr.length-1;i>=0;i--)
-            {
-                if(arr[i]>this.minmax_v[1]) this.minmax_v[1]=arr[i];
-                if(arr[i]<this.minmax_v[0]) this.minmax_v[0]=arr[i];
-            }
-        }
-
         this.errorDiffusionDither = function(in_imgdata,w,h,step,ratio)
         {
             var d = new Uint8ClampedArray(in_imgdata.data);
@@ -232,23 +213,23 @@ var DitherJS = function DitherJS(opt)
                     d[$i(x,y+step)+2] =  d[$i(x,y+step)+2] + q[10];
                     d[$i(x+step,y+step)+2] =  d[$i(x+step,y+step)+2] + q[11];
 
-                   // Draw a block
-                   var st = step<<2;
-                   for (var dx=0;dx<st;dx+=4)
-                   {
-                       for (var dy=0;dy<st;dy+=4)
-                       {
-                           var di = i + dy * w + dx;
-                           d[di]   = approx[0];
-                           d[di+1] = approx[1];
-                           d[di+2] = approx[2];
-                       }
-                   }
+                    this.image_block(d,approx,i);
                 }
             }
             //console.log(this.minmax_v[0]+" "+this.minmax_v[1])
             return this.image_out(d,in_imgdata)
         };
+
+        this.image_block = function(d,approx,i)
+        {
+            for (var dx=(step*step)-1;dx>=0;dx--)
+            {
+                var di = i + ((dx + Math.floor(dx/step) *(w-step)) << 2);
+                d[di]   = approx[0];
+                d[di+1] = approx[1];
+                d[di+2] = approx[2];
+            }
+        }
 
         this.image_out = function(img_d,img_i)  // overridable
         {
@@ -270,6 +251,16 @@ var DitherJS = function DitherJS(opt)
         {
             const msk = (1<<sig_bits)-1, scl = (8-sig_bits);
             return [(idx & msk)<<scl,((idx>>sig_bits) & msk)<<scl,((idx>>sig_bits>>sig_bits) & msk)<<scl];
+        }
+
+        this.minmax_v = [0,0]
+        this.minmax = function(arr)
+        {
+            for(var i=arr.length-1;i>=0;i--)
+            {
+                if(arr[i]>this.minmax_v[1]) this.minmax_v[1]=arr[i];
+                if(arr[i]<this.minmax_v[0]) this.minmax_v[0]=arr[i];
+            }
         }
 
         //************************
@@ -323,6 +314,3 @@ var DitherJS = function DitherJS(opt)
         ctx.putImageData(out_image,0,0);
     }
 };
-
-
-
