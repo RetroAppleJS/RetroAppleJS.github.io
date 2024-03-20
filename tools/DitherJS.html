@@ -11,9 +11,14 @@
 <html>
 <head>
 <title>DitherJS demo</title>
-<script type="text/javascript" src="TOOLS_Header.js"></script>
+<script src="TOOLS_Header.js"></script>
 <script src="../res/ditherjs.js"></script>
 <script src="../res/COM_MAIN.js"></script>
+
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
 <style>
 body, html {
 font-family: 'Arial';
@@ -67,10 +72,6 @@ text-shadow: 1px 1px #000;
 }
 </style>
 </head>
-
-<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
 <body onload="document.getElementById('slider_title').outerHTML=_TITLE();update_dither(true)">
     <div id="slider_title"></div>
