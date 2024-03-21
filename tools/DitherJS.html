@@ -27,75 +27,28 @@
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
 <style>
-body, html {
-font-family: 'Arial';
-width: 100%;
-height: 100%;
-margin: 0;
-padding: 0;
-font-size: 12px;
-}
-div.wrapper {
-/*position: absolute;*/
-top: 0px;
-left: 0px;
-right: 0px;
-bottom: 0px;
-overflow: hidden;
-padding: 5em;
-}
+
 div.wrapper > .background {
-min-width: 50%;
-min-height: 50%;
+min-width: 25%;
+min-height: 25%;
 background: #fff;
 }
-div.headline {
-position: relative;
-width: 40em;
-top: 0;
-left: 0;
-/*z-index: 9;*/
-color: #eee;
-text-shadow: 1px 1px #000, 2px 2px #000, 3px 3px #000, 4px 4px #000;
-}
-.dither {
-visibility: hidden;
-}
-div.headline > .download {
-float: left;
-width: 25%;
-}
-div.headline .text {
-float: left;
-width: 75%;
-font-size: 32px;
-}
-a {
-text-decoration: none;
-color: inherit;
-}
-a:hover {
-text-shadow: 1px 1px #000;
-}
+
 </style>
 </head>
 
 <body onload="document.getElementById('slider_title').outerHTML=_TITLE();update_dither(true)">
-    <div id="slider_title"></div>
-    <div class="slider_overlay">
-      <div id="topmenu">
-        <!--
-        1. nearest color / dither<br>
-        2. byte color conflics viewer<br>
-        3. conflict swapper / image mover left-right (7 bits)<br>
-        -->
-        <div id="debug"></div>
-      </div>
-      <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
-
-
-
-
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+    <div id="topmenu">
+      <!--
+      1. nearest color / dither<br>
+      2. byte color conflics viewer<br>
+      3. conflict swapper / image mover left-right (7 bits)<br>
+      -->
+      <div id="debug"></div>
+    </div>
+    <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
 <table>
 <tr>
@@ -123,9 +76,7 @@ text-shadow: 1px 1px #000;
 </tr>
 </table>
 <div class="wrapper">
-
 <img class="background dither" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKUAAADABAMAAACXPL4AAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAYUExURfu3KfSEIGe4S+A8QP////3+/ZY/lwSc3JpBtD8AAAABYktHRASPaNlRAAAACXBIWXMAAAsTAAALEwEAmpwYAAACzElEQVR4nO3bUW6jMBAG4FQR741WucBIfm/l9gj7Th0Zn4C9Adrr7y6EMMbGEPzPylXix2B//QcKtDA52N2DVPzzerdJhDYNwU0iuEl4k/Am4U2DNycSZxLeNAIm4U0jYHKSLMQ0AibhTSNg+qRCmEbAJHnTAkwjbyqESXhza+mFmQphkrxpAebm0ssyLcLcHHO3afGmEjAtxDSbY+40Ld5UAqbFmxZvKry5St5vrpN3mxvIJTMMZYLDs3jIomb0V9FfnToFIuaWi2/y3hSa81tupLhwikqa4fwgKq1MmZsxcobS2pSZGSf5ksUZiyYtD5UUOeqblDNU1DQEQbmZSd6q52YuOQZlZnbMMSgz88lr0MkExLwGnUwEOQS9mZCYQ9CbiSH7oKMJitkHHU0q2GS1I0sfTSQJNvl5VB8wg5/vILISMPn1s4bGHMxDuabFmxU3a2xMoFl55qFY0+LNyjPrYk0rbqJLL9q039Ks0bvzwc2vE2DYpylpvgDI16f5kObpaYqakPNd4pp8fmDzVcA8ze7FxZqVgHn2TY0Yb/7fihBTS5g/BcxPzzxCzHcBU3vmBV08zvzg5pcGF//XbDS4+H//v2twUKT5ycwfIPONmUdUUPYM8IIy3wXM6x7tn1nBTD09r8OZHwJmX31vHrFob140FMWb+tybDdTUw3NvCfMXdAxmgyTbb2KO72UKN9vRbMo2p3d8RZvtZDYlm/x9ccFmy80GFlPWtLDShc0GVTrv5UDFlDYbUOlYsw17eCRM9ztzxHqiMsnuf5kOUvqsxwwSE2ku9MI5AdMiSp+bDhATZ3bLfZUSpssvPewpzY8Zmi47ZqSfNjtmxHS5MWO9xLkxY6ZbDuO2xIz2UaeTrMaMmi69yK3EjPd7u/Qau7I53peeXjPb3m3sdU+T3vZuc09+Yom/e7o7+vxdkrz91O7O7w64nd84r/8Aa35WkEZqwpoAAAAASUVORK5CYII=" />
-
 </div>
 
 <canvas class="appvid" id="applescreen" style="width:280px;height:192px"></canvas>
@@ -162,29 +113,16 @@ function Apple2Plus(context)
   hiresCols = this.video.gethiresCols();
 
   HGRpalette = [
-  HEX2RGB(hiresCols[0][0]),
-  HEX2RGB(hiresCols[1][0]),
-  HEX2RGB(hiresCols[2][0]),
-  HEX2RGB(hiresCols[3][0]),
-  HEX2RGB(hiresCols[4][0]),
-  HEX2RGB(hiresCols[5][0])
+  oCOM.HEX2RGB(hiresCols[0][0]),
+  oCOM.HEX2RGB(hiresCols[1][0]),
+  oCOM.HEX2RGB(hiresCols[2][0]),
+  oCOM.HEX2RGB(hiresCols[3][0]),
+  oCOM.HEX2RGB(hiresCols[4][0]),
+  oCOM.HEX2RGB(hiresCols[5][0])
   ];
   
   //console.log(lku_prec.toString(16)+" "+lku_prec.toString(2));
   //console.log(lku_msk.toString(16)+" "+lku_msk.toString(2));
-
-  function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
-
-  function RGB2HEX(dec)
-  {
-    return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] 
-  }
-
-  function HEX2RGB(hex)
-  {
-    //var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF];
-    var n=parseInt(hex.slice(1),16); return new Uint8ClampedArray( [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] );
-  }
 }
 
 function update_dither(bInit)
