@@ -1,0 +1,84 @@
+
+<html style="background-color:#B0B0B0"><head>
+  <title>GpuJS</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+  <style>
+  html {height:100%;font-family:"Arial"}
+  body {background-color:#808080;height:100%;margin:0px;padding:0px}
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+    </style>
+</head>
+
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+<script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+
+<script>
+var CONF_version="0.0.1";
+var CONF_builddate="20240323-190000"; 
+
+function init_gui(_o)
+{
+  document.getElementById('slider_title').outerHTML = _TITLE();
+
+
+  const canvas = document.getElementById('c');
+  const gpu = new GPU({
+    canvas: canvas,
+    mode: 'gpu'
+  });
+  const dim = 512;
+  const kernel = gpu.createKernel(
+    function(x) {
+      this.color(
+        (x * (this.thread.y + this.thread.x)) / 1024,
+        (x * (this.thread.y * this.thread.x)) / (1024 * 1024),
+        (x * (this.thread.y * 2 * this.thread.x)) / (1024 * 2),
+        1
+      );
+    },
+    {
+      useLegacyEncoder: true,
+      output: [dim, dim],
+      graphical: true
+    }
+  );
+
+  let param = 0;
+  const doDraw = () => {
+    kernel(param);
+    param += 0.001;
+    window.requestAnimationFrame(doDraw);
+  };
+
+  window.requestAnimationFrame(doDraw);
+}
+
+
+</script>
+
+
+<body class="slider_main" onload="init_gui();">
+
+  <div id="slider_title"></div>
+    <div class="slider_overlay">
+      <div id="topmenu">
+        <ul id="minitabs">
+
+        </ul>
+      </div>
+      <div id=main>
+
+        <canvas id="c"></canvas>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+
+</body>
+
+</html>
