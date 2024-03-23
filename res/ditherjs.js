@@ -134,22 +134,7 @@ var DitherJS = function DitherJS(opt)
                         var approx = this.approximateColor(rgb,this.opt.palette);
 
                     // Draw a block
-                    
-
-                    //this.image_block(d,approx,i);
-
-                    var st = step<<2;
-                    for (var dx=0;dx<st;dx+=4)
-                    {
-                        for (var dy=0;dy<st;dy+=4)
-                        {
-                            var di = i + dy * w + dx;
-                            d[di]   = approx[0];
-                            d[di+1] = approx[1];
-                            d[di+2] = approx[2];
-                        }
-                    }
-                    
+                    this.image_block(d,approx,i,step);
                 }
             }
             return this.image_out(d,in_imgdata)
@@ -213,14 +198,14 @@ var DitherJS = function DitherJS(opt)
                     d[$i(x,y+step)+2] =  d[$i(x,y+step)+2] + q[10];
                     d[$i(x+step,y+step)+2] =  d[$i(x+step,y+step)+2] + q[11];
 
-                    this.image_block(d,approx,i);
+                    this.image_block(d,approx,i,step);
                 }
             }
             //console.log(this.minmax_v[0]+" "+this.minmax_v[1])
             return this.image_out(d,in_imgdata)
         };
 
-        this.image_block = function(d,approx,i)
+        this.image_block = function(d,approx,i,step)
         {
             for (var dx=(step*step)-1;dx>=0;dx--)
             {
