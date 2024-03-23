@@ -27,37 +27,27 @@ var DitherJS = function DitherJS(opt)
      * */
     this._refreshDither = function(el)
     {
-        // Reload src
-        el.src = el.src //+ '?' + Math.random();
-        //el.onload = function() { 
-
-            var start_time = Date.now();
-            this._dither(el);
-            var d = Date.now()-start_time;
-            this.perf_disp = "Microtime: "+d+"ms Buffer:"+Math.pow(1<<this.opt.FP_bits,3)/1024+"KB";
-
-        //}
+        el.src = el.src 
+        var start_time = Date.now();
+        this._dither(el);
+        var d = Date.now()-start_time;
+        this.perf_disp = "Microtime: "+d+"ms Buffer:"+Math.pow(1<<this.opt.FP_bits,3)/1024+"KB";
     };
-
 
     /**
     * This does all the dirty things
     * */
     this._dither = function(el)
     {
-        /**
-        * Return a distance of two colors ina three dimensional space
-        * @param array
-        * @param array
-        * @return number
-        * */
         this.colorDistance = function(a,b)
         {
-            return Math.sqrt( 
-                  (a[0] - b[0]) ** 2 
-                + (a[1] - b[1]) ** 2 
-                + (a[2] - b[2]) ** 2
-            );  
+            var sq = Math.round(Math.sqrt( 
+                (a[0] - b[0]) ** 2 
+              + (a[1] - b[1]) ** 2 
+              + (a[2] - b[2]) ** 2
+          ));
+            //console.log(a+" "+b+" "+sq)
+            return sq
         };
 
         this.approximateColor = function(color,palette,min)     // RECUSIVE TREE SEARCH
@@ -70,16 +60,9 @@ var DitherJS = function DitherJS(opt)
         this.approximateColor_fast = function(color)            // FAST LOOKUP
         {
             var idx = this.RGB2IDX(color,this.opt.FP_bits);
-            var out = this.palette[ this.f_palette[idx] ]; 
-            return out;
+            return this.palette[ this.f_palette[idx] ]; 
         }
 
-        /**
-        * Given an image element substitute it with a canvas
-        * and return the context
-        * @param node - the image element
-        * @return context - drawing context
-        * */
         this.getContext = function(el)
         {
             var canvas = document.createElement('canvas');
@@ -279,7 +262,7 @@ var DitherJS = function DitherJS(opt)
         var w = el.clientWidth;
         var ctx = this.getContext(el);
         
-        // Put the picture in
+        // Put the picture in ctx
         ctx.drawImage(el,0,0,w,h);
         
         // Pick image data
