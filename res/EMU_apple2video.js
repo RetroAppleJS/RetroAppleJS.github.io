@@ -209,23 +209,6 @@ function Apple2Video(ctx) {
     // right != 0, pixel to the right is set
     // b7 != 0, the relevant byte in hires memory has bit 7 set
     //
-    function hgr_Draw(col, y, d8_l, d8, d8_r) {
-        // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
-        // { d8_r[0:1], d8[0:6], d8_l[5:6] }
-        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
-
-        // Draw pixels including one pixel to the left and to the right of hires byte.
-        for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
-            if (x >= 0 && x < 280 && y < (mix_mode?160:192))
-            {
-                //                              x  y  left pix  this pix  right pix bit7
-                ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
-                ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
-            }
-            //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
-            b >>= 1;
-        }
-    }
 
     function text_PixelColor(me)
     {
@@ -317,7 +300,7 @@ function Apple2Video(ctx) {
             if (col < 39)
                 d8_r = this.vidram[addr + 1];
 
-            hgr_Draw(col, y, d8_l, d8, d8_r);
+            this.hgr_Draw(col, y, d8_l, d8, d8_r);
         }
         else if (addr >= (page2_mode ? LORES2_ADDR : LORES1_ADDR) &&
                 addr < (page2_mode ? LORES2_ADDR : LORES1_ADDR) + LPAGE_SIZE) {
@@ -391,7 +374,7 @@ function Apple2Video(ctx) {
                             if (col < 39)
                                 d8_r = this.vidram[addr + 1];
 
-                            hgr_Draw(col, row * 8 + y, d8_l, d8, d8_r);
+                            this.hgr_Draw(col, row * 8 + y, d8_l, d8, d8_r);
                         }
                     } else {
                         // LORES graphics
@@ -408,6 +391,25 @@ function Apple2Video(ctx) {
 
     this.rept = function() {
     // cursor repeat pace (TODO)
+    }
+
+    this.hgr_Draw = function(col, y, d8_l, d8, d8_r)
+    {
+        // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
+        // { d8_r[0:1], d8[0:6], d8_l[5:6] }
+        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
+
+        // Draw pixels including one pixel to the left and to the right of hires byte.
+        for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
+            if (x >= 0 && x < 280 && y < (mix_mode?160:192))
+            {
+                //                              x  y  left pix  this pix  right pix bit7
+                ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
+            }
+            //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+            b >>= 1;
+        }
     }
 
 }
