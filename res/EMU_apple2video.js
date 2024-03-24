@@ -46,12 +46,8 @@ function Apple2Video(ctx) {
 
     var flash_on = true; // boolean toggled 6 hz or so.
     var flash_count = 0;
-    if(ctx)
-    {
-        var context = ctx;
-        var charData = ctx.createImageData(14, 16);
-    }  
     var charFlow = {"prev":{}};
+    if(ctx) this.ctx = ctx;
 
     this.vidram = null; // apple2hw.js sets this to give me refernce to ram
 
@@ -63,6 +59,12 @@ function Apple2Video(ctx) {
         chrome_mode = 0;
         flash_on = true;
         flash_count = 0;
+        this.register_mode();
+    }
+
+    this.register_mode = function()
+    {
+        this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
     }
 
     this.cycle = function() {
@@ -124,7 +126,6 @@ function Apple2Video(ctx) {
         return loresCols[idx][column] = val;
     }
 
-    this.hgr_PixelColor = hgr_PixelColor;
 
     // Lores color to RGB table. (* Hires)
     var loresCols = [
@@ -227,7 +228,7 @@ function Apple2Video(ctx) {
 
         if(_CFG_CHROMA[chrome_mode].COL_num)
         {
-            if (me != 0) return _CFG_CHROMA[chrome_mode].COL_num;
+            if (b & 0x02 != 0) return _CFG_CHROMA[chrome_mode].COL_num;
             else return loresCols[0][0];
         }
 
@@ -300,7 +301,7 @@ function Apple2Video(ctx) {
             if (col < 39)
                 d8_r = this.vidram[addr + 1];
 
-            this.hgr_Draw(col, y, d8_l, d8, d8_r);
+            this.hgr_Draw(col, y, d8_l, d8, d8_r, this.modes);
         }
         else if (addr >= (page2_mode ? LORES2_ADDR : LORES1_ADDR) &&
                 addr < (page2_mode ? LORES2_ADDR : LORES1_ADDR) + LPAGE_SIZE) {
@@ -352,6 +353,7 @@ function Apple2Video(ctx) {
 
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function() {
+        this.register_mode();
         for (var row = 0; row < 24; row++)
             for (var col = 0; col < 40; col++) {
 
@@ -374,7 +376,7 @@ function Apple2Video(ctx) {
                             if (col < 39)
                                 d8_r = this.vidram[addr + 1];
 
-                            this.hgr_Draw(col, row * 8 + y, d8_l, d8, d8_r);
+                            this.hgr_Draw(col, row * 8 + y, d8_l, d8, d8_r, this.modes);
                         }
                     } else {
                         // LORES graphics
@@ -393,18 +395,20 @@ function Apple2Video(ctx) {
     // cursor repeat pace (TODO)
     }
 
-    this.hgr_Draw = function(col, y, d8_l, d8, d8_r)
+    this.hgr_Draw = function(col, y, d8_l, d8, d8_r, modes)
     {
         // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
         // { d8_r[0:1], d8[0:6], d8_l[5:6] }
         var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
+        var chr = _CFG_CHROMA[modes.chrome].COL_num;
 
         // Draw pixels including one pixel to the left and to the right of hires byte.
         for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
-            if (x >= 0 && x < 280 && y < (mix_mode?160:192))
+            if (x >= 0 && x < 280 && y < (modes.mix?160:192))
             {
-                //                              x  y  left pix  this pix  right pix bit7
-                ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                if(chr) ctx.fillStyle = b & 0x02 != 0 ? chr : loresCols[0][0];
+                else ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                //                                   x  y  left pix  this pix  right pix bit7
                 ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
             }
             //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
