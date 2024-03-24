@@ -20,4 +20,4 @@ Credits
     * [RegExp tool](https://regex101.com)
   - AppleII IDE v0
     * [Freddy Vandriessche](https://github.com/flyingzebra)<br>
-      Author of the AppleII IDE foundations, and introducing sneaky bugs, leaving food for thought to the real connaisseurs ;o)
+      Author of RetroAppleJS
