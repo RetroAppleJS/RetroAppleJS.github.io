@@ -42,12 +42,20 @@ o Cool camera lens with CCS https://codepen.io/jepooley/pen/bGQGyyg
 
 <script type="text/javascript" src="../res/COM_CONFIG.js"></script>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
+
+<!--
 <script type="text/javascript" src="../res/EMU_apple2main.js"></script>
+-->
 <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
+
 <script type="text/javascript" src="../res/HGRpalette.js"></script>
+<!--
 <script type="text/javascript" src="../res/HGRpattern.js"></script>
+-->
+<script type="text/javascript" src="../res/ditherjs.js"></script>
 
 <script>
 var CONF_version="";
@@ -103,7 +111,7 @@ var yref = new Array();
 
 var vidContext, apple2plus;
 var oPALETTE = new PALETTE();
-var oPATTERN = new PATTERN();
+//var oPATTERN = new PATTERN();
 
 function init_gui(_o)
 {
@@ -314,7 +322,7 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
         <li><input type=button id=cam_button value="Enable camera" onclick="enable_camera()"></li>
         <li><img src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><input type=button value="Take Snapshot" onclick="take_snapshot()"></li>
-        <li><div class=no_margins id=status>TEST</div></li>
+        <li><div class=no_margins id=status></div></li>
 
       </ul>
     </div>
@@ -494,7 +502,9 @@ function process_snapshot()
   </div>
 
   <script>
-     document.getElementById("debug").innerHTML = oPATTERN.trace_diffusion_data();
+
+     //document.getElementById("debug").innerHTML = oPATTERN.trace_diffusion_data();
+    
   </script>
   <div id=debug></div>
 </body>
