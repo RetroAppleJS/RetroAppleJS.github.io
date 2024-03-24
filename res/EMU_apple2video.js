@@ -49,7 +49,7 @@ function Apple2Video(ctx) {
     var charFlow = {"prev":{}};
     if(ctx) this.ctx = ctx;
 
-    this.vidram = null; // apple2hw.js sets this to give me refernce to ram
+    this.vidram = null; // apple2hw.js sets this to give me reference to ram
 
     this.reset = function() {
         gfx_mode = false;
@@ -226,12 +226,6 @@ function Apple2Video(ctx) {
     function hgr_PixelColor(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
 
-        if(_CFG_CHROMA[chrome_mode].COL_num)
-        {
-            if (b & 0x02 != 0) return _CFG_CHROMA[chrome_mode].COL_num;
-            else return loresCols[0][0];
-        }
-
         // If pixel is set and either adjacent pixels are set, it's white.
         if (me != 0 && (left != 0 || right != 0))
             return loresCols[15][0];  // White
@@ -336,8 +330,8 @@ function Apple2Video(ctx) {
     this.reflash = function() {
         if (!gfx_mode || mix_mode) {            
             for (var col = 0; col < 40; col++)
-                for (var row = (gfx_mode && mix_mode) ? 20 : 0;
-                     row < 24; row++) {
+                for (var row = (gfx_mode && mix_mode) ? 20 : 0; row < 24; row++)
+               {
                     var addr = (((row & 0x07) << 7) |
                         (row & 0x18) | ((row & 0x18) << 2) |
                         (page2_mode ? LORES2_ADDR : LORES1_ADDR)) + col;
@@ -346,7 +340,6 @@ function Apple2Video(ctx) {
                     // Redraw flashing characters.
                     if ((d8 & 0xc0) == 0x40)
                         text_Draw(col, row, d8);
-                    
                 }
         }
     }
