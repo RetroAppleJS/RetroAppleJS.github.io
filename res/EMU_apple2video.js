@@ -278,22 +278,16 @@ function Apple2Video(ctx) {
             var d8_l = 0, d8_r = 0;
 
             // Hidden by text in mix-mode?
-            if (y >= 160 && mix_mode)
-                return;
-            if ((addr & 0x07f) < 40)
-                ;
-            else if ((addr & 0x07f) < 80)
-                y |= 0x40;
-            else if ((addr & 0x07f) < 120)
-                y |= 0x80;
-            else
-                return; // off-screen bytes
+            if (y >= 160 && mix_mode) return;
+
+            if ((addr & 0x07f) < 40);
+            else if ((addr & 0x07f) < 80) y |= 0x40;
+            else if ((addr & 0x07f) < 120) y |= 0x80;
+            else return; // off-screen bytes
 
             // Get bytes to the left and right of this byte (if they exist).
-            if (col > 0)
-                d8_l = this.vidram[addr - 1];
-            if (col < 39)
-                d8_r = this.vidram[addr + 1];
+            if (col > 0) d8_l = this.vidram[addr - 1];
+            if (col < 39) d8_r = this.vidram[addr + 1];
 
             this.hgr_Draw(col, y, d8_l, d8, d8_r, this.modes);
         }
@@ -304,21 +298,19 @@ function Apple2Video(ctx) {
             // Calculate column [0..39] and row [0..23] from address.
             var col = (addr & 0x07f) % 40;
             var row = ((addr & 0x380) >> 7);
-            if ((addr & 0x07f) < 40)
-                ;
-            else if ((addr & 0x07f) < 80)
-                row |= 0x08;
-            else if ((addr & 0x07f) < 120)
-                row |= 0x10;
-            else
-                return; // off-screen
 
-            if (gfx_mode && (!mix_mode || row < 20)) {
+            if ((addr & 0x07f) < 40);
+            else if ((addr & 0x07f) < 80) row |= 0x08;
+            else if ((addr & 0x07f) < 120) row |= 0x10;
+            else return; // off-screen
+
+            if (gfx_mode && (!mix_mode || row < 20))
+            {
                 // LO-RES Graphics.
-                if (!hires_mode)
-                    lores_Draw(col, row, d8);
+                if (!hires_mode) lores_Draw(col, row, d8);
             }
-            else {
+            else
+            {
                 // Text mode
                 text_Draw(col, row, d8);
                 charFlow.prev = {"col":col,"row":row,"d8":d8}
@@ -338,8 +330,7 @@ function Apple2Video(ctx) {
                     var d8 = this.vidram[addr];
 
                     // Redraw flashing characters.
-                    if ((d8 & 0xc0) == 0x40)
-                        text_Draw(col, row, d8);
+                    if ((d8 & 0xc0) == 0x40) text_Draw(col, row, d8);
                 }
         }
     }
