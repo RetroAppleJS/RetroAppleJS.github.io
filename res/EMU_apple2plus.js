@@ -96,14 +96,15 @@ function Apple2Plus(context)
 
     this.restart = function()
     {
+        this.onrestart();
         hw.restart();
         this.reset();
         system_tab_update();
     }
 
-    this.CPU_monitoring = function()  // overridable by GUI update function
-    {
-    }
+    this.onrestart = function() {} // overridable
+
+    this.CPU_monitoring = function() {}  // overridable by GUI update function
 
     this.MEM_monitoring = function()
     {

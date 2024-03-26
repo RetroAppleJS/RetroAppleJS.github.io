@@ -106,13 +106,16 @@ function EMU_init()
                     function()
                     {
                         var arraybuffer = this.response;
-                        var ui8 = new Uint8Array(arraybuffer);
+                       
                         if(arraybuffer.byteLength<100)
                         {
                             var enc = new TextDecoder("utf-8");
                             console.warn("ERROR LOADING DISK: "+enc.decode(ui8));
                         }
-                        else loadDisk_fromBuffer(ui8,"D1");
+                        else 
+                        {
+                            _o.["D1_buffer"] = new Uint8Array(arraybuffer);
+                        }
                     })
                 }
             break;
@@ -140,6 +143,14 @@ function EMU_init()
     apple2plus.CPU_monitoring = function()  // override
     {
         document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+    }
+
+    apple2plus.onrestart = function()
+    {                               
+        loadDisk_fromBuffer(_o.D1_buffer,"D1");
+        delete _o.D1_buffer;
+        oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+
     }
 
     disk2.dN_speed_update = function(pct)  // override
@@ -299,7 +310,7 @@ function EMUI()
     }
 
     this.resetBtn = function() { apple2plus.reset() }
-    this.restartBtn = function() { apple2plus.restart(); oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false); }
+    this.restartBtn = function() { apple2plus.restart() }
 }
 
 
