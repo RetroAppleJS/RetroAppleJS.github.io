@@ -167,8 +167,8 @@ function EMU_init()
         return b;
     }
 
-    //disk2.DSK_led[0] = document.getElementById("dskLED_D1");
-    //disk2.DSK_led[1] = document.getElementById("dskLED_D2");
+    disk2.DSK_led[0] = document.getElementById("dskLED_D1");
+    disk2.DSK_led[1] = document.getElementById("dskLED_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
