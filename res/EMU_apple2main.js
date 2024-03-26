@@ -114,7 +114,7 @@ function EMU_init()
                         }
                         else 
                         {
-                            _o.["D1_buffer"] = new Uint8Array(arraybuffer);
+                            _o["D1_buffer"] = new Uint8Array(arraybuffer);
                         }
                     })
                 }
