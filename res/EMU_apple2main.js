@@ -105,7 +105,11 @@ function EMU_init()
                         const inflator = new pako.Inflate();
                         inflator.push(db);
                         var dd = inflator.result;
-                        if(typeof(dd)!="undefined") _o["D1_buffer"] = dd;
+                        if(typeof(dd)!="undefined")
+                        {
+                            _o["D1_buffer"] = dd;
+                            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
+                        }
                     }
                 }
             break;
@@ -120,16 +124,17 @@ function EMU_init()
                     function()
                     {
                         var arraybuffer = this.response;
-                       
                         if(arraybuffer.byteLength<100)
                         {
                             var enc = new TextDecoder("utf-8");
                             console.warn("ERROR LOADING DISK: "+enc.decode(ui8));
                         }
-                        else 
+                        else
                         {
                             _o["D1_buffer"] = new Uint8Array(arraybuffer);
+                            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
                         }
+                
                     })
                 }
             break;
@@ -364,7 +369,6 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
 {
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
     if(disk2.active==false) return;
-    oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
 
     var bytes = Array.from(arr_buffer);
     if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
