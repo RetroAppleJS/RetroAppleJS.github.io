@@ -67,6 +67,10 @@ var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus,keys;
 
 function EMU_init()
 {
+    document.getElementById("LEDS").innerHTML =
+     '<div class="appdskLED" id="LED1" style=""></div>'
+     +'<div class="appdskLED" id="LED2" style=""></div>'
+
     // LOAD ANY CONFIGURATION VIA URI
     oCOM.URL.parse(document.location.toString());
 
@@ -88,6 +92,29 @@ function EMU_init()
                 oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
                 oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct()
             break;
+            case "autoboot":
+                // TODO: disable autoboot (need reset to boot disk)
+            break;
+            case "D1_DIR":
+                if(typeof(dir_filename)!="undefined" && dir_filename!=0)
+                {
+                    var dir = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/disks/"
+                    dir += dir_filename;
+            
+                    oCOM.GetHTTP(dir,"arraybuffer",
+                    function()
+                    {
+                        var arraybuffer = this.response;
+                        var ui8 = new Uint8Array(arraybuffer);
+                        if(arraybuffer.byteLength<100)
+                        {
+                            var enc = new TextDecoder("utf-8");
+                            console.warn("ERROR LOADING DISK: "+enc.decode(ui8));
+                        }
+                        else loadDisk_fromBuffer(ui8,"D1");
+                    })
+                }
+            break;
         }
         // TODO
         // oEMU.system["A2P"]
@@ -100,10 +127,10 @@ function EMU_init()
     apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:[],active:false},"AppleDisk");
+    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,active:false},"AppleDisk");
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},cycle:function(){},keystroke:function(){}},"A2Pkeys");
 
-    var s = disk2.active ? "apple2plus.DiskObj().hide('D1');apple2plus.DiskObj().hide('D2')":"" 
+    var s = disk2.active ? "apple2plus.DiskObj().GUI_update();":"" 
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
                 ,key_events:"onclick=keys.keystroke(event)"});
@@ -123,22 +150,9 @@ function EMU_init()
     }
 
     disk2.GUI_update = function(o)  // override
-    {    
-        /*
-        var dsk = apple2plus.DiskObj();
-        if(o[this.drv].motor==1)
-        {
-            dsk.playback("DiskII_spin",{start:true});
-            //dsk.playback("Beep",{start:true});
-        }
-        else
-        {
-            dsk.playback("DiskII_spin",{start:false});
-            //dsk.playback("Beep",{start:false});
-        }
-        */
-
-        if(_o.EMU_keyb_active) return;  // don't update drive LED when shadowed by pop-up keyboard
+    {
+        if(this.DSK_led==null) this.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
+        if(_o.EMU_keyb_active) { this.DSK_led[0].style.visibility="hidden"; this.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
         if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
         else this.DSK_led[this.drv].style.visibility = "hidden";
     }
@@ -152,8 +166,8 @@ function EMU_init()
         return b;
     }
 
-    disk2.DSK_led[0] = document.getElementById("dskLED_D1");
-    disk2.DSK_led[1] = document.getElementById("dskLED_D2");
+    //disk2.DSK_led[0] = document.getElementById("dskLED_D1");
+    //disk2.DSK_led[1] = document.getElementById("dskLED_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
@@ -171,7 +185,7 @@ function EMU_init()
 
     //oCOM.POPUP.html(JSON.stringify(oEMU,null," "));
 
-
+/*
     // LOAD DISK IMAGE VIA URI PARAMETER (if any)
     var dir_filename = oCOM.URL.uri["D1_DIR"];
     if(typeof(dir_filename)!="undefined" && dir_filename!=0)
@@ -192,6 +206,7 @@ function EMU_init()
             else loadDisk_fromBuffer(ui8,"D1");
         })
     }
+    */
 
     var dsk = oCOM.URL.uri["D1"];
 
@@ -209,40 +224,38 @@ function EMU_init()
     }
 }
 
-function CPU_slider_update(obj,max)
-{
-  //var el = obj.getBoundingClientRect()
-  var pct = 2*obj.value/max;
-  //var pos = [el.left+4+pct*((el.right-el.left)-17),el.top+2-10]
-  document.getElementById("slider_1v").innerHTML = Math.round(pct*10)*10+"%";
-
-  //_o.CPU_ClocksTicks_s = Math.round(1000000 * pct);
-  _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
-  
-  //alert(_o.CPU_ClockTicks);
-
-  window.clearInterval(appleIntervalHandle);
-  appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-  oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
-}
-
 
 function EMUI()
 {
+    this.cpuSld = function(el,id)
+    {
+      var max = el.max;
+      var pct = 2*el.value/max;
+      document.getElementById(id).innerHTML = Math.round(pct*10)*10+"%";
+      _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
+      window.clearInterval(appleIntervalHandle);
+      appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+      oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
+    }
+
     this.muteBtn = function(arg)
     {
         this.muteArg = arg;
-        if(arg.override===undefined)
+        if((arg.disabled===undefined)==false)
+            document.getElementById(arg.id).parentElement.disabled = !arg.disabled;
+
+        if(arg.override===undefined || arg.override==null)
             oCOM.POPUP.toggle_class(document.getElementById(arg.id),arg.class1,arg.class2);
-        else    
-            oCOM.POPUP.toggle_class
+        else    // override = true = unmute
+            oCOM.POPUP.set_class(document.getElementById(arg.id),arg.class1,arg.class2,arg.override)
         return this
     }
 
     this.muteAct = function(arg)
     {
         if(arg===undefined) arg = this.muteArg;
-        var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+        var b = arg.override===undefined?
+            (oCOM.POPUP.states[arg.id]==arg.class1):arg.override
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
@@ -254,88 +267,40 @@ function EMUI()
         {
             oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
             oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
-        }        
+        }
     }
 
     this.pauseBtn = function(arg)
     {
-        if (appleIntervalHandle != null) {
+        var bPause = appleIntervalHandle != null;
+        if (bPause) {
             oEMU.component.Keyboard.isActive(false);
-            window.clearInterval(appleIntervalHandle);
-            appleIntervalHandle = null;
-            document.getElementById(arg.id).value = 'Resume';
-            document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
+            window.clearInterval(appleIntervalHandle); appleIntervalHandle = null;
+            document.getElementById(arg.id).value = 'Pause ';
+            document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class2+'"></i>';
         } else {
             oEMU.component.Keyboard.isActive(true);
             appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-            document.getElementById(arg.id).value = 'Pause ';
-            document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class2+'"></i>';
+            document.getElementById(arg.id).value = 'Resume';
+            document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
         }
 
-        if (appleIntervalHandle != null) {
-
-            document.getElementById("mutebutton").parentElement.disabled = false;
-            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up";
-            oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:ov}).muteAct();
-
+        var bMuted = oCOM.POPUP.get_state("mutebutton")=="fa-volume-mute";
+        if (bPause) {
+            // RUN->PAUSE: ONLY MUTE IF UNMUTED
+            var o = oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:!bMuted,disabled:false})
+            if(!bMuted) o.muteAct();
         } else {
-
-            document.getElementById("mutebutton").parentElement.disabled = true;
-            var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up";
-            if(ov==true) oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:false}).muteAct();
+            // PAUSE->RUN: ALWAYS UNMUTE
+            oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:!bMuted,disabled:true})
+                .muteAct();
         }
-    } 
-}
-/*
-function muteButton(id,override)
-{
-    var b = override===undefined?(oCOM.POPUP.states[id]=='fa-volume-up'):override
-    if(b)
-    {
-        oEMU.component.IO.AppleSpeaker.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
-        oEMU.component.IO.AppleDisk.init("audio_ctx")
-            .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
     }
-    else
-    {
-        oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
-        oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
-    }
+
+    this.resetBtn = function() { apple2plus.reset() }
+    this.restartBtn = function() { apple2plus.restart() }
 }
 
-function pauseButton()
-{
-    if (appleIntervalHandle != null) {
-        oEMU.component.Keyboard.isActive(false);
-        window.clearInterval(appleIntervalHandle);
-        appleIntervalHandle = null;
-        document.getElementById('pausebutton').value = 'Resume';
-        document.getElementById('pausebutton').innerHTML = '<i class="fa fa-play"></i>';
-
-        document.getElementById("mutebutton").parentElement.disabled = true;
-        var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
-        if(ov==true) AudioButton(null,false);
-    } else {
-        oEMU.component.Keyboard.isActive(true);
-        appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-        document.getElementById('pausebutton').value = 'Pause ';
-        document.getElementById('pausebutton').innerHTML = '<i class="fa fa-pause"></i>';
-
-        document.getElementById("mutebutton").parentElement.disabled = false;
-        var ov = oCOM.POPUP.states["mutebutton"]=="fa-volume-up"
-        AudioButton(null,ov);
-    }
-}
-*/
-
-function resetButton() {
-    apple2plus.reset();
-}
-
-function restartButton() {
-    apple2plus.restart();
-}
 
 function loadDisk_fromFile(file_obj,drv)
 {
@@ -346,6 +311,7 @@ function loadDisk_fromFile(file_obj,drv)
     if (!file) return;
 
     highlight_appbut(file_obj,true);
+    oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
 
     switch(drv)
     {
