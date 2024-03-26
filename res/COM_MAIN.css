@@ -303,6 +303,17 @@ table { border-collapse: collapse; position: relative;}
       background: rgba(255, 255, 255, 1);
   }
 
+  .appbut:focus
+  {
+      animation: blink 1s linear infinite; 
+  }
+
+  @keyframes blink
+  { 
+    0%,100% { background: rgb(255, 200, 100) } 
+    50% { background: rgba(240, 240, 255, 0.65) } 
+  }
+
   .appbox
   {
       font-family: "Arial";
