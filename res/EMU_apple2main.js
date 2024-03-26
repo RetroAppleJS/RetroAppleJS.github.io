@@ -146,11 +146,11 @@ function EMU_init()
     }
 
     apple2plus.onrestart = function()
-    {                               
+    {                       
+        if(_o.D1_buffer===undefined) return;        
         loadDisk_fromBuffer(_o.D1_buffer,"D1");
         delete _o.D1_buffer;
         oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-
     }
 
     disk2.dN_speed_update = function(pct)  // override
@@ -163,7 +163,7 @@ function EMU_init()
 
     disk2.GUI_update = function(o)  // override
     {
-        if(this.DSK_led==null) this.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
+        if(this.DSK_led.length) this.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
         if(_o.EMU_keyb_active) { this.DSK_led[0].style.visibility="hidden"; this.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
         if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
         else this.DSK_led[this.drv].style.visibility = "hidden";
@@ -230,8 +230,8 @@ function EMU_init()
             const inflator = new pako.Inflate();
             inflator.push(db);
             var dd = inflator.result;
-            if(typeof(dd)!="undefined")
-                loadDisk_fromBuffer(dd,"D1");
+            if(typeof(dd)!="undefined") _o["D1_buffer"] = dd
+                //loadDisk_fromBuffer(dd,"D1");
         }
     }
 }
