@@ -95,6 +95,20 @@ function EMU_init()
             case "autoboot":
                 // TODO: disable autoboot (need reset to boot disk)
             break;
+            case "D1":
+                var dsk = oCOM.URL.uri["D1"];
+                if(typeof(dsk)!="undefined" && dsk.length!=0)
+                {
+                    var db = oCOM.base64ToArrayBuffer(dsk);
+                    if(db!=null)
+                    {
+                        const inflator = new pako.Inflate();
+                        inflator.push(db);
+                        var dd = inflator.result;
+                        if(typeof(dd)!="undefined") _o["D1_buffer"] = dd;
+                    }
+                }
+            break;
             case "D1_DIR":
                 var dir_filename = oCOM.URL.uri["D1_DIR"];
                 if(typeof(dir_filename)!="undefined" && dir_filename!=0)
@@ -219,21 +233,6 @@ function EMU_init()
         })
     }
     */
-
-    var dsk = oCOM.URL.uri["D1"];
-
-    if(typeof(dsk)!="undefined" && dsk.length!=0)
-    {
-        var db = oCOM.base64ToArrayBuffer(dsk);
-        if(db!=null)
-        {
-            const inflator = new pako.Inflate();
-            inflator.push(db);
-            var dd = inflator.result;
-            if(typeof(dd)!="undefined") _o["D1_buffer"] = dd
-                //loadDisk_fromBuffer(dd,"D1");
-        }
-    }
 }
 
 
