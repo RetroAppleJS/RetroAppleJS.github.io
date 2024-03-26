@@ -268,10 +268,10 @@
                 <!--  EMULATOR ACTION BUTTONS -->
                 <div class=toolbox>
                   <button class=appbut                 onclick="javascript:oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute'}).muteAct()"  title="Sound"><i id="mutebutton" class="fa fa-volume-mute"></i></button>
-                  <button class=appbut                 onclick="javascript:oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause'})" id="pausebutton"   title="Pause"><i  class="fa fa-pause"></i></button>
+                  <button class=appbut                 onclick="javascript:oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause'})" id="pausebutton"   title="Pause"><i  class="fa fa-play"></i></button>
                   <br>
-                  <button class=appbut value="Reset"   onclick="javascript:resetButton()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>                  
-                  <button class=appbut value="Restart" onclick="javascript:restartButton()"   id="restartbutton" title="Restart"><i class="fa fa-power-off"></i></button>
+                  <button class=appbut value="Reset"   onclick="javascript:oEMUI.resetBtn()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>                  
+                  <button class=appbut value="Restart" onclick="javascript:oEMUI.restartBtn()"   id="restartbutton" title="Restart"><i class="fa fa-power-off"></i></button>
                 </div>
                 <!--  DISK TOOLBOX -->
                 <div class=toolbox>
@@ -293,6 +293,28 @@
                     </div>
 
                 </div>
+
+                <div class="toolbox">
+                  <div id=LEDS class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                    
+                  </div>
+                </div>
+
+
+                <!--  DEBUG  -->
+                <!--
+                <div class=toolbox>
+                  <div class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                    <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
+                    <div style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                      <input type="range" min="0" max="250" value="0" class="slider" onchange="slider_scroll(this,250)" style="width:250px">
+                      <i class="fa fa-arrow-circle-left"></i>932<i class="fa fa-arrow-circle-right"></i>
+                    </div>
+                  </div>
+                </div>
+                -->
+
+
               </div>
 
               <!--  SETTINGS TAB WINDOW -->
@@ -311,7 +333,7 @@
                         </div>
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
-                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="CPU_slider_update(this,70)" style="width:65px">
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v')" style="width:65px">
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
@@ -357,6 +379,7 @@
                 </div>
               
                 <!--  DEBUG  -->
+                <!--
                 <div class=toolbox>
                   <div class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
                     <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
@@ -366,6 +389,7 @@
                     </div>
                   </div>
                 </div>
+                -->
 
               </div>
 
@@ -393,7 +417,7 @@
                   //ctx.clearRect(0, 0, canvas.width, canvas.height);
               }
               const slider_canvas = document.getElementById("scopeCanvas");
-              const slider_scroll_ctx = slider_canvas.getContext("2d");
+              if(slider_canvas) var slider_scroll_ctx = slider_canvas.getContext("2d");
               </script>
                 
             </div>
