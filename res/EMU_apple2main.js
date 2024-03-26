@@ -298,20 +298,19 @@ function EMUI()
     }
 
     this.resetBtn = function() { apple2plus.reset() }
-    this.restartBtn = function() { apple2plus.restart() }
+    this.restartBtn = function() { apple2plus.restart(); oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false); }
 }
 
 
 function loadDisk_fromFile(file_obj,drv)
 {
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
-
     if(file_obj==null || disk2.active==false) {apple2plus.loadDisk([],drv); return}
     var file = file_obj.files[0];
     if (!file) return;
 
-    highlight_appbut(file_obj,true);
     oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
+    highlight_appbut(file_obj,true);
 
     switch(drv)
     {
@@ -354,6 +353,7 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
 {
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
     if(disk2.active==false) return;
+    oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
 
     var bytes = Array.from(arr_buffer);
     if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
@@ -365,6 +365,7 @@ function ejectDisk(el,dsk)
 {
   var fe = document.getElementById("file_"+dsk);
   fe.value = "";
+  oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
 
   var d = oCOM.URL.uri[dsk];
   if(d)
