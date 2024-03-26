@@ -96,6 +96,7 @@ function EMU_init()
                 // TODO: disable autoboot (need reset to boot disk)
             break;
             case "D1_DIR":
+                var dir_filename = oCOM.URL.uri["D1_DIR"];
                 if(typeof(dir_filename)!="undefined" && dir_filename!=0)
                 {
                     var dir = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/disks/"
