@@ -223,7 +223,7 @@ function Apple2Video(ctx) {
         return loresCols[d8 & 0x0f][m];
     }
 
-    function hgr_PixelColor(x, y, left, me, right, b7) {
+    this.hgr_PixelColor = function(x, y, left, me, right, b7) {
         var a0 = x & 0x01;
 
         // If pixel is set and either adjacent pixels are set, it's white.
@@ -391,7 +391,7 @@ function Apple2Video(ctx) {
             if (x >= 0 && x < 280 && y < (modes.mix?160:192))
             {
                 if(chr) ctx.fillStyle = b & 0x02 != 0 ? chr : loresCols[0][0];
-                else ctx.fillStyle = hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                else ctx.fillStyle = this.hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
                 //                                   x  y  left pix  this pix  right pix bit7
                 ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
             }
