@@ -966,16 +966,13 @@ function draw(color_pattern)
         var wbyt = apple2plus.hw.read(adr);                  // read
 
         s = debug(s,xi,yi,pat,dimx,dimy);
-
         wbyt = calc_pattern(wbyt,xi,yi,pat,dimx,dimy);
 
-
-
-        var ss = oCOM.getBinMulti(wbyt,8);
         apple2plus.hw.write(adr,wbyt);                         // write
     }
     s[s.length] = "<br>";
   }
+  
   document.getElementById("debug").innerHTML = s.join("");
 }
 
