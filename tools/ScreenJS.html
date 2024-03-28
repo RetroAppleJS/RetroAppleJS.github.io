@@ -32,6 +32,36 @@
 <script>
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
+
+const patterns = 
+{
+0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,0,0b00,0],"cri":{},"bits":2},
+1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":[0b10,0,0b00,0],"cri":{}},
+2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":[0b01,0,0b00,0],"cri":{}},
+3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":[0b11,0,0b00,0],"cri":{}},
+5:{"idx":4,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":[0b10,0,0b10,0],"cri":{}},
+6:{"idx":5,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":[0b01,0,0b10,0],"cri":{}},
+7:{"idx":6,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":[0b11,0,0b10,0],"cri":{}},
+10:{"idx":7,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":[0b01,0,0b01,0],"cri":{}},
+11:{"idx":8,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":[0b11,0,0b01,0],"cri":{}},
+15:{"idx":9,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":[0b11,0,0b11,0],"cri":{}},
+16:{"idx":10,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,0],"cri":{"DOUBL":0}},
+17:{"idx":11,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":[0b10,128,0b00,0],"cri":{}},
+18:{"idx":12,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":[0b01,128,0b00,0],"cri":{}},
+21:{"idx":13,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":[0b10,128,0b10,0],"cri":{}},
+22:{"idx":14,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":[0b01,128,0b10,0],"cri":{}},
+25:{"idx":15,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":[0b10,128,0b01,0],"cri":{}},
+26:{"idx":16,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":[0b01,128,0b01,0],"cri":{}},
+29:{"idx":17,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":[0b10,128,0b11,0],"cri":{}},
+30:{"idx":18,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":[0b01,128,0b11,0],"cri":{}},
+32:{"idx":19,"col":"#000000","sat":0,"cmp":["#000000"],"pat":[0b00,128,0b00,128],"cri":{"DOUBL":0}},
+37:{"idx":20,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":[0b10,128,0b10,128],"cri":{}},
+42:{"idx":21,"col":"#F67B00","sat":141,"cmp":["#FF8000"],"pat":[0b01,128,0b01,128],"cri":{}}
+}
+
+
+
+
 // global data initializations
 const _o = {
          "sys":{}     
@@ -58,11 +88,7 @@ function EMU_init()
   apple2plus          = new Apple2Plus(vidContext);
   appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
-  document.getElementById("param1").value = p.a;
-  document.getElementById("param2").value = p.b;
-  document.getElementById("PrvKey").value = p.d;
 
-  change_param(['a','b','d'],["param1","param2","PrvKey"],['param1_v','param2_v']);
 }
 
 
@@ -90,37 +116,6 @@ var loresCols = [
 ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
 ];
 
-function pattern(idx,j,i)
-{
-  //x % 2 == x & 1
-  //x % 4 == x & 3
-  //x % 8 == x & 7
-
-  switch(idx)
-  {
-    case 0: return  [0,false];                 // black 1 
-    case 1: return  [4,(j%2 || !(j%8))==0];    // green 
-    case 2: return  [3,(j+1)%2==0];            // purple
-    case 3: return  [15,!(j%8)==0];            // white 1  
-    case 4: return  [0,j%8==0];                // black 2
-    case 5: return  [9,j%2==0];                // orange
-    case 6: return  [2,((j+1)%2 && j%8)==0];   // blue
-    case 7: return  [15,true];                 // white2 2
-  }
-}
-
-function maskPixel(byt,bit)
-{
-  return byt&8 | byt&bit;
-}
-
-function isCollision(rbyt,wbyt)   // check color collitions
-{
-  if(rbyt|wbyt==0) return false;
-}
-
-function isCol(x,y)
-{ return x%8==0 ? "red":"white" }
 
 </script>
 
@@ -159,21 +154,12 @@ function Apple2Plus(context)
   this.video.redraw();
 }
 
-// Overloading the setPixel function to accomodate patterning
-function setPixel_HGR(x,y,patternID)
-{
-    // find address and bit location
-    var adr = yref[y] + Math.floor(x/7);              // find address 
-    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
-}
-
 function wipe_HGR(byte)
 {
     // find address and bit location
     //var adr = yref[y] + Math.floor(x/7);              // find address 
     //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
-    for(var adr=8192;adr<16384;adr++)
+    for(var adr=0x2000;adr<0x4000;adr++)
       apple2plus.hw.write(adr,byte);                    // write byte 
 }
 </script>
@@ -186,10 +172,14 @@ function wipe_HGR(byte)
       <ul id="minitabs">
 
         <li>
-          a[<div id="param1_v"  style="display:inline"></div>]<input id="param1" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['a'],[this.id],['param1_v']);" onchange="change_param(['a'],[this.id],['param1_v']);" style="width:300px"></input>
-        </li>
-        <li>  
-          b[<div id="param2_v" style="display:inline"></div>]<input id="param2" type="range" min="-10" max="10" value="0" step="0.1" oninput="change_param(['b'],[this.id],['param2_v']);" onchange="change_param(['b'],[this.id],['param2_v']);" style="width:300px"></input>
+          <BUTTON onclick="draw(0)">0</BUTTON>
+          <BUTTON onclick="draw(1)">1</BUTTON>
+          <BUTTON onclick="draw(2)">2</BUTTON>
+          <BUTTON onclick="draw(3)">3</BUTTON>
+          <BUTTON onclick="draw(4)">4</BUTTON>
+          <BUTTON onclick="draw(5)">5</BUTTON>
+          <BUTTON onclick="draw(6)">6</BUTTON>
+          <BUTTON onclick="draw(7)">7</BUTTON>
         </li>
       </ul>
     </div>
@@ -198,146 +188,99 @@ function wipe_HGR(byte)
 
 <!-- -->
 
-  <table><tr>
-    <td style=vertical-align:top;><canvas class="appvid" id="applescreen" width="560" height="384"></canvas></td>
-    <td>
-      <div id="dump" style="overflow-y: scroll; height:400px;"></div>
-    </td>
-  </tr>
-  <tr>
-    <td>private key<input id="PrvKey" value=""></input></td>
-    <td><button onclick="calc_PubKey()">calculate PubKey</button></td>
-  </tr>
- </table>
-  <div id="status"></div>
+
+<canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+
 
 
 <!-- Code to handle taking the snapshot and displaying it locally -->
 <script language="JavaScript">
 
-var status_message = function(str) { document.getElementById("status").innerHTML = "<small>"+str+"</small>"  }
 
+var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
 
-function draw_curve()
+function draw(color_pattern)
 {
   //for(var i=8192;i<16384;i++)      // clear video RAM
   //  apple2plus.hw.write(i,i%255);
 
-  p.update = false;
   wipe_HGR(0);
-  for(var xi=gx.xmin;xi<=gx.xmax;xi++)
+
+  
+  for(var yi=0;yi<192;yi++)
   {
-    for(var yi=gx.ymax;yi<=gx.ymin;yi++)
+    for(var xi=0;xi<280;xi++)
     {
-        var xf  = ax.xmin + ((xi-gx.xmin)/(gx.xmax-gx.xmin)) * (ax.xmax-ax.xmin);
-        var yf  = ax.ymin + ((yi-gx.ymin)/(gx.ymax-gx.ymin)) * (ax.ymax-ax.ymin);
-        if(ECC(xf,yf)) plot(xi,yi);
+        //var b = pattern(color_pattern,xi,yi);
+        setPixel_HGR(xi,yi,color_pattern);
+    }
+  }
+  
+/*
+  for(var yi=0;yi<1;yi++)
+  {
+    for(var xi=0;xi<3;xi++)
+    {
+        //var b = pattern(color_pattern,xi,yi);
+        setPixel_HGR(xi,yi,color_pattern);
     }
   }
 
-
-    document.getElementById("dump").innerHTML = "<small>"+s.join("<br>")+"</small>"
-    //s.length = 0;
-    s.length = 0; 
-    ii = 0;
+*/
 }
 
-var mod = function (n, m) {
-    var remain = n % m;
-    return Math.floor(remain >= 0 ? remain : remain + m);
-};
-
-var ii = 0;
-var s = new Array();
-
-function ECC(x,y)
+// Overloading the setPixel function to accomodate patterning
+function setPixel_HGR(x,y,patternID)
 {
-  var a = p.a;
-  var b = p.b;
-
-  var y2 = y*y
-  var fml = (x*x*x + a*x + b);
-  //var fml = (x*x*x + mod(7,17));
-
-  var d = Math.abs(y2 - fml);                    // Difference
-  var acc = Math.abs(y)*p.acc;                   // Dot accuracy
-  var bDot = d<acc?1:0
-  if(bDebug && bDot) s[ii++] = pr(x,3)+"<sup>3</sup>+"+a+"*x + "+b+" = "+pr(y2,3);
-  return bDot;
+    // find address and bit location
+    var adr = yref[y] + Math.floor(x/7);              // find address 
+    var rbyt = apple2plus.hw.read(adr)                // OR current bit with pixel bit
+    var wbyt = pixel(x,y,patternID,rbyt);
+    apple2plus.hw.write(adr,wbyt);                    // write byte 
 }
 
-
-function plot(x,y)
+function calculate(idx,j,i)
 {
-  if(x>=gx.xmin && x<=gx.xmax && y>=gx.ymax && y<=gx.ymin)
+  //x % 2 == x & 1
+  //x % 4 == x & 3
+  //x % 8 == x & 7
+
+  switch(idx)
   {
-    setPixel_HGR(Math.round(x),Math.round(y));
-    //console.log("x="+Math.round(x)+" y="+Math.round(y))
+    case 0: return  [0,false,0];     // black 1 
+    case 1: return  [4,j%2==0,0];    // green 
+    case 2: return  [3,j%2==1,0];    // purple
+    case 3: return  [15,true,0];     // white 1  
+    case 4: return  [0,false,128];   // black 2
+    case 5: return  [9,j%2==0,128];  // orange
+    case 6: return  [2,j%2==1,128];  // blue
+    case 7: return  [15,true,128];   // white2 2
   }
-  //else console.warn("x="+Math.round(x*1000)/1000+" y="+Math.round(y*1000)/1000)
 }
 
-function change_param(v,elv,id)
-{  
-  for(var i=0;i<v.length;i++)
-  {
-    p[v[i]] = Number(document.getElementById(elv[i]).value);
-    if(id[i])
-    {
-      var e = document.getElementById(id[i]);
-      e.innerHTML = p[v[i]];
-    }
+function pixel(x,y,patternID,rbyt)
+{
+  //console.log("PIXEL");
+  //console.log(oCOM.getBinMulti(rbyt,8));
+
+  var wbyt = rbyt;
+  // | (1 << x%7);                     // OR current bit with pixel bit
+  if((rbyt&127)==0 && (rbyt&128)!=this.calculate(patternID,x,y)[2])
+    wbyt |= this.calculate(patternID,x,y)[2];    // OR high bit
+
+  wbyt |= this.calculate(patternID,x,y)[1]?(1 << x%7):wbyt;                     // OR current bit with pixel bit
+
+  //else
+  //wbyt |= this.calculate(patternID,x,y)[1] ?   : 0;
+    //document.getElementById("debug").innerHTML += "CONFLICT "+PRINTByte(rbyt)+" >> "+PRINTByte(wbyt)
+  //}  // TODO resolve Hi-Byte conflict !!
+
+  console.log(oCOM.getBinMulti(wbyt,8));
+  return wbyt;
+  //if(this.calculate(patternID,x,y)[0]) return wbyt;
+  //return rbyt;
   }
 
-  if(p.update==false) setTimeout(draw_curve, 500);
-  p.update = true;
-}
-
-function pr(v,p)
-{
-  var pow = Math.pow(10,p);
-  return Math.round(v*pow)/pow;
-}
-
-
-function ECC_derivative1(x1,y1)
-{
-  return (3*x1*x1 + p.a)
-}
-
-function ECC_derivative2(x1,y1)
-{
-  return 2*y1
-}
-
-
-var ax  = {xmin:-4,xmax:8,ymax:8,ymin:-8}
-var gx = {xmin:0,xmax:191,ymax:0,ymin:191}
-//var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
-//var p = {a:-2 , b:3 ,acc:0.25 ,update:false};
- 
-
-// a & b = curve parameters
-// d = private key
-// p = modulus (finit field)
-// P = base point or generator point (x1,y1) (random number ?)
-// Q = public key
-
-var p = {a:2 , b:2 , p:17, P:[5,1] , d:3 ,acc:0.25 ,update:false};
-
-function calc_PubKey()
-{
-  change_param(['a','b','d'],["param1","param2","PrvKey"],['param1_v','param2_v']);
-
-  // calculate slope s
-  var m = ECC_derivative1(p.P[0],p.P[1]) / ECC_derivative2(p.P[0],p.P[1]) % p.p;
-  s[ii++] = "s="+ECC_derivative1(p.P[0],p.P[1])+"/"+ECC_derivative2(p.P[0],p.P[1])+" mod "+p.p;
-  s[ii++] = "s="+m
-
-  s[ii++] = "x3="+m+"^2 - "+p.a+" mod "+p.p
-  s[ii++] = "x3="+(m*m-p.a)%p.p
-
-}
 
 </script>
 
