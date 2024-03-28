@@ -7,7 +7,7 @@
     JMP $600B
     LDY #$00
 L1  LDA ($18),Y
-    AND #$7F
+    AND #$7F      ; REMOVE BIT 7 FROM HGR
     STA ($18),Y
     INC *$18
     LDA *$18
