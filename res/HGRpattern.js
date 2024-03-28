@@ -276,7 +276,7 @@ function PATTERN(idx,x,y)
     var idx = 0;
     //var pmax = _D.blc[1]*_D.blc[0];
 
-// TODO ADD 2 RECORDS !!! BLACK AND WHITE !!!!
+    // TODO ADD 2 RECORDS !!! BLACK AND WHITE !!!!
     var isBW = [false,false];
 
     for(var p=0;p<this.pmax;p++)   // this is the display matrix size
@@ -296,10 +296,10 @@ function PATTERN(idx,x,y)
           ,"col":"\"#"+RGB2HEX(c).join("")+"\""
           ,"sat":this.colorSaturation(c)
           ,"cmp":"["+Object.keys(this.colCompIDX).map(function(x){return '"'+x+'"'}).join(',')+"]"
-          ,"pat":"["+m.join(",")+"]"   // TODO ADD CARRY BIT !!!!!!
+          ,"pat":"new Uint8Array(["+m.join(",")+"])"
           ,"cri":"{"+Object.keys(cc).map(function(x){return '"'+x+'":'+cc[x]}).join(',')+"}"
         }
-        if(idx==0) data_arg["bits"] = m[0].length-2;
+        if(idx==0) data_arg["dim"] = "["+(m[0].length-2)+","+(m.length>>1)+"]";
 
         isBW[0] = data_arg.col=="\"#000000\"";
         isBW[1] = data_arg.col=="\"#FFFFFF\"";
