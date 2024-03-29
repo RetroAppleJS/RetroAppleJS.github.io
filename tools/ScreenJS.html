@@ -97,7 +97,7 @@ var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO
 function EMU_init()
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
-  vidContext          = document.getElementById('applescreen')
+  vidContext          = document.getElementById('applescreen');
   apple2plus          = new Apple2Plus(vidContext.getContext("2d"));
 }
 </script>
