@@ -265,7 +265,9 @@ function Apple2Video(ctx) {
     }
 
     // Called if a write lands in any possible video RAM area.
-    this.write = function(addr, d8) {
+    this.write = function(addr, d8)
+    {
+        if(this.ctx === undefined) return;
 
         if (gfx_mode && hires_mode &&
             addr >= (page2_mode ? HIRES2_ADDR : HIRES1_ADDR) &&
@@ -319,7 +321,10 @@ function Apple2Video(ctx) {
     } // write()
 
     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
-    this.reflash = function() {
+    this.reflash = function()
+    {
+        if(this.ctx === undefined) return;
+
         if (!gfx_mode || mix_mode) {            
             for (var col = 0; col < 40; col++)
                 for (var row = (gfx_mode && mix_mode) ? 20 : 0; row < 24; row++)
@@ -336,7 +341,10 @@ function Apple2Video(ctx) {
     }
 
     // Redraw everything.  Called whenever the graphics modes change.
-    this.redraw = function() {
+    this.redraw = function()
+    {
+        if(this.ctx === undefined) return;
+        
         this.register_mode();
         for (var row = 0; row < 24; row++)
             for (var col = 0; col < 40; col++) {
