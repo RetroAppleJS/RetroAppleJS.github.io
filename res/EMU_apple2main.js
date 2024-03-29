@@ -62,7 +62,7 @@ oEMU.component.CPU["dutycycle_idx"] = 0;
 console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
 //oCOM = new COM();
 
-var appleIntervalHandle,vidContext,apple2plus,KeyboardFocus,keys;
+var appleIntervalHandle,apple2plus,KeyboardFocus,keys;
 
 
 function EMU_init()
@@ -146,8 +146,8 @@ function EMU_init()
     console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE APPLE II+ EMULATOR
-    vidContext          = document.getElementById('applescreen').getContext("2d");
-    apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
+    var vidContext          = document.getElementById('applescreen')
+    apple2plus          = new Apple2Plus(vidContext.getContext("2d")); // allow instantiating other systems
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,active:false},"AppleDisk");
