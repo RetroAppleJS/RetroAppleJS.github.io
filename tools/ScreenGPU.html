@@ -1,0 +1,313 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+//    ______                                            _____   ______   
+//  .' ____ \                                          |_   _|.' ____ \  
+//  | (___ \_| .---.  _ .--.  .---.  .---.  _ .--.       | |  | (___ \_| 
+//   _.____`. / /'`\][ `/'`\]/ /__\\/ /__\\[ `.-. |  _   | |   _.____`.  
+//  | \____) || \__.  | |    | \__.,| \__., | | | | | |__' |  | \____) | 
+//   \______.''.___.'[___]    '.__.' '.__.'[___||__]`.____.'   \______.'                                       
+-->
+
+
+<html style="background-color:#B0B0B0"><head>
+  <title>APPLE SCREEN EMULATOR + GPU</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+  <style>
+  html {height:100%;font-family:"Arial"}
+  body {background-color:#808080;height:100%;margin:0px;padding:0px}
+
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+    </style>
+</head>
+
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+<script type="text/javascript" src="../res/COM_CONFIG.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+
+<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
+<script>
+oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
+
+
+
+
+const patterns = 
+{
+0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,0,0b00,0]),"cri":{},"dim":[2,2]},
+1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b10,0,0b00,0]),"cri":{}},
+2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b01,0,0b00,0]),"cri":{}},
+3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,0,0b00,0]),"cri":{}},
+4:{"idx":4,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,0,0b10,0]),"cri":{"DOUBL":1}},
+5:{"idx":5,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":new Uint8Array([0b10,0,0b10,0]),"cri":{}},
+6:{"idx":6,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":new Uint8Array([0b01,0,0b10,0]),"cri":{}},
+7:{"idx":7,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,0,0b10,0]),"cri":{}},
+8:{"idx":8,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,0,0b01,0]),"cri":{"DOUBL":2}},
+9:{"idx":9,"col":"#B97BB9","sat":31,"cmp":["#FF00FF","#80FF80"],"pat":new Uint8Array([0b10,0,0b01,0]),"cri":{"DOUBL":6}},
+10:{"idx":10,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":new Uint8Array([0b01,0,0b01,0]),"cri":{}},
+11:{"idx":11,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,0,0b01,0]),"cri":{}},
+12:{"idx":12,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,0,0b11,0]),"cri":{"DOUBL":3}},
+13:{"idx":13,"col":"#F67BF6","sat":49,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b10,0,0b11,0]),"cri":{"DOUBL":7}},
+14:{"idx":14,"col":"#B9F6B9","sat":24,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b01,0,0b11,0]),"cri":{"DOUBL":11}},
+15:{"idx":15,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,0,0b11,0]),"cri":{}},
+16:{"idx":16,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,0]),"cri":{"DOUBL":0}},
+17:{"idx":17,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,0]),"cri":{}},
+18:{"idx":18,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,0]),"cri":{}},
+19:{"idx":19,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,0]),"cri":{"DOUBL":3}},
+20:{"idx":20,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,128,0b10,0]),"cri":{"DOUBL":1}},
+21:{"idx":21,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":new Uint8Array([0b10,128,0b10,0]),"cri":{}},
+22:{"idx":22,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":new Uint8Array([0b01,128,0b10,0]),"cri":{}},
+23:{"idx":23,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,128,0b10,0]),"cri":{"DOUBL":7}},
+24:{"idx":24,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,128,0b01,0]),"cri":{"DOUBL":2}},
+25:{"idx":25,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":new Uint8Array([0b10,128,0b01,0]),"cri":{}},
+26:{"idx":26,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":new Uint8Array([0b01,128,0b01,0]),"cri":{}},
+27:{"idx":27,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,128,0b01,0]),"cri":{"DOUBL":11}},
+28:{"idx":28,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,0]),"cri":{"DOUBL":3}},
+29:{"idx":29,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,0]),"cri":{}},
+30:{"idx":30,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,0]),"cri":{}},
+31:{"idx":31,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,0]),"cri":{"DOUBL":15}},
+32:{"idx":32,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,128]),"cri":{"DOUBL":0}},
+33:{"idx":33,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,128]),"cri":{"DOUBL":17}},
+34:{"idx":34,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,128]),"cri":{"DOUBL":18}},
+35:{"idx":35,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,128]),"cri":{"DOUBL":3}},
+36:{"idx":36,"col":"#003E7B","sat":140,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b00,128,0b10,128]),"cri":{"DOUBL":17}},
+37:{"idx":37,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":new Uint8Array([0b10,128,0b10,128]),"cri":{}},
+38:{"idx":38,"col":"#7B7B7B","sat":0,"cmp":["#FF8000","#0080FF"],"pat":new Uint8Array([0b01,128,0b10,128]),"cri":{"DOUBL":3}},
+39:{"idx":39,"col":"#7BB9F6","sat":47,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b11,128,0b10,128]),"cri":{"DOUBL":29}},
+40:{"idx":40,"col":"#7B3E00","sat":140,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b00,128,0b01,128]),"cri":{"DOUBL":18}},
+41:{"idx":41,"col":"#7B7B7B","sat":0,"cmp":["#0080FF","#FF8000"],"pat":new Uint8Array([0b10,128,0b01,128]),"cri":{"DOUBL":3}},
+42:{"idx":42,"col":"#E66B00","sat":141,"cmp":["#FF8000"],"pat":new Uint8Array([0b01,128,0b01,128]),"cri":{}},
+43:{"idx":43,"col":"#F6B97B","sat":47,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b11,128,0b01,128]),"cri":{"DOUBL":30}},
+44:{"idx":44,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,128]),"cri":{"DOUBL":3}},
+45:{"idx":45,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,128]),"cri":{"DOUBL":29}},
+46:{"idx":46,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,128]),"cri":{"DOUBL":30}},
+47:{"idx":47,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,128]),"cri":{"DOUBL":15}}
+}
+
+
+
+// global data initializations
+const _o = {
+         "sys":{}     
+        ,"EMU_Updates_s":10                 // Emulator intervals per second 
+        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
+        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+    };
+
+var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
+
+
+
+
+function EMU_init()
+{
+  document.getElementById('slider_title').outerHTML = _TITLE();
+  vidContext          = document.getElementById('applescreen');
+  //var vid = vidContext.getContext("2d")
+
+  const dim = [vidContext.width,vidContext.height];
+
+  const gpu = new GPU({
+    canvas:  vidContext ,
+    mode: 'gpu'
+  });
+
+  const kernel = gpu.createKernel(
+    function(dim,m) {
+
+      //var col = (addr & 0x07f) % 40;
+      //var y = ((addr & 0x380) >> 4) | ((addr & 0x1c00) >> 10);
+
+      const xp = (this.thread.x>>1)+1;
+      const yp = (this.thread.y>>1);
+
+      const p = m[xp+((dim[1]>>1)-yp)*dim[0]]==1 ? 255:0;
+
+      this.color(
+        p,
+        p,
+        p,
+        1
+
+      );
+    },
+    {
+      useLegacyEncoder: true,
+      output: [dim[0], dim[1]],
+      graphical: true
+    }
+  );
+
+  apple2plus          = new Apple2Plus();
+  //var ram = video.vidram
+
+
+  var m = new Uint8Array(dim[0]*dim[1]).fill(0);
+  
+  for(var i=0;i<192;i++)
+  {
+    var x = i;
+    var y = i;
+
+    m[x+(y*dim[0])] = 1;
+  }
+    
+
+  //m[0,0] = 1;
+  //m[1,1] = 1;
+
+  const doDraw = () => 
+  {
+    kernel(dim,m);
+    //param.i += 0.001;
+    window.requestAnimationFrame(doDraw);
+  };
+
+  window.requestAnimationFrame(doDraw);
+
+
+
+}
+
+
+
+
+
+var CONF_version="0.0.2";
+var CONF_builddate="20240329-170000"; 
+
+var bDebug = false;
+var _D = 
+{
+     "YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
+              +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
+              +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
+    ,"YVERTH":"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+}
+var yref = new Uint16Array(_D.YVERTL.length>>1);
+for(var i=0;i<_D.YVERTL.length;i+=2) yref[i>>1] = parseInt( _D.YVERTH.substring(i,i+2),16)*256+parseInt( _D.YVERTL.substring(i,i+2),16);
+
+var vidContext, apple2plus;
+
+function Apple2Plus(context)
+{
+  this.video = new Apple2Video(context);
+  this.hw    = new Apple2Hw(this.video);
+  // Switch on Apple II Hi-Res graphics
+
+  this.video.reset();
+  this.video.setGfx(true);
+  this.video.setHires(true);
+  this.video.redraw();
+}
+</script>
+
+<body class="slider_main">
+
+<div id="slider_title"></div>
+ <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+
+        <li style="float:left">
+            <script>
+                for(var i in patterns)
+                {
+                    var c = oCOM.HEX2RGB(patterns[i].col);
+                    var l = Math.round((c[0]+c[1]+c[2])/3);
+                    var fnt = l<200?"color:white;":"";
+                    var j = ("00"+i).slice(-3);
+
+                    document.write("<button onclick=\"draw("+i+")\" "
+                        +"style=font-family:'Courier';border:none;margin:1px;padding:1px;font-size:10px;float:left;background-color:"+patterns[i].col+";"+fnt+">"
+                        +j+"</button>")
+                }
+            </script>
+        </li>
+      </ul>
+    </div>
+    <div id=main>
+
+
+<!-- -->
+
+
+<canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+
+<div id=debug style="overflow:scroll; height:400px; width:500px; font-size:8px; font-family: 'Courier New', Courier, monospace; vertical-align:top"></div>
+
+
+<!-- Code to handle taking the snapshot and displaying it locally -->
+<script language="JavaScript">
+
+
+var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
+
+function draw(color_pattern)
+{  
+  var s = [];
+  var pat = patterns[color_pattern].pat;
+  var dimx = patterns[0].dim[0];
+  var dimy = patterns[0].dim[1];
+
+  for(var yi=0;yi<192;yi++)
+  {
+    for(var xi=0;xi<280;xi++)
+    {
+        var adr = yref[yi]+Math.floor(xi/7);               // find address 
+        var wbyt = apple2plus.hw.read(adr);                  // read
+
+        s = debug(s,xi,yi,pat,dimx,dimy);
+        wbyt = paste_pattern(wbyt,xi,yi,pat,dimx,dimy);
+
+        apple2plus.hw.write(adr,wbyt);                         // write
+    }
+    s[s.length] = "<br>";
+  }
+
+  document.getElementById("debug").innerHTML = s.join("");
+}
+
+function paste_pattern(wbyt,xi,yi,pat,dimx,dimy)
+{
+    var py = yi % dimy << 1;
+    var b7 = pat[py+1];
+
+    var conflict = (wbyt & 0x80) != b7;
+    var px = xi % dimx;
+
+    var b = pat[py] & (1<< dimx-px-1);
+    var msk = 1 << xi%7;
+
+    return b==0 ? wbyt & ((msk | (b7^0x80)) ^ 0xFF) : wbyt | msk | b7;     // reset or set pixel bit
+}
+
+function debug(s,xi,yi,pat,dimx,dimy)
+{
+    var py = yi % dimy << 1;
+    var b7 = pat[py+1];
+    var px = xi % dimx;
+    var b = pat[py] & (1<< dimx-px-1);
+
+    if(b7==0) s[s.length] = b ? "1" : "0";
+    else      s[s.length] = b ? "<b>1</b>" : "<b>0</b>";
+    return s;
+}
+
+</script>
+
+  </div>
+  </div>
+
+</body>
+</html>
