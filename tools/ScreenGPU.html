@@ -105,14 +105,20 @@ const _o = {
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
 
+var AppVersion = 1;
+
+
+var RAM_SIZE =      0xc000,
+      LORES_ADDR =    0x0400,
+      LORES_SIZE =    0x0800, // both pages
+      HIRES_ADDR =    0x2000,
+      HIRES_SIZE =    0x4000 // both pages
 
 
 function EMU_init()
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
   vidContext          = document.getElementById('applescreen');
-  //var vid = vidContext.getContext("2d")
-
   const dim = [vidContext.width,vidContext.height];
 
   const gpu = new GPU({
@@ -120,60 +126,103 @@ function EMU_init()
     mode: 'gpu'
   });
 
-  const kernel = gpu.createKernel(
-    function(dim,m) {
+  var kernel;
 
-      //var col = (addr & 0x07f) % 40;
-      //var y = ((addr & 0x380) >> 4) | ((addr & 0x1c00) >> 10);
-
-      const xp = (this.thread.x>>1)+1;
-      const yp = (this.thread.y>>1);
-
-      const p = m[xp+((dim[1]>>1)-yp)*dim[0]]==1 ? 255:0;
-
-      this.color(
-        p,
-        p,
-        p,
-        1
-
-      );
-    },
-    {
-      useLegacyEncoder: true,
-      output: [dim[0], dim[1]],
-      graphical: true
-    }
-  );
-
-  apple2plus          = new Apple2Plus();
-  //var ram = video.vidram
-
-
-  var m = new Uint8Array(dim[0]*dim[1]).fill(0);
-  
-  for(var i=0;i<192;i++)
+  if(AppVersion==0)
   {
-    var x = i;
-    var y = i;
-
-    m[x+(y*dim[0])] = 1;
+    kernel = gpu.createKernel(
+      function(dim,m)
+      {
+        const xp = (this.thread.x>>1);
+        const yp = (this.thread.y>>1)+1;
+        const p = m[xp+((dim[1]>>1)-yp)*dim[0]]==1 ? 255:0;
+        this.color(p,p,p,1);
+      },
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    );
+  
+    var m = new Uint8Array(dim[0]*dim[1]).fill(0);
+    for(var i=0;i<192;i++)
+    {
+      var x = i<<1;
+      var y = i;
+      m[x+(y*dim[0])] = 1;
+    }
+  
+    const doDraw = () => 
+    {
+      kernel(dim,m);
+      window.requestAnimationFrame(doDraw);
+    };
+    window.requestAnimationFrame(doDraw);
   }
+
+  //apple2plus          = new Apple2Plus();
+
+
+
+
+
+  if(AppVersion==1)
+  {
+    kernel = gpu.createKernel(
+      function(dim,mem,yref)
+      {
+        const xp = (this.thread.x>>1);
+        const yp = (this.thread.y>>1)+1;
+        const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
+        const bit_adr = xp%7;
+
+        const d8_l = 0;
+        const d8_r = 0;
+        const col = (adr & 0x7f) % 40;
+        if (col > 0) d8_l = mem[adr - 1];
+        if (col < 39) d8_r = mem[adr + 1];
+
+        const p =  (mem[adr] & (1<<bit_adr)) ==0 ? 0 : 255;
+        this.color(p,p,p,1);
+      },
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    );
+
+    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+    for(var i=0;i<192;i++)
+    {
+      var x = i;
+      var y = i;
+      var adr = yref[y] + Math.floor(x/7);   // row base address + column offset 
+      var bit_adr = x%7;
+      ram[adr] |= 1<<bit_adr;
+    }
+
+    var it = 32
+    for(var i=16384;i>=8191;i-=it)
+    {
+      var s = new Array(it);
+      for(var j=it;j>=0;j--)
+      {
+        s[it-j] = (i+j).toString(16)+"-["+ram[i+j]+"] ";
+      }
+      //console.log(s.join(""));
+    }
+    
     
 
-  //m[0,0] = 1;
-  //m[1,1] = 1;
-
-  const doDraw = () => 
-  {
-    kernel(dim,m);
-    //param.i += 0.001;
+    const doDraw = () => 
+    {
+      kernel(dim,ram,yref);
+      window.requestAnimationFrame(doDraw);
+    };
     window.requestAnimationFrame(doDraw);
-  };
-
-  window.requestAnimationFrame(doDraw);
-
-
+  }
 
 }
 
@@ -196,6 +245,11 @@ var _D =
 }
 var yref = new Uint16Array(_D.YVERTL.length>>1);
 for(var i=0;i<_D.YVERTL.length;i+=2) yref[i>>1] = parseInt( _D.YVERTH.substring(i,i+2),16)*256+parseInt( _D.YVERTL.substring(i,i+2),16);
+
+//var s = [];
+//for(var i=0;i<192;i++) s[i] = "0x"+yref[i].toString(16)
+//console.log(s.join(","))
+
 
 var vidContext, apple2plus;
 
