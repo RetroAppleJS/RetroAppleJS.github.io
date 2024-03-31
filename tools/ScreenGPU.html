@@ -25,6 +25,18 @@
     </style>
 </head>
 
+<script>
+  // global data initializations
+const _o = {
+         "sys":{}     
+        ,"EMU_Updates_s":10                 // Emulator intervals per second 
+        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
+        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+    };
+
+var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
+</script>
+
 <script type="text/javascript" src="TOOLS_Header.js"></script>
 <script type="text/javascript" src="../res/COM_CONFIG.js"></script>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
@@ -37,7 +49,118 @@
 <script>
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
+var xp = 0;
+var m = [0b00000000,0b10000001,0b00000000];
+var chrome_mode = 0;
+var bit_adr = xp%7;
+var cb = 0x7f;
 
+const col = (8193 & cb) % 40;                 // column of byte 
+const c00 = col > 0 ? 255 : 0;                // adjacent byte on the left?
+const c40 = col < 39 ? 255 : 0;               // adjacent byte on the right?
+const d8 = m[1] & cb;                         // byte in range of [xp,yp]
+
+const d8_l = c00 & m[0] & cb;                 // left byte
+const d8_r = c40 & m[2] & cb;                 // right byte
+
+const d24 = (d8_l<<14) | (d8<<7) | (d8_r);    // aggregate of 3 adjecent bytes
+const b7 = m[1]&0x80;                         // high bit
+const b  = d24  & (128<<bit_adr);             // bit at [xp,yp]
+const b_l = d24 & (256<<bit_adr);             // bit at [xp-1,yp]
+const b_r = d24 & (64<<bit_adr);              // bit at [xp+1,yp]
+
+//alert((b_l!=0) + " " +  (b_r!=0))
+
+const cm = chrome_mode<<2;
+const a0 = (xp & 0x01);                       // 0=even/1=uneven column
+
+if(b!=0)
+{
+  //cptr = cm + (15<<4);
+  if(b7!=0)
+  {
+      if(a0 != 0) cptr = cm + (9<<4);           // orange
+      else        cptr = cm + (6<<4);           // blue
+  }
+  else
+  {
+      if(a0 != 0) cptr = cm + (12<<4);           // green
+      else        cptr = cm + (3<<4);            // purple
+  }
+  if(b_l!=0 || b_r!=0) cptr = cm + (15<<4);      // white
+
+  var INTCols = new Uint8Array([
+     0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
+    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
+    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
+    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple
+    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
+    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue
+    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
+    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
+    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
+    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
+    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green
+    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
+    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
+    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
+    ]);
+}
+//alert(INTCols[cptr].toString(16)+" "+INTCols[cptr+1].toString(16)+" "+INTCols[cptr+2].toString(16));
+
+
+//alert(oCOM.getBinMulti(b&256,24))
+//alert("l "+(b_l!=0)+"\nm "+(b!=0)+"\nr "+(b_r!=0))
+//alert(a0)
+
+var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
+{
+  const xp = (this.thread.x>>1);
+  const yp = (this.thread.y>>1)+1;
+  const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
+  const bit_adr = xp%7;
+  const cb = 0x7f;
+
+  const col = (adr & cb) % 40;                      // column of byte 
+  const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
+  const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
+  const d8 = mem[adr] & cb;                         // byte in range of [xp,yp]
+  const d8_l = c00 & mem[adr-1] & cb;               // left byte
+  const d8_r = c40 & mem[adr+1] & cb;               // right byte
+  const d24 = (d8_l<<14) | (d8<<7) | (d8_r);        // aggregate of 3 adjecent bytes
+
+  const b7 = mem[adr]&0x80;                         // high bit
+  const b  = d24  & (128<<bit_adr);                 // bit at [xp,yp]
+
+  //(mem[adr] & (1<<bit_adr))
+
+  const b_l = d24 & (256<<bit_adr);                 // bit at [xp-1,yp]
+  const b_r = d24 & (64<<bit_adr);                 // bit at [xp+1,yp]
+
+  const cm = chrome_mode<<2;
+  const a0 = (xp & 0x01);                           // 0=even/1=uneven column
+
+  var cptr = 0;
+  if(b!=0)
+  {
+    if(b7!=0)
+    {
+        if(a0 != 0) cptr = cm + (9<<4);           // orange
+        else        cptr = cm + (6<<4);           // blue
+    }
+    else
+    {
+        if(a0 != 0) cptr = cm + (4<<4);           // green
+        else        cptr = cm + (3<<4);           // purple
+    }
+    if(b_l!=0 || b_r!=0) cptr = cm + (15<<4);     // white
+  }
+
+
+  this.color(INTCols[cptr]/128,INTCols[cptr+1]/128,INTCols[cptr+2]/128,1);
+}
 
 
 const patterns = 
@@ -92,28 +215,13 @@ const patterns =
 47:{"idx":47,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,128]),"cri":{"DOUBL":15}}
 }
 
-
-
-// global data initializations
-const _o = {
-         "sys":{}     
-        ,"EMU_Updates_s":10                 // Emulator intervals per second 
-        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
-        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
-    };
-
-var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
-
-
 var AppVersion = 1;
-
 
 var RAM_SIZE =      0xc000,
       LORES_ADDR =    0x0400,
       LORES_SIZE =    0x0800, // both pages
       HIRES_ADDR =    0x2000,
       HIRES_SIZE =    0x4000 // both pages
-
 
 function EMU_init()
 {
@@ -132,7 +240,7 @@ function EMU_init()
   {
     kernel = gpu.createKernel(
       function(dim,m)
-      {
+      {        
         const xp = (this.thread.x>>1);
         const yp = (this.thread.y>>1)+1;
         const p = m[xp+((dim[1]>>1)-yp)*dim[0]]==1 ? 255:0;
@@ -163,29 +271,37 @@ function EMU_init()
 
   //apple2plus          = new Apple2Plus();
 
-
-
-
-
   if(AppVersion==1)
   {
+    var INTCols = new Uint8Array([
+     0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
+    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
+    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
+    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple
+    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
+    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue
+    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
+    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
+    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
+    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
+    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green
+    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
+    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
+    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
+    ]);
+
+    var monoNames   = ["color","b/w","green","amber"];
+    var chrome_mode = 0;
+    var color_nr    = 9;   // Orange 
+
+    var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
+    //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
+
+
     kernel = gpu.createKernel(
-      function(dim,mem,yref)
-      {
-        const xp = (this.thread.x>>1);
-        const yp = (this.thread.y>>1)+1;
-        const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
-        const bit_adr = xp%7;
-
-        const d8_l = 0;
-        const d8_r = 0;
-        const col = (adr & 0x7f) % 40;
-        if (col > 0) d8_l = mem[adr - 1];
-        if (col < 39) d8_r = mem[adr + 1];
-
-        const p =  (mem[adr] & (1<<bit_adr)) ==0 ? 0 : 255;
-        this.color(p,p,p,1);
-      },
+     kProcess,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -197,7 +313,7 @@ function EMU_init()
     for(var i=0;i<192;i++)
     {
       var x = i;
-      var y = i;
+      var y = i>>1;
       var adr = yref[y] + Math.floor(x/7);   // row base address + column offset 
       var bit_adr = x%7;
       ram[adr] |= 1<<bit_adr;
@@ -218,13 +334,60 @@ function EMU_init()
 
     const doDraw = () => 
     {
-      kernel(dim,ram,yref);
-      window.requestAnimationFrame(doDraw);
+      kernel(dim,ram,yref,INTCols,chrome_mode);
+      //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
   }
 
 }
+
+/*
+this.hgr_PixelColor = function(x, y, left, me, right, b7) {
+        var a0 = x & 0x01;
+
+        // If pixel is set and either adjacent pixels are set, it's white.
+        if (me != 0 && (left != 0 || right != 0))
+            return loresCols[15][0];  // White
+        // If pixel is set but no adjacent pixels are set, pick a color
+        // based on column and b7.
+        else if (me != 0) {
+            if (b7 != 0) {
+                if (a0 != 0)
+                    return loresCols[9][0]; // Orange
+                else
+                    return loresCols[6][0]; // Medium Blue
+            } else {
+                if (a0 != 0)
+                    return loresCols[12][0]; // Green
+                else
+                    return loresCols[3][0]; // Purple
+            }
+        }
+        // If pixel is not set and both adjacent pixels are set, pick a
+        // color based on column (of adjacent pixel) and b7 (of this byte).
+        else if (left != 0 && right != 0) {
+            if (b7 != 0) {
+                if (a0 != 0)
+                    return loresCols[6][0]; // Medium Blue
+                else
+                    return loresCols[9][0]; // Orange
+            } else {
+                if (a0 != 0)
+                    return loresCols[3][0]; // Purple
+                else
+                    return loresCols[12][0]; // Green
+            }
+        }
+        // Else it's black.
+        else
+           return loresCols[0][0];    // Black
+    }
+*/
+
+
+
+
 
 
 
