@@ -79,7 +79,7 @@ function COM()
     // PARSE OUTPUT DIGITS ARRAY
     for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
 
-    var add = function(x, y, base) {
+    function add(x, y, base) {
         var _m = Math.max(x.length, y.length);
         for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
           var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
@@ -88,7 +88,7 @@ function COM()
         return _r;
     }
 
-    var mul = function(x, pow, base) {
+    function mul (x, pow, base) {
         for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
           if(x & 1) _r = add(_r, pow, base);
           pow = add(pow, pow, base);
@@ -99,6 +99,38 @@ function COM()
     return _o.length==0?this.toSymbols[0]:_o;
   }
 
+  this.symbols = 
+  {
+    32:function(){return this.base32hex},
+    45:function(){return this["qr-alnum"]},
+    58:function(){return this.Bitcoin},
+    60:function(){return this.appleII},
+  "low hex":   ["[0-9][a-f]"],															 // base 16
+  "qr-alnum":  ["[0-9][A-Z] $%*+-./:"],                      // base 45
+  "Bitcoin":   ["[1-9][A-H]JKLMN[P-Z][a-k][m-z]"],           // base 58
+  "appleII":   ["[0-9][A-Z]![#-/][:-@]]^ "],                 // base 60
+  "Base64":    ["[A-Z][a-z][0-9]+/"],												 // base 64
+  "GUID64":    ["[A-Z][a-z][0-9]-_"]                        // base 64
+  }
+
+  this.getsymbols = function(base) {
+    if(typeof(base)=="undefined") return "";
+    if(typeof(this.symbols[base])=="undefined")
+      this.symbols[base] = base<95?
+        (this.rng(base<64?"[0-9][A-Z][a-z]+":"[A-Z][a-z][0-9][!-/][:-@][[-`][{-~]").substring(0,base))
+      :(this.symbols[base] = base<216?
+        this.rng("[\x20-\x7e]\x80[\x82-\x8c]\x8e[\x91-\x9c]\x9e\x9f[\xa1-\xac][\xae-\xff]").substring(0,base)
+        :this.rng("[\x00-\xff]").substring(256-base,256));
+    if(typeof(this.symbols[base])=="function")  this.symbols[base] = this.symbols[base]();             // process references
+    if(typeof(this.symbols[base])=="object")    this.symbols[base] = this.rng(this.symbols[base][0]);  // process range_replace
+    return this.symbols[base];
+  }
+
+  this.rng = function(recipe) {
+    var _a = recipe.match(/\[.-.\]/); if(_a==null) return recipe; else { _a=[_a[0].charCodeAt(1),_a[0].charCodeAt(3)];
+    return this.rng(recipe.replace(RegExp("\\[(\\x"+("0"+_a[0].toString(16)).slice(-2)+"-\\x"+_a[1].toString(16)+")\\]","g"),
+    String.fromCharCode(..." ".repeat(_a[1]-_a[0]+1).split("").map((_e,_i)=>_i+_a[0])) )) }
+  }
 
   this.ltrim = function(s) { return s.replace(/^ */,"") }
   this.rtrim = function(s) { return s.replace(/ *$/,"") }

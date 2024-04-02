@@ -259,8 +259,12 @@
                 <form name="EMUboard">
                   <textarea cols=40 rows=4 placeholder="Paste here" name=boardText style="float:left"></textarea><br>
                   <input type="button"  value="Paste"              onclick="javascript:oCOM.POPUP.toggle('tab1.2');onBoardPaste()">
-                  <input type="button"  value="Capture" id=Capture onclick="javascript:onCapture()">                
-                  <input type="text"    value="$0000" size=5       onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 onkeyup="onCaptureAddr(this)">
+                  
+                  <input type="button"  value="TxtCap" id=TxtCapture onclick="javascript:onTxtCapture(this)">   
+                  
+                  <input type="button"  value="MemCap" id=MemCapture onclick="javascript:onMemCapture('CapF','CapT')">  
+                  
+                  <input type="text"    value="$0000" size=5 id="CapF" onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 id="CapT" onkeyup="onCaptureAddr(this)">
                   <input type="button"  value="Clear"              onclick="javascript:onEMUBoardClear()">
                   <input type="button"  value="X"                  onclick="javascript:oCOM.POPUP.off('tab1.2')">
                 </form>
@@ -461,23 +465,22 @@
               }
             }
 
-            function onCapture()
+            function onTxtCapture(el)
             {
-                var hw = apple2plus.hwObj();
-                var s = "";
-                for(var y=0;y<24;y++)
+              var hw = apple2plus.hwObj();
+              var s = "";
+              for(var y=0;y<24;y++)
+              {
+                for(var x=0;x<40;x++)
                 {
-                  for(var x=0;x<40;x++)
-                  {
-                      // calculate TEXT address from x & y text coordinates
-                      var adr = 0x0400 + (y-(y&0xF8) << 7) + (y&0xF8) * 5 + x;
-                      var b = hw.read(adr);
-                      s += b>=160 && b<=223 ? String.fromCharCode(b-128) : " "; // filter out chars out of range
-                  }
-                  s+="\r"
+                    // calculate TEXT address from x & y text coordinates
+                    var adr = 0x0400 + (y-(y&0xF8) << 7) + (y&0xF8) * 5 + x;
+                    var b = hw.read(adr);
+                    s += b>=160 && b<=223 ? String.fromCharCode(b-128) : " "; // filter out chars out of range
                 }
-                EMUboard.boardText.value = s;
-                
+                s+="\r"
+              }
+              EMUboard.boardText.value = s;
             }
 
             function onEMUBoardClear() { EMUboard.boardText.value = "" };  
@@ -485,30 +488,35 @@
             {
               tag.value=tag.value=="hex"?"dec":"hex";
             }
-            function onCaptureRange(event,tag,base)
+            function onMemCapture(id1,id2)
             {
+              var id1 = document.getElementById(id1).value;
+              var id2 = document.getElementById(id2).value;
+              var base = id1.charAt(0)=="$" && id2.charAt(0)=="$"?"hex":"dec";
+              var val = id1+"►"+id2;
+
               var template = {"hex":["\\$([0-9A-F]{1,4})►\\$([0-9A-F]{1,4})",16],
                               "dec":["([0-9]{1,5})►([0-9]{1,5})",10]};
               // VALIDATE
               var re = new RegExp(template[base][0],'g');
-              var addr_arr = tag.value.replace(re,'$1,$2').split(",");
-              document.getElementById('Capture').disabled = addr_arr.length!=2;
+              var addr_arr = val.replace(re,'$1,$2').split(",");
+              if(base=="hex") addr_arr = [oCOM.base_convert(addr_arr[0],["0123456789ABCDEF"],["0123456789"]),oCOM.base_convert(addr_arr[1],16,10)];
 
-
-              document.getElementById("debug2").value = event.keyCode
-
-              //document.getElementById("debug2").value = "$"+addr_arr.join("►$")
-              //alert(tag.value+" ("+tag.value.replace(re,'$1,$2')+")");
-           
+              if(addr_arr.length==2)
+              {
+                alert(addr_arr)
+                
+              }           
             }
 
-            function onCaptureAddr(tag)
+            function onCaptureAddr(el)
             {
               var template = {16:"\\$([0-9A-F]{1,4})",
                               10:"([0-9]{1,5})"};
-              var base = tag.value.charAt(1)=="$"?16:10;
-              var bValid = tag.value.match(template[base])==null?false:tag.value;
-              document.getElementById('Capture').disabled = !bValid
+              var base = el.value.charAt(1)=="$"?16:10;
+              var bValid = el.value.match(template[base])==null?false:el.value;
+
+              document.getElementById('MemCapture').disabled = !bValid
               return bValid;
             }
             </script>
