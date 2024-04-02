@@ -504,8 +504,19 @@
 
               if(addr_arr.length==2)
               {
-                alert(addr_arr)
-                
+                var s = [];
+                for(var i=addr_arr[0];i<=addr_arr[1];i++)
+                {
+                  var idx = i-addr_arr[0];
+                  if((idx%8==0)
+                  {
+                    var adr = oCOM.getHexWord(i);
+                    s[idx] += adr+":";
+                  }
+                  var b = hw.read(i).getHexByte(i);
+                  s[idx] += " "+b;
+                }
+                EMUboard.boardText.value = s.join("\r");
               }           
             }
 
