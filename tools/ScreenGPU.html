@@ -50,7 +50,7 @@ var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
 var xp = 0;
-var m = [0b00000000,0b10000001,0b00000000];
+var m = [0b00000000,0b00000001,0b01000000];
 var chrome_mode = 0;
 var bit_adr = xp%7;
 var cb = 0x7f;
@@ -69,7 +69,8 @@ const b  = d24  & (128<<bit_adr);             // bit at [xp,yp]
 const b_l = d24 & (256<<bit_adr);             // bit at [xp-1,yp]
 const b_r = d24 & (64<<bit_adr);              // bit at [xp+1,yp]
 
-//alert((b_l!=0) + " " +  (b_r!=0))
+alert("col="+col+" "+oCOM.getBinMulti(d24,24));
+alert((b_l!=0)+" "+(b!=0)+" "+(b_r!=0))
 
 const cm = chrome_mode<<2;
 const a0 = (xp & 0x01);                       // 0=even/1=uneven column
@@ -88,6 +89,8 @@ if(b!=0)
       else        cptr = cm + (3<<4);            // purple
   }
   if(b_l!=0 || b_r!=0) cptr = cm + (15<<4);      // white
+
+  //alert((b_l!=0)+" "+(b!=0)+" "+(b_r!=0))
 
   var INTCols = new Uint8Array([
      0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
@@ -157,7 +160,6 @@ var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
     }
     if(b_l!=0 || b_r!=0) cptr = cm + (15<<4);     // white
   }
-
 
   this.color(INTCols[cptr]/128,INTCols[cptr+1]/128,INTCols[cptr+2]/128,1);
 }
@@ -329,8 +331,6 @@ function EMU_init()
       }
       //console.log(s.join(""));
     }
-    
-    
 
     const doDraw = () => 
     {
