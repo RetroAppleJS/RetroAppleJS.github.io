@@ -396,6 +396,7 @@
                 -->
 
               </div>
+            </div>
 
               <script>
               function slider_scroll(obj,max)
@@ -422,11 +423,7 @@
               }
               const slider_canvas = document.getElementById("scopeCanvas");
               if(slider_canvas) var slider_scroll_ctx = slider_canvas.getContext("2d");
-              </script>
-                
-            </div>
 
-            <script type="text/javascript">
 
             oCOM.addToEventStack("onload",EMU_mem_map)
             function EMU_mem_map()
@@ -490,6 +487,7 @@
             }
             function onMemCapture(id1,id2)
             {
+              var hw = apple2plus.hwObj();
               var id1 = document.getElementById(id1).value;
               var id2 = document.getElementById(id2).value;
               var base = id1.charAt(0)=="$" && id2.charAt(0)=="$"?"hex":"dec";
@@ -500,20 +498,20 @@
               // VALIDATE
               var re = new RegExp(template[base][0],'g');
               var addr_arr = val.replace(re,'$1,$2').split(",");
-              if(base=="hex") addr_arr = [oCOM.base_convert(addr_arr[0],["0123456789ABCDEF"],["0123456789"]),oCOM.base_convert(addr_arr[1],16,10)];
+              if(base=="hex") addr_arr = [Number(oCOM.base_convert(addr_arr[0],["0123456789ABCDEF"],["0123456789"])),Number(oCOM.base_convert(addr_arr[1],16,10))];
 
               if(addr_arr.length==2)
               {
                 var s = [];
                 for(var i=addr_arr[0];i<=addr_arr[1];i++)
                 {
-                  var idx = i-addr_arr[0];
-                  if((idx%8==0)
+                  var idx = Math.floor((i-addr_arr[0])/8);
+                  if((i-addr_arr[0])%8==0)
                   {
                     var adr = oCOM.getHexWord(i);
-                    s[idx] += adr+":";
+                    s[idx] = adr+":";
                   }
-                  var b = hw.read(i).getHexByte(i);
+                  var b = oCOM.getHexByte(hw.safe_read(i));
                   s[idx] += " "+b;
                 }
                 EMUboard.boardText.value = s.join("\r");

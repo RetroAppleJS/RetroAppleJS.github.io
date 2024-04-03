@@ -67,6 +67,25 @@ function Apple2Hw(vid,keys) {
         return d8;
     }
 
+    this.safe_read = function(addr)
+    {
+        var d8;
+        addr = addr & 0xFFFF;
+
+            if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
+                d8 = this.io.read(addr);
+            else if (addr < RAM_SIZE)
+                d8 = ram[addr];
+            else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+                d8 = apple2Rom[addr - ROM_ADDR];
+            //else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+            //    d8 = this.io.read(addr - IO_ADDR);
+            else
+                d8 = 0xFF;
+     
+        return d8;
+    }
+
     this.write = function(addr, d8)
     {
         if (d8 < 0 || d8 > 0xff)
