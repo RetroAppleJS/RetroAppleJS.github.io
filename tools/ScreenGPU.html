@@ -25,9 +25,46 @@
     </style>
 </head>
 
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+<script type="text/javascript" src="../res/COM_CONFIG.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+
+<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
+
+<div class="slider_main">
+
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+    <div id="topmenu">
+      <form id="topform" name='Versions' action=''>
+      </form>
+        <ul id="minitabs">
+        <li id="menu"></li>
+      </ul>
+    </div>
+    <div id="main">
+      <div id="prede"></div>
+      <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+      <div id=debug style="overflow:scroll; height:400px; width:500px; font-size:8px; font-family: 'Courier New', Courier, monospace; vertical-align:top"></div>
+    </div>
+  </div>
+  
+  
+  </body>
+  </html>
+
+
+
+
+
+
 <script>
 
-var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap"}
+var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
 
   // global data initializations
 const _o = {
@@ -38,137 +75,75 @@ const _o = {
     };
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
-</script>
 
-<script type="text/javascript" src="TOOLS_Header.js"></script>
-<script type="text/javascript" src="../res/COM_CONFIG.js"></script>
-<script type="text/javascript" src="../res/COM_MAIN.js"></script>
-<script type="text/javascript" src="../res/gpu-browser.min.js"></script>
-
-<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
-
-<script>
 var CONF_version="0.1.0";
 var CONF_builddate="20240329-170000"; 
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
 
-
-/*
-var xp = 0;
-var m = [0b00000000,0b00000001,0b01000000];
-var chrome_mode = 0;
-var bit_adr = xp%7;
-var cb = 0x7f;
-
-const col = (8193 & cb) % 40;                 // column of byte 
-const c00 = col > 0 ? 255 : 0;                // adjacent byte on the left?
-const c40 = col < 39 ? 255 : 0;               // adjacent byte on the right?
-const d8 = m[1] & cb;                         // byte in range of [xp,yp]
-
-const d8_l = c00 & m[0] & cb;                 // left byte
-const d8_r = c40 & m[2] & cb;                 // right byte
-
-const d24 = (d8_l<<14) | (d8<<7) | (d8_r);    // aggregate of 3 adjecent bytes
-const b7 = m[1]&0x80;                         // high bit
-const b  = d24  & (128<<bit_adr);             // bit at [xp,yp]
-const b_l = d24 & (256<<bit_adr);             // bit at [xp-1,yp]
-const b_r = d24 & (64<<bit_adr);              // bit at [xp+1,yp]
-
-alert("col="+col+" "+oCOM.getBinMulti(d24,24));
-alert((b_l!=0)+" "+(b!=0)+" "+(b_r!=0))
-
-const cm = chrome_mode<<2;
-const a0 = (xp & 0x01);                       // 0=even/1=uneven column
-
-if(b!=0)
+function kernel_wrapper()
 {
-  //cptr = cm + (15<<4);
-  if(b7!=0)
+  this.kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
   {
-      if(a0 != 0) cptr = cm + (9<<4);           // orange
-      else        cptr = cm + (6<<4);           // blue
-  }
-  else
-  {
-      if(a0 != 0) cptr = cm + (12<<4);           // green
-      else        cptr = cm + (3<<4);            // purple
-  }
-  if(b_l!=0 || b_r!=0) cptr = cm + (15<<4);      // white
+    const xp = (this.thread.x>>1);
+    const yp = (this.thread.y>>1)+1;
+    const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
+    const bit_adr = xp%7;
+    const cb = 0x7f;
 
-  //alert((b_l!=0)+" "+(b!=0)+" "+(b_r!=0))
+    const col = (adr & cb) % 40;                      // column of byte 
+    const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
+    const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
+    const d8 = mem[adr] & cb;                         // byte in range of [xp,yp]
+    const d8_l = c00 & mem[adr-1] & cb;               // left byte
+    const d8_r = c40 & mem[adr+1] & cb;               // right byte
+    const d24 = (d8_l<<14) | (d8<<7) | (d8_r);        // aggregate of 3 adjecent bytes
 
-}
-//alert(INTCols[cptr].toString(16)+" "+INTCols[cptr+1].toString(16)+" "+INTCols[cptr+2].toString(16));
+    const b7 = mem[adr]&0x80;                         // high bit
+    const me  = d24  & (128<<bit_adr);                 // bit at [xp,yp]
 
+    //(mem[adr] & (1<<bit_adr))
 
-//alert(oCOM.getBinMulti(b&256,24))
-//alert("l "+(b_l!=0)+"\nm "+(b!=0)+"\nr "+(b_r!=0))
-//alert(a0)
-*/
+    const b_l = d24 & (256<<bit_adr);                 // bit at [xp-1,yp]
+    const b_r = d24 & (64<<bit_adr);                 // bit at [xp+1,yp]
 
+    const cm = chrome_mode<<2;
+    const a0 = (xp & 0x01);                           // 0=even/1=uneven column
 
-var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
-{
-  const xp = (this.thread.x>>1);
-  const yp = (this.thread.y>>1)+1;
-  const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
-  const bit_adr = xp%7;
-  const cb = 0x7f;
+    var cptr = 0;
 
-  const col = (adr & cb) % 40;                      // column of byte 
-  const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
-  const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
-  const d8 = mem[adr] & cb;                         // byte in range of [xp,yp]
-  const d8_l = c00 & mem[adr-1] & cb;               // left byte
-  const d8_r = c40 & mem[adr+1] & cb;               // right byte
-  const d24 = (d8_l<<14) | (d8<<7) | (d8_r);        // aggregate of 3 adjecent bytes
-
-  const b7 = mem[adr]&0x80;                         // high bit
-  const me  = d24  & (128<<bit_adr);                 // bit at [xp,yp]
-
-  //(mem[adr] & (1<<bit_adr))
-
-  const b_l = d24 & (256<<bit_adr);                 // bit at [xp-1,yp]
-  const b_r = d24 & (64<<bit_adr);                 // bit at [xp+1,yp]
-
-  const cm = chrome_mode<<2;
-  const a0 = (xp & 0x01);                           // 0=even/1=uneven column
-
-  var cptr = 0;
-
-  if(me!=0 && (b_l!=0 || b_r!=0))
-                    cptr = cm + (15<<4);           // white
-  else if(me!=0)
-  {
-    if(b7!=0)
+    if(me!=0 && (b_l!=0 || b_r!=0))
+                      cptr = cm + (15<<4);           // white
+    else if(me!=0)
     {
-        if(a0 != 0) cptr = cm + (9<<4);           // orange
-        else        cptr = cm + (6<<4);           // blue
-    } else {
-        if(a0 != 0) cptr = cm + (12<<4);          // green
-        else        cptr = cm + (3<<4);           // purple
+      if(b7!=0)
+      {
+          if(a0 != 0) cptr = cm + (9<<4);           // orange
+          else        cptr = cm + (6<<4);           // blue
+      } else {
+          if(a0 != 0) cptr = cm + (12<<4);          // green
+          else        cptr = cm + (3<<4);           // purple
+      }
     }
-  }
-  else if (b_l != 0 && b_r != 0)
-  {
-    if (b7 != 0) {
-        if (a0 != 0) cptr = cm + (6<<4);           // blue
-        else         cptr = cm + (9<<4);           // orange
-    } else {
-        if (a0 != 0) cptr = cm + (3<<4);           // purple
-        else         cptr = cm + (12<<4);          // green
+    else if (b_l != 0 && b_r != 0)
+    {
+      if (b7 != 0) {
+          if (a0 != 0) cptr = cm + (6<<4);           // blue
+          else         cptr = cm + (9<<4);           // orange
+      } else {
+          if (a0 != 0) cptr = cm + (3<<4);           // purple
+          else         cptr = cm + (12<<4);          // green
+      }
     }
-  }
-  else
-      cptr = cm + 0;                               // black
+    else
+        cptr = cm + 0;                               // black
 
-  this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+  }
 }
 
+oKW = new kernel_wrapper();
 
 var RAM_SIZE =      0xc000,
     LORES_ADDR =    0x0400,
@@ -208,6 +183,7 @@ function EMU_init()
   });
 
   var kernel;
+  var deb = 0;
 
 
   /////////////////////////////
@@ -268,9 +244,8 @@ function EMU_init()
     var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
     //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
 
-
     kernel = gpu.createKernel(
-     kProcess,
+     oKW.kProcess,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -333,8 +308,6 @@ function EMU_init()
     }
     document.getElementById("topform").innerHTML += s.join("");
 
-
-
     var monoNames   = ["color","b/w","green","amber"];
     var chrome_mode = 0;
     var color_nr    = 9;   // Orange 
@@ -347,7 +320,7 @@ function EMU_init()
     draw(Pattern,ram);
 
     kernel = gpu.createKernel(
-     kProcess,
+     oKW.kProcess,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -365,7 +338,7 @@ function EMU_init()
   }  
 
 
-  //  VERSION 4
+  //  VERSION 3
 
   if(AppVersion==3)
   {
@@ -393,10 +366,8 @@ function EMU_init()
       }
     }
 
-
-
     kernel = gpu.createKernel(
-     kProcess,
+     oKW.kProcess,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -422,6 +393,28 @@ function EMU_init()
     };
     window.requestAnimationFrame(doDraw);
   }  
+
+  //  VERSION 4
+
+  if(AppVersion==4)
+  {
+    var mem = { 8192:0b00000000,8193:0b00000101,8194:0b01000000,8195:0b00000000,8196:0b00000000 };
+    oKW.thread = {"x":0,"y":0}
+    oKW.color  = function(r,g,b,t)
+    {
+        document.getElementById("prede").innerHTML += 
+          "<div style='margin:1px;float:left;width:10px;height:10px;background-color:#"+oCOM.getHexByte(r*256)+oCOM.getHexByte(g*256)+oCOM.getHexByte(b*256)+"'>&nbsp;</div>"
+        //document.getElementById("prede").innerHTML +=
+        //  oCOM.getHexByte(r*256)+" "+oCOM.getHexByte(g*256)+" "+oCOM.getHexByte(b*256)+"<br>";
+    }
+    
+    for(var x=(8+7);x>=0;x--)
+    {
+      oKW.thread = {"x":x<<1,"y":(191<<1)}
+      oKW.kProcess(dim,mem,yref,INTCols,chrome_mode);
+    }
+
+  }
 }
 
 
@@ -459,33 +452,6 @@ function Apple2Plus(context)
   this.video.setHires(true);
   this.video.redraw();
 }
-</script>
-
-<body class="slider_main">
-
-<div id="slider_title"></div>
- <div class="slider_overlay">
-    <div id="topmenu">
-      <form id="topform" name='Versions' action=''>
-      </form>
-
-      <ul id="minitabs">
-        <li id="menu"></li>
-      </ul>
-    </div>
-    <div id=main>
-
-
-<!-- -->
-
-
-<canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
-
-<div id=debug style="overflow:scroll; height:400px; width:500px; font-size:8px; font-family: 'Courier New', Courier, monospace; vertical-align:top"></div>
-
-
-<!-- Code to handle taking the snapshot and displaying it locally -->
-<script language="JavaScript">
 
 
 var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
@@ -1650,8 +1616,3 @@ const bytestream =
 
 </script>
 
-  </div>
-  </div>
-
-</body>
-</html>
