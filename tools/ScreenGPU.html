@@ -3,12 +3,14 @@
 // Copyright (c) 2024 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
 //
-//    ______                                            _____   ______   
-//  .' ____ \                                          |_   _|.' ____ \  
-//  | (___ \_| .---.  _ .--.  .---.  .---.  _ .--.       | |  | (___ \_| 
-//   _.____`. / /'`\][ `/'`\]/ /__\\/ /__\\[ `.-. |  _   | |   _.____`.  
-//  | \____) || \__.  | |    | \__.,| \__., | | | | | |__' |  | \____) | 
-//   \______.''.___.'[___]    '.__.' '.__.'[___||__]`.____.'   \______.'                                       
+//    ______                                          ______  _______  _____  _____  
+//  .' ____ \                                       .' ___  ||_   __ \|_   _||_   _| 
+//  | (___ \_| .---.  _ .--.  .---.  .---.  _ .--. / .'   \_|  | |__) | | |    | |   
+//   _.____`. / /'`\][ `/'`\]/ /__\\/ /__\\[ `.-. || |   ____  |  ___/  | '    ' |   
+//  | \____) || \__.  | |    | \__.,| \__., | | | |\ `.___]  |_| |_      \ \__/ /    
+//   \______.''.___.'[___]    '.__.' '.__.'[___||__]`._____.'|_____|      `.__.'                                            
+//
+// ScreenGPU.js
 -->
 
 
@@ -49,7 +51,7 @@
     <div id="main">
       <div id="prede"></div>
       <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
-      <div id=debug style="overflow:scroll; height:400px; width:500px; font-size:8px; font-family: 'Courier New', Courier, monospace; vertical-align:top"></div>
+      <div id=debug style="float:right; overflow:scroll; height:400px; width:700px; font-size:10px; font-family: 'Courier New', Courier, monospace; vertical-align:top"></div>
     </div>
   </div>
   
@@ -76,7 +78,7 @@ const _o = {
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
-var CONF_version="0.1.0";
+var CONF_version="1.0.0";
 var CONF_builddate="20240329-170000"; 
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
@@ -98,15 +100,13 @@ function kernel_wrapper()
     const d8 = mem[adr] & cb;                         // byte in range of [xp,yp]
     const d8_l = c00 & mem[adr-1] & cb;               // left byte
     const d8_r = c40 & mem[adr+1] & cb;               // right byte
-    const d24 = (d8_l<<14) | (d8<<7) | (d8_r);        // aggregate of 3 adjecent bytes
+    const d24 = (d8_l) | (d8<<7) | (d8_r<<14);        // aggregate of 3 adjecent bytes
 
     const b7 = mem[adr]&0x80;                         // high bit
-    const me  = d24  & (128<<bit_adr);                 // bit at [xp,yp]
-
-    //(mem[adr] & (1<<bit_adr))
+    const me  = d24  & (128<<bit_adr);                // bit at [xp,yp]
 
     const b_l = d24 & (256<<bit_adr);                 // bit at [xp-1,yp]
-    const b_r = d24 & (64<<bit_adr);                 // bit at [xp+1,yp]
+    const b_r = d24 & (64<<bit_adr);                  // bit at [xp+1,yp]
 
     const cm = chrome_mode<<2;
     const a0 = (xp & 0x01);                           // 0=even/1=uneven column
@@ -172,7 +172,7 @@ function EMU_init()
   apple2plus          = new Apple2Plus();
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
-
+  var chrome_mode = 0;
 
 
   /////////////////////////////
@@ -184,6 +184,7 @@ function EMU_init()
 
   var kernel;
   var deb = 0;
+
 
 
   /////////////////////////////
@@ -343,7 +344,6 @@ function EMU_init()
   if(AppVersion==3)
   {
     var monoNames   = ["color","b/w","green","amber"];
-    var chrome_mode = 0;
     var color_nr    = 9;   // Orange 
 
     var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
@@ -398,7 +398,7 @@ function EMU_init()
 
   if(AppVersion==4)
   {
-    var mem = { 8192:0b00000000,8193:0b00000101,8194:0b01000000,8195:0b00000000,8196:0b00000000 };
+    var mem = { 8192:0b00101010,8193:0b01010101,8194:0b00101010,8195:0b00000000,8196:0b00000000 };
     oKW.thread = {"x":0,"y":0}
     oKW.color  = function(r,g,b,t)
     {
@@ -408,7 +408,7 @@ function EMU_init()
         //  oCOM.getHexByte(r*256)+" "+oCOM.getHexByte(g*256)+" "+oCOM.getHexByte(b*256)+"<br>";
     }
     
-    for(var x=(8+7);x>=0;x--)
+    for(var x=0;x<40;x++)
     {
       oKW.thread = {"x":x<<1,"y":(191<<1)}
       oKW.kProcess(dim,mem,yref,INTCols,chrome_mode);
