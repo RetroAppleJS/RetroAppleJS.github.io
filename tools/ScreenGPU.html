@@ -128,7 +128,7 @@ var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
   const d24 = (d8_l<<14) | (d8<<7) | (d8_r);        // aggregate of 3 adjecent bytes
 
   const b7 = mem[adr]&0x80;                         // high bit
-  const b  = d24  & (128<<bit_adr);                 // bit at [xp,yp]
+  const me  = d24  & (128<<bit_adr);                 // bit at [xp,yp]
 
   //(mem[adr] & (1<<bit_adr))
 
@@ -139,22 +139,34 @@ var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
   const a0 = (xp & 0x01);                           // 0=even/1=uneven column
 
   var cptr = 0;
-  if(b!=0)
+
+  if(me!=0 && (b_l!=0 || b_r!=0))
+                    cptr = cm + (15<<4);           // white
+  else if(me!=0)
   {
     if(b7!=0)
     {
         if(a0 != 0) cptr = cm + (9<<4);           // orange
         else        cptr = cm + (6<<4);           // blue
-    }
-    else
-    {
-        if(a0 != 0) cptr = cm + (4<<4);           // green
+    } else {
+        if(a0 != 0) cptr = cm + (12<<4);          // green
         else        cptr = cm + (3<<4);           // purple
     }
-    if(b_l!=0 || b_r!=0) cptr = cm + (15<<4);     // white
   }
+  else if (b_l != 0 && b_r != 0)
+  {
+    if (b7 != 0) {
+        if (a0 != 0) cptr = cm + (6<<4);           // blue
+        else         cptr = cm + (9<<4);           // orange
+    } else {
+        if (a0 != 0) cptr = cm + (3<<4);           // purple
+        else         cptr = cm + (12<<4);          // green
+    }
+  }
+  else
+      cptr = cm + 0;                               // black
 
-  this.color(INTCols[cptr]/128,INTCols[cptr+1]/128,INTCols[cptr+2]/128,1);
+  this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
 }
 
 
