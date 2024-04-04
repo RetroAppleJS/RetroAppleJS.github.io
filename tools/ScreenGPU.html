@@ -50,6 +50,9 @@ var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
 <script>
+var CONF_version="0.1.0";
+var CONF_builddate="20240329-170000"; 
+
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
 
@@ -170,12 +173,12 @@ function EMU_init()
 
   var AppVersion = oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]
 
-  var s_versions = ["<form name='Versions' action='' style=float:left>"
-    +"<select name=VSelect onchange='Versions.submit()''>"];
+  var s_versions = ["<select name=VSelect onchange='Versions.submit()''>"];
   for(var i in ActiveVesions)
     s_versions[s_versions.length] = "<option value="+i+" "+(AppVersion==i?"selected":"")+">"+ActiveVesions[i]+"</option>"
-  s_versions[s_versions.length] = "</select></form><br>"
+  s_versions[s_versions.length] = "</select><br>"
 
+  document.getElementById("topform").innerHTML += s_versions.join("");
 
 
   vidContext          = document.getElementById('applescreen');
@@ -183,19 +186,7 @@ function EMU_init()
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
-  var s=[];
-  for(var i in patterns)
-  {
-      var c = oCOM.HEX2RGB(patterns[i].col);
-      var l = Math.round((c[0]+c[1]+c[2])/3);
-      var fnt = l<200?"color:white;":"";
-      var j = ("00"+i).slice(-3);
 
-      s[s.length] = "<button onclick=\"draw("+i+")\" "
-          +"style=font-family:'Courier';border:none;margin:1px;padding:1px;font-size:10px;float:left;background-color:"+patterns[i].col+";"+fnt+">"
-          +j+"</button>"
-  }
-  document.getElementById("topmenu").innerHTML = s_versions.join("")+s.join("");
 
   /////////////////////////////
 
@@ -316,6 +307,22 @@ function EMU_init()
 
   if(AppVersion==2)
   {
+    var s=[];
+    for(var i in patterns)
+    {
+        var c = oCOM.HEX2RGB(patterns[i].col);
+        var l = Math.round((c[0]+c[1]+c[2])/3);
+        var fnt = l<200?"color:white;":"";
+        var j = ("00"+i).slice(-3);
+
+        s[s.length] = "<button onclick=\"Versions.submit()\" name='pattern' value='"+i+"' "
+            +"style=font-family:'Courier';border:none;margin:1px;padding:1px;font-size:10px;float:left;background-color:"+patterns[i].col+";"+fnt+">"
+            +j+"</button>"
+    }
+    document.getElementById("topform").innerHTML += s.join("");
+
+
+
     var monoNames   = ["color","b/w","green","amber"];
     var chrome_mode = 0;
     var color_nr    = 9;   // Orange 
@@ -324,7 +331,8 @@ function EMU_init()
     //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
 
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
-
+    var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+    draw(Pattern,ram);
 
     kernel = gpu.createKernel(
      kProcess,
@@ -406,8 +414,7 @@ function EMU_init()
 
 
 
-var CONF_version="0.0.3";
-var CONF_builddate="20240329-170000"; 
+
 
 var bDebug = false;
 var _D = 
@@ -447,6 +454,9 @@ function Apple2Plus(context)
 <div id="slider_title"></div>
  <div class="slider_overlay">
     <div id="topmenu">
+      <form id="topform" name='Versions' action=''>
+      </form>
+
       <ul id="minitabs">
         <li id="menu"></li>
       </ul>
@@ -468,7 +478,7 @@ function Apple2Plus(context)
 
 var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
 
-function draw(color_pattern)
+function draw(color_pattern,ram)
 {  
   var s = [];
   var pat = patterns[color_pattern].pat;
@@ -480,12 +490,14 @@ function draw(color_pattern)
     for(var xi=0;xi<280;xi++)
     {
         var adr = yref[yi]+Math.floor(xi/7);               // find address 
-        var wbyt = apple2plus.hw.read(adr);                  // read
+        //var wbyt = apple2plus.hw.read(adr);                  // read
+        wbyt = ram[adr];
 
         s = debug(s,xi,yi,pat,dimx,dimy);
         wbyt = paste_pattern(wbyt,xi,yi,pat,dimx,dimy);
 
-        apple2plus.hw.write(adr,wbyt);                         // write
+        //apple2plus.hw.write(adr,wbyt);                         // write
+        ram[adr] = wbyt;
     }
     s[s.length] = "<br>";
   }
