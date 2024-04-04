@@ -26,6 +26,9 @@
 </head>
 
 <script>
+
+var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap"}
+
   // global data initializations
 const _o = {
          "sys":{}     
@@ -49,6 +52,9 @@ var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO
 <script>
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
+
+
+/*
 var xp = 0;
 var m = [0b00000000,0b00000001,0b01000000];
 var chrome_mode = 0;
@@ -92,24 +98,6 @@ if(b!=0)
 
   //alert((b_l!=0)+" "+(b!=0)+" "+(b_r!=0))
 
-  var INTCols = new Uint8Array([
-     0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
-    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
-    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
-    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple
-    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
-    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
-    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue
-    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
-    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
-    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange
-    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
-    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
-    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green
-    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
-    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
-    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
-    ]);
 }
 //alert(INTCols[cptr].toString(16)+" "+INTCols[cptr+1].toString(16)+" "+INTCols[cptr+2].toString(16));
 
@@ -117,6 +105,8 @@ if(b!=0)
 //alert(oCOM.getBinMulti(b&256,24))
 //alert("l "+(b_l!=0)+"\nm "+(b!=0)+"\nr "+(b_r!=0))
 //alert(a0)
+*/
+
 
 var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
 {
@@ -165,71 +155,49 @@ var kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
 }
 
 
-const patterns = 
-{
-0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,0,0b00,0]),"cri":{},"dim":[2,2]},
-1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b10,0,0b00,0]),"cri":{}},
-2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b01,0,0b00,0]),"cri":{}},
-3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,0,0b00,0]),"cri":{}},
-4:{"idx":4,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,0,0b10,0]),"cri":{"DOUBL":1}},
-5:{"idx":5,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":new Uint8Array([0b10,0,0b10,0]),"cri":{}},
-6:{"idx":6,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":new Uint8Array([0b01,0,0b10,0]),"cri":{}},
-7:{"idx":7,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,0,0b10,0]),"cri":{}},
-8:{"idx":8,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,0,0b01,0]),"cri":{"DOUBL":2}},
-9:{"idx":9,"col":"#B97BB9","sat":31,"cmp":["#FF00FF","#80FF80"],"pat":new Uint8Array([0b10,0,0b01,0]),"cri":{"DOUBL":6}},
-10:{"idx":10,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":new Uint8Array([0b01,0,0b01,0]),"cri":{}},
-11:{"idx":11,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,0,0b01,0]),"cri":{}},
-12:{"idx":12,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,0,0b11,0]),"cri":{"DOUBL":3}},
-13:{"idx":13,"col":"#F67BF6","sat":49,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b10,0,0b11,0]),"cri":{"DOUBL":7}},
-14:{"idx":14,"col":"#B9F6B9","sat":24,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b01,0,0b11,0]),"cri":{"DOUBL":11}},
-15:{"idx":15,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,0,0b11,0]),"cri":{}},
-16:{"idx":16,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,0]),"cri":{"DOUBL":0}},
-17:{"idx":17,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,0]),"cri":{}},
-18:{"idx":18,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,0]),"cri":{}},
-19:{"idx":19,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,0]),"cri":{"DOUBL":3}},
-20:{"idx":20,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,128,0b10,0]),"cri":{"DOUBL":1}},
-21:{"idx":21,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":new Uint8Array([0b10,128,0b10,0]),"cri":{}},
-22:{"idx":22,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":new Uint8Array([0b01,128,0b10,0]),"cri":{}},
-23:{"idx":23,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,128,0b10,0]),"cri":{"DOUBL":7}},
-24:{"idx":24,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,128,0b01,0]),"cri":{"DOUBL":2}},
-25:{"idx":25,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":new Uint8Array([0b10,128,0b01,0]),"cri":{}},
-26:{"idx":26,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":new Uint8Array([0b01,128,0b01,0]),"cri":{}},
-27:{"idx":27,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,128,0b01,0]),"cri":{"DOUBL":11}},
-28:{"idx":28,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,0]),"cri":{"DOUBL":3}},
-29:{"idx":29,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,0]),"cri":{}},
-30:{"idx":30,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,0]),"cri":{}},
-31:{"idx":31,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,0]),"cri":{"DOUBL":15}},
-32:{"idx":32,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,128]),"cri":{"DOUBL":0}},
-33:{"idx":33,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,128]),"cri":{"DOUBL":17}},
-34:{"idx":34,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,128]),"cri":{"DOUBL":18}},
-35:{"idx":35,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,128]),"cri":{"DOUBL":3}},
-36:{"idx":36,"col":"#003E7B","sat":140,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b00,128,0b10,128]),"cri":{"DOUBL":17}},
-37:{"idx":37,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":new Uint8Array([0b10,128,0b10,128]),"cri":{}},
-38:{"idx":38,"col":"#7B7B7B","sat":0,"cmp":["#FF8000","#0080FF"],"pat":new Uint8Array([0b01,128,0b10,128]),"cri":{"DOUBL":3}},
-39:{"idx":39,"col":"#7BB9F6","sat":47,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b11,128,0b10,128]),"cri":{"DOUBL":29}},
-40:{"idx":40,"col":"#7B3E00","sat":140,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b00,128,0b01,128]),"cri":{"DOUBL":18}},
-41:{"idx":41,"col":"#7B7B7B","sat":0,"cmp":["#0080FF","#FF8000"],"pat":new Uint8Array([0b10,128,0b01,128]),"cri":{"DOUBL":3}},
-42:{"idx":42,"col":"#E66B00","sat":141,"cmp":["#FF8000"],"pat":new Uint8Array([0b01,128,0b01,128]),"cri":{}},
-43:{"idx":43,"col":"#F6B97B","sat":47,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b11,128,0b01,128]),"cri":{"DOUBL":30}},
-44:{"idx":44,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,128]),"cri":{"DOUBL":3}},
-45:{"idx":45,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,128]),"cri":{"DOUBL":29}},
-46:{"idx":46,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,128]),"cri":{"DOUBL":30}},
-47:{"idx":47,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,128]),"cri":{"DOUBL":15}}
-}
-
-var AppVersion = 1;
-
 var RAM_SIZE =      0xc000,
-      LORES_ADDR =    0x0400,
-      LORES_SIZE =    0x0800, // both pages
-      HIRES_ADDR =    0x2000,
-      HIRES_SIZE =    0x4000 // both pages
+    LORES_ADDR =    0x0400,
+    LORES_SIZE =    0x0800, // both pages
+    HIRES_ADDR =    0x2000,
+    HIRES_SIZE =    0x4000 // both pages
+
+oCOM.URL.parse(document.location.toString());
 
 function EMU_init()
 {
-  document.getElementById('slider_title').outerHTML = _TITLE();
+  if(document.getElementById('slider_title')!=null)
+    document.getElementById('slider_title').outerHTML = _TITLE();
+
+  var AppVersion = oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]
+
+  var s_versions = ["<form name='Versions' action='' style=float:left>"
+    +"<select name=VSelect onchange='Versions.submit()''>"];
+  for(var i in ActiveVesions)
+    s_versions[s_versions.length] = "<option value="+i+" "+(AppVersion==i?"selected":"")+">"+ActiveVesions[i]+"</option>"
+  s_versions[s_versions.length] = "</select></form><br>"
+
+
+
   vidContext          = document.getElementById('applescreen');
+  apple2plus          = new Apple2Plus();
   const dim = [vidContext.width,vidContext.height];
+  var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+
+  var s=[];
+  for(var i in patterns)
+  {
+      var c = oCOM.HEX2RGB(patterns[i].col);
+      var l = Math.round((c[0]+c[1]+c[2])/3);
+      var fnt = l<200?"color:white;":"";
+      var j = ("00"+i).slice(-3);
+
+      s[s.length] = "<button onclick=\"draw("+i+")\" "
+          +"style=font-family:'Courier';border:none;margin:1px;padding:1px;font-size:10px;float:left;background-color:"+patterns[i].col+";"+fnt+">"
+          +j+"</button>"
+  }
+  document.getElementById("topmenu").innerHTML = s_versions.join("")+s.join("");
+
+  /////////////////////////////
 
   const gpu = new GPU({
     canvas:  vidContext ,
@@ -237,6 +205,11 @@ function EMU_init()
   });
 
   var kernel;
+
+
+  /////////////////////////////
+
+  //  VERSION 0
 
   if(AppVersion==0)
   {
@@ -262,6 +235,13 @@ function EMU_init()
       var y = i;
       m[x+(y*dim[0])] = 1;
     }
+
+    for(var i=0;i<192;i++)
+    {
+      var x = i;
+      var y = i;
+      m[x+(y*dim[0])] = 1;
+    }
   
     const doDraw = () => 
     {
@@ -271,29 +251,13 @@ function EMU_init()
     window.requestAnimationFrame(doDraw);
   }
 
-  //apple2plus          = new Apple2Plus();
+
+
+  //  VERSION 1
 
   if(AppVersion==1)
   {
-    var INTCols = new Uint8Array([
-     0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
-    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
-    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
-    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple
-    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
-    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
-    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue
-    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
-    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
-    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange
-    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
-    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
-    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green
-    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
-    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
-    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
-    ]);
-
+ 
     var monoNames   = ["color","b/w","green","amber"];
     var chrome_mode = 0;
     var color_nr    = 9;   // Orange 
@@ -311,11 +275,19 @@ function EMU_init()
       }
     );
 
-    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     for(var i=0;i<192;i++)
     {
       var x = i;
       var y = i>>1;
+      var adr = yref[y] + Math.floor(x/7);   // row base address + column offset 
+      var bit_adr = x%7;
+      ram[adr] |= 1<<bit_adr;
+    }
+
+    for(var i=0;i<192;i++)
+    {
+      var x = i;
+      var y = i;
       var adr = yref[y] + Math.floor(x/7);   // row base address + column offset 
       var bit_adr = x%7;
       ram[adr] |= 1<<bit_adr;
@@ -340,60 +312,101 @@ function EMU_init()
     window.requestAnimationFrame(doDraw);
   }
 
+  // VERSION 2
+
+  if(AppVersion==2)
+  {
+    var monoNames   = ["color","b/w","green","amber"];
+    var chrome_mode = 0;
+    var color_nr    = 9;   // Orange 
+
+    var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
+    //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
+
+    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+
+
+    kernel = gpu.createKernel(
+     kProcess,
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    );
+
+
+    const doDraw = () => 
+    {
+      kernel(dim,ram,yref,INTCols,chrome_mode);
+      //window.requestAnimationFrame(doDraw);
+    };
+    window.requestAnimationFrame(doDraw);
+  }  
+
+
+  //  VERSION 4
+
+  if(AppVersion==3)
+  {
+    var monoNames   = ["color","b/w","green","amber"];
+    var chrome_mode = 0;
+    var color_nr    = 9;   // Orange 
+
+    var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
+    //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
+
+    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+
+    var line_arr = bytestream.split("\n");           // PASTE BITMAP IN RAM 
+    for(var i=0;i<line_arr.length;i++)
+    {
+      var adr = parseInt(line_arr[i].split(":")[0],16);
+      if(line_arr[i].length>0)
+      {
+        var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
+        for(var j=0;j<hexarr.length;j++)
+        {
+          ram[adr+j] = parseInt(hexarr[j],16);
+          //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
+        }
+      }
+    }
+
+
+
+    kernel = gpu.createKernel(
+     kProcess,
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    );
+
+    var it = 32
+    for(var i=16384;i>=8191;i-=it)
+    {
+      var s = new Array(it);
+      for(var j=it;j>=0;j--)
+      {
+        s[it-j] = (i+j).toString(16)+"-["+ram[i+j]+"] ";
+      }
+      //console.log(s.join(""));
+    }
+
+    const doDraw = () => 
+    {
+      kernel(dim,ram,yref,INTCols,chrome_mode);
+      //window.requestAnimationFrame(doDraw);
+    };
+    window.requestAnimationFrame(doDraw);
+  }  
 }
 
-/*
-this.hgr_PixelColor = function(x, y, left, me, right, b7) {
-        var a0 = x & 0x01;
-
-        // If pixel is set and either adjacent pixels are set, it's white.
-        if (me != 0 && (left != 0 || right != 0))
-            return loresCols[15][0];  // White
-        // If pixel is set but no adjacent pixels are set, pick a color
-        // based on column and b7.
-        else if (me != 0) {
-            if (b7 != 0) {
-                if (a0 != 0)
-                    return loresCols[9][0]; // Orange
-                else
-                    return loresCols[6][0]; // Medium Blue
-            } else {
-                if (a0 != 0)
-                    return loresCols[12][0]; // Green
-                else
-                    return loresCols[3][0]; // Purple
-            }
-        }
-        // If pixel is not set and both adjacent pixels are set, pick a
-        // color based on column (of adjacent pixel) and b7 (of this byte).
-        else if (left != 0 && right != 0) {
-            if (b7 != 0) {
-                if (a0 != 0)
-                    return loresCols[6][0]; // Medium Blue
-                else
-                    return loresCols[9][0]; // Orange
-            } else {
-                if (a0 != 0)
-                    return loresCols[3][0]; // Purple
-                else
-                    return loresCols[12][0]; // Green
-            }
-        }
-        // Else it's black.
-        else
-           return loresCols[0][0];    // Black
-    }
-*/
 
 
-
-
-
-
-
-
-
-var CONF_version="0.0.2";
+var CONF_version="0.0.3";
 var CONF_builddate="20240329-170000"; 
 
 var bDebug = false;
@@ -435,22 +448,7 @@ function Apple2Plus(context)
  <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-
-        <li style="float:left">
-            <script>
-                for(var i in patterns)
-                {
-                    var c = oCOM.HEX2RGB(patterns[i].col);
-                    var l = Math.round((c[0]+c[1]+c[2])/3);
-                    var fnt = l<200?"color:white;":"";
-                    var j = ("00"+i).slice(-3);
-
-                    document.write("<button onclick=\"draw("+i+")\" "
-                        +"style=font-family:'Courier';border:none;margin:1px;padding:1px;font-size:10px;float:left;background-color:"+patterns[i].col+";"+fnt+">"
-                        +j+"</button>")
-                }
-            </script>
-        </li>
+        <li id="menu"></li>
       </ul>
     </div>
     <div id=main>
@@ -520,6 +518,1111 @@ function debug(s,xi,yi,pat,dimx,dimy)
     else      s[s.length] = b ? "<b>1</b>" : "<b>0</b>";
     return s;
 }
+
+
+
+
+var INTCols = new Uint8Array([
+     0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
+    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
+    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
+    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple
+    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
+    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue
+    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
+    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
+    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
+    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
+    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green
+    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
+    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
+    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
+    ]);
+
+
+const patterns = 
+{
+0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,0,0b00,0]),"cri":{},"dim":[2,2]},
+1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b10,0,0b00,0]),"cri":{}},
+2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b01,0,0b00,0]),"cri":{}},
+3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,0,0b00,0]),"cri":{}},
+4:{"idx":4,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,0,0b10,0]),"cri":{"DOUBL":1}},
+5:{"idx":5,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":new Uint8Array([0b10,0,0b10,0]),"cri":{}},
+6:{"idx":6,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":new Uint8Array([0b01,0,0b10,0]),"cri":{}},
+7:{"idx":7,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,0,0b10,0]),"cri":{}},
+8:{"idx":8,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,0,0b01,0]),"cri":{"DOUBL":2}},
+9:{"idx":9,"col":"#B97BB9","sat":31,"cmp":["#FF00FF","#80FF80"],"pat":new Uint8Array([0b10,0,0b01,0]),"cri":{"DOUBL":6}},
+10:{"idx":10,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":new Uint8Array([0b01,0,0b01,0]),"cri":{}},
+11:{"idx":11,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,0,0b01,0]),"cri":{}},
+12:{"idx":12,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,0,0b11,0]),"cri":{"DOUBL":3}},
+13:{"idx":13,"col":"#F67BF6","sat":49,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b10,0,0b11,0]),"cri":{"DOUBL":7}},
+14:{"idx":14,"col":"#B9F6B9","sat":24,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b01,0,0b11,0]),"cri":{"DOUBL":11}},
+15:{"idx":15,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,0,0b11,0]),"cri":{}},
+16:{"idx":16,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,0]),"cri":{"DOUBL":0}},
+17:{"idx":17,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,0]),"cri":{}},
+18:{"idx":18,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,0]),"cri":{}},
+19:{"idx":19,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,0]),"cri":{"DOUBL":3}},
+20:{"idx":20,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,128,0b10,0]),"cri":{"DOUBL":1}},
+21:{"idx":21,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":new Uint8Array([0b10,128,0b10,0]),"cri":{}},
+22:{"idx":22,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":new Uint8Array([0b01,128,0b10,0]),"cri":{}},
+23:{"idx":23,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,128,0b10,0]),"cri":{"DOUBL":7}},
+24:{"idx":24,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,128,0b01,0]),"cri":{"DOUBL":2}},
+25:{"idx":25,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":new Uint8Array([0b10,128,0b01,0]),"cri":{}},
+26:{"idx":26,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":new Uint8Array([0b01,128,0b01,0]),"cri":{}},
+27:{"idx":27,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,128,0b01,0]),"cri":{"DOUBL":11}},
+28:{"idx":28,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,0]),"cri":{"DOUBL":3}},
+29:{"idx":29,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,0]),"cri":{}},
+30:{"idx":30,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,0]),"cri":{}},
+31:{"idx":31,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,0]),"cri":{"DOUBL":15}},
+32:{"idx":32,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,128]),"cri":{"DOUBL":0}},
+33:{"idx":33,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,128]),"cri":{"DOUBL":17}},
+34:{"idx":34,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,128]),"cri":{"DOUBL":18}},
+35:{"idx":35,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,128]),"cri":{"DOUBL":3}},
+36:{"idx":36,"col":"#003E7B","sat":140,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b00,128,0b10,128]),"cri":{"DOUBL":17}},
+37:{"idx":37,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":new Uint8Array([0b10,128,0b10,128]),"cri":{}},
+38:{"idx":38,"col":"#7B7B7B","sat":0,"cmp":["#FF8000","#0080FF"],"pat":new Uint8Array([0b01,128,0b10,128]),"cri":{"DOUBL":3}},
+39:{"idx":39,"col":"#7BB9F6","sat":47,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b11,128,0b10,128]),"cri":{"DOUBL":29}},
+40:{"idx":40,"col":"#7B3E00","sat":140,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b00,128,0b01,128]),"cri":{"DOUBL":18}},
+41:{"idx":41,"col":"#7B7B7B","sat":0,"cmp":["#0080FF","#FF8000"],"pat":new Uint8Array([0b10,128,0b01,128]),"cri":{"DOUBL":3}},
+42:{"idx":42,"col":"#E66B00","sat":141,"cmp":["#FF8000"],"pat":new Uint8Array([0b01,128,0b01,128]),"cri":{}},
+43:{"idx":43,"col":"#F6B97B","sat":47,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b11,128,0b01,128]),"cri":{"DOUBL":30}},
+44:{"idx":44,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,128]),"cri":{"DOUBL":3}},
+45:{"idx":45,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,128]),"cri":{"DOUBL":29}},
+46:{"idx":46,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,128]),"cri":{"DOUBL":30}},
+47:{"idx":47,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,128]),"cri":{"DOUBL":15}}
+}
+
+
+
+
+const bytestream = 
+ "2000: FF 7F 7F 7F FF 7F 7F 3F\n"
++"2008: 8E 78 BF F6 7F FF 7F FD\n"
++"2010: BB 7B EE ED FE 7F 4D 49\n"
++"2018: 89 08 00 C0 64 C6 40 90\n"
++"2020: E9 7F 7F 7F 7F 7F 7F FF\n"
++"2028: FF 7F FF 7F 7F E6 B9 99\n"
++"2030: 61 F7 BB E7 F6 ED 6D 7C\n"
++"2038: BB 82 4C FD F3 DE 5B 9B\n"
++"2040: B1 49 C0 10 80 00 00 80\n"
++"2048: 00 10 61 7F FF 7F FF FF\n"
++"2050: 7F FF FF 7F FF 7F 7F FF\n"
++"2058: FF 7F EF 7F EE 7F 6D FF\n"
++"2060: EF 39 66 24 99 C9 10 09\n"
++"2068: 08 84 C2 6C 7F FF 7F 7F\n"
++"2070: 7F FF 7F FF 7F FF 7F 7F\n"
++"2078: 00 00 00 00 00 00 00 00\n"
++"2080: 7F 7F FF 7F 9F 64 CE CC\n"
++"2088: 81 FE 7F F6 FF FF 7F FF\n"
++"2090: FF 7F B7 E7 EC 36 AD 96\n"
++"2098: 49 80 80 00 E4 DC 26 92\n"
++"20A0: 22 FD 7F 7F 7F 7F FF 7F\n"
++"20A8: FF 7F FF FF FF FF ED F3\n"
++"20B0: 6F EF B6 7F FF FF B7 FF\n"
++"20B8: CF C0 C8 7E BF B7 93 63\n"
++"20C0: A4 40 C8 90 00 80 80 80\n"
++"20C8: 00 04 79 FF 7F FF 7F FF\n"
++"20D0: FF 7F FF FF FF 7F 7F FF\n"
++"20D8: FF F7 CF 6C FF 7F 76 FF\n"
++"20E0: FF E6 B3 96 81 80 00 00\n"
++"20E8: C0 C8 20 7B 7F FF 7F FF\n"
++"20F0: 7F FF 7F FF 7F 7F 7F FF\n"
++"20F8: 00 00 00 00 00 00 00 00\n"
++"2100: 7F 7F 7F FF FF DF F9 A1\n"
++"2108: 82 7E FB F6 FF 7F 7F 7F\n"
++"2110: FF 7F 67 DC 33 66 98 09\n"
++"2118: 89 08 82 00 10 B3 46 84\n"
++"2120: 88 6E FF FF 7F 7F 7F 7F\n"
++"2128: 7F FF 7F 7F 7F FF E6 4D\n"
++"2130: FE F7 DB FD 7F C9 3F ED\n"
++"2138: A6 C4 A4 D9 1B E3 49 00\n"
++"2140: 00 C0 C8 48 C8 84 00 00\n"
++"2148: C8 94 77 7F 7F FF FF 7F\n"
++"2150: 7F 7F 7F 7F FF 7F 7F 7F\n"
++"2158: FB FF 9B E4 36 F7 FF B3\n"
++"2160: 4C A1 8A 08 80 80 00 00\n"
++"2168: 88 84 B0 AE 66 FF FF 7F\n"
++"2170: 7F FF 7F FF 7F 7F 7F FF\n"
++"2178: 00 00 00 00 00 00 00 00\n"
++"2180: 7F 7F 7F FF BF 7E 84 90\n"
++"2188: 01 FE EF FE FF 7F BF 7F\n"
++"2190: ED FD FE DE B7 F3 92 24\n"
++"2198: 82 C8 88 00 80 09 4D 80\n"
++"21A0: B2 F2 FF 7F 7F FF FF 7F\n"
++"21A8: 7F 7F FF 7F FF FF 37 D9\n"
++"21B0: F9 6F 5F 99 03 33 BF D3\n"
++"21B8: 88 82 00 84 C8 36 8B 24\n"
++"21C0: 88 08 89 02 00 80 80 80\n"
++"21C8: C0 48 FE 7F FF 7F FF 7F\n"
++"21D0: FF FF 7F FF EF 7F FF F7\n"
++"21D8: 7F 7F FC 43 FA 77 B6 03\n"
++"21E0: 82 02 80 80 00 80 00 C4\n"
++"21E8: 41 80 FF 6F E6 FC FF 3F\n"
++"21F0: 7F 7F FF FF 7F FF FF 7F\n"
++"21F8: 00 00 00 00 00 00 00 00\n"
++"2200: 7F 7F 7F 5F A6 C9 B0 06\n"
++"2208: 12 FE 4D FF FE FF 7F FF\n"
++"2210: BF FF 7F CD CD E5 33 C1\n"
++"2218: 84 84 88 42 10 93 8B E6\n"
++"2220: C0 E0 FC 7F FF 7F FF FF\n"
++"2228: 7F FF FF 7F 7F FF BF 69\n"
++"2230: C8 FF 36 E1 FB FF FF 9F\n"
++"2238: 00 CC B1 9A B3 96 AC 31\n"
++"2240: A4 84 A2 82 00 80 80 00\n"
++"2248: 44 F4 7F FF FF FF FF FF\n"
++"2250: 7F 6F FF FF 7F 6F 66 FF\n"
++"2258: FF 3F FF 93 B1 7B EF B4\n"
++"2260: 93 81 00 00 80 84 00 32\n"
++"2268: 84 F8 FF FF 37 F1 7C 7F\n"
++"2270: FF E3 FF FF FF 7F 7F 7F\n"
++"2278: 00 00 00 00 00 00 00 00\n"
++"2280: FF FF 7F FF CC F5 C7 10\n"
++"2288: 61 CF EC DE 84 00 CC 72\n"
++"2290: 1F E7 66 C4 00 00 92 49\n"
++"2298: C8 80 88 82 00 A2 03 06\n"
++"22A0: A0 90 F0 FE FF 7F 7F 7F\n"
++"22A8: FF 7F FF FF FF FF FF 7F\n"
++"22B0: ED FE FE 73 B8 76 FF E6\n"
++"22B8: 36 A6 49 21 02 10 C8 C4\n"
++"22C0: 04 00 C8 80 00 00 80 C4\n"
++"22C8: EC 7F FF FF FF FF FF FF\n"
++"22D0: 7F 7F FF 7F 7F D9 7F 7F\n"
++"22D8: FF 7F 7F D9 42 F6 ED FE\n"
++"22E0: ED 99 DE 06 00 08 82 C1\n"
++"22E8: 1B C1 48 C8 7F B7 E6 FF\n"
++"22F0: 7F FF 7F FC FF 7E 7F FF\n"
++"22F8: 00 00 00 00 00 00 00 00\n"
++"2300: 7F FF FF 7F FF 73 26 D0\n"
++"2308: C9 7F CC 00 8C 00 CC E4\n"
++"2310: 7F 86 80 08 01 81 40 84\n"
++"2318: C2 20 84 80 80 80 82 80\n"
++"2320: E2 A4 A4 F4 FF 7F FF FF\n"
++"2328: 7F FF 7F 7F FF 7F FF FF\n"
++"2330: 7F FF B7 EE 7C 3F 77 24\n"
++"2338: C4 F5 5D 93 89 40 4D 24\n"
++"2340: 44 C0 04 80 80 00 C8 78\n"
++"2348: 7F 7F FF FF 7F 7F 7F FF\n"
++"2350: 7F 7F 7F FF FB 7F 7F 7F\n"
++"2358: 61 64 FF BF 36 E1 EC 3F\n"
++"2360: A7 8C 22 3C CD C9 FC E4\n"
++"2368: 59 A4 13 4D 92 FE 66 FE\n"
++"2370: 7F FF 7F FF FF FF 7F 7F\n"
++"2378: 00 00 00 00 00 00 00 00\n"
++"2380: 7F 7F FF 7F 7F FB A4 12\n"
++"2388: 24 EF 7F 7E 66 66 CC F9\n"
++"2390: DB 04 88 F6 E6 E6 C6 C0\n"
++"2398: C8 85 20 00 00 00 01 C0\n"
++"23A0: 00 D0 18 69 FF FF FF FF\n"
++"23A8: 7F FF FF 7F 7F FF 7F 7F\n"
++"23B0: FF 7F FF FF FE F7 64 E4\n"
++"23B8: B2 A6 88 C0 00 B6 89 92\n"
++"23C0: 40 01 84 90 04 48 FE 7F\n"
++"23C8: 7F FF 7F 7F FF 7F 7F FF\n"
++"23D0: 7F 7F FF BF 7F 1F 12 96\n"
++"23D8: A6 69 CC 7E FE DF C8 76\n"
++"23E0: 66 D4 89 F1 9B 4C E9 FF\n"
++"23E8: 49 D8 D9 B9 BB CE FF 7E\n"
++"23F0: 7F FF 7F 7F FF 7F 7F FF\n"
++"23F8: 00 00 00 00 00 00 00 00\n"
++"2400: FF FF 7F FF 7F FF FE EF\n"
++"2408: 87 E4 EF EC FE 7F 7F F6\n"
++"2410: F7 B6 B7 B7 BB 7F 36 12\n"
++"2418: 49 44 80 08 1A 99 89 C8\n"
++"2420: A4 7F 7F FF 7F 7F 7F 7F\n"
++"2428: 7F FF 7F 7F 7F 5E E6 A4\n"
++"2430: C8 36 DF 7C EF 3F B3 FB\n"
++"2438: 9E C1 30 FE ED 6C 36 ED\n"
++"2440: CC 04 88 92 00 80 80 80\n"
++"2448: 80 C1 A4 FF 7F 7F FF FF\n"
++"2450: 7F 7F 7F FF FF FF FF FF\n"
++"2458: 7F FF 4F FF FD 3F FB 7F\n"
++"2460: FF 66 1B D9 AB 09 80 12\n"
++"2468: 11 41 A1 FE FF FF FF FF\n"
++"2470: 7F 7F 7F FF FF FF FF 7F\n"
++"2478: 00 00 00 00 00 00 00 00\n"
++"2480: FF 7F 7F 7F 5F 08 B1 99\n"
++"2488: C2 FD BF FB FF FF FF 7F\n"
++"2490: FF FF EF BE 9B F7 E6 C8\n"
++"2498: 24 C4 00 80 C8 ED 49 00\n"
++"24A0: C8 7C 7F 7F FF 7F 7F FF\n"
++"24A8: 7F 7F FF FF 7F FF FB ED\n"
++"24B0: 1F B7 FB FE FF FF EF 7E\n"
++"24B8: 93 80 A4 FE FF DB AD 8C\n"
++"24C0: 82 82 00 C9 80 80 80 C0\n"
++"24C8: 40 90 F9 7F 7F 7F 7F FF\n"
++"24D0: FF 7F 7F FF FF 7F 7F 7F\n"
++"24D8: FF FB A7 76 FF FF EF 7F\n"
++"24E0: FF B9 CE C9 88 00 00 80\n"
++"24E8: 01 91 10 4E FF FF FF FF\n"
++"24F0: 7F 7F FF 7F 7F 7F FF 7F\n"
++"24F8: 00 00 00 00 00 00 00 00\n"
++"2500: 7F FF 7F FF FF EF 9E D1\n"
++"2508: 44 FE ED ED 7F 7F 7F FD\n"
++"2510: EF 7E BB B3 A6 99 A3 66\n"
++"2518: A4 80 80 80 48 DC 49 C9\n"
++"2520: 84 E9 FF FF 7F 7F 7F 7F\n"
++"2528: FF 7F FF FF 7F 7F ED 3B\n"
++"2530: FC EF ED 7E BF 63 7C B6\n"
++"2538: 9E 88 9B E3 6C 0C CA C4\n"
++"2540: 04 00 A0 04 09 81 80 C0\n"
++"2548: 00 E9 EC 7F 7F FF FF 7F\n"
++"2550: FF 7F 7F FF FF FF 7F FF\n"
++"2558: FC BF 7E B0 EF 36 7F CD\n"
++"2560: C9 DC A4 C2 00 80 80 00\n"
++"2568: C0 80 C4 F7 B8 7E FF 7F\n"
++"2570: 7F FF FF 7F 7F FF 7F FF\n"
++"2578: 00 00 00 00 00 00 00 00\n"
++"2580: FF FF FF 7F 7F 9E 8B B1\n"
++"2588: 88 7C 6F 7E 7F FF FF FF\n"
++"2590: B6 7F 7F FF DB CD AD 49\n"
++"2598: 04 81 84 90 A0 12 9B C1\n"
++"25A0: A4 F9 7F FF FF FF FF FF\n"
++"25A8: 7F 7F 7F 7F FF FF EF B6\n"
++"25B0: F2 BF 37 66 A0 CE 3C A6\n"
++"25B8: C6 00 80 C8 A4 E6 A4 42\n"
++"25C0: 90 C1 A4 04 80 00 80 00\n"
++"25C8: 80 24 76 7F FF 7F FF 7F\n"
++"25D0: FF FF 7F 7F 79 7F FF F9\n"
++"25D8: FF 3F 7B 01 F9 6F CC 99\n"
++"25E0: C1 00 80 80 80 80 42 80\n"
++"25E8: 92 40 FE FF C9 F9 FE FF\n"
++"25F0: 7C 7F FF 7F 7F 7F FF 7F\n"
++"25F8: 00 00 00 00 00 00 00 00\n"
++"2600: 7F FF FF 6F 89 92 6C 09\n"
++"2608: 24 7E E9 F6 76 7F EF FF\n"
++"2610: 7F FE BF B3 B2 DA 4D A4\n"
++"2618: 88 80 01 90 20 CE 4C 30\n"
++"2620: 82 C4 B9 7F 7F FF 7F FF\n"
++"2628: 7F FF 7F FF 7F FF FF 66\n"
++"2630: B3 FE 59 E4 ED 7F FF BF\n"
++"2638: 40 B3 CC E5 4C A6 9C 42\n"
++"2640: C8 C0 48 81 00 00 00 00\n"
++"2648: C9 76 FF FF 7F 7F 7F 7F\n"
++"2650: 7F FF 7F FF 7F 37 F3 FF\n"
++"2658: FF 7F 7E CD C8 7D BF F3\n"
++"2660: CE 08 80 00 88 40 C8 44\n"
++"2668: 80 F8 FF 7F 6F 26 7B 7F\n"
++"2670: FF 3F 7F 7F 7F FF 7F 7F\n"
++"2678: 00 00 00 00 00 00 00 00\n"
++"2680: FF 7F FF 7F B3 76 9B 92\n"
++"2688: B9 B7 B9 7F C9 00 A0 E6\n"
++"2690: 37 99 1B 81 00 E4 EC 04\n"
++"2698: A4 82 40 00 80 C4 8C 98\n"
++"26A0: 01 A2 E2 7F FF FF 7F FF\n"
++"26A8: 7F 7F 7F 7F FF FF FF BF\n"
++"26B0: BB 7E 7D 98 F1 F6 FB F9\n"
++"26B8: 5B D9 12 46 80 20 4C 38\n"
++"26C0: 42 40 90 80 00 80 40 C8\n"
++"26C8: F1 7F 7F FF FF FF FF 7F\n"
++"26D0: FF FF FF FF 7F E3 FF 7F\n"
++"26D8: 7F 7F FF 66 09 6C B6 7F\n"
++"26E0: BB 67 AC 99 89 C9 40 B0\n"
++"26E8: 24 10 04 92 7F 7F 98 7F\n"
++"26F0: 7F 7F FF 7B 7F 7F FF FF\n"
++"26F8: 00 00 00 00 00 00 00 00\n"
++"2700: 7F 7F 7F 7F FF 79 CC 64\n"
++"2708: A4 7F 09 04 08 08 60 78\n"
++"2710: FF 08 00 10 02 83 82 C0\n"
++"2718: 08 84 40 80 80 80 48 80\n"
++"2720: A4 C9 89 F2 FF FF 7F FF\n"
++"2728: 7F 7F FF FF 7F FF 7F FF\n"
++"2730: FF FF EF E7 F6 FF B7 5B\n"
++"2738: B3 FB 6F A5 C2 20 8E 18\n"
++"2740: 81 84 08 00 80 00 00 ED\n"
++"2748: 7F 7F 7F 7F 7F FF FF FF\n"
++"2750: 7F 7F FF FF EC 7F FF 9F\n"
++"2758: 8C 49 7F FF 6D 01 33 FF\n"
++"2760: 9B D3 44 5B B2 92 1F 93\n"
++"2768: A7 92 49 30 A4 7E A7 FF\n"
++"2770: 7F FF 7F FF 7F FF 7F FF\n"
++"2778: 00 00 00 00 00 00 00 00\n"
++"2780: FF FF 7F FF FF 73 C9 C4\n"
++"2788: 10 B7 BF FE 9B 99 B3 36\n"
++"2790: 1B 09 A4 19 9B C9 A9 02\n"
++"2798: A4 C2 44 84 00 00 80 00\n"
++"27A0: 00 A4 49 74 FF 7F FF FF\n"
++"27A8: 7F 7F FF 7F 7F FF FF 7F\n"
++"27B0: 7F FF 7F FD FB EF 1B 9B\n"
++"27B8: CD D8 A4 88 A0 93 82 C9\n"
++"27C0: 00 84 82 40 A1 73 7D FF\n"
++"27C8: 7F FF 7F FF FF FF 7F FF\n"
++"27D0: FF FF 7F DF FF 4F C8 A4\n"
++"27D8: CA 4E 79 7F FF BF A1 6D\n"
++"27E0: 8E C9 A4 3E E7 31 A6 FF\n"
++"27E8: 14 A6 EA 6F FE 93 FB 7D\n"
++"27F0: FF 7F 7F 7F FF FF 7F FF\n"
++"27F8: 00 00 00 00 00 00 00 00\n"
++"2800: 7F FF 7F FF 7F 3B 7F 6F\n"
++"2808: 83 F2 B7 73 FF FF 7F FF\n"
++"2810: EF DF DB DB ED F6 A6 26\n"
++"2818: 26 90 00 40 E8 A4 C2 A5\n"
++"2820: D2 7F FF 7F FF FF FF FF\n"
++"2828: FF 7F 7F FF 7F 2D 9B D3\n"
++"2830: A1 B7 EE FB FB B6 CE F9\n"
++"2838: EF 80 64 7E B6 37 6F E6\n"
++"2840: B1 02 C1 48 80 00 00 00\n"
++"2848: 00 48 64 FE FF 7F FF 7F\n"
++"2850: FF FF FF 7F FF FF FF FF\n"
++"2858: FF 7F 67 FE FB F7 76 FF\n"
++"2860: FF B9 66 A6 96 81 48 01\n"
++"2868: C0 20 C2 F9 7F 7F FF 7F\n"
++"2870: 7F FF 7F 7F FF 7F 7F FF\n"
++"2878: 00 00 00 00 00 00 00 00\n"
++"2880: FF 7F 7F FF 9F 61 CC E6\n"
++"2888: 81 7E EF FE 7F 7F FF 7F\n"
++"2890: 7F FF BF DB 66 ED 9B E5\n"
++"2898: 8C 00 04 00 A2 B6 16 C4\n"
++"28A0: A4 7E FF FF FF 7F 7F FF\n"
++"28A8: FF 7F FF 7F FF FF F7 E7\n"
++"28B0: FF 6F EC 7F FF FF 37 FF\n"
++"28B8: AF 84 90 7B FF B6 D2 D1\n"
++"28C0: C9 00 84 A4 40 80 00 80\n"
++"28C8: 00 C8 FC 7F 7F 7F FF 7F\n"
++"28D0: FF FF 7F 7F 7F 7F 7F FF\n"
++"28D8: 7F FD 9B 6C FF FF FF 7E\n"
++"28E0: 7F 67 19 09 C0 00 00 40\n"
++"28E8: 00 A0 A0 36 7F 7F FF 7F\n"
++"28F0: FF 7F 7F 7F 7F FF FF FF\n"
++"28F8: 00 00 00 00 00 00 00 00\n"
++"2900: 7F FF 7F 7F 7F F7 BF A0\n"
++"2908: 02 FD B6 F6 FF 7F 7F FE\n"
++"2910: F7 7D CD ED DA A6 CC 08\n"
++"2918: 93 90 89 00 A0 E6 26 84\n"
++"2920: A0 F4 FF 7F FF 7F FF FF\n"
++"2928: FF 7F 7F 7F FF 7F 6F 1F\n"
++"2930: FB F7 B3 FB 37 90 7F DF\n"
++"2938: AF 61 64 A4 19 33 A1 88\n"
++"2940: C0 40 84 20 12 82 80 00\n"
++"2948: 40 90 73 7F 7F FF 7F FF\n"
++"2950: 7F FF FF 7F 7F 7F FF 4F\n"
++"2958: FF 3F BB D0 7F 6D 7E B6\n"
++"2960: A6 A1 C3 08 00 00 00 80\n"
++"2968: 00 89 E8 66 E6 73 FF FF\n"
++"2970: 7F FF 7F 7F FF FF FF FF\n"
++"2978: 00 00 00 00 00 00 00 00\n"
++"2980: FF 7F FF 7F EF ED 84 D8\n"
++"2988: 20 FD 37 FF FF FF 7F 7F\n"
++"2990: EF FE 7F BF EF B4 92 C9\n"
++"2998: 48 90 01 A0 90 24 AC 82\n"
++"29A0: C0 E4 FF 7F 7F 7F FF FF\n"
++"29A8: 7F FF 7F FF 7F 7F BF DB\n"
++"29B0: F1 DF 4F 99 C9 7D F6 D9\n"
++"29B8: 10 80 40 84 DA 58 93 98\n"
++"29C0: A2 80 90 81 80 00 00 C0\n"
++"29C8: 00 C1 7E FF FF FF FF 7F\n"
++"29D0: FF 7F 7F 7F FF FF FF FC\n"
++"29D8: 7F BF BF C6 EC BF B3 C3\n"
++"29E0: 88 80 80 80 80 C0 88 C8\n"
++"29E8: 04 20 7F BF A7 E6 FF 7F\n"
++"29F0: F3 FF 7F 7F 7F 7F 7F FF\n"
++"29F8: 00 00 00 00 00 00 00 00\n"
++"2A00: FF FF 7F CF D2 85 B9 C2\n"
++"2A08: 8C 7E A6 D9 6D 7F B6 7F\n"
++"2A10: BF 7F F7 E6 A6 B3 F3 93\n"
++"2A18: 41 80 00 C2 40 4C 98 40\n"
++"2A20: 89 89 66 FE 7F 7F FF FF\n"
++"2A28: 7F 7F 7F 7F FF 7F 7F 1B\n"
++"2A30: C6 7E 36 F1 F6 FF 7F DF\n"
++"2A38: 61 CD B3 9A B3 99 F0 30\n"
++"2A40: 92 89 24 00 80 00 00 C4\n"
++"2A48: A4 F6 7F 7F 7F FF 7F 7F\n"
++"2A50: 7F 7F FF FF FF CD F9 FF\n"
++"2A58: FF FF FE 19 B0 F6 7F ED\n"
++"2A60: BB 82 80 00 80 88 A0 09\n"
++"2A68: 80 FC FF 7F BF 13 7D FF\n"
++"2A70: 7F BF FB 7F FF FF 7F FF\n"
++"2A78: 00 00 00 00 00 00 00 00\n"
++"2A80: FF FF 7F FF ED 7B A9 A4\n"
++"2A88: F2 27 7E 7F A7 C0 90 E9\n"
++"2A90: 6F E3 24 82 40 19 1B 23\n"
++"2A98: 92 91 00 01 80 98 B1 A0\n"
++"2AA0: 42 C4 A4 7F FF 7F 7F 7F\n"
++"2AA8: FF 7F FF FF FF 7F FF 7F\n"
++"2AB0: 6D FD 7E 33 A0 6E B6 6F\n"
++"2AB8: 3F E2 24 08 04 40 18 C8\n"
++"2AC0: 88 84 89 80 80 80 88 91\n"
++"2AC8: 6C FF 7F 7F FF 7F FF FF\n"
++"2AD0: 7F FF FF 7F BF 79 7F FF\n"
++"2AD8: 7F FF FF BC 06 E9 76 FE\n"
++"2AE0: 6F 4E 31 A6 C2 A4 92 D8\n"
++"2AE8: 10 C4 B1 A4 FC FF E9 7F\n"
++"2AF0: FF FF 7F 6F FF FF 7F 7F\n"
++"2AF8: 00 00 00 00 00 00 00 00\n"
++"2B00: 7F 7F FF 7F 7F E7 19 89\n"
++"2B08: C2 3F 46 20 04 18 00 E1\n"
++"2B10: BF 83 40 C4 06 20 8D 80\n"
++"2B18: 44 C8 04 00 80 40 80 00\n"
++"2B20: C2 94 C3 E4 FF 7F 7F FF\n"
++"2B28: FF 7F 7F FF 7F 7F 7F FF\n"
++"2B30: FF 7F 7F BE FB 7F 37 7E\n"
++"2B38: FF FF 7F CC 84 B0 9A D0\n"
++"2B40: 80 21 88 80 00 00 90 79\n"
++"2B48: FF 7F FF FF FF FF 7F 7F\n"
++"2B50: 7F FF FF 7F 76 7F 7F 47\n"
++"2B58: 91 D1 7F FF 53 43 AC FF\n"
++"2B60: EF A4 69 2D C9 A5 4F E4\n"
++"2B68: 9B C9 24 C6 C9 7C 67 FE\n"
++"2B70: 7F 7F 7F 7F FF 7F FF FF\n"
++"2B78: 00 00 00 00 00 00 00 00\n"
++"2B80: 7F FF FF FF 7F 7F A6 01\n"
++"2B88: 48 7F CF F9 E9 A4 CC B9\n"
++"2B90: 67 02 9A E6 64 94 92 24\n"
++"2B98: 92 89 08 82 80 80 80 08\n"
++"2BA0: 00 C8 C8 F1 7F FF FF FF\n"
++"2BA8: FF FF 7F FF 7F 7F 7F FF\n"
++"2BB0: FF 7F FF FF 7F DF 6D E4\n"
++"2BB8: B0 43 01 84 21 CC 84 86\n"
++"2BC0: C8 40 84 81 92 66 FF FF\n"
++"2BC8: FF 7F FF 7F 7F 7F 7F 7F\n"
++"2BD0: FF 7F 7F EF FF 27 A6 C9\n"
++"2BD8: E4 34 7E 7F FF 7F C6 7C\n"
++"2BE0: F7 A4 DA BD 8C E6 79 FF\n"
++"2BE8: 23 D9 B7 77 FD BD 7E FD\n"
++"2BF0: FF 7F FF 7F 7F 7F 7F 7F\n"
++"2BF8: 00 00 00 00 00 00 00 00\n"
++"2C00: FF FF FF 7F 7F 66 7E B7\n"
++"2C08: 83 FC DF FD FF FF FF FF\n"
++"2C10: 7F FF ED ED F6 FD DB 48\n"
++"2C18: 88 A1 80 80 49 D2 84 92\n"
++"2C20: A9 FF 7F 7F 7F 7F FF 7F\n"
++"2C28: FF FF 7F FF 7F 77 B3 E9\n"
++"2C30: C4 6F B3 F7 ED EF B6 FE\n"
++"2C38: 1B 84 4C FC DB ED 5C 99\n"
++"2C40: C3 90 88 89 00 00 80 80\n"
++"2C48: 00 01 49 FF 7F FF 7F FF\n"
++"2C50: 7F 7F 7F FF FF FF 7F FF\n"
++"2C58: 7F 7F C9 FD F7 EF ED 7F\n"
++"2C60: BF E6 4D D9 C9 00 00 84\n"
++"2C68: 88 44 A0 FB 7F 7F 7F 7F\n"
++"2C70: FF FF 7F 7F 7F FF 7F FF\n"
++"2C78: 00 00 00 00 00 00 00 00\n"
++"2C80: FF 7F 7F FF 1F 89 A2 CC\n"
++"2C88: 44 7D B7 7F FF 7F 7F FF\n"
++"2C90: 7F 7F DF ED B9 E6 A6 92\n"
++"2C98: B1 88 81 C0 48 DC 33 00\n"
++"2CA0: C0 F9 7F 7F FF 7F FF 7F\n"
++"2CA8: FF 7F FF 7F FF 7F 7F DF\n"
++"2CB0: FF 37 B7 7F 7F FF 5B FE\n"
++"2CB8: 93 C8 40 FC BF CD A9 A6\n"
++"2CC0: 84 84 A0 92 88 81 80 00\n"
++"2CC8: 80 40 FC 7F FF 7F 7F 7F\n"
++"2CD0: 7F FF 7F FF FF 7F FF FF\n"
++"2CD8: BF 7F CD B9 7F 7F 7F 7D\n"
++"2CE0: 7F 99 A6 12 81 00 00 00\n"
++"2CE8: 80 C4 C0 F9 FE 7F 7F FF\n"
++"2CF0: 7F FF FF 7F FF FF FF FF\n"
++"2CF8: 00 00 00 00 00 00 00 00\n"
++"2D00: FF 7F 7F FF BF FF DF D0\n"
++"2D08: 09 7E EC F6 FE FF FF FD\n"
++"2D10: EF 7B B6 E6 A9 D9 B1 66\n"
++"2D18: 88 82 00 80 C8 38 19 92\n"
++"2D20: C1 64 7F 7F FF 7F 7F 7F\n"
++"2D28: 7F 7F FF FF FF 7F 77 4F\n"
++"2D30: FC 6F DE FD 4E E8 EF BF\n"
++"2D38: 9F 90 1B C3 66 44 84 C1\n"
++"2D40: 08 80 C8 48 25 81 80 00\n"
++"2D48: 00 A4 EC FF FF 7F FF 7F\n"
++"2D50: FF FF 7F FF FF FF 7F 34\n"
++"2D58: FF BF 7E E0 7E 36 F3 7B\n"
++"2D60: 9A 96 8C 04 80 00 00 81\n"
++"2D68: 10 84 4C 7F 38 3F FF FF\n"
++"2D70: 7F 7F 7F FF 7F FF FF FF\n"
++"2D78: 00 00 00 00 00 00 00 00\n"
++"2D80: FF 7F FF 7F FF 4F 41 CC\n"
++"2D88: 44 FC EF 7E FF FF 7F 7F\n"
++"2D90: 7F FF 7F 6F B6 66 AD 92\n"
++"2D98: 04 80 88 C0 A0 4E 30 A5\n"
++"2DA0: 88 F2 7F FF FF FF 7F 7F\n"
++"2DA8: 7F FF 7F 7F FF 7F 7F A6\n"
++"2DB0: E2 FF 36 A6 B0 B7 F3 E3\n"
++"2DB8: 09 81 C8 48 B9 31 CE 40\n"
++"2DC0: C4 40 C8 84 00 00 80 80\n"
++"2DC8: C8 B1 FE 7F 7F 7F FF 7F\n"
++"2DD0: FF 7F 7F FF FF FF BF FE\n"
++"2DD8: FF 3F 7F 83 F2 7F CD A4\n"
++"2DE0: 02 80 80 00 80 80 80 84\n"
++"2DE8: A1 A0 7F DF DB 6C 7E 7F\n"
++"2DF0: EF 7F FF FF 7F 7F 7F FF\n"
++"2DF8: 00 00 00 00 00 00 00 00\n"
++"2E00: FF FF FF B7 A6 82 3E 85\n"
++"2E08: A1 FF 98 A2 36 B6 FB 6F\n"
++"2E10: 3F FE EF 4C D8 CD CD C9\n"
++"2E18: 08 81 00 A1 C0 99 A9 C0\n"
++"2E20: A6 60 C8 FD 7F 7F FF FF\n"
++"2E28: 7F FF FF 7F 7F 7F 7F E6\n"
++"2E30: A9 3F 5B F2 EC FF 7F B7\n"
++"2E38: CC F7 4C 33 26 26 B8 49\n"
++"2E40: A4 C0 10 81 00 00 80 80\n"
++"2E48: 92 FB FF FF FF 7F FF FF\n"
++"2E50: FF FF FF FF BF B6 FA FF\n"
++"2E58: 7F FF FF 27 C0 F9 7F F6\n"
++"2E60: ED 91 81 80 40 C0 84 12\n"
++"2E68: 41 7F BF FF 7F 4D 79 7F\n"
++"2E70: 7F 7F BC FF FF 7F 7F 7F\n"
++"2E78: 00 00 00 00 00 00 00 00\n"
++"2E80: FF 7F 7F FF E7 FB 87 D2\n"
++"2E88: CC 5B FE FF 9B 84 C8 E4\n"
++"2E90: 5E CC 49 00 C0 6C 6D 4C\n"
++"2E98: C8 04 81 81 80 A0 C8 D1\n"
++"2EA0: 8C C8 40 FE 7F 7F 7F 7F\n"
++"2EA8: 7F 7F FF FF FF FF FF 7F\n"
++"2EB0: EF FE BB 66 E0 B9 DB 76\n"
++"2EB8: BF C5 49 04 00 20 CC B4\n"
++"2EC0: 84 00 A2 00 00 00 80 A4\n"
++"2EC8: 79 FF FF 7F FF 7F FF 7F\n"
++"2ED0: FF 7F FF FF 3F 7A 7F FF\n"
++"2ED8: 7F 7F 7F E7 C9 E4 6D FD\n"
++"2EE0: FF B6 A6 D2 B0 DB 89 19\n"
++"2EE8: 49 88 C2 C9 F8 3F B3 7F\n"
++"2EF0: FF 7F FF FF FF FF 7F 7F\n"
++"2EF8: 00 00 00 00 00 00 00 00\n"
++"2F00: 7F FF 7F 7F 7F B3 A6 69\n"
++"2F08: 10 7F 00 10 40 FC A4 F2\n"
++"2F10: 3F 86 00 C9 87 10 9F 20\n"
++"2F18: 89 81 80 00 00 00 44 80\n"
++"2F20: 80 A3 86 F1 FF 7F 7F FF\n"
++"2F28: 7F 7F FF FF FF 7F 7F FF\n"
++"2F30: FF 7F BF DF FD 7F EF FD\n"
++"2F38: 7F 7F BF 91 00 E4 A4 A4\n"
++"2F40: 88 40 84 00 00 C0 A8 F6\n"
++"2F48: FF FF FF FF 7F FF 7F 7F\n"
++"2F50: 7F 7F FF 3F F6 FF 7F 91\n"
++"2F58: AC 82 7F 7F 2F 83 E6 FC\n"
++"2F60: BF DB 66 66 A6 D8 AF B2\n"
++"2F68: A7 92 12 B1 92 F9 4F FD\n"
++"2F70: FF FF FF 7F FF FF FF FF\n"
++"2F78: 00 00 00 00 00 00 00 00\n"
++"2F80: 7F 7F FF 7F 7F B7 93 89\n"
++"2F88: A2 6F B7 92 A6 D2 B1 F6\n"
++"2F90: 9E 04 E4 38 A6 A2 01 52\n"
++"2F98: C9 85 10 81 80 00 80 00\n"
++"2FA0: 01 60 A4 7C 7F FF 7F 7F\n"
++"2FA8: FF FF FF 7F FF 7F FF FF\n"
++"2FB0: 7F 7F 7F 7B 7B B7 B3 9B\n"
++"2FB8: A7 24 CC 90 52 99 C9 18\n"
++"2FC0: 01 21 82 C8 C8 F9 FF FF\n"
++"2FC8: 7F 7F FF FF 7F 7F 7F 7F\n"
++"2FD0: 7F FF FF 6F 7F 13 98 E7\n"
++"2FD8: 1C E7 7F FF FF FF 8F B9\n"
++"2FE0: 9B DB A7 DB B1 99 FE 3F\n"
++"2FE8: 18 B2 EE FE 7F FE FC FB\n"
++"2FF0: FF 7F FF FF FF FF 7F FF\n"
++"2FF8: 00 00 00 00 00 00 00 00\n"
++"3000: 7F FF FF 7F FF 39 FB 67\n"
++"3008: 84 F9 AF FB FE FF FF 7F\n"
++"3010: FF 7F B6 B6 BB FB AD 66\n"
++"3018: A4 C2 80 80 64 C9 01 C0\n"
++"3020: E4 FE FF FF FF 7F 7F FF\n"
++"3028: FF 7F 7F FF FF B7 3B 33\n"
++"3030: E2 77 ED FE F6 F7 66 FE\n"
++"3038: 37 80 B0 FE EF F7 37 66\n"
++"3040: AC 89 80 C4 00 00 00 00\n"
++"3048: 80 90 64 FF FF FF FF 7F\n"
++"3050: FF 7F FF FF 7F 7F FF 7F\n"
++"3058: FF FF 4D 7D EF 3F 7B 7F\n"
++"3060: 6F DB 33 66 A6 04 41 80\n"
++"3068: 02 90 C1 F9 FF FF FF FF\n"
++"3070: 7F 7F FF FF FF FF 7F 7F\n"
++"3078: 00 00 00 00 00 00 00 00\n"
++"3080: FF 7F 7F FF 3F C4 48 33\n"
++"3088: 02 7E EF FE 7F FF FF 7F\n"
++"3090: FF 7F EF 33 E6 BC DA C9\n"
++"3098: CC 00 82 80 24 B9 A6 41\n"
++"30A0: 88 F6 7F 7F FF FF FF 7F\n"
++"30A8: FF FF 7F 7F 7F 7F FF BF\n"
++"30B0: 7F F7 6C FE 7F FF 6D FD\n"
++"30B8: CD 00 01 F9 6F B2 C6 90\n"
++"30C0: A2 C0 C0 C4 20 82 80 00\n"
++"30C8: C8 48 7D FF 7F 7F 7F FF\n"
++"30D0: 7F 7F FF FF 7F 7F FF FF\n"
++"30D8: DF FF 19 6C FE FF 3F 7B\n"
++"30E0: BB E6 98 01 82 80 00 80\n"
++"30E8: 40 88 B0 B6 FE FF FF FF\n"
++"30F0: 7F 7F FF FF 7F 7F FF FF\n"
++"30F8: 00 00 00 00 00 00 00 00\n"
++"3100: FF 7F 7F FF EF FE AF A1\n"
++"3108: C2 3C 33 FB 7E 7F BF FB\n"
++"3110: 3F FF 66 9C B7 93 C6 08\n"
++"3118: A6 C0 00 00 20 E1 26 C9\n"
++"3120: 88 68 FF FF FF FF 7F FF\n"
++"3128: FF 7F 7F 7F FF 7F 4D 33\n"
++"3130: FE EF A7 37 B3 B4 F7 DF\n"
++"3138: EF 60 64 81 39 33 92 84\n"
++"3140: 01 80 01 C1 18 80 80 80\n"
++"3148: A0 92 79 FF FF 7F 7F 7F\n"
++"3150: 7F FF FF FF 7F FF CF 4F\n"
++"3158: 7F DF FD 10 3F 5B E6 66\n"
++"3160: 67 C8 C1 00 80 80 80 00\n"
++"3168: C2 80 F2 6F B3 FE 7C FF\n"
++"3170: 7F 7F FF 7F 7F 7F 7F 7F\n"
++"3178: 00 00 00 00 00 00 00 00\n"
++"3180: 7F FF FF 3F 7F 33 88 96\n"
++"3188: 08 FE F7 FF 7F FF 7F 7F\n"
++"3190: 7F FF 7F 77 CC 99 D3 A5\n"
++"3198: 88 41 00 90 C0 30 66 98\n"
++"31A0: 84 E1 7F FF 7F FF 7F 7F\n"
++"31A8: 7F 7F FF FF FF FF EF D9\n"
++"31B0: C9 3F E7 0C 6C 3F EE 4C\n"
++"31B8: A2 00 A4 04 66 62 A9 09\n"
++"31C0: 88 84 41 01 80 80 00 80\n"
++"31C8: A4 C6 FF 7F 7F FF FF FF\n"
++"31D0: 7F 7F 7F 7E 7F FF FB FE\n"
++"31D8: FF FF FE 85 6C FF B6 C9\n"
++"31E0: 0D 80 00 80 00 90 C1 60\n"
++"31E8: 88 E0 FE FF AD 19 FB 7F\n"
++"31F0: BF FF 7F FF 7F FF 7F FF\n"
++"31F8: 00 00 00 00 00 00 00 00\n"
++"3200: 7F FF 7F 3F C9 48 CE 40\n"
++"3208: 92 1F C3 91 A4 D3 ED EE\n"
++"3210: 7F 7E 37 33 A6 E6 B0 86\n"
++"3218: 11 88 80 C2 80 26 D2 89\n"
++"3220: 98 82 B1 FE FF 7F FF 7F\n"
++"3228: FF 7F FF 7F 7F 7F 7F 9B\n"
++"3230: 96 FE 6D B1 B3 7F EF CE\n"
++"3238: F7 9F 37 4E 58 98 E1 30\n"
++"3240: C8 84 49 80 80 80 00 C8\n"
++"3248: E9 FD FF FF FF FF FF FF\n"
++"3250: FF FF 7F FF 7F DB FD FF\n"
++"3258: 7F 3F FF 1B A4 EE FE 66\n"
++"3260: BE CE 80 00 00 84 C8 04\n"
++"3268: E0 FE C3 7E 7F 99 73 7F\n"
++"3270: 7F 7F FB 73 7F FF FF FF\n"
++"3278: 00 00 00 00 00 00 00 00\n"
++"3280: FF 7F 7F FF 7F FD 19 88\n"
++"3288: E6 26 7F FF A3 A2 82 D9\n"
++"3290: 3F 91 82 00 A0 66 36 13\n"
++"3298: A1 4A C0 00 00 C0 80 A6\n"
++"32A0: 90 91 09 FE FF 7F FF 7F\n"
++"32A8: 7F 7F 7F FF FF FF FF FF\n"
++"32B0: F7 7E FD B4 CC 36 EF E6\n"
++"32B8: DF 89 12 C0 00 40 19 90\n"
++"32C0: 41 C8 84 00 80 80 C0 C0\n"
++"32C8: 7E FF FF FF 7F FF FF 7F\n"
++"32D0: FF FF 7F 7F 5F 7D 7F FF\n"
++"32D8: FF FF 7F FD 86 D8 7F 7E\n"
++"32E0: 7F CD 98 89 E6 4C A4 4E\n"
++"32E8: 24 91 89 92 E9 BF 33 FF\n"
++"32F0: FF FF FF 7F FF 7F 7F FF\n"
++"32F8: 00 00 00 00 00 00 00 00\n"
++"3300: FF 7F FF FF 7F E7 99 12\n"
++"3308: 49 FF 89 78 89 F9 F3 E7\n"
++"3310: EF 04 C0 E4 1D D3 A6 80\n"
++"3318: 80 48 C8 00 80 00 81 81\n"
++"3320: 88 D8 88 E2 FF 7F 7F 7F\n"
++"3328: FF FF 7F FF 7F FF 7F 7F\n"
++"3330: FF FF 7F FE 7D 7F B7 FF\n"
++"3338: 7F FF DB 89 00 98 8B C8\n"
++"3340: 80 02 C8 00 40 80 E4 FC\n"
++"3348: FF FF FF 7F FF 7F 7F 7F\n"
++"3350: 7F 7F FF 7F 7D 7F BF E2\n"
++"3358: 90 C9 18 FE 5F 0C 19 73\n"
++"3360: FF B9 BE 19 92 F3 93 D9\n"
++"3368: 99 A5 49 CC A4 FA CF 7D\n"
++"3370: FF 7F FF FF FF FF 7F 7F\n"
++"3378: 00 00 00 00 00 00 00 00\n"
++"3380: 7F 7F FF FF FF 77 AC 03\n"
++"3388: 90 EF CB C9 C8 B9 66 EC\n"
++"3390: B3 03 18 E7 99 99 A4 09\n"
++"3398: A6 92 C1 84 80 00 80 00\n"
++"33A0: 88 84 C9 F9 FF 7F 7F 7F\n"
++"33A8: 7F FF 7F 7F FF 7F 7F FF\n"
++"33B0: FF FF FF 77 77 7F ED ED\n"
++"33B8: CC 49 49 44 98 A6 40 09\n"
++"33C0: A0 84 89 01 B9 7F 7F FF\n"
++"33C8: FF FF FF 7F FF 7F FF FF\n"
++"33D0: 7F FF FF 7F FF 49 E2 98\n"
++"33D8: E3 FC 7F 7F FF 7F BF D2\n"
++"33E0: ED B1 E9 A6 66 E6 7E BF\n"
++"33E8: E3 E5 FB FF FF 7F F3 7B\n"
++"33F0: 7F FF FF 7F 7F 7F FF 7F\n"
++"33F8: 00 00 00 00 00 00 00 00\n"
++"3400: 7F 7F 7F 7F 3F 73 FD 3B\n"
++"3408: 83 F6 FF F6 7F 7F 7F 7F\n"
++"3410: 7F FF EF E6 EC FE DB 91\n"
++"3418: 93 08 80 C0 48 B6 88 C9\n"
++"3420: 44 FD 7F 7F FF 7F FF 7F\n"
++"3428: FF 7F 7F FF 7F DB 76 E4\n"
++"3430: 47 6F B6 BF FB FF B6 7E\n"
++"3438: A7 82 C9 FD B7 FB E6 49\n"
++"3440: 91 C2 C4 30 00 00 00 80\n"
++"3448: 80 A0 32 FF FF 7F FF 7F\n"
++"3450: 7F 7F FF 7F FF 7F FF 7F\n"
++"3458: FF 3F 8E FD 6F 7F FE FF\n"
++"3460: 37 A6 66 99 89 80 88 80\n"
++"3468: 41 C0 A0 73 7F 7F FF 7F\n"
++"3470: FF FF FF FF 7F FF 7F FF\n"
++"3478: 00 00 00 00 00 00 00 00\n"
++"3480: FF 7F 7F FF 1F 93 64 93\n"
++"3488: 01 FF F7 FD 7F FF 7F 7F\n"
++"3490: 7F FF B7 66 BB F3 A6 A6\n"
++"3498: 09 C4 00 00 10 F3 CC 0C\n"
++"34A0: 49 F8 7F FF FF FF 7F FF\n"
++"34A8: 7F FF FF 7F 7F 7F FE DF\n"
++"34B0: 7E 77 F3 7F 7F 9F 1E FB\n"
++"34B8: A6 A4 88 6D 37 CD 19 C9\n"
++"34C0: 08 80 88 89 10 81 00 00\n"
++"34C8: 90 24 FC 7F 7F 7F FF FF\n"
++"34D0: 7F 7F FF FF 7F 7F 7F FF\n"
++"34D8: EF FF 9B F1 76 FF BF 67\n"
++"34E0: E6 C8 A3 C4 00 00 00 00\n"
++"34E8: 80 90 C0 6C FE FF 7F FF\n"
++"34F0: 7F FF 7F FF 7F FF FF FF\n"
++"34F8: 00 00 00 00 00 00 00 00\n"
++"3500: 7F 7F FF 7F 7D 7F C7 D0\n"
++"3508: 89 BE 5E FD 7F FF 7F FE\n"
++"3510: B7 F7 19 F3 DB EC C8 64\n"
++"3518: C8 00 04 00 40 CC 58 A4\n"
++"3520: C2 64 FF 7F 7F FF FF FF\n"
++"3528: 7F FF 7F FF FF FF 36 4C\n"
++"3530: 7D B7 37 E6 8C 78 EE BF\n"
++"3538: 4E C8 49 84 4C 4C C9 10\n"
++"3540: 88 81 48 88 A6 80 00 00\n"
++"3548: C0 18 F6 FF 7F 7F FF 7F\n"
++"3550: FF 7F FF 7F 7F 3F F6 7F\n"
++"3558: 7F BF 76 20 FB 6E CD 3C\n"
++"3560: 1B 91 88 00 80 80 80 08\n"
++"3568: 48 00 EC 3F 67 FE EF 7F\n"
++"3570: 7F FF 7F FF 7F 7F FF 7F\n"
++"3578: 00 00 00 00 00 00 00 00\n"
++"3580: FF 7F 7F 5F FE CC C4 CC\n"
++"3588: 10 FD EF FE FE 7F 7F 7F\n"
++"3590: FF 7F FF BF B3 E6 AC C2\n"
++"3598: 80 02 01 40 88 E6 48 C3\n"
++"35A0: 40 98 FE FF FF 7F 7F 7F\n"
++"35A8: 7F FF FF FF FF FF B7 1F\n"
++"35B0: 86 BF 1E 93 76 FF B7 31\n"
++"35B8: 99 00 C2 20 B6 49 96 24\n"
++"35C0: E1 80 A4 02 80 80 80 80\n"
++"35C8: 01 18 7F 7F FF FF FF FF\n"
++"35D0: 7F 7F EF FF 7F FF 9D FF\n"
++"35D8: 7F BF FF 8C 64 7E 9B 93\n"
++"35E0: B2 00 80 80 00 88 88 08\n"
++"35E8: 84 F0 7F FF 9B E6 FE 7F\n"
++"35F0: FF FE FF FF 7F FF FF 7F\n"
++"35F8: 00 00 00 00 00 00 00 00\n"
++"3600: FF FF FF FF 92 C9 B7 88\n"
++"3608: C9 3E A4 C8 C8 18 B3 6F\n"
++"3610: EF FC 5B 4D 98 89 46 90\n"
++"3618: C9 C0 40 84 00 B9 A4 01\n"
++"3620: E2 C4 A4 7F 7F FF FF 7F\n"
++"3628: 7F FF 7F FF 7F FF 7F ED\n"
++"3630: E9 7E 3E 32 E6 FE FF 33\n"
++"3638: FB 67 A6 31 26 62 C8 44\n"
++"3640: 01 40 24 80 80 00 00 80\n"
++"3648: A4 FE 7F 7F FF 7F FF 7F\n"
++"3650: FF 7F 7F FF EF 33 7E 7F\n"
++"3658: FF BF FF 69 C0 D9 ED 3F\n"
++"3660: FF B3 46 80 01 80 81 91\n"
++"3668: F8 3F A4 FC BF 9B 76 FF\n"
++"3670: FF 7F EF DF 7E 7F FF FF\n"
++"3678: 00 00 00 00 00 00 00 00\n"
++"3680: FF FF 7F 7F FF 7B C9 A4\n"
++"3688: 19 F7 7E CF 98 91 A4 F2\n"
++"3690: 7F 43 00 80 C8 98 A6 24\n"
++"3698: C2 04 00 80 80 00 42 D8\n"
++"36A0: A9 A2 C2 7C 7F FF 7F FF\n"
++"36A8: FF 7F FF 7F 7F FF 7F FF\n"
++"36B0: FF FE FB 66 71 49 A4 C9\n"
++"36B8: AF 90 00 00 00 C0 0C CC\n"
++"36C0: 08 80 C8 00 00 00 80 C9\n"
++"36C8: FE FF 7F FF 7F FF FF FF\n"
++"36D0: FF 7F FF 7F 9F FD FF FF\n"
++"36D8: 7F 7F 7F 37 1F B1 7F 6D\n"
++"36E0: 7F B7 E3 C4 1C 93 C2 26\n"
++"36E8: 12 C6 E4 A4 E2 7F E3 7E\n"
++"36F0: FF 7F 7F FF FF 7F 7F 7F\n"
++"36F8: 00 00 00 00 00 00 00 00\n"
++"3700: 7F FF FF FF FF 7B E2 09\n"
++"3708: C8 3F C2 6C A4 7D 7C F9\n"
++"3710: BF 02 A0 36 6F AD 9B 82\n"
++"3718: C0 C0 40 80 80 80 80 84\n"
++"3720: 00 A4 86 E5 FF 7F 7F 7F\n"
++"3728: FF 7F FF FF FF FF FF FF\n"
++"3730: FF 7F BF BF FB 7F DB 7E\n"
++"3738: FF B7 A6 C2 40 EC C4 94\n"
++"3740: 81 04 82 00 82 A4 C8 7F\n"
++"3748: FF FF 7F FF 7F 7F FF 7F\n"
++"3750: 7F FF 7F 7F 7E FF 07 89\n"
++"3758: 66 84 C2 7C EF 89 6C 4D\n"
++"3760: 7F 6F CC 22 89 7E CD F9\n"
++"3768: CB C8 24 B1 CA F1 B7 FE\n"
++"3770: FF FF 7F FF FF 7F FF FF\n"
++"3778: 00 00 00 00 00 00 00 00\n"
++"3780: 7F 7F FF 7F FF 6E 99 86\n"
++"3788: C8 DF B4 A6 A6 EE 4D F9\n"
++"3790: CD C4 64 CD 66 E6 B3 66\n"
++"3798: 98 89 88 89 80 80 40 80\n"
++"37A0: 00 60 90 F6 7F 7F 7F 7F\n"
++"37A8: 7F FF FF FF 7F 7F FF 7F\n"
++"37B0: FF FF 7F 6F FF 3F B7 FB\n"
++"37B8: B7 66 34 22 66 99 82 46\n"
++"37C0: 90 40 C4 62 FE FF 7F 7F\n"
++"37C8: FF FF 7F FF 7F FF 7F FF\n"
++"37D0: 7F 7F FF F7 FF 24 8D E7\n"
++"37D8: BC FF 7F FF FF FF 7F A5\n"
++"37E0: B7 E6 F2 D8 CC 1C FF DF\n"
++"37E8: A4 7E 7F 7F FF 7F ED 7F\n"
++"37F0: 7F 7F 7F 7F 7F 7F FF 7F\n"
++"37F8: 00 00 00 00 00 00 00 00\n"
++"3800: FF 7F 7F 7F BF E6 FE 4D\n"
++"3808: 80 FA BF EE FF FF 7F FF\n"
++"3810: 7F FF B7 DB B7 7F A7 CC\n"
++"3818: CC 40 80 80 E2 CD 43 84\n"
++"3820: 48 FC FF 7F FF FF 7F FF\n"
++"3828: 7F 7F 7F FF FF EF 6D F3\n"
++"3830: 63 B7 DB FD 7F FF ED FE\n"
++"3838: 9B 81 B2 7E FF F6 BB 26\n"
++"3840: 46 84 A0 C2 00 00 00 00\n"
++"3848: 80 C1 F8 7F 7F 7F FF FF\n"
++"3850: FF FF FF FF FF 7F FF 7F\n"
++"3858: 7F 5F CF 79 BF 7F 76 7F\n"
++"3860: FF F9 19 E6 92 80 C0 00\n"
++"3868: 88 A4 C0 6D 7F FF 7F 7F\n"
++"3870: 7F 7F 7F FF FF 7F 7F FF\n"
++"3878: 00 00 00 00 00 00 00 00\n"
++"3880: 7F 7F FF 7F BF CC D9 A1\n"
++"3888: 82 FF FB F6 FF FF FF 7F\n"
++"3890: FF FF EF B6 66 4C C9 98\n"
++"3898: 13 01 84 80 48 E4 19 C9\n"
++"38A0: 10 E6 FF FF 7F FF FF 7F\n"
++"38A8: FF FF 7F FF FF FF 7E 1B\n"
++"38B0: 7F 6F ED 7E 7F EF FC B6\n"
++"38B8: 9B 92 42 78 4D E5 24 84\n"
++"38C0: 41 80 81 92 84 86 00 00\n"
++"38C8: A0 48 79 FF FF FF FF FF\n"
++"38D0: 7F FF 7F 7F 7F FF FF 7F\n"
++"38D8: EF FF 1B EC EE FF FF 6C\n"
++"38E0: 1C A6 CC 88 80 80 00 80\n"
++"38E8: 40 84 B0 66 7C 7F FF 7F\n"
++"38F0: 7F 7F 7F FF 7F 7F FF FF\n"
++"38F8: 00 00 00 00 00 00 00 00\n"
++"3900: FF FF FF FF EF 7F 8F C8\n"
++"3908: 01 7C 39 6F 7F 7F FF FD\n"
++"3910: EE EE 6F ED BE 33 A6 09\n"
++"3918: 81 C4 00 C0 00 E1 A6 90\n"
++"3920: 84 72 FF 7F FF FF FF FF\n"
++"3928: 7F 7F FF FF FF 7F 5F 33\n"
++"3930: FE DF 5F 19 93 78 6D CF\n"
++"3938: 13 E4 24 81 30 33 A2 C2\n"
++"3940: 00 40 88 C4 C9 00 80 80\n"
++"3948: 00 E1 EC FF 7F 7F 7F 7F\n"
++"3950: 7F 7F FF FF 7F F7 FF 6F\n"
++"3958: 7F 3F 7B 41 FE 3D B3 49\n"
++"3960: 25 C9 00 81 00 80 C0 40\n"
++"3968: 88 01 F9 FF 18 7B FF FD\n"
++"3970: FF FF 7F 7F 7F 7F 7F 7F\n"
++"3978: 00 00 00 00 00 00 00 00\n"
++"3980: 7F 7F FF 3F B6 93 A1 A7\n"
++"3988: 24 FE B7 FF FF FF 7F FF\n"
++"3990: 7F 7E 7F DF CD 99 D3 91\n"
++"3998: A1 88 84 20 20 C9 A3 A6\n"
++"39A0: 82 62 7D FF FF 7F 7F FF\n"
++"39A8: FF 7F 7F 7F 7F 7F 37 6E\n"
++"39B0: C9 7E F3 C4 EF FF FF 46\n"
++"39B8: 82 C0 08 12 DB 26 AB 12\n"
++"39C0: 92 89 C8 01 80 80 80 80\n"
++"39C8: C8 69 FF FF FF 7F 7F 7F\n"
++"39D0: 7F 7F 7D FF FF 3F B3 7F\n"
++"39D8: FF 3F 7F 93 32 7F ED A4\n"
++"39E0: C9 84 80 80 80 81 41 44\n"
++"39E8: 80 70 FF 7F F6 30 FD 7F\n"
++"39F0: FF FD 7F FF FF 7F FF 7F\n"
++"39F8: 00 00 00 00 00 00 00 00\n"
++"3A00: 7F 7F FF FF AD E4 CF 20\n"
++"3A08: A2 4F C8 84 81 22 CC 66\n"
++"3A10: BF 7B E7 24 E3 C0 08 C9\n"
++"3A18: A4 84 80 A1 00 E6 C9 42\n"
++"3A20: 88 89 D2 FD FF 7F FF 7F\n"
++"3A28: FF 7F 7F 7F FF 7F FF B7\n"
++"3A30: CE FD BE 71 58 7D FF 4D\n"
++"3A38: 7F CD 99 C7 10 89 A4 98\n"
++"3A40: 12 08 10 81 80 80 40 90\n"
++"3A48: C9 FF 7F 7F FF 7F FF 7F\n"
++"3A50: FF FF FF FF 7F CC FF 7F\n"
++"3A58: 7F FF 7F CD 44 B6 FB 7B\n"
++"3A60: 7E CD 98 80 80 81 A0 82\n"
++"3A68: FE 47 C8 F0 7F B6 69 7F\n"
++"3A70: FF 7F 6F 7F 79 7F FF FF\n"
++"3A78: 00 00 00 00 00 00 00 00\n"
++"3A80: FF FF 7F FF 7F 79 86 D1\n"
++"3A88: 26 EF B6 93 81 C2 99 E4\n"
++"3A90: 7F 04 80 80 00 A1 19 4B\n"
++"3A98: 84 09 82 00 80 C0 80 A0\n"
++"3AA0: 26 C5 89 F9 FF FF 7F FF\n"
++"3AA8: FF FF FF 7F FF FF FF 7F\n"
++"3AB0: EF 7F B7 6D 7C 37 C2 90\n"
++"3AB8: 86 00 04 81 C9 40 19 B0\n"
++"3AC0: 82 84 09 00 80 80 A0 A4\n"
++"3AC8: FF 7F FF FF FF FF 7F FF\n"
++"3AD0: FF 7F FF 7F EF FE FF 7F\n"
++"3AD8: FF FF FF 6F 4E E0 FC 37\n"
++"3AE0: 7F 9B 8C B0 37 CD B1 4F\n"
++"3AE8: B8 89 89 C9 A4 7F E6 FE\n"
++"3AF0: 7F 7F 7F 7F 7F FF 7F 7F\n"
++"3AF8: 00 00 00 00 00 00 00 00\n"
++"3B00: FF 7F FF 7F 7F FB 4C 24\n"
++"3B08: A1 5F A4 76 FB 3F FB 67\n"
++"3B10: DF 09 C0 7B 7F F6 CC 99\n"
++"3B18: 88 89 08 00 80 90 88 80\n"
++"3B20: 00 D2 C8 64 FF FF 7F 7F\n"
++"3B28: 7F FF FF FF 7F 7F 7F FF\n"
++"3B30: 7F 7F FF FE FE 7F 66 FD\n"
++"3B38: B7 66 CC 00 88 99 89 C8\n"
++"3B40: C0 C1 84 C0 40 C0 B4 7F\n"
++"3B48: 7F 7F FF 7F 7F FF 7F FF\n"
++"3B50: 7F 7F 7F 7F FE FF 49 E4\n"
++"3B58: CC 24 A9 79 3F 96 B0 36\n"
++"3B60: 76 DF B3 49 E0 4F B0 7E\n"
++"3B68: A6 91 59 C4 B5 6C 3F FD\n"
++"3B70: 7F 7F FF 7F FF FF FF FF\n"
++"3B78: 00 00 00 00 00 00 00 00\n"
++"3B80: 7F FF FF 7F 3F 67 B3 49\n"
++"3B88: A0 BF 67 D3 79 7F 33 F6\n"
++"3B90: B6 82 98 B7 FB BD 6E 99\n"
++"3B98: E3 C4 84 92 00 80 80 80\n"
++"3BA0: 40 C0 A4 FB FF FF 7F 7F\n"
++"3BA8: FF 7F 7F 7F 7F FF FF 7F\n"
++"3BB0: FF 7F EF FF 7F ED EE FE\n"
++"3BB8: DB 99 A7 19 19 C3 20 08\n"
++"3BC0: 88 82 82 F9 FF FF FF FF\n"
++"3BC8: 7F FF FF 7F 7F 7F FF 7F\n"
++"3BD0: 7F 7F 7F FF 1F 12 31 99\n"
++"3BD8: E9 FF 7F FF 7F FF FF CF\n"
++"3BE0: CC 99 B9 A6 F3 F3 FF BF\n"
++"3BE8: F2 FE FF 7F 7F FF F7 7F\n"
++"3BF0: 7F 7F 7F FF FF FF 7F FF\n"
++"3BF8: 00 00 00 00 00 00 00 00\n"
++"3C00: 7F 7F FF FF BF 49 BF F1\n"
++"3C08: 04 F9 6F FD FF 7F 7F FF\n"
++"3C10: 7F FF EF EC 36 7B DB A1\n"
++"3C18: 12 81 01 80 89 B6 19 A0\n"
++"3C20: 11 7D 7F 7F 7F FF FF FF\n"
++"3C28: FF FF FF 7F FF 7F 76 6E\n"
++"3C30: CF DF ED FB 7F 7F DB FD\n"
++"3C38: A7 08 A4 7D FF ED EC 99\n"
++"3C40: C9 00 00 A4 00 00 80 00\n"
++"3C48: 00 48 EC 7F FF 7F FF 7F\n"
++"3C50: FF 7F FF FF FF 7F 7F 7F\n"
++"3C58: 7F 6F 0F F6 7F FE 6D 7F\n"
++"3C60: BF DB 6E C9 04 81 80 C0\n"
++"3C68: 00 90 A0 66 7F FF FF 7F\n"
++"3C70: FF 7F FF 7F FF FF FF 7F\n"
++"3C78: 00 00 00 00 00 00 00 00\n"
++"3C80: FF FF FF 7F 7F B1 AE D2\n"
++"3C88: 84 FF B7 7F 7F 7F FF FF\n"
++"3C90: 7F 7F B7 66 CC 33 A6 62\n"
++"3C98: CC 40 80 00 24 CD 63 90\n"
++"3CA0: C1 78 FF 7F 7F FF FF FF\n"
++"3CA8: FF 7F 7F FF FF 3F BB 36\n"
++"3CB0: FE 77 B6 FF 7F 87 BC DB\n"
++"3CB8: C9 40 C8 E6 66 98 12 92\n"
++"3CC0: 89 80 90 81 A0 82 80 00\n"
++"3CC8: 80 C9 7E FF FF FF 7F FF\n"
++"3CD0: 7F FF FF FF 7F FF 7F 7F\n"
++"3CD8: F7 FF BC 30 B7 FF 7F CD\n"
++"3CE0: E3 D8 91 C1 00 80 80 80\n"
++"3CE8: 80 89 C8 D9 79 7F FF 7F\n"
++"3CF0: 7F 7F FF FF FF FF FF FF\n"
++"3CF8: 00 00 00 00 00 00 00 00\n"
++"3D00: 7F 7F FF FF FF FF B3 B0\n"
++"3D08: 42 FC B6 7F 7F FF 7F FE\n"
++"3D10: 9B 7B B3 B7 EF 4C C9 12\n"
++"3D18: 49 80 02 00 C8 4C C9 C9\n"
++"3D20: C9 E4 7F 7F 7F 7F FF 7F\n"
++"3D28: FF 7F FF FF FF FF 6F 66\n"
++"3D30: 7C EF 2F E6 04 6C 76 B7\n"
++"3D38: 26 91 12 C2 60 4C C4 08\n"
++"3D40: C4 00 C0 01 0C 80 00 00\n"
++"3D48: 80 82 F9 FF FF 7F FF 7F\n"
++"3D50: 7F FF FF 7F 7F 7E 7F 77\n"
++"3D58: FF BF 76 20 FD B7 EE 64\n"
++"3D60: 18 80 00 80 00 80 88 00\n"
++"3D68: A4 C0 FE FF B3 76 FF F7\n"
++"3D70: 7F 7F FF 7F 7F FF 7F FF\n"
++"3D78: 00 00 00 00 00 00 00 00\n"
++"3D80: 7F FF 7F 6F CC A4 E2 91\n"
++"3D88: 48 7C 67 BE 7F FF 7F 7F\n"
++"3D90: FF FE EF B7 B2 B2 AC 8C\n"
++"3D98: C2 C0 00 04 40 E4 C4 98\n"
++"3DA0: A4 04 7B 7F 7F FF FF 7F\n"
++"3DA8: FF FF FF FF FF FF FF 36\n"
++"3DB0: A6 3E 4E E3 F7 FF FF 0B\n"
++"3DB8: 84 90 44 E4 EC 89 DE 48\n"
++"3DC0: C8 40 90 81 80 00 00 40\n"
++"3DC8: 90 E9 FF 7F FF FF FF FF\n"
++"3DD0: FF 3F FF 7F 7F 5F E6 7F\n"
++"3DD8: 7F FF 7E 8D C8 7E B7 DB\n"
++"3DE0: A4 C2 00 00 C0 C0 08 09\n"
++"3DE8: 82 78 FF 7F ED 4D FA 7F\n"
++"3DF0: 7F 7B 7F 7F 7F FF 7F 7F\n"
++"3DF8: 00 00 00 00 00 00 00 00\n"
++"3E00: FF FF 7F FF 93 E2 B3 C4\n"
++"3E08: 48 9F 93 B1 82 40 B1 79\n"
++"3E10: 6F 39 9B 13 88 00 A0 00\n"
++"3E18: 92 81 C0 C1 80 D8 11 09\n"
++"3E20: C4 84 A9 7F FF 7F 7F FF\n"
++"3E28: 7F 7F 7F 7F FF FF 7F DF\n"
++"3E30: B6 FE FD 18 26 7B BF 37\n"
++"3E38: FB 33 66 18 49 C4 98 B1\n"
++"3E40: 21 C0 A4 00 00 80 00 A0\n"
++"3E48: F2 FF FF 7F FF 7F 7F 7F\n"
++"3E50: 7F FF FF FF B7 A7 FF FF\n"
++"3E58: FF FF FF B6 01 E9 F6 7F\n"
++"3E60: F6 E6 A3 49 C0 C0 90 08\n"
++"3E68: FF 09 82 E5 FF DB 74 FF\n"
++"3E70: 7F 7F BF FF EF 7F FF 7F\n"
++"3E78: 00 00 00 00 00 00 00 00\n"
++"3E80: FF 7F 7F 7F 7F F9 19 A6\n"
++"3E88: B2 F7 66 84 80 40 B2 F2\n"
++"3E90: FF 81 80 C0 00 C0 20 10\n"
++"3E98: A0 12 80 80 00 00 00 C0\n"
++"3EA0: 18 92 92 F2 FF FF 7F 7F\n"
++"3EA8: 7F 7F 7F FF FF 7F FF FF\n"
++"3EB0: FF 7E EF 33 F3 E7 0C 42\n"
++"3EB8: 88 C8 33 CC 84 C1 CC 48\n"
++"3EC0: 80 10 12 00 00 80 80 D2\n"
++"3EC8: FF 7F 7F 7F FF FF FF 7F\n"
++"3ED0: 7F FF 7F FF E7 FF FF FF\n"
++"3ED8: 8F 72 FF EF BE C0 76 5B\n"
++"3EE0: EC E6 11 E6 E6 A4 F2 13\n"
++"3EE8: 26 92 92 91 C9 7E B3 FF\n"
++"3EF0: FF 7F 7F 7F 7F 7F 7F 7F\n"
++"3EF8: 00 00 00 00 00 00 00 00\n"
++"3F00: 7F FF 7F FF FF F7 C9 91\n"
++"3F08: 48 2F 3E 7F F7 B6 E6 6C\n"
++"3F10: AF 81 00 FD BB 99 B1 A4\n"
++"3F18: E4 80 11 81 00 80 C0 00\n"
++"3F20: 40 A0 86 72 7F 7F 7F 7F\n"
++"3F28: 7F FF 7F 7F FF FF 7F FF\n"
++"3F30: FF FF 7F 7E FD 3F 1B B3\n"
++"3F38: CE 99 93 84 C0 CC 92 A4\n"
++"3F40: 88 48 88 80 08 04 FB 7F\n"
++"3F48: FF 7F FF 7F FF FF FF FF\n"
++"3F50: FF 7F FF 3F FF 3F 24 C9\n"
++"3F58: B1 12 E6 66 FF B3 E0 7B\n"
++"3F60: 49 AD C6 04 EC 33 C6 7E\n"
++"3F68: C9 A4 A6 36 66 E1 FF F6\n"
++"3F70: FF 7F 7F 7F FF FF 7F 7F\n"
++"3F78: 00 00 00 00 00 00 00 00\n"
++"3F80: 7F FF 7F 7F BF 3B CE 06\n"
++"3F88: C4 CF 3C B9 7E DE 5E 6D\n"
++"3F90: CD 85 E8 3D B6 F3 37 E6\n"
++"3F98: 8C 80 A0 84 00 80 00 80\n"
++"3FA0: 00 48 C9 FD FF FF 7F 7F\n"
++"3FA8: FF FF 7F FF FF 7F FF FF\n"
++"3FB0: FF FF 4F FF 7F F6 7E FD\n"
++"3FB8: BF E6 9B 43 E6 84 40 06\n"
++"3FC0: 40 20 89 7D 7F FF FF 7F\n"
++"3FC8: FF 7F FF FF FF FF FF FF\n"
++"3FD0: FF FF 7F 7F 9F 69 4C E6\n"
++"3FD8: F6 7F 7F FF 7F 7F FB 9F\n"
++"3FE0: B3 26 CE D9 1C E7 FF 9F\n"
++"3FE8: F9 7F 7F 7F FF FF EF FF\n"
++"3FF0: FF FF FF 7F FF FF FF FF\n"
++"3FF8: 00 00 00 00 00 00 00 00\n"
+
 
 </script>
 
