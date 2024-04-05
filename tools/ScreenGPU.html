@@ -60,6 +60,23 @@
   </html>
 <script>
 
+
+for(var adr=8192;adr<16384;adr++)
+{
+    const cb = 0x7f;
+    const col = (adr & cb) % 40;                      // column of byte 
+
+    const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
+    const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
+
+    var x = (adr & cb)
+    document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+" "+((col^0xFF) & cb)+"<br>");
+
+    //document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+"<br>");
+}
+
+
+
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
 
 
@@ -90,11 +107,11 @@ function kernel_wrapper()
     const cb = 0x7f;
     const col = (adr & cb) % 40;                      // column of byte 
 
-    const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
-    const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
+    const c00 = col > 0 ? cb : 0;                     // adjacent byte on the left?
+    const c40 = col < 39 ? cb : 0;                    // adjacent byte on the right?
     const d8 = mem[adr] & cb;                         // byte in range of [xp,yp]
-    const d8_l = c00 & mem[adr-1] & cb;               // left byte
-    const d8_r = c40 & mem[adr+1] & cb;               // right byte
+    const d8_l = c00 & mem[adr-1];                    // left byte
+    const d8_r = c40 & mem[adr+1];                    // right byte
     const d24 = (d8_l) | (d8<<7) | (d8_r<<14);        // aggregate of 3 adjacent bytes
 
     const b7 = mem[adr] & 0x80;                       // high bit
@@ -184,9 +201,6 @@ function EMU_init()
   });
 
   var kernel;
-  var deb = 0;
-
-
 
   /////////////////////////////
 
