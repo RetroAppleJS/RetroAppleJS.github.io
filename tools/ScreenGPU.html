@@ -58,15 +58,10 @@
   
   </body>
   </html>
-
-
-
-
-
-
 <script>
 
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
+
 
   // global data initializations
 const _o = {
@@ -78,7 +73,7 @@ const _o = {
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
-var CONF_version="1.0.0";
+var CONF_version="1.1.0";
 var CONF_builddate="20240329-170000"; 
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
@@ -93,20 +88,20 @@ function kernel_wrapper()
     const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
     const bit_adr = xp%7;
     const cb = 0x7f;
-
     const col = (adr & cb) % 40;                      // column of byte 
+
     const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
     const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
     const d8 = mem[adr] & cb;                         // byte in range of [xp,yp]
     const d8_l = c00 & mem[adr-1] & cb;               // left byte
     const d8_r = c40 & mem[adr+1] & cb;               // right byte
-    const d24 = (d8_l) | (d8<<7) | (d8_r<<14);        // aggregate of 3 adjecent bytes
+    const d24 = (d8_l) | (d8<<7) | (d8_r<<14);        // aggregate of 3 adjacent bytes
 
-    const b7 = mem[adr]&0x80;                         // high bit
-    const me  = d24  & (128<<bit_adr);                // bit at [xp,yp]
+    const b7 = mem[adr] & 0x80;                       // high bit
+    const me  = d24  & (0x80<<bit_adr);               // bit at [xp,yp]
 
-    const b_l = d24 & (256<<bit_adr);                 // bit at [xp-1,yp]
-    const b_r = d24 & (64<<bit_adr);                  // bit at [xp+1,yp]
+    const b_l = d24 & (0x100<<bit_adr);               // bit at [xp-1,yp]
+    const b_r = d24 & (0x40<<bit_adr);                // bit at [xp+1,yp]
 
     const cm = chrome_mode<<2;
     const a0 = (xp & 0x01);                           // 0=even/1=uneven column
@@ -158,12 +153,18 @@ function EMU_init()
   if(document.getElementById('slider_title')!=null)
     document.getElementById('slider_title').outerHTML = _TITLE();
 
-  var AppVersion = oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]
+  var AppVersion = Number(oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]);
+  var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"])
 
-  var s_versions = ["<select name=VSelect onchange='Versions.submit()''>"];
+  var s_versions = ["<select name=VSelect onchange='Versions.submit()'>"];
   for(var i in ActiveVesions)
     s_versions[s_versions.length] = "<option value="+i+" "+(AppVersion==i?"selected":"")+">"+ActiveVesions[i]+"</option>"
-  s_versions[s_versions.length] = "</select><br>"
+  s_versions[s_versions.length] = "</select>"
+
+  s_versions[s_versions.length] = "<select name=chrome_mode onchange='Versions.submit()'>"
+  for(var i in _CFG_CHROMA)
+    s_versions[s_versions.length] = "<option value="+i+" "+(chrome_mode==i?"selected":"")+">"+_CFG_CHROMA[i].COL_name+"</option>"
+  s_versions[s_versions.length] = "</select>"
 
   document.getElementById("topform").innerHTML += s_versions.join("");
 
@@ -172,7 +173,7 @@ function EMU_init()
   apple2plus          = new Apple2Plus();
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
-  var chrome_mode = 0;
+
 
 
   /////////////////////////////
@@ -237,13 +238,6 @@ function EMU_init()
 
   if(AppVersion==1)
   {
- 
-    var monoNames   = ["color","b/w","green","amber"];
-    var chrome_mode = 0;
-    var color_nr    = 9;   // Orange 
-
-    var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
-    //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
 
     kernel = gpu.createKernel(
      oKW.kProcess,
@@ -309,13 +303,6 @@ function EMU_init()
     }
     document.getElementById("topform").innerHTML += s.join("");
 
-    var monoNames   = ["color","b/w","green","amber"];
-    var chrome_mode = 0;
-    var color_nr    = 9;   // Orange 
-
-    var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
-    //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
-
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
     draw(Pattern,ram);
@@ -343,12 +330,6 @@ function EMU_init()
 
   if(AppVersion==3)
   {
-    var monoNames   = ["color","b/w","green","amber"];
-    var color_nr    = 9;   // Orange 
-
-    var color_ptr =  (chrome_mode<<2) + (color_nr<<4);
-    //alert(INTCols[color_ptr].toString(16)+" "+INTCols[color_ptr+1].toString(16)+" "+INTCols[color_ptr+2].toString(16))
-
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
     var line_arr = bytestream.split("\n");           // PASTE BITMAP IN RAM 
