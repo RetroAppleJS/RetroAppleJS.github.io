@@ -228,11 +228,25 @@ function EMU_init()
 
   /////////////////////////////
 
+  /*
   const gpu = new GPU.GPU({
     canvas:  vidContext ,
     mode: 'gpu'
   });
+  */
 
+  function initGPU(arg) {
+	try {
+		return new window.GPU.GPU(arg);
+	} catch (e) {
+		return new GPU(arg);
+	}
+}
+const gpu = initGPU({
+    canvas:  vidContext ,
+    mode: 'gpu'
+  });
+  
   var kernel;
 
   /////////////////////////////
