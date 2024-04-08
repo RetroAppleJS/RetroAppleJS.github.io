@@ -122,8 +122,8 @@ function kernel_wrapper()
     //const a3 = a6>>1;
     //const a9 = 9-a3*3;
     
-    const cptr = chrome_mode<<2;
     const b7 = mem[adr] & 0x80;               // high bit  0-80
+    var cptr = chrome_mode<<2;
 
     if(bm!=0 && (bl!=0 || br!=0))
                       cptr += 15<<4;          // white
@@ -170,19 +170,12 @@ function kernel_wrapper()
 
     const b = (d24>>(xp%7+6)) & 7;      //  3 bits at (xp,yp)
     const b0 = mem[adr]>>7;             //  high bit  0-1
-    const bw = b>>2 | b&3
+    const bw = b>>2 | b&3;
 
-    const cptr = chrome_mode<<2;
+    var cptr = chrome_mode<<2;
     if     (bw==0b11)  cptr += 15<<4;                              // white (b==0b011 || b==0b111 || b==0b110)
     else if(b ==0b010) cptr += 3*(2+(xp<<1&2)-b0)<<4;              // orange-green-purple-blue (b==0b010)
     else if(b ==0b101) cptr += 3*(4-(xp<<1&2)+(b0&xp&1)-b0)<<4;    // blue-orange-purple-green (b==0b101)
-
-    //                                          b0=1  0-1  -1 =   -1 0
-    //                                          b0=0  0-0  -0 =   0  0
-
-
-
-
                                                                    // black (b==0b100 || b==0b001 || b==0b000)
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
@@ -440,7 +433,7 @@ const gpu = initGPU({
 
   if(AppVersion==4)
   {
-    var mem = { 8192:0b00101010,8193:0b01010101,8194:0b00101010,8195:0b00000000,8196:0b00000000 };
+    var mem = { 8192:0b00101010,8193:0b01010101,8194:0b00101010,8195:0b01111111,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
     oKW.thread = {"x":0,"y":0}
     oKW.color  = function(r,g,b,t)
     {
