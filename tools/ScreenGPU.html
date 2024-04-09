@@ -63,6 +63,11 @@
 
 for(var adr=8192;adr<16384;adr++)
 {
+
+//var d5 = (((((19+(adr>>1)+adr)>>1)+adr)>>1)&0x7F)>>1
+var d = Math.floor(adr/5);
+
+
     const cb = 0x7f;
     const col = (adr & cb) % 40;                      // column of byte 
 
@@ -70,9 +75,32 @@ for(var adr=8192;adr<16384;adr++)
     const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
 
     var x = (adr & cb)
-    document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+" "+((col^0xFF) & cb)+"<br>");
+    //document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+" "+((col^0xFF) & cb)+"<br>");
 
     //document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+"<br>");
+
+    // font-family:'Courier'
+    //document.write("<div style:font-size:8px;>")
+    //if(c00==0)
+
+    //var d00 =  ((adr-0x2000)&cb&7) == 0
+    //var red = ( (adr-0x2000) & cb)
+    //var d5 = (red>>2)
+    //d5 = ((((((d5>>1)+d5)>>3)+d5)>>1)+d5)>>2  // Divide by 20
+
+
+
+
+
+
+  //oCOM.getBinMulti((adr-0x2000),8
+
+  //oCOM.getHexWord(adr)
+
+    //if(d00==true || c00==0)
+    //document.write((adr-8192)+": "+c00+" "+d00+" "+d5+"<br>");
+    
+    //document.write()
 }
 
 
@@ -98,6 +126,62 @@ oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
 function kernel_wrapper()
 {
+  this.kProcess_v0 =  function(dim,mem,yref,INTCols,chrome_mode)
+  {
+    const xp  = (this.thread.x>>1);
+    const yp  = (this.thread.y>>1)+1;
+    const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
+    
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 40 ? 0 : 0x7F;   // adjacent byte on the right?
+    const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F  & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
+
+    const b = (d24>>((xp%7)+6)) & 7
+    const bl = b & 4
+    const bm = b & 2
+    const br = b & 1
+
+    const b0 = mem[adr]>>7                    // high bit  0-1
+    const a0 = xp & 1;                        // 0=even/1=uneven column
+    
+    const b7 = mem[adr] & 0x80;               // high bit  0-80
+    var cptr = chrome_mode<<2;
+
+    if(bm!=0 && (bl!=0 || br!=0))
+                      cptr += 15<<4;          // white
+    
+    else if(bm!=0)
+    {
+      if(a0!=0)
+      {
+          if(b7!=0)   cptr += 9<<4;           // orange
+          else        cptr += 12<<4;          // green
+      } else {
+          if(b7!=0)   cptr += 6<<4;           // blue
+          else        cptr += 3<<4;           // purple
+      }
+    }
+    else if (bl != 0 && br != 0)
+    {
+      if (b7 != 0) {
+          if (a0 != 0) 
+                cptr += 6<<4;           // blue
+          else
+                cptr += 9<<4;           // orange
+      } else {
+          if (a0 != 0) cptr += 3<<4;           // purple
+          else         cptr += 12<<4;          // green
+      }
+    }
+    //else
+    //    cptr = cm;                               // black
+
+    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1,{"b":oCOM.getBinMulti(b,3),"b7":b7,"a0":a0} );
+  }
+
+
+
   // KERNEL v1 - source code transcription
   this.kProcess_v1 =  function(dim,mem,yref,INTCols,chrome_mode)
   {
@@ -131,8 +215,8 @@ function kernel_wrapper()
           if(b7!=0)   cptr += 9<<4;           // orange
           else        cptr += 12<<4;          // green
       } else {
-          if(b7!=0)   cptr += 3<<4;           // purple
-          else        cptr += 6<<4;           // blue
+          if(b7!=0)   cptr += 6<<4;           // blue
+          else        cptr += 3<<4;           // purple
       }
     }
     else if (bl != 0 && br != 0)
@@ -163,17 +247,28 @@ function kernel_wrapper()
     const c40 = col == 40 ? 0 : 0x7F;   // adjacent byte on the right?
     const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F  & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
 
-    const b = (d24>>(xp%7+6)) & 7;      //  3 bits at (xp,yp)
+    var b = (d24>>(xp%7+6)) & 7;      //  3 bits at (xp,yp)
     const b0 = mem[adr]>>7;             //  high bit  0-1
-    const bw = b>>2 | b&3;
+    const a0 = xp&1;
+    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;  // color calc mode 11=white 00=black 01=sandwich pattern 02=dot
 
     var cptr = chrome_mode<<2;
-    if     (bw==0b11)  cptr += 15<<4;                              // white (b==0b011 || b==0b111 || b==0b110)
-    else if(b ==0b010) cptr += 3*(2+(xp<<1&2)-b0)<<4;              // orange-green-purple-blue (b==0b010)
-    else if(b ==0b101) cptr += 3*(4-(xp<<1&2)+(b0&xp&1)-b0)<<4;    // blue-orange-purple-green (b==0b101)
-                                                                   // black (b==0b100 || b==0b001 || b==0b000)
+    if     (ccm==0b11) cptr +=  3*( 1 +  4                    )<<4;   // white (b==0b011 || b==0b111 || b==0b110)  - bw 11          
+    else if(ccm==0b10) cptr +=  3*( 1 + (a0<<1)   + (a0^b0)   )<<4;   // orange-green-purple-blue (b==0b010)       - bw 10
+    else if(ccm==0b01) cptr +=  3*( 1 + (a0<<1^2) + (b0^a0^1) )<<4    // blue-orange-purple-green (b==0b101)       - bw 01
+                                                                     // black (b==0b100 || b==0b001 || b==0b000)  - bw 01,00
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
+
+  var arp = [0b011,0b111,0b110,0b010,0b101,0b100,0b001,0b000]
+  for(var i=0;i<8;i++)
+  {
+    var b = arp[i]
+    var _bw = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3
+
+    document.write(oCOM.getBinMulti(b,3) +" "+ oCOM.getBinMulti(_bw,2) +  "<br>")
+  }
+ 
 
   // align input parameters
   this.kProcess_v3 =  function(dim,mem,INTCols,chrome_mode)
@@ -206,12 +301,13 @@ function kernel_wrapper()
     const b = (d24>>(m7+6)) & 7;        //  3 bits at (xp,yp)
     const b0 = mem[adr]>>7;             //  high bit  0-1
     const bw = b>>2 | b&3;
+    const a0 = xp&1;
 
     var cptr = chrome_mode<<2;
-    if     (bw==0b11)  cptr += 15<<4;                              // white (b==0b011 || b==0b111 || b==0b110)
-    else if(b ==0b010) cptr += 3*(2+(xp<<1&2)-b0)<<4;              // orange-green-purple-blue (b==0b010)
-    else if(b ==0b101) cptr += 3*(4-(xp<<1&2)+(b0&xp&1)-b0)<<4;    // blue-orange-purple-green (b==0b101)
-                                                                   // black (b==0b100 || b==0b001 || b==0b000)
+    if     (bw==0b11) cptr +=  3*( 1 +  4                    )<<4;   // white (b==0b011 || b==0b111 || b==0b110)         
+    else if(b==0b010) cptr +=  3*( 1 + (a0<<1)   + (a0^b0)   )<<4;   // orange-green-purple-blue (b==0b010)  
+    else if(b==0b101) cptr +=  3*( 1 + ((a0^1)<<1) + (b0^a0^1) )<<4    // blue-orange-purple-green (b==0b101)  
+                                                                     // black (b==0b100 || b==0b001 || b==0b000)
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
 }
@@ -245,7 +341,6 @@ function EMU_init()
   s_versions[s_versions.length] = "</select>"
 
   document.getElementById("topform").innerHTML += s_versions.join("");
-
 
   vidContext          = document.getElementById('applescreen');
   apple2plus          = new Apple2Plus();
@@ -397,7 +492,7 @@ const gpu = initGPU({
     draw(Pattern,ram);
 
     kernel = gpu.createKernel(
-     oKW.kProcess_v3,
+     oKW.kProcess_v2,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -408,7 +503,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(dim,ram,INTCols,chrome_mode);
+      kernel(dim,ram,yref,INTCols,chrome_mode);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -468,12 +563,19 @@ const gpu = initGPU({
 
   if(AppVersion==4)
   {
-    var mem = { 8192:0b00101010,8193:0b01010101,8194:0b00101010,8195:0b01111111,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
+    //var mem = { 8192:0b00101010,8193:0b01010101,8194:0b00101010,8195:0b01111111,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
+    var mem = { 8192:0b11010101,8193:0b10101010,8194:0b11010101,8195:0b10101010,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
     oKW.thread = {"x":0,"y":0}
-    oKW.color  = function(r,g,b,t)
+    oKW.color  = function(r,g,b,t,debug_struct)
     {
+        
+
         document.getElementById("prede").innerHTML += 
-          "<div style='margin:1px;float:left;width:10px;height:10px;background-color:#"+oCOM.getHexByte(r*256)+oCOM.getHexByte(g*256)+oCOM.getHexByte(b*256)+"'>&nbsp;</div>"
+          "<div style='margin:1px;float:left;width:30px;height:30px;background-color:#"+oCOM.getHexByte(r*256)+oCOM.getHexByte(g*256)+oCOM.getHexByte(b*256)+"'>"
+           
+          +debug_struct.b+"<br>"+debug_struct.a0+"&nbsp;"+(debug_struct.b7!=0?1:0)
+            
+          +"</div>"
         //document.getElementById("prede").innerHTML +=
         //  oCOM.getHexByte(r*256)+" "+oCOM.getHexByte(g*256)+" "+oCOM.getHexByte(b*256)+"<br>";
     }
@@ -481,7 +583,7 @@ const gpu = initGPU({
     for(var x=0;x<40;x++)
     {
       oKW.thread = {"x":x<<1,"y":(191<<1)}
-      oKW.kProcess_v3(dim,mem,INTCols,chrome_mode);
+      oKW.kProcess_v0(dim,mem,yref,INTCols,chrome_mode);
     }
 
   }
@@ -536,7 +638,7 @@ for(var y=0;y<192;y++)
   if(adr != yref[y])
     s[s.length] = (adr&0xFFFF).toString(16)+":"+(yref[y]&0xFFFF).toString(16);
 }
-console.log(s.join(","));
+//console.log(s.join(","));
 
 var s = []
 for(var xp=0;xp<280;xp++)
@@ -555,53 +657,6 @@ for(var xp=0;xp<280;xp++)
 }
 console.log(s.join(","));
 
-
-// [Log] 00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0  (ScreenGPU.html, line 505)
-
-/*
-START   LDA *HGR.Y       ; Y ORDINATE
-
-;---- CALCULATE LOW BYTE FOR GFX POS ---
-
-        TAY
-        AND #$C0   ; generates 0-64-128
-        STA *GBASL
-        LSR A
-        LSR A      ; divide by 4 (0,16,32)
-        STA TEMP
-        ;CLC
-        ;AND #$30
-        ORA *GBASL
-        STA *GBASL
-
-        TYA
-        ASL A
-        ASL A
-        STA *GBASH
-        ASL A
-        ASL A
-        ASL A
-        ROR *GBASL
-
-;---- CALCULATE HIGH BYTE FOR GFX POS ---
-
-        LDA *GBASH
-        CLC         ; still don't know why I have to clear the carry bit
-        AND #$1C
-        STA *GBASH
-
-        TYA
-        LSR A
-        LSR A
-        LSR A
-        LSR A        ; divide by 16 generates 0-1-2
-        CLC
-        AND #$03
-        ADC *HGR.PAGE
-        ADC *GBASH
-        STA *GBASH
-        RTS
-*/
 
 
 //var s = [];
