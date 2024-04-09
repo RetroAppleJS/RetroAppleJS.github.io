@@ -90,7 +90,7 @@ const _o = {
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
-var CONF_version="1.1.0";
+var CONF_version="2.0.0";
 var CONF_builddate="20240329-170000"; 
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
@@ -115,12 +115,8 @@ function kernel_wrapper()
     const bm = b & 2
     const br = b & 1
 
-    const b0 = mem[adr]>>7                      // high bit  0-1
-    //const b3 = (mem[adr]>>6 & 2) | mem[adr]>>7  // high bit  0-3
-    const a0 = xp & 1;                          // 0=even/1=uneven column
-    //const a6 = (a0<<2) + (a0<<1);
-    //const a3 = a6>>1;
-    //const a9 = 9-a3*3;
+    const b0 = mem[adr]>>7                    // high bit  0-1
+    const a0 = xp & 1;                        // 0=even/1=uneven column
     
     const b7 = mem[adr] & 0x80;               // high bit  0-80
     var cptr = chrome_mode<<2;
@@ -153,11 +149,10 @@ function kernel_wrapper()
     //    cptr = cm;                               // black
 
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
-    
   }
 
   // KERNEL v2 - optimisation
-  this.kProcess =  function(dim,mem,yref,INTCols,chrome_mode)
+  this.kProcess_v2 =  function(dim,mem,yref,INTCols,chrome_mode)
   {
     const xp  = (this.thread.x>>1);
     const yp  = (this.thread.y>>1)+1;
@@ -169,6 +164,46 @@ function kernel_wrapper()
     const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F  & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
 
     const b = (d24>>(xp%7+6)) & 7;      //  3 bits at (xp,yp)
+    const b0 = mem[adr]>>7;             //  high bit  0-1
+    const bw = b>>2 | b&3;
+
+    var cptr = chrome_mode<<2;
+    if     (bw==0b11)  cptr += 15<<4;                              // white (b==0b011 || b==0b111 || b==0b110)
+    else if(b ==0b010) cptr += 3*(2+(xp<<1&2)-b0)<<4;              // orange-green-purple-blue (b==0b010)
+    else if(b ==0b101) cptr += 3*(4-(xp<<1&2)+(b0&xp&1)-b0)<<4;    // blue-orange-purple-green (b==0b101)
+                                                                   // black (b==0b100 || b==0b001 || b==0b000)
+    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+  }
+
+  // align input parameters
+  this.kProcess_v3 =  function(dim,mem,INTCols,chrome_mode)
+  { 
+    const xp  = (this.thread.x>>1);
+    const yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
+    //const adr = yref[yp] + Math.floor(xp/7);      // LOOKUP BASED
+
+    // FORMULA v1
+    //var A = yp>>6;
+    //var D = yp - (A<<6);
+    //var B = D>>3
+    //var C = D-(B<<3)
+    //const adr = 8192 + (C<<10) + (B<<7) + (A<<3) + (A<<5) + Math.floor(xp/7);
+
+    // FORMULA v2
+    //const adr = 8192 + (((yp - (yp&192))-((yp - (yp&192)>>3)<<3))<<10) + ((yp -(yp&192)>>3)<<7) + (yp>>6<<3) + (yp>>6<<5) + Math.floor(xp/7);;
+
+    // FORMULA v3
+    var x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+    var m7 = xp-(x7<<3)+x7                    // equivalent to xp%7
+
+    const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 40 ? 0 : 0x7F;   // adjacent byte on the right?
+    const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
+
+    const b = (d24>>(m7+6)) & 7;        //  3 bits at (xp,yp)
     const b0 = mem[adr]>>7;             //  high bit  0-1
     const bw = b>>2 | b&3;
 
@@ -294,7 +329,7 @@ const gpu = initGPU({
   {
 
     kernel = gpu.createKernel(
-     oKW.kProcess,
+     oKW.kProcess_v3,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -333,7 +368,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(dim,ram,yref,INTCols,chrome_mode);
+      kernel(dim,ram,INTCols,chrome_mode);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -362,7 +397,7 @@ const gpu = initGPU({
     draw(Pattern,ram);
 
     kernel = gpu.createKernel(
-     oKW.kProcess,
+     oKW.kProcess_v3,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -373,7 +408,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(dim,ram,yref,INTCols,chrome_mode);
+      kernel(dim,ram,INTCols,chrome_mode);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -402,7 +437,7 @@ const gpu = initGPU({
     }
 
     kernel = gpu.createKernel(
-     oKW.kProcess,
+     oKW.kProcess_v3,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -423,7 +458,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(dim,ram,yref,INTCols,chrome_mode);
+      kernel(dim,ram,INTCols,chrome_mode);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -446,7 +481,7 @@ const gpu = initGPU({
     for(var x=0;x<40;x++)
     {
       oKW.thread = {"x":x<<1,"y":(191<<1)}
-      oKW.kProcess(dim,mem,yref,INTCols,chrome_mode);
+      oKW.kProcess_v3(dim,mem,INTCols,chrome_mode);
     }
 
   }
@@ -469,9 +504,112 @@ var _D =
 var yref = new Uint16Array(_D.YVERTL.length>>1);
 for(var i=0;i<_D.YVERTL.length;i+=2) yref[i>>1] = parseInt( _D.YVERTH.substring(i,i+2),16)*256+parseInt( _D.YVERTL.substring(i,i+2),16);
 
+
+var s = []
+for(var y=0;y<192;y++)
+{
+  /*
+  // v1
+  var A = y>>6;
+  var D = y - (A<<6);
+  var B = D>>3
+  var C = D-(B<<3)
+  var adr = 8192 + 1024*C + 128*B + 8*A + 32*A;
+  */
+
+  /*
+  //v2
+  var adr = 8192 + (((y - (y&192))-((y - (y&192)>>3)<<3))<<10) + ((y -(y&192)>>3)<<7) + (y>>6<<3) + (y>>6<<5);
+  */
+
+
+  //const GBASL = y<<4 & 0b10000000 | y>>3 & 0b00011000 | y>>1 & 0b01100000;
+  //const GBASL = y<<4 & 0x80 | y>>3 & 0x18 | y>>1 & 0x60;
+  //const GBASL = y<<4 & 128 | y>>3 & 48 | y>>1 & 96;
+
+  //var GBASH = 0b10000000000000 | y<<10 & 0b1110000000000 | y<<4 & 0b1100000000
+  //var GBASH = 0x2000 | y<<10 & 0x1C00 | y<<4 & 0x300
+  //var GBASH = 8192 | y<<10 & 7168 | y<<4 & 768
+
+  var adr = 0x2000 | y<<10 & 0x1C00 | y<<4 & 0x300 | y<<4 & 0x80 | y>>3 & 0x18 | y>>1 & 0x60;
+
+  if(adr != yref[y])
+    s[s.length] = (adr&0xFFFF).toString(16)+":"+(yref[y]&0xFFFF).toString(16);
+}
+console.log(s.join(","));
+
+var s = []
+for(var xp=0;xp<280;xp++)
+{
+  var x = Math.floor(xp/7);
+  var x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3
+  var x35 = xp+1+(xp+1+(xp+1>>3)>>3)>>2
+
+  var m = xp%7;
+
+  var m7 = xp-(x7<<3)+x7 
+
+
+  if(m!=m7) 
+   s[s.length] = xp+":"+m+"/"+m7+" ";
+}
+console.log(s.join(","));
+
+
+// [Log] 00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,00 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,50 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0 ,A0  (ScreenGPU.html, line 505)
+
+/*
+START   LDA *HGR.Y       ; Y ORDINATE
+
+;---- CALCULATE LOW BYTE FOR GFX POS ---
+
+        TAY
+        AND #$C0   ; generates 0-64-128
+        STA *GBASL
+        LSR A
+        LSR A      ; divide by 4 (0,16,32)
+        STA TEMP
+        ;CLC
+        ;AND #$30
+        ORA *GBASL
+        STA *GBASL
+
+        TYA
+        ASL A
+        ASL A
+        STA *GBASH
+        ASL A
+        ASL A
+        ASL A
+        ROR *GBASL
+
+;---- CALCULATE HIGH BYTE FOR GFX POS ---
+
+        LDA *GBASH
+        CLC         ; still don't know why I have to clear the carry bit
+        AND #$1C
+        STA *GBASH
+
+        TYA
+        LSR A
+        LSR A
+        LSR A
+        LSR A        ; divide by 16 generates 0-1-2
+        CLC
+        AND #$03
+        ADC *HGR.PAGE
+        ADC *GBASH
+        STA *GBASH
+        RTS
+*/
+
+
 //var s = [];
-//for(var i=0;i<192;i++) s[i] = "0x"+yref[i].toString(16)
+//for(var i=0;i<192;i++) s[i] = "0x"+yref[i].toString(16);
 //console.log(s.join(","))
+
+//for(var i=0;i<192;i++) s[i] = yref[i]
+//console.log(s.join(","));
 
 
 var vidContext, apple2plus;
