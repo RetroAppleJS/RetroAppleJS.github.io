@@ -126,6 +126,8 @@ oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
 function kernel_wrapper()
 {
+
+  // TEST KERNEL
   this.kProcess_v0 =  function(dim,mem,yref,INTCols,chrome_mode)
   {
     const xp  = (this.thread.x>>1);
@@ -148,34 +150,12 @@ function kernel_wrapper()
     const b7 = mem[adr] & 0x80;               // high bit  0-80
     var cptr = chrome_mode<<2;
 
-    if(bm!=0 && (bl!=0 || br!=0))
-                      cptr += 15<<4;          // white
-    
-    else if(bm!=0)
-    {
-      if(a0!=0)
-      {
-          if(b7!=0)   cptr += 9<<4;           // orange
-          else        cptr += 12<<4;          // green
-      } else {
-          if(b7!=0)   cptr += 6<<4;           // blue
-          else        cptr += 3<<4;           // purple
-      }
-    }
-    else if (bl != 0 && br != 0)
-    {
-      if (b7 != 0) {
-          if (a0 != 0) 
-                cptr += 6<<4;           // blue
-          else
-                cptr += 9<<4;           // orange
-      } else {
-          if (a0 != 0) cptr += 3<<4;           // purple
-          else         cptr += 12<<4;          // green
-      }
-    }
-    //else
-    //    cptr = cm;                               // black
+    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;     // color calc mode 11=white 00=black 01=101 pattern 10=010 pattern
+    const ccm1 = a0 ^ (ccm&1);                              // invert a0 when 101, leave = when 010
+    const ccm2 = (ccm<<2&4) & (ccm<<1&4) | (ccm>>1&1) & (ccm&1)           // 101 if white (otherwise 000)
+    const ccm3 = (ccm>>1 | ccm&1) | (ccm<<1 | ccm&2) | (ccm<<2 | ccm&4)   // 111 always except when black
+
+    cptr +=  3*(  (1 + (ccm1<<1) + (ccm1^b0) & ccm3) | ccm2  )<<4 
 
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1,{"b":oCOM.getBinMulti(b,3),"b7":b7,"a0":a0} );
   }
@@ -250,27 +230,40 @@ function kernel_wrapper()
     var b = (d24>>(xp%7+6)) & 7;      //  3 bits at (xp,yp)
     const b0 = mem[adr]>>7;             //  high bit  0-1
     const a0 = xp&1;
-    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;  // color calc mode 11=white 00=black 01=sandwich pattern 02=dot
 
     var cptr = chrome_mode<<2;
-    if     (ccm==0b11) cptr +=  3*( 1 +  4                    )<<4;   // white (b==0b011 || b==0b111 || b==0b110)  - bw 11          
-    else if(ccm==0b10) cptr +=  3*( 1 + (a0<<1)   + (a0^b0)   )<<4;   // orange-green-purple-blue (b==0b010)       - bw 10
-    else if(ccm==0b01) cptr +=  3*( 1 + (a0<<1^2) + (b0^a0^1) )<<4    // blue-orange-purple-green (b==0b101)       - bw 01
-                                                                     // black (b==0b100 || b==0b001 || b==0b000)  - bw 01,00
+    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;  // color calc mode 11=white 00=black 01=sandwich pattern 10=dot    
+    if     (ccm==0b11) cptr +=  3*( 1 +  4                        )<<4;   // white (b==0b011 || b==0b111 || b==0b110)  - ccm 11          
+    else if(ccm==0b10) cptr +=  3*( 1 + (a0<<1)     + (a0^b0)     )<<4;   // orange-green-purple-blue (b==0b010)       - ccm 10
+    else if(ccm==0b01) cptr +=  3*( 1 + ((a0^1)<<1) + (b0^(a0^1)) )<<4    // blue-orange-purple-green (b==0b101)       - ccm 01
+                                                                     // black (b==0b100 || b==0b001 || b==0b000)       - ccm 00
+                         
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
 
   var arp = [0b011,0b111,0b110,0b010,0b101,0b100,0b001,0b000]
   for(var i=0;i<8;i++)
   {
-    var b = arp[i]
-    var _bw = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3
+    var b = arp[i];
 
-    document.write(oCOM.getBinMulti(b,3) +" "+ oCOM.getBinMulti(_bw,2) +  "<br>")
+    var a0 = 1;
+
+    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;     // color calc mode 11=white 00=black 01=101 pattern 10=010 pattern
+    const ccm1 = a0 ^ (ccm&1);                              // invert a0 when 101, leave = when 010
+    const ccm2 = (ccm<<2&4) & (ccm<<1&4)                    // 100 if white (otherwise 000)
+    const ccm3 = (ccm>>1&1 ^ ccm&1) | (ccm&2 ^ ccm<<1&2) | (ccm<<1&4 ^ ccm<<2&4)  // 111 always except when black or white
+
+
+    document.write(oCOM.getBinMulti(b,3) 
+      +"<small> ccm:</small>"+ oCOM.getBinMulti(ccm,2)
+      +"<small> ccm1:</small>"+ oCOM.getBinMulti(ccm1,2)
+      +"<small> ccm2:</small>"+ oCOM.getBinMulti(ccm2,3)
+      +"<small> ccm3:</small>"+ oCOM.getBinMulti(ccm3,3)
+      +  "<br>")
   }
  
 
-  // align input parameters
+// KERNEL v2 - parameter optimisation, express color calculation as formula
   this.kProcess_v3 =  function(dim,mem,INTCols,chrome_mode)
   { 
     const xp  = (this.thread.x>>1);
@@ -298,16 +291,19 @@ function kernel_wrapper()
     const c40 = col == 40 ? 0 : 0x7F;   // adjacent byte on the right?
     const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
 
+    var cptr = chrome_mode<<2;
+
     const b = (d24>>(m7+6)) & 7;        //  3 bits at (xp,yp)
     const b0 = mem[adr]>>7;             //  high bit  0-1
-    const bw = b>>2 | b&3;
-    const a0 = xp&1;
 
-    var cptr = chrome_mode<<2;
-    if     (bw==0b11) cptr +=  3*( 1 +  4                    )<<4;   // white (b==0b011 || b==0b111 || b==0b110)         
-    else if(b==0b010) cptr +=  3*( 1 + (a0<<1)   + (a0^b0)   )<<4;   // orange-green-purple-blue (b==0b010)  
-    else if(b==0b101) cptr +=  3*( 1 + ((a0^1)<<1) + (b0^a0^1) )<<4    // blue-orange-purple-green (b==0b101)  
-                                                                     // black (b==0b100 || b==0b001 || b==0b000)
+    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;                   // color calc mode 11=white 00=black 01=101 pattern 10=010 pattern
+    const ccm1 = (xp&1) ^ (ccm&1);                                        // invert a0 when 101, leave = when 010
+    const ccm2 = (ccm<<2&4) & (ccm<<1&4) | (ccm>>1&1) & (ccm&1)           // 101 if white (otherwise 000)
+    const ccm3 = (ccm>>1 | ccm&1) | (ccm<<1 | ccm&2) | (ccm<<2 | ccm&4)   // 111 always except when black
+    // TODO express cmm2 and cmm3 in function of b
+
+    cptr +=  3*(  (1 + (ccm1<<1) + (ccm1^b0) & ccm3) | ccm2  )<<4 
+
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
 }
@@ -563,13 +559,11 @@ const gpu = initGPU({
 
   if(AppVersion==4)
   {
-    //var mem = { 8192:0b00101010,8193:0b01010101,8194:0b00101010,8195:0b01111111,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
-    var mem = { 8192:0b11010101,8193:0b10101010,8194:0b11010101,8195:0b10101010,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
+    var mem = { 8192:0b00000000,8193:0b01010101,8194:0b00101010,8195:0b01111111,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
+    //var mem = { 8192:0b11111111,8193:0b10101010,8194:0b11010101,8195:0b10101010,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
     oKW.thread = {"x":0,"y":0}
     oKW.color  = function(r,g,b,t,debug_struct)
     {
-        
-
         document.getElementById("prede").innerHTML += 
           "<div style='margin:1px;float:left;width:30px;height:30px;background-color:#"+oCOM.getHexByte(r*256)+oCOM.getHexByte(g*256)+oCOM.getHexByte(b*256)+"'>"
            
@@ -650,7 +644,6 @@ for(var xp=0;xp<280;xp++)
   var m = xp%7;
 
   var m7 = xp-(x7<<3)+x7 
-
 
   if(m!=m7) 
    s[s.length] = xp+":"+m+"/"+m7+" ";
