@@ -388,11 +388,11 @@ this.kProcess_v4 =  function(dim,mem,INTCols,chrome_mode)
     const yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
     const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
     const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+
     const col = (adr & 0x7F) % 40;              // byte offset 
     const c00 = col == 0  ? 0 : 1;              // adjacent byte on the left?
     const c40 = col == 39 ? 0 : 1;              // adjacent byte on the right?
-    const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1] & 1;       // aggregate left - center - right byte
-
+    const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
     const m7 = xp-(x7<<3)+x7                    // equivalent to xp%7
     const b  = d24>>m7 & 7;                     //  3 bits at (xp,yp)
     const cptr = (chrome_mode<<2) + (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4
