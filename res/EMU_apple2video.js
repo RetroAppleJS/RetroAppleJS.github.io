@@ -233,30 +233,22 @@ function Apple2Video(ctx) {
         // based on column and b7.
         else if (me != 0) {
             if (b7 != 0) {
-                if (a0 != 0)
-                    return loresCols[9][0]; // Orange
-                else
-                    return loresCols[6][0]; // Medium Blue
+                if (a0 != 0) return loresCols[9][0]; // Orange
+                else         return loresCols[6][0]; // Medium Blue
             } else {
-                if (a0 != 0)
-                    return loresCols[12][0]; // Green
-                else
-                    return loresCols[3][0]; // Purple
+                if (a0 != 0) return loresCols[12][0]; // Green
+                else         return loresCols[3][0];  // Purple
             }
         }
         // If pixel is not set and both adjacent pixels are set, pick a
         // color based on column (of adjacent pixel) and b7 (of this byte).
         else if (left != 0 && right != 0) {
             if (b7 != 0) {
-                if (a0 != 0)
-                    return loresCols[6][0]; // Medium Blue
-                else
-                    return loresCols[9][0]; // Orange
+                if (a0 != 0) return loresCols[6][0]; // Medium Blue
+                else         return loresCols[9][0]; // Orange
             } else {
-                if (a0 != 0)
-                    return loresCols[3][0]; // Purple
-                else
-                    return loresCols[12][0]; // Green
+                if (a0 != 0) return loresCols[3][0];  // Purple
+                else         return loresCols[12][0]; // Green
             }
         }
         // Else it's black.
