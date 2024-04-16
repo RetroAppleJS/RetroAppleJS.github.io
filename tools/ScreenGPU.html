@@ -736,7 +736,9 @@ const gpu = initGPU({
       oKW.kProcess_v0(dim,mem,yref,INTCols,chrome_mode);
     }
 
-    document.getElementById("prede").innerHTML += gen_table();
+    document.getElementById("prede").innerHTML += gen_table();    // GENERATE TABLE
+
+    document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width=560 height=48></canvas>"
 
   }
 }
@@ -767,7 +769,7 @@ function gen_table()
   {
      "ram":new Uint8Array(RAM_SIZE).fill(0)      // DECLARE RAM SPACE
     ,"bmapx":8*7  // grid width
-    ,"bmapy":4   // grid height
+    ,"bmapy":24   // grid height
     ,"calculate":function(p,x,y)     // p = pattern number
     {
       const xp  = x
