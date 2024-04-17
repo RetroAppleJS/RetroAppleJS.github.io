@@ -1,0 +1,55 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2580
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red29\green219\blue5;}
+{\*\expandedcolortbl;;\cssrgb\c0\c86667\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf2 \expnd0\expndtw0\kerning0
+\
+\
+\
+\
+10 HGR2\
+20 DIM D(6)\
+30 D(1)=0 : D(2)=1 : D(3)=2 : D(4)=3\
+40 D(5)=5 : D(6)=6\
+50 C = 1 : X = 0 : Y = 0\
+60 FOR C2 = C TO 6\
+70 GOSUB 400 : REM fill box with C and C2\
+80 NEXT\
+90 C = C + 1\
+100 IF C < 7 GOTO 60\
+110 END\
+\
+200 REM checkered background (slower version using pixels)\
+210 FOR A=X TO X + 39\
+220 I = 1 - I\
+230 FOR B=Y TO Y + 63 STEP 2\
+240 HCOLOR=D(C)\
+250 HPLOT A, B+I\
+260 HCOLOR=D(C2)\
+270 HPLOT A, B+1-I\
+280 NEXT\
+290 NEXT\
+300 X = X + 40\
+310 IF (X = 280) THEN X = 0 : Y = Y + 64\
+320 RETURN\
+\
+400 REM checkered background (faster version, using lines)\
+410 L=0 : GOSUB 500\
+420 L=1 : GOSUB 500\
+430 X = X + 40\
+440 IF (X = 280) THEN X = 0 : Y = Y + 64\
+450 RETURN\
+\
+500 IF L=0 THEN HCOLOR=D(C)\
+510 IF L=1 THEN HCOLOR=D(C2)\
+520 X1 = 0 : Y1 = L : X2 = L : Y2 = 0\
+530 IF L > 39 THEN Y2 = (L - 39) : X2 = 39\
+540 IF L > 63 THEN X1 = (L - 63) : Y1 = 63\
+550 IF X1 > X2 GOTO 580\
+560 HPLOT X1+X,Y+Y1 TO X2+X,Y+Y2\
+570 L = L + 2 : GOTO 520\
+580 RETURN}
