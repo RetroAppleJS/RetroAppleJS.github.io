@@ -805,34 +805,34 @@ function gen_table()
   var dot = ["<img src=\""+im+"\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
             ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
 
-  var s = "<br><br><br><br><br><br>";
+  var s = new Array(oPATTERN.bmapy*(oPATTERN.bmapx+2)+10)
+  s[s.length] = "<br><br><br><br><br><br>";
 
   var pattern_sel = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+  var s_pat=new Array(Reflect.ownKeys(patterns).length);
+  s_pat[s_pat.length] = "<select name=pattern onchange=\"Versions.submit()\">"
+  for(var i in patterns)
+    s_pat[s_pat.length] = "<option value="+i+" "+(pattern_sel==i?"selected":"")+">"+i+" "+patterns[i].col+"</option>"
+  s_pat[s_pat.length] = "</select>"
+
+  document.getElementById("topform").innerHTML += s_pat.join("")+"</div>";
 
   var csh = patterns[pattern_sel].col;
   var c   = oCOM.HEX2RGB(csh) 
   var tc  = (c[0] + c[1] + c[2])>400 ? "#000000" : "#FFFFFF";
 
-  s+= "<div style='width:"+(oPATTERN.bmapx*15)+"px;background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
+  s[s.length] = "<div style='width:"+(oPATTERN.bmapx*15)+"px;background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
        //+"<small>"+csh+" ("+csp.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)+"</small>"
   
-    var s_pat=[];
-    s_pat[s_pat.length] = "<select name=pattern onchange=\"Versions.submit()\">"
-    for(var i in patterns)
-      s_pat[s_pat.length] = "<option value="+i+" "+(pattern_sel==i?"selected":"")+">"+i+" "+patterns[i].col+"</option>"
-    s_pat[s_pat.length] = "</select>"
-
-    document.getElementById("topform").innerHTML += s_pat.join("")+"</div>";
-
-  s+= "<table style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
+  s[s.length] = "<table style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
   for(var y=0;y<oPATTERN.bmapy;y++)
   {
-    s+="<tr>";
-    for(var x=0;x<oPATTERN.bmapx;x++) s+= gen_cell(p,x,y,p==_D.bmapID?dot:["",""]);
-    s+="</tr>";
+    s[s.length] ="<tr>";
+    for(var x=0;x<oPATTERN.bmapx;x++) s[s.length] = gen_cell(p,x,y,p==_D.bmapID?dot:["",""]);
+    s[s.length] ="</tr>";
   }
-  s+="</table>";
-  return s;
+  s[s.length] ="</table>";
+  return s.join("");
 }
 
 function gen_cell(patternID,x,y,img)
@@ -847,7 +847,7 @@ function gen_cell(patternID,x,y,img)
 
   var pix = c[0]?"background-color:black":"";
   var bck = (c[1]==128?"border-color:#FFE9D0":"");
-  var s= "<td class='"+css+"tcell10' data-debug=\""+datadebug+"\" alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
+  var s = "<td class='"+css+"tcell10' data-debug=\""+datadebug+"\" alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
   if((x+1)%7==0)
     s+= "<td class=tcell5 data-debug=\""+datadebug+"\" style=\""+(c[1]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
   return s;
