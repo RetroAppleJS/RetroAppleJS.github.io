@@ -488,6 +488,9 @@ function EMU_init()
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
+  document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
+
+  
   /////////////////////////////
 
   /*
@@ -736,14 +739,52 @@ const gpu = initGPU({
       oKW.kProcess_v0(dim,mem,yref,INTCols,chrome_mode);
     }
 
-    document.getElementById("prede").innerHTML += gen_table();    // GENERATE TABLE
+    document.getElementById("prede").innerHTML = gen_table() + document.getElementById("prede").innerHTML;    // GENERATE TABLE
 
-    document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width=560 height=48></canvas>"
+    var canvas = document.getElementById("testscreen");
+    var ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0 * oPATTERN.zfx, 0 * oPATTERN.zfy, (28+1) * oPATTERN.zfx, 2 * oPATTERN.zfy);
 
   }
 }
 
-var oPATTERN;
+var oPATTERN = 
+{
+    "ram":new Uint8Array(RAM_SIZE).fill(0)      // DECLARE RAM SPACE
+  ,"bmapx":8*7  // grid width
+  //,"bmapy":24   // grid height
+  ,"bmapy":4   // grid height
+  ,"zfx":15      // grid zoom factor
+  ,"zfy":15      // grid zoom factor
+  ,"calculate":function(p,x,y)     // p = pattern number
+  {
+    const xp  = x
+    const yp  = y
+    const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+    const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
+
+    const d24 = ((c40 & this.ram[adr+1])<<14) | ((0x7F  & this.ram[adr])<<7) | c00 & this.ram[adr-1];       // aggregate left - center - right byte
+    var b = d24>>((xp%7)+6) & 7;         //  3 bits at (xp,yp)
+    const b7 = this.ram[adr] & 128;      //  high bit  0-1
+
+    return [(b&2)!=0?1:0,b7,{
+        "c00":c00
+      ,"c40":c40
+      ,"col":col
+      ,"b":oCOM.getBinMulti(b,3).split("").reverse().join("")
+      ,"byte":"$"+this.ram[adr].toString(16).toUpperCase()
+    }];
+  }
+}
+
+var zf = [15*oPATTERN.bmapx,15*oPATTERN.bmapy];
+
+
 function Cpix(el,x,y,z)
 {
   var bit = el.parentElement.outerHTML.indexOf("black")<0?0:1;
@@ -765,34 +806,7 @@ function gen_table()
   var p = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
 
   var _D = {"bmapID":p};
-  oPATTERN = 
-  {
-     "ram":new Uint8Array(RAM_SIZE).fill(0)      // DECLARE RAM SPACE
-    ,"bmapx":8*7  // grid width
-    ,"bmapy":24   // grid height
-    ,"calculate":function(p,x,y)     // p = pattern number
-    {
-      const xp  = x
-      const yp  = y
-      const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
-      const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
-      const col = (adr & 0x7F) % 40;      // byte offset 
-      const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
-      const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
 
-      const d24 = ((c40 & this.ram[adr+1])<<14) | ((0x7F  & this.ram[adr])<<7) | c00 & this.ram[adr-1];       // aggregate left - center - right byte
-      var b = d24>>((xp%7)+6) & 7;         //  3 bits at (xp,yp)
-      const b7 = this.ram[adr] & 128;      //  high bit  0-1
-
-      return [(b&2)!=0?1:0,b7,{
-        "c00":c00
-        ,"c40":c40
-        ,"col":col
-        ,"b":oCOM.getBinMulti(b,3).split("").reverse().join("")
-        ,"byte":"$"+this.ram[adr].toString(16).toUpperCase()
-      }];
-    }
-  }
 
   draw(p,oPATTERN.ram);
 
