@@ -247,7 +247,7 @@ function kernel_wrapper()
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
 
-
+/*
 for(var i=0;i<32;i++)
 {
   var r = "";
@@ -294,8 +294,8 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
 
 //  document.write(r+"<br>");
 
-
 }
+*/
 
   // KERNEL v2 - optimisation
   this.kProcess_v2 =  function(dim,mem,yref,INTCols,chrome_mode)
@@ -411,21 +411,20 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
 
   }
 
-
   // KERNEL v4 - parameter optimisation
   this.kProcess_v4 =  function(dim,mem,INTCols,chrome_mode)
   { 
     const xp  = (this.thread.x>>1);
     const yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
-    const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+    const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
     const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
     const col = (adr & 0x7F) % 40;              // byte offset 
     const c00 = col == 0  ? 0 : 1;              // adjacent byte on the left?
     const c40 = col == 39 ? 0 : 1;              // adjacent byte on the right?
     const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
-    const m7 = xp-(x7<<3)+x7                    // equivalent to xp%7
-    const b  = d24>>m7 & 7;                     //  3 bits at (xp,yp)
+    const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
+    const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
     const cptr = (chrome_mode<<2) + (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4;
 
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
@@ -488,7 +487,6 @@ function EMU_init()
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
-  document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
 
   
   /////////////////////////////
@@ -673,8 +671,11 @@ const gpu = initGPU({
       }
     }
 
+
+
     kernel = gpu.createKernel(
-     oKW.kProcess_v3,
+
+     oKW.kProcess_v4,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
@@ -705,6 +706,12 @@ const gpu = initGPU({
 
   if(AppVersion==4)
   {
+
+    //if(AppVersion==4)
+  document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
+
+/*
+
     //var mem = { 8192:0b01010101,8193:0b00101010,8194:0b00101010,8195:0b01111111,8196:0b00000000,8197:0b00000000,8198:0b00000000,8199:0b00000000 };
     var mem = { 8192:0b01010101,8193:0b00101010 // purple
                ,8194:0b00101010,8195:0b00010101 // green
@@ -715,7 +722,6 @@ const gpu = initGPU({
     oKW.thread = {"x":0,"y":0}
     oKW.color  = function(r,g,b,t,debug_struct)
     {
-
         var inv = (r+g+b)<1;
         document.getElementById("prede").innerHTML += 
           "<div style='font-size:9px;margin:1px;"+(inv?"color:white":"color:black")+";float:left;width:30px;height:30px;background-color:#"+oCOM.getHexByte(r*256)+oCOM.getHexByte(g*256)+oCOM.getHexByte(b*256)+"'>"
@@ -732,20 +738,46 @@ const gpu = initGPU({
         //document.getElementById("prede").innerHTML +=
         //  oCOM.getHexByte(r*256)+" "+oCOM.getHexByte(g*256)+" "+oCOM.getHexByte(b*256)+"<br>";
     }
-    
-    for(var x=0;x<80;x++)
-    {
-      oKW.thread = {"x":x<<1,"y":(0<<1)-1}
-      oKW.kProcess_v0(dim,mem,yref,INTCols,chrome_mode);
-    }
-
+*/
     document.getElementById("prede").innerHTML = gen_table() + document.getElementById("prede").innerHTML;    // GENERATE TABLE
+
+    var xp = 0;
+    var yp = 0;
 
     var canvas = document.getElementById("testscreen");
     var ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "white";
-    ctx.fillRect(0 * oPATTERN.zfx, 0 * oPATTERN.zfy, (28+1) * oPATTERN.zfx, 2 * oPATTERN.zfy);
+    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+    var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+    draw(Pattern,ram);
+
+    oKW.color = function(r,g,b,t)
+    {
+      var xp  = (this.thread.x>>1);
+      var yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
+
+      ctx.fillStyle = "#"+oCOM.RGB2HEX([r*255,g*255,b*255]).join("");
+      //ctx.fillStyle = "white";
+      if(r+g+b==0) ctx.fillStyle = "#303030"
+
+      var xw = 4*zf[0]/280;
+      var yw = 3.5*zf[1]/20;
+      var x = -1+4.99*zf[0]*xp/280;
+      var y = 2+4*zf[1]*yp/20;
+
+      ctx.fillRect(x,y,xw,yw);
+
+    }
+
+    for(var y=0;y<4;y++)
+    {
+      for(var x=0;x<80;x++)
+      {
+        oKW.thread = {"x":x<<1,"y":((192-y)<<1)-1}
+        oKW.kProcess_v4(dim,ram,INTCols,chrome_mode);
+      }
+    }
+
 
   }
 }
@@ -917,30 +949,6 @@ for(var y=0;y<192;y++)
 }
 //console.log(s.join(","));
 
-var s = []
-for(var xp=0;xp<280;xp++)
-{
-  var x = Math.floor(xp/7);
-  var x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;
-  var x35 = xp+1+(xp+1+(xp+1>>3)>>3)>>2;
-
-  var m = xp%7;
-
-  var m7 = xp-(x7<<3)+x7 
-
-  if(m!=m7) 
-   s[s.length] = xp+":"+m+"/"+m7+" ";
-}
-console.log(s.join(","));
-
-
-
-//var s = [];
-//for(var i=0;i<192;i++) s[i] = "0x"+yref[i].toString(16);
-//console.log(s.join(","))
-
-//for(var i=0;i<192;i++) s[i] = yref[i]
-//console.log(s.join(","));
 
 
 var vidContext, apple2plus;
@@ -984,7 +992,7 @@ function draw(color_pattern,ram)
     s[s.length] = "<br>";
   }
 
-  document.getElementById("debug").innerHTML = s.join("");
+  //document.getElementById("debug").innerHTML = s.join("");
 }
 
 function paste_pattern(wbyt,xi,yi,pat,dimx,dimy)
