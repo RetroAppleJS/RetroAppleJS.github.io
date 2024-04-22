@@ -318,8 +318,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     if     (ccm==0b11) cptr +=  3*( 1 +  4                        )<<4;   // white (b==0b011 || b==0b111 || b==0b110)  - ccm 11          
     else if(ccm==0b10) cptr +=  3*( 1 + (a0<<1)     + (a0^b0)     )<<4;   // orange-green-purple-blue (b==0b010)       - ccm 10
     else if(ccm==0b01) cptr +=  3*( 1 + ((a0^1)<<1) + (b0^(a0^1)) )<<4    // blue-orange-purple-green (b==0b101)       - ccm 01
-                                                                     // black (b==0b100 || b==0b001 || b==0b000)       - ccm 00
-                         
+                                                                     // black (b==0b100 || b==0b001 || b==0b000)       - ccm 00             
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
   }
 
@@ -345,14 +344,12 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     // FORMULA v3
     var x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
     var m7 = xp-(x7<<3)+x7;                   // equivalent to xp%7
-
     var adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7;
 
     const col = (adr & 0x7F) % 40;      // byte offset 
     const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
     const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
     const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
-
 
     var r1 = 0b00100100;    // trigger blacks  (100 & 001 & 000)
     var r2 = 0b11001000;    // trigger whites  (111 & 110 & 011)
@@ -381,8 +378,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
         c34 = ((r2>>b&1)<<4) - (r2>>b&1);           // 111 mask detecting white
         cr1 = ((r1>>b&1)<<4) - (r1>>b&1);           // 111 mask detecting black
         cptr = (chrome_mode<<2) + (3*((c12+1) & cr1)+c34)<<4;
-        this.color(INTCols[cptr]/512,INTCols[cptr+1]/512,INTCols[cptr+2]/512,1);
-        //this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+        this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
     }
     else
       this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
@@ -390,10 +386,13 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
   }
 
   // KERNEL v4 - parameter optimisation
-  this.kProcess_v4 =  function(dim,mem,INTCols,chrome_mode)
+  this.kProcess_v4 =  function(dim,mem,cfg,INTCols,chrome_mode)
   { 
+    const PALETTE=cfg[0],DIM_W=cfg[128],DIM_H=cfg[129],CHROME_MODE=cfg[130],LORES1_ADDR=cfg[131],LORES2_ADDR=cfg[132],HIRES1_ADDR=cfg[133],HIRES2_ADDR=cfg[134]
+
+    //alert(DIM_W)
     const xp  = (this.thread.x>>1);
-    const yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
+    const yp  = (DIM_H>>1)-(this.thread.y>>1)-1;
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
     const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
@@ -403,9 +402,9 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
     const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
     const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
-    const cptr = (chrome_mode<<2) + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4 );
+    const cptr = PALETTE + (CHROME_MODE<<1) + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
 
-    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+    this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
   }
 
 
@@ -428,7 +427,11 @@ function EMU_init()
     document.getElementById('slider_title').outerHTML = _TITLE();
 
   var AppVersion = Number(oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]);
-  var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"])
+  var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"]);
+
+
+
+
 
   var s_versions = ["<select name=VSelect onchange='Versions.submit()'>"];
   for(var i in ActiveVesions)
@@ -447,8 +450,17 @@ function EMU_init()
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
-
+  oApple2Video.add8_ref("PALETTE",INTCols);
+  oApple2Video.add16_val("DIM_W", vidContext.width)
+  oApple2Video.add16_val("DIM_H", vidContext.height)
+  oApple2Video.add16_val("CHROME_MODE",chrome_mode);
+  oApple2Video.add16_val("LORES1_ADDR",0x0400);
+  oApple2Video.add16_val("LORES2_ADDR",0x0800);
+  oApple2Video.add16_val("HIRES1_ADDR",0x2000);
+  oApple2Video.add16_val("HIRES2_ADDR",0x4000);
   
+  const GPU_CFG = oApple2Video.gen_config();
+
   /////////////////////////////
 
   /*
@@ -603,7 +615,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(dim,ram,INTCols,chrome_mode);
+      kernel(dim,ram,GPU_CFG,INTCols,chrome_mode);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -711,6 +723,9 @@ const gpu = initGPU({
     var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
     draw(Pattern,ram);
 
+    //alert(zf[1])
+    //alert(oPATTERN.bmapx)
+
     oKW.color = function(r,g,b,t)
     {
       var xp  = (this.thread.x>>1);
@@ -719,10 +734,10 @@ const gpu = initGPU({
       ctx.fillStyle = "#"+oCOM.RGB2HEX([r*255,g*255,b*255]).join("");
       if(r+g+b==0) ctx.fillStyle = "#505050";
 
-      var xw = 4*zf[0]/280;
-      var yw = 4*zf[1]/20;
-      var x = 4.98*zf[0]*xp/280;
-      var y = 1+5*zf[1]*yp/20;
+      var xw = 4*zf[0]/(5*oPATTERN.bmapx);
+      var yw = 4*zf[1]/(oPATTERN.bmapy*5);
+      var x = 4.98*zf[0]*xp/(5*oPATTERN.bmapx);
+      var y = 1+zf[1]*yp/oPATTERN.bmapy;
 
       ctx.fillRect(x,y,xw,yw);
     }
@@ -732,7 +747,7 @@ const gpu = initGPU({
       for(var x=0;x<oPATTERN.bmapx;x++)
       {
         oKW.thread = {"x":x<<1,"y":((192-y)<<1)-1}
-        oKW.kProcess_v4(dim,ram,INTCols,chrome_mode);
+        oKW.kProcess_v4(dim,ram,GPU_CFG,INTCols,chrome_mode);
       }
     }
 
@@ -743,8 +758,8 @@ const gpu = initGPU({
 var oPATTERN = 
 {
    "ram":new Uint8Array(RAM_SIZE).fill(0)      // DECLARE RAM SPACE
-  ,"bmapx":8*7  // grid width
-  ,"bmapy":4   // grid height
+  ,"bmapx":3*7  // grid width
+  ,"bmapy":14   // grid height
   ,"zfx":15      // grid zoom factor
   ,"zfy":15      // grid zoom factor
   ,"calculate":function(p,x,y)     // p = pattern number
@@ -978,10 +993,50 @@ function debug(s,xi,yi,pat,dimx,dimy)
     return s;
 }
 
+var oApple2Video = 
+{
+  "config_meta":{}
+  ,"config_data":new Uint16Array()
+  ,"config_map":new Uint16Array()
+  ,"nib":true                           // true = open nibble
+  ,"add8_ref":function(name,arr)
+  {
+    if(this.config_map[name]===undefined) 
+      this.config_map[name] = this.config_data.length;
+    for(var i=0;i<arr.length;i++)
+    {
+      //  16-bit value = first byte (LO) - second byte (HI) = little endian
+      if(this.nib) this.config_data = new Uint16Array([...this.config_data,...[arr[i]]]);
+      else this.config_data[this.config_data.length-1] |=  arr[i] << 8;
+      this.nib = !this.nib;
+    }
+  }
+  ,"add16_ref":function(name,arr)
+  {
+    this.config_map[name] = this.config_data.length;
+    this.config_data = new Uint16Array([...this.config_data,...arr]);
+  } 
+  ,"add16_val":function(name,val)
+  {
+    this.config_map[name] = this.config_data.length;
+    this.config_data = new Uint16Array([...this.config_data,...[val]]);
+  }  
+  ,"gen_config":function()
+  {
+    var idx_size = this.config_meta.size;
+    var output = new Uint16Array([idx_size]);
+    var s = "const "
+    for(var i in this.config_map)
+    {
+      s+=i+"=cfg["+this.config_map[i]+"],"
+    }
+    alert(s.substring(0,s.length-1));
+    return this.config_data;
+  }
+}
 
 
-
-var INTCols = new Uint8Array([
+const INTCols = new Uint8Array([
      0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
     ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
     ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
@@ -999,6 +1054,13 @@ var INTCols = new Uint8Array([
     ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
     ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
     ]);
+
+
+
+
+
+//for(var i=INTCols.length-1;i>=0;i--)
+//  INTCols = INTCols + 1 - 1;
 
 /*
 const patterns = 
