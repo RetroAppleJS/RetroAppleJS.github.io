@@ -123,7 +123,7 @@ const _o = {
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
-var CONF_version="2.1.0";
+var CONF_version="2.1.1";
 var CONF_builddate="20240329-170000"; 
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
@@ -406,43 +406,102 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
   }
 
+  var mx = new Array();
+  var LOC = new Array(10);
+  var A = 0;
+  var B = 6;
+  for(var yp=0;yp<280;yp++)
+  {
+    for(xp=0;xp<192;xp++)
+    {
+      const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+      const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
+
+      var V = yp >> 3;
+      var H = x7;
+
+      LOC[0] =( V - Math.floor(V/8) * 8 )*128 + 40 * Math.floor(V/8) + 1024 + H;
+      LOC[1] = 0x400 +     (V+1<<7) + H - (123*(V&0b11111000)) - 0x80;
+      LOC[2] = 0x400 + H + (V-(V>>3<<3)<<7) + 40 * (V>>3); 
+      LOC[3] = 0x400 + H + ((V&7)<<7) + (V>>3)*40;
+      LOC[4] = 0x400 + H + (V<<7&0x380) + 5*(V&~7);
+      LOC[5] = 0x400 + H + ((V&7)<<7) + 5 * (V&0b11111000);
+      LOC[6] = 0x400 + x7 + (yp<<4&0x380) + (yp>>6)*40;
+
+      if(LOC[A]!=LOC[B]) document.write("LOC"+A+"="+LOC[A]+" LOC"+B+"="+LOC[B]+"<br>")
+
+    }
+  }
+
   // KERNEL v5 - add display modes
   this.kProcess_v5 =  function(mem,cfg)
   { 
-    const PALETTE=cfg[0],DIM_W=cfg[128],DIM_H=cfg[129],CHROME_MODE=cfg[130],LORES1_ADDR=cfg[131],LORES2_ADDR=cfg[132],HIRES1_ADDR=cfg[133],HIRES2_ADDR=cfg[135],GFX_FLG=cfg[136];
-
+    const PALETTE=0,DIM_W=cfg[128],DIM_H=cfg[129],CHROME_MODE=cfg[130],LORES1_ADDR=cfg[131],LORES2_ADDR=cfg[132],HIRES1_ADDR=cfg[133],HIRES2_ADDR=cfg[135],GFX_FLG=cfg[136],CHAR=137
+    
     const xp  = (this.thread.x>>1);
     const yp  = (DIM_H>>1)-(this.thread.y>>1)-1;
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+    const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
 
-    //LORES << HIRES << PAGE1 << PAGE2 << MIX_ON << MIX_OFF << GFX_OFF << GFX_ON
+    //HIRES[128] << LORES[64] << PAGE2[32] << PAGE1[16] << MIX_ON[8] << MIX_OFF[4] << GFX_OFF[2] << GFX_ON[1]
 
-    /*
-    ((softswitch_mode&1)!=0?"GFX_ON\n":"")
-         +((softswitch_mode&2)!=0?"GFX_OFF\n":"")
-         +((softswitch_mode&4)!=0?"MIX_OFF\n":"")
-         +((softswitch_mode&8)!=0?"MIX_ON\n":"")
-         +((softswitch_mode&16)!=0?"PAGE2\n":"")
-         +((softswitch_mode&32)!=0?"PAGE1\n":"")
-         +((softswitch_mode&64)!=0?"LORES\n":"")
-         +((softswitch_mode&128)!=0?"HIRES\n":"")
-    */
+    const HIRES_GFX_ON  = GFX_FLG & 129;
+    const MIX_ON        = GFX_FLG & 8;
+    const MIX_OFF       = GFX_FLG & 4;
+    const PAGE12        = (GFX_FLG & 48) << 9;
+    const GFX_OFF       = GFX_FLG & 2;
 
-
-    const HIRES_GFX_ON = GFX_FLG & 129;
-    if(HIRES_GFX_ON==129)
+    if(HIRES_GFX_ON==129 &&  (MIX_ON==8 && yp<=0xA0 || MIX_OFF==4))
     {
-      const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+      const adr = PAGE12 + (yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
       const col = (adr & 0x7F) % 40;              // byte offset 
       const c00 = col == 0  ? 0 : 1;              // adjacent byte on the left?
       const c40 = col == 39 ? 0 : 1;              // adjacent byte on the right?
       const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
-      const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
       const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
       const cptr = PALETTE + (CHROME_MODE<<1) + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
 
       this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
+    }
+    else if(GFX_OFF==2)
+    {
+        const adr = 0x400 + x7 + (yp<<4&0x380) + (yp>>6)*40;
+        const d8 = mem[adr];      // charcode from text memory
+
+        const offs = ((d8 & 0x3F) ^ 0x20) << 3;    // character offset (not inversed or flashing)
+        const cidx = d8 + offs + (yp>>1&3);        // character index = charcode + char offset + y offset
+        const cbyte = (cfg[cidx] >> ((yp&1)<<3) )&255 // character byte = 16-bit cfg >> nibble selector
+
+        const invd = cbyte & 0xC0;                 // inversion detector
+        const inv = invd==0 ? 1 : 0;               // inversion modifier
+        const rgb = (cbyte>>m7 & 1) ^ inv;         // color 1 or 0
+        
+        this.color(rgb,rgb,rgb,1);
+
+/*
+        if(xp==0 && yp==0)
+        {
+          var idx = CHAR+o2;
+          var s = 
+          oCOM.getBinMulti(cfg[idx] & 255 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx] >> 8 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx+1] & 255 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx+1] >> 8 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx+2] & 255 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx+2] >> 8 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx+3] & 255 ,8)
+          +"\n"
+          +oCOM.getBinMulti(cfg[idx+3] >> 8 ,8)
+          alert(s.replace(/0/g,"_"));
+        }
+*/
     }
     else this.color(0,0,0,1);
 
@@ -455,28 +514,29 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
 // col is [0..39], row is [0..23], d8 is video memory contents
 function text_Draw(col, row, d8) {
 
-// Black out entire character
-ctx.fillStyle = text_PixelColor(0);
-ctx.fillRect(col * 14, row * 16, 14, 16);
+  // Black out entire character
+  ctx.fillStyle = text_PixelColor(0);
+  ctx.fillRect(col * 14, row * 16, 14, 16);
 
-// Color for character pixels.
-ctx.fillStyle = text_PixelColor(1);
+  // Color for character pixels.
+  ctx.fillStyle = text_PixelColor(1);
 
-var offs = 8 * ((d8 & 0x3f) ^ 0x20);
-for (var y = 0; y < 8; y++) {
-    var bits = apple2CharRom[offs + y];
-    
-    // Inverse or flashing?
-    if ((d8 & 0xc0) == 0x00 ||
-        ((d8 & 0xc0) == 0x40 && flash_on))
-        bits ^= 0xff;
+  var offs = 8 * ((d8 & 0x3f) ^ 0x20);
+  for (var y = 0; y < 8; y++) 
+  {
+      var bits = apple2CharRom[offs + y];
+      
+      // Inverse or flashing?
+      if ((d8 & 0xc0) == 0x00 ||
+          ((d8 & 0xc0) == 0x40 && flash_on))
+          bits ^= 0xff;
 
-    for (var x = 0; x < 7; x++) {
-        if ((bits & 0x01) != 0)
-            ctx.fillRect(col * 14 + x * 2, row * 16 + y * 2, 2, 2);
-        bits >>= 1;
-    }
-}
+      for (var x = 0; x < 7; x++) {
+          if ((bits & 0x01) != 0)
+              ctx.fillRect(col * 14 + x * 2, row * 16 + y * 2, 2, 2);
+          bits >>= 1;
+      }
+  }
 }
 
 
@@ -560,6 +620,7 @@ var sss = ((softswitch_mode&1)!=0?"GFX_ON\n":"")
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
+  // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
   oApple2Video.add8_ref("PALETTE",INTCols);
   oApple2Video.add16_val("DIM_W", vidContext.width)
   oApple2Video.add16_val("DIM_H", vidContext.height)
@@ -569,8 +630,8 @@ var sss = ((softswitch_mode&1)!=0?"GFX_ON\n":"")
   oApple2Video.add16_val("HIRES1_ADDR",0x2000);
   oApple2Video.add16_val("HIRES2_ADDR",0x4000);
   oApple2Video.add16_val("HIRES2_ADDR",0x4000);
-  oApple2Video.add16_val("GFX_FLG",softswitch_mode);  // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-  
+  oApple2Video.add16_val("GFX_FLG",softswitch_mode); 
+  oApple2Video.add8_ref("CHAR",apple2CharRom);
 
   const GPU_CFG = oApple2Video.gen_config();
 
@@ -740,21 +801,8 @@ const gpu = initGPU({
   if(AppVersion==3)
   {
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
-
-    var line_arr = bytestream.split("\n");           // PASTE BITMAP IN RAM 
-    for(var i=0;i<line_arr.length;i++)
-    {
-      var adr = parseInt(line_arr[i].split(":")[0],16);
-      if(line_arr[i].length>0)
-      {
-        var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
-        for(var j=0;j<hexarr.length;j++)
-        {
-          ram[adr+j] = parseInt(hexarr[j],16);
-          //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
-        }
-      }
-    }
+    fill_ram(gfx_stream,ram);
+    fill_ram(txt_stream,ram);
 
     kernel = gpu.createKernel(
 
@@ -792,6 +840,8 @@ const gpu = initGPU({
     document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
     document.getElementById("prede").innerHTML = gen_table() + document.getElementById("prede").innerHTML;    // GENERATE TABLE
 
+    
+
     var xp = 0;
     var yp = 0;
 
@@ -801,6 +851,8 @@ const gpu = initGPU({
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
     draw(Pattern,ram);
+    fill_ram(txt_stream,ram);
+    //text(0x400,"0 APPLE ][                               10",ram);
 
     oKW.color = function(r,g,b,t)
     {
@@ -1120,6 +1172,24 @@ async function copyTextToClipboard(textToCopy) {
   } catch (err) {
     console.error(err);
   }
+}
+
+function fill_ram(byte_capture,ram)
+{
+  var line_arr = byte_capture.split("\n");           // PASTE BITMAP IN RAM 
+    for(var i=0;i<line_arr.length;i++)
+    {
+      var adr = parseInt(line_arr[i].split(":")[0],16);
+      if(line_arr[i].length>0)
+      {
+        var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
+        for(var j=0;j<hexarr.length;j++)
+        {
+          ram[adr+j] = parseInt(hexarr[j],16);
+          //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
+        }
+      }
+    }
 }
 
 var SOFTSWITCHES = {0x57:"HIRES",0x56:"LORES",0x55:"PAGE2",0x54:"PAGE1",0x53:"MIX_ON",0x52:"MIX_OFF",0x51:"GFX_OFF",0x50:"GFX_ON"}
@@ -2073,8 +2143,137 @@ const patterns = {
 767:{"idx":767,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b1111,128,0b1111,128]),"cri":{"GREY":-1}}
 }
 
+const txt_stream = 
+ "0400: B1 DF DF DF 35 DF DF DF\n"
++"0408: 31 30 DF DF DF 31 35 DF\n"
++"0410: DF DF 32 30 DF DF DF 32\n"
++"0418: 35 DF DF DF 33 30 DF DF\n"
++"0420: DF 33 35 DF DF DF 34 30\n"
++"0428: B9 A0 A0 A0 1F A0 A0 A0\n"
++"0430: A0 1F A0 A0 A0 A0 1F A0\n"
++"0438: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0440: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0448: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0450: B1 B7 A0 A0 1F A0 A0 A0\n"
++"0458: A0 1F A0 A0 A0 A0 1F A0\n"
++"0460: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0468: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0470: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0478: CB C0 D4 12 3F 25 3B E4\n"
++"0480: B2 A0 A0 A0 1F A0 A0 A0\n"
++"0488: A0 1F A0 A0 A0 A0 1F A0\n"
++"0490: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0498: 1F A0 A0 A0 A0 1F A0 A0\n"
++"04A0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"04A8: B1 B0 A0 A0 1F A0 A0 A0\n"
++"04B0: A0 1F A0 A0 A0 A0 1F A0\n"
++"04B8: A0 A0 A0 1F A0 A0 A0 A0\n"
++"04C0: 1F A0 A0 A0 A0 1F A0 A0\n"
++"04C8: A0 A0 1F A0 A0 A0 A0 1F\n"
++"04D0: B1 B8 A0 A0 1F A0 A0 A0\n"
++"04D8: A0 1F A0 A0 A0 A0 1F A0\n"
++"04E0: A0 A0 A0 1F A0 A0 A0 A0\n"
++"04E8: 1F A0 A0 A0 A0 1F A0 A0\n"
++"04F0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"04F8: FB 80 55 85 43 54 C4 4A\n"
++"0500: B3 A0 A0 A0 1F A0 A0 A0\n"
++"0508: A0 1F A0 A0 A0 A0 1F A0\n"
++"0510: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0518: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0520: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0528: B1 B1 A0 A0 1F A0 A0 A0\n"
++"0530: A0 1F A0 A0 A0 A0 1F A0\n"
++"0538: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0540: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0548: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0550: B1 B9 A0 A0 1F A0 A0 A0\n"
++"0558: A0 1F A0 A0 A0 A0 1F A0\n"
++"0560: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0568: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0570: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0578: D2 07 FD 69 02 79 8E 95\n"
++"0580: B4 A0 A0 A0 1F A0 A0 A0\n"
++"0588: A0 1F A0 A0 A0 A0 1F A0\n"
++"0590: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0598: 1F A0 A0 A0 A0 1F A0 A0\n"
++"05A0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"05A8: B1 B2 A0 A0 1F A0 A0 A0\n"
++"05B0: A0 1F A0 A0 A0 A0 1F A0\n"
++"05B8: A0 A0 A0 1F A0 A0 A0 A0\n"
++"05C0: 1F A0 A0 A0 A0 1F A0 A0\n"
++"05C8: A0 A0 1F A0 A0 A0 A0 1F\n"
++"05D0: B2 B0 A0 A0 1F A0 A0 A0\n"
++"05D8: A0 1F A0 A0 A0 A0 1F A0\n"
++"05E0: A0 A0 A0 1F A0 A0 A0 A0\n"
++"05E8: 1F A0 A0 A0 A0 1F A0 A0\n"
++"05F0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"05F8: F5 01 46 57 01 F3 64 DD\n"
++"0600: B5 A0 A0 A0 1F A0 A0 A0\n"
++"0608: A0 1F A0 A0 A0 A0 1F A0\n"
++"0610: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0618: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0620: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0628: B1 B3 A0 A0 1F A0 A0 A0\n"
++"0630: A0 1F A0 A0 A0 A0 1F A0\n"
++"0638: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0640: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0648: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0650: B2 B1 A0 A0 1F A0 A0 A0\n"
++"0658: A0 1F A0 A0 A0 A0 1F A0\n"
++"0660: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0668: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0670: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0678: 3E 40 9C E0 CA AE 6C 00\n"
++"0680: B6 A0 A0 A0 1F A0 A0 A0\n"
++"0688: A0 1F A0 A0 A0 A0 1F A0\n"
++"0690: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0698: 1F A0 A0 A0 A0 1F A0 A0\n"
++"06A0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"06A8: B1 B4 A0 A0 1F A0 A0 A0\n"
++"06B0: A0 1F A0 A0 A0 A0 1F A0\n"
++"06B8: A0 A0 A0 1F A0 A0 A0 A0\n"
++"06C0: 1F A0 A0 A0 A0 1F A0 A0\n"
++"06C8: A0 A0 1F A0 A0 A0 A0 1F\n"
++"06D0: B2 B2 A0 A0 1F A0 A0 A0\n"
++"06D8: A0 1F A0 A0 A0 A0 1F A0\n"
++"06E0: A0 A0 A0 1F A0 A0 A0 A0\n"
++"06E8: 1F A0 A0 A0 A0 1F A0 A0\n"
++"06F0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"06F8: E7 C1 6D 51 42 B5 82 13\n"
++"0700: B7 A0 A0 A0 1F A0 A0 A0\n"
++"0708: A0 1F A0 A0 A0 A0 1F A0\n"
++"0710: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0718: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0720: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0728: B1 B5 A0 A0 1F A0 A0 A0\n"
++"0730: A0 1F A0 A0 A0 A0 1F A0\n"
++"0738: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0740: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0748: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0750: B2 B3 A0 A0 1F A0 A0 A0\n"
++"0758: A0 1F A0 A0 A0 A0 1F A0\n"
++"0760: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0768: 1F A0 A0 A0 A0 1F A0 A0\n"
++"0770: A0 A0 1F A0 A0 A0 A0 1F\n"
++"0778: 01 45 84 E1 6C 79 BC A3\n"
++"0780: B8 A0 A0 A0 1F A0 A0 A0\n"
++"0788: A0 1F A0 A0 A0 A0 1F A0\n"
++"0790: A0 A0 A0 1F A0 A0 A0 A0\n"
++"0798: 1F A0 A0 A0 A0 1F A0 A0\n"
++"07A0: A0 A0 1F A0 A0 A0 A0 1F\n"
++"07A8: B1 B6 A0 A0 1F A0 A0 A0\n"
++"07B0: A0 1F A0 A0 A0 A0 1F A0\n"
++"07B8: A0 A0 A0 1F A0 A0 A0 A0\n"
++"07C0: 1F A0 A0 A0 A0 1F A0 A0\n"
++"07C8: A0 A0 1F A0 A0 A0 A0 1F\n"
++"07D0: B2 B4 A0 A0 35 A0 A0 A0\n"
++"07D8: 31 30 A0 A0 A0 31 35 A0\n"
++"07E0: A0 A0 32 30 A0 A0 A0 32\n"
++"07E8: 35 A0 A0 A0 33 30 A0 A0\n"
++"07F0: A0 33 35 A0 A0 A0 34 30\n"
++"07F8: C1 29 D9 6B 77 39 FE 10\n"
 
-const bytestream = 
+const gfx_stream = 
  "2000: FF 7F 7F 7F FF 7F 7F 3F\n"
 +"2008: 8E 78 BF F6 7F FF 7F FD\n"
 +"2010: BB 7B EE ED FE 7F 4D 49\n"
