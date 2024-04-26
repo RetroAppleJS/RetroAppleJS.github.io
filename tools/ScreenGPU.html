@@ -330,11 +330,13 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
   }
 
   // KERNEL v4 - parameter optimisation
-  this.kProcess_v4 =  function(mem,cfg)
+  this.kProcess_v4 =  function(mem,rom,cfg)
   { 
-    const PALETTE=0,DIM_H=cfg[128],CHROME_MODE=cfg[129],LORES1_ADR=cfg[130],LORES2_ADR=cfg[131],HIRES1_ADR=cfg[132],HIRES2_ADR=cfg[134],GFX_FLG=cfg[135],CHAR=136
+    //const DIM_H=cfg[0]>>1,CHROME_MODE=cfg[1]<<1,PALETTE=2,LORES1_ADR=cfg[130],LORES2_ADR=cfg[131],HIRES1_ADR=cfg[132],HIRES2_ADR=cfg[134],GFX_FLG=cfg[135];
+    const DIM_H=cfg[0]>>1,CHROME_MODE=cfg[1]<<1,PALETTE=2,GFX_FLG=cfg[130]
+
     const xp  = (this.thread.x>>1);
-    const yp  = (DIM_H>>1)-(this.thread.y>>1)-1;
+    const yp  = DIM_H-(this.thread.y>>1)-1;
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
     const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
@@ -344,7 +346,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
     const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
     const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
-    const cptr = PALETTE + (CHROME_MODE<<1) + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
+    const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
 
     this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
   }
@@ -371,18 +373,17 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
       LOC[5] = 0x400 + H + ((V&7)<<7) + 5 * (V&0b11111000);
       LOC[6] = 0x400 + x7 + (yp<<4&0x380) + (yp>>6)*40;
 
-      if(LOC[A]!=LOC[B]) document.write("LOC"+A+"="+LOC[A]+" LOC"+B+"="+LOC[B]+"<br>")
-
+      if(LOC[A]!=LOC[B]) document.write("LOC"+A+"="+LOC[A]+" LOC"+B+"="+LOC[B]+"<br>");
     }
   }
 
   // KERNEL v5 - add display modes
   this.kProcess_v5 =  function(mem,rom,cfg)
   { 
-    const PALETTE=0,DIM_H=cfg[128],CHROME_MODE=cfg[129],LORES1_ADR=cfg[130],LORES2_ADR=cfg[131],HIRES1_ADR=cfg[132],HIRES2_ADR=cfg[134],GFX_FLG=cfg[135],CHAR=136
-
+    const CHROME_MODE=cfg[0]<<1,DIM_H=cfg[1],PALETTE=2,GFX_FLG=cfg[130];
+    
     const xp  = (this.thread.x>>1);
-    const yp  = (DIM_H>>1)-(this.thread.y>>1)-1;
+    const yp  = DIM_H-(this.thread.y>>1)-1;
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
     const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
 
@@ -404,7 +405,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
       const c40 = col == 39 ? 0 : 1;              // adjacent byte on the right?
       const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
       const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
-      const cptr = PALETTE + (CHROME_MODE<<1) + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
+      const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
 
       this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
     }
@@ -428,7 +429,13 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
         const inv = invd==0 ? 1 : 0;               // inversion modifier
         const rgb = (cbyte>>m7 & 1) ^ inv;         // color 1 or 0
         
-        this.color(rgb,rgb,rgb,1);
+
+        const cptr = PALETTE + CHROME_MODE + (rgb<<7) - (rgb<<3)
+
+
+        this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
+
+        //this.color(rgb,rgb,rgb,1);
 
 /*
         if(xp==0 && yp==0)
@@ -559,20 +566,23 @@ function EMU_init()
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
+  //alert(vidContext.height>>1)
   // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
+  oApple2Video.add8_val("CHROME_MODE",chrome_mode, ["cfg[","]<<1"]);
+  oApple2Video.add8_val("DIM_H", vidContext.height>>1)
+
   oApple2Video.add8_ref("PALETTE",INTCols);
   //oApple2Video.add16_val("DIM_W", vidContext.width)
-  oApple2Video.add16_val("DIM_H", vidContext.height)
-  oApple2Video.add16_val("CHROME_MODE",chrome_mode);
-  oApple2Video.add16_val("LORES1_ADR",0x0400);
-  oApple2Video.add16_val("LORES2_ADR",0x0800);
-  oApple2Video.add16_val("HIRES1_ADR",0x2000);
-  oApple2Video.add16_val("HIRES2_ADR",0x4000);
-  oApple2Video.add16_val("HIRES2_ADR",0x4000);
-  oApple2Video.add16_val("GFX_FLG",softswitch_mode); 
+
+
+  //oApple2Video.add16_val("LORES1_ADR",0x0400);
+  //oApple2Video.add16_val("LORES2_ADR",0x0800);
+  //oApple2Video.add16_val("HIRES1_ADR",0x2000);
+  //oApple2Video.add16_val("HIRES2_ADR",0x4000);
+  oApple2Video.add8_val("GFX_FLG",softswitch_mode); 
   //oApple2Video.add8_ref("CHAR",apple2CharRom);
 
-  const GPU_CFG = oApple2Video.gen_config();
+  const GPU_CFG = oApple2Video.gen8_config();
 
   /////////////////////////////
 
@@ -647,7 +657,6 @@ const gpu = initGPU({
 
   if(AppVersion==1)
   {
-
     kernel = gpu.createKernel(
      oKW.kProcess_v3,
       {
@@ -728,7 +737,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(ram,GPU_CFG);
+      kernel(ram,apple2CharRom,GPU_CFG);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -744,7 +753,6 @@ const gpu = initGPU({
     fill_ram(txt_stream,ram);
     fill_ram(lores_stream,ram);
     
-
     kernel = gpu.createKernel(
 
      oKW.kProcess_v5,
@@ -1052,41 +1060,70 @@ var oApple2Video =
 {
   "config_meta":{}
   ,"config_data":new Uint16Array()
-  ,"config_map":new Uint16Array()
+  ,"config8_data":new Uint8Array()
+  ,"config_map":new Array()
+  ,"config8_map":new Array()
   ,"nib":true                           // true = open nibble
+  ,"setlen":function(name,modifier)
+  {
+    if(modifier===undefined) var modifier = ["cfg[","]"]
+    else if(modifier==null) var modifier = ["",""]
+    if(this.config_map[name]===undefined)
+    {
+      this.config_map[name] = modifier[0] + this.config_data.length + modifier[1];
+      this.config8_map[name] = modifier[0] + this.config8_data.length + modifier[1];
+    }
+  }
   ,"add8_ref":function(name,arr)
   {
-    if(this.config_map[name]===undefined) 
-      this.config_map[name] = this.config_data.length;
+    this.setlen(name,null);
     for(var i=0;i<arr.length;i++)
     {
       //  16-bit value = first byte (LO) - second byte (HI) = little endian
       if(this.nib) this.config_data = new Uint16Array([...this.config_data,...[arr[i]]]);
       else this.config_data[this.config_data.length-1] |=  arr[i] << 8;
       this.nib = !this.nib;
+
+      //  8-bit values
+      this.config8_data = new Uint8Array([...this.config8_data,...arr]);
     }
   }
   ,"add16_ref":function(name,arr)
   {
-    this.config_map[name] = this.config_data.length;
+    this.setlen(name,null);
     this.config_data = new Uint16Array([...this.config_data,...arr]);
-  } 
-  ,"add16_val":function(name,val)
+    this.config8_data = new Uint8Array([...this.config8_data,...arr.map(function(item){ return item & 255 })]);
+  }
+  ,"add8_val":function(name,val,modifier)
   {
-    this.config_map[name] = "cfg["+this.config_data.length+"]";
+    this.setlen(name,modifier);
     this.config_data = new Uint16Array([...this.config_data,...[val]]);
+    this.config8_data = new Uint8Array([...this.config8_data,...[val&255]]);
+  } 
+  ,"add16_val":function(name,val,modifier)
+  {
+    this.setlen(name,modifier);
+    this.config_data = new Uint16Array([...this.config_data,...[val]]);
+
+    //  store truncated 8-bit value
+    this.config8_data = new Uint8Array([...this.config8_data,...[val&255]]);
   }
   ,"gen_config":function()
   {
-    var idx_size = this.config_meta.size;
-    var output = new Uint16Array([idx_size]);
-    var s = "const "
-    for(var i in this.config_map) s+=i+"="+this.config_map[i]+","
-
-    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>"
-    
+    //var idx_size = this.config_meta.size;
+    //var output = new Uint16Array([idx_size]);
+    var s = "const ";
+    for(var i in this.config_map) s+=i+"="+this.config_map[i]+",";
+    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>";
     return this.config_data;
   }
+  ,"gen8_config":function()
+  {
+    var s = "const ";
+    for(var i in this.config_map) s+=i+"="+this.config_map[i]+",";
+    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>";
+    return this.config8_data;
+  }  
 }
 
 async function copyTextToClipboard(textToCopy) {
@@ -1137,6 +1174,8 @@ const INTCols = new Uint8Array([
     ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
     ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
     ]);
+
+    
 
     const apple2CharRom = new Uint8Array([
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
