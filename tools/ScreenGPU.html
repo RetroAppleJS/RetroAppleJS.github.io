@@ -65,51 +65,6 @@
   </html>
 <script>
 
-
-for(var adr=8192;adr<16384;adr++)
-{
-
-//var d5 = (((((19+(adr>>1)+adr)>>1)+adr)>>1)&0x7F)>>1
-var d = Math.floor(adr/5);
-
-
-    const cb = 0x7f;
-    const col = (adr & cb) % 40;                      // column of byte 
-
-    const c00 = col > 0 ? 255 : 0;                    // adjacent byte on the left?
-    const c40 = col < 39 ? 255 : 0;                   // adjacent byte on the right?
-
-    var x = (adr & cb);
-    //document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+" "+((col^0xFF) & cb)+"<br>");
-
-    //document.write(oCOM.getHexWord(adr)+": "+c00+" "+c40+"<br>");
-
-    // font-family:'Courier'
-    //document.write("<div style:font-size:8px;>")
-    //if(c00==0)
-
-    //var d00 =  ((adr-0x2000)&cb&7) == 0
-    //var red = ( (adr-0x2000) & cb)
-    //var d5 = (red>>2)
-    //d5 = ((((((d5>>1)+d5)>>3)+d5)>>1)+d5)>>2  // Divide by 20
-
-
-
-
-
-
-  //oCOM.getBinMulti((adr-0x2000),8
-
-  //oCOM.getHexWord(adr)
-
-    //if(d00==true || c00==0)
-    //document.write((adr-8192)+": "+c00+" "+d00+" "+d5+"<br>");
-    
-    //document.write()
-}
-
-
-
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
 
 
@@ -155,7 +110,6 @@ function kernel_wrapper()
     const a0 = xp & 1;                        // 0=even/1=uneven column
     const b7 = mem[adr] & 0x80;               // high bit  0-80
 
-
     var o = 0;
     if(bm!=0 && (bl!=0 || br!=0))
                       o += 15;          // white
@@ -180,15 +134,8 @@ function kernel_wrapper()
           else         o += 12;          // green
       }
     }
-
-
-
-
-
     const cptr = (chrome_mode<<2) + (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4
-
     var p = cptr>>4;
-
     this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1,{"b":oCOM.getBinMulti(b,3),"b7":b7,"a0":a0,"o":o,"cptr":p,"adr":adr} );
   }
 
@@ -285,9 +232,6 @@ var c12 = (a0^b&1)<<1 | (a0^b&1)^b0
 var c34 = ((r2>>b&1)<<4) - (r2>>b&1)           // 111 mask detecting white
 var cr1 = ((r1>>b&1)<<4) - (r1>>b&1)           // 111 mask detecting black
 var r = (3*((c12+1) & cr1)+c34)<<4
-
- 
-
 //var r2 = 0b01100100
 
 document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
@@ -388,8 +332,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
   // KERNEL v4 - parameter optimisation
   this.kProcess_v4 =  function(mem,cfg)
   { 
-    const PALETTE=cfg[0],DIM_W=cfg[128],DIM_H=cfg[129],CHROME_MODE=cfg[130],LORES1_ADDR=cfg[131],LORES2_ADDR=cfg[132],HIRES1_ADDR=cfg[133],HIRES2_ADDR=cfg[135],GFX_FLG=cfg[136];
-
+    const PALETTE=0,DIM_H=cfg[128],CHROME_MODE=cfg[129],LORES1_ADR=cfg[130],LORES2_ADR=cfg[131],HIRES1_ADR=cfg[132],HIRES2_ADR=cfg[134],GFX_FLG=cfg[135],CHAR=136
     const xp  = (this.thread.x>>1);
     const yp  = (DIM_H>>1)-(this.thread.y>>1)-1;
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
@@ -434,10 +377,10 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
   }
 
   // KERNEL v5 - add display modes
-  this.kProcess_v5 =  function(mem,cfg)
+  this.kProcess_v5 =  function(mem,rom,cfg)
   { 
-    const PALETTE=0,DIM_W=cfg[128],DIM_H=cfg[129],CHROME_MODE=cfg[130],LORES1_ADDR=cfg[131],LORES2_ADDR=cfg[132],HIRES1_ADDR=cfg[133],HIRES2_ADDR=cfg[135],GFX_FLG=cfg[136],CHAR=137
-    
+    const PALETTE=0,DIM_H=cfg[128],CHROME_MODE=cfg[129],LORES1_ADR=cfg[130],LORES2_ADR=cfg[131],HIRES1_ADR=cfg[132],HIRES2_ADR=cfg[134],GFX_FLG=cfg[135],CHAR=136
+
     const xp  = (this.thread.x>>1);
     const yp  = (DIM_H>>1)-(this.thread.y>>1)-1;
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
@@ -446,12 +389,13 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     //HIRES[128] << LORES[64] << PAGE2[32] << PAGE1[16] << MIX_ON[8] << MIX_OFF[4] << GFX_OFF[2] << GFX_ON[1]
 
     const HIRES_GFX_ON  = GFX_FLG & 129;
+    const LORES_GFX_ON  = GFX_FLG & 65;
     const MIX_ON        = GFX_FLG & 8;
     const MIX_OFF       = GFX_FLG & 4;
     const PAGE12        = (GFX_FLG & 48) << 9;
     const GFX_OFF       = GFX_FLG & 2;
 
-    if(HIRES_GFX_ON==129 &&  (MIX_ON==8 && yp<=0xA0 || MIX_OFF==4))
+    if(HIRES_GFX_ON==129 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
     {
       const adr = PAGE12 + (yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
@@ -464,14 +408,21 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
 
       this.color((cfg[cptr]&255)/256,(cfg[cptr]>>8)/256,((cfg[cptr+1]&255)/256),1);
     }
-    else if(GFX_OFF==2)
+    else if(LORES_GFX_ON==65 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
+    {
+      // LORES TODO
+      this.color(1,0,0,1);
+    }
+    else if(GFX_OFF==2 || HIRES_GFX_ON==129 || LORES_GFX_ON==65)
     {
         const adr = 0x400 + x7 + (yp<<4&0x380) + (yp>>6)*40;
-        const d8 = mem[adr];      // charcode from text memory
+        const d8 = mem[adr];                       // charcode from text memory
 
         const offs = ((d8 & 0x3F) ^ 0x20) << 3;    // character offset (not inversed or flashing)
-        const cidx = d8 + offs + (yp>>1&3);        // character index = charcode + char offset + y offset
-        const cbyte = (cfg[cidx] >> ((yp&1)<<3) )&255 // character byte = 16-bit cfg >> nibble selector
+
+        //const cidx = CHAR + (offs>>1) + (yp>>1&3); // character index = charcode + char offset + y offset
+        //const cbyte = cfg[cidx]>>(yp<<3&8)&255     // character byte = 16-bit cfg >> nibble selector
+        const cbyte = rom[ offs + (yp&7)  ];
 
         const invd = cbyte & 0xC0;                 // inversion detector
         const inv = invd==0 ? 1 : 0;               // inversion modifier
@@ -482,7 +433,8 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
 /*
         if(xp==0 && yp==0)
         {
-          var idx = CHAR+o2;
+          var CH  = 2;
+          var idx = CH + CHAR+(yp>>1&3);
           var s = 
           oCOM.getBinMulti(cfg[idx] & 255 ,8)
           +"\n"
@@ -501,7 +453,8 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
           +oCOM.getBinMulti(cfg[idx+3] >> 8 ,8)
           alert(s.replace(/0/g,"_"));
         }
-*/
+        */
+
     }
     else this.color(0,0,0,1);
 
@@ -583,20 +536,6 @@ function EMU_init()
     s_versions[s_versions.length] = "<option value="+i+" "+(chrome_mode==i?"selected":"")+">"+_CFG_CHROMA[i].COL_name+"</option>"
   s_versions[s_versions.length] = "</select>"
 
-/*
-var bt = oCOM.getBinMulti(softswitch_mode,8)
-var sss = ((softswitch_mode&1)!=0?"GFX_ON\n":"")
-         +((softswitch_mode&2)!=0?"GFX_OFF\n":"")
-         +((softswitch_mode&4)!=0?"MIX_OFF\n":"")
-         +((softswitch_mode&8)!=0?"MIX_ON\n":"")
-         +((softswitch_mode&16)!=0?"PAGE2\n":"")
-         +((softswitch_mode&32)!=0?"PAGE1\n":"")
-         +((softswitch_mode&64)!=0?"HIRES\n":"")
-         +((softswitch_mode&128)!=0?"LORES\n":"")
-//alert(bt+"\n"+sss)
-*/
-
-// GFX_HIRES/LORES << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
   var cnt = 0;
   for(var i in SOFTSWITCHES)
   {
@@ -622,16 +561,16 @@ var sss = ((softswitch_mode&1)!=0?"GFX_ON\n":"")
 
   // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
   oApple2Video.add8_ref("PALETTE",INTCols);
-  oApple2Video.add16_val("DIM_W", vidContext.width)
+  //oApple2Video.add16_val("DIM_W", vidContext.width)
   oApple2Video.add16_val("DIM_H", vidContext.height)
   oApple2Video.add16_val("CHROME_MODE",chrome_mode);
-  oApple2Video.add16_val("LORES1_ADDR",0x0400);
-  oApple2Video.add16_val("LORES2_ADDR",0x0800);
-  oApple2Video.add16_val("HIRES1_ADDR",0x2000);
-  oApple2Video.add16_val("HIRES2_ADDR",0x4000);
-  oApple2Video.add16_val("HIRES2_ADDR",0x4000);
+  oApple2Video.add16_val("LORES1_ADR",0x0400);
+  oApple2Video.add16_val("LORES2_ADR",0x0800);
+  oApple2Video.add16_val("HIRES1_ADR",0x2000);
+  oApple2Video.add16_val("HIRES2_ADR",0x4000);
+  oApple2Video.add16_val("HIRES2_ADR",0x4000);
   oApple2Video.add16_val("GFX_FLG",softswitch_mode); 
-  oApple2Video.add8_ref("CHAR",apple2CharRom);
+  //oApple2Video.add8_ref("CHAR",apple2CharRom);
 
   const GPU_CFG = oApple2Video.gen_config();
 
@@ -803,6 +742,8 @@ const gpu = initGPU({
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     fill_ram(gfx_stream,ram);
     fill_ram(txt_stream,ram);
+    fill_ram(lores_stream,ram);
+    
 
     kernel = gpu.createKernel(
 
@@ -827,7 +768,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(ram,GPU_CFG);
+      kernel(ram,apple2CharRom,GPU_CFG);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -839,8 +780,6 @@ const gpu = initGPU({
   {
     document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
     document.getElementById("prede").innerHTML = gen_table() + document.getElementById("prede").innerHTML;    // GENERATE TABLE
-
-    
 
     var xp = 0;
     var yp = 0;
@@ -875,7 +814,7 @@ const gpu = initGPU({
       for(var x=0;x<oPATTERN.bmapx;x++)
       {
         oKW.thread = {"x":x<<1,"y":((192-y)<<1)-1}
-        oKW.kProcess_v5(ram,GPU_CFG);
+        oKW.kProcess_v5(ram,apple2CharRom,GPU_CFG);
       }
     }
 
@@ -1025,21 +964,10 @@ for(var y=0;y<192;y++)
   var B = D>>3
   var C = D-(B<<3)
   var adr = 8192 + 1024*C + 128*B + 8*A + 32*A;
-  */
-
-  /*
+ 
   //v2
   var adr = 8192 + (((y - (y&192))-((y - (y&192)>>3)<<3))<<10) + ((y -(y&192)>>3)<<7) + (y>>6<<3) + (y>>6<<5);
   */
-
-
-  //const GBASL = y<<4 & 0b10000000 | y>>3 & 0b00011000 | y>>1 & 0b01100000;
-  //const GBASL = y<<4 & 0x80 | y>>3 & 0x18 | y>>1 & 0x60;
-  //const GBASL = y<<4 & 128 | y>>3 & 48 | y>>1 & 96;
-
-  //var GBASH = 0b10000000000000 | y<<10 & 0b1110000000000 | y<<4 & 0b1100000000
-  //var GBASH = 0x2000 | y<<10 & 0x1C00 | y<<4 & 0x300
-  //var GBASH = 8192 | y<<10 & 7168 | y<<4 & 768
 
   var adr = 0x2000 | y<<10 & 0x1C00 | y<<4 & 0x300 | y<<4 & 0x80 | y>>3 & 0x18 | y>>1 & 0x60;
 
@@ -1145,20 +1073,17 @@ var oApple2Video =
   } 
   ,"add16_val":function(name,val)
   {
-    this.config_map[name] = this.config_data.length;
+    this.config_map[name] = "cfg["+this.config_data.length+"]";
     this.config_data = new Uint16Array([...this.config_data,...[val]]);
-  }  
+  }
   ,"gen_config":function()
   {
     var idx_size = this.config_meta.size;
     var output = new Uint16Array([idx_size]);
     var s = "const "
-    for(var i in this.config_map)
-    {
-      s+=i+"=cfg["+this.config_map[i]+"],"
-    }
+    for(var i in this.config_map) s+=i+"="+this.config_map[i]+","
 
-    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY</button>"
+    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>"
     
     return this.config_data;
   }
@@ -2272,6 +2197,138 @@ const txt_stream =
 +"07E8: 35 A0 A0 A0 33 30 A0 A0\n"
 +"07F0: A0 33 35 A0 A0 A0 34 30\n"
 +"07F8: C1 29 D9 6B 77 39 FE 10\n"
+
+//document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(txt_stream.substring(0,txt_stream.length-1))+"\")>TXT DUMP</button>"
+
+const lores_stream = 
+ "0400: 00 00 00 00 00 00 00 00\n"
++"0408: 00 00 11 11 11 11 11 11\n"
++"0410: 11 11 11 11 22 22 22 22\n"
++"0418: 22 22 22 22 22 22 33 33\n"
++"0420: 33 33 33 33 33 33 33 33\n"
++"0428: 44 44 44 44 44 44 44 44\n"
++"0430: 44 44 55 55 55 55 55 55\n"
++"0438: 55 55 55 55 66 66 66 66\n"
++"0440: 66 66 66 66 66 66 77 77\n"
++"0448: 77 77 77 77 77 77 77 77\n"
++"0450: CC CC CC CC CC CC CC CC\n"
++"0458: CC CC DD DD DD DD DD DD\n"
++"0460: DD DD DD DD EE EE EE EE\n"
++"0468: EE EE EE EE EE EE FF FF\n"
++"0470: FF FF FF FF FF FF FF FF\n"
++"0478: ED E1 B4 BC 9C 5B 84 A3\n"
++"0480: 00 00 00 00 00 00 00 00\n"
++"0488: 00 00 11 11 11 11 11 11\n"
++"0490: 11 11 11 11 22 22 22 22\n"
++"0498: 22 22 22 22 22 22 33 33\n"
++"04A0: 33 33 33 33 33 33 33 33\n"
++"04A8: 44 44 44 44 44 44 44 44\n"
++"04B0: 44 44 55 55 55 55 55 55\n"
++"04B8: 55 55 55 55 66 66 66 66\n"
++"04C0: 66 66 66 66 66 66 77 77\n"
++"04C8: 77 77 77 77 77 77 77 77\n"
++"04D0: CC CC CC CC CC CC CC CC\n"
++"04D8: CC CC DD DD DD DD DD DD\n"
++"04E0: DD DD DD DD EE EE EE EE\n"
++"04E8: EE EE EE EE EE EE FF FF\n"
++"04F0: FF FF FF FF FF FF FF FF\n"
++"04F8: 64 1B D0 7B BC B8 AD F5\n"
++"0500: 00 00 00 00 00 00 00 00\n"
++"0508: 00 00 11 11 11 11 11 11\n"
++"0510: 11 11 11 11 22 22 22 22\n"
++"0518: 22 22 22 22 22 22 33 33\n"
++"0520: 33 33 33 33 33 33 33 33\n"
++"0528: 88 88 88 88 88 88 88 88\n"
++"0530: 88 88 99 99 99 99 99 99\n"
++"0538: 99 99 99 99 AA AA AA AA\n"
++"0540: AA AA AA AA AA AA BB BB\n"
++"0548: BB BB BB BB BB BB BB BB\n"
++"0550: CC CC CC CC CC CC CC CC\n"
++"0558: CC CC DD DD DD DD DD DD\n"
++"0560: DD DD DD DD EE EE EE EE\n"
++"0568: EE EE EE EE EE EE FF FF\n"
++"0570: FF FF FF FF FF FF FF FF\n"
++"0578: 14 5B 6E 55 9A A4 F7 E8\n"
++"0580: 00 00 00 00 00 00 00 00\n"
++"0588: 00 00 11 11 11 11 11 11\n"
++"0590: 11 11 11 11 22 22 22 22\n"
++"0598: 22 22 22 22 22 22 33 33\n"
++"05A0: 33 33 33 33 33 33 33 33\n"
++"05A8: 88 88 88 88 88 88 88 88\n"
++"05B0: 88 88 99 99 99 99 99 99\n"
++"05B8: 99 99 99 99 AA AA AA AA\n"
++"05C0: AA AA AA AA AA AA BB BB\n"
++"05C8: BB BB BB BB BB BB BB BB\n"
++"05D0: CC CC CC CC CC CC CC CC\n"
++"05D8: CC CC DD DD DD DD DD DD\n"
++"05E0: DD DD DD DD EE EE EE EE\n"
++"05E8: EE EE EE EE EE EE FF FF\n"
++"05F0: FF FF FF FF FF FF FF FF\n"
++"05F8: 6C BB C6 A7 DF 0B BD BA\n"
++"0600: 00 00 00 00 00 00 00 00\n"
++"0608: 00 00 11 11 11 11 11 11\n"
++"0610: 11 11 11 11 22 22 22 22\n"
++"0618: 22 22 22 22 22 22 33 33\n"
++"0620: 33 33 33 33 33 33 33 33\n"
++"0628: 88 88 88 88 88 88 88 88\n"
++"0630: 88 88 99 99 99 99 99 99\n"
++"0638: 99 99 99 99 AA AA AA AA\n"
++"0640: AA AA AA AA AA AA BB BB\n"
++"0648: BB BB BB BB BB BB BB BB\n"
++"0650: B0 BD C2 CC C1 C3 CB A0\n"
++"0658: A0 A0 A0 B1 BD D2 C5 C4\n"
++"0660: A0 A0 A0 A0 A0 B2 BD C4\n"
++"0668: AE C2 CC D5 C5 A0 A0 B3\n"
++"0670: BD D0 D5 D2 D0 CC C5 A0\n"
++"0678: 36 45 50 E4 68 8C 64 0D\n"
++"0680: 44 44 44 44 44 44 44 44\n"
++"0688: 44 44 55 55 55 55 55 55\n"
++"0690: 55 55 55 55 66 66 66 66\n"
++"0698: 66 66 66 66 66 66 77 77\n"
++"06A0: 77 77 77 77 77 77 77 77\n"
++"06A8: 88 88 88 88 88 88 88 88\n"
++"06B0: 88 88 99 99 99 99 99 99\n"
++"06B8: 99 99 99 99 AA AA AA AA\n"
++"06C0: AA AA AA AA AA AA BB BB\n"
++"06C8: BB BB BB BB BB BB BB BB\n"
++"06D0: B4 BD C4 AE C7 D2 C5 C5\n"
++"06D8: CE A0 A0 B5 BD C7 D2 C1\n"
++"06E0: D9 A0 B1 A0 A0 B6 BD CD\n"
++"06E8: AE C2 CC D5 C5 A0 A0 B7\n"
++"06F0: BD CC AE C2 CC D5 C5 A0\n"
++"06F8: 7B FF 4D 17 3B C7 64 F6\n"
++"0700: 44 44 44 44 44 44 44 44\n"
++"0708: 44 44 55 55 55 55 55 55\n"
++"0710: 55 55 55 55 66 66 66 66\n"
++"0718: 66 66 66 66 66 66 77 77\n"
++"0720: 77 77 77 77 77 77 77 77\n"
++"0728: 88 88 88 88 88 88 88 88\n"
++"0730: 88 88 99 99 99 99 99 99\n"
++"0738: 99 99 99 99 AA AA AA AA\n"
++"0740: AA AA AA AA AA AA BB BB\n"
++"0748: BB BB BB BB BB BB BB BB\n"
++"0750: B8 BD C2 D2 CF D7 CE A0\n"
++"0758: A0 A0 A0 B9 BD CF D2 C1\n"
++"0760: CE C7 C5 A0 A0 B1 B0 BD\n"
++"0768: C7 D2 C1 D9 A0 B2 A0 B1\n"
++"0770: B1 BD D0 C9 CE CB A0 A0\n"
++"0778: 17 5B E6 45 CC E1 FD 71\n"
++"0780: 44 44 44 44 44 44 44 44\n"
++"0788: 44 44 55 55 55 55 55 55\n"
++"0790: 55 55 55 55 66 66 66 66\n"
++"0798: 66 66 66 66 66 66 77 77\n"
++"07A0: 77 77 77 77 77 77 77 77\n"
++"07A8: CC CC CC CC CC CC CC CC\n"
++"07B0: CC CC DD DD DD DD DD DD\n"
++"07B8: DD DD DD DD EE EE EE EE\n"
++"07C0: EE EE EE EE EE EE FF FF\n"
++"07C8: FF FF FF FF FF FF FF FF\n"
++"07D0: B1 B2 BD CC AE C7 D2 C5\n"
++"07D8: C5 CE A0 B1 B3 BD D9 C5\n"
++"07E0: CC CC CF D7 A0 B1 B4 BD\n"
++"07E8: C1 D1 D5 C1 A0 A0 A0 B1\n"
++"07F0: B5 BD D7 C8 C9 D4 C5 60\n"
++"07F8: C1 62 01 E4 82 D4 44 65\n"
 
 const gfx_stream = 
  "2000: FF 7F 7F 7F FF 7F 7F 3F\n"
