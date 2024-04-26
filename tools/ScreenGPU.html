@@ -346,7 +346,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
     const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
     const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
-    const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<3 );
+    const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4 );
 
     this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
   }
@@ -387,7 +387,6 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
     const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
 
-    //if(xp==1 && yp==1) alert(CHROME_MODE)
     //HIRES[128] << LORES[64] << PAGE2[32] << PAGE1[16] << MIX_ON[8] << MIX_OFF[4] << GFX_OFF[2] << GFX_ON[1]
 
     const HIRES_GFX_ON  = GFX_FLG & 129;
@@ -396,6 +395,8 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     const MIX_OFF       = GFX_FLG & 4;
     const PAGE12        = (GFX_FLG & 48) << 9;
     const GFX_OFF       = GFX_FLG & 2;
+
+    //if(xp==1 && yp==1) alert(PAGE12>>3)
 
     if(HIRES_GFX_ON==129 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
     {
@@ -417,7 +418,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     }
     else if(GFX_OFF==2 || HIRES_GFX_ON==129 || LORES_GFX_ON==65)
     {
-        const adr = 0x400 + x7 + (yp<<4&0x380) + (yp>>6)*40;
+        const adr = (PAGE12>>3) + x7 + (yp<<4&0x380) + (yp>>6)*40;
         const d8 = mem[adr];                       // charcode from text memory
 
         const offs = ((d8 & 0x3F) ^ 0x20) << 3;    // character offset (not inversed or flashing)
