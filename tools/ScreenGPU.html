@@ -78,7 +78,7 @@ const _o = {
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
-var CONF_version="2.1.1";
+var CONF_version="2.2.0";
 var CONF_builddate="20240329-170000"; 
 
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
@@ -332,8 +332,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
   // KERNEL v4 - parameter optimisation
   this.kProcess_v4 =  function(mem,rom,cfg)
   { 
-    //const DIM_H=cfg[0]>>1,CHROME_MODE=cfg[1]<<1,PALETTE=2,LORES1_ADR=cfg[130],LORES2_ADR=cfg[131],HIRES1_ADR=cfg[132],HIRES2_ADR=cfg[134],GFX_FLG=cfg[135];
-    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],PALETTE=2,GFX_FLG=cfg[258];
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
 
     const xp  = (this.thread.x>>1);
     const yp  = DIM_H-(this.thread.y>>1)-1;
@@ -377,10 +376,28 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     }
   }
 
+  // %40
+  for(var adr=8192;adr<16384;adr++)
+  {
+    var i = adr & 0x7F
+    //document.write(i+" "+( 0b1000010000100001>>(i>>3) & (1>>(i&7)) )+"<br>");
+
+    //const col = (adr & 0x7F) % 40;
+
+    var col = (adr & 0x7F) % 40 == 0 ? 0 : 255; 
+    //if(col==0) document.write(">> "+i+" "+255+"<br>")
+
+    //var c0 = 0b1000010000100001>>((adr&0x7F)>>3) & (1>>((adr & 0x7F)&7))
+    var c0 = (256-(0b1000010000100001>>(adr>>3&15) & (1>>(adr&7)))&255) ^255
+    //if(c0==255) document.write("<<"+i+" "+c0+"<br>")
+
+    if(col!=c0) document.write(i+" "+c0+"?"+col+"<br>")
+  }
+
   // KERNEL v5 - add display modes
   this.kProcess_v5 =  function(mem,rom,cfg)
   { 
-    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],PALETTE=2,GFX_FLG=cfg[258];
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
  
     const xp  = (this.thread.x>>1);
     const yp  = DIM_H-(this.thread.y>>1)-1;
@@ -402,12 +419,26 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     {
       const adr = PAGE12 + (yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
-      const col = (adr & 0x7F) % 40;              // byte offset 
-      const c00 = col == 0  ? 0 : 1;              // adjacent byte on the left?
-      const c40 = col == 39 ? 0 : 1;              // adjacent byte on the right?
-      const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
-      const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
-      const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4 );
+      //const c00 = ((0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) ^1)             & (mem[adr-1]>>6 & 1)
+      //const c00 = ((2- (0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) &1)^1)        & (mem[adr-1]>>6 & 1) 
+      //const c40 = ((256- (0b10111101111011110>>((adr+1)>>3&15) & (0b111111110>>((adr+1)&7))) &255) & (mem[adr+1]))<<8
+
+      //const col = (adr & 0x7F) % 40;                              // byte offset 
+      //const c00 = col == 0  ? 0 : Math.floor(mem[adr-1]>>6 & 1);  // adjacent byte on the left?
+      //const c40 = col == 39 ? 0 : Math.floor(mem[adr+1]<<8);      // adjacent byte on the right?
+
+      //const c0 =   (0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) &1;
+      //const c1 =   col ==0 ? 0 : 1;
+      //if(c00 != c01) console.log(adr+" "+c00+"?"+c01);
+
+      //const c00 = (0b111101111011110>>((adr-1)>>3&15) | (0b11111110>>((adr-1)&7))) & (mem[adr-1]>>6 & 1);
+      //const c40 = (((256- (0b1000010000100001>>((adr+1)>>3&15) & (1>>((adr+1)&7))) &255)^255) & mem[adr+1])<<8
+      //const d24 = c40 | (0x7F & mem[adr])<<1 | c00;               // aggregate left - center - right byte
+
+      const d24 = (0x7F & mem[adr+1])<<8  | (0x7F & mem[adr])<<1 | (mem[adr-1]>>6 & 1);               // aggregate left - center - right byte
+      const b   = d24>>m7 & 7;                                    //  3 bits at (xp,yp)
+      const b1a = 0b00100100>>b&1, b1b = 0b11001000>>b&1;         // decision logic
+      const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&(b1a<<4)-b1a)|(b1b<<4)-b1b)<<4 );
 
       this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
     }
@@ -427,50 +458,26 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
         //const cbyte = cfg[cidx]>>(yp<<3&8)&255     // character byte = 16-bit cfg >> nibble selector
         const cbyte = rom[ offs + (yp&7)  ];
 
-        const invd = cbyte & 0xC0;                 // inversion detector
-        const inv = invd==0 ? 1 : 0;               // inversion modifier
-        const rgb = (cbyte>>m7 & 1) ^ inv;         // color 1 or 0
-        
+        //const invd = cbyte & (0x80 |  0x40) ;                 // inversion detector
+        //const inv = invd==0 ? 1 : 0;               // inversion modifier
 
+        //const inv = (cbyte+0x40)>>6 & 1 
+        const infl = d8>>6 & 3;           // inv/flash modifier
+        
+        const rgb = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);         // color 1 or 0
         const cptr = PALETTE + CHROME_MODE + (rgb<<8) - (rgb<<4)
 
-
         this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
-
         //this.color(rgb,rgb,rgb,1);
-
-/*
-        if(xp==0 && yp==0)
-        {
-          var CH  = 2;
-          var idx = CH + CHAR+(yp>>1&3);
-          var s = 
-          oCOM.getBinMulti(cfg[idx] & 255 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx] >> 8 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx+1] & 255 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx+1] >> 8 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx+2] & 255 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx+2] >> 8 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx+3] & 255 ,8)
-          +"\n"
-          +oCOM.getBinMulti(cfg[idx+3] >> 8 ,8)
-          alert(s.replace(/0/g,"_"));
-        }
-        */
-
     }
     else this.color(0,0,0,1);
-
   }
 
 }
 
+//var cbyte = 0x31;
+//var infl = cbyte>>6 & 3;     // inv/flash modifier
+//alert("fla "+(0b010>>infl&1) + " / inv "+(0b001>>infl&1))
 
 // Draw a text character from character ROM.
 // col is [0..39], row is [0..23], d8 is video memory contents
@@ -568,21 +575,24 @@ function EMU_init()
   const dim = [vidContext.width,vidContext.height];
   var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
+  var fla = 1;
+
   //alert(vidContext.height>>1)
   // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
   oApple2Video.add8_val("CHROME_MODE",chrome_mode, ["cfg[","]<<2"]);
-  oApple2Video.add8_val("DIM_H", vidContext.height>>1)
-
+  oApple2Video.add8_val("DIM_H", vidContext.height>>1);
+  oApple2Video.add8_val("GFX_FLG",softswitch_mode);
+  oApple2Video.add8_val("FLASH",fla);
   oApple2Video.add8_ref("PALETTE",INTCols);
+
   //oApple2Video.add16_val("DIM_W", vidContext.width)
-
-
   //oApple2Video.add16_val("LORES1_ADR",0x0400);
   //oApple2Video.add16_val("LORES2_ADR",0x0800);
   //oApple2Video.add16_val("HIRES1_ADR",0x2000);
   //oApple2Video.add16_val("HIRES2_ADR",0x4000);
-  oApple2Video.add8_val("GFX_FLG",softswitch_mode); 
   //oApple2Video.add8_ref("CHAR",apple2CharRom);
+
+  
 
   const GPU_CFG = oApple2Video.gen8_config();
 
@@ -753,7 +763,7 @@ const gpu = initGPU({
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     fill_ram(gfx_stream,ram);
     fill_ram(txt_stream,ram);
-    fill_ram(lores_stream,ram);
+    //fill_ram(lores_stream,ram);
     
     kernel = gpu.createKernel(
 
@@ -775,6 +785,9 @@ const gpu = initGPU({
       }
       //console.log(s.join(""));
     }
+
+    // TODO MAKE IT FLASH
+    GPU_CFG[ oApple2Video.idx8("FLASH") ] = 0;
 
     const doDraw = () => 
     {
@@ -1065,6 +1078,7 @@ var oApple2Video =
   ,"config8_data":new Uint8Array()
   ,"config_map":new Array()
   ,"config8_map":new Array()
+  ,"config8_idx":new Array()
   ,"nib":true                           // true = open nibble
   ,"setlen":function(name,modifier)
   {
@@ -1074,6 +1088,7 @@ var oApple2Video =
     {
       this.config_map[name] = modifier[0] + this.config_data.length + modifier[1];
       this.config8_map[name] = modifier[0] + this.config8_data.length + modifier[1];
+      this.config8_idx[name] = this.config8_data.length;
       console.log("map["+name+"] = "+modifier[0]+this.config8_data.length+modifier[1]);
     }
 
@@ -1104,6 +1119,10 @@ var oApple2Video =
     this.config_data = new Uint16Array([...this.config_data,...[val]]);
     this.config8_data = new Uint8Array([...this.config8_data,...[val&255]]);
   } 
+  ,"idx8":function(name)
+  {
+    return this.config8_idx[name];
+  }
   ,"add16_val":function(name,val,modifier)
   {
     this.setlen(name,modifier);
@@ -2112,7 +2131,9 @@ const patterns = {
 }
 
 const txt_stream = 
- "0400: B1 DF DF DF 35 DF DF DF\n"
+ //"0400: B1 DF DF DF 35 DF DF DF\n"
+ "0400: 71 DF DF DF 35 DF DF DF\n"
+ //"0400: 31 DF DF DF 35 DF DF DF\n"
 +"0408: 31 30 DF DF DF 31 35 DF\n"
 +"0410: DF DF 32 30 DF DF DF 32\n"
 +"0418: 35 DF DF DF 33 30 DF DF\n"
