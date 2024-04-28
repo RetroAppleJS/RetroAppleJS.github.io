@@ -773,8 +773,11 @@ const gpu = initGPU({
         output: [dim[0], dim[1]],
         graphical: true
       }
-    ).setTactic('speed')
-     .setUseLegacyEncoder(true)
+    ).setTactic('performance')
+     //.setUseLegacyEncoder(true)
+
+     // OPEN ISSUE -> need legacy encoder
+     // https://github.com/gpujs/gpu.js/issues/521
 
     // TODO MAKE IT FLASH
     oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ] = 0;
