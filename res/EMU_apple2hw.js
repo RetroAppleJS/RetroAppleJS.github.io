@@ -88,7 +88,7 @@ function Apple2Hw(vid,keys) {
 
     this.safe_flashdump = function()
     {
-        return new Uint8Array([ram]);
+        return new Uint8Array(ram);
     }
 
     this.write = function(addr, d8)
