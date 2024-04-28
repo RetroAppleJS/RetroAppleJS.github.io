@@ -480,8 +480,6 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     else this.color(0,0,0,1);
   }
 
-
-
  // KERNEL v6 - optimise for emulator integration
  this.kProcess_v6 =  function(mem,rom,cfg)
   { 
@@ -526,7 +524,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
       cp += (rgb<<8) - (rgb<<4);                                          // color pointer
     }
 
-    this.color(cfg[cp]/256,cfg[cp+1]/256,cfg[cp+2]/256,1);
+    this.color(cfg[cp]/256,cfg[cp+1]/256,cfg[cp+2]/256);
   }
 
 
@@ -697,7 +695,7 @@ const gpu = initGPU({
         graphical: true
       }
     )//.setTactic('speed');
-  
+
     var m = new Uint8Array(dim[0]*dim[1]).fill(0);
     for(var i=0;i<192;i++)
     {
@@ -712,7 +710,7 @@ const gpu = initGPU({
       var y = i;
       m[x+(y*dim[0])] = 1;
     }
-  
+
     doDraw = () => 
     {
       kernel(dim,m);
@@ -815,7 +813,6 @@ const gpu = initGPU({
     fill_ram(lores_stream2,apple2plus,0x400);
     
     kernel = gpu.createKernel(
-
      oKW.kProcess_v6,
       {
         useLegacyEncoder: true,
@@ -823,6 +820,22 @@ const gpu = initGPU({
         graphical: true
       }
     )//.setTactic('speed')
+
+    // EXPORT KERNEL TO JSON
+    // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
+    //kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
+    //var json = kernel.toJSON();
+    //console.log(json);
+
+     console.log("isGPUSupported = "+GPU.isGPUSupported);
+     console.log("isKernelMapSupported = "+GPU.isKernelMapSupported);
+     console.log("isOffscreenCanvasSupported = "+GPU.isOffscreenCanvasSupported);
+     console.log("isWebGLSupported = "+GPU.isWebGLSupported);
+     console.log("isWebGL2Supported = "+GPU.isWebGL2Supported);
+     console.log("isHeadlessGLSupported = "+GPU.isHeadlessGLSupported);
+     console.log("isCanvasSupported = "+GPU.isCanvasSupported);
+     console.log("isGPUHTMLImageArraySupported = "+GPU.isGPUHTMLImageArraySupported);
+     console.log("isSinglePrecisionSupported = "+GPU.isSinglePrecisionSupported);
 
      // OPEN ISSUE (ANDROID related)
      // https://github.com/gpujs/gpu.js/issues/521
