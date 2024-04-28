@@ -67,7 +67,7 @@
 
 
 
-var CONF_version="2.3.0";
+var CONF_version="2.3.1";
 var CONF_builddate="20240329-170000"; 
 
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
@@ -717,6 +717,8 @@ const gpu = initGPU({
 
   if(AppVersion==2)
   {
+
+    // DISPLAY PATTERNS MENU
     var s=[];
     for(var i in patterns)
     {
@@ -744,12 +746,12 @@ const gpu = initGPU({
     ).setTactic('speed');
 
 
-    const doDraw = () => 
+    oApple2Video.doDraw = () => 
     {
-      kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,apple2plus.GPU_CFG);
+      kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
       //window.requestAnimationFrame(doDraw);
     };
-    window.requestAnimationFrame(doDraw);
+    window.requestAnimationFrame(oApple2Video.doDraw);
   }  
 
 
