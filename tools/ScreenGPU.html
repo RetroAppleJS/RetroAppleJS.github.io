@@ -65,27 +65,35 @@
   </html>
 <script>
 
+
+
+var CONF_version="2.2.1";
+var CONF_builddate="20240329-170000"; 
+
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
 
 
   // global data initializations
 const _o = {
          "sys":{}     
-        ,"EMU_Updates_s":10                 // Emulator intervals per second 
+        ,"EMU_Updates_s":20                 // Emulator intervals per second 
         ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
         ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
     };
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
+oKW = new kernel_wrapper();
+var RAM_SIZE =      0xc000;
+var appleIntervalHandle;
 
-var CONF_version="2.2.0";
-var CONF_builddate="20240329-170000"; 
 
+oCOM.URL.parse(document.location.toString());
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
-
 
 function kernel_wrapper()
 {
+  this.ROM  = [];
+  this.cfg  = [];
 
   // TEST KERNEL
   this.kProcess_v0 =  function(dim,mem,yref,INTCols,chrome_mode)
@@ -521,15 +529,7 @@ function text_Draw(col, row, d8) {
 
 
 
-oKW = new kernel_wrapper();
 
-var RAM_SIZE =      0xc000;
-var _o = {"EMU_Updates_s":10                 // Emulator intervals per second 
-        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
-        ,"CPU_ClocksTicks_s":1000000 }
-
-var appleIntervalHandle;
-oCOM.URL.parse(document.location.toString());
 
 function EMU_init()
 {
@@ -603,7 +603,7 @@ function EMU_init()
 
   
 
-  const GPU_CFG = oApple2Video.gen8_config();
+  oApple2Video.gen8_config();
 
   /////////////////////////////
 
@@ -664,7 +664,7 @@ const gpu = initGPU({
       m[x+(y*dim[0])] = 1;
     }
   
-    const doDraw = () => 
+    doDraw = () => 
     {
       kernel(dim,m);
       window.requestAnimationFrame(doDraw);
@@ -705,17 +705,6 @@ const gpu = initGPU({
       ram[adr] |= 1<<bit_adr;
     }
 
-    var it = 32
-    for(var i=16384;i>=8191;i-=it)
-    {
-      var s = new Array(it);
-      for(var j=it;j>=0;j--)
-      {
-        s[it-j] = (i+j).toString(16)+"-["+ram[i+j]+"] ";
-      }
-      //console.log(s.join(""));
-    }
-
     const doDraw = () => 
     {
       kernel(dim,ram,INTCols,chrome_mode);
@@ -742,9 +731,8 @@ const gpu = initGPU({
     }
     document.getElementById("topform").innerHTML += s.join("");
 
-    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
-    draw(Pattern,ram);
+    fill_pattern(Pattern,apple2plus);
 
     kernel = gpu.createKernel(
      oKW.kProcess_v4,
@@ -758,7 +746,7 @@ const gpu = initGPU({
 
     const doDraw = () => 
     {
-      kernel(ram,apple2CharRom,GPU_CFG);
+      kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,apple2plus.GPU_CFG);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
@@ -769,10 +757,10 @@ const gpu = initGPU({
 
   if(AppVersion==3)
   {
-    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
-    fill_ram(gfx_stream,ram);
-    fill_ram(txt_stream,ram);
-    //fill_ram(lores_stream,ram);
+    //var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+    fill_ram(gfx_stream,apple2plus);
+    fill_ram(txt_stream,apple2plus);
+    fill_ram(lores_stream,apple2plus);
     
     kernel = gpu.createKernel(
 
@@ -784,26 +772,15 @@ const gpu = initGPU({
       }
     ).setTactic('speed');
 
-    var it = 32
-    for(var i=16384;i>=8191;i-=it)
-    {
-      var s = new Array(it);
-      for(var j=it;j>=0;j--)
-      {
-        s[it-j] = (i+j).toString(16)+"-["+ram[i+j]+"] ";
-      }
-      //console.log(s.join(""));
-    }
-
     // TODO MAKE IT FLASH
-    GPU_CFG[ oApple2Video.idx8("FLASH") ] = 0;
+    oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ] = 0;
 
-    const doDraw = () => 
+    oApple2Video.doDraw = () => 
     {
-      kernel(ram,apple2CharRom,GPU_CFG);
+      kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
       //window.requestAnimationFrame(doDraw);
     };
-    window.requestAnimationFrame(doDraw);
+    window.requestAnimationFrame(oApple2Video.doDraw);
 
 
     appleIntervalHandle = window.setInterval(oApple2Video.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
@@ -822,11 +799,9 @@ const gpu = initGPU({
     var canvas = document.getElementById("testscreen");
     var ctx = canvas.getContext("2d");
 
-    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
-    draw(Pattern,ram);
-    fill_ram(txt_stream,ram);
-    //text(0x400,"0 APPLE ][                               10",ram);
+    fill_pattern(Pattern,apple2plus);
+    fill_ram(txt_stream,apple2plus);
 
     oKW.color = function(r,g,b,t)
     {
@@ -849,7 +824,7 @@ const gpu = initGPU({
       for(var x=0;x<oPATTERN.bmapx;x++)
       {
         oKW.thread = {"x":x<<1,"y":((192-y)<<1)-1}
-        oKW.kProcess_v5(ram,apple2CharRom,GPU_CFG);
+        oKW.kProcess_v5(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
       }
     }
 
@@ -913,7 +888,7 @@ function gen_table()
   var _D = {"bmapID":p};
 
 
-  draw(p,oPATTERN.ram);
+  fill_pattern(p,apple2plus);
 
   //oPATTERN.ram[8192] = 0b11111111
 
@@ -1030,7 +1005,7 @@ function Apple2Plus(context)
 
 var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
 
-function draw(color_pattern,ram)
+function fill_pattern(color_pattern,a2p)
 {  
   var s = [];
   var pat = patterns[color_pattern].pat;
@@ -1042,14 +1017,14 @@ function draw(color_pattern,ram)
     for(var xi=0;xi<280;xi++)
     {
         var adr = yref[yi]+Math.floor(xi/7);                   // find address 
-        //var wbyt = apple2plus.hw.read(adr);                  // read
-        wbyt = ram[adr];
+        var wbyt = a2p.hw.read(adr);                  // read
+        //wbyt = ram[adr];
 
         s = debug(s,xi,yi,pat,dimx,dimy);
         wbyt = paste_pattern(wbyt,xi,yi,pat,dimx,dimy);
 
-        //apple2plus.hw.write(adr,wbyt);                         // write
-        ram[adr] = wbyt;
+        a2p.hw.write(adr,wbyt);                         // write
+        //ram[adr] = wbyt;
     }
     s[s.length] = "<br>";
   }
@@ -1091,7 +1066,9 @@ var oApple2Video =
   ,"config_map":new Array()
   ,"config8_map":new Array()
   ,"config8_idx":new Array()
+  ,"GPU_CFG":new Uint8Array()
   ,"nib":true                           // true = open nibble
+  ,"cycle_counter":0
   ,"setlen":function(name,modifier)
   {
     if(modifier===undefined) var modifier = ["cfg[","]"]
@@ -1157,12 +1134,25 @@ var oApple2Video =
     var s = "const ";
     for(var i in this.config8_map) s+=i+"="+this.config8_map[i]+",";
     document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>";
-    return this.config8_data;
+    this.GPU_CFG = new Uint8Array(this.config8_data);
   }
   ,"cycle":function()
   {
     // blink cursor
-  } 
+    var args = {"cpu_chrono":performance.now()};
+
+    oApple2Video.cycle_counter++;
+    if(oApple2Video.cycle_counter==5)
+    {
+      oApple2Video.cycle_counter = 0;
+      oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ] = oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ]==0 ? 1 : 0;
+      window.requestAnimationFrame(oApple2Video.doDraw);
+    }
+  }
+  ,"reflash":function()
+  {
+  
+  }
 }
 
 async function copyTextToClipboard(textToCopy) {
@@ -1175,7 +1165,7 @@ async function copyTextToClipboard(textToCopy) {
   }
 }
 
-function fill_ram(byte_capture,ram)
+function fill_ram(byte_capture,a2p)
 {
   var line_arr = byte_capture.split("\n");           // PASTE BITMAP IN RAM 
     for(var i=0;i<line_arr.length;i++)
@@ -1186,7 +1176,7 @@ function fill_ram(byte_capture,ram)
         var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
         for(var j=0;j<hexarr.length;j++)
         {
-          ram[adr+j] = parseInt(hexarr[j],16);
+          a2p.hw.write(adr+j, parseInt(hexarr[j],16));
           //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
         }
       }
