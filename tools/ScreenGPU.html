@@ -523,14 +523,23 @@ function text_Draw(col, row, d8) {
 
 oKW = new kernel_wrapper();
 
-var RAM_SIZE =      0xc000
+var RAM_SIZE =      0xc000;
+var _o = {"EMU_Updates_s":10                 // Emulator intervals per second 
+        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
+        ,"CPU_ClocksTicks_s":1000000 }
 
+var appleIntervalHandle;
 oCOM.URL.parse(document.location.toString());
 
 function EMU_init()
 {
   if(document.getElementById('slider_title')!=null)
     document.getElementById('slider_title').outerHTML = _TITLE();
+
+
+    _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
+    _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Cycle
+
 
   var AppVersion = Number(oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]);
   var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"]);
@@ -795,6 +804,9 @@ const gpu = initGPU({
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(doDraw);
+
+
+    appleIntervalHandle = window.setInterval(oApple2Video.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
   }  
 
   //  VERSION 4
@@ -1146,7 +1158,11 @@ var oApple2Video =
     for(var i in this.config8_map) s+=i+"="+this.config8_map[i]+",";
     document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>";
     return this.config8_data;
-  }  
+  }
+  ,"cycle":function()
+  {
+    // blink cursor
+  } 
 }
 
 async function copyTextToClipboard(textToCopy) {
