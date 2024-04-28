@@ -425,7 +425,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
 
     if(HIRES_GFX_ON==129 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
     {
-      const adr = PAGE12 + (yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+      const adr = PAGE12 + (yp<<10 & 0x1C00 | yp<<4 & 0x380 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
 
       //const c00 = ((0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) ^1)             & (mem[adr-1]>>6 & 1)
       //const c00 = ((2- (0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) &1)^1)        & (mem[adr-1]>>6 & 1) 
@@ -453,7 +453,7 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     else if(LORES_GFX_ON==65 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
     {
       // LORES 
-      const adr = (PAGE12>>3) + x7 + (yp<<4&0x380) + (yp>>6)*40;
+      const adr = (PAGE12>>3) + (yp<<4 & 0x380 | yp>>1 & 0x60 | yp>>3 & 0x18) + x7;
       const d8 = mem[adr];               // read byte from memory
       const y4 = (yp>>2&1)<<2;
       const cptr = PALETTE + CHROME_MODE + ((d8>>y4&15)<<4);
@@ -463,11 +463,10 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     else if(GFX_OFF==2 || HIRES_GFX_ON==129 || LORES_GFX_ON==65)
     {
       // TEXT MODE
-      const adr = (PAGE12>>3) + x7 + (yp<<4&0x380) + (yp>>6)*40;
+      const adr = (PAGE12>>3) + (yp<<4 & 0x380 | yp>>1 & 0x60 | yp>>3 & 0x18) + x7;
       const d8 = mem[adr];                       // charcode from text memory
 
       const offs = ((d8 & 0x3F) ^ 0x20) << 3;    // character offset (not inversed or flashing)
-
       //const cidx = CHAR + (offs>>1) + (yp>>1&3); // character index = charcode + char offset + y offset
       //const cbyte = cfg[cidx]>>(yp<<3&8)&255     // character byte = 16-bit cfg >> nibble selector
       const cbyte = rom[ offs + (yp&7)  ];         // read byte from character ROM
@@ -480,6 +479,56 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     }
     else this.color(0,0,0,1);
   }
+
+
+
+ // KERNEL v6 - optimise for emulator integration
+ this.kProcess_v6 =  function(mem,rom,cfg)
+  { 
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
+ 
+    const xp  = (this.thread.x>>1);
+    const yp  = DIM_H-(this.thread.y>>1)-1;
+    const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+    const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
+    const adr_ofs = yp<<4 & 0x380 | yp>>3 & 0x18 | yp>>1 & 0x60;
+
+    const PAGE  = (GFX_FLG & 48) << 9;
+    const MIX   =  GFX_FLG & (~(yp+0x60>>8) & (GFX_FLG>>3) | (GFX_FLG>>2))
+    const HIRES =  GFX_FLG>>7 & MIX & 1;
+    const LORES =  GFX_FLG>>6 & MIX & 1;
+    var cp = PALETTE + CHROME_MODE;
+
+    if(HIRES==1)
+    {
+      const adr = PAGE + (yp<<10 & 0x1C00 | adr_ofs) + x7                 // locate hardware address
+      const d24 = (0x7F & mem[adr+1])<<8  | (0x7F & mem[adr])<<1 | (mem[adr-1]>>6 & 1);   // aggregate left - center - right byte
+      const b   = d24>>m7 & 7;                                            // 3 bits at (xp,yp)
+      const b1a = 0b00100100>>b&1, b1b = 0b11001000>>b&1;                 // decision logic
+      const pp = 1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&(b1a<<4)-b1a        // pre-pointer
+      cp += (pp+(pp<<1) | (b1b<<4)-b1b)<<4;                               // color pointer
+    }
+    else if(LORES==1)
+    {
+      const adr = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
+      const d8 = mem[adr];                                                // read byte from memory
+      const y4 = (yp>>2&1)<<2;                                            // hi/lo nibble filter
+      cp += ((d8>>y4&15)<<4);                                             // color pointer
+    }   
+    else  // TEXT
+    {
+      const adr = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
+      const d8 = mem[adr];                                                // read byte from memory
+      const offs = ((d8 & 0x3F) ^ 0x20) << 3;                             // character offset (not inversed or flashing)
+      const cbyte = rom[ offs + (yp&7)  ];                                // read byte from character ROM
+      const infl = d8>>6 & 3;                                             // inv/flash modifier
+      const rgb = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);  // color 1 or 0 with FLASH modifier
+      cp += (rgb<<8) - (rgb<<4);                                          // color pointer
+    }
+
+    this.color(cfg[cp]/256,cfg[cp+1]/256,cfg[cp+2]/256,1);
+  }
+
 
 }
 
@@ -767,20 +816,16 @@ const gpu = initGPU({
     
     kernel = gpu.createKernel(
 
-     oKW.kProcess_v5,
+     oKW.kProcess_v6,
       {
         useLegacyEncoder: true,
         output: [dim[0], dim[1]],
         graphical: true
       }
-    )//.setTactic('performance')
-     //.setUseLegacyEncoder(true)
+    )//.setTactic('speed')
 
      // OPEN ISSUE (ANDROID related)
      // https://github.com/gpujs/gpu.js/issues/521
-
-    // TODO MAKE IT FLASH
-    oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ] = 0;
 
     oApple2Video.doDraw = () => 
     {
@@ -831,7 +876,7 @@ const gpu = initGPU({
       for(var x=0;x<oPATTERN.bmapx;x++)
       {
         oKW.thread = {"x":x<<1,"y":((192-y)<<1)-1}
-        oKW.kProcess_v5(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
+        oKW.kProcess_v6(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
       }
     }
 
