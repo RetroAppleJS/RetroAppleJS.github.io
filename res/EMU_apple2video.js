@@ -188,8 +188,13 @@ function Apple2Video(ctx) {
     // Redraw a lores two pixel block.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function lores_Draw(col, row, d8) {
-        ctx.fillStyle = lores_PixelColor(d8);
-        ctx.fillRect(col * 14, row * 16, 14, 16);
+        var nib1 = d8 & 0x0F;
+        var nib2 = d8>>4;
+        ctx.fillStyle = lores_PixelColor(nib1);
+        ctx.fillRect(col * 14, row * 16, 14, 8);
+
+        ctx.fillStyle = lores_PixelColor(nib2);
+        ctx.fillRect(col * 14, 8 + row * 16, 14, 8);
     }
 
     // Draw a hires memory location, ends up redrawing pixels
