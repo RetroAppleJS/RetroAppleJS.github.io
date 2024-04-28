@@ -86,6 +86,11 @@ function Apple2Hw(vid,keys) {
         return d8;
     }
 
+    this.safe_flashdump = function()
+    {
+        return ram;
+    }
+
     this.write = function(addr, d8)
     {
         if (d8 < 0 || d8 > 0xff)
