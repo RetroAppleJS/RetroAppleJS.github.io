@@ -492,14 +492,9 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     const adr_ofs = yp<<4 & 0x380 | yp>>3 & 0x18 | yp>>1 & 0x60;
 
     const PAGE  = (GFX_FLG & 48) << 9;
-    //const MIX   =  (~(yp+0x60>>8) & (GFX_FLG>>3)) | (GFX_FLG>>2)
-    //const HIRES =  (GFX_FLG & GFX_FLG>>7) & 1 & MIX & 1;
-    //const LORES =  (GFX_FLG & GFX_FLG>>6) & 1 & MIX & 1;
-
     const MIX   =  ((1^(yp+0x60>>8) & (GFX_FLG>>3)) | (GFX_FLG>>2)) & 1
     const HIRES =  (GFX_FLG & GFX_FLG>>7 & MIX) & 1;
     const LORES =  (GFX_FLG & GFX_FLG>>6 & MIX) & 1;
-
 
     var cp = PALETTE + CHROME_MODE;
 
