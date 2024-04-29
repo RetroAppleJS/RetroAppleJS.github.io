@@ -67,7 +67,7 @@
 
 
 
-var CONF_version="2.3.5";
+var CONF_version="2.3.6";
 var CONF_builddate="20240329-170000"; 
 
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
@@ -496,9 +496,9 @@ document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
     //const HIRES =  (GFX_FLG & GFX_FLG>>7) & 1 & MIX & 1;
     //const LORES =  (GFX_FLG & GFX_FLG>>6) & 1 & MIX & 1;
 
-    const MIX   =  (~(yp+0x60>>8) & (GFX_FLG>>3)) | (GFX_FLG>>2)
-    const HIRES =  (GFX_FLG & GFX_FLG>>7) & MIX & 1;
-    const LORES =  (GFX_FLG & GFX_FLG>>6) & MIX & 1;
+    const MIX   =  ((1^(yp+0x60>>8) & (GFX_FLG>>3)) | (GFX_FLG>>2)) & 1
+    const HIRES =  (GFX_FLG & GFX_FLG>>7 & MIX) & 1;
+    const LORES =  (GFX_FLG & GFX_FLG>>6 & MIX) & 1;
 
 
     var cp = PALETTE + CHROME_MODE;
