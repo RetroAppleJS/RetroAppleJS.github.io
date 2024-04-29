@@ -815,11 +815,12 @@ const gpu = initGPU({
     kernel = gpu.createKernel(
      oKW.kProcess_v6,
       {
-        //useLegacyEncoder: true,
+        useLegacyEncoder: true,
         output: [dim[0], dim[1]],
         graphical: true
       }
-    )//.setPrecision('unsigned')
+    )//.setTactic('speed')
+    //.setPrecision('unsigned')
     //.setTactic('speed')
 
     // EXPORT KERNEL TO JSON
