@@ -54,7 +54,7 @@ var oEMU =
 }
 
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
-_o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Cycle
+_o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Interval
 oEMU.stats.EMU_DashboardRefresh_cy = Math.round(_o.EMU_Updates_s / _o.EMU_DashboardRefresh_s) // Dashboard refreshes per Cycle
 oEMU.component.CPU["dutycycle_time"] = 0;
 oEMU.component.CPU["dutycycle_idx"] = 0;
@@ -148,6 +148,7 @@ function EMU_init()
     // INITIALISE APPLE II+ EMULATOR
     var vidContext          = document.getElementById('applescreen')
     apple2plus          = new Apple2Plus(vidContext.getContext("2d")); // allow instantiating other systems
+    apple2plus.restart(); // restart the AppleII+
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,active:false},"AppleDisk");
@@ -252,6 +253,7 @@ function EMUI()
       window.clearInterval(appleIntervalHandle);
       appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
       oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
+      console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
     }
 
     this.muteBtn = function(arg)

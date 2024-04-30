@@ -592,6 +592,7 @@ function EMU_init()
   var AppVersion = Number(oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]);
   var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"]);
   var softswitch_mode = oCOM.URL.uri["ss0"] === undefined ? 0b10010101 :
+
    Number(oCOM.URL.uri["ss0"])
   +Number(oCOM.URL.uri["ss1"])
   +Number(oCOM.URL.uri["ss2"])

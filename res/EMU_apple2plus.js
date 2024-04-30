@@ -190,6 +190,10 @@ function Apple2Plus(context)
         return hw;
     }
 
+    this.vidObj = function() {
+        return video;
+    }
+
     this.loadDisk = function(bytes,drive) {
         var drv = Number(drive.slice(1))-1;
         hw.io.disk2.diskBytes[ drv ] = bytes;
@@ -203,9 +207,6 @@ function Apple2Plus(context)
     this.monitor = function(type) {
         return video.setMonitor(type);
     }
-
-    if(typeof(hw)!="undefined")
-        this.restart(); // restart the AppleII+
 
     this.mem_layout = {
         "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
