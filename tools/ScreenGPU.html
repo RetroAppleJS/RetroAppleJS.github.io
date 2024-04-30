@@ -38,9 +38,10 @@
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/gpu-browser.min.js"></script>
 
-<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
 
 <div class="slider_main">
 
@@ -806,7 +807,6 @@ const gpu = initGPU({
 
   if(AppVersion==3)
   {
-    //var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     fill_ram(gfx_stream,apple2plus);
     fill_ram(gfx_stream2,apple2plus,0x2000);
     fill_ram(txt_stream,apple2plus);
@@ -861,9 +861,6 @@ const gpu = initGPU({
     document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
     document.getElementById("prede").innerHTML = gen_table() + document.getElementById("prede").innerHTML;    // GENERATE TABLE
 
-    var xp = 0;
-    var yp = 0;
-
     var canvas = document.getElementById("testscreen");
     var ctx = canvas.getContext("2d");
 
@@ -886,6 +883,10 @@ const gpu = initGPU({
 
       ctx.fillRect(x,y,xw,yw);
     }
+
+    // measure size of arguments in Kbyte (49K) 
+    //alert((Math.round(apple2plus.hw.safe_flashdump().length/10.24)/100 +" "+ Math.round(apple2CharRom.length/10.24)/100 +" "+ Math.round(oApple2Video.GPU_CFG.length/10.24)/100))
+    //alert( (apple2plus.hw.safe_flashdump().length + apple2CharRom.length + oApple2Video.GPU_CFG.length)/1024 )
 
     for(var y=0;y<oPATTERN.bmapy;y++)
     {
