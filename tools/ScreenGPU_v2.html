@@ -179,28 +179,27 @@ function EMU_init()
     document.getElementById("topform").innerHTML += s_versions.join("");
 
     vidContext          = document.getElementById('applescreen');
-    apple2plus          = new Apple2Plus();
+    apple2plus          = new Apple2Plus(vidContext);   // vidContext.getContext("2d")
     const dim = [vidContext.width,vidContext.height];
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
     var fla = 1;
 
     // TODO MOVE THIS CODE TO apple2plus initialisation part
     // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-    apple2plus.vidObj().add8_val("CHROME_MODE",chrome_mode, ["cfg[","]<<2"]);
+    apple2plus.vidObj().add8_val("CHROME_MODE",apple2plus.vidObj().chrome_mode, ["cfg[","]<<2"]);
     apple2plus.vidObj().add8_val("DIM_H", vidContext.height>>1);
-    apple2plus.vidObj().add8_val("GFX_FLG",softswitch_mode);
+    apple2plus.vidObj().add8_val("GFX_FLG",apple2plus.vidObj().register_mode());
     apple2plus.vidObj().add8_val("FLASH",fla);
     apple2plus.vidObj().add8_ref("PALETTE",INTCols);
     apple2plus.vidObj().gen8_serialise();
 
     /////////////////////////////
 
-    const gpu = apple2plus.vidObj().initGPU({ canvas:  vidContext, mode: 'gpu'});
+    const gpu = apple2plus.vidObj().initGPU({ canvas:  vidContext, mode: 'gpu' });
     var kernel;
 
     /////////////////////////////
 
- 
     fill_ram(gfx_stream,apple2plus);
     fill_ram(gfx_stream2,apple2plus,0x2000);
     fill_ram(txt_stream,apple2plus);
@@ -286,8 +285,21 @@ function Apple2Plus(context)
 }
 
 
-var Apple2Video = function()
+var Apple2Video = function(ctx)
 {
+    if(ctx) this.ctx = ctx;
+    this.dim = [ctx.width,ctx.height];
+    
+    var gfx_mode;
+    var mix_mode;
+    var page2_mode;
+    var hires_mode;
+    var chrome_mode;
+
+    this.chrome_mode = 0;
+    this.softswitch_mode = 0;
+    this.fla = 0;
+
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
 
     this.config_meta = {}
@@ -295,6 +307,52 @@ var Apple2Video = function()
     this.config8_map = new Array();
     this.config8_idx = new Array();
     this.GPU_CFG = new Uint8Array();
+
+
+    this.setGfx = function(flag) {
+        if (gfx_mode != flag) {
+            gfx_mode = flag;
+            this.redraw();
+        }
+    }
+
+    this.setMix = function(flag) {
+        if (mix_mode != flag) {
+            mix_mode = flag;
+            this.redraw();
+        }
+    }
+
+    this.setPage2 = function(flag) {
+        if (page2_mode != flag) {
+            page2_mode = flag;
+            this.redraw();
+        }
+    }
+
+    this.setHires = function(flag) {
+        if (hires_mode != flag) {
+            hires_mode = flag;
+            this.redraw();
+        }
+    }
+
+    this.setMonitor = function(mode) {
+        chrome_mode = mode & 3;
+        this.redraw();
+        return {
+             "color": _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#000000"
+            ,"name": _CFG_CHROMA[chrome_mode].COL_name
+        };
+    }
+
+    this.register_mode = function()
+    {
+        this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
+        var ret = (gfx_mode?2:1) + (mix_mode?8:4) + (page2_mode?32:16) + (hires_mode?128:64);
+        //alert(oCOM.getBinMulti(ret,8))
+        return ret
+    }
 
     this.setlen = function(name,modifier)
     {
@@ -346,20 +404,20 @@ var Apple2Video = function()
 
     this.write = function(addr, d8)
     {
-        if(this.ctx === undefined) return;
+        //if(this.ctx === undefined) return;
 
     }
 
     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
     this.reflash = function()
     {
-        if(this.ctx === undefined) return;
+        //if(this.ctx === undefined) return;
     }
 
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
-        if(this.ctx === undefined) return;
+        //if(this.ctx === undefined) return;
         frame_redraw=false;
         this.register_mode();
         // RAM = apple2plus.hwObj().safe_flashdump();
