@@ -16,7 +16,7 @@ function Apple2Plus(context)
     { console.warn("running Apple2Plus without video or hardware context") }
     else
     {
-        var video = new Apple2Video(context);
+        var video = new Apple2Video(context.getContext("2d"));
         var hw   = new Apple2Hw(video);
         //var keys = oEMU.component.Keyboard;
         var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");

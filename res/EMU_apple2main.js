@@ -147,7 +147,7 @@ function EMU_init()
 
     // INITIALISE APPLE II+ EMULATOR
     var vidContext          = document.getElementById('applescreen')
-    apple2plus          = new Apple2Plus(vidContext.getContext("2d")); // allow instantiating other systems
+    apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
     apple2plus.restart(); // restart the AppleII+
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
