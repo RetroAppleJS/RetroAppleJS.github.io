@@ -22,7 +22,15 @@
   <style>
   html {height:100%;font-family:"Arial"}
   body {background-color:#808080;height:100%;margin:0px;padding:0px}
-  </style>
+
+  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
+
+  .tcell10 {width:10px;height:10px;background-color:white;padding:0;border:1px solid white}
+  .tcell10:hover {width:10px;height:10px;background-color:yellow;border:1px solid black }
+  .tcell5 {width:5px;height:10px;background-color:lightgray;padding:0;border:0px solid white}
+  .tcell5:hover { width:5px;height:10px;background-color:yellow;border:0px solid white}
+  
+    </style>
 </head>
 
 <script type="text/javascript" src="TOOLS_Header.js"></script>
@@ -35,7 +43,6 @@
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
 
-<body>
 <div class="slider_main">
 
   <div id="slider_title"></div>
@@ -54,8 +61,9 @@
     </div>
   </div>
   
-</body>
-</html>
+  
+  </body>
+  </html>
 <script>
 
 
@@ -65,7 +73,8 @@ var CONF_builddate="20240329-170000";
 
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
 
-// global data initializations
+
+  // global data initializations
 const _o = {
          "sys":{}     
         ,"EMU_Updates_s":20                 // Emulator intervals per second 
@@ -74,18 +83,407 @@ const _o = {
     };
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
+oKW = new kernel_wrapper();
 var RAM_SIZE =      0xc000;
-var appleIntervalHandle, apple2plus;
+var appleIntervalHandle;
+
 
 oCOM.URL.parse(document.location.toString());
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
-// Kernel wrapper
-oKW = new function()
+function kernel_wrapper()
 {
-   // KERNEL v6
-   this.kProcess_v6 =  function(mem,rom,cfg)
-   { 
+  this.ROM  = [];
+  this.cfg  = [];
+
+  // TEST KERNEL
+  this.kProcess_v0 =  function(dim,mem,yref,INTCols,chrome_mode)
+  {
+    const xp  = (this.thread.x>>1);
+    const yp  = (this.thread.y>>1)+1;
+    const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+    const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+    
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
+    const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;
+
+    const m7 = xp-(x7<<3)+x7                    // equivalent to xp%7
+    const b  = d24>>m7 & 7;                     //  3 bits at (xp,yp)
+    const bl = b & 4
+    const bm = b & 2
+    const br = b & 1
+
+    const b0 = mem[adr]>>7                    // high bit  0-1
+    const a0 = xp & 1;                        // 0=even/1=uneven column
+    const b7 = mem[adr] & 0x80;               // high bit  0-80
+
+    var o = 0;
+    if(bm!=0 && (bl!=0 || br!=0))
+                      o += 15;          // white
+    else if(bm!=0)
+    {
+      if(a0!=0)
+      {
+          if(b7!=0)   o += 9;           // orange
+          else        o += 6;           // blue
+      } else {
+          if(b7!=0)   o += 12;          // green
+          else        o += 3;           // purple
+      }
+    }
+    else if (bl != 0 && br != 0)
+    {
+      if (b7 != 0) {
+          if (a0 != 0) o += 6;           // blue
+          else         o += 9;           // orange
+      } else {
+          if (a0 != 0) o += 3;           // purple
+          else         o += 12;          // green
+      }
+    }
+    const cptr = (chrome_mode<<2) + (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4
+    var p = cptr>>4;
+    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1,{"b":oCOM.getBinMulti(b,3),"b7":b7,"a0":a0,"o":o,"cptr":p,"adr":adr} );
+  }
+
+
+
+  // KERNEL v1 - source code transcription
+  this.kProcess_v1 =  function(dim,mem,yref,INTCols,chrome_mode)
+  {
+    const xp  = (this.thread.x>>1);
+    const yp  = (this.thread.y>>1)+1;
+    const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
+    
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 40 ? 0 : 0x7F;   // adjacent byte on the right?
+    const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F  & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
+
+    const b = (d24>>((xp%7)+6)) & 7
+    const bl = b & 4
+    const bm = b & 2
+    const br = b & 1
+
+    const b0 = mem[adr]>>7                    // high bit  0-1
+    const a0 = xp & 1;                        // 0=even/1=uneven column
+    
+    const b7 = mem[adr] & 0x80;               // high bit  0-80
+    var cptr = chrome_mode<<2;
+
+    if(bm!=0 && (bl!=0 || br!=0))
+                      cptr += 15<<4;          // white
+
+    else if(bm!=0)
+    {
+      if(b7!=0)
+      {
+          if(a0!=0)   cptr += 9<<4;           // orange
+          else        cptr += 6<<4;            // blue
+      } else {
+          if(a0!=0)   cptr += 12<<4;          // green
+          else        cptr += 3<<4;           // purple
+      }
+    }
+    else if (bl != 0 && br != 0)
+    {
+      if (b7 != 0) {
+          if (a0 != 0) cptr += 6<<4;           // blue
+          else         cptr += 9<<4;           // orange
+      } else {
+          if (a0 != 0) cptr += 3<<4;           // purple
+          else         cptr += 12<<4;          // green
+      }
+    }
+    //else
+    //    cptr = cm;                               // black
+
+    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+  }
+
+/*
+for(var i=0;i<32;i++)
+{
+  var r = "";
+  var s = oCOM.getBinMulti(i,5);
+  if(s.substring(0,3)=="111" || s.substring(0,3)=="110" || s.substring(0,3)=="011")
+  {
+    r=4;
+  }
+  if(s.substring(0,3)=="100" || s.substring(0,3)=="001" || s.substring(0,3)=="000")
+  {
+    r=0;
+  }
+  if(s=="01011") r=4;
+  if(s=="01010") r=3;
+  if(s=="01001") r=1;
+  if(s=="01000") r=0;
+
+  if(s=="10111") r=1;
+  if(s=="10101") r=2;
+  if(s=="10110") r=0;
+  if(s=="10100") r=3;
+
+  var b=i>>2&7;
+  var a0=i>>1&1;
+  var b0=i&1;
+
+var e1 = (b^0b101) & (b>>1^0b10) & (b<<1&2) 
+var c1 = a0<<1 | a0^b0
+var c2 = a0<<1^2 | a0^b0^1
+
+var r1 = 0b00100100;        // conditions for black 
+var r2 = 0b11001000;
+
+var c12 = (a0^b&1)<<1 | (a0^b&1)^b0
+var c34 = ((r2>>b&1)<<4) - (r2>>b&1)           // 111 mask detecting white
+var cr1 = ((r1>>b&1)<<4) - (r1>>b&1)           // 111 mask detecting black
+var r = (3*((c12+1) & cr1)+c34)<<4
+//var r2 = 0b01100100
+
+document.write(i+"\t"+oCOM.getBinMulti(b,3)+" "+a0+" "+b0+" :"+(r>>4)+"<br>");
+
+//  document.write(r+"<br>");
+
+}
+*/
+
+  // KERNEL v2 - optimisation
+  this.kProcess_v2 =  function(dim,mem,yref,INTCols,chrome_mode)
+  {
+    const xp  = (this.thread.x>>1);
+    const yp  = (this.thread.y>>1)+1;
+    const adr = yref[(dim[1]>>1)-yp] + Math.floor(xp/7);
+
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
+    const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F  & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
+
+    var b = (d24>>(xp%7+6)) & 7;        //  3 bits at (xp,yp)
+    const b0 = mem[adr]>>7;             //  high bit  0-1
+    const a0 = xp&1;
+
+    var cptr = chrome_mode<<2;
+    const ccm = (b>>2 | b&3) & (b>>2 ^ b^1 | b>>1) & 3;  // color calc mode 11=white 00=black 01=sandwich pattern 10=dot    
+    if     (ccm==0b11) cptr +=  3*( 1 +  4                        )<<4;   // white (b==0b011 || b==0b111 || b==0b110)  - ccm 11          
+    else if(ccm==0b10) cptr +=  3*( 1 + (a0<<1)     + (a0^b0)     )<<4;   // orange-green-purple-blue (b==0b010)       - ccm 10
+    else if(ccm==0b01) cptr +=  3*( 1 + ((a0^1)<<1) + (b0^(a0^1)) )<<4    // blue-orange-purple-green (b==0b101)       - ccm 01
+                                                                     // black (b==0b100 || b==0b001 || b==0b000)       - ccm 00             
+    this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+  }
+
+
+
+// KERNEL v3 - parameter optimisation, express color calculation as formula
+  this.kProcess_v3 =  function(dim,mem,INTCols,chrome_mode)
+  { 
+    const xp  = (this.thread.x>>1);
+    const yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
+    //const adr = yref[yp] + Math.floor(xp/7);      // LOOKUP BASED
+
+    // FORMULA v1
+    //var A = yp>>6;
+    //var D = yp - (A<<6);
+    //var B = D>>3
+    //var C = D-(B<<3)
+    //const adr = 8192 + (C<<10) + (B<<7) + (A<<3) + (A<<5) + Math.floor(xp/7);
+
+    // FORMULA v2
+    //const adr = 8192 + (((yp - (yp&192))-((yp - (yp&192)>>3)<<3))<<10) + ((yp -(yp&192)>>3)<<7) + (yp>>6<<3) + (yp>>6<<5) + Math.floor(xp/7);;
+
+    // FORMULA v3
+    var x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+    var m7 = xp-(x7<<3)+x7;                   // equivalent to xp%7
+    var adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7;
+
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
+    const d24 = ((c40 & mem[adr+1])<<14) | ((0x7F & mem[adr])<<7) | c00 & mem[adr-1];       // aggregate left - center - right byte
+
+    var r1 = 0b00100100;    // trigger blacks  (100 & 001 & 000)
+    var r2 = 0b11001000;    // trigger whites  (111 & 110 & 011)
+
+    var b = (d24>>(m7+6)) & 7;        //  3 bits at (xp,yp)
+    var b0 = mem[adr]>>7;             //  high bit  0-1
+    var a0 = xp & 1;                  // 0=even/1=uneven column
+
+    var c12 = (a0^b&1)<<1 | (a0^b&1)^b0;
+    var c34 = ((r2>>b&1)<<4) - (r2>>b&1);           // 111 mask detecting white
+    var cr1 = ((r1>>b&1)<<4) - (r1>>b&1);           // 111 mask detecting black
+    var cptr = (chrome_mode<<2) + (3*((c12+1) & cr1)+c34)<<4;
+    if(b==0b100)
+    {
+        xp = xp-1;
+
+        x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+        m7 = xp-(x7<<3)+x7;                   // equivalent to xp%7
+        adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7;
+
+        b = (d24>>(m7+5)) & 7;        //  3 bits at (xp,yp)
+        b0 = mem[adr]>>7;             //  high bit  0-1
+        a0 = xp & 1;              // 0=even/1=uneven column
+
+        c12 = (a0^b&1)<<1 | (a0^b&1)^b0;
+        c34 = ((r2>>b&1)<<4) - (r2>>b&1);           // 111 mask detecting white
+        cr1 = ((r1>>b&1)<<4) - (r1>>b&1);           // 111 mask detecting black
+        cptr = (chrome_mode<<2) + (3*((c12+1) & cr1)+c34)<<4;
+        this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+    }
+    else
+      this.color(INTCols[cptr]/256,INTCols[cptr+1]/256,INTCols[cptr+2]/256,1);
+
+  }
+
+  // KERNEL v4 - parameter optimisation
+  this.kProcess_v4 =  function(mem,rom,cfg)
+  { 
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
+
+    const xp  = (this.thread.x>>1);
+    const yp  = DIM_H-(this.thread.y>>1)-1;
+    const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+    const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+
+    const col = (adr & 0x7F) % 40;              // byte offset 
+    const c00 = col == 0  ? 0 : 1;              // adjacent byte on the left?
+    const c40 = col == 39 ? 0 : 1;              // adjacent byte on the right?
+    const d24 = (c40 & mem[adr+1])<<8 | (0x7F & mem[adr])<<1 | c00 & mem[adr-1]>>6 & 1;       // aggregate left - center - right byte
+    const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
+    const b   = d24>>m7 & 7;                    //  3 bits at (xp,yp)
+    const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&((0b00100100>>b&1)<<4)-(0b00100100>>b&1))|((0b11001000>>b&1)<<4)-(0b11001000>>b&1))<<4 );
+
+    this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
+  }
+
+  var mx = new Array();
+  var LOC = new Array(10);
+  var A = 0;
+  var B = 6;
+  for(var yp=0;yp<280;yp++)
+  {
+    for(xp=0;xp<192;xp++)
+    {
+      const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+      const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
+
+      var V = yp >> 3;
+      var H = x7;
+
+      LOC[0] =( V - Math.floor(V/8) * 8 )*128 + 40 * Math.floor(V/8) + 1024 + H;
+      LOC[1] = 0x400 +     (V+1<<7) + H - (123*(V&0b11111000)) - 0x80;
+      LOC[2] = 0x400 + H + (V-(V>>3<<3)<<7) + 40 * (V>>3); 
+      LOC[3] = 0x400 + H + ((V&7)<<7) + (V>>3)*40;
+      LOC[4] = 0x400 + H + (V<<7&0x380) + 5*(V&~7);
+      LOC[5] = 0x400 + H + ((V&7)<<7) + 5 * (V&0b11111000);
+      LOC[6] = 0x400 + x7 + (yp<<4&0x380) + (yp>>6)*40;
+
+      if(LOC[A]!=LOC[B]) document.write("LOC"+A+"="+LOC[A]+" LOC"+B+"="+LOC[B]+"<br>");
+    }
+  }
+
+  // %40
+  for(var adr=8192;adr<16384;adr++)
+  {
+    var i = adr & 0x7F
+    //document.write(i+" "+( 0b1000010000100001>>(i>>3) & (1>>(i&7)) )+"<br>");
+
+    //const col = (adr & 0x7F) % 40;
+
+    var col = (adr & 0x7F) % 40 == 0 ? 0 : 255; 
+    //if(col==0) document.write(">> "+i+" "+255+"<br>")
+
+    //var c0 = 0b1000010000100001>>((adr&0x7F)>>3) & (1>>((adr & 0x7F)&7))
+    var c0 = (256-(0b1000010000100001>>(adr>>3&15) & (1>>(adr&7)))&255) ^255
+    //if(c0==255) document.write("<<"+i+" "+c0+"<br>")
+
+    if(col!=c0) document.write(i+" "+c0+"?"+col+"<br>")
+  }
+
+  // KERNEL v5 - add display modes (text, lores, mixed)
+  this.kProcess_v5 =  function(mem,rom,cfg)
+  { 
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
+ 
+    const xp  = (this.thread.x>>1);
+    const yp  = DIM_H-(this.thread.y>>1)-1;
+    const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+    const m7  = xp-(x7<<3)+x7;                  // equivalent to xp%7
+
+    //HIRES[128] << LORES[64] << PAGE2[32] << PAGE1[16] << MIX_ON[8] << MIX_OFF[4] << GFX_OFF[2] << GFX_ON[1]
+
+    const HIRES_GFX_ON  = GFX_FLG & 129;
+    const LORES_GFX_ON  = GFX_FLG & 65;
+    const MIX_ON        = GFX_FLG & 8;
+    const MIX_OFF       = GFX_FLG & 4;
+    const PAGE12        = (GFX_FLG & 48) << 9;
+    const GFX_OFF       = GFX_FLG & 2;
+
+    //if(xp==1 && yp==1) alert(PAGE12>>3)
+
+    if(HIRES_GFX_ON==129 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
+    {
+      const adr = PAGE12 + (yp<<10 & 0x1C00 | yp<<4 & 0x380 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+
+      //const c00 = ((0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) ^1)             & (mem[adr-1]>>6 & 1)
+      //const c00 = ((2- (0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) &1)^1)        & (mem[adr-1]>>6 & 1) 
+      //const c40 = ((256- (0b10111101111011110>>((adr+1)>>3&15) & (0b111111110>>((adr+1)&7))) &255) & (mem[adr+1]))<<8
+
+      //const col = (adr & 0x7F) % 40;                              // byte offset 
+      //const c00 = col == 0  ? 0 : Math.floor(mem[adr-1]>>6 & 1);  // adjacent byte on the left?
+      //const c40 = col == 39 ? 0 : Math.floor(mem[adr+1]<<8);      // adjacent byte on the right?
+
+      //const c0 =   (0b1000010000100001>>((adr-1)>>3&15) & (1>>((adr-1)&7))) &1;
+      //const c1 =   col ==0 ? 0 : 1;
+      //if(c00 != c01) console.log(adr+" "+c00+"?"+c01);
+
+      //const c00 = (0b111101111011110>>((adr-1)>>3&15) | (0b11111110>>((adr-1)&7))) & (mem[adr-1]>>6 & 1);
+      //const c40 = (((256- (0b1000010000100001>>((adr+1)>>3&15) & (1>>((adr+1)&7))) &255)^255) & mem[adr+1])<<8
+      //const d24 = c40 | (0x7F & mem[adr])<<1 | c00;               // aggregate left - center - right byte
+
+      const d24 = (0x7F & mem[adr+1])<<8  | (0x7F & mem[adr])<<1 | (mem[adr-1]>>6 & 1);               // aggregate left - center - right byte
+      const b   = d24>>m7 & 7;                                    //  3 bits at (xp,yp)
+      const b1a = 0b00100100>>b&1, b1b = 0b11001000>>b&1;         // decision logic
+      const cptr = PALETTE + CHROME_MODE + ( (3*(1+((xp^b)<<1&2|(xp^b)&1^mem[adr]>>7)&(b1a<<4)-b1a)|(b1b<<4)-b1b)<<4 );
+
+      this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
+    }
+    else if(LORES_GFX_ON==65 &&  (MIX_ON==8 && yp<0xA0 || MIX_OFF==4))
+    {
+      // LORES 
+      const adr = (PAGE12>>3) + (yp<<4 & 0x380 | yp>>1 & 0x60 | yp>>3 & 0x18) + x7;
+      const d8 = mem[adr];               // read byte from memory
+      const y4 = (yp>>2&1)<<2;
+      const cptr = PALETTE + CHROME_MODE + ((d8>>y4&15)<<4);
+
+      this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
+    }
+    else if(GFX_OFF==2 || HIRES_GFX_ON==129 || LORES_GFX_ON==65)
+    {
+      // TEXT MODE
+      const adr = (PAGE12>>3) + (yp<<4 & 0x380 | yp>>1 & 0x60 | yp>>3 & 0x18) + x7;
+      const d8 = mem[adr];                       // charcode from text memory
+
+      const offs = ((d8 & 0x3F) ^ 0x20) << 3;    // character offset (not inversed or flashing)
+      //const cidx = CHAR + (offs>>1) + (yp>>1&3); // character index = charcode + char offset + y offset
+      //const cbyte = cfg[cidx]>>(yp<<3&8)&255     // character byte = 16-bit cfg >> nibble selector
+      const cbyte = rom[ offs + (yp&7)  ];         // read byte from character ROM
+      const infl = d8>>6 & 3;                      // inv/flash modifier
+      
+      const rgb = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);         // color 1 or 0
+      const cptr = PALETTE + CHROME_MODE + (rgb<<8) - (rgb<<4)
+
+      this.color(cfg[cptr]/256,cfg[cptr+1]/256,cfg[cptr+2]/256,1);
+    }
+    else this.color(0,0,0,1);
+  }
+
+ // KERNEL v6 - optimise for emulator integration
+ this.kProcess_v6 =  function(mem,rom,cfg)
+  { 
     const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
  
     const xp  = (this.thread.x>>1);
@@ -130,73 +528,289 @@ oKW = new function()
     this.color(cfg[cp]/256,cfg[cp+1]/256,cfg[cp+2]/256);
   }
 
-}()
+
+}
+
+//var cbyte = 0x31;
+//var infl = cbyte>>6 & 3;     // inv/flash modifier
+//alert("fla "+(0b010>>infl&1) + " / inv "+(0b001>>infl&1))
+
+// Draw a text character from character ROM.
+// col is [0..39], row is [0..23], d8 is video memory contents
+function text_Draw(col, row, d8) {
+
+  // Black out entire character
+  ctx.fillStyle = text_PixelColor(0);
+  ctx.fillRect(col * 14, row * 16, 14, 16);
+
+  // Color for character pixels.
+  ctx.fillStyle = text_PixelColor(1);
+
+  var offs = 8 * ((d8 & 0x3f) ^ 0x20);
+  for (var y = 0; y < 8; y++) 
+  {
+      var bits = apple2CharRom[offs + y];
+      
+      // Inverse or flashing?
+      if ((d8 & 0xc0) == 0x00 ||
+          ((d8 & 0xc0) == 0x40 && flash_on))
+          bits ^= 0xff;
+
+      for (var x = 0; x < 7; x++) {
+          if ((bits & 0x01) != 0)
+              ctx.fillRect(col * 14 + x * 2, row * 16 + y * 2, 2, 2);
+          bits >>= 1;
+      }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function EMU_init()
 {
-    if(document.getElementById('slider_title')!=null)
-        document.getElementById('slider_title').outerHTML = _TITLE();
+  if(document.getElementById('slider_title')!=null)
+    document.getElementById('slider_title').outerHTML = _TITLE();
+
 
     _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
     _o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Cycle
 
-    var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"]);
-    var softswitch_mode = oCOM.URL.uri["ss0"] === undefined ? 0b10010101 :
-    Number(oCOM.URL.uri["ss0"])
-    +Number(oCOM.URL.uri["ss1"])
-    +Number(oCOM.URL.uri["ss2"])
-    +Number(oCOM.URL.uri["ss3"]);
 
-    var s_versions = [];
+  var AppVersion = Number(oCOM.URL.uri["VSelect"] === undefined ? Object.keys(ActiveVesions)[0] : oCOM.URL.uri["VSelect"]);
+  var chrome_mode = Number(oCOM.URL.uri["chrome_mode"] === undefined ? Object.keys(_CFG_CHROMA)[0] : oCOM.URL.uri["chrome_mode"]);
+  var softswitch_mode = oCOM.URL.uri["ss0"] === undefined ? 0b10010101 :
 
-    s_versions[s_versions.length] = "<select name=chrome_mode onchange='Versions.submit()'>"
-    for(var i in _CFG_CHROMA)
-        s_versions[s_versions.length] = "<option value="+i+" "+(chrome_mode==i?"selected":"")+">"+_CFG_CHROMA[i].COL_name+"</option>"
+   Number(oCOM.URL.uri["ss0"])
+  +Number(oCOM.URL.uri["ss1"])
+  +Number(oCOM.URL.uri["ss2"])
+  +Number(oCOM.URL.uri["ss3"])
+  ;
+
+
+  var s_versions = ["<select name=VSelect onchange='Versions.submit()'>"];
+  for(var i in ActiveVesions)
+    s_versions[s_versions.length] = "<option value="+i+" "+(AppVersion==i?"selected":"")+">"+ActiveVesions[i]+"</option>"
+  s_versions[s_versions.length] = "</select>"
+
+  s_versions[s_versions.length] = "<select name=chrome_mode onchange='Versions.submit()'>"
+  for(var i in _CFG_CHROMA)
+    s_versions[s_versions.length] = "<option value="+i+" "+(chrome_mode==i?"selected":"")+">"+_CFG_CHROMA[i].COL_name+"</option>"
+  s_versions[s_versions.length] = "</select>"
+
+  var cnt = 0;
+  for(var i in SOFTSWITCHES)
+  {
+    if(cnt++ &1==1) continue;
+    i = Number(i);
+    var v = [1<<(cnt-1),1<<cnt]
+    s_versions[s_versions.length] = "<select name=ss"+(cnt>>1)+" onchange='Versions.submit()'>"
+      s_versions[s_versions.length] = "<option value="+v[0]+" "+((softswitch_mode&v[0])!=0?"selected":"")+">"+SOFTSWITCHES[i]+"</option>"
+      s_versions[s_versions.length] = "<option value="+v[1]+" "+((softswitch_mode&v[1])!=0?"selected":"")+">"+SOFTSWITCHES[i+1]+"</option>"
     s_versions[s_versions.length] = "</select>"
+  }
 
-    var cnt = 0;
-    for(var i in SOFTSWITCHES)
+
+  //alert(bt)
+
+
+  document.getElementById("topform").innerHTML += s_versions.join("");
+
+  vidContext          = document.getElementById('applescreen');
+  apple2plus          = new Apple2Plus();
+  const dim = [vidContext.width,vidContext.height];
+  var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
+
+  var fla = 1;
+
+  //alert(vidContext.height>>1)
+  // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
+  oApple2Video.add8_val("CHROME_MODE",chrome_mode, ["cfg[","]<<2"]);
+  oApple2Video.add8_val("DIM_H", vidContext.height>>1);
+  oApple2Video.add8_val("GFX_FLG",softswitch_mode);
+  oApple2Video.add8_val("FLASH",fla);
+  oApple2Video.add8_ref("PALETTE",INTCols);
+
+  //oApple2Video.add16_val("DIM_W", vidContext.width)
+  //oApple2Video.add16_val("LORES1_ADR",0x0400);
+  //oApple2Video.add16_val("LORES2_ADR",0x0800);
+  //oApple2Video.add16_val("HIRES1_ADR",0x2000);
+  //oApple2Video.add16_val("HIRES2_ADR",0x4000);
+  //oApple2Video.add8_ref("CHAR",apple2CharRom);
+
+  
+
+  oApple2Video.gen8_config();
+
+  /////////////////////////////
+
+  /*
+  const gpu = new GPU.GPU({
+    canvas:  vidContext ,
+    mode: 'gpu'
+  });
+  */
+
+  function initGPU(arg) 
+  {
+    try {
+      return new window.GPU.GPU(arg);
+    } catch (e) {
+      return new GPU(arg);
+    }
+  }
+
+
+const gpu = initGPU({
+    canvas:  vidContext ,
+    mode: 'gpu'
+  });
+  
+  var kernel;
+
+  /////////////////////////////
+
+  //  VERSION 0
+
+  if(AppVersion==0)
+  {
+    kernel = gpu.createKernel(
+      function(dim,m)
+      {        
+        const xp = (this.thread.x>>1);
+        const yp = (this.thread.y>>1)+1;
+        const p = m[xp+((dim[1]>>1)-yp)*dim[0]]==1 ? 255:0;
+        this.color(p,p,p,1);
+      },
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    )//.setTactic('speed');
+
+    var m = new Uint8Array(dim[0]*dim[1]).fill(0);
+    for(var i=0;i<192;i++)
     {
-        if(cnt++ &1==1) continue;
-        i = Number(i);
-        var v = [1<<(cnt-1),1<<cnt]
-        s_versions[s_versions.length] = "<select name=ss"+(cnt>>1)+" onchange='Versions.submit()'>"
-        s_versions[s_versions.length] = "<option value="+v[0]+" "+((softswitch_mode&v[0])!=0?"selected":"")+">"+SOFTSWITCHES[i]+"</option>"
-        s_versions[s_versions.length] = "<option value="+v[1]+" "+((softswitch_mode&v[1])!=0?"selected":"")+">"+SOFTSWITCHES[i+1]+"</option>"
-        s_versions[s_versions.length] = "</select>"
+      var x = i<<1;
+      var y = i;
+      m[x+(y*dim[0])] = 1;
     }
 
-    document.getElementById("topform").innerHTML += s_versions.join("");
+    for(var i=0;i<192;i++)
+    {
+      var x = i;
+      var y = i;
+      m[x+(y*dim[0])] = 1;
+    }
 
-    var vidContext      = document.getElementById('applescreen');
-    apple2plus          = new Apple2Plus(vidContext);
-    apple2plus.restart(); // restart the AppleII+
- 
-    const dim = [vidContext.width,vidContext.height];
+    doDraw = () => 
+    {
+      kernel(dim,m);
+      window.requestAnimationFrame(doDraw);
+    };
+    window.requestAnimationFrame(doDraw);
+  }
 
-    /////////////////////////////
 
-    //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-    apple2plus.vidObj().setMonitor(chrome_mode);
-    apple2plus.vidObj().setGfx((softswitch_mode&1)==1);
-    apple2plus.vidObj().setMix((softswitch_mode&8)==8);
-    apple2plus.vidObj().setPage2((softswitch_mode&32)==32);
-    apple2plus.vidObj().setHires((softswitch_mode&128)==128);
 
-    const gpu = apple2plus.vidObj().initGPU(
-       { canvas:  vidContext, mode: 'gpu'}
-      ,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
-       ,"DIM_H":[dim[1]>>1]
-       ,"GFX_FLG":[softswitch_mode]
-       ,"FLASH":[false]
-       ,"PALETTE":[INTCols]}
-    );
-    var kernel;
+  //  VERSION 1
 
-    console.log(  apple2plus.vidObj().ser8_map() )
+  if(AppVersion==1)
+  {
+    kernel = gpu.createKernel(
+     oKW.kProcess_v3,
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    )//.setTactic('speed');
 
-    /////////////////////////////
+    for(var i=0;i<192;i++)
+    {
+      var x = i;
+      var y = i>>1;
+      var adr = yref[y] + Math.floor(x/7);   // row base address + column offset 
+      var bit_adr = x%7;
+      ram[adr] |= 1<<bit_adr;
+    }
 
+    for(var i=0;i<192;i++)
+    {
+      var x = i;
+      var y = i;
+      var adr = yref[y] + Math.floor(x/7);   // row base address + column offset 
+      var bit_adr = x%7;
+      ram[adr] |= 1<<bit_adr;
+    }
+
+    const doDraw = () => 
+    {
+      kernel(dim,ram,INTCols,chrome_mode);
+      //window.requestAnimationFrame(doDraw);
+    };
+    window.requestAnimationFrame(doDraw);
+  }
+
+  // VERSION 2
+
+  if(AppVersion==2)
+  {
+
+    // DISPLAY PATTERNS MENU
+    var s=[];
+    for(var i in patterns)
+    {
+        var c = oCOM.HEX2RGB(patterns[i].col);
+        var l = Math.round((c[0]+c[1]+c[2])/3);
+        var fnt = l<200?"color:white;":"";
+        var j = ("00"+i).slice(-3);
+
+        s[s.length] = "<button name=pattern onclick=\"Versions.submit()\" value='"+i+"' "
+            +"style=font-family:'Courier';border:none;margin:1px;padding:1px;font-size:10px;float:left;background-color:"+patterns[i].col+";"+fnt+">"
+            +j+"</button>"
+    }
+    document.getElementById("topform").innerHTML += s.join("");
+
+    var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+    fill_pattern(Pattern,apple2plus);
+
+    kernel = gpu.createKernel(
+     oKW.kProcess_v4,
+      {
+        useLegacyEncoder: true,
+        output: [dim[0], dim[1]],
+        graphical: true
+      }
+    )//.setTactic('speed');
+
+
+    oApple2Video.doDraw = () => 
+    {
+      kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
+      //window.requestAnimationFrame(doDraw);
+    };
+    window.requestAnimationFrame(oApple2Video.doDraw);
+  }  
+
+
+  //  VERSION 3
+
+  if(AppVersion==3)
+  {
     fill_ram(gfx_stream,apple2plus);
     fill_ram(gfx_stream2,apple2plus,0x2000);
     fill_ram(txt_stream,apple2plus);
@@ -206,10 +820,13 @@ function EMU_init()
     kernel = gpu.createKernel(
      oKW.kProcess_v6,
       {
+        //useLegacyEncoder: true,
         output: [dim[0], dim[1]],
         graphical: true
       }
-    )
+    )//.setTactic('speed')
+    //.setPrecision('unsigned')
+    //.setTactic('speed')
 
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
@@ -230,208 +847,396 @@ function EMU_init()
      // OPEN ISSUE (ANDROID related)
      // https://github.com/gpujs/gpu.js/issues/521
 
-     apple2plus.vidObj().doDraw = () => 
+    oApple2Video.doDraw = () => 
     {
-          kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8);
+      kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
+      //window.requestAnimationFrame(doDraw);
     };
-    window.requestAnimationFrame(apple2plus.vidObj().doDraw);
+    window.requestAnimationFrame(oApple2Video.doDraw);
 
 
-    appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-}  
+    appleIntervalHandle = window.setInterval(oApple2Video.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+  }  
 
-var tel = 0;
+  //  VERSION 4
+
+  if(AppVersion==4)
+  {
+    document.getElementById("prede").innerHTML += "<canvas class=appvid id=testscreen width="+zf[0]+" height="+zf[1]+" style='background-color:black'></canvas>"
+    document.getElementById("prede").innerHTML = gen_table() + document.getElementById("prede").innerHTML;    // GENERATE TABLE
+
+    var canvas = document.getElementById("testscreen");
+    var ctx = canvas.getContext("2d");
+
+    var Pattern = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+    fill_pattern(Pattern,apple2plus);
+    fill_ram(txt_stream,apple2plus);
+
+    oKW.color = function(r,g,b,t)
+    {
+      var xp  = (this.thread.x>>1);
+      var yp  = (dim[1]>>1)-(this.thread.y>>1)-1;
+
+      ctx.fillStyle = "#"+oCOM.RGB2HEX([r*255,g*255,b*255]).join("");
+      if(r+g+b==0) ctx.fillStyle = "#505050";
+
+      var xw = 4*zf[0]/(5*oPATTERN.bmapx);
+      var yw = 4*zf[1]/(oPATTERN.bmapy*5);
+      var x = 4.98*zf[0]*xp/(5*oPATTERN.bmapx);
+      var y = 1+zf[1]*yp/oPATTERN.bmapy;
+
+      ctx.fillRect(x,y,xw,yw);
+    }
+
+    // measure size of arguments in Kbyte (49K) 
+    //alert((Math.round(apple2plus.hw.safe_flashdump().length/10.24)/100 +" "+ Math.round(apple2CharRom.length/10.24)/100 +" "+ Math.round(oApple2Video.GPU_CFG.length/10.24)/100))
+    //alert( (apple2plus.hw.safe_flashdump().length + apple2CharRom.length + oApple2Video.GPU_CFG.length)/1024 )
+
+    for(var y=0;y<oPATTERN.bmapy;y++)
+    {
+      for(var x=0;x<oPATTERN.bmapx;x++)
+      {
+        oKW.thread = {"x":x<<1,"y":((192-y)<<1)-1}
+        oKW.kProcess_v6(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
+      }
+    }
+
+  }
+}
+
+var oPATTERN = 
+{
+   "ram":new Uint8Array(RAM_SIZE).fill(0)      // DECLARE RAM SPACE
+  ,"bmapx":3*7  // grid width
+  ,"bmapy":14   // grid height
+  ,"zfx":15      // grid zoom factor
+  ,"zfy":15      // grid zoom factor
+  ,"calculate":function(p,x,y)     // p = pattern number
+  {
+    const xp  = x
+    const yp  = y
+    const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;     // equivalent to Math.floor(x/7)
+    const adr = (0x2000 | yp<<10 & 0x1C00 | yp<<4 & 0x300 | yp<<4 & 0x80 | yp>>3 & 0x18 | yp>>1 & 0x60) + x7
+    const col = (adr & 0x7F) % 40;      // byte offset 
+    const c00 = col == 0  ? 0 : 0x7F;   // adjacent byte on the left?
+    const c40 = col == 39 ? 0 : 0x7F;   // adjacent byte on the right?
+
+    const d24 = ((c40 & this.ram[adr+1])<<14) | ((0x7F  & this.ram[adr])<<7) | c00 & this.ram[adr-1];       // aggregate left - center - right byte
+    var b = d24>>((xp%7)+6) & 7;         //  3 bits at (xp,yp)
+    const b7 = this.ram[adr] & 128;      //  high bit  0-1
+
+    return [(b&2)!=0?1:0,b7,{
+       "c00":c00
+      ,"c40":c40
+      ,"col":col
+      ,"b":oCOM.getBinMulti(b,3).split("").reverse().join("")
+      ,"byte":"$"+this.ram[adr].toString(16).toUpperCase()
+    }];
+  }
+}
+
+var zf = [oPATTERN.zfx*oPATTERN.bmapx,oPATTERN.zfy*oPATTERN.bmapy];
+
+
+function Cpix(el,x,y,z)
+{
+  var bit = el.parentElement.outerHTML.indexOf("black")<0?0:1;
+  var b7  = el.parentElement.outerHTML.indexOf("tcell5")<0?0:1
+
+  var pos = el.parentElement.outerHTML.indexOf("data-debug")+("data-debug").length+2;
+  var debug = pos>0 ? el.parentElement.outerHTML.slice(pos).split("\"")[0] : "";
+  debug = oCOM.base64ToArrayBuffer(debug);
+  var dec = new TextDecoder("utf-8");
+  debug = dec.decode(debug);
+  //debug = JSON.parse(debug);
+
+  alert("x:"+x+" y:"+y+" bit:"+bit+" b7:"+b7+"\ndebug:"+debug)
+}
+
+function gen_table()
+{
+
+  var p = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+
+  var _D = {"bmapID":p};
+
+
+  fill_pattern(p,apple2plus);
+
+  //oPATTERN.ram[8192] = 0b11111111
+
+  //alert(oCOM.getBinMulti(oPATTERN.ram[8192],8))
+  // 00010001
+
+  var im = "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
+  var dot = ["<img src=\""+im+"\" style=\"width:9px;height:9px\" onclick=Cpix(this)>"
+            ,"<img src=\""+im+"\" style=\"width:5px;height:9px\" onclick=Cpix(this)>"]
+
+  var s = new Array(oPATTERN.bmapy*(oPATTERN.bmapx+2)+10)
+  s[s.length] = "";
+
+  var pattern_sel = oCOM.URL.uri["pattern"]?oCOM.URL.uri["pattern"]:0;
+  var s_pat=new Array(Reflect.ownKeys(patterns).length);
+  s_pat[s_pat.length] = "<select name=pattern onchange=\"Versions.submit()\">"
+  for(var i in patterns)
+    s_pat[s_pat.length] = "<option value="+i+" "+(pattern_sel==i?"selected":"")+">"+i+" "+patterns[i].col+"</option>"
+  s_pat[s_pat.length] = "</select>"
+
+  document.getElementById("topform").innerHTML += s_pat.join("")+"</div>";
+
+  var csh = patterns[pattern_sel].col;
+  var c   = oCOM.HEX2RGB(csh) 
+  var tc  = (c[0] + c[1] + c[2])>400 ? "#000000" : "#FFFFFF";
+
+  s[s.length] = "<div style='width:"+(oPATTERN.bmapx*15)+"px;background-color:"+csh+";color:"+tc+";vertical-align:top; margin:4px 0px 0px 0px; overflow-wrap:anywhere;'><big>"+p+"</big> "
+       //+"<small>"+csh+" ("+csp.join("% ")+"%) sat:"+oPALETTE.colorSaturation(c)+"</small>"
+  
+  s[s.length] = "<table style='margin:0;padding:0;border:1px solid "+(p==_D.bmapID?"red":"black")+";'>";
+  for(var y=0;y<oPATTERN.bmapy;y++)
+  {
+    s[s.length] ="<tr>";
+    for(var x=0;x<oPATTERN.bmapx;x++) s[s.length] = gen_cell(p,x,y,p==_D.bmapID?dot:["",""]);
+    s[s.length] ="</tr>";
+  }
+  s[s.length] ="</table>";
+  return s.join("");
+}
+
+function gen_cell(patternID,x,y,img)
+{
+  var c = oPATTERN.calculate(patternID,x,y);
+  var bi = isNaN(patternID); 
+
+  var enc = new TextEncoder(); // always utf-8
+  var alt = "", css = ""
+  var c2 = c[2] ?  JSON.stringify( c[2] ) : "";
+  var datadebug = oCOM.ArrayBufferTobase64( enc.encode(c2) );
+
+  var pix = c[0]?"background-color:black":"";
+  var bck = (c[1]==128?"border-color:#FFE9D0":"");
+  var s = "<td class='"+css+"tcell10' data-debug=\""+datadebug+"\" alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt+"</td>"
+  if((x+1)%7==0)
+    s+= "<td class=tcell5 data-debug=\""+datadebug+"\" style=\""+(c[1]==128?"background-color:black":"")+"\">"+img[1].replace(/this/g,"this,"+x+","+y+",1")+"</td>"
+  return s;
+}
+
+
+
+
+var bDebug = false;
+var _D = 
+{
+     "YVERTL":"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"+"0000000000000000"+"8080808080808080"
+              +"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"+"2828282828282828"+"A8A8A8A8A8A8A8A8"
+              +"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"+"5050505050505050"+"D0D0D0D0D0D0D0D0"
+    ,"YVERTH":"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+              +"2024282C3034383C"+"2024282C3034383C"+"2125292D3135393D"+"2125292D3135393D"+"22262A2E32363A3E"+"22262A2E32363A3E"+"23272B2F33373B3F"+"23272B2F33373B3F"
+}
+var yref = new Uint16Array(_D.YVERTL.length>>1);
+for(var i=0;i<_D.YVERTL.length;i+=2) yref[i>>1] = parseInt( _D.YVERTH.substring(i,i+2),16)*256+parseInt( _D.YVERTL.substring(i,i+2),16);
+
+
+var s = []
+for(var y=0;y<192;y++)
+{
+  /*
+  // v1
+  var A = y>>6;
+  var D = y - (A<<6);
+  var B = D>>3
+  var C = D-(B<<3)
+  var adr = 8192 + 1024*C + 128*B + 8*A + 32*A;
+ 
+  //v2
+  var adr = 8192 + (((y - (y&192))-((y - (y&192)>>3)<<3))<<10) + ((y -(y&192)>>3)<<7) + (y>>6<<3) + (y>>6<<5);
+  */
+
+  var adr = 0x2000 | y<<10 & 0x1C00 | y<<4 & 0x300 | y<<4 & 0x80 | y>>3 & 0x18 | y>>1 & 0x60;
+
+  if(adr != yref[y])
+    s[s.length] = (adr&0xFFFF).toString(16)+":"+(yref[y]&0xFFFF).toString(16);
+}
+//console.log(s.join(","));
+
+
+
+var vidContext, apple2plus;
 
 function Apple2Plus(context)
 {
-    var video = new Apple2Video(context);
-    var hw    = new Apple2Hw(video);
+  this.video = new Apple2Video(context);
+  this.hw    = new Apple2Hw(this.video);
+  // Switch on Apple II Hi-Res graphics
 
-    this.hwObj = function()
-    {
-      return hw;
-    }
-
-    this.vidObj = function()
-    {
-      return video;
-    }
-
-    this.restart = function()
-    {
-      hw.restart();
-      this.reset();
-    }
-
-    this.reset = function()
-    {
-      hw.reset();
-    }
-
-    this.cycle = function(n) {
-        while (n-- > 0) {
-            hw.cycle();
-            video.cycle();
-        }
-    }
-
-    this.monitor = function(type) {
-      return video.setMonitor(type);
-    }
+  this.video.reset();
+  this.video.setGfx(true);
+  this.video.setHires(true);
+  this.video.redraw();
 }
 
 
-var Apple2Video = function(ctx)
+var gx = {xmin:0,xmax:279,ymax:0,ymin:191}
+
+function fill_pattern(color_pattern,a2p)
+{  
+  var s = [];
+  var pat = patterns[color_pattern].pat;
+  var dimx = patterns[0].dim[0];
+  var dimy = patterns[0].dim[1];
+
+  for(var yi=0;yi<192;yi++)
+  {
+    for(var xi=0;xi<280;xi++)
+    {
+        var adr = yref[yi]+Math.floor(xi/7);                   // find address 
+        var wbyt = a2p.hw.read(adr);                  // read
+        //wbyt = ram[adr];
+
+        s = debug(s,xi,yi,pat,dimx,dimy);
+        wbyt = paste_pattern(wbyt,xi,yi,pat,dimx,dimy);
+
+        a2p.hw.write(adr,wbyt);                         // write
+        //ram[adr] = wbyt;
+    }
+    s[s.length] = "<br>";
+  }
+
+  //document.getElementById("debug").innerHTML = s.join("");
+}
+
+function paste_pattern(wbyt,xi,yi,pat,dimx,dimy)
 {
-    this.dim = [ctx.width,ctx.height];
-    
-    var gfx_mode;
-    var mix_mode;
-    var page2_mode;
-    var hires_mode;
-    var chrome_mode;
-    var flash_on = false;
-    var flash_count = 0;
-    var frame_count = 0;
-    var frame_redraw = true;
+    var py = yi % dimy << 1;
+    var b7 = pat[py+1];
 
-    this.vidram = null; // apple2hw.js sets this to give me reference to ram
+    var conflict = (wbyt & 0x80) != b7;
+    var px = xi % dimx;
 
-    this.serial8 = new Uint8Array();
-    this.config8_map = {};
-    this.config8_idx = {};
+    var b = pat[py] & (1<< dimx-px-1);
+    var msk = 1 << xi%7;
 
-    this.register_mode = function()
-    {
-      this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
-      var ret = (gfx_mode?1:2) + (mix_mode?8:4) + (page2_mode?32:16) + (hires_mode?128:64);
-      //alert(oCOM.getBinMulti(ret,8))
-      return ret
-    }
-
-    this.reset = function() {
-        gfx_mode = false;
-        mix_mode = false;
-        page2_mode = false;
-        hires_mode = false;
-        chrome_mode = 0;
-        flash_on = true;
-        flash_count = 0;
-        frame_count = 0;
-        this.register_mode();
-    }
-
-    this.setlen = function(name,modifier)
-    {
-      if(modifier===undefined) var modifier = ["cfg[","]"]
-      else if(modifier==null) var modifier = ["",""]
-      if(this.config8_map[name]===undefined)
-      {
-        this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
-        this.config8_idx[name] = this.serial8.length;
-        //console.log("map["+name+"] = "+modifier[0]+this.serial8.length+modifier[1]);
-      }
-    }
-
-    this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
-    this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
-    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
-    this.idx8 = function(name) { return this.config8_idx[name] }
-
-    this.cycle = function()
-    {
-      if (++flash_count > 250000)
-      {
-        flash_on = ! flash_on;
-        flash_count = 0;
-        this.reflash();
-      }
-
-      if (++frame_count > 100000)
-      {
-        if(frame_redraw==true)
-        {
-          frame_count = 0;
-          this.redraw();
-        }
-      }
-    }
-
-    this.write = function(addr, d8)
-    {
-      frame_redraw = true;
-    }
-
-    this.setGfx = function(flag)
-    {
-        if (gfx_mode != flag) {
-            gfx_mode = flag;
-            frame_redraw = true;
-        }
-    }
-
-    this.setMix = function(flag) {
-        if (mix_mode != flag) {
-            mix_mode = flag;
-            frame_redraw = true;
-        }
-    }
-
-    this.setPage2 = function(flag) {
-        if (page2_mode != flag) {
-            page2_mode = flag;
-            frame_redraw = true;
-        }
-    }
-
-    this.setHires = function(flag) {
-        if (hires_mode != flag) {
-            hires_mode = flag;
-            frame_redraw = true;
-        }
-    }
-
-    this.setMonitor = function(mode) {
-        chrome_mode = mode & 3;
-        frame_redraw = true;
-        return {
-             "color": _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#000000"
-            ,"name": _CFG_CHROMA[chrome_mode].COL_name
-        };
-    }
-
-    this.reflash = function() { frame_redraw = true; this.redraw() }
-
-    // Redraw everything.  Called whenever the graphics modes change.
-    this.redraw = function()
-    {
-      //,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
-      // ,"DIM_H":[dim[1]>>1]
-      // ,"GFX_FLG":[softswitch_mode]
-      // ,"FLASH":[false]
-      // ,"PALETTE":[INTCols]}
-
-        this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
-        this.serial8[ this.idx8("GFX_FLG") ] = this.register_mode();
-        this.serial8[ this.idx8("FLASH") ] = flash_on ? 1 : 0;
-        window.requestAnimationFrame(this.doDraw);
-        frame_redraw=false;
-    }
-
-    this.initGPU = function(arg,config)
-    { 
-      for(var i in config)
-      {
-        if(config[i][0].constructor === Uint8Array) this.ser8_ref(i,config[i][0])
-        else this.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]])
-      }
-
-      try { return new window.GPU.GPU(arg) } catch (e) { return new GPU(arg) }
-    }
-
-
+    return b==0 ? wbyt & ((msk | (b7^0x80)) ^ 0xFF) : wbyt | msk | b7;     // reset or set pixel bit
 }
 
+function debug(s,xi,yi,pat,dimx,dimy)
+{
+    var py = yi % dimy << 1;
+    var b7 = pat[py+1];
+    var px = xi % dimx;
+    var b = pat[py] & (1<< dimx-px-1);
+
+    if(b7==0) s[s.length] = b ? "1" : "0";
+    else      s[s.length] = b ? "<b>1</b>" : "<b>0</b>";
+    return s;
+}
+
+var oApple2Video = 
+{
+  "config_meta":{}
+  ,"config_data":new Uint16Array()
+  ,"config8_data":new Uint8Array()
+  ,"config_map":new Array()
+  ,"config8_map":new Array()
+  ,"config8_idx":new Array()
+  ,"GPU_CFG":new Uint8Array()
+  ,"nib":true                           // true = open nibble
+  ,"cycle_counter":0
+  ,"setlen":function(name,modifier)
+  {
+    if(modifier===undefined) var modifier = ["cfg[","]"]
+    else if(modifier==null) var modifier = ["",""]
+    if(this.config_map[name]===undefined)
+    {
+      this.config_map[name] = modifier[0] + this.config_data.length + modifier[1];
+      this.config8_map[name] = modifier[0] + this.config8_data.length + modifier[1];
+      this.config8_idx[name] = this.config8_data.length;
+      console.log("map["+name+"] = "+modifier[0]+this.config8_data.length+modifier[1]);
+    }
+
+  }
+  ,"add8_ref":function(name,arr)
+  {
+    this.setlen(name,null);
+    for(var i=0;i<arr.length;i++)
+    {
+      //  16-bit value = first byte (LO) - second byte (HI) = little endian
+      if(this.nib) this.config_data = new Uint16Array([...this.config_data,...[arr[i]]]);
+      else this.config_data[this.config_data.length-1] |=  arr[i] << 8;
+      this.nib = !this.nib;
+    }
+    
+    //  8-bit values
+    this.config8_data = new Uint8Array([...this.config8_data,...arr]);
+  }
+  ,"add16_ref":function(name,arr)
+  {
+    this.setlen(name,null);
+    this.config_data = new Uint16Array([...this.config_data,...arr]);
+    this.config8_data = new Uint8Array([...this.config8_data,...arr.map(function(item){ return item & 255 })]);
+  }
+  ,"add8_val":function(name,val,modifier)
+  {
+    this.setlen(name,modifier);
+    this.config_data = new Uint16Array([...this.config_data,...[val]]);
+    this.config8_data = new Uint8Array([...this.config8_data,...[val&255]]);
+  } 
+  ,"idx8":function(name)
+  {
+    return this.config8_idx[name];
+  }
+  ,"add16_val":function(name,val,modifier)
+  {
+    this.setlen(name,modifier);
+    this.config_data = new Uint16Array([...this.config_data,...[val]]);
+
+    //  store truncated 8-bit value
+    this.config8_data = new Uint8Array([...this.config8_data,...[val&255]]);
+  }
+  ,"gen_config":function()
+  {
+    //var idx_size = this.config_meta.size;
+    //var output = new Uint16Array([idx_size]);
+    var s = "const ";
+    for(var i in this.config_map) s+=i+"="+this.config_map[i]+",";
+    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>";
+    return this.config_data;
+  }
+  ,"gen8_config":function()
+  {
+    var s = "const ";
+    for(var i in this.config8_map) s+=i+"="+this.config8_map[i]+",";
+    document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(s.substring(0,s.length-1))+"\")>COPY CFG MAPPING CODE</button>";
+    this.GPU_CFG = new Uint8Array(this.config8_data);
+  }
+  ,"cycle":function()
+  {
+    // blink cursor
+    var args = {"cpu_chrono":performance.now()};
+
+    oApple2Video.cycle_counter++;
+    if(oApple2Video.cycle_counter==5)
+    {
+      oApple2Video.cycle_counter = 0;
+      oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ] = oApple2Video.GPU_CFG[ oApple2Video.idx8("FLASH") ]==0 ? 1 : 0;
+      window.requestAnimationFrame(oApple2Video.doDraw);
+    }
+  }
+  ,"reflash":function()
+  {
+  
+  }
+}
+
+async function copyTextToClipboard(textToCopy) {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(atob(textToCopy));
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 function fill_ram(byte_capture,a2p,offset)
 {
@@ -445,7 +1250,7 @@ function fill_ram(byte_capture,a2p,offset)
         var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
         for(var j=0;j<hexarr.length;j++)
         {
-          a2p.hwObj().write(offset+adr+j, parseInt(hexarr[j],16));
+          a2p.hw.write(offset+adr+j, parseInt(hexarr[j],16));
           //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
         }
       }
@@ -1556,6 +2361,8 @@ const txt_stream =
 +"07F0: A0 33 35 A0 A0 A0 34 30\n"
 +"07F8: C1 29 D9 6B 77 39 FE 10\n"
 
+//document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(txt_stream.substring(0,txt_stream.length-1))+"\")>TXT DUMP</button>"
+
 const lores_stream = 
  "0400: 00 00 00 00 00 00 00 00\n"
 +"0408: 00 00 11 11 11 11 11 11\n"
@@ -1686,6 +2493,7 @@ const lores_stream =
 +"07F0: B5 BD D7 C8 C9 D4 C5 60\n"
 +"07F8: C1 62 01 E4 82 D4 44 65\n"
 
+document.getElementById("menu").innerHTML += "<button onclick=copyTextToClipboard(\""+btoa(lores_stream.substring(0,lores_stream.length-1))+"\")>LORES DUMP</button>"
 
 const lores_stream2 = 
  "0400: 00 00 00 00 00 00 00 00\n"
