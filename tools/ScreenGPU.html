@@ -663,13 +663,16 @@ function EMU_init()
   });
   */
 
-  function initGPU(arg) {
-	try {
-		return new window.GPU.GPU(arg);
-	} catch (e) {
-		return new GPU(arg);
-	}
-}
+  function initGPU(arg) 
+  {
+    try {
+      return new window.GPU.GPU(arg);
+    } catch (e) {
+      return new GPU(arg);
+    }
+  }
+
+
 const gpu = initGPU({
     canvas:  vidContext ,
     mode: 'gpu'
