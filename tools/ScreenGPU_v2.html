@@ -65,8 +65,7 @@ var CONF_builddate="20240329-170000";
 
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
 
-
-  // global data initializations
+// global data initializations
 const _o = {
          "sys":{}     
         ,"EMU_Updates_s":20                 // Emulator intervals per second 
@@ -84,7 +83,6 @@ oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 // Kernel wrapper
 oKW = new function()
 {
-
    // KERNEL v6
    this.kProcess_v6 =  function(mem,rom,cfg)
    { 
@@ -134,10 +132,6 @@ oKW = new function()
 
 }()
 
-
-
-
-
 function EMU_init()
 {
     if(document.getElementById('slider_title')!=null)
@@ -153,7 +147,7 @@ function EMU_init()
     +Number(oCOM.URL.uri["ss2"])
     +Number(oCOM.URL.uri["ss3"]);
 
-    var s_versions = []
+    var s_versions = [];
 
     s_versions[s_versions.length] = "<select name=chrome_mode onchange='Versions.submit()'>"
     for(var i in _CFG_CHROMA)
@@ -176,13 +170,9 @@ function EMU_init()
 
     var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
-
-
     apple2plus.restart(); // restart the AppleII+
-    //appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-
+ 
     const dim = [vidContext.width,vidContext.height];
-    var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
     /////////////////////////////
 
@@ -242,10 +232,7 @@ function EMU_init()
 
      apple2plus.vidObj().doDraw = () => 
     {
-      tel++;
-      if(tel<5) console.log(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)
-      kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8);
-      //window.requestAnimationFrame(doDraw);
+          kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8);
     };
     window.requestAnimationFrame(apple2plus.vidObj().doDraw);
 
