@@ -151,8 +151,7 @@ function EMU_init()
     Number(oCOM.URL.uri["ss0"])
     +Number(oCOM.URL.uri["ss1"])
     +Number(oCOM.URL.uri["ss2"])
-    +Number(oCOM.URL.uri["ss3"])
-    ;
+    +Number(oCOM.URL.uri["ss3"]);
 
     var s_versions = []
 
@@ -175,8 +174,9 @@ function EMU_init()
 
     document.getElementById("topform").innerHTML += s_versions.join("");
 
-    var vidContext          = document.getElementById('applescreen');
+    var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
+
     apple2plus.vidObj().chrome_mode = chrome_mode;
     apple2plus.vidObj().softswitch_mode = softswitch_mode;  // TODO REPLACE
     apple2plus.vidObj().fla = 1;
@@ -187,16 +187,28 @@ function EMU_init()
     const dim = [vidContext.width,vidContext.height];
     var ram = new Uint8Array(RAM_SIZE).fill(0);      // DECLARE RAM SPACE
 
-
-
     /////////////////////////////
 
-    const gpu = apple2plus.vidObj().initGPU({ canvas:  vidContext, mode: 'gpu'});
+    //this.ser8_val("CHROME_MODE",this.chrome_mode, ["cfg[","]<<2"]);
+    //this.ser8_val("DIM_H", this.dim[1]>>1);
+    //this.ser8_val("GFX_FLG",this.softswitch_mode);
+    //this.ser8_val("FLASH",this.fla);
+    //this.ser8_ref("PALETTE",INTCols);
+
+    const gpu = apple2plus.vidObj().initGPU(
+       { canvas:  vidContext, mode: 'gpu'}
+      ,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
+       ,"DIM_H":[dim[1]>>1]
+       ,"GFX_FLG":[softswitch_mode]
+       ,"FLASH":[false]
+       ,"PALETTE":[INTCols]}
+    );
     var kernel;
 
+    console.log(  apple2plus.vidObj().ser8_map() )
+
     /////////////////////////////
 
- 
     fill_ram(gfx_stream,apple2plus);
     fill_ram(gfx_stream2,apple2plus,0x2000);
     fill_ram(txt_stream,apple2plus);
@@ -232,7 +244,7 @@ function EMU_init()
 
      apple2plus.vidObj().doDraw = () => 
     {
-      kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().GPU_CFG);
+      kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(apple2plus.vidObj().doDraw);
@@ -291,18 +303,14 @@ var Apple2Video = function(ctx)
     var page2_mode;
     var hires_mode;
     var chrome_mode;
-
-    this.chrome_mode = 0;
-    this.softswitch_mode = 0;
-    this.fla = 0;
+    var flash_count = 0;
+    var redraw_count = 0
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
 
-    this.config_meta = {}
-    this.config8_data = new Uint8Array();
-    this.config8_map = new Array();
-    this.config8_idx = new Array();
-    this.GPU_CFG = new Uint8Array();
+    this.serial8 = new Uint8Array();
+    this.config8_map = {};
+    this.config8_idx = {};
 
     this.register_mode = function()
     {
@@ -330,26 +338,16 @@ var Apple2Video = function(ctx)
       else if(modifier==null) var modifier = ["",""]
       if(this.config8_map[name]===undefined)
       {
-        this.config8_map[name] = modifier[0] + this.config8_data.length + modifier[1];
-        this.config8_idx[name] = this.config8_data.length;
-        console.log("map["+name+"] = "+modifier[0]+this.config8_data.length+modifier[1]);
+        this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
+        this.config8_idx[name] = this.serial8.length;
+        console.log("map["+name+"] = "+modifier[0]+this.serial8.length+modifier[1]);
       }
     }
 
-    this.add8_ref = function(name,arr)
-    {
-      this.setlen(name,null);
-      this.config8_data = new Uint8Array([...this.config8_data,...arr]);
-    }
-
-    this.add8_val = function(name,val,modifier)
-    {
-      this.setlen(name,modifier);
-      this.config8_data = new Uint8Array([...this.config8_data,...[val&255]]);
-    } 
+    this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
+    this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
+    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=") }
     this.idx8 = function(name) { return this.config8_idx[name] }
-
-    this.gen8_serialise = function() { this.GPU_CFG = new Uint8Array(this.config8_data) }
 
     this.cycle = function()
     {
@@ -382,15 +380,17 @@ var Apple2Video = function(ctx)
         frame_redraw=false;
     }
 
-    this.initGPU = function(arg) { try { return new window.GPU.GPU(arg) } catch (e) { return new GPU(arg) } }
+    this.initGPU = function(arg,config)
+    { 
+      for(var i in config)
+      {
+        if(config[i][0].constructor === Uint8Array) this.ser8_ref(i,config[i][0])
+        else this.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]])
+      }
 
-    // GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-    this.add8_val("CHROME_MODE",this.chrome_mode, ["cfg[","]<<2"]);
-    this.add8_val("DIM_H", this.dim[1]>>1);
-    this.add8_val("GFX_FLG",this.softswitch_mode);
-    this.add8_val("FLASH",this.fla);
-    this.add8_ref("PALETTE",INTCols);
-    this.gen8_serialise();
+      try { return new window.GPU.GPU(arg) } catch (e) { return new GPU(arg) }
+    }
+
 
 }
 
