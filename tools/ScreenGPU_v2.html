@@ -177,9 +177,6 @@ function EMU_init()
     var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
 
-    //apple2plus.vidObj().chrome_mode = chrome_mode;
-    //apple2plus.vidObj().softswitch_mode = softswitch_mode;  // TODO REPLACE
-    //apple2plus.vidObj().fla = 1;
 
     apple2plus.restart(); // restart the AppleII+
     //appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
@@ -190,14 +187,11 @@ function EMU_init()
     /////////////////////////////
 
     //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-
     apple2plus.vidObj().setMonitor(chrome_mode);
-    apple2plus.vidObj().setGfx(softswitch_mode&1==1);
-    apple2plus.vidObj().setMix(softswitch_mode>>3==1);
-    apple2plus.vidObj().setPage2(softswitch_mode>>5==1);
-    apple2plus.vidObj().setHires(softswitch_mode>>7==1);
-
-//alert(oCOM.getBinMulti(softswitch_mode,8))
+    apple2plus.vidObj().setGfx((softswitch_mode&1)==1);
+    apple2plus.vidObj().setMix((softswitch_mode&8)==8);
+    apple2plus.vidObj().setPage2((softswitch_mode&32)==32);
+    apple2plus.vidObj().setHires((softswitch_mode&128)==128);
 
     const gpu = apple2plus.vidObj().initGPU(
        { canvas:  vidContext, mode: 'gpu'}
@@ -430,8 +424,8 @@ var Apple2Video = function(ctx)
       // ,"FLASH":[false]
       // ,"PALETTE":[INTCols]}
 
-        this.serial8[  this.idx8("CHROME_MODE") ] = chrome_mode;
-        this.serial8[  this.idx8("GFX_FLG") ] = this.register_mode();
+        this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
+        this.serial8[ this.idx8("GFX_FLG") ] = this.register_mode();
         this.serial8[ this.idx8("FLASH") ] = flash_on ? 1 : 0;
         window.requestAnimationFrame(this.doDraw);
         frame_redraw=false;
