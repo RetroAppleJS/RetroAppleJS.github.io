@@ -177,9 +177,9 @@ function EMU_init()
     var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
 
-    apple2plus.vidObj().chrome_mode = chrome_mode;
-    apple2plus.vidObj().softswitch_mode = softswitch_mode;  // TODO REPLACE
-    apple2plus.vidObj().fla = 1;
+    //apple2plus.vidObj().chrome_mode = chrome_mode;
+    //apple2plus.vidObj().softswitch_mode = softswitch_mode;  // TODO REPLACE
+    //apple2plus.vidObj().fla = 1;
 
     apple2plus.restart(); // restart the AppleII+
     //appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
@@ -189,11 +189,15 @@ function EMU_init()
 
     /////////////////////////////
 
-    //this.ser8_val("CHROME_MODE",this.chrome_mode, ["cfg[","]<<2"]);
-    //this.ser8_val("DIM_H", this.dim[1]>>1);
-    //this.ser8_val("GFX_FLG",this.softswitch_mode);
-    //this.ser8_val("FLASH",this.fla);
-    //this.ser8_ref("PALETTE",INTCols);
+    //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
+
+    apple2plus.vidObj().setMonitor(chrome_mode);
+    apple2plus.vidObj().setGfx(softswitch_mode&1==1);
+    apple2plus.vidObj().setMix(softswitch_mode>>3==1);
+    apple2plus.vidObj().setPage2(softswitch_mode>>5==1);
+    apple2plus.vidObj().setHires(softswitch_mode>>7==1);
+
+//alert(oCOM.getBinMulti(softswitch_mode,8))
 
     const gpu = apple2plus.vidObj().initGPU(
        { canvas:  vidContext, mode: 'gpu'}
@@ -244,15 +248,18 @@ function EMU_init()
 
      apple2plus.vidObj().doDraw = () => 
     {
+      tel++;
+      if(tel<5) console.log(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)
       kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8);
       //window.requestAnimationFrame(doDraw);
     };
     window.requestAnimationFrame(apple2plus.vidObj().doDraw);
 
 
-    appleIntervalHandle = window.setInterval(apple2plus.vidObj().cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-  }  
+    appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+}  
 
+var tel = 0;
 
 function Apple2Plus(context)
 {
@@ -295,7 +302,6 @@ function Apple2Plus(context)
 
 var Apple2Video = function(ctx)
 {
-    if(ctx) this.ctx = ctx;
     this.dim = [ctx.width,ctx.height];
     
     var gfx_mode;
@@ -303,8 +309,10 @@ var Apple2Video = function(ctx)
     var page2_mode;
     var hires_mode;
     var chrome_mode;
+    var flash_on = false;
     var flash_count = 0;
-    var redraw_count = 0
+    var frame_count = 0;
+    var frame_redraw = true;
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
 
@@ -315,7 +323,7 @@ var Apple2Video = function(ctx)
     this.register_mode = function()
     {
       this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
-      var ret = (gfx_mode?2:1) + (mix_mode?8:4) + (page2_mode?32:16) + (hires_mode?128:64);
+      var ret = (gfx_mode?1:2) + (mix_mode?8:4) + (page2_mode?32:16) + (hires_mode?128:64);
       //alert(oCOM.getBinMulti(ret,8))
       return ret
     }
@@ -328,7 +336,7 @@ var Apple2Video = function(ctx)
         chrome_mode = 0;
         flash_on = true;
         flash_count = 0;
-        redraw_count = 0;
+        frame_count = 0;
         this.register_mode();
     }
 
@@ -358,9 +366,14 @@ var Apple2Video = function(ctx)
         this.reflash();
       }
 
-      if (++redraw_count > 100000)
-        if(frame_redraw==true) this.redraw();
-
+      if (++frame_count > 100000)
+      {
+        if(frame_redraw==true)
+        {
+          frame_count = 0;
+          this.redraw();
+        }
+      }
     }
 
     this.write = function(addr, d8)
@@ -368,15 +381,59 @@ var Apple2Video = function(ctx)
       frame_redraw = true;
     }
 
-    this.reflash = function() { this.redraw() }
+    this.setGfx = function(flag)
+    {
+        if (gfx_mode != flag) {
+            gfx_mode = flag;
+            frame_redraw = true;
+        }
+    }
+
+    this.setMix = function(flag) {
+        if (mix_mode != flag) {
+            mix_mode = flag;
+            frame_redraw = true;
+        }
+    }
+
+    this.setPage2 = function(flag) {
+        if (page2_mode != flag) {
+            page2_mode = flag;
+            frame_redraw = true;
+        }
+    }
+
+    this.setHires = function(flag) {
+        if (hires_mode != flag) {
+            hires_mode = flag;
+            frame_redraw = true;
+        }
+    }
+
+    this.setMonitor = function(mode) {
+        chrome_mode = mode & 3;
+        frame_redraw = true;
+        return {
+             "color": _CFG_CHROMA[chrome_mode].COL_num?_CFG_CHROMA[chrome_mode].COL_num:"#000000"
+            ,"name": _CFG_CHROMA[chrome_mode].COL_name
+        };
+    }
+
+    this.reflash = function() { frame_redraw = true; this.redraw() }
 
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
-        if(this.ctx === undefined) return;
-        video.GPU_CFG[ video.idx8("CHROME_MODE") ] = this.register_mode();
-        video.GPU_CFG[ video.idx8("FLASH") ] = flash_on ? 1 : 0;
-        window.requestAnimationFrame(doDraw);
+      //,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
+      // ,"DIM_H":[dim[1]>>1]
+      // ,"GFX_FLG":[softswitch_mode]
+      // ,"FLASH":[false]
+      // ,"PALETTE":[INTCols]}
+
+        this.serial8[  this.idx8("CHROME_MODE") ] = chrome_mode;
+        this.serial8[  this.idx8("GFX_FLG") ] = this.register_mode();
+        this.serial8[ this.idx8("FLASH") ] = flash_on ? 1 : 0;
+        window.requestAnimationFrame(this.doDraw);
         frame_redraw=false;
     }
 
