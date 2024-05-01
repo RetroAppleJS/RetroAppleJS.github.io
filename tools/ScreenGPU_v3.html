@@ -340,13 +340,13 @@ var Apple2Video = function(ctx)
       {
         this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
         this.config8_idx[name] = this.serial8.length;
-        console.log("map["+name+"] = "+modifier[0]+this.serial8.length+modifier[1]);
+        //console.log("map["+name+"] = "+modifier[0]+this.serial8.length+modifier[1]);
       }
     }
 
     this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
     this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
-    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=") }
+    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
     this.idx8 = function(name) { return this.config8_idx[name] }
 
     this.cycle = function()
