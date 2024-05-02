@@ -60,7 +60,7 @@
 
 
 
-var CONF_version="2.3.7";
+var CONF_version="2.4.0";
 var CONF_builddate="20240329-170000"; 
 
 var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
@@ -74,7 +74,6 @@ const _o = {
     };
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
-var RAM_SIZE =      0xc000;
 var appleIntervalHandle, apple2plus;
 
 oCOM.URL.parse(document.location.toString());
@@ -96,7 +95,6 @@ function EMU_init()
     +Number(oCOM.URL.uri["ss3"]);
 
     var s_versions = [];
-
     s_versions[s_versions.length] = "<select name=chrome_mode onchange='Versions.submit()'>"
     for(var i in _CFG_CHROMA)
         s_versions[s_versions.length] = "<option value="+i+" "+(chrome_mode==i?"selected":"")+">"+_CFG_CHROMA[i].COL_name+"</option>"
@@ -119,28 +117,7 @@ function EMU_init()
     var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
     apple2plus.restart(); // restart the AppleII+
- 
-    const dim = [vidContext.width,vidContext.height];
 
-    /////////////////////////////
-
-    //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-    apple2plus.vidObj().setMonitor(chrome_mode);
-    apple2plus.vidObj().setGfx((softswitch_mode&1)==1);
-    apple2plus.vidObj().setMix((softswitch_mode&8)==8);
-    apple2plus.vidObj().setPage2((softswitch_mode&32)==32);
-    apple2plus.vidObj().setHires((softswitch_mode&128)==128);
-
-    // INITIALISE GPU & ALL INITIAL ARGUMENTS (TO BE SERIALISED IN A FLAT ARRAY)
-    const gpu = apple2plus.vidObj().initGPU(
-       { canvas:  vidContext, mode: 'gpu'}
-      ,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
-       ,"DIM_H":[dim[1]>>1]
-       ,"GFX_FLG":[softswitch_mode]
-       ,"FLASH":[false]
-       ,"PALETTE":[INTCols]}
-    );
-    console.log(  apple2plus.vidObj().ser8_map() )
 
     /////////////////////////////
 
@@ -149,28 +126,34 @@ function EMU_init()
     fill_ram(txt_stream,apple2plus);
     fill_ram(lores_stream,apple2plus);
     fill_ram(lores_stream2,apple2plus,0x400);
+
+    /////////////////////////////
+
+    //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
+    const video = apple2plus.vidObj()
+    video.setMonitor(chrome_mode);
+    video.setGfx((softswitch_mode&1)==1);
+    video.setMix((softswitch_mode&8)==8);
+    video.setPage2((softswitch_mode&32)==32);
+    video.setHires((softswitch_mode&128)==128);
+
+    // INSTANTIATE GPU OBJECT & CONFIGURE DATA SERIALISATION
+    video.initGPU(
+       { canvas:  vidContext, mode: 'gpu'}
+      ,{ kernel: video.kProcess_v6, output: [vidContext.width,vidContext.height], graphical: true }
+      ,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
+       ,"DIM_H":[vidContext.height>>1]
+       ,"GFX_FLG":[softswitch_mode]
+       ,"FLASH":[false]
+       ,"PALETTE":[INTCols]});
+    //video.createKernel();
+
+    console.log(  video.ser8_map() )
     
-    var kernel = gpu.createKernel(
-      apple2plus.vidObj().kProcess_v6,
-      {
-        output: [dim[0], dim[1]],
-        graphical: true
-      }
-    )
-
-    // OPEN ISSUE (ANDROID related)
-    // https://github.com/gpujs/gpu.js/issues/521
-
-    apple2plus.vidObj().doDraw = () => 
-    {
-      kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8);
-    };
-
-
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
     //kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
-    //var json = kernel.toJSON();
+    //var json = video.kernel.toJSON();
     //console.log(json);
 
      console.log("isGPUSupported = "+GPU.isGPUSupported);
@@ -185,6 +168,27 @@ function EMU_init()
 
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 }
+
+function fill_ram(byte_capture,a2p,offset)
+{
+  if(offset===undefined) var offset = 0;
+  var line_arr = byte_capture.split("\n");           // PASTE BITMAP IN RAM 
+    for(var i=0;i<line_arr.length;i++)
+    {
+      var adr = parseInt(line_arr[i].split(":")[0],16);
+      if(line_arr[i].length>0)
+      {
+        var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
+        for(var j=0;j<hexarr.length;j++)
+        {
+          a2p.hwObj().write(offset+adr+j, parseInt(hexarr[j],16));
+          //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
+        }
+      }
+    }
+}
+
+
 
 function Apple2Plus(context)
 {
@@ -349,29 +353,32 @@ var Apple2Video = function(ctx)
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
-      //,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
-      // ,"DIM_H":[dim[1]>>1]
-      // ,"GFX_FLG":[softswitch_mode]
-      // ,"FLASH":[false]
-      // ,"PALETTE":[INTCols]}
+        this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
+        this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
+        this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
 
-        this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
-        this.serial8[ this.idx8("GFX_FLG") ] = this.register_mode();
-        this.serial8[ this.idx8("FLASH") ] = flash_on ? 1 : 0;
-        window.requestAnimationFrame(this.doDraw);
-        frame_redraw=false;
+        // RUN THE KERNEL !
+        window.requestAnimationFrame(this.kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,this.serial8));
+        frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
     }
 
-    this.initGPU = function(arg,config)
+    this.initGPU = function(GPUarg,KERNELarg,config)
     { 
+      // CONFIGURE DATA SERIALISATION
       for(var i in config)
       {
         if(config[i][0].constructor === Uint8Array) this.ser8_ref(i,config[i][0])
         else this.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]])
       }
 
-      try { return new window.GPU.GPU(arg) } catch (e) { return new GPU(arg) }
+      // INSTATIATE GPU CLASS & ATTACH TO WINDOW OBJECT
+      try { var gpu = new window.GPU.GPU(GPUarg) } catch (e) { var gpu = new GPU(GPUarg) }
+
+      // TRANSPILE CHOSEN KERNEL SCRIPT
+      this.kernel = gpu.createKernel(KERNELarg.kernel,KERNELarg)
     }
+
+   this.kernel = function() { }
 
      // KERNEL v6
    this.kProcess_v6 =  function(mem,rom,cfg)
@@ -419,50 +426,9 @@ var Apple2Video = function(ctx)
 
     this.color(cfg[cp]/256,cfg[cp+1]/256,cfg[cp+2]/256);
   }
-
-
-}
-
-
-function fill_ram(byte_capture,a2p,offset)
-{
-  if(offset===undefined) var offset = 0;
-  var line_arr = byte_capture.split("\n");           // PASTE BITMAP IN RAM 
-    for(var i=0;i<line_arr.length;i++)
-    {
-      var adr = parseInt(line_arr[i].split(":")[0],16);
-      if(line_arr[i].length>0)
-      {
-        var hexarr = line_arr[i].split(":")[1].slice(1).split(" ");
-        for(var j=0;j<hexarr.length;j++)
-        {
-          a2p.hwObj().write(offset+adr+j, parseInt(hexarr[j],16));
-          //document.write("ram["+(adr+j)+"] = "+parseInt(hexarr[j],16)+"<br>")
-        }
-      }
-    }
 }
 
 var SOFTSWITCHES = {0x57:"HIRES",0x56:"LORES",0x55:"PAGE2",0x54:"PAGE1",0x53:"MIX_ON",0x52:"MIX_OFF",0x51:"GFX_OFF",0x50:"GFX_ON"}
-
-// Index	SMPTE color space	sRGB color space
-// RGB[0]	0x000000	  0x000000	      
-// RGB[1]	0x901740		0x8A2140	
-// RGB[2]	0x402CA5		0x3C22A5	
-// RGB[3]	0xD043E5		0xC847E4	
-// RGB[4]	0x006940		0x07653E	
-// RGB[5]	0x808080		0x7B7E80	
-// RGB[6]	0x2F95E5		0x308FE3	
-// RGB[7]	0xBFABFF		0xB9A9FD	
-// RGB[8]	0x405400		0x3B5107	
-// RGB[9]	0xD06A1A		0xC77028	
-// RGB[A]	0x808080		0x7B7E80	
-// RGB[B]	0xFF96BF		0xF39AC2	
-// RGB[C]	0x2FBC1A		0x2FB81F	
-// RGB[D]	0xBFD35A		0xB9D060	
-// RGB[E]	0x6FE8BF		0x6EE1C0	
-// RGB[F]	0xFFFFFF		0xFFFFFF	
-
 
 const INTCols = new Uint8Array([
      0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
