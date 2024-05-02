@@ -79,8 +79,25 @@ var appleIntervalHandle, apple2plus;
 oCOM.URL.parse(document.location.toString());
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
 
+
+
+//  ██ ███    ██ ██ ████████      ██████  ███    ██ ██       ██████   █████  ██████  
+//  ██ ████   ██ ██    ██        ██    ██ ████   ██ ██      ██    ██ ██   ██ ██   ██ 
+//  ██ ██ ██  ██ ██    ██        ██    ██ ██ ██  ██ ██      ██    ██ ███████ ██   ██ 
+//  ██ ██  ██ ██ ██    ██        ██    ██ ██  ██ ██ ██      ██    ██ ██   ██ ██   ██ 
+//  ██ ██   ████ ██    ██         ██████  ██   ████ ███████  ██████  ██   ██ ██████  
+ 
+
+
 function EMU_init()
 {
+    //   _____  _____  ____  ____  
+    //  |_   _||_   _||_  _||_  _| 
+    //    | |    | |    \ \  / /   
+    //    | '    ' |     > `' <    
+    //     \ \__/ /    _/ /'`\ \_  
+    //      `.__.'    |____||____|
+
     if(document.getElementById('slider_title')!=null)
         document.getElementById('slider_title').outerHTML = _TITLE();
 
@@ -114,20 +131,26 @@ function EMU_init()
 
     document.getElementById("topform").innerHTML += s_versions.join("");
 
+
+    //   ___  ____    _          __              _                  _    
+    //  |_  ||_  _|  (_)        [  |  _         / |_               / |_  
+    //    | |_/ /    __   .---.  | | / ]  .--. `| |-',--.   _ .--.`| |-' 
+    //    |  __'.   [  | / /'`\] | '' <  ( (`\] | | `'_\ : [ `/'`\]| |   
+    //   _| |  \ \_  | | | \__.  | |`\ \  `'.'. | |,// | |, | |    | |,  
+    //  |____||____|[___]'.___.'[__|  \_][\__) )\__/\'-;__/[___]   \__/  
+    //                                                                   
+
+
     var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
     apple2plus.restart(); // restart the AppleII+
 
-
-    /////////////////////////////
-
+    // FILL RAM WITH EXAMPLE TEXT & GRAPHICS (MADE FROM MEMORY CAPTURES)
     fill_ram(gfx_stream,apple2plus);
     fill_ram(gfx_stream2,apple2plus,0x2000);
     fill_ram(txt_stream,apple2plus);
     fill_ram(lores_stream,apple2plus);
     fill_ram(lores_stream2,apple2plus,0x400);
-
-    /////////////////////////////
 
     //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
     const video = apple2plus.vidObj()
@@ -137,7 +160,7 @@ function EMU_init()
     video.setPage2((softswitch_mode&32)==32);
     video.setHires((softswitch_mode&128)==128);
 
-    // INSTANTIATE GPU OBJECT & CONFIGURE DATA SERIALISATION
+    // INSTANTIATE CREATE GPU & KERNEL + CONFIGURE DATA SERIALISATION
     video.initGPU(
        { canvas:  vidContext, mode: 'gpu'}
       ,{ kernel: video.kProcess_v6, output: [vidContext.width,vidContext.height], graphical: true }
@@ -146,13 +169,11 @@ function EMU_init()
        ,"GFX_FLG":[softswitch_mode]
        ,"FLASH":[false]
        ,"PALETTE":[INTCols]});
-    //video.createKernel();
-
     console.log(  video.ser8_map() )
     
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
-    //kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,oApple2Video.GPU_CFG);
+    //video.kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,video.GPU_CFG);
     //var json = video.kernel.toJSON();
     //console.log(json);
 
@@ -188,7 +209,13 @@ function fill_ram(byte_capture,a2p,offset)
     }
 }
 
-
+//   █████  ██████  ██████  ██      ███████     ██ ██       
+//  ██   ██ ██   ██ ██   ██ ██      ██          ██ ██      ██ 
+//  ███████ ██████  ██████  ██      █████       ██ ██   ████████ 
+//  ██   ██ ██      ██      ██      ██          ██ ██      ██ 
+//  ██   ██ ██      ██      ███████ ███████     ██ ██       
+//                                                          
+// 
 
 function Apple2Plus(context)
 {
@@ -228,6 +255,11 @@ function Apple2Plus(context)
     }
 }
 
+//   █████  ██████  ██████  ██      ███████     ██ ██     ██    ██ ██ ██████  ███████  ██████  
+//  ██   ██ ██   ██ ██   ██ ██      ██          ██ ██     ██    ██ ██ ██   ██ ██      ██    ██ 
+//  ███████ ██████  ██████  ██      █████       ██ ██     ██    ██ ██ ██   ██ █████   ██    ██ 
+//  ██   ██ ██      ██      ██      ██          ██ ██      ██  ██  ██ ██   ██ ██      ██    ██ 
+//  ██   ██ ██      ██      ███████ ███████     ██ ██       ████   ██ ██████  ███████  ██████  
 
 var Apple2Video = function(ctx)
 {
@@ -245,15 +277,10 @@ var Apple2Video = function(ctx)
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
 
-    this.serial8 = new Uint8Array();
-    this.config8_map = {};
-    this.config8_idx = {};
-
     this.register_mode = function()
     {
       this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
       var ret = (gfx_mode?1:2) + (mix_mode?8:4) + (page2_mode?32:16) + (hires_mode?128:64);
-      //alert(oCOM.getBinMulti(ret,8))
       return ret
     }
 
@@ -269,6 +296,14 @@ var Apple2Video = function(ctx)
         this.register_mode();
     }
 
+    // BYTE ARRAY SERIALISATION
+    this.serial8 = new Uint8Array();
+    this.config8_map = {};
+    this.config8_idx = {};
+    this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
+    this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
+    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
+    this.idx8 = function(name) { return this.config8_idx[name] }
     this.setlen = function(name,modifier)
     {
       if(modifier===undefined) var modifier = ["cfg[","]"]
@@ -277,14 +312,8 @@ var Apple2Video = function(ctx)
       {
         this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
         this.config8_idx[name] = this.serial8.length;
-        //console.log("map["+name+"] = "+modifier[0]+this.serial8.length+modifier[1]);
       }
     }
-
-    this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
-    this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
-    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
-    this.idx8 = function(name) { return this.config8_idx[name] }
 
     this.cycle = function()
     {
@@ -378,7 +407,7 @@ var Apple2Video = function(ctx)
       this.kernel = gpu.createKernel(KERNELarg.kernel,KERNELarg)
     }
 
-   this.kernel = function() { }
+   this.kernel = function() { alert.warn("initialise first with initGPU()") }
 
      // KERNEL v6
    this.kProcess_v6 =  function(mem,rom,cfg)
@@ -428,6 +457,16 @@ var Apple2Video = function(ctx)
   }
 }
 
+
+
+
+//  ██████   █████  ████████  █████  
+//  ██   ██ ██   ██    ██    ██   ██ 
+//  ██   ██ ███████    ██    ███████ 
+//  ██   ██ ██   ██    ██    ██   ██ 
+//  ██████  ██   ██    ██    ██   ██ 
+
+
 var SOFTSWITCHES = {0x57:"HIRES",0x56:"LORES",0x55:"PAGE2",0x54:"PAGE1",0x53:"MIX_ON",0x52:"MIX_OFF",0x51:"GFX_OFF",0x50:"GFX_ON"}
 
 const INTCols = new Uint8Array([
@@ -448,8 +487,6 @@ const INTCols = new Uint8Array([
     ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
     ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
     ]);
-
-    
 
     const apple2CharRom = new Uint8Array([
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -551,840 +588,8 @@ const INTCols = new Uint8Array([
         
 ]); // apple2CharRom
 
-
-
-//for(var i=INTCols.length-1;i>=0;i--)
-//  INTCols = INTCols + 1 - 1;
-
-/*
-const patterns = 
-{
-0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,0,0b00,0]),"cri":{},"dim":[2,2]},
-1:{"idx":1,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b10,0,0b00,0]),"cri":{}},
-2:{"idx":2,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b01,0,0b00,0]),"cri":{}},
-3:{"idx":3,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,0,0b00,0]),"cri":{}},
-4:{"idx":4,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,0,0b10,0]),"cri":{"DOUBL":1}},
-5:{"idx":5,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":new Uint8Array([0b10,0,0b10,0]),"cri":{}},
-6:{"idx":6,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":new Uint8Array([0b01,0,0b10,0]),"cri":{}},
-7:{"idx":7,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,0,0b10,0]),"cri":{}},
-8:{"idx":8,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,0,0b01,0]),"cri":{"DOUBL":2}},
-9:{"idx":9,"col":"#B97BB9","sat":31,"cmp":["#FF00FF","#80FF80"],"pat":new Uint8Array([0b10,0,0b01,0]),"cri":{"DOUBL":6}},
-10:{"idx":10,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":new Uint8Array([0b01,0,0b01,0]),"cri":{}},
-11:{"idx":11,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,0,0b01,0]),"cri":{}},
-12:{"idx":12,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,0,0b11,0]),"cri":{"DOUBL":3}},
-13:{"idx":13,"col":"#F67BF6","sat":49,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b10,0,0b11,0]),"cri":{"DOUBL":7}},
-14:{"idx":14,"col":"#B9F6B9","sat":24,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b01,0,0b11,0]),"cri":{"DOUBL":11}},
-15:{"idx":15,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,0,0b11,0]),"cri":{}},
-16:{"idx":16,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,0]),"cri":{"DOUBL":0}},
-17:{"idx":17,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,0]),"cri":{}},
-18:{"idx":18,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,0]),"cri":{}},
-19:{"idx":19,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,0]),"cri":{"DOUBL":3}},
-20:{"idx":20,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b00,128,0b10,0]),"cri":{"DOUBL":1}},
-21:{"idx":21,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":new Uint8Array([0b10,128,0b10,0]),"cri":{}},
-22:{"idx":22,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":new Uint8Array([0b01,128,0b10,0]),"cri":{}},
-23:{"idx":23,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b11,128,0b10,0]),"cri":{"DOUBL":7}},
-24:{"idx":24,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b00,128,0b01,0]),"cri":{"DOUBL":2}},
-25:{"idx":25,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":new Uint8Array([0b10,128,0b01,0]),"cri":{}},
-26:{"idx":26,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":new Uint8Array([0b01,128,0b01,0]),"cri":{}},
-27:{"idx":27,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b11,128,0b01,0]),"cri":{"DOUBL":11}},
-28:{"idx":28,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,0]),"cri":{"DOUBL":3}},
-29:{"idx":29,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,0]),"cri":{}},
-30:{"idx":30,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,0]),"cri":{}},
-31:{"idx":31,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,0]),"cri":{"DOUBL":15}},
-32:{"idx":32,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b00,128,0b00,128]),"cri":{"DOUBL":0}},
-33:{"idx":33,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b10,128,0b00,128]),"cri":{"DOUBL":17}},
-34:{"idx":34,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b01,128,0b00,128]),"cri":{"DOUBL":18}},
-35:{"idx":35,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b11,128,0b00,128]),"cri":{"DOUBL":3}},
-36:{"idx":36,"col":"#003E7B","sat":140,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b00,128,0b10,128]),"cri":{"DOUBL":17}},
-37:{"idx":37,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":new Uint8Array([0b10,128,0b10,128]),"cri":{}},
-38:{"idx":38,"col":"#7B7B7B","sat":0,"cmp":["#FF8000","#0080FF"],"pat":new Uint8Array([0b01,128,0b10,128]),"cri":{"DOUBL":3}},
-39:{"idx":39,"col":"#7BB9F6","sat":47,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b11,128,0b10,128]),"cri":{"DOUBL":29}},
-40:{"idx":40,"col":"#7B3E00","sat":140,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b00,128,0b01,128]),"cri":{"DOUBL":18}},
-41:{"idx":41,"col":"#7B7B7B","sat":0,"cmp":["#0080FF","#FF8000"],"pat":new Uint8Array([0b10,128,0b01,128]),"cri":{"DOUBL":3}},
-42:{"idx":42,"col":"#E66B00","sat":141,"cmp":["#FF8000"],"pat":new Uint8Array([0b01,128,0b01,128]),"cri":{}},
-43:{"idx":43,"col":"#F6B97B","sat":47,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b11,128,0b01,128]),"cri":{"DOUBL":30}},
-44:{"idx":44,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b00,128,0b11,128]),"cri":{"DOUBL":3}},
-45:{"idx":45,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b10,128,0b11,128]),"cri":{"DOUBL":29}},
-46:{"idx":46,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b01,128,0b11,128]),"cri":{"DOUBL":30}},
-47:{"idx":47,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b11,128,0b11,128]),"cri":{"DOUBL":15}}
-}
-*/
-
-const patterns = {
-0:{"idx":0,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b0000,0,0b0000,0]),"cri":{"GREY":-1},"dim":[4,2]},
-1:{"idx":1,"col":"#1E001E","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b1000,0,0b0000,0]),"cri":{}},
-2:{"idx":2,"col":"#102010","sat":62,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0100,0,0b0000,0]),"cri":{}},
-3:{"idx":3,"col":"#3D3D3D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,0,0b0000,0]),"cri":{"GREY":-1}},
-4:{"idx":4,"col":"#200020","sat":124,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0010,0,0b0000,0]),"cri":{}},
-5:{"idx":5,"col":"#7B007B","sat":122,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b1010,0,0b0000,0]),"cri":{}},
-6:{"idx":6,"col":"#404040","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,0,0b0000,0]),"cri":{"GREY":-1}},
-7:{"idx":7,"col":"#7B5D7B","sat":22,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b0000,0]),"cri":{}},
-8:{"idx":8,"col":"#0F1E0F","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0001,0,0b0000,0]),"cri":{}},
-9:{"idx":9,"col":"#3B3B3B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,0,0b0000,0]),"cri":{"PROX":3}},
-10:{"idx":10,"col":"#3E7B3E","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0101,0,0b0000,0]),"cri":{}},
-11:{"idx":11,"col":"#6B7B6B","sat":12,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b0000,0]),"cri":{"SAT":-1}},
-12:{"idx":12,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,0,0b0000,0]),"cri":{"GREY":-1}},
-13:{"idx":13,"col":"#7B5B7B","sat":23,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b0000,0]),"cri":{"PROX":7}},
-14:{"idx":14,"col":"#6C7B6C","sat":11,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b0000,0]),"cri":{"PROX":11}},
-15:{"idx":15,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,0,0b0000,0]),"cri":{"GREY":-1}},
-16:{"idx":16,"col":"#1E001E","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0000,0,0b1000,0]),"cri":{"DOUBL":1}},
-17:{"idx":17,"col":"#3B003B","sat":124,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b1000,0,0b1000,0]),"cri":{"VPAT":-1}},
-18:{"idx":18,"col":"#2E202E","sat":28,"cmp":["#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0100,0,0b1000,0]),"cri":{"SAT":-1}},
-19:{"idx":19,"col":"#5B3D5B","sat":30,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,0,0b1000,0]),"cri":{"VPAT":-1}},
-20:{"idx":20,"col":"#3D003D","sat":121,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0010,0,0b1000,0]),"cri":{"VPAT":-1}},
-21:{"idx":21,"col":"#990099","sat":122,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b1010,0,0b1000,0]),"cri":{}},
-22:{"idx":22,"col":"#5D405D","sat":29,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,0,0b1000,0]),"cri":{}},
-23:{"idx":23,"col":"#995D99","sat":37,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b1000,0]),"cri":{}},
-24:{"idx":24,"col":"#2C1E2C","sat":29,"cmp":["#000000","#80FF80","#FF00FF"],"pat":new Uint8Array([0b0001,0,0b1000,0]),"cri":{"SAT":-1}},
-25:{"idx":25,"col":"#593B59","sat":31,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,0,0b1000,0]),"cri":{"PROX":22}},
-26:{"idx":26,"col":"#5B7B5B","sat":26,"cmp":["#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0101,0,0b1000,0]),"cri":{"SAT":-1}},
-27:{"idx":27,"col":"#897B89","sat":9,"cmp":["#FFFFFF","#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b1101,0,0b1000,0]),"cri":{"SAT":-1}},
-28:{"idx":28,"col":"#5B3D5B","sat":30,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,0,0b1000,0]),"cri":{}},
-29:{"idx":29,"col":"#995B99","sat":38,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b1000,0]),"cri":{"PROX":23}},
-30:{"idx":30,"col":"#8A7B8A","sat":9,"cmp":["#FFFFFF","#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0111,0,0b1000,0]),"cri":{"SAT":-1}},
-31:{"idx":31,"col":"#997B99","sat":17,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1111,0,0b1000,0]),"cri":{}},
-32:{"idx":32,"col":"#102010","sat":62,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0000,0,0b0100,0]),"cri":{"DOUBL":2}},
-33:{"idx":33,"col":"#2E202E","sat":28,"cmp":["#000000","#FF00FF","#80FF80"],"pat":new Uint8Array([0b1000,0,0b0100,0]),"cri":{"SAT":-1}},
-34:{"idx":34,"col":"#204020","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0100,0,0b0100,0]),"cri":{"VPAT":-1}},
-35:{"idx":35,"col":"#4D5D4D","sat":16,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,0,0b0100,0]),"cri":{"PROX":41}},
-36:{"idx":36,"col":"#302030","sat":30,"cmp":["#000000","#FF00FF","#80FF80"],"pat":new Uint8Array([0b0010,0,0b0100,0]),"cri":{"SAT":-1}},
-37:{"idx":37,"col":"#8B208B","sat":85,"cmp":["#FF00FF","#80FF80","#000000"],"pat":new Uint8Array([0b1010,0,0b0100,0]),"cri":{"PROX":21}},
-38:{"idx":38,"col":"#506050","sat":15,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,0,0b0100,0]),"cri":{"PROX":41}},
-39:{"idx":39,"col":"#8B7D8B","sat":9,"cmp":["#FFFFFF","#FF00FF","#80FF80","#000000"],"pat":new Uint8Array([0b1110,0,0b0100,0]),"cri":{"SAT":-1}},
-40:{"idx":40,"col":"#1F3D1F","sat":60,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0001,0,0b0100,0]),"cri":{}},
-41:{"idx":41,"col":"#4B5B4B","sat":16,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,0,0b0100,0]),"cri":{"SAT":-1}},
-42:{"idx":42,"col":"#4E9B4E","sat":60,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0101,0,0b0100,0]),"cri":{}},
-43:{"idx":43,"col":"#7B9B7B","sat":20,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b0100,0]),"cri":{}},
-44:{"idx":44,"col":"#4D5D4D","sat":16,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,0,0b0100,0]),"cri":{"PROX":41}},
-45:{"idx":45,"col":"#8B7B8B","sat":10,"cmp":["#FF00FF","#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1011,0,0b0100,0]),"cri":{"SAT":-1}},
-46:{"idx":46,"col":"#7C9B7C","sat":19,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b0100,0]),"cri":{"PROX":43}},
-47:{"idx":47,"col":"#8B9B8B","sat":9,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1111,0,0b0100,0]),"cri":{"PROX":43}},
-48:{"idx":48,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,0,0b1100,0]),"cri":{"GREY":-1}},
-49:{"idx":49,"col":"#5B3D5B","sat":30,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b1100,0]),"cri":{"DOUBL":28}},
-50:{"idx":50,"col":"#4D5D4D","sat":16,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b1100,0]),"cri":{"PROX":41}},
-51:{"idx":51,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,0,0b1100,0]),"cri":{"VPAT":-1}},
-52:{"idx":52,"col":"#5D3D5D","sat":32,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b1100,0]),"cri":{}},
-53:{"idx":53,"col":"#B83DB8","sat":70,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1010,0,0b1100,0]),"cri":{}},
-54:{"idx":54,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,0,0b1100,0]),"cri":{"VPAT":-1}},
-55:{"idx":55,"col":"#B89BB8","sat":14,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b1100,0]),"cri":{"VPAT":-1}},
-56:{"idx":56,"col":"#4C5B4C","sat":15,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b1100,0]),"cri":{"PROX":41}},
-57:{"idx":57,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,0,0b1100,0]),"cri":{"VPAT":-1}},
-58:{"idx":58,"col":"#7BB87B","sat":35,"cmp":["#80FF80","#FFFFFF","#000000"],"pat":new Uint8Array([0b0101,0,0b1100,0]),"cri":{}},
-59:{"idx":59,"col":"#A9B8A9","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b1100,0]),"cri":{"VPAT":-1}},
-60:{"idx":60,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,0,0b1100,0]),"cri":{"GREY":-1}},
-61:{"idx":61,"col":"#B899B8","sat":15,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b1100,0]),"cri":{}},
-62:{"idx":62,"col":"#AAB8AA","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b1100,0]),"cri":{"SAT":-1}},
-63:{"idx":63,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,0,0b1100,0]),"cri":{"VPAT":-1}},
-64:{"idx":64,"col":"#200020","sat":124,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0000,0,0b0010,0]),"cri":{"DOUBL":4}},
-65:{"idx":65,"col":"#3D003D","sat":121,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b1000,0,0b0010,0]),"cri":{}},
-66:{"idx":66,"col":"#302030","sat":30,"cmp":["#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0100,0,0b0010,0]),"cri":{"SAT":-1}},
-67:{"idx":67,"col":"#5D3D5D","sat":32,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,0,0b0010,0]),"cri":{"DOUBL":52}},
-68:{"idx":68,"col":"#400040","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0010,0,0b0010,0]),"cri":{}},
-69:{"idx":69,"col":"#9B009B","sat":123,"cmp":["#FF00FF","#000000"],"pat":new Uint8Array([0b1010,0,0b0010,0]),"cri":{}},
-70:{"idx":70,"col":"#604060","sat":31,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,0,0b0010,0]),"cri":{}},
-71:{"idx":71,"col":"#9B5D9B","sat":38,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b0010,0]),"cri":{}},
-72:{"idx":72,"col":"#2F1E2F","sat":34,"cmp":["#000000","#80FF80","#FF00FF"],"pat":new Uint8Array([0b0001,0,0b0010,0]),"cri":{"SAT":-1}},
-73:{"idx":73,"col":"#5B3B5B","sat":33,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,0,0b0010,0]),"cri":{"PROX":22}},
-74:{"idx":74,"col":"#5E7B5E","sat":23,"cmp":["#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0101,0,0b0010,0]),"cri":{}},
-75:{"idx":75,"col":"#8B7B8B","sat":10,"cmp":["#FFFFFF","#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b1101,0,0b0010,0]),"cri":{"SAT":-1}},
-76:{"idx":76,"col":"#5D3D5D","sat":32,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,0,0b0010,0]),"cri":{"DOUBL":52}},
-77:{"idx":77,"col":"#9B5B9B","sat":39,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b0010,0]),"cri":{"PROX":23}},
-78:{"idx":78,"col":"#8C7B8C","sat":10,"cmp":["#FFFFFF","#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0111,0,0b0010,0]),"cri":{"SAT":-1}},
-79:{"idx":79,"col":"#9B7B9B","sat":18,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1111,0,0b0010,0]),"cri":{}},
-80:{"idx":80,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0000,0,0b1010,0]),"cri":{"DOUBL":5}},
-81:{"idx":81,"col":"#990099","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b1000,0,0b1010,0]),"cri":{"DOUBL":21}},
-82:{"idx":82,"col":"#8B208B","sat":85,"cmp":["#80FF80","#000000","#FF00FF"],"pat":new Uint8Array([0b0100,0,0b1010,0]),"cri":{"PROX":5}},
-83:{"idx":83,"col":"#B83DB8","sat":70,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,0,0b1010,0]),"cri":{"DOUBL":53}},
-84:{"idx":84,"col":"#9B009B","sat":123,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0010,0,0b1010,0]),"cri":{"DOUBL":69}},
-85:{"idx":85,"col":"#F600F6","sat":122,"cmp":["#FF00FF"],"pat":new Uint8Array([0b1010,0,0b1010,0]),"cri":{}},
-86:{"idx":86,"col":"#BB40BB","sat":69,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,0,0b1010,0]),"cri":{}},
-87:{"idx":87,"col":"#F65DF6","sat":64,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1110,0,0b1010,0]),"cri":{}},
-88:{"idx":88,"col":"#8A1E8A","sat":86,"cmp":["#000000","#80FF80","#FF00FF"],"pat":new Uint8Array([0b0001,0,0b1010,0]),"cri":{"PROX":5}},
-89:{"idx":89,"col":"#B63BB6","sat":71,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,0,0b1010,0]),"cri":{"PROX":53}},
-90:{"idx":90,"col":"#B97BB9","sat":31,"cmp":["#80FF80","#FF00FF"],"pat":new Uint8Array([0b0101,0,0b1010,0]),"cri":{"DOUBL":165}},
-91:{"idx":91,"col":"#E67BE6","sat":45,"cmp":["#FFFFFF","#80FF80","#FF00FF"],"pat":new Uint8Array([0b1101,0,0b1010,0]),"cri":{"PROX":87}},
-92:{"idx":92,"col":"#B83DB8","sat":70,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,0,0b1010,0]),"cri":{"DOUBL":53}},
-93:{"idx":93,"col":"#F65BF6","sat":65,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1011,0,0b1010,0]),"cri":{"PROX":87}},
-94:{"idx":94,"col":"#E77BE7","sat":45,"cmp":["#FFFFFF","#80FF80","#FF00FF"],"pat":new Uint8Array([0b0111,0,0b1010,0]),"cri":{"PROX":87}},
-95:{"idx":95,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1111,0,0b1010,0]),"cri":{}},
-96:{"idx":96,"col":"#404040","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,0,0b0110,0]),"cri":{"GREY":-1}},
-97:{"idx":97,"col":"#5D405D","sat":29,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b0110,0]),"cri":{"DOUBL":22}},
-98:{"idx":98,"col":"#506050","sat":15,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b0110,0]),"cri":{"PROX":41}},
-99:{"idx":99,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,0,0b0110,0]),"cri":{"VPAT":-1}},
-100:{"idx":100,"col":"#604060","sat":31,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b0110,0]),"cri":{"DOUBL":70}},
-101:{"idx":101,"col":"#BB40BB","sat":69,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1010,0,0b0110,0]),"cri":{"DOUBL":86}},
-102:{"idx":102,"col":"#808080","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,0,0b0110,0]),"cri":{"VPAT":-1}},
-103:{"idx":103,"col":"#BB9DBB","sat":14,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b0110,0]),"cri":{"VPAT":-1}},
-104:{"idx":104,"col":"#4F5D4F","sat":14,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b0110,0]),"cri":{"PROX":41}},
-105:{"idx":105,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,0,0b0110,0]),"cri":{"GREY":-1}},
-106:{"idx":106,"col":"#7DBB7D","sat":35,"cmp":["#80FF80","#FFFFFF","#000000"],"pat":new Uint8Array([0b0101,0,0b0110,0]),"cri":{}},
-107:{"idx":107,"col":"#ABBBAB","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b0110,0]),"cri":{"PROX":62}},
-108:{"idx":108,"col":"#7D7D7D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,0,0b0110,0]),"cri":{"VPAT":-1}},
-109:{"idx":109,"col":"#BB9BBB","sat":15,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b0110,0]),"cri":{}},
-110:{"idx":110,"col":"#ACBBAC","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b0110,0]),"cri":{"VPAT":-1}},
-111:{"idx":111,"col":"#BBBBBB","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,0,0b0110,0]),"cri":{"VPAT":-1}},
-112:{"idx":112,"col":"#7B5D7B","sat":22,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0000,0,0b1110,0]),"cri":{"DOUBL":7}},
-113:{"idx":113,"col":"#995D99","sat":37,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b1110,0]),"cri":{"DOUBL":23}},
-114:{"idx":114,"col":"#8B7D8B","sat":9,"cmp":["#80FF80","#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0100,0,0b1110,0]),"cri":{"SAT":-1}},
-115:{"idx":115,"col":"#B89BB8","sat":14,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,0,0b1110,0]),"cri":{"VPAT":-1}},
-116:{"idx":116,"col":"#9B5D9B","sat":38,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b1110,0]),"cri":{"DOUBL":71}},
-117:{"idx":117,"col":"#F65DF6","sat":64,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1010,0,0b1110,0]),"cri":{"DOUBL":87}},
-118:{"idx":118,"col":"#BB9DBB","sat":14,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,0,0b1110,0]),"cri":{"VPAT":-1}},
-119:{"idx":119,"col":"#F6BBF6","sat":21,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1110,0,0b1110,0]),"cri":{"VPAT":-1}},
-120:{"idx":120,"col":"#8A7B8A","sat":9,"cmp":["#000000","#80FF80","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0001,0,0b1110,0]),"cri":{"SAT":-1}},
-121:{"idx":121,"col":"#B699B6","sat":14,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,0,0b1110,0]),"cri":{}},
-122:{"idx":122,"col":"#B9D8B9","sat":13,"cmp":["#80FF80","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0101,0,0b1110,0]),"cri":{"PROX":175}},
-123:{"idx":123,"col":"#E6D8E6","sat":5,"cmp":["#FFFFFF","#80FF80","#FF00FF"],"pat":new Uint8Array([0b1101,0,0b1110,0]),"cri":{}},
-124:{"idx":124,"col":"#B89BB8","sat":14,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,0,0b1110,0]),"cri":{"PROX":61}},
-125:{"idx":125,"col":"#F6B8F6","sat":23,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1011,0,0b1110,0]),"cri":{}},
-126:{"idx":126,"col":"#E7D8E7","sat":5,"cmp":["#FFFFFF","#80FF80","#FF00FF"],"pat":new Uint8Array([0b0111,0,0b1110,0]),"cri":{"PROX":-1}},
-127:{"idx":127,"col":"#F6D8F6","sat":10,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1111,0,0b1110,0]),"cri":{}},
-128:{"idx":128,"col":"#0F1E0F","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0000,0,0b0001,0]),"cri":{"DOUBL":8}},
-129:{"idx":129,"col":"#2C1E2C","sat":29,"cmp":["#000000","#FF00FF","#80FF80"],"pat":new Uint8Array([0b1000,0,0b0001,0]),"cri":{"SAT":-1}},
-130:{"idx":130,"col":"#1F3D1F","sat":60,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0100,0,0b0001,0]),"cri":{"DOUBL":40}},
-131:{"idx":131,"col":"#4C5B4C","sat":15,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,0,0b0001,0]),"cri":{"PROX":41}},
-132:{"idx":132,"col":"#2F1E2F","sat":34,"cmp":["#000000","#FF00FF","#80FF80"],"pat":new Uint8Array([0b0010,0,0b0001,0]),"cri":{"SAT":-1}},
-133:{"idx":133,"col":"#8A1E8A","sat":86,"cmp":["#FF00FF","#000000","#80FF80"],"pat":new Uint8Array([0b1010,0,0b0001,0]),"cri":{"PROX":5}},
-134:{"idx":134,"col":"#4F5D4F","sat":14,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,0,0b0001,0]),"cri":{"PROX":41}},
-135:{"idx":135,"col":"#8A7B8A","sat":9,"cmp":["#FFFFFF","#FF00FF","#000000","#80FF80"],"pat":new Uint8Array([0b1110,0,0b0001,0]),"cri":{"SAT":-1}},
-136:{"idx":136,"col":"#1E3B1E","sat":59,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0001,0,0b0001,0]),"cri":{"VPAT":-1}},
-137:{"idx":137,"col":"#4A594A","sat":16,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,0,0b0001,0]),"cri":{"PROX":176}},
-138:{"idx":138,"col":"#4D994D","sat":61,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0101,0,0b0001,0]),"cri":{}},
-139:{"idx":139,"col":"#7A997A","sat":19,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b0001,0]),"cri":{}},
-140:{"idx":140,"col":"#4C5B4C","sat":15,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,0,0b0001,0]),"cri":{"PROX":41}},
-141:{"idx":141,"col":"#8A798A","sat":11,"cmp":["#FF00FF","#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1011,0,0b0001,0]),"cri":{"SAT":-1}},
-142:{"idx":142,"col":"#7B997B","sat":18,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b0001,0]),"cri":{"PROX":43}},
-143:{"idx":143,"col":"#8A998A","sat":9,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1111,0,0b0001,0]),"cri":{"PROX":43}},
-144:{"idx":144,"col":"#3B3B3B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,0,0b1001,0]),"cri":{"PROX":3}},
-145:{"idx":145,"col":"#593B59","sat":31,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b1001,0]),"cri":{"PROX":22}},
-146:{"idx":146,"col":"#4B5B4B","sat":16,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b1001,0]),"cri":{}},
-147:{"idx":147,"col":"#797979","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,0,0b1001,0]),"cri":{"VPAT":-1}},
-148:{"idx":148,"col":"#5B3B5B","sat":33,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b1001,0]),"cri":{"PROX":22}},
-149:{"idx":149,"col":"#B63BB6","sat":71,"cmp":["#FF00FF","#000000","#FFFFFF"],"pat":new Uint8Array([0b1010,0,0b1001,0]),"cri":{"PROX":53}},
-150:{"idx":150,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,0,0b1001,0]),"cri":{"GREY":-1}},
-151:{"idx":151,"col":"#B699B6","sat":14,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b1001,0]),"cri":{"DOUBL":121}},
-152:{"idx":152,"col":"#4A594A","sat":16,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b1001,0]),"cri":{}},
-153:{"idx":153,"col":"#767676","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,0,0b1001,0]),"cri":{"VPAT":-1}},
-154:{"idx":154,"col":"#79B679","sat":35,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0101,0,0b1001,0]),"cri":{"PROX":58}},
-155:{"idx":155,"col":"#A6B6A6","sat":8,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b1001,0]),"cri":{"VPAT":-1}},
-156:{"idx":156,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,0,0b1001,0]),"cri":{"VPAT":-1}},
-157:{"idx":157,"col":"#B696B6","sat":15,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b1001,0]),"cri":{"VPAT":-1}},
-158:{"idx":158,"col":"#A7B6A7","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b1001,0]),"cri":{"PROX":62}},
-159:{"idx":159,"col":"#B6B6B6","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,0,0b1001,0]),"cri":{"VPAT":-1}},
-160:{"idx":160,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0000,0,0b0101,0]),"cri":{"DOUBL":10}},
-161:{"idx":161,"col":"#5B7B5B","sat":26,"cmp":["#000000","#FF00FF","#80FF80"],"pat":new Uint8Array([0b1000,0,0b0101,0]),"cri":{}},
-162:{"idx":162,"col":"#4E9B4E","sat":60,"cmp":["#80FF80","#000000"],"pat":new Uint8Array([0b0100,0,0b0101,0]),"cri":{"DOUBL":42}},
-163:{"idx":163,"col":"#7BB87B","sat":35,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,0,0b0101,0]),"cri":{"DOUBL":58}},
-164:{"idx":164,"col":"#5E7B5E","sat":23,"cmp":["#000000","#FF00FF","#80FF80"],"pat":new Uint8Array([0b0010,0,0b0101,0]),"cri":{"DOUBL":74}},
-165:{"idx":165,"col":"#B97BB9","sat":31,"cmp":["#FF00FF","#80FF80"],"pat":new Uint8Array([0b1010,0,0b0101,0]),"cri":{}},
-166:{"idx":166,"col":"#7DBB7D","sat":35,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,0,0b0101,0]),"cri":{"DOUBL":106}},
-167:{"idx":167,"col":"#B9D8B9","sat":13,"cmp":["#FFFFFF","#FF00FF","#80FF80"],"pat":new Uint8Array([0b1110,0,0b0101,0]),"cri":{"PROX":175}},
-168:{"idx":168,"col":"#4D994D","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0001,0,0b0101,0]),"cri":{"DOUBL":138}},
-169:{"idx":169,"col":"#79B679","sat":35,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,0,0b0101,0]),"cri":{"PROX":58}},
-170:{"idx":170,"col":"#7BF67B","sat":61,"cmp":["#80FF80"],"pat":new Uint8Array([0b0101,0,0b0101,0]),"cri":{}},
-171:{"idx":171,"col":"#A9F6A9","sat":32,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1101,0,0b0101,0]),"cri":{}},
-172:{"idx":172,"col":"#7BB87B","sat":35,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,0,0b0101,0]),"cri":{"DOUBL":58}},
-173:{"idx":173,"col":"#B9D6B9","sat":12,"cmp":["#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1011,0,0b0101,0]),"cri":{"PROX":122}},
-174:{"idx":174,"col":"#AAF6AA","sat":32,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0111,0,0b0101,0]),"cri":{"PROX":-1}},
-175:{"idx":175,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1111,0,0b0101,0]),"cri":{}},
-176:{"idx":176,"col":"#6B7B6B","sat":12,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0000,0,0b1101,0]),"cri":{"PROX":146}},
-177:{"idx":177,"col":"#897B89","sat":9,"cmp":["#000000","#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1000,0,0b1101,0]),"cri":{"SAT":-1}},
-178:{"idx":178,"col":"#7B9B7B","sat":20,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b1101,0]),"cri":{"DOUBL":43}},
-179:{"idx":179,"col":"#A9B8A9","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,0,0b1101,0]),"cri":{"VPAT":-1}},
-180:{"idx":180,"col":"#8B7B8B","sat":10,"cmp":["#000000","#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0010,0,0b1101,0]),"cri":{"SAT":-1}},
-181:{"idx":181,"col":"#E67BE6","sat":45,"cmp":["#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1010,0,0b1101,0]),"cri":{}},
-182:{"idx":182,"col":"#ABBBAB","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,0,0b1101,0]),"cri":{"PROX":62}},
-183:{"idx":183,"col":"#E6D8E6","sat":5,"cmp":["#FFFFFF","#FF00FF","#80FF80"],"pat":new Uint8Array([0b1110,0,0b1101,0]),"cri":{"DOUBL":123}},
-184:{"idx":184,"col":"#7A997A","sat":19,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b1101,0]),"cri":{"DOUBL":139}},
-185:{"idx":185,"col":"#A6B6A6","sat":8,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,0,0b1101,0]),"cri":{"VPAT":-1}},
-186:{"idx":186,"col":"#A9F6A9","sat":32,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0101,0,0b1101,0]),"cri":{"PROX":-1,"DOUBL":171}},
-187:{"idx":187,"col":"#D6F6D6","sat":12,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1101,0,0b1101,0]),"cri":{"VPAT":-1}},
-188:{"idx":188,"col":"#A9B8A9","sat":7,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,0,0b1101,0]),"cri":{"PROX":62}},
-189:{"idx":189,"col":"#E6D6E6","sat":6,"cmp":["#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1011,0,0b1101,0]),"cri":{"PROX":-1}},
-190:{"idx":190,"col":"#D7F6D7","sat":11,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0111,0,0b1101,0]),"cri":{}},
-191:{"idx":191,"col":"#E6F6E6","sat":6,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1111,0,0b1101,0]),"cri":{}},
-192:{"idx":192,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,0,0b0011,0]),"cri":{"GREY":-1}},
-193:{"idx":193,"col":"#5B3D5B","sat":30,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b0011,0]),"cri":{"DOUBL":28}},
-194:{"idx":194,"col":"#4D5D4D","sat":16,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b0011,0]),"cri":{"PROX":41}},
-195:{"idx":195,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,0,0b0011,0]),"cri":{"GREY":-1}},
-196:{"idx":196,"col":"#5D3D5D","sat":32,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b0011,0]),"cri":{"DOUBL":52}},
-197:{"idx":197,"col":"#B83DB8","sat":70,"cmp":["#FF00FF","#000000","#FFFFFF"],"pat":new Uint8Array([0b1010,0,0b0011,0]),"cri":{"DOUBL":53}},
-198:{"idx":198,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,0,0b0011,0]),"cri":{"VPAT":-1}},
-199:{"idx":199,"col":"#B89BB8","sat":14,"cmp":["#FFFFFF","#FF00FF","#000000"],"pat":new Uint8Array([0b1110,0,0b0011,0]),"cri":{"PROX":61}},
-200:{"idx":200,"col":"#4C5B4C","sat":15,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b0011,0]),"cri":{"PROX":41}},
-201:{"idx":201,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,0,0b0011,0]),"cri":{"VPAT":-1}},
-202:{"idx":202,"col":"#7BB87B","sat":35,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0101,0,0b0011,0]),"cri":{"DOUBL":58}},
-203:{"idx":203,"col":"#A9B8A9","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1101,0,0b0011,0]),"cri":{"PROX":62}},
-204:{"idx":204,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,0,0b0011,0]),"cri":{"VPAT":-1}},
-205:{"idx":205,"col":"#B899B8","sat":15,"cmp":["#FF00FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,0,0b0011,0]),"cri":{"DOUBL":61}},
-206:{"idx":206,"col":"#AAB8AA","sat":7,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b0111,0,0b0011,0]),"cri":{"VPAT":-1}},
-207:{"idx":207,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,0,0b0011,0]),"cri":{"VPAT":-1}},
-208:{"idx":208,"col":"#7B5B7B","sat":23,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0000,0,0b1011,0]),"cri":{"PROX":7}},
-209:{"idx":209,"col":"#995B99","sat":38,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b1011,0]),"cri":{"PROX":23}},
-210:{"idx":210,"col":"#8B7B8B","sat":10,"cmp":["#80FF80","#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b1011,0]),"cri":{"SAT":-1}},
-211:{"idx":211,"col":"#B899B8","sat":15,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,0,0b1011,0]),"cri":{"DOUBL":61}},
-212:{"idx":212,"col":"#9B5B9B","sat":39,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b1011,0]),"cri":{"PROX":23}},
-213:{"idx":213,"col":"#F65BF6","sat":65,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1010,0,0b1011,0]),"cri":{"PROX":87}},
-214:{"idx":214,"col":"#BB9BBB","sat":15,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,0,0b1011,0]),"cri":{"DOUBL":109}},
-215:{"idx":215,"col":"#F6B8F6","sat":23,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1110,0,0b1011,0]),"cri":{"DOUBL":125}},
-216:{"idx":216,"col":"#8A798A","sat":11,"cmp":["#000000","#80FF80","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b1011,0]),"cri":{"SAT":-1}},
-217:{"idx":217,"col":"#B696B6","sat":15,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,0,0b1011,0]),"cri":{"VPAT":-1}},
-218:{"idx":218,"col":"#B9D6B9","sat":12,"cmp":["#80FF80","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0101,0,0b1011,0]),"cri":{"PROX":122}},
-219:{"idx":219,"col":"#E6D6E6","sat":6,"cmp":["#FFFFFF","#80FF80","#FF00FF"],"pat":new Uint8Array([0b1101,0,0b1011,0]),"cri":{"PROX":123}},
-220:{"idx":220,"col":"#B899B8","sat":15,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,0,0b1011,0]),"cri":{"DOUBL":61}},
-221:{"idx":221,"col":"#F6B6F6","sat":23,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1011,0,0b1011,0]),"cri":{"VPAT":-1}},
-222:{"idx":222,"col":"#E7D6E7","sat":6,"cmp":["#FFFFFF","#80FF80","#FF00FF"],"pat":new Uint8Array([0b0111,0,0b1011,0]),"cri":{"SAT":-1}},
-223:{"idx":223,"col":"#F6D6F6","sat":11,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1111,0,0b1011,0]),"cri":{"PROX":127}},
-224:{"idx":224,"col":"#6C7B6C","sat":11,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0000,0,0b0111,0]),"cri":{"PROX":11}},
-225:{"idx":225,"col":"#8A7B8A","sat":9,"cmp":["#000000","#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1000,0,0b0111,0]),"cri":{"SAT":-1}},
-226:{"idx":226,"col":"#7C9B7C","sat":19,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b0111,0]),"cri":{"PROX":43}},
-227:{"idx":227,"col":"#AAB8AA","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,0,0b0111,0]),"cri":{"SAT":-1}},
-228:{"idx":228,"col":"#8C7B8C","sat":10,"cmp":["#000000","#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0010,0,0b0111,0]),"cri":{"SAT":-1}},
-229:{"idx":229,"col":"#E77BE7","sat":45,"cmp":["#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1010,0,0b0111,0]),"cri":{"PROX":181}},
-230:{"idx":230,"col":"#ACBBAC","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,0,0b0111,0]),"cri":{"SAT":-1}},
-231:{"idx":231,"col":"#E7D8E7","sat":5,"cmp":["#FFFFFF","#FF00FF","#80FF80"],"pat":new Uint8Array([0b1110,0,0b0111,0]),"cri":{"SAT":-1}},
-232:{"idx":232,"col":"#7B997B","sat":18,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b0111,0]),"cri":{"PROX":43}},
-233:{"idx":233,"col":"#A7B6A7","sat":7,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,0,0b0111,0]),"cri":{"PROX":182}},
-234:{"idx":234,"col":"#AAF6AA","sat":32,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0101,0,0b0111,0]),"cri":{"PROX":-1}},
-235:{"idx":235,"col":"#D7F6D7","sat":11,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1101,0,0b0111,0]),"cri":{"DOUBL":190}},
-236:{"idx":236,"col":"#AAB8AA","sat":7,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,0,0b0111,0]),"cri":{"VPAT":-1}},
-237:{"idx":237,"col":"#E7D6E7","sat":6,"cmp":["#FF00FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1011,0,0b0111,0]),"cri":{"PROX":123}},
-238:{"idx":238,"col":"#D8F6D8","sat":11,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0111,0,0b0111,0]),"cri":{"VPAT":-1}},
-239:{"idx":239,"col":"#E7F6E7","sat":5,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1111,0,0b0111,0]),"cri":{"PROX":191}},
-240:{"idx":240,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,0,0b1111,0]),"cri":{"GREY":-1}},
-241:{"idx":241,"col":"#997B99","sat":17,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,0,0b1111,0]),"cri":{"DOUBL":31}},
-242:{"idx":242,"col":"#8B9B8B","sat":9,"cmp":["#80FF80","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,0,0b1111,0]),"cri":{"PROX":43}},
-243:{"idx":243,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,0,0b1111,0]),"cri":{"VPAT":-1}},
-244:{"idx":244,"col":"#9B7B9B","sat":18,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,0,0b1111,0]),"cri":{"DOUBL":79}},
-245:{"idx":245,"col":"#F67BF6","sat":49,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1010,0,0b1111,0]),"cri":{"DOUBL":95}},
-246:{"idx":246,"col":"#BBBBBB","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,0,0b1111,0]),"cri":{"VPAT":-1}},
-247:{"idx":247,"col":"#F6D8F6","sat":10,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1110,0,0b1111,0]),"cri":{"DOUBL":127}},
-248:{"idx":248,"col":"#8A998A","sat":9,"cmp":["#000000","#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0001,0,0b1111,0]),"cri":{"PROX":43}},
-249:{"idx":249,"col":"#B6B6B6","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,0,0b1111,0]),"cri":{"VPAT":-1}},
-250:{"idx":250,"col":"#B9F6B9","sat":24,"cmp":["#80FF80","#FFFFFF"],"pat":new Uint8Array([0b0101,0,0b1111,0]),"cri":{"DOUBL":175}},
-251:{"idx":251,"col":"#E6F6E6","sat":6,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1101,0,0b1111,0]),"cri":{"DOUBL":191}},
-252:{"idx":252,"col":"#B8B8B8","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,0,0b1111,0]),"cri":{"VPAT":-1}},
-253:{"idx":253,"col":"#F6D6F6","sat":11,"cmp":["#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1011,0,0b1111,0]),"cri":{"PROX":127}},
-254:{"idx":254,"col":"#E7F6E7","sat":5,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0111,0,0b1111,0]),"cri":{"PROX":191}},
-255:{"idx":255,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b1111,0,0b1111,0]),"cri":{"GREY":-1}},
-256:{"idx":256,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b0000,128,0b0000,0]),"cri":{"GREY":-1}},
-257:{"idx":257,"col":"#000F1E","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b1000,128,0b0000,0]),"cri":{}},
-258:{"idx":258,"col":"#201000","sat":141,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0100,128,0b0000,0]),"cri":{}},
-259:{"idx":259,"col":"#3D3D3D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b0000,0]),"cri":{"GREY":-1}},
-260:{"idx":260,"col":"#001020","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0010,128,0b0000,0]),"cri":{}},
-261:{"idx":261,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b1010,128,0b0000,0]),"cri":{}},
-262:{"idx":262,"col":"#404040","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b0000,0]),"cri":{"GREY":-1}},
-263:{"idx":263,"col":"#5D6C7B","sat":20,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0000,0]),"cri":{"SAT":-1}},
-264:{"idx":264,"col":"#1E0F00","sat":141,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0001,128,0b0000,0]),"cri":{}},
-265:{"idx":265,"col":"#3B3B3B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b0000,0]),"cri":{"PROX":3}},
-266:{"idx":266,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0101,128,0b0000,0]),"cri":{}},
-267:{"idx":267,"col":"#7B6B5B","sat":21,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0000,0]),"cri":{}},
-268:{"idx":268,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b0000,0]),"cri":{"GREY":-1}},
-269:{"idx":269,"col":"#5B6B7B","sat":21,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0000,0]),"cri":{"PROX":263}},
-270:{"idx":270,"col":"#7B6C5D","sat":20,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0000,0]),"cri":{"PROX":267}},
-271:{"idx":271,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b0000,0]),"cri":{"GREY":-1}},
-272:{"idx":272,"col":"#1E001E","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0000,128,0b1000,0]),"cri":{"DOUBL":1}},
-273:{"idx":273,"col":"#1E0F3B","sat":90,"cmp":["#000000","#0080FF","#FF00FF"],"pat":new Uint8Array([0b1000,128,0b1000,0]),"cri":{"VPAT":-1}},
-274:{"idx":274,"col":"#3D101E","sat":90,"cmp":["#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0100,128,0b1000,0]),"cri":{}},
-275:{"idx":275,"col":"#5B3D5B","sat":30,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,128,0b1000,0]),"cri":{"DOUBL":28}},
-276:{"idx":276,"col":"#1E103D","sat":90,"cmp":["#000000","#0080FF","#FF00FF"],"pat":new Uint8Array([0b0010,128,0b1000,0]),"cri":{}},
-277:{"idx":277,"col":"#1E3E99","sat":110,"cmp":["#0080FF","#000000","#FF00FF"],"pat":new Uint8Array([0b1010,128,0b1000,0]),"cri":{}},
-278:{"idx":278,"col":"#5D405D","sat":29,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,128,0b1000,0]),"cri":{"DOUBL":22}},
-279:{"idx":279,"col":"#7B6C99","sat":25,"cmp":["#FFFFFF","#0080FF","#000000","#FF00FF"],"pat":new Uint8Array([0b1110,128,0b1000,0]),"cri":{}},
-280:{"idx":280,"col":"#3B0F1E","sat":90,"cmp":["#000000","#FF8000","#FF00FF"],"pat":new Uint8Array([0b0001,128,0b1000,0]),"cri":{"VPAT":-1}},
-281:{"idx":281,"col":"#593B59","sat":31,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,128,0b1000,0]),"cri":{"PROX":25}},
-282:{"idx":282,"col":"#993E1E","sat":110,"cmp":["#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0101,128,0b1000,0]),"cri":{}},
-283:{"idx":283,"col":"#996B79","sat":26,"cmp":["#FFFFFF","#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b1101,128,0b1000,0]),"cri":{"SAT":-1}},
-284:{"idx":284,"col":"#5B3D5B","sat":30,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,128,0b1000,0]),"cri":{"DOUBL":28}},
-285:{"idx":285,"col":"#796B99","sat":26,"cmp":["#0080FF","#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1011,128,0b1000,0]),"cri":{"PROX":279}},
-286:{"idx":286,"col":"#996C7B","sat":25,"cmp":["#FFFFFF","#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0111,128,0b1000,0]),"cri":{"SAT":-1}},
-287:{"idx":287,"col":"#997B99","sat":17,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1111,128,0b1000,0]),"cri":{"DOUBL":31}},
-288:{"idx":288,"col":"#102010","sat":62,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0000,128,0b0100,0]),"cri":{"DOUBL":2}},
-289:{"idx":289,"col":"#102F2E","sat":69,"cmp":["#000000","#0080FF","#80FF80"],"pat":new Uint8Array([0b1000,128,0b0100,0]),"cri":{}},
-290:{"idx":290,"col":"#303010","sat":71,"cmp":["#FF8000","#000000","#80FF80"],"pat":new Uint8Array([0b0100,128,0b0100,0]),"cri":{"VPAT":-1}},
-291:{"idx":291,"col":"#4D5D4D","sat":16,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,128,0b0100,0]),"cri":{"PROX":41}},
-292:{"idx":292,"col":"#103030","sat":71,"cmp":["#000000","#0080FF","#80FF80"],"pat":new Uint8Array([0b0010,128,0b0100,0]),"cri":{}},
-293:{"idx":293,"col":"#105E8B","sat":106,"cmp":["#0080FF","#80FF80","#000000"],"pat":new Uint8Array([0b1010,128,0b0100,0]),"cri":{}},
-294:{"idx":294,"col":"#506050","sat":15,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,128,0b0100,0]),"cri":{"PROX":41}},
-295:{"idx":295,"col":"#6D8C8B","sat":19,"cmp":["#FFFFFF","#0080FF","#80FF80","#000000"],"pat":new Uint8Array([0b1110,128,0b0100,0]),"cri":{"PROX":301}},
-296:{"idx":296,"col":"#2E2F10","sat":69,"cmp":["#000000","#FF8000","#80FF80"],"pat":new Uint8Array([0b0001,128,0b0100,0]),"cri":{}},
-297:{"idx":297,"col":"#4B5B4B","sat":16,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,128,0b0100,0]),"cri":{"PROX":41,"DOUBL":146}},
-298:{"idx":298,"col":"#8B5E10","sat":106,"cmp":["#FF8000","#80FF80","#000000"],"pat":new Uint8Array([0b0101,128,0b0100,0]),"cri":{}},
-299:{"idx":299,"col":"#8B8B6B","sat":20,"cmp":["#FFFFFF","#FF8000","#80FF80","#000000"],"pat":new Uint8Array([0b1101,128,0b0100,0]),"cri":{}},
-300:{"idx":300,"col":"#4D5D4D","sat":16,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,128,0b0100,0]),"cri":{"PROX":41}},
-301:{"idx":301,"col":"#6B8B8B","sat":20,"cmp":["#0080FF","#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1011,128,0b0100,0]),"cri":{"SAT":-1}},
-302:{"idx":302,"col":"#8B8C6D","sat":19,"cmp":["#FFFFFF","#FF8000","#80FF80","#000000"],"pat":new Uint8Array([0b0111,128,0b0100,0]),"cri":{"PROX":299}},
-303:{"idx":303,"col":"#8B9B8B","sat":9,"cmp":["#FFFFFF","#80FF80","#000000"],"pat":new Uint8Array([0b1111,128,0b0100,0]),"cri":{"PROX":43}},
-304:{"idx":304,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1100,0]),"cri":{"GREY":-1}},
-305:{"idx":305,"col":"#3D4C5B","sat":28,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1100,0]),"cri":{"PROX":404}},
-306:{"idx":306,"col":"#5D4D3D","sat":29,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1100,0]),"cri":{"PROX":658}},
-307:{"idx":307,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b1100,0]),"cri":{"VPAT":-1}},
-308:{"idx":308,"col":"#3D4D5D","sat":29,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1100,0]),"cri":{"SAT":-1}},
-309:{"idx":309,"col":"#3D7BB8","sat":71,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1010,128,0b1100,0]),"cri":{}},
-310:{"idx":310,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b1100,0]),"cri":{"GREY":-1}},
-311:{"idx":311,"col":"#9BAAB8","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b1100,0]),"cri":{"VPAT":-1}},
-312:{"idx":312,"col":"#5B4C3D","sat":28,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1100,0]),"cri":{}},
-313:{"idx":313,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b1100,0]),"cri":{"VPAT":-1}},
-314:{"idx":314,"col":"#B87B3D","sat":71,"cmp":["#FF8000","#FFFFFF","#000000"],"pat":new Uint8Array([0b0101,128,0b1100,0]),"cri":{}},
-315:{"idx":315,"col":"#B8A999","sat":13,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b1100,0]),"cri":{"VPAT":-1}},
-316:{"idx":316,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b1100,0]),"cri":{"GREY":-1}},
-317:{"idx":317,"col":"#99A9B8","sat":13,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b1100,0]),"cri":{}},
-318:{"idx":318,"col":"#B8AA9B","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b1100,0]),"cri":{"SAT":-1}},
-319:{"idx":319,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b1100,0]),"cri":{"VPAT":-1}},
-320:{"idx":320,"col":"#200020","sat":124,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0000,128,0b0010,0]),"cri":{"DOUBL":4}},
-321:{"idx":321,"col":"#200F3D","sat":91,"cmp":["#000000","#0080FF","#FF00FF"],"pat":new Uint8Array([0b1000,128,0b0010,0]),"cri":{}},
-322:{"idx":322,"col":"#401020","sat":93,"cmp":["#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0100,128,0b0010,0]),"cri":{}},
-323:{"idx":323,"col":"#5D3D5D","sat":32,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,128,0b0010,0]),"cri":{"DOUBL":52}},
-324:{"idx":324,"col":"#201040","sat":93,"cmp":["#000000","#0080FF","#FF00FF"],"pat":new Uint8Array([0b0010,128,0b0010,0]),"cri":{}},
-325:{"idx":325,"col":"#203E9B","sat":109,"cmp":["#0080FF","#000000","#FF00FF"],"pat":new Uint8Array([0b1010,128,0b0010,0]),"cri":{}},
-326:{"idx":326,"col":"#604060","sat":31,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,128,0b0010,0]),"cri":{"DOUBL":70}},
-327:{"idx":327,"col":"#7D6C9B","sat":26,"cmp":["#FFFFFF","#0080FF","#000000","#FF00FF"],"pat":new Uint8Array([0b1110,128,0b0010,0]),"cri":{}},
-328:{"idx":328,"col":"#3D0F20","sat":91,"cmp":["#000000","#FF8000","#FF00FF"],"pat":new Uint8Array([0b0001,128,0b0010,0]),"cri":{}},
-329:{"idx":329,"col":"#5B3B5B","sat":33,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,128,0b0010,0]),"cri":{"PROX":22}},
-330:{"idx":330,"col":"#9B3E20","sat":109,"cmp":["#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0101,128,0b0010,0]),"cri":{}},
-331:{"idx":331,"col":"#9B6B7B","sat":27,"cmp":["#FFFFFF","#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b1101,128,0b0010,0]),"cri":{"SAT":-1}},
-332:{"idx":332,"col":"#5D3D5D","sat":32,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,128,0b0010,0]),"cri":{"DOUBL":52}},
-333:{"idx":333,"col":"#7B6B9B","sat":27,"cmp":["#0080FF","#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1011,128,0b0010,0]),"cri":{"PROX":279}},
-334:{"idx":334,"col":"#9B6C7D","sat":26,"cmp":["#FFFFFF","#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0111,128,0b0010,0]),"cri":{"SAT":-1}},
-335:{"idx":335,"col":"#9B7B9B","sat":18,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1111,128,0b0010,0]),"cri":{"DOUBL":79}},
-336:{"idx":336,"col":"#7B007B","sat":122,"cmp":["#000000","#FF00FF"],"pat":new Uint8Array([0b0000,128,0b1010,0]),"cri":{"DOUBL":5}},
-337:{"idx":337,"col":"#7B0F99","sat":106,"cmp":["#000000","#0080FF","#FF00FF"],"pat":new Uint8Array([0b1000,128,0b1010,0]),"cri":{}},
-338:{"idx":338,"col":"#9B107B","sat":105,"cmp":["#FF8000","#000000","#FF00FF"],"pat":new Uint8Array([0b0100,128,0b1010,0]),"cri":{}},
-339:{"idx":339,"col":"#B83DB8","sat":70,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,128,0b1010,0]),"cri":{"DOUBL":53}},
-340:{"idx":340,"col":"#7B109B","sat":105,"cmp":["#000000","#0080FF","#FF00FF"],"pat":new Uint8Array([0b0010,128,0b1010,0]),"cri":{}},
-341:{"idx":341,"col":"#7B3EF6","sat":92,"cmp":["#0080FF","#FF00FF"],"pat":new Uint8Array([0b1010,128,0b1010,0]),"cri":{}},
-342:{"idx":342,"col":"#BB40BB","sat":69,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,128,0b1010,0]),"cri":{"DOUBL":86}},
-343:{"idx":343,"col":"#D86CF6","sat":54,"cmp":["#FFFFFF","#0080FF","#FF00FF"],"pat":new Uint8Array([0b1110,128,0b1010,0]),"cri":{"PROX":349}},
-344:{"idx":344,"col":"#990F7B","sat":106,"cmp":["#000000","#FF8000","#FF00FF"],"pat":new Uint8Array([0b0001,128,0b1010,0]),"cri":{}},
-345:{"idx":345,"col":"#B63BB6","sat":71,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,128,0b1010,0]),"cri":{"PROXY":53}},
-346:{"idx":346,"col":"#F63E7B","sat":92,"cmp":["#FF8000","#FF00FF"],"pat":new Uint8Array([0b0101,128,0b1010,0]),"cri":{}},
-347:{"idx":347,"col":"#F66BD6","sat":54,"cmp":["#FFFFFF","#FF8000","#FF00FF"],"pat":new Uint8Array([0b1101,128,0b1010,0]),"cri":{}},
-348:{"idx":348,"col":"#B83DB8","sat":70,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,128,0b1010,0]),"cri":{"DOUBL":53}},
-349:{"idx":349,"col":"#D66BF6","sat":54,"cmp":["#0080FF","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1011,128,0b1010,0]),"cri":{}},
-350:{"idx":350,"col":"#F66CD8","sat":54,"cmp":["#FFFFFF","#FF8000","#FF00FF"],"pat":new Uint8Array([0b0111,128,0b1010,0]),"cri":{"PROX":347}},
-351:{"idx":351,"col":"#F67BF6","sat":49,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1111,128,0b1010,0]),"cri":{"PROX":105,"DOUBL":95}},
-352:{"idx":352,"col":"#404040","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b0110,0]),"cri":{"GREY":-1}},
-353:{"idx":353,"col":"#404F5D","sat":26,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b0110,0]),"cri":{}},
-354:{"idx":354,"col":"#605040","sat":28,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b0110,0]),"cri":{}},
-355:{"idx":355,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b0110,0]),"cri":{"VPAT":-1}},
-356:{"idx":356,"col":"#405060","sat":28,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b0110,0]),"cri":{}},
-357:{"idx":357,"col":"#407DBB","sat":70,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1010,128,0b0110,0]),"cri":{}},
-358:{"idx":358,"col":"#808080","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b0110,0]),"cri":{"VPAT":-1}},
-359:{"idx":359,"col":"#9DACBB","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0110,0]),"cri":{"VPAT":-1}},
-360:{"idx":360,"col":"#5D4F40","sat":26,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b0110,0]),"cri":{}},
-361:{"idx":361,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b0110,0]),"cri":{"PROX":105}},
-362:{"idx":362,"col":"#BB7D40","sat":70,"cmp":["#FF8000","#FFFFFF","#000000"],"pat":new Uint8Array([0b0101,128,0b0110,0]),"cri":{}},
-363:{"idx":363,"col":"#BBAB9B","sat":13,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0110,0]),"cri":{"VPAT":-1}},
-364:{"idx":364,"col":"#7D7D7D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b0110,0]),"cri":{"GREY":-1}},
-365:{"idx":365,"col":"#9BABBB","sat":13,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0110,0]),"cri":{}},
-366:{"idx":366,"col":"#BBAC9D","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0110,0]),"cri":{"SAT":-1}},
-367:{"idx":367,"col":"#BBBBBB","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b0110,0]),"cri":{"VPAT":-1}},
-368:{"idx":368,"col":"#7B5D7B","sat":22,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0000,128,0b1110,0]),"cri":{"DOUBL":7}},
-369:{"idx":369,"col":"#7B6C99","sat":25,"cmp":["#000000","#0080FF","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1000,128,0b1110,0]),"cri":{"DOUBL":279}},
-370:{"idx":370,"col":"#9B6D7B","sat":26,"cmp":["#FF8000","#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0100,128,0b1110,0]),"cri":{"SAT":-1}},
-371:{"idx":371,"col":"#B89BB8","sat":14,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,128,0b1110,0]),"cri":{"VPAT":-1}},
-372:{"idx":372,"col":"#7B6D9B","sat":26,"cmp":["#000000","#0080FF","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0010,128,0b1110,0]),"cri":{}},
-373:{"idx":373,"col":"#7B9BF6","sat":52,"cmp":["#0080FF","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1010,128,0b1110,0]),"cri":{}},
-374:{"idx":374,"col":"#BB9DBB","sat":14,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,128,0b1110,0]),"cri":{"VPAT":-1}},
-375:{"idx":375,"col":"#D8CAF6","sat":14,"cmp":["#FFFFFF","#0080FF","#FF00FF"],"pat":new Uint8Array([0b1110,128,0b1110,0]),"cri":{"VPAT":-1}},
-376:{"idx":376,"col":"#996C7B","sat":25,"cmp":["#000000","#FF8000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0001,128,0b1110,0]),"cri":{"SAT":-1}},
-377:{"idx":377,"col":"#B699B6","sat":14,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,128,0b1110,0]),"cri":{"PROX":61,"DOUBL":121}},
-378:{"idx":378,"col":"#F69B7B","sat":52,"cmp":["#FF8000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0101,128,0b1110,0]),"cri":{}},
-379:{"idx":379,"col":"#F6C8D6","sat":15,"cmp":["#FFFFFF","#FF8000","#FF00FF"],"pat":new Uint8Array([0b1101,128,0b1110,0]),"cri":{"VPAT":-1}},
-380:{"idx":380,"col":"#B89BB8","sat":14,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,128,0b1110,0]),"cri":{"PROX":61}},
-381:{"idx":381,"col":"#D6C8F6","sat":15,"cmp":["#0080FF","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1011,128,0b1110,0]),"cri":{}},
-382:{"idx":382,"col":"#F6CAD8","sat":14,"cmp":["#FFFFFF","#FF8000","#FF00FF"],"pat":new Uint8Array([0b0111,128,0b1110,0]),"cri":{}},
-383:{"idx":383,"col":"#F6D8F6","sat":10,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1111,128,0b1110,0]),"cri":{"DOUBL":127}},
-384:{"idx":384,"col":"#0F1E0F","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0000,128,0b0001,0]),"cri":{"DOUBL":8}},
-385:{"idx":385,"col":"#0F2C2C","sat":70,"cmp":["#000000","#0080FF","#80FF80"],"pat":new Uint8Array([0b1000,128,0b0001,0]),"cri":{}},
-386:{"idx":386,"col":"#2F2E0F","sat":71,"cmp":["#FF8000","#000000","#80FF80"],"pat":new Uint8Array([0b0100,128,0b0001,0]),"cri":{}},
-387:{"idx":387,"col":"#4C5B4C","sat":15,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,128,0b0001,0]),"cri":{"PROX":41}},
-388:{"idx":388,"col":"#0F2E2F","sat":71,"cmp":["#000000","#0080FF","#80FF80"],"pat":new Uint8Array([0b0010,128,0b0001,0]),"cri":{}},
-389:{"idx":389,"col":"#0F5B8A","sat":108,"cmp":["#0080FF","#000000","#80FF80"],"pat":new Uint8Array([0b1010,128,0b0001,0]),"cri":{"SAT":-1}},
-390:{"idx":390,"col":"#4F5D4F","sat":14,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,128,0b0001,0]),"cri":{"PROX":41}},
-391:{"idx":391,"col":"#6C8A8A","sat":19,"cmp":["#FFFFFF","#0080FF","#000000","#80FF80"],"pat":new Uint8Array([0b1110,128,0b0001,0]),"cri":{"SAT":-1}},
-392:{"idx":392,"col":"#2C2C0F","sat":70,"cmp":["#000000","#FF8000","#80FF80"],"pat":new Uint8Array([0b0001,128,0b0001,0]),"cri":{"VPAT":-1}},
-393:{"idx":393,"col":"#4A594A","sat":16,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,128,0b0001,0]),"cri":{"PROX":35,"DOUBL":152}},
-394:{"idx":394,"col":"#8A5B0F","sat":108,"cmp":["#FF8000","#000000","#80FF80"],"pat":new Uint8Array([0b0101,128,0b0001,0]),"cri":{}},
-395:{"idx":395,"col":"#8A896A","sat":20,"cmp":["#FFFFFF","#FF8000","#000000","#80FF80"],"pat":new Uint8Array([0b1101,128,0b0001,0]),"cri":{}},
-396:{"idx":396,"col":"#4C5B4C","sat":15,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,128,0b0001,0]),"cri":{"PROX":41}},
-397:{"idx":397,"col":"#6A898A","sat":20,"cmp":["#0080FF","#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1011,128,0b0001,0]),"cri":{"SAT":-1}},
-398:{"idx":398,"col":"#8A8A6C","sat":19,"cmp":["#FFFFFF","#FF8000","#000000","#80FF80"],"pat":new Uint8Array([0b0111,128,0b0001,0]),"cri":{"PROX":299}},
-399:{"idx":399,"col":"#8A998A","sat":9,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1111,128,0b0001,0]),"cri":{"PROX":43}},
-400:{"idx":400,"col":"#3B3B3B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1001,0]),"cri":{"PROX":3}},
-401:{"idx":401,"col":"#3B4A59","sat":29,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1001,0]),"cri":{"PROX":305}},
-402:{"idx":402,"col":"#5B4B3B","sat":30,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1001,0]),"cri":{"PROX":306}},
-403:{"idx":403,"col":"#797979","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b1001,0]),"cri":{"VPAT":-1}},
-404:{"idx":404,"col":"#3B4B5B","sat":30,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1001,0]),"cri":{"PROX":308}},
-405:{"idx":405,"col":"#3B79B6","sat":72,"cmp":["#0080FF","#000000","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1001,0]),"cri":{"PROX":309}},
-406:{"idx":406,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b1001,0]),"cri":{"PROX":105}},
-407:{"idx":407,"col":"#99A7B6","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b1001,0]),"cri":{"PROX":317}},
-408:{"idx":408,"col":"#594A3B","sat":29,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1001,0]),"cri":{"PROX":306}},
-409:{"idx":409,"col":"#767676","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b1001,0]),"cri":{"VPAT":-1}},
-410:{"idx":410,"col":"#B6793B","sat":72,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1001,0]),"cri":{"PROX":314}},
-411:{"idx":411,"col":"#B6A696","sat":14,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b1001,0]),"cri":{"VPAT":-1}},
-412:{"idx":412,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b1001,0]),"cri":{"GREY":-1}},
-413:{"idx":413,"col":"#96A6B6","sat":14,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b1001,0]),"cri":{"VPAT":-1}},
-414:{"idx":414,"col":"#B6A799","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b1001,0]),"cri":{"PROX":318}},
-415:{"idx":415,"col":"#B6B6B6","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b1001,0]),"cri":{"VPAT":-1}},
-416:{"idx":416,"col":"#3E7B3E","sat":61,"cmp":["#000000","#80FF80"],"pat":new Uint8Array([0b0000,128,0b0101,0]),"cri":{"DOUBL":10}},
-417:{"idx":417,"col":"#3E8A5B","sat":56,"cmp":["#000000","#0080FF","#80FF80"],"pat":new Uint8Array([0b1000,128,0b0101,0]),"cri":{}},
-418:{"idx":418,"col":"#5E8B3E","sat":56,"cmp":["#FF8000","#000000","#80FF80"],"pat":new Uint8Array([0b0100,128,0b0101,0]),"cri":{}},
-419:{"idx":419,"col":"#7BB87B","sat":35,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,128,0b0101,0]),"cri":{"DOUBL":58}},
-420:{"idx":420,"col":"#3E8B5E","sat":56,"cmp":["#000000","#0080FF","#80FF80"],"pat":new Uint8Array([0b0010,128,0b0101,0]),"cri":{}},
-421:{"idx":421,"col":"#3EB9B9","sat":70,"cmp":["#0080FF","#80FF80"],"pat":new Uint8Array([0b1010,128,0b0101,0]),"cri":{}},
-422:{"idx":422,"col":"#7DBB7D","sat":35,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,128,0b0101,0]),"cri":{"DOUBL":106}},
-423:{"idx":423,"col":"#9BE7B9","sat":28,"cmp":["#FFFFFF","#0080FF","#80FF80"],"pat":new Uint8Array([0b1110,128,0b0101,0]),"cri":{}},
-424:{"idx":424,"col":"#5B8A3E","sat":56,"cmp":["#000000","#FF8000","#80FF80"],"pat":new Uint8Array([0b0001,128,0b0101,0]),"cri":{}},
-425:{"idx":425,"col":"#79B679","sat":35,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,128,0b0101,0]),"cri":{"PROX":58}},
-426:{"idx":426,"col":"#B9B93E","sat":70,"cmp":["#FF8000","#80FF80"],"pat":new Uint8Array([0b0101,128,0b0101,0]),"cri":{}},
-427:{"idx":427,"col":"#B9E699","sat":29,"cmp":["#FFFFFF","#FF8000","#80FF80"],"pat":new Uint8Array([0b1101,128,0b0101,0]),"cri":{}},
-428:{"idx":428,"col":"#7BB87B","sat":35,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,128,0b0101,0]),"cri":{"DOUBL":58}},
-429:{"idx":429,"col":"#99E6B9","sat":29,"cmp":["#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1011,128,0b0101,0]),"cri":{"PROX":423}},
-430:{"idx":430,"col":"#B9E79B","sat":28,"cmp":["#FFFFFF","#FF8000","#80FF80"],"pat":new Uint8Array([0b0111,128,0b0101,0]),"cri":{"PROX":427}},
-431:{"idx":431,"col":"#B9F6B9","sat":24,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1111,128,0b0101,0]),"cri":{"DOUBL":175}},
-432:{"idx":432,"col":"#6B7B6B","sat":12,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0000,128,0b1101,0]),"cri":{"PROX":146}},
-433:{"idx":433,"col":"#6B8A89","sat":20,"cmp":["#000000","#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1000,128,0b1101,0]),"cri":{"SAT":-1}},
-434:{"idx":434,"col":"#8B8B6B","sat":20,"cmp":["#FF8000","#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0100,128,0b1101,0]),"cri":{"DOUBL":299}},
-435:{"idx":435,"col":"#A9B8A9","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,128,0b1101,0]),"cri":{"VPAT":-1}},
-436:{"idx":436,"col":"#6B8B8B","sat":20,"cmp":["#000000","#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0010,128,0b1101,0]),"cri":{}},
-437:{"idx":437,"col":"#6BB9E6","sat":51,"cmp":["#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1010,128,0b1101,0]),"cri":{"PROX":501}},
-438:{"idx":438,"col":"#ABBBAB","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,128,0b1101,0]),"cri":{"PROX":62}},
-439:{"idx":439,"col":"#C8E7E6","sat":11,"cmp":["#FFFFFF","#0080FF","#80FF80"],"pat":new Uint8Array([0b1110,128,0b1101,0]),"cri":{}},
-440:{"idx":440,"col":"#898A6B","sat":20,"cmp":["#000000","#FF8000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0001,128,0b1101,0]),"cri":{}},
-441:{"idx":441,"col":"#A6B6A6","sat":8,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,128,0b1101,0]),"cri":{"VPAT":-1}},
-442:{"idx":442,"col":"#E6B96B","sat":51,"cmp":["#FF8000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0101,128,0b1101,0]),"cri":{"PROX":506}},
-443:{"idx":443,"col":"#E6E6C6","sat":12,"cmp":["#FFFFFF","#FF8000","#80FF80"],"pat":new Uint8Array([0b1101,128,0b1101,0]),"cri":{"PROX":446}},
-444:{"idx":444,"col":"#A9B8A9","sat":7,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,128,0b1101,0]),"cri":{"PROX":62}},
-445:{"idx":445,"col":"#C6E6E6","sat":12,"cmp":["#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1011,128,0b1101,0]),"cri":{"PROX":439}},
-446:{"idx":446,"col":"#E6E7C8","sat":11,"cmp":["#FFFFFF","#FF8000","#80FF80"],"pat":new Uint8Array([0b0111,128,0b1101,0]),"cri":{}},
-447:{"idx":447,"col":"#E6F6E6","sat":6,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1111,128,0b1101,0]),"cri":{"DOUBL":191}},
-448:{"idx":448,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b0011,0]),"cri":{"GREY":-1}},
-449:{"idx":449,"col":"#3D4C5B","sat":28,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b0011,0]),"cri":{}},
-450:{"idx":450,"col":"#5D4D3D","sat":29,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b0011,0]),"cri":{}},
-451:{"idx":451,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b0011,0]),"cri":{"GREY":-1}},
-452:{"idx":452,"col":"#3D4D5D","sat":29,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b0011,0]),"cri":{}},
-453:{"idx":453,"col":"#3D7BB8","sat":71,"cmp":["#0080FF","#000000","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b0011,0]),"cri":{"DOUBL":309}},
-454:{"idx":454,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b0011,0]),"cri":{"VPAT":-1}},
-455:{"idx":455,"col":"#9BAAB8","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0011,0]),"cri":{"PROX":317}},
-456:{"idx":456,"col":"#5B4C3D","sat":28,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b0011,0]),"cri":{"DOUBL":312}},
-457:{"idx":457,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b0011,0]),"cri":{"VPAT":-1}},
-458:{"idx":458,"col":"#B87B3D","sat":71,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b0011,0]),"cri":{"DOUBL":314}},
-459:{"idx":459,"col":"#B8A999","sat":13,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0011,0]),"cri":{"PROX":318}},
-460:{"idx":460,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b0011,0]),"cri":{"VPAT":-1}},
-461:{"idx":461,"col":"#99A9B8","sat":13,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0011,0]),"cri":{"VPAT":-1,"DOUBL":317}},
-462:{"idx":462,"col":"#B8AA9B","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0011,0]),"cri":{"VPAT":-1}},
-463:{"idx":463,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b0011,0]),"cri":{"VPAT":-1}},
-464:{"idx":464,"col":"#7B5B7B","sat":23,"cmp":["#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1011,0]),"cri":{"PROX":7}},
-465:{"idx":465,"col":"#7B6A99","sat":27,"cmp":["#000000","#0080FF","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1011,0]),"cri":{"PROX":279}},
-466:{"idx":466,"col":"#9B6B7B","sat":27,"cmp":["#FF8000","#000000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1011,0]),"cri":{}},
-467:{"idx":467,"col":"#B899B8","sat":15,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b1100,128,0b1011,0]),"cri":{"DOUBL":61}},
-468:{"idx":468,"col":"#7B6B9B","sat":27,"cmp":["#000000","#0080FF","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1011,0]),"cri":{"PROX":279}},
-469:{"idx":469,"col":"#7B99F6","sat":52,"cmp":["#0080FF","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1011,0]),"cri":{"PROX":373}},
-470:{"idx":470,"col":"#BB9BBB","sat":15,"cmp":["#FFFFFF","#000000","#FF00FF"],"pat":new Uint8Array([0b0110,128,0b1011,0]),"cri":{"DOUBL":109}},
-471:{"idx":471,"col":"#D8C7F6","sat":15,"cmp":["#FFFFFF","#0080FF","#FF00FF"],"pat":new Uint8Array([0b1110,128,0b1011,0]),"cri":{"PROX":381}},
-472:{"idx":472,"col":"#996A7B","sat":27,"cmp":["#000000","#FF8000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1011,0]),"cri":{}},
-473:{"idx":473,"col":"#B696B6","sat":15,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1001,128,0b1011,0]),"cri":{"VPAT":-1}},
-474:{"idx":474,"col":"#F6997B","sat":52,"cmp":["#FF8000","#FF00FF","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1011,0]),"cri":{"PROX":378}},
-475:{"idx":475,"col":"#F6C6D6","sat":16,"cmp":["#FFFFFF","#FF8000","#FF00FF"],"pat":new Uint8Array([0b1101,128,0b1011,0]),"cri":{"PROX":382}},
-476:{"idx":476,"col":"#B899B8","sat":15,"cmp":["#000000","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b0011,128,0b1011,0]),"cri":{"DOUBL":61}},
-477:{"idx":477,"col":"#D6C6F6","sat":16,"cmp":["#0080FF","#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1011,128,0b1011,0]),"cri":{"VPAT":-1}},
-478:{"idx":478,"col":"#F6C7D8","sat":15,"cmp":["#FFFFFF","#FF8000","#FF00FF"],"pat":new Uint8Array([0b0111,128,0b1011,0]),"cri":{"PROX":478}},
-479:{"idx":479,"col":"#F6D6F6","sat":11,"cmp":["#FFFFFF","#FF00FF"],"pat":new Uint8Array([0b1111,128,0b1011,0]),"cri":{"PROX":127}},
-480:{"idx":480,"col":"#6C7B6C","sat":11,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0000,128,0b0111,0]),"cri":{"PROX":11}},
-481:{"idx":481,"col":"#6C8A8A","sat":19,"cmp":["#000000","#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1000,128,0b0111,0]),"cri":{"PROX":391}},
-482:{"idx":482,"col":"#8C8B6C","sat":20,"cmp":["#FF8000","#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0100,128,0b0111,0]),"cri":{}},
-483:{"idx":483,"col":"#AAB8AA","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b1100,128,0b0111,0]),"cri":{}},
-484:{"idx":484,"col":"#6C8B8C","sat":20,"cmp":["#000000","#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0010,128,0b0111,0]),"cri":{}},
-485:{"idx":485,"col":"#6CB9E7","sat":50,"cmp":["#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1010,128,0b0111,0]),"cri":{"PROX":437}},
-486:{"idx":486,"col":"#ACBBAC","sat":7,"cmp":["#FFFFFF","#000000","#80FF80"],"pat":new Uint8Array([0b0110,128,0b0111,0]),"cri":{"VPAT":-1}},
-487:{"idx":487,"col":"#CAE7E7","sat":11,"cmp":["#FFFFFF","#0080FF","#80FF80"],"pat":new Uint8Array([0b1110,128,0b0111,0]),"cri":{"PROX":439}},
-488:{"idx":488,"col":"#8A8A6C","sat":19,"cmp":["#000000","#FF8000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0001,128,0b0111,0]),"cri":{}},
-489:{"idx":489,"col":"#A7B6A7","sat":7,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1001,128,0b0111,0]),"cri":{"PROX":62}},
-490:{"idx":490,"col":"#E7B96C","sat":50,"cmp":["#FF8000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0101,128,0b0111,0]),"cri":{"PROX":442}},
-491:{"idx":491,"col":"#E7E6C7","sat":12,"cmp":["#FFFFFF","#FF8000","#80FF80"],"pat":new Uint8Array([0b1101,128,0b0111,0]),"cri":{"PROX":446}},
-492:{"idx":492,"col":"#AAB8AA","sat":7,"cmp":["#000000","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b0011,128,0b0111,0]),"cri":{"VPAT":-1,"DOUBL":483}},
-493:{"idx":493,"col":"#C7E6E7","sat":12,"cmp":["#0080FF","#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1011,128,0b0111,0]),"cri":{"PROX":439}},
-494:{"idx":494,"col":"#E7E7CA","sat":11,"cmp":["#FFFFFF","#FF8000","#80FF80"],"pat":new Uint8Array([0b0111,128,0b0111,0]),"cri":{"PROX":491}},
-495:{"idx":495,"col":"#E7F6E7","sat":5,"cmp":["#FFFFFF","#80FF80"],"pat":new Uint8Array([0b1111,128,0b0111,0]),"cri":{"PROX":191}},
-496:{"idx":496,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1111,0]),"cri":{"GREY":-1}},
-497:{"idx":497,"col":"#7B8A99","sat":15,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1111,0]),"cri":{"SAT":-1}},
-498:{"idx":498,"col":"#9B8B7B","sat":16,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1111,0]),"cri":{"SAT":-1}},
-499:{"idx":499,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b1111,0]),"cri":{"VPAT":-1}},
-500:{"idx":500,"col":"#7B8B9B","sat":16,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1111,0]),"cri":{"SAT":-1}},
-501:{"idx":501,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1111,0]),"cri":{}},
-502:{"idx":502,"col":"#BBBBBB","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b1111,0]),"cri":{"VPAT":-1}},
-503:{"idx":503,"col":"#D8E7F6","sat":9,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1110,128,0b1111,0]),"cri":{"DOUBL":639}},
-504:{"idx":504,"col":"#998A7B","sat":15,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1111,0]),"cri":{"SAT":-1}},
-505:{"idx":505,"col":"#B6B6B6","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b1111,0]),"cri":{"VPAT":-1}},
-506:{"idx":506,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1111,0]),"cri":{"DOUBL":687}},
-507:{"idx":507,"col":"#F6E6D6","sat":10,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1101,128,0b1111,0]),"cri":{"DOUBL":703}},
-508:{"idx":508,"col":"#B8B8B8","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b1111,0]),"cri":{"VPAT":-1}},
-509:{"idx":509,"col":"#D6E6F6","sat":10,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1011,128,0b1111,0]),"cri":{"PROX":503}},
-510:{"idx":510,"col":"#F6E7D8","sat":9,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0111,128,0b1111,0]),"cri":{"DOUBL":703}},
-511:{"idx":511,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b1111,128,0b1111,0]),"cri":{"GREY":-1}},
-512:{"idx":512,"col":"#000000","sat":0,"cmp":["#000000"],"pat":new Uint8Array([0b0000,128,0b0000,128]),"cri":{"PROX":3}},
-513:{"idx":513,"col":"#000F1E","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b1000,128,0b0000,128]),"cri":{"DOUBL":257}},
-514:{"idx":514,"col":"#201000","sat":141,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0100,128,0b0000,128]),"cri":{"DOUBL":258}},
-515:{"idx":515,"col":"#3D3D3D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b0000,128]),"cri":{"GREY":-1}},
-516:{"idx":516,"col":"#001020","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0010,128,0b0000,128]),"cri":{"DOUBL":260}},
-517:{"idx":517,"col":"#003E7B","sat":140,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b1010,128,0b0000,128]),"cri":{"DOUBL":261}},
-518:{"idx":518,"col":"#404040","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b0000,128]),"cri":{"GREY":-1}},
-519:{"idx":519,"col":"#5D6C7B","sat":20,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0000,128]),"cri":{}},
-520:{"idx":520,"col":"#1E0F00","sat":141,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0001,128,0b0000,128]),"cri":{"DOUBL":264}},
-521:{"idx":521,"col":"#3B3B3B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b0000,128]),"cri":{"GREY":-1}},
-522:{"idx":522,"col":"#7B3E00","sat":140,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0101,128,0b0000,128]),"cri":{"DOUBL":266}},
-523:{"idx":523,"col":"#7B6B5B","sat":21,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0000,128]),"cri":{"DOUBL":267}},
-524:{"idx":524,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b0000,128]),"cri":{"GREY":-1}},
-525:{"idx":525,"col":"#5B6B7B","sat":21,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0000,128]),"cri":{"PROX":263}},
-526:{"idx":526,"col":"#7B6C5D","sat":20,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0000,128]),"cri":{"PROX":267}},
-527:{"idx":527,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b0000,128]),"cri":{"GREY":-1}},
-528:{"idx":528,"col":"#000F1E","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0000,128,0b1000,128]),"cri":{"DOUBL":257}},
-529:{"idx":529,"col":"#001E3B","sat":139,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b1000,128,0b1000,128]),"cri":{"VPAT":-1}},
-530:{"idx":530,"col":"#201F1E","sat":5,"cmp":["#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0100,128,0b1000,128]),"cri":{"SAT":-1}},
-531:{"idx":531,"col":"#3D4C5B","sat":28,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1100,128,0b1000,128]),"cri":{"DOUBL":449}},
-532:{"idx":532,"col":"#001F3D","sat":139,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0010,128,0b1000,128]),"cri":{}},
-533:{"idx":533,"col":"#004D99","sat":141,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b1010,128,0b1000,128]),"cri":{}},
-534:{"idx":534,"col":"#404F5D","sat":26,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b0110,128,0b1000,128]),"cri":{"DOUBL":353}},
-535:{"idx":535,"col":"#5D7B99","sat":34,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b1000,128]),"cri":{}},
-536:{"idx":536,"col":"#1E1E1E","sat":0,"cmp":["#000000","#FF8000","#0080FF"],"pat":new Uint8Array([0b0001,128,0b1000,128]),"cri":{"SAT":-1}},
-537:{"idx":537,"col":"#3B4A59","sat":29,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1001,128,0b1000,128]),"cri":{"PROX":308}},
-538:{"idx":538,"col":"#7B4D1E","sat":85,"cmp":["#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0101,128,0b1000,128]),"cri":{"SAT":-1}},
-539:{"idx":539,"col":"#7B7A79","sat":1,"cmp":["#FFFFFF","#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b1101,128,0b1000,128]),"cri":{"SAT":-1}},
-540:{"idx":540,"col":"#3D4C5B","sat":28,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0011,128,0b1000,128]),"cri":{"DOUBL":449}},
-541:{"idx":541,"col":"#5B7A99","sat":36,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b1000,128]),"cri":{"PROX":535}},
-542:{"idx":542,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0111,128,0b1000,128]),"cri":{"PROX":539}},
-543:{"idx":543,"col":"#7B8A99","sat":15,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1111,128,0b1000,128]),"cri":{}},
-544:{"idx":544,"col":"#201000","sat":141,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0000,128,0b0100,128]),"cri":{"DOUBL":258}},
-545:{"idx":545,"col":"#201F1E","sat":5,"cmp":["#000000","#0080FF","#FF8000"],"pat":new Uint8Array([0b1000,128,0b0100,128]),"cri":{"SAT":-1}},
-546:{"idx":546,"col":"#402000","sat":141,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0100,128,0b0100,128]),"cri":{"VPAT":-1}},
-547:{"idx":547,"col":"#5D4D3D","sat":29,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1100,128,0b0100,128]),"cri":{"VPAT":-1,"DOUBL":450}},
-548:{"idx":548,"col":"#202020","sat":0,"cmp":["#000000","#0080FF","#FF8000"],"pat":new Uint8Array([0b0010,128,0b0100,128]),"cri":{"SAT":-1}},
-549:{"idx":549,"col":"#204E7B","sat":83,"cmp":["#0080FF","#FF8000","#000000"],"pat":new Uint8Array([0b1010,128,0b0100,128]),"cri":{"SAT":-1}},
-550:{"idx":550,"col":"#605040","sat":28,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b0110,128,0b0100,128]),"cri":{"DOUBL":354}},
-551:{"idx":551,"col":"#7D7C7B","sat":1,"cmp":["#FFFFFF","#0080FF","#FF8000","#000000"],"pat":new Uint8Array([0b1110,128,0b0100,128]),"cri":{"SAT":-1}},
-552:{"idx":552,"col":"#3D1F00","sat":139,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0001,128,0b0100,128]),"cri":{}},
-553:{"idx":553,"col":"#5B4B3B","sat":30,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1001,128,0b0100,128]),"cri":{"PROX":402}},
-554:{"idx":554,"col":"#9B4E00","sat":141,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0101,128,0b0100,128]),"cri":{}},
-555:{"idx":555,"col":"#9B7B5B","sat":37,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0100,128]),"cri":{}},
-556:{"idx":556,"col":"#5D4D3D","sat":29,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0011,128,0b0100,128]),"cri":{"DOUBL":450}},
-557:{"idx":557,"col":"#7B7B7B","sat":0,"cmp":["#0080FF","#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1011,128,0b0100,128]),"cri":{"PROX":542}},
-558:{"idx":558,"col":"#9B7C5D","sat":35,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0100,128]),"cri":{"PROX":555}},
-559:{"idx":559,"col":"#9B8B7B","sat":16,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1111,128,0b0100,128]),"cri":{"SAT":-1}},
-560:{"idx":560,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1100,128]),"cri":{"GREY":-1}},
-561:{"idx":561,"col":"#3D4C5B","sat":28,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1100,128]),"cri":{"DOUBL":449}},
-562:{"idx":562,"col":"#5D4D3D","sat":29,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1100,128]),"cri":{"DOUBL":450}},
-563:{"idx":563,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b1100,128]),"cri":{"VPAT":-1}},
-564:{"idx":564,"col":"#3D4D5D","sat":29,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1100,128]),"cri":{"DOUBL":452}},
-565:{"idx":565,"col":"#3D7BB8","sat":71,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1010,128,0b1100,128]),"cri":{"DOUBL":309}},
-566:{"idx":566,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b1100,128]),"cri":{"VPAT":-1}},
-567:{"idx":567,"col":"#9BAAB8","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b1100,128]),"cri":{"VPAT":-1}},
-568:{"idx":568,"col":"#5B4C3D","sat":28,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1100,128]),"cri":{"DOUBL":312}},
-569:{"idx":569,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b1100,128]),"cri":{"VPAT":-1}},
-570:{"idx":570,"col":"#B87B3D","sat":71,"cmp":["#FF8000","#FFFFFF","#000000"],"pat":new Uint8Array([0b0101,128,0b1100,128]),"cri":{"DOUBL":314}},
-571:{"idx":571,"col":"#B8A999","sat":13,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b1100,128]),"cri":{"VPAT":-1}},
-572:{"idx":572,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b1100,128]),"cri":{"GREY":-1}},
-573:{"idx":573,"col":"#99A9B8","sat":13,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b1100,128]),"cri":{"DOUBL":317}},
-574:{"idx":574,"col":"#B8AA9B","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b1100,128]),"cri":{"SAT":-1}},
-575:{"idx":575,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b1100,128]),"cri":{"VPAT":-1}},
-576:{"idx":576,"col":"#001020","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0000,128,0b0010,128]),"cri":{"DOUBL":260}},
-577:{"idx":577,"col":"#001F3D","sat":139,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b1000,128,0b0010,128]),"cri":{"DOUBL":532}},
-578:{"idx":578,"col":"#202020","sat":0,"cmp":["#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0100,128,0b0010,128]),"cri":{"SAT":-1}},
-579:{"idx":579,"col":"#3D4D5D","sat":29,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1100,128,0b0010,128]),"cri":{"DOUBL":452}},
-580:{"idx":580,"col":"#002040","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0010,128,0b0010,128]),"cri":{}},
-581:{"idx":581,"col":"#004E9B","sat":141,"cmp":["#0080FF","#000000"],"pat":new Uint8Array([0b1010,128,0b0010,128]),"cri":{}},
-582:{"idx":582,"col":"#405060","sat":28,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b0110,128,0b0010,128]),"cri":{"DOUBL":356}},
-583:{"idx":583,"col":"#5D7C9B","sat":35,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0010,128]),"cri":{}},
-584:{"idx":584,"col":"#1E1F20","sat":5,"cmp":["#000000","#FF8000","#0080FF"],"pat":new Uint8Array([0b0001,128,0b0010,128]),"cri":{"SAT":-1}},
-585:{"idx":585,"col":"#3B4B5B","sat":30,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1001,128,0b0010,128]),"cri":{"PROX":308}},
-586:{"idx":586,"col":"#7B4E20","sat":83,"cmp":["#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0101,128,0b0010,128]),"cri":{}},
-587:{"idx":587,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b1101,128,0b0010,128]),"cri":{"SAT":-1}},
-588:{"idx":588,"col":"#3D4D5D","sat":29,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0011,128,0b0010,128]),"cri":{"DOUBL":452}},
-589:{"idx":589,"col":"#5B7B9B","sat":37,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0010,128]),"cri":{"PROX":535}},
-590:{"idx":590,"col":"#7B7C7D","sat":1,"cmp":["#FFFFFF","#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0111,128,0b0010,128]),"cri":{"PROX":539}},
-591:{"idx":591,"col":"#7B8B9B","sat":16,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1111,128,0b0010,128]),"cri":{}},
-592:{"idx":592,"col":"#003E7B","sat":140,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0000,128,0b1010,128]),"cri":{"DOUBL":261}},
-593:{"idx":593,"col":"#004D99","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b1000,128,0b1010,128]),"cri":{"DOUBL":533}},
-594:{"idx":594,"col":"#204E7B","sat":83,"cmp":["#FF8000","#000000","#0080FF"],"pat":new Uint8Array([0b0100,128,0b1010,128]),"cri":{"PROX":293}},
-595:{"idx":595,"col":"#3D7BB8","sat":71,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1100,128,0b1010,128]),"cri":{"DOUBL":309}},
-596:{"idx":596,"col":"#004E9B","sat":141,"cmp":["#000000","#0080FF"],"pat":new Uint8Array([0b0010,128,0b1010,128]),"cri":{"DOUBL":581}},
-597:{"idx":597,"col":"#007BF6","sat":141,"cmp":["#0080FF"],"pat":new Uint8Array([0b1010,128,0b1010,128]),"cri":{}},
-598:{"idx":598,"col":"#407DBB","sat":70,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b0110,128,0b1010,128]),"cri":{"DOUBL":357}},
-599:{"idx":599,"col":"#5DAAF6","sat":64,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1110,128,0b1010,128]),"cri":{}},
-600:{"idx":600,"col":"#1E4D7B","sat":85,"cmp":["#000000","#FF8000","#0080FF"],"pat":new Uint8Array([0b0001,128,0b1010,128]),"cri":{"PROX":293}},
-601:{"idx":601,"col":"#3B79B6","sat":72,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1001,128,0b1010,128]),"cri":{"PROX":309}},
-602:{"idx":602,"col":"#7B7B7B","sat":0,"cmp":["#FF8000","#0080FF"],"pat":new Uint8Array([0b0101,128,0b1010,128]),"cri":{"SAT":-1}},
-603:{"idx":603,"col":"#7BA9D6","sat":38,"cmp":["#FFFFFF","#FF8000","#0080FF"],"pat":new Uint8Array([0b1101,128,0b1010,128]),"cri":{"PROX":373}},
-604:{"idx":604,"col":"#3D7BB8","sat":71,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0011,128,0b1010,128]),"cri":{"DOUBL":309}},
-605:{"idx":605,"col":"#5BA9F6","sat":65,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1011,128,0b1010,128]),"cri":{"PROX":599}},
-606:{"idx":606,"col":"#7BAAD8","sat":39,"cmp":["#FFFFFF","#FF8000","#0080FF"],"pat":new Uint8Array([0b0111,128,0b1010,128]),"cri":{"DOUBL":693}},
-607:{"idx":607,"col":"#7BB9F6","sat":47,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1111,128,0b1010,128]),"cri":{"DOUBL":501}},
-608:{"idx":608,"col":"#404040","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b0110,128]),"cri":{"GREY":-1}},
-609:{"idx":609,"col":"#404F5D","sat":26,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b0110,128]),"cri":{"DOUBL":353}},
-610:{"idx":610,"col":"#605040","sat":28,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b0110,128]),"cri":{"DOUBL":354}},
-611:{"idx":611,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b0110,128]),"cri":{"VPAT":-1}},
-612:{"idx":612,"col":"#405060","sat":28,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b0110,128]),"cri":{"DOUBL":356}},
-613:{"idx":613,"col":"#407DBB","sat":70,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1010,128,0b0110,128]),"cri":{"DOUBL":357}},
-614:{"idx":614,"col":"#808080","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b0110,128]),"cri":{"VPAT":-1}},
-615:{"idx":615,"col":"#9DACBB","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0110,128]),"cri":{"VPAT":-1}},
-616:{"idx":616,"col":"#5D4F40","sat":26,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b0110,128]),"cri":{"DOUBL":360}},
-617:{"idx":617,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b0110,128]),"cri":{"PROX":105}},
-618:{"idx":618,"col":"#BB7D40","sat":70,"cmp":["#FF8000","#FFFFFF","#000000"],"pat":new Uint8Array([0b0101,128,0b0110,128]),"cri":{"DOUBL":362}},
-619:{"idx":619,"col":"#BBAB9B","sat":13,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0110,128]),"cri":{"PROX":318}},
-620:{"idx":620,"col":"#7D7D7D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b0110,128]),"cri":{"VPAT":-1}},
-621:{"idx":621,"col":"#9BABBB","sat":13,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0110,128]),"cri":{"DOUBL":365}},
-622:{"idx":622,"col":"#BBAC9D","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0110,128]),"cri":{"VPAT":-1}},
-623:{"idx":623,"col":"#BBBBBB","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b0110,128]),"cri":{"VPAT":-1}},
-624:{"idx":624,"col":"#5D6C7B","sat":20,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0000,128,0b1110,128]),"cri":{"DOUBL":519}},
-625:{"idx":625,"col":"#5D7B99","sat":34,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1110,128]),"cri":{"DOUBL":535}},
-626:{"idx":626,"col":"#7D7C7B","sat":1,"cmp":["#FF8000","#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0100,128,0b1110,128]),"cri":{"SAT":-1}},
-627:{"idx":627,"col":"#9BAAB8","sat":12,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1100,128,0b1110,128]),"cri":{"VPAT":-1}},
-628:{"idx":628,"col":"#5D7C9B","sat":35,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1110,128]),"cri":{"DOUBL":583}},
-629:{"idx":629,"col":"#5DAAF6","sat":64,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1110,128]),"cri":{"DOUBL":599}},
-630:{"idx":630,"col":"#9DACBB","sat":12,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b0110,128,0b1110,128]),"cri":{"VPAT":-1}},
-631:{"idx":631,"col":"#BBD8F6","sat":19,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1110,128,0b1110,128]),"cri":{"VPAT":-1}},
-632:{"idx":632,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FF8000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0001,128,0b1110,128]),"cri":{"SAT":-1}},
-633:{"idx":633,"col":"#99A7B6","sat":12,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1001,128,0b1110,128]),"cri":{}},
-634:{"idx":634,"col":"#D8AA7B","sat":39,"cmp":["#FF8000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0101,128,0b1110,128]),"cri":{}},
-635:{"idx":635,"col":"#D8D7D6","sat":1,"cmp":["#FFFFFF","#FF8000","#0080FF"],"pat":new Uint8Array([0b1101,128,0b1110,128]),"cri":{"SAT":-1}},
-636:{"idx":636,"col":"#9BAAB8","sat":12,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0011,128,0b1110,128]),"cri":{"PROX":317}},
-637:{"idx":637,"col":"#B8D7F6","sat":20,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1011,128,0b1110,128]),"cri":{}},
-638:{"idx":638,"col":"#D8D8D8","sat":0,"cmp":["#FFFFFF","#FF8000","#0080FF"],"pat":new Uint8Array([0b0111,128,0b1110,128]),"cri":{"PROX":635}},
-639:{"idx":639,"col":"#D8E7F6","sat":9,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1111,128,0b1110,128]),"cri":{}},
-640:{"idx":640,"col":"#1E0F00","sat":141,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0000,128,0b0001,128]),"cri":{"DOUBL":264}},
-641:{"idx":641,"col":"#1E1E1E","sat":0,"cmp":["#000000","#0080FF","#FF8000"],"pat":new Uint8Array([0b1000,128,0b0001,128]),"cri":{"SAT":-1}},
-642:{"idx":642,"col":"#3D1F00","sat":139,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0100,128,0b0001,128]),"cri":{"DOUBL":552}},
-643:{"idx":643,"col":"#5B4C3D","sat":28,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1100,128,0b0001,128]),"cri":{"DOUBL":312}},
-644:{"idx":644,"col":"#1E1F20","sat":5,"cmp":["#000000","#0080FF","#FF8000"],"pat":new Uint8Array([0b0010,128,0b0001,128]),"cri":{"SAT":-1}},
-645:{"idx":645,"col":"#1E4D7B","sat":85,"cmp":["#0080FF","#000000","#FF8000"],"pat":new Uint8Array([0b1010,128,0b0001,128]),"cri":{"PROX":293}},
-646:{"idx":646,"col":"#5D4F40","sat":26,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b0110,128,0b0001,128]),"cri":{"DOUBL":360}},
-647:{"idx":647,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#0080FF","#000000","#FF8000"],"pat":new Uint8Array([0b1110,128,0b0001,128]),"cri":{"SAT":-1}},
-648:{"idx":648,"col":"#3B1E00","sat":139,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0001,128,0b0001,128]),"cri":{"SAT":-1}},
-649:{"idx":649,"col":"#594A3B","sat":29,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1001,128,0b0001,128]),"cri":{"PROX":306}},
-650:{"idx":650,"col":"#994D00","sat":141,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0101,128,0b0001,128]),"cri":{}},
-651:{"idx":651,"col":"#997A5B","sat":36,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0001,128]),"cri":{}},
-652:{"idx":652,"col":"#5B4C3D","sat":28,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0011,128,0b0001,128]),"cri":{"DOUBL":312}},
-653:{"idx":653,"col":"#797A7B","sat":1,"cmp":["#0080FF","#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1011,128,0b0001,128]),"cri":{"PROX":539}},
-654:{"idx":654,"col":"#997B5D","sat":34,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0001,128]),"cri":{"PROX":555}},
-655:{"idx":655,"col":"#998A7B","sat":15,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1111,128,0b0001,128]),"cri":{"SAT":-1}},
-656:{"idx":656,"col":"#3B3B3B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1001,128]),"cri":{"PROX":3}},
-657:{"idx":657,"col":"#3B4A59","sat":29,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1001,128]),"cri":{"PROX":308}},
-658:{"idx":658,"col":"#5B4B3B","sat":30,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1001,128]),"cri":{"PROX":312}},
-659:{"idx":659,"col":"#797979","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b1001,128]),"cri":{"VPAT":-1}},
-660:{"idx":660,"col":"#3B4B5B","sat":30,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1001,128]),"cri":{"PROX":308}},
-661:{"idx":661,"col":"#3B79B6","sat":72,"cmp":["#0080FF","#000000","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1001,128]),"cri":{"PROX":309}},
-662:{"idx":662,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b1001,128]),"cri":{"PROX":105}},
-663:{"idx":663,"col":"#99A7B6","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b1001,128]),"cri":{"DOUBL":633}},
-664:{"idx":664,"col":"#594A3B","sat":29,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1001,128]),"cri":{"PROX":312}},
-665:{"idx":665,"col":"#767676","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b1001,128]),"cri":{"VPAT":-1}},
-666:{"idx":666,"col":"#B6793B","sat":72,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1001,128]),"cri":{"PROX":314}},
-667:{"idx":667,"col":"#B6A696","sat":14,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b1001,128]),"cri":{"VPAT":-1}},
-668:{"idx":668,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b1001,128]),"cri":{"VPAT":-1}},
-669:{"idx":669,"col":"#96A6B6","sat":14,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b1001,128]),"cri":{"VPAT":-1}},
-670:{"idx":670,"col":"#B6A799","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b1001,128]),"cri":{"PROX":318}},
-671:{"idx":671,"col":"#B6B6B6","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b1001,128]),"cri":{"VPAT":-1}},
-672:{"idx":672,"col":"#7B3E00","sat":140,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0000,128,0b0101,128]),"cri":{"DOUBL":266}},
-673:{"idx":673,"col":"#7B4D1E","sat":85,"cmp":["#000000","#0080FF","#FF8000"],"pat":new Uint8Array([0b1000,128,0b0101,128]),"cri":{}},
-674:{"idx":674,"col":"#9B4E00","sat":141,"cmp":["#FF8000","#000000"],"pat":new Uint8Array([0b0100,128,0b0101,128]),"cri":{"DOUBL":554}},
-675:{"idx":675,"col":"#B87B3D","sat":71,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1100,128,0b0101,128]),"cri":{"DOUBL":314}},
-676:{"idx":676,"col":"#7B4E20","sat":83,"cmp":["#000000","#0080FF","#FF8000"],"pat":new Uint8Array([0b0010,128,0b0101,128]),"cri":{"DOUBL":586}},
-677:{"idx":677,"col":"#7B7B7B","sat":0,"cmp":["#0080FF","#FF8000"],"pat":new Uint8Array([0b1010,128,0b0101,128]),"cri":{"SAT":-1}},
-678:{"idx":678,"col":"#BB7D40","sat":70,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b0110,128,0b0101,128]),"cri":{"DOUBL":362}},
-679:{"idx":679,"col":"#D8AA7B","sat":39,"cmp":["#FFFFFF","#0080FF","#FF8000"],"pat":new Uint8Array([0b1110,128,0b0101,128]),"cri":{"DOUBL":634}},
-680:{"idx":680,"col":"#994D00","sat":141,"cmp":["#000000","#FF8000"],"pat":new Uint8Array([0b0001,128,0b0101,128]),"cri":{"DOUBL":650}},
-681:{"idx":681,"col":"#B6793B","sat":72,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1001,128,0b0101,128]),"cri":{"PROX":314}},
-682:{"idx":682,"col":"#F67B00","sat":141,"cmp":["#FF8000"],"pat":new Uint8Array([0b0101,128,0b0101,128]),"cri":{}},
-683:{"idx":683,"col":"#F6A95B","sat":65,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1101,128,0b0101,128]),"cri":{}},
-684:{"idx":684,"col":"#B87B3D","sat":71,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0011,128,0b0101,128]),"cri":{"DOUBL":314}},
-685:{"idx":685,"col":"#D6A97B","sat":38,"cmp":["#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1011,128,0b0101,128]),"cri":{"PROX":634}},
-686:{"idx":686,"col":"#F6AA5D","sat":64,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0111,128,0b0101,128]),"cri":{"PROX":683}},
-687:{"idx":687,"col":"#F6B97B","sat":47,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1111,128,0b0101,128]),"cri":{}},
-688:{"idx":688,"col":"#7B6B5B","sat":21,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0000,128,0b1101,128]),"cri":{"DOUBL":267}},
-689:{"idx":689,"col":"#7B7A79","sat":1,"cmp":["#000000","#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1000,128,0b1101,128]),"cri":{"SAT":-1}},
-690:{"idx":690,"col":"#9B7B5B","sat":37,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1101,128]),"cri":{"DOUBL":555}},
-691:{"idx":691,"col":"#B8A999","sat":13,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1100,128,0b1101,128]),"cri":{"VPAT":-1}},
-692:{"idx":692,"col":"#7B7B7B","sat":0,"cmp":["#000000","#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0010,128,0b1101,128]),"cri":{"SAT":-1}},
-693:{"idx":693,"col":"#7BA9D6","sat":38,"cmp":["#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1010,128,0b1101,128]),"cri":{}},
-694:{"idx":694,"col":"#BBAB9B","sat":13,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b0110,128,0b1101,128]),"cri":{"PROX":318}},
-695:{"idx":695,"col":"#D8D7D6","sat":1,"cmp":["#FFFFFF","#0080FF","#FF8000"],"pat":new Uint8Array([0b1110,128,0b1101,128]),"cri":{"SAT":-1}},
-696:{"idx":696,"col":"#997A5B","sat":36,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1101,128]),"cri":{"DOUBL":651}},
-697:{"idx":697,"col":"#B6A696","sat":14,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1001,128,0b1101,128]),"cri":{"VPAT":-1}},
-698:{"idx":698,"col":"#F6A95B","sat":65,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1101,128]),"cri":{"DOUBL":683}},
-699:{"idx":699,"col":"#F6D6B6","sat":21,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1101,128,0b1101,128]),"cri":{"VPAT":-1}},
-700:{"idx":700,"col":"#B8A999","sat":13,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0011,128,0b1101,128]),"cri":{"PROX":318}},
-701:{"idx":701,"col":"#D6D6D6","sat":0,"cmp":["#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1011,128,0b1101,128]),"cri":{"PROX":635}},
-702:{"idx":702,"col":"#F6D7B8","sat":20,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0111,128,0b1101,128]),"cri":{}},
-703:{"idx":703,"col":"#F6E6D6","sat":10,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1111,128,0b1101,128]),"cri":{}},
-704:{"idx":704,"col":"#3D3D3D","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b0011,128]),"cri":{"GREY":-1}},
-705:{"idx":705,"col":"#3D4C5B","sat":28,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b0011,128]),"cri":{"DOUBL":449}},
-706:{"idx":706,"col":"#5D4D3D","sat":29,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b0011,128]),"cri":{"DOUBL":450}},
-707:{"idx":707,"col":"#7B7B7B","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b0011,128]),"cri":{"GREY":-1}},
-708:{"idx":708,"col":"#3D4D5D","sat":29,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b0011,128]),"cri":{"DOUBL":452}},
-709:{"idx":709,"col":"#3D7BB8","sat":71,"cmp":["#0080FF","#000000","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b0011,128]),"cri":{"DOUBL":309}},
-710:{"idx":710,"col":"#7D7D7D","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b0011,128]),"cri":{"VPAT":-1}},
-711:{"idx":711,"col":"#9BAAB8","sat":12,"cmp":["#FFFFFF","#0080FF","#000000"],"pat":new Uint8Array([0b1110,128,0b0011,128]),"cri":{"PROX":317}},
-712:{"idx":712,"col":"#5B4C3D","sat":28,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b0011,128]),"cri":{"DOUBL":312}},
-713:{"idx":713,"col":"#797979","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b0011,128]),"cri":{"VPAT":-1}},
-714:{"idx":714,"col":"#B87B3D","sat":71,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b0011,128]),"cri":{"DOUBL":314}},
-715:{"idx":715,"col":"#B8A999","sat":13,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b1101,128,0b0011,128]),"cri":{"PROX":318}},
-716:{"idx":716,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b0011,128]),"cri":{"VPAT":-1}},
-717:{"idx":717,"col":"#99A9B8","sat":13,"cmp":["#0080FF","#FFFFFF","#000000"],"pat":new Uint8Array([0b1011,128,0b0011,128]),"cri":{"VPAT":-1,"DOUBL":317}},
-718:{"idx":718,"col":"#B8AA9B","sat":12,"cmp":["#FFFFFF","#FF8000","#000000"],"pat":new Uint8Array([0b0111,128,0b0011,128]),"cri":{"VPAT":-1}},
-719:{"idx":719,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1111,128,0b0011,128]),"cri":{"VPAT":-1}},
-720:{"idx":720,"col":"#5B6B7B","sat":21,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1011,128]),"cri":{"PROX":263}},
-721:{"idx":721,"col":"#5B7A99","sat":36,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1011,128]),"cri":{"PROX":535}},
-722:{"idx":722,"col":"#7B7B7B","sat":0,"cmp":["#FF8000","#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1011,128]),"cri":{"SAT":-1}},
-723:{"idx":723,"col":"#99A9B8","sat":13,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b1100,128,0b1011,128]),"cri":{"DOUBL":317}},
-724:{"idx":724,"col":"#5B7B9B","sat":37,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1011,128]),"cri":{"PROX":535}},
-725:{"idx":725,"col":"#5BA9F6","sat":65,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1011,128]),"cri":{"PROX":599}},
-726:{"idx":726,"col":"#9BABBB","sat":13,"cmp":["#FFFFFF","#000000","#0080FF"],"pat":new Uint8Array([0b0110,128,0b1011,128]),"cri":{"DOUBL":365}},
-727:{"idx":727,"col":"#B8D7F6","sat":20,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1110,128,0b1011,128]),"cri":{"DOUBL":637}},
-728:{"idx":728,"col":"#797A7B","sat":1,"cmp":["#000000","#FF8000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1011,128]),"cri":{"SAT":-1}},
-729:{"idx":729,"col":"#96A6B6","sat":14,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1001,128,0b1011,128]),"cri":{"VPAT":-1}},
-730:{"idx":730,"col":"#D6A97B","sat":38,"cmp":["#FF8000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1011,128]),"cri":{"PROX":634}},
-731:{"idx":731,"col":"#D6D6D6","sat":0,"cmp":["#FFFFFF","#FF8000","#0080FF"],"pat":new Uint8Array([0b1101,128,0b1011,128]),"cri":{"PROX":635}},
-732:{"idx":732,"col":"#99A9B8","sat":13,"cmp":["#000000","#FFFFFF","#0080FF"],"pat":new Uint8Array([0b0011,128,0b1011,128]),"cri":{"VPAT":-1,"DOUBL":317}},
-733:{"idx":733,"col":"#B6D6F6","sat":21,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1011,128,0b1011,128]),"cri":{"VPAT":-1}},
-734:{"idx":734,"col":"#D6D7D8","sat":1,"cmp":["#FFFFFF","#FF8000","#0080FF"],"pat":new Uint8Array([0b0111,128,0b1011,128]),"cri":{"PROX":635}},
-735:{"idx":735,"col":"#D6E6F6","sat":10,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1111,128,0b1011,128]),"cri":{"PROX":503}},
-736:{"idx":736,"col":"#7B6C5D","sat":20,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0000,128,0b0111,128]),"cri":{"PROX":267}},
-737:{"idx":737,"col":"#7B7B7B","sat":0,"cmp":["#000000","#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1000,128,0b0111,128]),"cri":{"PROX":653}},
-738:{"idx":738,"col":"#9B7C5D","sat":35,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b0111,128]),"cri":{"PROX":555}},
-739:{"idx":739,"col":"#B8AA9B","sat":12,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b1100,128,0b0111,128]),"cri":{"SAT":-1}},
-740:{"idx":740,"col":"#7B7C7D","sat":1,"cmp":["#000000","#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0010,128,0b0111,128]),"cri":{"PROX":653}},
-741:{"idx":741,"col":"#7BAAD8","sat":39,"cmp":["#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1010,128,0b0111,128]),"cri":{"PROX":603}},
-742:{"idx":742,"col":"#BBAC9D","sat":12,"cmp":["#FFFFFF","#000000","#FF8000"],"pat":new Uint8Array([0b0110,128,0b0111,128]),"cri":{"VPAT":-1}},
-743:{"idx":743,"col":"#D8D8D8","sat":0,"cmp":["#FFFFFF","#0080FF","#FF8000"],"pat":new Uint8Array([0b1110,128,0b0111,128]),"cri":{"PROX":701}},
-744:{"idx":744,"col":"#997B5D","sat":34,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b0111,128]),"cri":{"PROX":555}},
-745:{"idx":745,"col":"#B6A799","sat":12,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1001,128,0b0111,128]),"cri":{"PROX":459}},
-746:{"idx":746,"col":"#F6AA5D","sat":64,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b0111,128]),"cri":{"PROX":683}},
-747:{"idx":747,"col":"#F6D7B8","sat":20,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1101,128,0b0111,128]),"cri":{"DOUBL":702}},
-748:{"idx":748,"col":"#B8AA9B","sat":12,"cmp":["#000000","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0011,128,0b0111,128]),"cri":{"VPAT":-1}},
-749:{"idx":749,"col":"#D6D7D8","sat":1,"cmp":["#0080FF","#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1011,128,0b0111,128]),"cri":{"PROX":701}},
-750:{"idx":750,"col":"#F6D8BB","sat":19,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0111,128,0b0111,128]),"cri":{"VPAT":-1}},
-751:{"idx":751,"col":"#F6E7D8","sat":9,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1111,128,0b0111,128]),"cri":{"PROX":507}},
-752:{"idx":752,"col":"#7B7B7B","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0000,128,0b1111,128]),"cri":{"GREY":-1}},
-753:{"idx":753,"col":"#7B8A99","sat":15,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1000,128,0b1111,128]),"cri":{"DOUBL":543}},
-754:{"idx":754,"col":"#9B8B7B","sat":16,"cmp":["#FF8000","#000000","#FFFFFF"],"pat":new Uint8Array([0b0100,128,0b1111,128]),"cri":{"SAT":-1}},
-755:{"idx":755,"col":"#B8B8B8","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b1100,128,0b1111,128]),"cri":{"VPAT":-1}},
-756:{"idx":756,"col":"#7B8B9B","sat":16,"cmp":["#000000","#0080FF","#FFFFFF"],"pat":new Uint8Array([0b0010,128,0b1111,128]),"cri":{"DOUBL":591}},
-757:{"idx":757,"col":"#7BB9F6","sat":47,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1010,128,0b1111,128]),"cri":{"DOUBL":501}},
-758:{"idx":758,"col":"#BBBBBB","sat":0,"cmp":["#FFFFFF","#000000"],"pat":new Uint8Array([0b0110,128,0b1111,128]),"cri":{"VPAT":-1}},
-759:{"idx":759,"col":"#D8E7F6","sat":9,"cmp":["#FFFFFF","#0080FF"],"pat":new Uint8Array([0b1110,128,0b1111,128]),"cri":{"DOUBL":639}},
-760:{"idx":760,"col":"#998A7B","sat":15,"cmp":["#000000","#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0001,128,0b1111,128]),"cri":{"SAT":-1}},
-761:{"idx":761,"col":"#B6B6B6","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b1001,128,0b1111,128]),"cri":{"VPAT":-1}},
-762:{"idx":762,"col":"#F6B97B","sat":47,"cmp":["#FF8000","#FFFFFF"],"pat":new Uint8Array([0b0101,128,0b1111,128]),"cri":{"DOUBL":687}},
-763:{"idx":763,"col":"#F6E6D6","sat":10,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b1101,128,0b1111,128]),"cri":{"DOUBL":703}},
-764:{"idx":764,"col":"#B8B8B8","sat":0,"cmp":["#000000","#FFFFFF"],"pat":new Uint8Array([0b0011,128,0b1111,128]),"cri":{"VPAT":-1}},
-765:{"idx":765,"col":"#D6E6F6","sat":10,"cmp":["#0080FF","#FFFFFF"],"pat":new Uint8Array([0b1011,128,0b1111,128]),"cri":{"PROX":503}},
-766:{"idx":766,"col":"#F6E7D8","sat":9,"cmp":["#FFFFFF","#FF8000"],"pat":new Uint8Array([0b0111,128,0b1111,128]),"cri":{"PROX":507}},
-767:{"idx":767,"col":"#F6F6F6","sat":0,"cmp":["#FFFFFF"],"pat":new Uint8Array([0b1111,128,0b1111,128]),"cri":{"GREY":-1}}
-}
-
 const txt_stream = 
- //"0400: B1 DF DF DF 35 DF DF DF\n"
- "0400: 71 DF DF DF 35 DF DF DF\n"
- //"0400: 31 DF DF DF 35 DF DF DF\n"
+ "0400: B1 DF DF DF 35 DF DF DF\n"
 +"0408: 31 30 DF DF DF 31 35 DF\n"
 +"0410: DF DF 32 30 DF DF DF 32\n"
 +"0418: 35 DF DF DF 33 30 DF DF\n"
