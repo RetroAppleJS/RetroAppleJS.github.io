@@ -63,22 +63,18 @@
 var CONF_version="2.4.0";
 var CONF_builddate="20240329-170000"; 
 
-var ActiveVesions = {0:"black & white lines",1:"colored lines",2:"patterns",3:"bitmap",4:"debug"}
-
-// global data initializations
-const _o = {
-         "sys":{}     
-        ,"EMU_Updates_s":20                 // Emulator intervals per second 
-        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
-        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
-    };
-
+// global declarations
+const _o = 
+{  
+    "EMU_Updates_s":20                 // Emulator intervals per second     
+  ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+};
+var apple2plus, appleIntervalHandle;
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
-var appleIntervalHandle, apple2plus;
+
 
 oCOM.URL.parse(document.location.toString());
 oCOM.addToEventStack("onload",EMU_init); // EMULATOR KICKSTART
-
 
 
 //  ██ ███    ██ ██ ████████      ██████  ███    ██ ██       ██████   █████  ██████  
@@ -169,11 +165,11 @@ function EMU_init()
        ,"GFX_FLG":[softswitch_mode]
        ,"FLASH":[false]
        ,"PALETTE":[INTCols]});
-    console.log(  video.ser8_map() )
+    console.log( video.ser8_map() )
     
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
-    //video.kernel(apple2plus.hw.safe_flashdump(),apple2CharRom,video.GPU_CFG);
+    //video.kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,video.serial8);
     //var json = video.kernel.toJSON();
     //console.log(json);
 
