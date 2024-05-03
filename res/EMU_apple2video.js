@@ -30,7 +30,9 @@
 if(oEMU===undefined) var oEMU = {"component":{"Video":{"Apple2Video":new Apple2Video()}}}
 else oEMU.component.Video.Apple2Video = new Apple2Video();
 
-function Apple2Video(ctx) {
+function Apple2Video(ctx)
+{
+
     var LORES1_ADDR =   0x0400,
         LORES2_ADDR =   0x0800,
         LPAGE_SIZE =    0x0400,

@@ -64,7 +64,6 @@ console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms
 
 var appleIntervalHandle,apple2plus,KeyboardFocus,keys;
 
-
 function EMU_init()
 {
     document.getElementById("LEDS").innerHTML =
@@ -146,9 +145,10 @@ function EMU_init()
     console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE APPLE II+ EMULATOR
-    var vidContext          = document.getElementById('applescreen')
-    apple2plus          = new Apple2Plus(vidContext); // allow instantiating other systems
+    var vidContext = document.getElementById('applescreen');
+    apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
     apple2plus.restart(); // restart the AppleII+
+
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,active:false},"AppleDisk");
@@ -217,7 +217,7 @@ function EMU_init()
 
     //oCOM.POPUP.html(JSON.stringify(oEMU,null," "));
 
-/*
+    /*
     // LOAD DISK IMAGE VIA URI PARAMETER (if any)
     var dir_filename = oCOM.URL.uri["D1_DIR"];
     if(typeof(dir_filename)!="undefined" && dir_filename!=0)

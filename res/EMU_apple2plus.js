@@ -14,10 +14,18 @@ function Apple2Plus(context)
 {
     if(context===undefined)
     { console.warn("running Apple2Plus without video or hardware context") }
+    else if(new Apple2Video().initGPU===undefined)
+    {
+        var vidContext = context.getContext("2d")
+        var video = new Apple2Video(vidContext);
+    }
     else
     {
-        var video = new Apple2Video(context.getContext("2d"));
-        var hw   = new Apple2Hw(video);
+        var vidContext = context
+        var video = new Apple2Video(vidContext);
+    }
+
+    var hw   = new Apple2Hw(video);
         //var keys = oEMU.component.Keyboard;
         var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
@@ -62,10 +70,9 @@ function Apple2Plus(context)
             }
             else
                 alert("no key");
-            }
         }
 
-        if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
+    if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
 
     
     /*
