@@ -321,7 +321,6 @@ var Apple2Video = function(ctx)
     this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
 
     // RUN THE KERNEL !
-    //window.requestAnimationFrame(apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,this.serial8));
 
     window.requestAnimationFrame( function() { apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)} );
 
