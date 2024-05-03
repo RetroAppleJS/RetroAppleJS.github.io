@@ -134,7 +134,7 @@ function EMU_init()
     fill_ram(lores_stream2,apple2plus,0x400);
 
     //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
-    const video = apple2plus.vidObj()
+    const video = apple2plus.vidObj();
     video.setMonitor(chrome_mode);
     video.setGfx((softswitch_mode&1)==1);
     video.setMix((softswitch_mode&8)==8);
@@ -150,7 +150,7 @@ function EMU_init()
       ,"GFX_FLG":[softswitch_mode]
       ,"FLASH":[false]
       ,"PALETTE":[INTCols]});
-    console.log( video.ser8_map() )
+    console.log( video.ser8_map() );
     
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
@@ -321,7 +321,10 @@ var Apple2Video = function(ctx)
     this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
 
     // RUN THE KERNEL !
-    window.requestAnimationFrame(this.kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,this.serial8));
+    //window.requestAnimationFrame(apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,this.serial8));
+
+    window.requestAnimationFrame( function() { apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)} );
+
     frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
   }
 
