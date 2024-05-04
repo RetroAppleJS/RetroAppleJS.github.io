@@ -28,7 +28,7 @@ Other assembler listings can be found here: (https://github.com/RetroAppleJS/Ret
 
 <img src="/res/retro_lab16.png?raw=true" width=100% />
 
-Explore our [Vintage Computing Laboratory](/tools/TOOLS_CATALOG.html), an exciting hub where all the components of our cutting-edge emulator are thoroughly tested and refined before being transformed into the retro-inspired recipes. Each of these components is a distinct project, meticulously crafted to allow you to delve into the complexities of our vast codebase in a fun and engaging way. Here, you can watch as we use a variety of techniques, including boiling, baking, smoking, and aging, to ensure that every component is primed and ready for use. Whether you're a developer looking to explore new codebases or a tech enthusiast interested in the history of computing, 
+Explore our [Vintage Computing Laboratory](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html), an exciting hub where all the components of our cutting-edge emulator are thoroughly tested and refined before being transformed into the retro-inspired recipes. Each of these components is a distinct project, meticulously crafted to allow you to delve into the complexities of our vast codebase in a fun and engaging way. Here, you can watch as we use a variety of techniques, including boiling, baking, smoking, and aging, to ensure that every component is primed and ready for use. Whether you're a developer looking to explore new codebases or a tech enthusiast interested in the history of computing, 
 
 ## Module overview
 
