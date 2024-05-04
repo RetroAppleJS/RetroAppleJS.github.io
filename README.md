@@ -29,7 +29,7 @@ https://retroapplejs.github.io/tools/TOOLS_CATALOG.html
 
 ## Retro Lab
 
-<img src="/res/retro_lab16.png?raw=true" width=50% />
+<img src="/res/retro_lab16.png?raw=true" width=100% />
 
 ## Module overview
 
