@@ -24,12 +24,11 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 <br>
 Other assembler listings can be found in this [folder](/asm_code_examples), feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
 
-
-https://retroapplejs.github.io/tools/TOOLS_CATALOG.html
-
 ## Retro Lab
 
 <img src="/res/retro_lab16.png?raw=true" width=100% />
+
+Check our [vintage computing laboratory](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html) where all recipies and components of the emulator are boiled, baked and matured, before ending up in RetroAppleJS.
 
 ## Module overview
 
