@@ -1,0 +1,366 @@
+
+
+
+
+<style>
+    .hg-theme-default{background-color:#ececec;border-radius:5px;box-sizing:border-box;font-family:HelveticaNeue-Light,Helvetica Neue Light,Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;overflow:hidden;padding:5px;touch-action:manipulation;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:100%}.hg-theme-default .hg-button span{pointer-events:none}.hg-theme-default button.hg-button{border-width:0;font-size:inherit;outline:0}.hg-theme-default .hg-button{display:inline-block;flex-grow:1}.hg-theme-default .hg-row{display:flex}.hg-theme-default .hg-row:not(:last-child){margin-bottom:5px}.hg-theme-default .hg-row .hg-button-container,.hg-theme-default .hg-row .hg-button:not(:last-child){margin-right:5px}.hg-theme-default .hg-row>div:last-child{margin-right:0}.hg-theme-default .hg-row .hg-button-container{display:flex}.hg-theme-default .hg-button{align-items:center;background:#fff;border-bottom:1px solid #b5b5b5;border-radius:5px;box-shadow:0 0 3px -1px rgba(0,0,0,.3);box-sizing:border-box;cursor:pointer;display:flex;height:40px;justify-content:center;padding:5px;-webkit-tap-highlight-color:rgba(0,0,0,0)}.hg-theme-default .hg-button.hg-standardBtn{width:20px}.hg-theme-default .hg-button.hg-activeButton{background:#efefef}.hg-theme-default.hg-layout-numeric .hg-button{align-items:center;display:flex;height:60px;justify-content:center;width:33.3%}.hg-theme-default .hg-button.hg-button-numpadadd,.hg-theme-default .hg-button.hg-button-numpadenter{height:85px}.hg-theme-default .hg-button.hg-button-numpad0{width:105px}.hg-theme-default .hg-button.hg-button-com{max-width:85px}.hg-theme-default .hg-button.hg-standardBtn.hg-button-at{max-width:45px}.hg-theme-default .hg-button.hg-selectedButton{background:rgba(5,25,70,.53);color:#fff}.hg-theme-default .hg-button.hg-standardBtn[data-skbtn=".com"]{max-width:82px}.hg-theme-default .hg-button.hg-standardBtn[data-skbtn="@"]{max-width:60px}.hg-candidate-box{background:#ececec;border-bottom:2px solid #b5b5b5;border-radius:5px;display:inline-flex;margin-top:-10px;position:absolute;transform:translateY(-100%);-webkit-user-select:none;-moz-user-select:none;user-select:none}ul.hg-candidate-box-list{display:flex;flex:1;list-style:none;margin:0;padding:0}li.hg-candidate-box-list-item{align-items:center;display:flex;height:40px;justify-content:center;width:40px}li.hg-candidate-box-list-item:hover{background:rgba(0,0,0,.03);cursor:pointer}li.hg-candidate-box-list-item:active{background:rgba(0,0,0,.1)}.hg-candidate-box-prev:before{content:"◄"}.hg-candidate-box-next:before{content:"►"}.hg-candidate-box-next,.hg-candidate-box-prev{align-items:center;color:#969696;cursor:pointer;display:flex;padding:0 10px}.hg-candidate-box-next{border-bottom-right-radius:5px;border-top-right-radius:5px}.hg-candidate-box-prev{border-bottom-left-radius:5px;border-top-left-radius:5px}.hg-candidate-box-btn-active{color:#444}
+
+
+
+    input {
+  width: 100%;
+  height: 100px;
+  padding: 20px;
+  font-size: 20px;
+  border: none;
+  box-sizing: border-box;
+}
+
+.keyboardContainer {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.1);
+  justify-content: center;
+  width: 1024px;
+  border-radius: 5px;
+}
+
+.simple-keyboard.hg-theme-default {
+  display: inline-block;
+}
+
+.simple-keyboard-main.simple-keyboard {
+  width: 640px;
+  min-width: 640px;
+  background: none;
+}
+
+.simple-keyboard-main.simple-keyboard .hg-row:first-child {
+  margin-bottom: 10px;
+}
+
+.simple-keyboard-arrows.simple-keyboard {
+  align-self: flex-end;
+  background: none;
+}
+
+.simple-keyboard .hg-button.selectedButton {
+  background: rgba(5, 25, 70, 0.53);
+  color: white;
+}
+
+.simple-keyboard .hg-button.emptySpace {
+  pointer-events: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.simple-keyboard-arrows .hg-row {
+  justify-content: center;
+}
+
+.simple-keyboard-arrows .hg-button {
+  width: 50px;
+  flex-grow: 0;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+
+.controlArrows {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-flow: column;
+}
+
+.simple-keyboard-control.simple-keyboard {
+  background: none;
+}
+
+.simple-keyboard-control.simple-keyboard .hg-row:first-child {
+  margin-bottom: 10px;
+}
+
+.simple-keyboard-control .hg-button {
+  width: 50px;
+  flex-grow: 0;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+
+.numPad {
+  display: flex;
+  align-items: flex-end;
+}
+
+.simple-keyboard-numpad.simple-keyboard {
+  background: none;
+}
+
+.simple-keyboard-numpad.simple-keyboard {
+  width: 160px;
+}
+
+.simple-keyboard-numpad.simple-keyboard .hg-button {
+  width: 50px;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+
+.simple-keyboard-numpadEnd.simple-keyboard {
+  width: 50px;
+  background: none;
+  margin: 0;
+  padding: 5px 5px 5px 0;
+}
+
+.simple-keyboard-numpadEnd.simple-keyboard .hg-button {
+  align-items: center;
+  justify-content: center;
+  display: flex;
+}
+
+.simple-keyboard-numpadEnd .hg-button.hg-standardBtn.hg-button-plus {
+  height: 85px;
+}
+
+.simple-keyboard-numpadEnd.simple-keyboard .hg-button.hg-button-enter {
+  height: 85px;
+}
+
+.simple-keyboard.hg-theme-default .hg-button.hg-selectedButton {
+  background: rgba(5, 25, 70, 0.53);
+  color: white;
+}
+
+.hg-button.hg-functionBtn.hg-button-space {
+  width: 350px;
+}
+
+/**
+ * simple-keyboard
+ * Theme: hg-theme-default
+ */
+ .hg-theme-default {
+  width: 100%;
+  user-select: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  touch-action: manipulation;
+  font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue",
+    Helvetica, Arial, "Lucida Grande", sans-serif;
+  background-color: #ececec;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+.hg-theme-default .hg-button span {
+  pointer-events: none;
+}
+
+/* When using option "useButtonTag" */
+.hg-theme-default button.hg-button {
+  border-width: 0;
+  outline: 0;
+  font-size: inherit;
+}
+
+.hg-theme-default .hg-button {
+  display: inline-block;
+  flex-grow: 1;
+  cursor: pointer;
+}
+
+.hg-theme-default .hg-row {
+  display: flex;
+}
+
+.hg-theme-default .hg-row:not(:last-child) {
+  margin-bottom: 5px;
+}
+
+.hg-theme-default .hg-row .hg-button:not(:last-child) {
+  margin-right: 5px;
+}
+
+.hg-theme-default .hg-row .hg-button-container {
+  margin-right: 5px;
+}
+
+.hg-theme-default .hg-row > div:last-child {
+  margin-right: 0;
+}
+
+.hg-theme-default .hg-row .hg-button-container {
+  display: flex;
+}
+
+.hg-theme-default .hg-button {
+  box-shadow: 0px 0px 3px -1px rgba(0, 0, 0, 0.3);
+  height: 40px;
+  border-radius: 5px;
+  box-sizing: border-box;
+  padding: 5px;
+  background: white;
+  border-bottom: 1px solid #b5b5b5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+.hg-theme-default .hg-button.hg-standardBtn {
+  width: 20px;
+}
+
+.hg-theme-default .hg-button.hg-activeButton {
+  background: #efefef;
+}
+
+.hg-theme-default.hg-layout-numeric .hg-button {
+  width: 33.3%;
+  height: 60px;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.hg-theme-default .hg-button.hg-button-numpadadd {
+  height: 85px;
+}
+
+.hg-theme-default .hg-button.hg-button-numpadenter {
+  height: 85px;
+}
+
+.hg-theme-default .hg-button.hg-button-numpad0 {
+  width: 105px;
+}
+
+.hg-theme-default .hg-button.hg-button-com {
+  max-width: 85px;
+}
+
+.hg-theme-default .hg-button.hg-standardBtn.hg-button-at {
+  max-width: 45px;
+}
+
+.hg-theme-default .hg-button.hg-selectedButton {
+  background: rgba(5, 25, 70, 0.53);
+  color: white;
+}
+
+.hg-theme-default .hg-button.hg-standardBtn[data-skbtn=".com"] {
+  max-width: 82px;
+}
+
+.hg-theme-default .hg-button.hg-standardBtn[data-skbtn="@"] {
+  max-width: 60px;
+}
+
+
+input {
+  width: 100%;
+  height: 100px;
+  padding: 20px;
+  font-size: 20px;
+  border: none;
+  box-sizing: border-box;
+}
+
+.simple-keyboard {
+  max-width: 850px;
+}
+
+.simple-keyboard.my-theme .hg-button.my-button {
+  background: blue;
+  color: white;
+}
+
+.simple-keyboard.my-theme .hg-button[aria-label] {
+  background: black;
+  color: white;
+}
+
+.simple-keyboard.my-theme .hg-button.my-button-outline {
+  border: 2px solid red;
+}
+
+
+</style>
+
+<div class="simple-keyboard simple-keyboard hg-theme-default hg-layout-default hg-layout-default" data-skinstance="simpleKeyboard">
+    <div class="hg-rows">
+        <div class="hg-row">
+            <div class="hg-button hg-standardBtn" data-skbtn="`" data-skbtnuid="default-r0b0"><span>`</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="1" data-skbtnuid="default-r0b1"><span>1</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="2" data-skbtnuid="default-r0b2"><span>2</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="3" data-skbtnuid="default-r0b3"><span>3</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="4" data-skbtnuid="default-r0b4"><span>4</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="5" data-skbtnuid="default-r0b5"><span>5</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="6" data-skbtnuid="default-r0b6"><span>6</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="7" data-skbtnuid="default-r0b7"><span>7</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="8" data-skbtnuid="default-r0b8"><span>8</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="9" data-skbtnuid="default-r0b9"><span>9</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="0" data-skbtnuid="default-r0b10"><span>0</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="°" data-skbtnuid="default-r0b11"><span>°</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="+" data-skbtnuid="default-r0b12"><span>+</span></div>
+            <div class="hg-button hg-functionBtn hg-button-bksp" data-skbtn="{bksp}" data-skbtnuid="default-r0b13"><span>backspace</span></div>
+        </div>
+        <div class="hg-row">
+            <div class="hg-button hg-functionBtn hg-button-tab" data-skbtn="{tab}" data-skbtnuid="default-r1b0"><span>tab</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="a" data-skbtnuid="default-r1b1" style=""><span>a</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="z" data-skbtnuid="default-r1b2" style=""><span>z</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="e" data-skbtnuid="default-r1b3"><span>e</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="r" data-skbtnuid="default-r1b4"><span>r</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="t" data-skbtnuid="default-r1b5"><span>t</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="y" data-skbtnuid="default-r1b6"><span>y</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="u" data-skbtnuid="default-r1b7"><span>u</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="i" data-skbtnuid="default-r1b8"><span>i</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="o" data-skbtnuid="default-r1b9"><span>o</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="p" data-skbtnuid="default-r1b10"><span>p</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="^" data-skbtnuid="default-r1b11"><span>^</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="$" data-skbtnuid="default-r1b12"><span>$</span></div>
+        </div>
+        <div class="hg-row">
+            <div class="hg-button hg-functionBtn hg-button-lock" data-skbtn="{lock}" data-skbtnuid="default-r2b0"><span>caps</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="q" data-skbtnuid="default-r2b1"><span>q</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="s" data-skbtnuid="default-r2b2"><span>s</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="d" data-skbtnuid="default-r2b3"><span>d</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="f" data-skbtnuid="default-r2b4"><span>f</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="g" data-skbtnuid="default-r2b5"><span>g</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="h" data-skbtnuid="default-r2b6"><span>h</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="j" data-skbtnuid="default-r2b7"><span>j</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="k" data-skbtnuid="default-r2b8"><span>k</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="l" data-skbtnuid="default-r2b9"><span>l</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="m" data-skbtnuid="default-r2b10"><span>m</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="ù" data-skbtnuid="default-r2b11"><span>ù</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="*" data-skbtnuid="default-r2b12"><span>*</span></div>
+            <div class="hg-button hg-functionBtn hg-button-enter" data-skbtn="{enter}" data-skbtnuid="default-r2b13"><span>&lt; enter</span></div>
+        </div>
+        <div class="hg-row">
+            <div class="hg-button hg-functionBtn hg-button-shift" data-skbtn="{shift}" data-skbtnuid="default-r3b0"><span>shift</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="<" data-skbtnuid="default-r3b1"><span>&lt;</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="w" data-skbtnuid="default-r3b2"><span>w</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="x" data-skbtnuid="default-r3b3"><span>x</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="c" data-skbtnuid="default-r3b4"><span>c</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="v" data-skbtnuid="default-r3b5"><span>v</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="b" data-skbtnuid="default-r3b6"><span>b</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="n" data-skbtnuid="default-r3b7"><span>n</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="," data-skbtnuid="default-r3b8"><span>,</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn=";" data-skbtnuid="default-r3b9"><span>;</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn=":" data-skbtnuid="default-r3b10"><span>:</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="!" data-skbtnuid="default-r3b11"><span>!</span></div>
+            <div class="hg-button hg-functionBtn hg-button-shift" data-skbtn="{shift}" data-skbtnuid="default-r3b12"><span>shift</span></div>
+        </div>
+        <div class="hg-row">
+            <div class="hg-button hg-standardBtn" data-skbtn=".com" data-skbtnuid="default-r4b0"><span>.com</span></div>
+            <div class="hg-button hg-standardBtn" data-skbtn="@" data-skbtnuid="default-r4b1" style=""><span>@</span></div>
+            <div class="hg-button hg-functionBtn hg-button-space" data-skbtn="{space}" data-skbtnuid="default-r4b2"><span> </span></div>
+        </div>
+    </div>
+</div>
