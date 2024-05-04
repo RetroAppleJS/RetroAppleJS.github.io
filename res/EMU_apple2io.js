@@ -157,6 +157,7 @@ function Apple2IO(vid) {
 
     this.keypress = function(code) {
         key = code;
+        //alert(key)
     }
 
     this.loadDisk = function(bytes,drv) {
