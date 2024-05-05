@@ -13,6 +13,15 @@ function GetHTTP(url,callback_function)
     xhttp.send();
   }
 
+  function keycap_click(t)
+  {
+    alert(t.innerHTML);
+  }
+
+  function keycap_over(t)
+  {
+    //alert(t.innerHTML);
+  }
 
 var oPROCESS = new function()
 {
@@ -47,13 +56,10 @@ var oPROCESS = new function()
         var pos1 = txt.indexOf('<div id="keyboard"');
         var pos2 = txt.indexOf('<div style="clear:both"></div>');
         var snippet = txt.substring(pos1,pos2);
-
-        //var rep = 
-        //var r = new RegExp(rep,"gi");
-        //var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*=")([a-zA-Z0-9:;\.\s\(\)\-\,]*")/,"$1<>$2");
         var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
-        //alert(snippet)
+        var snippet = snippet.replace(/(class="  keycap")/g,"&1 onmouseover=keycap_over(this) onclick=keycap_click(this)");
 
+        
         
 
         console.log("snippet="+(snippet.length/1024)+"KB");
