@@ -1,7 +1,4 @@
 
-
-
-
 <style>
     .hg-theme-default{background-color:#ececec;border-radius:5px;box-sizing:border-box;font-family:HelveticaNeue-Light,Helvetica Neue Light,Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;overflow:hidden;padding:5px;touch-action:manipulation;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:100%}.hg-theme-default .hg-button span{pointer-events:none}.hg-theme-default button.hg-button{border-width:0;font-size:inherit;outline:0}.hg-theme-default .hg-button{display:inline-block;flex-grow:1}.hg-theme-default .hg-row{display:flex}.hg-theme-default .hg-row:not(:last-child){margin-bottom:5px}.hg-theme-default .hg-row .hg-button-container,.hg-theme-default .hg-row .hg-button:not(:last-child){margin-right:5px}.hg-theme-default .hg-row>div:last-child{margin-right:0}.hg-theme-default .hg-row .hg-button-container{display:flex}.hg-theme-default .hg-button{align-items:center;background:#fff;border-bottom:1px solid #b5b5b5;border-radius:5px;box-shadow:0 0 3px -1px rgba(0,0,0,.3);box-sizing:border-box;cursor:pointer;display:flex;height:40px;justify-content:center;padding:5px;-webkit-tap-highlight-color:rgba(0,0,0,0)}.hg-theme-default .hg-button.hg-standardBtn{width:20px}.hg-theme-default .hg-button.hg-activeButton{background:#efefef}.hg-theme-default.hg-layout-numeric .hg-button{align-items:center;display:flex;height:60px;justify-content:center;width:33.3%}.hg-theme-default .hg-button.hg-button-numpadadd,.hg-theme-default .hg-button.hg-button-numpadenter{height:85px}.hg-theme-default .hg-button.hg-button-numpad0{width:105px}.hg-theme-default .hg-button.hg-button-com{max-width:85px}.hg-theme-default .hg-button.hg-standardBtn.hg-button-at{max-width:45px}.hg-theme-default .hg-button.hg-selectedButton{background:rgba(5,25,70,.53);color:#fff}.hg-theme-default .hg-button.hg-standardBtn[data-skbtn=".com"]{max-width:82px}.hg-theme-default .hg-button.hg-standardBtn[data-skbtn="@"]{max-width:60px}.hg-candidate-box{background:#ececec;border-bottom:2px solid #b5b5b5;border-radius:5px;display:inline-flex;margin-top:-10px;position:absolute;transform:translateY(-100%);-webkit-user-select:none;-moz-user-select:none;user-select:none}ul.hg-candidate-box-list{display:flex;flex:1;list-style:none;margin:0;padding:0}li.hg-candidate-box-list-item{align-items:center;display:flex;height:40px;justify-content:center;width:40px}li.hg-candidate-box-list-item:hover{background:rgba(0,0,0,.03);cursor:pointer}li.hg-candidate-box-list-item:active{background:rgba(0,0,0,.1)}.hg-candidate-box-prev:before{content:"◄"}.hg-candidate-box-next:before{content:"►"}.hg-candidate-box-next,.hg-candidate-box-prev{align-items:center;color:#969696;cursor:pointer;display:flex;padding:0 10px}.hg-candidate-box-next{border-bottom-right-radius:5px;border-top-right-radius:5px}.hg-candidate-box-prev{border-bottom-left-radius:5px;border-top-left-radius:5px}.hg-candidate-box-btn-active{color:#444}
 
@@ -293,6 +290,7 @@ input {
 
 </style>
 
+<!--
 <div class="simple-keyboard simple-keyboard hg-theme-default hg-layout-default hg-layout-default" data-skinstance="simpleKeyboard">
     <div class="hg-rows">
         <div class="hg-row">
@@ -364,3 +362,778 @@ input {
         </div>
     </div>
 </div>
+
+
+
+-->
+
+
+
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css">
+</head>
+
+<body>
+  <input class="input" placeholder="Tap on the virtual keyboard to start" />
+  <div class="simple-keyboard"></div>
+
+  <script src="../res/simple-keyboard.js"></script>
+  <script>
+
+
+
+
+const Keyboard = window.SimpleKeyboard.default;
+
+const myKeyboard = new Keyboard({
+  onChange: input => onChange(input),
+  onKeyPress: button => onKeyPress(button)
+});
+
+function onChange(input) {
+  document.querySelector(".input").value = input;
+  console.log("Input changed", input);
+}
+
+function onKeyPress(button) {
+  console.log("Button pressed", button);
+}
+
+
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" type="text/css" href="../res/kb.css">
+
+
+
+<style type="text/css" ng-bind-html="customStyles" class="ng-binding">
+    @import url(http://fonts.googleapis.com/css?family=Fragment+Mono);
+    #keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400; }
+    #keyboard .keycap .keylabel1, #glyphScroller .keylabel1 { font-weight: 400; }
+    #keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px; }
+    #keyboard .keycap .altfont, #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -2px; }
+    </style>
+
+
+
+
+
+
+
+
+
+
+
+<div id="keyboard" tabindex="0" >
+    <div id="keyboard-bg" ng-attr-style="height:{{kbHeight}}px; width:{{kbWidth}}px; background-color:{{keyboard.meta.backcolor}}; border-radius: {{keyboard.meta.radii || '6px'}}; {{keyboard.meta.background.style}}" style="height:270px; width:729px; background-color:#F7EBD1; border-radius: 6px 6px 12px 12px / 18px 18px 12px 12px; ">
+      <!--ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 27px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 33px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 33px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">!</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 81px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 87px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 87px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">"</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 135px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 141px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 141px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">#</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 189px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 195px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 195px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">$</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">4</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 243px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 249px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 249px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">%</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">5</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 297px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 303px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 303px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">&amp;</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">6</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 351px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 357px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 357px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">'</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">7</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 405px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 411px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 411px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">(</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">8</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 459px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 465px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 465px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">)</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">9</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 513px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 519px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 519px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 567px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 573px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 573px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize7" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">*</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">:</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 621px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 627px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 627px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">=</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R1" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 675px; top: 0px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 681px; top: 4px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 681px; top: 4px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">RESET</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 0px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 6px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 6px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">ESC</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 54px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 60px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 60px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">Q</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 108px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 114px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 114px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">W</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 162px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 168px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 168px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">E</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 216px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 222px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 222px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">R</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 270px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 276px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 276px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">T</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 324px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 330px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 330px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">Y</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 378px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 384px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 384px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">U</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 432px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 438px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 438px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">I</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 486px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 492px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 492px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">O</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 540px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 546px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 546px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">P</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 594px; top: 54px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 600px; top: 58px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 600px; top: 58px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">REPT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R2" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 648px; top: 54px; width: 81px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 654px; top: 58px; width: 69px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 654px; top: 58px; width: 69px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:63px; height:36px;">
+              <div style="width:63px; max-width:63px; height:36px;">RETURN</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 13.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 19.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 19.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">CTRL</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 67.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 73.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 73.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">A</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 121.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 127.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 127.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">S</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 175.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 181.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 181.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">D</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 229.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 235.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 235.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">F</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 283.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 289.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 289.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">
+                <div class="slightup">BELL</div>
+              </div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">G</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 337.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 343.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 343.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">H</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 391.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 397.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 397.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">J</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 445.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 451.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 451.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">K</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 499.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 505.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 505.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">L</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 553.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 559.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 559.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">+</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">;</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 607.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 613.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 613.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">
+                <div class="altfont">←</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R3" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 661.5px; top: 108px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 667.5px; top: 112px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 667.5px; top: 112px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">
+                <div class="altfont">→</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 13.5px; top: 162px; width: 81px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 19.5px; top: 166px; width: 69px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 19.5px; top: 166px; width: 69px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:63px; height:36px;">
+              <div style="width:63px; max-width:63px; height:36px;">SHIFT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 94.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 100.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 100.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">Z</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 148.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 154.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 154.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">X</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 202.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 208.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 208.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">C</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 256.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 262.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 262.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">V</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 310.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 316.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 316.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">B</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 364.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 370.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 370.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">^</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">N</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 418.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 424.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 424.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">M</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 472.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 478.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 478.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">&lt;</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">,</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 526.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 532.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 532.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">&gt;</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 580.5px; top: 162px; width: 54px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 586.5px; top: 166px; width: 42px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 586.5px; top: 166px; width: 42px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel1 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">?</div>
+            </div>
+            <div class="keylabel keylabel7 textsize6" style="color:#fffffe; width:36px; height:36px;">
+              <div style="width:36px; max-width:36px; height:36px;">/</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA R4" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 634.5px; top: 162px; width: 81px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 640.5px; top: 166px; width: 69px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 640.5px; top: 166px; width: 69px; height: 42px; padding: 3px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#fffffe; width:63px; height:36px;">
+              <div style="width:63px; max-width:63px; height:36px;">SHIFT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key CHICKLET" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 16.5px; top: 219px; width: 48px; height: 48px; border-width: 1px; border-radius: 4px; background-color: #ffffff;" class="keyborder"></div>
+          <div style="left: 17.5px; top: 220px; width: 46px; height: 44px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #fffffe; border-radius: 4px;" class="keytop"></div>
+          <div style="left: 17.5px; top: 220px; width: 46px; height: 44px; padding: 4px;" class="keylabels">
+            <div class="keylabel keylabel4 textsize2" style="color:#080808; width:38px; height:36px;">
+              <div style="width:38px; max-width:38px; height:36px;">POWER</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+      <div ng-repeat="key in keys()" class="key SA SPACE" ng-mouseover="hoveredKey=key" ng-mouseleave="hoveredKey=null" ng-class="{hover: hoveredKey==key, selected: selectedKeys.indexOf(key)>=0, HOMING:key.nub}" ng-bind-html="key.html">
+        <div class="keycap">
+          <div style="left: 148.5px; top: 216px; width: 432px; height: 54px; border-width: 1px; border-radius: 5px; background-color: #8B7B65;" class="keyborder"></div>
+          <div style="left: 154.5px; top: 220px; width: 420px; height: 42px; border-style: solid; border-width: 1px; border-color: rgba(0,0,0,0.1); background-color: #a89780; border-radius: 5px;" class="keytop"></div>
+          <div style="left: 154.5px; top: 220px; width: 420px; height: 42px; padding: 3px;" class="keylabels">            </div>
+        </div>
+      </div>
+      <!-- end ngRepeat: key in keys() -->
+    </div>
+  </div>
+
+
+
+
+
+</body>
+</html>
