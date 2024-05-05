@@ -16,6 +16,14 @@ function GetHTTP(url,callback_function)
 
 var oPROCESS = new function()
 {
+    this.b64DecodeUnicode = function(str)
+    {
+        // Going backwards: from bytestream, to percent-encoding, to original string.
+        return decodeURIComponent(atob(str).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+    }
+
     this.process_layout = function(resT,resU)
     {
         //console.log("process_layout = "+resT)
@@ -24,7 +32,7 @@ var oPROCESS = new function()
         var rep = '/fonts/'
         var r = new RegExp(rep,"g");
         var kbcss = resT.replace(r,'../res/fonts/');
-        var txt = atob(b64);   //console.log(txt);
+        var txt = this.b64DecodeUnicode(b64);   //console.log(txt);
 
         var pos1 = txt.indexOf("customStyles");
         var styl = txt.substring(pos1,txt.length);
@@ -40,17 +48,24 @@ var oPROCESS = new function()
         var pos2 = txt.indexOf('<div style="clear:both"></div>');
         var snippet = txt.substring(pos1,pos2);
 
+        //var rep = 
+        //var r = new RegExp(rep,"gi");
+        //var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*=")([a-zA-Z0-9:;\.\s\(\)\-\,]*")/,"$1<>$2");
+        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
+        //alert(snippet)
+
+        
+
+        console.log("snippet="+(snippet.length/1024)+"KB");
+
         // INSERT HTML snippet
         document.getElementById("kbsnippet").innerHTML = snippet;
- 
-    
-
     }
 }()
 
 var url = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/res/kb.css"
 
-GetHTTP(url,function(){ oPROCESS.process_layout(this.responseText,this.responseURL);})
+GetHTTP(url,function(){ oPROCESS.process_layout(this.responseText,this.responseURL)})
 
 var b64 = "PCEtLSoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqCktFWUJP"
 +"QVJEIExBWU9VVCBFRElUT1IKQ29weXJpZ2h0IChDKSAyMDEzLTIwMTggSWFuIFByZXN0CkFsbCBy"
