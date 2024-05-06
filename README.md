@@ -24,7 +24,7 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 <br>
 Other assembler listings can be found here: (https://github.com/RetroAppleJS/RetroAppleJS.github.io/tree/main/asm_code_examples), feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
 
-## Retro Lab
+## Vintage Lab
 
 <img src="/res/retro_lab16.png?raw=true" width=100% />
 
