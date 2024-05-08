@@ -162,10 +162,11 @@ var oPROCESS = new function()
 
     this.gen_code = function(arg)
     {
-       var base_url = 
+       var base_url = ""
+       var base_url = "https://retroapplejs.github.io/tools/"
 
-        var code = "<link rel=\"stylesheet\" href=\"../res/"+arg.filename+"\">\n"
-                  +"<"+"script type=\"text/javascript\" src=\"../res/pako.min.js\"></"+"script>\n"
+        var code = "<link rel=\"stylesheet\" href=\""+base_url+"../res/"+arg.filename+"\">\n"
+                  +"<"+"script type=\"text/javascript\" src=\""+base_url+"../res/pako.min.js\"></"+"script>\n"
         var HTMLsrc = document.getElementById(arg.id_txt).value;
         var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
         var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
