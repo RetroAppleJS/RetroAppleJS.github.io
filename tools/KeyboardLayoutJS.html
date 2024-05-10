@@ -13,24 +13,24 @@ GetHTTP(url,function()
 
 
 function GetHTTP(url,callback_function)
-  {
-    // random value (workaround to avoid caching)
-    var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
-    const xhttp = new XMLHttpRequest();
-    xhttp.onload = callback_function;
-    xhttp.open("GET", url+r);
-    xhttp.send();
-  }
+{
+  // random value (workaround to avoid caching)
+  var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
+  const xhttp = new XMLHttpRequest();
+  xhttp.onload = callback_function;
+  xhttp.open("GET", url+r);
+  xhttp.send();
+}
 
-  function keycap_click(t)
-  {
-    alert(t.innerHTML);
-  }
+function keycap_click(t)
+{
+  alert(t.innerHTML);
+}
 
-  function keycap_over(t)
-  {
-    //alert(t.innerHTML);
-  }
+function keycap_over(t)
+{
+  //alert(t.innerHTML);
+}
 
 var oPROCESS = new function()
 {
@@ -342,7 +342,7 @@ function css_dl(t,filename)
   <li>
     <a href="http://www.keyboard-layout-editor.com/##@_backcolor=%23F7EBD1&name=Apple%20II+%20Keyboard&author=Freddy%20Vandriessche&radii=6px%206px%2012px%2012px%20%2F%2F%2018px%2018px%2012px%2012px&pcb:false&css=%2F@import%20url(http%2F:%2F%2F%2F%2Ffonts.googleapis.com%2F%2Fcss%3Ffamily%2F=Fragment+Mono)%2F%3B%0A%0A.keylabel%20%7B%0A%20font-family%2F:%20'Fragment%20Mono'%2F%3B%0A%20font-weight%2F:400%2F%3B%0A%7D%0A%0A.slightup%20%7B%0A%20%20font-weight%2F:600%2F%3B%0A%20%20position%2F:%20relative%2F%3B%0A%20%20top%2F:%20-5px%2F%3B%0A%7D%0A%0A.altfont%20%7B%0A%20%20%20%20font-family%2F:%20'Arial'%2F%3B%0A%20%20%20%20position%2F:%20relative%2F%3B%0A%20%20%20%20top%2F:%20-3px%2F%3B%0A%7D%3B&@_x:0.5&c=%238B7B65&t=%23ffffff&p=SA%20R1&a:5&f:6%3B&=!%0A1&=%22%0A2&=%23%0A3&=$%0A4&=%25%0A5&=%2F&%0A6&='%0A7&=(%0A8&=)%0A9&=%0A0&_fa@:7%3B%3B&=*%0A%2F:&_f:6%3B&=%2F=%0A-&_a:7&f:2%3B&=RESET%3B&@_p=SA%20R2%3B&=ESC&_a:5&f:6%3B&=%0AQ&=%0AW&=%0AE&=%0AR&=%0AT&=%0AY&=%0AU&=%0AI&=%0AO&=%0AP&_a:7&f:2%3B&=REPT&_w:1.5%3B&=RETURN%3B&@_x:0.25&p=SA%20R3%3B&=CTRL&_a:5&f:6%3B&=%0AA&=%0AS&=%0AD&=%0AF&_f:5&fa@:0&:6&:0&:0&:0&:0&:2%3B%3B&=%0AG%0A%0A%0A%0A%0A%3Cdiv%20class%2F=slightup%3EBELL%3C%2F%2Fdiv%3E&_f:6%3B&=%0AH&=%0AJ&=%0AK&=%0AL&=+%0A%2F%3B&_a:7%3B&=%3Cdiv%20class%2F=altfont%3E%2F&larr%2F%3B%3C%2F%2Fdiv%3E&=%3Cdiv%20class%2F=altfont%3E%2F&rarr%2F%3B%3C%2F%2Fdiv%3E%3B&@_x:0.25&p=SA%20R4&f:2&w:1.5%3B&=SHIFT&_a:5&f:6%3B&=%0AZ&=%0AX&=%0AC&=%0AV&=%0AB&=%5E%0AN&=%0AM&=%3C%0A,&=%3E%0A.&=%3F%0A%2F%2F&_a:7&f:2&w:1.5%3B&=SHIFT%3B&@_x:0.25&c=%23ffffff&t=%23000000&p=CHICKLET%3B&=POWER&_x:1.5&c=%238B7B65&t=%23ffffff&p=SA%20SPACE&f:3&w:8%3B&=" target="_blank">EXAMPLE1</a>
     <br>
-    <a href="http://www.keyboard-layout-editor.com/##@_backcolor=%23dbdbdb&name=MacBook%20Keyboard&author=Freddy%20Vandriessche&radii=6px%206px%2012px%2012px%20%2F%2F%2018px%2018px%2012px%2012px&css=%2F@import%20url(http%2F:%2F%2F%2F%2Ffonts.googleapis.com%2F%2Fcss%3Ffamily%2F=Varela+Round)%2F%3B%0A%0A%23keyboard-bg%20%7B%20%0A%20%20%20%20background-image%2F:%20linear-gradient(to%20bottom,%20rgba(0,0,0,0.5)%200%25,%20rgba(0,0,0,0)%204%25,%20rgba(255,255,255,0.3)%206%25,%20rgba(0,0,0,0)%2010%25),%20%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20linear-gradient(to%20right,%20rgba(0,0,0,0.1)%200%25,%20rgba(0,0,0,0)%20100%25)%20!important%2F%3B%20%0A%7D%0A%0A.keylabel%20%7B%0A%20%20%20%20font-family%2F:%20'volkswagen%2F_serialregular'%2F%3B%0A%7D%0A%0A%2F%2F*%20Strangely,%20%22Volkswagen%20Serial%22%20doesn't%20have%20a%20tilde%20character%20*%2F%2F%0A.varela%20%7B%20%0A%20%20%20%20font-family%2F:%20'Varela%20Round'%2F%3B%20%0A%20%20%20%20display%2F:%20inline-block%2F%3B%20%0A%20%20%20%20font-size%2F:%20inherit%2F%3B%20%0A%20%20%20%20text-rendering%2F:%20auto%2F%3B%20%0A%20%20%20%20-webkit-font-smoothing%2F:%20antialiased%2F%3B%20%0A%20%20%20%20-moz-osx-font-smoothing%2F:%20grayscale%2F%3B%0A%20%20%20%20transform%2F:%20translate(0,%200)%2F%3B%0A%7D%0A.varela-tilde%2F:after%20%7B%20content%2F:%20%22%5C07e%22%2F%3B%20%7D%3B&@_y:1&t=%23666666&p=CHICKLET&a:7&f:2&w:1.0357&h:0.5%3B&=esc&_a:4&fa@:0&:0&:0&:1%3B&w:1.0357&h:0.5%3B&=%0A%0A%0AF1&_w:1.0357&h:0.5%3B&=%0A%0A%0AF2&_w:1.0357&h:0.5%3B&=%0A%0A%0AF3&_w:1.0357&h:0.5%3B&=%0A%0A%0AF4&_w:1.0357&h:0.5%3B&=%0A%0A%0AF5&_w:1.0357&h:0.5%3B&=%0A%0A%0AF6&_w:1.0357&h:0.5%3B&=%0A%0A%0AF7%0A%0A%0A%0A%0A%0A%3Ci%20class%2F='fa%20fa-backward'%3E%3C%2F%2Fi%3E&_fa@:0&:0&:0&:1&:0&:0&:0&:0&:0&:1%3B&w:1.0357&h:0.5%3B&=%0A%0A%0AF8%0A%0A%0A%0A%0A%0A%3Ci%20class%2F='fa%20fa-play'%3E%3C%2F%2Fi%3E%3Ci%20class%2F='fa%20fa-pause'%3E%3C%2F%2Fi%3E&_fa@:0&:0&:0&:1%3B&w:1.0357&h:0.5%3B&=%0A%0A%0AF9%0A%0A%0A%0A%0A%0A%3Ci%20class%2F='fa%20fa-forward'%3E%3C%2F%2Fi%3E&_w:1.0357&h:0.5%3B&=%0A%0A%0AF10%0A%0A%0A%0A%0A%0A%3Ci%20class%2F='fa%20fa-volume-off'%3E%3C%2F%2Fi%3E&_w:1.0357&h:0.5%3B&=%0A%0A%0AF11%0A%0A%0A%0A%0A%0A%3Ci%20class%2F='fa%20fa-volume-down'%3E%3C%2F%2Fi%3E&_w:1.0357&h:0.5%3B&=%0A%0A%0AF12%0A%0A%0A%0A%0A%0A%3Ci%20class%2F='fa%20fa-volume-up'%3E%3C%2F%2Fi%3E&_a:7&w:1.0357&h:0.5%3B&=%3Ci%20class%2F='fa%20fa-eject'%3E%3C%2F%2Fi%3E%3B&@_y:-0.5&a:5&f:5%3B&=%23%0A%2F@&=1%0A%2F&&=2%0Aé&=3%0A%22&=4%0A'&=5%0A(&=6%0A§&=7%0Aè&=8%0A!&=9%0Aç&=0%0Aà&=°%0A)&=%2F_%0A-&_a:4&f:2&w:1.5%3B&=%0A%0A%0Adelete%3B&@_w:1.5%3B&=%0Atab&_a:7&f:5%3B&=A&=Z&=E&=R&=T&=Y&=U&=I&=O&=P&_a:5%3B&=¨%0A%5E&_a:4%3B&=%0A%0A%0A€%0A%0A%0A%0A%0A*%0A%0A$&_x:0.25&t=%23000000&a:7&f:3&w:0.75&h:2&h2:1&x2:-0.25%3B&=%3B&@_t=%23666666&a:4&f:2&fa@:1%3B&w:1.75%3B&=%3Ci%20class%2F='kb%20kb-Multimedia-Record'%3E%3C%2F%2Fi%3E%0Acaps%20lock&_a:7&f:5%3B&=Q&=S&=D&_n:true%3B&=F&=G&=H&_n:true%3B&=J&=K&=L&=M&_a:5%3B&=%25%0Aù&_t=%23000000&f:3%3B&=£%0A%60%3B&@_t=%23666666&a:4&f:2&w:1.25%3B&=%0Ashift&_a:5&f:5%3B&=%3E%0A%3C&_a:7%3B&=W&=X&=C&=V&=B&=N&_a:5%3B&=%3F%0A,&=.%0A%2F%3B&=%2F%2F%0A%2F:&=+%0A%2F=&_a:4&f:2&w:2.25%3B&=%0A%0A%0Ashift%3B&@_h:1.111%3B&=%0Afn&_h:1.111%3B&=%0Actrl&_fa@:1%3B&h:1.111%3B&=alt%0Aoption&_w:1.25&h:1.111%3B&=%0Acmd%0A%0A⌘&_a:7&w:5&h:1.111%3B&=&_a:4&fa@:5%3B&w:1.25&h:1.111%3B&=⌘%0A%0A%0Acmd&_fa@:5&:0&:1%3B&h:1.111%3B&=%0A%0Aalt%0Aoption&_x:1&a:7&f:5&h:0.611%3B&=↑%3B&@_y:-0.5&x:11.5&h:0.6111%3B&=←&_h:0.6111%3B&=↓&_h:0.6111%3B&=→" target="_blank">EXAMPLE2</a>
+    <a href="http://www.keyboard-layout-editor.com/#/gists/6fb7c12e14db4e33694ca7bc81575bfd" target="_blank">EXAMPLE2</a>
     <br>
     COPY RENDERED CONTENT FROM http://www.keyboard-layout-editor.com</a></li>
   <li>
