@@ -90,7 +90,7 @@
 }
  #keyboard .keyborder{
 
-    border-color: rgba(255,255,255,0);
+    border-color: rgba(0,0,0,255);
     border-style:solid
 
 }
