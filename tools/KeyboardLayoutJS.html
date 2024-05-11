@@ -191,6 +191,7 @@ var oPROCESS = new function()
                              .replace(/<\!--/g,"\n<\!--")
                              .replace(/-->/g,"-->\n")
                              .replace(/  /g," ")
+                             .replace(/.*(class="">.*)(\n.*\n)(.*<\/div>)/gm,"")
 
         const deflator = new pako.Deflate( { level: 9} );
         deflator.push(snippet, true);
