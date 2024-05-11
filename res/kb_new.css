@@ -67,7 +67,7 @@
  #keyboard #keyboard-bg{
 
     position:inherit;
-    /*border:solid 1px #ddd;*/
+    border:solid 1px #ddd;
     padding:9px;
     box-sizing:content-box;
     border-radius:6px;
