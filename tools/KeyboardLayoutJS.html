@@ -153,7 +153,7 @@ var oPROCESS = new function()
         var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
         var snippet = HTMLsrc.substring(pos1,pos2);
         var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
-        var snippet = snippet.replace(/(class="  keycap")/g,"&1 onmouseover=keycap_over(this) onclick=keycap_click(this)");
+        var snippet = snippet.replace(/(class="  keycap")/g," onmouseover=keycap_over(this) onclick=keycap_click(this)");
         console.log("snippet="+(snippet.length/1024)+"KB");
 
         res["kbsnippet"] = snippet;
@@ -165,8 +165,8 @@ var oPROCESS = new function()
        var base_url = ""
        var base_url = "https://retroapplejs.github.io/tools/"
 
-        var code = "<link rel=\"stylesheet\" href=\""+base_url+"../res/"+arg.filename+"\">\n"
-                  +"<"+"script type=\"text/javascript\" src=\""+base_url+"../res/pako.min.js\"></"+"script>\n"
+        var cd = ["<link rel='stylesheet' href='"+base_url+"../res/"+arg.filename+"'>",
+                  "<"+"script type=\"text/javascript\" src=\""+base_url+"../res/pako.min.js\"></"+"script>"]
         var HTMLsrc = document.getElementById(arg.id_txt).value;
         var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
         var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
@@ -176,26 +176,37 @@ var oPROCESS = new function()
         styl = styl.substring(0,pos2-1).replace(/\\/g,"\\\\").replace(/"/g,'\\"');
         console.log(styl);
 
-        code += "<"+"script>\n"
+        var code = cd.join("\n")+"\n<"+"script>\n"
         code += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n"
 
         var pos1 = HTMLsrc.indexOf('<div id="keyboard"');   // extract HTML & strip ng-* attributes
         var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
         var snippet = HTMLsrc.substring(pos1,pos2);
         var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
-        var snippet = snippet.replace(/(class="  keycap")/g,"&1 onmouseover=keycap_over(this) onclick=keycap_click(this)");
+        var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onclick=keycap_click(this)")
+                             .replace(/<!--/g,"\n<!--").replace(/-->/g,"-->\n")
 
         const deflator = new pako.Deflate( { level: 9} );
         deflator.push(snippet, true);
         var b64body =  this.Uint8ArrayToBase64(deflator.result);
         
         code += "var c_body =\n \""+b64body.match(/.{1,1024}/g).join('"\n+"')+"\";\n"
-
         code += "const inflator = new pako.Inflate();\n"
         +"inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));\n"
-        +"document.write( new TextDecoder().decode(inflator.result) );\n"
-
+        +"function doit(){\n"
+        +"var s = \""+cd[0]+"\"\n"
+        +"       +\"<style>\\n\"+custom_css+\"\\n</style>\\n\"\n"
+        +"       +new TextDecoder().decode(inflator.result)\n"
+        +"document.getElementById(\"glyphScroller\").innerHTML = s;\n"
+        +"document.getElementById(\"code\").value = s;\n"
+        +"}\n"
         code += "<"+"/script>\n"
+
+        code += "<body onload=\"doit()\">\n"
+        code += "<div id=\"glyphScroller\"></div>\n"
+        code += "<textarea id=\"code\" style=width:600px;height:150px></textarea>\n"
+        code += "</body>\n"
+
         document.getElementById(arg.id_code).value = code;
     }
 
