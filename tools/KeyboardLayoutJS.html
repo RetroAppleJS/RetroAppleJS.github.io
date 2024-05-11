@@ -188,7 +188,7 @@ var oPROCESS = new function()
         var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ")
                              .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
         var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onclick=keycap_click(this)")
-                             .replace(/<!--/g,"\n<!--")
+                             .replace(/<\!--/g,"\n<\!--")
                              .replace(/-->/g,"-->\n")
                              .replace(/  /g," ")
 
