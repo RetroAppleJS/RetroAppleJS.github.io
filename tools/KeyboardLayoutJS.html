@@ -173,7 +173,10 @@ var oPROCESS = new function()
         styl = styl.substring(styl.indexOf(">")+1,styl.length-1);
         
         var pos2 = styl.indexOf("</style>");  // cut  out trailing HTML code 
-        styl = styl.substring(0,pos2-1).replace(/\\/g,"\\\\").replace(/"/g,'\\"');
+        styl = styl.substring(0,pos2-1)
+        //.replace(/(border:dashed [a-zA-Z0-9:;\ \s\-#]*)(\}|;)/g,"$2")
+        .replace(/\\/g,"\\\\")
+        .replace(/"/g,'\\"');
         console.log(styl);
 
         var code = cd.join("\n")+"\n<"+"script>\n"
