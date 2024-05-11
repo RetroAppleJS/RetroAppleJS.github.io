@@ -182,7 +182,8 @@ var oPROCESS = new function()
         var pos1 = HTMLsrc.indexOf('<div id="keyboard"');   // extract HTML & strip ng-* attributes
         var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
         var snippet = HTMLsrc.substring(pos1,pos2);
-        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
+        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ")
+                             .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
         var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onclick=keycap_click(this)")
                              .replace(/<!--/g,"\n<!--").replace(/-->/g,"-->\n")
 
