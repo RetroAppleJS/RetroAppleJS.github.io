@@ -67,12 +67,12 @@
     border-radius:3px;
     margin-top:10px;
     margin-bottom:10px;
-    border:dashed 1px rgba(255,255,255,255);
+    border:dashed 1px rgba(255,255,255,0);
 }
  #keyboard #keyboard-bg{
 
     position:inherit;
-    border:solid 1px rgba(255,255,255,255);
+    border:solid 1px rgba(255,255,255,0);
     padding:9px;
     box-sizing:content-box;
     border-radius:6px;
@@ -83,16 +83,14 @@
  #keyboard-bg div{
 
     position:absolute;
-    border-color: rgba(255,255,255,255);
-    /*
+    border-color: rgba(255,255,255,0);
     box-sizing:border-box;
     background-clip:padding-box
-    */
 
 }
  #keyboard .keyborder{
 
-    border-color: rgba(255,255,255,255);
+    border-color: rgba(255,255,255,0);
     border-style:solid
 
 }
