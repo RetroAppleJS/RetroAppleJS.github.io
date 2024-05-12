@@ -223,6 +223,26 @@ var oPROCESS = new function()
 
 }()
 
+function keycap_over(t)
+{
+  var tag = t.innerHTML;
+}
+
+function keycap_click(t)
+{
+  var tag = t.innerHTML;
+  console.log(tag)
+
+  const regexp = /keylabel.(keylabel[0-9][0-9])/gm
+  const matches = tag.matchAll(regexp);
+    
+  for (const match of matches)
+  {
+    //alert(match[1]);
+    console.log(match.index+" "+match[1])
+  }
+
+}
 
 var b64 =
  "eNrsvdl64krWKHifTxFJ7irsncbMGI/1YzymZ7Bzqq6zPwEBKC0kpSSMcZbPd67+2z5Df/133/Zd3/UznPMm9SS9VkRISEKMNpnAVlZtoyGGFSvWHKEVO29jsd8n+/fm7PDL/lWhdEDOC1+u7m7J4cHp7VXpTVHTu4bcaFpkpbhKUolkOgZ/8uRUUsm1QU3rTUFRCCthErinxgOtrb+ZsPffY7G9NztvD66Kt1+uD0nTailwjz9EbcQkXd+N3FcKuh4hVUUyzd0IPDWrmk4jeztNKtX2dkyrq1BidXW6G7HooxWvmmZk79+qTckwqUUid7dHsXxk++9q43/bqiqadP+PNbiO2Zc1yZJirvtH1826fbm23nvMnjblGv1Rk01dkbpbqqZS8lZu6ZphSaq1/Yxd1TWj5ZSoKFr1fvsZa0qq3JIsGmOPYpYhqaZsyZpq/uhdbyVMIimKq8lYh1buZSs2rMyzDVhMqtViUtWSH6gDbMygLe2BeiFyV96JM0QC8i3Zgt8z2q1oklEj51JXa1vksCZbmrET52/f7LSoJRGB5N1I26oDkuGxIqv3QA3KboQ1ZzYptSL+2SFNg9Z3I3AZr2iaZcKo9PWWrK6zly1akyWoXzUoVadps66pVkzqUFNrUafZKdppyqr1kvpVTdEMXa7eU+MlzdxXpq9ZQ8JBfNhNAFZl3XLX+SY9SPxphJhGdTfyzYx/+96mRpcB/Q2qAW2wAmPXl6rUW1FwqVzbjcC7PygjJg7Teu8B+aFrgrpxmBJS8DZQrVFXtM4WATquUXUbh7NFkin9Ma4Ck0kKiV5oqlTVomtwRVWFXdxV2qrVJvCG3RaBwzSQIHhtam2jSmNVDdhCN/B1C0qZOgCyXZMNWuUQKJYBPIXQwSA0RaEe+KQKtNe2AuCzNH2LJLYrmmVpLXYlVe8bhtZWazFGEltEVpvUkIGtW2asDZIzZlIFut0iKErgqfYU9FjIgP43/U+qbcPEjnCGxCCqgDaqWoFjYD1WtMeYKT/JamOL"
