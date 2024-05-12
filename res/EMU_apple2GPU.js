@@ -84,7 +84,7 @@ function Apple2Video(ctx)
         flash_count = 0;
         this.reflash();
       }
-      if (++frame_count > 100000)
+      if (++frame_count > 200000)
       {
         if(frame_redraw==true)
         {
