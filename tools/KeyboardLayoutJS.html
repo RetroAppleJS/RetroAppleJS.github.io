@@ -1,6 +1,10 @@
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/pako.min.js"></script>
 
+<style>
+  .anotherclass { border:5px solid red }
+  </style>
+
 
 <script>
 var url = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/res/kb.css"
@@ -179,19 +183,19 @@ var oPROCESS = new function()
         .replace(/"/g,'\\"');
         console.log(styl);
 
-        var code = cd.join("\n")+"\n<"+"script>\n"
-        code += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n"
+        var code = cd.join("\n")+"\n<"+"script>\n";
+        code    += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n";
 
-        var pos1 = HTMLsrc.indexOf('<div id="keyboard"');   // extract HTML & strip ng-* attributes
+        var pos1 = HTMLsrc.indexOf('<div id="keyboard"');                         // extract HTML
         var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
-        var snippet = HTMLsrc.substring(pos1,pos2);
-        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ")
-                             .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
+        var snippet = HTMLsrc.substring(pos1,pos2);                               // isolate keyboard code
+        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ")   // strip ng-* attributes
+                             .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," "); // strip ngf-* attributes
         var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onclick=keycap_click(this)")
-                             .replace(/<\!--/g,"\n<\!--")
-                             .replace(/-->/g,"-->\n")
-                             .replace(/  /g," ")
-                             .replace(/.*(class="">.*)(\n.*\n)(.*<\/div>)/gm,"")
+                             .replace(/<\!--/g,"\n<\!--")                         // separate keys by linefeed
+                             //.replace(/-->/g,"-->\n")                           // separate keys by linefeed
+                             .replace(/  /g," ")                                  // reduce space characters
+                             .replace(/.*(class="">.*)(\n.*\n)(.*<\/div>)/gm,"")  // remove author label
 
         const deflator = new pako.Deflate( { level: 9} );
         deflator.push(snippet, true);
@@ -225,15 +229,16 @@ var oPROCESS = new function()
 
 function keycap_over(t)
 {
-  var tag = t.innerHTML;
+  //var tag = t.innerHTML;
+  t.classList.add("anotherclass");
 }
 
 function keycap_click(t)
 {
   var tag = t.innerHTML;
-  console.log(tag)
+  //console.log(tag)
 
-  const regexp = /keylabel.(keylabel[0-9][0-9])/gm
+  const regexp = /keylabel (keylabel[0-9]{1,2})/gm
   const matches = tag.matchAll(regexp);
     
   for (const match of matches)
