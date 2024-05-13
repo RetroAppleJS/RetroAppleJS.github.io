@@ -176,9 +176,6 @@ var oPROCESS = new function()
       code    += "<"+"script>\n";
       code    += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n";
 
-
-// #keyboard([\S\s])([^\}]*)
-
       var pos1 = HTMLsrc.indexOf('<div id="keyboard"');                         // extract HTML
       var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
       var snippet = HTMLsrc.substring(pos1,pos2);                               // isolate keyboard code
@@ -363,33 +360,34 @@ function css_dl(t,filename)
 <hr>
 
 <textarea id="inputB64" style="width:600px;height:100px" hidden></textarea>
-<button onclick="oPROCESS.input_b64('inputB64','inputUTF8')" disabled>UNPACK B64</button>
+<button onclick="oPROCESS.input_b64('inputB64','inputUTF8')" hidden>UNPACK B64</button>
 
 <div>
-<ul>
-  <li><a href="http://www.keyboard-layout-editor.com/css/kb.css" target="_blank">COPY kb.css</a></li>
-  <li>
-    <textarea id="CSScode" style="width:600px;height:100px" onclick="document.getElementById('CSScode_b').disabled=false;this.value='';this.style.borderColor='#FFFFFF'"></textarea>
-    <button id="CSScode_b" onclick="css_dl(this,'kb_new.css')">REMAP & DOWNLOAD</button>
-  </li>
-  <li>
-    <a href="http://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96" target="_blank">EXAMPLE1</a>
+<table>
+  <tr>
+    <td>
+      <a href="http://www.keyboard-layout-editor.com/css/kb.css" target="_blank">COPY kb.css</a>
+      <br>
+      <textarea id="CSScode" style="width:300px;height:100px" onclick="document.getElementById('CSScode_b').disabled=false;this.value='';this.style.borderColor='#FFFFFF'"></textarea>
+      <br>
+      <button id="CSScode_b" onclick="css_dl(this,'kb_new.css')">REMAP & DOWNLOAD</button>
+    </td>
+    <td>
+      <a href="http://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96" target="_blank">COPY EXAMPLE1</a> OR 
+      <a href="http://www.keyboard-layout-editor.com/#/gists/6fb7c12e14db4e33694ca7bc81575bfd" target="_blank">COPY EXAMPLE2</a>
+      <br>
+    <textarea id=inputUTF8 style="width:300px;height:100px"></textarea>
     <br>
-    <a href="http://www.keyboard-layout-editor.com/#/gists/6fb7c12e14db4e33694ca7bc81575bfd" target="_blank">EXAMPLE2</a>
-    <br>
-    COPY RENDERED CONTENT FROM http://www.keyboard-layout-editor.com</a></li>
-  <li>
-    <textarea id=inputUTF8 style="width:600px;height:100px"></textarea>
     <button onclick="oPROCESS.input_textarea('inputUTF8','inputB64')" hidden>PROCESS TEXT</button>
-  </li>
-  <li>
-    <textarea id="JScode" style="width:600px;height:100px"></textarea>
-    <!--
-    <button onclick="document.getElementById('JScode').value = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'}).exe_later">GENERATE CODE</button>
-    -->
     <button onclick="var o = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('JScode').value=o.exe_later">GENERATE & RUN</button>
-  </li>
-</ul>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <textarea id="JScode" style="width:600px;height:100px"></textarea>
+    </td>
+  </tr>
+</table>
 </div>
 
 </body>
