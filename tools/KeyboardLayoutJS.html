@@ -118,7 +118,12 @@ var oPROCESS = new function()
       var rep = '/fonts/'
       var r = new RegExp(rep,"g");
       kbcss = kbcss.replace(r,'../res/fonts/');  // remap font directory (to my own repo)
-      document.getElementById(id).value = kbcss.replace(/\}/g,"}\n");
+      document.getElementById(id).value = kbcss
+      //.replace(/\}/g,"}\n")
+      //.replace(/(#keyboard #keyboard-bg*\{)([\S\s]*?)\}/gm,"$1 position:inherit;border:solid 1px rgba(255,255,255,0);padding: 9px;box-sizing: content-box;border-radius: 6px;min-width: 56px;min-height: 56px}")
+      //.replace(/border:dashed 1px #ddd/g,"border: dashed 1px rgba(255,255,255,0)")
+
+      //  #keyboard #keyboard-bg{ position: inherit;solid 1px #  border: rgba(255,255,255,0);
 
       document.getElementById(id).style.borderWidth = "2px"
       document.getElementById(id).style.borderColor = "#00FF00";
@@ -163,14 +168,17 @@ var oPROCESS = new function()
       
       var pos2 = styl.indexOf("</style>");  // cut  out trailing HTML code 
       styl = styl.substring(0,pos2-1)
-      //.replace(/(border:dashed [a-zA-Z0-9:;\ \s\-#]*)(\}|;)/g,"$2")
-      .replace(/\\/g,"\\\\")
-      .replace(/"/g,'\\"');
+        //.replace(/(border:dashed [a-zA-Z0-9:;\ \s\-#]*)(\}|;)/g,"$2")
+        .replace(/\\/g,"\\\\")
+        .replace(/"/g,'\\"');
       console.log(styl);
 
       var code = cd.join("\n")+"\n";
       code    += "<"+"script>\n";
       code    += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n";
+
+
+// #keyboard([\S\s])([^\}]*)
 
       var pos1 = HTMLsrc.indexOf('<div id="keyboard"');                         // extract HTML
       var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
@@ -363,7 +371,7 @@ function css_dl(t,filename)
   <li><a href="http://www.keyboard-layout-editor.com/css/kb.css" target="_blank">COPY kb.css</a></li>
   <li>
     <textarea id="CSScode" style="width:600px;height:100px" onclick="document.getElementById('CSScode_b').disabled=false;this.value='';this.style.borderColor='#FFFFFF'"></textarea>
-    <button id="CSScode_b" onclick="css_dl(this,'kb_new.css')">REMAP & DOWNLOAD</button>
+    <button id="CSScode_b" onclick="css_dl(this,'kb_newer.css')">REMAP & DOWNLOAD</button>
   </li>
   <li>
     <a href="http://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96" target="_blank">EXAMPLE1</a>
@@ -377,7 +385,9 @@ function css_dl(t,filename)
   </li>
   <li>
     <textarea id="JScode" style="width:600px;height:100px"></textarea>
-    <button onclick="document.getElementById('JScode').value = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'}).exe_later" hidden>GENERATE CODE</button>
+    <!--
+    <button onclick="document.getElementById('JScode').value = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'}).exe_later">GENERATE CODE</button>
+    -->
     <button onclick="var o = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('JScode').value=o.exe_later">GENERATE & RUN</button>
   </li>
 </ul>
