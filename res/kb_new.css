@@ -1,273 +1,294 @@
-/*
-@font-face{
-    font-family:'engravers_gothic_fsregular';
-    src:url("../res/fonts/EngraversGothic-Regular-webfont.eot");
-    src:url("../res/fonts/EngraversGothic-Regular-webfont.eot?#iefix") format('embedded-opentype'),url("../res/fonts/EngraversGothic-Regular-webfont.woff") format('woff'),url("../res/fonts/EngraversGothic-Regular-webfont.ttf") format('truetype'),url("../res/fonts/EngraversGothic-Regular-webfont.svg#engravers_gothic_fsregular") format('svg');
-    font-weight:normal;
-    font-style:normal
-}
- @font-face{
-    font-family:'volkswagen_serialregular';
-    src:url("../res/fonts/Volkswagen_Serial-Regular-webfont.eot");
-    src:url("../res/fonts/Volkswagen_Serial-Regular-webfont.eot?#iefix") format('embedded-opentype'),url("../res/fonts/Volkswagen_Serial-Regular-webfont.woff") format('woff'),url("../res/fonts/Volkswagen_Serial-Regular-webfont.ttf") format('truetype'),url("../res/fonts/Volkswagen_Serial-Regular-webfont.svg#volkswagen_serialregular") format('svg');
-    font-weight:normal;
-    font-style:normal
-}
- @font-face{
-    font-family:'combining-diacritical';
-    src:url("../res/fonts/combining-diacritical.ttf") format('truetype');
-    font-weight:normal;
-    font-style:normal
-}
-*/
-@font-face {
-    font-family: "San Francisco";
-    font-weight: 400;
-    src: url("https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff");
+      .cd {
+    display: inline-block;
+    font: normal normal normal 14px/1 combining-diacritical;
+    font-size: inherit;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transform: translate(0, 0);
   }
- .cd{
-    display:inline-block;
-    font:normal normal normal 14px/1 combining-diacritical;
-    font-size:inherit;
-    text-rendering:auto;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    transform:translate(0,0)
-}
- html,body{
-    height:100%;
-    font-family:"Segoe UI","Arial","Helvetica",sans-serif;
-    -webkit-touch-callout:none;
-    -webkit-user-select:none;
-    -moz-user-select:none;
-    -ms-user-select:none;
-    user-select:none;
-    cursor:default
-}
- .body{
-    margin:10px
-}
- .nav,.pagination,.carousel,.panel-title a{
-    cursor:pointer
-}
- #wrap{
-    min-height:100%;
-    height:auto !important;
-    height:100%;
-    margin:0 auto -70px;
-    padding:0 0 60px;
-}
- #footer{
-    height:70px;
-    background-color:#f5f5f5
-}
- #keyboard{
-    padding:4px;
-    border-radius:3px;
-    margin-top:10px;
-    margin-bottom:10px;
-    border:dashed 1px rgba(255,255,255,0);
-}
- #keyboard #keyboard-bg{
-    position:inherit;
-    border:solid 1px rgba(255,255,255,0);
-    padding:9px;
-    box-sizing:content-box;
-    border-radius:6px;
-    min-width:56px;
-    min-height:56px
-}
- #keyboard-bg div{
-
-    position:absolute;
-    border-color: rgba(255,255,255,0);
-    box-sizing:border-box;
-    background-clip:padding-box
-
-}
- #keyboard .keyborder{
-
-    border-color: rgba(0,0,0,255);
-    border-style:solid
-
-}
- #keyboard .hover .keyborder,#keyboard .hover .decal .keyborder{
-
-    border-color:#008000 !important;
-    border-style:solid
-    
-}
- #keyboard .selected .keyborder,#keyboard .selected .decal .keyborder{
-    
-    border-color:#f00 !important;
-    border-style:solid
-    
-}
- #keyboard .ghosted{
-    opacity:.5
-}
- #keyboard .decal .keyborder{
-    border-style:none !important;
-    background:transparent !important
-}
- #keyboard .hover .decal .keyborder,#keyboard .selected .decal .keyborder{
-    /*border-style:dashed !important;*/
-    border-width:1px
-}
- .keylabel>div{
-    display:table-cell;
-    position:static !important
-}
- .keylabel0>div,.keylabel1>div,.keylabel2>div{
-    vertical-align:top
-}
- .keylabel3>div,.keylabel4>div,.keylabel5>div{
-    vertical-align:middle
-}
- .keylabel6>div,.keylabel7>div,.keylabel8>div{
-    vertical-align:bottom
-}
- .keylabel9,.keylabel10,.keylabel11{
-    top:100%;
-    margin-top:-1px;
-    font-size:10px !important;
-    max-height:1em !important;
-    white-space:nowrap;
-    overflow:hidden
-}
- .keylabel0>div,.keylabel3>div,.keylabel6>div,.keylabel9>div{
-    text-align:left
-}
- .keylabel1>div,.keylabel4>div,.keylabel7>div,.keylabel10>div{
-    text-align:center
-}
- .keylabel2>div,.keylabel5>div,.keylabel8>div,.keylabel11>div{
-    text-align:right
-}
- .keylabel.textsize1{
-    font-size:8px;
-    line-height:1em
-}
- .keylabel.textsize2{
-    font-size:10px;
-    line-height:1em
-}
- .keylabel.textsize3{
-    font-size:12px;
-    line-height:1em
-}
- .keylabel.textsize4{
-    font-size:14px;
-    line-height:1em
-}
- .keylabel.textsize5{
-    font-size:16px;
-    line-height:1em
-}
- .keylabel.textsize6{
-    font-size:18px;
-    line-height:1em
-}
- .keylabel.textsize7{
-    font-size:20px;
-    line-height:1em
-}
- .keylabel.textsize8{
-    font-size:22px;
-    line-height:1em
-}
- .keylabel.textsize9{
-    font-size:24px;
-    line-height:1em
-}
- .keylabels{
-    font-family:"Helvetica","Arial",sans-serif
-}
- .keylabel hr{
-    display:inline
-}
- .keylabel hr:before{
-    position:relative;
-    display:block;
-    overflow:hidden;
-    white-space:nowrap;
-    content:"\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500"
-}
- .SA .keylabels,.DSA .keylabels{
-    font-family:'engravers_gothic_fsregular';
-}
- .DSA .keylabel9,.DSA .keylabel10,.DSA .keylabel11,.SA .keylabel9,.SA .keylabel10,.SA .keylabel11{
-    margin-top:-2px;
-    font-size:9px !important
-}
- .DCS .keytop,.OEM .keytop{
-    background:linear-gradient(to right,rgba(0,0,0,0) 0%,rgba(0,0,0,0.102) 40%,rgba(0,0,0,0.102) 60%,rgba(0,0,0,0) 100%);
-    background-repeat:no-repeat
-}
- .DSA .keytop,.SA .keytop{
-    background:radial-gradient(ellipse at center,rgba(0,0,0,0.102) 0%,rgba(0,0,0,0.102) 10%,rgba(0,0,0,0) 100%);
-    background-repeat:no-repeat
-}
- .DCS.SPACE .keytop,.OEM.SPACE .keytop,.DSA.SPACE .keytop,.SA.SPACE .keytop{
-    background:linear-gradient(to bottom,rgba(0,0,0,0.102) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 40%,rgba(0,0,0,0.102) 100%);
-    background-repeat:no-repeat
-}
- .DSA.DISH .keytop,.DSA.HOMING .keytop,.SA.HOMING .keytop{
-    background:radial-gradient(circle,rgba(0,0,0,0.11) 50%,rgba(0,0,0,0.039) 60%);
-    background-repeat:no-repeat
-}
- .HOMING .keylabels{
-    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAACCAYAAABhYU3QAAAAGElEQVQI12P4//+/ODGYAUwwMAThwyA1ACUKJ4H2Fi17AAAAAElFTkSuQmCC");
-    background-repeat:no-repeat;
-    background-position:center 90%
-}
- .DSA.HOMING .keylabels,.SA.HOMING .keylabels{
-    background-image:none
-}
- .FLAT .keytop{
-    display:none
-}
- .CHICKLET .keylabel9,.CHICKLET .keylabel10,.CHICKLET .keylabel11,.FLAT .keylabel9,.FLAT .keylabel10,.FLAT .keylabel11{
-    display:none
-}
- #swatches,#glyphs{
-    list-style-type:none;
-    margin:0;
-    padding:0
-}
- .swatch,.glyph{
-    display:inline-block;
-    position:relative;
-    width:16px;
-    height:32px;
-    border:solid 1px #888;
-    margin-right:-1px;
-    margin-bottom:-6px;
-    padding:0
-}
- .glyph{
-    font-family:'combining-diacritical';
-    width:1.7em;
-    text-align:center;
-    padding-top:0;
-    font-size:1.618em;
-    border:solid 1px #eee;
-    background-color:#fff
-}
- .glyph:hover{
-    background-color:#eee
-}
- .glyph.selected{
-    background-color:#eef !important
-}
- #glyphScroller{
-    /*
-    width:100%;
-    overflow-y:scroll !important;
-    overflow-x:hidden !important;
-    max-height:230px;
-    border:solid 1px #ccc;
-    padding:4px
-    */
-}
-
+  html,
+  body {
+    height: 100%;
+    font-family: "Segoe UI", "Arial", "Helvetica", sans-serif;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+  .body {
+    margin: 10px;
+  }
+  .nav,
+  .pagination,
+  .carousel,
+  .panel-title a {
+    cursor: pointer;
+  }
+  #wrap {
+    min-height: 100%;
+    height: auto !important;
+    height: 100%;
+    margin: 0 auto -70px;
+    padding: 0 0 60px;
+  }
+  #footer {
+    height: 70px;
+    background-color: #f5f5f5;
+  }
+  #keyboard {
+    padding: 4px;
+    border-radius: 3px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: dashed 1px rgba(255,255,255,0);
+  }
+  #keyboard #keyboard-bg {
+    position: inherit;
+    border: solid 1px #ddd;
+    padding: 9px;
+    box-sizing: content-box;
+    border-radius: 6px;
+    min-width: 56px;
+    min-height: 56px;
+  }
+  #keyboard-bg div {
+    position: absolute;
+    border-color: #000;
+    box-sizing: border-box;
+    background-clip: padding-box;
+  }
+  #keyboard .keyborder {
+    border-color: #000;
+    border-style: solid;
+  }
+  #keyboard .hover .keyborder,
+  #keyboard .hover .decal .keyborder {
+    border-color: #008000 !important;
+    border-style: solid;
+  }
+  #keyboard .selected .keyborder,
+  #keyboard .selected .decal .keyborder {
+    border-color: #f00 !important;
+    border-style: solid;
+  }
+  #keyboard .ghosted {
+    opacity: 0.5;
+  }
+  #keyboard .decal .keyborder {
+    border-style: none !important;
+    background: transparent !important;
+  }
+  #keyboard .hover .decal .keyborder,
+  #keyboard .selected .decal .keyborder {
+    border-style: dashed !important;
+    border-width: 1px;
+  }
+  .keylabel > div {
+    display: table-cell;
+    position: static !important;
+  }
+  .keylabel0 > div,
+  .keylabel1 > div,
+  .keylabel2 > div {
+    vertical-align: top;
+  }
+  .keylabel3 > div,
+  .keylabel4 > div,
+  .keylabel5 > div {
+    vertical-align: middle;
+  }
+  .keylabel6 > div,
+  .keylabel7 > div,
+  .keylabel8 > div {
+    vertical-align: bottom;
+  }
+  .keylabel9,
+  .keylabel10,
+  .keylabel11 {
+    top: 100%;
+    margin-top: -1px;
+    font-size: 10px !important;
+    max-height: 1em !important;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .keylabel0 > div,
+  .keylabel3 > div,
+  .keylabel6 > div,
+  .keylabel9 > div {
+    text-align: left;
+  }
+  .keylabel1 > div,
+  .keylabel4 > div,
+  .keylabel7 > div,
+  .keylabel10 > div {
+    text-align: center;
+  }
+  .keylabel2 > div,
+  .keylabel5 > div,
+  .keylabel8 > div,
+  .keylabel11 > div {
+    text-align: right;
+  }
+  .keylabel.textsize1 {
+    font-size: 8px;
+    line-height: 1em;
+  }
+  .keylabel.textsize2 {
+    font-size: 10px;
+    line-height: 1em;
+  }
+  .keylabel.textsize3 {
+    font-size: 12px;
+    line-height: 1em;
+  }
+  .keylabel.textsize4 {
+    font-size: 14px;
+    line-height: 1em;
+  }
+  .keylabel.textsize5 {
+    font-size: 16px;
+    line-height: 1em;
+  }
+  .keylabel.textsize6 {
+    font-size: 18px;
+    line-height: 1em;
+  }
+  .keylabel.textsize7 {
+    font-size: 20px;
+    line-height: 1em;
+  }
+  .keylabel.textsize8 {
+    font-size: 22px;
+    line-height: 1em;
+  }
+  .keylabel.textsize9 {
+    font-size: 24px;
+    line-height: 1em;
+  }
+  .keylabels {
+    font-family: "Helvetica", "Arial", sans-serif;
+  }
+  .keylabel hr {
+    display: inline;
+  }
+  .keylabel hr:before {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    content: "\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500\2500";
+  }
+  .SA .keylabels,
+  .DSA .keylabels {
+    font-family: "engravers_gothic_fsregular";
+  }
+  .DSA .keylabel9,
+  .DSA .keylabel10,
+  .DSA .keylabel11,
+  .SA .keylabel9,
+  .SA .keylabel10,
+  .SA .keylabel11 {
+    margin-top: -2px;
+    font-size: 9px !important;
+  }
+  .DCS .keytop,
+  .OEM .keytop {
+    background: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.102) 40%,
+      rgba(0, 0, 0, 0.102) 60%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    background-repeat: no-repeat;
+  }
+  .DSA .keytop,
+  .SA .keytop {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0.102) 0%,
+      rgba(0, 0, 0, 0.102) 10%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    background-repeat: no-repeat;
+  }
+  .DCS.SPACE .keytop,
+  .OEM.SPACE .keytop,
+  .DSA.SPACE .keytop,
+  .SA.SPACE .keytop {
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.102) 0%,
+      rgba(0, 0, 0, 0) 20%,
+      rgba(0, 0, 0, 0) 40%,
+      rgba(0, 0, 0, 0.102) 100%
+    );
+    background-repeat: no-repeat;
+  }
+  .DSA.DISH .keytop,
+  .DSA.HOMING .keytop,
+  .SA.HOMING .keytop {
+    background: radial-gradient(
+      circle,
+      rgba(0, 0, 0, 0.11) 50%,
+      rgba(0, 0, 0, 0.039) 60%
+    );
+    background-repeat: no-repeat;
+  }
+  .HOMING .keylabels {
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAACCAYAAABhYU3QAAAAGElEQVQI12P4//+/ODGYAUwwMAThwyA1ACUKJ4H2Fi17AAAAAElFTkSuQmCC");
+    background-repeat: no-repeat;
+    background-position: center 90%;
+  }
+  .DSA.HOMING .keylabels,
+  .SA.HOMING .keylabels {
+    background-image: none;
+  }
+  .FLAT .keytop {
+    display: none;
+  }
+  .CHICKLET .keylabel9,
+  .CHICKLET .keylabel10,
+  .CHICKLET .keylabel11,
+  .FLAT .keylabel9,
+  .FLAT .keylabel10,
+  .FLAT .keylabel11 {
+    display: none;
+  }
+  #swatches,
+  #glyphs {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+  .swatch,
+  .glyph {
+    display: inline-block;
+    position: relative;
+    width: 16px;
+    height: 32px;
+    border: solid 1px #888;
+    margin-right: -1px;
+    margin-bottom: -6px;
+    padding: 0;
+  }
+  .glyph {
+    font-family: "combining-diacritical";
+    width: 1.7em;
+    text-align: center;
+    padding-top: 0;
+    font-size: 1.618em;
+    border: solid 1px #eee;
+    background-color: #fff;
+  }
+  .glyph:hover {
+    background-color: #eee;
+  }
+  .glyph.selected {
+    background-color: #eef !important;
+  }
+  
