@@ -1,3 +1,4 @@
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/pako.min.js"></script>
 
@@ -43,17 +44,15 @@ var oPROCESS = new function()
 
     this.b64DecodeUnicode = function(str)
     {
-        // Going backwards: from bytestream, to percent-encoding, to original string.
-        return decodeURIComponent(atob(str).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''))
+      // Going backwards: from bytestream, to percent-encoding, to original string.
+      return decodeURIComponent(atob(str).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''))
     }
-
-
 
     this.Uint8ArrayFromBase64 = function(base64)
     {
-        return Uint8Array.from(window.atob(base64), (v) => v.charCodeAt(0));
+      return Uint8Array.from(window.atob(base64), (v) => v.charCodeAt(0));
     }
 
     this.Uint8ArrayToBase64 = function(a)
@@ -82,8 +81,7 @@ var oPROCESS = new function()
       var dd = new TextDecoder().decode(inflator.result);
 
       var res = oPROCESS.process_layout(this.KBCSS_FILE,dd);
-      document.getElementById("kbcss").innerHTML = "<style>"+res.kbcss+"\n"+res.styl+"</style>";
-      document.getElementById("kbsnippet").innerHTML = res.kbsnippet;
+      document.getElementById("kbsnippet").innerHTML = "<style>"+res.kbcss+"\n"+res.styl+"</style>" + res.kbsnippet;
 
       alert(Math.round(inp.length/1024)+"KB"
         +" -> "+Math.round(b64body.length/1024)+"KB"
@@ -101,8 +99,7 @@ var oPROCESS = new function()
       document.getElementById(id_txt).value = dd;
 
       var res = oPROCESS.process_layout(this.KBCSS_FILE,dd);
-      document.getElementById("kbcss").innerHTML = "<style>"+res.kbcss+"\n"+res.styl+"</style>";
-      document.getElementById("kbsnippet").innerHTML = res.kbsnippet;
+      document.getElementById("kbsnippet").innerHTML = "<style>"+res.kbcss+"\n"+res.styl+"</style>" + res.kbsnippet;
 
       alert(Math.round(b64body.length/1024)+"KB"
       +" -> "+Math.round(res.kbcss.length/1024)+"(kb.css) +"+Math.round(res.styl.length/1024)+"(custom styles)+"+Math.round(res.kbsnippet.length/1024)+"(inflated HTML) = "+Math.round( (res.kbcss.length+res.styl.length+res.kbsnippet.length)/1024)+"KB")
@@ -130,108 +127,112 @@ var oPROCESS = new function()
 
     this.process_layout = function(kbcss,HTMLsrc)
     {
-        var res = {};
-        var rep = '/fonts/'
-        var r = new RegExp(rep,"g");
-        kbcss = kbcss.replace(r,'../res/fonts/');         // remap font directory (to my own repo)
-        res["kbcss"] = kbcss.replace(/\}/g,"}\n");
+      var res = {};
+      var rep = '/fonts/'
+      var r = new RegExp(rep,"g");
+      kbcss = kbcss.replace(r,'../res/fonts/');         // remap font directory (to my own repo)
+      res["kbcss"] = kbcss.replace(/\}/g,"}\n");
 
-        var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
-        var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
-        styl = styl.substring(styl.indexOf(">")+1,styl.length);
-        var pos2 = styl.indexOf("</style>");
-        styl = styl.substring(0,pos2);
-        res["styl"] = styl.replace(/\}/g,"}\n");
+      var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
+      var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
+      styl = styl.substring(styl.indexOf(">")+1,styl.length);
+      var pos2 = styl.indexOf("</style>");
+      styl = styl.substring(0,pos2);
+      res["styl"] = styl.replace(/\}/g,"}\n");
 
-        var pos1 = HTMLsrc.indexOf('<div id="keyboard"');   // extract HTML & strip ng-* attributes
-        var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
-        var snippet = HTMLsrc.substring(pos1,pos2);
-        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
-        var snippet = snippet.replace(/(class="  keycap")/g," onmouseover=keycap_over(this) onclick=keycap_click(this)");
-        console.log("snippet="+(snippet.length/1024)+"KB");
+      var pos1 = HTMLsrc.indexOf('<div id="keyboard"');   // extract HTML & strip ng-* attributes
+      var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
+      var snippet = HTMLsrc.substring(pos1,pos2);
+      var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
+      var snippet = snippet.replace(/(class="  keycap")/g," onmouseover=keycap_over(this) onclick=keycap_click(this)");
+      console.log("snippet="+(snippet.length/1024)+"KB");
 
-        res["kbsnippet"] = snippet;
-        return res;
+      res["kbsnippet"] = snippet;
+      return res;
     }
 
     this.gen_code = function(arg)
     {
-       var base_url = "https://retroapplejs.github.io/tools/"
-        var cd = ["<link rel='stylesheet' href='"+base_url+"../res/"+arg.filename+"'>",
-                  "<"+"script type=\"text/javascript\" src=\""+base_url+"../res/pako.min.js\"></"+"script>"]
-        var HTMLsrc = document.getElementById(arg.id_txt).value;
-        var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
-        var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
-        styl = styl.substring(styl.indexOf(">")+1,styl.length-1);
-        
-        var pos2 = styl.indexOf("</style>");  // cut  out trailing HTML code 
-        styl = styl.substring(0,pos2-1)
-        //.replace(/(border:dashed [a-zA-Z0-9:;\ \s\-#]*)(\}|;)/g,"$2")
-        .replace(/\\/g,"\\\\")
-        .replace(/"/g,'\\"');
-        console.log(styl);
+      var base_url = "https://retroapplejs.github.io/tools/"
+      var cd = ["<link rel='stylesheet' href='"+base_url+"../res/"+arg.filename+"'>",
+                "<"+"script type=\"text/javascript\" src=\""+base_url+"../res/pako.min.js\"></"+"script>"]
+      var HTMLsrc = document.getElementById(arg.id_txt).value;
+      var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
+      var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
+      styl = styl.substring(styl.indexOf(">")+1,styl.length-1);
+      
+      var pos2 = styl.indexOf("</style>");  // cut  out trailing HTML code 
+      styl = styl.substring(0,pos2-1)
+      //.replace(/(border:dashed [a-zA-Z0-9:;\ \s\-#]*)(\}|;)/g,"$2")
+      .replace(/\\/g,"\\\\")
+      .replace(/"/g,'\\"');
+      console.log(styl);
 
-        var code = cd.join("\n")+"\n";
-        code    += "<"+"script>\n";
-        code    += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n";
+      var code = cd.join("\n")+"\n";
+      code    += "<"+"script>\n";
+      code    += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n";
 
-        var pos1 = HTMLsrc.indexOf('<div id="keyboard"');                         // extract HTML
-        var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
-        var snippet = HTMLsrc.substring(pos1,pos2);                               // isolate keyboard code
-        var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ")   // strip ng-* attributes
-                             .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," "); // strip ngf-* attributes
-        var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onmouseout=keycap_out(this) onclick=keycap_click(this)")
-                             .replace(/<\!--/g,"\n<\!--")                         // separate keys by linefeed
-                             .replace(/  /g," ")                                  // reduce space characters
-                             .replace(/.*(class="">.*)(\n.*\n)(.*<\/div>)/gm,"")  // remove author label
+      var pos1 = HTMLsrc.indexOf('<div id="keyboard"');                         // extract HTML
+      var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
+      var snippet = HTMLsrc.substring(pos1,pos2);                               // isolate keyboard code
+      var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ")   // strip ng-* attributes
+                            .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," "); // strip ngf-* attributes
+      var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onmouseout=keycap_out(this) onclick=keycap_click(this)")
+                            .replace(/<\!--/g,"\n<\!--")                         // separate keys by linefeed
+                            .replace(/  /g," ")                                  // reduce space characters
+                            .replace(/.*(class="">.*)(\n.*\n)(.*<\/div>)/gm,"")  // remove author label
 
-        const deflator = new pako.Deflate( { level: 9} );
-        deflator.push(snippet, true);
-        var b64body =  this.Uint8ArrayToBase64(deflator.result);
-        
-        code += "var c_body =\n \""+b64body.match(/.{1,1024}/g).join('"\n+"')+"\";\n"
-        code += "const inflator = new pako.Inflate();\n"
-        +"inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));\n"
-        +"function doit()\n"
-        +"{\n"
-        +"var s = \"<meta http-equiv=\\\"Content-Type\\\" content=\\\"text/html; charset=utf-8\\\">\\n\"\n" 
-        +"       +\""+cd[0]+"\\n\"\n"
-        +"       +\"<style>\\n\"+custom_css+\"\\n</style>\\n\"\n"
-        +"       +\"<div id=\\\"glyphScroller\\\">\"\n"
-        +"       +new TextDecoder().decode(inflator.result)\n"
-        +"       +\"</div>\"\n"
-        +"document.getElementById(\"body\").innerHTML = s;\n"
-        +"document.getElementById(\"code\").value = s;\n"
-        +"}\n"
-        +"var keycapmap = {\"keylabel0\":\"top-left\",\"keylabel1\":\"top-center\",\"keylabel2\":\"top-right\",\"keylabel3\":\"center-left\",\"keylabel4\":\"center-center\",\"keylabel5\":\"center-right\",\"keylabel6\":\"bottom-left\",\"keylabel7\":\"bottom-center\",\"keylabel8\":\"bottom-right\",\"keylabel9\":\"front-left\",\"keylabel10\":\"front-center\",\"keylabel11\":\"front-right\"}\n"
-        +"function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,\"\") }\n"
-        +"function keycap_over(t) { t.classList.replace(\"keycap\",\"selected\") }\n"
-        +"function keycap_out(t) { t.classList.replace(\"selected\",\"keycap\") }\n"
-        +"function keycap_click(t)\n"
-        +"{\n"
-        +"   console.log(\"\");const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);\n"
-        +"   for(const match of matches)\n"
-        +"   {\n"
-        +"      var el = t.getElementsByClassName(match[1]);\n"
-        +"      var child = el[0].firstElementChild.innerHTML;\n"
-        +"      console.log(keycapmap[match[1]]+\" \"+stripHTML(child),\"(\"+child+\")\");\n"
-        +"   }\n"
-        +"}\n"
-        code += "<"+"/script>\n"
+      const deflator = new pako.Deflate( { level: 9} );
+      deflator.push(snippet, true);
+      var b64body =  this.Uint8ArrayToBase64(deflator.result);
 
-        code += "<body onload=\"doit()\">\n"
-        code += "<div id=\"body\"></div>\n"
-        code += "<textarea id=\"code\" style=width:600px;height:150px></textarea>\n"
-        code += "</body>\n"
+      code += "var c_body =\n \""+b64body.match(/.{1,1024}/g).join('"\n+"')+"\";\n"
+      code += "const inflator = new pako.Inflate();\n"
+      +"inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));\n"
+      +"function doit()\n"
+      +"{\n"
+      +"var s = \"<meta http-equiv=\\\"Content-Type\\\" content=\\\"text/html; charset=utf-8\\\">\\n\"\n" 
+      +"       +\""+cd[0]+"\\n\"\n"
+      +"       +\"<style>\\n\"+custom_css+\"\\n</style>\\n\"\n"
+      +"       +\"<div id=\\\"glyphScroller\\\">\"\n"
+      +"       +new TextDecoder().decode(inflator.result)\n"
+      +"       +\"</div>\"\n"
+      +"document.getElementById(\"body\").innerHTML = s;\n"
+      +"document.getElementById(\"code\").value = s;\n"
+      +"}\n"
+      + myscript
+      +"<"+"/script>\n"
+      +"<body onload=\"doit()\">\n"
+      +"<div id=\"body\"></div>\n"
+      +"<textarea id=\"code\" style=width:600px;height:150px></textarea>\n"
+      +"</body>\n"
 
-        var exe_now = "";
-        return {"exe_now":exe_now,"exe_later":code}
+      var css = document.getElementById('CSScode').value;
+      var exe_now = "<style>\n"+css+"\n"+styl+"\n</style>\n"
+                    +"<div id=\"glyphScroller\">\n" + snippet + "\n</div>\n"
+                    
+
+      
+      return {"exe_now":exe_now,"exe_later":code}
     }
-
-
 }()
 
+var myscript = "var keycapmap = {\"keylabel0\":\"top-left\",\"keylabel1\":\"top-center\",\"keylabel2\":\"top-right\",\"keylabel3\":\"center-left\",\"keylabel4\":\"center-center\",\"keylabel5\":\"center-right\",\"keylabel6\":\"bottom-left\",\"keylabel7\":\"bottom-center\",\"keylabel8\":\"bottom-right\",\"keylabel9\":\"front-left\",\"keylabel10\":\"front-center\",\"keylabel11\":\"front-right\"}\n"
+      +"function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,\"\") }\n"
+      +"function keycap_over(t) { t.classList.replace(\"keycap\",\"selected\") }\n"
+      +"function keycap_out(t) { t.classList.replace(\"selected\",\"keycap\") }\n"
+      +"function keycap_click(t)\n"
+      +"{\n"
+      +"   console.log(\"\");const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);\n"
+      +"   for(const match of matches)\n"
+      +"   {\n"
+      +"      var el = t.getElementsByClassName(match[1]);\n"
+      +"      var child = el[0].firstElementChild.innerHTML;\n"
+      +"      console.log(keycapmap[match[1]]+\" \"+stripHTML(child),\"(\"+child+\")\");\n"
+      +"   }\n"
+      +"}\n"
 
+document.write("<"+"script>\n"+myscript+"\n<"+"/script>\n")
 
 var b64 =
  "eNrsvdl64krWKHifTxFJ7irsncbMGI/1YzymZ7Bzqq6zPwEBKC0kpSSMcZbPd67+2z5Df/133/Zd3/UznPMm9SS9VkRISEKMNpnAVlZtoyGGFSvWHKEVO29jsd8n+/fm7PDL/lWhdEDOC1+u7m7J4cHp7VXpTVHTu4bcaFpkpbhKUolkOgZ/8uRUUsm1QU3rTUFRCCthErinxgOtrb+ZsPffY7G9NztvD66Kt1+uD0nTailwjz9EbcQkXd+N3FcKuh4hVUUyzd0IPDWrmk4jeztNKtX2dkyrq1BidXW6G7HooxWvmmZk79+qTckwqUUid7dHsXxk++9q43/bqiqadP+PNbiO2Zc1yZJirvtH1826fbm23nvMnjblGv1Rk01dkbpbqqZS8lZu6ZphSaq1/Yxd1TWj5ZSoKFr1fvsZa0qq3JIsGmOPYpYhqaZsyZpq/uhdbyVMIimKq8lYh1buZSs2rMyzDVhMqtViUtWSH6gDbMygLe2BeiFyV96JM0QC8i3Zgt8z2q1oklEj51JXa1vksCZbmrET52/f7LSoJRGB5N1I26oDkuGxIqv3QA3KboQ1ZzYptSL+2SFNg9Z3I3AZr2iaZcKo9PWWrK6zly1akyWoXzUoVadps66pVkzqUFNrUafZKdppyqr1kvpVTdEMXa7eU+MlzdxXpq9ZQ8JBfNhNAFZl3XLX+SY9SPxphJhGdTfyzYx/+96mRpcB/Q2qAW2wAmPXl6rUW1FwqVzbjcC7PygjJg7Teu8B+aFrgrpxmBJS8DZQrVFXtM4WATquUXUbh7NFkin9Ma4Ck0kKiV5oqlTVomtwRVWFXdxV2qrVJvCG3RaBwzSQIHhtam2jSmNVDdhCN/B1C0qZOgCyXZMNWuUQKJYBPIXQwSA0RaEe+KQKtNe2AuCzNH2LJLYrmmVpLXYlVe8bhtZWazFGEltEVpvUkIGtW2asDZIzZlIFut0iKErgqfYU9FjIgP43/U+qbcPEjnCGxCCqgDaqWoFjYD1WtMeYKT/JamOL"
@@ -349,18 +350,13 @@ function css_dl(t,filename)
 </script>    
 
 
-
 <body onload="document.getElementById('inputB64').value=b64">
 
-<div id="kbcss"></div>
 <div id="kbsnippet"></div>
 <hr>
 
-
-
 <textarea id="inputB64" style="width:600px;height:100px" hidden></textarea>
 <button onclick="oPROCESS.input_b64('inputB64','inputUTF8')" disabled>UNPACK B64</button>
-
 
 <div>
 <ul>
@@ -377,11 +373,12 @@ function css_dl(t,filename)
     COPY RENDERED CONTENT FROM http://www.keyboard-layout-editor.com</a></li>
   <li>
     <textarea id=inputUTF8 style="width:600px;height:100px"></textarea>
-    <button onclick="oPROCESS.input_textarea('inputUTF8','inputB64')">PROCESS TEXT</button>
+    <button onclick="oPROCESS.input_textarea('inputUTF8','inputB64')" hidden>PROCESS TEXT</button>
   </li>
   <li>
     <textarea id="JScode" style="width:600px;height:100px"></textarea>
-    <button onclick="document.getElementById('JScode').value = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'}).exe_later">GENERATE CODE</button>
+    <button onclick="document.getElementById('JScode').value = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'}).exe_later" hidden>GENERATE CODE</button>
+    <button onclick="var o = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('JScode').value=o.exe_later">GENERATE & RUN</button>
   </li>
 </ul>
 </div>
