@@ -133,10 +133,9 @@ var oPROCESS = new function()
         var res = {};
         var rep = '/fonts/'
         var r = new RegExp(rep,"g");
-        kbcss = kbcss.replace(r,'../res/fonts/');  // remap font directory (to my own repo)
+        kbcss = kbcss.replace(r,'../res/fonts/');         // remap font directory (to my own repo)
         res["kbcss"] = kbcss.replace(/\}/g,"}\n");
 
-        //console.log(HTMLsrc);
         var pos1 = HTMLsrc.indexOf("customStyles");       // extract custom style area
         var styl = HTMLsrc.substring(pos1,HTMLsrc.length);
         styl = styl.substring(styl.indexOf(">")+1,styl.length);
@@ -157,9 +156,7 @@ var oPROCESS = new function()
 
     this.gen_code = function(arg)
     {
-       var base_url = ""
        var base_url = "https://retroapplejs.github.io/tools/"
-
         var cd = ["<link rel='stylesheet' href='"+base_url+"../res/"+arg.filename+"'>",
                   "<"+"script type=\"text/javascript\" src=\""+base_url+"../res/pako.min.js\"></"+"script>"]
         var HTMLsrc = document.getElementById(arg.id_txt).value;
@@ -174,7 +171,8 @@ var oPROCESS = new function()
         .replace(/"/g,'\\"');
         console.log(styl);
 
-        var code = cd.join("\n")+"\n<"+"script>\n";
+        var code = cd.join("\n")+"\n";
+        code    += "<"+"script>\n";
         code    += "var custom_css = \""+styl.replace(/\n/g,"\"\n+\"").replace(/(\}|\);)/g,"$1\\n")+"\";\n";
 
         var pos1 = HTMLsrc.indexOf('<div id="keyboard"');                         // extract HTML
@@ -184,7 +182,6 @@ var oPROCESS = new function()
                              .replace(/( ngf-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," "); // strip ngf-* attributes
         var snippet = snippet.replace(/(class="  keycap")/g,"class=\"keycap\" onmouseover=keycap_over(this) onmouseout=keycap_out(this) onclick=keycap_click(this)")
                              .replace(/<\!--/g,"\n<\!--")                         // separate keys by linefeed
-                             //.replace(/-->/g,"-->\n")                           // separate keys by linefeed
                              .replace(/  /g," ")                                  // reduce space characters
                              .replace(/.*(class="">.*)(\n.*\n)(.*<\/div>)/gm,"")  // remove author label
 
@@ -227,7 +224,8 @@ var oPROCESS = new function()
         code += "<textarea id=\"code\" style=width:600px;height:150px></textarea>\n"
         code += "</body>\n"
 
-        document.getElementById(arg.id_code).value = code;
+        var exe_now = "";
+        return {"exe_now":exe_now,"exe_later":code}
     }
 
 
@@ -383,7 +381,7 @@ function css_dl(t,filename)
   </li>
   <li>
     <textarea id="JScode" style="width:600px;height:100px"></textarea>
-    <button onclick="oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',id_code:'JScode',filename:'kb_new.css'})">GENERATE CODE</button>
+    <button onclick="document.getElementById('JScode').value = oPROCESS.gen_code({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'}).exe_later">GENERATE CODE</button>
   </li>
 </ul>
 </div>
