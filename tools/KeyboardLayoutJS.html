@@ -149,7 +149,7 @@ var oPROCESS = new function()
       var snippet = HTMLsrc.substring(pos1,pos2);
       var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
       var snippet = snippet.replace(/(class="  keycap")/g," onmouseover=keycap_over(this) onclick=keycap_click(this)");
-      console.log("snippet="+(snippet.length/1024)+"KB");
+      //console.log("snippet="+(snippet.length/1024)+"KB");
 
       res["kbsnippet"] = snippet;
       return res;
@@ -167,10 +167,9 @@ var oPROCESS = new function()
       
       var pos2 = styl.indexOf("</style>");  // cut  out trailing HTML code 
       styl = styl.substring(0,pos2-1)
-        //.replace(/(border:dashed [a-zA-Z0-9:;\ \s\-#]*)(\}|;)/g,"$2")
         .replace(/\\/g,"\\\\")
         .replace(/"/g,'\\"');
-      console.log(styl);
+      //console.log(styl);
 
       var code = cd.join("\n")+"\n";
       code    += "<"+"script>\n";
@@ -214,9 +213,7 @@ var oPROCESS = new function()
       var css = document.getElementById('CSScode').value;
       var exe_now = "<style>\n"+css+"\n"+styl+"\n</style>\n"
                     +"<div id=\"glyphScroller\">\n" + snippet + "\n</div>\n"
-                    
-
-      
+      console.log(exe_now);
       return {"exe_now":exe_now,"exe_later":code}
     }
 }()
