@@ -211,7 +211,7 @@ var oPROCESS = new function()
       +"</body>\n"
 
       var css = document.getElementById('CSScode').value;
-      var exe_now = "<style>\n"+css+"\n"+styl+"\n</style>\n"
+      var exe_now = "<style>\n"+styl+"\n"+css+"\n</style>\n"
                     +"<div id=\"glyphScroller\">\n" + snippet + "\n</div>\n"
       console.log(exe_now);
       return {"exe_now":exe_now,"exe_later":code}
@@ -356,7 +356,7 @@ function css_dl(t,filename)
 <div id="kbsnippet"></div>
 <hr>
 
-<textarea id="inputB64" style="width:600px;height:100px" hidden></textarea>
+<textarea id="inputB64" style="width:300px;height:100px" hidden></textarea>
 <button onclick="oPROCESS.input_b64('inputB64','inputUTF8')" hidden>UNPACK B64</button>
 
 <div>
