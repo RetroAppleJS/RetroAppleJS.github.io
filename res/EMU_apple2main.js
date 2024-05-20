@@ -149,7 +149,7 @@ function EMU_init()
 
     if(oCOM.URL.uri["autoboot"])
     {
-        // add extra restart initialisers (like loading disk)
+        // overload restart initialisers (like loading disk)
         apple2plus.onrestart = function()
         {        
             try
