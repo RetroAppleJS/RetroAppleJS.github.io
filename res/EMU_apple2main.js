@@ -141,7 +141,20 @@ function EMU_init()
         // oEMU.system["A2P"]
     }
 
-    if(oCOM.URL.uri["autoboot"]) apple2plus.onrestart();
+    apple2plus.onrestart = function()
+    {        
+        try
+        {               
+            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+            if(_o.D1_buffer===undefined) return;        
+            loadDisk_fromBuffer(_o.D1_buffer,"D1");
+            delete _o.D1_buffer;
+        }
+        catch(e)
+        {
+            alert("error in apple2plus.onrestart() "+e);
+        }
+    }
         
     console.log(JSON.stringify(oEMU,null,"  "));
 
@@ -149,6 +162,7 @@ function EMU_init()
     var vidContext = document.getElementById('applescreen');
     apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
     apple2plus.restart(); // restart the AppleII+
+    //if(oCOM.URL.uri["autoboot"]) apple2plus.onrestart();
 
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
@@ -164,21 +178,6 @@ function EMU_init()
     apple2plus.CPU_monitoring = function()  // override
     {
         document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
-    }
-
-    apple2plus.onrestart = function()
-    {        
-        try
-        {               
-            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-            if(_o.D1_buffer===undefined) return;        
-            loadDisk_fromBuffer(_o.D1_buffer,"D1");
-            delete _o.D1_buffer;
-        }
-        catch(e)
-        {
-            alert("error in apple2plus.onrestart() "+e);
-        }
     }
 
     disk2.dN_speed_update = function(pct)  // override
