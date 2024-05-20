@@ -170,15 +170,14 @@ function EMU_init()
         try
         {               
             oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+            if(_o.D1_buffer===undefined) return;        
+            loadDisk_fromBuffer(_o.D1_buffer,"D1");
+            delete _o.D1_buffer;
         }
         catch(e)
         {
-            alert("error oCOM.POPUP "+e);
+            alert("error in apple2plus.onrestart() "+e);
         }
-
-        if(_o.D1_buffer===undefined) return;        
-        loadDisk_fromBuffer(_o.D1_buffer,"D1");
-        delete _o.D1_buffer;
     }
 
     disk2.dN_speed_update = function(pct)  // override
