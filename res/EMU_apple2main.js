@@ -89,12 +89,9 @@ function EMU_init()
                 // TODO pre-configure pause button
             break;
             case "mute":
+            case "autoboot":    // autoboot must force mute since audioworklet does not cold-start (security)
                 oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
-                oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct()
-            break;
-            case "autoboot":
-                // TODO: disable autoboot (need reset to boot disk)
-                //bBoot = true;
+                oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
             break;
             case "D1":
                 var dsk = oCOM.URL.uri["D1"];
@@ -146,7 +143,6 @@ function EMU_init()
 
     if(oCOM.URL.uri["autoboot"]) apple2plus.onrestart();
         
-
     console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE APPLE II+ EMULATOR
