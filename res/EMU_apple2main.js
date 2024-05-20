@@ -140,7 +140,12 @@ function EMU_init()
         // TODO
         // oEMU.system["A2P"]
     }
+        
+    console.log(JSON.stringify(oEMU,null,"  "));
 
+    // INITIALISE APPLE II+ EMULATOR
+    var vidContext = document.getElementById('applescreen');
+    apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
     apple2plus.onrestart = function()
     {        
         try
@@ -155,12 +160,7 @@ function EMU_init()
             alert("error in apple2plus.onrestart() "+e);
         }
     }
-        
-    console.log(JSON.stringify(oEMU,null,"  "));
-
-    // INITIALISE APPLE II+ EMULATOR
-    var vidContext = document.getElementById('applescreen');
-    apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
+    
     apple2plus.restart(); // restart the AppleII+
     //if(oCOM.URL.uri["autoboot"]) apple2plus.onrestart();
 
