@@ -166,8 +166,16 @@ function EMU_init()
     }
 
     apple2plus.onrestart = function()
-    {                       
-        oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+    {        
+        try
+        {               
+            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+        }
+        catch(e)
+        {
+            alert("error oCOM.POPUP "+e);
+        }
+
         if(_o.D1_buffer===undefined) return;        
         loadDisk_fromBuffer(_o.D1_buffer,"D1");
         delete _o.D1_buffer;
