@@ -211,7 +211,8 @@ var oPROCESS = new function()
       +"</body>\n"
 
       var css = document.getElementById('CSScode').value;
-      var exe_now = "<style>\n"+styl+"\n"+css+"\n</style>\n"
+      var imp = "@import url(http://fonts.googleapis.com/css?family=Fragment+Mono);\n"
+      var exe_now = "<style>\n"+imp+"\n"+css+"\n"+styl+"\n</style>\n"
                     +"<div id=\"glyphScroller\">\n" + snippet + "\n</div>\n"
       console.log(exe_now);
       return {"exe_now":exe_now,"exe_later":code}
