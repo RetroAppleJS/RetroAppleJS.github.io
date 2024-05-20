@@ -131,6 +131,8 @@ function EMU_init()
                         {
                             _o["D1_buffer"] = new Uint8Array(arraybuffer);
                             oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
+
+                            if(oCOM.URL.uri["autoboot"]) apple2plus.restart();
                         }
                 
                     })
@@ -147,24 +149,23 @@ function EMU_init()
     var vidContext = document.getElementById('applescreen');
     apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
 
-    if(oCOM.URL.uri["autoboot"])
-    {
-        // overload restart initialisers (like loading disk)
-        apple2plus.onrestart = function()
-        {        
-            try
-            {               
-                oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-                if(_o.D1_buffer===undefined) return;        
-                loadDisk_fromBuffer(_o.D1_buffer,"D1");
-                delete _o.D1_buffer;
-            }
-            catch(e)
-            {
-                alert("error in apple2plus.onrestart() "+e);
-            }
+    
+    // overload restart initialisers (like loading disk)
+    apple2plus.onrestart = function()
+    {        
+        try
+        {               
+            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+            if(_o.D1_buffer===undefined) return;        
+            loadDisk_fromBuffer(_o.D1_buffer,"D1");
+            delete _o.D1_buffer;
+        }
+        catch(e)
+        {
+            alert("error in apple2plus.onrestart() "+e);
         }
     }
+    
 
     apple2plus.restart(); // restart the AppleII+
 
