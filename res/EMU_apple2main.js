@@ -146,23 +146,27 @@ function EMU_init()
     // INITIALISE APPLE II+ EMULATOR
     var vidContext = document.getElementById('applescreen');
     apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
-    apple2plus.onrestart = function()
-    {        
-        try
-        {               
-            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-            if(_o.D1_buffer===undefined) return;        
-            loadDisk_fromBuffer(_o.D1_buffer,"D1");
-            delete _o.D1_buffer;
-        }
-        catch(e)
-        {
-            alert("error in apple2plus.onrestart() "+e);
+
+    if(oCOM.URL.uri["autoboot"])
+    {
+        // add extra restart initialisers (like loading disk)
+        apple2plus.onrestart = function()
+        {        
+            try
+            {               
+                oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+                if(_o.D1_buffer===undefined) return;        
+                loadDisk_fromBuffer(_o.D1_buffer,"D1");
+                delete _o.D1_buffer;
+            }
+            catch(e)
+            {
+                alert("error in apple2plus.onrestart() "+e);
+            }
         }
     }
-    
+
     apple2plus.restart(); // restart the AppleII+
-    //if(oCOM.URL.uri["autoboot"]) apple2plus.onrestart();
 
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
