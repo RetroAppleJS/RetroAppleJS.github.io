@@ -315,7 +315,7 @@ table { border-collapse: collapse; position: relative;}
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
     cursor:pointer;
     /*animation: blink 2s linear infinite; */
-    animation: blink 2s infinite;
+    animation: blink 3s infinite;
   }
 
   @keyframes blink
