@@ -74,6 +74,7 @@ function EMU_init()
     oCOM.URL.parse(document.location.toString());
 
     var def_sys = _TABS.tab1.DEF_SYS;
+    //var bBoot = false;
 
     for(var uri in oCOM.URL.uri)
     {
@@ -93,6 +94,7 @@ function EMU_init()
             break;
             case "autoboot":
                 // TODO: disable autoboot (need reset to boot disk)
+                //bBoot = true;
             break;
             case "D1":
                 var dsk = oCOM.URL.uri["D1"];
@@ -141,6 +143,9 @@ function EMU_init()
         // TODO
         // oEMU.system["A2P"]
     }
+
+    if(oCOM.URL.uri["autoboot"]) apple2plus.onrestart();
+        
 
     console.log(JSON.stringify(oEMU,null,"  "));
 
