@@ -130,14 +130,19 @@ function EMU_init()
                         else
                         {
                             //alert("async call succeeded "+ oCOM.URL.uri["autoboot"] + "*");
-                            oCOM.POPUP.html("async call succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
-
-
 
                             // async call to load disk into buffer mem and restart if autoboot
-                            _o["D1_buffer"] = new Uint8Array(arraybuffer);
-                            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
-                            if(oCOM.URL.uri["autoboot"]) apple2plus.restart();
+                            try{
+                                _o["D1_buffer"] = new Uint8Array(arraybuffer);
+                                oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
+                                if(oCOM.URL.uri["autoboot"]) apple2plus.restart();
+                                oCOM.POPUP.html("async call succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
+                            }
+                            catch(e)
+                            {
+                                oCOM.POPUP.html("restart failed");
+                            }
+
                         }
                 
                     })
