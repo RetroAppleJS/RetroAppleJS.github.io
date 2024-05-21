@@ -130,9 +130,8 @@ function EMU_init()
                         else
                         {
                             //alert("async call succeeded "+ oCOM.URL.uri["autoboot"] + "*");
-                            oCOM.POPUP.html("async call succeeded "+ oCOM.URL.uri["autoboot"] + "*");
+                            oCOM.POPUP.html("async call succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
 
-                            alert("");
 
 
                             // async call to load disk into buffer mem and restart if autoboot
