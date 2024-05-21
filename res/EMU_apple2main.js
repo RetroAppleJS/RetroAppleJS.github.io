@@ -129,7 +129,7 @@ function EMU_init()
                         }
                         else
                         {
-                            alert("async call succeeded");
+                            alert("async call succeeded "+ oCOM.URL.uri["autoboot"]);
                             // async call to load disk into buffer mem and restart if autoboot
                             _o["D1_buffer"] = new Uint8Array(arraybuffer);
                             oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
