@@ -276,6 +276,16 @@ table { border-collapse: collapse; position: relative;}
 
 */
 
+.fontblink {
+  animation: f_blinker 2.5s step infinite;
+}
+
+@keyframes f_blinker {
+  50% {
+    opacity: 0;
+  }
+}
+
   .appvid
   {
       /*margin-top: 85px;*/
