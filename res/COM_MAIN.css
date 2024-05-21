@@ -276,15 +276,16 @@ table { border-collapse: collapse; position: relative;}
 
 */
 
-.fontblink {
-  animation: f_blinker 2.5s step infinite;
-}
-
-@keyframes f_blinker {
-  50% {
-    opacity: 0;
+  .blink
+  {
+    animation: blinker 2.5s steps(1) infinite;
   }
-}
+
+  @keyframes blinker
+  {
+    0%,100% { opacity: 100% } 
+    50% { opacity: 0 }
+  }
 
   .appvid
   {
@@ -325,27 +326,26 @@ table { border-collapse: collapse; position: relative;}
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
     cursor:pointer;
     /*animation: blink 2s linear infinite; */
-    animation: blink steps(1) 2.5s infinite;
+    animation: appbut_blink steps(1) 2.5s infinite;
   }
 
-  @keyframes blink
+  @keyframes appbut_blink
   { 
-    /*0%,100% { background: rgb(255, 200, 100) } */
     0%,100% { background: rgb(255, 255, 0) } 
     50% { background: rgba(240, 240, 255, 0.65) } 
   }
 
   .appbox
   {
-      font-family: "Arial";
-      font-size:13px;
-      margin:1px 1px 1px 1px;
-      padding: 6px;
-      border-radius: 5px;
-      border-style: none;
-      background: rgba(255, 255, 255, 0.8);
-      float:left;
-      text-align:center;
+    font-family: "Arial";
+    font-size:13px;
+    margin:1px 1px 1px 1px;
+    padding: 6px;
+    border-radius: 5px;
+    border-style: none;
+    background: rgba(255, 255, 255, 0.8);
+    float:left;
+    text-align:center;
   }
 
   .toolbox
