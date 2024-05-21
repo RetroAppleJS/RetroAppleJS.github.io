@@ -129,6 +129,7 @@ function EMU_init()
                         }
                         else
                         {
+                            alert("async call succeeded");
                             // async call to load disk into buffer mem and restart if autoboot
                             _o["D1_buffer"] = new Uint8Array(arraybuffer);
                             oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
@@ -149,7 +150,6 @@ function EMU_init()
     var vidContext = document.getElementById('applescreen');
     apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
 
-    
     // overload restart initialisers (like loading disk)
     apple2plus.onrestart = function()
     {        
@@ -168,7 +168,6 @@ function EMU_init()
     
 
     apple2plus.restart(); // restart the AppleII+
-
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,active:false},"AppleDisk");
