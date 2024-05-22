@@ -134,7 +134,12 @@ function EMU_init()
                             try{
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
-                                if(oCOM.URL.uri["autoboot"]) apple2plus.restart();
+                                if(oCOM.URL.uri["autoboot"])
+                                {
+                                    var vidContext = document.getElementById('applescreen');
+                                    apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
+                                    apple2plus.restart();
+                                }
                                 oCOM.POPUP.html("async call 1.0 succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
                             }
                             catch({ name, message })
@@ -146,8 +151,6 @@ function EMU_init()
                 }
             break;
         }
-        // TODO
-        // oEMU.system["A2P"]
     }
         
     console.log(JSON.stringify(oEMU,null,"  "));
