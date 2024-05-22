@@ -89,7 +89,7 @@ function EMU_init()
                 // TODO pre-configure pause button
             break;
             case "mute":
-            case "autoboot":    // autoboot must force mute since audioworklet does not cold-start (security)
+            case "boot":    // autoboot must force mute since audioworklet does not cold-start (security)
                 oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
                 oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
             break;
@@ -134,7 +134,7 @@ function EMU_init()
                             try{
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
-                                if(oCOM.URL.uri["autoboot"])
+                                if(oCOM.URL.uri["boot"])
                                 {
                                     var vidContext = document.getElementById('applescreen');
                                     apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
