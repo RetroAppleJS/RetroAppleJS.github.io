@@ -135,7 +135,7 @@ function EMU_init()
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
                                 if(oCOM.URL.uri["autoboot"]) apple2plus.restart();
-                                oCOM.POPUP.html("async call succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
+                                oCOM.POPUP.html("async call 1.0 succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
                             }
                             catch({ name, message })
                             {
