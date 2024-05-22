@@ -139,7 +139,7 @@ function EMU_init()
                             }
                             catch({ name, message })
                             {
-                                oCOM.POPUP.html("restart failed: "+name+" "+message);
+                                oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
                             }
                         }
                     })
