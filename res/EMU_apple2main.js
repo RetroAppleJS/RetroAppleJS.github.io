@@ -137,7 +137,8 @@ function EMU_init()
                                 if(oCOM.URL.uri["boot"])
                                 {
                                     var vidContext = document.getElementById('applescreen');
-                                    apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
+
+                                    if(typeof(apple2plus)!="object") apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
                                     apple2plus.restart();
                                 }
                                 oCOM.POPUP.html("async call 1.0 succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
@@ -157,7 +158,8 @@ function EMU_init()
 
     // INITIALISE APPLE II+ EMULATOR
     var vidContext = document.getElementById('applescreen');
-    apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
+    if(typeof(apple2plus)!="object")
+        apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
 
     // overload restart initialisers (like loading disk)
     apple2plus.onrestart = function()
