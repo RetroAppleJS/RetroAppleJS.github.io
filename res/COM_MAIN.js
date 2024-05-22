@@ -222,13 +222,14 @@ function COM()
 
   // oCOM.GetHTTP(url, function() { process(this.responseText,this.responseURL) })
  
-  this.GetHTTP = function(url,responsetype,callback_function)
+  this.GetHTTP = function(url,responsetype,callback_function,arg)
   {
     // random value (workaround to avoid caching)
     var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
     const xhttp = new XMLHttpRequest();
     xhttp.responseType = responsetype;    // check: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType
-    xhttp.onload = callback_function;
+    xhttp.onload = callback_function
+    xhttp["arg"] = arg;
     xhttp.open("GET", url+r);
     xhttp.send();
   }
