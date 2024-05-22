@@ -89,7 +89,7 @@ function EMU_init()
                 // TODO pre-configure pause button
             break;
             case "mute":
-            case "boot":    // autoboot must force mute since audioworklet does not cold-start (security)
+            case "boot":    // boot must force mute since audioworklet does not cold-start (security)
                 oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
                 oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
             break;
@@ -129,8 +129,8 @@ function EMU_init()
                         }
                         else
                         {
-                            //alert("async call succeeded "+ oCOM.URL.uri["autoboot"] + "*");
-                            // async call to load disk into buffer mem and restart if autoboot
+                            //alert("async call succeeded "+ oCOM.URL.uri["boot"] + "*");
+                            // async call to load disk into buffer mem and restart if boot
                             try{
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
@@ -141,7 +141,7 @@ function EMU_init()
                                     if(typeof(apple2plus)!="object") apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
                                     apple2plus.restart();
                                 }
-                                oCOM.POPUP.html("async call 1.0 succeeded, autoboot="+ oCOM.URL.uri["autoboot"]);
+                                oCOM.POPUP.html("async call 1.0 succeeded, boot="+ oCOM.URL.uri["boot"]);
                             }
                             catch({ name, message })
                             {
