@@ -119,7 +119,7 @@ function EMU_init()
                     dir += dir_filename;
             
                     oCOM.GetHTTP(dir,"arraybuffer",
-                    function()
+                    function(apple2plus)
                     {
                         var arraybuffer = this.response;
                         if(arraybuffer.byteLength<100)
