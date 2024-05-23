@@ -63,6 +63,45 @@ function COM()
 
   }
 
+  this.b64EncodeUnicode = function(str)
+  {
+    // first we use encodeURIComponent to get percent-encoded Unicode,
+    // then we convert the percent encodings into raw bytes which
+    // can be fed into btoa.
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+        function toSolidBytes(match, p1) {
+            return String.fromCharCode('0x' + p1);
+    }))
+  }
+
+  this.b64DecodeUnicode = function(str)
+  {
+    // Going backwards: from bytestream, to percent-encoding, to original string.
+    return decodeURIComponent(atob(str).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''))
+  }
+
+  this.Uint8ArrayFromBase64 = function(base64)
+  {
+    return Uint8Array.from(window.atob(base64), (v) => v.charCodeAt(0));
+  }
+
+  this.Uint8ArrayToBase64 = function(a)
+  {
+    // 1. Preprocess Uint8Array into String
+    // (TODO: fix RAM usage from intermediate array creation)
+    var a_s = Array.prototype.map.call(a, c => String.fromCharCode(c)).join(String());
+    // 2. Call btoa()
+    return btoa(a_s);
+  }
+
+  this.DumpBase64 = function(b64body,maxlen,lf)
+  {
+    var lf = lf===undefined ? "\n" : lf;
+    return "var b64 ="+lf+" \""+b64body.match(/.{1,maxlen===undefined?1024:maxlen}/g).join('"'+lf+'+"')+"\";"+lf
+  }
+
   this.base_convert = function (str, fromBase, toBase)
   {
     if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
