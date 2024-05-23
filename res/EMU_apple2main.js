@@ -133,6 +133,10 @@ function EMU_init()
                             // async call to load disk into buffer mem and restart if boot
                             try{
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
+
+                                oCOM.POPUP.html( oCOM.DumpBase64(oCOM.ArrayBufferTobase64(arraybuffer),1024,"<br>") );
+
+
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
                                 if(oCOM.URL.uri["boot"])
                                 {
@@ -141,7 +145,7 @@ function EMU_init()
                                     if(typeof(apple2plus)!="object") apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
                                     apple2plus.restart();
                                 }
-                                oCOM.POPUP.html("async call 1.0 succeeded, boot="+ oCOM.URL.uri["boot"]);
+                                //oCOM.POPUP.html("async call 1.0 succeeded, boot="+ oCOM.URL.uri["boot"]);
                             }
                             catch({ name, message })
                             {
