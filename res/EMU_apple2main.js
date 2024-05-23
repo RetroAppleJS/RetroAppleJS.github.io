@@ -194,6 +194,7 @@ function EMU_init()
         apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
 
     // overload restart initialisers (like loading disk)
+    /*
     apple2plus.onrestart = function()
     {        
         try
@@ -208,6 +209,7 @@ function EMU_init()
             alert("error in apple2plus.onrestart() "+e);
         }
     }
+    */
     
 
     if(_o.D1_buffer===undefined); 
@@ -215,7 +217,7 @@ function EMU_init()
     {
         loadDisk_fromBuffer(_o.D1_buffer,"D1");
         delete _o.D1_buffer;
-        oCOM.POPUP.html("loadDisk success");
+        //oCOM.POPUP.html("loadDisk success");
     }
 
 
@@ -432,13 +434,20 @@ function loadDisk_fromFile(file_obj,drv)
 
 function loadDisk_fromBuffer(arr_buffer,dsk)
 {
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
-    if(disk2.active==false) return;
+    try
+    {
+        var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
+        if(disk2.active==false) return;
 
-    var bytes = Array.from(arr_buffer);
-    if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
-    apple2plus.loadDisk(bytes,"D1");
-    highlight_appbut(document.getElementById("file_"+dsk),true);
+        var bytes = Array.from(arr_buffer);
+        if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
+        apple2plus.loadDisk(bytes,"D1");
+        highlight_appbut(document.getElementById("file_"+dsk),true);
+    }
+    catch({ name, message })
+    {
+        oCOM.POPUP.html("loadDisk_fromBuffer 1.0 failed: "+name+" "+message);
+    }
 }
 
 function ejectDisk(el,dsk)
