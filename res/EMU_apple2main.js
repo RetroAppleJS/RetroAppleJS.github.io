@@ -94,7 +94,7 @@ function EMU_init()
                 try
                 {
                     oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
-                    oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
+                    //oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
                     oCOM.POPUP.html("boot+mute OK");
                     
                 }
