@@ -134,7 +134,9 @@ function EMU_init()
                             try{
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
 
-                                oCOM.POPUP.html( oCOM.DumpBase64(oCOM.ArrayBufferTobase64(arraybuffer),1024,"<br>") );
+                                var b64 = oCOM.ArrayBufferTobase64(arraybuffer);
+                                alert(b64.length/1024)
+                                oCOM.POPUP.html( oCOM.DumpBase64(b64,1024,"<br>") );
 
 
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
