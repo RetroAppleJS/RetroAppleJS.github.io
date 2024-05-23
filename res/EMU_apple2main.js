@@ -104,14 +104,14 @@ function EMU_init()
                     infla.push(db);            
                     var dd = infla.result;
 
-                    oCOM.POPUP.html("boot 1.0 success: "+dd.length);
+                    //oCOM.POPUP.html("boot 1.0 success: "+dd.length);
 
                     if(typeof(dd)!="undefined")
                         _o["D1_buffer"] = dd;
                 }
                 catch({ name, message })
                 {
-                    oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
+                    //oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
                 }
 
             break;
@@ -215,6 +215,7 @@ function EMU_init()
     {
         loadDisk_fromBuffer(_o.D1_buffer,"D1");
         delete _o.D1_buffer;
+        oCOM.POPUP.html("loaddisk success");
     }
 
 
