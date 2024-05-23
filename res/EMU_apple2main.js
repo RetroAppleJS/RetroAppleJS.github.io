@@ -98,7 +98,6 @@ function EMU_init()
                     // TODO: check why this fails on older browsers
                     //oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
                     //oCOM.POPUP.html("boot+mute OK");
-                    
     
                     var db = oCOM.base64ToArrayBuffer(disk2DOS);
                     const infla = new pako.Inflate();
@@ -210,6 +209,14 @@ function EMU_init()
         }
     }
     
+
+    if(_o.D1_buffer===undefined); 
+    else
+    {
+        loadDisk_fromBuffer(_o.D1_buffer,"D1");
+        delete _o.D1_buffer;
+    }
+
 
     apple2plus.restart(); // restart the AppleII+
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
