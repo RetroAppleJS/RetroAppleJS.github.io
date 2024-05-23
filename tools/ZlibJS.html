@@ -95,6 +95,9 @@
                 // CONSTRUCT URL AND URI
                 var browsers = {"safari":80000,"firefox":65536,"chrome":2083,"edge":2083,"opera":1000000};
                 var uri = oCOM.ArrayBufferTobase64(dump);
+
+                oCOM.POPUP.html( oCOM.DumpBase64(uri,1024,"<br>") );
+
                 var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
                 var s = "";
                 for(var i in browsers) s += "<div style=float:left title=\"max. "+browsers[i]+" bytes\" ><img style='width:12px;margin-right:5px' src=../res/i_"+i+".png><br><img src=../res/"+(url.length<=browsers[i]?"i_ok.png":"i_nok.png")+" style=width:10px;padding-left:3px></div>"
