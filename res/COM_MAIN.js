@@ -100,7 +100,7 @@ function COM()
   {
     var lf = lf===undefined ? "\n" : lf;
     var maxlen = maxlen===undefined ? 1024 : maxlen;
-    var re = RegExp(".{1,1024}","g");
+    var re = RegExp(".{1,"+maxlen+"}","g");
     return "var b64 ="+lf+" \""+b64body.match(re).join('"'+lf+'+"')+"\";"+lf
   }
 

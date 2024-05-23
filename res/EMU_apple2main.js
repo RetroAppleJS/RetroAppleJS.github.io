@@ -93,14 +93,20 @@ function EMU_init()
                 oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
                 oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
 
-                var db = oCOM.base64ToArrayBuffer(disk2DOS);
-                const infla = new pako.Inflate();
-                infla.push(db);                
-                var dd = infla.result;
+                try
+                {
+                    var db = oCOM.base64ToArrayBuffer(disk2DOS);
+                    const infla = new pako.Inflate();
+                    infla.push(db);            
+                    var dd = infla.result;
 
-                if(typeof(dd)!="undefined")
-                    _o["D1_buffer"] = dd;
-                
+                    if(typeof(dd)!="undefined")
+                        _o["D1_buffer"] = dd;
+                }
+                catch({ name, message })
+                {
+                    oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
+                }
 
             break;
             case "D1":
