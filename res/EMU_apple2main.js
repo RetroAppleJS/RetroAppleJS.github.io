@@ -215,7 +215,7 @@ function EMU_init()
     {
         loadDisk_fromBuffer(_o.D1_buffer,"D1");
         delete _o.D1_buffer;
-        oCOM.POPUP.html("loaddisk success");
+        oCOM.POPUP.html("loadDisk success");
     }
 
 
