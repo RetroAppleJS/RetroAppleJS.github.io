@@ -99,14 +99,7 @@ function EMU_init()
                     //oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
                     //oCOM.POPUP.html("boot+mute OK");
                     
-                }
-                catch({ name, message })
-                {
-                    //oCOM.POPUP.html("boot&mute failed: "+name+" "+message);
-                }
-
-                try
-                {
+    
                     var db = oCOM.base64ToArrayBuffer(disk2DOS);
                     const infla = new pako.Inflate();
                     infla.push(db);            
