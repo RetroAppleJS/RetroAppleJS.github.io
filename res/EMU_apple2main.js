@@ -159,7 +159,7 @@ function EMU_init()
                                 //var b64 = oCOM.ArrayBufferTobase64(arraybuffer);
                                 //alert(b64.length/1024)
 
-                                oCOM.POPUP.html( oCOM.DumpBase64(b64,1024,"<br>") );
+                                //oCOM.POPUP.html( oCOM.DumpBase64(b64,1024,"<br>") );
 
                                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
                                 if(oCOM.URL.uri["boot"])
@@ -173,7 +173,7 @@ function EMU_init()
                             }
                             catch({ name, message })
                             {
-                                oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
+                                //oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
                             }
                         }
                     })
