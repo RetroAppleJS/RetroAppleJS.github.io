@@ -443,6 +443,7 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
         apple2plus.loadDisk(bytes,"D1");
         highlight_appbut(document.getElementById("file_"+dsk),true);
+        oCOM.POPUP.html("loadDisk_fromBuffer 1.0 success");
     }
     catch({ name, message })
     {
