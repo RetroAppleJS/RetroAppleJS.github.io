@@ -101,8 +101,8 @@
 
                 // TODO !!!!!!!
                 // oCOM.DumpBase64(\""+uri+"\",1024,\"<br>\")
-                var code = " <a href=javascript:onclick=oCOM.POPUP.html('123')>code</a>";
-                var code = " <a href=javascript:onclick=oCOM.POPUP.html(\"123\")>code</a>";
+                var code = " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',1024,'&lt;br&gt;'))>[code]</a>";
+                //var code = " <a href=javascript:onclick=oCOM.POPUP.html(\"123\")>code</a>";
 
                 var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
                 var s = code;
