@@ -100,12 +100,14 @@ function EMU_init()
                     infla.push(db);            
                     var dd = infla.result;
 
+                    oCOM.POPUP.html("boot 1.0 success: "+dd.length);
+
                     if(typeof(dd)!="undefined")
                         _o["D1_buffer"] = dd;
                 }
                 catch({ name, message })
                 {
-                    oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
+                    oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
                 }
 
             break;
