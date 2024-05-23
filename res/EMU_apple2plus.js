@@ -34,6 +34,8 @@ function Apple2Plus(context)
                 // override keys object
         keys.keystroke = function(data)
         {
+            console.log(data);
+            
             if(this.isActive()==false) return; 
             if(data.type!="click")          // real keyboard or pasteboard ?
             {
