@@ -444,6 +444,7 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
         apple2plus.loadDisk(bytes,"D1");
         highlight_appbut(document.getElementById("file_"+dsk),true);
         oCOM.POPUP.html("loadDisk_fromBuffer 1.0 success");
+        alert("FAIL")
     }
     catch({ name, message })
     {
