@@ -90,6 +90,9 @@ function EMU_init()
             break;
             case "mute":
             case "boot":    // boot must force mute since audioworklet does not cold-start (security)
+
+                oCOM.POPUP.html("boot 1.0? ");
+
                 oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
                 oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
 
