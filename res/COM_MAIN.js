@@ -99,7 +99,9 @@ function COM()
   this.DumpBase64 = function(b64body,maxlen,lf)
   {
     var lf = lf===undefined ? "\n" : lf;
-    return "var b64 ="+lf+" \""+b64body.match(/.{1,maxlen===undefined?1024:maxlen}/g).join('"'+lf+'+"')+"\";"+lf
+    var maxlen = maxlen===undefined ? 1024 : maxlen;
+    var re = RegExp(".{1,1024}","g");
+    return "var b64 ="+lf+" \""+b64body.match(re).join('"'+lf+'+"')+"\";"+lf
   }
 
   this.base_convert = function (str, fromBase, toBase)
