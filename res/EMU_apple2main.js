@@ -85,8 +85,8 @@ function EMU_init()
                 oEMU.system[oCOM.URL.uri[uri]] = {active:true};
                 for(var i in _TABS) _TABS[i].DEF_SYS = oCOM.URL.uri[uri];
             break;
-            case "active":
-                // TODO pre-configure pause button
+            case "gpu":
+                // TODO initialise GPU algorithm instead of CPU
             break;
             case "mute":
             case "boot":    // boot must force mute since audioworklet does not cold-start (security)
