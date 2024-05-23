@@ -96,10 +96,11 @@ function EMU_init()
                     oEMU.system[uri] = oCOM.URL.uri[uri]!="0" && oCOM.URL.uri[uri]!="false";
                     oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
                     oCOM.POPUP.html("boot+mute OK");
+                    
                 }
                 catch({ name, message })
                 {
-                    oCOM.POPUP.html("boot+mute failed: "+name+" "+message);
+                    oCOM.POPUP.html("boot&mute failed: "+name+" "+message);
                 }
 
                 try
@@ -109,14 +110,14 @@ function EMU_init()
                     infla.push(db);            
                     var dd = infla.result;
 
-                    oCOM.POPUP.html("boot 1.0 success: "+dd.length);
+                    //oCOM.POPUP.html("boot 1.0 success: "+dd.length);
 
                     if(typeof(dd)!="undefined")
                         _o["D1_buffer"] = dd;
                 }
                 catch({ name, message })
                 {
-                    oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
+                    //oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
                 }
 
             break;
