@@ -1,0 +1,11 @@
+<script>
+function test()
+{
+    this.empty = function() { return true }
+}
+var oTest = new test();
+
+oTest.empty = function() { return false }
+
+document.write( oTest.empty() );
+</script>
