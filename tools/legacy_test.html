@@ -1,4 +1,6 @@
 <script>
+
+document.write( (oTest===undefined)+"<br>" );
 function test()
 {
     this.empty = function() { return true }
@@ -7,5 +9,9 @@ var oTest = new test();
 
 oTest.empty = function() { return false }
 
-document.write( oTest.empty() );
+
+document.write( (oTest===undefined)+"<br>" );
+
+
+//document.write( oTest.empty() );
 </script>
