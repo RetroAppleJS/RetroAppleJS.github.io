@@ -187,6 +187,10 @@ function COM()
   this.default = function(src_obj,default_obj,message)  // create default object when main object is missing
   {
     var cn = this.default.caller.name;
+
+    if(cn!="EMU_init")
+      oCOM.POPUP.html("default["+cn+"] typeof(src_obj)="+typeof(src_obj)+" Object.keys(src_obj).length="+Object.keys(src_obj).length);
+
     if(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
     return src_obj;
   }
@@ -261,7 +265,6 @@ function COM()
     }
   }
 
-  // oCOM.GetHTTP(url, function() { process(this.responseText,this.responseURL) })
  
   this.GetHTTP = function(url,responsetype,callback_function,arg)
   {
