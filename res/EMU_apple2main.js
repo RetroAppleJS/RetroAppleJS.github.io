@@ -31,6 +31,7 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
+        ,"EMU_legacyJS":true
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
         ,"EMU_Updates_s":10                 // Emulator intervals per second 
@@ -211,13 +212,15 @@ function EMU_init()
     }
     */
     
-
-    if(_o.D1_buffer===undefined); 
-    else
+    if(_o.EMU_legacyJS)
     {
-        loadDisk_fromBuffer(_o.D1_buffer,"D1");
-        delete _o.D1_buffer;
-        //oCOM.POPUP.html("loadDisk success");
+        if(_o.D1_buffer===undefined); 
+        else
+        {
+            loadDisk_fromBuffer(_o.D1_buffer,"D1");
+            delete _o.D1_buffer;
+            //oCOM.POPUP.html("loadDisk success");
+        }
     }
 
 
@@ -442,16 +445,17 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
             oCOM.POPUP.html("disk2.active==false");
             return;
         }
+        oCOM.POPUP.html("disk2.active==true");
 
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
         apple2plus.loadDisk(bytes,"D1");
         highlight_appbut(document.getElementById("file_"+dsk),true);
-        oCOM.POPUP.html("loadDisk_fromBuffer 1.0 success");
+        //oCOM.POPUP.html("loadDisk_fromBuffer 1.0 success");
     }
     catch({ name, message })
     {
-        oCOM.POPUP.html("loadDisk_fromBuffer 1.0 failed: "+name+" "+message);
+        //oCOM.POPUP.html("loadDisk_fromBuffer 1.0 failed: "+name+" "+message);
     }
 }
 
