@@ -195,10 +195,9 @@ function COM()
       if(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
       return src_obj;
     }
-    catch(e)
+    catch({ name, message })
     {
-      oCOM.POPUP.html("error in oCOM.default");
-      return src_obj
+        oCOM.POPUP.html("error in oCOM.default: "+name+" "+message);
     }
   }
 
