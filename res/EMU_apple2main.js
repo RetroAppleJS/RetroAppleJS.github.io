@@ -194,23 +194,6 @@ function EMU_init()
     if(typeof(apple2plus)!="object")
         apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
 
-    // overload restart initialisers (like loading disk)
-    /*
-    apple2plus.onrestart = function()
-    {        
-        try
-        {               
-            oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-            if(_o.D1_buffer===undefined) return;        
-            loadDisk_fromBuffer(_o.D1_buffer,"D1");
-            delete _o.D1_buffer;
-        }
-        catch(e)
-        {
-            alert("error in apple2plus.onrestart() "+e);
-        }
-    }
-    */
     
     if(_o.EMU_legacyJS)
     {
@@ -220,6 +203,24 @@ function EMU_init()
             loadDisk_fromBuffer(_o.D1_buffer,"D1");
             delete _o.D1_buffer;
             //oCOM.POPUP.html("loadDisk success");
+        }
+    }
+    else
+    {
+        // overload restart initialisers (like loading disk)
+        apple2plus.onrestart = function()
+        {        
+            try
+            {               
+                oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+                if(_o.D1_buffer===undefined) return;        
+                loadDisk_fromBuffer(_o.D1_buffer,"D1");
+                delete _o.D1_buffer;
+            }
+            catch(e)
+            {
+                alert("error in apple2plus.onrestart() "+e);
+            }
         }
     }
 
