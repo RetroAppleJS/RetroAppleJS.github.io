@@ -197,7 +197,7 @@ function COM()
     }
     catch({ name, message })
     {
-        oCOM.POPUP.html("error in oCOM.default: "+name+" "+message);
+        oCOM.POPUP.html("error in oCOM.default ["+cn+"]: "+name+" "+message);
     }
   }
 
