@@ -443,10 +443,10 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
         var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
         if(disk2.active==false)
         { 
-            oCOM.POPUP.html("disk2.active==false");
+            //oCOM.POPUP.html("disk2.active==false");
             return;
         }
-        oCOM.POPUP.html("disk2.active==true");
+        //oCOM.POPUP.html("disk2.active==true");
 
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
