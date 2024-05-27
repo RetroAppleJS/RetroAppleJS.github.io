@@ -261,7 +261,7 @@ function COM()
       if(e==null) return null;
       if(html==null) e.hidden = true;
       if(ttl) { setTimeout( COM_PopupHTML,ttl*1000 ); e.hidden = false };
-      document.getElementById(this.target_id.html_txt).innerHTML = !e.hidden?html:"";
+      document.getElementById(this.target_id.html_txt).innerHTML += !e.hidden?(html+"<br>"):"";
     }
   }
 
