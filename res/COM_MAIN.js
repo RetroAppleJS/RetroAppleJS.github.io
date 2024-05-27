@@ -186,6 +186,8 @@ function COM()
 
   this.default = function(src_obj,default_obj,message)  // create default object when main object is missing
   {
+    try
+    {
     var cn = this.default.caller.name;
 
     //if(cn!="EMU_init")
@@ -193,6 +195,12 @@ function COM()
 
     if(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
     return src_obj;
+    }
+    catch(e)
+    {
+      oCOM.POPUP.html("error in oCOM.default");
+      return src_obj
+    }
   }
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
