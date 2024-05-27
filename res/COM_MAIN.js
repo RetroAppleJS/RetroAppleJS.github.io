@@ -188,7 +188,7 @@ function COM()
   {
     var cn = this.default.caller.name;
 
-    if(cn!="EMU_init")
+    //if(cn!="EMU_init")
       oCOM.POPUP.html("default["+cn+"] typeof(src_obj)="+typeof(src_obj)+" Object.keys(src_obj).length="+Object.keys(src_obj).length+" = "+(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0 ? "default override" : "main"));
 
     if(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
