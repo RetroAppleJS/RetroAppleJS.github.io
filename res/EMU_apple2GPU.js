@@ -233,7 +233,7 @@ function Apple2Video(ctx)
 
     const xp = (this.thread.x>>1);
     const yp = DIM_H-(this.thread.y>>1)-1;
-    const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+    const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(xp/7)
     const m7 = xp-(x7<<3)+x7;                  // equivalent to xp%7
     const adr_ofs = yp<<4 & 0x380 | yp>>3 & 0x18 | yp>>1 & 0x60;
 
