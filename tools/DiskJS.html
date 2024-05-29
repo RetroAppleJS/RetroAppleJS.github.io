@@ -163,8 +163,7 @@ var oDISK = new function()
 
 
 
-
-  this.convertDsk2Nib = function(dskBytes)
+oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
   {
       alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
       //CRC32: E766F072
@@ -179,9 +178,8 @@ var oDISK = new function()
           0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
           0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
           0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff ];
-      var secSkew = [ 0x0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf ];
+      
       var bytes = new Array(232960);
-      var prenib = new Array(342);
       var offs;
 
       // Odd-even encoding for sector headers.
@@ -214,16 +212,7 @@ var oDISK = new function()
               addBytes([0xd5,0xaa,0xad]);
 
               // Start by prenibbilizing
-              var doffs = secSkew[sec] * 256 + track * 4096;
-              for (i = 0; i < 256; i++) {
-                  var d8 = dskBytes[doffs + i];
-
-                  prenib[i] = (d8 >> 2);
-                  if      (i < 86)    prenib[256 + 85  - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
-                  else if (i < 172)   prenib[256 + 171 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);
-                  else                prenib[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
-                  if      (i < 2)     prenib[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
-              }
+              prenib = prenibble(track,sec,dskBytes);
 
               // Encode nibbilized data.
               var prev = 0;
@@ -248,6 +237,23 @@ var oDISK = new function()
       return bytes;
   }    
 
+  function prenibble(track,sec,dskBytes)
+  {
+    if(prenib===undefined) var prenib = new Array(342);
+    var secSkew = [ 0x0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf ];
+    var doffs = secSkew[sec] * 256 + track * 4096;
+    for (i = 0; i < 256; i++)
+    {
+        var d8 = dskBytes[doffs + i];
+
+        prenib[i] = (d8 >> 2);
+        if      (i < 86)    prenib[256 + 85  - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
+        else if (i < 172)   prenib[256 + 171 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);
+        else                prenib[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
+        if      (i < 2)     prenib[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
+    }
+    return prenib;
+  }
 
   // borrow from EMU_appledisk2.js
   //this.convertDsk2Nib = oEMU.component.IO.AppleDisk.convertDsk2Nib;
