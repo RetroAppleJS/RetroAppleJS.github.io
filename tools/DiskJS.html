@@ -542,7 +542,13 @@ function interpolate_arr(arr1,arr2,pct)
   <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
-        <li><input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk);" accept=".dsk"></li>
+        <li>
+          <li>
+            <input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk);" accept=".dsk">
+            
+            <button id="openFileButton">Persist File</button>
+          </li>
+        </li>
         <li><img onMouseOver="this.style.cursor='pointer'" onclick="parser_dump()" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
         <li><button onclick="download_nib()">Download .NIB</button></li>
         <li>&nbsp;&nbsp;
@@ -564,5 +570,6 @@ function interpolate_arr(arr1,arr2,pct)
     </div>
   </div>
 
+  <pre id="fileContent"></pre>
 </body>
 </html>
