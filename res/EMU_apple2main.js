@@ -31,7 +31,7 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
-        ,"EMU_legacyJS":true
+        ,"EMU_legacyJS":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
         ,"EMU_Updates_s":10                 // Emulator intervals per second 
