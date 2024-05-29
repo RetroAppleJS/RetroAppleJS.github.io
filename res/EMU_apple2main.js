@@ -4,8 +4,6 @@
 // Thanks to Thomas Skibo - Copyright (c) 2014.
 // apple2main.js 
 
-// TODO FVD select here which system to run (Apple2plus - Apple2e - Apple2c ??) 
-// TODO FVD transform this into OOP
 
 //   ________                       __          _                   
 //  |_   __  |                     [  |        / |_                 
