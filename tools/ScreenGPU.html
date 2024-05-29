@@ -33,14 +33,24 @@
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
 
+<link rel="stylesheet" href="../res/COM_MAIN.css">
 <body>
 <div class="slider_main">
+
+  <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
+    <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+    <div id=COM_popup_text></div>
+  </div>
 
   <div id="slider_title"></div>
   <div class="slider_overlay">
     <div id="topmenu">
-      <form id="topform" name='Versions' action=''></form>
-      <ul id="minitabs"><li id="menu"></li></ul>
+      <form id="topform" name='Versions' action='' style="display:inline"></form>
+      <button onclick=oCOM.POPUP.html("&lt;PRE&gt;"+apple2plus.vidObj().kProcess_v6.toString()+"&lt;/PRE&gt;")>SOURCE CODE</button>
+      <ul id="minitabs"> 
+        <li id="menu"></li>
+      
+      </ul>
     </div>
     <div id="main">
       <div id="prede"></div>
@@ -48,7 +58,7 @@
       <div id=debug style="float:right; overflow:scroll; height:400px; width:700px; font-size:10px; font-family: 'Courier New', Courier, monospace; vertical-align:top"></div>
     </div>
   </div>
-  
+
 </body>
 </html>
 <script>
