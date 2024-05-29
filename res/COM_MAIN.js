@@ -190,14 +190,14 @@ function COM()
     {
       var cn = this.default.caller.name;
       //if(cn!="EMU_init")
-        oCOM.POPUP.html("default["+cn+"] typeof(src_obj)="+typeof(src_obj)+" Object.keys(src_obj).length="+Object.keys(src_obj).length+" = "+(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0 ? "default override" : "main"));
+      //oCOM.POPUP.html("default["+cn+"] typeof(src_obj)="+typeof(src_obj)+" Object.keys(src_obj).length="+Object.keys(src_obj).length+" = "+(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0 ? "default override" : "main"));
 
       if(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
       return src_obj;
     }
     catch({ name, message })
     {
-        oCOM.POPUP.html("error in oCOM.default ["+cn+"]: "+name+" "+message);
+        //oCOM.POPUP.html("error in oCOM.default ["+cn+"]: "+name+" "+message);
     }
   }
 
@@ -246,7 +246,7 @@ function COM()
     update_state: function(id,el){ this.states[id] = el.hidden },
     on: function(id) { this.states[id] = this.el(id).hidden = false },
     off: function(id) { this.states[id] = this.el(id).hidden = true },
-    toggle: function(id) { var el=this.el(id); if(el===undefined) return null; this.states[id] = el.hidden = !el.hidden ;return el },
+    toggle: function(id) { var el=this.el(id); if(el===undefined && el.hidden==null) return null; this.states[id] = el.hidden = !el.hidden ;return el },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
     set_class: function(el,class1,class2,bool)
     {
