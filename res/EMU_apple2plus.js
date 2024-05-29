@@ -54,11 +54,13 @@ function Apple2Plus(context)
                 {
                     case "RESET":
                         //beep();
-                        resetButton();
+                        //resetButton();
+                        apple2plus.reset();
                     break;
                     case "POWER":
                         //beep();
-                        restartButton();
+                        //restartButton();
+                        apple2plus.restart();
                     break;
                     case "REPT":
                         alert("Instead of REPT, keep key down >0.5s");
