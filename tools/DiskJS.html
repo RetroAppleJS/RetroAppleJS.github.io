@@ -167,6 +167,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
   {
       //alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
       //CRC32: E766F072
+      //  https://archive.org/details/Beneath_Apple_DOS_alt/page/n11/mode/2up?view=theater
 
       // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
       var sixTwo = [  
@@ -182,39 +183,42 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       var bytes = new Array(232960);
       var offs;
 
-      // Odd-even encoding for sector headers.
-      function split_OddEven(b) { return [0xaa | (b >> 1),0xaa | b] }
-      function join_OddEven(b1,b2) { return (((b1<<1)+1) & b2) }
+      // odd-even encoding for sector headers.
+      function split_OddEven(b) { return [0b10101010 | (b >> 1),0b10101010 | b] }    // odd bits to nibble0, even bits to nibble1
+      function join_OddEven(b1,b2) { return ((b1<<1)+1) & b2 }
       function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
 
-      for (var track = 0; track < 35; track++) {
+      for (var track = 0; track < 35; track++)
+      {
           offs = track * 6656;
-          for (var sec = 0; sec < 16; sec++) {
+          for (var sec = 0; sec < 16; sec++)
+          {
 
-              // 20 Sync bytes
+              // Gap 1 (which serve as buffer to avoid overlap with the end of the previous sector)
               addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
 
-              // Addr field prologue
-              addBytes([0xd5,0xaa,0x96]);
+              // Addr field prologue (uniquely marks the beginning of a sector & address field)
+              addBytes([0xd5,0xaa,0x96]);   // 0xd5 and 0xaa are not in the GRC lookup table
 
-              addBytes(split_OddEven(254));                 // Volume
-              addBytes(split_OddEven(track));               // Track
-              addBytes(split_OddEven(sec));                 // Sector
-              addBytes(split_OddEven(254 ^ track ^ sec));   // Checksum
+                // ADDRESS FIELD
+                addBytes(split_OddEven(254));                 // Volume
+                addBytes(split_OddEven(track));               // Track
+                addBytes(split_OddEven(sec));                 // Sector
+                addBytes(split_OddEven(254 ^ track ^ sec));   // Checksum
 
-              // Addr field epilogue
-              addBytes([0xde,0xaa,0xeb]);
+              // Addr field epilogue (uniquely marks the end of the address field)
+              addBytes([0xde,0xaa,0xeb]);  // 0xaa is not in the GRC lookup table
 
-              // 20 Sync bytes
+              // Gap 2 (provides time to DOS routine to decode the address field)
               addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
 
-              // Data field prologue
-              addBytes([0xd5,0xaa,0xad]);
+              // Data field prologue (uniquely marks the beginning of a data field))
+              addBytes([0xd5,0xaa,0xad]);  // 0xd5 and 0xaa are not in the GRC lookup table
 
               // Start by prenibbilizing
               prenib = prenibble(track,sec,dskBytes);
 
-              // Encode nibbilized data.
+              // Encode 342 nibbilized bytes of data.
               var prev = 0;
               for (i = 0; i < 86; i++)
               {
@@ -232,8 +236,8 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               addBytes([0xde,0xaa,0xeb]);
           }
 
-          // fill out with sync bytes until end of track.
-          var bytes2EOT = (track+1) * 6656 - offs;
+          // Gap 3 (fill out with sync bytes until end of track, minimum 14 bytes, allowing enough time for DOS to process the data
+          var bytes2EOT = (track+1) * 26 * 256 - offs;
           addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) );
       }
 
