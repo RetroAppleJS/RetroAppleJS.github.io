@@ -78,13 +78,14 @@ function Apple2Video(ctx)
 
     this.cycle = function()
     {
-      if (++flash_count > 250000)
+      if (++flash_count > 250000) // 4 fps
       {
         flash_on = ! flash_on;
         flash_count = 0;
         this.reflash();
       }
-      if (++frame_count > 200000)
+      //if (++frame_count > 40000)  // 25 fps
+      if (++frame_count > 80000)  // 12.5 fps
       {
         if(frame_redraw==true)
         {
@@ -93,6 +94,24 @@ function Apple2Video(ctx)
         }
       }
     }
+
+    // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
+    this.reflash = function() { frame_redraw = true; this.redraw() }
+
+    this.redraw = function()
+    {
+      this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
+      this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
+      this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
+  
+      // RUN THE KERNEL !
+      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)} );
+      frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
+
+      //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+    }
+
+
 
     this.write    = function(addr, d8) { frame_redraw = true }
     this.setGfx   = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
@@ -173,7 +192,9 @@ function Apple2Video(ctx)
        ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
        ]);
 
-    this.hgr_PixelColor = function(x, y, left, me, right, b7) {
+    // TODO USE INTCOLS instead of loresCols
+    this.hgr_PixelColor = function(x, y, left, me, right, b7)
+    {
         var a0 = x & 0x01;
 
         // If pixel is set and either adjacent pixels are set, it's white.
@@ -206,8 +227,6 @@ function Apple2Video(ctx)
            return loresCols[0][0];    // Black
     }
 
-
-
   this.initGPU = function(GPUarg,KERNELarg,config)
   { 
     // CONFIGURE DATA SERIALISATION
@@ -226,7 +245,12 @@ function Apple2Video(ctx)
 
   this.kernel = function() { alert.warn("initialise first with initGPU()") }
 
-  // KERNEL v6
+//   ██████  ██████  ██    ██     ██   ██ ███████ ██████  ███    ██ ███████ ██      
+//  ██       ██   ██ ██    ██     ██  ██  ██      ██   ██ ████   ██ ██      ██      
+//  ██   ███ ██████  ██    ██     █████   █████   ██████  ██ ██  ██ █████   ██      
+//  ██    ██ ██      ██    ██     ██  ██  ██      ██   ██ ██  ██ ██ ██      ██      
+//   ██████  ██       ██████      ██   ██ ███████ ██   ██ ██   ████ ███████ ███████ 
+
   this.kProcess_v6 =  function(mem,rom,cfg)
   { 
     const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
@@ -272,20 +296,4 @@ function Apple2Video(ctx)
 
     this.color(cfg[cp]/256,cfg[cp+1]/256,cfg[cp+2]/256);
   }
-
-    // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
-    this.reflash = function() { frame_redraw = true; this.redraw() }
-
-    this.redraw = function()
-    {
-      this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
-      this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
-      this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
-  
-      // RUN THE KERNEL !
-      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)} );
-      frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
-    }
-
-
 }
