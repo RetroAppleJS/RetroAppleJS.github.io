@@ -165,7 +165,7 @@ var oDISK = new function()
 
 oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
   {
-      alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
+      //alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
       //CRC32: E766F072
 
       // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
@@ -236,25 +236,37 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
           var bytes2EOT = (track+1) * 6656 - offs;
           addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) );
       }
+
+      alert("CRC32: "+oCOM.crc32(bytes).toString(16).toUpperCase());
+      //CRC32: 435A9A45
       return bytes;
   }    
 
   function prenibble(track,sec,dskBytes)
   {
-    if(prenib===undefined) var prenib = new Array(342);
-    var secSkew = [ 0x0, 0x7, 0xe, 0x6, 0xd, 0x5, 0xc, 0x4, 0xb, 0x3, 0xa, 0x2, 0x9, 0x1, 0x8, 0xf ];
-    var doffs = secSkew[sec] * 256 + track * 4096;
-    for (i = 0; i < 256; i++)
+    if(prenib===undefined)
+      var prenib = new Array(256 + 86);
+
+    var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
+    var doffs = (secSkew[sec] << 8) + (track << 12);
+
+    for (i = 0; i < 256; i++) // read one entire block
     {
         var d8 = dskBytes[doffs + i];
+        prenib[i] = d8 >> 2;   // take the 6 highest bits from d8 (index range 0-255)
 
-        prenib[i] = (d8 >> 2);
-        if      (i < 86)    prenib[256 + 85  - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
-        else if (i < 172)   prenib[256 + 171 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);
-        else                prenib[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
-        if      (i < 2)     prenib[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
+        if      (i < 86)    prenib[85  + 256 - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);  // (range 241-85)  bit0 = bit1 / bit1 = bit0
+        else if (i < 172)   prenib[171 + 256 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);  // (range 427-171) bit2 = bit1 / bit3 = bit0 
+        else                prenib[257 + 256 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);  // (range 513-257) bit4 = bit1 / bit5 = bit0
+
+        if      (i < 2)     prenib[1   + 256 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);  // (range 256-1)   bit4 = bit1 / bit5 = bit0
     }
     return prenib;
+  }
+
+  function prenibble_inv(track,sec,dskBytes,prenib)
+  {
+
   }
 
   // borrow from EMU_appledisk2.js
