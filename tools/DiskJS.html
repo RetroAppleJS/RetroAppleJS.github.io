@@ -162,6 +162,17 @@ var oDISK = new function()
 //  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
 
 
+/*
+function su(d,bit,sub)
+{
+  //console.log(bit+"/"+sub,d&(1<<sub))
+  //            4      5    4
+  return (d&(1<<sub))<<bit>>sub;
+}
+
+var d = 0b0000000
+alert( oCOM.getBinMulti( su(d,5,4)|su(d,4,5)|su(d,3,2)|su(d,2,3)|su(d,1,0)|su(d,0,1),6)  )
+*/
 
 oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
   {
@@ -201,10 +212,10 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               addBytes([0xd5,0xaa,0x96]);   // 0xd5 and 0xaa are not in the GRC lookup table
 
                 // ADDRESS FIELD
-                addBytes(split_OddEven(254));                 // Volume
+                addBytes(split_OddEven(0xFE));                // Volume
                 addBytes(split_OddEven(track));               // Track
                 addBytes(split_OddEven(sec));                 // Sector
-                addBytes(split_OddEven(254 ^ track ^ sec));   // Checksum
+                addBytes(split_OddEven(0xFE ^ track ^ sec));  // Checksum
 
               // Addr field epilogue (uniquely marks the end of the address field)
               addBytes([0xde,0xaa,0xeb]);  // 0xaa is not in the GRC lookup table
@@ -220,16 +231,14 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
               // Encode 342 nibbilized bytes of data.
               var prev = 0;
-              for (i = 0; i < 86; i++)
+              for (var ni = -86; ni < 256; ni++)
               {
-                  addBytes([ sixTwo[prev ^ prenib[256 + 85 - i]] ]);
-                  prev = prenib[256 + 85 - i];
-              }
-              for (i = 0; i < 256; i++)
-              {
+                  var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
                   addBytes([ sixTwo[prev ^ prenib[i]] ]);
                   prev = prenib[i];
               }
+              //console.log(s)
+
               addBytes([ sixTwo[prev] ]); // add the last remaining byte
 
               // Data field epilogue
@@ -254,18 +263,62 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
     var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
     var doffs = (secSkew[sec] << 8) + (track << 12);
 
-    for (i = 0; i < 256; i++) // read one entire block
+    var prenib_fml = new Array();
+
+    function sub(val,sub)
     {
-        var d8 = dskBytes[doffs + i];
-        prenib[i] = d8 >> 2;   // take the 6 highest bits from d8 (index range 0-255)
+      if(val<256) return oCOM.getHexMulti(val,2) + (sub===undefined?("<sub>&nbsp;</sub>"):("<sub>"+sub+"</sub>"))
+      else return oCOM.getHexMulti(0,2)+"<sub>&nbsp;</sub>"
 
-        if      (i < 86)    prenib[85  + 256 - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);  // (range 241-85)  bit0 = bit1 / bit1 = bit0
-        else if (i < 172)   prenib[171 + 256 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);  // (range 427-171) bit2 = bit1 / bit3 = bit0 
-        else                prenib[257 + 256 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);  // (range 513-257) bit4 = bit1 / bit5 = bit0
+    }
 
-        if      (i < 2)     prenib[1   + 256 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);  // (range 256-1)   bit4 = bit1 / bit5 = bit0
+    function su(d,bit,sub)
+    {
+      var val = (d&(1<<sub))<<bit>>sub
+      return  val
+    }
+
+    var z = 1
+    for (var i = 0; i < (256+86+z); i++) // read one entire block
+    {
+        if(i<256)
+        {
+          prenib[i] = dskBytes[doffs + i] >> 2;   // take the 6 highest bits from d8 (index range 0-255)
+          add_fml(sub(0)+sub(0)+sub(i,7)+sub(i,6)+sub(i,5)+sub(i,4)+sub(i,3)+sub(i,2),i,prenib_fml);
+        }
+        else
+        {
+          var ii = 256+85+z-i;
+          var d = dskBytes[doffs+ii];
+
+          // su(d,5,4)|su(d,4,5)|su(d,3,2)|su(d,2,3)| 
+
+          prenib[i] =                                                    su(d,1,0)|su(d,0,1)
+
+          //add_fml(sub(0)+sub(0) +sub(ii,4)+sub(ii,5)+sub(ii,2)+sub(ii,3)+sub(ii,0)+sub(ii,1) ,i,prenib_fml);
+
+          add_fml(sub(0)  +sub(0) +sub(ii+(86+z)*2,0)+sub(ii+(86+z)*2,1)+sub(ii+(86+z),0)+sub(ii+86+z,1)+sub(ii,0)+sub(ii,1) ,i,prenib_fml);
+        }
+    }
+
+    
+    if(track==0 && sec==0)
+    {
+      document.write( "<div style=font-family:Courier>" )
+      for (var i = 0; i < prenib_fml.length; i++)
+      {
+        document.write( prenib_fml[i]+"<br>" )
+      }
+      document.write("</div>")
     }
     return prenib;
+  }
+
+  function add_fml(fml,idx,prenib_fml)
+  {
+     if(prenib_fml[idx]===undefined) prenib_fml[idx] = "prenib["+oCOM.getHexMulti(idx+0xBB00,4)+"] = " + fml
+     else prenib_fml[idx] += fml
+
   }
 
   function prenibble_inv(track,sec,dskBytes,prenib)
