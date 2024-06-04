@@ -255,6 +255,23 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       return bytes;
   }    
 
+  function sub(db,idx,src_bit)
+  {
+    if(db==0) return oCOM.getHexMulti(0,2)+"<sub>&nbsp;</sub>";
+
+    var val = db.ii + idx;
+    if(val<256) return oCOM.getHexMulti(val,2) + (src_bit===undefined?("<sub>&nbsp;</sub>"):("<sub>"+src_bit+"</sub>"))
+    else return oCOM.getHexMulti(0,2)+"<sub>&nbsp;</sub>"
+  }
+
+  function su(db,idx,src_bit,dst_bit)
+  {
+    var val = db.dskBytes[db.doffs + db.ii + idx];
+    if(val<256) var d = (val&(1<<src_bit))<<dst_bit>>src_bit;
+    else var d = 0;
+    return  d;
+  }
+
   function prenibble(track,sec,dskBytes)
   {
     if(prenib===undefined)
@@ -262,46 +279,15 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
     var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
     var doffs = (secSkew[sec] << 8) + (track << 12);
-
     var prenib_fml = new Array();
-
-    function sub(val,sub)
-    {
-      if(val<256) return oCOM.getHexMulti(val,2) + (sub===undefined?("<sub>&nbsp;</sub>"):("<sub>"+sub+"</sub>"))
-      else return oCOM.getHexMulti(0,2)+"<sub>&nbsp;</sub>"
-
-    }
-
-    function su(d,bit,sub)
-    {
-      var val = (d&(1<<sub))<<bit>>sub
-      return  val
-    }
 
     var z = 1
     for (var i = 0; i < (256+86+z); i++) // read one entire block
     {
-        if(i<256)
-        {
-          prenib[i] = dskBytes[doffs + i] >> 2;   // take the 6 highest bits from d8 (index range 0-255)
-          add_fml(sub(0)+sub(0)+sub(i,7)+sub(i,6)+sub(i,5)+sub(i,4)+sub(i,3)+sub(i,2),i,prenib_fml);
-        }
-        else
-        {
-          var ii = 256+85+z-i;
-          var d = dskBytes[doffs+ii];
-
-          // su(d,5,4)|su(d,4,5)|su(d,3,2)|su(d,2,3)| 
-
-          prenib[i] =                                                    su(d,1,0)|su(d,0,1)
-
-          //add_fml(sub(0)+sub(0) +sub(ii,4)+sub(ii,5)+sub(ii,2)+sub(ii,3)+sub(ii,0)+sub(ii,1) ,i,prenib_fml);
-
-          add_fml(sub(0)  +sub(0) +sub(ii+(86+z)*2,0)+sub(ii+(86+z)*2,1)+sub(ii+(86+z),0)+sub(ii+86+z,1)+sub(ii,0)+sub(ii,1) ,i,prenib_fml);
-        }
+      var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib}
+      add_fml(i,prenib_fml,db);
     }
 
-    
     if(track==0 && sec==0)
     {
       document.write( "<div style=font-family:Courier>" )
@@ -314,11 +300,29 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
     return prenib;
   }
 
-  function add_fml(fml,idx,prenib_fml)
+  function add_fml(idx,prenib_fml,db)
   {
-     if(prenib_fml[idx]===undefined) prenib_fml[idx] = "prenib["+oCOM.getHexMulti(idx+0xBB00,4)+"] = " + fml
-     else prenib_fml[idx] += fml
+    var d = db.dskBytes[db.doffs+db.ii];
 
+    db.prenib[db.i] = db.i<256?d>>2 : su(db,(86+db.z)*2,0,5) | su(db,(86+db.z)*2,1,4) | su(db,86+db.z,0,3) | su(db,(86+db.z),1,2) | su(db,0,0,1) | su(db,0,1,0)  ; 
+    var t = db.prenib[db.i];
+
+    if(db.i<256) var fml = sub(0)+sub(0)+sub(db,0,7)+sub(db,0,6)+sub(db,0,5)+sub(db,0,4)+sub(db,0,3)+sub(db,0,2)
+    else var fml = sub(0)+sub(0)+sub(db,(86+db.z)*2,0)+sub(db,(86+db.z)*2,1)+sub(db,(86+db.z),0)+sub(db,86+db.z,1)+sub(db,0)+sub(db,1)
+
+    var nb = d===undefined?"":oCOM.getBinMulti(d,8)
+    prenib_fml[idx] = "prenib["+oCOM.getHexMulti(idx+0xBB00,4)+"] = "
+        + fml
+        + (idx<256?(" - "
+        +oCOM.getHexByte(idx)+"<sub>0</sub>="+nb.charAt(0)+" "
+        +oCOM.getHexByte(idx)+"<sub>1</sub>="+nb.charAt(1)+" "
+        +oCOM.getHexByte(idx)+"<sub>2</sub>="+nb.charAt(2)+" "
+        +oCOM.getHexByte(idx)+"<sub>3</sub>="+nb.charAt(3)+" "
+        +oCOM.getHexByte(idx)+"<sub>4</sub>="+nb.charAt(4)+" "
+        +oCOM.getHexByte(idx)+"<sub>5</sub>="+nb.charAt(5)+" "
+        +oCOM.getHexByte(idx)+"<sub>6</sub>="+nb.charAt(6)+" "
+        +oCOM.getHexByte(idx)+"<sub>7</sub>="+nb.charAt(7)+" "
+      ):"");
   }
 
   function prenibble_inv(track,sec,dskBytes,prenib)
