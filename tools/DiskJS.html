@@ -165,7 +165,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
   {
       //alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
       //CRC32: E766F072
-      //  https://archive.org/details/Beneath_Apple_DOS_alt/page/n11/mode/2up?view=theater
+      
 
       // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
       var sixTwo = [  
@@ -217,8 +217,8 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               // Start by prenibbilizing
               var o = prenibble(track,sec,dskBytes);
               prenib = o.data;
-              if(track==0) 
-                log[log.length] = o.log;
+
+              if(o.log!=null && track==0) log[log.length] = o.log;
 
               // Encode 342 nibbilized bytes of data.
               var prev = 0;
@@ -242,21 +242,33 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       }
 
       
-      alert("CRC32: "+oCOM.crc32(bytes).toString(16).toUpperCase());
+      //alert("CRC32: "+oCOM.crc32(bytes).toString(16).toUpperCase());
 
-      document.getElementById("output").innerHTML = 
+      if(log.length>0)
+      {
+        document.getElementById("output").innerHTML = 
         "<div style='font-family:Courier;font-size:9px;overflow:scroll;height:600px;float:left;'>"
         +log.join("<br>");
         +"</div>"
+      }
 
       //CRC32: 435A9A45
       return bytes;
   }    
 
+  oEMU.component.IO.AppleDisk.convertNib2Dsk = function(dskBytes)
+  {
+    for(var loc=0;loc<232960;loc++)
+    {
+
+    }
+  }
 
 
   function prenibble(track,sec,dskBytes)
   {
+    var bDebug = false;
+
     if(prenib===undefined)
       var prenib = new Array(256 + 86);
 
@@ -286,34 +298,34 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       prenib[i] = do_fml(db);
     }
 
-    // DISPLAY
-    for (var i = 0; i < (256+86+z); i++) // read one entire block
+
+    if(bDebug)
     {
-      var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib,"prenib0":prenib0}
-      prenib_fml[db.i] = dsp_fml(db);
+      // DISPLAY
+      for (var i = 0; i < (256+86+z); i++) // read one entire block
+      {
+        var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib,"prenib0":prenib0}
+        prenib_fml[db.i] = dsp_fml(db);
+      }
+      var s = new Array();
+      s[s.length] = "<big>TRACK $"+oCOM.getHexByte(track)+" SECTOR $"+oCOM.getHexByte(sec)+"</big><br>";
+      for (var i = 0; i < prenib_fml.length; i++)
+      {
+        s[s.length] = prenib_fml[i]+"<br>"
+      }
     }
 
-
-    var s = new Array();
-    s[s.length] = "<big>TRACK $"+oCOM.getHexByte(track)+" SECTOR $"+oCOM.getHexByte(sec)+"</big><br>";
-    for (var i = 0; i < prenib_fml.length; i++)
-    {
-      s[s.length] = prenib_fml[i]+"<br>"
-    }
-
-
-
-    return {"data":prenib,"log":s.join("")};
+    return {"data":prenib,"log":s===undefined?null:s.join("")};
   }
 
   function do_fml(db)
   {
+    //  https://archive.org/details/Beneath_Apple_DOS_alt/page/n11/mode/2up?view=theater
     var d = db.dskBytes[db.doffs+db.ii];
-    // MOVE BITS
-    var t = db.i<256 ? 
-      d>>2
+    var t = db.i<256 ?
+      d>>2                              // SERIALISE 6 high-bits
       : 
-      mbit(db,(86+db.z)*2,0,5) 
+      mbit(db,(86+db.z)*2,0,5)          // SERPENTINE residual 2-bit compounds
       | mbit(db,(86+db.z)*2,1,4)
       | mbit(db,86+db.z,0,3) 
       | mbit(db,(86+db.z),1,2) 
@@ -620,9 +632,11 @@ function parsedisk(bytes)
 
 function download_nib()
 {
-  nib_dsk_bytes = oEMU.component.IO["AppleDisk"].convertDsk2Nib(oCOM.UploadData);
+  var nib_bytes = oEMU.component.IO["AppleDisk"].convertDsk2Nib(oCOM.UploadData);
+  var dsk_bytes = oEMU.component.IO["AppleDisk"].convertNib2Dsk(nib_bytes);
+
   var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
-  oCOM.Download(fileName,nib_dsk_bytes);
+  oCOM.Download(fileName,nib_bytes);
 }
 
 //   ██████   ██████ ██████      ██       ██████   ██████  ██   ██ ██    ██ ██████  
