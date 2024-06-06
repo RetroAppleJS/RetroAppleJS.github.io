@@ -222,7 +222,17 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               for (var ni = -86; ni < 256; ni++)
               {
                   var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
-                  addBytes([ sixTwo[prev ^ prenib[i]] ]);
+                  var b = sixTwo[prev ^ prenib[i]];
+
+                  if(track==0 && sec==0 && ni<-70) 
+                    console.log(
+                         oCOM.getHexByte(prev)
+                        +"^"+oCOM.getHexByte(prenib[i])
+                        +"="+oCOM.getHexByte(prev ^ prenib[i])
+                        +" >> sixTwo "+oCOM.getHexByte(b)
+                        )
+
+                  addBytes([ b ]);
                   prev = prenib[i];
               }
               //console.log(s)
@@ -299,9 +309,9 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
             ,"AEPI": {"cy":0 ,"d":[0xde,0xaa,0xeb]}
             ,"GAP2":{"cy":0}
             ,"DPRO" :{"cy":0,"d":[0xd5,0xaa,0xad]}
-            ,"DATA":{"cy":0}
+            ,"DATA":{"cy":-86,"prev":0,"d":[]}
             ,"DEPI":{"cy":0 ,"d":[0xde,0xaa,0xeb]}
-            ,"ERROR":{}}
+            ,"ERROR":{}};
 
             if(d8==0xff)  
             {
@@ -359,6 +369,8 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
             states.DEPI.cy++;
             if(states.DEPI.cy==3)
             {
+              // TODO:  ADD SECTOR DATA TO .DSK FILE
+
               state=0;          // BACK TO SQUARE 0
               delete states["GAP1"];
             }
@@ -367,7 +379,23 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
           }
           else
           {
-            // READ DATA UNTIL DEPI
+              // READ DATA UNTIL DEPI
+              var i = states.DATA.cy<0 ? 255-states.DATA.cy : states.DATA.cy;
+              if(sixTwo_lookup[states.DATA.prev ^ d8]===undefined)
+              {
+                console.error("DATA ERROR:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+states.DATA.cy++);
+              }
+              else
+              {
+                
+                states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
+                states.DATA.prev = states.DATA.d[states.DATA.d.length-1];
+                states.DATA.cy++; 
+              }
+
           }
         break;
       }
