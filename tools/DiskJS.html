@@ -381,7 +381,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
           {
               // READ DATA UNTIL DEPI
               var i = states.DATA.cy<0 ? 255-states.DATA.cy : states.DATA.cy;
-              if(sixTwo_lookup[states.DATA.prev ^ d8]===undefined)
+              if(sixTwo_lookup[d8]===undefined)
               {
                 console.error("DATA ERROR:"
                   +" $T"+oCOM.getHexByte(states.ADR.trk)
