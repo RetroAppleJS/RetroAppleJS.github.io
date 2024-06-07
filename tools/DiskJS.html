@@ -263,9 +263,16 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
   }    
 
   var prev = "";
-  oEMU.component.IO.AppleDisk.convertNib2Dsk = function(dskBytes)
+  oEMU.component.IO.AppleDisk.convertNib2Dsk = function(nibBytes)
   {
+    var bytes = new Array();
+    var prenib = new Array(256 + 86);
+
     function join_OddEven(b1,b2) { return ((b1<<1)+1) & b2 }
+
+    var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
+    var secSkew_lookup = new Array(16)
+    for(var i=0;i<secSkew.length;i++) secSkew_lookup [ secSkew[i] ] = i;
 
     // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
     var sixTwo = [  
@@ -282,11 +289,9 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
     function logstate(o,d8,state)
     {
-
       var act = o.ADR.sec+" "+o.ADR.trk
+      //if(prev!=act && o.ADR.sec>0 && o.ADR.trk>0) console.log(act);
 
-
-      if(prev!=act && o.ADR.sec>0 && o.ADR.trk>0) console.log(act);
       //console.log(oCOM.getHexByte(d8) + JSON.stringify(o))
       //return oCOM.getHexByte(d8) + JSON.stringify(o)
       prev = act;
@@ -297,7 +302,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
     var log = new Array();
     for(var loc=0;loc<232960;loc++)
     {
-      var d8 = dskBytes[loc];
+      var d8 = nibBytes[loc];
       switch(state)
       {
         case 0:
@@ -331,13 +336,13 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
           switch(states.ADR.cy)
           {
             case 0: break;
-            case 1: states.ADR["vol"] = join_OddEven(dskBytes[loc-1],d8); break;
+            case 1: states.ADR["vol"] = join_OddEven(nibBytes[loc-1],d8); break;
             case 2: break;
-            case 3: states.ADR["trk"] = join_OddEven(dskBytes[loc-1],d8); break;
+            case 3: states.ADR["trk"] = join_OddEven(nibBytes[loc-1],d8); break;
             case 4: break;
-            case 5: states.ADR["sec"] = join_OddEven(dskBytes[loc-1],d8); break;
+            case 5: states.ADR["sec"] = join_OddEven(nibBytes[loc-1],d8); break;
             case 6: break;
-            case 7: states.ADR["chk"] = join_OddEven(dskBytes[loc-1],d8); state++; break;
+            case 7: states.ADR["chk"] = join_OddEven(nibBytes[loc-1],d8); state++; break;
           }
           states.ADR.cy++;
 
@@ -369,7 +374,22 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
             states.DEPI.cy++;
             if(states.DEPI.cy==3)
             {
-              // TODO:  ADD SECTOR DATA TO .DSK FILE
+
+              //////////////////////////////////////
+              // TODO:  ADD SECTOR DATA TO .DSK FILE !!!!!!!!!!!!!
+
+              var z = 0;
+              var doffs = (secSkew_lookup[states.ADR.sec] << 8) + (states.ADR.track << 12);
+              for (var i = 0; i < (256+86+z); i++) // write one entire block
+              {
+                var db = {"nibBytes":nibBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib}
+                prenib[i] = inv_prenibble(db);
+              }
+
+              //  >> ADD PRENIB to .DSK FILE
+              addBytes( [prenib] );
+
+
 
               state=0;          // BACK TO SQUARE 0
               delete states["GAP1"];
@@ -390,12 +410,10 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               }
               else
               {
-                
                 states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
                 states.DATA.prev = states.DATA.d[states.DATA.d.length-1];
-                states.DATA.cy++; 
+                states.DATA.cy++;
               }
-
           }
         break;
       }
@@ -409,10 +427,27 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
     */
   }
 
+  function inv_prenibble(db)
+  {
+    //  https://archive.org/details/Beneath_Apple_DOS_alt/page/n11/mode/2up?view=theater
+    var d = db.nibBytes[db.doffs+db.ii];
+    var t = db.i<256 ?
+      d>>2                              // SERIALISE 6 high-bits
+      : 
+      mbit(db,(86+db.z)*2,0,5)          // SERPENTINE residual 2-bit compounds
+      | mbit(db,(86+db.z)*2,1,4)
+      | mbit(db,86+db.z,0,3) 
+      | mbit(db,(86+db.z),1,2) 
+      | mbit(db,0,0,1) 
+      | mbit(db,0,1,0); 
+
+    return t;
+  }
+
 
   function prenibble(track,sec,dskBytes)
   {
-    var bDebug = false;
+    var bDebug = true;
 
     if(prenib===undefined)
       var prenib = new Array(256 + 86);
@@ -436,12 +471,79 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       if      (i < 2)     prenib0[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
     }
 
+    /*
     // CALCULATE v2
     for (var i = 0; i < (256+86+z); i++) // write one entire block
     {
       var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib}
-      prenib[i] = do_fml(db);
+
+      var d = db.dskBytes[db.doffs+db.ii];
+      if(db.i<256) prenib[db.i] = d>>2
+      else         prenib[db.i] = mbit(db,(86+db.z)*2,0,5)          // SERPENTINE residual 2-bit compounds
+                      | mbit(db,(86+db.z)*2,1,4)
+                      | mbit(db,86+db.z,0,3) 
+                      | mbit(db,(86+db.z),1,2) 
+                      | mbit(db,0,0,1) 
+                      | mbit(db,0,1,0);
     }
+
+    function mbit(db,idx,src_bit,dst_bit)
+    {
+      var v = db.ii + idx;
+      var val = db.dskBytes[db.doffs + v];
+      if(v<256) var d = (val&(1<<src_bit))<<dst_bit>>src_bit;
+      else var d = 0;
+
+      return  d;
+    }
+    */
+    
+
+    if(track==0 && sec==0)
+    {
+      for(var i=0;i<16;i++)
+        console.log("dskBytes["+i+"] = "+oCOM.getHexByte(dskBytes[i]));
+    }
+
+    // CALCULATE v3
+    for (var i = 0; i < (256+86+z); i++) // write one entire block
+    {
+      var ii = (i<256 ? i : 256+85+z-i)
+      var d = dskBytes[doffs+ii];
+      if(i<256) prenib[i] = d>>2
+      else         prenib[i] = 
+                        (ii<84?mb(dskBytes[doffs+ii+172],0,5):0)  // 84 = 256-172
+                      | (ii<84?mb(dskBytes[doffs+ii+172],1,4):0)  // Zero-out serpentine tail 
+                      | mb(dskBytes[doffs+ii+86],0,3)
+                      | mb(dskBytes[doffs+ii+86],1,2)
+                      | mb(dskBytes[doffs+ii],0,1)
+                      | mb(dskBytes[doffs+ii],1,0)
+    }
+
+    // REVERSE CALCULATE v3
+ 
+
+
+
+    function mb(val,src_bit,dst_bit)
+    {
+      return (val&(1<<src_bit))<<dst_bit>>src_bit;
+    }
+
+
+
+
+
+    function mbit2(db,idx,src_bit,dst_bit)
+    {
+      var v = db.ii + idx
+      var val = db.prenib[v];
+      if(v<256) var d = (val&(1<<src_bit))<<dst_bit>>src_bit;
+      else var d = 0;
+
+      return  d;
+    }
+
 
 
     if(bDebug)
@@ -777,8 +879,11 @@ function parsedisk(bytes)
 
 function download_nib()
 {
+  //alert(".DSK CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
   var nib_bytes = oEMU.component.IO["AppleDisk"].convertDsk2Nib(oCOM.UploadData);
-  var dsk_bytes = oEMU.component.IO["AppleDisk"].convertNib2Dsk(nib_bytes);
+  alert(".NIB CRC32: "+oCOM.crc32(nib_bytes).toString(16).toUpperCase());
+  //var dsk_bytes = oEMU.component.IO["AppleDisk"].convertNib2Dsk(nib_bytes);
+  //alert(".DSK CRC32: "+oCOM.crc32(dsk_bytes).toString(16).toUpperCase());
 
   var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
   oCOM.Download(fileName,nib_bytes);
