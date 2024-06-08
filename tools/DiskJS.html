@@ -224,6 +224,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
                   var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
                   var b = sixTwo[prev ^ prenib[i]];
 
+                  /*
                   if(track==0 && sec==0 && ni<-70) 
                     console.log(
                          oCOM.getHexByte(prev)
@@ -231,6 +232,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
                         +"="+oCOM.getHexByte(prev ^ prenib[i])
                         +" >> sixTwo "+oCOM.getHexByte(b)
                         )
+                  */
 
                   addBytes([ b ]);
                   prev = prenib[i];
@@ -447,7 +449,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
   function prenibble(track,sec,dskBytes)
   {
-    var bDebug = true;
+    var bDebug = false;
 
     if(prenib===undefined)
       var prenib = new Array(256 + 86);
@@ -498,31 +500,106 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
     }
     */
     
+    if(track==0 && sec==0)
+    {
+      for(var i=0;i<256;i+=16)
+        console.log("dskBytes["+i+"] = "
+             +oCOM.getHexByte(dskBytes[i])    + " " +oCOM.getHexByte(dskBytes[i+1])+" "  +oCOM.getHexByte(dskBytes[i+2]) + " "  +oCOM.getHexByte(dskBytes[i+3])
+        + " "+oCOM.getHexByte(dskBytes[i+4])  + " " +oCOM.getHexByte(dskBytes[i+5])+" "  +oCOM.getHexByte(dskBytes[i+6]) + " "  +oCOM.getHexByte(dskBytes[i+7])
+        + " "+oCOM.getHexByte(dskBytes[i+8])  + " " +oCOM.getHexByte(dskBytes[i+9])+" " +oCOM.getHexByte(dskBytes[i+10]) + " " +oCOM.getHexByte(dskBytes[i+11])
+        + " "+oCOM.getHexByte(dskBytes[i+12]) + " " +oCOM.getHexByte(dskBytes[i+13])+" "+oCOM.getHexByte(dskBytes[i+14]) + " " +oCOM.getHexByte(dskBytes[i+15])
+      );
+    }
 
+    // CALCULATE v3
+    for (var i = 0; i < (256+86); i++) // write one entire block
+    {
+      var ii = i<256 ? i : 256+85-i
+      var d = dskBytes[doffs+ii];
+      if(i<256) prenib[i] = d>>2
+      else      prenib[i] = 
+          (ii<84?mb(dskBytes[doffs+ii+172],0,5):0)  // 84 = 256-172
+        | (ii<84?mb(dskBytes[doffs+ii+172],1,4):0)  // Zero-out serpentine tail 
+        | mb(dskBytes[doffs+ii+86],0,3)
+        | mb(dskBytes[doffs+ii+86],1,2)
+        | mb(dskBytes[doffs+ii],0,1)
+        | mb(dskBytes[doffs+ii],1,0)
+    }
+
+    // REVERSE CALCULATE v3
+    var postnib = new Array(256)
+    for (var i = 0; i < 256; i++) // write one entire block
+    { 
+        postnib[i] = prenib[i] << 2
+        if(i<86)
+        {
+          postnib[i+170] = postnib[i+170]  // 170-255
+                |  mb(prenib[341-i],5,0)
+                |  mb(prenib[341-i],4,1);
+          postnib[i+86] = postnib[i+86]    // 86-171  
+                |  mb(prenib[341-i],3,0)
+                |  mb(prenib[341-i],2,1);
+          postnib[i] = postnib[i]          // 0-85
+                |  mb(prenib[341-i],1,0)
+                |  mb(prenib[341-i],0,1);
+        }
+    }
+
+    if(track==0 && sec==0)
+    {
+      for(var i=0;i<256;i+=16)
+        console.log("postnib["+i+"] = "
+             +oCOM.getHexByte(postnib[i])    + " " +oCOM.getHexByte(postnib[i+1])+" "  +oCOM.getHexByte(postnib[i+2]) + " "  +oCOM.getHexByte(postnib[i+3])
+        + " "+oCOM.getHexByte(postnib[i+4])  + " " +oCOM.getHexByte(postnib[i+5])+" "  +oCOM.getHexByte(postnib[i+6]) + " "  +oCOM.getHexByte(postnib[i+7])
+        + " "+oCOM.getHexByte(postnib[i+8])  + " " +oCOM.getHexByte(postnib[i+9])+" " +oCOM.getHexByte(postnib[i+10]) + " " +oCOM.getHexByte(postnib[i+11])
+        + " "+oCOM.getHexByte(postnib[i+12]) + " " +oCOM.getHexByte(postnib[i+13])+" "+oCOM.getHexByte(postnib[i+14]) + " " +oCOM.getHexByte(postnib[i+15])
+      );
+    }
+
+    /*
     if(track==0 && sec==0)
     {
       for(var i=0;i<16;i++)
         console.log("dskBytes["+i+"] = "+oCOM.getHexByte(dskBytes[i]));
     }
+    */
 
-    // CALCULATE v3
-    for (var i = 0; i < (256+86+z); i++) // write one entire block
-    {
-      var ii = (i<256 ? i : 256+85+z-i)
-      var d = dskBytes[doffs+ii];
-      if(i<256) prenib[i] = d>>2
-      else         prenib[i] = 
-                        (ii<84?mb(dskBytes[doffs+ii+172],0,5):0)  // 84 = 256-172
-                      | (ii<84?mb(dskBytes[doffs+ii+172],1,4):0)  // Zero-out serpentine tail 
-                      | mb(dskBytes[doffs+ii+86],0,3)
-                      | mb(dskBytes[doffs+ii+86],1,2)
-                      | mb(dskBytes[doffs+ii],0,1)
-                      | mb(dskBytes[doffs+ii],1,0)
-    }
 
-    // REVERSE CALCULATE v3
- 
 
+/*
+[Log] dskBytes[0] = 01 A5 27 C9 09 D0 18 A5 2B 4A 4A 4A 4A 09 C0 85 (DiskJS.html, line 506)
+[Log] dskBytes[16] = 3F A9 5C 85 3E 18 AD FE 08 6D FF 08 8D FE 08 AE (DiskJS.html, line 506)
+[Log] dskBytes[32] = FF 08 30 15 BD 4D 08 85 3D CE FF 08 AD FE 08 85 (DiskJS.html, line 506)
+[Log] dskBytes[48] = 27 CE FE 08 A6 2B 6C 3E 00 EE FE 08 EE FE 08 20 (DiskJS.html, line 506)
+[Log] dskBytes[64] = 89 FE 20 93 FE 20 2F FB A6 2B 6C FD 08 00 0D 0B (DiskJS.html, line 506)
+[Log] dskBytes[80] = 09 07 05 03 01 0E 0C 0A 08 06 04 02 0F 00 20 64 (DiskJS.html, line 506)
+[Log] dskBytes[96] = 27 B0 08 A9 00 A8 8D 5D 36 91 40 AD C5 35 4C D2 (DiskJS.html, line 506)
+[Log] dskBytes[112] = 26 AD 5D 36 F0 08 EE BD 35 D0 03 EE BE 35 A9 00 (DiskJS.html, line 506)
+[Log] dskBytes[128] = 8D 5D 36 4C 84 3A 8D BC 35 20 A8 26 20 EA 22 4C (DiskJS.html, line 506)
+[Log] dskBytes[144] = 7D 22 A0 13 B1 42 D0 14 C8 C0 17 D0 F7 A0 19 B1 (DiskJS.html, line 506)
+[Log] dskBytes[160] = 42 99 A4 35 C8 C0 1D D0 F6 4C BB 26 A2 FF 8E 5D (DiskJS.html, line 506)
+[Log] dskBytes[176] = 36 D0 F6 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
+[Log] dskBytes[192] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
+[Log] dskBytes[208] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
+[Log] dskBytes[224] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
+[Log] dskBytes[240] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 36 09 (DiskJS.html, line 506)
+[Log] postnib[0] = 01 A5 27 C9 09 D0 18 A5 2B 4A 4A 4A 4A 09 C0 85 (DiskJS.html, line 551)
+[Log] postnib[16] = 3F A9 5C 85 3E 18 AD FE 08 6D FF 08 8D FE 08 AE (DiskJS.html, line 551)
+[Log] postnib[32] = FF 08 30 15 BD 4D 08 85 3D CE FF 08 AD FE 08 85 (DiskJS.html, line 551)
+[Log] postnib[48] = 27 CE FE 08 A6 2B 6C 3E 00 EE FE 08 EE FE 08 20 (DiskJS.html, line 551)
+[Log] postnib[64] = 89 FE 20 93 FE 20 2F FB A6 2B 6C FD 08 00 0D 0B (DiskJS.html, line 551)
+[Log] postnib[80] = 09 07 05 03 01 0E 0C 08 08 04 04 00 0C 00 20 64 (DiskJS.html, line 551)
+[Log] postnib[96] = 24 B0 08 A8 00 A8 8C 5C 34 90 40 AC C4 34 4C D0 (DiskJS.html, line 551)
+[Log] postnib[112] = 24 AC 5C 34 F0 08 EC BC 34 D0 00 EC BC 34 A8 00 (DiskJS.html, line 551)
+[Log] postnib[128] = 8C 5C 34 4C 84 38 8C BC 34 20 A8 24 20 E8 20 4C (DiskJS.html, line 551)
+[Log] postnib[144] = 7C 20 A0 10 B0 40 D0 14 C8 C0 14 D0 F4 A0 18 B0 (DiskJS.html, line 551)
+[Log] postnib[160] = 40 98 A4 34 C8 C0 1C D0 F4 4C B8 24 A0 FC 8C 5C (DiskJS.html, line 551)
+[Log] postnib[176] = 34 D0 F4 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
+[Log] postnib[192] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
+[Log] postnib[208] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
+[Log] postnib[224] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
+[Log] postnib[240] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 34 08 (DiskJS.html, line 551)
+*/
 
 
     function mb(val,src_bit,dst_bit)
