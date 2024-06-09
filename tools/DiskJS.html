@@ -535,29 +535,38 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       {
 
         // prenib is 342 long
-        var p = prenib[i-256]  // 0-85
+        var p = prenib[597-i]  // 0-85
 
         postnib[i+170-256]   // 170-255
               |=  mb(p,5,0)
               |   mb(p,4,1);
         postnib[i+86-256]    // 86-171  
               |=  mb(p,3,0)
-              |   mb(p,2,1);
+              |   mb(p,2,1);  
+
+        postnib[i-256]
+            |=  mb(p,1,0)
+            |   mb(p,0,1)
+
+        /*      
         postnib[i-256]       // 0-85
               |=  mb(p,1,0)
-              |   mb(p,0,1);         
+              |   mb(p,0,1);
+        */     
       }
     }
 
     if(track==0 && sec==0)
     {
       for(var i=0;i<256;i+=16)
+      {
         console.log("postnib["+i+"] = "
              +oCOM.getHexByte(postnib[i])    + " " +oCOM.getHexByte(postnib[i+1])+" "  +oCOM.getHexByte(postnib[i+2]) + " "  +oCOM.getHexByte(postnib[i+3])
         + " "+oCOM.getHexByte(postnib[i+4])  + " " +oCOM.getHexByte(postnib[i+5])+" "  +oCOM.getHexByte(postnib[i+6]) + " "  +oCOM.getHexByte(postnib[i+7])
         + " "+oCOM.getHexByte(postnib[i+8])  + " " +oCOM.getHexByte(postnib[i+9])+" " +oCOM.getHexByte(postnib[i+10]) + " " +oCOM.getHexByte(postnib[i+11])
         + " "+oCOM.getHexByte(postnib[i+12]) + " " +oCOM.getHexByte(postnib[i+13])+" "+oCOM.getHexByte(postnib[i+14]) + " " +oCOM.getHexByte(postnib[i+15])
-      );
+        );
+      }
     }
 
     /*
@@ -567,46 +576,6 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
         console.log("dskBytes["+i+"] = "+oCOM.getHexByte(dskBytes[i]));
     }
     */
-
-
-
-/*
-[Log] dskBytes[0] = 01 A5 27 C9 09 D0 18 A5 2B 4A 4A 4A 4A 09 C0 85 (DiskJS.html, line 506)
-[Log] dskBytes[16] = 3F A9 5C 85 3E 18 AD FE 08 6D FF 08 8D FE 08 AE (DiskJS.html, line 506)
-[Log] dskBytes[32] = FF 08 30 15 BD 4D 08 85 3D CE FF 08 AD FE 08 85 (DiskJS.html, line 506)
-[Log] dskBytes[48] = 27 CE FE 08 A6 2B 6C 3E 00 EE FE 08 EE FE 08 20 (DiskJS.html, line 506)
-[Log] dskBytes[64] = 89 FE 20 93 FE 20 2F FB A6 2B 6C FD 08 00 0D 0B (DiskJS.html, line 506)
-[Log] dskBytes[80] = 09 07 05 03 01 0E 0C 0A 08 06 04 02 0F 00 20 64 (DiskJS.html, line 506)
-[Log] dskBytes[96] = 27 B0 08 A9 00 A8 8D 5D 36 91 40 AD C5 35 4C D2 (DiskJS.html, line 506)
-[Log] dskBytes[112] = 26 AD 5D 36 F0 08 EE BD 35 D0 03 EE BE 35 A9 00 (DiskJS.html, line 506)
-[Log] dskBytes[128] = 8D 5D 36 4C 84 3A 8D BC 35 20 A8 26 20 EA 22 4C (DiskJS.html, line 506)
-[Log] dskBytes[144] = 7D 22 A0 13 B1 42 D0 14 C8 C0 17 D0 F7 A0 19 B1 (DiskJS.html, line 506)
-[Log] dskBytes[160] = 42 99 A4 35 C8 C0 1D D0 F6 4C BB 26 A2 FF 8E 5D (DiskJS.html, line 506)
-[Log] dskBytes[176] = 36 D0 F6 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
-[Log] dskBytes[192] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
-[Log] dskBytes[208] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
-[Log] dskBytes[224] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 506)
-[Log] dskBytes[240] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 36 09 (DiskJS.html, line 506)
-                                                         //1100110  1001
-
-[Log] postnib[0] = 01 A5 27 C9 09 D0 18 A5 2B 4A 4A 4A 4A 09 C0 85 (DiskJS.html, line 551)
-[Log] postnib[16] = 3F A9 5C 85 3E 18 AD FE 08 6D FF 08 8D FE 08 AE (DiskJS.html, line 551)
-[Log] postnib[32] = FF 08 30 15 BD 4D 08 85 3D CE FF 08 AD FE 08 85 (DiskJS.html, line 551)
-[Log] postnib[48] = 27 CE FE 08 A6 2B 6C 3E 00 EE FE 08 EE FE 08 20 (DiskJS.html, line 551)
-[Log] postnib[64] = 89 FE 20 93 FE 20 2F FB A6 2B 6C FD 08 00 0D 0B (DiskJS.html, line 551)
-[Log] postnib[80] = 09 07 05 03 01 0E 0C 08 08 04 04 00 0C 00 20 64 (DiskJS.html, line 551)
-[Log] postnib[96] = 24 B0 08 A8 00 A8 8C 5C 34 90 40 AC C4 34 4C D0 (DiskJS.html, line 551)
-[Log] postnib[112] = 24 AC 5C 34 F0 08 EC BC 34 D0 00 EC BC 34 A8 00 (DiskJS.html, line 551)
-[Log] postnib[128] = 8C 5C 34 4C 84 38 8C BC 34 20 A8 24 20 E8 20 4C (DiskJS.html, line 551)
-[Log] postnib[144] = 7C 20 A0 10 B0 40 D0 14 C8 C0 14 D0 F4 A0 18 B0 (DiskJS.html, line 551)
-[Log] postnib[160] = 40 98 A4 34 C8 C0 1C D0 F4 4C B8 24 A0 FC 8C 5C (DiskJS.html, line 551)
-[Log] postnib[176] = 34 D0 F4 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
-[Log] postnib[192] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
-[Log] postnib[208] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
-[Log] postnib[224] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 (DiskJS.html, line 551)
-[Log] postnib[240] = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 34 08 (DiskJS.html, line 551)
-                                                         //110100 1000
-*/
 
     function mb(val,src_bit,dst_bit)
     {
@@ -678,7 +647,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
         +sub(db,0,3)+(sup2(t,1)==sup2(t0,1)?sup2(t,1,"green"):sup2(t,1,"red"))
         +sub(db,0,2)+(sup2(t,0)==sup2(t0,0)?sup2(t,0,"green"):sup2(t,0,"red"))
         //+oCOM.getBinMulti(t,8)+"<"+oCOM.getBinMulti(t0,8)
-      var src = " <- "
+      var src = " <= "
         +oCOM.getHexByte(db.i)+"<sub>7</sub>"+(sup2(d,7)==sup2(t1,7)?sup2(t1,7,"green"):sup2(t1,7,"red"))
         +oCOM.getHexByte(db.i)+"<sub>6</sub>"+(sup2(d,6)==sup2(t1,6)?sup2(t1,6,"green"):sup2(t1,6,"red"))
         +oCOM.getHexByte(db.i)+"<sub>5</sub>"+(sup2(d,5)==sup2(t1,5)?sup2(t1,5,"green"):sup2(t1,5,"red"))
@@ -704,7 +673,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       var src = ""
     }
 
-    return oCOM.getHexMulti(db.i,3)+": "+dest+src;
+    return oCOM.getHexMulti(db.i,3)+": "+dest+src+"&nbsp;&nbsp;";
   }
 
   function sub(db,idx,src_bit)
