@@ -205,19 +205,20 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               // Addr field epilogue (uniquely marks the end of the address field)
               addBytes([0xde,0xaa,0xeb]);  // 0xaa is not in the GRC lookup table
 
-              // Gap 2 (provides time to DOS routine to decode the address field)
+              //prenib Gap 2 (provides time to DOS routine to decode the address field)
               addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
 
               // Data field prologue (uniquely marks the beginning of a data field))
               addBytes([0xd5,0xaa,0xad]);  // 0xd5 and 0xaa are not in the GRC lookup table
 
-              // Start by prenibbilizing
+              // 1 - Start by prenibbilizing (256 DSK bytes >> create NIB of 342 bytes)
               var o = prenibble(track,sec,dskBytes);
               prenib = o.data;
 
+
               if(o.log!=null && track==0) log[log.length] = o.log;
 
-              // Encode 342 nibbilized bytes of data.
+              // 2 - Encode 342 nibbilized bytes of data.
               var prev = 0;
               for (var ni = -86; ni < 256; ni++)
               {
@@ -241,6 +242,8 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
               addBytes([ sixTwo[prev] ]); // add the last remaining byte
 
+              // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***
+
               // Data field epilogue
               addBytes([0xde,0xaa,0xeb]);
           }
@@ -263,6 +266,12 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       //CRC32: 435A9A45
       return bytes;
   }    
+
+//  ███    ██ ██ ██████      ██████      ██████  ███████ ██   ██ 
+//  ████   ██ ██ ██   ██          ██     ██   ██ ██      ██  ██  
+//  ██ ██  ██ ██ ██████       █████      ██   ██ ███████ █████   
+//  ██  ██ ██ ██ ██   ██     ██          ██   ██      ██ ██  ██  
+//  ██   ████ ██ ██████      ███████     ██████  ███████ ██   ██ 
 
   var prev = "";
   oEMU.component.IO.AppleDisk.convertNib2Dsk = function(nibBytes)
@@ -384,21 +393,17 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
             if(states.DEPI.cy==3)
             {
 
-              //////////////////////////////////////
-              // TODO:  ADD SECTOR DATA TO .DSK FILE !!!!!!!!!!!!!
-
               var z = 0;
               var doffs = (secSkew_lookup[states.ADR.sec] << 8) + (states.ADR.track << 12);
               
-
+              // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***  (maybe check if need to add following statement)
+              // states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
+              // WHY IS states.DATA.d 343 bytes long ?????
 
               // REVERSE CALCULATE v3
               var prenib = new Array(342)
               var postnib = new Array(256);
-              for(var i=0;i<342;i++)
-              {
-                prenib[i] = states.DATA.d[i];
-              }
+              for(var i=0;i<342;i++) prenib[i] = states.DATA.d[i];
 
               for (var i = 0; i < 342; i++) // write one entire block
               { 
