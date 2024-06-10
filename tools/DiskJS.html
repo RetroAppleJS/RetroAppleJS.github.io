@@ -220,27 +220,29 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
               // 2 - Encode 342 nibbilized bytes of data.
               var prev = 0;
+              //var log2 = new Array();
               for (var ni = -86; ni < 256; ni++)
               {
                   var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
                   var b = sixTwo[prev ^ prenib[i]];
 
-                  /*
-                  if(track==0 && sec==0 && ni<-70) 
-                    console.log(
-                         oCOM.getHexByte(prev)
-                        +"^"+oCOM.getHexByte(prenib[i])
-                        +"="+oCOM.getHexByte(prev ^ prenib[i])
-                        +" >> sixTwo "+oCOM.getHexByte(b)
+                  
+                  if(track==0 && sec==0) 
+                    log[log.length] = (
+                        "prenib["+i+"]="+oCOM.getHexByte(prenib[i])
+                        +" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
+                        +" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
+                        +" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
                         )
-                  */
+                  
 
                   addBytes([ b ]);
                   prev = prenib[i];
               }
-              //console.log(s)
+              
 
               addBytes([ sixTwo[prev] ]); // add the last remaining byte
+
 
               // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***
 
