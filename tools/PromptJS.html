@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Client</title>
+</head>
+<body>
+    <h1>ChatGPT Client</h1>
+    <input id="apiKey" onchange="apiKey=this.value" style="width:200px">
+    <textarea id="prompt" rows="4" cols="50" placeholder="Enter your prompt here..."></textarea>
+    <br>
+    <button onclick="sendPrompt()">Send</button>
+    <h2>Response:</h2>
+    <pre id="response"></pre>
+</body>
+</html>
+
+<script>
+
+var apiKey = 'YOUR_OPENAI_API_KEY';  // Replace with your OpenAI API key
+
+async function sendPrompt() {
+    const prompt = document.getElementById('prompt').value;
+    const responseElement = document.getElementById('response');
+
+ 
+    const apiUrl = 'https://api.openai.com/v1/engines/davinci-codex/completions';
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                max_tokens: 150
+            })
+        });
+
+        const data = await response.json();
+        responseElement.textContent = data.choices[0].text.trim();
+    } catch (error) {
+        responseElement.textContent = 'Error: ' + error.message;
+    }
+}
+</script>
