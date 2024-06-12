@@ -19,7 +19,7 @@
 <script>
 
 document.addEventListener('DOMContentLoaded', () => {
-    const apiKey = prompt('API key (new model):');
+    const apiKey = prompt('Please enter your API key:');
 
     if (!apiKey) {
         alert('API key is required to proceed.');
@@ -58,5 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             responseDiv.textContent = `Error: ${error.message}`;
         }
     });
+});
+
 
 </script>
