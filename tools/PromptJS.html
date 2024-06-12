@@ -19,7 +19,7 @@
 <script>
 
 document.addEventListener('DOMContentLoaded', () => {
-    const apiKey = prompt('Please enter your API key:');
+    const apiKey = prompt('gpt-3.5-turbo API key:');
 
     if (!apiKey) {
         alert('API key is required to proceed.');
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'text-davinci-003',
+                    model: 'gpt-3.5-turbo',
                     prompt: query,
                     max_tokens: 100
                 })
