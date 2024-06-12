@@ -31,6 +31,9 @@ var dsk_bytes = new Array();
 var nib_dsk_bytes = new Array();
 var HEX_PCT = Array(101);
 
+var log = new Array();
+var log_d = new Array();
+
 function init_gui(_o)
 { 
   document.getElementById('slider_title').outerHTML = _TITLE();
@@ -183,7 +186,6 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       function split_OddEven(b) { return [0b10101010 | (b >> 1),0b10101010 | b] }    // odd bits to nibble0, even bits to nibble1
       function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
 
-      var log = new Array();
       for (var track = 0; track < 35; track++)
       {
           offs = track * 6656;
@@ -219,23 +221,26 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               if(o.log!=null && track==0) log[log.length] = o.log;
 
               // 2 - Encode 342 nibbilized bytes of data.
-              var prev = 0;
+              
               //var log2 = new Array();
               for (var ni = -86; ni < 256; ni++)
               {
                   var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
                   var b = sixTwo[prev ^ prenib[i]];
 
-                  
+/*
                   if(track==0 && sec==0) 
+                  {
+                    if(prev===undefined) var prev = 0;
                     log[log.length] = (
                         "prenib["+i+"]="+oCOM.getHexByte(prenib[i])
                         +" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
                         +" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
                         +" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
                         )
-                  
-
+                    log_d[ni+86] =  oCOM.getHexByte(b);
+                  }
+*/
                   addBytes([ b ]);
                   prev = prenib[i];
               }
@@ -315,10 +320,11 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
     var states = {}
     var state = 0;
-    var log = new Array();
-    for(var loc=0;loc<232960;loc++)
+    var loc_n = 232960;
+    for(var loc=0;loc<loc_n;loc++)
     {
       var d8 = nibBytes[loc];
+      var d8_ahead = loc<(loc_n-2)?[d8,nibBytes[loc+1],nibBytes[loc+2]]:[null,null,null];
       switch(state)
       {
         case 0:
@@ -330,70 +336,81 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
             ,"AEPI": {"cy":0 ,"d":[0xde,0xaa,0xeb]}
             ,"GAP2":{"cy":0}
             ,"DPRO" :{"cy":0,"d":[0xd5,0xaa,0xad]}
-            ,"DATA":{"cy":-86,"prev":0,"d":[]}
+            ,"DATA":{"cy":-256,"prev":0,"d":[]}
             ,"DEPI":{"cy":0 ,"d":[0xde,0xaa,0xeb]}
             ,"ERROR":{}};
 
+            
             if(d8==0xff)  
             {
               states.GAP1.cy++;
-              log[log.length] = logstate(states,d8,state);
+              //log[log.length] = logstate(states,d8,state);
               break;
             }
             state++;
 
         case 1:
-          if(d8==states.APRO.d[states.APRO.cy]) states.APRO.cy++;
-          if(states.APRO.cy==3) state++;
+        if(d8_ahead[0]==states.APRO.d[0] && d8_ahead[1]==states.APRO.d[1] && d8_ahead[2]==states.APRO.d[2])
+            { states.APRO.cy=3; state++; loc+=2 }
+        else
+            console.error("ERROR MISSED ADDRESS PROLOGUE:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
 
-          log[log.length] = logstate(states,d8,state);
+          //log[log.length] = logstate(states,d8,state);
         break;
         case 2:
           switch(states.ADR.cy)
           {
-            case 0: break;
-            case 1: states.ADR["vol"] = join_OddEven(nibBytes[loc-1],d8); break;
-            case 2: break;
-            case 3: states.ADR["trk"] = join_OddEven(nibBytes[loc-1],d8); 
-                    offs = states.ADR["trk"] * 16 * 256;
-                    break;
-            case 4: break;
-            case 5: states.ADR["sec"] = join_OddEven(nibBytes[loc-1],d8);
-                    offs += states.ADR["sec"] * 256;
-                    break;
-            case 6: break;
-            case 7: states.ADR["chk"] = join_OddEven(nibBytes[loc-1],d8); state++; break;
+            case 0: states.ADR["vol"] = join_OddEven(d8_ahead[0],d8_ahead[1]); break;
+            case 1: break;
+            case 2: states.ADR["trk"] = join_OddEven(d8_ahead[0],d8_ahead[1]); 
+                    offs = states.ADR["trk"] * 16 * 256; break;
+            case 3: break;
+            case 4: states.ADR["sec"] = join_OddEven(d8_ahead[0],d8_ahead[1]);
+                    offs += states.ADR["sec"] * 256; break;
+            case 5: break;
+            case 6: states.ADR["chk"] = join_OddEven(d8_ahead[0],d8_ahead[1]); break;
+            case 7: state++; break;
           }
           states.ADR.cy++;
 
-          log[log.length] = logstate(states,d8,state);
+          //log[log.length] = logstate(states,d8,state);
         break;
         case 3:
-          if(d8==states.AEPI.d[states.AEPI.cy]) states.AEPI.cy++;
-          if(states.AEPI.cy==3) state++;
-          
-          log[log.length] = logstate(states,d8,state);
+          if(d8_ahead[0]==states.AEPI.d[0] && d8_ahead[1]==states.AEPI.d[1] && d8_ahead[2]==states.AEPI.d[2])
+            { states.AEPI.cy=3; state++; loc+=2 }
+          else
+            console.error("ERROR MISSED ADDRESS EPILOGUE:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
+
+          //log[log.length] = logstate(states,d8,state);
         break;
         case 4:
           if(d8==0xff)  
           {
             states.GAP2.cy++;
-            log[log.length] = logstate(states,d8,state);
+            //log[log.length] = logstate(states,d8,state);
             break;
           }
           state++;
         case 5:
-          if(d8==states.DPRO.d[states.DPRO.cy]) states.DPRO.cy++;
-          if(states.DPRO.cy==3) state++;
-
-          log[log.length] = logstate(states,d8,state);
+        if(d8_ahead[0]==states.DPRO.d[0] && d8_ahead[1]==states.DPRO.d[1] && d8_ahead[2]==states.DPRO.d[2])
+            { states.DPRO.cy=3; state++; loc+=2 }
+          else
+            console.error("ERROR MISSED DATA PROLOGUE:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
+          //log[log.length] = logstate(states,d8,state);
         break;
         case 6:
-          if(d8==states.DEPI.d[states.DEPI.cy])
+          if(d8_ahead[0]==states.DEPI.d[0] && d8_ahead[1]==states.DEPI.d[1] && d8_ahead[2]==states.DEPI.d[2])
           {
-            states.DEPI.cy++;
-            if(states.DEPI.cy==3)
-            {
+              states.DPRO.cy=3; loc+=2
 
               var z = 0;
               var doffs = (secSkew_lookup[states.ADR.sec] << 8) + (states.ADR.track << 12);
@@ -405,7 +422,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
               // REVERSE CALCULATE v3
               var prenib = new Array(342)
               var postnib = new Array(256);
-              for(var i=0;i<342;i++) prenib[i] = states.DATA.d[i];
+              for(var i=0;i<342;i++) prenib[i] = states.DATA.d[i];    // TODO: MAKE MORE EFFICIENT
 
               for (var i = 0; i < 342; i++) // write one entire block
               { 
@@ -415,11 +432,11 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
                   // prenib is 342 long
                   var p = prenib[597-i]  // 341->256
 
-                  if((i+172-256)<256)
+                  if((i+172-256)<256)   // mind the tail end!
                   {
-                  postnib[i+172-256]   // 172-257
-                        |=  mb(p,5,0)
-                        |   mb(p,4,1);
+                    postnib[i+172-256]   // 172-257
+                          |=  mb(p,5,0)
+                          |   mb(p,4,1);
                   }
                   postnib[i+86-256]    // 86-171  - 86
                         |=  mb(p,3,0)
@@ -427,17 +444,30 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
                   postnib[i-256]       // 0-85
                       |=  mb(p,1,0)
                       |   mb(p,0,1)    
-                }
+
+/*
+                  if(states.ADR.trk==0 && states.ADR.sec==0) 
+                  {
+                      if(prev===undefined)  var prev = 0;
+                      log[log.length] = 
+                          "prenib["+i+"]="+oCOM.getHexByte(prenib[i])
+                          +" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
+                          +" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
+                          +" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
+                    
+                      prev = prenib[i]
+                  }
+*/
+
               }
-
-              //  >> ADD POSTNIB to .DSK FILE
-              addBytes( postnib );
-
-              state=0;          // BACK TO SQUARE 0
-              delete states["GAP1"];
             }
 
-            log[log.length] = logstate(states,d8,state);
+            //  >> ADD POSTNIB to .DSK FILE
+            addBytes( postnib );
+
+            state=0;          // BACK TO SQUARE 0
+            delete states["GAP1"];
+            //log[log.length] = logstate(states,d8,state);
           }
           else
           {
@@ -448,10 +478,29 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
                 console.error("DATA ERROR:"
                   +" $T"+oCOM.getHexByte(states.ADR.trk)
                   +" $S"+oCOM.getHexByte(states.ADR.sec)
-                  +" record "+states.DATA.cy++);
+                  +" record "+loc);
               }
               else
               {
+
+                if(states.ADR.trk==0 && states.ADR.sec==0) 
+                {
+                    var ni = states.DATA.cy
+                    //var i = ni <0 ? (256+ni): ni+86;
+                    var i = ni + 256;
+
+                    var color = log_d[i] == oCOM.getHexByte(d8) ? "green":"black"
+
+                    /*
+                    log[log.length] = 
+                        "getBytes["+(i)+"]=<b style=color:"+color+">"+oCOM.getHexByte(d8)+"</b>"
+                        //+" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
+                        //+" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
+                        //+" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
+                    */
+                        
+                }
+
                 states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
                 states.DATA.prev = states.DATA.d[states.DATA.d.length-1];
                 states.DATA.cy++;
@@ -461,12 +510,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
       }
       
     }
-    /*
-    document.getElementById("output").innerHTML = 
-        "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"
-        +log.join("<br>");
-        +"</div>"
-    */
+
     return bytes;
   }
 
@@ -613,12 +657,13 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
     if(bDebug)
     {
       // DISPLAY
+      var s = new Array();
       for (var i = 0; i < (256+86+z); i++) // read one entire block
       {
         var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib,"prenib0":prenib0,"postnib":postnib}
         prenib_fml[db.i] = dsp_fml(db);
       }
-      var s = new Array();
+  
       s[s.length] = "<big>TRACK $"+oCOM.getHexByte(track)+" SECTOR $"+oCOM.getHexByte(sec)+"</big><br>";
       for (var i = 0; i < prenib_fml.length; i++)
       {
@@ -949,6 +994,14 @@ function download_nib()
   alert(".NIB LEN:"+nib_bytes.length+" CRC32: "+oCOM.crc32(nib_bytes).toString(16).toUpperCase());
   var dsk_bytes = oEMU.component.IO["AppleDisk"].convertNib2Dsk(nib_bytes);
   alert(".DSK LEN:"+dsk_bytes.length+" CRC32: "+oCOM.crc32(dsk_bytes).toString(16).toUpperCase());
+
+  if(log.length>0)
+  {
+    document.getElementById("output").innerHTML = 
+    "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"
+    +log.join("<br>");
+    +"</div>"
+  }
 
   var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
   oCOM.Download(fileName,nib_bytes);
