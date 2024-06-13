@@ -17,9 +17,8 @@
 </html>
 
 <script>
-
 document.addEventListener('DOMContentLoaded', () => {
-    const apiKey = prompt('gpt-4 API key:');
+    const apiKey = prompt('GPT API key:');
 
     if (!apiKey) {
         alert('API key is required to proceed.');
@@ -34,15 +33,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const query = document.getElementById('query').value;
 
         try {
-            const response = await fetch('https://api.openai.com/v1/completions', {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'gpt-4',
-                    prompt: query,
+                    model: 'gpt-3.5-turbo',
+                    messages: [{ role: 'user', content: query }],
                     max_tokens: 100
                 })
             });
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (response.ok) {
-                responseDiv.textContent = data.choices[0].text.trim();
+                responseDiv.textContent = data.choices[0].message.content.trim();
             } else {
                 responseDiv.textContent = `Error: ${data.error.message}`;
             }
