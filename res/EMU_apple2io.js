@@ -67,8 +67,11 @@ function Apple2IO(vid) {
         DISK_PROM_SIZE = SLT_PROM_SIZE;
  
     // MAP RAMCARD I/O TO SLOT#0 MEMORY
-    var MEM_RAMCARD_IO =  SLOT_IO[0],
-        MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
+    var MEM_RAMCARD_IO =  SLOT_IO[0], MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
+
+    // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
+    var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
+    
 
     var video = vid;
     var key = 0x00;
@@ -105,6 +108,9 @@ function Apple2IO(vid) {
         else if(this.ramcard.active &&
             addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             return this.ramcard.read(addr - ROM_ADDR);
+        else if(this.col80.active &&
+            addr >= COL80_ADDR && addr < MEM_COL80CARD_IO + ROM_SIZE)
+            alert("80_COL $"+oCOM.getHexWord(addr));
         else
             switch(addr)
             {
