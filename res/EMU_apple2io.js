@@ -80,6 +80,7 @@ function Apple2IO(vid) {
     {
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
         this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
+        this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
         this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
     }
 
@@ -108,9 +109,12 @@ function Apple2IO(vid) {
         else if(this.ramcard.active &&
             addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             return this.ramcard.read(addr - ROM_ADDR);
-        else if(this.col80.active &&
-            addr >= COL80_ADDR && addr < MEM_COL80CARD_IO + ROM_SIZE)
-            alert("80_COL $"+oCOM.getHexWord(addr));
+        else if(this.col80card.active &&
+            addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
+            {
+                // TODO: read ROM from 80-column card !!
+                //alert("80_COL $"+oCOM.getHexWord(addr));
+            }
         else
             switch(addr)
             {
