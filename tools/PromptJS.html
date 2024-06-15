@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 */
 
-
+/*
 document.addEventListener('DOMContentLoaded', () => {
     const apiKey = prompt('Please enter your API key:');
 
@@ -113,5 +113,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+*/
+
+
+
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const apiKey = prompt('Please enter your API key:');
+
+    if (!apiKey) {
+        alert('API key is required to proceed.');
+        return;
+    }
+
+    const chatForm = document.getElementById('chatForm');
+    const responseDiv = document.getElementById('response');
+
+    chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const query = document.getElementById('query').value;
+
+        responseDiv.textContent = 'Loading...';
+
+        try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [{ role: 'user', content: query }],
+                    max_tokens: 100,
+                    stream: true
+                })
+            });
+
+            if (response.ok) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                responseDiv.textContent = ''; // Clear the loading message
+
+                let partialMessage = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    partialMessage += chunk;
+
+                    // Process each complete JSON object
+                    const messages = partialMessage.split('\n').filter(Boolean);
+                    partialMessage = messages.pop() || '';
+
+                    messages.forEach(message => {
+                        try {
+                            const json = JSON.parse(message);
+                            if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+                                responseDiv.textContent += json.choices[0].delta.content;
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse JSON:', e);
+                        }
+                    });
+                }
+            } else {
+                const errorData = await response.json();
+                responseDiv.textContent = `Error: ${errorData.error.message}`;
+            }
+        } catch (error) {
+            responseDiv.textContent = `Error: ${error.message}`;
+        }
+    });
+});
+
+
+
 
 </script>
