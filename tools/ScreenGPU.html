@@ -123,6 +123,13 @@ function EMU_init()
       s_versions[s_versions.length] = "</select>"
     }
 
+    cnt++;
+    s_versions[s_versions.length] = "<select name=ss"+(cnt>>1)+" onchange='Versions.submit()'>"
+    s_versions[s_versions.length] = "<option value=40COL>40COL</option>"
+    s_versions[s_versions.length] = "<option value=80COL>80COL</option>"
+    s_versions[s_versions.length] = "</select>"
+    
+
     document.getElementById("topform").innerHTML += s_versions.join("");
 
     //   ___  ____    _          __              _                  _    
