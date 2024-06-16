@@ -127,11 +127,10 @@ function EMU_init()
 
     cnt++;
     s_versions[s_versions.length] = "<select name=ss"+(cnt>>1)+" onchange='Versions.submit()'>"
-    s_versions[s_versions.length] = "<option value=1 "+((gfx_card_mode&1)!=0?"selected":"")+">40COL</option>"
+    s_versions[s_versions.length] = "<option value=0 "+((gfx_card_mode==null || gfx_card_mode==0)!=0?"selected":"")+">40COL</option>"
     s_versions[s_versions.length] = "<option value=2 "+((gfx_card_mode&2)!=0?"selected":"")+">80COL</option>"
     s_versions[s_versions.length] = "</select>"
     
-
     document.getElementById("topform").innerHTML += s_versions.join("");
 
     //   ___  ____    _          __              _                  _    
@@ -159,6 +158,7 @@ function EMU_init()
     video.setMix((softswitch_mode&8)==8);
     video.setPage2((softswitch_mode&32)==32);
     video.setHires((softswitch_mode&128)==128);
+    video.setHires2((gfx_card_mode&2)==2);
 
     // INSTANTIATE CREATE GPU & KERNEL + CONFIGURE DATA SERIALISATION
     video.initGPU(
@@ -167,8 +167,9 @@ function EMU_init()
       ,{"CHROME_MODE":[chrome_mode,"cfg[","]<<2"]
       ,"DIM_H":[vidContext.height>>1]
       ,"GFX_FLG":[softswitch_mode]
-      ,"FLASH":[false]
-      ,"PALETTE":[INTCols]});
+      ,"FLG2":[gfx_card_mode]
+      ,"PALETTE":[INTCols]
+    })
     console.log( video.ser8_map() );
     
     // EXPORT KERNEL TO JSON
@@ -254,6 +255,7 @@ var Apple2Video = function(ctx)
   var hires_mode;
   var chrome_mode;
   var flash_on = false;
+  var col80_on = false;
   var flash_count = 0;
   var frame_count = 0;
   var frame_redraw = true;
@@ -297,11 +299,13 @@ var Apple2Video = function(ctx)
     }
   }
 
-  this.write    = function(addr, d8) { frame_redraw = true }
-  this.setGfx   = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
-  this.setMix   = function(flag) { if (mix_mode != flag)   { mix_mode = flag; frame_redraw = true } }
-  this.setPage2 = function(flag) { if (page2_mode != flag) { page2_mode = flag; frame_redraw = true } }
-  this.setHires = function(flag) { if (hires_mode != flag) { hires_mode = flag; frame_redraw = true } }
+  this.write     = function(addr, d8) { frame_redraw = true }
+  this.setGfx    = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
+  this.setMix    = function(flag) { if (mix_mode != flag)   { mix_mode = flag; frame_redraw = true } }
+  this.setPage2  = function(flag) { if (page2_mode != flag) { page2_mode = flag; frame_redraw = true } }
+  this.setHires  = function(flag) { if (hires_mode != flag) { hires_mode = flag; frame_redraw = true } }
+  this.setHires2 = function(flag) { if (col80_on != flag) { col80_on = flag; frame_redraw = true } }
+
 
   this.setMonitor = function(mode)
   {
@@ -325,6 +329,7 @@ var Apple2Video = function(ctx)
     page2_mode  = false;
     hires_mode  = false;
     flash_on    = true;
+    col80_on    = false;
     flash_count = 0;
     frame_count = 0;
     chrome_mode = 0;
@@ -335,14 +340,22 @@ var Apple2Video = function(ctx)
 
   this.redraw = function()
   {
+    var flg2 = (flash_on ? 1 : 0) | (col80_on ? 2 : 0);
+
     this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
     this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
-    this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
+    this.serial8[ this.idx8("FLG2") ]         = flg2;
+
+    console.log( apple2plus.vidObj().serial8 )
 
     // RUN THE KERNEL !
-
-    window.requestAnimationFrame( function() { apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)} );
-
+    window.requestAnimationFrame( function()
+    { 
+      apple2plus.vidObj().kernel(
+      apple2plus.hwObj().safe_flashdump()
+      ,apple2CharRom
+      ,apple2plus.vidObj().serial8)
+    } );
     frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
   }
 
@@ -369,8 +382,7 @@ var Apple2Video = function(ctx)
   // KERNEL v6
   this.kProcess_v6 =  function(mem,rom,cfg)
   { 
-    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
-
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLG2=cfg[3],PALETTE=4;
     const xp = (this.thread.x>>1);
     const yp = DIM_H-(this.thread.y>>1)-1;
     const x7 = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
@@ -381,10 +393,15 @@ var Apple2Video = function(ctx)
     const MIX   = ((1^(yp+0x60>>8) & (GFX_FLG>>3)) | (GFX_FLG>>2)) & 1
     const HIRES = (GFX_FLG & GFX_FLG>>7 & MIX) & 1;
     const LORES = (GFX_FLG & GFX_FLG>>6 & MIX) & 1;
+    const COL80  = (FLG2>>1) & 1;
 
     var cp = PALETTE + CHROME_MODE;
 
-    if(HIRES==1)
+    if(COL80==1)
+    {
+
+    }
+    else if(HIRES==1)
     {
       const adr  = PAGE + (yp<<10 & 0x1C00 | adr_ofs) + x7                // locate hardware address
       const b171 = (0x7F & mem[adr+1])<<8  | (0x7F & mem[adr])<<1 | (mem[adr-1]>>6 & 1);   // aggregate left - center - right byte
@@ -399,14 +416,14 @@ var Apple2Video = function(ctx)
       const y4 = (yp>>2&1)<<2;                                            // hi/lo nibble filter
       cp += ((d8>>y4&15)<<4);                                             // color pointer
     }   
-    else  // TEXT
+    else
     {
       const adr   = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
       const d8    = mem[adr];                                               // read byte from memory
       const offs  = ((d8 & 0x3F) ^ 0x20) << 3;                              // character offset (not inversed or flashing)
       const cbyte = rom[ offs + (yp&7) ];                                   // read byte from character ROM
       const infl  = d8>>6 & 3;                                              // inv/flash modifier
-      const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);  // color 1 or 0 with FLASH modifier
+      const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLG2);  // flash 1 or 0 with FLG2 modifier
       cp += (rgb<<8) - (rgb<<4);                                            // color pointer
     }
 
