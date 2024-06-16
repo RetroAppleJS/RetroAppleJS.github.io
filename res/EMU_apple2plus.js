@@ -31,7 +31,7 @@ function Apple2Plus(context)
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
         var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{getDataObj:function(){},update:function(){}},"AppleDisk");
 
-                // override keys object
+        // override keys object
         keys.keystroke = function(data)
         {
             console.log(data);
