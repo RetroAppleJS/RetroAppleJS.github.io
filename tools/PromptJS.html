@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    responseDiv.textContent += decoder.decode(value, { stream: true })+"<br>";
+                    responseDiv.textContent += decoder.decode(value, { stream: true })+"\n";
                 }
             } else {
                 const errorData = await response.json();
