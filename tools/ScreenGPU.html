@@ -170,7 +170,6 @@ function EMU_init()
       ,"FLG2":[gfx_card_mode]
       ,"PALETTE":[INTCols]
     })
-    console.log( video.ser8_map() );
     
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
@@ -346,8 +345,6 @@ var Apple2Video = function(ctx)
     this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
     this.serial8[ this.idx8("FLG2") ]         = flg2;
 
-    console.log( apple2plus.vidObj().serial8 )
-
     // RUN THE KERNEL !
     window.requestAnimationFrame( function()
     { 
@@ -399,7 +396,13 @@ var Apple2Video = function(ctx)
 
     if(COL80==1)
     {
-
+      const adr   = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
+      const d8    = mem[adr];                                               // read byte from memory
+      const offs  = ((d8 & 0x3F) ^ 0x20) << 3;                              // character offset (not inversed or flashing)
+      const cbyte = rom[ offs + (yp&7) ];                                   // read byte from character ROM
+      const infl  = d8>>6 & 3;                                              // inv/flash modifier
+      const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLG2);  // flash 1 or 0 with FLG2 modifier
+      cp += (rgb<<8) - (rgb<<4);                                            // color pointer
     }
     else if(HIRES==1)
     {
@@ -416,7 +419,7 @@ var Apple2Video = function(ctx)
       const y4 = (yp>>2&1)<<2;                                            // hi/lo nibble filter
       cp += ((d8>>y4&15)<<4);                                             // color pointer
     }   
-    else
+    else // TEXT
     {
       const adr   = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
       const d8    = mem[adr];                                               // read byte from memory
