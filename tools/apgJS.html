@@ -13833,7 +13833,25 @@ window.apgweb = (function() {
           break;
         }
 
-        api = new api(sabnfGrammar);
+        try
+        {
+          api = new api(sabnfGrammar);
+        }
+        catch(e)
+        {
+          var src = sabnfGrammar;
+
+          if (Buffer.isBuffer(src)) {
+            this.chars = converter.decode("BINARY", src);
+          } else if (Array.isArray(src)) {
+            this.chars = src.slice();
+          } else if (typeof (src) === "string") {
+            this.chars = converter.decode("STRING", src);
+          } else {
+            throw new TypeError(thisFileName + "input source is not a string, byte Buffer or character array");
+          }
+        }
+
         api.scan();
         grammarHtml = api.linesToHtml();
         if(api.errors.length){
