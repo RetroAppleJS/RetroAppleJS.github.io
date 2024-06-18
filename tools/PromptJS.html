@@ -131,7 +131,7 @@ const generate = async () => {
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: promptInput.value }],
-        max_tokens: 100,
+        max_tokens: 1024,
         stream: true, // For streaming responses
       }),
       signal, // Pass the signal to the fetch request
