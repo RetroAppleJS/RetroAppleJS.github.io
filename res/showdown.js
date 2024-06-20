@@ -1022,7 +1022,7 @@ showdown.helper.padEnd = function padEnd (str, targetLength, padString) {
  * @returns {string}
  */
 
-showdown.helper.unescapeHTMLEntities = function (text) 
+showdown.helper.escapeHtml = function (text) 
 {
   const escapeMap = {
     '&': '&amp;',
@@ -5656,7 +5656,7 @@ showdown.subParser('makeMarkdown.txt', function (node) {
 
    // dot, because of ordered lists, only troublesome at the beginning of a line when preceded by an integer
 
-  txt = showdown.helper.unescapeHTMLEntities(txt)        // ", <, > and & should replace escaped html entities
+  txt = showdown.helper.escapeHtml(txt)        // ", <, > and & should replace escaped html entities
         .replace(/([*_~|`])/g, '\\$1')                   // escape markdown magic characters emphasis, strong and strikethrough - can appear everywhere we also escape pipe (|) because of tables and escape ` because of code blocks and spans
         .replace(/^(\s*)>/g, '\\$1>')                    // escape > because of blockquotes
         .replace(/^#/gm, '\\#')                          // hash character, only troublesome at the beginning of a line because of headers
@@ -6127,7 +6127,7 @@ showdown.Converter = function (converterOptions) {
           }
 
           // unescape html entities in content
-          content = showdown.helper.unescapeHTMLEntities(content);
+          content = showdown.helper.escapeHtml(content);
 
           presPH.push(content);
           pres[i].outerHTML = '<precode language="' + language + '" precodenum="' + i.toString() + '"></precode>';
