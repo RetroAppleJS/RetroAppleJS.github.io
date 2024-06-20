@@ -1033,15 +1033,31 @@ showdown.helper.unescapeHTMLEntities = function (txt) {
 };
 */
 
-showdown.helper.unescapeHTMLEntities = function (text) {
+showdown.helper.unescapeHTMLEntities = function (text) 
+{
   const escapeMap = {
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
-    "'": '&apos;'
+    "'": '&apos;',
+    '/': '&#x2F;',  // Forward slash for potential path manipulation
+    '-': '&#x2D;',  // Hyphen for potential comment starting
+    '(': '&#x28;',  // Opening parenthesis for potential XSS
+    ')': '&#x29;',  // Closing parenthesis for potential XSS
+    '#': '&#35;',  // Hash for potential fragment identifier attacks
+    ';': '&#59;',  // Semicolon for potential code injection (less common)
+    '--': '&#x2D;&#x2D;',  // Double hyphen for potential comment starting
   };
-  return text.replace(/[&<>"']/g, (char) => escapeMap[char]);
+
+  return text.replace(/[&<>"'/\-:#;]+/g, (char) => {
+    // Efficiently escape a sequence of characters
+    let escaped = '';
+    for (let i = 0; i < char.length; i++) {
+      escaped += escapeMap[char[i]] || char[i];
+    }
+    return escaped;
+  });
 }
 
 showdown.helper._hashHTMLSpan = function (html, globals) {
