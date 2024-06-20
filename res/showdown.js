@@ -1021,6 +1021,7 @@ showdown.helper.padEnd = function padEnd (str, targetLength, padString) {
  * @param txt
  * @returns {string}
  */
+/*
 showdown.helper.unescapeHTMLEntities = function (txt) {
   'use strict';
 
@@ -1030,6 +1031,18 @@ showdown.helper.unescapeHTMLEntities = function (txt) {
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
 };
+*/
+
+showdown.helper.unescapeHTMLEntities = function (text) {
+  const escapeMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;'
+  };
+  return text.replace(/[&<>"']/g, (char) => escapeMap[char]);
+}
 
 showdown.helper._hashHTMLSpan = function (html, globals) {
   return '¨C' + (globals.gHtmlSpans.push(html) - 1) + 'C';
