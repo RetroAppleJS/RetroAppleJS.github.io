@@ -541,7 +541,9 @@ function load_adr(obj)
 	var u = obj.innerHTML.substring(0,49);
 	var v = obj.innerHTML.substring(49,obj.innerHTML.length);
 	// LOAD OBJECT CODE INTO MEMORY
-	var mem = document.getElementById('debugfield').innerHTML.replace(/<[^>]*>/g,'');
+
+	var mem = DOMPurify.sanitize(document.getElementById('debugfield').innerHTML,{ALLOWED_TAGS: []}); // safely remove all HTML tags
+
 	load_debug_signature(mem);
 	var m = mem.match(/[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][:]/)
 
