@@ -723,7 +723,9 @@ showdown.helper.escapeCharacters = function (text, charsToEscape, afterBackslash
   'use strict';
   // First we have to escape the escape characters so that
   // we can build a character class out of them
-  var regexString = '([' + charsToEscape.replace(/([\[\]\\])/g, '\\$1') + '])';
+  //var regexString = '([' + charsToEscape.replace(/([\[\]\\])/g, '\\$1') + '])';
+
+  var regexString = '([' + charsToEscape.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '])';;
 
   if (afterBackslash) {
     regexString = '\\\\' + regexString;
