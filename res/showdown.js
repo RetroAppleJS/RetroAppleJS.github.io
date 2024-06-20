@@ -5631,14 +5631,12 @@ showdown.subParser('makeMarkdown.txt', function (node) {
   // replace the custom ¨NBSP; with a space
   txt = txt.replace(/¨NBSP;/g, ' ');
 
-  // ", <, > and & should replace escaped html entities
-  txt = showdown.helper.unescapeHTMLEntities(txt);
-
   // escape markdown magic characters
   // emphasis, strong and strikethrough - can appear everywhere
   // we also escape pipe (|) because of tables
   // and escape ` because of code blocks and spans
-  txt = txt.replace(/([*_~|`])/g, '\\$1');
+  // ", <, > and & should replace escaped html entities
+  txt = showdown.helper.unescapeHTMLEntities(txt).replace(/([*_~|`])/g, '\\$1');
 
   // escape > because of blockquotes
   txt = txt.replace(/^(\s*)>/g, '\\$1>');
