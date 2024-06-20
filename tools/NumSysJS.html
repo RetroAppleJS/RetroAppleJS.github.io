@@ -419,7 +419,7 @@ function update_base(element,base_tagname,dest_tagname)
     +searcher
     +"</div></div>"
 
- 		document.getElementById(dest_tagname).innerHTML = html+charBox(oBASE.getsymbols(element.value));
+ 		document.getElementById(dest_tagname).innerHTML = DOMPurify.sanitize( html+charBox(oBASE.getsymbols(element.value)) );
 }
 
 function keypress(src_tag,base_tagname,dest_tagname)
