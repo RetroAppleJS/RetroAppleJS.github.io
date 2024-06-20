@@ -1,0 +1,111 @@
+<head>
+    <title>Simple ABNF Parser</title>
+</head>
+<body>
+
+<script>
+// ABNFRule Object Constructor Function
+function ABNFRule(name, func) {
+  this.name = name;
+  this.parse = func;
+}
+
+// Parser Function (takes grammar string and input string)
+function parseABNF(grammarString, input) {
+  // Helper function to report parsing errors
+  function reportError(msg) {
+    throw new Error(`ABNF Parsing Error: ${msg}`);
+  }
+
+  // Function to parse a single ABNF rule definition
+  function parseRule(definition) {
+    const parts = definition.split(/\s+/); // Split on whitespace
+    const name = parts[0];
+    const content = parts.slice(1);
+
+    // Handle different rule types (alternatives, repetitions, etc.)
+    if (content.includes("|")) {
+      const alternatives = content.split("|").map(alt => parseRule(alt));
+      return new ABNFRule(name, alt => alt(alternatives));
+    } else if (content[0] === "*") {
+      const rule = parseRule(content[1]);
+      return new ABNFRule(name, rep(rule));
+    } else if (content[0] === "?") {
+      const rule = parseRule(content[1]);
+      return new ABNFRule(name, opt(rule));
+    } else {
+      // Terminal rule (assume literals for now)
+      return new ABNFRule(name, () => matchTerminal(content[0]));
+    }
+  }
+
+  // Matching Terminal (uses regular expressions)
+  function matchTerminal(pattern) {
+    const match = input.match(pattern);
+    if (match) {
+      input = input.slice(match[0].length);
+      return match[0];
+    }
+    return null;
+  }
+
+  // Alternative (tries multiple rules)
+  function alt(rules) {
+    for (const rule of rules) {
+      const result = rule.parse(input);
+      if (result) return result;
+    }
+    return reportError(`Failed to match any alternative in rule: ${rules[0].name}`);
+  }
+
+  // Repetition (zero or more occurrences)
+  function rep(rule) {
+    let matches = [];
+    while (true) {
+      const result = rule.parse(input);
+      if (!result) break;
+      matches.push(result);
+      input = input.slice(result.length);
+    }
+    return matches;
+  }
+
+  // Optional (zero or one occurrence)
+  function opt(rule) {
+    const result = rule.parse(input);
+    return result ? result : null;
+  }
+
+  // Parse the grammar string and build the rule objects
+  const rules = grammarString.split(/\r?\n/). // Split on newlines
+                 map(line => line.trim()).  // Remove leading/trailing whitespace
+                 filter(line => line.length > 0). // Remove empty lines
+                 map(parseRule);
+  const grammar = { start: rules.find(rule => rule.name === "start") };
+
+  // Check if a start rule is defined
+  if (!grammar.start) {
+    reportError("Missing 'start' rule in the grammar");
+  }
+
+  // Call the start rule and check for remaining input
+  const result = grammar.start.parse(input);
+  if (result && input.length === 0) {
+    return result;
+  }
+  return reportError("Unexpected characters remaining in input");
+}
+
+// Example Usage (provide grammar string as input)
+const grammarString = 
+ ' start = rule1 | rule2\n'
++' rule1 = "abc"\n'
++'rule2 = "def" *digit\n'
++'digit = /\d/"\n'
+
+const inputString = "abcdef123";
+const parsedData = parseABNF(grammarString, inputString);
+console.log(parsedData); // { part1: "def", part2: ["1", "2", "3"] }
+
+
+</script>
