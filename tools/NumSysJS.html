@@ -200,6 +200,7 @@ table.html_edit_table td:nth-child(2) {
 --> 
 
 <script type="text/javascript" src="../res/COM_base_converter.js"></script>
+<script type="text/javascript" src="../res/purify.min.js"></script>
 
 <body style="background-color:#808080;height:100%;margin:0px;padding:0px" class="slider_main">
 
@@ -397,9 +398,9 @@ function charBox(str,symbols)
   return html;
 }
 
-function update_base(element,base_tagname,dest_tagname) {
-
-    document.getElementById(base_tagname).innerHTML =  element.value;
+function update_base(element,base_tagname,dest_tagname)
+{
+    document.getElementById(base_tagname).innerHTML =  DOMPurify.sanitize(element.value);
     var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' "
     function getbase(value) { return "<sup>"+(isNaN(value)?oBASE.getsymbols(value).length:"")+"</sup>" }
 
