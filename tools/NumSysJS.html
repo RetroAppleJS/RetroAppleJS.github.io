@@ -489,8 +489,7 @@ function convert(src_tag,frombase_tag,tobase_tag,dest_tag,out_tag)
 
 // quick test, convert from base45 to base32, using custom symbols for base85 and back to base45
 var c = function(){
-this.log = function(str){ document.getElementById("console").innerHTML += "<small>"+str+"</small><br>" }
-this.info = function(str){ document.getElementById("console").innerHTML += "<small>"+str+"</small>" }
+//this.log = function(str){ document.getElementById("console").innerHTML += "<small>"+str+"</small><br>" }
 this.clear = function(){ document.getElementById("console").innerHTML = "" }
 }
 var console = new c();
