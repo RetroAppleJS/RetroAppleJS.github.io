@@ -323,7 +323,7 @@ function ASM()
 				r =  {"val":v,"fmt":"ASC","bytes":s.length};
 				break;
 			default:
-				if(this.validate(str,"[A-Za-z0-9_.\-]+")) // IDENTIFIER
+				if(this.validate(str,"[A-Za-z0-9_.-]+")) // IDENTIFIER
 				{
 					r = this.getIdentifier(str);
 					err = r.err;
