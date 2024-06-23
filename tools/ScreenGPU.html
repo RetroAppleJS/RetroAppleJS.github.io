@@ -151,14 +151,14 @@ function EMU_init()
     fill_ram(lores_stream,apple2plus);
     fill_ram(lores_stream2,apple2plus,0x400);
 
-    //GFX_HIRES/LORES GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
+    //GFX_HIRES/LORES << GFX_PAGE1/2  << GFX_PAGE1/2 << GFX_MIX_ON/OFF << GFX_ON/OFF  (1/0)
     const video = apple2plus.vidObj();
     video.setMonitor(chrome_mode);
     video.setGfx((softswitch_mode&1)==1);
     video.setMix((softswitch_mode&8)==8);
     video.setPage2((softswitch_mode&32)==32);
     video.setHires((softswitch_mode&128)==128);
-    video.setHires2((gfx_card_mode&2)==2);
+    video.setDouble((gfx_card_mode&2)==2);
 
     // INSTANTIATE CREATE GPU & KERNEL + CONFIGURE DATA SERIALISATION
     video.initGPU(
@@ -173,6 +173,7 @@ function EMU_init()
     
     // EXPORT KERNEL TO JSON
     // https://github.com/gpujs/gpu.js/?tab=readme-ov-file#using-json
+    
     //video.kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,video.serial8);
     //var json = video.kernel.toJSON();
     //console.log(json);
@@ -254,7 +255,7 @@ var Apple2Video = function(ctx)
   var hires_mode;
   var chrome_mode;
   var flash_on = false;
-  var col80_on = false;
+  var double_mode = false;
   var flash_count = 0;
   var frame_count = 0;
   var frame_redraw = true;
@@ -299,12 +300,11 @@ var Apple2Video = function(ctx)
   }
 
   this.write     = function(addr, d8) { frame_redraw = true }
-  this.setGfx    = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
-  this.setMix    = function(flag) { if (mix_mode != flag)   { mix_mode = flag; frame_redraw = true } }
-  this.setPage2  = function(flag) { if (page2_mode != flag) { page2_mode = flag; frame_redraw = true } }
-  this.setHires  = function(flag) { if (hires_mode != flag) { hires_mode = flag; frame_redraw = true } }
-  this.setHires2 = function(flag) { if (col80_on != flag) { col80_on = flag; frame_redraw = true } }
-
+  this.setGfx    = function(flag) { if (gfx_mode != flag)    { gfx_mode = flag; frame_redraw = true } }
+  this.setMix    = function(flag) { if (mix_mode != flag)    { mix_mode = flag; frame_redraw = true } }
+  this.setPage2  = function(flag) { if (page2_mode != flag)  { page2_mode = flag; frame_redraw = true } }
+  this.setHires  = function(flag) { if (hires_mode != flag)  { hires_mode = flag; frame_redraw = true } }
+  this.setDouble = function(flag) { if (double_mode != flag) { double_mode = flag; frame_redraw = true } }
 
   this.setMonitor = function(mode)
   {
@@ -328,7 +328,7 @@ var Apple2Video = function(ctx)
     page2_mode  = false;
     hires_mode  = false;
     flash_on    = true;
-    col80_on    = false;
+    double_mode    = false;
     flash_count = 0;
     frame_count = 0;
     chrome_mode = 0;
@@ -336,22 +336,19 @@ var Apple2Video = function(ctx)
   }
 
   // CUSTOM ADAPTATIONS FOR GPU.JS
-
   this.redraw = function()
   {
-    var flg2 = (flash_on ? 1 : 0) | (col80_on ? 2 : 0);
-
     this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
     this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
-    this.serial8[ this.idx8("FLG2") ]         = flg2;
+    this.serial8[ this.idx8("FLG2") ]         = (flash_on?1:0) | (double_mode?2:0);
 
     // RUN THE KERNEL !
     window.requestAnimationFrame( function()
     { 
       apple2plus.vidObj().kernel(
-      apple2plus.hwObj().safe_flashdump()
-      ,apple2CharRom
-      ,apple2plus.vidObj().serial8)
+      apple2plus.hwObj().safe_flashdump()     // MEMORY DATA
+      ,apple2CharRom                          // CHARACTER ROM DATA
+      ,apple2plus.vidObj().serial8)           // CONFIG DATA
     } );
     frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
   }
@@ -394,18 +391,16 @@ var Apple2Video = function(ctx)
 
     if(DOUBL==1)
     {
-      const x7  = this.thread.x+1+(this.thread.x+1+(this.thread.x+1>>3)>>3)>>3;
-      const m7 = this.thread.x-(x7<<3)+x7;
-
-      //var x7 = Math.floor(this.thread.x/7);
-      //var m7 = this.thread.x%7;
-
-      const adr   = 0x400 + adr_ofs + x7;                                   // locate hardware address
+      const x7    = this.thread.x+1+(this.thread.x+1+(this.thread.x+1>>3)>>3)>>3;
+      const m7    = this.thread.x-(x7<<3)+x7;
+      //const PG = x7<40 ? 0x2000 : (0x4000 - 0x140); // 3FD8
+      const PG    =  (0x4000-(0x3E0>>(x7>>3)&1)|0x2000)&0x3EC0;
+      const adr   = (PG>>3) + adr_ofs + x7;                                 // locate hardware address
       const d8    = mem[adr];                                               // read byte from memory
       const offs  = ((d8 & 0x3F) ^ 0x20) << 3;                              // character offset (not inversed or flashing)
       const cbyte = rom[ offs + (yp&7) ];                                   // read byte from character ROM
       const infl  = d8>>6 & 3;                                              // inv/flash modifier
-      const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLG2);   // flash 1 or 0 with FLG2 modifier
+      const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLG2&1); // flash 1 or 0 with FLG2 modifier
       cp += (rgb<<8) - (rgb<<4);                                            // color pointer
     }
     else if(HIRES==1)
@@ -420,7 +415,7 @@ var Apple2Video = function(ctx)
     }
     else if(LORES==1)
     {
-      const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;    // equivalent to Math.floor(x/7)
+      const x7  = xp+1+(xp+1+(xp+1>>3)>>3)>>3;                              // equivalent to Math.floor(x/7)
       const adr = (PAGE>>3) + adr_ofs + x7;                                 // locate hardware address
       const d8  = mem[adr];                                                 // read byte from memory
       const y4  = (yp>>2&1)<<2;                                             // hi/lo nibble filter
