@@ -84,6 +84,7 @@ function Apple2Video(ctx)
         flash_count = 0;
         this.reflash();
       }
+      //if (++frame_count > 20000)  // 50 fps
       //if (++frame_count > 40000)  // 25 fps
       if (++frame_count > 80000)  // 12.5 fps
       {
