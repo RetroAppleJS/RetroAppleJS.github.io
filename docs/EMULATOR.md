@@ -25,7 +25,7 @@ __Screen settings__
 <br><br>
 
 __Screen features__
-<img src="../res/appleII_title.png?raw=true" width=40% align="left"/>  Steve Wozniak's chip saving design requires quite some knowledge to produce accurate video emulation.  Going from mapping memory locations to physical coordinates on the screen, reading fonts from character ROM in text mode, LORES, HIRES and mixed modes, artifact color conventions, to the inner working of the video scanner, which is a DMA device which through an elaborate timing drives video data out of RAM and sends them to the video generator.
+<img src="../res/appleII_title.png?raw=true" width=40% align="left"/> Steve Wozniak's chip-saving design requires quite some technical knowledge to accurately produce video emulation. This involves mapping memory locations to physical coordinates on the screen, reading fonts from character ROM in text mode, working with LORES, HIRES, and mixed modes.  You need to understand artifact color conventions, and the inner workings of the video scanner, which is a DMA device that uses timing to drive video data out of RAM and sends them to the video generator. In screen emulation technology, there are two major solution options: one based on the CPU of the host and another based on GPU.
 
 __Keyboard features__
 
