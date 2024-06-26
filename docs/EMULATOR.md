@@ -30,6 +30,28 @@ __Screen features__
 
 Steve Wozniak's chip-saving design requires quite some technical knowledge to accurately produce video emulation. This involves mapping memory locations to physical coordinates on the screen, reading fonts from character ROM in text mode, working with LORES, HIRES, and mixed modes.  You need to understand artifact color conventions, and the inner workings of the video scanner, which is a DMA device that uses timing to drive video data out of RAM and sends them to the video generator. In screen emulation technology, there are two major solution options: one based on the CPU of the host and another based on GPU.
 
+The video scanner operates similarly to a television scan. Due to different TV standards between Europe and America, NTSC models had a master clock tuned at 14.31818Mhz and PAL around 14.238Mhz, which was then exposed to the CPU after division by a factor of 14, resulting in approximately 1MHz. The horizontal scanning counter consists of 65 states, with 40 states allocated for display and 25 states for other actions. So far accurately documented, we can estimate that the beam journey travels across the left border traversing 5 states, then utilizing 40 states (or columns) for reading video memory and display at a rate of one CPU cycle per TEXT/LORES column or 7 HIRES pixels. The display area is followed by another 5 states across the right border to reach the right end, after which the remaining 15 states are left to retrace or clear the beam to the left end, where the next line starts.
+
+
+      <div style=width:800px>
+
+                                                               65µs = 1 horizonal line cycle
+                                   │◄───────────────────────────────────────────────────────────►│  
+                                   │ 5µs :             40µs               : 5µs :      15µs      │ 
+                                   │◄───►:◄──────────────────────────────►:◄───►:◄──────────────►│
+                                   │     ┌────────────────────────────────┐     :                │
+  One (PAL) display                │left │           display              │right:    retrace     │
+  scan line                       ───────┘            area                └───────────────────────
+                                   margin:                                :margin
+                                         ┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┐
+                                         ││││││││││││││││││││││││││││││││││  
+  Direct Memory Access to RAM     ───────┘      latch-in display data     └─────────────────────────
+                                           (40 bytes = TEXT/LORES columns)
+                                    ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐       ┐
+  Apple II bus at 1MHz            ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...    ├>  SYSTEM
+                                                                                                 ┘   CLOCK
+      </div>
+
 __Keyboard features__
 
 <img src="../res/appleIIplus_kbd_650.png?raw=true" width=40% align="left"/>  
