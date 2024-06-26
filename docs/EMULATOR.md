@@ -35,21 +35,21 @@ The video scanner operates similarly to a television scan. Due to different TV s
 
       <div style=width:800px>
 
-                                                               65µs = 1 horizonal line cycle
-                                   │◄───────────────────────────────────────────────────────────►│  
-                                   │ 5µs :             40µs               : 5µs :      15µs      │ 
-                                   │◄───►:◄──────────────────────────────►:◄───►:◄──────────────►│
-                                   │     ┌────────────────────────────────┐     :                │
-  One (PAL) display                │left │           display              │right:    retrace     │
-  scan line                       ───────┘            area                └───────────────────────
-                                   margin:                                :margin
-                                         ┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┐
-                                         ││││││││││││││││││││││││││││││││││  
-  Direct Memory Access to RAM     ───────┘      latch-in display data     └─────────────────────────
-                                           (40 bytes = TEXT/LORES columns)
-                                    ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐       ┐
-  Apple II bus at 1MHz            ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...    ├>  SYSTEM
-                                                                                                 ┘   CLOCK
+                                                     65µs = 1 horizonal line cycle
+                                     │◄───────────────────────────────────────────────────────────►│  
+                                     │ 5µs :             40µs               : 5µs :      15µs      │ 
+                                     │◄───►:◄──────────────────────────────►:◄───►:◄──────────────►│
+                                     │     ┌────────────────────────────────┐     :                │
+    One (PAL) display                │left │           display              │right:    retrace     │
+    scan line                       ───────┘            area                └───────────────────────
+                                     margin:                                :margin
+                                           ┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┐
+                                           ││││││││││││││││││││││││││││││││││  
+    Direct Memory Access to RAM     ───────┘      latch-in display data     └─────────────────────────
+                                             (40 bytes = TEXT/LORES columns)
+                                      ┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐       ┐
+    Apple II bus at 1MHz            ──┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└...    ├>  SYSTEM
+                                                                                                   ┘   CLOCK
       </div>
 
 __Keyboard features__
