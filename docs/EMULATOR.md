@@ -71,7 +71,7 @@ The *vertical scanning* counter in NTSC/PAL configuration consist respectively o
 Conclusion: Tweaking an emulator to provoke 'floating bus' collisions requires to 
 1) Loop count 17030 bus cycles for a precise timing of the vertical scans.
 2) Within the vertical loop, loop count 65 bus cycles to locate the horizontal beam.
-3) From cycle 5 (start counting from 0) until cycle 44 included: provoke a write delay of 5 cycles.
+3) From cycle 5 (start counting from 0) until cycle 44 included: provoke a write delay of 5 cycles. (5-byte FIFO buffer)
 4) One last recommendation: don't use timeer-based intervals to update the screen, but bus-cycle based on exact multiples of 17030. 
 
 
