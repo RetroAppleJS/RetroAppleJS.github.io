@@ -30,20 +30,24 @@ __Screen features__
 
 Steve Wozniak's chip-saving design requires quite some technical knowledge to accurately produce video emulation. This involves mapping memory locations to physical coordinates on the screen, reading fonts from character ROM in text mode, working with LORES, HIRES, and mixed modes.  You need to understand artifact color conventions, and the inner workings of the video scanner, which is a DMA device that uses timing to drive video data out of RAM and sends them to the video generator. In screen emulation technology, there are two major solution options: one based on the CPU of the host and another based on GPU.
 
-The video scanner operates similarly to a television scan. Due to different TV standards between Europe and America, NTSC models had a master clock tuned at 14.31818Mhz and PAL around 14.238Mhz, which was then exposed to the CPU after division by a factor of 14, resulting in approximately 1MHz. The horizontal scanning counter consists of 65 states, 1 state lasting approximately 1µs, with 40 states allocated for display and 25 states for other actions. 
+The video scanner operates similarly to a television scan. Due to different TV standards between Europe and America, NTSC models had a master clock tuned at 14.31818Mhz and PAL around 14.238Mhz, which was then exposed to the CPU after division by a factor of 14, resulting in approximately 1MHz. 
 
-So far accurately documented, we can still estimate that the beam journey travels across the left border traversing 5 states, then utilizing 40 states (or columns) for reading video memory and display at a rate of one CPU cycle per TEXT/LORES column or 7 HIRES pixels. The display area is followed by another 5 states across the right border to reach the right end, after which the remaining 15 states are left to retrace or clear the beam to the left end, where the following line starts. So, why do we need to know this to build an emulator? Read operations performed by the video scanner keep the bus floating during a few clock cycles. In case the CPU accidently needs to write a byte to same RAM location where 1/2 cycle later the video scanner needs to latch-in video data (call it a collision), that write operation is delayed for at least 4 cycles. It's a rare phenomenon but surprisingly well-documented by hackers who found a method to estimate when a vertical blank is about to occur. A few rare demos actively pursue this odd but interesting behaviour, which can be emulated by means of small but well-calculated adaptation. 
+The *horizontal scanning* counter consists of 65 states, 1 state lasting approximately 1µs, with 40 states allocated for display and 25 states called 'horizontal blank'. So far accurately documented, we can still estimate that the beam journey travels across the left (blank) border traversing 5 states, then utilizing 40 states (or columns) for reading video memory and display at a rate of one CPU cycle per TEXT/LORES column or 7 HIRES pixels. The display area is followed by another 5 blank states across the right border to reach the right end, after which the remaining 15 blank states are left to retrace or clear the beam to the left end, where the following line starts. 
+
+The *vertical scanning* counter in NTSC/PAL configuration consist respectively of 262/312 states.  Only 192 states are allocated for display, while again respectively in NTSC/PAL configuration the remaining 70/120 states are reserved for vertical blanking including the top margin, bottom margin and retrace back to the top of the screen.  Again so far accurately documented, we can only roughly estimate that the beam takes 24/ states to travel across the top (blank) margin, then utilizing 192 states displaying stuff, reaching to the bottom margin taking another 24 states, and when finally engaging the beam into the retrace maneuver to the top, taking the remaining 22 states. 
+
+*So, why do we need to know this to build an emulator?* Read operations performed by the video scanner keep the bus floating during a few clock cycles. In case the CPU accidently needs to write a byte to same RAM location where 1/2 cycle later the video scanner needs to latch-in video data (call it a collision), that write operation is delayed for at least 4 bus cycles. It's a rare phenomenon but well-documented by hackers who found a method to estimate when a vertical blank is about to occur. A few rare demos actively pursue this odd but interesting behaviour, which can be emulated by means of small but a well-calculated adaptation. 
 
       <div style=width:800px>
 
-                                                     65µs = traversing 1 horizonal line
+    HORIZONTAL SCANNING                            65µs = traversing 1 horizonal line
                                      │◄───────────────────────────────────────────────────────────►│  
                                      │ 5µs :             40µs               : 5µs :      15µs      │ 
                                      │◄───►:◄──────────────────────────────►:◄───►:◄──────────────►│
                                      │     ┌────────────────────────────────┐     :                │
-    One (PAL) display                │left │           display              │right:    retrace     │
+    One (PAL) display                │left │           display              │right:     beam       │
     scan line                       ───────┘            area                └───────────────────────
-                                     margin:                                :margin
+                                     margin:                                :margin    retrace
                                            ┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┐
                                            ││││││││││││││││││││││││││││││││││  
     Direct Memory Access to RAM     ───────┘      latch-in display data     └─────────────────────────
