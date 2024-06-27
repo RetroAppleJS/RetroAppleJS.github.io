@@ -72,7 +72,7 @@ Conclusion: Tweaking an emulator to provoke 'floating bus' collisions requires t
 1) Loop count 17030 bus cycles for a precise timing of the vertical scans.
 2) Within the vertical loop, loop count 65 bus cycles to locate the horizontal beam.
 3) From cycle 5 (start counting from 0) until cycle 44 included: provoke a write delay of 5 cycles. (5-byte FIFO buffer)
-4) One last recommendation: refrain from timeer-based intervals to call a full screen refresh. Instead call a refresh based on exact multiples of 17030 bus cycles. 
+4) One last recommendation: refrain from timer-based intervals to call a full screen refresh. Instead call a refresh based on exact multiples of 17030 bus cycles.  Also make sure your emulation interval, also called 'frame' is based on a multiple of 17030 cycles, to avoid phase glitches between each frame as our scanning state counters most appropriately refer to the beginning of each frame.
 
 
 __Keyboard features__
