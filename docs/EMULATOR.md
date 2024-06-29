@@ -36,7 +36,10 @@ The *horizontal scanning* counter consists of 65 states, 1 state lasting approxi
 
 The *vertical scanning* counter in NTSC/PAL configuration consist respectively of 262/312 states.  Only 192 states are allocated for display, while again respectively in NTSC/PAL configuration the remaining 70/120 states are reserved for vertical blanking including the top margin, bottom margin and retrace back to the top of the screen.  Again so far accurately documented, we can only roughly estimate that the beam takes 24/49 states to travel across the top (blank) margin, then utilizing 192 states displaying stuff, reaching to the bottom margin taking another 24/49 states, and when finally engaging the beam into the retrace maneuver to the top, taking the remaining 22 states. 
 
-*So, why do we need to know this to build an emulator?* Read operations performed by the video scanner keep the bus floating during a few clock cycles. In case the CPU accidently needs to write a byte to same RAM location where 1/2 cycle later the video scanner needs to latch-in video data (call it a collision), that write operation is delayed for at least 4 bus cycles. It's a rare phenomenon but well-documented by hackers who found a method to estimate when a vertical blank is about to occur. A few rare demos actively pursue this odd but interesting behaviour, which can be emulated by means of small but a well-calculated adaptation. 
+*So, why do we need to know this to build an emulator?
+
+All Apple II's were designed with a data bus driver alterenating CPU and VIDEO to access main memory.  These bus drivers came with adapted transistor circuitry to cope with electric field effects typically found on larger motherboards.  These effects, however unsupported by Apple, features interesting exploits that not many emulators support. 
+
 
     <div style=width:800px>
 
@@ -68,11 +71,6 @@ The *vertical scanning* counter in NTSC/PAL configuration consist respectively o
 
     </div>
 
-Conclusion: Tweaking an emulator to provoke 'floating bus' collisions requires to 
-1) Loop count 17030 bus cycles for a precise timing of the vertical scans.
-2) Within the vertical loop, loop count 65 bus cycles to locate the horizontal beam.
-3) From cycle 5 (start counting from 0) until cycle 44 included: provoke a write delay of 5 cycles. (FIFO buffer)
-4) One last recommendation: refrain from timer-based intervals to call a full screen refresh. Instead call a refresh based on exact multiples of 17030 bus cycles.  Also make sure your emulation interval, also called 'frame' is based on a multiple of 17030 cycles, to avoid phase glitches between each frame as our scanning state counters most appropriately refer to the beginning of each frame.
 
 
 __Keyboard features__
