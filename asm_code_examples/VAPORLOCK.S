@@ -120,21 +120,20 @@ ID5.2   EQU	$79 ; ID5 / 2
 ;   differences between the Ile and II+.
 ;   For II+ exotic (non-screen) field switching, you might want to defeat this adjustment.
 ;
-;
 ;       **   SETUP	**
 ;
         NOP		    ;   EQUALIZE  TO   PAGE   BOUNDARY
 VAPORLK	PHP		    ;   SAVE  FLAGS
         PHA		    ;   SAVE  ACCUMULATOR
-        LDA	#ID0	;   WRITE   ID  PATCH
-        STA	$3FF8	;      TO  LINE   #255
+        LDA	#ID0    ;   WRITE   ID  PATCH
+        STA	$3FF8   ;   TO  LINE   #255
         STA	$3FF9
         STA	$3FFA
         STA	$3FFB
         STA	$3FFC
         STA	$3FFD
         STA	$3FFE
-        LDA	#ID1	; TO  LINE   #256
+        LDA	#ID1    ;   TO  LINE   #256
         STA	$2BF8
         STA	$2BF9
         STA	$2BFA
@@ -143,80 +142,80 @@ VAPORLK	PHP		    ;   SAVE  FLAGS
         STA	$2BFC
         STA	$2BFD
         STA	$2BFE
-        LDA	#ID3	; TO  LINE   257
+        LDA	#ID3	; TO LINE   257
         STA	$2FF8
         STA	$2FF9
         LDA	#ID4
         STA	$2FFA
         STA	$2FFB
-        LDA	#ID5	;   AND   FINALLY   TO   LINE   258
+        LDA	#ID5	;   AND FINALLY TO LINE 258
         STA	$33F8
         LDA	#ID5-1
         STA	$33F9
-        LDA	#IDBYTE	;   CHECK   FOR  A   He
+        LDA	#IDBYTE	;   CHECK FOR A IIe
         CMP	VERSION
         BNE	MORE0
-VBFIND	BIT	VBLANK	;   WAIT  TILL   He   BLANKING   START
+VBFIND	BIT	VBLANK	;   WAIT TILL IIe BLANKING START
         BMI	VBFIND
-MORE0	BIT	GR	    ;   FORCE   FULL   HIRES   PAGE  ONE
+MORE0	BIT	GR	    ;   FORCE FULL HIRES PAGE ONE
         BIT	HIRES
         BIT	FULL
-        BIT	PAGE1	;   THEN   FALL  THROUGH  TO  LOCK
+        BIT	PAGE1	;   THEN FALL THROUGH TO LOCK
 ;
 ;		**   LOCK   **
 ;
-LOCK	LDA	#ID0    ;	LOOK   FOR  FIRST   PATCH   ID  VALUE
-RETRY1	CMP	SNIFF   ;
-        BNE	RETRY1  ;
-        LDA	#02     ;	DELAY   FOR  EXACTLY   57   CYCLES
-        JSR	WAIT    ;	(HLINE-BNE-LDA#-LDA)
+LOCK	LDA	#ID0    ;   LOOK FOR FIRST PATCH ID VALUE
+RETRY1	CMP	SNIFF
+        BNE	RETRY1
+        LDA	#02     ;   DELAY FOR EXACTLY 57 CYCLES
+        JSR	WAIT    ;    (HLINE-BNE-LDA#-LDA)
         PHA
         PLA	
-        LDA	SNIFF	;   GET   SECOND   PATCH   ID  VALUE
-        CMP	#ID2	;   JITTER  4,5,OR  6?
+        LDA	SNIFF	;   GET SECOND PATCH ID VALUE
+        CMP	#ID2	;   JITTER 4,5 OR 6?
         BEQ	MORE1
-        CMP	#ID1	;   JITTER  0,1,2,   OR  3?
-        BEQ	MORE1	;   OK   TO  CONTINUE
-        BNE	LOCK	;   MISSED,   TRY   AGAIN
-MORE1	LDA	#02	    ;   DELAY   FOR  EXACTLY   50   CYCLES
-        JSR	WAIT	;       (HLINE-4-CMP#-BEQ-LDA#-LDA)
-        LDA	SNIFF	;   GET  THIRD   PATCH   ID  VALUE
-        CMP	#ID4	;   JITTER  2  OR  3?
+        CMP	#ID1	;   JITTER 0,1,2 OR  3?
+        BEQ	MORE1	;   OK TO CONTINUE
+        BNE	LOCK	;   MISSED, TRY AGAIN
+MORE1	LDA	#02	    ;   DELAY FOR EXACTLY 50 CYCLES
+        JSR	WAIT	;    (HLINE-4-CMP#-BEQ-LDA#-LDA)
+        LDA	SNIFF	;   GET THIRD PATCH ID VALUE
+        CMP	#ID4	;   JITTER 2 OR 3?
         BEQ	MORE2	;   YES
-        CMP	#ID3	;   JITTER  0   OR   1
-        BEQ	MORE3	;   ONLY   WANT   2  CLOCK  CORRECTION
-MORE2	BNE	LOCK	;   CURSES!   FOILED  AGAIN!
-MORE3	LDA	#$02	;   DELAY   FOR  EXACTLY   50   CYCLES
-        JSR	WAIT	;       (HLINE-2-CMP#-BEQ-BNE-LDA#-LDA)
-        LDA	SNIFF	;   GET   FOURTH   PATCH   ID  VALUE
-        LSR	A	    ;   SHIFT   INTO  CARRY
-        BCS	MORE4	;   TO   EQUALIZE  ONE  COUNT
-MORE4	CMP	#ID5.2	;   FINAL  VALIDITY   CHECK
-        BNE	LOCK	;   BACK   TO   SQUARE  ONE
-        NOP		    ;   HAVE   LOCK   AT  THIS   POINT
+        CMP	#ID3	;   JITTER 0 OR 1
+        BEQ	MORE3	;   ONLY WANT 2 CLOCK CORRECTION
+MORE2	BNE	LOCK	;   CURSES! FOILED AGAIN!
+MORE3	LDA	#$02	;   DELAY FOR EXACTLY 50 CYCLES
+        JSR	WAIT	;    (HLINE-2-CMP#-BEQ-BNE-LDA#-LDA)
+        LDA	SNIFF	;   GET FOURTH PATCH ID VALUE
+        LSR	A	    ;   SHIFT INTO CARRY
+        BCS	MORE4	;   TO EQUALIZE ONE COUNT
+MORE4	CMP	#ID5.2	;   FINAL VALIDITY CHECK
+        BNE	LOCK	;   BACK TO SQUARE ONE
+        NOP		    ;   HAVE LOCK AT THIS POINT
 ;
 ;		**   STALL   **
 ;
-STALL	LDA	#05	    ;   DELAY   FOR  EXACTLY   193   CYCLES
+STALL	LDA	#05	    ;   DELAY FOR EXACTLY 193 CYCLES
         JSR	WAIT
         LDA	#02
         JSR	WAIT
-FIX2	LDA	#IDBYTE	;   ADD  ONE  EXTRA  CYCLE  ONLY   ON
-        CMP	VERSION	;      THE   11+  TO   EQUALIZE  ON-SCREEN
-        BNE	SHOW	;      DISPLAY  MODE   SWITCHING
-SHOW	BIT	SNIFF	;   OPTIONAL  MODE  CHANGES   GO   HERE
+FIX2	LDA	#IDBYTE	;   ADD ONE EXTRA CYCLE ONLY ON
+        CMP	VERSION	;      THE 11+ TO EQUALIZE ON-SCREEN
+        BNE	SHOW	;      DISPLAY MODE SWITCHING
+SHOW	BIT	SNIFF	;   OPTIONAL MODE CHANGES GO HERE
         BIT	SNIFF
         BIT	SNIFF
         BIT	SNIFF
-PHASE	CLC		    ;   PHASING  CHANGES   GO   HERE
+PHASE	CLC		    ;   PHASING CHANGES GO HERE
         BCS	MORE5
-MORE5	NOP		    ;   EACH  BRANCH  TAKEN  =   3
-        NOP		    ;   EACH  BRANCH  NOT   TAKEN   =   2
-        NOP		    ;   EACH  NOP  =   2  CHARACTERS
+MORE5	NOP		    ;   EACH BRANCH TAKEN = 3
+        NOP		    ;   EACH BRANCH NOT TAKEN = 2
+        NOP		    ;   EACH NOP = 2 CHARACTERS
         NOP
-        PLA		    ;   RESTORE   ACCUMULATOR  AND   FLAGS
+        PLA		    ;   RESTORE ACCUMULATOR AND FLAGS
         PLP
-        RTS		    ;   AND   EXIT
+        RTS		    ;   AND EXIT
 ;
 ORG $2000
         HEX FFFFFFFFFFFFFFFF
