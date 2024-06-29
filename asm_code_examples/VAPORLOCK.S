@@ -215,3 +215,16 @@ MORE5	NOP		    ;   EACH  BRANCH  TAKEN  =   3
         PLA		    ;   RESTORE   ACCUMULATOR  AND   FLAGS
         PLP
         RTS		    ;   AND   EXIT
+
+ORG $2000
+        HEX  FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+ORG $300
+
+        JSR VAPORLK
+        BIT $C051
+        LDA #$2D
+        JSR WAIT
+        BIT $C050
+        JMP $0300
+
