@@ -38,7 +38,7 @@ The *vertical scanning* counter in NTSC/PAL configuration consist respectively o
 
 *So, why do we need to know this to build an emulator?
 
-All Apple II's were designed with a data bus driver alterenating CPU and VIDEO to access main memory.  These bus drivers came with adapted transistor circuitry to cope with electric field effects typically found on larger motherboards.  These effects, however unsupported by Apple, features interesting exploits that not many emulators support. 
+All Apple II's were designed with a data bus driver alterenating CPU and VIDEO to access main memory.  These bus drivers came with adapted transistor circuitry to cope with electric field effects typically found on larger motherboards.  These effects, however unsupported by Apple, feature useful hacks that may be handy to emulate. 
 
 
     <div style=width:800px>
