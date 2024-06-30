@@ -52,6 +52,7 @@ function Apple2Video(ctx)
     if(ctx) this.ctx = ctx;
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
+    this.hw = null;     // apple2hw provides its reference during initialisation
 
     this.reset = function() {
         gfx_mode = false;

@@ -22,6 +22,7 @@ function Apple2Video(ctx)
     if(ctx) this.ctx = ctx;
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
+    this.hw = null;     // apple2hw provides its reference during initialisation
 
     // BYTE ARRAY SERIALISATION
     this.serial8 = new Uint8Array();
@@ -66,7 +67,6 @@ function Apple2Video(ctx)
             ,"FLASH":[false]
             ,"PALETTE":[video.INTCols]});
             console.log( video.ser8_map() )
-
     }
 
     this.register_mode = function()
@@ -78,15 +78,22 @@ function Apple2Video(ctx)
 
     this.cycle = function()
     {
+      // 1000 000 000
+
+      if(frame_count%17030 == 0)  // ~50 fps
+      {
+        
+      }
+
       if (++flash_count > 250000) // 4 fps
       {
         flash_on = ! flash_on;
         flash_count = 0;
         this.reflash();
       }
-      //if (++frame_count > 20000)  // 50 fps
-      //if (++frame_count > 40000)  // 25 fps
-      if (++frame_count > 80000)  // 12.5 fps
+
+      //if (++frame_count > 34060)  // ~25 fps
+      if (++frame_count > 68120)  // ~12.5 fps
       {
         if(frame_redraw==true)
         {
@@ -113,8 +120,7 @@ function Apple2Video(ctx)
     }
 
 
-
-    this.write    = function(addr, d8) { frame_redraw = true }
+    this.write    = function(addr, d8) { this.vidram[addr] = d8; frame_redraw = true; }   // FLOATING BUS behavior ?
     this.setGfx   = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
     this.setMix   = function(flag) { if (mix_mode != flag)   { mix_mode = flag; frame_redraw = true } }
     this.setPage2 = function(flag) { if (page2_mode != flag) { page2_mode = flag; frame_redraw = true } }

@@ -40,8 +40,7 @@ function Apple2Hw(vid,keys) {
         //this.memscan();
     }
 
-    this.cycle = function(n) {
-        this.n = n;
+    this.cycle = function() {
         this.io.cycle();
         //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
@@ -100,16 +99,14 @@ function Apple2Hw(vid,keys) {
 
         if(this.io.ramcard &&  this.io.ramcard.active == true && addr >= ROM_ADDR)
             d8 = this.io.write(addr,d8);
-        else if (addr < RAM_SIZE)
-        {
+        else if (addr < RAM_SIZE) {
             ram[addr] = d8;
-            if (addr >= LORES_ADDR && addr < LORES_ADDR + LORES_SIZE)
+
+            // If it falls within the video regions, let the
+            // video object know.
+            if ((addr >= LORES_ADDR && addr < LORES_ADDR + LORES_SIZE) ||
+                (addr >= HIRES_ADDR && addr < HIRES_ADDR + HIRES_SIZE))
                 video.write(addr, d8);
-            else if (addr >= HIRES_ADDR && addr < HIRES_ADDR + HIRES_SIZE)
-            {
-                // TODO: EMULATE FLOATING BUS BEHAVIOR
-                video.write(addr, d8);
-            }
         }
         else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             this.io.write(addr - IO_ADDR, d8);

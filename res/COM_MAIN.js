@@ -203,6 +203,206 @@ function COM()
 
   this.crc32 = function(r){for(var a,o=[],c=0;c<256;c++){a=c;for(var f=0;f<8;f++)a=1&a?3988292384^a>>>1:a>>>1;o[c]=a}for(var n=-1,t=0;t<r.length;t++)n=n>>>8^o[255&(n^r[t])];return(-1^n)>>>0};
 
+  // simpified (and faster) version of RingBuffer
+  this.buffer = function(_capacity,_type)
+  {
+    switch(_type)
+    {
+      case 8: var _buffer = new Uint8Array(_capacity); break;
+      case 16: var _buffer = new Uint16Array(_capacity); break;
+      case 32: var _buffer = new Uint32Array(_capacity); break;
+    }
+    var _first = 0;
+    var _length = 0;
+
+    return {
+      pop: function()
+      {
+        if (_length != _capacity || _length === 0) return 0;
+        const index = _first + (_length - 1);
+        const last = (index > (_capacity - 1)) ? index - _capacity : index;
+        const value = _buffer[last];
+        _buffer[last] = 0;
+        _length--;
+        return value;
+      },
+      delay: function(value)
+      {
+        if (--_first < 0) _first = _capacity - 1
+        _buffer[_first] = value;
+        return _length++;
+      }
+    }
+  }
+
+  // TODO: replace Ringbuffer >> buffer
+  this.RingBuffer = function(_capacity)
+  {
+    /**
+     * Constructs a RingBuffer with fixed maximum _capacity.
+     * @param {Number} _capacity - maximum number of values in the buffer
+     */
+
+    var _buffer      = new Array(_capacity)
+    this._first = 0
+    this._length = 0
+
+    return {
+    /**
+     * Empties the ring buffer.
+     */
+
+    debug: function()
+    {
+      return JSON.stringify( {"buffer":_buffer,"first":this._first,"length":this._length,"capacity":_capacity} )
+    },
+
+    clear: function() 
+    {
+      this._first = 0
+      this._length = 0
+    },
+  
+    /**
+     * Returns the value at the back of the buffer.
+     * @returns {any} - the back of the buffer, or `undefined` if empty
+     */
+    back: function()
+    {
+      if (this._length === 0) return undefined
+      return _buffer[this._last()]
+    },
+  
+    /**
+     * Returns the value at the front of the buffer.
+     * @returns {any} - the front of the buffer, or `undefined` if empty
+     */
+    front: function()
+    {
+      if (this._length === 0) return undefined
+      return _buffer[this._first]
+    },
+  
+    /**
+     * Pushes a value onto the back of the buffer. If length === _capacity,
+     * the value at the front of the buffer is discarded.
+     * @param {any} value - value to push
+     * @returns {Number} - the current length of the buffer
+     */
+    push: function(value)
+    {
+      if (this._length === _capacity) this.shift()
+      this._length++;
+      _buffer[this._last()] = value;
+      return this._length
+    },
+  
+    /**
+     * Removes a value from the back of the buffer and returns it. The
+     * newly empty buffer location is set to undefined to release any
+     * object references.
+     * @returns {any} the value removed from the back of the buffer
+     * or `undefined` if empty.
+     */
+    pop: function()
+    {
+      if (this._length === 0) return undefined
+      const value = _buffer[this._last()]
+      _buffer[this._last()] = undefined // release reference on memory
+      this._length--
+      return value
+    },
+  
+    /**
+     * Removes a value from the front of the buffer and returns it. The
+     * newly empty buffer location is set to undefined to release any
+     * object references.
+     * @returns {any} the value removed from the front of the buffer
+     * or `undefined` if empty.
+     */
+    shift: function()
+    {
+      if (this._length === 0) return undefined
+      const value = _buffer[this._first]
+      _buffer[this._first] = undefined // release reference on memory
+      this._length--
+      this._right()
+      return value
+    },
+  
+    /**
+     * Pushes a value on the front of the buffer. If length === _capacity,
+     * the value at the back is discarded.
+     * @param {any} value - to push onto the front
+     * @returns {Number} - the current length of the buffer
+     */
+    unshift: function(value)
+    {
+      if (this._length === _capacity) this.pop()
+      this._left()
+      this._length++
+      _buffer[this._first] = value
+      return this._length
+    },
+  
+    // Calculates the index of the value at the back of the buffer.
+    _last: function()
+    {
+      const index = this._first + (this._length - 1)
+      return (index > (_capacity - 1)) ? index - _capacity : index
+    },
+  
+    // moves the front of the buffer one step toward the back.
+    _right: function()
+    {
+      if (++this._first > (this._capacity - 1)) this._first = 0
+    },
+  
+    // moves the front of the buffer one step forward.
+    _left: function()
+    {
+      if (--this._first < 0) this._first = _capacity - 1
+    }
+  }
+}
+
+
+  this.FIFO = function(length)
+  {
+    var pointer = 0, buffer = []; 
+  
+    return {
+      get  : function(key)
+      {
+        if (key < 0) return buffer[pointer+key];
+        else if (key === false) return buffer[pointer - 1];
+        else return buffer[key];
+      },
+      push : function(item)
+      {
+        buffer[pointer] = item;
+        pointer = (pointer + 1) % length;
+        return item;
+      },
+      prev : function()
+      {
+        var tmp_pointer = (pointer - 1) % length;
+        if (buffer[tmp_pointer])
+        {
+          pointer = tmp_pointer;
+          return buffer[pointer];
+        }
+      },
+      next : function()
+      {
+        if (buffer[pointer])
+        {
+          pointer = (pointer + 1) % length;
+          return buffer[pointer];
+        }
+      }
+    };
+  };
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 

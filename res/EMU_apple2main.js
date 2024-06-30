@@ -34,8 +34,19 @@ const _o = {"tools":{}
         ,"KBD_Yoff":0       
         ,"EMU_Updates_s":10                 // Emulator intervals per second 
         ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
-        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+        //,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+        ,"CPU_ClocksTicks_s":1021800        // CPU clocksTicks per second
     };
+
+    // 100 000 intervals per frame
+    // ideally 102273 intervals for NTSC (derived from 14.31818Mhz / 14)
+    // ideally 101700 intervals for PAL  (derived from 14.238MHz / 14)
+
+    // 102273 / 17030 cycles per video frame = 6.005 >> closest to 6
+    // 101700 / 17030 cycles per video frame = 5.972 >> closest to 6
+
+    // 6 * 17030 = 102180 intervals to ideally to remain in step with video frames 
+    // extrapolated to CPU clockTicks per second: 1021800
 
 var oEMU =
 {
@@ -43,6 +54,7 @@ var oEMU =
     ,"component":
     {
          "CPU":{}
+        ,"Bus":{}
         ,"Video":{}
         ,"Keyboard":{}
         ,"RAM":{}
