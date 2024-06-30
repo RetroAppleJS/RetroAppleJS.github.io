@@ -38,7 +38,7 @@ The *vertical scanning* counter in NTSC/PAL configuration consist respectively o
 
 *So, why do we need to know this to build an emulator?
 
-All Apple IIs were designed with a data bus driver that alternated CPU and VIDEO to access main memory. These bus drivers came with adapted transistor circuitry to cope with electric field effects (e.g. capacitance) typically found on larger motherboards.  These effects, however unsupported by Apple, enabled a few useful hacks that are fun to emulate.  One of this hacks is the *vapor lock*, allowing to detect screen blanking events on an Apple II without additional hardware or modification.
+All Apple IIs were designed with a data bus driver that alternated CPU and VIDEO to access main memory.  These bus drivers came with adapted transistor circuitry to cope with electric field effects (e.g. capacitance) typically found on larger motherboards.  These effects, however unsupported by Apple, enabled a few helpful hacks that are fun to emulate.  One of these hacks is the *vapour lock*, allowing the detection of the video beam position without additional hardware or modification, allowing flicker-free gameplay and mixed-mode graphic effects once thought unimaginable.
 
 
     <div style=width:800px>
