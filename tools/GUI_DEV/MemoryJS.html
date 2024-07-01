@@ -53,6 +53,23 @@
 
     <script>
 
+var oEMU =
+{
+     "system":{}
+    ,"component":
+    {
+         "CPU":{}
+        ,"Hardware":{}
+        ,"Video":{}
+        ,"Keyboard":{}
+        ,"RAM":{}
+        ,"ROM":{}
+        ,"IO":{}
+    }
+    ,"stats":{}
+}
+if(Apple2Hw===undefined) var Apple2Hw = function(){};
+
 var apple2plus = new Apple2Plus(); // allow instantiating other systems
 
 var last = "";

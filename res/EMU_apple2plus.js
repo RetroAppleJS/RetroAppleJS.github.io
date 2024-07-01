@@ -25,7 +25,9 @@ function Apple2Plus(context)
         var video = new Apple2Video(vidContext);
     }
 
-    var hw   = new Apple2Hw(video);
+    //var hw   = new Apple2Hw(video);
+
+    var hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");    
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");

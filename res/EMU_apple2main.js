@@ -54,7 +54,7 @@ var oEMU =
     ,"component":
     {
          "CPU":{}
-        ,"Bus":{}
+        ,"Hardware":{}
         ,"Video":{}
         ,"Keyboard":{}
         ,"RAM":{}

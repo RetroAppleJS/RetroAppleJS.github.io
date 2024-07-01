@@ -7,6 +7,9 @@
 //
 // apple2hw.js   (Apple II Hardware)
 
+//if(oEMU===undefined) var oEMU = {"component":{"Hardware":new Apple2Hw()}}
+//else oEMU.component.Hardware = new Apple2Hw();
+
 function Apple2Hw(vid,keys) {
     var RAM_SIZE =      0xc000,
         LORES_ADDR =    0x0400,
