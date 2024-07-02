@@ -9,6 +9,7 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 function AppleDisk2()
 {
     var bDebug = false;
+
     var MOTOR_OFF =     0x08,
         MOTOR_ON =      0x09,
         DRV0EN =        0x0a,
@@ -103,7 +104,7 @@ function AppleDisk2()
         this.drv = 0;
     }
 
-    this.DSK_led = new Array(2);
+    this.DSK_led = [];
 
     this.getDataObj = function() { return o }
 
@@ -132,16 +133,6 @@ function AppleDisk2()
 
         prev_name = name;
         */
-    }
-
-    this.update_logs_drv = function()
-    {
-        if(bDebug) console.log("D"+(this.drv+1));
-    }
-    
-    this.hide = function(drive)
-    {
-        document.getElementById("dskLED_"+drive).style.visibility = "hidden";
     }
     
 
@@ -191,18 +182,23 @@ function AppleDisk2()
             case MOTOR_ON:
                 o[drv].motor = 1;
                 this.dN_update("MOTOR_ON");
+                //document.getElementById("LEDS").innerHTML = this.dNd.motor;
+                
                 break;
             case MOTOR_OFF:
                 o[drv].motor = 0;
                 this.dN_update("MOTOR_OFF");
+                //document.getElementById("LED1").style.visibility = "hidden";
+                //document.getElementById("LEDS").innerHTML = this.dNd.motor;
+                
                 break;                
             case DRV0EN:
                 this.drv = 0;
-                this.update_logs_drv();
+                this.update_logs("D1");
                 break;
             case DRV1EN:
                 this.drv = 1;
-                this.update_logs_drv();
+                this.update_logs("D2");
                 break;
             case Q6L:
                 o[drv].q6 = 0;
@@ -356,7 +352,7 @@ function AppleDisk2()
 //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
 //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
-    this.dNd = {enable:false,motor:"STILL",status:"",detune:0,rept:0,last:{}};
+    this.dNd = {enable:false,motor:"OFF",status:"",detune:0,rept:0,last:{}};
 
     this.s_load_all = async function(samplesDS)
     {
@@ -386,7 +382,6 @@ function AppleDisk2()
         set_action(this.dNd);
 
         //if(this.dNd.motor != this.dNd.last.motor) console.log(this.dNd.motor);
-
         this.dNd.last = {}; this.dNd.last = {...this.dNd};
     }
 
@@ -399,26 +394,24 @@ function AppleDisk2()
         if(o.enable==true)
         {
             //o.enable = true;
-            if(l.enable==false && o.enable==true && o.motor=="ON")  return this.dN_play("DiskII_spin");
-
-
+            //if(l.enable==false && o.enable==true && o.motor=="OFF")             return this.dN_play("DiskII_spin");
+            if(l.status=="MOTOR_ON" && o.motor=="OFF") { o.motor="ON"; return this.dN_play("DiskII_spin") }
             if(o.status=="CLICK_IN" || o.status=="CLICK_OUT")                   return this.dN_play("DiskII_click");
             if((l.status=="ARM_OUT" || l.status=="ARM_IN")==true 
                 && o.bRep==false && l.bRep==true && l.rept<10)                  return this.dN_play("DiskII_shortswipe");
             if((o.status=="ARM_OUT" || o.status=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
             if(l.status=="MOTOR_OFF" && o.status=="SPINDOWN") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown") }
-
             if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
-
-            if((o.motor=="STILL" && (o.status=="MOTOR_ON" || l.status===undefined)) 
-                || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")             
-                || (l.enable==false && o.enable==true && o.motor=="ON"))        return this.dN_play("DiskII_spin");
+            if((o.motor=="OFF" && (o.status=="MOTOR_ON" || l.status===undefined)) 
+            || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
+            || (o.motor=="OFF" && l.enable==false && o.enable==true))         {o.motor="ON"; return this.dN_play("DiskII_spin")}
             return null;
         }
         else
         {
             //o.enable = false;
-            if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
+            
+            if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown, 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
             //if(l.enable==true && o.enable==false) return this.dN_stop("DiskII_spin");
         }
     }
@@ -427,14 +420,20 @@ function AppleDisk2()
     {
         if(o.bRep) o.rept++; else o.rept = 0;
         //o.motor = o.status=="MOTOR_OFF" ? "OFF" : "ON";
-        if(o.status=="MOTOR_ON") o.motor = "ON";
+        if(o.status=="MOTOR_ON" && o.motor != "ON") 
+        {
+            //o.motor = "ON";
+            //console.log("ON");
+        }
     }
 
     this.dN_spindown = function(t)
     {
-        if(t.dNd.motor=="ON")
+        console.log("TIMER EXP ("+t.dNd.motor+") - "+t.dNd.status);
+        if(t.dNd.status=="MOTOR_OFF")
         {
-            t.dNd.motor=="OFF";
+            t.dNd.motor="OFF";
+            //console.log(t.dNd.motor);
             t.dN_update("SPINDOWN");
         }
     }
@@ -460,7 +459,6 @@ function AppleDisk2()
       if(name==null) return;
 
       if(bDebug) { console.log("stop('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
-
       this.buffers[name].loop = false;
       this.buffers[name].stop();
     }
