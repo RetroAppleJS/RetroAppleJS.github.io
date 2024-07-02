@@ -1,0 +1,64 @@
+<head>
+    <title>Simple ABNF Parser</title>
+</head>
+<body>
+    <textarea id="abnf-input" placeholder="Enter ABNF rules here"></textarea>
+    <textarea id="string-input" placeholder="Enter string to parse here"></textarea>
+    <button onclick="parseInput()">Parse</button>
+    <pre id="output"></pre>
+</body>
+</html>
+
+<script>
+function ABNFParser(abnf) {
+    this.rules = {};
+    this.tokenizeABNF(abnf);
+}
+
+ABNFParser.prototype.tokenizeABNF = function(abnf) {
+    const lines = abnf.split('\n');
+    for (const line of lines) {
+        const [name, definition] = line.split('=').map(s => s.trim());
+        this.rules[name] = definition;
+    }
+};
+
+ABNFParser.prototype.parse = function(rule, input) {
+    const definition = this.rules[rule];
+    if (!definition) throw new Error(`Rule ${rule} not found.`);
+    
+    return this.match(definition, input);
+};
+
+ABNFParser.prototype.match = function(definition, input) {
+    const tokens = definition.split(' ');
+    let pos = 0;
+    
+    for (const token of tokens) {
+        if (token.startsWith('"') && token.endsWith('"')) {
+            const literal = token.slice(1, -1);
+            if (input.substr(pos, literal.length) !== literal) return false;
+            pos += literal.length;
+        } else {
+            const result = this.parse(token, input.substr(pos));
+            if (!result.match) return false;
+            pos += result.consumed;
+        }
+    }
+    
+    return { match: true, consumed: pos };
+};
+
+function parseInput() {
+    const abnfInput = document.getElementById('abnf-input').value;
+    const stringInput = document.getElementById('string-input').value;
+    
+    try {
+        const parser = new ABNFParser(abnfInput);
+        const result = parser.parse('start', stringInput);
+        document.getElementById('output').innerText = result.match ? 'Matched!' : 'No match!';
+    } catch (error) {
+        document.getElementById('output').innerText = `Error: ${error.message}`;
+    }
+}
+</script>
