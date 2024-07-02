@@ -1,0 +1,37 @@
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script>
+
+var oFIFO = oCOM.buffer(5,32)
+
+//oFIFO.clear();
+var arr = [0x2000<<8 | 0x01
+          ,0
+          ,0
+          ,0x2000<<8 | 0x02
+          ,0x2000<<8 | 0x03
+          ,0x2000<<8 | 0x04
+          ,0x2000<<8 | 0x05
+          ,0
+          ,0x2000<<8 | 0x06
+          ,0
+          ,0
+          ,0
+          ,0
+          ,0
+          ,0
+          ,0
+          ,0
+          ,0x2000<<8 | 0x07
+        ]
+        
+for(var i=0;i<40;i++)
+{
+    var j = oFIFO.delay(arr[i]);
+    document.write(i+" "+oFIFO.pop()+" ("+j+")<br>");
+}
+
+
+
+
+
+</script>
