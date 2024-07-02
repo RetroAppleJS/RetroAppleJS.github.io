@@ -71,8 +71,6 @@ var cnf = {id_prefix:"m",digits:4};
 
 function init()
 {
-
-
     for(var o in VIDEX_ROM)
     {
         document.getElementById("font_sel").innerHTML += "<option>"+o+"</option>"
@@ -92,8 +90,8 @@ function load_char_data(name,el_id)
 {
     THIS_ROM = VIDEX_ROM[name].data.replace(/ /g,"");
 
-    cnf.mirror = VIDEX_ROM[name].mirror===undefined?false:VIDEX_ROM[name].mirror;
-    cnf.dsize = VIDEX_ROM[name].dsize===undefined?[8,16]:VIDEX_ROM[name].dsize;
+    cnf.mirror  = VIDEX_ROM[name].mirror===undefined?false:VIDEX_ROM[name].mirror;
+    cnf.dsize   = VIDEX_ROM[name].dsize===undefined?[8,16]:VIDEX_ROM[name].dsize;
     cnf.columns = cnf.dsize[0];
     cnf.rows    = cnf.dsize[1];
 
@@ -108,7 +106,8 @@ function load_char_data(name,el_id)
     for(var i=0;i<THIS_ROM.length;i+=2)
         char_data[i>>1] = parseInt( THIS_ROM.substring(i,i+2) ,16);
 
-    console.log("loaded '"+name+"': size="+THIS_ROM.length
+    console.log("loaded '"+name+"':"
+    +" size="+THIS_ROM.length
     +" bytes mirror="+cnf.mirror
     +" char_length="+char_length
     +" char_count="+char_count
@@ -124,7 +123,7 @@ function up_dn(el_id,step)
     var n = Number(document.getElementById(el_id).innerHTML) + step;
     if(n>=char_count) n = 0;
     if(n<0) n = char_count-1;
-    document.getElementById(el_id).innerHTML = n;
+    document.getElementById(el_id).innerHTML = ("0000").substring(0,4-String(n).length)+n;
     update_char(n);
 }
 
@@ -138,11 +137,11 @@ function update_char(n)
 
 
 </script>
-<body onload="init()">
+<body onload="init()" style="font-family: 'Courier New', Courier, monospace;">
     <div id="output"></div>
     <button onclick="up_dn(n_el_id,-10)" style="float:left"><<</button>
     <button onclick="up_dn(n_el_id,-1)" style="float:left"><</button>
-    <div id="char_n" style="float:left">0</div><div style="float:left">/</div><div id="char_t" style="float:left">0</div>
+    <div id="char_n" style="float:left">0000</div><div style="float:left">/</div><div id="char_t" style="float:left">0</div>
     <button onclick="up_dn(n_el_id,1)" style="float:left">></button>
     <button onclick="up_dn(n_el_id,10)" style="float:left">>></button>
     <select id="font_sel" onchange="load_char_data(this.value,n_el_id)">
