@@ -10,7 +10,8 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":new Apple2IO()}}
 //else oEMU.component.IO = new Apple2IO();
 
-function Apple2IO(vid) {
+function Apple2IO(vid)
+{
 
     const ROM_ADDR =      0xD000;
     const ROM_SIZE =      0x4000;
@@ -72,7 +73,6 @@ function Apple2IO(vid) {
     // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
     
-
     var video = vid;
     var key = 0x00;
     
@@ -84,7 +84,8 @@ function Apple2IO(vid) {
         this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
     }
 
-    this.reset = function() {
+    this.reset = function()
+    {
         key = 0x00;
         this.disk2.reset();
     }
@@ -102,7 +103,7 @@ function Apple2IO(vid) {
         }
         else if (this.disk2.diskBytes[this.disk2.drv] && addr >= DISK_PROM &&
                  addr < DISK_PROM + DISK_PROM_SIZE)
-            return disk2Rom[addr - DISK_PROM];
+            return this.disk2.ROM[addr - DISK_PROM];
         else if(this.ramcard.active  // RAMCARD SOFT SWITCHES
             && addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
             return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
@@ -162,16 +163,43 @@ function Apple2IO(vid) {
         this.read(addr);
     }
 
-    this.cycle = function() {
-    }
+    this.cycle = function() {}
 
-    this.keypress = function(code) {
+    this.keypress = function(code)
+    {
         key = code;
         //alert(key)
     }
 
-    this.loadDisk = function(bytes,drv) {
+    this.loadDisk = function(bytes,drv)
+    {
         //this.disk2.loadDisk(bytes,drv);
         alert("AppleDisk2() does not have a method called loadDisk")
     }
+
+    this.register_slot = function(slot_num,device_obj)
+    {   
+        const idx = slot_num<<2; 
+        SLOT_MAP[idx]   = SLOT_IO[slot_num];                                                // SLOT I/O range origin
+        SLOT_MAP[idx+1] = SLOT_IO[slot_num] + SLT_IO_SIZE;                                  //          range end
+        SLOT_MAP[idx+2] = device_obj.ROM===undefined?0:SLOT_PROM[slot_num];                 // SLOT ROM range origin
+        SLOT_MAP[idx+3] = device_obj.ROM===undefined?0:SLOT_PROM[slot_num] + SLT_PROM_SIZE; //          range end
+    }
+
+    this.unregister_slot = function(slot_num,device_obj)
+    {
+        const idx = slot_num<<2; 
+        SLOT_MAP[idx]   = 0;
+        SLOT_MAP[idx+1] = 0;
+        SLOT_MAP[idx+2] = 0;
+        SLOT_MAP[idx+3] = 0; 
+    }
+
+    // SLOT MAPPING
+    var SLOT_MAP = new Uint16Array(8<<2);   // SLOT ADDRESS MAPPING
+    var SLOT_NAME = new String(8<<2);       // 4 CHARACTERS PER SLOT NAME
+
+
+    // SLOT MAPPING
+    this.register_slot(6,this.disk2);
 }
