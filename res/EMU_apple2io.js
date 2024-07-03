@@ -88,11 +88,11 @@ function Apple2IO(vid)
     {
         key = 0x00;
         this.disk2.reset();
+
+        var test = new Uint8Array([0,0,0,"A".charCodeAt(0),"B".charCodeAt(0),"C".charCodeAt(0)]);
+        var check = new Uint8Array(["A".charCodeAt(0),"B".charCodeAt(0),"C".charCodeAt(0)])
+        document.getElementById("footer").innerHTML = (indexedDB.cmp(test.slice(3,6),check) === 0)
     }
-    
-    var test = new Uint8Array([0,0,0,"A".charCodeAt(0),"B".charCodeAt(0),"C".charCodeAt(0)]);
-    var check = new Uint8Array(["A".charCodeAt(0),"B".charCodeAt(0),"C".charCodeAt(0)])
-    document.getElementById("footer").innerHTML = (indexedDB.cmp(test.slice(3,6),check) === 0)
 
     this.read = function(addr)
     {
