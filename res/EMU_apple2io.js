@@ -28,7 +28,7 @@ function Apple2IO(vid)
     const SLT_IO_SIZE = 0x10;
 
     // Slot RAM/ROM spaces
-    const SLOT_PROM =  [null,   // SLOT0_PROM does not exist
+    const SLOT_PROM =  [0,   // SLOT0_PROM does not exist
                         0x100,
                         0x200,
                         0x300,
@@ -88,22 +88,26 @@ function Apple2IO(vid)
     {
         key = 0x00;
         this.disk2.reset();
+    }
 
-        var test = new Uint8Array([0,0,0,"A".charCodeAt(0),"B".charCodeAt(0),"C".charCodeAt(0)]);
-        var check = new Uint8Array(["A".charCodeAt(0),"B".charCodeAt(0),"C".charCodeAt(0)])
-        document.getElementById("footer").innerHTML = (indexedDB.cmp(test.slice(3,6),check) === 0)
+    function line_decode(adr)
+    {
+        return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
     }
 
     this.read = function(addr)
     {
-        // TODO: TRANSLATE ADDR RANGE DIRECTLY TO ENUM VALUE >>> USE SWITCH-CASE STATEMENT
-        var line = addr-SLOT_IO[0] >> 4 ; // line decoder
-
+        var line = line_decode(addr);
+        
         switch(line)
         {
-            case 6:
-                var o = this.disk2.read(addr - DISK_IO);
-                return o;
+            case 0xA545:  // DISKII
+
+            case 0xE0: return this.disk2.read(addr - DISK_IO);
+            case 0x600:
+                if(this.disk2.diskBytes[this.disk2.drv])
+                    return this.disk2.ROM[addr - DISK_PROM];
+            break;
 
             default:
 
@@ -111,14 +115,21 @@ function Apple2IO(vid)
                     return key;
                 else if (addr >= KEY_STROBE && addr < KEY_STROBE + 0x10)
                     key &= 0x7f;
+                /*
                 else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
                 {
-                    //var o = this.disk2.read(addr - DISK_IO);
-                    //return o;
+                    console.log(oCOM.getHexWord(line))
+                    var o = this.disk2.read(addr - DISK_IO);
+                    return o;
                 }
                 else if (this.disk2.diskBytes[this.disk2.drv] && addr >= DISK_PROM &&
                         addr < DISK_PROM + DISK_PROM_SIZE)
+                {
+                    //59 & 5A
+                    console.log(oCOM.getHexWord(line))
                     return this.disk2.ROM[addr - DISK_PROM];
+                }
+                */
                 else if(this.ramcard.active  // RAMCARD SOFT SWITCHES
                     && addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
                     return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
@@ -200,20 +211,32 @@ function Apple2IO(vid)
         alert("AppleDisk2() does not have a method called loadDisk")
     }
 
-    this.mount = function(device_obj,slot_num,active)
+    this.mount = function(name,slot_num,device_obj,active)
     {   
+        SLOT_NAME[slot_num] = name.substring(0,4);
         const idx = slot_num<<3; 
         const noROM = device_obj.ROM===undefined;
-        SLOT_MAP[idx]   = active ? 0x2 : 0x1;                          // STATUS 0x2=active  0x1=inactive 0x0=unmounted   
-        SLOT_MAP[idx+1] = SLOT_IO[slot_num];                           // SLOT I/O range origin
-        SLOT_MAP[idx+2] = SLOT_IO[slot_num] + SLT_IO_SIZE;             //          range end
-        SLOT_MAP[idx+3] = noROM?0:SLOT_PROM[slot_num];                 // SLOT ROM range origin
-        SLOT_MAP[idx+4] = noROM?0:SLOT_PROM[slot_num] + SLT_PROM_SIZE; //          range end
+
+        var keys = Object.keys(_CFG_PCODE);
+        var key_idx =  keys.indexOf(name);
+
+        SLOT_MAP[idx]   = active ? 0x2 : 0x1;                               // STATUS 0x2=active  0x1=inactive 0x0=unmounted   
+        SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(name)) // DETERMINE DEVICE ID (CRC16 hash) 
+
+        SLOT_MAP[idx+2] = SLOT_IO[slot_num];                                // SLOT I/O range origin
+        SLOT_MAP[idx+3] = SLOT_IO[slot_num] + SLT_IO_SIZE;                  //          range end
+        SLOT_MAP[idx+4] = noROM?0:SLOT_PROM[slot_num];                      // SLOT ROM range origin
+        SLOT_MAP[idx+5] = noROM?0:SLOT_PROM[slot_num] + SLT_PROM_SIZE;      //          range end
+
+
+
+        //console.log("SLOT_MAP["+slot_num+"] = "+SLOT_MAP[idx]+" "+SLOT_MAP[idx+1]+" "+SLOT_MAP[idx+2]+" "+SLOT_MAP[idx+3]+" "+SLOT_MAP[idx+4])
     }
 
-    this.unmount = function(device_obj,slot_num)
+    this.unmount = function(name,slot_num)
     {
-        const idx = slot_num<<2;
+        SLOT_NAME[slot_num] = null;
+        const idx = slot_num<<3;
         SLOT_MAP[idx]   = 0;
         SLOT_MAP[idx+1] = 0;
         SLOT_MAP[idx+2] = 0;
@@ -222,10 +245,9 @@ function Apple2IO(vid)
     }
 
     // SLOT MAPPING
-    var SLOT_MAP = new Uint16Array(8<<2);   // SLOT ADDRESS MAPPING
-    var SLOT_NAME = new String(8<<2);       // 4 CHARACTERS PER SLOT NAME
-
+    var SLOT_MAP = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
+    var SLOT_NAME = new Array(8<<2);       // 4 CHARACTERS PER SLOT NAME
 
     // SLOT MAPPING
-    this.mount(this.disk2,6);
+    this.mount("DISKII",6,this.disk2,true);
 }
