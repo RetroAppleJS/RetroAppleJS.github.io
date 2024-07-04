@@ -970,32 +970,34 @@ function Cpu6502(hwobj)
         cycle_delay = 0;
     }
 
-    this.save = function() {
+    this.save = function()
+    {
         return a.toString(16) + ',' +
-            x.toString(16) + ',' +
-            y.toString(16) + ',' +
-            sp.toString(16) + ',' +
-            p.toString(16) + ',' +
-            pc.toString(16);
+               x.toString(16) + ',' +
+               y.toString(16) + ',' +
+               sp.toString(16)+ ',' +
+               p.toString(16) + ',' +
+               pc.toString(16);
     }
 
-    this.load = function(s) {
+    this.load = function(s) 
+    {
         var l = s.split(',');
-
-        a = parseInt(l[0], 16);
-        x = parseInt(l[1], 16);
-        y = parseInt(l[2], 16);
+        a =  parseInt(l[0], 16);
+        x =  parseInt(l[1], 16);
+        y =  parseInt(l[2], 16);
         sp = parseInt(l[3], 16);
-        p = parseInt(l[4], 16);
+        p =  parseInt(l[4], 16);
         pc = parseInt(l[5], 16);
     }
 
-    this.toString = function() {
-        return 'PC=' + pc.toString(16) +
-            ' A=' + a.toString(16) +
-            ' X=' + x.toString(16) +
-            ' Y=' + y.toString(16) +
-            ' P=' + p.toString(16) +
-            ' SP=' + sp.toString(16);
+    this.toString = function()
+    {
+        return  'PC=' + pc.toString(16) +
+                ' A=' + a.toString(16) +
+                ' X=' + x.toString(16) +
+                ' Y=' + y.toString(16) +
+                ' P=' + p.toString(16) +
+               ' SP=' + sp.toString(16);
     }
 }
