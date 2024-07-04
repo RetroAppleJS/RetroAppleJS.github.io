@@ -275,16 +275,14 @@ function Cpu6502(hwobj)
         2, 5, 5, 0, 4, 4, 6, 6,  2, 4, 4, 0, 0, 4, 6, 2
     ]);
 
-    this.cycle = function() {
+    this.cycle = function()
+    {
         var     opcode;
         var     operand;
         var     addr;
         var     d8;
 
-        if (cycle_delay > 0) {
-            cycle_delay--;
-            return;
-        }
+        if (cycle_delay > 0) { cycle_delay--; return }
 
         // Handle interrupts.
         if (hw.nmi_signal || (hw.irq_signal && (p & P_I) == 0)) {
@@ -317,11 +315,11 @@ function Cpu6502(hwobj)
 
         /* Look up number of cycles */
         cycle_delay = cycle_count[opcode] - 1;
-        if (cycle_count[opcode] == 0)
-            console.log("opcode %s cycle_count is zero!", opcode.toString(16));
+        if (cycle_count[opcode] == 0) console.warn("opcode %s cycle_count is zero!", opcode.toString(16));
 
         /* Fetch operand. */
-        switch (instrlen[opcode]) {
+        switch (instrlen[opcode])
+        {
         case 2:
             operand = readByte(pc);
             pc++;
@@ -957,11 +955,12 @@ function Cpu6502(hwobj)
     // Note that ROM must be set up before calling this because
     // RESET vector must be in place.
     //
-    this.reset = function() {
-        a = 0;
-        x = 0;
-        y = 0;
-        sp = 0xff;
+    this.reset = function()
+    {
+        a = 0x00;
+        x = 0x00;
+        y = 0x00;
+        sp = 0xFF;
         p = P_I | P_1;
         pc = readWord(RESET_VECTOR);
 
