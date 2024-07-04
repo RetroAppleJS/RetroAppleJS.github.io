@@ -112,9 +112,12 @@ function Cpu6502(hwobj)
         p = (cond != 0) ? p | flag : p & ~flag;
     }
 
-    function set_nz(d8) {
-        set_flag(P_N, d8 & 0x80);
-        set_flag(P_Z, d8 == 0);
+    function set_nz(d8)
+    {
+        //set_flag(P_N, d8 & 0x80);
+        //set_flag(P_Z, d8 == 0);
+        p = (d8&0x80)!=0 ? p|P_N : p & ~P_N;
+        p =  d8==0       ? p|P_Z : p & ~P_Z;
     }
 
     function asl_instr(d8) {
