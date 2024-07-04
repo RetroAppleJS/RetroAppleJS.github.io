@@ -35,11 +35,7 @@ function Cpu6502(hwobj)
     var p = P_I | P_1;
     var pc = RESET_VECTOR;
 
-    
-    var cnt = 0;
-    var bBOOT = true;
-    var RAMidx = {};
-    
+
 
     function readByte(addr)
     {
@@ -52,6 +48,10 @@ function Cpu6502(hwobj)
         reset_debug(addr,d8);
     }
 
+
+    var cnt = 0;
+    var bBOOT = true;
+    var RAMidx = {};
     function reset_debug(addr,d8)
     {
         /*
@@ -83,154 +83,52 @@ function Cpu6502(hwobj)
         return d16;
     }
 
-    function push(d8)
+    // Note that ROM must be set up before calling this because
+    // RESET vector must be in place.
+    //
+    this.reset = function()
     {
-        hw.write(STACK_ADDR + sp, d8);
-        if (--sp < 0) sp = 0xff;
+        a = 0x00;
+        x = 0x00;
+        y = 0x00;
+        sp = 0xFF;
+        p = P_I | P_1;
+        pc = readWord(RESET_VECTOR);
+
+        cycle_delay = 0;
     }
 
-    function pull()
+    this.save = function()
     {
-        if (++sp > 0xff) sp = 0;
-        return hw.read(STACK_ADDR + sp);
+        return a.toString(16) + ',' +
+               x.toString(16) + ',' +
+               y.toString(16) + ',' +
+               sp.toString(16)+ ',' +
+               p.toString(16) + ',' +
+               pc.toString(16);
     }
 
-    function ind_x(operand) {
-        var addr = readByte((operand + x) & 0xff);
-        addr |= readByte((operand + x + 1) & 0xff) << 8;
-        return addr;
-    }
-
-    function ind_y(operand) {
-        var addr = readByte(operand);
-        addr |= readByte((operand + 1) & 0xff) << 8;
-        addr += y;
-        return addr;
-    }
-
-    function set_flag(flag, cond) {
-        p = (cond != 0) ? p | flag : p & ~flag;
-    }
-
-    function set_nz(d8)
+    this.load = function(s) 
     {
-        //set_flag(P_N, d8 & 0x80);
-        //set_flag(P_Z, d8 == 0);
-        p = (d8&0x80)!=0 ? p|P_N : p & ~P_N;
-        p =  d8==0       ? p|P_Z : p & ~P_Z;
+        var l = s.split(',');
+        a =  parseInt(l[0], 16);
+        x =  parseInt(l[1], 16);
+        y =  parseInt(l[2], 16);
+        sp = parseInt(l[3], 16);
+        p =  parseInt(l[4], 16);
+        pc = parseInt(l[5], 16);
     }
 
-    function asl_instr(d8) {
-        set_flag(P_C, d8 & 0x80);
-        d8 = (d8 << 1) & 0xff;
-        set_nz(d8);
-        return d8;
+    this.toString = function()
+    {
+        return  'PC=' + pc.toString(16) +
+                ' A=' + a.toString(16) +
+                ' X=' + x.toString(16) +
+                ' Y=' + y.toString(16) +
+                ' P=' + p.toString(16) +
+               ' SP=' + sp.toString(16);
     }
 
-    function lsr_instr(d8) {
-        set_flag(P_C, d8 & 0x01);   //[flag,cond] //  p = ((d8 & 0x01) != 0) ? (p | P_C) : (p & ~P_C);
-        d8 >>= 1;
-        set_nz(d8);
-        return d8;
-    }
-
-    function rol_instr(d8) {
-        var old_c = ((p & P_C) != 0) ? 0x01 :0x00;
-        set_flag(P_C, d8 & 0x80);
-        d8 = ((d8 << 1) | old_c) & 0xff;
-        set_nz(d8);
-        return d8;
-    }
-
-    function ror_instr(d8) {
-        var old_c = ((p & P_C) != 0) ? 0x80 :0x00;
-        set_flag(P_C, d8 & 0x01);
-        d8 = (d8 >> 1) | old_c;
-        set_nz(d8);
-        return d8;
-    }
-
-    function or_instr(d8) {
-        a |= d8;
-        set_nz(a);
-    }
-
-    function and_instr(d8) {
-        a &= d8;
-        set_nz(a);
-    }
-
-    function eor_instr(d8) {
-        a ^= d8;
-        set_nz(a);
-    }
-
-    function adc_instr(d8) {
-        var result;
-
-        if ((p & P_D) != 0) {
-            // Decimal mode.  Gack!
-            result = (a & 0x0f) + (d8 & 0x0f) + ((p & P_C) ? 1 : 0);
-            if (result > 0x09)
-                result += 0x06;
-            result += (a & 0xf0) + (d8 & 0xf0);
-            if ((result & 0xfff0) > 0x90)
-                result += 0x60;
-            cycle_delay++;
-        }
-        else
-            result = a + d8 + ((p & P_C) ? 1 : 0);
-
-        set_flag(P_C, result & 0xff00);
-        set_flag(P_V, ((d8 ^ a) & 0x80) == 0 &&
-                 ((result ^ a) & 0x80) != 0);
-
-        a = result & 0xff;
-        set_nz(a);
-    }
-
-    function sbc_instr(d8) {
-        var result;
-        if ((p & P_D) != 0) {
-            /* Decimal mode.  Gack! */
-            result = (a & 0x0f) - (d8 & 0x0f) - ((p & P_C) ? 0 : 1);
-            if ((result & 0x10) != 0)
-                result -= 0x06;
-            result += (a & 0xf0) - (d8 & 0xf0);
-            if ((result & 0x100) != 0)
-                result -= 0x60;
-            cycle_delay++;
-        }
-        else
-            result = a - d8 - ((p & P_C) ? 0 : 1);
-
-        set_flag(P_C, (result & 0xff00) == 0);
-        set_flag(P_V, ((d8 ^ a) & 0x80) != 0 &&
-                 ((result ^ a) & 0x80) != 0);
-
-        a = result & 0xff;
-        set_nz(a);
-    }
-
-    function cmp_instr(left, right) {
-        var result = left - right;
-        set_flag(P_C, (result & 0xff00) == 0);
-        set_nz(result);
-    }
-
-    function bit_instr(d8) {
-        set_flag(P_N, d8 & 0x80);
-        set_flag(P_V, d8 & 0x40);
-        set_flag(P_Z, (d8 & a) == 0);
-    }
-
-    function branch_instr(operand) {
-        if (operand >= 0x80)
-            pc -= 0x100 - operand;
-        else
-            pc += operand;
-        cycle_delay++; // branch take adds a cycle
-    }
 
     // Instruction length by opcode (including 65c02 extended instructions).
     const instrlen = new Uint8Array([
@@ -955,49 +853,159 @@ function Cpu6502(hwobj)
 
     }
 
-    // Note that ROM must be set up before calling this because
-    // RESET vector must be in place.
-    //
-    this.reset = function()
-    {
-        a = 0x00;
-        x = 0x00;
-        y = 0x00;
-        sp = 0xFF;
-        p = P_I | P_1;
-        pc = readWord(RESET_VECTOR);
+//   _________         _   __       ___                          _    _                          
+//  |  _   _  |       (_) [  |    .' ..]                        / |_ (_)                         
+//  |_/ | | \_|,--.   __   | |   _| |_  __   _   _ .--.   .---.`| |-'__   .--.   _ .--.   .--.   
+//      | |   `'_\ : [  |  | |  '-| |-'[  | | | [ `.-. | / /'`\]| | [  |/ .'`\ \[ `.-. | ( (`\]  
+//     _| |_  // | |, | |  | |    | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  `'.'.  
+//    |_____| \'-;__/[___][___]  [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) ) 
 
-        cycle_delay = 0;
+    function ind_x(operand) {
+        var addr = readByte((operand + x) & 0xff);
+        addr |= readByte((operand + x + 1) & 0xff) << 8;
+        return addr;
     }
 
-    this.save = function()
-    {
-        return a.toString(16) + ',' +
-               x.toString(16) + ',' +
-               y.toString(16) + ',' +
-               sp.toString(16)+ ',' +
-               p.toString(16) + ',' +
-               pc.toString(16);
+    function ind_y(operand) {
+        var addr = readByte(operand);
+        addr |= readByte((operand + 1) & 0xff) << 8;
+        addr += y;
+        return addr;
     }
 
-    this.load = function(s) 
-    {
-        var l = s.split(',');
-        a =  parseInt(l[0], 16);
-        x =  parseInt(l[1], 16);
-        y =  parseInt(l[2], 16);
-        sp = parseInt(l[3], 16);
-        p =  parseInt(l[4], 16);
-        pc = parseInt(l[5], 16);
+    function set_flag(flag, cond) {
+        p = (cond != 0) ? p | flag : p & ~flag;
     }
 
-    this.toString = function()
+    function set_nz(d8)
     {
-        return  'PC=' + pc.toString(16) +
-                ' A=' + a.toString(16) +
-                ' X=' + x.toString(16) +
-                ' Y=' + y.toString(16) +
-                ' P=' + p.toString(16) +
-               ' SP=' + sp.toString(16);
+        //set_flag(P_N, d8 & 0x80);
+        //set_flag(P_Z, d8 == 0);
+        p = (d8&0x80)!=0 ? p|P_N : p & ~P_N;
+        p =  d8==0       ? p|P_Z : p & ~P_Z;
+    }
+
+    function asl_instr(d8) {
+        set_flag(P_C, d8 & 0x80);
+        d8 = (d8 << 1) & 0xff;
+        set_nz(d8);
+        return d8;
+    }
+
+    function lsr_instr(d8) {
+        set_flag(P_C, d8 & 0x01);   //[flag,cond] //  p = ((d8 & 0x01) != 0) ? (p | P_C) : (p & ~P_C);
+        d8 >>= 1;
+        set_nz(d8);
+        return d8;
+    }
+
+    function rol_instr(d8) {
+        var old_c = ((p & P_C) != 0) ? 0x01 :0x00;
+        set_flag(P_C, d8 & 0x80);
+        d8 = ((d8 << 1) | old_c) & 0xff;
+        set_nz(d8);
+        return d8;
+    }
+
+    function ror_instr(d8) {
+        var old_c = ((p & P_C) != 0) ? 0x80 :0x00;
+        set_flag(P_C, d8 & 0x01);
+        d8 = (d8 >> 1) | old_c;
+        set_nz(d8);
+        return d8;
+    }
+
+    function or_instr(d8) {
+        a |= d8;
+        set_nz(a);
+    }
+
+    function and_instr(d8) {
+        a &= d8;
+        set_nz(a);
+    }
+
+    function eor_instr(d8) {
+        a ^= d8;
+        set_nz(a);
+    }
+
+    function adc_instr(d8) {
+        var result;
+
+        if ((p & P_D) != 0) {
+            // Decimal mode.  Gack!
+            result = (a & 0x0f) + (d8 & 0x0f) + ((p & P_C) ? 1 : 0);
+            if (result > 0x09)
+                result += 0x06;
+            result += (a & 0xf0) + (d8 & 0xf0);
+            if ((result & 0xfff0) > 0x90)
+                result += 0x60;
+            cycle_delay++;
+        }
+        else
+            result = a + d8 + ((p & P_C) ? 1 : 0);
+
+        set_flag(P_C, result & 0xff00);
+        set_flag(P_V, ((d8 ^ a) & 0x80) == 0 &&
+                 ((result ^ a) & 0x80) != 0);
+
+        a = result & 0xff;
+        set_nz(a);
+    }
+
+    function sbc_instr(d8) {
+        var result;
+        if ((p & P_D) != 0) {
+            /* Decimal mode.  Gack! */
+            result = (a & 0x0f) - (d8 & 0x0f) - ((p & P_C) ? 0 : 1);
+            if ((result & 0x10) != 0)
+                result -= 0x06;
+            result += (a & 0xf0) - (d8 & 0xf0);
+            if ((result & 0x100) != 0)
+                result -= 0x60;
+            cycle_delay++;
+        }
+        else
+            result = a - d8 - ((p & P_C) ? 0 : 1);
+
+        set_flag(P_C, (result & 0xff00) == 0);
+        set_flag(P_V, ((d8 ^ a) & 0x80) != 0 &&
+                 ((result ^ a) & 0x80) != 0);
+
+        a = result & 0xff;
+        set_nz(a);
+    }
+
+    function cmp_instr(left, right) {
+        var result = left - right;
+        set_flag(P_C, (result & 0xff00) == 0);
+        set_nz(result);
+    }
+
+    function bit_instr(d8) {
+        set_flag(P_N, d8 & 0x80);
+        set_flag(P_V, d8 & 0x40);
+        set_flag(P_Z, (d8 & a) == 0);
+    }
+
+    function branch_instr(operand) {
+        if (operand >= 0x80)
+            pc -= 0x100 - operand;
+        else
+            pc += operand;
+        cycle_delay++; // branch take adds a cycle
+    }
+
+    function push(d8)
+    {
+        hw.write(STACK_ADDR + sp, d8);
+        if (--sp < 0) sp = 0xff;
+    }
+
+    function pull()
+    {
+        if (++sp > 0xff) sp = 0;
+        return hw.read(STACK_ADDR + sp);
     }
 }
