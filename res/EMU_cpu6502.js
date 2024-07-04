@@ -4,19 +4,18 @@
 // Thanks to Thomas Skibo - Copyright (c) 2014.
 // cpu6502.js
 
-//oEMU.component.CPU["6502"] = {Cpu6502};
 if(oEMU===undefined) var oEMU = {"component":{"CPU":{"6502":new Cpu6502()}}}
 else oEMU.component.CPU["6502"] = new Cpu6502();
 
 function Cpu6502(hwobj)
 {
-    // 6502 constants.
-    var STACK_ADDR =    0x0100,
-        NMI_VECTOR =    0xfffa,
-        RESET_VECTOR =  0xfffc,
-        IRQ_VECTOR =    0xfffe;
+    // 6502 reserved addresses.
+    var STACK_ADDR =    0x0100
+       ,NMI_VECTOR =    0xfffa
+       ,RESET_VECTOR =  0xfffc
+       ,IRQ_VECTOR =    0xfffe;
 
-    /* Processor status flags. */
+    // Processor status flags.
     var P_N =   0x80,
         P_V =   0x40,
         P_1 =   0x20,   // always set
@@ -29,25 +28,32 @@ function Cpu6502(hwobj)
     var hw = hwobj;
     var cycle_delay = 0;
 
-    var a = 0;
-    var x = 0;
-    var y = 0;
-    var sp = 0xff;
+    var  a  = 0x00
+        ,x  = 0x00
+        ,y  = 0x00
+        ,sp = 0xFF;
     var p = P_I | P_1;
     var pc = RESET_VECTOR;
-    var cnt = 0;
 
+    
+    var cnt = 0;
     var bBOOT = true;
     var RAMidx = {};
+    
 
-    function readByte(addr) {
+    function readByte(addr)
+    {
         return hw.read(addr);
     }
 
-    function writeByte(addr, d8) {
-        
+    function writeByte(addr, d8)
+    {
         hw.write(addr, d8);
+        reset_debug(addr,d8);
+    }
 
+    function reset_debug(addr,d8)
+    {
         /*
         var a = oCOM.getHexWord(addr);
         var d = oCOM.getHexByte(d8)
@@ -64,12 +70,11 @@ function Cpu6502(hwobj)
         }
         */
 
-        /*
-        cnt++;
         
-        if(a != "004E" && a != "004F")
-            console.log(cnt+" - hw.write("+oCOM.getHexWord(addr)+","+oCOM.getHexByte(d8)+")");
-        */
+        //cnt++;
+        //if(a != "004E" && a != "004F")
+        //    console.log(cnt+" - hw.write("+oCOM.getHexWord(addr)+","+oCOM.getHexByte(d8)+")");
+        
     }
 
     function readWord(addr) {
@@ -78,15 +83,15 @@ function Cpu6502(hwobj)
         return d16;
     }
 
-    function push(d8) {
+    function push(d8)
+    {
         hw.write(STACK_ADDR + sp, d8);
-        if (--sp < 0)
-            sp = 0xff;
+        if (--sp < 0) sp = 0xff;
     }
 
-    function pull() {
-        if (++sp > 0xff)
-            sp = 0;
+    function pull()
+    {
+        if (++sp > 0xff) sp = 0;
         return hw.read(STACK_ADDR + sp);
     }
 
@@ -225,7 +230,7 @@ function Cpu6502(hwobj)
     }
 
     // Instruction length by opcode (including 65c02 extended instructions).
-    var instrlen = [
+    const instrlen = new Uint8Array([
         2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
         2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
         3, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
@@ -245,10 +250,10 @@ function Cpu6502(hwobj)
         2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
         2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
         2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3
-    ];
+    ]);
 
     // Cycle count by opcode (not including some caveats)
-    var cycle_count = [
+    const cycle_count = new Uint8Array([
         7, 6, 2, 0, 5, 3, 5, 5,  3, 2, 2, 0, 6, 4, 6, 2,
         2, 5, 5, 0, 5, 4, 6, 6,  2, 4, 2, 0, 6, 4, 6, 2,
         6, 6, 2, 0, 3, 3, 5, 5,  4, 2, 2, 0, 4, 4, 6, 2,
@@ -268,7 +273,7 @@ function Cpu6502(hwobj)
         2, 5, 5, 0, 4, 4, 6, 6,  2, 4, 3, 3, 0, 4, 6, 2,
         2, 6, 2, 0, 3, 3, 5, 5,  2, 2, 2, 0, 4, 4, 6, 2,
         2, 5, 5, 0, 4, 4, 6, 6,  2, 4, 4, 0, 0, 4, 6, 2
-    ];
+    ]);
 
     this.cycle = function() {
         var     opcode;
