@@ -9,6 +9,14 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 
 function Cpu6502(hwobj)
 {
+
+    //  ██ ███    ██ ██ ████████ 
+    //  ██ ████   ██ ██    ██    
+    //  ██ ██ ██  ██ ██    ██    
+    //  ██ ██  ██ ██ ██    ██    
+    //  ██ ██   ████ ██    ██    
+
+
     // 6502 reserved addresses.
     var STACK_ADDR =    0x0100
        ,NMI_VECTOR =    0xfffa
@@ -36,100 +44,6 @@ function Cpu6502(hwobj)
     var pc = RESET_VECTOR;
 
 
-
-    function readByte(addr)
-    {
-        return hw.read(addr);
-    }
-
-    function writeByte(addr, d8)
-    {
-        hw.write(addr, d8);
-        reset_debug(addr,d8);
-    }
-
-
-    var cnt = 0;
-    var bBOOT = true;
-    var RAMidx = {};
-    function reset_debug(addr,d8)
-    {
-        /*
-        var a = oCOM.getHexWord(addr);
-        var d = oCOM.getHexByte(d8)
-        RAMidx[a] = d;
-
-        if(bBOOT == true && (a == "004E" || a == "004F"))
-        { 
-            bBOOT = false;
-            var cnt = 0;
-            for(var i in RAMidx)
-                cnt++;
-            console.log(cnt);
-            console.log(JSON.stringify(RAMidx));
-        }
-        */
-
-        
-        //cnt++;
-        //if(a != "004E" && a != "004F")
-        //    console.log(cnt+" - hw.write("+oCOM.getHexWord(addr)+","+oCOM.getHexByte(d8)+")");
-        
-    }
-
-    function readWord(addr) {
-        var d16 = hw.read(addr);
-        d16 |= hw.read(addr + 1) << 8;
-        return d16;
-    }
-
-    // Note that ROM must be set up before calling this because
-    // RESET vector must be in place.
-    //
-    this.reset = function()
-    {
-        a = 0x00;
-        x = 0x00;
-        y = 0x00;
-        sp = 0xFF;
-        p = P_I | P_1;
-        pc = readWord(RESET_VECTOR);
-
-        cycle_delay = 0;
-    }
-
-    this.save = function()
-    {
-        return a.toString(16) + ',' +
-               x.toString(16) + ',' +
-               y.toString(16) + ',' +
-               sp.toString(16)+ ',' +
-               p.toString(16) + ',' +
-               pc.toString(16);
-    }
-
-    this.load = function(s) 
-    {
-        var l = s.split(',');
-        a =  parseInt(l[0], 16);
-        x =  parseInt(l[1], 16);
-        y =  parseInt(l[2], 16);
-        sp = parseInt(l[3], 16);
-        p =  parseInt(l[4], 16);
-        pc = parseInt(l[5], 16);
-    }
-
-    this.toString = function()
-    {
-        return  'PC=' + pc.toString(16) +
-                ' A=' + a.toString(16) +
-                ' X=' + x.toString(16) +
-                ' Y=' + y.toString(16) +
-                ' P=' + p.toString(16) +
-               ' SP=' + sp.toString(16);
-    }
-
-
     // Instruction length by opcode (including 65c02 extended instructions).
     const instrlen = new Uint8Array([
         2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
@@ -153,7 +67,7 @@ function Cpu6502(hwobj)
         2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3
     ]);
 
-    // Cycle count by opcode (not including some caveats)
+    // Cycle count by opcode (not including some caveats, added inline)
     const cycle_count = new Uint8Array([
         7, 6, 2, 0, 5, 3, 5, 5,  3, 2, 2, 0, 6, 4, 6, 2,
         2, 5, 5, 0, 5, 4, 6, 6,  2, 4, 2, 0, 6, 4, 6, 2,
@@ -175,6 +89,32 @@ function Cpu6502(hwobj)
         2, 6, 2, 0, 3, 3, 5, 5,  2, 2, 2, 0, 4, 4, 6, 2,
         2, 5, 5, 0, 4, 4, 6, 6,  2, 4, 4, 0, 0, 4, 6, 2
     ]);
+
+
+
+//   ██████ ██████  ██    ██      ██████  ██████  ██████  ███████ 
+//  ██      ██   ██ ██    ██     ██      ██    ██ ██   ██ ██      
+//  ██      ██████  ██    ██     ██      ██    ██ ██████  █████   
+//  ██      ██      ██    ██     ██      ██    ██ ██   ██ ██      
+//   ██████ ██       ██████       ██████  ██████  ██   ██ ███████ 
+
+    function readByte(addr)         { return hw.read(addr) }
+    function writeByte(addr, d8)    { hw.write(addr, d8) }
+    function readWord(addr)         { return hw.read(addr) | hw.read(addr + 1) << 8 }
+
+    // Note that ROM must be set up before calling this because
+    // RESET vector must be in place.
+    //
+    this.reset = function()
+    {
+        a = 0x00;
+        x = 0x00;
+        y = 0x00;
+        sp = 0xFF;
+        p = P_I | P_1;
+        pc = readWord(RESET_VECTOR);
+        cycle_delay = 0;
+    }
 
     this.cycle = function()
     {
@@ -230,6 +170,7 @@ function Cpu6502(hwobj)
             pc += 2;
             break;
         }
+
 
         // Execute!
         switch (opcode) {
@@ -853,12 +794,21 @@ function Cpu6502(hwobj)
 
     }
 
-//   _________         _   __       ___                          _    _                          
-//  |  _   _  |       (_) [  |    .' ..]                        / |_ (_)                         
-//  |_/ | | \_|,--.   __   | |   _| |_  __   _   _ .--.   .---.`| |-'__   .--.   _ .--.   .--.   
-//      | |   `'_\ : [  |  | |  '-| |-'[  | | | [ `.-. | / /'`\]| | [  |/ .'`\ \[ `.-. | ( (`\]  
-//     _| |_  // | |, | |  | |    | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  `'.'.  
-//    |_____| \'-;__/[___][___]  [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) ) 
+
+//     ___                                  __        
+//   .'   `.                               |  ]       
+//  /  .-.  \ _ .--.   .---.   .--.    .--.| | .---.  
+//  | |   | |[ '/'`\ \/ /'`\]/ .'`\ \/ /'`\' |/ /__\\ 
+//  \  `-'  / | \__/ || \__. | \__. || \__/  || \__., 
+//   `.___.'  | ;.__/ '.___.' '.__.'  '.__.;__]'.__.' 
+//           [__|                                     
+//  ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
+//  ██   ██ ██      ██      ██   ██ ██      ██   ██ ██      
+//  ███████ █████   ██      ██████  █████   ██████  ███████ 
+//  ██   ██ ██      ██      ██      ██      ██   ██      ██ 
+//  ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
+
+
 
     function ind_x(operand) {
         var addr = readByte((operand + x) & 0xff);
@@ -1008,4 +958,48 @@ function Cpu6502(hwobj)
         if (++sp > 0xff) sp = 0;
         return hw.read(STACK_ADDR + sp);
     }
+
+//  ████████  █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
+//     ██    ██   ██ ██ ██          ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+//     ██    ███████ ██ ██          █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+//     ██    ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+//     ██    ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
+
+
+//  ████████  █████  ██ ██      
+//     ██    ██   ██ ██ ██      
+//     ██    ███████ ██ ██      
+//     ██    ██   ██ ██ ██      
+//     ██    ██   ██ ██ ███████ 
+
+    this.save = function()
+    {
+        return a.toString(16) + ',' +
+               x.toString(16) + ',' +
+               y.toString(16) + ',' +
+               sp.toString(16)+ ',' +
+               p.toString(16) + ',' +
+               pc.toString(16);
+    }
+
+    this.load = function(s) 
+    {
+        var l = s.split(',');
+        a =  parseInt(l[0], 16);
+        x =  parseInt(l[1], 16);
+        y =  parseInt(l[2], 16);
+        sp = parseInt(l[3], 16);
+        p =  parseInt(l[4], 16);
+        pc = parseInt(l[5], 16);
+    }
+
+    this.toString = function()
+    {
+        return  'PC=' + pc.toString(16) +
+                ' A=' + a.toString(16) +
+                ' X=' + x.toString(16) +
+                ' Y=' + y.toString(16) +
+                ' P=' + p.toString(16) +
+               ' SP=' + sp.toString(16);
+    }    
 }
