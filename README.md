@@ -116,4 +116,3 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 - [ ] [Apple Mouse Card 670-0030-C](http://www.applelogic.org/PeripheralCards.html)
 - [ ] [The Mocking Board](https://en.wikipedia.org/wiki/Mockingboard) sound card supported by different games and the 'Music Construction Set'
 - [ ] [VersaCard](https://forum.vcfed.org/index.php?threads/do-you-own-a-prometheus-versacard-for-the-apple-ii-i-need-a-copy-of-the-rom.70770/) - [Brochure](https://cvxmelody.net/VERSAcard%20original%20brochure%20&%20manual%20cover.pdf) 4 on 1 card: serial, parallel,real-time clock, BSR Home automation
-- [ ] Just a random thought, it would be nice to design virtual hardware that is replacing the hard work of addressing single pixels on both HGR screens (replacing the ROM routines plus extra settings to read zero-page locations in stead of registers) 
