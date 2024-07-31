@@ -3,93 +3,98 @@
 <script>
 function _snippet()
 {
-// running on node.js
-var rs = new RS_();
+	var rs = new RS_();
 
-function RS(messageLength, errorCorrectionLength)
-{
-	var dataLength = messageLength - errorCorrectionLength;
-	var encoder = new rs.ReedSolomonEncoder(rs.GenericGF.AZTEC_DATA_8());
-	var decoder = new rs.ReedSolomonDecoder(rs.GenericGF.AZTEC_DATA_8());
+	function RS(messageLength, errorCorrectionLength)
+	{
+		var dataLength = messageLength - errorCorrectionLength;
+		var encoder = new rs.ReedSolomonEncoder(rs.GenericGF.AZTEC_DATA_8());
+		var decoder = new rs.ReedSolomonDecoder(rs.GenericGF.AZTEC_DATA_8());
 
-    //var encoder = new rs.ReedSolomonEncoder(rs.GenericGF.QR_CODE_FIELD_256());
-    //var decoder = new rs.ReedSolomonDecoder(rs.GenericGF.QR_CODE_FIELD_256());
+		return{
+			dataLength: dataLength,
+			messageLength: messageLength,
+			errorCorrectionLength: errorCorrectionLength,
 
-    
-	return{
-		dataLength: dataLength,
-		messageLength: messageLength,
-		errorCorrectionLength: errorCorrectionLength,
+			encode : function (message) {
+				encoder.encode(message, errorCorrectionLength);
+			},
 
-		encode : function (message) {
-			encoder.encode(message, errorCorrectionLength);
-		},
+			decode: function (message) {
+				decoder.decode(message, errorCorrectionLength);
+			}
+		};
+	}
 
-		decode: function (message) {
-			decoder.decode(message, errorCorrectionLength);
-		}
-	};
-}
+	n = 3, k = 2;
+	console.log(`RS(${n},${k})`);
+	var ec = RS(n, k);
+	var message = new Uint16Array(ec.messageLength);
+	for (var i = 0; i < ec.dataLength; i++) message[i] = Math.floor(Math.random() * 0xFF);
 
-/*
-var n = 32, k = 8;
-console.log(`RS(${n},${k})`);
-var ec = RS(n, k);
-var message = new Uint8Array(ec.messageLength);
-for (var i = 0; i < ec.dataLength; i++) message[i] = i;
+	console.log('raw data (ec.dataLength='+ec.dataLength+' ec.messageLength='+ec.messageLength+')');
+	console.log(console.getHexMulti_arr(message,ec.dataLength) );
 
-console.log('raw data');
-console.log(Array.prototype.join.call(message));
-//=> 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,0,0,0,0,0,0,0
+	ec.encode(message);
 
-ec.encode(message);
+	console.log('rs coded');
+	console.log(console.getHexMulti_arr(message,ec.messageLength) );
 
-console.log('rs coded');
-console.log(Array.prototype.join.call(message));
-//=> 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,180,183,0,112,111,203,47,126
+	console.log('corrupted');
+	message[ Math.floor(Math.random() * message.length) ] ^= 0xff;
+	console.log(console.getHexMulti_arr(message,ec.messageLength) );
 
-console.log('corrupted');
-for (var i = 0; i < 4; i++) message[ Math.floor(Math.random() * message.length) ] = 0xff;
-console.log(Array.prototype.join.call(message));
-//=> 0,1,2,3,4,255,6,7,8,9,10,11,12,13,14,15,255,17,18,19,20,21,22,23,255,183,255,112,111,203,47,126
+	ec.decode(message);
 
-ec.decode(message);
-
-console.log('rs decoded');
-console.log(Array.prototype.join.call(message));
-//=> 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,180,183,0,112,111,203,47,126
-
-
-//////////////////
-
-console.log("");
-*/
-
-
-n = 3, k = 2;
-console.log(`RS(${n},${k})`);
-var ec = RS(n, k);
-var message = new Uint16Array(ec.messageLength);
-for (var i = 0; i < ec.dataLength; i++) message[i] = Math.floor(Math.random() * 0xFF);
-
-console.log('raw data (ec.dataLength='+ec.dataLength+' ec.messageLength='+ec.messageLength+')');
-console.log(console.getHexMulti_arr(message,ec.dataLength) );
-
-ec.encode(message);
-
-console.log('rs coded');
-console.log(console.getHexMulti_arr(message,ec.messageLength) );
-
-console.log('corrupted');
-message[ Math.floor(Math.random() * message.length) ] ^= 0xff;
-console.log(console.getHexMulti_arr(message,ec.messageLength) );
-
-ec.decode(message);
-
-console.log('rs corrected');
-console.log(console.getHexMulti_arr(message,ec.messageLength) );
+	console.log('rs corrected');
+	console.log(console.getHexMulti_arr(message,ec.messageLength) );
 
 }
+
+
+
+
+
+
+
+	/*
+	var n = 32, k = 8;
+	console.log(`RS(${n},${k})`);
+	var ec = RS(n, k);
+	var message = new Uint8Array(ec.messageLength);
+	for (var i = 0; i < ec.dataLength; i++) message[i] = i;
+
+	console.log('raw data');
+	console.log(Array.prototype.join.call(message));
+	//=> 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,0,0,0,0,0,0,0
+
+	ec.encode(message);
+
+	console.log('rs coded');
+	console.log(Array.prototype.join.call(message));
+	//=> 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,180,183,0,112,111,203,47,126
+
+	console.log('corrupted');
+	for (var i = 0; i < 4; i++) message[ Math.floor(Math.random() * message.length) ] = 0xff;
+	console.log(Array.prototype.join.call(message));
+	//=> 0,1,2,3,4,255,6,7,8,9,10,11,12,13,14,15,255,17,18,19,20,21,22,23,255,183,255,112,111,203,47,126
+
+	ec.decode(message);
+
+	console.log('rs decoded');
+	console.log(Array.prototype.join.call(message));
+	//=> 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,180,183,0,112,111,203,47,126
+
+
+	//////////////////
+
+	console.log("");
+	*/
+
+
+
+
+
 
 
 
