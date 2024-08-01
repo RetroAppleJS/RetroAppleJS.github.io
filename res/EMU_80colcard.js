@@ -9,5 +9,8 @@ else oEMU.component.IO.EightyColCard = new EightyColCard();
 
 function EightyColCard()
 {
-    
+    this.read = function(addr)
+    {
+        
+    }
 }
