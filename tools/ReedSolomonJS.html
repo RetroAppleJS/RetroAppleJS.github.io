@@ -49,6 +49,16 @@ function _snippet()
 	console.log('rs corrected');
 	console.log(console.getHexMulti_arr(message,ec.messageLength) );
 
+
+for(var i=0;i<256;i++)
+{
+	message[0] = i;
+	message[1] = 0;
+	message[2] = 0;
+	ec.encode(message);
+	console.log(console.getHexMulti_arr(message,ec.messageLength) );
+}
+
 }
 
 
