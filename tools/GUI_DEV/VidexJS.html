@@ -56,7 +56,7 @@ oMEMGRID.paint_grid = function(data,cnf)
     {
         for(var x=0 ; x < cnf.columns ; x++)
         {
-            raster_char{x,y,"TEXT",}
+            raster_char(x,y,"TEXT",THIS_ROM,cnf)
 
             var id = cnf.mirror==false ? ((cnf.columns-x-1)<<8) + y : (x<<8) + y;
             var idx = this.oCOM.getHexMulti(id,cnf.digits);
@@ -74,11 +74,12 @@ oMEMGRID.paint_grid = function(data,cnf)
 
 function raster_char(x,y,mem_data,font_data,cnf)
 {
-
+    // TODO: design a function rastering one character in the 'GPU way'
+    console.log(x,y,cnf)
 }
 
 
-var cnf = {id_prefix:"m",digits:4};
+var cnf = {};
 
 function init()
 {
@@ -94,9 +95,6 @@ function init()
     var n = document.getElementById(n_el_id).innerHTML;
     var char_offset = n * char_length;
 
-    cnf["font_data"] = char_data;
-    cnf["char_length"] = char_length;
-
     oMEMGRID.paint_grid(char_data.slice(char_offset,char_offset+char_length),cnf);
 
 }
@@ -109,6 +107,10 @@ function load_char_data(name,el_id)
     cnf.dsize   = VIDEX_ROM[name].dsize===undefined?[8,16]:VIDEX_ROM[name].dsize;
     cnf.columns = cnf.dsize[0];
     cnf.rows    = cnf.dsize[1];
+    cnf.id_prefix = "m";
+    cnf.font_data = char_data;
+    cnf.char_length = char_length;
+    cnf.digits = 4;  // formatting character page counter
 
     document.getElementById("output").innerHTML = oMEMGRID.build_grid(0,cnf.rows,1,cnf) 
 
