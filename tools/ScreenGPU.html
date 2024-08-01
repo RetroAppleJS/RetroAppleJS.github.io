@@ -393,7 +393,6 @@ var Apple2Video = function(ctx)
     {
       const x7    = this.thread.x+1+(this.thread.x+1+(this.thread.x+1>>3)>>3)>>3;
       const m7    = this.thread.x-(x7<<3)+x7;
-      //const PG = x7<40 ? 0x2000 : (0x4000 - 0x140);
       const PG    = (0x4000-(0x3E0>>(x7>>3)&1)|0x2000)&0x3EC0;              // calculate mem offset  PG = (x7<40 ? 0x2000 : (0x4000 - 0x140))
       const adr   = (PG>>3) + adr_ofs + x7;                                 // locate hardware address
       const d8    = mem[adr];                                               // read byte from memory
