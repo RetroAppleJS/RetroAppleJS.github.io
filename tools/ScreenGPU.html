@@ -367,7 +367,7 @@ var Apple2Video = function(ctx)
     // INSTATIATE GPU CLASS & ATTACH TO WINDOW OBJECT
     try { var gpu = new window.GPU.GPU(GPUarg) } catch (e) { var gpu = new GPU(GPUarg) }
 
-    // TRANSPILE CHOSEN KERNEL SCRIPT
+    // TRANSPILE KERNEL SCRIPT
     this.kernel = gpu.createKernel(KERNELarg.kernel,KERNELarg)
   }
 
