@@ -104,6 +104,14 @@ function COM()
     return "var b64 ="+lf+" \""+b64body.match(re).join('"'+lf+'+"')+"\";"+lf
   }
 
+  this.DumpTxt = function(txt,maxlen,lf)
+  {
+    var lf = lf===undefined ? "\n" : lf;
+    var maxlen = maxlen===undefined ? 1024 : maxlen;
+    var re = RegExp(".{1,"+maxlen+"}","g");
+    return txt.match(re).join(lf);
+  }
+
   this.base_convert = function (str, fromBase, toBase)
   {
     if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }

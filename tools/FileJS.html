@@ -1,6 +1,6 @@
 <html>
     <html style="background-color:#B0B0B0"><head>
-        <title>File to URI - Zlib compression</title>
+        <title>Binary File Packager</title>
         <meta name="description" content="">
         <meta name="author" content="Freddy Vandriessche">
         <meta charset="utf-8"> 
@@ -87,9 +87,9 @@
             {
                 // COMPRESSION ALGORITHM
                 var l1 = arrayBuffer.byteLength 
-                var fym = new Uint8Array(arrayBuffer);
+                var bin = new Uint8Array(arrayBuffer);
                 const deflator = new pako.Deflate( { level: 9} );
-                deflator.push(fym, true);
+                deflator.push(bin, true);
                 var dump = deflator.result
                 var l2 = dump.byteLength;
                 try {  var l3 = oCOM.ArrayBufferTobase64(dump).length; }
@@ -114,18 +114,22 @@
 
                 // CONSTRUCT URL AND URI
                 var browsers = {"safari":80000,"firefox":65536,"chrome":2083,"edge":2083,"opera":1000000};
+
                 var uri = oCOM.ArrayBufferTobase64(dump);
 
-                // TODO !!!!!!!
-                // oCOM.DumpBase64(\""+uri+"\",1024,\"<br>\")
-                var code = " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[code]</a>";
-                //var code = " <a href=javascript:onclick=oCOM.POPUP.html(\"123\")>code</a>";
-
                 var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
-                var s = code;
-                for(var i in browsers) s += "<div style=float:left title=\"max. "+browsers[i]+" bytes\" ><img style='width:12px;margin-right:5px' src=../res/i_"+i+".png><br><img src=../res/"+(url.length<=browsers[i]?"i_ok.png":"i_nok.png")+" style=width:10px;padding-left:3px></div>"
-                var link = "<div style='border:1px solid rgb(0,0,0,0)'><a target=_blank href="+url+">URL <small>(format:"+ext+" bytes:"+l1+">"+url.length+" gain:"+(100-Math.round(100*url.length/l1))+"%)<small></a>"+s+"</div>"
-                           
+
+                var brows = "";
+                for(var i in browsers) brows += "<div style=float:left title=\"max. "+browsers[i]+" bytes\" ><img style='width:12px;margin-right:5px' src=../res/i_"+i+".png><br><img src=../res/"+(url.length<=browsers[i]?"i_ok.png":"i_nok.png")+" style=width:10px;padding-left:3px></div>"
+
+                var URI_stats = "format:"+ext+" bytes:"+l1+">"+url.length+" gain:"+(100-Math.round(100*url.length/l1))+"%"
+
+                var link =  "<div style='border:1px solid rgb(0,0,0,0)'>"
+                            + brows
+                            +"<a target=_blank href="+url+">[ZLIB_URL]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[ZLIB_BASE64]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[HEX]</a>"
+                            +"</div>"
  
                 var el = document.getElementById("output");
                 el.innerHTML += link;
