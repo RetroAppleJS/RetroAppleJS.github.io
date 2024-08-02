@@ -128,7 +128,8 @@
                             + brows
                             +"<a target=_blank href="+url+">[ZLIB_URL]</a>"
                             + " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[ZLIB_BASE64]</a>"
-                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[HEX]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[LF_HEX]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(["+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])')>[HEX]</a>"
                             +"</div>"
  
                 var el = document.getElementById("output");
