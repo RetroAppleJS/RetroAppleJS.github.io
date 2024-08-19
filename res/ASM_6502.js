@@ -118,7 +118,8 @@ oASM.mnemonics = instrtab;
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,macrotab)
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 	{
-		 ".END":true
+		 "ORG":true
+		,".END":true
 		,".WORD":true
 		,".BYTE":true
 		,".TEXT":true
@@ -373,6 +374,7 @@ function doPass(pass)
 		if(listing.value.length>0) listing.value += '\n';
 		if (sym.length == 0)
 		{
+			listing.value += " ".repeat(10);  // 40 spaces = skip one listing line
 			sym = getSym();
 			continue;
 		}
@@ -424,9 +426,9 @@ function doPass(pass)
 		if (c1 == '.')
 		{
 			var r = oASM.parse_pragma(sym,pass);
-			if(r!=null) return r.val; else sym = getSym();
+			if(r!=null) v = r.val; else sym = getSym();
 
-			var pragma = sym[0];
+			//var pragma = sym[0];
 
 			/*
 			if (sym.length > 2)	// more than two operands
@@ -444,7 +446,7 @@ function doPass(pass)
 					}
 				}
 			}
-			*/
+
 			if (sym.length == 2)	// two operands
 			{
 				//listing.value += pragma;
@@ -536,23 +538,32 @@ function doPass(pass)
 				else
 				{
 					listing.value += ' ' + sym[1];
-				}
+				}				
+
 				//pc += (pragma == '.WORD') ? 2 : 0;
 				pc += (pragma == '.BYTE') ? 1 : 0;
 				pc += (pragma == '.TEXT') ? oASM.getString(sym[1]).val.length : 0;
 				sym = getSym();
 				continue;
 			}
+			
 			else if (sym.length == 1)
 			{
 				displayError('syntax error:\nvalue expected');
 				return false;
 			}
+
+			if (sym.length == 1)
+			{
+				displayError('syntax error:\nvalue expected');
+				return false;
+			}			
 			else
 			{
 				displayError('syntax error:\ntoo many arguments');
 				return false;
 			}
+			*/
 		}
 		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))					
 		{
@@ -671,7 +682,8 @@ function doPass(pass)
 			
 			var opctab = instrtab[opc];
 			//FVD
-			var mactab = macrotab[opc];
+			//var mactab = macrotab[opc];
+			var mactab = oASM.pragma_sym[opc];		// use the larger pragma syntax
 
 			if (opctab == null && mactab == null)
 			{
@@ -680,7 +692,7 @@ function doPass(pass)
 			}
 			var addr = sym[ofs + 1];
 			var mode = 0;  						// implied
-			if (typeof addr == 'undefined')
+			if (typeof addr == 'undefined' && mactab == null)
 			{
 				if (opctab[0] < 0)
 				{
@@ -706,6 +718,7 @@ function doPass(pass)
 			}
 			else if (mactab != null) // MACRO CODE
 			{
+				/*
 				function getByteArray(arg)
 				{
 					str = arg.replace(/[^A-Fa-f0-9]/g, "");
@@ -735,8 +748,15 @@ function doPass(pass)
 					}
 					return dat;
 				}
+				*/
+
+				// TODO: is this duplicate code with parse_pragma() ?
+			
+				listing.value += sym[0]+" ";
+				r = oASM.parse_pragma([opc,addr],pass,{"ofs":ofs});
 
 
+				/*
 				switch (opc)
 				{
 					case "HEX":
@@ -777,7 +797,24 @@ function doPass(pass)
 						}
 						pc += dat.length;
 						break;
+					case ".BYTE":
+						var arg = sym.slice(ofs + 1, sym.length).join(" ")
+						var e = oASM.getExpression(addr);
+						var mode = 13;
+						var lg = listing_gen(mode,{"opcode":opc,"val":e.val,"pc":pc})
+
+						if (pass == 1) listing.value += lg
+						if (pass == 2)
+						{
+							padd += lg.length;
+							oASM.concat_code(e.val);
+							listing.value += lg;
+							//listing.value += arg;
+						}
+						pc += 1;
+						break;
 				}
+				*/
 			}
 			else
 			{
@@ -851,7 +888,7 @@ function doPass(pass)
 				{
 					if (opctab != null) mode = (opctab[12] < 0) ? 3 : 12;		// absolute or relative
 				}
-				if (pass == 1) listing.value += addr;
+				if (pass == 1) listing.value += opc+" "+addr;
 				if (mode == 9)
 				{													// X-indexed, indirect
 					var b3 = addr.indexOf(',X)');					// end position of indirect address
@@ -981,7 +1018,8 @@ function listing_gen(mode,a)
 		case 11: return r(a,"OPC ($HHLL)");		// indirect
 		case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
 		//case 12: return r(a,"OPC $BB");		// relative
-		case 13: /* PROCESS MACRO ARGUMENT ? */
+		case 13: return a.opcode+" "+a.val;
+		/* PROCESS MACRO ARGUMENT ? */
 	}
 	function r(a,fmt)
 	{
@@ -1062,7 +1100,8 @@ function sym_link(_obj)
 	switch (_obj.type)
 	{
 		case "loc":
-			if (typeof (oASM.symlink[_obj.PC]) != "undefined") alert("double entry! "+ JSON.stringify(_obj))
+			if (typeof (oASM.symlink[_obj.PC]) != "undefined") 
+				console.warn("double entry! Label pointing to same address "+ JSON.stringify(_obj) + " ~ "+oASM.symlink[_obj.PC])
 			key = _obj.PC;
 				oASM.symlink[key] = {
 				"type": _obj.type,

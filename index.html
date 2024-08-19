@@ -670,8 +670,17 @@ Label1 TXA
                     <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                     <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
       
-                    <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));oASM.updateScroll(document.getElementsByName('listing')[0])"><i class="fa fa-road"></i> trace</button>
+                    <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));rrr()"><i class="fa fa-road"></i> trace</button>
       
+<script>
+
+function rrr()
+{
+  //this.updateScroll(document.getElementById('dispStep'));
+  oASM.updateScroll(document.getElementsByName('listing')[0])
+}
+</script>
+
                   </td>
                   <td valign=top>
                     <!-- RIGHT PANE -->

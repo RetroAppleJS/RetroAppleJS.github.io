@@ -21,7 +21,6 @@ function ASM()
 
 	this.crlf = "<br>";
 
-
 	this.init = function(a)
 	{
 		if(a!=null)
@@ -110,15 +109,16 @@ function ASM()
 		{
 			arr[0] = "LBL"; // TODO store label !!!!
 			arr[1] = "MNE";
-			if(sym[2]!=null) arr[2] = "OPR" 
+			if(sym[2]!=null) 	arr[2] = "OPR" 
 				//arr[2] = sym[2]!="A" ? "VAL" : "ACC";	// LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
 		}
 		else if(this.pragma_sym[sym[0]]!=null )
 		{
 			arr[0] = "PGM";
+			if(sym[1]!=null) 	arr[1] = "OPR" 
 		}
 		//else if(this.pragma_sym[sym[0]+" "+sym[1]] {}
-		else if ( this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas
+		else if ( this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas (example?)
 		{
 			//arr[0] = sym[0]=="*"?"PC":"LBL";  // LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
 			arr[0] = "LBL";
@@ -129,6 +129,7 @@ function ASM()
 		{
 			arr[0] = "LBL";
 			arr[1] = "PGM";
+			if(sym[2]!=null) 	arr[2] = "OPR" 
 		}
 		else
 			arr[0] = "---";
@@ -382,6 +383,9 @@ function ASM()
 				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
 				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				return r;
+			case "'":
+				var e = this.getNumber(str);
+				return {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
 			default:
 				//if(str=="'%'")
 				//	console.log("DEBUG THIS");
@@ -493,7 +497,8 @@ this.MathParser.prototype.parse = function(e)
 
 		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
 		n = n.substring(0, this.label_len);	// truncate identifier length
-		if(oASM.symtab[n] === undefined) return {"val":"NaN","fmt":"ID","err":"compile error:\nidentifier does not exist"}
+		if(oASM.symtab[n] === undefined) 
+			return {"val":"NaN","fmt":"ID","err":"compile error:\nidentifier does not exist"}
 
 		var b = (Math.log10(Math.abs( oASM.symtab[n] ))/log2>>3)+1;
 		return {"val":oASM.symtab[n],"fmt":"ID","bytes":b};
@@ -580,13 +585,86 @@ this.MathParser.prototype.parse = function(e)
 		return this.codesrc[this.srcl].charAt(this.srcc);
 	}
 
-	this.parse_pragma = function(sym,pass)
+	// A pragma is a directive that provides instructions
+	// to the assembler on how to process code.
+
+	this.parse_pragma = function(sym,pass,xarg)
 	{
+		function getByteArray(arg)
+		{
+			str = arg.replace(/[^A-Fa-f0-9]/g, "");
+			if (arg != str || arg.length % 2 != 0)
+			{
+				displayError('format error:\nwrong or odd digits');
+				return false;
+			}
+			for (var dat = []; dat.length < (arg.length / 2);)
+			{
+				dat[dat.length] = parseInt(arg.substring(dat.length * 2, dat.length * 2 + 2), 16);
+			}
+			return dat;
+		}
+
+		function getBitArray(arg)
+		{
+			str = arg.replace(/[^0-1]/g, "");
+			if (arg != str || arg.length % 8 != 0)
+			{
+				displayError('format error:\nwrong or odd digits');
+				return false;
+			}
+			for (var dat = []; dat.length < (arg.length / 8);)
+			{
+				dat[dat.length] = parseInt(arg.substring(dat.length * 8, dat.length * 8 + 8), 2);
+			}
+			return dat;
+		}
+
 		switch(sym[0])
 		{
+			case "HEX":
+				var arg = sym.slice(xarg.ofs + 1, sym.length).join(" ")
+				var dat = getByteArray(sym[1]);
+				if (pass == 1) listing.value += arg
+				if (pass == 2)
+				{
+					oASM.concat_code(dat);
+					listing.value += arg;
+				}
+				pc += dat.length;
+				return {"val":true};
+
+			case "BIN":
+				var arg = sym.slice(xarg.ofs + 1, sym.length).join(" ")
+				var dat = getBitArray(sym[1]);
+				if (pass == 1) listing.value += arg
+				if (pass == 2)
+				{
+					oASM.concat_code(dat);
+					listing.value += arg;
+				}
+				pc += dat.length;
+				return {"val":true};
+
+			case "ASC":
+				var str = sym.join(" ").split("\"")[1];
+				eval("var arg=\"" + str + "\"");
+				if (pass == 1) listing.value += "\"" + arg + "\"";
+				var dat = [];
+				for (var i = 0; i < arg.length; i++)
+					dat[i] = getAscii(arg.charAt(i));
+				if (pass == 2)
+				{
+					oASM.concat_code(dat);
+					listing.value += "\"" + arg + "\"";
+				}
+				pc += dat.length;
+				return {"val":true};
+
 			case ".END":
 				listing.value += sym[0];
 				return {"val":true};
+
 			case ".WORD":
 				// process all other symbols !
 				// expect ANY aritmetic expression 
@@ -597,30 +675,59 @@ this.MathParser.prototype.parse = function(e)
 				// e.g. *12
 				// e.g. >$FFFF - generates only one byte !
 
-
 				if(sym.length != 2) return
 				if(pass==2)
 				{
 					code[code.length] = hi;
 					listing.value += ' $' + getHexWord(v) + '            ' + getHexByte(lo) + ' ' + getHexByte(hi);
-					return
+					return {"val":true};
 				}
 				listing.value += ' ' + sym[1];
 				pc += 2;
-				return {"val":true};
-				break;
-			case ".BYTE":
-				break;
-			case ".DS":
-				var arr = sym.slice(1).join("").split(",");
-				var i = arr.length-1
-				var n = arr[i];
-				var e = this.getExpression(arr[i]);
-				arr[i] = e.val+"";
+				return {"val":true}
 
+			case ".BYTE":
+				// Merlin: .BYTE=comma separated byte Array
+				// each expression is trucated to byte size
+				var arr = sym.slice(1).join("").split(",");
 				if(pass==2)
 				{
-					
+					for(var i=0;i<arr.length;i++)
+					{
+						var e = this.getExpression(arr[i]);
+						arr[i] = (e.val & 0xFF)+"";	// truncate to byte size
+						if (e.err) { displayError(e.err); return {"val":false}  }
+						//	oper = e.val;
+					}
+					//alert(pass+".DS "+arr.join(","));
+				}
+	
+				pc += arr.length;
+				listing.value += arr.join(",");
+
+				//oASM.getExpression(addr);
+				return {"val":true}
+
+			case ".DS":
+				// Merlin: .DS=Define Storage, reserves an uninitialised amount of bytes
+				// e.g. Buffer .DS 256   ; Reserves 256 bytes of storage for 'Buffer'
+				var arr = sym.slice(1).join("").split(",");
+
+				var i = arr.length-1;
+				var n = arr[i];
+				var e = this.getExpression(n);
+
+				if(pass==1)
+				{
+					if(isNaN(e.val))
+					{
+						displayError('label must be defined at this stage');  // since in pass1 we need to count the precise data length 
+									return {"val":false}
+					}
+					arr[i] = e.val+"";
+				}
+				if(pass==2)
+				{
 					for(var i=0;i<arr.length;i++)
 					{
 						var e = this.getExpression(arr[i]);
@@ -631,12 +738,12 @@ this.MathParser.prototype.parse = function(e)
 					//alert(pass+".DS "+arr.join(","));
 				}
 
-				pc += e.val;
-				listing.value += sym[0]+' ' + arr.join(",");
+				pc += arr.length;
+				listing.value += arr.join(",");
 
 				//oASM.getExpression(addr);
-				return {"val":true};
-				break;
+				return {"val":true}
+
 			case ".TEXT":
 				break;
 			case ".DEFINE":
@@ -695,6 +802,7 @@ this.MathParser.prototype.parse = function(e)
 	{
 		return this.codedst_len;
 	}
+
 	this.clear_code = function()
 	{
 		this.codedst_len = 0;
@@ -706,6 +814,11 @@ this.MathParser.prototype.parse = function(e)
 		var json3 = json1;
 		for(var i in json2) json3[i] = json2[i];
 		return json3;
+	}
+
+    this.updateScroll = function(el)
+	{
+		el.scrollTop = el.scrollHeight;
 	}
 
 	this.hextab = oCOM.hextab;
