@@ -114,6 +114,7 @@ var dbgsym = {}
 
 
 var oASM = new ASM();
+oASM.init();
 oASM.mnemonics = instrtab;
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,macrotab)
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
@@ -718,103 +719,9 @@ function doPass(pass)
 			}
 			else if (mactab != null) // MACRO CODE
 			{
-				/*
-				function getByteArray(arg)
-				{
-					str = arg.replace(/[^A-Fa-f0-9]/g, "");
-					if (arg != str || arg.length % 2 != 0)
-					{
-						displayError('format error:\nwrong or odd digits');
-						return false;
-					}
-					for (var dat = []; dat.length < (arg.length / 2);)
-					{
-						dat[dat.length] = parseInt(arg.substring(dat.length * 2, dat.length * 2 + 2), 16);
-					}
-					return dat;
-				}
-
-				function getBitArray(arg)
-				{
-					str = arg.replace(/[^0-1]/g, "");
-					if (arg != str || arg.length % 8 != 0)
-					{
-						displayError('format error:\nwrong or odd digits');
-						return false;
-					}
-					for (var dat = []; dat.length < (arg.length / 8);)
-					{
-						dat[dat.length] = parseInt(arg.substring(dat.length * 8, dat.length * 8 + 8), 2);
-					}
-					return dat;
-				}
-				*/
-
-				// TODO: is this duplicate code with parse_pragma() ?
-			
-				listing.value += sym[0]+" ";
-				r = oASM.parse_pragma([opc,addr],pass,{"ofs":ofs});
-
-
-				/*
-				switch (opc)
-				{
-					case "HEX":
-						var arg = sym.slice(ofs + 1, sym.length).join(" ")
-						var dat = getByteArray(addr);
-						if (pass == 1) listing.value += arg
-						if (pass == 2)
-						{
-							oASM.concat_code(dat);
-							listing.value += arg;
-						}
-						pc += dat.length;
-						break;
-
-					case "BIN":
-						var arg = sym.slice(ofs + 1, sym.length).join(" ")
-						var dat = getBitArray(addr);
-						if (pass == 1) listing.value += arg
-						if (pass == 2)
-						{
-							oASM.concat_code(dat);
-							listing.value += arg;
-						}
-						pc += dat.length;
-						break;
-
-					case "ASC":
-						var str = sym.join(" ").split("\"")[1];
-						eval("var arg=\"" + str + "\"");
-						if (pass == 1) listing.value += "\"" + arg + "\"";
-						var dat = [];
-						for (var i = 0; i < arg.length; i++)
-							dat[i] = getAscii(arg.charAt(i));
-						if (pass == 2)
-						{
-							oASM.concat_code(dat);
-							listing.value += "\"" + arg + "\"";
-						}
-						pc += dat.length;
-						break;
-					case ".BYTE":
-						var arg = sym.slice(ofs + 1, sym.length).join(" ")
-						var e = oASM.getExpression(addr);
-						var mode = 13;
-						var lg = listing_gen(mode,{"opcode":opc,"val":e.val,"pc":pc})
-
-						if (pass == 1) listing.value += lg
-						if (pass == 2)
-						{
-							padd += lg.length;
-							oASM.concat_code(e.val);
-							listing.value += lg;
-							//listing.value += arg;
-						}
-						pc += 1;
-						break;
-				}
-				*/
+				listing.value += sym[ofs]+" ";
+				r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
+				//r = oASM.parse_pragma([opc,addr],pass);
 			}
 			else
 			{

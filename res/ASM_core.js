@@ -384,6 +384,8 @@ function ASM()
 				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				return r;
 			case "'":
+			case "\"":
+				if(c[0]!=c[2]) return {"val":false,"err":"inproperly closed quotes in expression"};
 				var e = this.getNumber(str);
 				return {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
 			default:
@@ -620,11 +622,12 @@ this.MathParser.prototype.parse = function(e)
 			return dat;
 		}
 
-		switch(sym[0])
+		var ofs = xarg.ofs===undefined ? 0 : xarg.ofs  
+		switch(sym[ofs])
 		{
 			case "HEX":
-				var arg = sym.slice(xarg.ofs + 1, sym.length).join(" ")
-				var dat = getByteArray(sym[1]);
+				var arg = sym.slice(ofs + 1, sym.length).join(" ")
+				var dat = getByteArray(arg);
 				if (pass == 1) listing.value += arg
 				if (pass == 2)
 				{
@@ -635,7 +638,7 @@ this.MathParser.prototype.parse = function(e)
 				return {"val":true};
 
 			case "BIN":
-				var arg = sym.slice(xarg.ofs + 1, sym.length).join(" ")
+				var arg = sym.slice(ofs + 1, sym.length).join(" ")
 				var dat = getBitArray(sym[1]);
 				if (pass == 1) listing.value += arg
 				if (pass == 2)
