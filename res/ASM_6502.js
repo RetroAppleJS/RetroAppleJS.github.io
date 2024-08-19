@@ -426,8 +426,10 @@ function doPass(pass)
 
 		if (c1 == '.')
 		{
-			var r = oASM.parse_pragma(sym,pass);
-			if(r!=null) v = r.val; else sym = getSym();
+			listing.value += (ofs==0?paddRight("",oASM.label_len):"") + " " + sym[ofs] + " ";
+			r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
+			sym = getSym();
+			continue;
 
 			//var pragma = sym[0];
 

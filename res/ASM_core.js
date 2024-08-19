@@ -622,13 +622,13 @@ this.MathParser.prototype.parse = function(e)
 			return dat;
 		}
 
-		var ofs = xarg.ofs===undefined ? 0 : xarg.ofs  
+		var ofs = xarg===undefined || xarg.ofs===undefined ? 0 : xarg.ofs  
 		switch(sym[ofs])
 		{
 			case "HEX":
-				var arg = sym.slice(ofs + 1, sym.length).join(" ")
+				var arg = sym.slice(ofs + 1, sym.length).join(" ");
 				var dat = getByteArray(arg);
-				if (pass == 1) listing.value += arg
+				if (pass == 1) listing.value += arg;
 				if (pass == 2)
 				{
 					oASM.concat_code(dat);
@@ -638,9 +638,9 @@ this.MathParser.prototype.parse = function(e)
 				return {"val":true};
 
 			case "BIN":
-				var arg = sym.slice(ofs + 1, sym.length).join(" ")
-				var dat = getBitArray(sym[1]);
-				if (pass == 1) listing.value += arg
+				var arg = sym.slice(ofs + 1, sym.length).join(" ");
+				var dat = getBitArray(arg);
+				if (pass == 1) listing.value += arg;
 				if (pass == 2)
 				{
 					oASM.concat_code(dat);
@@ -678,37 +678,46 @@ this.MathParser.prototype.parse = function(e)
 				// e.g. *12
 				// e.g. >$FFFF - generates only one byte !
 
-				if(sym.length != 2) return
+				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
 				if(pass==2)
 				{
-					code[code.length] = hi;
-					listing.value += ' $' + getHexWord(v) + '            ' + getHexByte(lo) + ' ' + getHexByte(hi);
-					return {"val":true};
+					var dat = [];
+					for(var i=0;i<arr.length;i++)
+					{
+						var e = this.getExpression(arr[i]);
+						if(e.bytes!=2) e.err = "expression is not 2 bytes long ("+e.bytes+")"
+						if (e.err) { displayError(e.err); return {"val":false}  }
+						dat[i<<1]     = (e.val & 0xFF)+"";	    // extract  lo byte
+						dat[(i<<1)+1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
+					}
+					oASM.concat_code(dat);
 				}
-				listing.value += ' ' + sym[1];
-				pc += 2;
+
+				pc += arr.length*2;
+				listing.value += arr.join(",");
+
 				return {"val":true}
 
 			case ".BYTE":
 				// Merlin: .BYTE=comma separated byte Array
 				// each expression is trucated to byte size
-				var arr = sym.slice(1).join("").split(",");
+				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
 				if(pass==2)
 				{
+					var dat = [];
 					for(var i=0;i<arr.length;i++)
 					{
 						var e = this.getExpression(arr[i]);
-						arr[i] = (e.val & 0xFF)+"";	// truncate to byte size
+						if(e.bytes!=1) e.err = "expression is not 1 byte long ("+e.bytes+")"
 						if (e.err) { displayError(e.err); return {"val":false}  }
-						//	oper = e.val;
+						dat[i]     = (e.val & 0xFF)+"";	    // extract  lo byte
 					}
-					//alert(pass+".DS "+arr.join(","));
+					oASM.concat_code(dat);
 				}
 	
 				pc += arr.length;
 				listing.value += arr.join(",");
 
-				//oASM.getExpression(addr);
 				return {"val":true}
 
 			case ".DS":
