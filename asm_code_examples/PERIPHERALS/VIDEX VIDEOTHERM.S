@@ -118,9 +118,9 @@ NORMOU PLA
 ;* GET CHARACTER FROM KEYBOARD
 ;*
 RDKEY  JSR  CSRMOV          ; POSITION CURSOR
-KEYIN  INC  RNDL            ; UPDATE BASIC RANDOM
+KEYIN  INC  *RNDL           ; UPDATE BASIC RANDOM
        BNE  KEYIN2
-       INC  RNDH
+       INC  *RNDH
 KEYIN2 LDA  KBD             ; POLL KEYBOARD
        BPL  KEYIN           ; LOOP UNTIL KEY IS STRUCK
        JSR  KEYSTA
@@ -174,12 +174,12 @@ TABLE  HEX 7B505E291B081819
 ;*
 ;*
 BASOU1 STA  BYTE            ; SAVE CHARACTER
-       LDA  CV              ; PERFORM VTAB
+       LDA  *CV             ; PERFORM VTAB
        CMP  CVERT
        BEQ  CVOK
        STA  CVERT
        JSR  VTAB
-CVOK   LDA  CH              ; PERFORM HTAB
+CVOK   LDA  *CH             ; PERFORM HTAB
        CMP  CHORZ
        BCC  PSCLOU
        STA  CHORZ
@@ -582,7 +582,7 @@ STEXIT LDX #$00
 ;*
 ;* BASIC INPUT ENTRY POINT
 ;*
-INENTR STA  (BASL),Y               ; REPLACE FLASHING
+INENTR STA  (*BASL),Y              ; REPLACE FLASHING
        SEC
        CLV
 ENTR   STA  $CFFF                  ; TURN OFF CO-RESIDENT MEMORY
@@ -593,13 +593,13 @@ ENTR   STA  $CFFF                  ; TURN OFF CO-RESIDENT MEMORY
 ;*
 ;*
 WHERE  PHA                          ; SAVE REGISTERS ON STACK
-       STA  XSAVE
+       STA  *XSAVE
        TXA
        PHA    
        TYA
        PHA    
-       LDA  XSAVE                  ; SAVE CHARACTER
-       STX  XSAVE                  ; SAVE INPUT BUFFER INDEX
+       LDA  *XSAVE                 ; SAVE CHARACTER
+       STX  *XSAVE                 ; SAVE INPUT BUFFER INDEX
        LDX  #$C3
        STX  CRFLAG
        PHA    
@@ -610,11 +610,11 @@ WHERE  PHA                          ; SAVE REGISTERS ON STACK
 ;*
 ;*
        LDA  #<INENTR              ; SET UP INPUT AND OUTPUT HOOKS
-       STA  KSWL
-       STX  KSWH
+       STA  *KSWL
+       STX  *KSWH
        LDA  #<OUENTR
-       STA  CSWL
-       STX  CSWH
+       STA  *CSWL
+       STX  *CSWH
        JSR  SETUP                 ; SET UP CRTC
        CLC
 ;*
@@ -626,7 +626,7 @@ IO     BCC  BASOUT
 ;*
 ;*
 BASINP PLA                         ; POP STACK
-       LDY  XSAVE                  ; GET INPUT BUFFER INDEX
+       LDY  *XSAVE                 ; GET INPUT BUFFER INDEX
        BEQ  GETLN                  ; IF ZERO ASSUME GETLN
        DEY
        LDA  OLDCHA                 ; GET LAST CHARACTER FROM GETLN
@@ -672,9 +672,9 @@ DONE   TSX                         ; PUT CHARACTER INTO STACK
        INX
        STA  $100,X
 OUTDO1 LDA  #$00                   ; SET CH = 00
-OUTDON STA  CH
+OUTDON STA  *CH
        LDA  CVERT                  ; SET CV = CVERT
-       STA  CV
+       STA  *CV
        JMP  EXIT
 ;*
 ;*
