@@ -385,7 +385,7 @@ function ASM()
 				return r;
 			case "'":
 			case "\"":
-				if(c[0]!=c[2]) return {"val":false,"err":"inproperly closed quotes in expression"};
+				if(c[0]!=c[1].charAt(1)) return {"val":false,"err":"inproperly closed quotes in expression"};
 				var e = this.getNumber(str);
 				return {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
 			default:
@@ -679,6 +679,7 @@ this.MathParser.prototype.parse = function(e)
 				// e.g. >$FFFF - generates only one byte !
 
 				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+				if(pass==1) listing.value += arr.join(",");
 				if(pass==2)
 				{
 					var dat = [];
@@ -689,12 +690,12 @@ this.MathParser.prototype.parse = function(e)
 						if (e.err) { displayError(e.err); return {"val":false}  }
 						dat[i<<1]     = (e.val & 0xFF)+"";	    // extract  lo byte
 						dat[(i<<1)+1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
+						arr[i] = oCOM.getHexWord(e.val & 0xFFFF);
 					}
 					oASM.concat_code(dat);
+					listing.value += arr.join(",");
 				}
-
 				pc += arr.length*2;
-				listing.value += arr.join(",");
 
 				return {"val":true}
 
@@ -702,6 +703,8 @@ this.MathParser.prototype.parse = function(e)
 				// Merlin: .BYTE=comma separated byte Array
 				// each expression is trucated to byte size
 				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+
+				if(pass==1) listing.value += arr.join(",");
 				if(pass==2)
 				{
 					var dat = [];
@@ -710,13 +713,13 @@ this.MathParser.prototype.parse = function(e)
 						var e = this.getExpression(arr[i]);
 						if(e.bytes!=1) e.err = "expression is not 1 byte long ("+e.bytes+")"
 						if (e.err) { displayError(e.err); return {"val":false}  }
-						dat[i]     = (e.val & 0xFF)+"";	    // extract  lo byte
+						dat[i] = e.val & 0xFF;	    		// extract  lo byte
+						arr[i] = oCOM.getHexByte(e.val & 0xFF);
 					}
 					oASM.concat_code(dat);
+					listing.value += arr.join(" ");
 				}
-	
 				pc += arr.length;
-				listing.value += arr.join(",");
 
 				return {"val":true}
 
@@ -734,7 +737,7 @@ this.MathParser.prototype.parse = function(e)
 					if(isNaN(e.val))
 					{
 						displayError('label must be defined at this stage');  // since in pass1 we need to count the precise data length 
-									return {"val":false}
+						return {"val":false}
 					}
 					arr[i] = e.val+"";
 				}
