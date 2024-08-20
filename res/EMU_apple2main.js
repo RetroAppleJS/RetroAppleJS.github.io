@@ -369,7 +369,9 @@ function EMUI()
 
     this.pauseBtn = function(arg)
     {
-        var bPause = appleIntervalHandle != null;
+        var bPause = arg.pause===undefined ? appleIntervalHandle != null : arg.pause;
+        if(bPause == (appleIntervalHandle == null)) return;     // do not toggle unnecessarily
+
         if (bPause) {
             oEMU.component.Keyboard.isActive(false);
             window.clearInterval(appleIntervalHandle); appleIntervalHandle = null;
