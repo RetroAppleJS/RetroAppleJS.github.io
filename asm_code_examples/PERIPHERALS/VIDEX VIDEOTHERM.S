@@ -322,37 +322,37 @@ FLGSAV STA  FLAGS
 ;*
 PSOUT  STA  BYTE
        LSR  CRFLAG
-       JMP  PSCLOU                 ; JUMP FOR PASCAL ENTRY
+       JMP  PSCLOU          ; JUMP FOR PASCAL ENTRY
 
 ;*
 ;*
 ;* CR LF ROUTINE
 ;*
 CRLF   JSR  CR
-LF     INC  CVERT                  ; INCREMENT CURSOR VERTICAL
+LF     INC  CVERT           ; INCREMENT CURSOR VERTICAL
        LDA  CVERT
-       CMP  #24                    ; OFF SCREEN
-       BCC  VTABZ                  ; IF NOT MOVE CURSOR
-       DEC  CVERT                  ; IF SO DECREMENT CURSOR VERTICAL
+       CMP  #24             ; OFF SCREEN
+       BCC  VTABZ           ; IF NOT MOVE CURSOR
+       DEC  CVERT           ; IF SO DECREMENT CURSOR VERTICAL
 ;*
-       LDA  START                  ; INCREMENT THE START ADDRESS
-       ADC  #$04                   ; BY ONE LINE
+       LDA  START           ; INCREMENT THE START ADDRESS
+       ADC  #$04            ; BY ONE LINE
        AND  #$7F8
        STA  START
-       JSR  BASCL1                 ; CALCULATE THE START ADDRESS
-       LDA  #$0D                   ; SET UP CRTC ADDRESS
-       STA  DEV0                   ; FOR START LOW ADDRESS
-       LDA  BASEL                  ; GET START LOW
-       STA  DEV1                   ; SAVE START LOW
-       LDA  #$0C                   ; SET UP CRTC ADDRESS
-       STA  DEV0                   ; FOR START HIGH ADDRESS
-       LDA  BASEH                  ; GET START HIGH
-       STA  DEV1                   ; SAVE START HIGH
-       LDA  #23                    ; PUT WINDOW BOTTOM-1 INTO A
-       JSR  VTABZ                  ; CALCULATE BASE ADDRESS
+       JSR  BASCL1          ; CALCULATE THE START ADDRESS
+       LDA  #$0D            ; SET UP CRTC ADDRESS
+       STA  DEV0            ; FOR START LOW ADDRESS
+       LDA  BASEL           ; GET START LOW
+       STA  DEV1            ; SAVE START LOW
+       LDA  #$0C            ; SET UP CRTC ADDRESS
+       STA  DEV0            ; FOR START HIGH ADDRESS
+       LDA  BASEH           ; GET START HIGH
+       STA  DEV1            ; SAVE START HIGH
+       LDA  #23             ; PUT WINDOW BOTTOM-1 INTO A
+       JSR  VTABZ           ; CALCULATE BASE ADDRESS
        LDA  #$00
-       JSR  CLEOLZ                 ; CLEAR BOTTOM LINE
-       BCS  JVTAB                  ; MOVE CURSOR BRACKET
+       JSR  CLEOLZ          ; CLEAR BOTTOM LINE
+       BCS  JVTAB           ; MOVE CURSOR BRACKET
 ;*
 NOT2   CMP  #"3"
        BNE  JSTOAD
@@ -371,13 +371,13 @@ NOT0   CMP  #"0"
 ;*
 JSTOAD JMP  STOADV
 ;*
-VTAB   LDA  CVERT                  ; GET CURSOR VERTICAL
-VTABZ  STA  ASAV1                  ; MULTIPLY A BY 5
+VTAB   LDA  CVERT; GET CURSOR VERTICAL
+VTABZ  STA  ASAV1           ; MULTIPLY A BY 5
        ASL  A
        ASL  A
        ADC  ASAV1
-       ADC  START                  ; ADD START
-BASCL1 PHA                         ; SAVE A0
+       ADC  START           ; ADD START
+BASCL1 PHA                  ; SAVE A0
        LSR  A
        LSR  A
        LSR  A
@@ -397,11 +397,11 @@ VIDOUT CMP  #$0D
 CR     LDA  #$00
        STA  CHORZ
        RTS
-VDOUT1 ORA  #$80                   ; SET HIGH BIT
+VDOUT1 ORA  #$80            ; SET HIGH BIT
        CMP  #$A0
-       BCS  JSTOAD                 ; IF NOT CONTROL PRINT IT
+       BCS  JSTOAD          ; IF NOT CONTROL PRINT IT
        CMP  #$87
-       BCC  RTS4                   ; CTRL @ - F
+       BCC  RTS4            ; CTRL @ - F
        TAY
        LDA  #>BELL
        PHA
@@ -409,7 +409,7 @@ VDOUT1 ORA  #$80                   ; SET HIGH BIT
        PHA
 RTS4   RTS
 ;*
-CTLTBL  .BYTE  <BELL-1       ; here is where the assembler is leaving pass1
+CTLTBL  .BYTE  <BELL-1
         .BYTE  <BS-1
         .BYTE  <RTS3-1
         .BYTE  <LF-1
@@ -446,9 +446,9 @@ PSNCAL CLC
        ADC  BASEH
        PHA    
        ASL  A
-       AND  #$0C                   ; USE BIT O AND 1 FOR PAGING
+       AND  #$0C            ; USE BIT O AND 1 FOR PAGING
        TAX
-       LDA  DEV0,X                ; SET CORRECT SCREEN PAGE
+       LDA  DEV0,X          ; SET CORRECT SCREEN PAGE
        PLA    
        LSR  A
        PLA    
@@ -460,14 +460,14 @@ PSNCAL CLC
 ;*
 ;*
 CHRPUT ASL  A
-       PHA                   ; SAVE SHIFTED CHARACTER
+       PHA                  ; SAVE SHIFTED CHARACTER
        LDA  FLAGS           ; GET CHARACTER SET FLAGS
        LSR  A               ; SHIFT IT INTO CARRY
-       PLA                   ; RECOVER SHIFTED CHARACTER
+       PLA                  ; RECOVER SHIFTED CHARACTER
        ROR  A               ; ROTATE CARRY INTO CHARACTER
-       PHA                   ; SAVE CHARACTER
+       PHA                  ; SAVE CHARACTER
        JSR  PSNCAL          ; SET UP SCREEN ADDRESS
-       PLA                   ; RECOVER CHARACTER
+       PLA                  ; RECOVER CHARACTER
        BCS  WRITE1          ; SELECT MEMORY RANGE
        STA  DISP0,X         ; STORE CHARACTER ON SCREEN
        BCC  WSKIP           ; SKIP
@@ -510,7 +510,7 @@ BADY   LDA  TEMPX           ; GET CURSOR HORIZONTAL PARAMETER
        STA  CHORZ
 BADX   JMP  VTAB            ; VERTICAL TAB TO CURSOR POSITION
 GOXY2  PLA                  ; RECOVER A
-       STA  TEMPX            ; SAVE CURSOR HORIZONTAL PARAMETER
+       STA  TEMPX           ; SAVE CURSOR HORIZONTAL PARAMETER
        RTS
 ;*
 ;*
@@ -583,40 +583,40 @@ STEXIT LDX #$00
 ;*
 ;* BASIC INPUT ENTRY POINT
 ;*
-INENTR STA  (*BASL),Y              ; REPLACE FLASHING
+INENTR STA  (*BASL),Y       ; REPLACE FLASHING
        SEC
        CLV
-ENTR   STA  $CFFF                  ; TURN OFF CO-RESIDENT MEMORY
+ENTR   STA  $CFFF           ; TURN OFF CO-RESIDENT MEMORY
 ;*
 ;*
 ;*
 ;* SAVE REGISTERS, SET UP NO AND CONTINUE
 ;*
 ;*
-WHERE  PHA                          ; SAVE REGISTERS ON STACK
+WHERE  PHA                  ; SAVE REGISTERS ON STACK
        STA  *XSAVE
        TXA
        PHA    
        TYA
        PHA    
-       LDA  *XSAVE                 ; SAVE CHARACTER
-       STX  *XSAVE                 ; SAVE INPUT BUFFER INDEX
+       LDA  *XSAVE          ; SAVE CHARACTER
+       STX  *XSAVE          ; SAVE INPUT BUFFER INDEX
        LDX  #$C3
        STX  CRFLAG
        PHA    
-       BVC  IO                     ; GO TO IO IF NOT INITIAL ENTRY
+       BVC  IORTS           ; GO TO IO IF NOT INITIAL ENTRY
 ;*
 ;*
 ;* BASIC INITIALIZE
 ;*
 ;*
-       LDA  #<INENTR              ; SET UP INPUT AND OUTPUT HOOKS
+       LDA  #<INENTR        ; SET UP INPUT AND OUTPUT HOOKS
        STA  *KSWL
        STX  *KSWH
        LDA  #<OUENTR
        STA  *CSWL
        STX  *CSWH
-       JSR  SETUP                 ; SET UP CRTC
+       JSR  SETUP           ; SET UP CRTC
        CLC
 ;*
 ;*
@@ -626,55 +626,55 @@ IO     BCC  BASOUT
 ;* BASIC INPUT ROUTINE
 ;*
 ;*
-BASINP PLA                         ; POP STACK
-       LDY  *XSAVE                 ; GET INPUT BUFFER INDEX
-       BEQ  GETLN                  ; IF ZERO ASSUME GETLN
+BASINP PLA                  ; POP STACK
+       LDY  *XSAVE          ; GET INPUT BUFFER INDEX
+       BEQ  GETLN           ; IF ZERO ASSUME GETLN
        DEY
-       LDA  OLDCHA                 ; GET LAST CHARACTER FROM GETLN
-       CMP  #$88                   ; IF 88 ASSUME GETLN
+       LDA  OLDCHA          ; GET LAST CHARACTER FROM GETLN
+       CMP  #$88            ; IF 88 ASSUME GETLN
        BEQ  GETLN
        CMP  IN,Y
        BEQ  GETLN
        EOR  #$20
-SKIP   CMP  IN,Y                   ; IF SAME AS CHARACTER IN INPUT
-       BNE  NTGETL                ; BUFFER THEN ASSUME GETLN
-       LDA  OLDCHA                 ; GET LAST CHARACTER FROM GETLN
-       STA  IN,Y                   ; FIX INPUT BUFFER
-       BCS  GETLN                  ; GO TO GETLN
-ESC    JSR  ESCNEW                 ; PERFORM ESCAPE FUNCTION
-GETLN  LDA  #$80                   ; SET GETLN FLAG
+SKIP   CMP  IN,Y            ; IF SAME AS CHARACTER IN INPUT
+       BNE  NTGETL          ; BUFFER THEN ASSUME GETLN
+       LDA  OLDCHA          ; GET LAST CHARACTER FROM GETLN
+       STA  IN,Y            ; FIX INPUT BUFFER
+       BCS  GETLN           ; GO TO GETLN
+ESC    JSR  ESCNEW          ; PERFORM ESCAPE FUNCTION
+GETLN  LDA  #$80            ; SET GETLN FLAG
        JSR  FLGSET
-       JSR  RDKEY                  ; GET CHARACTER FROM KEYBOARD
-       CMP  #$98                   ; CHECK FOR ESCAPE
+       JSR  RDKEY           ; GET CHARACTER FROM KEYBOARD
+       CMP  #$98            ; CHECK FOR ESCAPE
        BEQ  ESC
-       CMP  #$80                   ; CHECK FOR CR
-       BNE  NOTCR                  ; IF NOT SKIP
-       PHA                         ; SAVE CHARACTER
-       JSR   CLREOL                ; CLEAR TO END OF LINE
-       PLA                         ; RECOVER CHARACTER
-NOTCR  CMP  #$95                   ; CHECK FOR PICK
-       BNE  NOTPIC                 ; IF NOT SKIP
-CHRGET LDY  CHORZ                  ; GET CURSOR HORIZONTAL POSITION
-       JSR  PSNCAL                 ; SET UP SCREEN ADDRESS
-       BCS  READ1                  ; READ CHARACTER FROM SCREEN
+       CMP  #$80            ; CHECK FOR CR
+       BNE  NOTCR           ; IF NOT SKIP
+       PHA                  ; SAVE CHARACTER
+       JSR   CLREOL         ; CLEAR TO END OF LINE
+       PLA                  ; RECOVER CHARACTER
+NOTCR  CMP  #$95            ; CHECK FOR PICK
+       BNE  NOTPIC          ; IF NOT SKIP
+CHRGET LDY  CHORZ           ; GET CURSOR HORIZONTAL POSITION
+       JSR  PSNCAL          ; SET UP SCREEN ADDRESS
+       BCS  READ1           ; READ CHARACTER FROM SCREEN
        LDA  DISP0,X
        BCC  RSKIP
 READ1  LDA  DISP1,X
-RSKIP  ORA  #$80                   ; SET HIGH BIT
-NOTPIC STA  OLDCHA                ; SAVE CHARACTER IN OLDCHAR
-       BNE  DONE                   ; EXIT
-NTGETL JSR  RDKEY                  ; GET CHARACTER FROM KEYBOARD
-       LDY  #$00                   ; CLEAR OLDCHARACTER
+RSKIP  ORA  #$80            ; SET HIGH BIT
+NOTPIC STA  OLDCHA          ; SAVE CHARACTER IN OLDCHAR
+       BNE  DONE            ; EXIT
+NTGETL JSR  RDKEY           ; GET CHARACTER FROM KEYBOARD
+       LDY  #$00            ; CLEAR OLDCHARACTER
        STY  OLDCHA
 ;*
-DONE   TSX                         ; PUT CHARACTER INTO STACK
+DONE   TSX                  ; PUT CHARACTER INTO STACK
        INX
        INX
        INX
        STA  $100,X
-OUTDO1 LDA  #$00                   ; SET CH = 00
+OUTDO1 LDA  #$00            ; SET CH = 00
 OUTDON STA  *CH
-       LDA  CVERT                  ; SET CV = CVERT
+       LDA  CVERT           ; SET CV = CVERT
        STA  *CV
        JMP  EXIT
 ;*
@@ -682,18 +682,18 @@ OUTDON STA  *CH
 ;* PRIMARY BASIC OUTPUT ROUTINE
 ;*
 ;*
-BASOUT PLA                         ; RECOVER CHARACTER
-       LDY  FLAGS                  ; CHECK GETLN FLAG
-       BPL  BASOUT                 ; IF CLEAR THEN SKIP
-       LDY  OLDCHA                 ; GET LAST CHARACTER FROM GETLN
+BASOUT PLA                  ; RECOVER CHARACTER
+       LDY  FLAGS           ; CHECK GETLN FLAG
+       BPL  BASOUT          ; IF CLEAR THEN SKIP
+       LDY  OLDCHA          ; GET LAST CHARACTER FROM GETLN
        CPY  #$E0 
        BCC  BOUT 
        TYA
-BOUT   JSR  BASOU1                ; OUTPUT CHARACTER
+BOUT   JSR  BASOU1          ; OUTPUT CHARACTER
        JSR  STPLST
-       LDA  #$7F                   ; CLEAR THE GETLN FLAG
+       LDA  #$7F            ; CLEAR THE GETLN FLAG
        JSR  FLGCLR
-       LDA  CHORZ                  ; GET CURSOR HORIZONTAL
+       LDA  CHORZ           ; GET CURSOR HORIZONTAL
        SBC  #$47
        BCC  OUTDO1
        ADC  #$1F
@@ -714,5 +714,5 @@ XLTBL  HEX C4C2C1FFC3
        NOP
 ;*
 ROMSW  STA  $CFFF
-       STA  $C300 
+       STA  $C300           ; SLOT #3
        RTS
