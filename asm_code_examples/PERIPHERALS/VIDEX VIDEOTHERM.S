@@ -72,7 +72,8 @@ DEV1   EQU  $C0B1
 DISP0  EQU  $CC00
 DISP1  EQU  $CD00
 ;*
-       ORG  $C800
+
+       ORG  $C800           ; ROM ACTIVATED BY I/O STROBE (PIN 20)
 
 ;*
 ;*
@@ -146,7 +147,7 @@ NTSHIF PHA                  ; SAVE CHARACTER
        BCC  INDONE          ; DON'T CONVERT IF FLAG CLEAR
        CMP  #$80
        BCC  INDONE          ; DON'T CONVERT SPECIAL CHARACTERS
-       BIT  $C063
+       BIT  $C063           ; I/O
        BMI  NOSHIF
        CMP  #"0"
        BEQ  ZERO
@@ -408,31 +409,31 @@ VDOUT1 ORA  #$80                   ; SET HIGH BIT
        PHA
 RTS4   RTS
 ;*
-CTLTBL  .BYTE  BELL-1       ; here is where the assembler is leaving pass1
-        .BYTE  BS-1
-        .BYTE  RTS3-1
-        .BYTE  LF-1
-        .BYTE  CLREOP-1
-        .BYTE  CLRSCR-1
-        .BYTE  CRLF-1
-        .BYTE  LOLITE-1
-        .BYTE  HILITE-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  RTS3-1
-        .BYTE  HOME-1
-        .BYTE  LEADIN-1
-        .BYTE  RTS3-1
-        .BYTE  ADVANC-1
-        .BYTE  CLREOL-1
-        .BYTE  GOXY1-1
-        .BYTE  UP-1
+CTLTBL  .BYTE  <BELL-1       ; here is where the assembler is leaving pass1
+        .BYTE  <BS-1
+        .BYTE  <RTS3-1
+        .BYTE  <LF-1
+        .BYTE  <CLREOP-1
+        .BYTE  <CLRSCR-1
+        .BYTE  <CRLF-1
+        .BYTE  <LOLITE-1
+        .BYTE  <HILITE-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <RTS3-1
+        .BYTE  <HOME-1
+        .BYTE  <LEADIN-1
+        .BYTE  <RTS3-1
+        .BYTE  <ADVANC-1
+        .BYTE  <CLREOL-1
+        .BYTE  <GOXY1-1
+        .BYTE  <UP-1
 ;*
 ;* CALCULATE SCREEN ADDRESS AND SWITCH IN CORRECT PAGE
 ;*
@@ -555,10 +556,10 @@ OUENTR CLC                  ; OUTPUT ENTRY C=1
        CLV
        BVC  ENTR
        HEX 0182
-       .BYTE INIT 
-       .BYTE READ
-       .BYTE WRITE
-       .BYTE STATUS
+       .BYTE <INIT 
+       .BYTE <READ
+       .BYTE <WRITE
+       .BYTE <STATUS
 ;*
 INIT   JMP  SETUP
 ;*
@@ -699,14 +700,14 @@ BOUT   JSR  BASOU1                ; OUTPUT CHARACTER
 FIXCH  CLC
        BCC  OUTDON
 ;*
-ESCTBL  .BYTE  CLRSCR-1
-        .BYTE  ADVANC-1
-        .BYTE  BS-1
-        .BYTE  LF-1
-        .BYTE  UP-1
-        .BYTE  CLREOL-1
-        .BYTE  CLREOP-1
-        .BYTE  HOME-1
+ESCTBL  .BYTE  <CLRSCR-1
+        .BYTE  <ADVANC-1
+        .BYTE  <BS-1
+        .BYTE  <LF-1
+        .BYTE  <UP-1
+        .BYTE  <CLREOL-1
+        .BYTE  <CLREOP-1
+        .BYTE  <HOME-1
 ;*
 XLTBL  HEX C4C2C1FFC3
 ;*
