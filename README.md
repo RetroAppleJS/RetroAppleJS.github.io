@@ -106,7 +106,7 @@ Also to be considered: detect if host device is mouse-driven or touch-driven.  W
 Apple II wizards out there, anyone familiar with emulating any of these popular cards ? 
 Recollecting ROM images from Apple II peripherals looks like a major challenge. Can anyone help ?
 
-- [x] [Apple 16K Language Card](http://www.applelogic.org/PeripheralCards.html) e.g. enabling ProDOS
+- [ ] Dynamic slot/peripheral configuration
 - [ ] [Videx VideoTerm or UltraTerm](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/) 80-Column card
 - [ ] [Thunderware Thunderclock Plus](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Clock/Thunderware%20Thunderclock/) Clock with [BSR X-10 AC Remote Control System](https://www.atarimagazines.com/compute/issue17/209_1_INTERFACING_A_BSR_X-10_AC_REMOTE_CONTROL_SYSTEM_TO_YOUR_PET.php), for Home automation !
 - [ ] [No-Slot Clock](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Chips/SMT%20No-Slot%20Clock/Manuals/No-Slot%20Clock%20-%20User%27s%20Manual.pdf) Simple Real-Time Clock
@@ -116,3 +116,13 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 - [ ] [Apple Mouse Card 670-0030-C](http://www.applelogic.org/PeripheralCards.html)
 - [ ] [The Mocking Board](https://en.wikipedia.org/wiki/Mockingboard) sound card supported by different games and the 'Music Construction Set'
 - [ ] [VersaCard](https://forum.vcfed.org/index.php?threads/do-you-own-a-prometheus-versacard-for-the-apple-ii-i-need-a-copy-of-the-rom.70770/) - [Brochure](https://cvxmelody.net/VERSAcard%20original%20brochure%20&%20manual%20cover.pdf) 4 on 1 card: serial, parallel,real-time clock, BSR Home automation
+
+#### other
+
+- [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
+- [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
+- [ ] ASSEMBLER: Step Assembler completion (currently in alpha release
+- [ ] ASSEMBLER: Disassembler
+- [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
+- [ ] RETRO LAB: realtime dithering in CameraJS
+- [ ] RETRO LAB: GPT completion
