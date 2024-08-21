@@ -660,7 +660,10 @@ Label1 TXA
                     </textarea>
                     <br>
                     <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
+                    
+                    <!--
                     <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
+                    -->
                     <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';oCOM.POPUP.toggle('tab1.2');COM_switchTab('tab1')">
                       <i class="fa fa-arrow-circle-up"></i> to emulator</button>
                     <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
