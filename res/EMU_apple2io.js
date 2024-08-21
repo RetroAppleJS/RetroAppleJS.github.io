@@ -215,10 +215,10 @@ function Apple2IO(vid)
     {   
         SLOT_NAME[slot_num] = name.substring(0,4);
         const idx = slot_num<<3; 
-        const noROM = device_obj.ROM===undefined;
+        const noROM = device_obj===undefined ? true : device_obj.ROM===undefined;
 
-        var keys = Object.keys(_CFG_PCODE);
-        var key_idx =  keys.indexOf(name);
+        //var keys = Object.keys(_CFG_PCODE);
+        //var key_idx =  keys.indexOf(name);
 
         SLOT_MAP[idx]   = active ? 0x2 : 0x1;                               // STATUS 0x2=active  0x1=inactive 0x0=unmounted   
         SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(name)) // DETERMINE DEVICE ID (CRC16 hash) 
