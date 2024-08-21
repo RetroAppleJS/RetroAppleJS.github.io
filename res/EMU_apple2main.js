@@ -323,16 +323,16 @@ function EMU_init()
 
 function EMUI()
 {
-    this.cpuSld = function(el,id)
+    this.cpuSld = function(el,id,freezeHTML)
     {
       var max = el.max;
       var pct = 2*el.value/max;
-      document.getElementById(id).innerHTML = Math.round(pct*10)*10+"%";
+      document.getElementById(id).innerHTML = pct!=0 ? Math.round(pct*10)*10+"%" : freezeHTML;
       _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
       window.clearInterval(appleIntervalHandle);
       appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
       oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
-      console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s")
+      console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
     }
 
     this.muteBtn = function(arg)
