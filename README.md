@@ -67,16 +67,24 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [ ] better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
-- [ ] paddle/mouse capture
-- [ ] lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
-- [ ] real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
-- [ ] pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
-- [ ] complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
-- [ ] popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
-- [ ] slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
-- [ ] better document assembler code located in asm_code_examples
-
+- [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
+- [ ] EMULATOR: popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
+- [ ] EMULATOR: slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
+- [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
+- [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
+- [ ] EMULATOR: paddle/mouse capture
+- [ ] ASSEMBLER: Step Assembler completion (currently in alpha release
+- [ ] ASSEMBLER: Disassembler to standard assembly listings
+- [ ] ASSEMBLER: Transpiler from 6502 assembler to JavaScript (followed by a JavaScript->6502 assembler transpiler)
+- [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
+- [ ] ASSEMBLER: complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
+- [ ] ASSEMBLER: better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
+- [ ] RETRO LAB: realtime dithering in CameraJS
+- [ ] RETRO LAB: GPT completion
+- [ ] RETRO LAB: real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
+- [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
+- [ ] OTHER: better document assembler code located in asm_code_examples
+      
 ## Contribute
 
 This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome, but the latest feature developments (here below) are currently the most valuable on my priority list.
@@ -117,12 +125,3 @@ Recollecting ROM images from Apple II peripherals looks like a major challenge. 
 - [ ] [The Mocking Board](https://en.wikipedia.org/wiki/Mockingboard) sound card supported by different games and the 'Music Construction Set'
 - [ ] [VersaCard](https://forum.vcfed.org/index.php?threads/do-you-own-a-prometheus-versacard-for-the-apple-ii-i-need-a-copy-of-the-rom.70770/) - [Brochure](https://cvxmelody.net/VERSAcard%20original%20brochure%20&%20manual%20cover.pdf) 4 on 1 card: serial, parallel,real-time clock, BSR Home automation
 
-#### other
-
-- [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
-- [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
-- [ ] ASSEMBLER: Step Assembler completion (currently in alpha release
-- [ ] ASSEMBLER: Disassembler
-- [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
-- [ ] RETRO LAB: realtime dithering in CameraJS
-- [ ] RETRO LAB: GPT completion
