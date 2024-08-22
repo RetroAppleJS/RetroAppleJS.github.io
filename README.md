@@ -67,10 +67,10 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
+- [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
 - [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [ ] EMULATOR: popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
 - [ ] EMULATOR: slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
-- [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
 - [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
 - [ ] EMULATOR: paddle/mouse capture
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release
