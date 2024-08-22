@@ -347,7 +347,7 @@
                         </div>
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
-                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<i class=\'fa fa-paw\' title=\'Step trace\'></i>&nbsp;<i class=\'fa fa-bug\' title=\'CPU debugger\'></i>')" style="width:65px">
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<i class=\'fa fa-bug\' onclick=oEMUI.cpuStp(\'debug_box\') title=\'Step trace\'></i>&nbsp;')" style="width:65px">
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
@@ -394,17 +394,19 @@
                 </div>
               
                 <!--  DEBUG  -->
-                <!--
-                <div class=toolbox>
-                  <div class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+             
+                <div id=debug_box class=toolbox style="margin:0px 0px 0px 1px;"" hidden>
+                  <!--
+                  <div class=appbox style="text-align:left;height:580px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
                     <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
                     <div style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
                       <input type="range" min="0" max="250" value="0" class="slider" onchange="slider_scroll(this,250)" style="width:250px">
                       <i class="fa fa-arrow-circle-left"></i>932<i class="fa fa-arrow-circle-right"></i>
                     </div>
                   </div>
+                  -->
                 </div>
-                -->
+                
 
               </div>
             </div>

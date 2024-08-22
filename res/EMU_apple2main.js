@@ -335,6 +335,23 @@ function EMUI()
       console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
     }
 
+    this.cpuStp = function(id)
+    {
+       var el = document.getElementById(id);
+       el.hidden = !el.hidden;
+
+       var s = "<div class=appbox style='text-align:left;height:580px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
+            +"<div id=cpu_debugger class=marginless style='border:0px solid #E0E0E0'>"
+                +"<div class=marginless style='width:300px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;'>"
+                +"0123456789012345678901234567890123456789<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>"
+                +"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
+                +"<div>"
+            +"</div>"
+       +"</div>"
+
+       el.innerHTML = s; 
+    }
+
     this.muteBtn = function(arg)
     {
         this.muteArg = arg;

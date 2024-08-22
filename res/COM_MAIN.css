@@ -355,6 +355,12 @@ table { border-collapse: collapse; position: relative;}
     float:left;
   }
 
+  .marginless
+  {
+    padding:0px 0px 0px 0px;
+    margin:0px 0px 0px 0px;
+  }
+
   .appkbd
   {
     background-image:url('../res/appleIIplus_kbd_650.png');
