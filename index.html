@@ -235,6 +235,7 @@
 
             <script type="text/javascript" src="res/EMU_apple2main.js"></script>
             <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2debug.js"></script>
             <script type="text/javascript" src="res/EMU_apple2spk.js"></script>
             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
@@ -347,7 +348,7 @@
                         </div>
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
-                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<i class=\'fa fa-bug\' onclick=oEMUI.cpuStp(\'debug_box\') title=\'Step trace\'></i>&nbsp;')" style="width:65px">
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<i class=\'fa fa-bug\' onclick=oEMUI.cpuDbg(\'debug_box\') title=\'Step trace\'></i>&nbsp;')" style="width:65px">
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });

@@ -29,6 +29,7 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
+        ,"EMU_debug":false
         ,"EMU_legacyJS":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
@@ -323,33 +324,52 @@ function EMU_init()
 
 function EMUI()
 {
+    // CPU SPEED SLIDER
     this.cpuSld = function(el,id,freezeHTML)
     {
       var max = el.max;
       var pct = 2*el.value/max;
       document.getElementById(id).innerHTML = pct!=0 ? Math.round(pct*10)*10+"%" : freezeHTML;
-      _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
-      window.clearInterval(appleIntervalHandle);
-      appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-      oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
-      console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
+      this.cpuSpd(pct);
     }
 
-    this.cpuStp = function(id)
+    // MODIFY CPU SPEED
+    this.cpuSpd = function(pct)
     {
-       var el = document.getElementById(id);
-       el.hidden = !el.hidden;
+        _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
+        window.clearInterval(appleIntervalHandle);
+        appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+        oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
+        console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");       
+    }
 
-       var s = "<div class=appbox style='text-align:left;height:580px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
-            +"<div id=cpu_debugger class=marginless style='border:0px solid #E0E0E0'>"
-                +"<div class=marginless style='width:300px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;'>"
-                +"0123456789012345678901234567890123456789<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>"
+    this.cpuDbg = function(id)
+    {
+        _o.EMU_debug = !_o.EMU_debug;
+        var el = document.getElementById(id);
+        el.hidden = !_o.EMU_debug;
+        oEMU.component.CPU.Apple2Debug.disp_id = "cpu_debugger"
+        
+        var s = "<div class=appbox style='text-align:left;height:580px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
+            +"<div class=marginless style='border:0px solid #E0E0E0'>"
+                //+"<i class='fa fa-pause' title='pause CPU execution'></i>&nbsp;"
+                +"<i id=cpuDbg_play class='fa fa-play' title='continue CPU execution' onclick=this.arr={'fa-pause':false,'fa-play':true};oCOM.POPUP.toggle_class(this,'fa-pause','fa-play');oEMU.component.CPU.Apple2Debug.play(!this.arr[oCOM.POPUP.states[this.id]])></i>&nbsp;"
+                +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
+                +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
+                +"<i class='fa fa-sign-out-alt' title='step out'></i>"
+                +"<div id='"+oEMU.component.CPU.Apple2Debug.disp_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'>"
+                +"0123456789012345678901234567890123456789<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>"
+                +"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
+                +"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
                 +"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
                 +"<div>"
             +"</div>"
-       +"</div>"
+        +"</div>"
+        // <i class="fa fa-sign-out-alt"></i>
+        // <i class="fa fa-level-down-alt"></i>
 
-       el.innerHTML = s; 
+
+        el.innerHTML = s; 
     }
 
     this.muteBtn = function(arg)
