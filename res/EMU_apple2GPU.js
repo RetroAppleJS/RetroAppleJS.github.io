@@ -78,12 +78,6 @@ function Apple2Video(ctx)
 
     this.cycle = function()
     {
-      // 1000 000 000
-
-      if(frame_count%17030 == 0)  // ~50 fps
-      {
-        
-      }
 
       if (++flash_count > 250000) // 4 fps
       {
@@ -92,6 +86,7 @@ function Apple2Video(ctx)
         this.reflash();
       }
 
+      //if(frame_count%17030 == 0)  // ~50 fps
       //if (++frame_count > 34060)  // ~25 fps
       if (++frame_count > 68120)  // ~12.5 fps
       {
