@@ -7,13 +7,14 @@
 <html>
     <html style="background-color:#B0B0B0">
     <head>
-        <title>Apple2 Speaker Emulator</title>
-        <meta name="description" content="Apple II Speaker emulator">
+        <title>ScrollerJS</title>
+        <meta name="description" content="Scroller">
         <meta name="author" content="Freddy Vandriessche">
         <meta charset="utf-8"> 
         <script type="text/javascript" src="../../res/COM_MAIN.js"></script>
         <style>
-            .text-window {
+            .text-window
+            {
                 font-family: monospace;
                 overflow: hidden;
                 width: max-content;
@@ -27,8 +28,8 @@
   <script>
 
 
-    var CONF_version="0.0.2";
-    var CONF_builddate="20240114-190000";
+    var CONF_version="0.0.1";
+    var CONF_builddate="20240827-190000";
 
 
 //   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
@@ -41,9 +42,6 @@
     { 
         document.getElementById('slider_title').outerHTML = _TITLE();
         
-
-
-
 
         // Example usage
         var lines = new Array(1000)
