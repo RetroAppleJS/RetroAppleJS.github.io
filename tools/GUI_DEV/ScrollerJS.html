@@ -112,6 +112,9 @@ function animateTextScroll(lines, visibleLines)
     }
 
 
+animateTextScroll(lines, visibleLines);
+
+
   </script>
 <!--
 //  ██   ██ ████████ ███    ███ ██      
@@ -126,26 +129,21 @@ function animateTextScroll(lines, visibleLines)
 <div class="slider_overlay">
     <div id="topmenu">
         <ul id="minitabs" style="font-family:Courier">
-            <li>
-                <table class=no_margins style='display:inline-block;border:0px solid;vertical-align:top;'>
-                    <tr>
-                        <td style="vertical-align:top;border:1px solid;width:50px">
-                            <button id=startbutton onclick="EMU_start_stop()">Start</button>
-                        </td>
-                    </tr>
-                </table>
-            </li>
-            <li>volume:
-                <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="change_volume(this.value);" onchange="change_volume(this.value);"></input>
-                <span id="voldisp">100</span>%
-            </li>
-            <li>frequency:
-                <input id="setfreq" type="range" min="0" max="10000" value="10000" step="10" oninput="change_freq(this.value);" onchange="change_freq(this.value);" style="width:500px"></input>
-                <span id="freqdisp">100</span>Hz
-            </li>        
+               
         </ul>
     </div>
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+
+
+visibleLines);">
+
+<div class="text-window">
+    <code id="MyDiv"></code>
+</div>
+
+
+<div id="debug"></div>
     
         <button onclick="scrollText(-1)">-1 Line</button>
         <button onclick="scrollText(-5)">-5 Lines</button>
@@ -160,43 +158,7 @@ function animateTextScroll(lines, visibleLines)
     </div>
 </div>
   
-</body>
 
-
-</html>
-
-
-
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-
-    <title>Scrolling Text</title>
-</head>
-<body onload="animateTextScroll(lines, visibleLines);">
-
-<div class="text-window">
-    <code id="MyDiv"></code>
-</div>
-
-
-
-
-
-
-<div id="debug"></div>
-<script>
-
-
-
-
-
-
-
-</script>
 
 </body>
 </html>
