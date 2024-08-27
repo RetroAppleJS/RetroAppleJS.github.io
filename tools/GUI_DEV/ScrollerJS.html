@@ -45,74 +45,73 @@
 
 
 
-// Example usage
-var lines = new Array(1000)
-for(var i=0;i<1000;i++)
-    lines[i] = "Line "+i
+        // Example usage
+        var lines = new Array(1000)
+        for(var i=0;i<1000;i++)
+            lines[i] = "Line "+i
 
-const el = document.getElementById('MyDiv');
+        const el = document.getElementById('MyDiv');
 
-const visibleLines = 5; // Adjust the number of visible lines according to the height of textWindow
-//animateTextScroll(lines, visibleLines);
+        const visibleLines = 5; // Adjust the number of visible lines according to the height of textWindow
+        //animateTextScroll(lines, visibleLines);
 
-// Main scrolling function
-function animateTextScroll(lines, visibleLines)
-{
-    let curLineIdx = 0;
-    let totalSteps = 0;
-    let curStep = 0;
-    let lastIdx;
-    let lf = "<br>"
-    const el = document.getElementById('MyDiv');
-
-
-    // Initialize the visible text
-    el.innerHTML = lines.slice(0, visibleLines).join(lf);
-
-    // Function to handle scrolling with animation
-    window.scrollText = function(scrollAmount)
-    {
-        const startLineIdx  = curLineIdx;
-        const targetLineIdx = Math.max(0, Math.min(lines.length - visibleLines, curLineIdx + scrollAmount));
-        const totalDis      = targetLineIdx - startLineIdx;
-
-        const duration   = 250;            // Animation duration in ms
-        const interval   = 1 << 5           // Interval per step in ms
-        const totalSteps = duration >> 5;
-
-        curStep = 0;
-
-        function animateStep() 
+        // Main scrolling function
+        function animateTextScroll(lines, visibleLines)
         {
-            const elapsedTime = curStep++ << 5;
-            const curIdx    = Math.floor(easeInOutSoftsign(elapsedTime, startLineIdx, totalDis, duration));
+            let curLineIdx = 0;
+            let totalSteps = 0;
+            let curStep = 0;
+            let lastIdx;
+            let lf = "<br>"
+            const el = document.getElementById('MyDiv');
 
-            // Update the text content with the cur slice
-            if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + visibleLines).join(lf);
-            lastIdx = curIdx;
 
-            if(curStep < totalSteps)  setTimeout(animateStep, interval);
-            else
+            // Initialize the visible text
+            el.innerHTML = lines.slice(0, visibleLines).join(lf);
+
+            // Function to handle scrolling with animation
+            window.scrollText = function(scrollAmount)
             {
-                curLineIdx = targetLineIdx; // Finalize the scroll
-                el.innerHTML = lines.slice(targetLineIdx, targetLineIdx + visibleLines).join(lf);
+                const startLineIdx  = curLineIdx;
+                const targetLineIdx = Math.max(0, Math.min(lines.length - visibleLines, curLineIdx + scrollAmount));
+                const totalDis      = targetLineIdx - startLineIdx;
+
+                const duration   = 250;            // Animation duration in ms
+                const interval   = 1 << 5           // Interval per step in ms
+                const totalSteps = duration >> 5;
+
+                curStep = 0;
+
+                function animateStep() 
+                {
+                    const elapsedTime = curStep++ << 5;
+                    const curIdx    = Math.floor(easeInOutSoftsign(elapsedTime, startLineIdx, totalDis, duration));
+
+                    // Update the text content with the cur slice
+                    if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + visibleLines).join(lf);
+                    lastIdx = curIdx;
+
+                    if(curStep < totalSteps)  setTimeout(animateStep, interval);
+                    else
+                    {
+                        curLineIdx = targetLineIdx; // Finalize the scroll
+                        el.innerHTML = lines.slice(targetLineIdx, targetLineIdx + visibleLines).join(lf);
+                    }
+                }
+                animateStep();
             }
+
+            function easeInOutSoftsign(t, b, c, d)
+            {
+                t = t / (d>>1) - 1;                     // Normalize time to range [-1, 1]
+                const softsign = t / (1 + Math.abs(t))  // Apply softsign function rangig [-0.5, 0.5]
+                const r = b + c * (softsign + 0.5)      // Calculate real offset & range
+                return r
+            }
+
         }
-        animateStep();
+        animateTextScroll(lines, visibleLines);
     }
-
-    function easeInOutSoftsign(t, b, c, d)
-    {
-        t = t / (d>>1) - 1;                     // Normalize time to range [-1, 1]
-        const softsign = t / (1 + Math.abs(t))  // Apply softsign function rangig [-0.5, 0.5]
-        const r = b + c * (softsign + 0.5)      // Calculate real offset & range
-        return r
-    }
-
-    }
-
-
-animateTextScroll(lines, visibleLines);
 
 
   </script>
@@ -135,8 +134,6 @@ animateTextScroll(lines, visibleLines);
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
 
-
-visibleLines);">
 
 <div class="text-window">
     <code id="MyDiv"></code>
