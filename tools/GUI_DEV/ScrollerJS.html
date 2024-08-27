@@ -1,0 +1,202 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+-->
+
+<html>
+    <html style="background-color:#B0B0B0">
+    <head>
+        <title>Apple2 Speaker Emulator</title>
+        <meta name="description" content="Apple II Speaker emulator">
+        <meta name="author" content="Freddy Vandriessche">
+        <meta charset="utf-8"> 
+        <script type="text/javascript" src="../../res/COM_MAIN.js"></script>
+        <style>
+            .text-window {
+                font-family: monospace;
+                overflow: hidden;
+                width: max-content;
+                border: 1px solid #000;
+                height: 100px; /* Adjust the height to match the number of visible lines */
+            }
+        </style>
+        <script type="text/javascript" src="../TOOLS_Header.js"></script>
+      </head>
+      
+  <script>
+
+
+    var CONF_version="0.0.2";
+    var CONF_builddate="20240114-190000";
+
+
+//   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
+//  ██       ██    ██ ██     ██      ██    ██ ████   ██    ██    ██   ██ ██    ██ ██      ██      
+//  ██   ███ ██    ██ ██     ██      ██    ██ ██ ██  ██    ██    ██████  ██    ██ ██      ███████ 
+//  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██    ██    ██   ██ ██    ██ ██           ██ 
+//   ██████   ██████  ██      ██████  ██████  ██   ████    ██    ██   ██  ██████  ███████ ███████ 
+
+    function init_gui()
+    { 
+        document.getElementById('slider_title').outerHTML = _TITLE();
+        
+
+
+
+
+// Example usage
+var lines = new Array(1000)
+for(var i=0;i<1000;i++)
+    lines[i] = "Line "+i
+
+const el = document.getElementById('MyDiv');
+
+const visibleLines = 5; // Adjust the number of visible lines according to the height of textWindow
+//animateTextScroll(lines, visibleLines);
+
+// Main scrolling function
+function animateTextScroll(lines, visibleLines)
+{
+    let curLineIdx = 0;
+    let totalSteps = 0;
+    let curStep = 0;
+    let lastIdx;
+    let lf = "<br>"
+    const el = document.getElementById('MyDiv');
+
+
+    // Initialize the visible text
+    el.innerHTML = lines.slice(0, visibleLines).join(lf);
+
+    // Function to handle scrolling with animation
+    window.scrollText = function(scrollAmount)
+    {
+        const startLineIdx  = curLineIdx;
+        const targetLineIdx = Math.max(0, Math.min(lines.length - visibleLines, curLineIdx + scrollAmount));
+        const totalDis      = targetLineIdx - startLineIdx;
+
+        const duration   = 250;            // Animation duration in ms
+        const interval   = 1 << 5           // Interval per step in ms
+        const totalSteps = duration >> 5;
+
+        curStep = 0;
+
+        function animateStep() 
+        {
+            const elapsedTime = curStep++ << 5;
+            const curIdx    = Math.floor(easeInOutSoftsign(elapsedTime, startLineIdx, totalDis, duration));
+
+            // Update the text content with the cur slice
+            if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + visibleLines).join(lf);
+            lastIdx = curIdx;
+
+            if(curStep < totalSteps)  setTimeout(animateStep, interval);
+            else
+            {
+                curLineIdx = targetLineIdx; // Finalize the scroll
+                el.innerHTML = lines.slice(targetLineIdx, targetLineIdx + visibleLines).join(lf);
+            }
+        }
+        animateStep();
+    }
+
+    function easeInOutSoftsign(t, b, c, d)
+    {
+        t = t / (d>>1) - 1;                     // Normalize time to range [-1, 1]
+        const softsign = t / (1 + Math.abs(t))  // Apply softsign function rangig [-0.5, 0.5]
+        const r = b + c * (softsign + 0.5)      // Calculate real offset & range
+        return r
+    }
+
+    }
+
+
+  </script>
+<!--
+//  ██   ██ ████████ ███    ███ ██      
+//  ██   ██    ██    ████  ████ ██      
+//  ███████    ██    ██ ████ ██ ██      
+//  ██   ██    ██    ██  ██  ██ ██      
+//  ██   ██    ██    ██      ██ ███████ 
+-->
+<body class="slider_main" onload="init_gui();">
+
+<div id="slider_title"></div>
+<div class="slider_overlay">
+    <div id="topmenu">
+        <ul id="minitabs" style="font-family:Courier">
+            <li>
+                <table class=no_margins style='display:inline-block;border:0px solid;vertical-align:top;'>
+                    <tr>
+                        <td style="vertical-align:top;border:1px solid;width:50px">
+                            <button id=startbutton onclick="EMU_start_stop()">Start</button>
+                        </td>
+                    </tr>
+                </table>
+            </li>
+            <li>volume:
+                <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="change_volume(this.value);" onchange="change_volume(this.value);"></input>
+                <span id="voldisp">100</span>%
+            </li>
+            <li>frequency:
+                <input id="setfreq" type="range" min="0" max="10000" value="10000" step="10" oninput="change_freq(this.value);" onchange="change_freq(this.value);" style="width:500px"></input>
+                <span id="freqdisp">100</span>Hz
+            </li>        
+        </ul>
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+    
+        <button onclick="scrollText(-1)">-1 Line</button>
+        <button onclick="scrollText(-5)">-5 Lines</button>
+        <button onclick="scrollText(-10)">-10 Lines</button>
+        <button onclick="scrollText(-100)">-100 Lines</button>
+    
+        <button onclick="scrollText(1)">1 Line</button>
+        <button onclick="scrollText(5)">5 Lines</button>
+        <button onclick="scrollText(10)">10 Lines</button>
+        <button onclick="scrollText(100)">100 Lines</button>
+
+    </div>
+</div>
+  
+</body>
+
+
+</html>
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <title>Scrolling Text</title>
+</head>
+<body onload="animateTextScroll(lines, visibleLines);">
+
+<div class="text-window">
+    <code id="MyDiv"></code>
+</div>
+
+
+
+
+
+
+<div id="debug"></div>
+<script>
+
+
+
+
+
+
+
+</script>
+
+</body>
+</html>
