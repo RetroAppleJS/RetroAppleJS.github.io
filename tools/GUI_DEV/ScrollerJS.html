@@ -42,50 +42,48 @@
     { 
         document.getElementById('slider_title').outerHTML = _TITLE();
         
-
         // Example usage
         var lines = new Array(1000)
         for(var i=0;i<1000;i++)
-            lines[i] = "Line "+i
+            lines[i] = "Lin "+i
 
-        const el = document.getElementById('MyDiv');
-
-        const TextScroll_cfg = {visibleLines:10,interval_ms:32,duration_ms:250}
+        const TextScroll_cfg = {id:"MyDiv",css:".text-window",visibleLins:20,interval_ms:32,duration_ms:250}
 
         // Main scrolling function
         function animateTextScroll(lines, cfg)
         {
-            let curLineIdx = 0, lastIdx, lf = "<br>"
-            const el = document.getElementById('MyDiv');
+            let curLinIdx = 0, lastIdx, lf = "<br>";
+            document.querySelectorAll(cfg.css)[0].style.height = 15*TextScroll_cfg.visibleLins+"px";
+            const el = document.getElementById(cfg.id);
 
             // Initialize the visible text
-            el.innerHTML = lines.slice(0, cfg.visibleLines).join(lf);
+            el.innerHTML = lines.slice(0, cfg.visibleLins).join(lf);
 
             // Function to handle scrolling with animation
             window.scrollText = function(scrollAmount)
             {
-                const startLineIdx  = curLineIdx;
-                const targetLineIdx = Math.max(0, Math.min(lines.length - cfg.visibleLines, curLineIdx + scrollAmount));
-                const totalDis      = targetLineIdx - startLineIdx; // Total scroll distance
-                const interval2 = Math.log2(cfg.interval_ms);       // Round to the nearest factor of 2
-                const interval_ms = 1 << interval2                  // Recalculated interval per step in ms
-                const totalSteps  = cfg.duration_ms >> interval2;   // Total number of steps
-                let curStep = 0;
+                const startLinIdx  = curLinIdx;
+                const targetLinIdx = Math.max(0, Math.min(lines.length - cfg.visibleLins, curLinIdx + scrollAmount));
+                const totalDis      = targetLinIdx - startLinIdx;     // Total scroll distance
+                const interval2     = Math.log2(cfg.interval_ms);       // Round to the nearest factor of 2
+                const interval_ms   = 1 << interval2                    // Recalculated interval per step in ms
+                const totalSteps    = cfg.duration_ms >> interval2;     // Total number of steps
+                let   curStep       = 0;
 
                 function animateStep() 
                 {
                     const elapsedTime = curStep++ << interval2;
-                    const curIdx    = Math.floor(easeInOutSoftsign(elapsedTime, startLineIdx, totalDis, cfg.duration_ms));
+                    const curIdx      = easeInOutSoftsign(elapsedTime, startLinIdx, totalDis, cfg.duration_ms);
 
                     // Update the text content with the cur slice
-                    if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + cfg.visibleLines).join(lf);
+                    if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + cfg.visibleLins).join(lf);
                     lastIdx = curIdx;
 
                     if(curStep < totalSteps) setTimeout(animateStep, interval_ms);
                     else
                     {
-                        curLineIdx = targetLineIdx; // Finalize the scroll
-                        el.innerHTML = lines.slice(targetLineIdx, targetLineIdx + cfg.visibleLines).join(lf);
+                        curLinIdx   = targetLinIdx; // Finalize the scroll
+                        el.innerHTML = lines.slice(targetLinIdx, targetLinIdx + cfg.visibleLins).join(lf);
                     }
                 }
                 
@@ -94,9 +92,9 @@
 
             function easeInOutSoftsign(t, b, c, d)
             {
-                t = t / (d>>1) - 1;                     // Normalize time to range [-1, 1]
-                const softsign = t / (1 + Math.abs(t))  // Apply softsign function rangig [-0.5, 0.5]
-                const r = b + c * (softsign + 0.5)      // Calculate real offset & range
+                t = t / (d>>1) - 1;                             // Normalize time to range [-1, 1]
+                const softsign = t / (1 + Math.abs(t))          // Apply softsign function rangig [-0.5, 0.5]
+                const r = Math.floor(b + c * (softsign + 0.5))  // Calculate real offset & range
                 return r
             }
 
