@@ -19,8 +19,8 @@
                 overflow: hidden;
                 width: max-content;
                 border: 1px solid #000;
-                height: 100px; /* Adjust the height to match the number of visible lines */
-            }
+                height: 150px; /* Adjust the height to match the number of visible lines */
+            } 
         </style>
         <script type="text/javascript" src="../TOOLS_Header.js"></script>
       </head>
@@ -50,52 +50,45 @@
 
         const el = document.getElementById('MyDiv');
 
-        const visibleLines = 5; // Adjust the number of visible lines according to the height of textWindow
-        //animateTextScroll(lines, visibleLines);
+        const TextScroll_cfg = {visibleLines:10,interval_ms:32,duration_ms:250}
 
         // Main scrolling function
-        function animateTextScroll(lines, visibleLines)
+        function animateTextScroll(lines, cfg)
         {
-            let curLineIdx = 0;
-            let totalSteps = 0;
-            let curStep = 0;
-            let lastIdx;
-            let lf = "<br>"
+            let curLineIdx = 0, lastIdx, lf = "<br>"
             const el = document.getElementById('MyDiv');
 
-
             // Initialize the visible text
-            el.innerHTML = lines.slice(0, visibleLines).join(lf);
+            el.innerHTML = lines.slice(0, cfg.visibleLines).join(lf);
 
             // Function to handle scrolling with animation
             window.scrollText = function(scrollAmount)
             {
                 const startLineIdx  = curLineIdx;
-                const targetLineIdx = Math.max(0, Math.min(lines.length - visibleLines, curLineIdx + scrollAmount));
-                const totalDis      = targetLineIdx - startLineIdx;
-
-                const duration   = 250;            // Animation duration in ms
-                const interval   = 1 << 5           // Interval per step in ms
-                const totalSteps = duration >> 5;
-
-                curStep = 0;
+                const targetLineIdx = Math.max(0, Math.min(lines.length - cfg.visibleLines, curLineIdx + scrollAmount));
+                const totalDis      = targetLineIdx - startLineIdx; // Total scroll distance
+                const interval2 = Math.log2(cfg.interval_ms);       // Round to the nearest factor of 2
+                const interval_ms = 1 << interval2                  // Recalculated interval per step in ms
+                const totalSteps  = cfg.duration_ms >> interval2;   // Total number of steps
+                let curStep = 0;
 
                 function animateStep() 
                 {
-                    const elapsedTime = curStep++ << 5;
-                    const curIdx    = Math.floor(easeInOutSoftsign(elapsedTime, startLineIdx, totalDis, duration));
+                    const elapsedTime = curStep++ << interval2;
+                    const curIdx    = Math.floor(easeInOutSoftsign(elapsedTime, startLineIdx, totalDis, cfg.duration_ms));
 
                     // Update the text content with the cur slice
-                    if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + visibleLines).join(lf);
+                    if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + cfg.visibleLines).join(lf);
                     lastIdx = curIdx;
 
-                    if(curStep < totalSteps)  setTimeout(animateStep, interval);
+                    if(curStep < totalSteps) setTimeout(animateStep, interval_ms);
                     else
                     {
                         curLineIdx = targetLineIdx; // Finalize the scroll
-                        el.innerHTML = lines.slice(targetLineIdx, targetLineIdx + visibleLines).join(lf);
+                        el.innerHTML = lines.slice(targetLineIdx, targetLineIdx + cfg.visibleLines).join(lf);
                     }
                 }
+                
                 animateStep();
             }
 
@@ -108,7 +101,7 @@
             }
 
         }
-        animateTextScroll(lines, visibleLines);
+        animateTextScroll(lines, TextScroll_cfg);
     }
 
 
