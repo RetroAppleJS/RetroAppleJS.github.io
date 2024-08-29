@@ -45,8 +45,9 @@
         // Example usage
         var lines = new Array(1000)
         for(var i=0;i<1000;i++)
-            lines[i] = "Lin "+i
+            lines[i] = "Line "+i
 
+        // Configuration items
         const TextScroll_cfg = {id:"MyDiv",css:".text-window",visibleLins:20,interval_ms:32,duration_ms:250}
 
         // Main scrolling function
@@ -62,8 +63,8 @@
             // Function to handle scrolling with animation
             window.scrollText = function(scrollAmount)
             {
-                const startLinIdx  = curLinIdx;
-                const targetLinIdx = Math.max(0, Math.min(lines.length - cfg.visibleLins, curLinIdx + scrollAmount));
+                const startLinIdx   = curLinIdx;
+                const targetLinIdx  = Math.max(0, Math.min(lines.length - cfg.visibleLins, curLinIdx + scrollAmount));
                 const totalDis      = targetLinIdx - startLinIdx;     // Total scroll distance
                 const interval2     = Math.log2(cfg.interval_ms);       // Round to the nearest factor of 2
                 const interval_ms   = 1 << interval2                    // Recalculated interval per step in ms
