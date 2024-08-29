@@ -240,12 +240,12 @@
             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
 
-          
+          <!--
             <script type="text/javascript" src="res/EMU_apple2GPU.js"></script>
-          
-            <!--
+          -->
+            
             <script type="text/javascript" src="res/EMU_apple2video.js"></script>
-            -->
+            
             
             <script type="text/javascript" src="res/EMU_appledisk2.js"></script>
             <script type="text/javascript" src="res/EMU_ramcard.js"></script>
@@ -466,6 +466,24 @@
               var e = EMUboard.boardText.value;
               e = e.replace(/\r\n/g,"\r");
               e = e.replace(/\n/g,"\r");
+              oEMU.component.Keyboard.pastebuffer = e;
+              oEMU.component.Keyboard._i = 0;
+
+              // temporarily override polling function (super fast paste function!)
+              oEMU.component.Keyboard.polling = function(key)
+              {
+                 if(key & 0x80)                   return key;   // keyboard strobe: someone is typing!
+                 if(this._i < this.pastebuffer.length)
+                 {
+                   const k = this.pastebuffer.charCodeAt(this._i++); 
+                   oEMU.component.Keyboard.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k} );
+                   return k;
+                 }
+                 this._i = 0;
+                 return oEMU.component.Keyboard.stop_polling();  // self-destroy override
+              }
+
+              /*
               for(var _i=0;_i<e.length;_i++)
               {
                   //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
@@ -474,6 +492,7 @@
                   if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
                   apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
               }
+              */
             }
 
             function onTxtCapture(el)

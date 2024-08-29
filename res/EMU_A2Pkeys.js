@@ -89,6 +89,9 @@ function A2Pkeys()
             alert("no key (code="+code+")");
     }
 
+    this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
+    this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
+
     this.debug = function(data)
     {
         if(this.bDebug) 

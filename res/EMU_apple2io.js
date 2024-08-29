@@ -75,13 +75,16 @@ function Apple2IO(vid)
     
     var video = vid;
     var key = 0x00;
+    var key_polling = false;
     
     if(typeof(oEMU.component.IO)!="undefined")
     {
+        var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){}},"Keyboard");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
         this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
         this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
         this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
+        oEMU.component.IO.self = this;
     }
 
     this.reset = function()
@@ -112,9 +115,14 @@ function Apple2IO(vid)
             default:
 
                 if (addr >= KEY_DATA && addr < KEY_DATA + 0x10)
-                    return key;
+                {
+                    
+                    return keys.polling(key);
+                }
                 else if (addr >= KEY_STROBE && addr < KEY_STROBE + 0x10)
+                {
                     key &= 0x7f;
+                }
                 /*
                 else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
                 {
@@ -210,7 +218,8 @@ function Apple2IO(vid)
         //this.disk2.loadDisk(bytes,drv);
         alert("AppleDisk2() does not have a method called loadDisk")
     }
-
+     
+    // SLOT MAPPING
     this.mount = function(name,slot_num,device_obj,active)
     {   
         SLOT_NAME[slot_num] = name.substring(0,4);
