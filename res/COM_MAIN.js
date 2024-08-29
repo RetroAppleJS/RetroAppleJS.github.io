@@ -257,124 +257,123 @@ function COM()
     this._length = 0
 
     return {
-    /**
-     * Empties the ring buffer.
-     */
+      /**
+       * Empties the ring buffer.
+       */
 
-    debug: function()
-    {
-      return JSON.stringify( {"buffer":_buffer,"first":this._first,"length":this._length,"capacity":_capacity} )
-    },
+      debug: function()
+      {
+        return JSON.stringify( {"buffer":_buffer,"first":this._first,"length":this._length,"capacity":_capacity} )
+      },
 
-    clear: function() 
-    {
-      this._first = 0
-      this._length = 0
-    },
-  
-    /**
-     * Returns the value at the back of the buffer.
-     * @returns {any} - the back of the buffer, or `undefined` if empty
-     */
-    back: function()
-    {
-      if (this._length === 0) return undefined
-      return _buffer[this._last()]
-    },
-  
-    /**
-     * Returns the value at the front of the buffer.
-     * @returns {any} - the front of the buffer, or `undefined` if empty
-     */
-    front: function()
-    {
-      if (this._length === 0) return undefined
-      return _buffer[this._first]
-    },
-  
-    /**
-     * Pushes a value onto the back of the buffer. If length === _capacity,
-     * the value at the front of the buffer is discarded.
-     * @param {any} value - value to push
-     * @returns {Number} - the current length of the buffer
-     */
-    push: function(value)
-    {
-      if (this._length === _capacity) this.shift()
-      this._length++;
-      _buffer[this._last()] = value;
-      return this._length
-    },
-  
-    /**
-     * Removes a value from the back of the buffer and returns it. The
-     * newly empty buffer location is set to undefined to release any
-     * object references.
-     * @returns {any} the value removed from the back of the buffer
-     * or `undefined` if empty.
-     */
-    pop: function()
-    {
-      if (this._length === 0) return undefined
-      const value = _buffer[this._last()]
-      _buffer[this._last()] = undefined // release reference on memory
-      this._length--
-      return value
-    },
-  
-    /**
-     * Removes a value from the front of the buffer and returns it. The
-     * newly empty buffer location is set to undefined to release any
-     * object references.
-     * @returns {any} the value removed from the front of the buffer
-     * or `undefined` if empty.
-     */
-    shift: function()
-    {
-      if (this._length === 0) return undefined
-      const value = _buffer[this._first]
-      _buffer[this._first] = undefined // release reference on memory
-      this._length--
-      this._right()
-      return value
-    },
-  
-    /**
-     * Pushes a value on the front of the buffer. If length === _capacity,
-     * the value at the back is discarded.
-     * @param {any} value - to push onto the front
-     * @returns {Number} - the current length of the buffer
-     */
-    unshift: function(value)
-    {
-      if (this._length === _capacity) this.pop()
-      this._left()
-      this._length++
-      _buffer[this._first] = value
-      return this._length
-    },
-  
-    // Calculates the index of the value at the back of the buffer.
-    _last: function()
-    {
-      const index = this._first + (this._length - 1)
-      return (index > (_capacity - 1)) ? index - _capacity : index
-    },
-  
-    // moves the front of the buffer one step toward the back.
-    _right: function()
-    {
-      if (++this._first > (this._capacity - 1)) this._first = 0
-    },
-  
-    // moves the front of the buffer one step forward.
-    _left: function()
-    {
-      if (--this._first < 0) this._first = _capacity - 1
+      clear: function() 
+      {
+        this._first = 0
+        this._length = 0
+      },
+    
+      /**
+       * Returns the value at the back of the buffer.
+       * @returns {any} - the back of the buffer, or `undefined` if empty
+       */
+      back: function()
+      {
+        if (this._length === 0) return undefined
+        return _buffer[this._last()]
+      },
+    
+      /**
+       * Returns the value at the front of the buffer.
+       * @returns {any} - the front of the buffer, or `undefined` if empty
+       */
+      front: function()
+      {
+        if (this._length === 0) return undefined
+        return _buffer[this._first]
+      },
+    
+      /**
+       * Pushes a value onto the back of the buffer. If length === _capacity,
+       * the value at the front of the buffer is discarded.
+       * @param {any} value - value to push
+       * @returns {Number} - the current length of the buffer
+       */
+      push: function(value)
+      {
+        if (this._length === _capacity) this.shift()
+        this._length++;
+        _buffer[this._last()] = value;
+        return this._length
+      },
+    
+      /**
+       * Removes a value from the back of the buffer and returns it. The
+       * newly empty buffer location is set to undefined to release any
+       * object references.
+       * @returns {any} the value removed from the back of the buffer
+       * or `undefined` if empty.
+       */
+      pop: function()
+      {
+        if (this._length === 0) return undefined
+        const value = _buffer[this._last()]
+        _buffer[this._last()] = undefined // release reference on memory
+        this._length--
+        return value
+      },
+    
+      /**
+       * Removes a value from the front of the buffer and returns it. The
+       * newly empty buffer location is set to undefined to release any
+       * object references.
+       * @returns {any} the value removed from the front of the buffer
+       * or `undefined` if empty.
+       */
+      shift: function()
+      {
+        if (this._length === 0) return undefined
+        const value = _buffer[this._first]
+        _buffer[this._first] = undefined // release reference on memory
+        this._length--
+        this._right()
+        return value
+      },
+    
+      /**
+       * Pushes a value on the front of the buffer. If length === _capacity,
+       * the value at the back is discarded.
+       * @param {any} value - to push onto the front
+       * @returns {Number} - the current length of the buffer
+       */
+      unshift: function(value)
+      {
+        if (this._length === _capacity) this.pop()
+        this._left()
+        this._length++
+        _buffer[this._first] = value
+        return this._length
+      },
+    
+      // Calculates the index of the value at the back of the buffer.
+      _last: function()
+      {
+        const index = this._first + (this._length - 1)
+        return (index > (_capacity - 1)) ? index - _capacity : index
+      },
+    
+      // moves the front of the buffer one step toward the back.
+      _right: function()
+      {
+        if (++this._first > (this._capacity - 1)) this._first = 0
+      },
+    
+      // moves the front of the buffer one step forward.
+      _left: function()
+      {
+        if (--this._first < 0) this._first = _capacity - 1
+      }
     }
   }
-}
-
 
   this.FIFO = function(length)
   {
@@ -671,51 +670,49 @@ function COM()
     }
   }
 
+  /////////////////////
+  // EVENT SEQUENCER //
+  /////////////////////
 
-
-    /////////////////////
-    // EVENT SEQUENCER //
-    /////////////////////
-
-    this.addToEventStack = function(event,func)
-    {
-      console.log("addToEventStack("+event+" "+func.name+")");
-      if(o_event==null) var o_event = {};
-      o_event[event] = window[event];
-      if (typeof window[event] != "function") window[event] = func;
-      else { window[event] = function() { if (o_event[event]) o_event[event](); func() } };
-    }
+  this.addToEventStack = function(event,func)
+  {
+    console.log("addToEventStack("+event+" "+func.name+")");
+    if(o_event==null) var o_event = {};
+    o_event[event] = window[event];
+    if (typeof window[event] != "function") window[event] = func;
+    else { window[event] = function() { if (o_event[event]) o_event[event](); func() } };
+  }
 
     
-    /////////////////////////////////
-    // DASHBOARD REFRESH SEQUENCER //
-    /////////////////////////////////
+  /////////////////////////////////
+  // DASHBOARD REFRESH SEQUENCER //
+  /////////////////////////////////
 
-    // array of functions is called at the pace of EMU_DashboardRefresh_s = Dashboard updates per second   
-    this.RefreshEvent_arr = {};
-    this.bRefreshEvent = false;
+  // array of functions is called at the pace of EMU_DashboardRefresh_s = Dashboard updates per second   
+  this.RefreshEvent_arr = {};
+  this.bRefreshEvent = false;
 
-    this.addRefreshEvent = function(func,name,active)
-    {
-      console.log("addRefreshEvent("+name+")");
-      this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
-      this.checkActiveEvents();
-    }
+  this.addRefreshEvent = function(func,name,active)
+  {
+    console.log("addRefreshEvent("+name+")");
+    this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
+    this.checkActiveEvents();
+  }
 
-    this.toggleRefreshEvent = function(name)
-    {
-      this.RefreshEvent_arr[ name ].active = !this.RefreshEvent_arr[ name ].active;
-      this.checkActiveEvents();
-      return this.RefreshEvent_arr[ name ].active;
-    }
+  this.toggleRefreshEvent = function(name)
+  {
+    this.RefreshEvent_arr[ name ].active = !this.RefreshEvent_arr[ name ].active;
+    this.checkActiveEvents();
+    return this.RefreshEvent_arr[ name ].active;
+  }
 
-    this.checkActiveEvents = function()
-    {
-      var bActive = false;
-      for(var _o in this.RefreshEvent_arr)
-        if(this.RefreshEvent_arr[_o].active) bActive = true;
-      this.bRefreshEvent = bActive;
-    }
+  this.checkActiveEvents = function()
+  {
+    var bActive = false;
+    for(var _o in this.RefreshEvent_arr)
+      if(this.RefreshEvent_arr[_o].active) bActive = true;
+    this.bRefreshEvent = bActive;
+  }
 }
 
 oCOM = new COM();
