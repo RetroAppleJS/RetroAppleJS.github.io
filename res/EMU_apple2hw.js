@@ -10,7 +10,8 @@
 //if(oEMU===undefined) var oEMU = {"component":{"Hardware":new Apple2Hw()}}
 //else oEMU.component.Hardware = new Apple2Hw();
 
-function Apple2Hw(vid,keys) {
+function Apple2Hw(vid,keys)
+{
     var RAM_SIZE =      0xc000,
         LORES_ADDR =    0x0400,
         LORES_SIZE =    0x0800, // both pages
@@ -29,11 +30,13 @@ function Apple2Hw(vid,keys) {
     this.irq_signal = 0;        // unused
     this.nmi_signal = 0;
 
-    this.reset = function() {
+    this.reset = function()
+    {
         this.io.reset();
     }
 
-    this.restart = function() {
+    this.restart = function()
+    {
         // Randomize memory.  Don't do on reset!
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
@@ -43,7 +46,8 @@ function Apple2Hw(vid,keys) {
         //this.memscan();
     }
 
-    this.cycle = function() {
+    this.cycle = function()
+    {
         this.io.cycle();
         //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
@@ -56,16 +60,16 @@ function Apple2Hw(vid,keys) {
         var d8;
         addr = addr & 0xFFFF;
 
-            if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
-                d8 = this.io.read(addr);
-            else if (addr < RAM_SIZE)
-                d8 = ram[addr];
-            else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-                d8 = apple2Rom[addr - ROM_ADDR];
-            else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-                d8 = this.io.read(addr - IO_ADDR);
-            else
-                d8 = 0x55;
+        if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
+            d8 = this.io.read(addr);
+        else if (addr < RAM_SIZE)
+            d8 = ram[addr];
+        else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+            d8 = apple2Rom[addr - ROM_ADDR];
+        else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+            d8 = this.io.read(addr - IO_ADDR);
+        else
+            d8 = 0x55;
      
         return d8;
     }
@@ -75,16 +79,16 @@ function Apple2Hw(vid,keys) {
         var d8;
         addr = addr & 0xFFFF;
 
-            if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
-                d8 = this.io.read(addr);
-            else if (addr < RAM_SIZE)
-                d8 = ram[addr];
-            else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-                d8 = apple2Rom[addr - ROM_ADDR];
-            //else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            //    d8 = this.io.read(addr - IO_ADDR);
-            else
-                d8 = 0xFF;
+        if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
+            d8 = this.io.read(addr);
+        else if (addr < RAM_SIZE)
+            d8 = ram[addr];
+        else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+            d8 = apple2Rom[addr - ROM_ADDR];
+        //else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+        //    d8 = this.io.read(addr - IO_ADDR);
+        else
+            d8 = 0xFF;
      
         return d8;
     }
@@ -102,7 +106,8 @@ function Apple2Hw(vid,keys) {
 
         if(this.io.ramcard &&  this.io.ramcard.active == true && addr >= ROM_ADDR)
             d8 = this.io.write(addr,d8);
-        else if (addr < RAM_SIZE) {
+        else if (addr < RAM_SIZE)
+        {
             ram[addr] = d8;
 
             // If it falls within the video regions, let the
@@ -118,8 +123,6 @@ function Apple2Hw(vid,keys) {
             this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
     }
 
-    // Give Video a reference to memory.
+    // Link memory to Video
     video.vidram = ram;
-
-    //this.restart();  // FVD not sure if I may remove this, but could trigger double restart unintentionally
 }
