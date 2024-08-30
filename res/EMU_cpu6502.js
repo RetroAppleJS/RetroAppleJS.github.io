@@ -972,17 +972,6 @@ function Cpu6502(hwobj)
 //  ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
 //  ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
 
-
-    this.save = function()
-    {
-        return a.toString(16) + ',' +
-               x.toString(16) + ',' +
-               y.toString(16) + ',' +
-               sp.toString(16)+ ',' +
-               p.toString(16) + ',' +
-               pc.toString(16);
-    }
-
     this.load = function(s) 
     {
         var l = s.split(',');
@@ -994,13 +983,18 @@ function Cpu6502(hwobj)
         pc = parseInt(l[5], 16);
     }
 
-    this.toString = function()
+    this.save = function()
     {
-        return  'PC=' + pc.toString(16) +
-                ' A=' + a.toString(16) +
-                ' X=' + x.toString(16) +
-                ' Y=' + y.toString(16) +
-                ' P=' + p.toString(16) +
-               ' SP=' + sp.toString(16);
-    }    
+        return a.toString(16) + ',' +
+               x.toString(16) + ',' +
+               y.toString(16) + ',' +
+               sp.toString(16)+ ',' +
+               p.toString(16) + ',' +
+               pc.toString(16);
+    }
+
+    this.watch = function()
+    {
+        return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay}
+    }
 }
