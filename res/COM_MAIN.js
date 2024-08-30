@@ -249,13 +249,14 @@ function COM()
      */
 
     var _buffer      = new Array(_capacity)
-    this._first = 0
-    this._length = 0
 
     return {
       /**
        * Empties the ring buffer.
        */
+
+      _first:0,
+      _length:0,
 
       debug: function()
       {
@@ -264,8 +265,8 @@ function COM()
 
       clear: function() 
       {
-        this._first = 0
-        this._length = 0
+        this._first = 0;
+        this._length = 0;
       },
     
       /**
@@ -318,6 +319,11 @@ function COM()
         return value
       },
     
+      slice: function(pos1,pos2)
+      {
+
+      },
+
       /**
        * Removes a value from the front of the buffer and returns it. The
        * newly empty buffer location is set to undefined to release any

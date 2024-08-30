@@ -43,9 +43,16 @@
         document.getElementById('slider_title').outerHTML = _TITLE();
         
         // Example usage
-        var lines = new Array(1000)
-        for(var i=0;i<1000;i++)
-            lines[i] = "Line "+i
+        var lines = new Array(40);
+        var buf = new oCOM.RingBuffer(40);
+        for(var i=0;i<40;i++)
+        {
+            lines[i] = "Line "+i;
+            buf.push("Line "+i);
+        }
+        //document.write(buf.debug())
+        
+
 
         // Configuration items
         const TextScroll_cfg = {id:"MyDiv",css:".text-window",visibleLins:20,interval_ms:32,duration_ms:250}

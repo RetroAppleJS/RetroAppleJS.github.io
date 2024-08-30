@@ -21,7 +21,7 @@ function Apple2Debug()
         var watch = obj.cpu.watch();
         var jmp_adr = watch.pc - prev_adr;
 
-        el.innerHTML = this.listing(watch) + "<br>" + oEMU.component.IO.self.keyscan()
+        el.innerHTML = this.listing(watch)
         //+ oCOM.getBinMulti(oEMU.component.IO.self.keyscan(),8);
         prev_adr = watch.pc;
     }
@@ -34,7 +34,7 @@ function Apple2Debug()
             _o._EMU_IntervalTime_ms = _o.EMU_IntervalTime_ms;   // push previous value
 
             _o.EMU_Updates_s = 1;
-            _o.EMU_IntervalTime_ms = 10;
+            _o.EMU_IntervalTime_ms = 500;
             oEMUI.cpuSpd(1 / _o.CPU_ClocksTicks_s);
         }
         else
@@ -50,7 +50,7 @@ function Apple2Debug()
 
     this.listing = function(watch)
     {
-        var lines = 40;
+        var lines = 20;
         var s = Array(lines);
         
         for(var line=0;line<lines;line++)
