@@ -26,90 +26,85 @@
       </head>
       
   <script>
-
-
-    var CONF_version="0.0.1";
+    var CONF_version="0.1.0";
     var CONF_builddate="20240827-190000";
 
-
-//   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
-//  ██       ██    ██ ██     ██      ██    ██ ████   ██    ██    ██   ██ ██    ██ ██      ██      
-//  ██   ███ ██    ██ ██     ██      ██    ██ ██ ██  ██    ██    ██████  ██    ██ ██      ███████ 
-//  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██    ██    ██   ██ ██    ██ ██           ██ 
-//   ██████   ██████  ██      ██████  ██████  ██   ████    ██    ██   ██  ██████  ███████ ███████ 
-
-    function init_gui()
-    { 
-        document.getElementById('slider_title').outerHTML = _TITLE();
-        
-        // Example usage
-        var lines = new Array(40);
-        var buf = new oCOM.RingBuffer(40);
-        for(var i=0;i<40;i++)
-        {
-            lines[i] = "Line "+i;
-            buf.push("Line "+i);
-        }
-        //document.write(buf.debug())
-        
-
-
-        // Configuration items
-        const TextScroll_cfg = {id:"MyDiv",css:".text-window",visibleLins:20,interval_ms:32,duration_ms:250}
-
-        // Main scrolling function
-        function animateTextScroll(lines, cfg)
+    function EMUI()
+    {     
+        this.scrollFeed = function(curIdx,cfg) { return [curIdx] }
+        this.TextScroll = function(cfg)
         {
             let curLinIdx = 0, lastIdx, lf = "<br>";
-            document.querySelectorAll(cfg.css)[0].style.height = 15*TextScroll_cfg.visibleLins+"px";
+            document.querySelectorAll(cfg.css)[0].style.height = 15*cfg.visibleLins+"px";
             const el = document.getElementById(cfg.id);
 
-            // Initialize the visible text
-            el.innerHTML = lines.slice(0, cfg.visibleLins).join(lf);
-
-            // Function to handle scrolling with animation
             window.scrollText = function(scrollAmount)
             {
-                const startLinIdx   = curLinIdx;
-                const targetLinIdx  = Math.max(0, Math.min(lines.length - cfg.visibleLins, curLinIdx + scrollAmount));
-                const totalDis      = targetLinIdx - startLinIdx;     // Total scroll distance
-                const interval2     = Math.log2(cfg.interval_ms);       // Round to the nearest factor of 2
-                const interval_ms   = 1 << interval2                    // Recalculated interval per step in ms
-                const totalSteps    = cfg.duration_ms >> interval2;     // Total number of steps
-                let   curStep       = 0;
+                const totalDis      = (curLinIdx + scrollAmount) - curLinIdx;   // Total scroll distance
+                const interval2     = Math.log2(cfg.interval_ms);               // Round to the nearest factor of 2
+                const interval_ms   = 1 << interval2;                           // Recalculated interval per step in ms
+                const totalSteps    = cfg.duration_ms >> interval2;             // Total number of steps
+                let   curStep       = cfg.min;
 
                 function animateStep() 
                 {
-                    const elapsedTime = curStep++ << interval2;
-                    const curIdx      = easeInOutSoftsign(elapsedTime, startLinIdx, totalDis, cfg.duration_ms);
+                    const elapsedT  = curStep++ << interval2;
+                    const curIdx    = easeInOutSoftsign(elapsedT, curLinIdx, totalDis, cfg.duration_ms);
 
-                    // Update the text content with the cur slice
-                    if(lastIdx != curIdx) el.innerHTML = lines.slice(curIdx, curIdx + cfg.visibleLins).join(lf);
+                    // Only update when necessary
+                    if(lastIdx != curIdx) el.innerHTML = oEMUI.scrollFeed(curIdx,cfg).join(lf);
                     lastIdx = curIdx;
 
-                    if(curStep < totalSteps) setTimeout(animateStep, interval_ms);
+                    if(curStep < totalSteps)
+                        setTimeout(animateStep, interval_ms);           // Animate Scroll
                     else
                     {
-                        curLinIdx   = targetLinIdx; // Finalize the scroll
-                        el.innerHTML = lines.slice(targetLinIdx, targetLinIdx + cfg.visibleLins).join(lf);
+                        curLinIdx += scrollAmount;                      // Finalize Scroll
+                        el.innerHTML = oEMUI.scrollFeed(curLinIdx,cfg).join(lf);
                     }
+                }
+
+                function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
+                {
+                    const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
+                    const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
+                    const r = Math.floor(orgPos + travelD * (softsgn + 0.5));   // Offset & scale [orgPos, orgPos + travelD]
+                    return r;                                                   // r = newPosition
                 }
                 
                 animateStep();
             }
 
-            function easeInOutSoftsign(t, b, c, d)
-            {
-                t = t / (d>>1) - 1;                             // Normalize time to range [-1, 1]
-                const softsign = t / (1 + Math.abs(t))          // Apply softsign function rangig [-0.5, 0.5]
-                const r = Math.floor(b + c * (softsign + 0.5))  // Calculate real offset & range
-                return r
-            }
-
+            // Initialize the visible text
+            el.innerHTML = this.scrollFeed(curLinIdx,cfg).join(lf);
         }
-        animateTextScroll(lines, TextScroll_cfg);
+
     }
 
+    //   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
+    //  ██       ██    ██ ██     ██      ██    ██ ████   ██    ██    ██   ██ ██    ██ ██      ██      
+    //  ██   ███ ██    ██ ██     ██      ██    ██ ██ ██  ██    ██    ██████  ██    ██ ██      ███████ 
+    //  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██    ██    ██   ██ ██    ██ ██           ██ 
+    //   ██████   ██████  ██      ██████  ██████  ██   ████    ██    ██   ██  ██████  ███████ ███████ 
+
+    var oEMUI = new EMUI();
+    function init_gui()
+    { 
+        document.getElementById('slider_title').outerHTML = _TITLE();
+        oEMUI.scrollFeed = function(curIdx,cfg)
+        {
+            var arr=new Array(cfg.visibleLins);
+            for(var i=cfg.visibleLins-1;i>=0;i--)
+            {
+                var ci = curIdx+i;
+                if(ci < cfg.min)  ci += cfg.max - cfg.min + 1;   // fix underflow
+                if(ci > cfg.max)  ci += cfg.min - cfg.max - 1;   // fix overflow
+                arr[i] = oCOM.getHexWord(ci);
+            }
+            return arr;
+        }
+        oEMUI.TextScroll({id:"MyDiv",css:".text-window",visibleLins:20,interval_ms:32,duration_ms:250,min:0x0000,max:0xFFFF});
+    }    
 
   </script>
 <!--
@@ -123,36 +118,33 @@
 
 <div id="slider_title"></div>
 <div class="slider_overlay">
+    <!--
     <div id="topmenu">
         <ul id="minitabs" style="font-family:Courier">
                
         </ul>
     </div>
+    -->
     <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
+    <div class="text-window">
+        <code id="MyDiv"></code>
+    </div>
 
-
-<div class="text-window">
-    <code id="MyDiv"></code>
-</div>
-
-
-<div id="debug"></div>
+    <div id="debug"></div>
     
-        <button onclick="scrollText(-1)">-1 Line</button>
-        <button onclick="scrollText(-5)">-5 Lines</button>
-        <button onclick="scrollText(-10)">-10 Lines</button>
-        <button onclick="scrollText(-100)">-100 Lines</button>
-    
-        <button onclick="scrollText(1)">1 Line</button>
-        <button onclick="scrollText(5)">5 Lines</button>
-        <button onclick="scrollText(10)">10 Lines</button>
-        <button onclick="scrollText(100)">100 Lines</button>
+    <button onclick="scrollText(-1)">-1 Line</button>
+    <button onclick="scrollText(-5)">-5 Lines</button>
+    <button onclick="scrollText(-10)">-10 Lines</button>
+    <button onclick="scrollText(-100)">-100 Lines</button>
+
+    <button onclick="scrollText(1)">+1 Line</button>
+    <button onclick="scrollText(5)">+5 Lines</button>
+    <button onclick="scrollText(10)">+10 Lines</button>
+    <button onclick="scrollText(100)">+100 Lines</button>
 
     </div>
 </div>
-  
-
 
 </body>
 </html>
