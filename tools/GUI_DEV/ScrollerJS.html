@@ -2,6 +2,14 @@
 //
 // Copyright (c) 2024 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+// readme: this is a scroll function with special features one can't implement elegantly using standard HTML/CSS/JavaScript 
+// 1) the length of the scrolled data is nearly infinite
+// 2) content of the viewport must be updated in real-time
+// 3) call-back function feeding the scroller with real-time data
+// 4) omit unnecessary data feeding callbacks by caching
+// 5) omit unnecessary DOM updates for scroll updates < 1 line
+// 6) scroll distance & direction can be both controlled by algorithm as by user 
+// 7) ease-in/out animation frames providing comfortable orientation perception
 -->
 
 <html>
@@ -26,61 +34,83 @@
       </head>
       
   <script>
-    var CONF_version="0.1.0";
+    var CONF_version="0.2.0";
     var CONF_builddate="20240827-190000";
 
 // TODO: capture mouse or scroll bar controls
 
     function EMUI()
     {     
-        this.scrollFeed = function(curIdx,cfg) { return [curIdx] }
-        this.TextScroll = function(cfg)
+        this.TextScroll = function(cfg)                                                 // private constructor
         {
-            let curLinIdx = 0, lastIdx, lf = "<br>";
-            document.querySelectorAll(cfg.css)[0].style.height = 15*cfg.visibleLins+"px";
+            let curLinIdx = lastPos = cfg.homePos===undefined ? cfg.min : cfg.homePos, cache = new Array(cfg.scrollH), lf = "<br>";
             const el = document.getElementById(cfg.id);
 
-            window.scrollText = function(scrollAmount)
+            window.scrollText = function(scrollD)                                       // public GUI function (scrollD = scroll distance)
             {
-                const totalDis      = (curLinIdx + scrollAmount) - curLinIdx;   // Total scroll distance
-                const interval2     = Math.log2(cfg.interval_ms);               // Round to the nearest factor of 2
-                const interval_ms   = 1 << interval2;                           // Recalculated interval per step in ms
-                const totalSteps    = cfg.duration_ms >> interval2;             // Total number of steps
-                let   curStep       = cfg.min;
+                const interval2     = Math.log2(cfg.interval_ms);                       // Round to the nearest factor of 2
+                const interval_ms   = 1 << interval2;                                   // Recalculated interval per step in ms
+                const totalSteps    = (cfg.duration_ms >> interval2)+1;                 // Total number of steps
+                let   curStep       = 0;                                                // Reset animation step counter
 
-                function animateStep() 
+                function animateStep()
                 {
-                    const elapsedT  = curStep++ << interval2;
-                    const curIdx    = easeInOutSoftsign(elapsedT, curLinIdx, totalDis, cfg.duration_ms);
+                    curPos = easeInOutSoftsign(curStep++ << interval2, curLinIdx, scrollD, cfg.duration_ms);    // Ease in/out function
+                    if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
+                    else curPos = curLinIdx += scrollD;                                                         // Finalise Scroll
 
-                    // Only update when necessary
-                    if(lastIdx != curIdx) el.innerHTML = oEMUI.scrollFeed(curIdx,cfg).join(lf);
-                    lastIdx = curIdx;
-
-                    if(curStep < totalSteps)
-                        setTimeout(animateStep, interval_ms);           // Animate Scroll
-                    else
+                    if(lastPos != curPos)
                     {
-                        curLinIdx += scrollAmount;                      // Finalize Scroll
-                        el.innerHTML = oEMUI.scrollFeed(curLinIdx,cfg).join(lf);
+                        if(cfg.cache)
+                        {
+                            const delta = curPos-lastPos;
+                            //console.log("**** "+delta);
+
+                            if(Math.abs(delta)>=cfg.scrollH) cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg); // full update if delta>scrollH or when finalising scroll
+                            else if(scrollD>0)
+                            {
+                                //console.log(cache.slice( delta, cfg.scrollH ).join(",") +" + "+ oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg).join(","))
+                                cache = cache.slice( delta, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg) );
+                                if(cache.length < cfg.scrollH)
+                                {
+                                    console.log("TODO: check why cache is smaller than scrollH");
+                                    cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);   // QUICK FIX BY FULL UPDATE
+                                }
+                            }
+                            else if(scrollD<0)
+                            {
+                                //console.log(oEMUI.scrollFeed(curPos,Math.abs(delta),cfg).join(",")+" + "+cache.slice( 0, delta ).join(","))
+                                cache = oEMUI.scrollFeed(curPos,Math.abs(delta),cfg).concat( cache.slice( 0, delta ) );
+
+                                if(cache.length < cfg.scrollH)
+                                {
+                                    console.log("TODO: check why cache is smaller than scrollH");
+                                    cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);   // QUICK FIX BY FULL UPDATE
+                                } 
+                            }
+                        }
+                        else cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);
+                        el.innerHTML = cache.join(lf);                                        // Update DOM only at visible change
                     }
+                    lastPos = curPos;
                 }
 
                 function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
                 {
                     const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
                     const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
-                    const r = Math.floor(orgPos + travelD * (softsgn + 0.5));   // Offset & scale [orgPos, orgPos + travelD]
-                    return r;                                                   // r = newPosition
+                    //console.log(elapsedT + " "+softsgn)
+                    return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
                 }
                 
                 animateStep();
             }
 
-            // Initialize the visible text
-            el.innerHTML = this.scrollFeed(curLinIdx,cfg).join(lf);
+            // Initialize the visible text (and cache results)
+            cache = this.scrollFeed(curLinIdx,cfg.scrollH,cfg);
+            el.innerHTML = cache.join(lf);
         }
-
+        this.scrollFeed = function(curPos,cfg) { return [curPos] }              // feed me with data (overridable function)
     }
 
     //   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
@@ -93,20 +123,23 @@
     function init_gui()
     { 
         document.getElementById('slider_title').outerHTML = _TITLE();
-        oEMUI.scrollFeed = function(curIdx,cfg)
+        oEMUI.scrollFeed = function(curPos,count,cfg)  // callback function to feed data based on scroll position
         {
-            var arr=new Array(cfg.visibleLins);
-            for(var i=cfg.visibleLins-1;i>=0;i--)
+            var arr=new Array(count);
+            for(var i=count-1;i>=0;i--)   //  inverse loop for performance 
             {
-                var ci = curIdx+i;
+                var ci = curPos+i;
                 if(ci < cfg.min)  ci += cfg.max - cfg.min + 1;   // fix underflow
                 if(ci > cfg.max)  ci += cfg.min - cfg.max - 1;   // fix overflow
                 arr[i] = oCOM.getHexWord(ci);
             }
             return arr;
         }
-        oEMUI.TextScroll({id:"MyDiv",css:".text-window",visibleLins:20,interval_ms:32,duration_ms:250,min:0x0000,max:0xFFFF});
+        var config = {id:"MyDiv",scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true}
+        document.querySelectorAll(".text-window")[0].style.height = 15*config.scrollH+"px";  // scroll height (number of text lines)
+        oEMUI.TextScroll(config);
     }    
+
 
   </script>
 <!--
@@ -118,35 +151,37 @@
 -->
 <body class="slider_main" onload="init_gui();">
 
-<div id="slider_title"></div>
-<div class="slider_overlay">
-    <!--
-    <div id="topmenu">
-        <ul id="minitabs" style="font-family:Courier">
-               
-        </ul>
+    <div id="slider_title"></div>
+    <div class="slider_overlay">
+
+        <div id="topmenu">
+            <ul id="minitabs" style="font-family:Courier">
+
+            <li><button onclick="scrollText(-1)">-1 Line</button></li>
+            <li><button onclick="scrollText(-2)">-2 Lines</button></li>
+            <li><button onclick="scrollText(-5)">-5 Lines</button></li>
+            <li><button onclick="scrollText(-10)">-10 Lines</button></li>
+            <li><button onclick="scrollText(-100)">-100 Lines</button></li>
+            <li><button onclick="scrollText(-1024)">-1024 Lines</button></li>
+            <li><button onclick="scrollText(1)">+1 Line</button></li>
+            <li><button onclick="scrollText(2)">+2 Lines</button></li>
+            <li><button onclick="scrollText(5)">+5 Lines</button></li>
+            <li><button onclick="scrollText(10)">+10 Lines</button></li>
+            <li><button onclick="scrollText(100)">+100 Lines</button></li>
+            <li><button onclick="scrollText(1024)">+1024 Lines</button></li>
+
+            </ul>
+        </div>
+
+        <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+        <div class="text-window">
+            <code id="MyDiv"></code>
+        </div>
+
+        <div id="debug"></div>
+
     </div>
-    -->
-    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
-
-    <div class="text-window">
-        <code id="MyDiv"></code>
-    </div>
-
-    <div id="debug"></div>
-    
-    <button onclick="scrollText(-1)">-1 Line</button>
-    <button onclick="scrollText(-5)">-5 Lines</button>
-    <button onclick="scrollText(-10)">-10 Lines</button>
-    <button onclick="scrollText(-100)">-100 Lines</button>
-
-    <button onclick="scrollText(1)">+1 Line</button>
-    <button onclick="scrollText(5)">+5 Lines</button>
-    <button onclick="scrollText(10)">+10 Lines</button>
-    <button onclick="scrollText(100)">+100 Lines</button>
-
-    </div>
-</div>
 
 </body>
 </html>
