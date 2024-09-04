@@ -69,11 +69,12 @@
                             if(Math.abs(delta)>=cfg.scrollH) cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg); // full update if delta>scrollH or when finalising scroll
                             else if(scrollD>0)
                             {
-                                //console.log(cache.slice( delta, cfg.scrollH ).join(",") +" + "+ oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg).join(","))
+                                console.log(cache.slice( delta, cfg.scrollH ).join(",") +" + "+ oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg).join(","))
                                 cache = cache.slice( delta, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg) );
                                 if(cache.length < cfg.scrollH)
                                 {
-                                    console.log("TODO: check why cache is smaller than scrollH");
+                                    //console.log("TODO: check why cache is smaller than scrollH");
+                                    console.log("delta="+delta+" curPos="+curPos+" feed("+(curPos+cfg.scrollH-delta)+","+Math.abs(delta)+")");
                                     cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);   // QUICK FIX BY FULL UPDATE
                                 }
                             }
@@ -99,7 +100,6 @@
                 {
                     const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
                     const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
-                    //console.log(elapsedT + " "+softsgn)
                     return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
                 }
                 
