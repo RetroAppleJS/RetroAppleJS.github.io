@@ -3,13 +3,14 @@
 // Copyright (c) 2024 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
 // readme: this is a scroll function with special features one can't implement elegantly using standard HTML/CSS/JavaScript 
-// 1) the length of the scrolled data is nearly infinite
+// 1) length of the scrolled data can be virtually infinite
 // 2) content of the viewport must be updated in real-time
 // 3) call-back function feeding the scroller with real-time data
 // 4) omit unnecessary data feeding callbacks by caching
 // 5) omit unnecessary DOM updates for scroll updates < 1 line
 // 6) scroll distance & direction can be both controlled by algorithm as by user 
 // 7) ease-in/out animation frames providing comfortable orientation perception
+// 8) multiple scroll object instances can operate side-by-side
 -->
 
 <html>
@@ -21,7 +22,7 @@
         <meta charset="utf-8"> 
         <script type="text/javascript" src="../../res/COM_MAIN.js"></script>
         <style>
-            .text-window
+            #MyDiv1
             {
                 font-family: monospace;
                 overflow: hidden;
@@ -29,88 +30,76 @@
                 border: 1px solid #000;
                 height: 150px; /* Adjust the height to match the number of visible lines */
             } 
+
+            #MyDiv2
+            {
+                font-family: monospace;
+                overflow: hidden;
+                width: max-content;
+                border: 1px solid #000;
+                height: 150px; /* Adjust the height to match the number of visible lines */
+            } 
+
         </style>
         <script type="text/javascript" src="../TOOLS_Header.js"></script>
       </head>
       
   <script>
-    var CONF_version="0.2.0";
+    var CONF_version="0.2.1";
     var CONF_builddate="20240827-190000";
 
 // TODO: capture mouse or scroll bar controls
 
     function EMUI()
     {     
-        this.TextScroll = function(cfg)                                                 // private constructor
+        this.scrollFeed = function(curPos,cfg) { return [curPos] }                          // feed me with data (overridable function)
+        this.config = function(cfg)                                                         // constructor
         {
-            let curLinIdx = lastPos = cfg.homePos===undefined ? cfg.min : cfg.homePos, cache = new Array(cfg.scrollH), lf = "<br>";
+            let curLinIdx = lastPos = cfg.homePos===undefined ? cfg.min : cfg.homePos, lines = new Array(cfg.scrollH), lf = "<br>";
             const el = document.getElementById(cfg.id);
+            lines = this.scrollFeed(curLinIdx,cfg.scrollH,cfg);                             // request initial data
+            el.innerHTML = lines.join(lf);                                                  // initial text update
 
-            window.scrollText = function(scrollD)                                       // public GUI function (scrollD = scroll distance)
-            {
-                const interval2     = Math.log2(cfg.interval_ms);                       // Round to the nearest factor of 2
-                const interval_ms   = 1 << interval2;                                   // Recalculated interval per step in ms
-                const totalSteps    = (cfg.duration_ms >> interval2)+1;                 // Total number of steps
-                let   curStep       = 0;                                                // Reset animation step counter
-
-                function animateStep()
+            return {"move" : function(scrollD)                                              // public GUI function (scrollD = scroll distance)
                 {
-                    curPos = easeInOutSoftsign(curStep++ << interval2, curLinIdx, scrollD, cfg.duration_ms);    // Ease in/out function
-                    if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
-                    else curPos = curLinIdx += scrollD;                                                         // Finalise Scroll
+                    const interval2     = Math.log2(cfg.interval_ms);                       // Round to the nearest factor of 2
+                    const interval_ms   = 1 << interval2;                                   // Recalculated interval per step in ms
+                    const totalSteps    = (cfg.duration_ms >> interval2)+1;                 // Total number of steps
+                    let   curStep       = 0;                                                // Reset animation step counter
 
-                    if(lastPos != curPos)
+                    function animateStep()
                     {
-                        if(cfg.cache)
+                        curPos = easeInOutSoftsign(curStep++ << interval2, curLinIdx, scrollD, cfg.duration_ms);    // Calculate ease in/out
+                        if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
+                        else curPos = curLinIdx += scrollD;                                                         // Finalise Scroll
+
+                        if(lastPos != curPos)
                         {
-                            const delta = curPos-lastPos;
-                            //console.log("**** "+delta);
-
-                            if(Math.abs(delta)>=cfg.scrollH) cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg); // full update if delta>scrollH or when finalising scroll
-                            else if(scrollD>0)
-                            {
-                                console.log(cache.slice( delta, cfg.scrollH ).join(",") +" + "+ oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg).join(","))
-                                cache = cache.slice( delta, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-delta,Math.abs(delta),cfg) );
-                                if(cache.length < cfg.scrollH)
-                                {
-                                    //console.log("TODO: check why cache is smaller than scrollH");
-                                    console.log("delta="+delta+" curPos="+curPos+" feed("+(curPos+cfg.scrollH-delta)+","+Math.abs(delta)+")");
-                                    cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);   // QUICK FIX BY FULL UPDATE
-                                }
-                            }
-                            else if(scrollD<0)
-                            {
-                                //console.log(oEMUI.scrollFeed(curPos,Math.abs(delta),cfg).join(",")+" + "+cache.slice( 0, delta ).join(","))
-                                cache = oEMUI.scrollFeed(curPos,Math.abs(delta),cfg).concat( cache.slice( 0, delta ) );
-
-                                if(cache.length < cfg.scrollH)
-                                {
-                                    console.log("TODO: check why cache is smaller than scrollH");
-                                    cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);   // QUICK FIX BY FULL UPDATE
-                                } 
-                            }
+                            const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;
+                            if(cfg.cache && bstep)  lines = cache(lines,curPos,stepLen);                            // only cache when step < scroll height
+                            else                    lines = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);               // request full data feed
+                            el.innerHTML = lines.join(lf);                                                          // Update DOM only at visible change
                         }
-                        else cache = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);
-                        el.innerHTML = cache.join(lf);                                        // Update DOM only at visible change
+                        lastPos = curPos;
                     }
-                    lastPos = curPos;
-                }
 
-                function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
-                {
-                    const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
-                    const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
-                    return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
+                    function cache(lines,curPos,stepLen)
+                    {
+                        if(stepLen>0) return lines.slice( stepLen, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-stepLen,Math.abs(stepLen),cfg) );
+                        else return oEMUI.scrollFeed(curPos,Math.abs(stepLen),cfg).concat( lines.slice( 0, stepLen ) ); 
+                    }
+
+                    function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
+                    {
+                        const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
+                        const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
+                        return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
+                    }
+                    
+                    animateStep();
                 }
-                
-                animateStep();
             }
-
-            // Initialize the visible text (and cache results)
-            cache = this.scrollFeed(curLinIdx,cfg.scrollH,cfg);
-            el.innerHTML = cache.join(lf);
         }
-        this.scrollFeed = function(curPos,cfg) { return [curPos] }              // feed me with data (overridable function)
     }
 
     //   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
@@ -123,10 +112,10 @@
     function init_gui()
     { 
         document.getElementById('slider_title').outerHTML = _TITLE();
-        oEMUI.scrollFeed = function(curPos,count,cfg)  // callback function to feed data based on scroll position
+        oEMUI.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
         {
-            var arr=new Array(count);
-            for(var i=count-1;i>=0;i--)   //  inverse loop for performance 
+            var arr=new Array(linLen);
+            for(var i=linLen-1;i>=0;i--)   //  inverse loop for performance 
             {
                 var ci = curPos+i;
                 if(ci < cfg.min)  ci += cfg.max - cfg.min + 1;   // fix underflow
@@ -135,9 +124,17 @@
             }
             return arr;
         }
-        var config = {id:"MyDiv",scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true}
-        document.querySelectorAll(".text-window")[0].style.height = 15*config.scrollH+"px";  // scroll height (number of text lines)
-        oEMUI.TextScroll(config);
+
+        const cfg1 = {id:"MyDiv1",scrollH:20,interval_ms:32,duration_ms:400
+                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true}                       // configuration data 
+        document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";               // (optionally) auto-adjust text window height to number of text lines
+        window.oTextScroll1 = oEMUI.config(cfg1);                                           // construct my new object, and declare it in window (DOM)
+
+        const cfg2 = {id:"MyDiv2",scrollH:20,interval_ms:32,duration_ms:400
+                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true}                       // configuration data 
+        document.getElementById(cfg2.id).style.height = 15*cfg2.scrollH+"px";               // (optionally) auto-adjust text window height to number of text lines
+        window.oTextScroll2 = oEMUI.config(cfg2);                                           // construct my new object, and declare it in window (DOM)
+
     }    
 
 
@@ -156,28 +153,40 @@
 
         <div id="topmenu">
             <ul id="minitabs" style="font-family:Courier">
+                <li><button onclick="oTextScroll1.move(-1)">-1 Line</button></li>
+                <li><button onclick="oTextScroll1.move(-2)">-2 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(-5)">-5 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(-10)">-10 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(-100)">-100 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(-2048)">-2048 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(1)">+1 Line</button></li>
+                <li><button onclick="oTextScroll1.move(2)">+2 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(5)">+5 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(10)">+10 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(100)">+100 Lines</button></li>
+                <li><button onclick="oTextScroll1.move(2048)">+2024 Lines</button></li>
+            </ul>
 
-            <li><button onclick="scrollText(-1)">-1 Line</button></li>
-            <li><button onclick="scrollText(-2)">-2 Lines</button></li>
-            <li><button onclick="scrollText(-5)">-5 Lines</button></li>
-            <li><button onclick="scrollText(-10)">-10 Lines</button></li>
-            <li><button onclick="scrollText(-100)">-100 Lines</button></li>
-            <li><button onclick="scrollText(-1024)">-1024 Lines</button></li>
-            <li><button onclick="scrollText(1)">+1 Line</button></li>
-            <li><button onclick="scrollText(2)">+2 Lines</button></li>
-            <li><button onclick="scrollText(5)">+5 Lines</button></li>
-            <li><button onclick="scrollText(10)">+10 Lines</button></li>
-            <li><button onclick="scrollText(100)">+100 Lines</button></li>
-            <li><button onclick="scrollText(1024)">+1024 Lines</button></li>
-
+            <ul id="minitabs" style="font-family:Courier">
+                <li><button onclick="oTextScroll2.move(-1)">-1 Line</button></li>
+                <li><button onclick="oTextScroll2.move(-2)">-2 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(-5)">-5 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(-10)">-10 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(-100)">-100 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(-2048)">-2048 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(1)">+1 Line</button></li>
+                <li><button onclick="oTextScroll2.move(2)">+2 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(5)">+5 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(10)">+10 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(100)">+100 Lines</button></li>
+                <li><button onclick="oTextScroll2.move(2048)">+2024 Lines</button></li>
             </ul>
         </div>
 
         <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
-        <div class="text-window">
-            <code id="MyDiv"></code>
-        </div>
+
+        <div id="MyDiv1" style="float:left"></div><div id="MyDiv2"></div>
 
         <div id="debug"></div>
 
