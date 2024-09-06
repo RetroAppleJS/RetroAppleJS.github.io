@@ -26,6 +26,7 @@
             #MyDiv1
             {
                 font-family: monospace;
+                font-size:13px;
                 overflow: hidden;
                 width: max-content;
                 border: 1px solid #000;
@@ -35,6 +36,7 @@
             #MyDiv2
             {
                 font-family: monospace;
+                font-size:13px;
                 overflow: hidden;
                 width: max-content;
                 border: 1px solid #000;
@@ -146,7 +148,21 @@
         window.oTextScroll2 = new oEMUI.TextScroll(cfg2);                                           // construct my new object, and declare it in window (DOM)
         document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(event.deltaY) });
 
-        document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); alert(event.changedTouches[0].clientY) } );
+window.touchPos = 0;
+        
+        document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos = event.changedTouches[0].clientY } );
+
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( event.changedTouches[0].clientY - window.touchPos) } );
+
+        document.body.ontouchmove = function(e){
+    let newTouchPos = e.changedTouches[0].clientY;
+    if(newTouchPos > touchPos) {
+        console.log("finger moving down");
+    }
+    if(newTouchPos < touchPos) {
+        console.log("finger moving up");
+    }
+}
 
 }
 
