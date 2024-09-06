@@ -48,7 +48,7 @@
       </head>
       
   <script>
-    var CONF_version="1.0.6";
+    var CONF_version="1.0.7";
     var CONF_builddate="20240827-190000";
 
 // TODO: ADD TAP (select) AND SWIPE (scroll) CONTROL
@@ -151,7 +151,11 @@
         document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(Math.round(event.deltaY/2)) });
         window.touchPos2 = 0;
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
-        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( Math.round(Math.pow((window.touchPos2 - event.changedTouches[0].clientY)/char_pixH/2),2) ) } );
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); 
+            const d = window.touchPos2 - event.changedTouches[0].clientY;
+            oTextScroll2.jump(d>0?Math.round(d*d/2):Math.round(-d*d/2)) 
+        
+        } );
 
 }
 
