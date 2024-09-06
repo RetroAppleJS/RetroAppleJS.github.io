@@ -159,7 +159,7 @@
                 const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH * 2;
                 //const dd = d>0?(d*d)>>2:-((d*d)>>)2;
                 oTextScroll2.jump(Math.round(d));
-                document.getElementById("debug").innerHTML = d;
+                //document.getElementById("debug").innerHTML = d;
 
                 window.touchPos2 = event.changedTouches[0].clientY;
             }
