@@ -48,7 +48,7 @@
       </head>
       
   <script>
-    var CONF_version="1.0.1";
+    var CONF_version="1.0.2";
     var CONF_builddate="20240827-190000";
 
 // TODO: ADD TAP (select) AND SWIPE (scroll) CONTROL
@@ -136,32 +136,23 @@
             return arr;
         }
 
+        var char_pixH = 15;
+
         const cfg1 = {id:"MyDiv1",scrollH:20,interval_ms:32,duration_ms:400
                     ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}    // configuration data 
-        document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
+        document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);                                           // construct my new object, and declare it in window (DOM)
         document.getElementById(cfg1.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll1.jump(event.deltaY) });
 
         const cfg2 = {id:"MyDiv2",scrollH:20,interval_ms:32,duration_ms:400
                     ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}   // configuration data 
-        document.getElementById(cfg2.id).style.height = 15*cfg2.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
+        document.getElementById(cfg2.id).style.height = char_pixH*cfg2.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll2 = new oEMUI.TextScroll(cfg2);                                           // construct my new object, and declare it in window (DOM)
         document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(event.deltaY) });
 
-window.touchPos = 0;
-        
+        window.touchPos = 0;
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos = event.changedTouches[0].clientY } );
-        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( event.changedTouches[0].clientY - window.touchPos) } );
-
-        document.body.ontouchmove = function(e){
-    let newTouchPos = e.changedTouches[0].clientY;
-    if(newTouchPos > touchPos) {
-        console.log("finger moving down");
-    }
-    if(newTouchPos < touchPos) {
-        console.log("finger moving up");
-    }
-}
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( Math.round((event.changedTouches[0].clientY - window.touchPos)/char_pixH) ) } );
 
 }
 
