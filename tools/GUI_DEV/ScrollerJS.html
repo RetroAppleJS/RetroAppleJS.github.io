@@ -152,10 +152,13 @@
         window.touchPos2 = 0;
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
         document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); 
+            try{
             const d = (window.touchPos2 - event.changedTouches[0].clientY)/scrollH;
             const dd = d>0?d*d/2:-d*d/2;
             oTextScroll2.jump(Math.round(dd));
             document.getElementById("debug").innerHTML = d;
+            }
+            catch(e) { document.getElementById("debug").innerHTML = e; }
         } );
 
 }
