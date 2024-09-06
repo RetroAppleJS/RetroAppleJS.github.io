@@ -157,8 +157,8 @@
             {
                 event.preventDefault();
                 const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH;
-                const dd = d>0?(d*d)>>2:-((d*d)>>)2;
-                oTextScroll2.jump(Math.round(dd));
+                //const dd = d>0?(d*d)>>2:-((d*d)>>)2;
+                oTextScroll2.jump(Math.round(d));
                 document.getElementById("debug").innerHTML = d;
             }
             catch(e) { document.getElementById("debug").innerHTML = e.message; }
