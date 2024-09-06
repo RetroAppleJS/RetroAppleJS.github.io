@@ -11,6 +11,7 @@
 // 6) scroll distance & direction can be both controlled by algorithm as by user 
 // 7) ease-in/out animation frames providing comfortable orientation perception
 // 8) multiple scroll object instances can operate side-by-side
+// 9) mouse scroll wheel control on hover 
 -->
 
 <html>
@@ -45,59 +46,67 @@
       </head>
       
   <script>
-    var CONF_version="0.2.1";
+    var CONF_version="1.0.0";
     var CONF_builddate="20240827-190000";
 
-// TODO: capture mouse or scroll bar controls
+// TODO: ADD TAP (select) AND SWIPE (scroll) CONTROL
 
     function EMUI()
     {     
-        this.scrollFeed = function(curPos,cfg) { return [curPos] }                          // feed me with data (overridable function)
-        this.config = function(cfg)                                                         // constructor
+        this.TextScroll = function(cfg)                                         // constructor
         {
+            // TODO use default function from oCOM ?
+            oEMUI.scrollFeed = cfg.callback===undefined ? function(curPos,cfg) { return [curPos] } : cfg.callback;
             let curLinIdx = lastPos = cfg.homePos===undefined ? cfg.min : cfg.homePos, lines = new Array(cfg.scrollH), lf = "<br>";
             const el = document.getElementById(cfg.id);
-            lines = this.scrollFeed(curLinIdx,cfg.scrollH,cfg);                             // request initial data
-            el.innerHTML = lines.join(lf);                                                  // initial text update
+            lines = oEMUI.scrollFeed(curLinIdx,cfg.scrollH,cfg);                // request initial data
+            el.innerHTML = lines.join(lf);                                      // initial text update
 
-            return {"move" : function(scrollD)                                              // public GUI function (scrollD = scroll distance)
+            this.jump = function(scrollD)
+            {
+                var ease = cfg.ease
+                cfg.ease = false;
+                this.move(scrollD);
+                cfg.ease = ease;
+            }
+
+            this.move = function(scrollD)                                       // public GUI function (scrollD = scroll distance)
+            {
+                const interval2     = Math.log2(cfg.interval_ms);               // Round to the nearest factor of 2
+                const interval_ms   = 1 << interval2;                           // Recalculated interval per step in ms
+                const totalSteps    = (cfg.duration_ms >> interval2)+1;         // Total number of steps
+                let   curStep       = 0;                                        // Reset animation step counter
+
+                function animateStep()
                 {
-                    const interval2     = Math.log2(cfg.interval_ms);                       // Round to the nearest factor of 2
-                    const interval_ms   = 1 << interval2;                                   // Recalculated interval per step in ms
-                    const totalSteps    = (cfg.duration_ms >> interval2)+1;                 // Total number of steps
-                    let   curStep       = 0;                                                // Reset animation step counter
+                    curPos = easeInOutSoftsign(curStep++ << interval2, curLinIdx, scrollD, cfg.duration_ms);     // Calculate ease in/out
+                    if(curStep < totalSteps && Math.abs(scrollD)>1 && cfg.ease) setTimeout(animateStep, interval_ms);       // Animate Scroll
+                    else curPos = curLinIdx += scrollD;                                                         // Finalise Scroll
 
-                    function animateStep()
+                    if(lastPos != curPos)
                     {
-                        curPos = easeInOutSoftsign(curStep++ << interval2, curLinIdx, scrollD, cfg.duration_ms);    // Calculate ease in/out
-                        if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
-                        else curPos = curLinIdx += scrollD;                                                         // Finalise Scroll
-
-                        if(lastPos != curPos)
-                        {
-                            const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;
-                            if(cfg.cache && bstep)  lines = cache(lines,curPos,stepLen);                            // only cache when step < scroll height
-                            else                    lines = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);               // request full data feed
-                            el.innerHTML = lines.join(lf);                                                          // Update DOM only at visible change
-                        }
-                        lastPos = curPos;
+                        const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;
+                        if(cfg.cache && bstep)  lines = cache(lines,curPos,stepLen);                            // only cache when step < scroll height
+                        else                    lines = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);               // request full data feed
+                        el.innerHTML = lines.join(lf);                                                          // Update DOM only at visible change
                     }
-
-                    function cache(lines,curPos,stepLen)
-                    {
-                        if(stepLen>0) return lines.slice( stepLen, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-stepLen,Math.abs(stepLen),cfg) );
-                        else return oEMUI.scrollFeed(curPos,Math.abs(stepLen),cfg).concat( lines.slice( 0, stepLen ) ); 
-                    }
-
-                    function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
-                    {
-                        const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
-                        const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
-                        return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
-                    }
-                    
-                    animateStep();
+                    lastPos = curPos;
                 }
+
+                function cache(lines,curPos,stepLen)
+                {
+                    if(stepLen>0) return lines.slice( stepLen, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-stepLen,Math.abs(stepLen),cfg) );
+                    else return oEMUI.scrollFeed(curPos,Math.abs(stepLen),cfg).concat( lines.slice( 0, stepLen ) ); 
+                }
+
+                function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
+                {
+                    const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
+                    const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
+                    return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
+                }
+                
+                animateStep();
             }
         }
     }
@@ -112,7 +121,7 @@
     function init_gui()
     { 
         document.getElementById('slider_title').outerHTML = _TITLE();
-        oEMUI.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
+        function scrollFeed(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
         {
             var arr=new Array(linLen);
             for(var i=linLen-1;i>=0;i--)   //  inverse loop for performance 
@@ -126,16 +135,20 @@
         }
 
         const cfg1 = {id:"MyDiv1",scrollH:20,interval_ms:32,duration_ms:400
-                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true}                       // configuration data 
-        document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";               // (optionally) auto-adjust text window height to number of text lines
-        window.oTextScroll1 = oEMUI.config(cfg1);                                           // construct my new object, and declare it in window (DOM)
+                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}    // configuration data 
+        document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
+        window.oTextScroll1 = new oEMUI.TextScroll(cfg1);                                           // construct my new object, and declare it in window (DOM)
+        document.getElementById(cfg1.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll1.jump(event.deltaY) });
 
         const cfg2 = {id:"MyDiv2",scrollH:20,interval_ms:32,duration_ms:400
-                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true}                       // configuration data 
-        document.getElementById(cfg2.id).style.height = 15*cfg2.scrollH+"px";               // (optionally) auto-adjust text window height to number of text lines
-        window.oTextScroll2 = oEMUI.config(cfg2);                                           // construct my new object, and declare it in window (DOM)
+                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}   // configuration data 
+        document.getElementById(cfg2.id).style.height = 15*cfg2.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
+        window.oTextScroll2 = new oEMUI.TextScroll(cfg2);                                           // construct my new object, and declare it in window (DOM)
+        document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(event.deltaY) });
 
-    }    
+        document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); alert(event.changedTouches[0].clientY) } );
+
+}
 
 
   </script>
