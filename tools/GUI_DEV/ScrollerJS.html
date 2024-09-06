@@ -153,7 +153,7 @@
         document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(event.deltaY) });
         window.touchPos2 = 0;
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
-        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( Math.round((window.touchPos2 - event.changedTouches[0].clientY)/char_pixH/10) ) } );
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( Math.round((window.touchPos2 - event.changedTouches[0].clientY)/char_pixH/2) ) } );
 
 }
 
