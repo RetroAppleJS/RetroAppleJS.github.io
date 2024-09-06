@@ -148,11 +148,12 @@
                     ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}   // configuration data 
         document.getElementById(cfg2.id).style.height = char_pixH*cfg2.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll2 = new oEMUI.TextScroll(cfg2);                                           // construct my new object, and declare it in window (DOM)
+        
+        
         document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(event.deltaY) });
-
-        window.touchPos = 0;
-        document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos = event.changedTouches[0].clientY } );
-        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( Math.round((event.changedTouches[0].clientY - window.touchPos)/char_pixH) ) } );
+        window.touchPos2 = 0;
+        document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); oTextScroll2.jump( Math.round((event.changedTouches[0].clientY - window.touchPos2)/char_pixH) ) } );
 
 }
 
