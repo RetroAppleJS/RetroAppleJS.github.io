@@ -157,7 +157,7 @@
             {
                 event.preventDefault();
                 const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH;
-                const dd = d>0?d*d>>2:-d*d>>2;
+                const dd = d>0?(d*d)>>2:-((d*d)>>)2;
                 oTextScroll2.jump(Math.round(dd));
                 document.getElementById("debug").innerHTML = d;
             }
