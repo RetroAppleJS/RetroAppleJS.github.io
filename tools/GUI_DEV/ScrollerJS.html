@@ -48,7 +48,7 @@
       </head>
       
   <script>
-    var CONF_version="1.0.9";
+    var CONF_version="1.0.1";
     var CONF_builddate="20240827-190000";
 
 // TODO: ADD TAP (select) AND SWIPE (scroll) CONTROL
@@ -160,6 +160,8 @@
                 //const dd = d>0?(d*d)>>2:-((d*d)>>)2;
                 oTextScroll2.jump(Math.round(d));
                 document.getElementById("debug").innerHTML = d;
+
+                window.touchPos2 = event.changedTouches[0].clientY;
             }
             catch(e) { document.getElementById("debug").innerHTML = e.message; }
         } );
