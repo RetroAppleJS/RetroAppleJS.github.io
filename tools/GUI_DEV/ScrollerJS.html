@@ -152,7 +152,7 @@
         window.touchPos2 = 0;
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
         document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { event.preventDefault(); 
-            const d = window.touchPos2 - event.changedTouches[0].clientY;
+            const d = (window.touchPos2 - event.changedTouches[0].clientY)/scrollH;
             oTextScroll2.jump(d>0?Math.round(d*d/2):Math.round(-d*d/2)) 
         
         } );
