@@ -67,7 +67,15 @@
             this.jump = function(scrollD)
             {
                 var ease = cfg.ease
-                cfg.ease = false;
+                cfg.ease = 0;
+                this.move(scrollD);
+                cfg.ease = ease;
+            }
+
+            this.glide = function(scrollD)
+            {
+                var ease = cfg.ease
+                cfg.ease = 2;
                 this.move(scrollD);
                 cfg.ease = ease;
             }
@@ -81,9 +89,28 @@
 
                 function animateStep()
                 {
-                    curPos = easeInOutSoftsign(curStep++ << interval2, curLinIdx, scrollD, cfg.duration_ms);     // Calculate ease in/out
-                    if(curStep < totalSteps && Math.abs(scrollD)>1 && cfg.ease) setTimeout(animateStep, interval_ms);       // Animate Scroll
-                    else curPos = curLinIdx += scrollD;                                                         // Finalise Scroll
+                    switch(cfg.ease)
+                    {
+                        case 1:
+                            curPos = easeInOutSoftsign(++curStep << interval2, curLinIdx, scrollD, cfg.duration_ms); 
+                            if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
+                            else curPos = curLinIdx += scrollD;   // Finalise Scroll
+                            break;
+                        case 2:
+                            var force = curStep==0 ? scrollD : 0; 
+                            curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.025);
+                            document.getElementById("debug").innerHTML = (curPos-lastPos)+"<br>";
+                            if(lastPos != curPos) setTimeout(animateStep, interval_ms);
+                            else
+                            {
+                                cfg.velocity = 0;
+                                curLinIdx = curPos;
+                            }
+                            break;
+                        default:
+                            curPos = curLinIdx += scrollD;   // Finalise Scroll
+                    }
+                                                                          
 
                     if(lastPos != curPos)
                     {
@@ -108,6 +135,25 @@
                     return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
                 }
                 
+                function easeNewton(elapsedT, orgPos, force, mass, friction)
+                {
+                    if(cfg.velocity===undefined) cfg.velocity = 0;
+                    const frictionForce = -friction * force;                    // Calculate the force due to friction
+
+                    // Calculate the net force
+                    const netForce = force + frictionForce;
+
+                    // Calculate the acceleration
+                    const acceleration = netForce / mass;
+
+                    cfg.velocity = cfg.velocity + acceleration - cfg.velocity * friction 
+
+                    // Calculate the position using Newton's second law
+                    const position = orgPos + cfg.velocity * elapsedT;
+
+                    return Math.round(position);
+                }
+
                 animateStep();
             }
         }
@@ -137,34 +183,39 @@
         }
 
         var char_pixH = 15;
+        window.touchPos2 = 0;
+
         const cfg1 = {id:"MyDiv1",scrollH:20,interval_ms:32,duration_ms:400
-                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}    // configuration data 
-        document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
-        window.oTextScroll1 = new oEMUI.TextScroll(cfg1);                                           // construct my new object, and declare it in window (DOM)
+                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:scrollFeed}        // configuration data 
+        document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                    // (optionally) auto-adjust text window height to number of text lines
+        window.oTextScroll1 = new oEMUI.TextScroll(cfg1);                                               // construct my new object, and declare it in window (DOM)
+        // WHEEL ACTION
         document.getElementById(cfg1.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll1.jump(event.deltaY) });
 
         const cfg2 = {id:"MyDiv2",scrollH:20,interval_ms:32,duration_ms:400
-                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:true,callback:scrollFeed}   // configuration data 
-        document.getElementById(cfg2.id).style.height = char_pixH*cfg2.scrollH+"px";                       // (optionally) auto-adjust text window height to number of text lines
-        window.oTextScroll2 = new oEMUI.TextScroll(cfg2);                                           // construct my new object, and declare it in window (DOM)
-        
-        document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(Math.round(event.deltaY/2)) });
-        window.touchPos2 = 0;
+                    ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:scrollFeed}        // configuration data 
+        document.getElementById(cfg2.id).style.height = char_pixH*cfg2.scrollH+"px";                    // (optionally) auto-adjust text window height to number of text lines
+        window.oTextScroll2 = new oEMUI.TextScroll(cfg2);                                               // construct my new object, and declare it in window (DOM)
+
+        // WHEEL ACTION
+        document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(Math.round(event.deltaY/2))
+            document.getElementById("debug").innerHTML = event.deltaY/2
+         });
+        // SWIPE ACTION
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
-        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => { 
-         
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => {
             try
             {
-                event.preventDefault();
-                const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH * 4;
-                //const dd = d>0?(d*d)>>2:-((d*d)>>)2;
-                oTextScroll2.jump(Math.round(d));
-                //document.getElementById("debug").innerHTML = d;
+                document.getElementById("debug").innerHTML = window.touchPos2 - event.changedTouches[0].clientY
 
+                event.preventDefault();
+                const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
+                oTextScroll2.glide(Math.round(d));
                 window.touchPos2 = event.changedTouches[0].clientY;
             }
             catch(e) { document.getElementById("debug").innerHTML = e.message; }
         } );
+
 
 }
 
