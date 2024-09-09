@@ -48,7 +48,7 @@
       </head>
       
   <script>
-    var CONF_version="1.0.6";
+    var CONF_version="1.0.7";
     var CONF_builddate="20240827-190000";
 
     function EMUI()
@@ -76,8 +76,8 @@
                 var ease = cfg.ease
                 cfg.ease = 2;
                 var vec = scrollD*Math.abs(scrollD)/4
-                //this.move(Math.round(vec));
-                document.getElementById("debug").innerHTML = vec;
+                this.move(Math.round(vec));
+                //document.getElementById("debug").innerHTML = vec;
                 cfg.ease = ease;
             }
 
