@@ -138,19 +138,9 @@
                 function easeNewton(elapsedT, orgPos, force, mass, friction)
                 {
                     if(cfg.velocity===undefined) cfg.velocity = 0;
-                    const frictionForce = -friction * force;                    // Calculate the force due to friction
-
-                    // Calculate the net force
-                    const netForce = force + frictionForce;
-
-                    // Calculate the acceleration
-                    const acceleration = netForce / mass;
-
-                    cfg.velocity = cfg.velocity + acceleration - cfg.velocity * friction 
-
-                    // Calculate the position using Newton's second law
-                    const position = orgPos + cfg.velocity * elapsedT;
-
+                    const acceleration = force / mass;                                     // Calculate the acceleration
+                    cfg.velocity +=  acceleration - cfg.velocity * friction;               // Increment velocity with acceleration and decrement with friction (= fraction velocity)
+                    const position = orgPos + cfg.velocity * elapsedT;                     // Calculate the position using Newton's second law
                     return Math.round(position);
                 }
 
