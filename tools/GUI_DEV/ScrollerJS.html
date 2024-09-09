@@ -65,9 +65,7 @@
             {
                 var ease = cfg.ease
                 cfg.ease = 0;
-                var vec = scrollD*Math.abs(scrollD)/4
                 this.move(scrollD);
-                //document.getElementById("debug").innerHTML = vec;
                 cfg.ease = ease;
             }
 
@@ -75,7 +73,7 @@
             {
                 var ease = cfg.ease
                 cfg.ease = 2;
-                var vec = scrollD*Math.abs(scrollD)/4
+                var vec = (scrollD+2)*Math.abs((scrollD+2))/4
                 this.move(Math.round(vec));
                 //document.getElementById("debug").innerHTML = vec;
                 cfg.ease = ease;
