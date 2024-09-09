@@ -99,7 +99,7 @@
                         case 2:
                             var force = curStep==0 ? scrollD : 0; 
                             curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.005);
-                            document.getElementById("debug").innerHTML = (curPos-lastPos)+"<br>";
+                            //document.getElementById("debug").innerHTML = (curPos-lastPos)+"<br>";
                             if(lastPos != curPos) setTimeout(animateStep, interval_ms);
                             else
                             {
@@ -186,7 +186,7 @@
         document.getElementById(cfg1.id).addEventListener('touchmove', (event) => {
             try
             {
-                document.getElementById("debug").innerHTML = window.touchPos1 - event.changedTouches[0].clientY
+                //document.getElementById("debug").innerHTML = window.touchPos1 - event.changedTouches[0].clientY
 
                 event.preventDefault();
                 const d = (window.touchPos1 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
@@ -205,14 +205,14 @@
 
         // WHEEL ACTION
         document.getElementById(cfg2.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll2.jump(Math.round(event.deltaY/2))
-            document.getElementById("debug").innerHTML = event.deltaY/2
+            //document.getElementById("debug").innerHTML = event.deltaY/2
          });
         // SWIPE ACTION
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
         document.getElementById(cfg2.id).addEventListener('touchmove', (event) => {
             try
             {
-                document.getElementById("debug").innerHTML = window.touchPos2 - event.changedTouches[0].clientY
+                //document.getElementById("debug").innerHTML = window.touchPos2 - event.changedTouches[0].clientY
 
                 event.preventDefault();
                 const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
