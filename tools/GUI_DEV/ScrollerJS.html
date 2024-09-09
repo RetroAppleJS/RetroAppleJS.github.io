@@ -48,7 +48,7 @@
       </head>
       
   <script>
-    var CONF_version="1.0.4";
+    var CONF_version="1.0.5";
     var CONF_builddate="20240827-190000";
 
 // TODO: ADD TAP (select) AND SWIPE (scroll) CONTROL
@@ -75,7 +75,7 @@
             {
                 var ease = cfg.ease
                 cfg.ease = 0;
-                this.move(scrollD);
+                this.move(Math.round(scrollD/2));
                 cfg.ease = ease;
             }
 
