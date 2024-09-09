@@ -98,7 +98,7 @@
                             break;
                         case 2:
                             var force = curStep==0 ? scrollD : 0; 
-                            curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.025);
+                            curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.01);
                             document.getElementById("debug").innerHTML = (curPos-lastPos)+"<br>";
                             if(lastPos != curPos) setTimeout(animateStep, interval_ms);
                             else
