@@ -98,7 +98,7 @@
                             break;
                         case 2:
                             var force = curStep==0 ? scrollD : 0; 
-                            curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.01);
+                            curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.005);
                             document.getElementById("debug").innerHTML = (curPos-lastPos)+"<br>";
                             if(lastPos != curPos) setTimeout(animateStep, interval_ms);
                             else
@@ -181,6 +181,22 @@
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);                                               // construct my new object, and declare it in window (DOM)
         // WHEEL ACTION
         document.getElementById(cfg1.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll1.jump(event.deltaY) });
+        // SWIPE ACTION
+        document.getElementById(cfg1.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos1 = event.changedTouches[0].clientY } );
+        document.getElementById(cfg1.id).addEventListener('touchmove', (event) => {
+            try
+            {
+                document.getElementById("debug").innerHTML = window.touchPos1 - event.changedTouches[0].clientY
+
+                event.preventDefault();
+                const d = (window.touchPos1 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
+                oTextScroll1.glide(Math.round(d));
+                window.touchPos1 = event.changedTouches[0].clientY;
+            }
+            catch(e) { document.getElementById("debug").innerHTML = e.message; }
+        } );
+
+
 
         const cfg2 = {id:"MyDiv2",scrollH:20,interval_ms:32,duration_ms:400
                     ,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:scrollFeed}        // configuration data 
