@@ -57,7 +57,6 @@
     {     
         this.TextScroll = function(cfg)                                         // constructor
         {
-            // TODO use default function from oCOM ?
             oEMUI.scrollFeed = cfg.callback===undefined ? function(curPos,cfg) { return [curPos] } : cfg.callback;
             let curLinIdx = lastPos = cfg.homePos===undefined ? cfg.min : cfg.homePos, lines = new Array(cfg.scrollH), lf = "<br>";
             const el = document.getElementById(cfg.id);
@@ -75,7 +74,7 @@
             this.glide = function(scrollD)
             {
                 var ease = cfg.ease
-                cfg.ease = 2;
+                cfg.ease = 0;
                 this.move(scrollD);
                 cfg.ease = ease;
             }
@@ -91,27 +90,21 @@
                 {
                     switch(cfg.ease)
                     {
-                        case 1:
+                        case 1:     // EASE (deterministic ease in/out)
                             curPos = easeInOutSoftsign(++curStep << interval2, curLinIdx, scrollD, cfg.duration_ms); 
                             if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
                             else curPos = curLinIdx += scrollD;   // Finalise Scroll
                             break;
-                        case 2:
+                        case 2:     // GLIDE (inertia-based, ideal for touchpads)
                             var force = curStep==0 ? scrollD : 0; 
                             curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.005);
-                            //document.getElementById("debug").innerHTML = (curPos-lastPos)+"<br>";
                             if(lastPos != curPos) setTimeout(animateStep, interval_ms);
-                            else
-                            {
-                                cfg.velocity = 0;
-                                curLinIdx = curPos;
-                            }
+                            else { cfg.velocity = 0; curLinIdx = curPos }
                             break;
-                        default:
+                        default:    // JUMP (deterministic jump, ideal for scroll wheels)
                             curPos = curLinIdx += scrollD;   // Finalise Scroll
                     }
                                                                           
-
                     if(lastPos != curPos)
                     {
                         const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;
@@ -173,6 +166,7 @@
         }
 
         var char_pixH = 15;
+        window.touchPos1 = 0;
         window.touchPos2 = 0;
 
         const cfg1 = {id:"MyDiv1",scrollH:20,interval_ms:32,duration_ms:400
@@ -183,17 +177,13 @@
         document.getElementById(cfg1.id).addEventListener('wheel', (event) => { event.preventDefault(); oTextScroll1.jump(event.deltaY) });
         // SWIPE ACTION
         document.getElementById(cfg1.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos1 = event.changedTouches[0].clientY } );
-        document.getElementById(cfg1.id).addEventListener('touchmove', (event) => {
-            try
-            {
-                //document.getElementById("debug").innerHTML = window.touchPos1 - event.changedTouches[0].clientY
-
-                event.preventDefault();
-                const d = (window.touchPos1 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
-                oTextScroll1.glide(Math.round(d));
-                window.touchPos1 = event.changedTouches[0].clientY;
-            }
-            catch(e) { document.getElementById("debug").innerHTML = e.message; }
+        document.getElementById(cfg1.id).addEventListener('touchmove', (event) => 
+        {
+            //document.getElementById("debug").innerHTML = window.touchPos1 - event.changedTouches[0].clientY
+            event.preventDefault();
+            const d = (window.touchPos1 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
+            oTextScroll1.glide(Math.round(d));
+            window.touchPos1 = event.changedTouches[0].clientY;
         } );
 
 
@@ -209,17 +199,13 @@
          });
         // SWIPE ACTION
         document.getElementById(cfg2.id).addEventListener('touchstart', (event) => { event.preventDefault(); window.touchPos2 = event.changedTouches[0].clientY } );
-        document.getElementById(cfg2.id).addEventListener('touchmove', (event) => {
-            try
-            {
-                //document.getElementById("debug").innerHTML = window.touchPos2 - event.changedTouches[0].clientY
-
-                event.preventDefault();
-                const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
-                oTextScroll2.glide(Math.round(d));
-                window.touchPos2 = event.changedTouches[0].clientY;
-            }
-            catch(e) { document.getElementById("debug").innerHTML = e.message; }
+        document.getElementById(cfg2.id).addEventListener('touchmove', (event) =>
+        {
+            //document.getElementById("debug").innerHTML = window.touchPos2 - event.changedTouches[0].clientY
+            event.preventDefault();
+            const d = (window.touchPos2 - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
+            oTextScroll2.glide(Math.round(d));
+            window.touchPos2 = event.changedTouches[0].clientY;
         } );
 
 
