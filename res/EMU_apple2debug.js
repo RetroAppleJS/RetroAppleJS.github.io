@@ -10,21 +10,32 @@ else oEMU.component.CPU.Apple2Debug = new Apple2Debug();
 function Apple2Debug()
 {
     var prev_adr = -1000;
+
+    /*
     this.cycle = function(obj)
     {
-        //this.listing
-
-        var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
-        // el.innerHTML = JSON.stringify(obj.cpu.watch())
-        //+"<br>"
-
+        //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
         var watch = obj.cpu.watch();
         var jmp_adr = watch.pc - prev_adr;
-
-        el.innerHTML = this.listing(watch)
-        //+ oCOM.getBinMulti(oEMU.component.IO.self.keyscan(),8);
+        el.innerHTML = this.listing(watch);
         prev_adr = watch.pc;
     }
+    */
+
+    this.cycle = function(obj)
+    {
+        //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
+        var watch = obj.cpu.watch();
+        var jmp_adr = watch.pc - prev_adr;
+        if(prev_adr==-1000) jmp_adr = watch.pc; // TODO: can we do better than just -1000 to indicate start position?
+
+        //document.getElementById("debug").value = oCOM.getHexWord(watch.pc);
+
+        oTextScroll1.move(jmp_adr);
+        prev_adr = watch.pc;
+    }
+
+    
 
     this.play = function(bPlay)
     {
