@@ -73,4 +73,18 @@ function Apple2Debug()
         return s.join("<br>");
     }
 
+        // CPU REAL-TIME DEBUGGER
+    this.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
+    {
+        var arr=new Array(linLen);
+        for(var i=linLen-1;i>=0;i--)        //  inverse loop for performance 
+        {
+            var ci = curPos+i;
+            if(ci < cfg.min)  ci += cfg.max - cfg.min + 1;   // fix underflow
+            if(ci > cfg.max)  ci += cfg.min - cfg.max - 1;   // fix overflow
+            arr[i] = oCOM.getHexWord(ci);
+        }
+        return arr;
+    }
+
 }

@@ -368,27 +368,10 @@ function EMUI()
         +"</div>"
         // <i class="fa fa-sign-out-alt"></i>
         // <i class="fa fa-level-down-alt"></i>
-
-
         el.innerHTML = s; 
-        
-        // CPU REAL-TIME DEBUGGER
-        function scrollFeed(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
-        {
-            var arr=new Array(linLen);
-            for(var i=linLen-1;i>=0;i--)        //  inverse loop for performance 
-            {
-                var ci = curPos+i;
-                if(ci < cfg.min)  ci += cfg.max - cfg.min + 1;   // fix underflow
-                if(ci > cfg.max)  ci += cfg.min - cfg.max - 1;   // fix overflow
-                arr[i] = oCOM.getHexWord(ci);
-            }
-            return arr;
-        }
 
         var char_pixH = 15;
-
-        const cfg1 = {id:oEMU.component.CPU.Apple2Debug.disp_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:scrollFeed} // configuration data 
+        const cfg1 = {id:oEMU.component.CPU.Apple2Debug.disp_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:oEMU.component.CPU.Apple2Debug.scrollFeed} // configuration data 
         document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                    // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
 
