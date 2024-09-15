@@ -374,7 +374,6 @@ function EMUI()
         const cfg1 = {id:oEMU.component.CPU.Apple2Debug.disp_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:oEMU.component.CPU.Apple2Debug.scrollFeed} // configuration data 
         document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                    // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
-
     }
 
     this.muteBtn = function(arg)
@@ -479,6 +478,11 @@ function EMUI()
             cfg.ease = ease;
         }
 
+        this.flush = function()
+        {
+            // TODO FLUSH CACHE
+        }
+
         this.move = function(scrollD)                                       // public GUI function (scrollD = scroll distance)
         {
             const interval2     = Math.log2(cfg.interval_ms);               // Round to the nearest factor of 2
@@ -507,7 +511,7 @@ function EMUI()
                                                                       
                 if(lastPos != curPos)
                 {
-                    const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;
+                    const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;                  // bstep is true when scroll step is smaller than view
                     if(cfg.cache && bstep)  lines = cache(lines,curPos,stepLen);                            // only cache when step < scroll height
                     else                    lines = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);               // request full data feed
                     el.innerHTML = lines.join(lf);                                                          // Update DOM only at visible change

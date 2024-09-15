@@ -997,4 +997,9 @@ function Cpu6502(hwobj)
     {
         return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay}
     }
+
+    this.getConfig = function()
+    {
+        return { "instrlen":instrlen,"cycle_count":cycle_count }
+    }
 }

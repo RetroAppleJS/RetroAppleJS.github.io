@@ -7,9 +7,9 @@
 
 ORG   $C600
 
-LSLOT  = $2B   ; Last booted slot number * 16
-SLOTIO = $C080 ; Slot I/O
-M.WAIT = $FCA8 ; ROM WAIT
+LSLOT   = $2B   ; Last booted slot number * 16
+SLOTIO  = $C080 ; Slot I/O
+M.WAIT  = $FCA8 ; ROM WAIT
 DOS.1   = $3C  ; VARIABLE 1
 DOS.2   = $3D  ; VARIABLE 2
 DOS.3   = $40  ; VARIABLE 3

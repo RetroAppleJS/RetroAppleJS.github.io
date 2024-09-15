@@ -181,6 +181,18 @@ function COM()
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
  
+  this.padding   = function(word_arr, padding_arr) 
+  {
+    let result = [], lim_word;
+    for (let i = 0; i < words.length; i++)
+    {
+      lim_word = words[i].length > paddings[i] ? words[i].substring(0, paddings[i]) : words[i];               // Limit the word to its padding width if it exceeds the available space
+      if (i > 0) result.push('&nbsp;'.repeat(Math.max(0, paddings[i-1] - result[result.length-1].length )));  // Calculate padding and ensure it's non-negative (no negative space)
+      result.push(lim_word);                                                                                  // Add the word to the result array
+    }
+    return result.join('');                                                                                   // Join the array into a single string
+  }
+
   this.uuid = function()  // UUID v4
   {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>

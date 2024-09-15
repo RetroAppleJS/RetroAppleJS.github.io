@@ -10,6 +10,7 @@ else oEMU.component.CPU.Apple2Debug = new Apple2Debug();
 function Apple2Debug()
 {
     var prev_adr = -1000;
+    var cpu_config=null,max_instrlen,byte_scan,max_byte_lst;
 
     /*
     this.cycle = function(obj)
@@ -22,20 +23,25 @@ function Apple2Debug()
     }
     */
 
+    function init(cfg)
+    {
+        cpu_config = oEMU.component.CPU["6502"].getConfig();
+        max_instrlen = Math.max.apply(null, cpu_config.instrlen);
+        byte_scan = cfg.HScroll * max_instrlen    // because we can have only a max of 3 bytes per line
+        max_byte_lst = 3 * max_instrlen;          // maximum length of byte listing = (2 digits + space) * x 
+        //alert(max_instrlen);
+    }
+
     this.cycle = function(obj)
     {
         //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
         var watch = obj.cpu.watch();
         var jmp_adr = watch.pc - prev_adr;
         if(prev_adr==-1000) jmp_adr = watch.pc; // TODO: can we do better than just -1000 to indicate start position?
-
         //document.getElementById("debug").value = oCOM.getHexWord(watch.pc);
-
         oTextScroll1.move(jmp_adr);
         prev_adr = watch.pc;
     }
-
-    
 
     this.play = function(bPlay)
     {
@@ -59,6 +65,7 @@ function Apple2Debug()
         }
     }
 
+    /*
     this.listing = function(watch)
     {
         var lines = 20;
@@ -72,19 +79,41 @@ function Apple2Debug()
         }
         return s.join("<br>");
     }
+    */
 
-        // CPU REAL-TIME DEBUGGER
+    // CPU REAL-TIME DEBUGGER
     this.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
     {
+        if(cpu_config==null) init(cfg);
         var arr=new Array(linLen);
-        for(var i=linLen-1;i>=0;i--)        //  inverse loop for performance 
+        var hw = apple2plus.hwObj();
+        const spc = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+        var adr = curPos;
+
+        var adr_lst    = oCOM.getHexWord(adr) + " ";
+        var byte_lst   = "";
+        var opcode_lst = "LDA $6000";
+        
+        for(var i=0;i<linLen;i++)        //  inverse loop for performance 
         {
-            var ci = curPos+i;
-            if(ci < cfg.min)  ci += cfg.max - cfg.min + 1;   // fix underflow
-            if(ci > cfg.max)  ci += cfg.min - cfg.max - 1;   // fix overflow
-            arr[i] = oCOM.getHexWord(ci);
+            var b8  = hw.safe_read(adr++);           // ALWAYS ASSUME address at curPos is an instruction
+            var ilen  = cpu_config.instrlen[b8];
+            switch(ilen)
+            {
+                case 1: byte_lst = oCOM.getHexByte(b8) + " ";
+                        break;
+                case 2: byte_lst = oCOM.getHexByte(b8) + " " + oCOM.getHexByte(hw.safe_read(adr++)) + " ";
+                        break;
+                case 3: byte_lst = oCOM.getHexByte(b8) + " " + oCOM.getHexByte(hw.safe_read(adr++)) + " " + oCOM.getHexByte(hw.safe_read(adr++));
+                        break;
+            }
+
+            if(adr < cfg.min)  adr += cfg.max - cfg.min + 1;   // fix underflow
+            if(adr > cfg.max)  adr += cfg.min - cfg.max - 1;   // fix overflow
+
+            arr[i] = adr_lst + " " + byte_lst + spc.slice(0,(max_byte_lst-byte_lst.length)*6) + opcode_lst;
+            
         }
         return arr;
     }
-
 }

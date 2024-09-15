@@ -12,6 +12,8 @@
 // 7) ease-in/out animation frames providing comfortable orientation perception
 // 8) multiple scroll object instances can operate side-by-side
 // 9) mouse scroll wheel control on hover 
+// 10) flush cache if updated address is in range
+// 11) skip easing/timer event in case last TextScroll vector was ordered within easing time range 
 -->
 
 <html>
@@ -102,6 +104,8 @@
                 {
                     switch(cfg.ease)
                     {
+                        // TODO measure time since last scroll move, if time < duration_ms ==> JUMP without waiting ! 
+
                         case 1:     // EASE (deterministic ease in/out)
                             curPos = easeInOutSoftsign(++curStep << interval2, curLinIdx, scrollD, cfg.duration_ms); 
                             if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
