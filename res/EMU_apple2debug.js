@@ -111,8 +111,7 @@ function Apple2Debug()
             if(adr < cfg.min)  adr += cfg.max - cfg.min + 1;   // fix underflow
             if(adr > cfg.max)  adr += cfg.min - cfg.max - 1;   // fix overflow
 
-            arr[i] = adr_lst + " " + byte_lst + spc.slice(0,(max_byte_lst-byte_lst.length)*6) + opcode_lst;
-            
+            arr[i] = oCOM.padding([adr_lst,byte_lst,opcode_lst],[5,max_byte_lst]);
         }
         return arr;
     }

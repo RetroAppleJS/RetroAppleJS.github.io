@@ -181,16 +181,16 @@ function COM()
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
  
-  this.padding   = function(word_arr, padding_arr) 
+  this.padding = function(word_arr, padding_arr) 
   {
     let result = [], lim_word;
-    for (let i = 0; i < words.length; i++)
+    for (let i = 0; i < word_arr.length; i++)
     {
-      lim_word = words[i].length > paddings[i] ? words[i].substring(0, paddings[i]) : words[i];               // Limit the word to its padding width if it exceeds the available space
-      if (i > 0) result.push('&nbsp;'.repeat(Math.max(0, paddings[i-1] - result[result.length-1].length )));  // Calculate padding and ensure it's non-negative (no negative space)
-      result.push(lim_word);                                                                                  // Add the word to the result array
+      lim_word = word_arr[i].length > padding_arr[i] ? word_arr[i].substring(0, padding_arr[i]) : word_arr[i];  // Limit the word to its padding width if it exceeds the available space
+      if (i > 0) result.push('&nbsp;'.repeat(Math.max(0, padding_arr[i-1] - result[result.length-1].length ))); // Calculate padding and ensure it's non-negative (no negative space)
+      result.push(lim_word);                                                                                    // Add the word to the result array
     }
-    return result.join('');                                                                                   // Join the array into a single string
+    return result.join('');                                                                                     // Join the array into a single string
   }
 
   this.uuid = function()  // UUID v4
