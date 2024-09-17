@@ -1,5 +1,3 @@
-//const e = require("express");
-
 //const { split } = require("lodash");
 //const { connectableObservableDescriptor } = require("rxjs/internal/observable/ConnectableObservable");
 
@@ -852,14 +850,42 @@ function DASM()
 
     this.disassemble = function()
     {
-	var instr=this.ByteAt(pc);
-	var op1=this.getHexByte(this.ByteAt(pc+1));
-	var op2=this.getHexByte(this.ByteAt(pc+2));
-	var adr=getHexWord(pc);
+		var ret = this.disassemble_v2({"code_arr":[this.ByteAt(pc),this.ByteAt(pc+1),this.ByteAt(pc+2)],"pc":pc,"opctab":opctab})
+		var adr   = ret.adr_lst;
+		var ops   = ret.opcode_lst;
+		var disas = ret.mnemonic;
+
+        var disp = '<div style="width:100px;float:left">'+adr+'&nbsp;'+ops+'</div>'+disas+"<br>"
+        dispmem += disp
+
+        this.writeShow('regdisp',adr,ops,disas);
+        //this.writeDisplay('dispStep',dispmem);
+        this.writeDisplay('dispStep',disp,"beforeend");
+		this.updateScroll(document.getElementById('dispStep'));
+
+        var dispmem_arr = dispmem.split("<br>");
+        if(dispmem_arr.length>5)
+        {
+
+                dispmem = dispmem_arr[1]+ "<br>"
+                        + dispmem_arr[2]+ "<br>"
+                                + dispmem_arr[3]+ "<br>"
+                                + dispmem_arr[4]+ "<br>"
+                                + dispmem_arr[5]
+        }
+    }
+
+
+	this.disassemble_v2 = function(arg)
+    {
+	var instr=arg.code_arr[0];
+	var op1=this.getHexByte(arg.code_arr[0]);
+	var op2=this.getHexByte(arg.code_arr[1]);
+	var adr=getHexWord(arg.pc);
 	if(instr=="") {alert("no instruction ?"); return }
 	var ops=this.getHexByte(instr);
-	var disas=opctab[instr][0];
-	var adm=opctab[instr][1];
+	var disas=arg.opctab[instr][0];
+	var adm=arg.opctab[instr][1];
 	if (op1==null) op1=0;
 	if (op2==null) op2=0;
 	switch (adm) {
@@ -918,24 +944,8 @@ function DASM()
 		default :
 			ops+='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
         }
-        var disp = '<div style="width:100px;float:left">'+adr+'&nbsp;'+ops+'</div>'+disas+"<br>"
-        dispmem += disp
 
-        this.writeShow('regdisp',adr,ops,disas);
-        //this.writeDisplay('dispStep',dispmem);
-        this.writeDisplay('dispStep',disp,"beforeend");
-		this.updateScroll(document.getElementById('dispStep'));
-
-        var dispmem_arr = dispmem.split("<br>");
-        if(dispmem_arr.length>5)
-        {
-
-                dispmem = dispmem_arr[1]+ "<br>"
-                        + dispmem_arr[2]+ "<br>"
-                                + dispmem_arr[3]+ "<br>"
-                                + dispmem_arr[4]+ "<br>"
-                                + dispmem_arr[5]
-        }
+		return {"adr_lst":adr,"opcode_lst":ops,"mnemonic":disas}
     }
 
 
