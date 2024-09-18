@@ -186,11 +186,22 @@ function COM()
     let result = [], lim_word;
     for (let i = 0; i < word_arr.length; i++)
     {
+      word_arr[i] = this.unescapeHTML(word_arr[i]);
       lim_word = word_arr[i].length > padding_arr[i] ? word_arr[i].substring(0, padding_arr[i]) : word_arr[i];  // Limit the word to its padding width if it exceeds the available space
       if (i > 0) result.push('&nbsp;'.repeat(Math.max(0, padding_arr[i-1] - result[result.length-1].length ))); // Calculate padding and ensure it's non-negative (no negative space)
       result.push(lim_word);                                                                                    // Add the word to the result array
     }
     return result.join('');                                                                                     // Join the array into a single string
+  }
+
+  this.unescapeHTML = function(str)
+  {
+    return str
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, '\u00A0');
   }
 
   this.uuid = function()  // UUID v4

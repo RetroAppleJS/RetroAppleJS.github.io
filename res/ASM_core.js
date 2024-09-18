@@ -851,27 +851,23 @@ function DASM()
     this.disassemble = function()
     {
 		var ret = this.disassemble_v2({"code_arr":[this.ByteAt(pc),this.ByteAt(pc+1),this.ByteAt(pc+2)],"pc":pc,"opctab":opctab})
-		var adr   = ret.adr_lst;
-		var ops   = ret.opcode_lst;
-		var disas = ret.mnemonic;
 
-        var disp = '<div style="width:100px;float:left">'+adr+'&nbsp;'+ops+'</div>'+disas+"<br>"
-        dispmem += disp
+        var disp = '<div style="width:100px;float:left">'+ret.adr_lst+'&nbsp;'+ret.opcode_lst+'</div>'+ret.mnemonic+"<br>"; // works with all fonts (proportional)
+        //var disp = oCOM.padding([ret.adr_lst,ret.opcode_lst,ret.mnemonic],[5,10])+"<br>";  								// only works with monospaced fonts!   
 
-        this.writeShow('regdisp',adr,ops,disas);
-        //this.writeDisplay('dispStep',dispmem);
+        this.writeShow('regdisp',ret.adr_lst,ret.opcode_lst,ret.mnemonic);
         this.writeDisplay('dispStep',disp,"beforeend");
 		this.updateScroll(document.getElementById('dispStep'));
 
+		dispmem += disp
         var dispmem_arr = dispmem.split("<br>");
         if(dispmem_arr.length>5)
         {
-
-                dispmem = dispmem_arr[1]+ "<br>"
-                        + dispmem_arr[2]+ "<br>"
-                                + dispmem_arr[3]+ "<br>"
-                                + dispmem_arr[4]+ "<br>"
-                                + dispmem_arr[5]
+			dispmem = dispmem_arr[1]+ "<br>"
+					+ dispmem_arr[2]+ "<br>"
+							+ dispmem_arr[3]+ "<br>"
+							+ dispmem_arr[4]+ "<br>"
+							+ dispmem_arr[5]
         }
     }
 
