@@ -178,7 +178,7 @@ function setRegister(r) {
 	else v&=255;
 	setReg(r,v);
 	updateReg(r);
-	if (r=='PC') oDASM.disassemble();
+	if (r=='PC') oDASM.disassemble_GUI();
 }
 
 function setWatchByte(r) {
@@ -233,8 +233,8 @@ function resetProcessor() {
 	resetCPU();
 	updateReg();
 	updateWatch();
-	//console.log("resetProcessor oDASM.disassemble()")
-	//oDASM.disassemble();
+	//console.log("resetProcessor oDASM.disassemble_GUI()")
+	//oDASM.disassemble_GUI();
 }
 
 function DBG_init() {
@@ -569,7 +569,7 @@ function load_adr(obj)
 	v&=0xffff
 	setReg("PC",v);
 	updateReg("PC");
-	oDASM.disassemble();
+	oDASM.disassemble_GUI();
 
 }
 
@@ -782,8 +782,8 @@ function simStep() {
 	processorLoop();
 	updateReg();
 	updateWatch();
-	console.log("DBG simStep oDASM.disassemble()")
-	oDASM.disassemble();
+	console.log("DBG simStep oDASM.disassemble_GUI()")
+	oDASM.disassemble_GUI();
 	// continous?
 	if (runThrou) {
 		runStep++;

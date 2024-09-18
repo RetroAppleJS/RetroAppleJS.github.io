@@ -848,9 +848,9 @@ function DASM()
     //  ██   ██ ██      ██ ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██ 
     //  ██████  ██ ███████ ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██ 
 
-    this.disassemble = function()
+    this.disassemble_GUI = function()
     {
-		var ret = this.disassemble_v2({"code_arr":[this.ByteAt(pc),this.ByteAt(pc+1),this.ByteAt(pc+2)],"pc":pc,"opctab":opctab})
+		var ret = this.disassemble({"code_arr":[this.ByteAt(pc),this.ByteAt(pc+1),this.ByteAt(pc+2)],"pc":pc,"opctab":opctab})
 
         var disp = '<div style="width:100px;float:left">'+ret.adr_lst+'&nbsp;'+ret.opcode_lst+'</div>'+ret.mnemonic+"<br>"; // works with all fonts (proportional)
         //var disp = oCOM.padding([ret.adr_lst,ret.opcode_lst,ret.mnemonic],[5,10])+"<br>";  								// only works with monospaced fonts!   
@@ -872,7 +872,7 @@ function DASM()
     }
 
 
-	this.disassemble_v2 = function(arg)
+	this.disassemble = function(arg)
     {
 		if(arg.code_arr[0]=="") {alert("no instruction ?"); return }
 		var ops=this.getHexByte(arg.code_arr[0]);							// instruction
