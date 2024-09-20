@@ -371,7 +371,8 @@ function EMUI()
         el.innerHTML = s; 
 
         var char_pixH = 15;
-        const cfg1 = {id:oEMU.component.CPU.Apple2Debug.disp_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:true,ease:1,callback:oEMU.component.CPU.Apple2Debug.scrollFeed} // configuration data 
+        // TODO: FIGURE OUT HOW TO COPE WITH CACHE (lines with different byte spacings)
+        const cfg1 = {id:oEMU.component.CPU.Apple2Debug.disp_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:oEMU.component.CPU.Apple2Debug.scrollFeed} // configuration data 
         document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                    // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
     }

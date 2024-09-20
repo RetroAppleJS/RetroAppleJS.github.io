@@ -7,6 +7,9 @@
 if(oEMU===undefined) var oEMU = {"component":{"CPU":{"Apple2Debug":new Apple2Debug()}}}
 else oEMU.component.CPU.Apple2Debug = new Apple2Debug();
 
+// TODO: move somewhere more appropriate
+
+
 function Apple2Debug()
 {
     var prev_adr = -1000;
@@ -30,6 +33,29 @@ function Apple2Debug()
         byte_scan = cfg.HScroll * max_instrlen    // because we can have only a max of 3 bytes per line
         max_byte_lst = 3 * max_instrlen;          // maximum length of byte listing = (2 digits + space) * x 
         //alert(max_instrlen);
+
+        oDASM_debug = new DASM();
+        oDASM_debug.getHexByte = oCOM.getHexByte;
+        oDASM_debug.sym_search = function(op,adm)
+        {            
+            // TODO SEARCH THROUGH watchparam
+            var opd = parseInt(op.substring(1,op.length),16)
+            switch(adm)
+            {
+                case "zpg":
+                case "abs":
+                case "rel":
+                case "iny":
+                case "inx":
+                    var adr = asm.symlink[opd];  // watch parameter translation
+                    if(typeof(adr)!="undefined") return adr+" <small>"+op+"h</small>"
+                    var adr = asm.symlink[opd-1];  // watch parameter translation of address - 1
+                    if(typeof(adr)!="undefined") return adr+"+1 <small>"+op+"h</small>"
+                break;
+            }
+            return op;
+            
+        }
     }
 
     this.cycle = function(obj)
@@ -37,8 +63,12 @@ function Apple2Debug()
         //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
         var watch = obj.cpu.watch();
         var jmp_adr = watch.pc - prev_adr;
+
+        // TODO check jump adr !  DO NOT MOVE SCROLL WHEN watch.pc is not pointing to an instruction !
+
         if(prev_adr==-1000) jmp_adr = watch.pc; // TODO: can we do better than just -1000 to indicate start position?
         //document.getElementById("debug").value = oCOM.getHexWord(watch.pc);
+
         oTextScroll1.move(jmp_adr);
         prev_adr = watch.pc;
     }
@@ -87,32 +117,20 @@ function Apple2Debug()
         if(cpu_config==null) init(cfg);
         var arr=new Array(linLen);
         var hw = apple2plus.hwObj();
-        const spc = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
         var adr = curPos;
 
-        var adr_lst    = oCOM.getHexWord(adr) + " ";
-        var byte_lst   = "";
-        var opcode_lst = "LDA $6000";
-        
-        for(var i=0;i<linLen;i++)        //  inverse loop for performance 
+        for(var i=0;i<linLen;i++)           //  inverse loop for performance 
         {
-            var b8  = hw.safe_read(adr++);           // ALWAYS ASSUME address at curPos is an instruction
-            var ilen  = cpu_config.instrlen[b8];
-            switch(ilen)
-            {
-                case 1: byte_lst = oCOM.getHexByte(b8) + " ";
-                        break;
-                case 2: byte_lst = oCOM.getHexByte(b8) + " " + oCOM.getHexByte(hw.safe_read(adr++)) + " ";
-                        break;
-                case 3: byte_lst = oCOM.getHexByte(b8) + " " + oCOM.getHexByte(hw.safe_read(adr++)) + " " + oCOM.getHexByte(hw.safe_read(adr++));
-                        break;
-            }
-
+            var b8 = hw.safe_read(adr);
+            var ret = oDASM_debug.disassemble({"code_arr":[b8,hw.safe_read(adr+1),hw.safe_read(adr+2)],"pc":adr,"opctab":cpu_config.opctab});
+            adr += cpu_config.instrlen[b8];                  // advance to the next instruction
             if(adr < cfg.min)  adr += cfg.max - cfg.min + 1;   // fix underflow
             if(adr > cfg.max)  adr += cfg.min - cfg.max - 1;   // fix overflow
 
-            arr[i] = oCOM.padding([adr_lst,byte_lst,opcode_lst],[5,max_byte_lst]);
+            arr[i] = oCOM.padding([ret.adr_lst,ret.opcode_lst,ret.mnemonic],[5,max_byte_lst]);
         }
+
         return arr;
     }
+
 }

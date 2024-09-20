@@ -874,72 +874,73 @@ function DASM()
 
 	this.disassemble = function(arg)
     {
-		if(arg.code_arr[0]=="") {alert("no instruction ?"); return }
 		var ops=this.getHexByte(arg.code_arr[0]);							// instruction
-		var op1=this.getHexByte(arg.code_arr[1]); if (op1==null) op1=0;		// operand 1
-		var op2=this.getHexByte(arg.code_arr[2]); if (op2==null) op2=0;		// operand 2
+		var op1=this.getHexByte(arg.code_arr[1]); if (op1==null) op1=0;	// operand 1
+		var op2=this.getHexByte(arg.code_arr[2]); if (op2==null) op2=0;	// operand 2
 
-		var disas = arg.opctab[ arg.code_arr[0] ][0];	// mnemonic
-		var adm   = arg.opctab[ arg.code_arr[0] ][1];	// addressing mode
+		const mne   = arg.opctab[ arg.code_arr[0] ][0];						// mnemonic
+		const adm   = arg.opctab[ arg.code_arr[0] ][1];						// addressing mode
+		var expr = mne;
 
 		switch (adm)
 		{
 			case 'imm' :
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;#$'+this.sym_search(op1,adm);
+				expr+='&nbsp;#$'+this.sym_search(op1,adm);
 				break;
 			case 'zpg' :
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;'+this.sym_search("$"+op1,adm);
+				expr+='&nbsp;'+this.sym_search("$"+op1,adm);
 				break;
 			case 'acc' :
 				ops+='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;A';
+				expr+='&nbsp;A';
 				break;
 			case 'abs' :
 				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				disas+='&nbsp;'+this.sym_search("$"+op2+op1,adm);
+				expr+='&nbsp;'+this.sym_search("$"+op2+op1,adm);
 				break;
 			case 'zpx' :
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;'+this.sym_search("$"+op1,adm)+',X';
+				expr+='&nbsp;'+this.sym_search("$"+op1,adm)+',X';
 				break;
 			case 'zpy' :
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;'+this.sym_search("$"+op1,adm)+',Y';
+				expr+='&nbsp;'+this.sym_search("$"+op1,adm)+',Y';
 				break;
 			case 'abx' :
 				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				disas+='&nbsp;'+this.sym_search("$"+op2+op1,adm)+',X';
+				expr+='&nbsp;'+this.sym_search("$"+op2+op1,adm)+',X';
 				break;
 			case 'aby' :
 				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				disas+='&nbsp;'+this.sym_search("$"+op2+op1,adm)+',Y';
+				expr+='&nbsp;'+this.sym_search("$"+op2+op1,adm)+',Y';
 				break;
 			case 'iny' :
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;('+this.sym_search("$"+op1,adm)+'),Y';
+				expr+='&nbsp;('+this.sym_search("$"+op1,adm)+'),Y';
 				break;
 			case 'inx' :
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;('+this.sym_search("$"+op1,adm)+',X)';
+				expr+='&nbsp;('+this.sym_search("$"+op1,adm)+',X)';
 				break;
 			case 'rel' :
-				var opv=this.ByteAt(pc+1);
+				var opv=arg.code_arr[1];
 				var targ=pc+2;
 				if (opv&128) targ-=(opv^255)+1; else targ +=opv;
 				targ&=0xffff;
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				disas+='&nbsp;'+this.sym_search("$"+getHexWord(targ),adm);
+				expr+='&nbsp;'+this.sym_search("$"+getHexWord(targ),adm);
 				break;
 			case 'ind' :
 				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				disas+='&nbsp;('+this.sym_search("$"+op2+op1,adm)+')';
+				expr+='&nbsp;('+this.sym_search("$"+op2+op1,adm)+')';
 				break;
 			default :
 				ops+='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
 		}
-		return {"adr_lst":getHexWord(arg.pc),"opcode_lst":ops,"mnemonic":disas}
+		var ret = {"adr_lst":getHexWord(arg.pc),"opcode_lst":ops,"mnemonic":expr}
+		return ret;
     }
 
 
