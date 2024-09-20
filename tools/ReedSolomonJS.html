@@ -1,4 +1,5 @@
 <script type="text/javascript" src="../res/reedsolomon.js"></script>
+<script type="text/javascript" src="../res/purify.min.js"></script>
 
 <script>
 function _snippet()
@@ -114,7 +115,7 @@ for(var i=0;i<256;i++)
 
 var console = new function()
 {
-	this.log = function(str){ document.getElementById("_console").innerHTML += "<"+"pre class=codebox>"+str+"<"+"/pre>" }
+	this.log = function(str){ document.getElementById("_console").innerHTML += "<"+"pre class=codebox>"+DOMPurify.sanitize(str,{ALLOWED_TAGS: []})+"<"+"/pre>" }
 	this.clear = function(){document.getElementById("_console").innerHTML = "" }
 	this.getHexMulti = function(v,m) { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
 	this.getHexMulti_arr = function(arr,len) { for(var i=0,s="";i<len;i++) s+= this.getHexMulti(arr[i],2); return s}
