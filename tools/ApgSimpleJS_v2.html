@@ -101,7 +101,7 @@ const grammarString =
  ' start = rule1 | rule2\n'
 +' rule1 = "abc"\n'
 +'rule2 = "def" *digit\n'
-+'digit = /\d/"\n'
++'digit = /d/"\n'
 
 const inputString = "abcdef123";
 const parsedData = parseABNF(grammarString, inputString);
