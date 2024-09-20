@@ -200,8 +200,8 @@ function COM()
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&nbsp;/g, '\u00A0');
+    .replace(/&nbsp;/g, '\u00A0')
+    .replace(/&amp;/g, '&');
   }
 
   this.uuid = function()  // UUID v4
