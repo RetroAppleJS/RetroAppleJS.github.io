@@ -73,7 +73,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] EMULATOR: slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
 - [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
 - [ ] EMULATOR: paddle/mouse capture
-- [ ] ASSEMBLER: Step Assembler completion (currently in alpha release
+- [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
 - [ ] ASSEMBLER: Disassembler to standard assembly listings
 - [ ] ASSEMBLER: Transpiler from 6502 assembler to JavaScript (followed by a JavaScript->6502 assembler transpiler)
 - [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
