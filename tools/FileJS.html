@@ -109,6 +109,15 @@
                         url = j[i].URL ? j[i].URL : "";
                         uri_arg = j[i].URI ? j[i].URI.replace(/=/,"") : "";
                         uri_hash = j[i].hash ? j[i].hash.replace(/#/,"") : "";
+
+                        if(j[i].prompt===undefined){}
+                        else
+                        {
+                            var hex = window.prompt(j[i].prompt);
+                            var dec = parseInt(hex,16);
+                            uri_arg = "addr="+(isNaN(dec)?24576:dec)+uri_arg
+                        }
+
                     }
                 }
 
@@ -128,8 +137,9 @@
                             + brows
                             +"<a target=_blank href="+url+">[ZLIB_URL]</a>"
                             + " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[ZLIB_BASE64]</a>"
-                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[LF_HEX]</a>"
-                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(["+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])')>[HEX]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[JS_HEX_LF]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(["+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])')>[JS_HEX]</a>"
+                            //+ " <a href=javascript:oCOM.POPUP.html(''+oCOM.DumpTxt('"+[...bin].map((v)=>""+oCOM.getHexByte(v)).join("&nbsp;")+"',3*8,'&lt;br&gt;'))>[LST_HEX]</a>"
                             +"</div>"
  
                 var el = document.getElementById("output");
@@ -168,6 +178,7 @@
             <textarea id=JSON style="font-family:'Courier';font-size:10px;float:left;width:500px;height:50px;resize:vertical;">
 {"regexp":"\.(?:s)$"  ,"URI":"asm=" ,"URL":"../index.html","hash":"#tab2"},
 {"regexp":"\.(?:dsk)$","URI":"D1=","URL":"../index.html","hash":"#tab1"},
+{"regexp":"\.(?:bin)$","URI":"paste=" ,"URL":"../index.html","hash":"#tab1","prompt":"load at addr"},
 {"regexp":"\.(?:sid)$","URI":"sid=" ,"URL":"SIDchipJS.html"},
 {"regexp":"\.(?:fym)$","URI":"fym=" ,"URL":"MockingboardJS.html"},
             </textarea><br>
