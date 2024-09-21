@@ -115,7 +115,7 @@
                         {
                             var hex = window.prompt(j[i].prompt);
                             var dec = parseInt(hex,16);
-                            uri_arg = "addr="+(isNaN(dec)?24576:dec)+uri_arg
+                            uri_arg = j[i].prompt+"="+(isNaN(dec)?24576:dec)+uri_arg
                         }
 
                     }
@@ -178,7 +178,7 @@
             <textarea id=JSON style="font-family:'Courier';font-size:10px;float:left;width:500px;height:50px;resize:vertical;">
 {"regexp":"\.(?:s)$"  ,"URI":"asm=" ,"URL":"../index.html","hash":"#tab2"},
 {"regexp":"\.(?:dsk)$","URI":"D1=","URL":"../index.html","hash":"#tab1"},
-{"regexp":"\.(?:bin)$","URI":"paste=" ,"URL":"../index.html","hash":"#tab1","prompt":"load at addr"},
+{"regexp":"\.(?:bin)$","URI":"paste=" ,"URL":"../index.html","hash":"#tab1","prompt":"addr"},
 {"regexp":"\.(?:sid)$","URI":"sid=" ,"URL":"SIDchipJS.html"},
 {"regexp":"\.(?:fym)$","URI":"fym=" ,"URL":"MockingboardJS.html"},
             </textarea><br>
