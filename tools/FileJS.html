@@ -110,12 +110,12 @@
                         uri_arg = j[i].URI ? j[i].URI.replace(/=/,"") : "";
                         uri_hash = j[i].hash ? j[i].hash.replace(/#/,"") : "";
 
-                        if(j[i].prompt===undefined){}
+                        if(j[i].prompt_hex===undefined){}
                         else
                         {
-                            var hex = window.prompt(j[i].prompt);
+                            var hex = window.prompt(j[i].prompt_hex);
                             var dec = parseInt(hex,16);
-                            uri_arg = j[i].prompt+"="+(isNaN(dec)?24576:dec)+uri_arg
+                            uri_arg = j[i].prompt_hex+"="+(isNaN(dec)?24576:dec)+uri_arg
                         }
 
                     }
@@ -178,7 +178,7 @@
             <textarea id=JSON style="font-family:'Courier';font-size:10px;float:left;width:500px;height:50px;resize:vertical;">
 {"regexp":"\.(?:s)$"  ,"URI":"asm=" ,"URL":"../index.html","hash":"#tab2"},
 {"regexp":"\.(?:dsk)$","URI":"D1=","URL":"../index.html","hash":"#tab1"},
-{"regexp":"\.(?:bin)$","URI":"paste=" ,"URL":"../index.html","hash":"#tab1","prompt":"addr"},
+{"regexp":"\.(?:bin)$","URI":"paste=" ,"URL":"../index.html","hash":"#tab1","prompt_hex":"addr"},
 {"regexp":"\.(?:sid)$","URI":"sid=" ,"URL":"SIDchipJS.html"},
 {"regexp":"\.(?:fym)$","URI":"fym=" ,"URL":"MockingboardJS.html"},
             </textarea><br>
