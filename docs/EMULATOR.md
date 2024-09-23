@@ -10,7 +10,11 @@ For the last one, there is a huge body of
 
 __Most basic functions remain the same, but please mind the...__  
 
-__Pasteboard feature__
+__Pasteboard features__
+
+1 - **Paste** any text into the emulator. This function senses the keyboard strobe address which reveals exactly when the Apple II hardware is ready to take a character from the keyboard, assuring the fastest data transfer rate.
+2 - **txtCap** to capture text screen #1 in the pasteboard.  This is actually a memory dump between $400-$5FF, but bytes are reordered logically to overcome the Apple II's chip saving design.
+3 - **MemCap** to bulk capture any byte stream between two addresses. 
 
 __CPU speed settings__
 
@@ -32,7 +36,7 @@ Steve Wozniak's chip-saving design requires quite some technical knowledge to ac
 
 The video scanner operates similarly to a television scan. Due to different TV standards between Europe and America, NTSC models had a master clock tuned at 14.31818Mhz and PAL around 14.238Mhz, which was then exposed to the CPU after division by a factor of 14, resulting in approximately 1MHz. 
 
-The *horizontal scanning* counter consists of 65 states, 1 state lasting approximately 1µs, with 40 states allocated for display and 25 states called 'horizontal blank'. So far accurately documented, we can still estimate that the beam journey travels across the left (blank) border traversing 5 states, then utilizing 40 states (or columns) for reading video memory and display at a rate of one CPU cycle per TEXT/LORES column or 7 HIRES pixels. The display area is followed by another 5 blank states across the right border to reach the right end, after which the remaining 15 blank states are left to retrace or clear the beam to the left end, where the following line starts. 
+The *horizontal scanning* counter consists of 65 states, 1 state lasting approximately 1µs, with 40 states allocated for display and 25 states called 'horizontal blank'. So far accurately documented, we can estimate that the beam journey travels across the left (blank) border traversing 5 states, then utilizing 40 states (or columns) for reading video memory and display at a rate of one CPU cycle per TEXT/LORES column or 7 HIRES pixels. The display area is followed by another 5 blank states across the right border to reach the right end, after which the remaining 15 blank states are left to retrace or clear the beam to the left end, where the following line starts. 
 
 The *vertical scanning* counter in NTSC/PAL configuration consist respectively of 262/312 states.  Only 192 states are allocated for display, while again respectively in NTSC/PAL configuration the remaining 70/120 states are reserved for vertical blanking including the top margin, bottom margin and retrace back to the top of the screen.  Again so far accurately documented, we can only roughly estimate that the beam takes 24/49 states to travel across the top (blank) margin, then utilizing 192 states displaying stuff, reaching to the bottom margin taking another 24/49 states, and when finally engaging the beam into the retrace maneuver to the top, taking the remaining 22 states. 
 
