@@ -8,13 +8,14 @@ For the last one, there is a huge body of
 [documentation](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/) available, and for more specific details on the global architecture of this very emulator, please check out the following document: [EMULATOR_ARCHITECTURE.md](EMULATOR_ARCHITECTURE.md)
 
 
-__Most basic functions remain the same, but please mind the...__  
+__Most basic functions remain the same, but please mind about some welcome adaptations.__
 
 __Pasteboard features__
 
-1 - **Paste** any text into the emulator. This function senses the keyboard strobe address which reveals exactly when the Apple II hardware is ready to take a character from the keyboard, assuring the fastest data transfer rate.
-2 - **txtCap** to capture text screen #1 in the pasteboard.  This is actually a memory dump between $400-$5FF, but bytes are reordered logically to overcome the Apple II's chip saving design.
-3 - **MemCap** to bulk capture any byte stream between two addresses. 
+* **Paste** any text into the emulator. This function senses the keyboard strobe address which reveals exactly when the Apple II hardware is ready to take a character from the keyboard, assuring the fastest data transfer rate.
+* **txtCap** to capture text screen #1 in the pasteboard.  This is actually a memory dump between $400-$5FF, but bytes are reordered logically to overcome the Apple II's chip saving design.
+* **MemCap** to bulk capture any byte stream between two addresses.
+* **Clear** as the text area can be used in both directions (import/export), it is important to empty this box.
 
 __CPU speed settings__
 
