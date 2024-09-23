@@ -100,6 +100,31 @@ function EMU_init()
             case "gpu":
                 // TODO initialise GPU algorithm instead of CPU
             break;
+            case "addr":
+                oCOM.URL.addr = oCOM.URL.uri[uri];
+            break;
+            case "paste":
+                if(typeof(oCOM.URL.addr)!="undefined" && oCOM.URL.uri[uri].length>0)
+                {
+                    var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
+                    if(db!=null)
+                    {
+                        const inflator = new pako.Inflate();
+                        inflator.push(db);
+                        var bin = inflator.result;
+                        if(typeof(bin)!="undefined")
+                        {
+                            var s = [...bin].map((v)=>""+oCOM.getHexByte(v)).join(" ");
+                            s = oCOM.DumpTxt(s,3*8,'\n');
+                            var arr = s.split("\n").map(function (str,idx){return oCOM.getHexWord(Number(oCOM.URL.addr) + idx*8)+": "+ str})
+
+                            EMUboard.boardText.value = "CALL-151\n"+arr.join("\n")+"\n";
+
+
+                        }
+                    }   
+                }
+            break;
             case "mute":
             case "boot":    // boot must force mute since audioworklet does not cold-start (security)
 

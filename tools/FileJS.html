@@ -110,12 +110,11 @@
                         uri_arg = j[i].URI ? j[i].URI.replace(/=/,"") : "";
                         uri_hash = j[i].hash ? j[i].hash.replace(/#/,"") : "";
 
-                        if(j[i].prompt_hex===undefined){}
-                        else
+                        if(typeof(j[i].prompt_hex)!="undefined")
                         {
                             var hex = window.prompt(j[i].prompt_hex);
                             var dec = parseInt(hex,16);
-                            uri_arg = j[i].prompt_hex+"="+(isNaN(dec)?24576:dec)+uri_arg
+                            uri_arg = j[i].prompt_hex+"="+(isNaN(dec)?24576:dec)+"&"+uri_arg
                         }
 
                     }
