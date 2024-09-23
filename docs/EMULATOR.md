@@ -27,7 +27,12 @@ __CPU & Sound enablement__
 * **Run/Pause** Runs or pauses the CPU
 * **Reset** = warm boot
 * **Restart** = cold boot
+
 __Disk__
+<br>
+<img src="../res/doc_emu_disk_pane.png?raw=true" width=35%  align="left"/>
+<br><br>
+The disk pane allows loading and ejecting up to two floppy disks in .DSK file format.  When writing or updating Apple II files on any of the given disk image, a new disk image can be saved including all the changes made so far.  As for now, the save function only supports saving .NIB format files.
 
 ### <img src="../res/doc_emu_settings_menu.png?raw=true" width=2%  align="left"/> SETTINGS
 
