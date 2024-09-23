@@ -8,8 +8,7 @@ This small guide is leading you through the usability features of the emulator c
 
 All the special functions and settings can be accessed on the right side the tab menu.
 
-### <img src="../res/doc_emu_tools_menu.png?raw=true" style=image-rendering:pixelated  width=2%  align="left"/> TOOLS
-
+### <img src="../res/doc_emu_tools_menu.png?raw=true" width=2%  align="left"/> TOOLS
 
 __Pasteboard__
 <br>
@@ -18,11 +17,22 @@ __Pasteboard__
 * **Paste** any text into the emulator. This function senses the keyboard strobe address which reveals exactly when the Apple II hardware is ready to take a character from the keyboard, assuring the fastest data transfer rate.
 * **txtCap** to capture text screen #1 in the pasteboard.  This is actually a memory dump between $400-$5FF, but bytes are reordered logically to overcome the Apple II's chip saving design.
 * **MemCap** to bulk capture any byte stream between two addresses.
-* **Clear** as the text area can be used in both directions (import/export), it is important to empty this box.
+* **Clear** as the text area can be used in both directions (import/export), it is important to clear it quickly.
+
+__CPU & Sound enablement__
+
+__Disk__
+
+### <img src="../res/doc_emu_settings_menu.png?raw=true" width=2%  align="left"/> SETTINGS
+
 
 __CPU speed settings__
-
-__Disk feature__
+<br>
+<img src="../res/doc_emu_system_pane.png?raw=true" width=10%  align="left"/>
+<br>
+<br>
+<br>
+<br>
 
 __Screen settings__
 
