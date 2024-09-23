@@ -44,17 +44,11 @@ CPU speed can be modified in real-time by dragging the slider bar between 0% to 
 
 The debugger can be enabled by sliding the bar to 0% after which the debug icon appears.  Just mind clicking this icon to start debugging.
 
-<br>
-<br>
-<br>
-
 __Screen settings__
 
 **color mode**
 <br>
 <img src="../res/doc_emu_system_pane.png?raw=true" width=10%  align="left"/> On the emulator's system pane, the colour pallet button allows cycling through colour modes (colour, black & white, green, amber). This button is handy wherever the Apple II colour encoding becomes disturbing (e.g. font display in HGR graphics). When hoovering over the pallette icon, a tooltip will indicate the actual colour mode in use. Please find coding documentation about "color mode" here [EMULATOR_DEV.md](EMULATOR_DEV.md)
-
-<br><br>
 
 __Keyboard features__
 
@@ -69,11 +63,6 @@ __Keyboard features__
 _note: mind that most Apple II disks do not self-boot, keeping a bootable disk image at hand reach is still required._  
 
 
-
-__A handful extra functions make the experience complete__  
-\* pasteboard: use the pasteboard to paste any text through the text prompt, just mind that a 1MHz computer takes this slowly.  
-\* monitor: cycle color mode through apple color, black/white, green and amber  
-\* pause: freeze/unfreeze CPU
 
 __The 1MHz trick__  
 JavaScript does not provide 1µs timing precision, but we have a workaround.  The setInterval() function located in EMU_apple2main.js, which drives the main loop of our emulator, starts a new sequence every 100ms.  Instead of cycling one time through the CPU emulator every 1µs, we cycle 100K times every 0.1s or 100ms.  By this trick, we achieve exactly the same performance as a real Apple II at 1MHz (100K cycles/0.1).  Just, all 100K cycles are far from equally spread accross this 100ms loop.  Most CPU's nowadays, effortlessly execute all 100K cycles in less than 5ms, which all sounds good, until one needs to emulate 'sound'. Below diagram explains the 1MHz trick visually :
