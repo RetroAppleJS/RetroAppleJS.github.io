@@ -1,17 +1,20 @@
 ## EMULATOR User Instructions
 
-<img src="../res/appleIIplus_bck_650.png?raw=true" width=39% align="left" />
+<img src="../res/appleIIplus_bck_650.png?raw=true" width=35% align="left" />
 
-While the end-user experience with this emulator hardly differs from the real hardware, there are some essential deviations, mostly to accomodate contemporary user expecations, like copy-paste.  There is no point in creating an emulator that is completely offline like it was mostly the case in it's pre-internet era.  This user manual is only discussing the usability deviations of the emulator compared to the bare metal.
+While the end-user experience with this emulator hardly differs from the real hardware, there are some essential adaptations, mostly to accomodate contemporary user expecations, like copy-paste.  There is no point in creating an emulator that is completely offline like it was mostly the case in it's pre-internet era.  
 
-For the last one, there is a huge body of 
-[documentation](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/) available, and for more specific details on the global architecture of this very emulator, please check out the following document: [EMULATOR_ARCHITECTURE.md](EMULATOR_ARCHITECTURE.md)
+This small guide is leading you through the usability features of the emulator compared to the bare metal.  For all the other features, there is a huge body of [documentation](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Books/) available, and for more specific details on the global architecture of this very emulator, please check out the following document: [EMULATOR_ARCHITECTURE.md](EMULATOR_ARCHITECTURE.md)
+
+All the special functions and settings can be accessed on the right side the tab menu.
+
+### <img src="../res/doc_emu_tools_menu.png?raw=true" style=image-rendering:pixelated  width=2%  align="left"/> TOOLS
 
 
-__Most basic functions remain the same, but please mind about some welcome adaptations.__
-
-__Pasteboard features__
-
+__Pasteboard__
+<br>
+<img src="../res/doc_emu_pasteboard_pane.png?raw=true" width=25%  align="left"/>
+<br><br>
 * **Paste** any text into the emulator. This function senses the keyboard strobe address which reveals exactly when the Apple II hardware is ready to take a character from the keyboard, assuring the fastest data transfer rate.
 * **txtCap** to capture text screen #1 in the pasteboard.  This is actually a memory dump between $400-$5FF, but bytes are reordered logically to overcome the Apple II's chip saving design.
 * **MemCap** to bulk capture any byte stream between two addresses.
