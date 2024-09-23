@@ -29,7 +29,10 @@ __Disk__
 __CPU speed settings__
 <br>
 <img src="../res/doc_emu_system_pane.png?raw=true" width=10%  align="left"/>
-<br>
+CPU speed can be modified in real-time by dragging the slider bar between 0% to 200%.  While it looks like a simple parameter, there are parallel threats that need to remain in sync according to the needs.  The virtual device for sound production needs to adapt it's sample rate according to the CPU clock rate.  At every slider update, the emulator thread is therefore effectively notifying the sound driver for this reason.  Also for graphics, when emulating graphics by means of the GPU, we need to mind keeping a refresh rate of approximately 25 frames per second, except While going down to a 10% CPU rate, we can but also must significantly slow down screen updates to free-up the emulator load for other important purposes like real-time CPU tracing, debugging and monitoring.
+
+The debugger can be enabled by sliding the bar to 0% after which the debug icon appears.  Just mind clicking this icon to start debugging.
+
 <br>
 <br>
 <br>
