@@ -20,7 +20,13 @@ __Pasteboard__
 * **Clear** as the text area can be used in both directions (import/export), it is important to clear it quickly.
 
 __CPU & Sound enablement__
-
+<br>
+<img src="../res/doc_emu_CPU_pane.png?raw=true" width=7.5%  align="left"/>
+<br><br>
+* **Sound** Speaker sound is turned off by default as browsers tend to reject unsolicited website sound.
+* **Run/Pause** Runs or pauses the CPU
+* **Reset** = warm boot
+* **Restart** = cold boot
 __Disk__
 
 ### <img src="../res/doc_emu_settings_menu.png?raw=true" width=2%  align="left"/> SETTINGS
