@@ -237,7 +237,10 @@ function Apple2IO(vid)
         SLOT_MAP[idx+4] = noROM?0:SLOT_PROM[slot_num];                      // SLOT ROM range origin
         SLOT_MAP[idx+5] = noROM?0:SLOT_PROM[slot_num] + SLT_PROM_SIZE;      //          range end
 
-
+        console.log("mounted "+name+" [active:"+SLOT_MAP[idx]+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+slot_num+" ("
+        +"I/O range: "+oCOM.getHexWord(SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(SLOT_MAP[idx+3])+" "
+        +"ROM range: "+oCOM.getHexWord(SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(SLOT_MAP[idx+5])+" "
+        +")");
 
         //console.log("SLOT_MAP["+slot_num+"] = "+SLOT_MAP[idx]+" "+SLOT_MAP[idx+1]+" "+SLOT_MAP[idx+2]+" "+SLOT_MAP[idx+3]+" "+SLOT_MAP[idx+4])
     }
@@ -257,6 +260,8 @@ function Apple2IO(vid)
     var SLOT_MAP = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
     var SLOT_NAME = new Array(8<<2);       // 4 CHARACTERS PER SLOT NAME
 
-    // SLOT MAPPING
+    // SLOT MAPPING - TODO: take it from _CFG_SLOT
+    this.mount("MS16K",0,this.ramcard,true);
+    this.mount("VIDEX",3,this.col80card,true);
     this.mount("DISKII",6,this.disk2,true);
 }
