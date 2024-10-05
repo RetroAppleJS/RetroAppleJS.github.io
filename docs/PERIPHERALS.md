@@ -73,9 +73,9 @@ Language Card Memory map
           │  KICKSTART ROM │      │               │    │    │
      F800 ├────────────────┤      │  RAMCARD RAM  │    8K   │
           │  APPLE ROM     │      │               │    │    │
-     E000 │                │ - - >├───────────────┤    ▼    │ 12K    
+     E000 │                │ - - >├───────────────┤    ▼    │ 16K    
           │                │      │  BANK 1 or 2  │    ▲    │
-          │                │      │  (switchable) │    4K   │
+          │                │      │  (switchable) │  2*4K   │
      D000 ├────────────────┤ - - >└───────────────┘ - -▼    ▼ 
           │ large ROM prog │                           ▲ 
           │  (unused)      │                           ▼ 2K
