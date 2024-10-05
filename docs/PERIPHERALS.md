@@ -75,7 +75,7 @@ Language Card Memory map
           │  APPLE ROM     │      │               │    │    │
      E000 │                │ - - >├───────────────┤    ▼    │ 16K    
           │                │      │  BANK A or B  │    ▲    │
-          │                │      │  (switchable) │   2*4K  │
+          │                │      │  (switchable) │  2 X 4K │
      D000 ├────────────────┤ - - >└───────────────┘ - -▼    ▼ 
           │ large ROM prog │                           ▲ 
           │  (unused)      │                           ▼ 2K
