@@ -9,8 +9,7 @@ else oEMU.component.IO.RamCard = new RamCard();
 
 function RamCard()
 {
-    const BANK          =  0
-         ,BANK_SIZE     =  4096
+    const BANK_SIZE     =  4096
          ,RAMCARD       =  4096
          ,RAMCARD_SIZE  =  8192
 
@@ -19,15 +18,15 @@ function RamCard()
     var bDebug_S = false; // debug soft switch updates
  
     var softswitch = {
-        0: {"RAMCARD":true                       }
-       ,1: {               "WE":true             }
-       ,2: {                                     }
-       ,3: {"RAMCARD":true,"WE":true,            }
+        0x0: {"RAMCARD":true                       }
+       ,0x1: {               "WE":true             }
+       ,0x2: {                                     }
+       ,0x3: {"RAMCARD":true,"WE":true,            }
 
-       ,8: {"RAMCARD":true          ,"BANK1":true}
-       ,9: {               "WE":true,"BANK1":true}
-       ,10:{                         "BANK1":true}
-       ,11:{"RAMCARD":true,"WE":true,"BANK1":true}
+       ,0x8: {"RAMCARD":true          ,"BANK1":true}
+       ,0x9: {               "WE":true,"BANK1":true}
+       ,0xA:{                         "BANK1":true}
+       ,0xB:{"RAMCARD":true,"WE":true,"BANK1":true}
     } 
 
 
@@ -58,7 +57,7 @@ function RamCard()
 
     this.read = function(addr)
     {
-        if(addr < BANK+BANK_SIZE)
+        if(addr < BANK_SIZE)
         {
             var sw = softswitch[softswitch_pos];
             if(sw.RAMCARD)
@@ -84,7 +83,7 @@ function RamCard()
 
     this.write = function(addr,d8)
     {
-        if(addr < BANK+BANK_SIZE)
+        if(addr < BANK_SIZE)
         {
             var sw = softswitch[softswitch_pos];
             if(sw.WE && NEXT)
