@@ -101,7 +101,7 @@ function Apple2Hw(vid,keys)
     this.write = function(addr, d8)
     {
         if (d8 < 0 || d8 > 0xff)
-            console.err("apple2hw.write(%s %s) d8 too big!",
+            console.error("apple2hw.write(%s %s) d8 too big!",
                         addr.toString(16), d8.toString(16));
 
         if(this.io.ramcard &&  this.io.ramcard.active == true && addr >= ROM_ADDR)
