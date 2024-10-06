@@ -4,7 +4,7 @@ As we can ignore the electrical and signal layer of the peripheral interface, ou
 We only need to mind about the memory map dedicated to I/O, called memory-mapped I/O, which is exactly 4K wide  (between $C000 - $D000). Here is an enlarged map of this memory space :
 
           <div style=width:800px>
-     D000 ┌────────────────────────────────────┐   ▲                  ▲
+     D000 ┌────────────────────────────────────┐   ▲                  ▲f
           │                                    │   │                  │
           │   Open for large ROM programs      │  2048 Bytes          │
           │   Activated by I/O strobe (pin 20) │   │                  │
@@ -74,8 +74,8 @@ Language Card Memory map
      F800 ├────────────────┤      │  RAMCARD RAM  │    8K   │
           │  APPLE ROM     │      │               │    │    │
      E000 │                │ - - >├───────────────┤    ▼    │ 16K    
-          │                │      │  BANK 1 or 2  │    ▲    │
-          │                │      │  (switchable) │   2*4K  │
+          │                │      │  BANK A or B  │    ▲    │
+          │                │      │  (switchable) │  2 X 4K │
      D000 ├────────────────┤ - - >└───────────────┘ - -▼    ▼ 
           │ large ROM prog │                           ▲ 
           │  (unused)      │                           ▼ 2K
@@ -102,7 +102,7 @@ Language Card Memory map
 |  Language card soft switches   |
 | --------------------------------- |
 
-| Address | ROM | RAMCARD | BANK1 | BANK2 | Description       |
+| Address | ROM | RAMCARD | BANKA | BANKB | Description       |
 | :-----: | --- |  ------ | ----- | ----- | ----------------- |
 |  C080   |     |  R      |       |  R    | write-protect     | 
 | *C081   |  R  |  W      |       |  W    | write (access 2x) |
