@@ -9,6 +9,7 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 function AppleDisk2()
 {
     var bDebug = false;
+    var bDebug_S = false;   // debug disk status only
 
     var MOTOR_OFF =     0x08,
         MOTOR_ON =      0x09,
@@ -429,7 +430,7 @@ function AppleDisk2()
 
     this.dN_spindown = function(t)
     {
-        console.log("TIMER EXP ("+t.dNd.motor+") - "+t.dNd.status);
+        if(bDebug_S) console.log("TIMER EXP ("+t.dNd.motor+") - "+t.dNd.status);
         if(t.dNd.status=="MOTOR_OFF")
         {
             t.dNd.motor="OFF";
