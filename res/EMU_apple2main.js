@@ -344,6 +344,11 @@ function EMU_init()
         })
     }
     */ 
+
+    // PREP FEATURE POPUP HTML CONTENT
+
+    document.getElementById("feature_box").innerHTML += "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpu_debugger","cpuDbg_popup")+"</div>\n";
+
 }
 
 
@@ -371,36 +376,12 @@ function EMUI()
     this.cpuDbg = function(id)
     {
         _o.EMU_debug = !_o.EMU_debug;
-        var el = document.getElementById(id);
-        el.hidden = !_o.EMU_debug;
-        oEMU.component.CPU.Apple2Debug.disp_id = "cpu_debugger"
-        const height = 250;  //580
+        oCOM.POPUP.toggle("cpuDbg_popup");
         
-        var s = "<div class=appbox style='text-align:left;height:"+height+"px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
-            +"<div class=marginless style='border:0px solid #E0E0E0'>"
-                //+"<i class='fa fa-pause' title='pause CPU execution'></i>&nbsp;"
-                +"STEP TRACE "
-                +"<i id=cpuDbg_play class='fa fa-play' title='continue CPU execution' onclick=this.arr={'fa-pause':false,'fa-play':true};oCOM.POPUP.toggle_class(this,'fa-pause','fa-play');oEMU.component.CPU.Apple2Debug.play(!this.arr[oCOM.POPUP.states[this.id]])></i>&nbsp;"
-                +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
-                +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
-                +"<i class='fa fa-sign-out-alt' title='step out'></i>"
-                +"<div class=appbut style=float:right onclick=oEMUI.cpuDbg(\'feature_box\')>x</div>"
-                +"<div id='"+oEMU.component.CPU.Apple2Debug.disp_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'>"
-                //+"0123456789012345678901234567890123456789<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>"
-                //+"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
-                //+"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
-                //+"11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>"
-                +"<div>"
-            +"</div>"
-        +"</div>"
-        // <i class="fa fa-sign-out-alt"></i>
-        // <i class="fa fa-level-down-alt"></i>
-        el.innerHTML = s; 
-
-        var char_pixH = 15;
         // TODO: FIGURE OUT HOW TO COPE WITH CACHE (lines with different byte spacings)
-        const cfg1 = {id:oEMU.component.CPU.Apple2Debug.disp_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:oEMU.component.CPU.Apple2Debug.scrollFeed} // configuration data 
-        document.getElementById(cfg1.id).style.height = char_pixH*cfg1.scrollH+"px";                    // (optionally) auto-adjust text window height to number of text lines
+        const dbg = oEMU.component.CPU.Apple2Debug
+             ,cfg1 = {id:dbg.body_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:dbg.scrollFeed} // configuration data 
+        document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";    // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
     }
 

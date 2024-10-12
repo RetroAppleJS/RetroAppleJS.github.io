@@ -471,10 +471,22 @@ function COM()
 	}
 
   this.POPUP = {
+    create: function(target_id) 
+    { 
+      var obj = Object.create(this);
+      obj.target_id = target_id;
+      obj.id="";
+      obj.states={};
+      obj.rules={};
+      this.el(obj.target_id.dest).innerHTML += obj.target_html();
+      return obj 
+    },
     id:"",
     states:{},
     rules:{},
-    target_id:{"html":"COM_popup","html_txt":"COM_popup_text"},
+    target_id:{"html":"COM_popup","html_txt":"COM_popup_text","class":"appbut","float":false},
+    target_html:function(){return "<div class=appbox id=\""+this.target_id.html+"\" style=\""+(this.target_id.float?"position: absolute; z-index: 3; left: 0px; top: 120px;":"")+"\" hidden=\"\"><div id=\""+this.target_id.html_txt+"\"></div></div>"},
+    target_btn:function(arg){return "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+this.target_id.html+"');document.getElementById('"+this.target_id.html_txt+"').innerHTML='';"+(arg===undefined?"":arg.onclick)+"\" style=\"text-align:center;float:right;\">x</div>"},
     el: function(id) { return document.getElementById(id) },
     addRule: function(id,function_obj) { this.rules[id] = function_obj },
     runRule: function(id) { this.id = id; this.rules[id](this) },
@@ -506,7 +518,6 @@ function COM()
       document.getElementById(this.target_id.html_txt).innerHTML += !e.hidden?(html+"<br>"):"";
     }
   }
-
  
   this.GetHTTP = function(url,responsetype,callback_function,arg)
   {

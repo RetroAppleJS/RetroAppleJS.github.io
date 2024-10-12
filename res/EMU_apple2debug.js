@@ -58,6 +58,27 @@ function Apple2Debug()
         }
     }
 
+    this.html = function(body_id,wrapper_id)
+    {
+        this.body_id = body_id;
+
+        // TODO transform into oCOM.POPUP
+
+        return "<div class=appbox style='text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
+        +"<div class=marginless style='border:0px solid #E0E0E0'>"
+            //+"<i class='fa fa-pause' title='pause CPU execution'></i>&nbsp;"
+            +"STEP TRACE "
+            +"<i id=cpuDbg_play class='fa fa-play' title='continue CPU execution' onclick=this.arr={'fa-pause':false,'fa-play':true};oCOM.POPUP.toggle_class(this,'fa-pause','fa-play');oEMU.component.CPU.Apple2Debug.play(!this.arr[oCOM.POPUP.states[this.id]])></i>&nbsp;"
+            +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
+            +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
+            +"<i class='fa fa-sign-out-alt' title='step out'></i>"
+            +"<div class=\"appbut\" onclick=\"_o.EMU_debug=!_o.EMU_debug;oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
+                +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'>"
+                +"<div>"
+            +"</div>"
+        +"</div>"
+    }
+
     this.cycle = function(obj)
     {
         //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
