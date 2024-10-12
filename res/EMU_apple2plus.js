@@ -173,7 +173,7 @@ function Apple2Plus(context)
             cpu.cycle();
             snd.cycle(n);
         }
-        if(_o.EMU_debug) oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
+        if(!oCOM.POPUP.states["cpuDbg_popup"]) oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
         snd.play();
         keys.cycle(this);
 

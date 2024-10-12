@@ -29,7 +29,6 @@ const _o = {"tools":{}
         ,"EMU_keyb_active":false
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
-        ,"EMU_debug":false
         ,"EMU_legacyJS":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
@@ -375,12 +374,13 @@ function EMUI()
 
     this.cpuDbg = function(id)
     {
-        _o.EMU_debug = !_o.EMU_debug;
+        
+
         oCOM.POPUP.toggle("cpuDbg_popup");
         
         // TODO: FIGURE OUT HOW TO COPE WITH CACHE (lines with different byte spacings)
         const dbg = oEMU.component.CPU.Apple2Debug
-             ,cfg1 = {id:dbg.body_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:dbg.scrollFeed} // configuration data 
+             ,cfg1 = {id:dbg.body_id,active:!oCOM.POPUP.states["cpuDbg_popup"],scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:dbg.scrollFeed} // configuration data 
         document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";    // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
     }
