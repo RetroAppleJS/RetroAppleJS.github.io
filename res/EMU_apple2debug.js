@@ -66,7 +66,6 @@ function Apple2Debug()
 
         return "<div class=appbox style='text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
         +"<div class=marginless style='border:0px solid #E0E0E0'>"
-            //+"<i class='fa fa-pause' title='pause CPU execution'></i>&nbsp;"
             +"STEP TRACE "
             +"<i id=cpuDbg_play class='fa fa-play' title='continue CPU execution' onclick=this.arr={'fa-pause':false,'fa-play':true};oCOM.POPUP.toggle_class(this,'fa-pause','fa-play');oEMU.component.CPU.Apple2Debug.play(!this.arr[oCOM.POPUP.states[this.id]])></i>&nbsp;"
             +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"

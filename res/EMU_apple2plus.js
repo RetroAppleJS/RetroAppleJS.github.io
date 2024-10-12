@@ -165,7 +165,8 @@ function Apple2Plus(context)
         }
     }
 
-    this.cycle = function(n) {
+    this.cycle = function(n)
+    {
         var args = {"cpu_chrono":performance.now()};
         while (n-- > 0) {
             hw.cycle(n);
@@ -173,7 +174,8 @@ function Apple2Plus(context)
             cpu.cycle();
             snd.cycle(n);
         }
-        if(!oCOM.POPUP.states["cpuDbg_popup"]) oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
+        if(!oCOM.POPUP.states["cpuDbg_popup"]) // only cycles if POPUP ≠ hidden
+            oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
         snd.play();
         keys.cycle(this);
 
