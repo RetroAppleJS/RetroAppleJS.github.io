@@ -490,6 +490,7 @@ function COM()
     el: function(id) { return document.getElementById(id) },
     addRule: function(id,function_obj) { this.rules[id] = function_obj },
     runRule: function(id) { this.id = id; this.rules[id](this) },
+    set_state: function(id,val){ this.states[id] = val },
     get_state: function(id){ return this.states[id]===undefined?this.el(id).classList.item(1):this.states[id]},
     update_state: function(id,el){ this.states[id] = el.hidden },
     on: function(id) { this.states[id] = this.el(id).hidden = false },

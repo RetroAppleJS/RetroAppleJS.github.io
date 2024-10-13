@@ -174,6 +174,7 @@ function Apple2Plus(context)
             cpu.cycle();
             snd.cycle(n);
         }
+        // TODO optimise speed!!!!!!!
         if(!oCOM.POPUP.states["cpuDbg_popup"]) // only cycles if POPUP ≠ hidden
             oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
         snd.play();

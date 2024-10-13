@@ -259,7 +259,6 @@ function EMU_init()
         }
     }
 
-
     apple2plus.restart(); // restart the AppleII+
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
@@ -346,7 +345,9 @@ function EMU_init()
 
     // PREP FEATURE POPUP HTML CONTENT
 
-    document.getElementById("feature_box").innerHTML += "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n";
+    document.getElementById("feature_box").innerHTML += 
+        "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
+        +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
 
 }
 
@@ -356,10 +357,10 @@ function EMUI()
     // CPU SPEED SLIDER
     this.cpuSld = function(el,id,freezeHTML)
     {
-      var max = el.max;
-      var pct = 2*el.value/max;
-      document.getElementById(id).innerHTML = pct!=0 ? Math.round(pct*10)*10+"%" : freezeHTML;
-      this.cpuSpd(pct);
+        var max = el.max;
+        var pct = 2*el.value/max;
+        document.getElementById(id).innerHTML = pct!=0 ? Math.round(pct*10)*10+"%" : freezeHTML;
+        this.cpuSpd(pct);
     }
 
     // MODIFY CPU SPEED
@@ -372,16 +373,32 @@ function EMUI()
         console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");       
     }
 
+    // TODO: FIGURE OUT HOW TO COPE WITH CACHE (lines with different byte spacings)
     this.cpuDbg = function(id)
     {
         oCOM.POPUP.toggle("cpuDbg_popup");
-        
-        // TODO: FIGURE OUT HOW TO COPE WITH CACHE (lines with different byte spacings)
         const dbg = oEMU.component.CPU.Apple2Debug
              ,cfg1 = {id:dbg.body_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:dbg.scrollFeed} // configuration data 
         document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";    // (optionally) auto-adjust text window height to number of text lines
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
     }
+
+    this.slotConfig = function(arg)
+    {
+        if(arg.active==false) document.getElementById(arg.id).innerHTML = "";
+
+        //var ss = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
+        var s = "document.getElementById('"+arg.id+"').innerHTML='"+arg.id+"';"
+        document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"oEMUI.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\"fa fa-cog\"></i></button>"
+    }
+
+    this.slotConfig_detail = function(id)
+    {
+        oCOM.POPUP.on("slotConfig_popup");
+        document.getElementById("slotConfig_popup").innerHTML = id+"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
+
+    }
+
 
     this.muteBtn = function(arg)
     {
