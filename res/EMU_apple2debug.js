@@ -61,9 +61,6 @@ function Apple2Debug()
     this.html = function(body_id,wrapper_id)
     {
         this.body_id = body_id;
-
-        // TODO transform into oCOM.POPUP
-
         return "<div class=appbox style='text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
         +"<div class=marginless style='border:0px solid #E0E0E0'>"
             +"STEP TRACE "
