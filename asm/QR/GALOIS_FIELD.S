@@ -146,17 +146,19 @@ L1      INX
         BNE LOOP
         RTS
 
-GF_DSP   STX GD_3+1
-         STY GD_3+2
-	LDX #$00
+; dump 256 bytes
+
+GF_DSP   STX GD_3+1	; read high byte in X
+         STY GD_3+2	; read low byte in Y
+	LDX #$00		; reset counter
 GD_1     TXA
-         AND #$0F
+         AND #$0F	; test if divisable by 16
          BNE GD_3
-	JSR M.CRDO
-GD_3     LDA $0000,X
-	JSR M.PRBYTE
+	JSR M.CRDO	; CR
+GD_3     LDA $0000,X	; load byte
+	JSR M.PRBYTE	; print byte
 	INX
-	BNE GD_1
+	BNE GD_1		; <255 ?
 	RTS
 
 ;-------------------------------------------
