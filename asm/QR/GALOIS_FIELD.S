@@ -1,3 +1,6 @@
+
+
+
 *=$6000
 
 ; Galois Fields support addition, subtraction, multiplication, and division
@@ -44,7 +47,24 @@ M.COUT    EQU $FDED   ; print char
 M.KPRESS  EQU $FD35   ; key press
 M.CRDO    EQU $DAFB   ; line feed
 
-        ;JSR GF_INI     ; GENERATE LOOKUP TABLES FOR GAILOIS FIELD 
+;M.PRBYTE  EQU $7200   ; print hex byte
+;M.OUTSP   EQU $7200   ; space
+;M.COUT    EQU $7200   ; print char
+;M.KPRESS  EQU $7200   ; key press
+;M.CRDO    EQU $7200   ; line feed
+
+
+
+	JSR GF_INI     ; GENERATE LOOKUP TABLES FOR GALOIS FIELD 
+	LDX #<LOGTAB
+	LDY #>LOGTAB
+	JSR GF_DSP     ; DISPLAY LOOKUP TABLE OF LOGARITHMS
+	JSR M.KPRESS
+	JSR M.CRDO
+	LDX #<EXPTAB
+	LDY #>EXPTAB
+	JSR GF_DSP     ; DISPLAY LOOKUP TABLE OF EXPONENTS
+
 
 ; On entry, X and Y contain the values to multiply.
 ; On exit, A contains the result.  X is clobbered.
@@ -116,7 +136,7 @@ LOOP    JSR DB_EXP       ; D E B U G
         TAY
         TXA
         JSR DB_LOG       ; D E B U G
-        ;STA LOGTAB,Y    ; store logarithms
+        STA LOGTAB,Y    ; store logarithms
         TYA
         ASL A           ; calculate next exponent
         BCC L1
@@ -125,6 +145,19 @@ L1      INX
         CPX #$FF
         BNE LOOP
         RTS
+
+GF_DSP   STX GD_3+1
+         STY GD_3+2
+	LDX #$00
+GD_1     TXA
+         AND #$0F
+         BNE GD_3
+	JSR M.CRDO
+GD_3     LDA $0000,X
+	JSR M.PRBYTE
+	INX
+	BNE GD_1
+	RTS
 
 ;-------------------------------------------
 
@@ -135,28 +168,28 @@ TMP_I   EQU  $10
 
 DB_EXP  JSR SAVE
         LDA #'X'+128
-        JSR M.COUT
+        ;JSR M.COUT
         LDA EXPTAB,X
         STX *TMP_I
         JMP DL1
 
 DB_LOG  JSR SAVE
         LDA #'L'+128
-        JSR M.COUT
+        ;JSR M.COUT
         LDA LOGTAB,Y
         STY *TMP_I
 DL1     CMP *TMP_A
         BEQ DL2
-        JSR M.PRBYTE    ; PRINT CHECK VALUE
+        ;JSR M.PRBYTE    ; PRINT CHECK VALUE
         LDA #'<'+128
         JSR M.COUT
         LDA *TMP_A
-        JSR M.PRBYTE    ; PRINT CALCULATED VALUE
+        ;JSR M.PRBYTE    ; PRINT CALCULATED VALUE
         LDA #'.'+128
         JSR M.COUT
         LDA *TMP_I
-        JSR M.PRBYTE    ; PRINT INDEX
-        JSR M.OUTSP     ; SPACE
+        ;JSR M.PRBYTE    ; PRINT INDEX
+        ;JSR M.OUTSP     ; SPACE
         JSR M.KPRESS
         JSR LOAD
 DL2     RTS
@@ -196,6 +229,7 @@ LOGTAB  HEX FF00011902321AC603DF33EE1B68C74B
         HEX CB595FB09CA9A0510BF516EB7A752CD7
         HEX 4FAED5E9E6E7ADE874D6F4EAA85058AF
 
+
 *=$7100
 EXPTAB  HEX 01020408102040801D3A74E8CD871326
         HEX 4C982D5AB475EAC98F03060C183060C0
@@ -213,3 +247,8 @@ EXPTAB  HEX 01020408102040801D3A74E8CD871326
         HEX 51A259B279F2F9EFC39B2B56AC458A09
         HEX 122448903D7AF4F5F7F3FBEBCB8B0B16
         HEX 2C58B07DFAE9CF831B366CD8AD478E00
+
+*=$7200
+	RTS
+
+
