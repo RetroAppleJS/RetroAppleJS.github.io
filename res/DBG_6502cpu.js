@@ -58,6 +58,7 @@ var RAM=[];
 var memory=RAM; // pointer to RAM
 var breakFlag=false;
 var nopFlag=false;
+var breakPointFlag=false;
 var excycles, addcycles;
 
 function ByteAt(addr) {
@@ -777,20 +778,24 @@ var dec2bcd= [
 var processorCycles;
 var internalCycleDelay=0;
 
-function processorLoop() {
+function processorLoop() 
+{
 	breakFlag=false;
-	var instructCode =ByteAt(pc);
+	breakPointFlag=false;
+	var instructCode = ByteAt(pc);
 	pc++;
-	pc &=0xffff;
-	excycles =0;
-	addcycles =extracycles[instructCode];
+	pc &= 0xffff;
+	excycles = 0;
+	addcycles = extracycles[instructCode];
 	instruct[instructCode]();
-	processorCycles +=cycletime[instructCode]+excycles;
+	processorCycles += cycletime[instructCode]+excycles;
 	pc &=0xffff;
-	if (externalLoop==false) {
+	if (externalLoop==false)
+	{
 		if ((breakFlag) && (stopOnIterrupt)) return;
 		setTimeout('processorLoop()',internalCycleDelay);
 	}
+	if(pc==_o.debug_break_adr) breakPointFlag=true;
 }
 
 function resetCPU() {
@@ -799,6 +804,7 @@ function resetCPU() {
 	a=x=y=0;
 	flags=32;
 	breakFlag=false;
+	breakPointFlag=false;
 	processorCycles=0;
 }
 

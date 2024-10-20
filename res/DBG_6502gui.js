@@ -754,8 +754,16 @@ function masterReset() {
 	if (confirm('Reset all registers?')) resetProcessor();
 }
 
-function run() {
-	if (confirm('Sure to start a continous run?\n(Stops on "BRK" or NOP"". Lengthy code will be prompted.)')) {
+function run()
+{
+	var a = prompt("Run until address (HEX) ? (press enter to ignore)", "");
+	if(a.length>0) _o.debug_break_adr = parseInt(a,16);
+	else delete _o.debug_break_adr;
+
+	// TODO locate where I can test PC for break !
+
+	if (confirm('Sure to start a continous run?\n(Stops on "BRK" or NOP"". Lengthy code will be prompted.)')) 
+	{
 		runThrou=true;
 		runStep=0;
 		totalSteps=0;
@@ -779,11 +787,18 @@ function singleStep() {
 }
 
 function simStep() {
+
+	bNoBreakPoint = _o.debug_break_adr===undefined
 	processorLoop();
 	updateReg();
-	updateWatch();
-	console.log("DBG simStep oDASM.disassemble_GUI()")
-	oDASM.disassemble_GUI();
+	if(bNoBreakPoint)
+	{
+		updateWatch();
+		//console.log("DBG simStep oDASM.disassemble_GUI()")
+		oDASM.disassemble_GUI();
+	}
+
+
 	// continous?
 	if (runThrou) {
 		runStep++;
@@ -796,11 +811,21 @@ function simStep() {
 			alert('Virtual 6502: Interrupt\nHalted on "BRK".\nSee stack (0100-01FF) for details.');
 			return;
 		}
-		if (runStep>maxRun) {
+		if (bNoBreakPoint==true && runStep>maxRun)
+		{
 			totalSteps+=runStep;
 			runStep=0;
-			if (confirm('Virtual 6502: Lengthy code ('+totalSteps+' steps).\nContinue continous run?')==false) return;
+			if (confirm('Virtual 6502: Lengthy code ('+totalSteps+' steps).\nContinue continuous run?')==false) return;
 		}
+		if (bNoBreakPoint==false && breakPointFlag)
+		{
+			delete _o.debug_break_adr;
+
+			totalSteps+=runStep;
+			runStep=0;
+			if (confirm('Virtual 6502: Interrupt\nHalted on breakpoint ('+totalSteps+' steps).\nContinue continous run?')==false) return;
+			return;
+		}		
 		setTimeout('simStep()',40);
 	}
 }
