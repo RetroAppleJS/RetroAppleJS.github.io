@@ -1,4 +1,7 @@
 
+maria.rubatscher@sabes.it
+papalou00@hotmail.fr
+berengere.noel@chuliege.be
 
 
 *=$6000
