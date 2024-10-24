@@ -1,10 +1,7 @@
-
-maria.rubatscher@sabes.it
-papalou00@hotmail.fr
-berengere.noel@chuliege.be
-
-
 *=$6000
+
+; check: http://simoneparisotto.com/math/misc/qrcode/qrcode.pdf
+
 
 ; Galois Fields support addition, subtraction, multiplication, and division
 ; but the rules for doing so are very different from those for ordinary integers.
@@ -72,9 +69,9 @@ M.CRDO    EQU $DAFB   ; line feed
 ; On entry, X and Y contain the values to multiply.
 ; On exit, A contains the result.  X is clobbered.
 GF_MUL  TXA
-        BEQ GFM1
+        BEQ GFM1        ; if X = zero, the result is zero
         TYA
-        BEQ GFM1
+        BEQ GFM1        ; if Y = zero, the result is zero
         LDA LOGTAB,Y    ; neither argument is zero
         CLC
         SBC #$01        ; DEC A
@@ -129,8 +126,6 @@ GFD1    RTS
 ; http://forum.6502.org/viewtopic.php?f=2&t=6099&view=previous
 
 
-        ;JSR DESTROY
-
 GF_INI  LDA #$01
         LDX #$00
   
@@ -149,16 +144,16 @@ L1      INX
         BNE LOOP
         RTS
 
-; dump 256 bytes
+; Dump 256 bytes
 
-GF_DSP   STX GD_3+1	; read high byte in X
-         STY GD_3+2	; read low byte in Y
-	LDX #$00		; reset counter
-GD_1     TXA
-         AND #$0F	; test if divisable by 16
-         BNE GD_3
+GF_DSP  STX GD_3+1	; read high byte in X
+        STY GD_3+2	; read low byte in Y
+        LDX #$00	; reset counter
+GD_1    TXA
+        AND #$0F	; test if divisable by 16
+        BNE GD_3
 	JSR M.CRDO	; CR
-GD_3     LDA $0000,X	; load byte
+GD_3    LDA $0000,X	; load byte
 	JSR M.PRBYTE	; print byte
 	INX
 	BNE GD_1		; <255 ?
@@ -209,11 +204,6 @@ LOAD    LDA *TMP_A
         LDY *TMP_Y
         RTS
 
-DESTROY LDA #$55
-        STA LOGTAB
-        LDA #$55
-        STA EXPTAB
-        RTS
 ;-------------------------------------------
 
 *=$7000
