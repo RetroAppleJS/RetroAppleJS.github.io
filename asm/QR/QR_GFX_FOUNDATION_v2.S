@@ -45,61 +45,82 @@ S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 START     JSR HOME
 
 ; *** USER COMMAND KEY DISPATCHER
-USRCMD    LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
-          PHA
-          LDA #<USRCMD-1
-          PHA
-UCM.00    JSR M.KPRESS
+USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
+        PHA
+        LDA #<USRCMD-1
+        PHA
+UCM.00  JSR M.KPRESS
         
-;          JSR M.PRBYTE
+;       JSR M.PRBYTE
 
-          ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
-          CMP #$CD
-          BEQ CYGFX
-          ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
-          CMP #$C8
-          BEQ HELP
-          ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
-          CMP #$D7
-          BEQ HGRWIP
-          ;CMP #'I'      ; ('I'=C9 not 49) correct compiler !!
-          CMP #$C9
-          BNE UCM.00
-          JMP QR_IMP
+        ;CMP #'C'      ; ('C'=C1 not 41) correct compiler !!
+        CMP #$C1
+        BEQ CONFIG
+
+        ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
+        CMP #$CD
+        BEQ CYGFX
+
+        ;CMP #'G'      ; ('G'=C7 not 47) correct compiler !!
+        CMP #$C7
+        BEQ GENERA
+
+        ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
+        CMP #$C8
+        BEQ HELP
+
+        ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
+        CMP #$D7
+        BEQ HGRWIP
+
+        ;CMP #'I'      ; ('I'=C9 not 49) correct compiler !!
+        CMP #$C9
+        BNE UCM.00
+        JMP QR_IMP
+
+; *** CONFIGURE QR CODE
+CONFIG  LDA 
+
+; *** GENERATE QR CODE
+GENERA  LDX #$10        ; 10x10 matrix (4-bit depth)
+        LDA #$0         ; NIBLLE to fill
+        JSR FIL_MX      ; FILL MATRIX
+        JSR M.KPRESS
+        JMP HOME
 
 ; *** TOGGLE GFX MODE    (0) HGR+TEXT > (1)HGR FULL > (2)HGR2 FULL > (3)TEXT
 
-CYGFX     LDA #$03      ; CYCLE REGISTER INDEX = 0,  MAX = 3
-          JSR CYCLER
+CYGFX   LDA #$03      ; CYCLE REGISTER INDEX = 0,  MAX = 3
+        JSR CYCLER
 
-CYG.00    STA M.HIRES   ; HIRES
-          STA M.TXCL    ; GRAPHICS MODE (vs TEXT MODE)
-          STA M.TXP1    ; PAGE 1
-          STA M.MXCL    ; FULL
-          BEQ CYG.0
-          CMP #$01
-          BEQ CYG.1
-          CMP #$02
-          BEQ CYG.2
+CYG.00  STA M.HIRES   ; HIRES
+        STA M.TXCL    ; GRAPHICS MODE (vs TEXT MODE)
+        STA M.TXP1    ; PAGE 1
+        STA M.MXCL    ; FULL
+        BEQ CYG.0
+        CMP #$01
+        BEQ CYG.1
+        CMP #$02
+        BEQ CYG.2
 
-CYG.3     STA M.TXST    ; TEXT    (TEXT FULL)
-          RTS
-CYG.2     STA M.TXP2    ; PAGE2   (HGR2 FULL)
-CYG.1     RTS           ; FULL    (HGR FULL)
-CYG.0     STA M.MXST    ; MIXED   (HGR MIXED)
-          RTS
+CYG.3   STA M.TXST    ; TEXT    (TEXT FULL)
+        RTS
+CYG.2   STA M.TXP2    ; PAGE2   (HGR2 FULL)
+CYG.1   RTS           ; FULL    (HGR FULL)
+CYG.0   STA M.MXST    ; MIXED   (HGR MIXED)
+        RTS
 
 ;*** HELP
-HELP      LDA #$11  ; CYCLE REGISTER INDEX & MAX
-          JSR CYCLER
-          BEQ HOME
-          JSR M.HOME
-          LDY #>STR.01
-          LDA #<STR.01
-          JSR M.STROUT
-          JSR M.CRDO
-          LDA #$03
-          JMP HOM.00
+HELP    LDA #$11  ; CYCLE REGISTER INDEX & MAX
+        JSR CYCLER
+        BEQ HOME
+        JSR M.HOME
+        LDY #>STR.01
+        LDA #<STR.01
+        JSR M.STROUT
+        JSR M.CRDO
+        LDA #$03
+        JMP HOM.00
 
 ; *** HGR WIPE USING COLOUR ***
 HGRWIP  LDA #$FF          ; HCOLOR = WHITE
@@ -132,29 +153,28 @@ CYC.01    LDA CY_COU,X  ; A = RESULT
 ;          AND #$0F     ; A = RIGHT NIBBLE
 ;          RTS
 
-NIBBLE     PHA
-           JSR M.SCRN2
-           TAX
-           PLA
-           ; M.RTMSKZ (f87f)
-           AND #$0F
-           RTS
+NIBBLE  PHA
+        JSR M.SCRN2
+        TAX
+        PLA
+        ; M.RTMSKZ (f87f)
+        AND #$0F
+        RTS
 
+HOME    JSR TXTPOS      ; DISPLAY HOME SCREEN
+        LDY #>STR.00
+        LDA #<STR.00
+        JSR M.STROUT
+        LDA #$00
+HOM.00  JSR CYG.00
+        RTS
 
-HOME      JSR TXTPOS      ; DISPLAY HOME SCREEN
-          LDY #>STR.00
-          LDA #<STR.00
-          JSR M.STROUT
-          LDA #$00
-HOM.00    JSR CYG.00
-          RTS
-
-TXTPOS    JSR M.HOME
-          JSR M.CBOT
-          JSR M.C1UP
-          JSR M.C1UP
-          JSR M.C1UP
-          RTS
+TXTPOS  JSR M.HOME
+        JSR M.CBOT
+        JSR M.C1UP
+        JSR M.C1UP
+        JSR M.C1UP
+        RTS
 
 ; *** HGR PLOT 2*2 PIXEL DOT ***
 HGRDOT  JSR HGRPIX
@@ -164,6 +184,36 @@ HGRDOT  JSR HGRPIX
         JSR HGRPIX
         DEC *S0.TY
         JSR HGRPIX
+        RTS
+
+; *** HGR MATRIX 2*2 PIXEL DOT ***
+MXDOT   LDA *S0.TA
+        AND #$01
+        TAY
+        JSR MXPIX
+
+        ;INC *S0.TY      ; go down
+        ;LDA *S0.TA
+        ;AND #$02
+        ;TAY
+        ;JSR MXPIX
+        ;INC *S0.TX      ; go right
+        ;LDA *S0.TA
+        ;AND #$04
+        ;TAY
+        ;JSR MXPIX
+        ;DEC *S0.TY      ; go up
+        ;LDA *S0.TA
+        ;AND #$08
+        ;TAY
+        ;JSR MXPIX
+        ;INC *S0.TX      ; go back left
+        RTS
+
+; *** HGR PLOT ONE DOT ***
+MXPIX   LDX *S0.TX
+        LDA *S0.TY
+        JSR M.HPLOT0      ; PLOT A,X (HGR.COLOR)
         RTS
 
 ; *** HGR PLOT ONE PIXEL ***
@@ -182,11 +232,12 @@ PAT_HW  HEX 13          ; PATTERN HIGHT/WIDTH
 CY_COU  HEX 0000          ; GFX MODE,HELP MODE
 ;**************************
 
-           ;"                                        "
 STR.00  ASC "[H]ELP"
         HEX 00
 STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"
         HEX 0D0D
+        ASC "[C]ONFIGURE"
+        HEX 0D
         ASC "[G]ENERATE: UNDER CONSTRUCTION"
         HEX 0D
         ASC "[H]ELP: BACK TO NORMAL VIEW"
@@ -194,7 +245,7 @@ STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"
         ASC "[I]MPORT: IMPORT EXTERNAL QR DATA"
         HEX 0D
         ASC "[M]ODE:CYCLE ACROSS HGR+TXT>HGR>HGR2>TXT"
-        ;HEX 0D
+        HEX 0D
         ASC "[W]IPE:CLEAR ALL GFX"
         HEX 00
 
@@ -203,6 +254,12 @@ STR.02  HEX 2020202020202020
         HEX 2020202020202020
         HEX 2000
 
+STR.03  ASC "TYPENUMBER: < \AUTO\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15\16\17\18\19\20\21\22\23\24\25\26\27\28\29\30\31\32\33\34\35\36\37\38\39\40\ >"
+        HEX 0D
+        ASC "ERROR CORR: < \L(7)\M(15)\Q(25)\H(30)\ >"
+        HEX 0D
+        ASC "MODE: < \NUMERIC\ALPHANUMERIC\BYTE\KANJI\ >"
+        HEX 00
 
 ;USING
 ; *S2.TX
@@ -229,7 +286,7 @@ QMP.0   JSR TXP.01
 ;*INNER LOOP
 QMP.1   LDA (S2.TX),Y
 
-          JSR PLOT8
+        JSR PLOT8
 
         INY
         CPY MO_VAR+1
@@ -253,7 +310,7 @@ PLOT8   STA MO_VAR+3    ; BYTE
         LDX #$08
         STX MO_VAR+4    ; BIT NUMBER
 PLT.00  ROL MO_VAR+3
-          JSR TXTPLT
+        JSR TXTPLT
         DEC MO_VAR+4
         BNE PLT.00
         LDY MO_VAR+2
@@ -280,8 +337,48 @@ TXP.04  JSR TXP.01
         JSR M.CRDO
         RTS
 
+; TODO
+; *** FILL MATRIX *** (X = matrix size, A = fill pattern 0-F)
 
-MO_VAR  HEX 0000000000  VERT COUNTDOWN / HORIZ MAX / HORIZ COUNTUP / CURRENT BYTE / BYTE COUNTDOWN
+FIL_D   HEX 00000000   ;MATRIX SIZE / FILL PATTERN / X / Y
+
+FIL_MX  STX FIL_D
+        STA FIL_D+1
+        LDA #$00
+        STA FIL_D+2
+        STA FIL_D+3
+
+        ;JSR CYG.00      ; HGR
+
+FIL_M1  LDA FIL_D+1     
+        STA *S0.TA      ; PATTERN
+        LDA FIL_D+2
+        STA *S0.TX      ; X
+        LDA FIL_D+3      
+        STA *S0.TY      ; Y
+        ;JSR MXDOT
+
+                LDA *S0.TX
+                JSR M.PRBYTE
+                JSR M.OUTSP
+                LDA *S0.TY
+                JSR M.PRBYTE
+                JSR M.CRDO
+
+        INC FIL_D+2
+        LDA FIL_D+2
+        CMP FIL_D
+        BNE FIL_M1
+
+        INC FIL_D+3
+        LDA FIL_D+3
+        CMP FIL_D
+        BNE FIL_M1
+
+        RTS
+
+
+MO_VAR  HEX 0000000000  ;VERT COUNTDOWN / HORIZ MAX / HORIZ COUNTUP / CURRENT BYTE / BYTE COUNTDOWN
 MO_CNT  HEX 15
 QR_BUF  HEX FE2BF8
         HEX 820A08
