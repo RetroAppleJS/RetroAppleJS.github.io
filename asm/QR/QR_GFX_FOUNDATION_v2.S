@@ -1,14 +1,20 @@
 ;*** TXT CALLS ***
 M.PRBYTE  = $FDDA   ; print hex byte
+M.LINPRT  = $ED24   ; print A,X as decimal integer
 M.CRDO    = $DAFB   ; line feed
 M.OUTSP   = $DB57   ; space
 M.COUT    = $FDED   ; print char
+M.COUC    = $FDF0   ; print char and advance cursor
 M.STROUT  = $DB3A   ; print string from address Y (high) and A (low)
 M.CBOT    = $FB2F   ; move cursor to bottom
-M.C1UP    = $FC1A   ; move cursor one up
+M.C1L     = $FC10   ; move cursor one left
+M.C1R     = $FBF4   ; move cursor one right
+M.C1UP    = $FC1A   ; move cursor one up  
 M.HOME    = $FC58   ; clear text (HOME)
 M.KPRESS  = $FD35   ; key press
 M.SCRN2   = $F879   ; nibble splitter
+BT_AD1    = $06
+BT_AD2    = $07
 
 ;*** GFX CALLS ***
 M.SELHGR  = $F3E4   ; set hires mode only
@@ -51,10 +57,10 @@ USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
         PHA
 UCM.00  JSR M.KPRESS
         
-;       JSR M.PRBYTE
+       ;JSR M.PRBYTE
 
         ;CMP #'C'      ; ('C'=C1 not 41) correct compiler !!
-        CMP #$C1
+        CMP #$C3
         BEQ CONFIG
 
         ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
@@ -79,7 +85,9 @@ UCM.00  JSR M.KPRESS
         JMP QR_IMP
 
 ; *** CONFIGURE QR CODE
-CONFIG  LDA 
+CONFIG  JSR C_MENU
+        JSR C_NAV
+        RTS
 
 ; *** GENERATE QR CODE
 GENERA  LDX #$10        ; 10x10 matrix (4-bit depth)
@@ -87,6 +95,8 @@ GENERA  LDX #$10        ; 10x10 matrix (4-bit depth)
         JSR FIL_MX      ; FILL MATRIX
         JSR M.KPRESS
         JMP HOME
+
+
 
 ; *** TOGGLE GFX MODE    (0) HGR+TEXT > (1)HGR FULL > (2)HGR2 FULL > (3)TEXT
 
@@ -169,12 +179,119 @@ HOME    JSR TXTPOS      ; DISPLAY HOME SCREEN
 HOM.00  JSR CYG.00
         RTS
 
+C_MENU  JSR M.CRDO
+        LDY #>STR.03
+        LDA #<STR.03
+        JSR M.STROUT
+        JSR M.C1UP
+        JSR M.C1UP
+        LDX #$07
+CFG1    JSR M.C1L
+        DEX
+        BNE CFG1
+        RTS
+
+C_NAV   CMP #$88        ; DETECT ARROW LEFT
+        BEQ C_NAV1
+        CMP #$95        ; DETECT ARROW RIGHT
+        BEQ C_NAV2
+        CMP #$8D        ; DETECT RETURN
+        BEQ C_NAV3
+        JMP C_NAV
+
+
+C_NAV1  LDA #$00        ; ARROW LEFT
+        LDX #$01
+        JSR M.LINPRT
+        ;JSR M.COUT
+        JMP C_NAV
+C_NAV2  LDA #'B'        ; ARROW RIGHT
+        JSR M.COUT
+        JMP C_NAV
+C_NAV3  JSR M.C1DN      ; RETURN
+        JMP C_NAV  
+
+; *** CURSOR ONE DOWN ***
+M.C1DN  LDA *$22
+        CMP *$25
+        BCS M.C1D1
+        INC *$25
+        LDA *$25
+        JSR $FBC1
+        ADC *$20
+        STA *$28
+M.C1D1  RTS
+
+; *** RELATIVELY REPOSITION CURSOR ***
 TXTPOS  JSR M.HOME
         JSR M.CBOT
         JSR M.C1UP
         JSR M.C1UP
         JSR M.C1UP
         RTS
+
+; *** PRINT STRING WITH TEMPLATE FILL-INS ***
+PRTSTR  STA *BT_AD1   ; Print String from A=lowbyte Y=highbyte, ending with 0
+        STY *BT_AD2   ; Save REF
+        LDY #$00      ; Once REF saved, reset Y (index) to zero
+PR.01   LDA (BT_AD1),Y
+        BEQ PR.02
+        JSR PR.03     ; Detect template functions & print consecutive ASCII characters
+        INY
+        BNE PR.01
+        INC BT_AD2
+        BNE PR.01
+        LDA *BT_AD1
+PR.02   RTS
+
+PR.03   CMP #$DB        ;'['=$5B??       ; Detect template start
+        BNE PR.06
+
+        STY *BT_AD2
+        LDY #$01
+        LDA (BT_AD1),Y  ; Get reference type
+        CMP #$C4        ;'D'=$44?
+        BNE PR.05
+
+        INY             ; IT'S A DECIMAL
+        LDA (BT_AD1),Y  ; Get reference address (LO)
+        STA PR.04+1
+        INY
+        LDA (BT_AD1),Y  ; Get reference address (HI)
+        STA PR.04+2
+        INY
+        STY *BT_AD2     ; PUT READ POINTER BEYOND "]"
+        LDA #$00
+PR.04   LDX $0000       ; GET NUMBER FROM REFERENCE
+        JSR M.LINPRT    ; PRINT DECIMAL NUMBER
+        RTS
+
+PR.05   CMP #$A4        ;'$'=$24??
+        BNE PR.07       ; UNKNOWN TYPE ?
+        STY *BT_AD2
+        LDY #$00
+        INY             ; LO
+        INY             ; HI
+        INY             ; LO
+        INY             ; HI
+        INY             ; BEYOND "]"
+        STY *BT_AD2
+
+        ; TODO PRINT STRING FROM ARRAY
+        RTS
+
+PR.06   JSR M.COUC
+PR.07   RTS
+
+
+
+
+
+
+
+
+
+
 
 ; *** HGR PLOT 2*2 PIXEL DOT ***
 HGRDOT  JSR HGRPIX
@@ -254,12 +371,53 @@ STR.02  HEX 2020202020202020
         HEX 2020202020202020
         HEX 2000
 
-STR.03  ASC "TYPENUMBER: < \AUTO\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15\16\17\18\19\20\21\22\23\24\25\26\27\28\29\30\31\32\33\34\35\36\37\38\39\40\ >"
+; CONFIGURATION SUB-MENU DATA
+STR.03  ASC "TYPENUMBER: <- [D"         ; DECIMAL TYPE
+        .BYTE <QR_VAR                   ; NUMBER REFERENCE
+        .BYTE >QR_VAR
+        ASC "] ->"
         HEX 0D
-        ASC "ERROR CORR: < \L(7)\M(15)\Q(25)\H(30)\ >"
+        ASC "ERROR CORR: <- [$"         ; STRING TYPE
+        .BYTE <QR_VAR+1                 ; SELECTOR REFERENCE
+        .BYTE >QR_VAR+1
+        .BYTE <STR.04                   ; STRING REFERENCE
+        .BYTE >STR.04
+        ASC "]"
+        HEX A5                          ;% SIGN
+        ASC ") ->"
         HEX 0D
-        ASC "MODE: < \NUMERIC\ALPHANUMERIC\BYTE\KANJI\ >"
+        ASC "ENCODING:"
+        HEX A0A0                        ; SPACE
+        ASC " <-  [$"                   ; STRING TYPE
+        .BYTE <QR_VAR+2                 ; SELECTOR REFERENCE
+        .BYTE >QR_VAR+2                 ; STRING REFERENCE
+        .BYTE <STR.05
+        .BYTE >STR.05
+        ASC "] ->"
         HEX 00
+
+STR.04  ASC "L(7"                       ; STRING ARRAY
+        HEX 00
+        ASC "M(15"
+        HEX 00
+        ASC "Q(25"
+        HEX 00
+        ASC "Q(30"        
+        HEX 00
+
+STR.05  ASC "NUM"                       ; STRING ARRAY
+        HEX 00
+        ASC "ALNUM"
+        HEX 00
+        ASC "BYTE"
+        HEX 00
+        ASC "KANJI"
+        HEX 00
+
+        ;L(7)\M(15)\Q(25)\H(30)
+       ; AUTO\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15\16\17\18\19\20\21\22\23\24\25\26\27\28\29\30\31\32\33\34\35\36\37\38\39\40\
+       ; L(07)\M(15)\Q(25)\H(30)\
+       ;NUM  \ALNUM\BYTE \KANJI\
 
 ;USING
 ; *S2.TX
@@ -380,6 +538,9 @@ FIL_M1  LDA FIL_D+1
 
 MO_VAR  HEX 0000000000  ;VERT COUNTDOWN / HORIZ MAX / HORIZ COUNTUP / CURRENT BYTE / BYTE COUNTDOWN
 MO_CNT  HEX 15
+
+QR_VAR  HEX 000000 ; QR TYPE NUMBER (0-40) / QR ERROR CORRECTION (0-3) / ENCODING (0-3)  
+
 QR_BUF  HEX FE2BF8
         HEX 820A08
         HEX BAA2E8
