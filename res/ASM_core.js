@@ -1298,7 +1298,7 @@ function DASM()
 				s = "Store Accumulator";
 				var opc ={"85":"zpg","95":"zpx","8D":"abs","9D":"abx","99":"aby","81":"inx","91":"iny"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.AC+"h</sub><br>";
+				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w",nreg.AC)+" = A<sub>"+nreg.AC+"h</sub><br>";
 				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "R" : ""
 				s += this.StatusRegister({"rw":["","","","","","","",c]});
 			break;
@@ -1306,13 +1306,13 @@ function DASM()
 				s = "Store X"
 				var opc ={"86":"zpg","96":"zpy","8E":"abs"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.XR+"h</sub><br>";
+				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w",nreg.XR)+" = A<sub>"+nreg.XR+"h</sub><br>";
 			break;
 			case "STY":
 				s = "Store Y";
 				var opc ={"84":"zpg","94":"zpx","8C":"abs"};
 				s+=" - ["+opc[ops[0]]+"]<br>";
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w")+" = A<sub>"+nreg.YR+"h</sub><br>";
+				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w",nreg.YR)+" = A<sub>"+nreg.YR+"h</sub><br>";
 			break;
 			case "TAX":
 				s = "Transfer Accumulator to X<br>";
@@ -1374,7 +1374,7 @@ function DASM()
 		return nb;
 	}
 
-    this.AddressingModeTmpl = function(adr_mode,narr,rw_mode)
+    this.AddressingModeTmpl = function(adr_mode,narr,rw_mode,reg)
 	{
 		var s = "";
 	  	switch(adr_mode)
@@ -1391,12 +1391,13 @@ function DASM()
 				var adr = parseInt(narr.ops[1],16);
 				narr["mem"]=this.ByteAt( adr );
 				s += "[$"+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
+				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?reg:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "abs":
 				adr = parseInt(narr.ops[2]+narr.ops[1],16)
 				narr["mem"]=this.ByteAt( adr );
 				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
+				// TODO check effect of report_watch() 'reg' parameter
 				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "zpx":
@@ -1436,7 +1437,8 @@ function DASM()
 				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256
 				narr["mem"]=this.ByteAt(rel + parseInt(narr.YR,16));
 				s += "[$"+getHexWord(rel)+"+"+narr.YR+"h]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
+				if(rw_mode=="w")
+					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":this.getHexByte(narr["mem"]),"ins":narr.ops[0]});
 			break;
 			case "inx":
 				var adr = parseInt(narr.ops[1],16);
