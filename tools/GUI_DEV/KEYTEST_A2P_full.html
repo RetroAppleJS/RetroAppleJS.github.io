@@ -134,7 +134,7 @@ function keycap_click(t)
       //oCOM.POPUP.html(log[0]+" "+log[1]);
    }
 
-   var d = oCOM.crc16(oCOM.toASCIIarr(mash));
+   var d = oCOM.getHexMulti(oCOM.crc16(oCOM.toASCIIarr(mash)),4);
    add_mapping(d, mash.toHtmlEntities().replace(/&#38;amp&#59;/g,"&") );
    //console.log(oCOM.getHexMulti(d,4));
 
@@ -143,14 +143,16 @@ function keycap_click(t)
 function add_mapping(hash,button)
 {
    var el = document.getElementById("mapping");
-   var s = "<div id='d"+hash+"' style='border:1px solid;background-color:#E0E0E0'>"+hash+"<input id='i"+hash+"' value='"+button+"'></div>"
+   var s = "<div id='d"+hash+"' style='border:1px solid;background-color:#E0E0E0;width:150px'>"+hash
+          +"<input id='i"+hash+"' value='"+button+"' style='width:80px'>"
+          +"</div>"
    el.innerHTML += s;
 }
 
   </script>
 
 <form name="hashform">
-<div id=mapping style="width:400px;float:left;border:1px solid">
+<div id=mapping style="width:400px;float:left;border:1px solid;font-family: monospace;">
 </div>
 </form>
 
