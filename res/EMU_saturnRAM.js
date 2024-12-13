@@ -56,11 +56,11 @@ function RamCard()
         {
             if(softswitch[addr].WE)
             {
-                if(NEXT) console.log("SOFTSWITCH $"+this.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
-                else     console.log("waiting for NEXT to write-enable ($"+this.getHexByte(addr)+")");
+                if(NEXT) console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
+                else     console.log("waiting for NEXT to write-enable ($"+oCOM.getHexByte(addr)+")");
             }
-            else  if(bBANKSW) console.log("SOFTSWITCH $"+this.getHexByte(addr)+" -> BANK"+(softswitch[addr].BANK+1));
-            else console.log("SOFTSWITCH $"+this.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
+            else  if(bBANKSW) console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> BANK"+(softswitch[addr].BANK+1));
+            else console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
         }
 
         if(bBANKSW) {BANK = softswitch[addr].BANK; return 0}
@@ -82,7 +82,7 @@ function RamCard()
             if(sw.RAMCARD)
             {
                 d8 = BANK_MEM[BANK][sw.BANKB?0:1][addr];
-                if(bDebug) console.log("BANK"+(BANK+1)+(sw.BANKB?"A":"B")+" read $#"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));
+                if(bDebug) console.log("BANK"+(BANK+1)+(sw.BANKB?"A":"B")+" read $#"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr));
             }
             else d8 = apple2Rom[addr];  
         }
@@ -92,7 +92,7 @@ function RamCard()
             if(sw.RAMCARD)
             {
                 d8 = RAMCARD_MEM[BANK][addr-RAMCARD];
-                if(bDebug) console.log("RAMCARD read #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
+                if(bDebug) console.log("RAMCARD read #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr-RAMCARD));
             }
             else d8 = apple2Rom[addr];
         }
@@ -108,9 +108,9 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 BANK_MEM[BANK][sw.BANKB?0:1][addr] = d8;
-                //if(bDebug) console.log("BANK="+(sw.BANKB?1:2)+" write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));
+                //if(bDebug) console.log("BANK="+(sw.BANKB?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr));
             } 
-            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(BANK+1)+(sw.BANKB?"A":"B")+" write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));       
+            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(BANK+1)+(sw.BANKB?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr));       
         }
         else if(addr < RAMCARD+RAMCARD_SIZE)
         {
@@ -118,22 +118,12 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 RAMCARD_MEM[BANK][BANK][addr-RAMCARD] = d8;
-                //if(bDebug) console.log("RAMCARD write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
+                //if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr-RAMCARD));
             }
-            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
+            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr-RAMCARD));
         }
 
         return 0;
-    }    
-
-    var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-    this.getHexByte    = function(v) { return hextab[v>>4]+hextab[v&0xf] }
-    this.getHexWord = function(v)
-    {
-        return '' + hextab[Math.floor(v / 0x1000)]
-                            + hextab[Math.floor((v & 0x0f00) / 256)]
-                            + hextab[Math.floor((v & 0xf0) / 16)]
-                            + hextab[v & 0x000f];
     }
 
 

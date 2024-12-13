@@ -41,10 +41,10 @@ function RamCard()
         {
             if(softswitch[addr].WE)
             {
-                if(NEXT) console.log("SOFTSWITCH $"+this.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
-                else          console.log("waiting for NEXT to write-enable ($"+this.getHexByte(addr)+")");
+                if(NEXT) console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
+                else          console.log("waiting for NEXT to write-enable ($"+oCOM.getHexByte(addr)+")");
             }
-            else console.log("SOFTSWITCH $"+this.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
+            else console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
         }
 
         // only flip switch after double trigger
@@ -63,7 +63,7 @@ function RamCard()
             if(sw.RAMCARD)
             {
                 d8 = BANK_MEM[sw.BANK1?0:1][addr];
-                if(bDebug) console.log("BANK"+(sw.BANK1?1:2)+" read $#"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));
+                if(bDebug) console.log("BANK"+(sw.BANK1?1:2)+" read $#"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
             }
             else d8 = apple2Rom[addr];  
         }
@@ -73,7 +73,7 @@ function RamCard()
             if(sw.RAMCARD)
             {
                 d8 = RAMCARD_MEM[addr-RAMCARD];
-                if(bDebug) console.log("RAMCARD read #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
+                if(bDebug) console.log("RAMCARD read #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
             }
             else d8 = apple2Rom[addr];
         }
@@ -89,9 +89,9 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 BANK_MEM[sw.BANK1?0:1][addr] = d8;
-                if(bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));
+                if(bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
             } 
-            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr));       
+            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));       
         }
         else if(addr < RAMCARD+RAMCARD_SIZE)
         {
@@ -99,22 +99,12 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 RAMCARD_MEM[addr-RAMCARD] = d8;
-                if(bDebug) console.log("RAMCARD write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
+                if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
             }
-            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+this.getHexByte(d8)+" at addr $"+this.getHexWord(addr-RAMCARD));
+            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
         }
 
         return 0;
-    }    
-
-    var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-    this.getHexByte    = function(v) { return hextab[v>>4]+hextab[v&0xf] }
-    this.getHexWord = function(v)
-    {
-        return '' + hextab[Math.floor(v / 0x1000)]
-                            + hextab[Math.floor((v & 0x0f00) / 256)]
-                            + hextab[Math.floor((v & 0xf0) / 16)]
-                            + hextab[v & 0x000f];
     }
 
 
