@@ -77,12 +77,10 @@ function Apple2IO(vid)
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
     
     var video = vid;
-    var key = 0x00;
-    var key_polling = false;
     
     if(typeof(oEMU.component.IO)!="undefined")
     {
-        var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){}},"Keyboard");
+        var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},lastkey:0x00},"Keyboard");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
         this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
         this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
@@ -90,9 +88,13 @@ function Apple2IO(vid)
         oEMU.component.IO.self = this;
     }
 
+    //var key = 0x00;
+    keys.lastkey = 0x00;
+
     this.reset = function()
     {
-        key = 0x00;
+        //key = 0x00;
+        keys.lastkey = 0x00
         this.disk2.reset();
     }
 
@@ -193,9 +195,9 @@ function Apple2IO(vid)
         +"C047 49223 CLRVBLINT    ?????      Clear VBL Interrupt\n"
         +"C048 49224 CLRXYINT     ?????      Clear MM Interrupt\n"
         +"C048 49224 RSTXY          C   WR   Reset X and Y Interrupts\n"
-        +"C04E 49230 CHRDIS          T  WR   Character Ram Disable"
+        +"C04E 49230 CHRDIS          T  WR   Character Ram Disable\n"
         +"C04F 49231 EMUBYTE            WR   Emulation ID byte: write once, then read once for program being used, read again for version number. $FE=Bernie, $16=Sweet16, $4B=KEGS, $AB=Appleblossom\n"
-        +"           CHREN           T  WR   Character Ram Enable"
+        +"           CHREN           T  WR   Character Ram Enable\n"
         +"C050 49232 TXTCLR       OECTG WR   Display Graphics\n"
         +"C051 49233 TXTSET       OECTG WR   Display Text\n"
         +"C052 49234 MIXCLR       OECTG WR   Display Full Screen\n"
@@ -295,14 +297,23 @@ function Apple2IO(vid)
 
         const CALL_MAP = 
         {
-            "KBD":          {"ST":null                          ,"RT":function(){ return keys.polling(key) } }
-            ,"KBDSTRB":     {"ST":function(){ key &= 0x7f }     ,"RT":0x00}
+             "KBD":         function(){ return keys.polling(keys.lastkey)   }
+            ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
+            ,"SPKR":        function(){ snd.toggle();       return 0x00 }
+            ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
+            ,"TXTSET":      function(){ vid.setGfx(false);  return 0x00 }
+            ,"MIXCLR":      function(){ vid.setMix(false);  return 0x00 }
+            ,"MIXSET":      function(){ vid.setMix(true);   return 0x00 }
+            ,"TXTPAGE1":    function(){ vid.setPage2(false);return 0x00 }
+            ,"TXTPAGE2":    function(){ vid.setPage2(true); return 0x00 }
+            ,"LORES":       function(){ vid.setHires(false);return 0x00 }
+            ,"HIRES":       function(){ vid.setHires(true); return 0x00 }
         }
 
         var sys_letter = SYSMAP[model];
 
         var arr = IOMAP.split("\n");
-        var output = {};
+        var output = {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{}};
         for(var i=0;i<arr.length;i++)
         {
             var l = arr[i];
@@ -316,11 +327,15 @@ function Apple2IO(vid)
             var desc   = l.substring(35,255);
 
             var cm  = CALL_MAP[name]===undefined ? null : CALL_MAP[name];
-
             if(family_C[sys_letter] && cm!=null && (cm.ST!=null || cm!=null))
             {
-                output[addr_n] = cm;
-                console.log(addr,name,act,desc,cm);
+                if(act.charAt(0)=="W")      output.WR[addr_n] = cm;
+                if(act.slice(1,2)=="RR")    output.RR[addr_n] = cm;
+                else if(act.charAt(1)=="R") output.RD[addr_n] = cm;
+                if(act.charAt(2)=="7")      output.SV[addr_n] = cm;
+                if(act.charAt(3)=="V")      output.VA[addr_n] = cm;
+
+                console.log(addr,addr_n,name,act,desc,cm);
             }
         }
         return output;
@@ -329,67 +344,7 @@ function Apple2IO(vid)
     this.read = function(addr)
     {
         var line = line_decode(addr);
-        var sub = addr & 0xF;
 
-        if(typeof(ACTION_MAP[addr])!="undefined")
-        {
-            if(ACTION_MAP[addr].ST!=null)
-                ACTION_MAP[addr].ST();
-            if(ACTION_MAP[addr].RT!=null)
-                return ACTION_MAP[addr].RT()
-        }
-
-        switch(line)
-        {
-            // Built-in I/O locations  (keyboard,speaker,casette,game..)
-
-            case 0x00:  return keys.polling(key);
-            case 0x10:  key &= 0x7f;                    return 0x00;
-            case 0x20:  // CASSETTE TOGGLE
-            case 0x30:  snd.toggle();                   return 0x00;
-            case 0x40:  // UTIL_STROBE
-            case 0x50:
-                switch(sub)
-                {
-                    case 0x0:  video.setGfx(true);      return 0x00;
-                    case 0x1:  video.setGfx(false);     return 0x00;
-                    case 0x2:  video.setMix(false);     return 0x00;
-                    case 0x3:  video.setMix(true);      return 0x00;
-                    case 0x4:  video.setPage2(false);   return 0x00;
-                    case 0x5:  video.setPage2(true);    return 0x00;
-                    case 0x6:  video.setHires(false);   return 0x00;
-                    case 0x7:  video.setHires(true);    return 0x00;
-                }
-            case 0x60:
-            case 0x70:
-
-            case 0x80:  // I/O SLOT #0
-            case 0x90:  // I/O SLOT #1
-            case 0xA0:  // I/O SLOT #2
-            case 0xB0:  // I/O SLOT #3
-            case 0xC0:  // I/O SLOT #4
-            case 0xD0:  // I/O SLOT #5
-            case 0xE0:  // I/O SLOT #6
-            case 0xF0:  // I/O SLOT #7
-
-            case 0x100:  // RAM/ROM OPEN FOR SLOT#1
-            case 0x200:  // RAM/ROM OPEN FOR SLOT#2
-            case 0x300:  // RAM/ROM OPEN FOR SLOT#3
-            case 0x400:  // RAM/ROM OPEN FOR SLOT#4
-            case 0x500:  // RAM/ROM OPEN FOR SLOT#5
-            case 0x600:  // RAM/ROM OPEN FOR SLOT#6
-            case 0x700:  // RAM/ROM OPEN FOR SLOT#7
-
-            case 0x800:  // COMMON ROM FOR ALL SLOTS
-            case 0x900:
-            case 0xA00:
-            case 0xB00:
-            case 0xC00:
-            case 0xD00:
-            case 0xE00:
-            case 0xF00:
-        }
-        
         switch(line)
         {
             //case 0xA545:  // DISKII
@@ -397,20 +352,9 @@ function Apple2IO(vid)
             case 0x0600:
                 if(this.disk2.diskBytes[this.disk2.drv])
                     return this.disk2.ROM[addr - DISK_PROM];
-            break;
 
             default:
 
-                //if (addr >= KEY_DATA && addr < KEY_DATA + 0x10)
-                //{// 0000
-                    //console.log("polling "+oCOM.getHexWord(addr));
-                //    return keys.polling(key);
-                //}
-                //else if (addr >= KEY_STROBE && addr < KEY_STROBE + 0x10)
-                //{// 0010
-                    //console.log("strobe "+oCOM.getHexWord(addr));
-                    //key &= 0x7f;
-                //}
                 /*
                 else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
                 {
@@ -426,6 +370,8 @@ function Apple2IO(vid)
                     return this.disk2.ROM[addr - DISK_PROM];
                 }
                 */
+
+
                 if(this.ramcard.active  && // RAMCARD SOFT SWITCHES
                     addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
                 {// 0080
@@ -442,46 +388,16 @@ function Apple2IO(vid)
                         // TODO: read ROM from 80-column card !!
                         //alert("80_COL $"+oCOM.getHexWord(addr));
                     }
-                
-                else
-                    switch(addr)
-                    {
-                    /*
-                    case SPKR_TOGGLE:
-                        snd.toggle();
-                        break;
-                    case GFX_OFF:
-                        video.setGfx(false);
-                        console.log("video.setGfx(false) "+oCOM.getHexByte(line)+" "+oCOM.getHexByte(sub));
-                        break;
-                    case GFX_ON:
-                        video.setGfx(true);
-                        console.log("video.setGfx(true) "+oCOM.getHexByte(line)+" "+oCOM.getHexByte(sub));
-                        break;
-                    case GFX_MIX_OFF:
-                        video.setMix(false);
-                        break;
-                    case GFX_MIX_ON:
-                        video.setMix(true);
-                        break;
-                    case GFX_PAGE1:
-                        video.setPage2(false);
-                        break;
-                    case GFX_PAGE2:
-                        video.setPage2(true);
-                        break;
-                    case GFX_LORES:
-                        video.setHires(false);
-                        break;
-                    case GFX_HIRES:
-                        video.setHires(true);
-                        break;
-                        */
-                    }
+
+                if(ACTION_MAP.RD[addr]!==undefined)
+                {
+                    if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
+                    return ACTION_MAP.RD[addr]();
+                }
+
             break;
         }
 
-     
 
         return 0x00;
     }
@@ -502,7 +418,8 @@ function Apple2IO(vid)
 
     this.keypress = function(code)
     {
-        key = code;
+        //key = code;
+        keys.lastkey = code;
         //alert(key)
     }
 
