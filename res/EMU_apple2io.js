@@ -76,8 +76,6 @@ function Apple2IO(vid)
     // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
     
-    var video = vid;
-    
     if(typeof(oEMU.component.IO)!="undefined")
     {
         var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},lastkey:0x00},"Keyboard");
