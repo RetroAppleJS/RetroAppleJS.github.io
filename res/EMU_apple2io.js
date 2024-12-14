@@ -86,13 +86,9 @@ function Apple2IO(vid)
         oEMU.component.IO.self = this;
     }
 
-    //var key = 0x00;
-    keys.lastkey = 0x00;
-
     this.reset = function()
     {
-        //key = 0x00;
-        keys.lastkey = 0x00
+        keys.reset();
         this.disk2.reset();
     }
 
@@ -416,9 +412,7 @@ function Apple2IO(vid)
 
     this.keypress = function(code)
     {
-        //key = code;
         keys.lastkey = code;
-        //alert(key)
     }
 
     this.loadDisk = function(bytes,drv)

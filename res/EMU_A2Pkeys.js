@@ -42,6 +42,11 @@ function A2Pkeys()
         else window.onkeypress  = null;
     }
 
+    this.reset = function()
+    {
+        this.lastkey = 0x00;
+    }
+
     this.keystroke = function(data)
     {
         if(this.isActive()==false) return; 
