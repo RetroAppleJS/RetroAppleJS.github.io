@@ -2,7 +2,7 @@ const _CFG_SYSCODE = {
  "A1":{"Model":"Apple I" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A1_txt" ,"ROMS":"" ,"KeysROM":"A1_US"}
 ,"A2":{"Model":"Apple II" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"ROMS":"" ,"KeysROM":"A2_US"}
 ,"A2P":{"Model":"Apple II Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"ROMS":"" ,"KeysROM":"A2_US"}
-,"A2EP":{"Model":"Apple II EuroPlus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"ROMS":"" ,"KeysROM":"A2_US"}
+,"A2PE":{"Model":"Apple II EuroPlus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"ROMS":"" ,"KeysROM":"A2_US"}
 ,"A2JP":{"Model":"Apple II J-Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"ROMS":"" ,"KeysROM":"A2_JP"}
 ,"A2B":{"Model":"Bell & Howell" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"ROMS":"" ,"KeysROM":"A1_US_blk"}
 ,"A3":{"Model":"Apple III" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"ROMS":"" ,"KeysROM":"A3_US"}
