@@ -19,6 +19,7 @@ function A2Pkeys()
 {
     //this.hw = hw;
     this.bDebug = false;
+    this.lastkey = 0x00;
     this.o = typeof(_o)=="undefined"?
     {"EMU_keyb_timer":false
     ,"EMU_keyb_active":false
@@ -91,6 +92,7 @@ function A2Pkeys()
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
     this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
+    this.strobe = function(){ this.lastkey &= 0x7f; return 0x00 } 
 
     this.debug = function(data)
     {
