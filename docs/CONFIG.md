@@ -44,7 +44,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              | CPU        | Speeds    | Display  | I/O | ROM | Key/Font      |
+|[SYSCODE]| Model              | CPU        | Speeds    | Display  | IO  | ROM | KeyFont      |
 | :---:   | :----------------- | :--------- | :-------- | :------- | :-- | :-- | :------------ |
 | A1      | Apple I            | 6502       | 1.023     | A1_txt   |     |     | A1_US         |
 | A2      | Apple II           | 6502       | 1.023     | A2_hgr   |     |     | A2_US         |
