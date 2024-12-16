@@ -63,6 +63,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       | AGS      |     |     |               |
 | A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  |     |     |               |
 
+## I/O MAPPING LIST
+|[IOMAP#]| Syscodes            | 
 
 ## PERIPHERALS LIST
 
