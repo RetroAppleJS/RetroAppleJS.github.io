@@ -44,7 +44,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              | CPU        | Speeds    | Display  | I/O | ROM | Key/Font      |
+|[SYSCODE]| Model              | CPU        | Speeds    | Display  | IO  | ROM | KeyFont      |
 | :---:   | :----------------- | :--------- | :-------- | :------- | :-- | :-- | :------------ |
 | A1      | Apple I            | 6502       | 1.023     | A1_txt   |     |     | A1_US         |
 | A2      | Apple II           | 6502       | 1.023     | A2_hgr   |     |     | A2_US         |
@@ -63,6 +63,12 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       | AGS      |     |     |               |
 | A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  |     |     |               |
 
+## I/O MAPPING LIST
+
+|[IOMAP#]| Syscodes             | Built-in | SlotIO      | SlotROM      |
+| :----: | :------------------: | :-----:  | :---------: | :----------: |
+| 1      | A1                   | 0xD000   |             |              |
+| 2      | A2,A2P,A2PE,A2JP,A2B | 0xC000   | 0xC080:0x10 | 0xC080:0x100 |
 
 ## PERIPHERALS LIST
 
