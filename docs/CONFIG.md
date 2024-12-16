@@ -64,7 +64,11 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  |     |     |               |
 
 ## I/O MAPPING LIST
-|[IOMAP#]| Syscodes            | 
+
+|[IOMAP#]| Syscodes             | Built-in | SlotIO  | SlotROM  |
+| :----: | :------------------: | :-----:  | :-----: | :------: |
+| 1      | A1                   | D000     |         |          |
+| 2      | A2,A2P,A2PE,A2JP,A2B | C000     | C080:10 | C080:100 |
 
 ## PERIPHERALS LIST
 
