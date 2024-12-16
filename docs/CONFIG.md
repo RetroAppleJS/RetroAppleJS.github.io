@@ -65,10 +65,10 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## I/O MAPPING LIST
 
-|[IOMAP#]| Syscodes             | Built-in | SlotIO  | SlotROM  |
-| :----: | :------------------: | :-----:  | :-----: | :------: |
-| 1      | A1                   | D000     |         |          |
-| 2      | A2,A2P,A2PE,A2JP,A2B | C000     | C080:10 | C080:100 |
+|[IOMAP#]| Syscodes             | Built-in | SlotIO      | SlotROM      |
+| :----: | :------------------: | :-----:  | :---------: | :----------: |
+| 1      | A1                   | 0xD000   |             |              |
+| 2      | A2,A2P,A2PE,A2JP,A2B | 0xC000   | 0xC080:0x10 | 0xC080:0x100 |
 
 ## PERIPHERALS LIST
 
