@@ -68,7 +68,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 |[IOMAP#]| Syscodes             | Built-in | SlotIO      | SlotROM      |
 | :----: | :------------------: | :-----:  | :---------: | :----------: |
 | 1      | A1                   | 0xD000   |             |              |
-| 2      | A2,A2P,A2PE,A2JP,A2B | 0xC000   | 0xC080:0x10 | 0xC080:0x100 |
+| 2      | A2,A2P,A2PE,A2JP,A2B | 0xC000   | 0xC080+0x10*(0-7) | 0xC080+0x100*(0-7) |
 
 ## PERIPHERALS LIST
 
