@@ -73,7 +73,13 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = oPROCESS.process_table(["[IOMAP#]","\|","\n|","\|\n\n"],"const _CFG_IOMAP",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    /*
+    
+
+
+       // EXECUTE
+    var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+
     // METHOD TAILORING
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata){}; // method override
     oPROCESS.changeDATA = bck_method; // restore the abstract method
@@ -86,7 +92,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
            +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname})+"]";
       return s
     }
-*/
+
 
 
     // EXECUTE
