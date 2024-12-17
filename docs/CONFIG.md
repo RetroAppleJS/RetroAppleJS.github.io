@@ -65,10 +65,14 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## I/O MAPPING LIST
 
-|[IOMAP#]| Syscodes             | Built-in | SlotIO      | SlotROM      |
-| :----: | :------------------: | :-----:  | :---------: | :----------: |
-| 1      | A1                   | 0xD000   |             |              |
-| 2      | A2,A2P,A2PE,A2JP,A2B | 0xC000   | 0xC080:0x10 | 0xC080:0x100 |
+|[IOMAP#]| Syscodes             | Built-in    | SlotIO      | SlotROM      |
+| :----: | :------------------: | :---------: | :---------: | :----------: |
+| 1      | A1                   | 0xD010-0xD013/0x1 |             |              |
+| 2      | A2,A2P,A2PE,A2JP,A2B | 0xC000-0xC07F/0x1 | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
+| 3      | A2E,A2Ee,A2eP | 0xC000-0xC07F/0x1 | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
+| 4      | A2c,A2cM | 0xC000-0xC07F/0x1 | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
+| 5      | A3,A3P,A3R | 0xC000-0xC07F/0x1 | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
+| 6      | A2G3,A2GS | 0xC000-0xC07F/0x1 | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
 
 ## PERIPHERALS LIST
 
