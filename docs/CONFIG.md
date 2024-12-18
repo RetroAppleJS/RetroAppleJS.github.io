@@ -78,7 +78,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 |[IOADDR]| Name | Syscodes | Behaviors | Description |
 | :----: | :--: | :------: | :-------: | :---------: |
-| 0xC000 | KBD | A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 382)
+| 0xC000 | KBD | A2, A2P, A2PE, A2JP, A2B, A2E, A2Ee, A2eP, A2c, A2cM, A2G3, A2GS | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 382)
 | 0xC000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS | WR | Use $C002-$C005 for Aux Memory |
 | 0xC000 | KBDBUSA |  |  | V Keyboard 'A' busdata |
 | 0xC001 | 80STOREON | A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS | WR | Use PAGE2 for Aux Memory |
