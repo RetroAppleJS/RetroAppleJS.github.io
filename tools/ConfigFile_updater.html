@@ -55,7 +55,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = oPROCESS.process_table(["[SYSCODE]","\|","\n|","\|\n\n"],"const _CFG_SYSCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    // METHOD TAILORING
+    // METHOD TAILORING (before execute)
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
       if(typeof(this.LData[ROWname])=="undefined") this.LData[ROWname] = {};
@@ -68,12 +68,24 @@ GetHTTP(rawDocsURL+"CONFIG.md",
       return {"FIELDname":FIELDname,"FIELDdata":FIELDdata}
     }
 
-
     // EXECUTE
     var s = oPROCESS.process_table(["[IOMAP#]","\|","\n|","\|\n\n"],"const _CFG_IOMAP",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
+    oPROCESS.changeDATA = bck_method; // restore the abstract method
 
-    
+
+    // METHOD TAILORING (before execute)
+    var bck_method = oPROCESS.changeDATA; // backup the abstract method
+    oPROCESS.changeDATA = function(ROWname,FIELDname,FIELDdata)  // method override
+    { if(FIELDname=="Syscodes")
+          FIELDdata = FIELDdata.replace(/\<br\>/g,"");      // remove <br> tags!
+      return {"FIELDname":FIELDname,"FIELDdata":FIELDdata}
+    }
+
+    // EXECUTE
+    var s = oPROCESS.process_table(["[IOADDR]","\|","\n|","\|\n\n"],"const _CFG_IOADDR",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+    oPROCESS.changeDATA = bck_method; // restore the abstract method
 
 
        // EXECUTE

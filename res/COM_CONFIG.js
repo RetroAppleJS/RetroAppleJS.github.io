@@ -26,10 +26,151 @@ const _CFG_IOMAP = {
 ,6:{"Syscodes":"A2G3,A2GS" ,"HostIO":"0xC000-0xC07F/0x1" ,"SlotIO":"0xC080-0xC0F0/0x10" ,"SlotROM":"0xC080-0xC0F0/0x100"}
 }
 
+const _CFG_IOADDR = {
+ 0xC000:{"Name":"KBD" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD" ,"Description":"Last Key Pressed + 128"}
+,0xC000:{"Name":"80STOREOFF" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Use $C002-$C005 for Aux Memory"}
+,0xC000:{"Name":"KBDBUSA" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"V Keyboard 'A' busdata"}
+,0xC001:{"Name":"80STOREON" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Use PAGE2 for Aux Memory"}
+,0xC002:{"Name":"RDMAINRAM" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"If 80STORE Off: Read Main Mem $0200-$BFFF"}
+,0xC003:{"Name":"RDCARDRAM" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"If 80STORE Off: Read Aux Mem $0200-$BFFF"}
+,0xC004:{"Name":"WRMAINRAM" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"If 80STORE Off: Write Main Mem $0200-$BFFF"}
+,0xC005:{"Name":"WRCARDRAM" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"If 80STORE Off: Write Aux Mem $0200-$BFFF"}
+,0xC006:{"Name":"SETSLOTCXROM" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Peripheral ROM ($C100-$CFFF)"}
+,0xC007:{"Name":"SETINTCXROM" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Internal ROM ($C100-$CFFF)"}
+,0xC008:{"Name":"SETSTDZP" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Main Stack and Zero Page"}
+,0xC008:{"Name":"KBDBUSB" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"V Keyboard 'B' busdata"}
+,0xC009:{"Name":"SETALTZP" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Aux Stack and Zero Page"}
+,0xC00A:{"Name":"SETINTC3ROM" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"ROM in Slot 3"}
+,0xC00B:{"Name":"SETSLOTC3ROM" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"ROM in Aux Slot"}
+,0xC00C:{"Name":"CLR80VID" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"40 Columns"}
+,0xC00D:{"Name":"SET80VID" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"80 Columns"}
+,0xC00E:{"Name":"CLRALTCHAR" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Primary Character Set"}
+,0xC00F:{"Name":"SETALTCHAR" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Alternate Character Set"}
+,0xC010:{"Name":"KBDSTRB" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Keyboard Strobe"}
+,0xC011:{"Name":"RDLCBNK2" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Selected $Dx Bank"}
+,0xC012:{"Name":"RDLCRAM" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of $Dx ROM / $Dx RAM"}
+,0xC013:{"Name":"RDRAMRD" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Main/Aux RAM Reading"}
+,0xC014:{"Name":"RDRAMWRT" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Main/Aux RAM Writing"}
+,0xC015:{"Name":"RDCXROM" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Periph/ROM Access"}
+,0xC015:{"Name":"RSTXINT" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD" ,"Description":"Reset Mouse X0 Interrupt"}
+,0xC016:{"Name":"RDALTZP" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Main/Aux Stack and Zero Page"}
+,0xC017:{"Name":"RDC3ROM" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Slot 3/Aux Slot ROM"}
+,0xC017:{"Name":"RSTYINT" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD" ,"Description":"Reset Mouse Y0 Interrupt"}
+,0xC018:{"Name":"RD80STORE" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of $C002-$C005/PAGE2 for Aux Mem"}
+,0xC019:{"Name":"RDVBL" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Vertical Blanking (E:1=drawing G:0=drawing)"}
+,0xC019:{"Name":"RSTVBL" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD" ,"Description":"Reset Vertical Blanking Interrupt"}
+,0xC01A:{"Name":"RDTEXT" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Text/Graphics"}
+,0xC01B:{"Name":"RDMIXED" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Full Screen/Mixed Graphics"}
+,0xC01C:{"Name":"RDPAGE2" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Page 1/Page 2"}
+,0xC01D:{"Name":"RDHIRES" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of LoRes/HiRes"}
+,0xC01E:{"Name":"RDALTCHAR" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of Primary/Alternate Character Set"}
+,0xC01F:{"Name":"RD80VID" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Status of 40/80 Columns"}
+,0xC020:{"Name":"TAPEOUT" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP" ,"Behaviors":"RD" ,"Description":"Toggle Cassette Tape Output"}
+,0xC021:{"Name":"MONOCOLOR" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"WR,BI" ,"Description":"Color/Mono"}
+,0xC022:{"Name":"TBCOLOR" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Screen Color: Low Nibble is BG, High Nibble is Text"}
+,0xC023:{"Name":"VGCINT" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Video Graphics Controller Interrupts: b0-2=ext,scan,1sec enable b4-7=ext,scan,1sec,VGC"}
+,0xC024:{"Name":"MOUSEDATA" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Mouse Data: High Bit is Button, Other Bits are Movement"}
+,0xC025:{"Name":"KEYMODREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Modifier Keys: Bit 7: Command, Bit 6: Option, Bit 5: NotUsed, Bit 4: Keypad, Bit 3: Repeat,  Bit 2: Caps, Bit 1: Control, Bit 0: Shift"}
+,0xC026:{"Name":"DATAREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"ADB Command/Data b0-2=# b3=valid b4=clr buf b5=reboot b6=abort b7=status"}
+,0xC027:{"Name":"KMSTATUS" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"ADB Status: b0=cmdFull b1=mouseX b2=keyIntr b3=key b4=cmdIntr b5=data 6=mouseInt 7=mouse"}
+,0xC028:{"Name":"ROMBANK" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"ROM bank select toggle"}
+,0xC029:{"Name":"NEWVIDEO" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"New Video: 129=SHR, 1=None, Bit 6=Linearize, Bit 5=BW"}
+,0xC02B:{"Name":"LANGSEL" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Bit 3=Secondary Bit 4=50Hz Bits 5-7=Display Language"}
+,0xC02C:{"Name":"CHARROM" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Addr for test mode read of character ROM"}
+,0xC02D:{"Name":"SLTROMSEL" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Slot Register; Bits 1-7=use slot card"}
+,0xC02E:{"Name":"VERTCNT" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Addr for read of video cntr bits V5-VB"}
+,0xC02F:{"Name":"HORIZCNT" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Addr for read of video cntr bits VA-H0"}
+,0xC030:{"Name":"48200 SPKR" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"RD" ,"Description":"Toggle Speaker"}
+,0xC031:{"Name":"DISKREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Disk Interface: Bit 6=3.5 Bit 7=RWHead 1"}
+,0xC032:{"Name":"SCANINT" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"VGC Interrupt-Clear"}
+,0xC033:{"Name":"CLOCKDATA" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Interface to Battery RAM (undocumented)"}
+,0xC034:{"Name":"CLOCKCTL" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"b0-3=borderColor b5=stopBit b6=read b7=start"}
+,0xC035:{"Name":"SHADOW" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Inhibit Shadowing: Bit 6: I/O Memory, Bit 5: Alternate, Display Mode, Bit 4: Auxilary HGR, Bit 3: Super HiRes, Bit 2: HiRes, Page 2, Bit 1: HiRes Page 1, Bit 0: Text/LoRes"}
+,0xC036:{"Name":"CYAREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Bits 0-3=Disk Detect Bit 4=Shadow All Banks Bit 7=Fast"}
+,0xC037:{"Name":"BMAREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Bit 5=BW"}
+,0xC038:{"Name":"SCCBREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"SCC Command Channel B"}
+,0xC039:{"Name":"SCCAREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"SCC Command Channel A"}
+,0xC03A:{"Name":"SCCBDATA" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"SCC Data Channel B"}
+,0xC03B:{"Name":"SCCADATA" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"SCC Data Channel A"}
+,0xC03C:{"Name":"SOUNDCTL" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Sound Settings: Bits 0-3=Volume Bit 5=AutoIncr Bit 6=RAM Bit 7=Busy"}
+,0xC03D:{"Name":"SOUNDDATA" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Sound Data"}
+,0xC03E:{"Name":"SOUNDADRL" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Address Pointer L"}
+,0xC03F:{"Name":"SOUNDADRH" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"" ,"Description":"Address Pointer H"}
+,0xC040:{"Name":"STROBE" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP" ,"Behaviors":"RD" ,"Description":"Game I/O Strobe Output"}
+,0xC040:{"Name":"RDXYMSK" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Read X0/Y0 Interrupt"}
+,0xC040:{"Name":"BEEPER" ,"Syscodes":"A3,A3P,A3R" ,"Behaviors":"RD" ,"Description":"Sound hardware beeperC041 RDVBLMSK       C    R7  Read VBL Interrupt"}
+,0xC042:{"Name":"RDX0EDGE" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Read X0 Edge Selector"}
+,0xC043:{"Name":"RDY0EDGE" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Read Y0 Edge Selector"}
+,0xC044:{"Name":"MMDELTAX" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Mega II Mouse Delta Movement X"}
+,0xC045:{"Name":"MMDELTAY" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"Mega II Mouse Delta Movement Y"}
+,0xC046:{"Name":"DIAGTYPE" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Self or Burn-In diagdistics: Bit 7=burn-in diag"}
+,0xC046:{"Name":"INTFLAG" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"b0=IRQ b1=MMmov b2=MMbut b3=VBL b4=qsec b5=AN3 b6=mouse was down b7=mouse is down"}
+,0xC047:{"Name":"CLRVBLINT" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Clear VBL Interrupt"}
+,0xC048:{"Name":"CLRXYINT" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Clear MM Interrupt"}
+,0xC048:{"Name":"RSTXY" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"Reset X and Y Interrupts"}
+,0xC04E:{"Name":"CHRDIS" ,"Syscodes":"A3,A3P,A3R" ,"Behaviors":"WR,RD" ,"Description":"Character Ram Disable"}
+,0xC04F:{"Name":"EMUBYTE" ,"Syscodes":"" ,"Behaviors":"WR,RD" ,"Description":"Emulation ID byte: write once, then read once for program being used, read again for version number. $FE=Bernie, $16=Sweet16, $4B=KEGS, $AB=Appleblossom"}
+,0xC04F:{"Name":"CHREN" ,"Syscodes":"A3,A3P,A3R" ,"Behaviors":"WR,RD" ,"Description":"Character Ram Enable"}
+,0xC050:{"Name":"TXTCLR" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display Graphics"}
+,0xC051:{"Name":"TXTSET" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display Text"}
+,0xC052:{"Name":"MIXCLR" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display Full Screen"}
+,0xC053:{"Name":"MIXSET" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display Split Screen"}
+,0xC054:{"Name":"TXTPAGE1" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display Page 1"}
+,0xC055:{"Name":"TXTPAGE2" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If 80STORE Off: Display Page 2"}
+,0xC056:{"Name":"LORES" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display LoRes Graphics"}
+,0xC057:{"Name":"HIRES" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"Display HiRes Graphics"}
+,0xC058:{"Name":"CLRAN0" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 0 Off"}
+,0xC058:{"Name":"DISXY" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Mask X0/Y0 Move Interrupts"}
+,0xC059:{"Name":"SETAN0" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 0 On"}
+,0xC059:{"Name":"ENBXY" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Allow X0/Y0 Move Interrupts"}
+,0xC05A:{"Name":"CLRAN1" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 1 Off"}
+,0xC05A:{"Name":"DISVBL" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Disable VBL Interrupts"}
+,0xC05B:{"Name":"SETAN1" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 1 On"}
+,0xC05B:{"Name":"ENVBL" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Enable VBL Interrupts"}
+,0xC05C:{"Name":"CLRAN2" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 2 Off"}
+,0xC05C:{"Name":"X0EDGE" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Interrupt on X0 Rising"}
+,0xC05D:{"Name":"SETAN2" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 2 On"}
+,0xC05D:{"Name":"X0EDGE" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Interrupt on X0 Falling"}
+,0xC05E:{"Name":"CLRAN3" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 3 Off"}
+,0xC05E:{"Name":"Y0EDGE" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Interrupt on Y0 Rising"}
+,0xC05E:{"Name":"DHIRESON" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"In 80-Column Mode: Double Width Graphics"}
+,0xC05F:{"Name":"SETAN3" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS off: Annunciator 3 On"}
+,0xC05F:{"Name":"Y0EDGE" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"If IOUDIS on: Interrupt on Y0 Falling"}
+,0xC05F:{"Name":"DHIRESOFF" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR,RD" ,"Description":"In 80-Column Mode: Single Width Graphics"}
+,0xC060:{"Name":"TAPEIN" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP" ,"Behaviors":"RD,BI" ,"Description":"Read Cassette Input"}
+,0xC060:{"Name":"COL80SW" ,"Syscodes":"A2c,A2cM,A3,A3P,A3R" ,"Behaviors":"RD,BI" ,"Description":"Status of 80/40 Column Switch"}
+,0xC060:{"Name":"BUTN3" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Switch Input 3"}
+,0xC061:{"Name":"RDBTN0" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Switch Input 0 / Open Apple"}
+,0xC062:{"Name":"BUTN1" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Switch Input 1 / Solid Apple"}
+,0xC063:{"Name":"RD63" ,"Syscodes":"A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Switch Input 2 / Shift Key"}
+,0xC063:{"Name":"RDMOUBTN" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Bit 7 = Mouse Button Not Pressed"}
+,0xC064:{"Name":"PADDL0" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Analog Input 0"}
+,0xC065:{"Name":"PADDL1" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Analog Input 1"}
+,0xC066:{"Name":"PADDL2" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Analog Input 2"}
+,0xC066:{"Name":"RDMOUX1" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Mouse Horiz Position"}
+,0xC067:{"Name":"PADDL3" ,"Syscodes":"A2,A2P,A2PE,A2JP,A2B,A2E,A2Ee,A2eP,A2G3,A2GS" ,"Behaviors":"RD,BI" ,"Description":"Analog Input 3"}
+,0xC067:{"Name":"RDMOUY1" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Mouse Vert Position"}
+,0xC068:{"Name":"STATEREG" ,"Syscodes":"A2G3,A2GS" ,"Behaviors":"RG" ,"Description":"b0=INTCXROM b1=ROMBANK b2=LCBNK2 b3=RDROM b4=RAMWRT b5=RAMRD b6=PAGE2 b7=ALTZP"}
+,0xC06D:{"Name":"TESTREG" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Test Mode Bit Register"}
+,0xC06E:{"Name":"CLRTM" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Clear Test Mode"}
+,0xC06F:{"Name":"ENTM" ,"Syscodes":"" ,"Behaviors":"" ,"Description":"Enable Test Mode"}
+,0xC070:{"Name":"PTRIG" ,"Syscodes":"A2E,A2Ee,A2eP" ,"Behaviors":"RD" ,"Description":"Analog Input Reset"}
+,0xC070:{"Name":"PTRIG" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR,RD" ,"Description":"Analog Input Reset + Reset VBLINT Flag"}
+,0xC070:{"Name":"PTRIG" ,"Syscodes":"A3,A3P,A3R" ,"Behaviors":"WR,RD" ,"Description":"Access Real Time Clock"}
+,0xC073:{"Name":"BANKSEL" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS" ,"Behaviors":"WR" ,"Description":"Memory Bank Select for > 128K"}
+,0xC077:{"Name":"BLOSSOM" ,"Syscodes":"" ,"Behaviors":"WR" ,"Description":"Appleblossom Special I/O Address $C1=Install clock driver, $CC=Get time in input buffer, $CF=get time in ProDOS global page."}
+,0xC078:{"Name":"BLOSSOM" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR" ,"Description":"Disable IOU Access"}
+,0xC079:{"Name":"BLOSSOM" ,"Syscodes":"A2c,A2cM" ,"Behaviors":"WR" ,"Description":"Enable IOU Access"}
+,0xC07E:{"Name":"IOUDISON" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM" ,"Behaviors":"WR" ,"Description":"Disable IOU"}
+,0xC07E:{"Name":"RDIOUDIS" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Status of IOU Disabling"}
+,0xC07F:{"Name":"IOUDISOFF" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM" ,"Behaviors":"WR" ,"Description":"Enable IOU"}
+,0xC07F:{"Name":"RDDHIRES" ,"Syscodes":"A2E,A2Ee,A2eP,A2c,A2cM" ,"Behaviors":"RD,BI" ,"Description":"Status of Double HiRes"}
+}
+
 const _CFG_PCODE = {
  "MS16K":{"NAME":"Microsoft 16K Language card" ,"ROMrange":"" ,"SLOTrange":"0" ,"SYSrange":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"ROMrange":"0xCn00, 0xCnFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYSrange":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"ROMrange":"0xC800, 0xCFFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYSrange":"A2,A2P,A2E"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"ROMrange":"$Cn00, $CnFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYSrange":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"ROMrange":"$C800, $CFFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYSrange":"A2,A2P,A2E"}
 ,"[SLOT#]":{"NAME":"PCODE" ,"ROMrange":"SWITCHES" ,"SLOTrange":"DESCRIPTION"}
 ,":----:":{"NAME":":---------" ,"ROMrange":":----------------" ,"SLOTrange":":-----------------"}
 ,0:{"NAME":"MS16K" ,"ROMrange":"" ,"SLOTrange":""}
