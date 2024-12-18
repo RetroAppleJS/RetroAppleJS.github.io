@@ -78,7 +78,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 |[IOADDR]| Name | Syscodes | Behaviors | Description |
 | :----: | :--: | :------: | :-------: | :---------: |
-| 0xC000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 383)
+| 0xC000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
 | 0xC000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | WR | Use $C002-$C005 for Aux Memory |
 | 0xC000 | KBDBUSA |  |  | V Keyboard 'A' busdata |
 | 0xC001 | 80STOREON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | WR | Use PAGE2 for Aux Memory |
@@ -97,7 +97,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC00D | SET80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | WR | 80 Columns |
 | 0xC00E | CLRALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | WR | Primary Character Set |
 | 0xC00F | SETALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | WR | Alternate Character Set |
-| 0xC010 | KBDSTRB | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Keyboard Strobe |
+| 0xC010 | KBDSTRB | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Keyboard Strobe |
 | 0xC011 | RDLCBNK2 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | RD,BI | Status of Selected $Dx Bank |
 | 0xC012 | RDLCRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | RD,BI | Status of $Dx ROM / $Dx RAM |
 | 0xC013 | RDRAMRD | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | RD,BI | Status of Main/Aux RAM Reading |
@@ -131,7 +131,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC02D | SLTROMSEL | A2G3,A2GS |  | Slot Register; Bits 1-7=use slot card |
 | 0xC02E | VERTCNT |  |  | Addr for read of video cntr bits V5-VB |
 | 0xC02F | HORIZCNT |  |  | Addr for read of video cntr bits VA-H0 |
-| 0xC030 | 48200 SPKR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | RD | Toggle Speaker |
+| 0xC030 | 48200 SPKR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | RD | Toggle Speaker |
 | 0xC031 | DISKREG | A2G3,A2GS |  | Disk Interface: Bit 6=3.5 Bit 7=RWHead 1 |
 | 0xC032 | SCANINT | A2G3,A2GS | RG | VGC Interrupt-Clear |
 | 0xC033 | CLOCKDATA | A2G3,A2GS |  | Interface to Battery RAM (undocumented) |
@@ -162,30 +162,30 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC04E | CHRDIS | A3,A3P,A3R | WR,RD | Character Ram Disable |
 | 0xC04F | EMUBYTE |  | WR,RD | Emulation ID byte: write once, then read once for program being used, read again for version number. $FE=Bernie, $16=Sweet16, $4B=KEGS, $AB=Appleblossom |
 | 0xC04F | CHREN | A3,A3P,A3R | WR,RD | Character Ram Enable |
-| 0xC050 | TXTCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display Graphics |
-| 0xC051 | TXTSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display Text |
-| 0xC052 | MIXCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display Full Screen |
-| 0xC053 | MIXSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display Split Screen |
-| 0xC054 | TXTPAGE1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display Page 1 |
-| 0xC055 | TXTPAGE2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | If 80STORE Off: Display Page 2 |
-| 0xC056 | LORES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display LoRes Graphics |
-| 0xC057 | HIRES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | Display HiRes Graphics |
-| 0xC058 | CLRAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 0 Off |
+| 0xC050 | TXTCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display Graphics |
+| 0xC051 | TXTSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display Text |
+| 0xC052 | MIXCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display Full Screen |
+| 0xC053 | MIXSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display Split Screen |
+| 0xC054 | TXTPAGE1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display Page 1 |
+| 0xC055 | TXTPAGE2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | If 80STORE Off: Display Page 2 |
+| 0xC056 | LORES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display LoRes Graphics |
+| 0xC057 | HIRES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | WR,RD | Display HiRes Graphics |
+| 0xC058 | CLRAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 0 Off |
 | 0xC058 | DISXY | A2c,A2cM | WR,RD | If IOUDIS on: Mask X0/Y0 Move Interrupts |
-| 0xC059 | SETAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 0 On |
+| 0xC059 | SETAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 0 On |
 | 0xC059 | ENBXY | A2c,A2cM | WR,RD | If IOUDIS on: Allow X0/Y0 Move Interrupts |
-| 0xC05A | CLRAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 1 Off |
+| 0xC05A | CLRAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 1 Off |
 | 0xC05A | DISVBL | A2c,A2cM | WR,RD | If IOUDIS on: Disable VBL Interrupts |
-| 0xC05B | SETAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 1 On |
+| 0xC05B | SETAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 1 On |
 | 0xC05B | ENVBL | A2c,A2cM | WR,RD | If IOUDIS on: Enable VBL Interrupts |
-| 0xC05C | CLRAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 2 Off |
+| 0xC05C | CLRAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 2 Off |
 | 0xC05C | X0EDGE | A2c,A2cM | WR,RD | If IOUDIS on: Interrupt on X0 Rising |
-| 0xC05D | SETAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 2 On |
+| 0xC05D | SETAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 2 On |
 | 0xC05D | X0EDGE | A2c,A2cM | WR,RD | If IOUDIS on: Interrupt on X0 Falling |
-| 0xC05E | CLRAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A3,A3P,A3R,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 3 Off |
+| 0xC05E | CLRAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | WR,RD | If IOUDIS off: Annunciator 3 Off |
 | 0xC05E | Y0EDGE | A2c,A2cM | WR,RD | If IOUDIS on: Interrupt on Y0 Rising |
-| 0xC05E | DHIRESON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A3,A3P,A3R,A2G3,A2GS | WR,RD | In 80-Column Mode: Double Width Graphics |
-| 0xC05F | SETAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 3 On |
+| 0xC05E | DHIRESON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A3,A3P,A3R<br>,A2G3,A2GS | WR,RD | In 80-Column Mode: Double Width Graphics |
+| 0xC05F | SETAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | WR,RD | If IOUDIS off: Annunciator 3 On |
 | 0xC05F | Y0EDGE | A2c,A2cM | WR,RD | If IOUDIS on: Interrupt on Y0 Falling |
 | 0xC05F | DHIRESOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | WR,RD | In 80-Column Mode: Single Width Graphics |
 | 0xC060 | TAPEIN | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | RD,BI | Read Cassette Input |
@@ -195,11 +195,11 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC062 | BUTN1 | A2E,A2Ee,A2eP,A2G3<br>,A2GS | RD,BI | Switch Input 1 / Solid Apple |
 | 0xC063 | RD63 | A2E,A2Ee,A2eP,A2G3<br>,A2GS | RD,BI | Switch Input 2 / Shift Key |
 | 0xC063 | RDMOUBTN | A2c,A2cM | RD,BI | Bit 7 = Mouse Button Not Pressed |
-| 0xC064 | PADDL0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS | RD,BI | Analog Input 0 |
-| 0xC065 | PADDL1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2c,A2cM,A2G3,A2GS | RD,BI | Analog Input 1 |
-| 0xC066 | PADDL2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2G3,A2GS | RD,BI | Analog Input 2 |
+| 0xC064 | PADDL0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | RD,BI | Analog Input 0 |
+| 0xC065 | PADDL1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | RD,BI | Analog Input 1 |
+| 0xC066 | PADDL2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | RD,BI | Analog Input 2 |
 | 0xC066 | RDMOUX1 | A2c,A2cM | RD,BI | Mouse Horiz Position |
-| 0xC067 | PADDL3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP,A2G3,A2GS | RD,BI | Analog Input 3 |
+| 0xC067 | PADDL3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | RD,BI | Analog Input 3 |
 | 0xC067 | RDMOUY1 | A2c,A2cM | RD,BI | Mouse Vert Position |
 | 0xC068 | STATEREG | A2G3,A2GS | RG | b0=INTCXROM b1=ROMBANK b2=LCBNK2 b3=RDROM b4=RAMWRT b5=RAMRD b6=PAGE2 b7=ALTZP |
 | 0xC06D | TESTREG |  |  | Test Mode Bit Register |
@@ -216,7 +216,6 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC07E | RDIOUDIS | A2E,A2Ee,A2eP,A2c<br>,A2cM | RD,BI | Status of IOU Disabling |
 | 0xC07F | IOUDISOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM | WR | Enable IOU |
 | 0xC07F | RDDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM | RD,BI | Status of Double HiRes |
-
 
 
 ## PERIPHERALS LIST
