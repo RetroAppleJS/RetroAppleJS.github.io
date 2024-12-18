@@ -351,6 +351,11 @@ function EMU_init()
 
 }
 
+function EMU_system_get()
+{
+    for(var o in oEMU.system)
+        if(oEMU.system[o].active==true) return o;
+}
 
 function EMUI()
 {
