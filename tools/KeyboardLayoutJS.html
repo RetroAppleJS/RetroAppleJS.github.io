@@ -1,12 +1,32 @@
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<html style="background-color:#B0B0B0"><head>
+  <title>KEYBOARD LAYOUT TOOL</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8"> 
+  <link rel="stylesheet" href="../res/COM_MAIN.css">
+</head>
+
+
+
+<script type="text/javascript" src="TOOLS_Header.js"></script>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/pako.min.js"></script>
-<link rel="stylesheet" href="../res/COM_MAIN.css">
+
 
 
 <script>
 var url = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/res/kb.css"
 // ORIGINAL URL:  http://www.keyboard-layout-editor.com/css/kb.css
+
+var CONF_version="1.0.0"
+var CONF_builddate="20241109-180000" 
+
+function init_gui(_o)
+{ 
+  document.getElementById('slider_title').outerHTML = _TITLE();
+}
+
 
 GetHTTP(url,function()
 { 
@@ -472,62 +492,89 @@ function css_dl(t,filename)
 </script>    
 
 
-<body onload="document.getElementById('inputB64').value=html_b64">
-
-<div id="kbsnippet"></div>
-<br>
-<hr>
 
 
-<textarea id="inputB64" style="width:300px;height:100px" hidden></textarea>
+<body class="slider_main" onload="init_gui();document.getElementById('inputB64').value=html_b64">
 
-<div>
-<table>
-  <tr style="font-size:smaller">
-    <td valign="top">
-      <a href="http://www.keyboard-layout-editor.com/css/kb.css" target="_blank">COPY kb.css</a>
-      <button onclick="const inflator=new pako.Inflate();inflator.push(oCOM.Uint8ArrayFromBase64(kb_css_b64));document.getElementById('CSScode').value=new TextDecoder().decode(inflator.result);">UNPACK</button>
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+        <li>
+          <li>
+            
+          </li>
+        </li>
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+     
+
+
+
+      <div id="kbsnippet"></div>
       <br>
-      <textarea id="CSScode" style="width:300px;height:100px" onclick="document.getElementById('CSScode_b1').disabled=false;this.value='';this.style.borderColor='#FFFFFF'"></textarea>
+      <hr>
       <br>
-      <button id="CSScode_b1" onclick="css_rm(this)">REMAP</button>
-      <button id="CSScode_b2" onclick="css_dl(this,'kb_new.css')">DOWNLOAD</button>
-    </td>
-    <td valign="top">
-      <a href="http://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96" target="_blank">COPY EXAMPLE1</a> OR 
-      <a href="http://www.keyboard-layout-editor.com/#/gists/6fb7c12e14db4e33694ca7bc81575bfd" target="_blank">COPY EXAMPLE2</a>
-      <button onclick="oPROCESS.input_b64('inputB64','inputUTF8')">UNPACK</button>
       <br>
-    <textarea id=inputUTF8 style="width:300px;height:100px"></textarea>
-    <br>
-    <button onclick="oPROCESS.input_textarea('inputUTF8','inputB64')" hidden>PROCESS TEXT</button>
-    </td>
-    <!--
-    <td valign="top">
-      <button onclick="document.getElementById('inputJS').value=myscript">UNPACK</button>
-      <br>
-      <textarea id=inputJS style="width:300px;height:100px"></textarea>
-    </td>
-    -->
-  </tr>
-  <tr>
-    <td colspan="2">
-      <textarea id="JScode" style="width:600px;height:100px" hidden></textarea>
-      <textarea id="HTMLcode" style="width:600px;height:100px"></textarea>
-      <br>
-      <!--
-      <button onclick="var o = oPROCESS.gen_JScode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('JScode').value=o.exe_later">GENERATE JS & RUN</button>
-      -->
-      <button onclick="var o = oPROCESS.gen_HTMLcode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('HTMLcode').value=o.exe_later">GENERATE HTML & RUN</button>
-    </td>
-  </tr>
-</table>
-</div>
+  
 
-<div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
-  <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
-  <div id=COM_popup_text></div>
-</div>
+      
+      
+      <textarea id="inputB64" style="width:300px;height:100px" hidden></textarea>
+      
+      <div>
+      <table>
+        <tr style="font-size:smaller">
+          <td valign="top">
+            <a href="http://www.keyboard-layout-editor.com/css/kb.css" target="_blank">COPY kb.css</a>
+            <button onclick="const inflator=new pako.Inflate();inflator.push(oCOM.Uint8ArrayFromBase64(kb_css_b64));document.getElementById('CSScode').value=new TextDecoder().decode(inflator.result);">UNPACK</button>
+            <br>
+            <textarea id="CSScode" style="width:300px;height:100px" onclick="document.getElementById('CSScode_b1').disabled=false;this.value='';this.style.borderColor='#FFFFFF'"></textarea>
+            <br>
+            <button id="CSScode_b1" onclick="css_rm(this)">REMAP</button>
+            <button id="CSScode_b2" onclick="css_dl(this,'kb_new.css')">DOWNLOAD</button>
+          </td>
+          <td valign="top">
+            <a href="http://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96" target="_blank">COPY EXAMPLE1</a> OR 
+            <a href="http://www.keyboard-layout-editor.com/#/gists/6fb7c12e14db4e33694ca7bc81575bfd" target="_blank">COPY EXAMPLE2</a>
+            <button onclick="oPROCESS.input_b64('inputB64','inputUTF8')">UNPACK</button>
+            <br>
+          <textarea id=inputUTF8 style="width:300px;height:100px"></textarea>
+          <br>
+          <button onclick="oPROCESS.input_textarea('inputUTF8','inputB64')" hidden>PROCESS TEXT</button>
+          </td>
+          <!--
+          <td valign="top">
+            <button onclick="document.getElementById('inputJS').value=myscript">UNPACK</button>
+            <br>
+            <textarea id=inputJS style="width:300px;height:100px"></textarea>
+          </td>
+          -->
+        </tr>
+        <tr>
+          <td colspan="2">
+            <textarea id="JScode" style="width:600px;height:100px" hidden></textarea>
+            <textarea id="HTMLcode" style="width:600px;height:100px"></textarea>
+            <br>
+            <!--
+            <button onclick="var o = oPROCESS.gen_JScode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('JScode').value=o.exe_later">GENERATE JS & RUN</button>
+            -->
+            <button onclick="var o = oPROCESS.gen_HTMLcode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('HTMLcode').value=o.exe_later">GENERATE HTML & RUN</button>
+          </td>
+        </tr>
+      </table>
+      </div>
+      
+      <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
+        <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+        <div id=COM_popup_text></div>
+      </div>
 
+
+
+
+    </div>
+  </div>
 </body>
+
 </html>
