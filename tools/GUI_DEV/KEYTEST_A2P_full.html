@@ -101,6 +101,16 @@
 
   <script>
 
+var oEMU =
+{"component":
+   {"Keyboard":new A2Pkeys()}
+}
+
+function A2Pkeys()
+{
+   this.keymap = {}
+   this.draft_map = {}
+}
 
 String.prototype.toHtmlEntities = function() {
     return this.replace(/./gm, function(s) {
@@ -115,9 +125,7 @@ String.fromHtmlEntities = function(string) {
     })
 };
 
-
-
-   function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
+function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
 function keycap_over(t) { t.classList.replace("keycap","selected") }
 function keycap_out(t) { t.classList.replace("selected","keycap") }
 function keycap_click(t)
@@ -142,19 +150,53 @@ function keycap_click(t)
 
 function add_mapping(hash,button)
 {
+   if(oEMU.component.Keyboard.draft_map[hash]==true) return;
+   oEMU.component.Keyboard.draft_map[hash] = true;
+
+
+   var bDirectVal = button.length==1;
    var el = document.getElementById("mapping");
-   var s = "<div id='d"+hash+"' style='border:1px solid;background-color:#E0E0E0;width:150px'>"+hash
-          +"<input id='i"+hash+"' value='"+button+"' style='width:80px'>"
+   var s = "<div id='d"+hash+"' style='border:1px solid;background-color:"+(bDirectVal?"#D0FFD0":"#E0E0E0")+";width:100%'>"+hash
+          +"<input id='i"+hash+"' value='"+button+"' style='width:70px' onkeyup=map('"+hash+"',this)>"
+          +"<button>fn</button>"
           +"</div>"
    el.innerHTML += s;
+
+   if(bDirectVal)
+   {
+      map(hash,{"value":button})
+   }
+}
+
+function map(hash,key)
+{
+   var ia = isAssoc(oEMU.component.Keyboard.keymap,hash);
+
+   if(ia) delete oEMU.component.Keyboard.keymap[ia]
+   if(key.value.length==1)
+   {
+      oEMU.component.Keyboard.keymap[key.value] = hash;
+      elp = document.getElementById("d"+hash);
+      elp.style.backgroundColor = "#D0FFD0"
+   }
+
+   var el = document.getElementById("debug");
+   el.innerHTML = JSON.stringify(oEMU.component.Keyboard.keymap).replace(/","/g,'"<br>,"');
+}
+
+function isAssoc(av,val)
+{
+   for(var ia in av)
+      if(av[ia] == val) return ia;
+   return false;
 }
 
   </script>
 
-<form name="hashform">
-<div id=mapping style="width:400px;float:left;border:1px solid;font-family: monospace;">
+<div id=mapping style="width:130px;float:left;border:1px solid;font-family: monospace;">
 </div>
-</form>
+
+<div id=debug></div>
 
 <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
    <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
