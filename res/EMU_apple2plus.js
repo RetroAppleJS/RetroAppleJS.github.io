@@ -7,8 +7,8 @@
 //
 // apple2plus.js
 
-if(oEMU===undefined) var oEMU = {"system":{"A2P":{}}};
-oEMU.system["A2P"] = {/*  config overrides */};
+if(oEMU===undefined) var oEMU = {"system":{"A2P":{"active":true}}};
+oEMU.system["A2P"] = {/*  config overrides */  "active":true};
 
 function Apple2Plus(context)
 {
