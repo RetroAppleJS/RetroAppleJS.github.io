@@ -307,7 +307,7 @@ function Apple2IO(vid)
             var addr_n = parseInt(addr,16)-0xC000;
             var name   = l.substring(11-6,12-6)==" "?name:oCOM.rtrim( l.substring(11-6,11+12-6) );
             var family = l.substring(24-6,29-6);
-            var family_C = {2:family.charAt(0)=="O",3:family.charAt(1)=="E",4:family.charAt(2)=="C",5:family.charAt(3)=="T",6:family.charAt(4)=="G"};
+            var family_C = {1:family.charAt(0)=="O",2:family.charAt(1)=="E",3:family.charAt(2)=="C",4:family.charAt(3)=="T",5:family.charAt(4)=="G"};
             var act    = l.substring(30-6,34-6);
             var desc   = l.substring(35-6,255);
 
