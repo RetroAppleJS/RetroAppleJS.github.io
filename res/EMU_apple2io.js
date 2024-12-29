@@ -98,7 +98,7 @@ function Apple2IO(vid)
 
 
     const IOMAP_CALLS = 
-    {2: // _CFG_IOMAP index
+    {1: // _CFG_IOMAP index
         {
             "KBD":         function(){ return keys.polling(keys.lastkey)   }
             ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
@@ -285,15 +285,14 @@ function Apple2IO(vid)
 */
 
 
-
         var IOMAP_ID = null;
-        for(var o in _CFG_IOMAP)
+        for(var o in _CFG_IORANGES)
         {
-            if(_CFG_IOMAP[o].Syscodes.indexOf(model) >= 0)
+            if(o.indexOf(model) >= 0)
             {
-                IOMAP_ID = o;
                 break;
             }
+            IOMAP_ID++;
         }
 
         var IOMAP_TBL = [];
