@@ -21,7 +21,7 @@ function COM()
   this.getHexMulti = function(v,m)    { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
   this.getBinMulti = function(v,m)    { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
   this.HEX2RGB       = function(hex)   { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
-  this.RGB2HEX       = function(color) { return [this.hex2tab[color[0]&0xFF],this.hex2tab[color[1]&0xFF],this.hex2tab[color[2]&0xFF]] }
+  this.RGB2HEX       = function(color) { return [hex2tab[color[0]&0xFF],hex2tab[color[1]&0xFF],hex2tab[color[2]&0xFF]] }
 
   this.RGB2IDX       = function(color,sig_bits)
   {
