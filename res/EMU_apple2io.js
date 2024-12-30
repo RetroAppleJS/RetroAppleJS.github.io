@@ -12,6 +12,7 @@ if(oEMU===undefined) var oEMU = {"component":{"IO":{}}}
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){}} // allow tools to include apple2io.js without apple2main.js
 
+
 function Apple2IO(vid)
 {
 
@@ -114,8 +115,11 @@ function Apple2IO(vid)
         }
     }
 
-    var ACTION_MAP = IO_map(EMU_system_get());
-    console.log(ACTION_MAP);
+    if(typeof(EMU_system_get)!="undefined")
+    {
+        var ACTION_MAP = IO_map(EMU_system_get());
+        console.log(ACTION_MAP);
+    }
 
     function IO_map(model)
     {
@@ -440,8 +444,8 @@ function Apple2IO(vid)
                 // I/O ACTION MAP FOR READ OPERATIONS
                 if(ACTION_MAP.RD[addr]!==undefined)
                 {
-                    if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-                    return ACTION_MAP.RD[addr]();
+                    //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
+                    return ACTION_MAP.RD[addr]();   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
                 }
 
             break;
@@ -459,6 +463,13 @@ function Apple2IO(vid)
             addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             return this.ramcard.write(addr - ROM_ADDR,d8)
         
+        // I/O ACTION MAP FOR WRITE OPERATIONS
+        if(ACTION_MAP.RD[addr]!==undefined)
+            {
+                if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
+                return ACTION_MAP.WR[addr]();   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+            }
+
         // Implement same side-effects as read.
         this.read(addr);
     }
