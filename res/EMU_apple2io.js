@@ -177,7 +177,7 @@ function Apple2IO(vid)
         +"C02D SLTROMSEL        G      Slot Register; Bits 1-7=use slot card\n"
         +"C02E VERTCNT      ?????      Addr for read of video cntr bits V5-VB\n"
         +"C02F HORIZCNT     ?????      Addr for read of video cntr bits VA-H0\n"
-        +"C030 48200 SPKR   OECTG  R   Toggle Speaker\n"
+        +"C030 SPKR         OECTG  R   Toggle Speaker\n"
         +"C031 DISKREG          G      Disk Interface: Bit 6=3.5 Bit 7=RWHead 1\n"
         +"C032 SCANINT          G    V VGC Interrupt-Clear\n"
         +"C033 CLOCKDATA        G      Interface to Battery RAM (undocumented)\n"
