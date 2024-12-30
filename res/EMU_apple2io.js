@@ -78,7 +78,7 @@ function Apple2IO(vid)
     
     if(typeof(oEMU.component.IO)!="undefined")
     {
-        var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},lastkey:0x00},"Keyboard");
+        var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
         this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
         this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
