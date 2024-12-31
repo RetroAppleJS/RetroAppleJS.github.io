@@ -67,164 +67,167 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 |[IORANGES]            | HostIO (HI)   | HostROM (HR)  | SlotIO (SI)        | SlotROM (SR)        |
 | :------------------: | :-----------: | :-----------: | :----------------: | :-----------------: |
-| A1                   | 0xD010-0xD013 |               |                    |                     |
-| A2,A2P,A2PE,A2JP,A2B | 0xC000-0xC07F | 0xC800-0xCFFF | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
-| A2E,A2Ee,A2eP        | 0xC000-0xC07F | 0xC800-0xCFFF | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
-| A2c,A2cM             | 0xC000-0xC07F | 0xC800-0xCFFF | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
-| A3,A3P,A3R           | 0xC000-0xC07F |               | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
-| A2G3,A2GS            | 0xC000-0xC07F |               | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
+| A1                   | $D010-$D013 |               |                    |                     |
+| A2,A2P,A2PE,A2JP,A2B | $C000-$C07F | $C800-$CFFF | $C080-$C0F0/0x10 | $C080-$C0F0/0x100 |
+| A2E,A2Ee,A2eP        | $C000-$C07F | $C800-$CFFF | $C080-$C0F0/0x10 | $C080-$C0F0/0x100 |
+| A2c,A2cM             | $C000-$C07F | $C800-$CFFF | $C080-$C0F0/0x10 | $C080-$C0F0/0x100 |
+| A3,A3P,A3R           | $C000-$C07F |               | $C080-$C0F0/0x10 | $C080-$C0F0/0x100 |
+| A2G3,A2GS            | $C000-$C07F |               | $C080-$C0F0/0x10 | $C080-$C0F0/0x100 |
 
 ## I/O ADDRESS MAP
 
-|[IOADDR]| Name | Syscodes | Range | Behaviors | Description |
-| :----: | :--: | :------: | :---: | :-------: | :---------: |
-| 0xC000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
-| 0xC000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use $C002-$C005 for Aux Memory |
-| 0xC000 | KBDBUSA | | HI | | V Keyboard 'A' busdata |
-| 0xC001 | 80STOREON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use PAGE2 for Aux Memory |
-| 0xC002 | RDMAINRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Read Main Mem $0200-$BFFF |
-| 0xC003 | RDCARDRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Read Aux Mem $0200-$BFFF |
-| 0xC004 | WRMAINRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Write Main Mem $0200-$BFFF |
-| 0xC005 | WRCARDRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Write Aux Mem $0200-$BFFF |
-| 0xC006 | SETSLOTCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | Peripheral ROM ($C100-$CFFF) |
-| 0xC007 | SETINTCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | Internal ROM ($C100-$CFFF) |
-| 0xC008 | SETSTDZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Main Stack and Zero Page |
-| 0xC008 | KBDBUSB | | HI |  | V Keyboard 'B' busdata |
-| 0xC009 | SETALTZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Aux Stack and Zero Page |
-| 0xC00A | SETINTC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | ROM in Slot 3 |
-| 0xC00B | SETSLOTC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | ROM in Aux Slot |
-| 0xC00C | CLR80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | 40 Columns |
-| 0xC00D | SET80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | 80 Columns |
-| 0xC00E | CLRALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Primary Character Set |
-| 0xC00F | SETALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Alternate Character Set |
-| 0xC010 | KBDSTRB | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Keyboard Strobe |
-| 0xC011 | RDLCBNK2 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Selected $Dx Bank |
-| 0xC012 | RDLCRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of $Dx ROM / $Dx RAM |
-| 0xC013 | RDRAMRD | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux RAM Reading |
-| 0xC014 | RDRAMWRT | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux RAM Writing |
-| 0xC015 | RDCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Periph/ROM Access |
-| 0xC015 | RSTXINT | A2c,A2cM | HI | RD | Reset Mouse X0 Interrupt |
-| 0xC016 | RDALTZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux Stack and Zero Page |
-| 0xC017 | RDC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Slot 3/Aux Slot ROM |
-| 0xC017 | RSTYINT | A2c,A2cM | HI | RD | Reset Mouse Y0 Interrupt |
-| 0xC018 | RD80STORE | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of $C002-$C005/PAGE2 for Aux Mem |
-| 0xC019 | RDVBL | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Vertical Blanking (E:1=drawing G:0=drawing) |
-| 0xC019 | RSTVBL | A2c,A2cM | HI | RD | Reset Vertical Blanking Interrupt |
-| 0xC01A | RDTEXT | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Text/Graphics |
-| 0xC01B | RDMIXED | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Full Screen/Mixed Graphics |
-| 0xC01C | RDPAGE2 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Page 1/Page 2 |
-| 0xC01D | RDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of LoRes/HiRes |
-| 0xC01E | RDALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Primary/Alternate Character Set |
-| 0xC01F | RD80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of 40/80 Columns |
-| 0xC020 | TAPEOUT | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | HI | RD | Toggle Cassette Tape Output |
-| 0xC021 | MONOCOLOR | A2G3,A2GS | HI | WR,BI | Color/Mono |
-| 0xC022 | TBCOLOR | A2G3,A2GS | HI | RG | Screen Color: Low Nibble is BG, High Nibble is Text |
-| 0xC023 | VGCINT | A2G3,A2GS | HI | RG | Video Graphics Controller Interrupts: b0-2=ext,scan,1sec enable b4-7=ext,scan,1sec,VGC |
-| 0xC024 | MOUSEDATA | A2G3,A2GS | HI | RG | Mouse Data: High Bit is Button, Other Bits are Movement |
-| 0xC025 | KEYMODREG | A2G3,A2GS | HI | RG | Modifier Keys: Bit 7: Command, Bit 6: Option, Bit 5: NotUsed, Bit 4: Keypad, Bit 3: Repeat,  Bit 2: Caps, Bit 1: Control, Bit 0: Shift |
-| 0xC026 | DATAREG | A2G3,A2GS | HI | RG | ADB Command/Data b0-2=# b3=valid b4=clr buf b5=reboot b6=abort b7=status |
-| 0xC027 | KMSTATUS | A2G3,A2GS | HI | RG | ADB Status: b0=cmdFull b1=mouseX b2=keyIntr b3=key b4=cmdIntr b5=data 6=mouseInt 7=mouse |
-| 0xC028 | ROMBANK | | HI |  | ROM bank select toggle |
-| 0xC029 | NEWVIDEO | A2G3,A2GS | HI | RG | New Video: 129=SHR, 1=None, Bit 6=Linearize, Bit 5=BW |
-| 0xC02B | LANGSEL | A2G3,A2GS | HI |  | Bit 3=Secondary Bit 4=50Hz Bits 5-7=Display Language |
-| 0xC02C | CHARROM |  | HI |  | Addr for test mode read of character ROM |
-| 0xC02D | SLTROMSEL | A2G3,A2GS | HI |  | Slot Register; Bits 1-7=use slot card |
-| 0xC02E | VERTCNT | | HI |  | Addr for read of video cntr bits V5-VB |
-| 0xC02F | HORIZCNT | | HI |  | Addr for read of video cntr bits VA-H0 |
-| 0xC030 | 48200 SPKR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | RD | Toggle Speaker |
-| 0xC031 | DISKREG | A2G3,A2GS | HI |  | Disk Interface: Bit 6=3.5 Bit 7=RWHead 1 |
-| 0xC032 | SCANINT | A2G3,A2GS | HI | RG | VGC Interrupt-Clear |
-| 0xC033 | CLOCKDATA | A2G3,A2GS | HI |  | Interface to Battery RAM (undocumented) |
-| 0xC034 | CLOCKCTL | A2G3,A2GS | HI |  | b0-3=borderColor b5=stopBit b6=read b7=start |
-| 0xC035 | SHADOW | A2G3,A2GS | HI |  | Inhibit Shadowing: Bit 6: I/O Memory, Bit 5: Alternate, Display Mode, Bit 4: Auxilary HGR, Bit 3: Super HiRes, Bit 2: HiRes, Page 2, Bit 1: HiRes Page 1, Bit 0: Text/LoRes |
-| 0xC036 | CYAREG | A2G3,A2GS | HI |  | Bits 0-3=Disk Detect Bit 4=Shadow All Banks Bit 7=Fast |
-| 0xC037 | BMAREG | A2G3,A2GS | HI |  | Bit 5=BW |
-| 0xC038 | SCCBREG | A2G3,A2GS | HI |  | SCC Command Channel B |
-| 0xC039 | SCCAREG | A2G3,A2GS | HI |  | SCC Command Channel A |
-| 0xC03A | SCCBDATA | A2G3,A2GS | HI |  | SCC Data Channel B |
-| 0xC03B | SCCADATA | A2G3,A2GS | HI |  | SCC Data Channel A |
-| 0xC03C | SOUNDCTL | A2G3,A2GS | HI | RG | Sound Settings: Bits 0-3=Volume Bit 5=AutoIncr Bit 6=RAM Bit 7=Busy |
-| 0xC03D | SOUNDDATA | A2G3,A2GS | HI |  | Sound Data |
-| 0xC03E | SOUNDADRL | A2G3,A2GS | HI |  | Address Pointer L |
-| 0xC03F | SOUNDADRH | A2G3,A2GS | HI |  | Address Pointer H |
-| 0xC040 | STROBE | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | HI | RD | Game I/O Strobe Output |
-| 0xC040 | RDXYMSK | A2c,A2cM | HI | RD,BI | Read X0/Y0 Interrupt |
-| 0xC040 | BEEPER | A3,A3P,A3R | HI | RD | Sound hardware beeperC041 RDVBLMSK       C    R7  Read VBL Interrupt |
-| 0xC042 | RDX0EDGE | A2c,A2cM | HI | RD,BI | Read X0 Edge Selector |
-| 0xC043 | RDY0EDGE | A2c,A2cM | HI | RD,BI | Read Y0 Edge Selector |
-| 0xC044 | MMDELTAX | A2G3,A2GS | HI | RG | Mega II Mouse Delta Movement X |
-| 0xC045 | MMDELTAY | A2G3,A2GS | HI | RG | Mega II Mouse Delta Movement Y |
-| 0xC046 | DIAGTYPE | | HI |  | Self or Burn-In diagdistics: Bit 7=burn-in diag |
-| 0xC046 | INTFLAG | | HI |  | b0=IRQ b1=MMmov b2=MMbut b3=VBL b4=qsec b5=AN3 b6=mouse was down b7=mouse is down |
-| 0xC047 | CLRVBLINT | | HI |  | Clear VBL Interrupt |
-| 0xC048 | CLRXYINT | | HI |  | Clear MM Interrupt |
-| 0xC048 | RSTXY | A2c,A2cM | HI | WR,RD | Reset X and Y Interrupts |
-| 0xC04E | CHRDIS | A3,A3P,A3R | HI | WR,RD | Character Ram Disable |
-| 0xC04F | EMUBYTE | | HI | WR,RD | Emulation ID byte: write once, then read once for program being used, read again for version number. $FE=Bernie, $16=Sweet16, $4B=KEGS, $AB=Appleblossom |
-| 0xC04F | CHREN | A3,A3P,A3R | HI | WR,RD | Character Ram Enable |
-| 0xC050 | TXTCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Graphics |
-| 0xC051 | TXTSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Text |
-| 0xC052 | MIXCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Full Screen |
-| 0xC053 | MIXSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Split Screen |
-| 0xC054 | TXTPAGE1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Page 1 |
-| 0xC055 | TXTPAGE2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | If 80STORE Off: Display Page 2 |
-| 0xC056 | LORES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display LoRes Graphics |
-| 0xC057 | HIRES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display HiRes Graphics |
-| 0xC058 | CLRAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 0 Off |
-| 0xC058 | DISXY | A2c,A2cM | HI | WR,RD | If IOUDIS on: Mask X0/Y0 Move Interrupts |
-| 0xC059 | SETAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 0 On |
-| 0xC059 | ENBXY | A2c,A2cM | HI | WR,RD | If IOUDIS on: Allow X0/Y0 Move Interrupts |
-| 0xC05A | CLRAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 1 Off |
-| 0xC05A | DISVBL | A2c,A2cM | HI | WR,RD | If IOUDIS on: Disable VBL Interrupts |
-| 0xC05B | SETAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 1 On |
-| 0xC05B | ENVBL | A2c,A2cM | HI | WR,RD | If IOUDIS on: Enable VBL Interrupts |
-| 0xC05C | CLRAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 2 Off |
-| 0xC05C | X0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on X0 Rising |
-| 0xC05D | SETAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 2 On |
-| 0xC05D | X0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on X0 Falling |
-| 0xC05E | CLRAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 3 Off |
-| 0xC05E | Y0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on Y0 Rising |
-| 0xC05E | DHIRESON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A3,A3P,A3R<br>,A2G3,A2GS | HI | WR,RD | In 80-Column Mode: Double Width Graphics |
-| 0xC05F | SETAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 3 On |
-| 0xC05F | Y0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on Y0 Falling |
-| 0xC05F | DHIRESOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR,RD | In 80-Column Mode: Single Width Graphics |
-| 0xC060 | TAPEIN | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | HI | RD,BI | Read Cassette Input |
-| 0xC060 | COL80SW | A2c,A2cM,A3,A3P<br>,A3R | HI | RD,BI | Status of 80/40 Column Switch |
-| 0xC060 | BUTN3 | A2G3,A2GS | HI | RD,BI | Switch Input 3 |
-| 0xC061 | RDBTN0 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Switch Input 0 / Open Apple |
-| 0xC062 | BUTN1 | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Switch Input 1 / Solid Apple |
-| 0xC063 | RD63 | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Switch Input 2 / Shift Key |
-| 0xC063 | RDMOUBTN | A2c,A2cM | HI | RD,BI | Bit 7 = Mouse Button Not Pressed |
-| 0xC064 | PADDL0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD,BI | Analog Input 0 |
-| 0xC065 | PADDL1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD,BI | Analog Input 1 |
-| 0xC066 | PADDL2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | HI | RD,BI | Analog Input 2 |
-| 0xC066 | RDMOUX1 | A2c,A2cM | HI | RD,BI | Mouse Horiz Position |
-| 0xC067 | PADDL3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | HI | RD,BI | Analog Input 3 |
-| 0xC067 | RDMOUY1 | A2c,A2cM | HI | RD,BI | Mouse Vert Position |
-| 0xC068 | STATEREG | A2G3,A2GS | HI | RG | b0=INTCXROM b1=ROMBANK b2=LCBNK2 b3=RDROM b4=RAMWRT b5=RAMRD b6=PAGE2 b7=ALTZP |
-| 0xC06D | TESTREG | | HI |  | Test Mode Bit Register |
-| 0xC06E | CLRTM | | HI |  | Clear Test Mode |
-| 0xC06F | ENTM | | HI |  | Enable Test Mode |
-| 0xC070 | PTRIG | A2E,A2Ee,A2eP | HI | RD | Analog Input Reset |
-| 0xC070 | PTRIG | A2c,A2cM | HI | WR,RD | Analog Input Reset + Reset VBLINT Flag |
-| 0xC070 | PTRIG | A3,A3P,A3R | HI | WR,RD | Access Real Time Clock |
-| 0xC073 | BANKSEL | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Memory Bank Select for > 128K |
-| 0xC077 | BLOSSOM | | HI | WR | Appleblossom Special I/O Address $C1=Install clock driver, $CC=Get time in input buffer, $CF=get time in ProDOS global page. |
-| 0xC078 | BLOSSOM | A2c,A2cM | HI | WR | Disable IOU Access |
-| 0xC079 | BLOSSOM | A2c,A2cM | HI | WR | Enable IOU Access |
-| 0xC07E | IOUDISON | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Disable IOU |
-| 0xC07E | RDIOUDIS | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of IOU Disabling |
-| 0xC07F | IOUDISOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Enable IOU |
-| 0xC07F | RDDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of Double HiRes |
+|[IOADDR]| Name | SYScode | Range\* | Behaviors\* | Description |
+| :----: | :--: | :------: | :---: | :--------: | :---------: |
+| $C000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
+| $C000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use $C002-$C005 for Aux Memory |
+| $C000 | KBDBUSA | | HI | | V Keyboard 'A' busdata |
+| $C001 | 80STOREON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use PAGE2 for Aux Memory |
+| $C002 | RDMAINRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Read Main Mem $0200-$BFFF |
+| $C003 | RDCARDRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Read Aux Mem $0200-$BFFF |
+| $C004 | WRMAINRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Write Main Mem $0200-$BFFF |
+| $C005 | WRCARDRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Write Aux Mem $0200-$BFFF |
+| $C006 | SETSLOTCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | Peripheral ROM ($C100-$CFFF) |
+| $C007 | SETINTCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | Internal ROM ($C100-$CFFF) |
+| $C008 | SETSTDZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Main Stack and Zero Page |
+| $C008 | KBDBUSB | | HI |  | V Keyboard 'B' busdata |
+| $C009 | SETALTZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Aux Stack and Zero Page |
+| $C00A | SETINTC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | ROM in Slot 3 |
+| $C00B | SETSLOTC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | ROM in Aux Slot |
+| $C00C | CLR80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | 40 Columns |
+| $C00D | SET80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | 80 Columns |
+| $C00E | CLRALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Primary Character Set |
+| $C00F | SETALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Alternate Character Set |
+| $C010 | KBDSTRB | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Keyboard Strobe |
+| $C011 | RDLCBNK2 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Selected $Dx Bank |
+| $C012 | RDLCRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of $Dx ROM / $Dx RAM |
+| $C013 | RDRAMRD | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux RAM Reading |
+| $C014 | RDRAMWRT | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux RAM Writing |
+| $C015 | RDCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Periph/ROM Access |
+| $C015 | RSTXINT | A2c,A2cM | HI | RD | Reset Mouse X0 Interrupt |
+| $C016 | RDALTZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux Stack and Zero Page |
+| $C017 | RDC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Slot 3/Aux Slot ROM |
+| $C017 | RSTYINT | A2c,A2cM | HI | RD | Reset Mouse Y0 Interrupt |
+| $C018 | RD80STORE | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of $C002-$C005/PAGE2 for Aux Mem |
+| $C019 | RDVBL | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Vertical Blanking (E:1=drawing G:0=drawing) |
+| $C019 | RSTVBL | A2c,A2cM | HI | RD | Reset Vertical Blanking Interrupt |
+| $C01A | RDTEXT | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Text/Graphics |
+| $C01B | RDMIXED | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Full Screen/Mixed Graphics |
+| $C01C | RDPAGE2 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Page 1/Page 2 |
+| $C01D | RDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of LoRes/HiRes |
+| $C01E | RDALTCHAR | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Primary/Alternate Character Set |
+| $C01F | RD80VID | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of 40/80 Columns |
+| $C020 | TAPEOUT | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | HI | RD | Toggle Cassette Tape Output |
+| $C021 | MONOCOLOR | A2G3,A2GS | HI | WR,BI | Color/Mono |
+| $C022 | TBCOLOR | A2G3,A2GS | HI | RG | Screen Color: Low Nibble is BG, High Nibble is Text |
+| $C023 | VGCINT | A2G3,A2GS | HI | RG | Video Graphics Controller Interrupts: b0-2=ext,scan,1sec enable b4-7=ext,scan,1sec,VGC |
+| $C024 | MOUSEDATA | A2G3,A2GS | HI | RG | Mouse Data: High Bit is Button, Other Bits are Movement |
+| $C025 | KEYMODREG | A2G3,A2GS | HI | RG | Modifier Keys: Bit 7: Command, Bit 6: Option, Bit 5: NotUsed, Bit 4: Keypad, Bit 3: Repeat,  Bit 2: Caps, Bit 1: Control, Bit 0: Shift |
+| $C026 | DATAREG | A2G3,A2GS | HI | RG | ADB Command/Data b0-2=# b3=valid b4=clr buf b5=reboot b6=abort b7=status |
+| $C027 | KMSTATUS | A2G3,A2GS | HI | RG | ADB Status: b0=cmdFull b1=mouseX b2=keyIntr b3=key b4=cmdIntr b5=data 6=mouseInt 7=mouse |
+| $C028 | ROMBANK | | HI |  | ROM bank select toggle |
+| $C029 | NEWVIDEO | A2G3,A2GS | HI | RG | New Video: 129=SHR, 1=None, Bit 6=Linearize, Bit 5=BW |
+| $C02B | LANGSEL | A2G3,A2GS | HI |  | Bit 3=Secondary Bit 4=50Hz Bits 5-7=Display Language |
+| $C02C | CHARROM |  | HI |  | Addr for test mode read of character ROM |
+| $C02D | SLTROMSEL | A2G3,A2GS | HI |  | Slot Register; Bits 1-7=use slot card |
+| $C02E | VERTCNT | | HI |  | Addr for read of video cntr bits V5-VB |
+| $C02F | HORIZCNT | | HI |  | Addr for read of video cntr bits VA-H0 |
+| $C030 | 48200 SPKR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | RD | Toggle Speaker |
+| $C031 | DISKREG | A2G3,A2GS | HI |  | Disk Interface: Bit 6=3.5 Bit 7=RWHead 1 |
+| $C032 | SCANINT | A2G3,A2GS | HI | RG | VGC Interrupt-Clear |
+| $C033 | CLOCKDATA | A2G3,A2GS | HI |  | Interface to Battery RAM (undocumented) |
+| $C034 | CLOCKCTL | A2G3,A2GS | HI |  | b0-3=borderColor b5=stopBit b6=read b7=start |
+| $C035 | SHADOW | A2G3,A2GS | HI |  | Inhibit Shadowing: Bit 6: I/O Memory, Bit 5: Alternate, Display Mode, Bit 4: Auxilary HGR, Bit 3: Super HiRes, Bit 2: HiRes, Page 2, Bit 1: HiRes Page 1, Bit 0: Text/LoRes |
+| $C036 | CYAREG | A2G3,A2GS | HI |  | Bits 0-3=Disk Detect Bit 4=Shadow All Banks Bit 7=Fast |
+| $C037 | BMAREG | A2G3,A2GS | HI |  | Bit 5=BW |
+| $C038 | SCCBREG | A2G3,A2GS | HI |  | SCC Command Channel B |
+| $C039 | SCCAREG | A2G3,A2GS | HI |  | SCC Command Channel A |
+| $C03A | SCCBDATA | A2G3,A2GS | HI |  | SCC Data Channel B |
+| $C03B | SCCADATA | A2G3,A2GS | HI |  | SCC Data Channel A |
+| $C03C | SOUNDCTL | A2G3,A2GS | HI | RG | Sound Settings: Bits 0-3=Volume Bit 5=AutoIncr Bit 6=RAM Bit 7=Busy |
+| $C03D | SOUNDDATA | A2G3,A2GS | HI |  | Sound Data |
+| $C03E | SOUNDADRL | A2G3,A2GS | HI |  | Address Pointer L |
+| $C03F | SOUNDADRH | A2G3,A2GS | HI |  | Address Pointer H |
+| $C040 | STROBE | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | HI | RD | Game I/O Strobe Output |
+| $C040 | RDXYMSK | A2c,A2cM | HI | RD,BI | Read X0/Y0 Interrupt |
+| $C040 | BEEPER | A3,A3P,A3R | HI | RD | Sound hardware beeperC041 RDVBLMSK       C    R7  Read VBL Interrupt |
+| $C042 | RDX0EDGE | A2c,A2cM | HI | RD,BI | Read X0 Edge Selector |
+| $C043 | RDY0EDGE | A2c,A2cM | HI | RD,BI | Read Y0 Edge Selector |
+| $C044 | MMDELTAX | A2G3,A2GS | HI | RG | Mega II Mouse Delta Movement X |
+| $C045 | MMDELTAY | A2G3,A2GS | HI | RG | Mega II Mouse Delta Movement Y |
+| $C046 | DIAGTYPE | | HI |  | Self or Burn-In diagdistics: Bit 7=burn-in diag |
+| $C046 | INTFLAG | | HI |  | b0=IRQ b1=MMmov b2=MMbut b3=VBL b4=qsec b5=AN3 b6=mouse was down b7=mouse is down |
+| $C047 | CLRVBLINT | | HI |  | Clear VBL Interrupt |
+| $C048 | CLRXYINT | | HI |  | Clear MM Interrupt |
+| $C048 | RSTXY | A2c,A2cM | HI | WR,RD | Reset X and Y Interrupts |
+| $C04E | CHRDIS | A3,A3P,A3R | HI | WR,RD | Character Ram Disable |
+| $C04F | EMUBYTE | | HI | WR,RD | Emulation ID byte: write once, then read once for program being used, read again for version number. $FE=Bernie, $16=Sweet16, $4B=KEGS, $AB=Appleblossom |
+| $C04F | CHREN | A3,A3P,A3R | HI | WR,RD | Character Ram Enable |
+| $C050 | TXTCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Graphics |
+| $C051 | TXTSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Text |
+| $C052 | MIXCLR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Full Screen |
+| $C053 | MIXSET | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Split Screen |
+| $C054 | TXTPAGE1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display Page 1 |
+| $C055 | TXTPAGE2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | If 80STORE Off: Display Page 2 |
+| $C056 | LORES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display LoRes Graphics |
+| $C057 | HIRES | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | WR,RD | Display HiRes Graphics |
+| $C058 | CLRAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 0 Off |
+| $C058 | DISXY | A2c,A2cM | HI | WR,RD | If IOUDIS on: Mask X0/Y0 Move Interrupts |
+| $C059 | SETAN0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 0 On |
+| $C059 | ENBXY | A2c,A2cM | HI | WR,RD | If IOUDIS on: Allow X0/Y0 Move Interrupts |
+| $C05A | CLRAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 1 Off |
+| $C05A | DISVBL | A2c,A2cM | HI | WR,RD | If IOUDIS on: Disable VBL Interrupts |
+| $C05B | SETAN1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 1 On |
+| $C05B | ENVBL | A2c,A2cM | HI | WR,RD | If IOUDIS on: Enable VBL Interrupts |
+| $C05C | CLRAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 2 Off |
+| $C05C | X0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on X0 Rising |
+| $C05D | SETAN2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 2 On |
+| $C05D | X0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on X0 Falling |
+| $C05E | CLRAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A3,A3P,A3R,A2G3<br>,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 3 Off |
+| $C05E | Y0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on Y0 Rising |
+| $C05E | DHIRESON | A2E,A2Ee,A2eP,A2c<br>,A2cM,A3,A3P,A3R<br>,A2G3,A2GS | HI | WR,RD | In 80-Column Mode: Double Width Graphics |
+| $C05F | SETAN3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | HI | WR,RD | If IOUDIS off: Annunciator 3 On |
+| $C05F | Y0EDGE | A2c,A2cM | HI | WR,RD | If IOUDIS on: Interrupt on Y0 Falling |
+| $C05F | DHIRESOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR,RD | In 80-Column Mode: Single Width Graphics |
+| $C060 | TAPEIN | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP | HI | RD,BI | Read Cassette Input |
+| $C060 | COL80SW | A2c,A2cM,A3,A3P<br>,A3R | HI | RD,BI | Status of 80/40 Column Switch |
+| $C060 | BUTN3 | A2G3,A2GS | HI | RD,BI | Switch Input 3 |
+| $C061 | RDBTN0 | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Switch Input 0 / Open Apple |
+| $C062 | BUTN1 | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Switch Input 1 / Solid Apple |
+| $C063 | RD63 | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Switch Input 2 / Shift Key |
+| $C063 | RDMOUBTN | A2c,A2cM | HI | RD,BI | Bit 7 = Mouse Button Not Pressed |
+| $C064 | PADDL0 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD,BI | Analog Input 0 |
+| $C065 | PADDL1 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD,BI | Analog Input 1 |
+| $C066 | PADDL2 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | HI | RD,BI | Analog Input 2 |
+| $C066 | RDMOUX1 | A2c,A2cM | HI | RD,BI | Mouse Horiz Position |
+| $C067 | PADDL3 | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2G3,A2GS | HI | RD,BI | Analog Input 3 |
+| $C067 | RDMOUY1 | A2c,A2cM | HI | RD,BI | Mouse Vert Position |
+| $C068 | STATEREG | A2G3,A2GS | HI | RG | b0=INTCXROM b1=ROMBANK b2=LCBNK2 b3=RDROM b4=RAMWRT b5=RAMRD b6=PAGE2 b7=ALTZP |
+| $C06D | TESTREG | | HI |  | Test Mode Bit Register |
+| $C06E | CLRTM | | HI |  | Clear Test Mode |
+| $C06F | ENTM | | HI |  | Enable Test Mode |
+| $C070 | PTRIG | A2E,A2Ee,A2eP | HI | RD | Analog Input Reset |
+| $C070 | PTRIG | A2c,A2cM | HI | WR,RD | Analog Input Reset + Reset VBLINT Flag |
+| $C070 | PTRIG | A3,A3P,A3R | HI | WR,RD | Access Real Time Clock |
+| $C073 | BANKSEL | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Memory Bank Select for > 128K |
+| $C077 | BLOSSOM | | HI | WR | Appleblossom Special I/O Address $C1=Install clock driver, $CC=Get time in input buffer, $CF=get time in ProDOS global page. |
+| $C078 | BLOSSOM | A2c,A2cM | HI | WR | Disable IOU Access |
+| $C079 | BLOSSOM | A2c,A2cM | HI | WR | Enable IOU Access |
+| $C07E | IOUDISON | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Disable IOU |
+| $C07E | RDIOUDIS | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of IOU Disabling |
+| $C07F | IOUDISOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Enable IOU |
+| $C07F | RDDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of Double HiRes |
 
+\* Behavior: RD = Soft switch triggerd by read operation, WR = Soft switch triggered by write operation, RR = Soft switch triggered by double/multiple read operation, BI = Bit 7, RG = Register
+
+\* Range: HI = HostIO, HR = HostROM, SI = SlotIO, SR = SlotROM
 
 ## PERIPHERALS LIST
 
-|[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYSrange    | Manuals       |
+|[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYScode     | Manuals       |
 | :-----: | :----------------------------------- | :-------------- | :------------|:----------- |:------------- |
 | MS16K   | Microsoft 16K Language card          |                 | 0            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
-| DISKII  | Apple Disk II Floppy Disk Subsystem  |     $Cn00, $CnFF| 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
-| VIDEX  | Videx Videoterm 80 Column Display  |     $C800, $CFFF| 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
+| DISKII  | Apple Disk II Floppy Disk Subsystem  | $Cn00,$CnFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
+| VIDEX  | Videx Videoterm 80 Column Display  | $C800,$CFFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
 
 \* n = slot number on which the card is installed
 
