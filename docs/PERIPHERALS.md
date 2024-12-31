@@ -4,7 +4,7 @@ As we can ignore the electrical and signal layer of the peripheral interface, ou
 We only need to mind about the memory map dedicated to I/O, called memory-mapped I/O, which is exactly 4K wide  (between $C000 - $D000). Here is an enlarged map of this memory space :
 
           <div style=width:800px>
-     D000 ┌────────────────────────────────────┐   ▲                  ▲f
+     D000 ┌────────────────────────────────────┐   ▲                  ▲
           │                                    │   │                  │
           │   Open for large ROM programs      │  2048 Bytes HOST ROM │
           │   Activated by I/O strobe (pin 20) │   │                  │
