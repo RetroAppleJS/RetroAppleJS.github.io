@@ -65,7 +65,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## I/O RANGES
 
-|[IORANGES]            | HostIO        | HostROM       | SlotIO             | SlotROM             |
+|[IORANGES]            | HostIO (HI)   | HostROM (HR)  | SlotIO (SI)        | SlotROM (SR)        |
 | :------------------: | :-----------: | :-----------: | :----------------: | :-----------------: |
 | A1                   | $D010-$D013 |               |                    |                     |
 | A2,A2P,A2PE,A2JP,A2B | $C000-$C07F | $C800-$CFFF | $C080-$C0F0/0x10 | $C080-$C0F0/0x100 |
