@@ -217,7 +217,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC07F | IOUDISOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Enable IOU |
 | 0xC07F | RDDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of Double HiRes |
 
-\* RD = soft switch triggerd by read operation, WR = soft switch triggered by write operation, BI = Value at bit 7
+\* RD = Soft switch triggerd by read operation, WR = Soft switch triggered by write operation, RR = Soft switch triggered by double/multiple read operation, BI = Bit 7, RG = Register 
 
 ## PERIPHERALS LIST
 
