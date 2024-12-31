@@ -217,9 +217,9 @@ We aim to have all the documentation available in markdown format, for easy onli
 | $C07F | IOUDISOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Enable IOU |
 | $C07F | RDDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of Double HiRes |
 
-\* RD = Soft switch triggerd by read operation, WR = Soft switch triggered by write operation, RR = Soft switch triggered by double/multiple read operation, BI = Bit 7, RG = Register
+\* Behavior: RD = Soft switch triggerd by read operation, WR = Soft switch triggered by write operation, RR = Soft switch triggered by double/multiple read operation, BI = Bit 7, RG = Register
 
-\* HI = HostIO, HR = HostROM, SI = SlotIO, SR = SlotROM
+\* Range: HI = HostIO, HR = HostROM, SI = SlotIO, SR = SlotROM
 
 ## PERIPHERALS LIST
 
