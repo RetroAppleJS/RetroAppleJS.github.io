@@ -41,6 +41,7 @@ function Apple2IO(vid)
                         0x700];
     const SLT_PROM_SIZE = 0x100;     
 
+    /*
     const KEY_DATA =    0x00,
         KEY_STROBE =    0x10,
         CASS_TOGGLE =   0x20,
@@ -63,6 +64,7 @@ function Apple2IO(vid)
         ANALOG_IN2 =    0x66,
         ANALOG_IN3 =    0x67,
         ANALOG_CLR =    0x70;
+    */
 
     // MAP DISK I/O TO SLOT#6 MEMORY
     var DISK_IO =       SLOT_IO[6],
@@ -378,7 +380,7 @@ function Apple2IO(vid)
             
         }
 
-        console.log(IOMAP_TBL);
+        console.log(JSON.stringify(IOMAP_TBL));
 
         var s = ""
         for(var i=0;i<IOMAP_TBL.length;i++)
