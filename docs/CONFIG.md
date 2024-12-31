@@ -65,7 +65,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## I/O RANGES
 
-|[IORANGES]            | HostIO (HI)   | HostROM (HR)  | SlotIO (SI)        | SlotROM (SR)        |
+|[IORANGES]            | HostIO        | HostROM       | SlotIO             | SlotROM             |
 | :------------------: | :-----------: | :-----------: | :----------------: | :-----------------: |
 | A1                   | 0xD010-0xD013 |               |                    |                     |
 | A2,A2P,A2PE,A2JP,A2B | 0xC000-0xC07F | 0xC800-0xCFFF | 0xC080-0xC0F0/0x10 | 0xC080-0xC0F0/0x100 |
@@ -223,8 +223,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 |[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYSrange    | Manuals       |
 | :-----: | :----------------------------------- | :-------------- | :------------|:----------- |:------------- |
 | MS16K   | Microsoft 16K Language card          |                 | 0            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
-| DISKII  | Apple Disk II Floppy Disk Subsystem  |     $Cn00, $CnFF| 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
-| VIDEX  | Videx Videoterm 80 Column Display  |     $C800, $CFFF| 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
+| DISKII  | Apple Disk II Floppy Disk Subsystem  | 0xCn00-0xCnFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
+| VIDEX  | Videx Videoterm 80 Column Display  | 0xC800-0xCFFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
 
 \* n = slot number on which the card is installed
 
