@@ -1,3 +1,4 @@
-
+.DS_Store
+res/.DS_Store
 res/Thumbs.db
 .idea/workspace.xml
