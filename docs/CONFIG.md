@@ -76,7 +76,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## I/O ADDRESS MAP
 
-|[IOADDR]| Name | Syscodes | Range | Behaviors | Description |
+|[IOADDR]| Name | SYScode | Range | Behaviors | Description |
 | :----: | :--: | :------: | :---: | :-------: | :---------: |
 | 0xC000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
 | 0xC000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use $C002-$C005 for Aux Memory |
@@ -220,7 +220,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## PERIPHERALS LIST
 
-|[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYSrange    | Manuals       |
+|[PCODE]| NAME                                   | ROMrange\*      | SLOTrange    | SYScode     | Manuals       |
 | :-----: | :----------------------------------- | :-------------- | :------------|:----------- |:------------- |
 | MS16K   | Microsoft 16K Language card          |                 | 0            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
 | DISKII  | Apple Disk II Floppy Disk Subsystem  | 0xCn00-0xCnFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
