@@ -6,37 +6,37 @@ We only need to mind about the memory map dedicated to I/O, called memory-mapped
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲                  ▲f
           │                                    │   │                  │
-          │   Open for large ROM programs      │  2048 Bytes          │
+          │   Open for large ROM programs      │  2048 Bytes HOST ROM │
           │   Activated by I/O strobe (pin 20) │   │                  │
           │                                    │   │                  │
      C800 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#7           │   │                  │
-          │                                    │  256 Bytes           │
+          │                                    │  256 Bytes SLOT ROM  │
      C700 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#6           │   │                  │
-          │                                    │  256 Bytes           │
+          │                                    │  256 Bytes SLOT ROM  │
      C600 ├────────────────────────────────────┤  ─┘                 4096 bytes
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#5           │   │                  │
-          │                                    │  256 Bytes           │
+          │                                    │  256 Bytes SLOT ROM  │
      C500 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#4           │   │                  │
-          │                                    │  256 Bytes           │
+          │                                    │  256 Bytes SLOT ROM  │
      C400 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#3           │   │                  │
-          │                                    │  256 Bytes           │
+          │                                    │  256 Bytes SLOT ROM  │
      C300 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#2           │   │                  │
-          │                                    │  256 Bytes           │
+          │                                    │  256 Bytes SLOT ROM  │
      C200 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#1           │   │                  │
-          │  (No mem mapped for slot#0)        │  256 Bytes           │
+          │  (No mem mapped for slot#0)        │  256 Bytes SLOT ROM  │
      C100 └────┬───────────────────────────────┤  ─┘                  │
           C0F0 │ I/O slot #7  ─┐               │   ▲                  │
           C0E0 │ I/O slot #6  ─┘ 16 Bytes      │   │                  │
