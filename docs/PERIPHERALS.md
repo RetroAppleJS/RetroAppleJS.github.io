@@ -40,7 +40,7 @@ We only need to mind about the memory map dedicated to I/O, called memory-mapped
      C100 └────┬───────────────────────────────┤  ─┘                  │
           C0F0 │ I/O slot #7  ─┐               │   ▲                  │
           C0E0 │ I/O slot #6  ─┘ 16 Bytes      │   │                  │
-          C0D0 │ I/O slot #5                   │  128 Bytes           │
+          C0D0 │ I/O slot #5                   │  128 Bytes SLOT I/O  │
           C0C0 │ I/O slot #4     X 8           │   │                  │
           C0B0 │ I/O slot #3                   │   │                  │
           C0A0 │ I/O slot #2                   │   │                  │
@@ -48,7 +48,7 @@ We only need to mind about the memory map dedicated to I/O, called memory-mapped
           C080 │ I/O slot #0                   │   │                  │
      C080 ┌────┴───────────────────────────────┤  ─┘                  │
           │  Built-in I/O locations            │   ▲                  │
-          │  (keyboard,speaker,casette,game..  │  128 Bytes           │
+          │  (keyboard,speaker,casette,game..  │  128 Bytes HOST I/O  │
      C000 └────────────────────────────────────┘  ─┘                  ▼
   
 
