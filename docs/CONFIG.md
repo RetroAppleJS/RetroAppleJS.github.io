@@ -76,8 +76,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## I/O ADDRESS MAP
 
-|[IOADDR]| Name | SYScode | Range | Behaviors | Description |
-| :----: | :--: | :------: | :---: | :-------: | :---------: |
+|[IOADDR]| Name | SYScode | Range | Behaviors\* | Description |
+| :----: | :--: | :------: | :---: | :--------: | :---------: |
 | 0xC000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
 | 0xC000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use $C002-$C005 for Aux Memory |
 | 0xC000 | KBDBUSA | | HI | | V Keyboard 'A' busdata |
@@ -217,6 +217,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | 0xC07F | IOUDISOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | WR | Enable IOU |
 | 0xC07F | RDDHIRES | A2E,A2Ee,A2eP,A2c<br>,A2cM | HI | RD,BI | Status of Double HiRes |
 
+\* RD = soft switch triggerd by read operation, WR = soft switch triggered by write operation, BI = Value at bit 7
 
 ## PERIPHERALS LIST
 
