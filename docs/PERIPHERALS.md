@@ -6,41 +6,41 @@ We only need to mind about the memory map dedicated to I/O, called memory-mapped
           <div style=width:800px>
      D000 ┌────────────────────────────────────┐   ▲                  ▲
           │                                    │   │                  │
-          │   Open for large ROM programs      │  2048 Bytes HOST ROM │
+          │   Open for large ROM programs      │  2048 Bytes HostROM  │
           │   Activated by I/O strobe (pin 20) │   │                  │
           │                                    │   │                  │
      C800 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#7           │   │                  │
-          │                                    │  256 Bytes SLOT ROM  │
+          │                                    │  256 Bytes SlotROM   │
      C700 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#6           │   │                  │
-          │                                    │  256 Bytes SLOT ROM  │
+          │                                    │  256 Bytes SlotROM   │
      C600 ├────────────────────────────────────┤  ─┘                 4096 bytes
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#5           │   │                  │
-          │                                    │  256 Bytes SLOT ROM  │
+          │                                    │  256 Bytes SlotROM   │
      C500 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#4           │   │                  │
-          │                                    │  256 Bytes SLOT ROM  │
+          │                                    │  256 Bytes SlotROM   │
      C400 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#3           │   │                  │
-          │                                    │  256 Bytes SLOT ROM  │
+          │                                    │  256 Bytes SlotROM   │
      C300 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#2           │   │                  │
-          │                                    │  256 Bytes SLOT ROM  │
+          │                                    │  256 Bytes SlotROM   │
      C200 ├────────────────────────────────────┤  ─┘                  │
           │                                    │   ▲                  │
           │  RAM/ROM open for slot#1           │   │                  │
-          │  (No mem mapped for slot#0)        │  256 Bytes SLOT ROM  │
+          │  (No mem mapped for slot#0)        │  256 Bytes SlotROM   │
      C100 └────┬───────────────────────────────┤  ─┘                  │
           C0F0 │ I/O slot #7  ─┐               │   ▲                  │
           C0E0 │ I/O slot #6  ─┘ 16 Bytes      │   │                  │
-          C0D0 │ I/O slot #5                   │  128 Bytes SLOT I/O  │
+          C0D0 │ I/O slot #5                   │  128 Bytes SlotIO    │
           C0C0 │ I/O slot #4     X 8           │   │                  │
           C0B0 │ I/O slot #3                   │   │                  │
           C0A0 │ I/O slot #2                   │   │                  │
@@ -48,7 +48,7 @@ We only need to mind about the memory map dedicated to I/O, called memory-mapped
           C080 │ I/O slot #0                   │   │                  │
      C080 ┌────┴───────────────────────────────┤  ─┘                  │
           │  Built-in I/O locations            │   ▲                  │
-          │  (keyboard,speaker,casette,game..  │  128 Bytes HOST I/O  │
+          │  (keyboard,speaker,casette,game..  │  128 Bytes HostIO    │
      C000 └────────────────────────────────────┘  ─┘                  ▼
   
 
