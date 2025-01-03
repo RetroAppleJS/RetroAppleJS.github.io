@@ -130,7 +130,8 @@ function keycap_over(t) { t.classList.replace("keycap","selected") }
 function keycap_out(t) { t.classList.replace("selected","keycap") }
 function keycap_click(t)
 {
-   console.log("");const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);
+   console.log("");
+   const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);
    var mash = "";
    for(const match of matches)
    {
@@ -191,6 +192,66 @@ function isAssoc(av,val)
    return false;
 }
 
+
+function traverseDOM(root_elementId, depth = 0)
+{
+   // Find the starting element by ID
+   const startElement = document.getElementById(root_elementId);
+   if (!startElement) {
+      console.error(`Element with ID "${elementId}" not found.`);
+      return;
+   }
+
+   // Recursive function to traverse the DOM
+   function traverse(node, currentDepth)
+   {
+      // Log the current node and its depth
+
+      var att = node.attributes;
+      var kvp = {}; // key-value pair
+      for(var i=0;i<att.length;i++)
+         kvp[att[i].name] = att[i].value;
+
+      if(m_match(kvp))
+      {
+
+         //var txt = getDeepestNodeContent(node)
+
+         keycap_click(node)
+
+      }
+      // Recursively traverse child nodes
+      node.childNodes.forEach(child => {
+         if (child.nodeType === Node.ELEMENT_NODE) { // Check for element nodes
+               traverse(child, currentDepth + 1);
+         }
+      });
+   }
+
+   // Start traversal
+   traverse(startElement, depth);
+}
+
+function getDeepestNodeContent(node) 
+{
+    if (!node || !(node instanceof HTMLElement)) {
+        throw new Error("Invalid or null HTML element provided.");
+    }
+
+    let current = node;
+    while (current.firstElementChild) {
+        current = current.firstElementChild;
+    }
+
+    return current.textContent || current.innerText || ""; // Return the content of the deepest node
+}
+
+
+var m_match = function(kvp)
+{ 
+   return kvp.class == 'keylabels' 
+}
+
   </script>
 
 <div id=mapping style="width:130px;float:left;border:1px solid;font-family: monospace;">
@@ -202,3 +263,5 @@ function isAssoc(av,val)
    <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
    <div id=COM_popup_text></div>
  </div>
+
+ <button onclick="traverseDOM('glyphScroller',m_match)">DISCOVER</button>
