@@ -123,8 +123,6 @@ function A2Pkeys()
         if (data.charCode == 0 && trans[data.keyCode]>0 ) // ;
             code = trans[data.keyCode];
 
-        
-
         if (data.charCode == 0 && data.keyCode == 192) // comma
             code = 0x23;
 
@@ -181,7 +179,6 @@ function A2Pkeys()
 
     this.KbdCodeHandler = function(data)
     {
-
 
       var keymap = {0:[0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xB0,0xBA,0xAD,"RESET"],
                     1:[0x9B,0xD1,0xD7,0xC5,0xD2,0xD4,0xD9,0xD5,0xC9,0xCF,0xD0,"REPT",0x8D],
