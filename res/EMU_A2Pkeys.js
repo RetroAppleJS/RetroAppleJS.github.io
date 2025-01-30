@@ -435,7 +435,7 @@ function A2Pkeys()
 
     this.getKeyContent = function(el)
     {
-        var s = new Array();
+        var s = new Array(); if(el === undefined) { console.warn("this.getKeyContent did not receive element") }
         for(const match of el.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm))                     // loop through all 'keylabel' (class names) in HTML
             s.push( oCOM.stripHTML(el.getElementsByClassName(match[1])[0].firstElementChild.innerHTML) ) // add enclosed HTML tag content
         return s.join("")  
@@ -495,13 +495,13 @@ function A2Pkeys()
                     var d = {'code':_this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup===undefined?"":lookup.val},"A2_US"),'meta':_this.metaConvert({"key":lookup.val},1),'Hash16':Hash16,'lookup':lookup}
 
                     // Shift modifier
-                    if((d.meta & _this.events_data.metabitsEn["Shift"]) == _this.events_data.metabitsEn["Shift"])
+                    if((d.meta & _this.events_data.metabitsEn["Shift"]) == _this.events_data.metabitsEn["Shift"] && lookup["Shift"])
                         d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift"]},"A2_US");
 
                     // Control modifier
-                    if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"])
+                    if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"] && lookup["Control"] )
                     {
-                        d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift"]},"A2_US");
+                        d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
                     }
 
                     // TODO Shift-Control modifier
@@ -521,7 +521,8 @@ function A2Pkeys()
                             {
                                 d.meta &= ~(_this.events_data.metabitsEn[lo.val]) // reset (radio) metabit
                                 tt.style.opacity = "1";
-                                delete _this.events_data.postEvent[i]
+                                delete _this.events_data.postEvent[i];
+                                if(_this.events_data.postEvent[0] === undefined) _this.events_data.postEvent = [];
                             }
                         }
 
