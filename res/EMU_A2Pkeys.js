@@ -422,6 +422,8 @@ function A2Pkeys()
                     case "Backspace":       return 0x08 | 0x80;
                     case "Dead":            return 0x5E | 0x80;
                     case "Escape":          return 0x1B | 0x80;
+                    case "Reset":           apple2plus.reset(); return null;
+                    case "POWER":           apple2plus.restart(); return null;
                     default: return null;     
                 }
             }
@@ -472,6 +474,7 @@ function A2Pkeys()
                 var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.keyConvert(arg,"A2_US")}
                 this.setKey(d.code,d.meta,0);
                 if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))
+                arg.preventDefault();   // prevent browser side-effects while typing in window
                 break;
             case "applescreen_keyup":
                 var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.keyConvert(arg,"A2_US")}
@@ -510,8 +513,6 @@ function A2Pkeys()
                         if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"] && lookup["Control"] )
                             d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
                     }
-                    // TODO Shift-Control modifier
-                    
 
                     if(_this.events_data.postEvent.length>0)
                     {
@@ -530,7 +531,6 @@ function A2Pkeys()
                                 _this.events_data.postEvent.splice(i,1);
                             }
                         }
-
                     }
                     if(lookup.act == "toggle") t.style.opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";
                     if(lookup.act == "radio")
