@@ -1,4 +1,4 @@
-# Apple II+ emulator, assebler & debugger in JavaScript 
+# Apple II+ emulator, assembler & debugger in JavaScript 
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" />
 
@@ -95,13 +95,14 @@ This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502
 
 Currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list.
 feature details & status:
-- [x] AppleII+ keyboard pop-up image (onmouseover)
+- [x] AppleII+ [standard pop-up keyboard](https://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96)
 - [x] alphanumeric keys + ESC key + arrow keys + space bar + RETURN key
-- [x] POWER key
-- [x] RESET key
+- [ ] POWER key
+- [ ] RESET key
 - [ ] REPT key
-- [ ] SHIFT keys
-- [ ] CTRL key
+- [x] SHIFT keys
+- [x] CTRL key
+- [ ] SHIFT-CTRL combo
 
 Also to be considered: detect if host device is mouse-driven or touch-driven.  When touch-driven, hovering the keyboard is not possible without actioning a key.
 
