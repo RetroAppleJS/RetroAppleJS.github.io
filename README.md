@@ -1,4 +1,4 @@
-# Apple II+ emulator, assebler & debugger in JavaScript 
+# Apple II+ emulator, assembler & debugger in JavaScript 
 
 <img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" />
 
