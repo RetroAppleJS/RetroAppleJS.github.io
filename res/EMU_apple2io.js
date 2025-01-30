@@ -80,7 +80,8 @@ function Apple2IO(vid)
     
     if(typeof(oEMU.component.IO)!="undefined")
     {
-        var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
+        //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
+        var keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},cycle:function(){},keystroke:function(){},strobe:function(){},polling:function(){},events:function(){},KbdHTML:function(){},reset:function(){},lastkey:0x00},"A2Pkeys");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
         this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false},"RamCard");
         this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
