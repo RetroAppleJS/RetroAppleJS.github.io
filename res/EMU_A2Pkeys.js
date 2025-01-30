@@ -398,9 +398,12 @@ function A2Pkeys()
         var from = arg.type;
         var val  = arg.key;  if(val===undefined) return null;
 
+
         if(from=="keydown" && to=="A2_US"  // event -- _CFG_SYSCODE ==> keyfont
            || from=="click" && to=="A2_US")  // event -- _CFG_SYSCODE ==> keyfont
-        {
+           {
+            if(typeof(val)=="number") return val | 0x80;   // control characters are not translated
+
             if(arg.repeat==true) this.events_data.metabits[0] |= 0b100
 
             if(val.length==1 && (this.events_data.metabits[0] & this.events_data.metabitsEn["Control"])>0)
@@ -494,22 +497,25 @@ function A2Pkeys()
                     if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")")
                     var d = {'code':_this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup===undefined?"":lookup.val},"A2_US"),'meta':_this.metaConvert({"key":lookup.val},1),'Hash16':Hash16,'lookup':lookup}
 
-                    // Shift modifier
-                    if((d.meta & _this.events_data.metabitsEn["Shift"]) == _this.events_data.metabitsEn["Shift"] && lookup["Shift"])
-                        d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift"]},"A2_US");
-
-                    // Control modifier
-                    if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"] && lookup["Control"] )
+                    // Shift-Control modifier
+                    if((d.meta & _this.events_data.metabitsEn["Shift-Control"]) == _this.events_data.metabitsEn["Shift-Control"] && typeof(lookup["Shift-Control"])=="number" )
+                        d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift-Control"]},"A2_US");
+                    else
                     {
-                        d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
-                    }
+                        // Shift modifier
+                        if((d.meta & _this.events_data.metabitsEn["Shift"]) == _this.events_data.metabitsEn["Shift"] && lookup["Shift"])
+                            d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift"]},"A2_US");
 
+                        // Control modifier
+                        if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"] && lookup["Control"] )
+                            d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
+                    }
                     // TODO Shift-Control modifier
                     
 
                     if(_this.events_data.postEvent.length>0)
                     {
-                        for(var i=0;i<_this.events_data.postEvent.length;i++)
+                        for(var i=_this.events_data.postEvent.length-1;i>=0;i--)
                         {
                             var tt = _this.events_data.postEvent[i];
                             var h16 = _this.getKeyHash16(_this.getKeyContent(tt));
@@ -521,8 +527,7 @@ function A2Pkeys()
                             {
                                 d.meta &= ~(_this.events_data.metabitsEn[lo.val]) // reset (radio) metabit
                                 tt.style.opacity = "1";
-                                delete _this.events_data.postEvent[i];
-                                if(_this.events_data.postEvent[0] === undefined) _this.events_data.postEvent = [];
+                                _this.events_data.postEvent.splice(i,1);
                             }
                         }
 
