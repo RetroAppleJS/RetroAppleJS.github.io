@@ -31,10 +31,64 @@ function Apple2Plus(context)
     var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{getDataObj:function(){},update:function(){}},"AppleDisk");
 
+
+
+
+    this.pdata =
+    {
+        altKey: false
+        ,bubbles: true
+        ,cancelBubble: false
+        ,cancelable: true
+        ,charCode: 0
+        ,code: "KeyH"
+        ,composed: true
+        ,ctrlKey: false,
+        currentTarget: null
+        ,defaultPrevented: false
+        ,detail: 0
+        ,eventPhase: 0
+        ,isComposing: false
+        ,isTrusted: true
+        ,key: "h"
+        ,keyCode: 72
+        ,keyIdentifier: "U+0048"
+        ,layerX: 0
+        ,layerY: 0
+        ,location: 0
+        ,metaKey: false
+        ,pageX: 0
+        ,pageY: 0
+        ,repeat: false
+        ,returnValue: true
+        ,shiftKey: false
+        ,timeStamp: 121298
+        ,type: "keydown"
+        ,which: 72
+    }
+
+
+    function filterchange(data,pdata)
+    {
+        var mod = {}
+        var exclude = {"currentTarget":true,"eventPhase":true,"returnValue":true,"timeStamp":true,"defaultPrevented":true}
+        if(pdata === undefined) return data;
+
+        for(var o in data)
+        {
+            if(typeof(pdata[o])!="undefined" && data[o]!=pdata[o])
+                if(exclude[o] === undefined)
+                    mod[o] = data[o]
+        }
+        return mod;
+    }
+
     // override keys object
     keys.keystroke = function(data)
     {
-        console.log(data);
+        //console.log(data);
+        console.log(JSON.stringify(filterchange(data,this.pdata)));
+        this.pdata = data;
         
         if(this.isActive()==false) return; 
         if(data.type!="click")          // real keyboard or pasteboard ?

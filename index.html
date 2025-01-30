@@ -552,19 +552,18 @@
             </script>
 
             <!--input id=foo type=text oninput="apple2plus.keystroke(event)"    onclick=document.getElementById('foo').focus()-->
-            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onkeydown="keys.keystroke(event)"></canvas>
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onkeydown="oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
             <!--/input-->
 
             <div class="appdskLED" id="dskLED_D1" style="left:392px;top:666px"></div>
             <div class="appdskLED" id="dskLED_D2" style="left:750px;top:666px"></div>
 
-            <div id='kbd'></div>
-
-
-
-
-
-
+            <div id="kbd"></div>
+            <script>
+            var keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
+            var keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
+            var keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
+            </script>
 
 
             <!--
@@ -573,7 +572,7 @@
             -->
             <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
             <br>
-            <input id="debug" style="width:400px" value="">
+            <input hidden id="debug" style="width:400px" value="">
           </div>
 
 

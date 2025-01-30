@@ -404,7 +404,6 @@ function EMUI()
 
     }
 
-
     this.muteBtn = function(arg)
     {
         this.muteArg = arg;
