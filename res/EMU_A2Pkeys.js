@@ -120,7 +120,7 @@ function A2Pkeys()
         var code = "";
         code += "<link rel='stylesheet' href='res/kb_new.css'>"
         code += "<style>"
-        code += "@import url(http://fonts.googleapis.com/css?family=Fragment+Mono);"
+        code += "@import url(https://fonts.googleapis.com/css?family=Fragment+Mono);"
         code += "#glyphScroller { opacity:1 }"
         code += "#keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400; }"
         code += "#keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px; }"
