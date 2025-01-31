@@ -51,16 +51,49 @@ function A2Pkeys()
 
     this.keystroke = function(data)
     {
-        console.warn("keystroke() w/o implementation");
+        //this.KeyCodeHandler({"key":data.keyCode+"","srcElement":{"id":"keycap"},"type":"click"},"A2_US")
+        this.lastkey = data.keyCode | 0x80
+
     }
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
     this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
     this.strobe = function(){ this.lastkey &= 0x7f; return 0x00 } 
 
-    this.KeyCodeHandler = function(data)
+    this.KeyCodeHandler = function(arg,to)
     {
-        console.warn("KeyCodeHandler() w/o implementation");
+        var from = arg.type;
+        var val  = arg.key;  if(val===undefined) return null;
+
+        if(from=="keydown" && to=="A2_US"  // event -- _CFG_SYSCODE ==> keyfont
+           || from=="click" && to=="A2_US")  // event -- _CFG_SYSCODE ==> keyfont
+           {
+            if(typeof(val)=="number") return val | 0x80;   // control characters are not translated
+
+            if(arg.repeat==true) this.events_data.metabits[0] |= 0b100
+
+            if(val.length==1 && (this.events_data.metabits[0] & this.events_data.metabitsEn["Control"])>0)
+                return (val.codePointAt(0)-0x60) | 0x80;
+            else if(val.length==1 && val.match(/[a-z]/))
+                return (val.codePointAt(0)-0x20) | 0x80;
+            else if(val.length==1 && val.match(/[A-Z1-9$*#!()'"%&-_ ]/))
+                return val.codePointAt(0) | 0x80;
+            else
+            {
+                switch(val)
+                {
+                    case "Enter":           return 0x0D | 0x80;
+                    case "ArrowLeft":       return 0x08 | 0x80;
+                    case "ArrowRight":      return 0x15 | 0x80;
+                    case "Backspace":       return 0x08 | 0x80;
+                    case "Dead":            return 0x5E | 0x80;
+                    case "Escape":          return 0x1B | 0x80;
+                    case "Reset":           apple2plus.reset(); return null;
+                    case "POWER":           apple2plus.restart(); return null;
+                    default: return null;     
+                }
+            }
+        }
     }
 
     this.KbdCodeHandler = function(data)
@@ -104,6 +137,7 @@ function A2Pkeys()
         t.o.EMU_keyb_timer  = false;
     }
 
+    /*
     this.defaults = function(args,arr)
     {
         for(var i=0;i<arr.length;i++)
@@ -112,6 +146,7 @@ function A2Pkeys()
                  this.o[arr[i]] = args[arr[i]];
         }  
     }
+    */
 
     this.KbdHTML = function(args)
     {
@@ -221,52 +256,10 @@ function A2Pkeys()
         code += " </div>\n";
         code += "</div>\n";
 
-        //code += "<"+"script"+">\n"
-        //code += "function keycap_over(t) { t.classList.replace('keycap','selected') }\n"
-        //code += "function keycap_out(t) { t.classList.replace('selected','keycap') }\n"
-        //code += "<"+"/script"+">\n"
-
         if(args.id && document.getElementById(args.id))
             document.getElementById(args.id).innerHTML = code;
         else
             document.write(code);
-    }
-
-    this.keyConvert = function(arg,to)
-    {
-        var from = arg.type;
-        var val  = arg.key;  if(val===undefined) return null;
-
-
-        if(from=="keydown" && to=="A2_US"  // event -- _CFG_SYSCODE ==> keyfont
-           || from=="click" && to=="A2_US")  // event -- _CFG_SYSCODE ==> keyfont
-           {
-            if(typeof(val)=="number") return val | 0x80;   // control characters are not translated
-
-            if(arg.repeat==true) this.events_data.metabits[0] |= 0b100
-
-            if(val.length==1 && (this.events_data.metabits[0] & this.events_data.metabitsEn["Control"])>0)
-                return (val.codePointAt(0)-0x60) | 0x80;
-            else if(val.length==1 && val.match(/[a-z]/))
-                return (val.codePointAt(0)-0x20) | 0x80;
-            else if(val.length==1 && val.match(/[A-Z1-9$*#!()'"%&-_ ]/))
-                return val.codePointAt(0) | 0x80;
-            else
-            {
-                switch(val)
-                {
-                    case "Enter":           return 0x0D | 0x80;
-                    case "ArrowLeft":       return 0x08 | 0x80;
-                    case "ArrowRight":      return 0x15 | 0x80;
-                    case "Backspace":       return 0x08 | 0x80;
-                    case "Dead":            return 0x5E | 0x80;
-                    case "Escape":          return 0x1B | 0x80;
-                    case "Reset":           apple2plus.reset(); return null;
-                    case "POWER":           apple2plus.restart(); return null;
-                    default: return null;     
-                }
-            }
-        }
     }
 
     this.metaConvert = function(arg,idx)
@@ -310,13 +303,13 @@ function A2Pkeys()
         switch(id_type)
         {
             case "applescreen_keydown":
-                var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.keyConvert(arg,"A2_US")}
+                var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.KeyCodeHandler(arg,"A2_US")}
                 this.setKey(d.code,d.meta,0);
                 if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))
                 arg.preventDefault();   // prevent browser side-effects while typing in window
                 break;
             case "applescreen_keyup":
-                var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.keyConvert(arg,"A2_US")}
+                var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.KeyCodeHandler(arg,"A2_US")}
                 this.setKey(null,d.meta,0);
                 if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))
                 break;
@@ -337,20 +330,19 @@ function A2Pkeys()
                     var Hash16 = _this.getKeyHash16(_this.getKeyContent(t));
                     var lookup = _this.events_data.HTMLmap_A2_US[Hash16];
                     if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")")
-                    var d = {'code':_this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup===undefined?"":lookup.val},"A2_US"),'meta':_this.metaConvert({"key":lookup.val},1),'Hash16':Hash16,'lookup':lookup}
+                    var d = {'code':_this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup===undefined?"":lookup.val},"A2_US"),'meta':_this.metaConvert({"key":lookup.val},1),'Hash16':Hash16,'lookup':lookup}
 
                     // Shift-Control modifier
                     if((d.meta & _this.events_data.metabitsEn["Shift-Control"]) == _this.events_data.metabitsEn["Shift-Control"] && typeof(lookup["Shift-Control"])=="number" )
-                        d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift-Control"]},"A2_US");
+                        d.code =  _this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift-Control"]},"A2_US");
                     else
                     {
                         // Shift modifier
                         if((d.meta & _this.events_data.metabitsEn["Shift"]) == _this.events_data.metabitsEn["Shift"] && lookup["Shift"])
-                            d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift"]},"A2_US");
-
+                            d.code =  _this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Shift"]},"A2_US");
                         // Control modifier
                         if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"] && lookup["Control"] )
-                            d.code =  _this.keyConvert({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
+                            d.code =  _this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
                     }
 
                     if(_this.events_data.postEvent.length>0)
@@ -361,8 +353,8 @@ function A2Pkeys()
                             var h16 = _this.getKeyHash16(_this.getKeyContent(tt));
                             var lo = _this.events_data.HTMLmap_A2_US[h16];
 
-                             // is meta button ?
-                             // don't pop previous radio button if current is also radio button
+                            // is meta button ?
+                            // don't pop previous radio button if current is also radio button
                             if(_this.events_data.metabitsEn[lo.val]>0 && lookup.act != "radio")
                             {
                                 d.meta &= ~(_this.events_data.metabitsEn[lo.val]) // reset (radio) metabit

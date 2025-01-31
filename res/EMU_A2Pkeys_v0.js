@@ -47,6 +47,63 @@ function A2Pkeys()
         this.lastkey = 0x00;
     }
 
+
+
+
+
+   // override keys object
+   this.keystroke = function(data)
+   {
+       //console.log(data);
+       //console.log(JSON.stringify(filterchange(data,this.pdata)));
+       this.pdata = data;
+       
+       if(this.isActive()==false) return; 
+       if(data.type!="click")          // real keyboard or pasteboard ?
+       {
+           var code = this.KeyCodeHandler(data);         
+           if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
+               data.preventDefault(); // prevent space-bar from triggering page-down
+       }
+       else                            // virtual keyboard ?
+           var code = this.KbdCodeHandler(data);
+
+       if(typeof(code)=="number")       // ASCII keys ?
+            apple2plus.hw.io.keypress(code);
+       else if (typeof(code)=="string") // HARD-WIRED keys ?
+       {
+           switch(code)
+           {
+               case "RESET":
+                   //beep();
+                   //resetButton();
+                   apple2plus.reset();
+               break;
+               case "POWER":
+                   //beep();
+                   //restartButton();
+                   apple2plus.restart();
+               break;
+               case "REPT":
+                   alert("Instead of REPT, keep key down >0.5s");
+                   //o["key_rept"].style.top = y+"px";
+                   //o["key_rept"].style.left = (x-36)+"px";
+                   //o["key_rept"].style.visibility = "visible";
+               break;
+               default:
+                   alert("no function defined on key '"+code+"'");
+           }
+       }
+       else
+           alert("no key");
+   }
+
+
+
+
+
+
+/*
     this.keystroke = function(data)
     {
         if(this.isActive()==false) return; 
@@ -94,6 +151,7 @@ function A2Pkeys()
         else
             alert("no key (code="+code+")");
     }
+*/
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
     this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
@@ -284,6 +342,26 @@ function A2Pkeys()
 
     }
 
-    this.events = function(id)
-    {}
+    this.events = function(arg)
+    {
+        if(arg.type == "keydown")
+        {
+            var val = arg.key;
+            switch(val)
+            {
+                case "Enter":           val = 0x0D; break;
+                case "ArrowLeft":       val = 0x08; break;
+                case "ArrowRight":      val = 0x15; break;
+                case "Backspace":       val = 0x08; break;
+                case "Dead":            val = 0x5E; break;
+                case "Escape":          val = 0x1B; break;
+                case "Reset":           apple2plus.reset();
+                case "POWER":           apple2plus.restart();
+                default:
+                    val = val.codePointAt(0);
+            }
+            this.lastkey = val | 0x80
+        }
+    }
+
 }

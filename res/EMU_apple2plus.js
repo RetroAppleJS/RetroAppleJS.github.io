@@ -25,14 +25,13 @@ function Apple2Plus(context)
         var video = new Apple2Video(vidContext);
     }
 
-    var hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");    
+    var hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");
+    this.hw = hw;
+    
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{getDataObj:function(){},update:function(){}},"AppleDisk");
-
-
-
 
     this.pdata =
     {
@@ -66,72 +65,8 @@ function Apple2Plus(context)
         ,type: "keydown"
         ,which: 72
     }
-
-
-    function filterchange(data,pdata)
-    {
-        var mod = {}
-        var exclude = {"currentTarget":true,"eventPhase":true,"returnValue":true,"timeStamp":true,"defaultPrevented":true}
-        if(pdata === undefined) return data;
-
-        for(var o in data)
-        {
-            if(typeof(pdata[o])!="undefined" && data[o]!=pdata[o])
-                if(exclude[o] === undefined)
-                    mod[o] = data[o]
-        }
-        return mod;
-    }
-
-    // override keys object
-    keys.keystroke = function(data)
-    {
-        //console.log(data);
-        console.log(JSON.stringify(filterchange(data,this.pdata)));
-        this.pdata = data;
-        
-        if(this.isActive()==false) return; 
-        if(data.type!="click")          // real keyboard or pasteboard ?
-        {
-            var code = this.KeyCodeHandler(data);         
-            if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
-                data.preventDefault(); // prevent space-bar from triggering page-down
-        }
-        else                            // virtual keyboard ?
-            var code = this.KbdCodeHandler(data);
-
-        if(typeof(code)=="number")       // ASCII keys ?
-            hw.io.keypress(code);
-        else if (typeof(code)=="string") // HARD-WIRED keys ?
-        {
-            switch(code)
-            {
-                case "RESET":
-                    //beep();
-                    //resetButton();
-                    apple2plus.reset();
-                break;
-                case "POWER":
-                    //beep();
-                    //restartButton();
-                    apple2plus.restart();
-                break;
-                case "REPT":
-                    alert("Instead of REPT, keep key down >0.5s");
-                    //o["key_rept"].style.top = y+"px";
-                    //o["key_rept"].style.left = (x-36)+"px";
-                    //o["key_rept"].style.visibility = "visible";
-                break;
-                default:
-                    alert("no function defined on key '"+code+"'");
-            }
-        }
-        else
-            alert("no key");
-    }
-
+    
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
-
     
     /*
     var keys = typeof(A2Pkeys)=="undefined" ? {
