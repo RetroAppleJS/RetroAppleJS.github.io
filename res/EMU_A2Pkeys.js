@@ -126,12 +126,7 @@ function A2Pkeys()
     this.KbdHover_out = function(t)
     {
         if(t.o.EMU_keyb_timer == true) return;
-
         t.o.EMU_keyb_el.style.opacity=0;
-        //t.o.EMU_keyb_el.style.display="none"
-
-        //document.getElementById(t.o.EMU_kbd_id).style.opacity=0;
-        //document.getElementById(t.o.EMU_key_id).style.display="none";
         t.o.EMU_keyb_active = false;
         t.o.EMU_keyb_timer  = false;
     }
