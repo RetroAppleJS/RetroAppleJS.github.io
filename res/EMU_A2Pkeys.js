@@ -51,9 +51,8 @@ function A2Pkeys()
 
     this.keystroke = function(data)
     {
-        //this.KeyCodeHandler({"key":data.keyCode+"","srcElement":{"id":"keycap"},"type":"click"},"A2_US")
-        this.lastkey = data.keyCode | 0x80
-
+        // pasteboard
+        this.lastkey = data.keyCode | 0x80;
     }
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
@@ -137,16 +136,6 @@ function A2Pkeys()
         t.o.EMU_keyb_timer  = false;
     }
 
-    /*
-    this.defaults = function(args,arr)
-    {
-        for(var i=0;i<arr.length;i++)
-        {
-            if(args[arr[i]])
-                 this.o[arr[i]] = args[arr[i]];
-        }  
-    }
-    */
 
     this.KbdHTML = function(args)
     {

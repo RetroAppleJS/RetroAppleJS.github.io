@@ -47,10 +47,6 @@ function A2Pkeys()
         this.lastkey = 0x00;
     }
 
-
-
-
-
    // override keys object
    this.keystroke = function(data)
    {
@@ -98,60 +94,6 @@ function A2Pkeys()
            alert("no key");
    }
 
-
-
-
-
-
-/*
-    this.keystroke = function(data)
-    {
-        if(this.isActive()==false) return; 
-        var combo_keys = {16:"SHIFT",17:"CTRL",18:"ALT",20:"CAPSLCK",27:"ESC",91:"CMD"};
-        this.debug(data);
-        if(data.type=="keydown")
-        {
-            if(typeof(combo_keys[data.keyCode])=="string") { this.o.kbd_map[data.keyCode]=combo_keys[data.keyCode]; return; }
-        }
-        if(data.type=="keyup")
-        {
-            if(typeof(combo_keys[data.keyCode])=="string") { delete this.o.kbd_map[data.keyCode]; return; }
-        }
-        
-        var s="";
-        for(var i in combo_keys) s+= combo_keys[i];
-
-        if(data.type!="click")           // real keyboard or pasteboard ?
-        {
-            var code = this.KeyCodeHandler(data);         
-            if(data.keyCode == 32 && typeof(data.preventDefault)=="function")
-                data.preventDefault();   // prevent space-bar from triggering page-down
-        }
-        else                             // virtual keyboard ?
-            var code = this.KbdCodeHandler(data);
-
-        if(typeof(code)=="number")       // ASCII keys ?
-        {
-            //try { this.hw.io.keypress(code) } catch(e) { alert("override A2Pkeys -> keystroke("+code+")") }
-            try { oEMU.component.IO.keypress(code) } catch(e) { alert("override A2Pkeys -> keystroke("+code+")") }
-            
-        }
-        else if (typeof(code)=="string") // HARD-WIRED keys ?
-        {
-            switch(code)
-            {
-                case "RESET":
-                case "POWER":
-                case "REPT":
-                    alert("override A2Pkeys -> keystroke("+code+")"); break;
-                default:
-                    alert("override A2Pkeys -> keystroke("+code+")");
-            }
-        }
-        else
-            alert("no key (code="+code+")");
-    }
-*/
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
     this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
@@ -324,15 +266,6 @@ function A2Pkeys()
     +"<div class='appkbd' id='kbdimg' "+this.o.kbd_events+">"
     +"<div class='key'  id='keybox' "+this.o.key_events+"></div>"
 
-
-//    <!--
-//  <div class="key"  id="keybox"                                        onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-//
-//    <div class="key"  id="key_rept"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-//    <div class="key"  id="key_ctrl"   style="visibility:hidden;"       onclick=apple2OnKeyHover(event) onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-//    <div class="key"  id="key_lshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>
-//    <div class="key"  id="key_rshift" style="visibility:hidden;"       onclick=apple2OnKeyHover(event)  onmousemove=apple2OnKeyHover(event) onmouseout=apple2OnKeyHover(event) onmouseover=apple2OnKeyHover(event)></div>  
-//    -->
   +"</div>"
 
     if(args.id && document.getElementById(args.id))
