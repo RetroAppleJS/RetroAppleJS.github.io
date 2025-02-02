@@ -1,10 +1,8 @@
 //
-// Copyright (c) 2021 Freddy Vandriessche.
+// Copyright (c) 2025 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
 // EMU_A2Pkeys.js
-
-// TODO: how handle shift + key (remember keyup & down state of each key ???)
 
 if(oEMU===undefined) var oEMU =
     {"component":{"Keyboard":
@@ -130,7 +128,6 @@ function A2Pkeys()
         t.o.EMU_keyb_active = false;
         t.o.EMU_keyb_timer  = false;
     }
-
 
     this.KbdHTML = function(args)
     {
@@ -338,20 +335,29 @@ function A2Pkeys()
                             var lo = _this.events_data.HTMLmap_A2_US[h16];
 
                             // is meta button ?
-                            // don't pop previous radio button if current is also radio button
+                            // don't pop previous radio button if current is also radio button, TODO !!!!! unless the same button was hit
                             if(_this.events_data.metabitsEn[lo.val]>0 && lookup.act != "radio")
                             {
-                                d.meta &= ~(_this.events_data.metabitsEn[lo.val]) // reset (radio) metabit
-                                tt.style.opacity = "1";
+                                d.meta &= ~(_this.events_data.metabitsEn[lo.val]) // pop out radio button
+                                var opacity = "1"
+                                var el_arr = document.querySelectorAll('#'+tt.lastElementChild.id);
+                                for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                                 _this.events_data.postEvent.splice(i,1);
                             }
                         }
                     }
-                    if(lookup.act == "toggle") t.style.opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";
+                    if(lookup.act == "toggle") 
+                    {
+                        var opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";  // opacity according to toggle status
+                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);
+                        for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
+                    }
                     if(lookup.act == "radio")
                     { 
-                        t.style.opacity = "0.5";
-                        _this.events_data.postEvent[_this.events_data.postEvent.length] = t;
+                        var opacity = "0.5";
+                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);
+                        for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
+                        _this.events_data.postEvent.push(t);        // push in postevent queue for popping the radio button at next action
                     }
 
                     _this.setKey(d.code,d.meta,1);
