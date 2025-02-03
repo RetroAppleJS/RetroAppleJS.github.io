@@ -326,6 +326,7 @@ function A2Pkeys()
                             d.code =  _this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
                     }
 
+
                     if(_this.events_data.postEvent.length>0)
                     {
                         for(var i=_this.events_data.postEvent.length-1;i>=0;i--)
@@ -335,11 +336,11 @@ function A2Pkeys()
                             var lo = _this.events_data.HTMLmap_A2_US[h16];
 
                             // is meta button ?
-                            // don't pop previous radio button if current is also radio button, TODO !!!!! unless the same button was hit
+                            // don't pop previous radio button if current is also radio button
                             if(_this.events_data.metabitsEn[lo.val]>0 && lookup.act != "radio")
                             {
-                                d.meta &= ~(_this.events_data.metabitsEn[lo.val]) // pop out radio button
-                                var opacity = "1"
+                                d.meta &= ~(_this.events_data.metabitsEn[lo.val]); // pop out radio button
+                                var opacity = "1";
                                 var el_arr = document.querySelectorAll('#'+tt.lastElementChild.id);
                                 for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                                 _this.events_data.postEvent.splice(i,1);
@@ -354,7 +355,7 @@ function A2Pkeys()
                     }
                     if(lookup.act == "radio")
                     { 
-                        var opacity = "0.5";
+                        var opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";  // opacity according to toggle status
                         var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);
                         for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                         _this.events_data.postEvent.push(t);        // push in postevent queue for popping the radio button at next action
