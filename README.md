@@ -8,7 +8,7 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 
 ## Install & Run
   
-- **install:** Bear in mind that this source code = directly executable in your browser.  Hence, __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser.
+- **install:** Bear in mind that this source code = directly executable in your browser.  Hence, __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser, or run directly in github.io just here below.
 - **w/o install:**  ==> [Run last version directly](https://retroapplejs.github.io)
 - **bootable** ==> [Run last version (incl. DOS3.3 bootdisk) directly](https://retroapplejs.github.io/index.html?D1_DIR=Apple%20DOS%203.3.dsk&boot=true)  (booting takes avg. ~90s)
 
