@@ -14,10 +14,10 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 
 ## Getting started
 
-1) Inside the assembler, tap the **'generate'** button
+1) Inside the assembler, tap the **'assemble'** button
 2) Tap the **'to emulator'** button
 3) Inside the emulator, tap the **'paste'** button
-4) Type **G6000** to run the code at address 6000h, that's it !
+4) Type **6000G** to run the code at address 6000h, that's it !
 
 <img src="/res/Start_Step1.png?raw=true" width=46% /><img src="/res/Start_Step2.png?raw=true" width=50% />
 
