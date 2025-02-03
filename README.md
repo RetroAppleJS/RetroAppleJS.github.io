@@ -93,18 +93,19 @@ This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502
 
 #### interactive Apple II+ virtual keyboard
 
-Currently developing the **interactive Apple II+ pop-up keyboard** from feature whish-list.
-feature details & status:
-- [x] AppleII+ [standard pop-up keyboard](https://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96)
-- [x] alphanumeric keys + ESC key + arrow keys + space bar + RETURN key
-- [ ] POWER key
-- [ ] RESET key
-- [ ] REPT key
-- [x] SHIFT keys
-- [x] CTRL key
-- [ ] SHIFT-CTRL combo
+<img src="/res/appleIIplus_vir.png?raw=true" width=40% align="right" />
+It took a while to find a good generic framework to support keyboard emulation. But one popular online tool was hiding in plain sight: www.keyboard-layout-editor.com. This framework can be used to generate virtually any virtual keyboard in HTML format.
 
-Also to be considered: detect if host device is mouse-driven or touch-driven.  When touch-driven, hovering the keyboard is not possible without actioning a key.
+So, here's the new Apple II+ keyboard HTML basis:
+https://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96
+
+The new version of EMU_A2Pkeys.js, besides HTML, covers the action logic and mapping logic for 3 use-cases:
+
+- virtual keyboard: for mouse/trackpad/screen tapping
+- real keyboard: after clicking/tapping the screen canvas (=focus) -> type as you go
+- pasteboard: after clicking the tool icon in the main menu -> copy-paste your text/source code right into the Apple II+ prompt
+Before calling it a version, this needs to be tested on a few laptop keyboards, and touch devices.
+If everything goes well, documentation will follow soon!
 
 *Note: Only two files are impacted:*
 - *index.html*
