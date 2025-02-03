@@ -19,7 +19,7 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 3) Inside the emulator, tap the **'paste'** button
 4) Type **6000G** to run the code at address 6000h, that's it !
 
-<img src="/res/Start_Step12.png?raw=true" width=46% />
+<img src="/res/Start_Step12.png?raw=true" width=100% />
 
 <br>
 Other assembler listings can be found here: (https://github.com/RetroAppleJS/RetroAppleJS.github.io/tree/main/asm_code_examples), feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
