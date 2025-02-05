@@ -31,7 +31,7 @@ function Apple2IO(vid)
     const SLT_IO_SIZE = 0x10;
 
     // Slot RAM/ROM spaces
-    const SLOT_PROM =  [0,   // SLOT0_PROM does not exist
+    const SLOT_ROM =  [0,   // SLOT0_PROM does not exist
                         0x100,
                         0x200,
                         0x300,
@@ -39,7 +39,7 @@ function Apple2IO(vid)
                         0x500,
                         0x600,
                         0x700];
-    const SLT_PROM_SIZE = 0x100;     
+    const SLT_ROM_SIZE = 0x100;     
 
     /*
     const KEY_DATA =    0x00,
@@ -69,8 +69,8 @@ function Apple2IO(vid)
     // MAP DISK I/O TO SLOT#6 MEMORY
     var DISK_IO =       SLOT_IO[6],
         DISK_IO_SIZE =  SLT_IO_SIZE,
-        DISK_PROM =     SLOT_PROM[6],
-        DISK_PROM_SIZE = SLT_PROM_SIZE;
+        DISK_PROM =     SLOT_ROM[6],
+        DISK_PROM_SIZE = SLT_ROM_SIZE;
  
     // MAP RAMCARD I/O TO SLOT#0 MEMORY
     var MEM_RAMCARD_IO =  SLOT_IO[0], MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
@@ -493,31 +493,43 @@ function Apple2IO(vid)
         alert("AppleDisk2() does not have a method called loadDisk")
     }
      
+
+/*
+
     // SLOT MAPPING
     this.mount = function(arg)
     {   
         //SLOT_NAME[arg.slot] = arg.name.substring(0,4);
-        const idx = arg.slot<<3; 
-        SLOT_IDX[arg.slot] = idx;
+        //const idx = Number("0x"+arg.slot)<<3;
+        SLOT_IDX[arg.slot] = arg.name.substring(0,6);
+        const idx = arg.slot << 3;
 
         const noROM  = arg.driver===undefined ? true : arg.driver.ROM===undefined;   // detect presence of ROM in device object
-        const noLROM = arg.driver===undefined ? true : arg.driver.LROM===undefined; // detect presence of large ROM (C800-CFFF) in device object
+        const noLROM = arg.driver===undefined ? true : arg.driver.LROM===undefined;  // detect presence of large ROM (C800-CFFF) in device object
 
         //var keys = Object.keys(_CFG_PCODE);
         //var key_idx =  keys.indexOf(arg.name);
 
-        SLOT_MAP[idx]   = arg.name.substring(0,6);                                              // STATUS 0x2=active  0x1=inactive 0x0=unmounted   
-        SLOT_MAP[idx+1] = arg.active ? oCOM.crc16(new TextEncoder("utf-8").encode(arg.name)) : null ; // DETERMINE DEVICE ID (CRC16 hash) 
+        const msg1 = new TextEncoder().encode((arg.name+"      ").substring(0,2));
+        const msg2 = new TextEncoder().encode((arg.name+"      ").substring(2,4))
+        const msg3 = new TextEncoder().encode((arg.name+"      ").substring(4,6))
+
+        //const str = new TextDecoder().decode(msg8);
+
+
+        SLOT_MAP[idx]   = arg.active ? 1 : 0;
+        SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(arg.name)); // DETERMINE DEVICE ID (CRC16 hash) 
         SLOT_MAP[idx+2] = SLOT_IO[arg.slot];                                     // SLOT I/O  range origin
         SLOT_MAP[idx+3] = SLOT_IO[arg.slot] + SLT_IO_SIZE;                       //           range end
-        SLOT_MAP[idx+4] = noROM?0:SLOT_PROM[arg.slot];                           // SLOT ROM  range origin
-        SLOT_MAP[idx+5] = noROM?0:SLOT_PROM[arg.slot] + SLT_PROM_SIZE;           //           range end
-        SLOT_MAP[idx+6] = 0;                                                     // SLOT LROM range origin (TODO)
-        SLOT_MAP[idx+7] = 0                                                      //           range end    (TODO)
+        SLOT_MAP[idx+4] = noROM?0:SLOT_ROM[arg.slot];                            // SLOT ROM  range origin
+        SLOT_MAP[idx+5] = noROM?0:SLOT_ROM[arg.slot] + SLT_ROM_SIZE;             //           range end
+        SLOT_MAP[idx+6] = noLROM?0:SLOT_LROM;                                    // SLOT LROM range origin
+        SLOT_MAP[idx+7] = noLROM?0:SLOT_LROM + SLT_LROM_SIZE;                    //           range end
 
         var obj_names = new Array();
         for(var o in arg.driver) obj_names.push(o);
-        console.log("mounted "+SLOT_MAP[idx]+" [active:"+(SLOT_MAP[idx+1]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+arg.slot+" ("
+
+        console.log("mounted "+arg.name+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+arg.slot+" ("
         +"I/O range: "+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+3])+" "
         +"ROM range: "+(SLOT_MAP[idx+4]==SLOT_MAP[idx+5]?null:oCOM.getHexWord(0xC000 + SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+5]))+" "
         +"LROM range: "+(SLOT_MAP[idx+6]==SLOT_MAP[idx+7]?null:oCOM.getHexWord(0xC000 + SLOT_MAP[idx+6])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+7]))+" "
@@ -525,9 +537,43 @@ function Apple2IO(vid)
         +")");
 
         oEMUI.slotConfig({"id":"slot"+arg.slot,"active":arg.active});
-
         //console.log("SLOT_MAP["+arg.slot+"] = "+SLOT_MAP[idx]+" "+SLOT_MAP[idx+1]+" "+SLOT_MAP[idx+2]+" "+SLOT_MAP[idx+3]+" "+SLOT_MAP[idx+4])
-    }    
+    }
+*/
+
+
+
+    // SLOT MAPPING
+    this.mount_all = function(cfg)
+    {
+        for(var idx in cfg)
+        {
+                SLOT_IDX[idx] = cfg[idx].PCODE.substring(0,6);
+
+                SLOT_MAP[idx+0] = cfg[idx].PCODE ? 1 : 0;
+                SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(cfg[idx].PCODE)); // DETERMINE DEVICE ID (CRC16 hash)
+                SLOT_MAP[idx+2] = cfg[idx].IOrange===undefined?null:cfg[idx].IOrange[0];       // SLOT I/O  range origin
+                SLOT_MAP[idx+3] = cfg[idx].IOrange===undefined?null:cfg[idx].IOrange[1];       //           range end
+                SLOT_MAP[idx+4] = cfg[idx].ROMrange===undefined?null:cfg[idx].ROMrange[0];     // SLOT ROM  range origin
+                SLOT_MAP[idx+5] = cfg[idx].ROMrange===undefined?null:cfg[idx].ROMrange[1];     //           range end
+
+                if(cfg[idx].PCODE)
+                {
+                    var obj_names = new Array();
+                    for(var o in this[cfg[idx].PCODE]) obj_names.push(o);
+            
+                    console.log("mounted "+cfg[idx].PCODE+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+idx+" ("
+                    +"I/O range: "+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+3])+" "
+                    +"ROM range: "+(SLOT_MAP[idx+4]==SLOT_MAP[idx+5]?null:oCOM.getHexWord(0xC000 + SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+5]))+" "
+                    +"LROM range: "+(SLOT_MAP[idx+6]==SLOT_MAP[idx+7]?null:oCOM.getHexWord(0xC000 + SLOT_MAP[idx+6])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+7]))+" "
+                    +"METHODS: "+obj_names.join(",")   
+                    +")");
+            
+                    oEMUI.slotConfig({"id":"slot"+idx,"active":SLOT_MAP[idx+0]});
+                }
+
+        }
+    }
 
     this.unmount = function(name,slot_num)
     {
@@ -549,7 +595,15 @@ function Apple2IO(vid)
     var SLOT_IDX  = new Array(8); 
 
     // SLOT MAPPING - TODO: take it from _CFG_SLOT
-    this.mount({"name":"MS16K" ,"slot":0,"driver":this.ramcard,"active":true});
-    this.mount({"name":"VIDEX" ,"slot":3,"driver":this.col80card,"active":true});
-    this.mount({"name":"DISKII","slot":6,"driver":this.disk2,"active":true});
+    //this.mount({"name":"BOARD" ,"slot":0xB,"driver":this.ramcard  ,"active":true});
+
+    //this.mount({"name":"MS16K" ,"slot":0x0,"driver":this.ramcard  ,"active":true});
+    //this.mount({"name":"VIDEX" ,"slot":0x3,"driver":this.col80card,"active":true});
+    //this.mount({"name":"DISKII","slot":0x6,"driver":this.disk2    ,"active":true});
+
+    this.MS16K = this.ramcard;
+    this.VIDEX = this.col80card;
+    this.DISKII = this.disk2;
+
+    this.mount_all(_CFG_SLOT)
 }

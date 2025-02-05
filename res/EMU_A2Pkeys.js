@@ -295,15 +295,9 @@ function A2Pkeys()
                 if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))
                 break;
             case "keycap_over":
-                return function(t)
-                { 
-                    t.classList.replace("keycap","selected");
-                };
+                return function(t){ t.classList.replace("keycap","selected")  };
             case "keycap_out":
-                return function(t) 
-                {  
-                    t.classList.replace("selected","keycap");   // deselect keycap
-                };
+                return function(t){  t.classList.replace("selected","keycap") };   // deselect keycap
             case "keycap_click":
                 return function(t)
                 {
@@ -325,8 +319,6 @@ function A2Pkeys()
                         if((d.meta & _this.events_data.metabitsEn["Control"]) == _this.events_data.metabitsEn["Control"] && lookup["Control"] )
                             d.code =  _this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup["Control"]},"A2_US");
                     }
-
-
                     if(_this.events_data.postEvent.length>0)
                     {
                         for(var i=_this.events_data.postEvent.length-1;i>=0;i--)
@@ -350,17 +342,16 @@ function A2Pkeys()
                     if(lookup.act == "toggle") 
                     {
                         var opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";  // opacity according to toggle status
-                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);
+                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);                // query all elements with same id
                         for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                     }
                     if(lookup.act == "radio")
                     { 
                         var opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";  // opacity according to toggle status
-                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);
+                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);                // query all elements with same id
                         for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                         _this.events_data.postEvent.push(t);        // push in postevent queue for popping the radio button at next action
                     }
-
                     _this.setKey(d.code,d.meta,1);
                     if(_this.bDebug) console.log("event('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))              
                 }

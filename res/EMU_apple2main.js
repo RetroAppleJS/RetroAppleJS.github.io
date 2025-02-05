@@ -401,7 +401,7 @@ function EMUI()
     {
         oCOM.POPUP.on("slotConfig_popup");
         document.getElementById("slotConfig_popup").innerHTML = id+"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
-
+        console.log("oEMUI.slotConfig_detail('"+id+"')")
     }
 
     this.muteBtn = function(arg)
