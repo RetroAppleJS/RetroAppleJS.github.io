@@ -225,9 +225,9 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 |[PCODE]| NAME                                   | IOrange\* | ROMrange\*      | SLOTrange    | SYScode     | Manuals       |
 | :-----: | :----------------------------------- | :---------- | :-------------- | :------------|:----------- |:------------- |
-| MS16K   | Microsoft 16K Language card          | $C0(n+8)0,$C0(n+9)0 | 0            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
-| DISKII  | Apple Disk II Floppy Disk Subsystem  | $C0(n+8)0,$C0(n+9)0 | $Cn00,$CnFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
-| VIDEX  | Videx Videoterm 80 Column Display     | $C0(n+8)0,$C0(n+9)0 | $C800,$CFFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
+| MS16K   | Microsoft 16K Language card          | $C0n+80,$C0n+8F | 0            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
+| DISKII  | Apple Disk II Floppy Disk Subsystem  | $C0n+80,$C0n+8F | $Cn00,$CnFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
+| VIDEX  | Videx Videoterm 80 Column Display     | $C0n+80,$C0n+8F | $C800,$CFFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
 
 \* n = slot number on which the card is installed
 
