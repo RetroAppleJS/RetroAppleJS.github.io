@@ -184,13 +184,13 @@ const _CFG_PCODE = {
 }
 
 const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange:":[0xC800,0xC80F],"ROMrange":[] ,"SWITCHES":"" ,"DESCRIPTION":""}
+ 0:{"PCODE":"MS16K","IOrange":[0xC800,0xC80F],"ROMrange":[] ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,1:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,2:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange:":[0xC830,0xC83F],"ROMrange":[0xC800,0xCFFF] ,"SWITCHES":"" ,"DESCRIPTION":""}
+,3:{"PCODE":"VIDEX","IOrange":[0xC830,0xC83F],"ROMrange":[0xC800,0xCFFF] ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,4:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,5:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange:":[0xC860,0xC86F],"ROMrange":[0xC600,0xC6FF] ,"SWITCHES":"" ,"DESCRIPTION":""}
+,6:{"PCODE":"DISKII","IOrange":[0xC860,0xC86F],"ROMrange":[0xC600,0xC6FF] ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,7:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
 }
 
