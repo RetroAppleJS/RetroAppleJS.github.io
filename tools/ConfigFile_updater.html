@@ -59,7 +59,13 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
       if(typeof(this.LData[ROWname])=="undefined") this.LData[ROWname] = {};
-      if(FIELDname=="ROMrange") this.LData[ROWname][FIELDname] = FIELDdata;
+
+      if(FIELDname=="ROMrange") 
+        this.LData[ROWname][FIELDname] = FIELDdata;
+      
+      // TODO CHECK
+      if(FIELDname=="IOrange") 
+        this.LData[ROWname][FIELDname] = FIELDdata;
     }
     var bck_method = oPROCESS.changeDATA; // backup the abstract method
     oPROCESS.changeDATA = function(ROWname,FIELDname,FIELDdata)  // method override
