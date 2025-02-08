@@ -418,10 +418,10 @@ function Hex2SumDec(str)
     str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     console.log("str = "+str); 
 
-    substitute_sub(str,substitutes);
+    str = substitute_sub(str,substitutes);
 
-    for(var ii in substitutes)
-      str = str.replace(RegExp("<sub>"+ii+"</sub>","g"),substitutes[ii])
+    //for(var ii in substitutes)
+    //  str = str.replace(RegExp("<sub>"+ii+"</sub>","g"),substitutes[ii])
 
     var str = str.replace(/(\$)([0-9A-F\()])/g,"0x$2");
 
