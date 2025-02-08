@@ -372,7 +372,7 @@ MathParser.prototype.parse = function(e)
 
   // TODO INTEGRATE EVERYWHERE
 function substitute_sub(str,substitutes)
-  {
+{
     //str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     //console.log("str = "+str); 
 
@@ -386,17 +386,12 @@ function substitute_sub(str,substitutes)
     // substitute all variables
     for(var ii in substitutes)
     {
-      oCOM.bDebug = true;
       str = str.replace(RegExp(ii,"g"),substitutes[ii]);
       var str = parser.parse(str);
-      oCOM.bDebug = false;
     }
     // calculate expression
 
   }
-
-  for(var ii in subs)
-    str = str.replace(RegExp("<sub>"+ii+"</sub>","g"),subs[ii])
 
    console.log("str = "+str,arr); 
 
@@ -409,7 +404,7 @@ function substitute_sub(str,substitutes)
     console.log(str);
     return str;
   */
-  }
+}
 
 function Hex2SumDec(str)
 {
