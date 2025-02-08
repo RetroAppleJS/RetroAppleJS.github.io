@@ -418,7 +418,7 @@ function Hex2SumDec(str)
     str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     console.log("str = "+str); 
 
-    str = substitute_sub(str,substitutes);
+ 
 
     //for(var ii in substitutes)
     //  str = str.replace(RegExp("<sub>"+ii+"</sub>","g"),substitutes[ii])
@@ -428,7 +428,9 @@ function Hex2SumDec(str)
     var arr = str.split(",");
     for(var i=0;i<arr.length;i++)
     {
-      arr[i] = eval(arr[i]);
+      var s = substitute_sub(arr[i],substitutes);
+      arr[i] = eval(s);
+
       console.log("arr[i] = "+arr[i]+" "+typeof(arr[i]));
       arr[i] = typeof(arr[i])=="number"?("0x"+arr[i].toString(16).toUpperCase()):"";
     }
