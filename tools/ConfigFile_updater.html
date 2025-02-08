@@ -316,7 +316,7 @@ function substitute_sub(str,substitutes)
     //str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     //console.log("str = "+str); 
 
-   var arr = str.match("<sub>(.*?)</sub>");
+   var arr = str.match("<sub>(.*?)</sub>","g");
    console.log("str = "+str,arr); 
 
 /*
@@ -342,7 +342,6 @@ function Hex2SumDec(str)
   {
     str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     console.log("str = "+str); 
-
 
     substitute_sub(str,substitutes);
 
