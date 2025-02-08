@@ -377,7 +377,7 @@ function substitute_sub(str,substitutes)
     //console.log("str = "+str); 
 
   // extract all content to process
-  var subs = str.match(/(<sub>)(.*?)(<\/sub>)/gs);
+  var subs = str.match(/<sub>(.*?)<\/sub>/gs);
 
   var parser = new MathParser();
   for(var i=0;i<subs.length;i++)
@@ -386,7 +386,9 @@ function substitute_sub(str,substitutes)
     for(var ii in substitutes)
     {
       subs[i] = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);      // substitute all variables
-      var str = parser.parse(subs[i]);                            // calculate value
+      var s = parser.parse(subs[i]);                            // calculate value
+
+      str = str.replace("<sub>"+subs[i]+"</sub>",s);
 
     }
     // calculate expression
