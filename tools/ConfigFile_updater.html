@@ -386,8 +386,8 @@ function substitute_sub(str,substitutes)
     // substitute all variables
     for(var ii in substitutes)
     {
-      str = str.replace(RegExp(ii,"g"),substitutes[ii]);
-      var str = parser.parse(str);
+      subs[i] = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);
+      var subs[i] = parser.parse(subs[i]);
     }
     // calculate expression
 
