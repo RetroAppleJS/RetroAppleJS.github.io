@@ -106,7 +106,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
       var s = "";
       var IOrange_addr = Number(ROWname)*16+0xC800
       if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
-          s+=",\"IOrange\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
+          s+=//",\"IOrange\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
+             ",\"IOrange\":["+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname})+"]"
            +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname})+"]";
       return s
     }
@@ -279,6 +280,19 @@ function PROCESS()
     }
     //download('DOCS.js',decodeURIComponent(js));
     return s;
+  }
+
+  this.substitute_sub(str,substitutes)
+  {
+    str = str.replace(/^ */,"").replace(/ *$/,""); // trim
+    console.log("str = "+str); 
+
+    for(var ii in substitutes)
+      str = str.replace(RegExp("<sub>"+ii+"</sub>","g"),substitutes[ii])
+
+    var str = str.replace(/(\$)([0-9A-F\()])/g,"0x$2");
+
+    console.log(str);
   }
 
 }
