@@ -386,13 +386,10 @@ function substitute_sub(str,substitutes)
     for(var ii in substitutes)
     {
       var s = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);      // substitute all variables
-      var ss = parser.parse(s);                            // calculate value
-
-      str = str.replace("<sub>"+subs[i]+"</sub>",ss);
-
+      var ss = parser.parse(s);                                     // calculate expression
+      str = str.replace("<sub>"+subs[i]+"</sub>",ss);               // substitute result
     }
-    // calculate expression
-
+    return str;
   }
 
    console.log("str = "+str); 
