@@ -377,17 +377,17 @@ function substitute_sub(str,substitutes)
     //console.log("str = "+str); 
 
   // extract all content to process
-  var subs = str.match(/<sub>(.*?)<\/sub>/gs);
+  var subs = str.match(/(<sub>)(.*?)(<\/sub>)/gs);
 
   var parser = new MathParser();
   for(var i=0;i<subs.length;i++)
   {
     subs[i] = subs[i].substring(5,subs[i].length-6);
-    // substitute all variables
     for(var ii in substitutes)
     {
-      subs[i] = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);
-      var subs[i] = parser.parse(subs[i]);
+      subs[i] = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);      // substitute all variables
+      var str = parser.parse(subs[i]);                            // calculate value
+
     }
     // calculate expression
 
