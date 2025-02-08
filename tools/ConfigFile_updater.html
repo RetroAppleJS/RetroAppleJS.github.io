@@ -380,6 +380,7 @@ function substitute_sub(str,substitutes)
   var subs = str.match(/<sub>(.*?)<\/sub>/gs);
 
   var parser = new MathParser();
+  if(subs==null) return str;
   for(var i=0;i<subs.length;i++)
   {
     subs[i] = subs[i].substring(5,subs[i].length-6);
@@ -389,10 +390,10 @@ function substitute_sub(str,substitutes)
       var ss = parser.parse(s);                                     // calculate expression
       str = str.replace("<sub>"+subs[i]+"</sub>",ss);               // substitute result
     }
-    return str;
   }
-
-   console.log("str = "+str); 
+  console.log("str = "+str);
+  return str;
+ 
 
 /*
     for(var ii in substitutes)
