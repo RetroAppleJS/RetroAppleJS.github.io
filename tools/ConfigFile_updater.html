@@ -385,10 +385,10 @@ function substitute_sub(str,substitutes)
     subs[i] = subs[i].substring(5,subs[i].length-6);
     for(var ii in substitutes)
     {
-      subs[i] = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);      // substitute all variables
-      var s = parser.parse(subs[i]);                            // calculate value
+      var s = subs[i].replace(RegExp(ii,"g"),substitutes[ii]);      // substitute all variables
+      var ss = parser.parse(s);                            // calculate value
 
-      str = str.replace("<sub>"+subs[i]+"</sub>",s);
+      str = str.replace("<sub>"+subs[i]+"</sub>",ss);
 
     }
     // calculate expression
