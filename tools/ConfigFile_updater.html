@@ -316,7 +316,7 @@ function substitute_sub(str,substitutes)
     //str = str.replace(/^ */,"").replace(/ *$/,""); // trim
     //console.log("str = "+str); 
 
-   var arr = str.match(/<sub>(.*?)<\/sub>/g);
+   var arr = str.match(/<sub>(.*?)<\/sub>/gs);
    console.log("str = "+str,arr); 
 
 /*
