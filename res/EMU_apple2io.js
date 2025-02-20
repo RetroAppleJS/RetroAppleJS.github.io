@@ -494,7 +494,7 @@ function Apple2IO(vid)
     }
      
 
-/*
+
 
     // SLOT MAPPING
     this.mount = function(arg)
@@ -539,15 +539,13 @@ function Apple2IO(vid)
         oEMUI.slotConfig({"id":"slot"+arg.slot,"active":arg.active});
         //console.log("SLOT_MAP["+arg.slot+"] = "+SLOT_MAP[idx]+" "+SLOT_MAP[idx+1]+" "+SLOT_MAP[idx+2]+" "+SLOT_MAP[idx+3]+" "+SLOT_MAP[idx+4])
     }
-*/
-
-
 
     // SLOT MAPPING
     this.mount_all = function(cfg)
     {
         for(var idx in cfg)
         {
+                idx = Number(idx);
                 SLOT_IDX[idx] = cfg[idx].PCODE.substring(0,6);
 
                 SLOT_MAP[idx+0] = cfg[idx].PCODE ? 1 : 0;
@@ -563,7 +561,7 @@ function Apple2IO(vid)
                     for(var o in this[cfg[idx].PCODE]) obj_names.push(o);
             
                     console.log("mounted "+cfg[idx].PCODE+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+idx+" ("
-                    +"I/O range: "+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+3])+" "
+                    +"I/O range: "+oCOM.getHexWord(SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(SLOT_MAP[idx+3])+" "
                     +"ROM range: "+(SLOT_MAP[idx+4]==SLOT_MAP[idx+5]?null:oCOM.getHexWord(0xC000 + SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+5]))+" "
                     +"LROM range: "+(SLOT_MAP[idx+6]==SLOT_MAP[idx+7]?null:oCOM.getHexWord(0xC000 + SLOT_MAP[idx+6])+"-"+oCOM.getHexWord(0xC000 + SLOT_MAP[idx+7]))+" "
                     +"METHODS: "+obj_names.join(",")   
@@ -601,9 +599,39 @@ function Apple2IO(vid)
     //this.mount({"name":"VIDEX" ,"slot":0x3,"driver":this.col80card,"active":true});
     //this.mount({"name":"DISKII","slot":0x6,"driver":this.disk2    ,"active":true});
 
-    this.MS16K = this.ramcard;
-    this.VIDEX = this.col80card;
-    this.DISKII = this.disk2;
+/*
+[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C800-C80F ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 563)
+[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C830-C83F ROM range: undefined00-undefinedFF LROM range: null METHODS: active) (EMU_apple2io.js, line 563)
+[Log] mounted DISKII [active:true deviceID:A545] into SLOT #6 (I/O range: C860-C86F ROM range: undefined00-undefinedFF LROM range: null METHODS: diskBytes,drv,active,buffers,init,reset,DSK_led,getDataObj,GUI_update,update_logs,read,write,convertDsk2Nib,dNd,s_load_all,s_getFile,dN_update,dN_launcher,dN_spindown,dN_speed_update,dN_play,dN_stop,ROM) (EMU_apple2io.js, line 563)
 
-    this.mount_all(_CFG_SLOT)
+    1
+    1
+    4639
+    2
+    51200
+    3
+    51215
+
+(old)
+[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C080-C090 ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 532)
+[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C0B0-C0C0 ROM range: null LROM range: null METHODS: active) (EMU_apple2io.js, line 532)
+[Log] mounted DISKII [active:true deviceID:A545] into SLOT #6 (I/O range: C0E0-C0F0 ROM range: C600-C700 LROM range: null METHODS: diskBytes,drv,active,buffers,init,reset,DSK_led,getDataObj,GUI_update,update_logs,read,write,convertDsk2Nib,dNd,s_load_all,s_getFile,dN_update,dN_launcher,dN_spindown,dN_speed_update,dN_play,dN_stop,ROM) (EMU_apple2io.js, line 532)
+
+
+
+    1
+    1
+    4639
+    2
+    128
+    3
+    144
+    */
+
+    this["MS16K"]  = this.ramcard;
+    this["VIDEX"]  = this.col80card;
+    this["DISKII"] = this.disk2;
+
+    this.mount_all(_CFG_SLOT);
+    
 }

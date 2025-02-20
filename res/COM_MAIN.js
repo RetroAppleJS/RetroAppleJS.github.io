@@ -195,6 +195,7 @@ function COM()
     return result.join('');                                                                                     // Join the array into a single string
   }
 
+  /*
   //+ Carlos R. L. Rodrigues
   //@ http://jsfromhell.com/classes/math-parser [rev. #3]
 
@@ -244,7 +245,7 @@ function COM()
 
   this.MathParser.prototype.parse = function(e)
   {
-    var p = [], f = [], ag, n, c, a, o = this, v = "0123456789.+-*/^%~(, )";
+    var p = [], f = [], ag, n, c, a, o = this, v = "0123456789.+-*"+"/^%~(, )";
     for(var x, i = 0, l = e.length; i < l; i++){
       if(v.indexOf(c = e.charAt(i)) < 0) { for(a = c; v.indexOf(c = e.charAt(++i)) < 0; a += c); f.push((--i, a)) }
       else if(!(c == "(" && p.push(i)) && c == ")")
@@ -255,6 +256,112 @@ function COM()
       }
     }
     return o.eval(e);
+  }
+  */
+
+
+  this.MathParser = function()
+  {
+      p = this.operator = {};
+      p["+"] = function(n, m){return n + m}
+      p["-"] = function(n, m){return n - m}
+      p["*"] = function(n, m){return n * m}
+      p["/"] = function(m, n){return n / m}
+      p["%"] = function(m, n){return n % m}
+      p["^"] = function(m, n){return Math.pow(n, m)}
+      p["~"] = function(m, n){return Math.sqrt(n, m)}
+      p["x"] = function(m, n){return Number("0x"+m)}
+      this.custom = {}
+    p.f = function(s, n)
+    {
+      if(Math[s]) return Math[s](n);
+      else if(this.custom[s]) return this.custom[s].apply(this, n);
+      else throw new Error("Function \"" + s + "\" not defined.");
+    }
+    this.add = function(n, f){this.custom[n] = f;}
+
+    this.eval = function(e, ig)
+    {
+      var v = [], p = [], i, _, a, c = 0, s = 0, x, t = !ig ? e.indexOf("^") : -1, d = null;
+      var cp = e, e = e.split(""), n = "0123456789ABCDEF.", o = "+-/*^%~x", f = this.operator;
+      if(t + 1)
+        do
+        {
+          for(a = "", _ = t - 1;  _ && o.indexOf(e[_]) < 0; a += e[_], e[_--] = ""); a += "^";
+          for(_ = t + 1, i = e.length; _ < i && o.indexOf(e[_]) < 0; a += e[_], e[_++] = "");
+          e = e.slice(0, t).concat((this.eval(a, 1) + "").split("")).concat(e.slice(t + 1));
+        }
+        while(t = cp.indexOf("^", ++t) + 1);
+      for(i = 0, l = e.length; i < l; i++)
+      {
+        if(o.indexOf(e[i]) > -1)
+          e[i] == "-" && (s > 1 || d === null) && ++s, !s && d !== null && (p.push(e[i]), s = 2), "+-".indexOf(e[i]) < (d = null) && (c = 1);
+        else if(a = n.indexOf(e[i]) + 1 ? e[i++] : "")
+        {
+          while(n.indexOf(e[i]) + 1) a += e[i++];
+          v.push(d = (s & 1 ? -1 : 1) * a), c && v.push(f[p.pop()](v.pop(), v.pop())) && (c = 0), --i, s = 0;
+        }
+      }
+      for(c = v[0], i = 0, l = p.length; l--; c = f[p[i]](c, v[++i]));
+      return c;
+    }
+
+    this.parse = function(e)
+    {
+      var p = [], f = [], ag, n, c, a, o = this, v = "0123456789ABCDEF.+-*/^%~x(, )";
+      for(var x, i = 0, l = e.length; i < l; i++)
+      {
+        if(v.indexOf(c = e.charAt(i)) < 0) { for(a = c; v.indexOf(c = e.charAt(++i)) < 0; a += c); f.push((--i, a)) }
+        else if(!(c == "(" && p.push(i)) && c == ")")
+        {
+          if(a = e.slice(0, (n = p.pop()) - (x = v.indexOf(e.charAt(n - 1)) < 0 ? y = (c = f.pop()).length : 0)), x)
+            for(var j = (ag = e.slice(n, ++i).split(",")).length; j--; ag[j] = this.eval(ag[j]));
+          l = (e = a + (x ? o.operator.f(c, ag) : this.eval(e.slice(n, ++i))) + e.slice(i)).length, i -= i - n + c.length;
+        }
+      }
+      return this.eval(e);
+    }
+
+    this.format = function(str,substitutes)
+    {
+      var pos = str.lastIndexOf(",");
+      var out = str.substring(pos+1,str.length);
+      var str2 = str.substring(0,pos);
+
+      if(substitutes)
+        for(var ii in substitutes)
+          out = out.replace(RegExp(ii,"g"),substitutes[ii]);      // substitute all variables
+
+      var arr = String(this.parse(out)).split();
+      var i = -1;
+      function callback(exp, p0, p1, p2, p3, p4)
+      {
+        if (exp=='%%') return '%';
+        if (arr[++i]===undefined) return undefined;
+        exp  = p2 ? parseInt(p2.substr(1)) : undefined;
+        var base = p3 ? parseInt(p3.substr(1)) : undefined;
+        var val;
+        switch (p4)
+        {
+          case 's': val = arr[i]; break;
+          case 'c': val = arr[i][0]; break;
+          case 'f': val = parseFloat(arr[i]).toFixed(exp); break;
+          case 'p': val = parseFloat(arr[i]).toPrecision(exp); break;
+          case 'e': val = parseFloat(arr[i]).toExponential(exp); break;
+          case 'x': val = parseInt(arr[i]).toString(base?base:16); break;
+          case 'X': val = parseInt(arr[i]).toString(base?base:16).toUpperCase(); break;
+          case 'd': val = parseFloat(parseInt(arr[i], base?base:10).toPrecision(exp)).toFixed(0); break;
+        }
+        val = typeof(val)=='object' ? JSON.stringify(val) : val.toString(base);
+        var sz = parseInt(p1);                                          // padding size
+        var ch = p1 && p1[0]=='0' ? '0' : ' ';                          // isnull? 
+        while (val.length<sz) val = p0 !== undefined ? val+ch : ch+val; // isminus?
+        return val;
+      }
+      var regex = /%(-)?(0?[0-9]+)?([.][0-9]+)?([#][0-9]+)?([scfpexXd%])/g;
+      return str2.replace(regex, callback);
+    }
+
   }
 
   this.unescapeHTML = function(str)
