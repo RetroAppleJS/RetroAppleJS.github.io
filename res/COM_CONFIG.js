@@ -168,9 +168,9 @@ const _CFG_IOADDR = {
 }
 
 const _CFG_PCODE = {
- "MS16K":{"NAME":"Microsoft 16K Language card" ,"IOrange":"$C0<sub>n+8</sub>0,$C0<sub>n+8</sub>F" ,"ROMrange":"" ,"SLOTrange":"0" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IOrange":"$C0<sub>n+8</sub>0,$C0<sub>n+8</sub>F" ,"ROMrange":"$C<sub>n</sub>00,$C<sub>n</sub>FF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IOrange":"$C0<sub>n+8</sub>0,$C0<sub>n+8</sub>F" ,"ROMrange":"$C<sub>n</sub>00,$C<sub>n</sub>FF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2E"}
+ "MS16K":{"NAME":"Microsoft 16K Language card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"" ,"SLOTrange":"0" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2E"}
 ,"[SLOT#]":{"NAME":"PCODE" ,"IOrange":"SWITCHES" ,"ROMrange":"DESCRIPTION"}
 ,":----:":{"NAME":":---------" ,"IOrange":":----------------" ,"ROMrange":":-----------------"}
 ,0:{"NAME":"MS16K" ,"IOrange":"" ,"ROMrange":""}
@@ -184,13 +184,13 @@ const _CFG_PCODE = {
 }
 
 const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":[0xC800,0xC80F],"ROMrange":[] ,"SWITCHES":"" ,"DESCRIPTION":""}
+ 0:{"PCODE":"MS16K","IOrange":[0xC080,0xC08F],"ROMrange":[] ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,1:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,2:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":[0xC830,0xC83F],"ROMrange":[0xC300,0xC3FF] ,"SWITCHES":"" ,"DESCRIPTION":""}
+,3:{"PCODE":"VIDEX","IOrange":[0xC0B0,0xC0BF],"ROMrange":[0xC060,0xC15F] ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,4:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,5:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":[0xC860,0xC86F],"ROMrange":[0xC600,0xC6FF] ,"SWITCHES":"" ,"DESCRIPTION":""}
+,6:{"PCODE":"DISKII","IOrange":[0xC0E0,0xC0EF],"ROMrange":[0xC0C0,0xC1BF] ,"SWITCHES":"" ,"DESCRIPTION":""}
 ,7:{"PCODE":"" ,"SWITCHES":"" ,"DESCRIPTION":""}
 }
 
