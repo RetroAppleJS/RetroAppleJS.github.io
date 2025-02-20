@@ -394,7 +394,8 @@ function EMUI()
 
         //var ss = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
         var s = "document.getElementById('"+arg.id+"').innerHTML='"+arg.id+"';"
-        document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"oEMUI.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\"fa fa-cog\"></i></button>"
+        if(document.getElementById(arg.id)!=null)
+            document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"oEMUI.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\"fa fa-cog\"></i></button>"
     }
 
     this.slotConfig_detail = function(id)

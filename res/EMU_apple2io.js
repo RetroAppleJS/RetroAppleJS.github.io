@@ -7,7 +7,7 @@
 //
 // apple2io.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{}}}
+if(oEMU===undefined) var oEMU = {"component":{"IO":{}},"system":{"A2P":{"active":true}}}
 //else oEMU.component.IO = new Apple2IO();
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){}} // allow tools to include apple2io.js without apple2main.js
@@ -368,7 +368,7 @@ function Apple2IO(vid)
             //IOMAP_TBL.push(["0x"+addr,name,"0b"+oCOM.getBinMulti(iomap_bitmap,16),act_names,desc])
             //IOMAP_TBL.push(["0x"+addr,name,"0x"+oCOM.getHexMulti(iomap_bitmap,4),act_names,desc])
 
-            var cm  = IOMAP_CALLS[IOMAP_ID][name]===undefined ? null : IOMAP_CALLS[IOMAP_ID][name];
+            var cm  = IOMAP_CALLS[IOMAP_ID]===undefined || IOMAP_CALLS[IOMAP_ID][name]===undefined ? null : IOMAP_CALLS[IOMAP_ID][name];
             if(family_C[IOMAP_ID] && cm!=null && (cm.ST!=null || cm!=null))
             {
                 if(act.charAt(0)=="W")      output.WR[addr_n]  = cm; // WRITE
