@@ -543,8 +543,6 @@ function Apple2IO(vid)
     // SLOT MAPPING
     this.mount_all = function(cfg)
     {
-        if(cfg===undefined) return;
-
         for(var idx in cfg)
         {
                 idx = Number(idx);
@@ -634,6 +632,5 @@ function Apple2IO(vid)
     this["VIDEX"]  = this.col80card;
     this["DISKII"] = this.disk2;
 
-    this.mount_all(_CFG_SLOT);
-    
+    if(typeof(_CFG_SLOT)!="undefined") this.mount_all(_CFG_SLOT);
 }
