@@ -543,6 +543,8 @@ function Apple2IO(vid)
     // SLOT MAPPING
     this.mount_all = function(cfg)
     {
+        if(cfg===undefined) return;
+
         for(var idx in cfg)
         {
                 idx = Number(idx);
