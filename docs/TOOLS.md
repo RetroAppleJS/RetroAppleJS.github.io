@@ -111,13 +111,14 @@ The camera capture tool enables your default laptops camera, and transform that 
 This tool does the same thing, plus some extra functions like making a full hex dump and displaying a (16x35) heat map laying out 16 columns (sectors) and 35 rows (tracks).
 
 A "GCR table" button shows an essential feature of the NIB data arrangement: an encoding method for magnetic media.   While the DSK file format is a sequence of all the logical byte information on a disk, arranged per track and sector, the NIB format reflects the digital signal picked up from the magnetic track on the disk, which contains a few extras besides pure data.  During the design of the Apple II disk drive and interface card, a clever workaround was found to overcome the high cost associated with **hard sector formatting** that, besides additional sensors, required extra driver chips to ensure accurate spin control and magnetic data localisation.  **Soft sector formatting** requires writing some extra bits on the disk to keep the location of the magnetic bits in sync with expected time windows for magnetic pickup.  GCR = Group Code Recording allows this soft alignment encoding, which works best by applying two rules.  
-Rule #1: Every byte starts with a bit that is always 1.  Hence, every byte has at least one firm sync reminder.
-Rule #2: Only up to two subsequent zeroes.  
-The genuine GCR part applies to the seven remaining bits.  Since all other ones also keep the pickup windows in check, more than two subsequent zeroes would already cause unacceptable deviations.  In the table on the left, we computed 81 combinations, from which only 64 finally encoded six usable bits.  On the right, the table of 64 values is shown as extracted from a lookup table generated in RAM ($036C-$03D5) by 32 bytes of Woz wizardry on the Apple II interface card ROM.  Counting sequences of zero bits in machine code would have eaten far more precious card ROM. 
+- Rule #1: Every byte starts with a bit that is always 1.  Hence, every byte has at least one firm sync reminder.
+- Rule #2: Only up to two subsequent zeroes.  
+
+The genuine GCR part applies to the seven remaining bits.  Since all other ones also keep the pickup windows in check, more than two subsequent zeroes would already cause unacceptable deviations.  In the table on the left, we computed 81 compliant combinations, from which only 64 finally encoded six usable bits (throwing away 17 combinations).  On the right, the table of 64 values is shown as extracted from a lookup table generated in RAM ($036C-$03D5) by 32 bytes of Woz wizardry on the Apple II interface card ROM.  Counting sequences of zero bits in machine code would have eaten far more precious card ROM. 
 
 <pre>
-; Build GCR lookup table (values 0-63)
-; ranging from 036C > 03D5
+; GCR lookup table builder (values 0-63)
+; writing from 036C > 03D5
 
 ORG   $Cn00                 ; n = slot number
 DOS.1 = $3C
