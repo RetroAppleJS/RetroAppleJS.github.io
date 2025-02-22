@@ -60,17 +60,24 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     {
       if(typeof(this.LData[ROWname])=="undefined") this.LData[ROWname] = {};
 
+      if(FIELDname=="IOrange") 
+        this.LData[ROWname][FIELDname] = FIELDdata;
+
       if(FIELDname=="ROMrange") 
         this.LData[ROWname][FIELDname] = FIELDdata;
-      
-      // TODO CHECK
-      if(FIELDname=="IOrange") 
+
+      if(FIELDname=="LROMrange") 
         this.LData[ROWname][FIELDname] = FIELDdata;
     }
     var bck_method = oPROCESS.changeDATA; // backup the abstract method
     oPROCESS.changeDATA = function(ROWname,FIELDname,FIELDdata)  // method override
-    { if(FIELDname=="ROMrange")
+    { 
+      if(FIELDname=="ROMrange")
           FIELDdata = FIELDdata.replace(/(\$)([0-9A-F\()])/g,"0x$2");
+
+      if(FIELDname=="LROMrange")
+          FIELDdata = FIELDdata.replace(/(\$)([0-9A-F\()])/g,"0x$2");
+
       return {"FIELDname":FIELDname,"FIELDdata":FIELDdata}
     }
 
@@ -108,7 +115,8 @@ GetHTTP(rawDocsURL+"CONFIG.md",
       if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
           s+=//",\"IOrange\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
              ",\"IOrange\":["+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]"
-           +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]";
+           +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]"
+           +",\"LROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].LROMrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]";
       return s
     }
 
@@ -522,6 +530,7 @@ function ASMhex2JShex(str) { return str.replace(/(\$)([0-9A-F]+)/g,"0x$2") }
 
 function HexSTR2NUM(str,substitutes)
 {
+  if(str===undefined) return [];
   //var Astr = str.replace(/^ */,"").replace(/ *$/,"");  // trim
   var Jstr = ASMhex2JShex(str); // convert to JS hex literals
   var Carr = Jstr.split( new RegExp("([0-9A-F])"+substitutes._locate_[0]+"(.*?)"+substitutes._locate_[1],"g") );                    // split hex digit + expression
@@ -555,7 +564,7 @@ function HexSTR2NUM(str,substitutes)
   else
   {
     var i=0;
-    var Larr = Carr[i].substring(0,Carr[i].lastIndexOf("0x")).match(/0x[0-9A-F]+/g); //array of literals
+    var Larr = Carr[i].match(/0x[0-9A-F]+/g); //array of literals
     if(Larr!=null) Sarr.push(...Larr);
   }
 
