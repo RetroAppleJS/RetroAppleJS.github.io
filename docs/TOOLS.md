@@ -116,7 +116,7 @@ A "GCR table" button shows an essential feature of the NIB data arrangement: an 
 - Rule #1: Every byte starts with a bit that is always 1.  Hence, every byte has at least one firm sync reminder.
 - Rule #2: Only up to two subsequent zeroes.  
 
-The genuine GCR part applies to the seven remaining bits.  Since all other ones also keep the pickup windows in check, more than two subsequent zeroes would already cause unacceptable deviations.  In the table on the left, we computed 81 compliant combinations, from which only 64 finally encoded six usable bits (throwing away 17 combinations).  On the right, the table of 64 values is shown as extracted from a lookup table generated in RAM ($036C-$03D5) by 32 bytes of Woz wizardry on the Apple II interface card ROM.  Counting sequences of zero bits in machine code or worse, storing all 64 bytes of lookup table in card ROM would be overkill. 
+The genuine GCR part applies to the seven remaining bits.  Since all other ones also keep the pickup windows in check, more than two subsequent zeroes would already cause unacceptable deviations.  In the table on the left, we computed 81 compliant combinations, from which only 64 finally encoded six usable bits (throwing away 17 combinations).  On the right, the table of 64 values is shown as extracted from a lookup table generated in RAM ($036C-$03D5) by 32 bytes of Woz wizardry on the Apple II interface card ROM.  Counting sequences of zero bits in machine code or worse, storing all 64 bytes of lookup table in card ROM would have been overkill. 
 
 <pre>
 ; GCR lookup table builder (values 0-63)
