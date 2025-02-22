@@ -235,7 +235,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 |[SLOT#] | PCODE      |  DESCRIPTION        |
 | :----: | :--------- |  :----------------- |
-|   0    | MS16K      |                   |
+|   0    | MS16K      | [16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards) |
 |   1    |            |                   |
 |   2    |            |                   |
 |   3    | VIDEX      |                   |
