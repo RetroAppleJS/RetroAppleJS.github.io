@@ -110,7 +110,35 @@ The camera capture tool enables your default laptops camera, and transform that 
 <img src="../res/apple-disk-ii_256.png" align=left width=30% />The emulator natively works with __.nib formatted disk images__.  Therefore, it can read .nib files from your local hard drive to the emulator's memory and download .nib files raw from memory.   The emulator also accepts loading .dsk image files, but it always does that by converting from .dsk format to .nib before storing the image in memory.
 This tool does the same thing, plus some extra functions like making a full hex dump and displaying a (16x35) heat map laying out 16 columns (sectors) and 35 rows (tracks).
 
-A "GCR table" button shows an essential feature of the NIB data arrangement: the GCR data encoding.   While the DSK file format is a sequence of all the logical byte information on a disk, arranged per track and sector, the NIB format reflects the digital signal picked up from the magnetic track on the disk, which contains a few extras besides pure data.  During the design of the Apple II disk drive and interface card, a clever workaround was found to overcome the high cost associated with **hard sector formatting** that, besides additional sensors, required extra driver chips to ensure accurate spin control and magnetic data localisation.  **Soft sector formatting** requires writing some extra bits on the disk to keep the location of the magnetic bits in sync with expected time windows for magnetic pickup.  GCR = Group Code Recording allows this soft alignment encoding, which works best by applying two rules.  Rule #1: Every byte starts with a bit that is always 1.  Hence, every byte has at least one firm sync reminder.  Rule #2: Only up to two subsequent zeroes.  The genuine GCR part applies to the seven remaining bits.  Since all other ones also keep the pickup windows in check, more than two subsequent zeroes would already cause unacceptable deviations.  In the table on the left, we computed 81 such combinations, from which only 64 finally encoded six usable bits.  On the right, the lookup table of 64 values is shown as extracted from the Apple II interface card ROM.
+A "GCR table" button shows an essential feature of the NIB data arrangement: an encoding method for magnetic media.   While the DSK file format is a sequence of all the logical byte information on a disk, arranged per track and sector, the NIB format reflects the digital signal picked up from the magnetic track on the disk, which contains a few extras besides pure data.  During the design of the Apple II disk drive and interface card, a clever workaround was found to overcome the high cost associated with **hard sector formatting** that, besides additional sensors, required extra driver chips to ensure accurate spin control and magnetic data localisation.  **Soft sector formatting** requires writing some extra bits on the disk to keep the location of the magnetic bits in sync with expected time windows for magnetic pickup.  GCR = Group Code Recording allows this soft alignment encoding, which works best by applying two rules.  
+Rule #1: Every byte starts with a bit that is always 1.  Hence, every byte has at least one firm sync reminder.
+Rule #2: Only up to two subsequent zeroes.  
+The genuine GCR part applies to the seven remaining bits.  Since all other ones also keep the pickup windows in check, more than two subsequent zeroes would already cause unacceptable deviations.  In the table on the left, we computed 81 combinations, from which only 64 finally encoded six usable bits.  On the right, the table of 64 values is shown as extracted from a lookup table generated in RAM ($036C-$03D5) by a small piece of code on the Apple II interface card ROM.
+
+<pre>
+  ; Build GCR lookup table (values 0-63)
+  ; ranging from 036C > 03D5
+
+        LDX   #$20          ; 32
+        LDY   #$00
+        LDX   #$03
+L01     STX   *DOS.1        ; Store X in DOS register
+        TXA
+        ASL   A		    ; *2
+        BIT   *DOS.1        ; AND ACC with DOS register 
+        BEQ   L03	    ; JUMP IF ZERO 
+        ORA   *DOS.1        ; OR ACC with DOS register >> put back in ACC
+        EOR   #$FF          ; %11111111 invert all ACC bits 
+        AND   #$7E          ; %01111110 remove first & last bit of ACC
+L02     BCS   L03
+        LSR   A   
+        BNE   L02
+        TYA 
+        STA   $0356,X       ; write in lookup table
+        INY  
+L03     INX   
+        BPL   L01
+</pre>
 
 
 ### SIDchipJS.html
