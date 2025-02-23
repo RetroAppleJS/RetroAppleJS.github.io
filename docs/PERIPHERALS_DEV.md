@@ -1,6 +1,6 @@
 ## PERIPHERAL developers instructions
 
-The principle of memory-mapped I/O sais exactly what it is all about.  Apple II models route the range C000-$CFFF by means of address decoder logic to I/O pins on the **motherboard**, and here's where our coding journey starts.  A simple mask and filter operation combined will detect any address within in I/O range.
+The principle of memory-mapped I/O sais what it is.  Apple II models route the range C000-$CFFF by means of address decoder logic to I/O pins on the **motherboard**, and here's where our coding journey starts.  A simple mask and filter operation combined do detect any address within in I/O range.
 pseudo code: 
 ```javascript
 // x and 0xFFF = mask, y xor 0xC000 = filter
