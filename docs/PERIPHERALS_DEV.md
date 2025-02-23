@@ -1,6 +1,6 @@
 ## PERIPHERAL developers instructions
 
-The principle of memory-mapped I/O sais exactly what it is all about.  The address space between $C000-$CFFF on Apple II models are mapped by address decoder logic to I/O pins on the motherboard, and here's where our coding journey starts.  A mask and filter operation combined will detect if any given address is in I/O range:
+The principle of memory-mapped I/O sais exactly what it is all about.  The address space between $C000-$CFFF on Apple II models is mapped by address decoder logic to I/O pins on the **motherboard**, and here's where our coding journey starts.  A mask and filter operation combined will do the detection of all addresses in I/O range:
 pseudo code: 
 ```javascript
 function isIOadr(adr) { return adr & 0xF000 ^ 0xC000 == 0 }  // 0xFFF = mask, 0xC000 = filter
