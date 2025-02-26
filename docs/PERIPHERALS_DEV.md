@@ -1,9 +1,11 @@
 ## PERIPHERAL developers instructions
 
-The principle of memory-mapped I/O sais what it is.  Apple II models route the range C000-$CFFF by means of address decoder logic to I/O pins on the **motherboard**, and here's where our coding journey starts.  A simple mask and filter operation combined do detect any address within in I/O range.
-pseudo code: 
+Apple II machines all rely on the principle of *memory-mapped I/O*.  An address decoder wired to the address bus is designed to activate RAM *chip-select* pins, this is how the CPU prepares its usual access to memory.  When this decoder logic senses any address on the bus (on most Apple IIs ranging between C000-$CFFF), 12 bits or 4K worth of this address space is reserved for *selecting I/O pins* on the motherboard.  This is where our code journey starts: EMU_apple2hw.js emulates the motherboard function, including this address decoder logic.
+
+A simple binary (mask and filter) operation helps us detect addresses within this specific I/O range.
+
+example code: 
 ```javascript
-// x and 0xFFF = mask, y xor 0xC000 = filter
 function isIOadr(adr)
 { 
      return adr & 0xF000 ^ 0xC000 == 0;
