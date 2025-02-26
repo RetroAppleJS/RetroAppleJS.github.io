@@ -62,11 +62,11 @@ function Apple2Hw(vid,keys)
 
         if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
             d8 = this.io.read(addr);
-        else if (addr < RAM_SIZE)
+        else if (addr < RAM_SIZE) // RAM_SIZE
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             d8 = apple2Rom[addr - ROM_ADDR];
-        else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+        else if (addr & 0xF000 ^ 0xC000 == 0) //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             d8 = this.io.read(addr - IO_ADDR);
         else
             d8 = 0x55;
@@ -116,7 +116,7 @@ function Apple2Hw(vid,keys)
                 (addr >= HIRES_ADDR && addr < HIRES_ADDR + HIRES_SIZE))
                 video.write(addr, d8);
         }
-        else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
+        else if (addr & 0xF000 ^ 0xC000 == 0)  //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             this.io.write(addr - IO_ADDR, d8);
 
         if( this.bMEM_monitoring )
