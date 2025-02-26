@@ -121,7 +121,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     }
 
     // EXECUTE
-    var s = oPROCESS.process_table(["[SLOT#]" ,"\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
+    var s = oPROCESS.process_table(["[SLOT#]","\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
     // EXECUTE
