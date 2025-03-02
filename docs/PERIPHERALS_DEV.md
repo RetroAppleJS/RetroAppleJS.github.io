@@ -1,6 +1,6 @@
 ## PERIPHERAL developers instructions
 
-Apple II machines all rely on the principle of **memory-mapped I/O**.  An address decoder wired to the address bus is designed to activate RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are mapped for reading text and video data, our focus here goes to decoder logic that senses any address on the bus (on most Apple IIs ranging between C000-$CFFF), 12 bits or 4K worth of this address space is reserved for **selecting I/O pins** on the motherboard.  This is where our code journey starts: **EMU_apple2hw.js** emulates the motherboard function, including this address decoder logic.  So, lets take that step back before addressing peripherals.
+Apple II machines all rely on the principle of **memory-mapped I/O**.  An address decoder wired to the address bus is designed to activate RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are mapped for reading text and video data, our focus here goes to decoder logic that senses any address on the bus (on most Apple IIs ranging between C000-$CFFF), 12 bits or 4K worth of this address space is reserved for **selecting I/O pins** on the motherboard.  This is where our code journey starts: **EMU_apple2hw.js** emulates the motherboard function, including this address decoder logic.  So, lets take a step back before going hands-on with peripherals.
 
 ## EMU_apple2hw.js = motherboard hardware controller
 
