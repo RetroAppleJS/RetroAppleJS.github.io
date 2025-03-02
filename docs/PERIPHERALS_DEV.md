@@ -1,12 +1,15 @@
 ## PERIPHERAL developers instructions
 
-Apple II machines all rely on the principle of **memory-mapped I/O**.  An address decoder wired to the address bus is designed to activate RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are mapped for reading text and video data, our focus here goes to decoder logic that senses any address on the bus (on most Apple IIs ranging between C000-$CFFF), 12 bits or 4K worth of this address space is reserved for **selecting I/O pins** on the motherboard.  This is where our code journey starts: **EMU_apple2hw.js** emulates the motherboard function, including this address decoder logic.  So, lets take a step back before going hands-on with peripherals.
-
-## EMU_apple2hw.js = motherboard hardware controller
+Apple II machines all rely on the principle of **memory-mapped I/O**.  An address line decoder wired to the address bus is designed to target RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are also mapped for reading text and video data, our focus here goes to decoder logic on the modherboard that senses specific bit combination on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch to one of the tri-state options** (OUTPUT 1 = switching pin to power vcc, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts: **EMU_apple2hw.js** emulating motherboard hardware. 
 
 
+## EMU_apple2hw.js
 
-A simple binary (mask and filter) operation can help us detect addresses within I/O range.  (adr & 0xF000 ^ 0xC000 == 0).  In order to make address decoding configurable but still comutationally efficient for an emulator, we will need to be a bit more creative (worth a code review).  The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
+###Address line decoder
+
+While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can't afford wasting much processing power or memory dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **multi-granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain.  Without granularity levels, a bit-level mapping on a 16-bit address bus would take a an array the size of address bus width = 8 bits per byte * 2 ^ 16 = addressable bytes = 524288 elements, while the identifier for each element itself would require 19 bits (2^19 = 524288), rounded-up to 32 bits, requiring a lookup table of 524288 * 32 / 8 = 2MB.
+
+The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
 
 
 
