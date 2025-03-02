@@ -10,15 +10,14 @@ Apple II machines all rely on the principle of **memory-mapped I/O**.  An addres
 While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can afford wasting much processing power or memory space dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **multi-granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain. 
 FYI, without granularity levels, a bit-level mapping on a 16-bit address bus would take (2 ^ 16) addressable bytes * 8 bits per byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 bytes, a single fine-grain lookup table would size to 524288 elements * 4 bytes = 2Mb; clearly not justifiable.
 Let's extrapolate given Apple II ranges by example into **fitting granularities**:
-* RAM:   $0000-$03FF
-* TEXT:  $0400-$0BFF
-* RAM:   $0C00-$1FFF
-* VIDEO: $2000-$5FFF
-* RAM:   $6000-$BFFF
-* I/O:   $C000-$CFFF
-* ROM:   $D000-$FFFF
-
-
+* RAM:      $0000-$03FF >> processed locally  (granularity = $0100)
+* TEXT:     $0400-$0BFF >> EMU_apple2hw.js >> routing to EMU_apple2video.js / EMU_apple2GPU.js (granularity = $0100)
+* RAM:      $0C00-$1FFF >> processed locally  (granularity = $0100)
+* VIDEO:    $2000-$5FFF >> EMU_apple2video.js (granularity = $1000)
+* RAM:      $6000-$BFFF >> processed locally  (granularity = $1000)
+* Host I/O: $C000-$C07F >> EMU_apple2io.js >> routing to onboard drivers: EMU_apple2spk.js / EMU_A2Pkeys.js (granularity = $0010)
+* Slot I/O: $C080-$CFFF >> EMU_apple2io.js >> routing to peripheral drivers: EMU_ramcard.js / EMU_saturnRAM.js / EMU_80colcard.js / EMU_appledisk2 (granularity = $0010)
+* ROM:      $D000-$FFFF >> EMU_apple2roms.js (granularity = $1000)
 
 The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
 
