@@ -20,7 +20,13 @@ Let's extrapolate given Apple II ranges by example into **fitting granularities*
 | RAM           | $6000>$BFFF | processed locally                                                 | $1000       |
 | HOST&nbsp;I/O | $C000>$C07F | processed by EMU_apple2io.js >> routed to onboard drivers         | $0100       |
 | SLOT&nbsp;I/O | $C080>$CFFF | processed by EMU_apple2io.js >> routed to peripheral drivers      | $0100       |
-| ROM           | $D000>$FFFF | processed by EMU_apple2roms.js (overridable by memory expansions) | $1000       |
+| ROM           | $D000>$FFFF | processed by EMU_apple2roms.js (routed to card if overrided by memory expansion) | $1000       |
+
+| Route         | Range       | Destination                                                       | Granularity |
+| ------------- | :---------: | ----------------------------------------------------------------- | :---------: |
+| HOST&nbsp;I/O | $C000>$C07F | | |
+ 
+
 
 EMU_apple2spk.js / EMU_A2Pkeys.js  
 EMU_ramcard.js / EMU_saturnRAM.js / EMU_80colcard.js / EMU_appledisk2
