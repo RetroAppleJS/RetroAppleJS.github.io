@@ -11,16 +11,16 @@ While we could design a piece of code with numerous "if-then" or "switch-case" s
 FYI, without granularity levels, a bit-level mapping on a 16-bit address bus would take (2 ^ 16) addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
 Let's extrapolate given Apple II ranges by example into **fitting granularities**:
 
-| Name          | Range       | Destination                                        | Granularity | 
-| ------------- | :---------: | -------------------------------------------------- | :---------: | 
-| RAM           | $0000>$03FF | processed locally                                  | $0100       |
-| TEXT          | $0400>$0BFF | routed locally to text/video driver                | $0100       |
-| RAM           | $0C00>$1FFF | processed locally                                  | $0100       |
-| VIDEO         | $2000>$5FFF | routed locally to text/video driver                | $0100       |
-| RAM           | $6000>$BFFF | processed locally                                  | $1000       |
-| HOST&nbsp;I/O | $C000>$C07F | EMU_apple2io.js >> routed to onboard drivers       | $0100       |
-| SLOT&nbsp;I/O | $C080>$CFFF | EMU_apple2io.js >> routed to peripheral drivers    | $0100       |
-| ROM           | $D000>$FFFF | EMU_apple2roms.js                                  | $1000       |
+| Name          | Range       | Destination                                                       | Granularity | 
+| ------------- | :---------: | ----------------------------------------------------------------- | :---------: | 
+| RAM           | $0000>$03FF | processed locally                                                 | $0100       |
+| TEXT          | $0400>$0BFF | routed locally to text/video driver                               | $0100       |
+| RAM           | $0C00>$1FFF | processed locally                                                 | $0100       |
+| VIDEO         | $2000>$5FFF | routed locally to text/video driver                               | $0100       |
+| RAM           | $6000>$BFFF | processed locally                                                 | $1000       |
+| HOST&nbsp;I/O | $C000>$C07F | processed by EMU_apple2io.js >> routed to onboard drivers         | $0100       |
+| SLOT&nbsp;I/O | $C080>$CFFF | processed by EMU_apple2io.js >> routed to peripheral drivers      | $0100       |
+| ROM           | $D000>$FFFF | processed by EMU_apple2roms.js (overridable by memory expansions) | $1000       |
 
 EMU_apple2spk.js / EMU_A2Pkeys.js  
 EMU_ramcard.js / EMU_saturnRAM.js / EMU_80colcard.js / EMU_appledisk2
