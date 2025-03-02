@@ -7,7 +7,9 @@ Apple II machines all rely on the principle of **memory-mapped I/O**.  An addres
 
 ### Address line decoder
 
-While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can afford wasting much processing power or memory space dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **multi-granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain.  Without granularity levels, a bit-level mapping on a 16-bit address bus would take 2 ^ 16 * 8 = 524288 mappable bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 bytes, a single fine-grain lookup table would size to 524288 elements * 4 bytes = 2Mb; clearly not justifiable.
+While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can afford wasting much processing power or memory space dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **multi-granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain. 
+
+FYI, without granularity levels, a bit-level mapping on a 16-bit address bus would take 2 ^ 16 * 8 = 524288 mappable bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 bytes, a single fine-grain lookup table would size to 524288 elements * 4 bytes = 2Mb; clearly not justifiable.
 
 The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
 
