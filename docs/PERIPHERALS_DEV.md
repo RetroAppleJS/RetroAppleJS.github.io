@@ -29,7 +29,9 @@ We can design the lookup logic as follows:
 
 The lookup array would look like \[ 0,0,0, 1,1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 ,3,3,3,3,3,3,3,3... \]
 A small test: let's assume the address bus is at $2000.
+
 **index = $2000 & $FF00 >> 8 = $20 = 32**
+
 **lookup\[ index \] = 3**
 
 
