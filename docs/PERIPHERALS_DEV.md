@@ -11,25 +11,24 @@ While we could design a piece of code with numerous "if-then" or "switch-case" s
 FYI, without granularity levels, a bit-level mapping on a 16-bit address bus would take (2 ^ 16) addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
 Let's extrapolate given Apple II ranges by example into **fitting granularities**:
 
-| Name          | Range       | Destination                                                       | Granularity | 
-| ------------- | :---------: | ----------------------------------------------------------------- | :---------: | 
-| RAM           | $0000>$03FF | processed locally                                                 | $0100       |
-| TEXT          | $0400>$0BFF | routed locally to text/video driver                               | $0100       |
-| RAM           | $0C00>$1FFF | processed locally                                                 | $0100       |
-| VIDEO         | $2000>$5FFF | routed locally to text/video driver                               | $0100       |
-| RAM           | $6000>$BFFF | processed locally                                                 | $1000       |
-| HOST&nbsp;I/O | $C000>$C07F | processed by EMU_apple2io.js >> routed to onboard drivers         | $0100       |
-| SLOT&nbsp;I/O | $C080>$CFFF | processed by EMU_apple2io.js >> routed to peripheral drivers      | $0100       |
-| ROM           | $D000>$FFFF | processed by EMU_apple2roms.js (routed to card if overrided by memory expansion) | $1000       |
+| Name          | Range       | Destination                                                            | Granularity | 
+| ------------- | :---------: | ---------------------------------------------------------------------- | :---------: | 
+| RAM           | $0000>$03FF | Process locally                                                        | $0100       |
+| TEXT          | $0400>$0BFF | Route locally to text/video driver (1a)                                | $0100       |
+| RAM           | $0C00>$1FFF | Process locally                                                        | $0100       |
+| VIDEO         | $2000>$5FFF | Route locally to text/video driver (1b)                                | $0100       |
+| RAM           | $6000>$BFFF | Process locally                                                        | $1000       |
+| HOST&nbsp;I/O | $C000>$C07F | Processed by EMU_apple2io.js >> routed to onboard I/O drivers (2)      | $0100       |
+| SLOT&nbsp;I/O | $C080>$CFFF | Processed by EMU_apple2io.js >> routed to peripheral drivers (3)       | $0100       |
+| ROM           | $D000>$FFFF | Processed by EMU_apple2roms.js >> optionally routed to memory card (4) | $1000       |
 
-| Route         | Range       | Destination                                                       | Granularity |
-| ------------- | :---------: | ----------------------------------------------------------------- | :---------: |
-| HOST&nbsp;I/O | $C000>$C07F | | |
- 
-
-
-EMU_apple2spk.js / EMU_A2Pkeys.js  
-EMU_ramcard.js / EMU_saturnRAM.js / EMU_80colcard.js / EMU_appledisk2
+| Route          | Range       | Destination                                             | Granularity |
+| -------------- | :---------: | ------------------------------------------------------- | :---------: |
+| 1a             | $0400>$0BFF | Processed by EMU_apple2GPU.js / EMU_apple2video.js      | $0100       |        
+| 1b             | $2000>$5FFF | Processed by EMU_apple2GPU.js / EMU_apple2video.js      | $0100       |
+| 2              | $C000>$C07F | Processed by EMU_apple2spk.js / EMU_A2Pkeys.js          | $0001       |
+| 3              | $C080>$CFFF | Processed by EMU_80colcard.js / EMU_appledisk2          | $0001       |
+| 4              | $D000>$FFFF | Optionally processed by EMU_ramcard.js / EMU_saturnRAM.js | $1000       |
 
 The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
 
