@@ -7,29 +7,39 @@ Apple II machines all rely on the principle of **memory-mapped I/O**.  An addres
 
 ### Address line decoder
 
-While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can afford wasting much processing power or memory space dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **multi-granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain. 
-FYI, without granularity levels, a bit-level mapping on a 16-bit address bus would take (2 ^ 16) addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
+While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can afford wasting much processing power or memory space dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain. 
+FYI, without granularity, a bit-level mapping on a 16-bit address bus would take (2 ^ 16) = 65536  addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
 Let's extrapolate given Apple II ranges by example into **fitting granularities**:
 
-| Name          | Range       | Routed by       | Via                  | Granularity | 
-| ------------- | :---------: | :-------------- | :------------------- | :---------: | 
-| RAM           | $0000>$03FF | EMU_apple2hw.js | local                | $0100       |
-| TEXT          | $0400>$0BFF | EMU_apple2hw.js | **1a**               | $0100       |
-| RAM           | $0C00>$1FFF | EMU_apple2hw.js | local                | $0100       |
-| VIDEO         | $2000>$5FFF | EMU_apple2hw.js | **1b**               | $0100       |
-| RAM           | $6000>$BFFF | EMU_apple2hw.js | local                | $1000       |
-| HOST&nbsp;I/O | $C000>$C07F | EMU_apple2hw.js | **2**                | $0100       |
-| SLOT&nbsp;I/O | $C080>$CFFF | EMU_apple2hw.js | **3**                | $0100       |
-| ROM           | $D000>$FFFF | EMU_apple2hw.js | **4**                | $1000       |
+| RangeID | Range name    | Range       | Routed by       | Via     | Granularity in Bytes | 
+| ------- | ------------- | :---------: | :-------------- | :------ | :---------: | 
+|       0 | RAM           | $0000>$03FF | EMU_apple2hw.js | local   | $100        |
+|       1 | TEXT          | $0400>$0BFF | EMU_apple2hw.js | **1a**  | $100        |
+|       2 | RAM           | $0C00>$1FFF | EMU_apple2hw.js | local   | $100        |
+|       3 | VIDEO         | $2000>$5FFF | EMU_apple2hw.js | **1b**  | $1000       |
+|       4 | RAM           | $6000>$BFFF | EMU_apple2hw.js | local   | $1000       |
+|       5 | HOST&nbsp;I/O | $C000>$C07F | EMU_apple2hw.js | **2**   | $100        |
+|       6 | SLOT&nbsp;I/O | $C080>$CFFF | EMU_apple2hw.js | **3**   | $100        |
+|       7 | ROM           | $D000>$FFFF | EMU_apple2hw.js | **4**   | $1000       |
 
-EMU_apple2io.js >> to onboard I/O drivers (2)
+A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 8 RangeIDs.
+We can design the lookup logic as follows: 
 
-| Route          | Range       | Routed by         | To                                          | Granularity |
-| -------------- | :---------: | :---------------- | :------------------------------------------ | :---------: |
-| 1a             | $0400>$0BFF |                   | EMU_apple2GPU.js / EMU_apple2video.js       | $0100       |        
-| 1b             | $2000>$5FFF |                   | EMU_apple2GPU.js / EMU_apple2video.js       | $0100       |
-| 2              | $C000>$C07F | EMU_apple2io.js   | EMU_apple2spk.js / EMU_A2Pkeys.js           | $0001       |
-| 3              | $C080>$CFFF | EMU_apple2io.js   | any peripheral driver                       | $0001       |
+**lookup\[ address & $FF00 >> 8 \] = RangeID**
+
+The lookup array would look like \[ 0,0,0, 1,1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 ,3,3,3,3,3,3,3,3... \]
+A small test: let's assume the address bus is at $2000.
+**index = $2000 & $FF00 >> 8 = $20 = 32**
+**lookup\[ index \] = 3**
+
+
+
+| Route          | Range       | Routed by         | To                                             | Granularity in Bytes |
+| -------------- | :---------: | :---------------- | :--------------------------------------------- | :---------: |
+| 1a             | $0400>$0BFF |                   | EMU_apple2GPU.js / EMU_apple2video.js          | $100        |        
+| 1b             | $2000>$5FFF |                   | EMU_apple2GPU.js / EMU_apple2video.js          | $100        |
+| 2              | $C000>$C07F | EMU_apple2io.js   | EMU_apple2spk.js / EMU_A2Pkeys.js              | $1          |
+| 3              | $C080>$CFFF | EMU_apple2io.js   | any peripheral driver (e.g. EMU_appledisk2.js) | $1          |
 | 4              | $D000>$FFFF | EMU_apple2roms.js | Optionally routed to EMU_ramcard.js / EMU_saturnRAM.js | $1000       |
 
 The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
