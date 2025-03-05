@@ -20,20 +20,19 @@ Let's try extrapolate given Apple II ranges by example into **fitting granularit
 |       6 | SLOT&nbsp;I/O | $C080>$CFFF | EMU_apple2hw.js | **3**   | $100        |
 |       7 | ROM           | $D000>$FFFF | EMU_apple2hw.js | **4**   | $1000       |
 
-A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 8 RangeIDs.
-We can design the lookup logic as follows: 
+A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 8 RangeIDs or 3 bits, rounded up to 1 Byte.  Here's how the lookup 
+```javascript
+var RangeID = lookup[(address & $FF00) >> 8];
+switch(RangeID)
+{
+      0: // route to RAM
+      1: // route to ROM
+      ...
+}
 ```
-lookup[(address & $FF00) >> 8] = RangeID
-```
-The lookup array would look like \[ 0,0,0, 1,1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 ,3,3,3,3,3,3,3,3... \]
+**Conclusion:** EMU_apple2hw.js would not need more than a Uint8Array\[256\], indeed 256 Bytes long. 
 
-```
-TEST: let's assume the address bus is at $2000.
-
-index = ($2000 & $FF00) >> 8 = $20 = 32
-lookup[index] = 3
-```
-
+---
 
 | Route          | Range       | Routed by         | To                                             | Granularity in Bytes |
 | -------------- | :---------: | :---------------- | :--------------------------------------------- | :---------: |
