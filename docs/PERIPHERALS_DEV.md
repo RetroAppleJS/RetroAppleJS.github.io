@@ -4,10 +4,10 @@ Apple II machines all rely on the principle of **memory-mapped I/O**, and this m
 
 ## EMU_apple2hw.js - address decoder
 
-Although we could hard code multiple if-then or switch-case statements for address decoding, emulators can’t afford that overhead for dispatching RAM, ROM, VIDEO, TEXT, and I/O ranges. A **granular lookup table** method is more efficient, handling coarse-grain routing for memory and video while fine-grain I/O pin calls remain separate.
+Although we could get away with multiple hard-coded if-then or switch-case statements for address decoding, emulators can’t afford decision logic overhead and hard coding for dispatching RAM, ROM, VIDEO, TEXT, and I/O ranges for the entire Apple II family. A **granular lookup table** method is configurable and more efficient, handling coarse-grain routing for memory and video while fine-grain I/O pin logic remains separate.
 
 FYI, without granularity, a bit-level mapping on a 16-bit address bus would take (2^16) = 65536  addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
-Let's extrapolate given Apple II ranges by example into **fitting granularities**:
+Let's try extrapolate given Apple II ranges by example into **fitting granularities**:
 
 | RangeID | Range name    | Range       | Routed by       | Via     | Granularity in Bytes | 
 | ------- | ------------- | :---------: | :-------------- | :------ | :---------: | 
@@ -22,16 +22,17 @@ Let's extrapolate given Apple II ranges by example into **fitting granularities*
 
 A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 8 RangeIDs.
 We can design the lookup logic as follows: 
-
-**lookup\[ address & $FF00 >> 8 \] = RangeID**
-
+```
+lookup[(address & $FF00) >> 8] = RangeID
+```
 The lookup array would look like \[ 0,0,0, 1,1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 ,3,3,3,3,3,3,3,3... \]
-A small test: let's assume the address bus is at $2000.
 
-**index = $2000 & $FF00 >> 8 = $20 = 32**
+```
+TEST: let's assume the address bus is at $2000.
 
-**lookup\[ index \] = 3**
-
+index = ($2000 & $FF00) >> 8 = $20 = 32
+lookup[index] = 3**
+```
 
 
 | Route          | Range       | Routed by         | To                                             | Granularity in Bytes |
