@@ -31,7 +31,7 @@ The lookup array would look like \[ 0,0,0, 1,1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2,2,
 TEST: let's assume the address bus is at $2000.
 
 index = ($2000 & $FF00) >> 8 = $20 = 32
-lookup[index] = 3**
+lookup[index] = 3
 ```
 
 
