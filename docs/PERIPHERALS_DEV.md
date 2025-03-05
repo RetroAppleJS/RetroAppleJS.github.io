@@ -1,9 +1,9 @@
 ## PERIPHERAL developers instructions
 
-Apple II machines all rely on the principle of **memory-mapped I/O**.  An address line decoder wired to the address bus is designed to target RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are also mapped for reading text and video data, our focus here goes to decoder logic on the modherboard that senses specific bit combination on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch to one of the tri-state options** (OUTPUT 1 = switching pin to power vcc, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts: **EMU_apple2hw.js** emulating motherboard hardware. 
+Apple II machines all rely on the principle of **memory-mapped I/O**, and this mapping job is done by line decoders.  An address line decoder wired to the address bus is designed to target RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are mapped for reading text and video data, our focus goes to decoder logic on the modherboard that senses specific bit combinations on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch to one of the tri-state options** (OUTPUT 1 = switching pin to power vcc, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts. 
 
 
-## EMU_apple2hw.js
+## EMU_apple2hw.js - emulating the motherboard
 
 ### Address line decoder
 
