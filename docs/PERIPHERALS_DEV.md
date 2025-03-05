@@ -33,7 +33,7 @@ switch(RangeID)
       ...
 }
 ```
-**Conclusion:** EMU_apple2hw.js would not need more than a Uint8Array\[256\], indeed 256 Bytes long. 
+**Conclusion:** EMU_apple2hw.js address line decoding can be done easily, quickly, and flexibly using a lookup table of 256 Bytes. 
 
 ---
 
