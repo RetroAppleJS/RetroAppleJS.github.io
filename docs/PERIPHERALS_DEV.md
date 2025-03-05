@@ -1,13 +1,12 @@
 ## PERIPHERAL developers instructions
 
-Apple II machines all rely on the principle of **memory-mapped I/O**, and this mapping job is done by line decoders.  An address line decoder wired to the address bus is designed to target RAM and ROM **chip-select** pins, this is how the CPU prepares its usual access to memory.  While several address ranges are mapped for reading text and video data, our focus goes to decoder logic on the modherboard that senses specific bit combinations on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch to one of the tri-state options** (OUTPUT 1 = switching pin to power vcc, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts. 
+Apple II machines all rely on the principle of **memory-mapped I/O**, and this mapping job is done by address line decoders.  A decoder wired to the address bus allows targeting RAM and ROM **chip-select** pins; this is how the CPU prepares its usual access to memory, but also I/O.  On technical level, address decoder logic for I/O senses specific bit combinations on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch these pins to one of the tri-state options** (OUTPUT 1 = switching pin to power, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts. 
 
-## EMU_apple2hw.js - emulating the motherboard
+## EMU_apple2hw.js - address decoder
 
-### Address line decoder
+Although we could hard code multiple if-then or switch-case statements for address decoding, emulators can’t afford that overhead for dispatching RAM, ROM, VIDEO, TEXT, and I/O ranges. A **granular lookup table** method is more efficient, handling coarse-grain routing for memory and video while fine-grain I/O pin calls remain separate.
 
-While we could design a piece of code with numerous "if-then" or "switch-case" statements, no emulator can afford wasting resources dispatching configurable address ranges to RAM, ROM, VIDEO, TEXT and I/O operations.  To save computing power and memory emulating any such complex decision-making matrix, a **granular lookup table** could do quite a great job.   Routing ROM, RAM, VIDEO, and I/O address ranges to the right emulator component are coarse-grain decisions, while function calls behind I/O pins are typically fine-grain. 
-FYI, without granularity, a bit-level mapping on a 16-bit address bus would take (2 ^ 16) = 65536  addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
+FYI, without granularity, a bit-level mapping on a 16-bit address bus would take (2^16) = 65536  addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
 Let's extrapolate given Apple II ranges by example into **fitting granularities**:
 
 | RangeID | Range name    | Range       | Routed by       | Via     | Granularity in Bytes | 
