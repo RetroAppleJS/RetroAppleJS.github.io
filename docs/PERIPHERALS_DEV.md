@@ -24,7 +24,7 @@ A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the 
 
 ```javascript
 const lookup = new Uint8Array([0,0,0,1,1,1,1,1,1,1,1,2,2,2,...])
-var RangeID = lookup[(address & $FF00) >> 8];
+var RangeID = lookup[(address & 0xFF00) >> 8];
 switch(RangeID)
 {
       0: // route to RAM
