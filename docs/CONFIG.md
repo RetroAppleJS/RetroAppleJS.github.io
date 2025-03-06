@@ -44,24 +44,24 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              | CPU        | Speeds    | Display  | IO  | ROM | KeyFont      |
-| :---:   | :----------------- | :--------- | :-------- | :------- | :-- | :-- | :------------ |
-| A1      | Apple I            | 6502       | 1.023     | A1_txt   |     |     | A1_US         |
-| A2      | Apple II           | 6502       | 1.023     | A2_hgr   |     |     | A2_US         |
-| A2P     | Apple II Plus      | 6502       | 1.023     | A2_hgr   |     |     | A2_US         |
-| A2PE    | Apple II EuroPlus  | 6502       | 1.023     | A2_hgr   |     |     | A2_US         |
-| A2JP    | Apple II J-Plus    | 6502       | 1.023     | A2_hgr   |     |     | A2_JP         |
-| A2B     | Bell & Howell      | 6502       | 1.023     | A2_hgr   |     |     | A1_US_blk     |
-| A3      | Apple III          | 6502B      | 1.8       | A3_dhgr  |     |     | A3_US         |
-| A3R     | Apple III Revised  | 6502B      | 1.8       | A2_hgr   |     |     | A3_US         |
-| A2e     | Apple IIe RevA/B   | 6502       | 1.023     | A2_hgr   |     |     | A2e_US,A2e_UK,A2e_CA,A2e_FR |
-| A2c     | Apple IIc          | 65C02      | 1.023     | A2_dhgr  |     |     |               |
-| A3P     | Apple III Plus     | 6502B      | 1.8       | A3_dhgr  |     |     |               |
-| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     | A2_dhgr  |     |     |               |
-| A2GS    | Apple IIGS         | 65C816     | 2.8       | AGS      |     |     |               |
-| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     | A2_dhgr  |     |     |               |
-| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       | AGS      |     |     |               |
-| A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  |     |     |               |
+|[SYSCODE]| Model              | CPU        | Speeds    | Display  | IO  | ROM   | KeyFont      |
+| :---:   | :----------------- | :--------- | :-------- | :------- | :-- | :---- | :------------ |
+| A1      | Apple I            | 6502       | 1.023     | A1_txt   |     |       | A1_US         |
+| A2      | Apple II           | 6502       | 1.023     | A2_hgr   |     |       | A2_US         |
+| A2P     | Apple II Plus      | 6502       | 1.023     | A2_hgr   |     | A2P_R | A2_US         |
+| A2PE    | Apple II EuroPlus  | 6502       | 1.023     | A2_hgr   |     |       | A2_US         |
+| A2JP    | Apple II J-Plus    | 6502       | 1.023     | A2_hgr   |     |       | A2_JP         |
+| A2B     | Bell & Howell      | 6502       | 1.023     | A2_hgr   |     |       | A1_US_blk     |
+| A3      | Apple III          | 6502B      | 1.8       | A3_dhgr  |     |       | A3_US         |
+| A3R     | Apple III Revised  | 6502B      | 1.8       | A2_hgr   |     |       | A3_US         |
+| A2e     | Apple IIe RevA/B   | 6502       | 1.023     | A2_hgr   |     |       | A2e_US,A2e_UK,A2e_CA,A2e_FR |
+| A2c     | Apple IIc          | 65C02      | 1.023     | A2_dhgr  |     |       |               |
+| A3P     | Apple III Plus     | 6502B      | 1.8       | A3_dhgr  |     |       |               |
+| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     | A2_dhgr  |     |       |               |
+| A2GS    | Apple IIGS         | 65C816     | 2.8       | AGS      |     |       |               |
+| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     | A2_dhgr  |     |       |               |
+| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       | AGS      |     |       |               |
+| A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  |     |       |               |
 
 ## I/O RANGES
 
