@@ -9,18 +9,19 @@ Although we could get away with multiple hard-coded if-then or switch-case state
 FYI, without granularity, a bit-level mapping on a 16-bit address bus would take (2^16) = 65536  addressable bytes * 8 bits per Byte = 524288 bits, while the identifier for each element itself 19 bits (2^19 = 524288), rounded-up to 32 bits or 4 Bytes, a single fine-grain lookup table would cost 524288 elements * 4 bytes = 2MB; clearly not justifiable.
 Let's try extrapolate given Apple II ranges by example into **fitting granularities**:
 
-| RangeID | Range name    | Range       | Routed by       | Via     | Granularity in Bytes | 
-| ------- | ------------- | :---------: | :-------------- | :------ | :---------: | 
-|       0 | RAM           | $0000>$03FF | EMU_apple2hw.js | local   | $100        |
-|       1 | TEXT          | $0400>$0BFF | EMU_apple2hw.js | **1a**  | $100        |
-|       2 | RAM           | $0C00>$1FFF | EMU_apple2hw.js | local   | $100        |
-|       3 | VIDEO         | $2000>$5FFF | EMU_apple2hw.js | **1b**  | $1000       |
-|       4 | RAM           | $6000>$BFFF | EMU_apple2hw.js | local   | $1000       |
-|       5 | HOST&nbsp;I/O | $C000>$C07F | EMU_apple2hw.js | **2**   | $100        |
-|       6 | SLOT&nbsp;I/O | $C080>$CFFF | EMU_apple2hw.js | **3**   | $100        |
-|       7 | ROM           | $D000>$FFFF | EMU_apple2hw.js | **4**   | $1000       |
+| RangeID | Range name       | Range       | Routed by       | Via     | Granularity in Bytes | 
+| ------- | ---------------- | :---------: | :-------------- | :------ | :---------: | 
+|       0 | RAM              | $0000>$03FF | EMU_apple2hw.js | local   | $100        |
+|       1 | TEXT             | $0400>$0BFF | EMU_apple2hw.js | **1a**  | $100        |
+|       2 | RAM              | $0C00>$1FFF | EMU_apple2hw.js | local   | $100        |
+|       3 | VIDEO            | $2000>$5FFF | EMU_apple2hw.js | **1b**  | $1000       |
+|       4 | RAM              | $6000>$BFFF | EMU_apple2hw.js | local   | $1000       |
+|       5 | HOST&nbsp;I/O    | $C000>$C07F | EMU_apple2hw.js | **2**   | $100        |
+|       6 | SLOT&nbsp;I/O    | $C080>$CFFF | EMU_apple2hw.js | **3**   | $100        |
+|       7 | ROM&nbsp;BASIC   | $D000>$F7FF | EMU_apple2hw.js | **4**   | $100        |
+|       8 | ROM&nbsp;MONITOR | $F800>$FFFF | EMU_apple2hw.js | **5**   | $100        |
 
-A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 8 RangeIDs or 3 bits, rounded up to 1 Byte.  Here's how to emulate coarse-grain address decoding for EMU_apple2hw.js:
+A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 9 RangeIDs or 4 bits, rounded up to 1 Byte.  Here's how to emulate coarse-grain address decoding for EMU_apple2hw.js:
 
 ```javascript
 const lookup = new Uint8Array([0,0,0,1,1,1,1,1,1,1,1,2,2,2,...])
