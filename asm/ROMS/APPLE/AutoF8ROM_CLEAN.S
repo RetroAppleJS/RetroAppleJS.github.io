@@ -1164,4 +1164,4 @@ SUBTBL      .BYTE    <BASCONT-1
             .BYTE    <BLANK-1
             .WORD    NMI
             .WORD    RESET
-            .WORD    IRQ
+            .WORD    OLDRST
