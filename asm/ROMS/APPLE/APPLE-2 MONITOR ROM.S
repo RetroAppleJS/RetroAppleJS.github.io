@@ -13,14 +13,13 @@
 ;* Modified Nov 1978                                                            *
 ;* By John A                                                                    *
 ;********************************************************************************
-;* This is a disassembly of THE updated monitor ROM found in THE Apple ][+.     *
+;* This is a disassembly of the updated monitor ROM found in THE Apple ][+.     *
 ;* The labels AND comments come from "Autostart ROM Listing" in THE Apple II    *
 ;* Reference Manual (starts page 136).  This is a fairly direct translation --  *
 ;* operands ARE generally formatted as they appear in THE original listing.     *
-;* Comments have been converted to mixed-case, but ARE otherwise unchanged.     *
 ;********************************************************************************
-;* Project created by Andy McFadden, using 6502bench SourceGen v1.4.            *
-;* Last updated 2019/09/22                                                      *
+;* Project created by Freddy Vandriessche                                       *
+;* Last updated 2025/03/09                                                      *
 ;********************************************************************************
 IOADR       EQU     $c000  
 LOC0        EQU     $00

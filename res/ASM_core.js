@@ -369,7 +369,7 @@ function ASM()
 	this.getExpression = function(str)
 	{
 		var exp = str.split(new RegExp("[+\\-\\*^~]","g"));  // slice at math operators to dig out deeper numbers and symbols
-		var r = "NaN";
+		var r = "NaN", err = "expression malformation";
 		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
 		switch(c[0])
 		{
@@ -394,21 +394,24 @@ function ASM()
 			default:
 				//if(str=="'%'")
 				//	console.log("DEBUG THIS");
-				var nexp = "",l=0;
+				var nexp = "",l=0,err = "";
 				for(var i=0;i<exp.length;i++)
 				{
 					l+=exp[i].length+1;
 					var oper = str.charAt(l-1);
 					var e = this.getNumber(exp[i]);
 					exp[i] = e.val;
-					r.err += e.err+"|"
+					err += e.err==undefined?"":(e.err+"|")
 					nexp += exp[i]+oper;
 				}
+				if(err.length>0) return {"val":"NaN","err":err}
 
 				var parser = new oCOM.MathParser();
 				if(this.bDebug) console.log(str+" >> oCOM.MathParser().parse('"+nexp+"') = "+parser.parse(nexp))
 				var e = this.getNumber(parser.parse(nexp)+"")
-				return {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
+
+				r = {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
+				return r;
 		}	
 	}
 
@@ -429,7 +432,7 @@ function ASM()
 		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
 		n = n.substring(0, this.label_len);	// truncate identifier length
 		if(oASM.symtab[n] === undefined) 
-			return {"val":"NaN","fmt":"ID","err":"compile error:\nidentifier does not exist"}
+			return {"val":"NaN","fmt":"ID","err":"identifier '"+n+"' does not exist"}
 
 		var b = (Math.log10(Math.abs( oASM.symtab[n] ))/log2>>3)+1;
 		return {"val":oASM.symtab[n],"fmt":"ID","bytes":b};
@@ -615,7 +618,7 @@ function ASM()
 					for(var i=0;i<arr.length;i++)
 					{
 						var e = this.getExpression(arr[i]);
-						if(e.bytes!=2) e.err = "expression is not 2 bytes long ("+e.bytes+")"
+						if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
 						if (e.err) { displayError(e.err); return {"val":false}  }
 						dat[i<<1]     = (e.val & 0xFF)+"";	    // extract  lo byte
 						dat[(i<<1)+1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
@@ -640,7 +643,7 @@ function ASM()
 					for(var i=0;i<arr.length;i++)
 					{
 						var e = this.getExpression(arr[i]);
-						if(e.bytes!=1) e.err = "expression is not 1 byte long ("+e.bytes+")"
+						if(e.bytes!=1) e.err = "expression is not 1 byte long "+(e.bytes==undefined?"":("("+e.bytes+")"))
 						if (e.err) { displayError(e.err); return {"val":false}  }
 						dat[i] = e.val & 0xFF;	    		// extract  lo byte
 						arr[i] = oCOM.getHexByte(e.val & 0xFF);
