@@ -1,6 +1,7 @@
 ;BUG1: listing LDA (ADR),Y
 ;BUG2: listing LDA (ADR,X)
 ;BUG3: .WORD ==> asm listing must be little endian
+;BUG4: STA (A1L,X) ==> asm listing (STA ($3C),Y
 
 ; http://tass64.sourceforge.net (assembler manual)
 ;.fill DIRECTIVE ???
@@ -444,7 +445,7 @@ RDSP1       LDA     #$A0
             BMI     RDSP1
             RTS
 ;OK FAFD
-PWRCON      .WORD    OLDBRK
+PWRCON      .WORD   OLDBRK
            HEX  00E045
 DISKID     HEX  20FF00FF03FF3C
 TITLE      ASC   “APPLE ][”
@@ -462,7 +463,7 @@ PREAD2      LDA     PADDL0,X
             BNE     PREAD2
             DEY
 RTS2D       RTS
-
+;OK FB2F
 INIT        LDA     #$00
             STA     *STATUS
             LDA     LORES
@@ -493,7 +494,7 @@ STITLE      LDA     TITLE-1,Y       ;get a char
             DEY
             BNE     STITLE
             RTS
-
+;OK FB6F
 SETPWRC     LDA     SOFTEV+1
             EOR     #$A5
             STA     PWREDUP
@@ -566,7 +567,7 @@ ADVANCE     INC     *CH
             CMP     *WNDWDTH
             BCS     CR
 RTS3        RTS
-
+;OK FBFD
 VIDOUT      CMP     #$A0
             BCS     STORADV
             TAY
@@ -591,7 +592,7 @@ VTABZ       JSR     BASCALC
             ADC     *WNDLFT
             STA     *BASL
 RTS4        RTS
-
+;OK FC2C
 ESC1        EOR     #$C0            ;esc @ ?
             BEQ     HOME            ;if so do home AND clear
             ADC     #$FD            ;esc-A or B check
@@ -668,7 +669,7 @@ WAIT3       SBC     #$01
             SBC     #$01
             BNE     WAIT2
             RTS
-
+;OK FCB4
 NXTA4       INC     *A4L
             BNE     NXTA1
             INC     *A4H
@@ -700,7 +701,7 @@ WRTAPE      LDY     TAPEOUT
             LDY     #$2C
             DEX
             RTS
-
+;OK FCEC
 RDBYTE      LDX     #$08
 RDBYT2      PHA
             JSR     RD2BIT
@@ -717,10 +718,10 @@ LASTIN      EQU   $2F
 RD2BIT      JSR     RDBIT
 RDBIT       DEY
             LDA     TAPEIN
-            EOR     LASTIN
+            EOR     *LASTIN
             BPL     RDBIT
-            EOR     LASTIN
-            STA     LASTIN
+            EOR     *LASTIN
+            STA     *LASTIN
             CPY     #$80
             RTS
 
@@ -919,8 +920,8 @@ LIST2       PHA
 
 A1PC        TXA
             BEQ     A1PCRTS
-A1PCLP      LDA     A1L,X
-            STA     PCL,X
+A1PCLP      LDA     *A1L,X
+            STA     *PCL,X
             DEX
             BPL     A1PCLP
 A1PCRTS     RTS
@@ -1009,7 +1010,7 @@ CRMON       JSR     BL1
 READ        JSR     RD2BIT
             LDA     #$16
             JSR     HEADR
-            STA     CHKSUM
+            STA     *CHKSUM
             JSR     RD2BIT
 RD2         LDY     #$24
             JSR     RDBIT
@@ -1018,13 +1019,13 @@ RD2         LDY     #$24
             LDY     #$3B
 RD3         JSR     RDBYTE
             STA     (A1L,X)
-            EOR     CHKSUM
-            STA     CHKSUM
+            EOR     *CHKSUM
+            STA     *CHKSUM
             JSR     NXTA1
             LDY     #$35
             BCC     RD3
             JSR     RDBYTE
-            CMP     CHKSUM
+            CMP     *CHKSUM
             BEQ     BELL
 PRERR       LDA     #$C5
             JSR     COUT
@@ -1041,7 +1042,7 @@ RESTR1      LDX     *XREG
             LDY     *YREG
             PLP
             RTS
-
+;OK FF4A
 SAVE        STA     *A5H
 SAV1        STX     *XREG
             STY     *YREG
@@ -1086,9 +1087,9 @@ NXTBIT      ASL     A
             BPL     NXTBIT
 NXTBAS      LDA     *MODE
             BNE     NXTBS2
-            LDA     A2H,X
-            STA     A1H,X
-            STA     A3H,X
+            LDA     *A2H,X
+            STA     *A1H,X
+            STA     *A3H,X
 NXTBS2      INX
             BEQ     NXTBAS
             BNE     NXTCHR

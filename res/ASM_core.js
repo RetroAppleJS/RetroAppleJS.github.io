@@ -574,7 +574,7 @@ function ASM()
 				return {"val":true};
 
 			case "ASC":
-				var str = sym.join(" ").split("\"")[1];
+				var str = sym.join(" ").split(/"|“|”/g)[1];
 				eval("var arg=\"" + str + "\"");
 				if (pass == 1) listing.value += "\"" + arg + "\"";
 				var dat = [];
