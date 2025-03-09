@@ -18,9 +18,10 @@ Let's try extrapolate given Apple II ranges by example into **fitting granularit
 |       4 | RAM           | $6000>$BFFF | EMU_apple2hw.js | local   | $1000       |
 |       5 | HOST&nbsp;I/O | $C000>$C07F | EMU_apple2hw.js | **2**   | $100        |
 |       6 | SLOT&nbsp;I/O | $C080>$CFFF | EMU_apple2hw.js | **3**   | $100        |
-|       7 | ROM           | $D000>$FFFF | EMU_apple2hw.js | **4**   | $1000       |
+|       7 | ROM           | $D000>$F7FF | EMU_apple2hw.js | **4**   | $100        |
+|       8 | ROM           | $F800>$FFFF | EMU_apple2hw.js | **5**   | $100        |
 
-A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 8 RangeIDs or 3 bits, rounded up to 1 Byte.  Here's how to emulate coarse-grain address decoding for EMU_apple2hw.js:
+A lookup table for **EMU_apple2hw.js** would need $100 = 256 Bytes to cover the finest grain.  A 16-bit line decoder with 65536 addressable Bytes at a granularity of 256 Bytes requires 65536 / 256 = 256 elements, and 9 RangeIDs or 4 bits, rounded up to 1 Byte.  Here's how to emulate coarse-grain address decoding for EMU_apple2hw.js:
 
 ```javascript
 const lookup = new Uint8Array([0,0,0,1,1,1,1,1,1,1,1,2,2,2,...])
