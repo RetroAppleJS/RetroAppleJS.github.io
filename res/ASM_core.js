@@ -1,6 +1,11 @@
 //const { split } = require("lodash");
 //const { connectableObservableDescriptor } = require("rxjs/internal/observable/ConnectableObservable");
 
+//BUG1: listing LDA (ADR),Y
+//BUG2: listing LDA (ADR,X)
+//BUG3: .WORD ==> asm listing must be little endian
+//BUG4: STA (A1L,X) ==> asm listing (STA ($3C),Y
+
 function ASM()
 {
 

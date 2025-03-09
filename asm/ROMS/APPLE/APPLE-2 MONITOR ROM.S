@@ -1,10 +1,4 @@
-;BUG1: listing LDA (ADR),Y
-;BUG2: listing LDA (ADR,X)
-;BUG3: .WORD ==> asm listing must be little endian
-;BUG4: STA (A1L,X) ==> asm listing (STA ($3C),Y
-
 ; http://tass64.sourceforge.net (assembler manual)
-;.fill DIRECTIVE ???
 ;https://6502disassembly.com/a2-rom/AutoF8ROM.html
 
 ;********************************************************************************
@@ -655,10 +649,10 @@ SCRL3       LDY     #$00
             BCS     VTAB
 CLREOL      LDY     *CH
 CLEOLZ      LDA     #$A0
-CLREOL2     STA     (BASL),Y
+CLREO2     STA     (BASL),Y
             INY
             CPY     *WNDWDTH
-            BCC     CLREOL2
+            BCC     CLREO2
             RTS
 
 WAIT        SEC
