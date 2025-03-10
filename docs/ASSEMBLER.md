@@ -68,30 +68,31 @@ There must be white space between a label and a opcode and the opcode and any op
 #### Code Example
  
 ##### Src:
-```
-ORG $c000
-       LDX #0
-Label1 TXA
-       STA $0400,X
-       LDA #1
-       STA $D800,X
-       INX
-       BNE Label1
-       RTS
-       .END
-```    
+
+      ORG $c000
+             LDX #0
+      Label1 TXA
+             STA $0400,X
+             LDA #1
+             STA $D800,X
+             INX
+             BNE Label1
+             RTS
+      .END
+ 
 ##### Listing:
-*= $C000
-C000        LDX #$00    A2 00
-C002 Label1 TXA         8A
-C003        STA $0400,X 9D 00 04
-C006        LDA #$01    A9 01
-C008        STA $D800,X 9D 00 D8
-C00B        INX         E8
-C00C        BNE $C002   D0 F4
-C00E        RTS         60
-C00F        .END .END
-done.
+
+      *= $C000
+      C000        LDX #$00    A2 00
+      C002 Label1 TXA         8A
+      C003        STA $0400,X 9D 00 04
+      C006        LDA #$01    A9 01
+      C008        STA $D800,X 9D 00 D8
+      C00B        INX         E8
+      C00C        BNE $C002   D0 F4
+      C00E        RTS         60
+      C00F        .END
+      done.
 
 ##### Object Code:
       A2 00 8A 9D 00 04 A9 01
