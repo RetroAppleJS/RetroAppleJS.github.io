@@ -43,15 +43,15 @@ All identifiers, numbers, opcodes, and pragmas are case insensitive and translat
 The special identifier "*" refers to the program counter (PC).
 
 ##### Exampels:
- 	* = $C000       ....	Set start address (PC) to C000.
-    org $C000     ....	(idem)
+```
+    ORG $C000     ....	Set start address (PC) to C000.
     LABEL1 LDA #4 ....	Define LABEL1 with address of instruction LDA.
     BNE LABEL2    ....	Jump to address of label LABEL2.
     STORE = $0800 ....	Define STORE with value 0800.
     HERE = *      ....	Define HERE with current address (PC).
     HERE2         ....	Define HERE2 with current address (PC).
     LDA #         ....	Load LO-byte of VAL1.
- 
+ ```
 #### Pragmas
   	Pragmas start with a dot (.) and must be the only expression in a line:
   	.BYTE BB	....	Insert 8 bit byte at current address into code.
@@ -68,28 +68,30 @@ There must be white space between a label and a opcode and the opcode and any op
 #### Code Example
  
 ##### Src:
-    *=$c000
-  	       LDX #0
-  	Label1 TXA
-  	       STA $0400,X
-           LDA #1
-           STA $D800,X
-           INX
-           BNE Label1
-           RTS
-    .END
-    
+```
+ORG $c000
+       LDX #0
+Label1 TXA
+       STA $0400,X
+       LDA #1
+       STA $D800,X
+       INX
+       BNE Label1
+       RTS
+       .END
+```    
 ##### Listing:
-     *=$C000
-     C000        LDX #$00        A2 00
-     C002 LABEL1 TXA             8A
-     C003        STA $0400,X     9D 00 04
-     C006        LDA #$01        A9 01
-     C008        STA $D800,X     9D 00 D8
-     C00B        INX             E8
-     C00C        BNE LABEL1      D0 F4
-     C00E        RTS             60
-      C00F .END
+*= $C000
+C000        LDX #$00    A2 00
+C002 Label1 TXA         8A
+C003        STA $0400,X 9D 00 04
+C006        LDA #$01    A9 01
+C008        STA $D800,X 9D 00 D8
+C00B        INX         E8
+C00C        BNE $C002   D0 F4
+C00E        RTS         60
+C00F        .END .END
+done.
 
 ##### Object Code:
       A2 00 8A 9D 00 04 A9 01
