@@ -69,7 +69,7 @@ There must be white space between a label and a opcode and the opcode and any op
  
 ##### Src:
 
-      ORG $c000
+      ORG $C000
              LDX #0
       Label1 TXA
              STA $0400,X
