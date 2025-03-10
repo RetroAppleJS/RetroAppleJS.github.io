@@ -55,7 +55,7 @@ The special identifier "*" refers to the program counter (PC).
   	Pragmas start with a dot (.) and must be the only expression in a line:
   	.BYTE BB	....	Insert 8 bit byte at current address into code.
   	.WORD HHLL	....	Insert 16 bit word at current address into code.
-  	.END	      ....	End of source, stop assembly. (optional)
+  	.END            ....	End of source, stop assembly. (optional)
  
 #### Comments
   	; comment	....	Any sequence of characters after a semicolon util end of the line is ignored.
