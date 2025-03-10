@@ -43,15 +43,15 @@ All identifiers, numbers, opcodes, and pragmas are case insensitive and translat
 The special identifier "*" refers to the program counter (PC).
 
 ##### Exampels:
-```
-    ORG $C000     ....	Set start address (PC) to C000.
-    LABEL1 LDA #4 ....	Define LABEL1 with address of instruction LDA.
-    BNE LABEL2    ....	Jump to address of label LABEL2.
-    STORE = $0800 ....	Define STORE with value 0800.
-    HERE = *      ....	Define HERE with current address (PC).
-    HERE2         ....	Define HERE2 with current address (PC).
-    LDA #         ....	Load LO-byte of VAL1.
- ```
+
+      ORG $C000            ....	Set start address (PC) to C000.
+      LABEL1 LDA #4        ....	Define LABEL1 with address of instruction LDA.
+             BNE LABEL2    ....	Jump to address of label LABEL2.
+      STORE  EQU $0800     ....	Define STORE with value 0800.
+      HERE   EQU *         ....	Define HERE with current address (PC).
+      HERE2                ....	Define HERE2 with current address (PC).
+      LDA #                ....	Load LO-byte of VAL1.
+
 #### Pragmas
   	Pragmas start with a dot (.) and must be the only expression in a line:
   	.BYTE BB	....	Insert 8 bit byte at current address into code.
