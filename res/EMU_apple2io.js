@@ -121,7 +121,7 @@ function Apple2IO(vid)
     if(typeof(EMU_system_get)!="undefined")
     {
         var ACTION_MAP = IO_map(EMU_system_get());
-        console.log(ACTION_MAP);
+        //console.log("ACTION_MAP="+JSON.stringify(ACTION_MAP));
     }
 
     function IO_map(model)
@@ -495,7 +495,7 @@ function Apple2IO(vid)
      
 
 
-
+/*
     // SLOT MAPPING
     this.mount = function(arg)
     {   
@@ -539,39 +539,39 @@ function Apple2IO(vid)
         oEMUI.slotConfig({"id":"slot"+arg.slot,"active":arg.active});
         //console.log("SLOT_MAP["+arg.slot+"] = "+SLOT_MAP[idx]+" "+SLOT_MAP[idx+1]+" "+SLOT_MAP[idx+2]+" "+SLOT_MAP[idx+3]+" "+SLOT_MAP[idx+4])
     }
+        */
 
     // SLOT MAPPING
-    this.mount_all = function(cfg)
+    this.mount = function(cfg,idx)
     {
-        for(var idx in cfg)
+        idx = Number(idx);
+        SLOT_IDX[idx] = cfg[idx].PCODE.substring(0,6);
+
+        SLOT_MAP[idx+0] = cfg[idx].PCODE ? 1 : 0;
+        SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(cfg[idx].PCODE)); // DETERMINE DEVICE ID (CRC16 hash)
+        SLOT_MAP[idx+2] = cfg[idx].IOrange===undefined?null:cfg[idx].IOrange[0];       // SLOT I/O  range origin
+        SLOT_MAP[idx+3] = cfg[idx].IOrange===undefined?null:cfg[idx].IOrange[1];       //           range end
+        SLOT_MAP[idx+4] = cfg[idx].ROMrange===undefined?null:cfg[idx].ROMrange[0];     // SLOT ROM  range origin
+        SLOT_MAP[idx+5] = cfg[idx].ROMrange===undefined?null:cfg[idx].ROMrange[1];     //           range end
+        SLOT_MAP[idx+6] = cfg[idx].LROMrange===undefined?null:cfg[idx].LROMrange[0];   // SLOT LROM  range origin
+        SLOT_MAP[idx+7] = cfg[idx].LROMrange===undefined?null:cfg[idx].LROMrange[1];   //           range end
+
+        // transform range as RNG12 into Uint16Array(4096) - containing CRC16 device IDs by index
+        // transform range as RNG8  into Uint16Array(256)  - containing CRC16 device IDs by index
+
+        if(cfg[idx].PCODE)
         {
-                idx = Number(idx);
-                SLOT_IDX[idx] = cfg[idx].PCODE.substring(0,6);
-
-                SLOT_MAP[idx+0] = cfg[idx].PCODE ? 1 : 0;
-                SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(cfg[idx].PCODE)); // DETERMINE DEVICE ID (CRC16 hash)
-                SLOT_MAP[idx+2] = cfg[idx].IOrange===undefined?null:cfg[idx].IOrange[0];       // SLOT I/O  range origin
-                SLOT_MAP[idx+3] = cfg[idx].IOrange===undefined?null:cfg[idx].IOrange[1];       //           range end
-                SLOT_MAP[idx+4] = cfg[idx].ROMrange===undefined?null:cfg[idx].ROMrange[0];     // SLOT ROM  range origin
-                SLOT_MAP[idx+5] = cfg[idx].ROMrange===undefined?null:cfg[idx].ROMrange[1];     //           range end
-                SLOT_MAP[idx+6] = cfg[idx].LROMrange===undefined?null:cfg[idx].LROMrange[0];   // SLOT LROM  range origin
-                SLOT_MAP[idx+7] = cfg[idx].LROMrange===undefined?null:cfg[idx].LROMrange[1];   //           range end
-
-                if(cfg[idx].PCODE)
-                {
-                    var obj_names = new Array();
-                    for(var o in this[cfg[idx].PCODE]) obj_names.push(o);
-            
-                    console.log("mounted "+cfg[idx].PCODE+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+idx+" ("
-                    +"I/O range: "+oCOM.getHexWord(SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(SLOT_MAP[idx+3])+" "
-                    +"ROM range: "+(SLOT_MAP[idx+4]==SLOT_MAP[idx+5]?null:oCOM.getHexWord(SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(SLOT_MAP[idx+5]))+" "
-                    +"LROM range: "+(SLOT_MAP[idx+6]==SLOT_MAP[idx+7]?null:oCOM.getHexWord(SLOT_MAP[idx+6])+"-"+oCOM.getHexWord(SLOT_MAP[idx+7]))+" "
-                    +"METHODS: "+obj_names.join(",")   
-                    +")");
-            
-                    oEMUI.slotConfig({"id":"slot"+idx,"active":SLOT_MAP[idx+0]});
-                }
-
+            var obj_names = new Array();
+            for(var o in this[cfg[idx].PCODE]) obj_names.push(o);
+    
+            console.log("mounted "+cfg[idx].PCODE+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+idx+" ("
+            +"I/O range: "+oCOM.getHexWord(SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(SLOT_MAP[idx+3])+" "
+            +"ROM range: "+(SLOT_MAP[idx+4]==SLOT_MAP[idx+5]?null:oCOM.getHexWord(SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(SLOT_MAP[idx+5]))+" "
+            +"LROM range: "+(SLOT_MAP[idx+6]==SLOT_MAP[idx+7]?null:oCOM.getHexWord(SLOT_MAP[idx+6])+"-"+oCOM.getHexWord(SLOT_MAP[idx+7]))+" "
+            +"METHODS: "+obj_names.join(",")   
+            +")");
+    
+            oEMUI.slotConfig({"id":"slot"+idx,"active":SLOT_MAP[idx+0]});
         }
     }
 
@@ -607,7 +607,10 @@ function Apple2IO(vid)
     this["DISKII"] = this.disk2;
 
     if(typeof(_CFG_SLOT)!="undefined")
-        this.mount_all(_CFG_SLOT);
+    {
+        for(var idx in _CFG_SLOT)
+            this.mount(_CFG_SLOT,Number(idx));       
+    }
 
     //[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C080-C08F ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 563)
     //[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C0B0-C0BF ROM range: undefined60-undefined5F LROM range: null METHODS: active) (EMU_apple2io.js, line 563)
