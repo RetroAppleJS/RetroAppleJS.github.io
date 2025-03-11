@@ -1,19 +1,21 @@
+; LAST BUILD 11-MAR-2025
+
 ;LZ4 data decompressor for Apple II
 ;Peter Ferrie (peter.ferrie@gmail.com)
 ;src<dst
 
-PAKSIZE	= 256
-ORGSIZE = 512
+PAKSIZE	 ORG 256
+ORGSIZE  ORG 512
 
 ;UNPACKER VARIABLES, NO NEED TO CHANGE THESE
-SRC	  =	$06
-DST	  =	$08
-COUNT	=	$18
-DELTA	=	$1A
-TMPY	=	$1C
+SRC	 ORG $06
+DST	 ORG $08
+COUNT	 ORG $18
+DELTA	 ORG $1A
+TMPY	 ORG $1C
 
+ORG $6000
 
-*=$6000
         LDA	#>ORGOFF           ; + PACKSIZE (HI) - PACKED DATA OFFSET + PACKED DATA SIZE
         STA	*SRC+1
         LDA	#<ORGOFF           ; + PACKSIZE (LO)

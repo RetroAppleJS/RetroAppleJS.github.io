@@ -1,4 +1,6 @@
-*=$6000 
+
+; LAST BUILD 11-MAR-2025
+ORG $6000 
 ;--------------------------------
 ;      READ DATE FROM CLOCK II
 ;
@@ -10,8 +12,8 @@
 ;--------------------------------
 
 
-SLOT = $50      ;SLOT#
- CLOCK = $C080
+SLOT  EQU $50      ;SLOT#
+CLOCK EQU $C080
  ;--------------------------------
  READ   LDX #SLOT
         LDA #$10     ;HOLD CLOCK
@@ -44,4 +46,4 @@ SLOT = $50      ;SLOT#
         HEX A0A02524BA2322BA
         HEX 212000
  ;--------------------------------
- BUFFER = $7D0
+ BUFFER EQU $7D0

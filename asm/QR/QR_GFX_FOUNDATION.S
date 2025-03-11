@@ -1,45 +1,47 @@
-M.PRBYTE  = $FDDA   ; print hex byte
-M.CRDO    = $DAFB   ; line feed
-M.OUTSP   = $DB57   ; space
-M.COUT    = $FDED   ; print char
-M.STROUT  = $DB3A   ; print string from address Y (high) and A (low)
-M.KPRESS  = $FD35   ; key press
-M.CBOT    = $FB2F   ; move cursor to bottom
-M.C1UP    = $FC1A   ; move cursor one up
-M.HOME    = $FC58   ; clear text (HOME)
+; LAST BUILD 11-MAR-2025
+
+M.PRBYTE  EQU $FDDA   ; print hex byte
+M.CRDO    EQU $DAFB   ; line feed
+M.OUTSP   EQU $DB57   ; space
+M.COUT    EQU $FDED   ; print char
+M.STROUT  EQU $DB3A   ; print string from address Y (high) and A (low)
+M.KPRESS  EQU $FD35   ; key press
+M.CBOT    EQU $FB2F   ; move cursor to bottom
+M.C1UP    EQU $FC1A   ; move cursor one up
+M.HOME    EQU $FC58   ; clear text (HOME)
 
 ;*** GFX CALLS ***
-M.SELHGR  = $F3E4   ; set hires mode only
-M.TEXT    = $F399   ; set text mode
-M.HGRCOL  = $F3F6   ; clear screen colour
-M.HGR     = $F3E2   ; set hires mode 1 + clear screen
-M.HGR2    = $F3D8   ; set hires mode 2 + clear screen
-M.TXCL    = $C050
-M.TXST    = $C051
-M.MXCL    = $C052
-M.MXST    = $C053
-M.TXP1    = $C054
-M.TXP2    = $C055
-M.HIRES   = $C057
-M.HPOSN   = $F411
-M.HPLOT0  = $F457
-HGR.COLOR = $E4
-HGR.BITS  = $1C
+M.SELHGR  EQU $F3E4   ; set hires mode only
+M.TEXT    EQU $F399   ; set text mode
+M.HGRCOL  EQU $F3F6   ; clear screen colour
+M.HGR     EQU $F3E2   ; set hires mode 1 + clear screen
+M.HGR2    EQU $F3D8   ; set hires mode 2 + clear screen
+M.TXCL    EQU $C050
+M.TXST    EQU $C051
+M.MXCL    EQU $C052
+M.MXST    EQU $C053
+M.TXP1    EQU $C054
+M.TXP2    EQU $C055
+M.HIRES   EQU $C057
+M.HPOSN   EQU $F411
+M.HPLOT0  EQU $F457
+HGR.COLOR EQU $E4
+HGR.BITS  EQU $1C
 ;*****************
 
-S2.TX        = $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
-S2.TY        = $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S2.TX        EQU $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S2.TY        EQU $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
 
-S1.TX        = $08     ; ONLY USE IN FUNCTIONS with 1 SUB level
-S1.TY        = $09     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S1.TX        EQU $08     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S1.TY        EQU $09     ; ONLY USE IN FUNCTIONS with 1 SUB level
 
-S0.TA        = $18     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TA        EQU $18     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TX        EQU $19     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TY        EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TZ        EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 
-*=$6000
+ORG $6000
 START     JSR HOME
 
 ; *** USER COMMAND KEY DISPATCHER
@@ -164,7 +166,7 @@ CY_COU  HEX 0000          ; GFX MODE,HELP MODE
 
 ;**************************
 
-           ;"                                        "
+        ;"                                        "
 STR.00  ASC "[H]ELP"
         HEX 00
 STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"

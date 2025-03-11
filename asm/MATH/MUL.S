@@ -1,3 +1,5 @@
+; LAST BUILD 11-MAR-2025
+
 ;
 ; mul
 ; Wicked fast LUT-based multiplication
@@ -8,7 +10,9 @@
 ; preserved: x, y
 ; max cycles: under 90
 ;
-*=$6000
+
+ORG $6000
+
 M.PRBYTE  = $FDDA   ; print hex byte
 M.CRDO    = $DAFB   ; line feed
 M.OUTSP   = $DB57   ; Space
@@ -28,7 +32,6 @@ S0.TX        = $19       ; mul_factor_x
 S0.TY        = $1A       ; mul_product_lo
 S0.TZ        = $1B       ; mul_product_hi
 
-*=$6000
 
 START   LDA #$00
         JSR ISTROUT     ; Print string from A = index

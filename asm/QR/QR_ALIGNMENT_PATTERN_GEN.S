@@ -1,23 +1,25 @@
-*=$6000
+; LAST BUILD 11-MAR-2025
 
-M.PRBYTE  = $FDDA   ; print hex byte
-M.CRDO    = $DAFB   ; line feed
-M.OUTSP   = $DB57   ; space
-M.COUT    = $FDED   ; print char
-M.KPRESS  = $FD35   ; key press
-M.HGR     = $F3E2   ; set hires mode + clear screen
-M.HGRCOL  = $F3F6   ; clear screen colour
-M.TEXT    = $F399   ; set text mode
-M.SELHGR  = $F3E4   ; set hires mode only
+ORG $6000
 
-DIVIDE   = $FB  ;LO-BYTE
-DIVISO   = $58  ;LO-BYTE
-REMAIN   = $FD  ;LO-BYTE
-RESULT   = $FB  ;LO-BYTE
-S0.TA        = $18     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
+M.PRBYTE  EQU $FDDA   ; print hex byte
+M.CRDO    EQU $DAFB   ; line feed
+M.OUTSP   EQU $DB57   ; space
+M.COUT    EQU $FDED   ; print char
+M.KPRESS  EQU $FD35   ; key press
+M.HGR     EQU $F3E2   ; set hires mode + clear screen
+M.HGRCOL  EQU $F3F6   ; clear screen colour
+M.TEXT    EQU $F399   ; set text mode
+M.SELHGR  EQU $F3E4   ; set hires mode only
+
+DIVIDE   EQU $FB  ;LO-BYTE
+DIVISO   EQU $58  ;LO-BYTE
+REMAIN   EQU $FD  ;LO-BYTE
+RESULT   EQU $FB  ;LO-BYTE
+S0.TA        EQU $18     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TX        EQU $19     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TY        EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TZ        EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
        LDA #$00
        STA V.VER
@@ -202,7 +204,7 @@ NIB.02  JSR NIBBLE    ; CUSTOM CODE FOR READING ALIGNMENT PATTERN NIBBLES
         RTS
 
 ; 20 Bytes
-        HEX 13  ; full range = $28
+        HEX 13  ; full range EQU $28
 ALPRE2  HEX 0002468234567844
         HEX 466685
         ;HEX 4657684646

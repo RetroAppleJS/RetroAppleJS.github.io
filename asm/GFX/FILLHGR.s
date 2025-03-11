@@ -1,4 +1,6 @@
-*=$0800
+; LAST BUILD 11-MAR-2025
+
+ORG $0800
        LDX #$00
        LDY #$40
 Label0 STY Label2+2

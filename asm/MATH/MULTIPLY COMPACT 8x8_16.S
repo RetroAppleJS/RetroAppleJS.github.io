@@ -1,3 +1,5 @@
+; LAST BUILD 11-MAR-2025
+
 ;
 ; mul
 ; Wicked fast LUT-based multiplication
@@ -8,27 +10,27 @@
 ; preserved: x, y
 ; max cycles: under 90
 ;
-*=$6000
-M.PRBYTE  = $FDDA   ; print hex byte
-M.CRDO    = $DAFB   ; line feed
-M.OUTSP   = $DB57   ; Space
-M.COUT    = $FDED   ; print char
-M.KPRESS  = $FD35
-M.RDKEY   = $FD2F   ; $FD0C
-M.STROUT  = $DB3A   ; print string from address Y (high) and A (low)
 
-S2.TX        = $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
-S2.TY        = $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
+ORG $6000
 
-S1.TX        = $08     ; ONLY USE IN FUNCTIONS with 1 SUB level
-S1.TY        = $09     ; ONLY USE IN FUNCTIONS with 1 SUB level
+M.PRBYTE   EQU $FDDA   ; print hex byte
+M.CRDO     EQU $DAFB   ; line feed
+M.OUTSP    EQU $DB57   ; Space
+M.COUT     EQU $FDED   ; print char
+M.KPRESS   EQU $FD35
+M.RDKEY    EQU $FD2F   ; $FD0C
+M.STROUT   EQU $DB3A   ; print string from address Y (high) and A (low)
 
-S0.TA        = $18       ; mul_factor_a
-S0.TX        = $19       ; mul_factor_x
-S0.TY        = $1A       ; mul_product_lo
-S0.TZ        = $1B       ; mul_product_hi
+S2.TX         EQU $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S2.TY         EQU $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
 
-*=$6000
+S1.TX         EQU $08     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S1.TY         EQU $09     ; ONLY USE IN FUNCTIONS with 1 SUB level
+
+S0.TA         EQU $18       ; mul_factor_a
+S0.TX         EQU $19       ; mul_factor_x
+S0.TY         EQU $1A       ; mul_product_lo
+S0.TZ         EQU $1B       ; mul_product_hi
 
 START   LDY #>STR.00
         LDA #<STR.00

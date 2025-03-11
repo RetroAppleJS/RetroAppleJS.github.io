@@ -1,36 +1,38 @@
-M.PRBYTE  = $FDDA   ; print hex byte
-M.CRDO    = $DAFB   ; line feed
-M.OUTSP   = $DB57   ; space
-M.COUT    = $FDED   ; print char
-M.KPRESS  = $FD35   ; key press
-M.HGR     = $F3E2   ; set hires mode + clear screen
-M.HGRCOL  = $F3F6   ; clear screen colour
-M.TEXT    = $F399   ; set text mode
-M.SELHGR  = $F3E4   ; set hires mode only
+; LAST BUILD 11-MAR-2025
+
+M.PRBYTE  EQU $FDDA   ; print hex byte
+M.CRDO    EQU $DAFB   ; line feed
+M.OUTSP   EQU $DB57   ; space
+M.COUT    EQU $FDED   ; print char
+M.KPRESS  EQU $FD35   ; key press
+M.HGR     EQU $F3E2   ; set hires mode + clear screen
+M.HGRCOL  EQU $F3F6   ; clear screen colour
+M.TEXT    EQU $F399   ; set text mode
+M.SELHGR  EQU $F3E4   ; set hires mode only
 
 ;*** GFX CALLS ***
-M.HPOSN   = $F411
-M.HPLOT0  = $F457
-HGR.COLOR = $E4
-HGR.BITS  = $1C
+M.HPOSN   EQU $F411
+M.HPLOT0  EQU $F457
+HGR.COLOR EQU $E4
+HGR.BITS  EQU $1C
 ;*****************
 
 ; TODO - RAPID GFX (CACHE POS ?)
 ; TODO - PUT INTRO INTO DEBUG ROUTINE
 
-S2.TX        = $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
-S2.TY        = $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S2.TX        EQU $06     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S2.TY        EQU $07     ; ONLY USE IN FUNCTIONS with 1 SUB level
 
-S1.TX        = $08     ; ONLY USE IN FUNCTIONS with 1 SUB level
-S1.TY        = $09     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S1.TX        EQU $08     ; ONLY USE IN FUNCTIONS with 1 SUB level
+S1.TY        EQU $09     ; ONLY USE IN FUNCTIONS with 1 SUB level
 
-S0.TA        = $18     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TA        EQU $18     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TX        EQU $19     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TY        EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TZ        EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 
-*=$6000
+ORG $6000
         LDA #$00        ; PRINT METHOD 0     >> WELCOME MESSAGE
         STA *S0.TA
         LDA #$00

@@ -1,18 +1,20 @@
-*=$4000
+; LAST BUILD 11-MAR-2025
 
-BT_AD1      = $06
-BT_AD2      = $07
-BT_IN1      = $08   ; Index1
-BT_IN2      = $09   ; Index2
-TEMP        = $1D
-TEMPH       = $1E
+ORG $4000
 
-MON.COUT    = $FDED   ; print char
-MON.PRBYTE  = $FDDA   ; print hex byte
-MON.CRDO    = $DAFB   ; line feed
-MON.OUTSP   = $DB57   ; Space
-MON.STROUT  = $DB3A   ; Print string pointed to by Y,A. The string must end with a zero or a quote.
-MON.KPRESS  = $FD35
+BT_AD1      EQU $06
+BT_AD2      EQU $07
+BT_IN1      EQU $08   ; Index1
+BT_IN2      EQU $09   ; Index2
+TEMP        EQU $1D
+TEMPH       EQU $1E
+
+MON.COUT    EQU $FDED   ; print char
+MON.PRBYTE  EQU $FDDA   ; print hex byte
+MON.CRDO    EQU $DAFB   ; line feed
+MON.OUTSP   EQU $DB57   ; Space
+MON.STROUT  EQU $DB3A   ; Print string pointed to by Y,A. The string must end with a zero or a quote.
+MON.KPRESS  EQU $FD35
 
         LDA #$08
         JSR ISTROUT     ; Print string from A = index
