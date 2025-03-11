@@ -1,4 +1,6 @@
-*=$2000
+; TODO:  FIX ASSEMBLER LABELS STARTING WITH LOWCASE
+
+ORG $2000
 
 ;*********************************************
 ;*                                           *
@@ -17,50 +19,49 @@
 ;  First, some global equates for the routine:
 
 
-IIplain    = $01          ;Apple II
-IIplus     = $02          ;Apple II+
-IIIem      = $03          ;Apple /// in emulation mode
-IIe        = $04          ;Apple IIe
-IIc        = $05          ;Apple IIc
-IIeCard    = $06          ;Apple IIe Card for the Macintosh LC
+IIplain    EQU $01          ;Apple II
+IIplus     EQU $02          ;Apple II+
+IIIem      EQU $03          ;Apple /// in emulation mode
+IIe        EQU $04          ;Apple IIe
+IIc        EQU $05          ;Apple IIc
+IIeCard    EQU $06          ;Apple IIe Card for the Macintosh LC
+safe       EQU $01          ;start of code relocated to zp
+location   EQU $06          ;zero page location to use
 
-safe       = $0001          ;start of code relocated to zp
-location   = $06          ;zero page location to use
+test1      EQU $AA          ;test byte #1
+test2      EQU $55          ;lsr of test1
+test3      EQU $88          ;test byte #3
+test4      EQU $EE          ;test byte #4
 
-test1      = $AA          ;test byte #1
-test2      = $55          ;lsr of test1
-test3      = $88          ;test byte #3
-test4      = $EE          ;test byte #4
+begpage1   EQU $400         ;beginning of text page 1
+begpage2   EQU $800         ;beginning of text page 2
+begsprse   EQU $C00         ;byte after text page 2
 
-begpage1   = $400         ;beginning of text page 1
-begpage2   = $800         ;beginning of text page 2
-begsprse   = $C00         ;byte after text page 2
+clr80col   EQU $C000        ;disable 80-column store
+set80col   EQU $C001        ;enable 80-column store
+rdmainram  EQU $C002        ;read main ram
+rdcardram  EQU $C003        ;read aux ram
+wrmainram  EQU $C004        ;write main ram
+wrcardram  EQU $C005        ;write aux ram
+rdramrd    EQU $C013        ;are we reading aux ram?
+rdaltzp    EQU $C016        ;are we reading aux zero page?
+rd80col    EQU $C018        ;are we using 80-columns?
+rdtext     EQU $C01A        ;read if text is displayed
+rdpage2    EQU $C01C        ;read if page 2 is displayed
+txtclr     EQU $C050        ;switch in graphics
+txtset     EQU $C051        ;switch in text
+txtpage1   EQU $C054        ;switch in page 1
+txtpage2   EQU $C055        ;switch in page 2
+ramin      EQU $C080        ;read LC bank 2, write protected
+romin      EQU $C081        ;read ROM, 2 reads write enable LC
+lcbank1    EQU $C08B        ;LC bank 1 enable
 
-clr80col   = $C000        ;disable 80-column store
-set80col   = $C001        ;enable 80-column store
-rdmainram  = $C002        ;read main ram
-rdcardram  = $C003        ;read aux ram
-wrmainram  = $C004        ;write main ram
-wrcardram  = $C005        ;write aux ram
-rdramrd    = $C013        ;are we reading aux ram?
-rdaltzp    = $C016        ;are we reading aux zero page?
-rd80col    = $C018        ;are we using 80-columns?
-rdtext     = $C01A        ;read if text is displayed
-rdpage2    = $C01C        ;read if page 2 is displayed
-txtclr     = $C050        ;switch in graphics
-txtset     = $C051        ;switch in text
-txtpage1   = $C054        ;switch in page 1
-txtpage2   = $C055        ;switch in page 2
-ramin      = $C080        ;read LC bank 2, write protected
-romin      = $C081        ;read ROM, 2 reads write enable LC
-lcbank1    = $C08B        ;LC bank 1 enable
+lc1        EQU $E000        ;bytes to save for LC
+lc2        EQU $D000        ;save/restore routine
+lc3        EQU $D400
+lc4        EQU $D800
 
-lc1        = $E000        ;bytes to save for LC
-lc2        = $D000        ;save/restore routine
-lc3        = $D400
-lc4        = $D800
-
-idroutine  = $FE1F        ;IIgs id routine
+idroutine  EQU $FE1F        ;IIgs id routine
 
 ;  Start by saving the STAte of the language card banks and
 ;  by switching in main ROM.

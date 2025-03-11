@@ -5,7 +5,7 @@
 ;***     MIT LICENSE APPLICABLE    ***
 ;*************************************
 
-*=$6000
+ORG $6000
 M.PRBYTE    EQU    $FDDA   ; print hex byte
 M.COUT      EQU    $FDED   ; print char
 M.KPRESS    EQU    $FD35   ; key press

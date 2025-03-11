@@ -1,4 +1,4 @@
-*=$6000
+ORG $6000
 M.COUT      = $FDED   ; print char
 M.PRBYTE    = $FDDA   ; print hex byte
 BT_AD1      = $06

@@ -1,4 +1,6 @@
 
+; TODO:  ADD EXAMPLE CODE
+
 CALL-151
 000A: 4C 00 03
 0300: 20 6A
@@ -19,7 +21,7 @@ GETADR   =     $E752      ;Convert_number_to_int
 PRBYTE   =     $FDDA
 
 
-*=$0300
+ORG $300
 JSR   CHKNUM     ;TYPE_MISMATCH_if_not_number
 LDA   *LINNUM+1   ;Preserve_LINNUM
 JSR   PRBYTE
@@ -48,6 +50,6 @@ TXA
 JMP   GIVAYF     ;Float_result
 
 
-*=$0A
+ORG $0A
 ;SET_VECTOR_FOR_USR
-HEX 4C 00 03 ;JMP_$300
+HEX 4C0003 ;JMP_$300

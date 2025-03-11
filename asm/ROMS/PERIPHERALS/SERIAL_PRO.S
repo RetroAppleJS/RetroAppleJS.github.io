@@ -25,7 +25,7 @@ S0.TY        = $1A       ; mul_product_lo
 S0.TZ        = $1B       ; mul_product_hi
 
 
-*=$6000
+ORG $6000
 START   LDA #01        ; SLOT NUMBER
         ASL A
         ASL A
@@ -108,7 +108,7 @@ SLOTNR   HEX 00    ; Slot number * 16
 BSCNT    HEX 00    ; Count required backspaces
 
 
-*=$C080
+ORG $C080
         HEX 00010203
 CLKADR  HEX 0405060708090A0B0C0D0E0F
         HEX 00010203

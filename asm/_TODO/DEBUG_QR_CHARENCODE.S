@@ -1,3 +1,5 @@
+; LAST BUILD 11-MAR-2025
+
 M.PRBYTE  = $FDDA   ; print hex byte
 M.CRDO    = $DAFB   ; line feed
 M.OUTSP   = $DB57   ; space
@@ -30,7 +32,7 @@ S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 
-*=$6000
+ORG $6000
         LDA #$00        ; PRINT METHOD 0     >> WELCOME MESSAGE
         STA *S0.TA
         LDA #$00

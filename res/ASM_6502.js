@@ -123,7 +123,7 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 		,".END":true
 		,".WORD":true
 		,".BYTE":true
-		,".TEXT":true
+		,".AT":true
 		,".DEFINE":true
 		,".IFDEF":true
 		,".IFNDEF":true
@@ -297,6 +297,7 @@ function getSym()
 			}
 			if (q == 1) sym[s] += c;
 		}
+		/*
 		else if (c == '=')
 		{
 			if (m > 0) s++;
@@ -304,6 +305,7 @@ function getSym()
 			m = 0; s++;
 			sym[s] = '';
 		}
+		*/
 		else if (c == "'")
 		{
 			sym[s] += c;

@@ -25,10 +25,10 @@ MOVSTR   =     $E5E2      ;Move data to str space
 GETLN    =     $FD6A      ;Read line of input
 
 
-*=$0A
+ORG $0A
 HEX 4C 00 03     ;SET_VECTOR_FOR_USR
 
-*=$300
+ORG $300
 JSR   ERRDIR     ;Err if prog not running
 JSR   CHKSTR
 JSR   STRPRT     ;Print arg

@@ -1,4 +1,7 @@
-*=$300
+; LAST BUILD 11-MAR-2025
+; TODO: ADD EXAMPLE SHOWING WHAT IT DOES
+
+ORG $300
 A1L      =     $3C        ;MOVE source start
 A1H      =     $3D
 PTR      =     $3C        ;Ptr for fixing links

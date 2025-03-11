@@ -1,4 +1,4 @@
-*=$6000
+ORG $6000
 INVFLG      EQU     $32
 IN          EQU     $0200
 M.COUT      EQU     $FDED   ; print char

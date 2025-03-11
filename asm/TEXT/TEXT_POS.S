@@ -37,7 +37,7 @@ CALL -151
 
 -----------------
 
-*=$6000
+ORG $6000
 IOSAVE = $FF4A
 IOREST = $Ff3F
 

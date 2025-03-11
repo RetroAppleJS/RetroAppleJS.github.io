@@ -3,7 +3,7 @@
 BT_AD1    = $06
 BT_AD2    = $07
 
-*=$6000
+ORG $6000
         LDY #>STR.03
         LDA #<STR.03
 

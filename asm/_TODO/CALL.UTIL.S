@@ -1,3 +1,6 @@
+; LAST BUILD 11-MAR-2025
+
+
 CALL-151
 6000: 08 20 ED FD 8A 20 ED FD
 6008: 98 20 ED FD 68 20 ED FD
@@ -20,7 +23,7 @@ CALL-151
 0378: C0 DE 00 00 00 04 00
 E003G
 
-CALL768,PC=24576,A=193,X=216,Y=217,P=48
+CALL 768,PC=24576,A=193,X=216,Y=217,P=48
 
 
 
@@ -34,7 +37,7 @@ CALL768,PC=24576,A=193,X=216,Y=217,P=48
 ;output: AXY0(inverted)
 
 
-*=$6000
+ORG $6000
         PHP         ;Push Processor Status on Stack
         JSR $FDED
         TXA
@@ -45,19 +48,17 @@ CALL768,PC=24576,A=193,X=216,Y=217,P=48
         JSR $FDED
         RTS
 
-*=$300
-EQ.TOK = $D0      ;Applesoft '=' token
+ORG $300
+EQ.TOK EQU $D0      ;Applesoft '=' token
 
-CHRGET = $B1      ;-$C8 advance TXTPTR & fetch chr
-CHRGOT = $B7      ;just fetch chr
+CHRGET EQU $B1      ;-$C8 advance TXTPTR & fetch chr
+CHRGOT EQU $B7      ;just fetch chr
 
-FRMNUM = $DD67    ;evaluate FP expression (FAC)
-SYNCHR = $DEC0    ;require chr in Acc syntax @ TXTPTR
-SYNERR = $DEC9    ;syntax error
-GETBYT = $E6F8    ;evaluate 8 bits @ TXTPTR (X-reg)
-GETADR = $E752    ;convert FAC to 16 bits in Acc & Y-reg (hi/lo)
-
-;--------------------------------
+FRMNUM EQU $DD67    ;evaluate FP expression (FAC)
+SYNCHR EQU $DEC0    ;require chr in Acc syntax @ TXTPTR
+SYNERR EQU $DEC9    ;syntax error
+GETBYT EQU $E6F8    ;evaluate 8 bits @ TXTPTR (X-reg)
+GETADR EQU $E752    ;convert FAC to 16 bits in Acc & Y-reg (hi/lo)
 
 CALL.UTIL
 

@@ -305,8 +305,8 @@ function ASM()
 				{
 					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
 					r =  {"val":parseInt(c[1],8),"fmt":"OCT","bytes":b};
-				}
-				break;
+					break;
+				} // decimal processing if octal processing fails
 			case "[1-9]":	// DEC
 				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1};
 				if(this.validate(str,"[0-9]+"))
@@ -461,6 +461,7 @@ function ASM()
 					sym[s] += c;
 				}
 			}
+			/*
 			else if (c == '=')
 			{
 				if (m > 0) s++;
@@ -469,6 +470,7 @@ function ASM()
 				s++;
 				sym[s] = '';
 			}
+			*/
 			else if (c == "'")
 			{
 				sym[s] += c;
@@ -591,10 +593,12 @@ function ASM()
 				if (pass == 2)
 				{
 					oASM.concat_code(dat);
-					listing.value += "\"" + arg + "\"";
+					//listing.value += "\"" + arg + "\"";
+					for (var i = 0; i < arg.length; i++)
+						listing.value += this.getHexByte(dat[i]);
 				}
 				pc += dat.length;
-				return {"val":true};
+				return {"val":true};			
 
 			case ".END":
 				listing.value += sym[0];
@@ -622,7 +626,7 @@ function ASM()
 						if (e.err) { displayError(e.err); return {"val":false}  }
 						dat[i<<1]     = (e.val & 0xFF)+"";	    // extract  lo byte
 						dat[(i<<1)+1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
-						arr[i] = oCOM.getHexWord(e.val & 0xFFFF);
+						arr[i] = this.getHexWord(e.val & 0xFFFF);
 					}
 					oASM.concat_code(dat);
 					listing.value += arr.join(",");
@@ -646,7 +650,7 @@ function ASM()
 						if(e.bytes!=1) e.err = "expression is not 1 byte long "+(e.bytes==undefined?"":("("+e.bytes+")"))
 						if (e.err) { displayError(e.err); return {"val":false}  }
 						dat[i] = e.val & 0xFF;	    		// extract  lo byte
-						arr[i] = oCOM.getHexByte(e.val & 0xFF);
+						arr[i] = this.getHexByte(e.val & 0xFF);
 					}
 					oASM.concat_code(dat);
 					listing.value += arr.join(" ");
@@ -691,8 +695,30 @@ function ASM()
 				//oASM.getExpression(addr);
 				return {"val":true}
 
-			case ".TEXT":
-				break;
+			case ".AT":
+				// https://www.sbprojects.net/sbasm/directives.php?directive=at
+				
+				var bNeg = false;
+				if(sym[1].charAt(0)=="-") { sym[1] = sym[1].substring(1); bNeg = true }
+				if(sym[1].charAt(0)=="/")
+					var str = sym.join(" ").split("/")[1];
+				else
+					var str = sym.join(" ").split(/"|“|”/g)[1];
+
+				eval("var arg=\"" + str + "\"");
+				if (pass == 1) listing.value += "\"" + arg + "\"";
+				for (var i = 0, dat = []; i < arg.length; i++)
+					dat[i] = (i!=arg.length-1) != !bNeg ? getAscii(arg.charAt(i)) : getAscii(arg.charAt(i))-128;
+
+				if (pass == 2)
+				{
+					oASM.concat_code(dat);
+					for (var i = 0; i < arg.length; i++)
+						listing.value += this.getHexByte(dat[i]);
+				}
+				pc += dat.length;
+				return {"val":true};
+
 			case ".DEFINE":
 				if (sym.length >= 2 && pass==1)	// more than two operands
 				{
