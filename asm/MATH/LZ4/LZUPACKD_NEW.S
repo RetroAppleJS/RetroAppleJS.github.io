@@ -15,9 +15,9 @@ ORG $800
                 SCRATCH EQU $FA
                 SRC     EQU $FC
                 DST     EQU $FE
-                DOSBASE EQU $3D2
-                FILEMAN EQU $3D6
-                GETPARM EQU $3DC
+                DOSBASE EQU $03D2
+                FILEMAN EQU $03D6
+                GETPARM EQU $03DC
 
 START
 
@@ -27,15 +27,15 @@ START
                 STY DOSBUF
                 LDA DOSBASE
                 STA DOSBUF+1
-L1              LDA (DOSBUF), Y
+L1              LDA (DOSBUF),Y
                 TAX
                 INY
-                LDA (DOSBUF), Y
+                LDA (DOSBUF),Y
                 STX DOSBUF
                 STA DOSBUF+1
                 LDY #36
-                LDA (DOSBUF)
-                BNE L1
+                ;LDA (DOSBUF)
+                JSR SUBST1
 
                 ;GET FILE MANAGER PARAMETER LIST
 
@@ -56,13 +56,13 @@ L1              LDA (DOSBUF), Y
 
                 LDY #8
                 TXA
-                STA (MANPARM), Y
+                STA (MANPARM),Y
                 STA OPEN_FILE+6
                 ADC #30
                 STA SRC
                 INY
                 LDA DOSBUF+1
-                STA (MANPARM), Y
+                STA (MANPARM),Y
                 STA OPEN_FILE+5
                 ADC #0
                 STA SRC+1
@@ -70,8 +70,8 @@ L1              LDA (DOSBUF), Y
                 ;COPY DOS BUFFER POINTERS TO FILE MANAGER PARAMETER LIST
 
                 LDY #5
-L2              LDA (SRC), Y
-                STA (DST), Y
+L2              LDA (SRC),Y
+                STA (DST),Y
                 DEY
                 BPL L2
 
@@ -79,20 +79,20 @@ L2              LDA (SRC), Y
 
                 LDY #29
                 LDA #$A0
--               STA (DOSBUF), Y
+L3              STA (DOSBUF),Y
                 DEY
-                BNE -
+                BNE L3
 
                 ;SET INPUT NAME
 
                 LDA #$CC
-                STA (DOSBUF), Y
+                STA (DOSBUF),Y
                 INY
                 LDA #$DA
-                STA (DOSBUF), Y
+                STA (DOSBUF),Y
                 INY
                 LDA #$C9
-                STA (DOSBUF), Y
+                STA (DOSBUF),Y
 
                 ;OPEN SOURCE FILE
                 ;READ ADDRESS AND LENGTH
@@ -104,13 +104,13 @@ L2              LDA (SRC), Y
 
                 LDY #6
                 LDA SIZE
-                STA (MANPARM), Y
+                STA (MANPARM),Y
                 INY
                 LDA SIZE+1
-                STA (MANPARM), Y
+                STA (MANPARM),Y
                 INY
                 LDA #END&255
-                STA (MANPARM), Y
+                STA (MANPARM),Y
                 INY
                 LDA #(END>>8)&255
                 JSR OP_CLOSE
@@ -145,7 +145,7 @@ L2              LDA (SRC), Y
 
                 LDY #2
                 LDA #$CF
-                STA (DOSBUF), Y
+                STA (DOSBUF),Y
                 DEC ADDR_LEN+3
                 INC ADDR_LEN+9
 
@@ -159,24 +159,24 @@ L2              LDA (SRC), Y
 
                 LDA SIZE
                 LDX SIZE+1
-                DEC
-                BNE +
+                DEC A
+                BNE L4
                 DEX
-+               LDY #6
-                STA (MANPARM), Y
+L4              LDY #6
+                STA (MANPARM),Y
                 INY
                 TXA
-                STA (MANPARM), Y
+                STA (MANPARM),Y
                 INY
                 LDA TMPDST
                 LDX TMPDST+1
-                INC
-                BNE +
+                INC A
+                BNE L5
                 INX
-+               STA (MANPARM), Y
+L5              STA (MANPARM),Y
                 INY
                 TXA
-OP_CLOSE        STA (MANPARM), Y
+OP_CLOSE        STA (MANPARM),Y
                 LDX #1
                 JSR FILEMAN
 
@@ -184,22 +184,22 @@ OP_CLOSE        STA (MANPARM), Y
 
                 LDY #0
                 JSR SET_OPS1
-                !BY 2
+                HEX 02
                 RTS
 
                 SIZEH EQU $F9
                 DELTA EQU $FA
 
 UNPACK          LDA #$80
--               TAX
+L6              TAX
                 JSR GET_SRC
                 INC DST
-                BNE +
+                BNE L7
                 INC DST+1
-+               STA (DST)
+L7              STA (DST)
                 TXA
 TEST_BIT        JSR GET_BIT
-                BCC -           ;LOOP UNTIL DELTA BIT IS SEEN
+                BCC L6          ;LOOP UNTIL DELTA BIT IS SEEN
                 JSR GET_DELTA   ;GET LENGTH
                 TAX             ;SAVE BITS FOR LATER
                 LDA DELTA
@@ -222,46 +222,52 @@ TEST_BIT        JSR GET_BIT
                 SBC #$FE        ;UNDO THE +2 THAT WAS APPLIED DURING COMPRESSION
                 STA DELTA+1
                 STX DELTA
--               INC DELTA       ;COPY BYTES
-                BNE +
+L8               INC DELTA       ;COPY BYTES
+                BNE L9
                 INC DELTA+1
-+               LDA (DELTA)
+L9              ;LDA (DELTA)
+                JSR SUBST2
                 INC DST
-                BNE +
+                BNE L10
                 INC DST+1
-+               STA (DST)
+L10             STA (DST)
                 DEY
-                BNE -
+                BNE L8
                 DEC SIZEH
-                BNE -
+                BNE L8
                 PLA
-                BRA TEST_BIT
+                JMP TEST_BIT
 GET_DELTA       LDX #1
                 STX DELTA
-
-                STZ DELTA+1
--               JSR GET_BIT
+                PHA
+                LDA #$0
+                STA DELTA+1
+                PLA
+L11             JSR GET_BIT
                 ROL DELTA       ;ROTATE IN NEW BIT
                 ROL DELTA+1
                 JSR GET_BIT
-                BCS -           ;CONTINUE WHILE MORE BITS ARE SEEN
+                BCS L11         ;CONTINUE WHILE MORE BITS ARE SEEN
                 RTS
-GET_BIT         ASL
+GET_BIT         ASL A
                 BNE BIT_RET
                 JSR GET_SRC
-                ROL
+                ROL A
 BIT_RET         RTS
 GET_SRC         INC SRC
-                BNE +
+                BNE L12
                 INC SRC+1
-+               LDA (SRC)
+L12             ;LDA (SRC)
+                JSR SUBST3
                 RTS
 
 OPEN_FILE       LDY #9
                 JSR SET_OPS
-                !BY 0, 0, 4, 6, 1, 0, 0, 0, 0, 1
+                HEX 00000406010000000001
                 JSR SET_OPS91
-ADDR_LEN        !BY 0, ADDRESS, 0, 4, 0, 0, 0, 0, 2, 3
+ADDR_LEN        HEX 00
+                .BYTE ADDRESS
+                HEX 0004000000000203
                 RTS
 
 SET_OPS91       LDY #9
@@ -270,18 +276,56 @@ SET_OPS         PLA
                 STA DST
                 PLA
                 STA DST+1
--               INC DST
-                BNE +
+L13             INC DST
+                BNE L14
                 INC DST+1
-+               LDA (DST)
-                STA (MANPARM), Y
+L14             ;LDA (DST)
+                JSR SUBST4
+                STA (MANPARM),Y
                 DEY
-                BPL -
+                BPL L13
                 LDA DST+1
                 PHA
                 LDA DST
                 PHA
                 JMP FILEMAN
-.END
 
-;RAW "LZUPACKD BY PETER FERRIE"
+SUBST1          TYA
+                PHA
+                LDY #$00
+                LDA (DOSBUF),Y
+                PHA
+                TAY
+                PLA
+                RTS
+
+SUBST2          TYA
+                PHA
+                LDY #$00
+                LDA (DELTA),Y
+                PHA
+                TAY
+                PLA
+                RTS               
+
+SUBST3          TYA
+                PHA
+                LDY #$00
+                LDA (SRC),Y
+                PHA
+                TAY
+                PLA
+                RTS
+
+SUBST4          TYA
+                PHA
+                LDY #$00
+                LDA (DST),Y
+                PHA
+                TAY
+                PLA
+                RTS
+
+END
+                ASC "LZUPACKD BY PETER FERRIE"
+

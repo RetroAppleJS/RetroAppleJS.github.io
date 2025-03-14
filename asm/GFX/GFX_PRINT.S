@@ -1,43 +1,46 @@
-*=$6000
-M.PRHEX   = $FDE3   ; print right nibble (A)
-M.PRBYTE  = $FDDA   ; print hex byte (A)
-M.PRNTX   = $F944   ; print hex byte (X)
-M.PRNTYX  = $F940   ; print hex word (Y=hi X=lo)
-M.PRNTAX  = $F941   ; print hex word (A=hi X=lo)
-M.PRDEC   = $ED24   ; print dec word (A=hi X=lo)
-M.CRDO    = $DAFB   ; print line feed
-M.OUTSP   = $DB57   ; space
-M.COUT    = $FDED   ; print char
-M.STROUT  = $DB3A   ; print string from address (Y=hi A=lo)
-M.CBOT    = $FB2F   ; move cursor to bottom
-M.UP      = $FC1A   ; move cursor one up
-M.ADVANCE = $FBF4   ; move cursor right
-M.BS      = $FC10   ; move cursor left
-M.LF      = $FC66   ; move cursor down
-M.CLREOL  = $FC9C   ; clear text-line from cursor to right
-M.CLREOP  = $FC42   ; clear text from cursor to bottom
-M.HOME    = $FC58   ; clear text (HOME)
-M.KPRESS  = $FD35   ; wait for key press
-M.RESTART = $E003   ; restart BASIC
-M.PRNTAX  = $F941   ; print hex word (A=hi X=lo)
-M.HPOSN   = $F411
-M.HGR     = $F3E2   ; set hires mode 1 + clear screen
-M.TXST    = $C051
+; LAST BUILD 11-MAR-2025
 
-MD1       =  $FBA4
-ACL       =  $50
-ACH       =  $51
-XTNDL     =  $52
-XTNDH     =  $53
-AUXL      =  $54
-AUXH      =  $55
-GBASL     =  $26
-GBASH     =  $27
+ORG $6000
 
-S0.TA        = $18     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TX        = $19     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TY        = $1A     ; ONLY USE IN FUNCTIONS with no SUBS
-S0.TZ        = $1B     ; ONLY USE IN FUNCTIONS with no SUBS
+M.PRHEX    EQU $FDE3   ; print right nibble (A)
+M.PRBYTE   EQU $FDDA   ; print hex byte (A)
+M.PRNTX    EQU $F944   ; print hex byte (X)
+M.PRNTYX   EQU $F940   ; print hex word (Y=hi X=lo)
+M.PRNTAX   EQU $F941   ; print hex word (A=hi X=lo)
+M.PRDEC    EQU $ED24   ; print dec word (A=hi X=lo)
+M.CRDO     EQU $DAFB   ; print line feed
+M.OUTSP    EQU $DB57   ; space
+M.COUT     EQU $FDED   ; print char
+M.STROUT   EQU $DB3A   ; print string from address (Y=hi A=lo)
+M.CBOT     EQU $FB2F   ; move cursor to bottom
+M.UP       EQU $FC1A   ; move cursor one up
+M.ADVANCE  EQU $FBF4   ; move cursor right
+M.BS       EQU $FC10   ; move cursor left
+M.LF       EQU $FC66   ; move cursor down
+M.CLREOL   EQU $FC9C   ; clear text-line from cursor to right
+M.CLREOP   EQU $FC42   ; clear text from cursor to bottom
+M.HOME     EQU $FC58   ; clear text (HOME)
+M.KPRESS   EQU $FD35   ; wait for key press
+M.RESTART  EQU $E003   ; restart BASIC
+M.PRNTAX   EQU $F941   ; print hex word (A=hi X=lo)
+M.HPOSN    EQU $F411
+M.HGR      EQU $F3E2   ; set hires mode 1 + clear screen
+M.TXST     EQU $C051
+
+MD1        EQU $FBA4
+ACL        EQU $50
+ACH        EQU $51
+XTNDL      EQU $52
+XTNDH      EQU $53
+AUXL       EQU $54
+AUXH       EQU $55
+GBASL      EQU $26
+GBASH      EQU $27
+
+S0.TA         EQU $18     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TX         EQU $19     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TY         EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
+S0.TZ         EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
         JSR M.HGR       ; SET HIRES MODE 1 + CLEAR SCREEN  
 
