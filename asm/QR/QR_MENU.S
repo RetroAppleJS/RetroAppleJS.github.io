@@ -81,14 +81,14 @@ UCM.00  JSR M.KPRESS
         CMP #$D7
         BEQ HGRWIP
 
-        ;CMP #'I'      ; ('I'=C9 not 49) correct compiler !!
-        CMP #$C9
+        ;CMP #'L'      ; ('I'=C9 not 49) correct compiler !!
+        CMP #$CC
         BNE UCM.00
         JMP QR_IMP
 
 ; *** CONFIGURE QR CODE
 CONFIG  JSR C_MENU
-        JSR C_NAV
+        JSR C_NAV       ; TODO HERE WE HAVE A BLOCKING BUG !!
         RTS
 
 ; *** GENERATE QR CODE
@@ -184,7 +184,7 @@ HOM.00  JSR CYG.00
 C_MENU  JSR M.CRDO
         LDY #>STR.03
         LDA #<STR.03
-        JSR M.STROUT
+        JSR M.STROUT    ; PRINT CONFIGURATION MENU
         JSR M.C1UP
         JSR M.C1UP
         LDX #$07
@@ -193,7 +193,8 @@ CFG1    JSR M.C1L
         BNE CFG1
         RTS
 
-C_NAV   CMP #$88        ; DETECT ARROW LEFT
+C_NAV   JSR M.KPRESS
+        CMP #$88        ; DETECT ARROW LEFT
         BEQ C_NAV1
         CMP #$95        ; DETECT ARROW RIGHT
         BEQ C_NAV2
@@ -205,9 +206,10 @@ C_NAV   CMP #$88        ; DETECT ARROW LEFT
 C_NAV1  LDA #$00        ; ARROW LEFT
         LDX #$01
         JSR M.LINPRT
-        ;JSR M.COUT
+        JSR M.COUT
         JMP C_NAV
-C_NAV2  LDA #'B'        ; ARROW RIGHT
+C_NAV2  ;LDA #'B'
+        LDA #$C2        ; ARROW RIGHT
         JSR M.COUT
         JMP C_NAV
 C_NAV3  JSR M.C1DN      ; RETURN
@@ -353,19 +355,19 @@ CY_COU  HEX 0000          ; GFX MODE,HELP MODE
 
 STR.00  ASC "[H]ELP"
         HEX 00
-STR.01  ASC "QR GRAPHICS FOUNDATION V1.0"
+STR.01  ASC "QR GENERATOR V1.0"
         HEX 0D0D
-        ASC "[C]ONFIGURE"
+        ASC "[C]ONFIG"
         HEX 0D
-        ASC "[G]ENERATE: UNDER CONSTRUCTION"
+        ASC "[G]EN : UNDER CONSTRUCTION"
         HEX 0D
-        ASC "[H]ELP: BACK TO NORMAL VIEW"
+        ASC "[L]OAD: LOAD QR DATA"
         HEX 0D
-        ASC "[I]MPORT: IMPORT EXTERNAL QR DATA"
+        ASC "[M]ODE:  HGR+TXT>HGR>HGR2>TXT"
         HEX 0D
-        ASC "[M]ODE:CYCLE ACROSS HGR+TXT>HGR>HGR2>TXT"
+        ASC "[W]IPE"
         HEX 0D
-        ASC "[W]IPE:CLEAR ALL GFX"
+        ASC "[H]ELP"
         HEX 00
 
 STR.02  HEX 2020202020202020
@@ -416,7 +418,7 @@ STR.05  ASC "NUM"                       ; STRING ARRAY
         ASC "KANJI"
         HEX 00
 
-        ;L(7)\M(15)\Q(25)\H(30)
+       ;L(7)\M(15)\Q(25)\H(30)
        ; AUTO\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15\16\17\18\19\20\21\22\23\24\25\26\27\28\29\30\31\32\33\34\35\36\37\38\39\40\
        ; L(07)\M(15)\Q(25)\H(30)\
        ;NUM  \ALNUM\BYTE \KANJI\
