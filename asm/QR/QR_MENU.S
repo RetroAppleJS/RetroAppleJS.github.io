@@ -50,7 +50,8 @@ S0.TZ         EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 
 ORG $6000
-START     JSR HOME
+START   JSR TXTPOS
+        JSR M_MENU
 
 ; *** USER COMMAND KEY DISPATCHER
 USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
@@ -58,7 +59,6 @@ USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
         LDA #<USRCMD-1
         PHA
 UCM.00  JSR M.KPRESS
-        
        ;JSR M.PRBYTE
 
         ;CMP #'C'      ; ('C'=C1 not 41) correct compiler !!
@@ -75,20 +75,20 @@ UCM.00  JSR M.KPRESS
 
         ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
         CMP #$C8
-        BEQ HELP
+        BEQ M_MENU
 
         ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
         CMP #$D7
         BEQ HGRWIP
 
-        ;CMP #'L'      ; ('I'=C9 not 49) correct compiler !!
-        CMP #$CC
+        ;CMP #'D'      ; ('I'=C9 not 49) correct compiler !!
+        CMP #$C4
         BNE UCM.00
         JMP QR_IMP
 
 ; *** CONFIGURE QR CODE
 CONFIG  JSR C_MENU
-        JSR C_NAV       ; TODO HERE WE HAVE A BLOCKING BUG !!
+        JSR C_NAV
         RTS
 
 ; *** GENERATE QR CODE
@@ -96,13 +96,11 @@ GENERA  LDX #$10        ; 10x10 matrix (4-bit depth)
         LDA #$0         ; NIBLLE to fill
         JSR FIL_MX      ; FILL MATRIX
         JSR M.KPRESS
-        JMP HOME
-
-
+        RTS
 
 ; *** TOGGLE GFX MODE    (0) HGR+TEXT > (1)HGR FULL > (2)HGR2 FULL > (3)TEXT
 
-CYGFX   LDA #$03      ; CYCLE REGISTER INDEX = 0,  MAX = 3
+CYGFX   LDA #$04      ; CYCLE REGISTER INDEX = 0,  MAX = 4
         JSR CYCLER
 
 CYG.00  STA M.HIRES   ; HIRES
@@ -114,25 +112,27 @@ CYG.00  STA M.HIRES   ; HIRES
         BEQ CYG.1
         CMP #$02
         BEQ CYG.2
+        CMP #03
+        BEQ CYG.4
 
 CYG.3   STA M.TXST    ; TEXT    (TEXT FULL)
         RTS
 CYG.2   STA M.TXP2    ; PAGE2   (HGR2 FULL)
+        STA M.MXST    ; MIXED   (HGR MIXED)
 CYG.1   RTS           ; FULL    (HGR FULL)
 CYG.0   STA M.MXST    ; MIXED   (HGR MIXED)
         RTS
+CYG.4   STA M.TXP2    ; PAGE2   (HGR2 FULL)
+        RTS
 
-;*** HELP
-HELP    LDA #$11  ; CYCLE REGISTER INDEX & MAX
-        JSR CYCLER
-        BEQ HOME
-        JSR M.HOME
-        LDY #>STR.01
+;*** MAIN MENU
+M_MENU  LDY #>STR.01
         LDA #<STR.01
         JSR M.STROUT
         JSR M.CRDO
-        LDA #$03
-        JMP HOM.00
+        LDA #$00        ; SET MODE DEFAULT TO HGR+TEXT
+        JSR CYG.00
+        RTS
 
 ; *** HGR WIPE USING COLOUR ***
 HGRWIP  LDA #$FF          ; HCOLOR = WHITE
@@ -173,14 +173,6 @@ NIBBLE  PHA
         AND #$0F
         RTS
 
-HOME    JSR TXTPOS      ; DISPLAY HOME SCREEN
-        LDY #>STR.00
-        LDA #<STR.00
-        JSR M.STROUT
-        LDA #$00
-HOM.00  JSR CYG.00
-        RTS
-
 C_MENU  JSR M.CRDO
         LDY #>STR.03
         LDA #<STR.03
@@ -201,7 +193,6 @@ C_NAV   JSR M.KPRESS
         CMP #$8D        ; DETECT RETURN
         BEQ C_NAV3
         JMP C_NAV
-
 
 C_NAV1  LDA #$00        ; ARROW LEFT
         LDX #$01
@@ -227,11 +218,11 @@ M.C1DN  LDA *$22
 M.C1D1  RTS
 
 ; *** RELATIVELY REPOSITION CURSOR ***
-TXTPOS  JSR M.HOME
-        JSR M.CBOT
-        JSR M.C1UP
-        JSR M.C1UP
-        JSR M.C1UP
+TXTPOS  JSR M.HOME      ; move cursor to top left
+        JSR M.CBOT      ; move cursor to bottom
+        JSR M.C1UP      ; go one up
+        JSR M.C1UP      ; go one up
+        JSR M.C1UP      ; go one up
         RTS
 
 ; *** PRINT STRING WITH TEMPLATE FILL-INS ***
@@ -286,15 +277,6 @@ PR.05   CMP #$A4        ;'$'=$24??
 
 PR.06   JSR M.COUC
 PR.07   RTS
-
-
-
-
-
-
-
-
-
 
 
 ; *** HGR PLOT 2*2 PIXEL DOT ***
@@ -356,17 +338,13 @@ CY_COU  HEX 0000          ; GFX MODE,HELP MODE
 STR.00  ASC "[H]ELP"
         HEX 00
 STR.01  ASC "QR GENERATOR V1.0"
-        HEX 0D0D
-        ASC "[C]ONFIG"
         HEX 0D
-        ASC "[G]EN : UNDER CONSTRUCTION"
+        ASC "[M]ODE: HGR+TXT>HGR>HGR2+TXT>HGR2>TXT"
         HEX 0D
-        ASC "[L]OAD: LOAD QR DATA"
-        HEX 0D
-        ASC "[M]ODE:  HGR+TXT>HGR>HGR2>TXT"
-        HEX 0D
-        ASC "[W]IPE"
-        HEX 0D
+        ASC "[C]ONFIG "
+        ASC "[G]EN "
+        ASC "[D]EBUG "
+        ASC "[W]IPE "
         ASC "[H]ELP"
         HEX 00
 
