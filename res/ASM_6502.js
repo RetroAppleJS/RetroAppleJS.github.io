@@ -283,39 +283,29 @@ function getSym()
 	var c = getChar();
 	if (c == 'EOF') return null;
 	var sym = [''];
-	var s = 0;
-	var m = 0;
-	var q = 0;
+	var s = 0;		// string index
+	var m = false;  // multi character
+	var q = false;	// quote
 	while ((c != ';') && (c != '\n') && (c != 'EOF'))
 	{
-		if ((c == ' ') || (c == '\t'))
+		if ((c == ' ' || c == '\t') && !q)
 		{
-			if (m > 0)
+			if(m)
 			{
-				m = 0; s++;
-				sym[s] = '';
+			sym[++s] = '';
+			m = false;
 			}
-			if (q == 1) sym[s] += c;
 		}
-		/*
-		else if (c == '=')
-		{
-			if (m > 0) s++;
-			sym[s] = c;
-			m = 0; s++;
-			sym[s] = '';
-		}
-		*/
-		else if (c == "'")
+		else if (c == "'" || c == "\"")
 		{
 			sym[s] += c;
-			q = q == 0 ? 1 : 0;
-			m = 0;
+			q = !q			// toggle quote
+			m = false;
 		}
 		else
 		{
-			m = 1;
 			sym[s] += c;
+			m = true;
 		}
 		c = getChar();
 	}

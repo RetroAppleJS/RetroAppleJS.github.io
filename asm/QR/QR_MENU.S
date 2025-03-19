@@ -52,39 +52,93 @@ S0.TZ         EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 ORG $6000
 START   JSR TXTPOS
         JSR M_MENU
+        JMP USRCMD
 
-; *** USER COMMAND KEY DISPATCHER
+J_MAIN  ASC "MODE "
+        HEX 0D
+        .WORD CYGFX
+        ASC "CONFIG"
+        .WORD CONFIG
+        ASC "GENER "
+        .WORD GENERA
+        ASC "DEBUG "
+        .WORD QR_IMP
+        ASC "WIPE  "
+        .WORD HGRWIP
+        ASC "HELP  "
+        .WORD M_MENU
+        HEX 00
+
+;M.KPRESS LDA #$CD
+;         RTS
+;M.C1L
+;M.C1R
+;M.C1UP
+;M.CBOT
+;M.STROUT 
+;M.CRDO 
+;M.OUTSP
+;M.COUT
+;M.COUC
+;M.HOME  RTS
+
+; *** NEW USER COMMAND KEY DISPATCHER
 USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
         PHA
         LDA #<USRCMD-1
         PHA
 UCM.00  JSR M.KPRESS
-       ;JSR M.PRBYTE
+        STA *S0.TA
+        LDX #$00-8
+UCM.01  TXA
+        CLC
+        ADC #$08
+        TAX
+        LDA *S0.TA
+        ORA #$80          ; uppercase or lowercase doesn't matter
+        CMP J_MAIN,X    
+        BEQ UCM.02        ; is A = first character of menu item ? 
+        LDA J_MAIN+8,X    ; get next character
+        BNE UCM.01        ; loop to next menu item
+        JMP UCM.00        ; loop end -> back to key input
+UCM.02  LDA J_MAIN+8-2,X  ; Load low byte of address
+        STA *S0.TA         ; Store to temporary zero page pointer
+        LDA J_MAIN+8-1,X  ; Load high byte of address
+        STA *S0.TA+1       ; Store high byte to pointer
+        JMP (S0.TA)       ; Jump to pointer
 
-        ;CMP #'C'      ; ('C'=C1 not 41) correct compiler !!
-        CMP #$C3
-        BEQ CONFIG
-
-        ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
-        CMP #$CD
-        BEQ CYGFX
-
-        ;CMP #'G'      ; ('G'=C7 not 47) correct compiler !!
-        CMP #$C7
-        BEQ GENERA
-
-        ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
-        CMP #$C8
-        BEQ M_MENU
-
-        ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
-        CMP #$D7
-        BEQ HGRWIP
-
-        ;CMP #'D'      ; ('I'=C9 not 49) correct compiler !!
-        CMP #$C4
-        BNE UCM.00
-        JMP QR_IMP
+; *** USER COMMAND KEY DISPATCHER
+;USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
+;        PHA
+;        LDA #<USRCMD-1
+;        PHA
+;UCM.00  JSR M.KPRESS
+;       ;JSR M.PRBYTE
+;
+;        ;CMP #'C'      ; ('C'=C1 not 41) correct compiler !!
+;        CMP #$C3
+;        BEQ CONFIG
+;
+;        ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
+;        CMP #$CD
+;        BEQ CYGFX
+;
+;        ;CMP #'G'      ; ('G'=C7 not 47) correct compiler !!
+;        CMP #$C7
+;        BEQ GENERA
+;
+;        ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
+;        CMP #$C8
+;        BEQ M_MENU
+;
+;        ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
+;        CMP #$D7
+;        BEQ HGRWIP
+;
+;        ;CMP #'D'      ; ('I'=C9 not 49) correct compiler !!
+;        CMP #$C4
+;        BNE UCM.00
+;        JMP QR_IMP
 
 ; *** CONFIGURE QR CODE
 CONFIG  JSR C_MENU
