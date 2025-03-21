@@ -270,6 +270,8 @@ function COM()
       p["%"] = function(m, n){return n % m}
       p["^"] = function(m, n){return Math.pow(n, m)}
       p["~"] = function(m, n){return Math.sqrt(n, m)}
+      p["&"] = function(m, n){return n & m}
+      p["|"] = function(m, n){return n | m}
       p["x"] = function(m, n){return Number("0x"+m)}
       this.custom = {}
     p.f = function(s, n)
@@ -283,7 +285,7 @@ function COM()
     this.eval = function(e, ig)
     {
       var v = [], p = [], i, _, a, c = 0, s = 0, x, t = !ig ? e.indexOf("^") : -1, d = null;
-      var cp = e, e = e.split(""), n = "0123456789ABCDEF.", o = "+-/*^%~x", f = this.operator;
+      var cp = e, e = e.split(""), n = "0123456789ABCDEF.", o = "+-/*^%~&|x", f = this.operator;
       if(t + 1)
         do
         {
@@ -308,7 +310,7 @@ function COM()
 
     this.parse = function(e)
     {
-      var p = [], f = [], ag, n, c, a, o = this, v = "0123456789ABCDEF.+-*/^%~x(, )";
+      var p = [], f = [], ag, n, c, a, o = this, v = "0123456789ABCDEF.+-*/^%~&|x(, )";
       for(var x, i = 0, l = e.length; i < l; i++)
       {
         if(v.indexOf(c = e.charAt(i)) < 0) { for(a = c; v.indexOf(c = e.charAt(++i)) < 0; a += c); f.push((--i, a)) }

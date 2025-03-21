@@ -359,6 +359,8 @@ function paddRight(s, l)
 
 function doPass(pass)
 {
+	var opspace = 13;
+
 	srcl = srcc = pc = 0;
 	var sym = getSym();
 	listing.value = "";
@@ -560,7 +562,12 @@ function doPass(pass)
 				{
 					// compile
 					//listing.value += '            ' + getHexByte(opctab[0]);
-					listing.value += listing_gen(mode,{"opcode":opc+'         '+getHexByte(opctab[0])})
+
+					var spc = "";
+					padd = 3;
+					for (var i = padd; i < opspace; i++) spc += ' ';
+
+					listing.value += listing_gen(mode,{"opcode":opc+spc+getHexByte(opctab[0])})
 					oASM.write_code( opctab[0] );
 				}
 				pc++;
@@ -636,7 +643,7 @@ function doPass(pass)
 				{
 					if (pass == 2)
 					{
-						listing.value += a1;
+						//listing.value += a1;
 						padd = 1;
 					}
 					b1 = 1;
@@ -651,26 +658,32 @@ function doPass(pass)
 				{
 					if (opctab != null) mode = (opctab[12] < 0) ? 3 : 12;		// absolute or relative
 				}
-				if (pass == 1) listing.value += opc+" "+addr;
+				if (pass == 1) listing.value += opc+" "+addr
 				if (mode == 9)
-				{													// X-indexed, indirect
+				{
+					// X-indexed, indirect
 					var b3 = addr.indexOf(',X)');					// end position of indirect address
 					if ((b3 > 0) && (b3 == addr.length - 3))
 					{
-						mode += 1;									// indirect, Y-indexed
+						mode += 1;								// indirect, Y-indexed
+						padd--;
 					}
-					else
-					{
+					//else
+					//{
+						// Y-indexed, indirect
 						b3 = addr.indexOf('),Y');					
 						if ((b3 > 0) && (b3 == addr.length - 3))
 						{
 							mode += 2;								// indirect
+							padd--;
 						}
 						else
 						{
+							//mode += 2;
+							padd--;
 							b3 = addr.indexOf(')');					// end position of indirect address
 						}
-					}
+					//}
 					if (b3 < 0)
 					{
 						displayError('syntax error:\ninvalid address');
@@ -738,7 +751,9 @@ function doPass(pass)
 
 					//listing.value += "(" + mode + ")";
 
-					for (var i = padd; i < 12; i++) listing.value += ' ';
+					//listing.value += "*"
+					for (var i = padd; i < opspace; i++) listing.value += ' ';
+
 					listing.value += getHexByte(instr);
 					if (mode > 1)
 					{
@@ -776,9 +791,9 @@ function listing_gen(mode,a)
 		case 6:  return r(a,"OPC *$LL");		// zeropage
 		case 7:  return r(a,"OPC *$LL,X");		// zeropage, X-indexed
 		case 8:  return r(a,"OPC *$LL,Y");		// zeropage, Y-indexed
-		case 9:  return r(a,"OPC ($LL,X)");		// X-indexed, indirect
-		case 10: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
-		case 11: return r(a,"OPC ($HHLL)");		// indirect
+		case 9: return r(a,"OPC ($HHLL)");		// indirect
+		case 10:  return r(a,"OPC ($LL,X)");	// X-indexed, indirect
+		case 11: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
 		case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
 		//case 12: return r(a,"OPC $BB");		// relative
 		case 13: return a.opcode+" "+a.val;

@@ -368,7 +368,7 @@ function ASM()
 
 	this.getExpression = function(str)
 	{
-		var exp = str.split(new RegExp("[+\\-\\*^~]","g"));  // slice at math operators to dig out deeper numbers and symbols
+		var exp = str.split(new RegExp("[+\\-\\*^~\\&\\|]","g"));  // slice at math operators to dig out deeper numbers and symbols
 		var r = "NaN", err = "expression malformation";
 		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
 		switch(c[0])
@@ -443,54 +443,29 @@ function ASM()
 		var c = this.getChar();
 		if (c == 'EOF') return null;
 		var sym = [''];
-		var s = 0;
-		var m = 0;
-		var q = 0;
+		var s = 0;		// string index
+		var m = false;  // multi character
+		var q = false;	// quote
 		while ((c != ';') && (c != '\n') && (c != 'EOF'))
 		{
-			if ((c == ' ') || (c == '\t'))
+			if ((c == ' ' || c == '\t') && !q)
 			{
-				if (m > 0)
+				if(m)
 				{
-					m = 0;
-					s++;
-					sym[s] = '';
-				}
-				if (q == 1)
-				{
-					sym[s] += c;
+				sym[++s] = '';
+				m = false;
 				}
 			}
-			/*
-			else if (c == '=')
-			{
-				if (m > 0) s++;
-				sym[s] = c;
-				m = 0;
-				s++;
-				sym[s] = '';
-			}
-			*/
-			else if (c == "'")
+			else if (c == "'" || c == "\"")
 			{
 				sym[s] += c;
-				q = q == 0 ? 1 : 0;
-				m = 0;
+				q = !q			// toggle quote
+				m = false;
 			}
-			/*
-			else if (c == "*" && this.peekChar() == "=")
-			{
-				this.srcc++;
-				m = 0;
-				sym[s] += "*=";
-				s++;
-				sym[s] += "";
-			}
-			*/
 			else
 			{
-				m = 1;
 				sym[s] += c;
+				m = true;
 			}
 			c = this.getChar();
 		}
@@ -512,9 +487,10 @@ function ASM()
 		{
 			var c = this.peekChar();
 			this.srcc++;
-			return c //.toUpperCase();
+			return c
 		}
 	}
+	
 
 	this.peekChar = function()
 	{
@@ -529,11 +505,7 @@ function ASM()
 		function getByteArray(arg)
 		{
 			str = arg.replace(/[^A-Fa-f0-9]/g, "");
-			if (arg != str || arg.length % 2 != 0)
-			{
-				displayError('format error:\nwrong or odd digits');
-				return false;
-			}
+			if (str.length % 2 != 0) { displayError('format error:\nwrong or odd digits'); return false }
 			for (var dat = []; dat.length < (arg.length / 2);)
 			{
 				dat[dat.length] = parseInt(arg.substring(dat.length * 2, dat.length * 2 + 2), 16);
@@ -562,11 +534,11 @@ function ASM()
 			case "HEX":
 				var arg = sym.slice(ofs + 1, sym.length).join(" ");
 				var dat = getByteArray(arg);
-				if (pass == 1) listing.value += arg;
+				if (pass == 1) listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
 				if (pass == 2)
 				{
 					oASM.concat_code(dat);
-					listing.value += arg;
+					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
 				}
 				pc += dat.length;
 				return {"val":true};

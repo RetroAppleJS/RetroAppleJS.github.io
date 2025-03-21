@@ -102,10 +102,12 @@ UCM.01  TXA
         BNE UCM.01        ; loop to next menu item
         JMP UCM.00        ; loop end -> back to key input
 UCM.02  LDA J_MAIN+8-2,X  ; Load low byte of address
-        STA *S0.TA         ; Store to temporary zero page pointer
+        STA CJMP         ; Store to temporary zero page pointer
         LDA J_MAIN+8-1,X  ; Load high byte of address
-        STA *S0.TA+1       ; Store high byte to pointer
-        JMP (S0.TA)       ; Jump to pointer
+        STA CJMP+1       ; Store high byte to pointer
+        JMP (CJMP)       ; Jump to pointer
+
+CJMP    HEX 00 00
 
 ; *** USER COMMAND KEY DISPATCHER
 ;USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
