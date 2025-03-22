@@ -661,33 +661,25 @@ function doPass(pass)
 				if (pass == 1) listing.value += opc+" "+addr
 				if (mode == 9)
 				{
-					// X-indexed, indirect
-					var b3 = addr.indexOf(',X)');					// end position of indirect address
-					if ((b3 > 0) && (b3 == addr.length - 3))
+					padd--;
+
+					// X-indexed, indirect ?
+					var b3 = addr.indexOf(',X)');					       // end position of indirect address
+					if ((b3 > 0) && (b3 == addr.length - 3))  mode = 10;
+
+					// Y-indexed, indirect ?
+					b3 = addr.indexOf('),Y');					
+					if ((b3 > 0) && (b3 == addr.length - 3))  mode = 11;
+
+					// indirect ?
+					if(mode==9)
 					{
-						mode += 1;								// indirect, Y-indexed
-						padd--;
-					}
-					//else
-					//{
-						// Y-indexed, indirect
-						b3 = addr.indexOf('),Y');					
-						if ((b3 > 0) && (b3 == addr.length - 3))
+						b3 = addr.indexOf(')');
+						if( b3 < 0 )
 						{
-							mode += 2;								// indirect
-							padd--;
+							displayError('syntax error:\ninvalid address');
+							return false;
 						}
-						else
-						{
-							//mode += 2;
-							padd--;
-							b3 = addr.indexOf(')');					// end position of indirect address
-						}
-					//}
-					if (b3 < 0)
-					{
-						displayError('syntax error:\ninvalid address');
-						return false;
 					}
 					b2 = b3;
 				}
