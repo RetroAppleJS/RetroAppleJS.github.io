@@ -109,38 +109,7 @@ UCM.02  LDA J_MAIN+8-2,X  ; Load low byte of address
 
 CJMP    HEX 00 00
 
-; *** USER COMMAND KEY DISPATCHER
-;USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
-;        PHA
-;        LDA #<USRCMD-1
-;        PHA
-;UCM.00  JSR M.KPRESS
-;       ;JSR M.PRBYTE
-;
-;        ;CMP #'C'      ; ('C'=C1 not 41) correct compiler !!
-;        CMP #$C3
-;        BEQ CONFIG
-;
-;        ;CMP #'M'      ; TOGGLE HGR+TEXT > HGR FULL > HGR2 FULL > TEXT ('M'=CD not 4D)
-;        CMP #$CD
-;        BEQ CYGFX
-;
-;        ;CMP #'G'      ; ('G'=C7 not 47) correct compiler !!
-;        CMP #$C7
-;        BEQ GENERA
-;
-;        ;CMP #'H'      ; ('H'=C8 not 48) correct compiler !!
-;        CMP #$C8
-;        BEQ M_MENU
-;
-;        ;CMP #'W'      ; ('W'=D7 not 57) correct compiler !!
-;        CMP #$D7
-;        BEQ HGRWIP
-;
-;        ;CMP #'D'      ; ('I'=C9 not 49) correct compiler !!
-;        CMP #$C4
-;        BNE UCM.00
-;        JMP QR_IMP
+
 
 ; *** CONFIGURE QR CODE
 CONFIG  JSR C_MENU
@@ -452,7 +421,7 @@ STR.05  ASC "NUM"                       ; STRING ARRAY
         ASC "KANJI"
         HEX 00
 
-       ;L(7)\M(15)\Q(25)\H(30)
+       ; L(7)\M(15)\Q(25)\H(30)
        ; AUTO\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15\16\17\18\19\20\21\22\23\24\25\26\27\28\29\30\31\32\33\34\35\36\37\38\39\40\
        ; L(07)\M(15)\Q(25)\H(30)\
        ;NUM  \ALNUM\BYTE \KANJI\
