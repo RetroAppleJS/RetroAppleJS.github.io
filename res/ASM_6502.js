@@ -555,11 +555,8 @@ function doPass(pass)
 			{
 				if(pass == 2)
 				{
-					var spc = "";
 					padd = 3;
-					for (var i = padd; i < opspace; i++) spc += ' ';
-
-					listing.value += listing_gen(mode,{"opcode":opc+spc+getHexByte(opctab[0])})
+					listing.value += listing_gen(mode,{"opcode":opc+' '.repeat(opspace-padd)+getHexByte(opctab[0])})
 					oASM.write_code( opctab[0] );
 				}
 				pc++;
@@ -580,7 +577,7 @@ function doPass(pass)
 				var a1 = addr===undefined ? "" : addr.charAt(0);
 				var b1 = 0;
 				var b2 = addr===undefined ? 0 : addr.length;
-				
+
 				if (addr == 'A' || addr===undefined && opctab[1]>=0)
 				{
 					mode = 1;					// accumulator
@@ -588,15 +585,13 @@ function doPass(pass)
 					{
 						listing.value += listing_gen(mode,{"opcode":opc})
 						padd = 4+1;
-						//listing.value += 'A';
-						//padd = 1;
 					}
 				}
 				else if (a1 == '#')
 				{
 					a2 = addr.charAt(1);
 					b1 = 1;
-					mode = 2;					// immediate
+					mode = 2;							// immediate
 				}
 				else if (a1 == '*')
 				{
@@ -632,38 +627,15 @@ function doPass(pass)
 					else { displayError('syntax error:\ninvalid addressing mode'); return false }
 					b2 = b3 = m[mode];	// set boundaries for expression to extract
 				}
-				if (pass == 1) listing.value += opc+" "+addr
-				if (mode == 9)
-				{
 
-				}
-				else if (mode == 13) //FVD
-				{
-					// PROCESS MACRO ARGUMENT ? (todo later)
-				}
-				else if (mode > 2)
-				{
-					/*
-					var b3 = addr.indexOf(',X');
-					if ((b3 > 0) && (b3 == addr.length - 2))
-					{
-						mode += 1;
-					}
-					else
-					{
-						b3 = addr.indexOf(',Y');
-						if ((b3 > 0) && (b3 == addr.length - 2)) mode += 2;
-					}
-					if (b3 > 0) b2 = b3;
-					*/
-				}
+				if (pass == 1) listing.value += opc+" "+addr
+
 				if (pass == 2)
 				{
 					// encode OPCODE instruction
 					var instr = opctab[mode];
 					if (instr >= 0) oASM.write_code( instr );
 					else return displayError('compile error:\ninvalid address mode for ' + opc);
-
 
 					if (mode > 1)
 					{
@@ -691,16 +663,11 @@ function doPass(pass)
 							oper = oper-((pc + 2) & 0xffff);
 						}
 						var l = listing.value.length;
-
-						//listing.value += " ("+(a1+" "+a2+" "+oCOM.getHexMulti(e.val,e.bytes*2))+")"
 						padd += (listing.value.length - l);
 					}
+					
 					// compile
-
-					//listing.value += "(" + mode + ")";
-
-					//listing.value += "*"
-					for (var i = padd; i < opspace; i++) listing.value += ' ';
+					listing.value += ' '.repeat(opspace-padd);
 
 					listing.value += getHexByte(instr);
 					if (mode > 1)
