@@ -439,12 +439,12 @@ RDSP1       LDA     #$A0
             RTS
 ;OK FAFD
 PWRCON      .WORD   OLDBRK
-           HEX  00E045
-DISKID     HEX  20FF00FF03FF3C
-TITLE      ASC   “APPLE ][”
-XLTBL      HEX  C4C2C1FFC3FFFFFF
+            HEX  00E045
+DISKID      HEX  20FF00FF03FF3C
+TITLE       ASC   “APPLE ][”
+XLTBL       HEX  C4C2C1FFC3FFFFFF
 ; must ORG $FB19
-RTBL       ASC   “AXYPS”
+RTBL        ASC   “AXYPS”
 
 PREAD       LDA     PTRIG
             LDY     #$00

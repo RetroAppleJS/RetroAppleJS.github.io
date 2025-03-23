@@ -332,7 +332,7 @@ function getOffset(n)
 
 function paddRight(s, l)
 {
-	if (typeof s == 'undefined') s = '';
+	if (s === undefined) s = '';
 	while (s.length < l) s += ' ';
 	return s;
 }
@@ -551,18 +551,10 @@ function doPass(pass)
 			}
 			var addr = sym[ofs + 1];
 			var mode = 0;  						// implied
-			if (typeof addr == 'undefined' && mactab == null)
+			if(addr === undefined && mactab == null && opctab[0] >= 0)
 			{
-				if (opctab[0] < 0)
+				if(pass == 2)
 				{
-					displayError('syntax error:\nunexpected end of line');
-					return false;
-				}
-				else if (pass == 2)
-				{
-					// compile
-					//listing.value += '            ' + getHexByte(opctab[0]);
-
 					var spc = "";
 					padd = 3;
 					for (var i = padd; i < opspace; i++) spc += ' ';
@@ -572,15 +564,12 @@ function doPass(pass)
 				}
 				pc++;
 			}
-			//else if(addr=="'" || addr=="#'")
-			//{
-			//}
-			else if (opctab != null && sym.length > ofs + 2)
+			else if(opctab != null && sym.length > ofs + 2)
 			{
 				displayError('syntax error:\ntoo many operands');
 				return false;
 			}
-			else if (mactab != null) // MACRO CODE
+			else if(mactab != null) // MACRO CODE
 			{
 				listing.value += sym[ofs]+" ";
 				r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
@@ -588,12 +577,13 @@ function doPass(pass)
 			}
 			else
 			{
-				var a1 = addr.charAt(0);
+				var a1 = addr===undefined ? "" : addr.charAt(0);
 				var b1 = 0;
-				var b2 = addr.length;
-				if (addr == 'A')
+				var b2 = addr===undefined ? 0 : addr.length;
+				
+				if (addr == 'A' || addr===undefined && opctab[1]>=0)
 				{
-					mode = 1;					// Accumulator
+					mode = 1;					// accumulator
 					if (pass == 2)
 					{
 						listing.value += listing_gen(mode,{"opcode":opc})
@@ -605,49 +595,27 @@ function doPass(pass)
 				else if (a1 == '#')
 				{
 					a2 = addr.charAt(1);
-					if (pass == 2)
-					{
-						// SUBSTITUTED BY listing_gen()
-						/*
-						var a2 = addr.charAt(1);
-						//if(a2=='\'') { listing.value+='#\''+addr.charAt(2)+'\'';padd=4; }
-						if (a2 == '\'')
-						{
-							listing.value += '#';
-							padd = 4;
-						}
-						else
-						{
-							listing.value += a1;
-							padd = 1;
-						}
-						*/
-					}
 					b1 = 1;
 					mode = 2;					// immediate
 				}
 				else if (a1 == '*')
 				{
-					// SUBSTITUTED BY listing_gen()
-					/*
-					if (pass == 2)
-					{
-						listing.value += a1;
-						padd = 1;
-					}
-					*/
+					var m = {7:addr.indexOf(",X"),8:addr.indexOf(",Y"),6:addr.length}
+					if     (m[7] > 0)       mode = 7	// zeropage,X
+					else if(m[8] > 0)       mode = 8	// zeropage,Y
+					else                    mode = 6;	// zeropage
 					b1 = 1;
-					mode = 6;					// zeropage
+					b2 = b3 = m[mode];
 				}
 				else if (a1 == '(')
 				{
-					if (pass == 2)
-					{
-						//listing.value += a1;
-						padd = 1;
-					}
+					var m = {10:addr.indexOf(",X)"),11:addr.indexOf("),Y"),9:addr.indexOf(")")}
+					if     (m[10] > 0 && m[10] == addr.length - 3)  mode = 10;    // X-indexed, indirect ?
+					else if(m[11] > 0 && m[11] == addr.length - 3)  mode = 11; 	  // Y-indexed, indirect ?
+					else if(m[9] > 0)                               mode = 9;     // indirect ?
+					else { displayError('syntax error:\ninvalid addressing mode'); return false }
 					b1 = 1;
-					mode = 9;					// X-indexed, indirect
+					b2 = b3 = m[mode];
 				}
 				else if (mactab != null && ((a1 >= '0' && a1 <= '9') || (a1 >= 'A' && a1 <= 'F')))
 				{
@@ -656,32 +624,18 @@ function doPass(pass)
 				}
 				else
 				{
-					if (opctab != null) mode = (opctab[12] < 0) ? 3 : 12;		// absolute or relative
+					var m = {4:addr.indexOf(",X"),5:addr.indexOf(",Y"),3:addr.length,12:addr.length}
+					if     (m[4] > 0)       mode = 4	// absolute,X
+					else if(m[5] > 0)       mode = 5	// absolute,Y
+					else if(opctab[12]<0)  mode = 3;	// absolute
+					else if(opctab!=null)  mode = 12	// relative
+					else { displayError('syntax error:\ninvalid addressing mode'); return false }
+					b2 = b3 = m[mode];	// set boundaries for expression to extract
 				}
 				if (pass == 1) listing.value += opc+" "+addr
 				if (mode == 9)
 				{
-					padd--;
 
-					// X-indexed, indirect ?
-					var b3 = addr.indexOf(',X)');					       // end position of indirect address
-					if ((b3 > 0) && (b3 == addr.length - 3))  mode = 10;
-
-					// Y-indexed, indirect ?
-					b3 = addr.indexOf('),Y');					
-					if ((b3 > 0) && (b3 == addr.length - 3))  mode = 11;
-
-					// indirect ?
-					if(mode==9)
-					{
-						b3 = addr.indexOf(')');
-						if( b3 < 0 )
-						{
-							displayError('syntax error:\ninvalid address');
-							return false;
-						}
-					}
-					b2 = b3;
 				}
 				else if (mode == 13) //FVD
 				{
@@ -689,6 +643,7 @@ function doPass(pass)
 				}
 				else if (mode > 2)
 				{
+					/*
 					var b3 = addr.indexOf(',X');
 					if ((b3 > 0) && (b3 == addr.length - 2))
 					{
@@ -700,6 +655,7 @@ function doPass(pass)
 						if ((b3 > 0) && (b3 == addr.length - 2)) mode += 2;
 					}
 					if (b3 > 0) b2 = b3;
+					*/
 				}
 				if (pass == 2)
 				{
