@@ -116,25 +116,28 @@ var dbgsym = {}
 var oASM = new ASM();
 oASM.init();
 oASM.mnemonics = instrtab;
-oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,macrotab)
+oASM.pragma_sym = {}
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
-	{
-		 "ORG":true
-		,".END":true
-		,".WORD":true
-		,".BYTE":true
-		,".AT":true
-		,".DEFINE":true
-		,".IFDEF":true
-		,".IFNDEF":true
-		,".ENDIF":true
-		,".SYMBOLS":true
-		,".EQ":true
-		,"EQU":true
-						// space means something for code_tagger()
-		,"* =":true		// sym[0] = '*'    & sym[1] = '=' 
-		," =":true  	// sym[0] (ignore) & sym[1] = '='
-	});
+{
+	"*=":true	// sym[0] = '*'    & sym[1] = '='
+	,"=":true   // sym[0] (ignore) & sym[1] = '='
+	,"ORG":true
+	,"EQU":true
+	,"HEX": true
+	,"BIN": true
+	,"ASC": true
+
+	,".END":true
+	,".WORD":true
+	,".BYTE":true
+	,".AT":true
+	,".DEFINE":true
+	,".IFDEF":true
+	,".IFNDEF":true
+	,".ENDIF":true
+	,".SYMBOLS":true
+	,".EQ":true
+});
 
 
 // globals
@@ -379,46 +382,11 @@ function doPass(pass)
 		var c1 = sym[0].charAt(0);
 		var padd = 0;
 
-		// TODO FVD parse this as a PRAGMA !!!
-
-		if (sym[0].toUpperCase() == 'ORG') sym = ["*","=",sym[1]]
-		if (sym[0]+sym[1]        == '*=')
-		{
-			// TODO parse numeric expression (with labels)
-			if ((sym.length > 2))
-			{
-				//listing.value += '*=';
-				var a = oASM.getNumber(sym[2]).val;
-				if (a == 'NaN')
-				{
-					displayError('syntax error:\nnumber expected');
-					return false;
-				}
-				else if (sym.length > 3)
-				{
-					displayError('syntax error:\ntoo many arguments');
-					return false;
-				}
-				listing.value += listing_gen(-1,{"val":"*= $"+getHexWord(a)})
-
-				//listing.value += '$' + getHexWord(a);
-				code_pc[oASM.get_code_len()] = a;
-				pc = a;
-			}
-			else
-			{
-				displayError('syntax error:\nassignment expected');
-				return false;
-			}
-
-			sym = getSym();
-			continue;
-		}
 
 		// List PROGRAM COUNTER (PC)
-		listing.value += getHexWord(pc) + ' '; // FVD TODO: do not list PC with directives like 'equ'
+		listing.value += getHexWord(pc) + ' ';
 
-		if (c1 == '.')
+		if (c1 == '.')				// PRAGMA
 		{
 			listing.value += (ofs==0?paddRight("",oASM.label_len):"") + " " + sym[ofs] + " ";
 			r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
@@ -426,13 +394,13 @@ function doPass(pass)
 			continue;
 
 		}
-		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))					
+		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{
 			listing.value += sym[0];
 			displayError('syntax error:\ncharacter expected');
 			return false;
 		}
-		else if (instrtab[sym[0]] == null && macrotab[sym[0]] == null)			// no assembler mnemonic or directive ? (probably a label)
+		else if (instrtab[sym[0]] == null && oASM.pragma_sym[sym[0]] == null)			// no assembler mnemonic or pragma ?
 		{
 			// label
 			var l = oASM.getID(sym[0]).val;
@@ -444,6 +412,23 @@ function doPass(pass)
 			// List LABEL
 			listing.value += paddRight(l, oASM.label_len) + ' ';
 			ofs++;
+
+			if (pass == 1 && oASM.symtab[l] === undefined)	// REGISTER LABEL AS SYMBOL
+			{
+				var v = {"val":pc};
+				oASM.symtab[l] = v.val;
+				oASM.sym_link(
+				{
+					"type": "def",
+					"PC": pc,
+					"val": pc,
+					"sym": l,
+					"sym0": sym[0]
+				})
+			}
+			padd = oASM.label_len+1;
+
+			/*
 			if ((sym.length > 1) && (sym[ofs] == '=' || sym[ofs] == 'EQU'))
 			{
 				ofs++;
@@ -466,6 +451,8 @@ function doPass(pass)
 					displayError('syntax error:\nnumber expected');
 					return false;
 				}
+				
+
 				if (pass == 1)
 				{
 					oASM.symtab[l] = v.val;
@@ -519,7 +506,10 @@ function doPass(pass)
 				}
 				padd = oASM.label_len+1;
 			}
+			*/
 		}
+
+
 		if (sym.length < ofs)
 		{
 			// end of line
@@ -528,7 +518,7 @@ function doPass(pass)
 		}
 		if (padd == 0) listing.value += '       ';
 		padd = 0;
-		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.'))
+		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))
 		{
 			listing.value += sym[0];
 			displayError('syntax error:\ncharacter expected');
@@ -536,19 +526,11 @@ function doPass(pass)
 		}
 		else
 		{
-			// opcode
-			var opc = sym[ofs];
-			// SUBSTITUTED BY listing_gen()
-			//listing.value += opc + ' ';
-			
-			var opctab = instrtab[opc];
-			var mactab = oASM.pragma_sym[opc];		// use the larger pragma syntax
+			var opc = sym[ofs];						// read next opcode
+			var opctab = instrtab[opc];				// opcode lookup table
+			var mactab = oASM.pragma_sym[opc];		// macro lookup table
 
-			if (opctab == null && mactab == null)
-			{
-				displayError('syntax error:\nopcode or macro expected');
-				return false;
-			}
+			if (opctab == null && mactab == null) { displayError('syntax error:\nopcode or macro expected'); return false }
 			var addr = sym[ofs + 1];
 			var mode = 0;  						// implied
 			if(addr === undefined && mactab == null && opctab[0] >= 0)
@@ -566,11 +548,10 @@ function doPass(pass)
 				displayError('syntax error:\ntoo many operands');
 				return false;
 			}
-			else if(mactab != null) // MACRO CODE
+			else if(mactab != null)  // MACRO CODE
 			{
 				listing.value += sym[ofs]+" ";
 				r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
-				//r = oASM.parse_pragma([opc,addr],pass);
 			}
 			else
 			{
@@ -665,7 +646,7 @@ function doPass(pass)
 						var l = listing.value.length;
 						padd += (listing.value.length - l);
 					}
-					
+
 					// compile
 					listing.value += ' '.repeat(opspace-padd);
 

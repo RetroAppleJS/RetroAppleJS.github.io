@@ -531,6 +531,52 @@ function ASM()
 		var ofs = xarg===undefined || xarg.ofs===undefined ? 0 : xarg.ofs  
 		switch(sym[ofs])
 		{
+			case "ORG":
+			case "*=":
+				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+				var dat = [];
+				var e = this.getExpression(arr[0]);
+				if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
+				if (e.err) { displayError(e.err); return {"val":false}  }
+				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
+				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
+
+				oASM.concat_code(dat);
+				pc = e.val & 0xFFFF;
+				listing.value += this.getHexWord(pc);
+				return {"val":true}
+
+			case "EQU":
+			case "=":
+
+// TODO OVERWRITE LABEL !!!
+
+				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+	
+				var dat = [];
+				var e = this.getExpression(arr[0]);
+				if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
+				if (e.err) { displayError(e.err); return {"val":false}  }
+				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
+				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
+
+				if(pass==1)
+				{
+					oASM.symtab[sym[0]] = e.val;
+					oASM.sym_link(
+					{
+						"type": "def",
+						"PC": pc,
+						"val": e.val,
+						"sym": sym[0],
+						"sym0": sym[0]
+					})
+				}
+
+				oASM.concat_code(dat);
+				listing.value += this.getHexWord( e.val & 0xFFFF );
+				return {"val":true}
+
 			case "HEX":
 				var arg = sym.slice(ofs + 1, sym.length).join(" ");
 				var dat = getByteArray(arg);
@@ -573,7 +619,7 @@ function ASM()
 				return {"val":true};			
 
 			case ".END":
-				listing.value += sym[0];
+				//listing.value += sym[0];
 				return {"val":true};
 
 			case ".WORD":
@@ -714,6 +760,42 @@ function ASM()
 		}
 		return null;
 	}
+
+	this.sym_link = function(_obj)
+	{
+		var key = ""
+		switch (_obj.type)
+		{
+			case "loc":
+				if (typeof (this.symlink[_obj.PC]) != "undefined") 
+					console.warn("double entry! Label pointing to same address "+ JSON.stringify(_obj) + " ~ "+this.symlink[_obj.PC])
+					key = _obj.PC;
+					this.symlink[key] = {
+					"type": _obj.type,
+					"sym": _obj.sym
+				};
+				break;
+			case "def":
+				key = _obj.val
+				if (_obj.val < 256)
+					this.symlink[key] = {
+						"type": "vdef",
+						"sym": _obj.sym
+					};
+				else
+					this.symlink[key] = {
+						"type": "ldef",
+						"sym": _obj.sym
+					};
+				break;
+			default:
+				key = "i" + this.symlink_l
+				this.symlink[key] = _obj;
+				globalThis.symlink_l++;
+		}
+		if(_obj.call) this.symlink[key].call = _obj.call;
+	}
+
 
 	this.read_code = function(idx)
 	{
