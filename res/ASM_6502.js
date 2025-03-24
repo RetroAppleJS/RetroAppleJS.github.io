@@ -160,6 +160,7 @@ function assemble()
 	oASM.code_pc = new Array();
 	oASM.symtab = {};
 	oASM.symlink = {};
+	oASM.code_pc[0] = 0;	// default ORG
 	var crlf = "<br>"
 
 	listing = document.forms.ass.listing;
@@ -198,9 +199,9 @@ function assemble()
 			var l = oASM.get_code_len();
 			for (var i = 0; i < l; i++)
 			{
-				var new_pc = oASM.code_pc[i];				// Get ORG value at this byte index
-				if (new_pc > 0) pc = new_pc + l - i - 1		// If ORG value exists, go to new program counter location if applicable 
-				if (((n > 0) && (n % 8 == 0)) || new_pc > 0)
+				var new_pc = oASM.code_pc[i];				    // Get ORG value at this byte index
+				if (new_pc >= 0) pc = new_pc + l - i - 1		// If ORG value exists, go to new program counter location if applicable 
+				if (((n > 0) && (n % 8 == 0)) || new_pc >= 0)
 				{
 					c += (i == 0 ? '' : crlf)
 					+ (showADR == 1 && (l - i - 1) >= 0 ? (getHexWord(pc - l + i + 1) + ': ') : '');
@@ -383,11 +384,17 @@ function doPass(pass)
 		var ofs = 0;
 		var c1 = sym[0].charAt(0);
 		var padd = 0;
+		var lbl = null;
 
 
 		// List PROGRAM COUNTER (PC)
 		listing.value += getHexWord(pc) + ' ';
 
+		var opc = sym[ofs];						// read next opcode
+		var opctab = instrtab[opc];				// opcode lookup table
+		var mactab = oASM.pragma_sym[opc];		// macro lookup table
+
+		/*
 		if (c1 == '.')				// PRAGMA
 		{
 			listing.value += (ofs==0?paddRight("",oASM.label_len):"") + " " + sym[ofs] + " ";
@@ -396,48 +403,52 @@ function doPass(pass)
 			continue;
 
 		}
-		else if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
+		else 
+		*/
+
+		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{
 			listing.value += sym[0];
 			displayError('syntax error:\ncharacter expected');
 			return false;
 		}
-		else if (instrtab[sym[0]] == null && oASM.pragma_sym[sym[0]] == null)			// no assembler mnemonic or pragma ?
+		else if (opctab == null && mactab == null)			// no assembler mnemonic or pragma ?
 		{
 			// label
-			var l = oASM.getID(sym[0]).val;
-			if (l == '')
+			var lbl = oASM.getID(sym[0]).val;
+			if (lbl == '')
 			{
 				displayError('syntax error:\ninvalid identifier: ' + sym[0]);
 				return false;
 			}
 			// List LABEL
-			listing.value += paddRight(l, oASM.label_len) + ' ';
+			listing.value += paddRight(lbl, oASM.label_len) + ' ';
 			ofs++;
 
-			if (pass == 1 && oASM.symtab[l] === undefined)	// REGISTER LABEL AS SYMBOL (can be overwritten later by pragma 'EQU' or '=')
+			if (pass == 1 && oASM.symtab[lbl] === undefined)	// REGISTER LABEL AS SYMBOL (can be overwritten later by pragma 'EQU' or '=')
 			{
 				var v = {"val":pc};
-				oASM.symtab[l] = v.val;
+				oASM.symtab[lbl] = v.val;
 				oASM.sym_link(
 				{
 					"type": "loc",
 					"PC": pc,
 					"val": pc,
-					"sym": l,
+					"sym": lbl,
 					"sym0": sym[0]
 				})
 			}
 			padd = oASM.label_len+1;
 		}
 
-
-		if (sym.length < ofs)
+		// TODO will it ever reach to a condition like this ? sym.length < ofs 
+		if (sym.length < ofs || (opctab == null && mactab == null))
 		{
 			// end of line
 			sym = getSym();
 			continue;
 		}
+
 		if (padd == 0) listing.value += '       ';
 		padd = 0;
 		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))
@@ -452,7 +463,8 @@ function doPass(pass)
 			var opctab = instrtab[opc];				// opcode lookup table
 			var mactab = oASM.pragma_sym[opc];		// macro lookup table
 
-			if (opctab == null && mactab == null) { displayError('syntax error:\nopcode or macro expected'); return false }
+			if (opctab == null && mactab == null && lbl == null) { displayError('syntax error:\nopcode or macro expected'); return false }
+
 			var addr = sym[ofs + 1];
 			var mode = 0;  						// implied
 			if(addr === undefined && mactab == null && opctab[0] >= 0)
@@ -565,8 +577,8 @@ function doPass(pass)
 						{
 							oper = oper-((pc + 2) & 0xffff);
 						}
-						var l = listing.value.length;
-						padd += (listing.value.length - l);
+						//var l = listing.value.length;
+						//padd += (listing.value.length - l);
 					}
 
 					// compile
