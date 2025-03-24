@@ -56,6 +56,7 @@ function ASM()
 		this.srcl		= 0;
 		this.srcc		= 0;
 		this.pc			= 0;
+		this.code_pc    = new Array();
 		this.label_len  = label_len;
 		this.listing_rewrite = true;
 		this.bDebug 	= false;
@@ -541,9 +542,10 @@ function ASM()
 				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
 				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
 
-				oASM.concat_code(dat);
+				oASM.code_pc[oASM.get_code_len()] = e.val & 0xFFFF;		//  register ORG as program counter change at byte index (for byte stream listing) 
+
 				pc = e.val & 0xFFFF;
-				listing.value += this.getHexWord(pc);
+				listing.value += "$"+this.getHexWord(pc);
 				return {"val":true}
 
 			case "EQU":
@@ -555,10 +557,10 @@ function ASM()
 	
 				var dat = [];
 				var e = this.getExpression(arr[0]);
-				if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
+				if(e.bytes>2) e.err += "expression exceeds 2 bytes "+(e.bytes==undefined?"":("("+e.bytes+")"))
 				if (e.err) { displayError(e.err); return {"val":false}  }
-				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
-				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
+				//dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
+				//dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
 
 				if(pass==1)
 				{
@@ -573,8 +575,8 @@ function ASM()
 					})
 				}
 
-				oASM.concat_code(dat);
-				listing.value += this.getHexWord( e.val & 0xFFFF );
+				//oASM.concat_code(dat);
+				listing.value += "$"+(e.bytes==1? this.getHexByte(e.val) : this.getHexWord(e.val) );
 				return {"val":true}
 
 			case "HEX":
@@ -763,6 +765,9 @@ function ASM()
 
 	this.sym_link = function(_obj)
 	{
+		// TODO: CHECK IF IT IS REALLY NECESSARY TO DISTINGUISH LOCATIONS FROM DEFINITIONS
+		// 
+
 		var key = ""
 		switch (_obj.type)
 		{
@@ -777,6 +782,11 @@ function ASM()
 				break;
 			case "def":
 				key = _obj.val
+
+				for(o in oASM.symlink)							   // search through all symlinks
+					if(oASM.symlink[o].sym == _obj.sym) delete oASM.symlink[o];  // if duplicate found, delete the previous entry
+																   // because: parser first believes it is a label, then realises it is a variable definition 
+
 				if (_obj.val < 256)
 					this.symlink[key] = {
 						"type": "vdef",

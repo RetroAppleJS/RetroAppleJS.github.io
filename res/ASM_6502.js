@@ -144,7 +144,6 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 
 var codesrc, srcl, srcc, pc, listing;
 var codesrc_buf = new Array();
-var code_pc = new Array();
 
 
 // functions
@@ -158,7 +157,7 @@ var code_pc = new Array();
 function assemble()
 {
 
-	code_pc = new Array();
+	oASM.code_pc = new Array();
 	oASM.symtab = {};
 	oASM.symlink = {};
 	var crlf = "<br>"
@@ -187,17 +186,20 @@ function assemble()
 			if(showDBG.RAM || showDBG.ROM)
 			{
 				var ds = debug_symbols(showDBG);
-				listing.value += ds.listing;		// add debug symbols
+				listing.value += ds.listing;		// add debug symbols in listing
 				for(var i=0;i<ds.stream.length;i+=2)
 				oASM.write_code(parseInt(ds.stream.charAt(i)+ds.stream.charAt(i+1),16));
 			}
+
+			// byte stream listing
+
 			c = '';
 			var n = 0;
 			var l = oASM.get_code_len();
 			for (var i = 0; i < l; i++)
 			{
-				var new_pc = code_pc[i];
-				if (new_pc > 0) pc = new_pc + l - i - 1
+				var new_pc = oASM.code_pc[i];				// Get ORG value at this byte index
+				if (new_pc > 0) pc = new_pc + l - i - 1		// If ORG value exists, go to new program counter location if applicable 
 				if (((n > 0) && (n % 8 == 0)) || new_pc > 0)
 				{
 					c += (i == 0 ? '' : crlf)
@@ -413,13 +415,13 @@ function doPass(pass)
 			listing.value += paddRight(l, oASM.label_len) + ' ';
 			ofs++;
 
-			if (pass == 1 && oASM.symtab[l] === undefined)	// REGISTER LABEL AS SYMBOL
+			if (pass == 1 && oASM.symtab[l] === undefined)	// REGISTER LABEL AS SYMBOL (can be overwritten later by pragma 'EQU' or '=')
 			{
 				var v = {"val":pc};
 				oASM.symtab[l] = v.val;
 				oASM.sym_link(
 				{
-					"type": "def",
+					"type": "loc",
 					"PC": pc,
 					"val": pc,
 					"sym": l,
@@ -427,86 +429,6 @@ function doPass(pass)
 				})
 			}
 			padd = oASM.label_len+1;
-
-			/*
-			if ((sym.length > 1) && (sym[ofs] == '=' || sym[ofs] == 'EQU'))
-			{
-				ofs++;
-				listing.value += '= ';
-				if (sym.length < 3)
-				{
-					displayError('syntax error:\nunexpected end of line');
-					return false;
-				}
-				else if (sym.length > 3)
-				{
-					displayError('syntax error:\ntoo many arguments');
-					return false;
-				}
-				var v;
-				if (sym[2] == '*') v = {"val":pc};
-				else v = oASM.getNumber(sym[2]);
-				if (v.val == 'NaN')
-				{
-					displayError('syntax error:\nnumber expected');
-					return false;
-				}
-				
-
-				if (pass == 1)
-				{
-					oASM.symtab[l] = v.val;
-					sym_link(
-					{
-						"type": "def",
-						"PC": pc,
-						"val": v.val,
-						"sym": l,
-						"sym0": sym[0]
-					})
-				}
-				//listing.value += getHexWord(v.val);
-				listing.value += "$"+oCOM.getHexMulti(v.val,v.bytes*2);
-				sym = getSym();
-				continue;
-			}
-			else
-			{
-				if (pass == 1 && sym[ofs] && sym[ofs].toLowerCase() == "equ") // FVD add EQU directive (TODO pass 2)
-				{
-					var v = oASM.getNumber(sym[ofs + 1]);
-					if (v.val == 'NaN')
-					{
-						displayError('syntax error:\nnumber expected');
-						return false;
-					}
-					oASM.symtab[l] = v.val;
-					listing.value += " = " + getHexWord(v.val);
-					sym = getSym();
-					continue
-				}
-				if (pass == 1)
-				{
-					oASM.symtab[l] = pc; // assign program counter to label
-					sym_link(
-					{
-						"type": "loc",
-						"sym": l,
-						"PC": pc
-					})
-				}
-				if (sym.length >= ofs + 1)
-				{
-					c1 = sym[ofs].charAt(0);
-				}
-				else
-				{
-					sym = getSym();
-					continue;
-				}
-				padd = oASM.label_len+1;
-			}
-			*/
 		}
 
 
@@ -650,8 +572,8 @@ function doPass(pass)
 					// compile
 					listing.value += ' '.repeat(opspace-padd);
 
-					listing.value += getHexByte(instr);
-					if (mode > 1)
+					listing.value += getHexByte(instr);  	// add first byte to listing
+					if (mode > 1)							// add following bytes
 					{
 						var op = oper & 0xff;
 						oASM.write_code( op );
@@ -767,42 +689,6 @@ function conv(inp,s)
 	}
 	return str;
 }
-
-function sym_link(_obj)
-{
-	var key = ""
-	switch (_obj.type)
-	{
-		case "loc":
-			if (typeof (oASM.symlink[_obj.PC]) != "undefined") 
-				console.warn("double entry! Label pointing to same address "+ JSON.stringify(_obj) + " ~ "+oASM.symlink[_obj.PC])
-			key = _obj.PC;
-				oASM.symlink[key] = {
-				"type": _obj.type,
-				"sym": _obj.sym
-			};
-			break;
-		case "def":
-			key = _obj.val
-			if (_obj.val < 256)
-				oASM.symlink[key] = {
-					"type": "vdef",
-					"sym": _obj.sym
-				};
-			else
-				oASM.symlink[key] = {
-					"type": "ldef",
-					"sym": _obj.sym
-				};
-			break;
-		default:
-			key = "i" + oASM.symlink_l
-			oASM.symlink[key] = _obj;
-			oASM.symlink_l++;
-	}
-	if(_obj.call) oASM.symlink[key].call = _obj.call;
-}
-
 
 
 //  ████████  █████  ██ ██      
