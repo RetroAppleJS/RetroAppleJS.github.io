@@ -390,10 +390,6 @@ function doPass(pass)
 		// List PROGRAM COUNTER (PC)
 		listing.value += getHexWord(pc) + ' ';
 
-		var opc = sym[ofs];						// read next opcode
-		var opctab = instrtab[opc];				// opcode lookup table
-		var mactab = oASM.pragma_sym[opc];		// macro lookup table
-
 		/*
 		if (c1 == '.')				// PRAGMA
 		{
@@ -404,7 +400,11 @@ function doPass(pass)
 
 		}
 		else 
-		*/
+		*/		
+	
+		var opc = sym[ofs];						// read next opcode
+		var opctab = instrtab[opc];				// opcode lookup table
+		var mactab = oASM.pragma_sym[opc];		// macro lookup table
 
 		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{
@@ -441,6 +441,10 @@ function doPass(pass)
 			padd = oASM.label_len+1;
 		}
 
+		var opc = sym[ofs];						// read next opcode
+		var opctab = instrtab[opc];				// opcode lookup table
+		var mactab = oASM.pragma_sym[opc];		// macro lookup table
+
 		// TODO will it ever reach to a condition like this ? sym.length < ofs 
 		if (sym.length < ofs || (opctab == null && mactab == null))
 		{
@@ -459,9 +463,9 @@ function doPass(pass)
 		}
 		else
 		{
-			var opc = sym[ofs];						// read next opcode
-			var opctab = instrtab[opc];				// opcode lookup table
-			var mactab = oASM.pragma_sym[opc];		// macro lookup table
+			//var opc = sym[ofs];						// read next opcode
+			//var opctab = instrtab[opc];				// opcode lookup table
+			//var mactab = oASM.pragma_sym[opc];		// macro lookup table
 
 			if (opctab == null && mactab == null && lbl == null) { displayError('syntax error:\nopcode or macro expected'); return false }
 
