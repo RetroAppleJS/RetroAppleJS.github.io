@@ -1,97 +1,141 @@
-; LAST BUILD 11-MAR-2025
-
+; LAST BUILD 25-MAR-2025
 ORG $6000
 
 ;*      FASTER 16X16 MULTIPLY
 ;*      BY BROOKE W. BOERING
 ;*      NEARLY AS PUBLISHED IN MICRO--THE 6502 JOURNAL
 ;*      PAGE 72, DECEMBER, 1980.
+;*      https://archive.org/details/Micro_NO._31_1980-12_Micro_Ink_US/page/n71/mode/2up
+;*      https://w.txbobsc.com/aal/1981/aal8102.html
+;*
+;*      go to apple monitor (CALL -151)
+;*      type:  0FFF<1000.1230[ctrl-Y]
+;*      result:   1000*1230+0FFF=01230FFF
 ;*---------------------------------
 
-ACL         EQU $05
-ACH         EQU $51
+ACL         EQU $50
+ACH         EQU ACL+1
 XTNDL       EQU $52
-XTNDH       EQU $53
+XTNDH       EQU XTNDL+1
 AUXL        EQU $54
-AUXH        EQU $55
-BT_AD1      EQU $06
-BT_AD2      EQU $07
-MON.PRBYTE  EQU $FDDA   ; print hex byte
+AUXH        EQU AUXL+1
+M.PRBYTE    EQU $FDDA   ; print hex byte
+M.COUT      EQU $FDED   ; print char
+
+ORG $6000
+JMP.Y  LDA #$4C      ; SET CTRL-Y JUMP LOCATION IN $358-35A
+       STA $3F8
+       LDA #<MAIN
+       STA $3F9
+       LDA #>MAIN
+       STA $3FA
+       RTS
 
 ;*---------------------------------
-RMUL     LDY #16    ;16-BIT MULTIPLIER
-MUL.1    LDA ACL    ;(AC * AUX) + XTND
-         LSR A      ;CHECK NEXT BIT OF MULTIPLIER
-         BCC MUL.2  ;IF ZERO, DON'T ADD MULTIPLICAND
-         CLC
-         ADC AUXL   ;MULTIPLICAND TO PARTIAL PRODUCT
-         LDA XTNDL
-         ADC AUXL
-         STA XTNDL
-         LDA XTNDH
-         ADC AUXH
-         STA XTNDH
-MUL.2    ROR XTNDH  ;SHIFT PARTIAL PRODUCT
-         ROR XTNDL
-         ROR ACH
-         ROR ACL
-         DEY        ;NEXT BIT
-         BNE MUL.1  ;UNTIL ALL 16
-         RTS
-;  *---------------------------------
-;  *      TEST ROUTINE FOR MULTIPLY
-;  *---------------------------------
-SETUP.Y
-         LDA #$4C  ;PUT "JMP TESTMPY" IN $358-35A
-         STA $3F8
-         LDA #>TESTMPY
-         STA $3F9
-         LDA #<TESTMPY
-         STA $3FA
-         RTS
-;  *---------------------------------
-TESTMPY
-         LDA $3C    ;MOVE A1L,A1H TO ACL,ACH
-         STA ACL
-         LDA $3D
-         STA ACH
-         LDA $3E    ;MOVE A2L,A2H TO AUXL,AUXH
-         STA AUXL
-         LDA $3F
-         STA AUXH
-         LDA $42    ;MOVE A4L,A4H TO XTNDL,XTNDH
-         STA XTNDL
-         LDA $43
-         STA XTNDH
-         JSR RMUL   ;MULTIPLY
-         LDA XTNDH  ;PRINT 32-BIT RESULT
-         JSR MON.PRBYTE
-         LDA XTNDL
-         JSR MON.PRBYTE
-         LDA ACH
-         JSR MON.PRBYTE
-         LDA ACL
-         JMP MON.PRBYTE
+;*      MAIN ROUTINE 
+;*---------------------------------
 
-; *** PRINT STRING ***
-PRTSTR  STA *BT_AD1   ; Print String from A=lowbyte Y=highbyte, ending with 0
-       STY *BT_AD2
-       LDY #$00
-PR.01   LDA (BT_AD1),Y
-       BEQ PR.02
-       JSR $FDF0
-       INY
-       BNE PR.01
-       INC BT_AD2
-       BNE PR.01
-       LDA *BT_AD1
-PR.02   RTS
+MAIN   JSR GET.Y     ; GET ARGUMENTS FROM CTRL-Y
+       ;JSR PREFIL   ; PREFILL ARGUMENTS (FOR DIRECT DEBUGGING)
+       JSR PRTARG    ; PRINT ARGUMENTS
 
-; *** PRINT ADDRESS ***
-PRTADR  JSR MON.PRBYTE
-       TYA
-       JSR MON.PRBYTE
+       JSR RMUL      ; MULTIPLY
+
+       ;JSR $FF4A    ; save registers
+       ;JSR $FADA    ; print registers
+
+       JSR PRTRES    ; PRINT RESULT
        RTS
+
+;*---------------------------------
+
+GET.Y  LDA $3C       ;MOVE A1L,A1H TO *ACL,*ACH
+       STA *ACL
+       LDA $3D
+       STA *ACH
+       LDA $3E       ;MOVE A2L,A2H TO *AUXL,*AUXH
+       STA *AUXL
+       LDA $3F
+       STA *AUXH
+       LDA $42       ;MOVE A4L,A4H TO *XTNDL,*XTNDL
+       STA *XTNDL
+       LDA $43
+       STA *XTNDH
+       RTS
+
+PREFIL LDA #$10      ; PREFILL ARGUMENTS
+       STA *ACH
+       LDA #$04
+       STA *ACL
+       LDA #$10
+       STA *AUXH
+       LDA #$00
+       STA *AUXL
+       LDA #$00
+       STA *XTNDH
+       STA *XTNDL
+       RTS
+
+PRTARG LDA *ACH      ; PRINT ARGUMENTS
+       JSR M.PRBYTE
+       LDA *ACL
+       JSR M.PRBYTE
+       LDA #$2A+$80  ; *
+       JSR M.COUT
+       LDA *AUXH
+       JSR M.PRBYTE
+       LDA *AUXL
+       JSR M.PRBYTE
+       LDA #$2B+$80  ; +
+       JSR M.COUT
+       LDA *XTNDH
+       JSR M.PRBYTE
+       LDA *XTNDL
+       JSR M.PRBYTE
+       LDA #$3D+$80  ; =
+       JSR M.COUT
+       RTS
+
+PRTRES LDA *XTNDH    ; PRINT 32-BIT RESULT
+       JSR M.PRBYTE
+       LDA *XTNDL
+       JSR M.PRBYTE
+       LDA *ACH
+       JSR M.PRBYTE
+       LDA *ACL
+       JSR M.PRBYTE
+       RTS
+;*---------------------------------
+
+
+ORG $101E
+;*---------------------------------
+; REVISED "MUL" ROUTINE
+;   16X16 MULTIPLY
+;
+; (A=C X=S, Y=0)
+; (S)aved / (C)lobbered
+;*---------------------------------
+
+RMUL   LDY #$10      ; 16-BIT MULTIPLIER
+MUL.1  LDA *ACL      ; (AC * AUX) + XTND
+       LSR A         ; CHECK NEXT BIT OF MULTIPLIER
+       BCC MUL.2     ; IF ZERO, DON'T ADD MULTIPLICAND
+       LDA *XTNDL
+       CLC
+       ADC *AUXL     ; MULTIPLICAND TO PARTIAL PRODUCT
+       STA *XTNDL
+       LDA *XTNDH
+       ADC *AUXH
+       STA *XTNDH
+MUL.2  ROR *XTNDH    ; SHIFT PARTIAL PRODUCT
+       ROR *XTNDL
+       ROR *ACH
+       ROR *ACL
+       DEY           ; NEXT BIT
+       BNE MUL.1     ; UNTIL ALL 16
+       RTS
+
 
 
 
