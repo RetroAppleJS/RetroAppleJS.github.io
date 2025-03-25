@@ -564,14 +564,15 @@ function ASM()
 
 				if(pass==1)
 				{
-					oASM.symtab[sym[0]] = e.val;
+					var lbl = oASM.getID(sym[0]).val;
+					oASM.symtab[lbl] = e.val;
 					oASM.sym_link(
 					{
-						"type": "def",
-						"PC": pc,
-						"val": e.val,
-						"sym": sym[0],
-						"sym0": sym[0]
+						 "type": "def"
+						,"PC": pc
+						,"val": e.val
+						,"sym": lbl
+						,"sym0": sym[0]
 					})
 				}
 
@@ -784,7 +785,8 @@ function ASM()
 				key = _obj.val
 
 				for(o in oASM.symlink)							   // search through all symlinks
-					if(oASM.symlink[o].sym == _obj.sym) delete oASM.symlink[o];  // if duplicate found, delete the previous entry
+					if(oASM.symlink[o].sym == _obj.sym) 
+						delete oASM.symlink[o];  				   // if duplicate found, delete the previous entry
 																   // because: parser first believes it is a label, then realises it is a variable definition 
 
 				if (_obj.val < 256)
