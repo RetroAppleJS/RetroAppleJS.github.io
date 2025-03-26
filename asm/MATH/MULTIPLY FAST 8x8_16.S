@@ -1,4 +1,4 @@
-; LAST BUILD 11-MAR-2025
+; LAST BUILD 25-MAR-2025
 
 ;
 ; mul
@@ -8,7 +8,6 @@
 ;         S0.TY = low byte of product a*b
 ;         S0.TZ = high byte of product a*b
 ; preserved: x, y
-; max cycles: under 90
 ;
 
 ORG $6000
@@ -49,7 +48,7 @@ L1      STX *S2.TX      ; X-coordinate
         JSR M.PRBYTE    ; PRINT X
         JSR M.OUTSP
 
-        LDA #'*'
+        LDA #$2A+$80    ; PRINT *
         JSR M.COUT
         JSR M.OUTSP
 
