@@ -24,7 +24,7 @@ Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
       OPC (LL),Y  ....	indirect, Y-indexed     (mode 10)
       OPC (HHLL)  ....	indirect                (mode 11)
       OPC BB      ....	relative                (mode 12)
-Where HHLL is a 16bit word and LL or BB an 8 bit byte, and A is literal "A".
+Where HHLL is a 16bit word and LL or BB an 8 bit byte, and A is Accumulator (not mandatory unless ambiguous).
 There must not be any white space in any part of an instruction's address.
  
 #### Number Formats
