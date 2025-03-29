@@ -13,7 +13,7 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 
 ## ASSEMBLER Pragmas
 
-| [DIRECTIVE]       | Assembler     | Description  |
+| [DIRECTIVE]       | Support     | Description  |
 | :------------------: | :-----------: | :----------: |
 | .BYTE                | c65           | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
 
