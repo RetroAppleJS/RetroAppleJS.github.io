@@ -14,7 +14,7 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 
 | [DIRECTIVE]          | Assembler     | Supported | Description |
 | :------------------: | :-----------: | :-------: | :---------: |
-| .BYTE                | c65           | [ ]       | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
+| .BYTE                | c65           | - [ ]     | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
 
  
 #### Opcodes and Addressing
