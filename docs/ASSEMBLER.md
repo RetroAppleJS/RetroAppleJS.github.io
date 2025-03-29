@@ -12,10 +12,11 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 
 ## ASSEMBLER Pragmas
 
-| Argument  | Description                                |
-| :------- | :------------------------------------------ |
-| bpe       | # of Bytes per element                     |
-| csv       | 0=signle (default)<br>1=comma separated       |
+| Argument | Description                                |
+| :------- | :----------------------------------------- |
+| adrw     | address bus width                          |
+| bpe      | # of Bytes per element                     |
+| csv      | 0=signle (default)<br>1=comma separated    |
 
 
 | [DIRECTIVE] | Arguments            | Done               | (Partial) / Full<br>support | Description  |
