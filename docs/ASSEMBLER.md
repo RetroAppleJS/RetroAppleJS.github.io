@@ -12,11 +12,9 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 
 ## ASSEMBLER Pragmas
 
-| [DIRECTIVE]          | Assembler     | Supported | Description |
-| :------------------: | :-----------: | :-------: | :---------: |
-| .BYTE                | c65           | - [ ]     | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
-
-- [ ] test
+| [DIRECTIVE] | Arguments            | Done               | (Partial)/Full Support | Description  |
+| :---------: | :------------------: | :----------------: | :--------------------: | :----------: |
+| .BYTE       | 1*E (1 byte)         | :heavy_check_mark: | (c65)                  | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
