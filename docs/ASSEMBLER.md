@@ -10,14 +10,13 @@ This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to 
 Unlike other 6502 assemblers; this retrocomuting project was characterised to support a multitude of assembler syntaxes, allowing to copy old listings from internet sources and old magazines and bring them back to life. Whereas the notation of 6502 commands remains constant between compilers, pragmas, also called assembler directives can be quite distinct in nature. In this journey we're making an attempt to support the following well-documented macro-assemblers available for the 6502 microprocessor: [ca65](https://cc65.github.io/doc/ca65.html?utm_source=chatgpt.com), [Macroassembler AS (ASL)](https://forum.6502.org/viewtopic.php?f=2&t=8223), [DASM](https://forums.atariage.com/topic/27221-session-9-6502-and-dasm-assembling-the-basics/?utm_source=chatgpt.com), [Merlin](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/applications/misc/Merlin%20-%20A%20Macro%20Assembler%20%28SDS%2C%201983%29%20OCR.pdf) and [MAC/65](https://www.mixinc.net/atari/mac65.htm).
 
 
-
 ## ASSEMBLER Pragmas
 
-| [DIRECTIVE]       | Support     | Description  |
-| :------------------: | :-----------: | :----------: |
-| .BYTE                | c65           | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
+| [DIRECTIVE]          | Assembler     | Supported | Description |
+| :------------------: | :-----------: | :-------: | :---------: |
+| .BYTE                | c65           | [x]       | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
 
-
+ 
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
 
