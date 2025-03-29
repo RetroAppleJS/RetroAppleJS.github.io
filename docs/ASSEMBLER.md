@@ -1,12 +1,22 @@
 ## ASSEMBLER Instructions
 This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to accompany the emulator To get your source code compiled:
 1. Enter your src in "source code" pane.
-2. Click the button "generate".
+2. Click the button "assemble".
 3. Watch progress in "listing" pane.
-4. Copy code from "object code" pane.<br>
+4. Copy the object code "to emulator" or "to debugger"<br>
 
-### Syntax
-The assembler supports the following syntax:
+### Syntax reference
+
+Unlike other 6502 assemblers; this retrocomuting project was characterised to support a multitude of assembler syntaxes, allowing to copy old listings from internet sources and old magazines and bring them back to life. Whereas the notation of 6502 commands remains constant between compilers, pragmas, also called assembler directives can be quite distinct in nature. In this journey we're making an attempt to support the following well-documented macro-assemblers available for the 6502 microprocessor: ca65, Macroassembler AS (ASL), DASM, Merlin and MAC/65.
+
+
+
+## ASSEMBLER Pragmas
+
+| [AsmDirective]       | Assembler     | Description  |
+| :------------------: | :-----------: | :----------: |
+| .BYTE                | c65           |              |
+
 
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
