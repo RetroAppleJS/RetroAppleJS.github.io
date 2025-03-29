@@ -16,6 +16,7 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 | :------------------: | :-----------: | :-------: | :---------: |
 | .BYTE                | c65           | - [ ]     | [link](https://cc65.github.io/doc/ca65.html#ss11.10)             |
 
+- [ ] test
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
