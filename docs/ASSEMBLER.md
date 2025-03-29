@@ -13,13 +13,13 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 ## ASSEMBLER Pragmas
 
 | Argument  | Description                                |
-| :------- | :---------------------------------------- |
+| :------- | :------------------------------------------ |
 | bpe       | # of Bytes per element                     |
 | csv       | 0=signle (default) 1=comma separated       |
 
 
 | [DIRECTIVE] | Arguments            | Done               | (Partial)/Full Support | Description  |
-| :--------- | :------------------ | :---------------- | :-------------------- | :---------- |
+| :---------- | :------------------- | :----------------- | :--------------------- | :----------- |
 | .BYTE       | E {bpe:1}            | :heavy_check_mark: | (c65)                  | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
 | .ORG,ORG,*= | E {bpe:adrw,csv:1]}  | :heavy_check_mark: | c65                    | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
  
