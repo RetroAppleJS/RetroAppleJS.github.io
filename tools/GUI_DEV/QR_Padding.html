@@ -1,7 +1,9 @@
 <script>
-var r_pix = {"data:image/gif;base64,R0lGODdhAQABAPAAAAAAAAAAACwAAAAAAQABAAACAkQBADs=":true,"data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==":false}
+  // https://www.thonky.com/qr-code-tutorial/format-version-information
 var pix = {true:"data:image/gif;base64,R0lGODdhAQABAPAAAAAAAAAAACwAAAAAAQABAAACAkQBADs=",false:"data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="}
-var hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+var pt = pix[true];
+var pf = pix[false];
+var r_pix =    {pt:true,pf:false};   // reverse-lookup pixels
 
 var _this = new _THIS();
 function _THIS()
@@ -55,7 +57,6 @@ function setPix(x,y,v,m)
    return true;
 }
 
-
 function drawALL()
 {
   drawQR();
@@ -89,39 +90,8 @@ function Finder_pattern()
     drawV(7,offset-6,7,false);
 }
 
-var tbl2 =   [0,0,18,22,26,30,34,22,24,26,28,30,32,34,26,26,26,30,30,30,34,28,26,30,28,32,30,34,26,30,26,30,34,30,34,30,24,28,32,26,30]
-function get_el(idx,iv)
-{
-  return idx<=1?6:(tbl2[idx]+iv*(idx-1))
-}
-
 function Alignment_pattern()
 {
-  // TODO: FETCH VERSION, CALCULATE INTERVAL AND FIRST ITEM
-  var ver  = _this.version
-  if(ver==1) return "";
-  var t = ver * 4 + 10              // Last item
-  var r = t - 6                     // Distance between first and last
-  var n = Math.ceil(r/28)           // Number of items in list - 1
-  var intervals = Math.round(r/n);
-  if(intervals % 2) intervals++;
-
-  var s="";
-  for (var i=0; i<=n; i++)
-  {
-      x = i==0?6:(tbl2[ver]+intervals*(i-1));
-      for (var j=0; j<=n; j++)
-      {
-        y = j==0?6:(tbl2[ver]+intervals*(j-1));
-        //s+="("+x+","+y+")"+n+"<br>";
-        _this.setPix(x,y,true);
-        drawSQR(x,y,3,false);
-        drawSQR(x,y,5,true);
-      }
-  }
-  document.getElementById("tst").innerHTML = s;
-
-/*
   for(var i=6;i<_this.modules-1;i+=12)
   {
     for(var j=6;j<_this.modules-1;j+=12)
@@ -131,7 +101,6 @@ function Alignment_pattern()
       drawSQR(i,j,5,true);
       }
   }
-  */
 }
 
 var tbl = [
@@ -154,7 +123,7 @@ var tbl = [
   [6, 26, 50, 74],
   [6, 30, 54, 78],
   [6, 30, 56, 82],
-  [6, 30, 58, 86]/*,
+  [6, 30, 58, 86],
   [6, 34, 62, 90],
   [6, 28, 50, 72, 94],
   [6, 26, 50, 74, 98],
@@ -175,33 +144,112 @@ var tbl = [
   [6, 28, 54, 80, 106, 132, 158],
   [6, 32, 58, 84, 110, 136, 162],
   [6, 26, 54, 82, 110, 138, 166],
-  [6, 30, 58, 86, 114, 142, 170]*/
+  [6, 30, 58, 86, 114, 142, 170]
+];
+
+var tbls = [
+  [0],
+  [0],
+  [18],
+  [22],
+  [26],
+  [30],
+  [34],
+  [22, 38],
+  [24, 42],
+  [26, 46],
+  [28, 50],
+  [30, 54],
+  [32, 58],
+  [34, 62],
+  [26, 46, 66],
+  [26, 48, 70],
+  [26, 50, 74],
+  [30, 54, 78],
+  [30, 56, 82],
+  [30, 58, 86],
+  [34, 62, 90],
+  [28, 50, 72, 94],
+  [26, 50, 74, 98],
+  [30, 54, 78, 102],
+  [28, 54, 80, 106],
+  [32, 58, 84, 110],
+  [30, 58, 86, 114],
+  [34, 62, 90, 118],
+  [26, 50, 74, 98, 122],
+  [30, 54, 78, 102, 126],
+  [26, 52, 78, 104, 130],
+  [30, 56, 82, 108, 134],
+  [34, 60, 86, 112, 138],
+  [30, 58, 86, 114, 142],
+  [34, 62, 90, 118, 146],
+  [30, 54, 78, 102, 126, 150],
+  [24, 50, 76, 102, 128, 154],
+  [28, 54, 80, 106, 132, 158],
+  [32, 58, 84, 110, 136, 162],
+  [26, 54, 82, 110, 138, 166],
+  [30, 58, 86, 114, 142, 170]
 ];
 
 
 function pattern(ver)
 {
-  var t = ver * 4 + 10              // Last item
-  var r = t - 6                     // Distance between first and last
+  var w = 21 + ((ver - 1) * 4)      // Width
+  var h = 6                         // First item
+  var t = (w - 1) - 6               // Last item
+  var r = t - h                     // Distance between first and last
   var n = Math.ceil(r/28)           // Number of items in list - 1
-  var intervals = Math.round(r/n);
-  if(intervals % 2) intervals++;
+
+
   var s = ver+":["
 
+/*
+  function interval(w,r,n)
+  {
+    if (w != 145)            // Anomaly
+    {
+         var intervals = Math.ceil(r/n)   // Ceiling to nearest multiple of 2
+         return intervals + (intervals % 2)
+    }
+    else return 26;
+  }
+*/
+
+  function interval(w,r,n)
+  {
+    var intervals = Math.round(r/n);
+    if(intervals % 2) intervals++
+    return intervals
+  }
+
+/*
+  var x = 0;
+  var a = [];
+  for (var m=h; m<=t; m+=interval(w,r,n))
+  {
+    s+= m+(m==tbl[ver][x]?"":("<font color=red>("+(tbl[ver][x]-m)+")</font>"))+",";
+    a[x] = m;
+    x++;
+  }
+*/
+
   var x = 1;
+  var i = interval(w,r,n)
   s+= "6,"
-  for (var m=tbl2[ver]; m<=t; m+=intervals)
+  for (var m=tbl2[ver]; m<=t; m+=i)
   {
     s+= m+(m==tbl[ver][x]?"":("<font color=red>("+(tbl[ver][x]-m)+")</font>"))+",";
     x++;
   }
+
+
 
   s+="],"
   //: xs.append(xs[-1] - m)
   return s
 }
 
-
+var tbl2 =   [0,18,22,26,30,34,22,24,26,28,30,32,34,26,26,26,30,30,30,34,28,26,30,28,32,30,34,26,30,26,30,34,30,34,30,24,28,32,26,30]
 function pattern2(ver)
 {
   if(ver==1) return "";
@@ -218,93 +266,55 @@ function pattern2(ver)
   document.write("<br>");
 
   var s = [6];
-  for (var m=tbl2[ver]; m<=t; m+=intervals)
+  for (var m=tbl2[ver-1]; m<=t; m+=intervals)
     s[s.length] = m;
   return s
 }
+/*
+for(var i=2;i<=40;i++)
+  document.write(i+":["+pattern2(i).join(",")+"],<br>");
+*/
 
-
-
-// PRINT ENTIRE ARRAY
-var ii = 0;
-var a = [];
-for(var i=0;i<tbl.length;i++)
-{
-  for(var j=0;j<tbl[i].length;j++)
-  {
-      if(ii%8==0) document.write("<br>HEX ");
-      document.write(getHexByte(tbl[i][j]));
-      a[ii] = tbl[i][j];
-      ii++;
-  }
-}
-document.write("<br><br>");
-
-// GRAPH WITH DISTANCES
-var ii = 2;
-var p = -1;
-document.write("{X:0,Y:0},")
-document.write("{X:1,Y:1},")
-for(var i=2;i<tbl.length;i++)
-{
-  if(tbl[i].length>0)
-  {
-    var res = Math.floor((i-1)/7);
-    document.write("{X:"+i+",Y:"+ii+"},")
-    //document.write(" "+i+"("+res+"+"+(ii-res)+")");
-      p=ii;
-  }
-  ii += tbl[i].length-1;
-}
-document.write("<br><br>");
-
-// GRAPH WITH VALUES
-for(var i=2;i<tbl.length;i++)
-{
-  if(tbl[i].length>0)
-  {
-    document.write("{X:"+i+",Y:"+(tbl[i][1]-18)/2+"},")
-  }
-}
-document.write("<br><br>");
-
-
-for(var i=0;i<tbl2.length-1;i+=8)
+for(var i=0;i<tbl2.length;i+=8)
 {
   document.write("HEX ");
   document.write(getHexByte(tbl2[i]) + getHexByte(tbl2[i+1]) + getHexByte(tbl2[i+2]) + getHexByte(tbl2[i+3]));
   document.write(getHexByte(tbl2[i+4]) + getHexByte(tbl2[i+5]) + getHexByte(tbl2[i+6]) + getHexByte(tbl2[i+7])+"<br>");
 }
-//document.write("<br>");
-
+document.write("<br>");
 
 
 var p = 0;
 for(var i=0;i<tbl2.length;i++)
 {
   if(i%16==0) document.write("<br>HEX ");
-  var v = (tbl2[i]-18)/2;
-  document.write(getHexByte(v<0?0:v).slice(-1));
+  var v = (12+tbl2[i]-p)/2;
+  document.write(getHexByte(v).slice(-1));
   //document.write((v*2-12)+" ");
   p = tbl2[i];
 }
 document.write("<br><br>");
 
-
-
-/*
-// DUMP PARAMETERS
 for(var i=2;i<=40;i++)
 {
   var a = pattern2(i);
   for(var j=0;j<a.length;j++)
-    a[j] = getHexByte(a[j]);
+    a[j] = getHexByte(a[j]/2);
   //document.write(getHexByte(i)+":["+a.join(",")+"],<br>");
 }
-*/
+
+
+var su = 0;
+for(var i=0;i<tbls.length;i++)
+{
+  su += tbls[i].length;
+  document.write("("+tbls[i].length+") sum="+su+" ")
+  document.write(tbls[i].join(",")+"<br>")
+}
 
 function getHexByte(v)
 {
+  var hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
 	return '' + hextab[Math.floor(v / 16)] + hextab[v & 0x0f];
 }
 
@@ -384,5 +394,5 @@ var panes = '<table><td id=leftpane>'+_this.leftpane+'123</td><td>&nbsp;</td><td
 document.write(range+panes);
 drawALL()
 
+
 </script>
-<div id=tst><div>
