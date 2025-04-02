@@ -463,10 +463,6 @@ function doPass(pass)
 		}
 		else
 		{
-			//var opc = sym[ofs];						// read next opcode
-			//var opctab = instrtab[opc];				// opcode lookup table
-			//var mactab = oASM.pragma_sym[opc];		// macro lookup table
-
 			if (opctab == null && mactab == null && lbl == null) { displayError('syntax error:\nopcode or macro expected'); return false }
 
 			var addr = sym[ofs + 1];

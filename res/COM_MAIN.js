@@ -16,10 +16,14 @@ function COM()
     "E0","E1","E2","E3","E4","E5","E6","E7","E8","E9","EA","EB","EC","ED","EE","EF","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","FA","FB","FC","FD","FE","FF"];
   
   this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; // TODO: remove from entire codebase
-  this.getHexByte   = function(v)     { return hex2tab[v&0xFF] }
-  this.getHexWord   = function(v)     { return hex2tab[v>>8] + hex2tab[v&0xFF] }
-  this.getHexMulti = function(v,m)    { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
-  this.getBinMulti = function(v,m)    { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
+  this.getHexByte    = function(v)   { return hex2tab[v&0xFF] }
+  this.getHexWord    = function(v)   { return hex2tab[v>>8] + hex2tab[v&0xFF] }
+  this.getHexMulti   = function(v,m) { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
+  this.getBinMulti   = function(v,m) { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
+  //this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [y,(y<<8),(y<<16),(y<<24), v,(v<<8),(v<<16),(v<<24)].map(z=> z>>>24) } // convert JS number to byte array
+  this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
+  this.getByteArrNum = function(arr) { return arr.reduce((a,c,i)=> a+c*2**(56-i*8),0) } // convert byte array to JS number
+
   this.HEX2RGB       = function(hex)   { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
   this.RGB2HEX       = function(color) { return [hex2tab[color[0]&0xFF],hex2tab[color[1]&0xFF],hex2tab[color[2]&0xFF]] }
 
@@ -378,8 +382,8 @@ function(csv)
     {
       let m;
       if (m = csv.match(/^\s*,?$/)) return null; // null value
-      if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return m[1]; // Double Quoted Text
-      if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return m[1]; // Single Quoted Text
+      if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
+      if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
       if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
       if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
       if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number

@@ -121,7 +121,6 @@ function ASM()
 			arr[0] = "PGM";
 			if(sym[1]!=null) 	arr[1] = "OPR" 
 		}
-		//else if(this.pragma_sym[sym[0]+" "+sym[1]] {}
 		else if ( this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas (example?)
 		{
 			//arr[0] = sym[0]=="*"?"PC":"LBL";  // LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
@@ -369,6 +368,8 @@ function ASM()
 
 	this.getExpression = function(str)
 	{
+		if(typeof(str)==="number") str += "";
+
 		var exp = str.split(new RegExp("[+\\-\\*^~\\&\\|]","g"));  // slice at math operators to dig out deeper numbers and symbols
 		var r = "NaN", err = "expression malformation";
 		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
@@ -388,10 +389,13 @@ function ASM()
 				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				return r;
 			case "'":
+				r = oCOM.rtrim(str).substring(1,str.length-1);
+				if((r.replace(/\\'/g,"").split("'").length-1)%2!=0) return {"val":false,"err":"inproperly closed quotes in expression"};
 			case "\"":
-				if(c[0]!=c[1].charAt(1)) return {"val":false,"err":"inproperly closed quotes in expression"};
-				var e = this.getNumber(str);
-				return {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
+				if(isNaN(r)) r = oCOM.rtrim(str).substring(1,str.length-1);
+				if((r.replace(/\\"/g,"").split("\"").length-1)%2!=0) return {"val":false,"err":"inproperly closed quotes in expression"};
+				//var e = this.getNumber(r);
+				return {"val":r,"bytes":r.length,"type":"string"};
 			default:
 				//if(str=="'%'")
 				//	console.log("DEBUG THIS");
@@ -621,6 +625,10 @@ function ASM()
 				pc += dat.length;
 				return {"val":true};			
 
+			case ".ASCIIZ":
+				// Define a string with a trailing zero.
+				// https://cc65.github.io/doc/ca65.html#ss11.5
+				return {"val":false};
 			case ".END":
 				//listing.value += sym[0];
 				return {"val":true};
@@ -658,21 +666,38 @@ function ASM()
 
 			case ".BYTE":
 				// Merlin: .BYTE=comma separated byte Array
-				// each expression is trucated to byte size
-				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+				// numerical expressions trucated to byte size, strings split as array with byte size elements 
+				//var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
 
 				if(pass==1) listing.value += arr.join(",");
 				if(pass==2)
 				{
 					var dat = [];
-					for(var i=0;i<arr.length;i++)
+					for(var i=0;i<arr.length;i++)  // loop through CSV elements
 					{
 						var e = this.getExpression(arr[i]);
-						if(e.bytes!=1) e.err = "expression is not 1 byte long "+(e.bytes==undefined?"":("("+e.bytes+")"))
-						if (e.err) { displayError(e.err); return {"val":false}  }
-						dat[i] = e.val & 0xFF;	    		// extract  lo byte
-						arr[i] = this.getHexByte(e.val & 0xFF);
+						if (e.err) { displayError(e.err); return {"val":false} }
+
+						if(e.type=="string") 
+						{
+							var utf8Encode = new TextEncoder();
+							var byte_arr = utf8Encode.encode(e.val);
+						}
+						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
+
+						var k = dat.length;
+						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
+						{
+							//if(e.bytes!=1) e.err = "expression is not 1 byte long "+(e.bytes==undefined?"":("("+e.bytes+")"))
+
+							dat[k+j] = byte_arr[j];
+						}
 					}
+
+					for(var i=0;i<dat.length;i++)				// overwrite arr
+						arr[i] = this.getHexByte(dat[i]);
+
 					oASM.concat_code(dat);
 					listing.value += arr.join(" ");
 				}
@@ -863,6 +888,9 @@ function ASM()
 	this.hextab = oCOM.hextab;
 	this.getHexByte = oCOM.getHexByte;
 	this.getHexWord = oCOM.getHexWord;
+	//this.getHexMulti = oCOM.getHexMulti;
+	this.getNumByteArr = oCOM.getNumByteArr;
+
 }
 
 function DASM()
