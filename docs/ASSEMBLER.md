@@ -22,8 +22,8 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 
 | [DIRECTIVE] | Arguments                    | Done               | (Partial) / Full<br>support | Description  |
 | :---------- | :--------------------------- | :----------------- | :-------------------------: | :----------- |
-| .BYTE       | E {typ:exp,bpe:1,csv:0}      | :heavy_check_mark: | c65                         | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
-| .ORG,ORG,*= | E {typ:exp,bpe:adrw,csv:1]}  | :heavy_check_mark: | c65                         | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| .BYTE,DFB   | E {typ:exp,bpe:1,csv:0}      | :heavy_check_mark: | ca65,Merlin                 | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
+| .ORG,ORG,*= | E {typ:exp,bpe:adrw,csv:1]}  | :heavy_check_mark: | ca65                        | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
