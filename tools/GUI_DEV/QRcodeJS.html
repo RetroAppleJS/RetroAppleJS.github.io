@@ -123,6 +123,22 @@ function add_rnd(formName,id,n)
       form.elements[id].value += text;
       //form.elements['count'].value = form.elements[id].value.replace(/[ \n]/g,"").length>>1;
     }
+    else if(m=="Alphanumeric")
+    {
+      var alnum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"
+      for(var i=0;i<n;i++)
+        text += alnum[(l+i)%alnum.length];
+
+      form.elements[id].value += text;
+    }
+    else if(m=="Numeric")
+    {
+      var num = "0123456789"
+      for(var i=0;i<n;i++)
+        text += num[(l+i)%num.length];
+
+      form.elements[id].value += text;
+    }
   }
   if(n<0)
   {
@@ -2365,7 +2381,10 @@ var update_qrcode = function(formName)
   var mb = form.elements['mb'].value;
 
   if(m=="HEX") form.elements['count'].value = form.elements['msg'].value.replace(/[ \n]/g,"").length>>1;
-  if(m=="Byte") form.elements['count'].value = form.elements['msg'].value.length;
+  if(m=="Byte") form.elements['count'].value = form.elements['msg'].value.length;   // MAX 2951
+  if(m=="Alphanumeric") form.elements['count'].value = form.elements['msg'].value.length * (Math.log10(45)/Math.log10(2)) >> 3;  // MAX 2949 Bytes
+  if(m=="Numeric") form.elements['count'].value = form.elements['msg'].value.length * (Math.log10(10)/Math.log10(2)) >> 3;  // MAX 2943 Bytes
+
 
   document.getElementById('qr').innerHTML = create_qrcode(text, t, e, m, mb);
 
