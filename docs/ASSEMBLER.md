@@ -20,11 +20,11 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 | typ      | exp = expression (default), hex = hex number |
 
 
-| [DIRECTIVE] | Arguments                    | Done               | (Partial) / Full<br>support | Description           | |
-| :---------- | :--------------------------- | :----------------- | :-------------------------: | :-------------------- | |
-| .BYTE,DFB   | E { __csv__:{__typ__:exp, __bpe__:8}}             | :heavy_check_mark:          | ca65,Merlin           | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
-| .ORG,ORG,*= | E { __exp__:{__bpe__:adrw}                        | :heavy_check_mark:          | ca65                  | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
-| HEX         | E { __ssv__:{__typ__:hex,__bpe__:8}               | :heavy_check_mark:          | Merlin                |  |
+| [DIRECTIVE] | Arguments                              |  (Partial) / Full<br>support | Description           |
+| :---------- | :------------------------------------- | :--------------------------- | :-------------------- |
+| .BYTE,DFB   | E { __csv__:{__typ__:exp, __bpe__:8}}  | ca65,Merlin                  | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
+| .ORG,ORG,*= | E { __exp__:{__bpe__:adrw}             | ca65                         | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| HEX         | E { __ssv__:{__typ__:hex,__bpe__:8}    | Merlin                       |  |
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
