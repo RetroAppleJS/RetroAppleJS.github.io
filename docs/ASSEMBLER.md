@@ -17,13 +17,13 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 | adrw     | address bus width                          |
 | bpe      | # of Bytes per element                     |
 | csv      | 0=single (default)<br>1=comma separated    |
-| typ      | exp = expression (default)                   |
+| typ      | exp = expression (default)                 |
 
 
 | [DIRECTIVE] | Arguments                    | Done               | (Partial) / Full<br>support | Description  |
 | :---------- | :--------------------------- | :----------------- | :-------------------------: | :----------- |
-| .BYTE,DFB   | E {typ:exp,bpe:1,csv:0}      | :heavy_check_mark: | ca65,Merlin                 | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
-| .ORG,ORG,*= | E {typ:exp,bpe:adrw,csv:1]}  | :heavy_check_mark: | ca65                        | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| .BYTE,DFB   | E { __typ__:exp, __bpe__:1, __csv__:0 }      | :heavy_check_mark: | ca65,Merlin                 | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
+| .ORG,ORG,*= | E { __typ__:exp, __bpe__:adrw, __csv__:1 }  | :heavy_check_mark: | ca65                        | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
