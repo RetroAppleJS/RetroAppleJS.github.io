@@ -12,18 +12,19 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 
 ## ASSEMBLER Pragmas
 
-| Argument | Description                                |
-| :------- | :----------------------------------------- |
-| adrw     | address bus width                          |
-| bpe      | # of Bytes per element                     |
-| csv      | 0=single (default)<br>1=comma separated    |
-| typ      | exp = expression (default)                 |
+| Argument | Description                                  |
+| :------- | :------------------------------------------- |
+| adrw     | address bus width                            |
+| bpe      | bits per element                       |
+| csv      | 0=single (default)<br>1=comma separated      |
+| typ      | exp = expression (default), hex = hex number |
 
 
-| [DIRECTIVE] | Arguments                    | Done               | (Partial) / Full<br>support | Description  |
-| :---------- | :--------------------------- | :----------------- | :-------------------------: | :----------- |
-| .BYTE,DFB   | E { __typ__:exp, __bpe__:1, __csv__:0 }      | :heavy_check_mark: | ca65,Merlin                 | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
-| .ORG,ORG,*= | E { __typ__:exp, __bpe__:adrw, __csv__:1 }  | :heavy_check_mark: | ca65                        | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| [DIRECTIVE] | Arguments                    | Done               | (Partial) / Full<br>support | Description           | |
+| :---------- | :--------------------------- | :----------------- | :-------------------------: | :-------------------- | |
+| .BYTE,DFB   | E { __csv__:{__typ__:exp, __bpe__:8}}             | :heavy_check_mark:          | ca65,Merlin           | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
+| .ORG,ORG,*= | E { __exp__:{__bpe__:adrw}                        | :heavy_check_mark:          | ca65                  | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| HEX         | E { __ssv__:{__typ__:hex,__bpe__:8}               | :heavy_check_mark:          | Merlin                |  |
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
