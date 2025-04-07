@@ -411,9 +411,6 @@ instead by DS-1.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.7.3. OBJ
@@ -460,9 +457,6 @@ PUT opcode.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 Any variables (e.g. ]LABEL) may be used as "local" 
@@ -500,9 +494,6 @@ HIMEM by default.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 The SAVE command sets the address of the saved file to its 
@@ -538,12 +529,7 @@ occurring after END will not be recognized.
 
 ```
 ```
-
-
-
-THE ASSEMBLER
-
-MERLIN Users Manual
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.8. Formatting
 
@@ -579,12 +565,8 @@ defaults to ON. This has no effect on the object coded
 generated.
 
                                                           55
-
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.8.3. PAU
@@ -626,9 +608,6 @@ listing. The number format is the same as in AST.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.8.7. TR
@@ -671,9 +650,6 @@ to the others.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.9.3. INV
@@ -711,9 +687,6 @@ generate FØ FD. Also accepts multiple data (e.g. DA 1,10,100)
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.10.2. DDB
@@ -751,9 +724,6 @@ LABI=$81A2 and LAB2=$77C4.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.10.4. HEX
@@ -790,9 +760,6 @@ assembly. Its syntax is: LABEL KBD.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.10.7. LUP
@@ -831,9 +798,6 @@ you try to use more than this.
 
 ```
 ```
-
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 6.10.8. CHK
@@ -874,9 +838,6 @@ assembly, if location $300 does not contain the value $4C.
 
 ```
 ```
-
-
-
 THE ASSEMBLER
 
 MERLIN Users Manual
@@ -920,10 +881,9 @@ correctly and the assembly of other parts of the program
 will be incorrect!
 
                                                           63
-
 ```
-
-```MERLIN Users Manual                            THE ASSEMBLER
+```
+MERLIN Users Manual                            THE ASSEMBLER
 
 If your routine needs to evaluate the operand, or part of 
 it, you can do this by a JSR EVAL. The X register must 
@@ -959,9 +919,7 @@ your routine (RTS), the USR line will be printed (on the
 second pass).
 
                                                           64
-
 ```
-
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -1000,10 +958,9 @@ branch to the first routine, "USR 2, stuff" to the second,
 etc.
 
                                                           65
-
 ```
-
-```MERLIN Users Manual                            THE ASSEMBLER
+```
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.11. Conditionals
 
@@ -1040,10 +997,9 @@ DO, FIN structures are valuable for putting conditionals in
 MACROS.
 
                                                           66
-
 ```
-
-```MERLIN Users Manual                            THE ASSEMBLER
+```
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.11.2. ELSE
 
@@ -1076,10 +1032,9 @@ be labeled and used for branches to the end of a macro, or
 one of its copies.
 
                                                           67
-
 ```
-
-```MERLIN Users Manual THE ASSEMBLER
+```
+MERLIN Users Manual THE ASSEMBLER
 
 6.12.2. PMC ( >>> )
 
@@ -1103,10 +1058,9 @@ results) but the assembler will assign some value to it.
 That is, a variable should be defined before it is used.
 
                                                           68
-
 ```
-
-```MERLIN Users Manual                                   MACROS
+```
+MERLIN Users Manual                                   MACROS
 
 7. MACROS
 
@@ -1147,10 +1101,9 @@ Macros may be nested to a depth of 15. For nesting, macros
 must be defined with DO condition off.
 
                                                           69
-
 ```
-
-```MERLIN Users Manual                                   MACROS
+```
+MERLIN Users Manual                                   MACROS
 
 Here is an example of a nested macro in which the 
 definition itself is nested. (This can only be done when 
@@ -1187,10 +1140,9 @@ HTAB MAC
      <<<
 
                                                           70
-
 ```
-
-```MERLIN Users Manual                                   MACROS
+```
+MERLIN Users Manual                                   MACROS
 
 7.3. Special Variables
 
@@ -1234,10 +1186,9 @@ variables. No error message will be generated, however, if
 there are more values than variables.
 
                                                           71
-
 ```
-
-```MERLIN Users Manual                                   MACROS
+```
+MERLIN Users Manual                                   MACROS
 
 The assembler will accept some other characters in place of 
 the space between the macro name and the expressions in a 
@@ -1279,10 +1230,9 @@ delimiter. (This is only true in macro calls or VAR
 statements, but it is good practice in all cases.)
 
                                                           72
-
 ```
-
-```MERLIN Users Manual                                   MACROS
+```
+MERLIN Users Manual                                   MACROS
 
 A previous version of this assembler, that did not have 
 this capability, used commas rather than semicolons in >>> 
@@ -1329,8 +1279,8 @@ INVRS   CMP     #"I"
                                                           73
 
 ```
-
-```MERLIN Users Manual                                   MACROS
+```
+MERLIN Users Manual                                   MACROS
 
 NORM    CMP     #"N"                            
         BNE     STP                             
@@ -1367,5 +1317,4 @@ the user to make this selection from the keyboard during
 assembly.
 
                                                           74
-
 ```
