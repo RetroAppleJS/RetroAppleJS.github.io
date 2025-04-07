@@ -296,8 +296,6 @@ FOUND	RTS
                                                           48
 ```
 ```
-
-
 MERLIN Users Manual                            THE ASSEMBLER
 
 With this type of code, if you add or delete some of the
@@ -438,9 +436,8 @@ PUT filename
 PUT FILENAME, (drive and slot parameters accepted in 
 standard DOS syntax) will read the named file (with the 
 "T." prefix appended unless the filename starts with a 
-character less than "@") and "inserts" it at the lo- cation 
-of the 
-opcode.
+character less than "@") and "inserts" it at the location 
+of the opcode.
 
 NOTE: "Insert" refers to the effect on assembly of the 
 location of the source. The file itself is actually placed 
@@ -454,7 +451,7 @@ facility.
 There are two restrictions on a PUT file. First, there 
 cannot be macro DEFINITIONS inside a PUT file, they must be 
 in the main source. Second, a PUT file may not call another 
-PUT file with the PUT opcode. Of course, link- ing can be 
+PUT file with the PUT opcode. Of course, linking can be 
 simulated by having the "main program" just contain the 
 macro definitions and call, in turn, all the others by the 
 PUT opcode.
@@ -509,10 +506,10 @@ HIMEM by default.
 MERLIN Users Manual                            THE ASSEMBLER
 
 The SAVE command sets the address of the saved file to its 
-correct value. For example, if your program con- tains 
+correct value. For example, if your program contains 
 three SAV commands, then it will be saved in three pieces. 
 When BLOADed later, they will go to the correct locations, 
-the third following the second and that fol- lowing the
+the third following the second and that following the
 first.
 
 Together, the PUT and SAV opcodes make it possible to 
@@ -651,7 +648,7 @@ ASC dstring (ASCii)
 
 This puts a delimited ASCII string into the object code. 
 The only restriction on the delimiter is that it does not 
-occur in the string itself. Different de- limiters have 
+occur in the string itself. Different delimiters have 
 different effects. Any delimiter less than (in ASCII code) 
 the single quote (') will produce a string with the 
 high-bits on, otherwise the high-bits will be off. For 
@@ -659,7 +656,7 @@ example, the delimiters !"#$%& will produce a string in
 "negative" ASCII, and the delimiters '()+? will produce one 
 in "positive" ASCII. Usually the quote (") and single quote 
 (') are the delimiters of choice, but other delimiters 
-provide the means of in- serting a string containing the 
+provide the means of inserting a string containing the 
 quote or single quote as part of the string.
 
 6.9.2. DCI
@@ -735,7 +732,7 @@ object code. It accepts several bytes of data, which must
 be separated by commas and contain no spaces. The standard 
 number format is used and arithmetic is done as usual. The 
 "#" symbol is acceptable but ignored, as is "<". The ">" 
-symbol may be used to specify the high- byte of the label, 
+symbol may be used to specify the high-byte of the label, 
 otherwise the low-byte is always taken. The ">" symbol 
 should appear only as the first character of an expression 
 or immediately after #. That is, the instruction DFB 
@@ -746,7 +743,7 @@ For example:
 
 DFB $34,100, LAB1-LAB2,%1011,>LAB1-LAB2
 
-is a properly formatted DFB statement which will gen- erate 
+is a properly formatted DFB statement which will generate 
 the object code (hex) 34 64 DE ØB09, assuming that 
 LABI=$81A2 and LAB2=$77C4.
 
@@ -926,17 +923,14 @@ will be incorrect!
 
 ```
 
-```
-
-
-MERLIN Users Manual                            THE ASSEMBLER
+```MERLIN Users Manual                            THE ASSEMBLER
 
 If your routine needs to evaluate the operand, or part of 
 it, you can do this by a JSR EVAL. The X register must 
 point to the first character of the portion of the operand 
 you wish to evaluate (put X=Ø to evaluate the expression at 
 the start of the operand). On return from EVAL, X will 
-point to the character following the ev- aluated 
+point to the character following the evaluated 
 expression. The Y register will be Ø, 1, or 2 accordingly 
 as this character is a right parenthesis, a space or a
 comma.
@@ -959,7 +953,7 @@ you could use the SYM EDITOR command to protect your
 routine from overwrite by the object code. SYM would have 
 to be set at least one byte below your code. You may use 
 zero page locations $60-$6F, but should not alter other 
-locations. Also, you must not change any- thing from $226 
+locations. Also, you must not change anything from $226 
 to $27F, or anything from $2C4 to $2FF. Upon return from 
 your routine (RTS), the USR line will be printed (on the 
 second pass).
@@ -975,7 +969,7 @@ To gain further understanding of the use of USR, read the
 source file SCRAMBLE.S or, for a more sophisticated 
 example, the file FLOAT.S. The first of these uses the USR 
 opcode to put an ASCII string into the object code in a 
-scrambled format. The second is a somewhat comp- licated 
+scrambled format. The second is a somewhat complicated 
 routine that uses Applesoft to compute the packed 
 (five-byte) form of a specified floating point number, and 
 put it in the object code. Here, the latter can be used for 
@@ -1009,10 +1003,7 @@ etc.
 
 ```
 
-```
-
-
-MERLIN Users Manual                            THE ASSEMBLER
+```MERLIN Users Manual                            THE ASSEMBLER
 
 6.11. Conditionals
 
@@ -1027,7 +1018,7 @@ sees another conditional). Except for macro names, it will
 not recognize any labels in such an area of code. If the 
 operand evaluates to a non-zero number, then assembly will 
 proceed as usual. This is very useful for MACROS. It is 
-also useful for sources de- signed to generate slightly 
+also useful for sources designed to generate slightly 
 different code for different situations. For example, if 
 you are designing a program to go to on a ROM chip, you 
 would want one version for the ROM, and another, with small 
@@ -1052,10 +1043,7 @@ MACROS.
 
 ```
 
-```
-
-
-MERLIN Users Manual                            THE ASSEMBLER
+```MERLIN Users Manual                            THE ASSEMBLER
 
 6.11.2. ELSE
 
@@ -1091,10 +1079,7 @@ one of its copies.
 
 ```
 
-```
-
-
-MERLIN Users Manual THE ASSEMBLER
+```MERLIN Users Manual THE ASSEMBLER
 
 6.12.2. PMC ( >>> )
 
@@ -1109,7 +1094,7 @@ MACROS. It may be labeled.
 
 Labels beginning with "]" are regarded as VARIABLES. These 
 may be defined only by EQU and cannot be used to label 
-some- thing else. They can be redefined as often as you 
+something else. They can be redefined as often as you 
 wish. The designed purpose of variables is for use in 
 MACROS, but they are not confined to that use.
 
@@ -1121,10 +1106,7 @@ That is, a variable should be defined before it is used.
 
 ```
 
-```
-
-
-MERLIN Users Manual                                   MACROS
+```MERLIN Users Manual                                   MACROS
 
 7. MACROS
 
@@ -1136,7 +1118,7 @@ NAME MAC (no operand)
 
 and NAME in the label field. Its definition is terminated 
 by the pseudo-op EOM or <<<. The label NAME cannot be 
-refer- enced by anything other than PMC NAME (or >>> NAME).
+referenced by anything other than PMC NAME (or >>> NAME).
 
 You can define the macro the first time you wish to use it 
 in the program. However, it is preferable (and required if 
@@ -1168,14 +1150,11 @@ must be defined with DO condition off.
 
 ```
 
-```
-
-
-MERLIN Users Manual                                   MACROS
+```MERLIN Users Manual                                   MACROS
 
 Here is an example of a nested macro in which the 
 definition itself is nested. (This can only be done when 
-both defini- tions end at the same place.)
+both definitions end at the same place.)
 
 TRDB MAC
      >>> TR.]1+1;]2+1
@@ -1211,10 +1190,7 @@ HTAB MAC
 
 ```
 
-```
-
-
-MERLIN Users Manual                                   MACROS
+```MERLIN Users Manual                                   MACROS
 
 7.3. Special Variables
 
@@ -1261,10 +1237,7 @@ there are more values than variables.
 
 ```
 
-```
-
-
-MERLIN Users Manual                                   MACROS
+```MERLIN Users Manual                                   MACROS
 
 The assembler will accept some other characters in place of 
 the space between the macro name and the expressions in a 
@@ -1309,10 +1282,7 @@ statements, but it is good practice in all cases.)
 
 ```
 
-```
-
-
-MERLIN Users Manual                                   MACROS
+```MERLIN Users Manual                                   MACROS
 
 A previous version of this assembler, that did not have 
 this capability, used commas rather than semicolons in >>> 
@@ -1360,10 +1330,7 @@ INVRS   CMP     #"I"
 
 ```
 
-```
-
-
-MERLIN Users Manual                                   MACROS
+```MERLIN Users Manual                                   MACROS
 
 NORM    CMP     #"N"                            
         BNE     STP                             
