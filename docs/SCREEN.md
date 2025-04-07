@@ -2,7 +2,7 @@
 
 <img src="../res/appleII_title.png?raw=true" width=40% align="left"/> 
 
-Steve Wozniak's chip-saving design requires quite some technical knowledge to accurately produce video emulation. This involves mapping memory locations to physical coordinates on the screen, reading fonts from character ROM in text mode, working with LORES, HIRES, and mixed modes.  You need to understand artifact color conventions, and the inner workings of the video scanner, which is a DMA device that uses timing to drive video data out of RAM and sends them to the video generator. In screen emulation technology, there are two major solution options: one based on the CPU of the host and another based on GPU.
+Steve Wozniak's chip-saving design requires quite some technical knowledge to accurately produce video emulation. This involves mapping memory locations to physical coordinates on the screen, reading fonts from character ROM in text mode, working with LORES, HIRES, and mixed modes.  One needs to understand artifact color conventions, and the inner workings of the video scanner, which is a DMA device that uses timing to drive video data out of RAM and sends them to the video generator. In screen emulation technology, there are two major solution options: one based on the CPU of the host and another based on GPU.
 
 The video scanner operates similarly to a television scan. Due to different TV standards between Europe and America, NTSC models had a master clock tuned at 14.31818Mhz and PAL around 14.238Mhz, which was then exposed to the CPU after division by a factor of 14, resulting in approximately 1MHz. 
 

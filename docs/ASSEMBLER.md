@@ -7,23 +7,24 @@ This is a simple 2 pass assembler for the 65xx microprocessor. It is thought to 
 
 ### Syntax reference
 
-Unlike other 6502 assemblers; this retrocomuting project was characterised to support a multitude of assembler syntaxes, allowing to copy old listings from internet sources and old magazines and bring them back to life. Whereas the notation of 6502 commands remains constant between compilers, pragmas, also called assembler directives can be quite distinct in nature. In this journey we're making an attempt to support the following well-documented macro-assemblers available for the 6502 microprocessor: [ca65](https://cc65.github.io/doc/ca65.html?utm_source=chatgpt.com), [Macroassembler AS (ASL)](https://forum.6502.org/viewtopic.php?f=2&t=8223), [DASM](https://forums.atariage.com/topic/27221-session-9-6502-and-dasm-assembling-the-basics/?utm_source=chatgpt.com), [Merlin](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/applications/misc/Merlin%20-%20A%20Macro%20Assembler%20%28SDS%2C%201983%29%20OCR.pdf) and [MAC/65](https://www.mixinc.net/atari/mac65.htm).
+Unlike other 6502 assemblers; this retrocomuting project was characterised to support a multitude of assembler syntaxes, allowing to copy old listings from internet sources and old magazines and bring them back to life. Whereas the notation of 6502 commands remains constant between compilers, pragmas, also called assembler directives can be quite distinct in nature. In this journey we're making an attempt to support the following well-documented macro-assemblers available for the 6502 microprocessor: [ca65](http://john.ccac.rwth-aachen.de:8000/as/as_EN.html), [Macroassembler AS (ASL)](), [DASM](https://dasm-assembler.github.io), [Merlin](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/applications/misc/Merlin%20-%20A%20Macro%20Assembler%20%28SDS%2C%201983%29%20OCR.pdf) and [MAC/65](https://www.mixinc.net/atari/mac65.htm).
 
 
 ## ASSEMBLER Pragmas
 
-| Argument | Description                                |
-| :------- | :----------------------------------------- |
-| adrw     | address bus width                          |
-| bpe      | # of Bytes per element                     |
-| typ      | exp=expression (default)                   |
-| csv      | 0=single (default)<br>1=comma separated    |
+| Argument | Description                                  |
+| :------- | :------------------------------------------- |
+| adrw     | address bus width                            |
+| bpe      | bits per element                       |
+| csv      | 0=single (default)<br>1=comma separated      |
+| typ      | exp = expression (default), hex = hex number |
 
 
-| [DIRECTIVE] | Arguments            | Done               | (Partial) / Full<br>support | Description  |
-| :---------- | :------------------- | :----------------- | :-------------------------: | :----------- |
-| .BYTE       | E {typ:exp,bpe:1,csv:0}            | :heavy_check_mark: | (c65)                       | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
-| .ORG,ORG,*= | E {typ:exp,bpe:adrw,csv:1]}  | :heavy_check_mark: | c65                         | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| [DIRECTIVE] | Arguments                              |  (Partial) / Full<br>support | Description           |
+| :---------- | :------------------------------------- | :--------------------------- | :-------------------- |
+| .BYTE,DFB   | E { __csv__:{__typ__:exp, __bpe__:8}}  | ca65,Merlin                  | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
+| .ORG,ORG,*= | E { __exp__:{__bpe__:adrw}             | ca65                         | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
+| HEX         | E { __ssv__:{__typ__:hex,__bpe__:8}    | Merlin                       |  |
  
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
