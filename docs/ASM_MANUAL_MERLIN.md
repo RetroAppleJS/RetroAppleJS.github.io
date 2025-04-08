@@ -134,6 +134,93 @@ MERLIN Users Manual                        TABLE OF CONTENTS
 
 ```
 ```
+        6.11. Conditionals............................... 66
+              6.ll.l. DO................................. 66
+              6.11.2. ELSE............................... 67
+              6.11.3. FIN................................ 67
+        6.12. Macros..................................... 67
+              6.12.1. MAC................................ 67
+              6.12.2. PMC ( >>> )........................ 68
+        6.13. Variables.................................. 68
+
+     7. MACROS........................................... 69
+        7.1. Defining a Macro............................ 69
+        7.2. Nested Macros............................... 69
+        7.3. Special Variables........................... 71
+        7.4. Sample Program.............................. 73
+        7.5. The Macro Library........................... 74
+
+     8. TECHNICAL INFORMATION............................ 75
+        8.1. General Information......................... 75
+        8.2. MERLIN Memory Map (Ram Card Version)........ 77
+        8.3. MERLIN Memory Map (48k Version)............. 78
+        8.4. Symbol Table................................ 79
+        8.5. Using MERLIN With Shift Key Mods............ 79
+        8.6. Using MERLIN With 80 Column Boards.......... 80
+        8.7. The Configure ASM Program................... 8l
+        8.8. Error Messages.............................. 82
+             8.8.1. BAD OPCODE........................... 82
+             8.8.2. BAD ADDRESS MODE..................... 82
+             8.8.3. BAD BRANCH........................... 82
+             8.8.4. BAD OPERAND.......................... 82
+             8.8.5. DUPLICATE SYMBOL..................... 83
+             8.8.6. MEMORY FULL.......................... 83
+             8.8.7. UNKNOWN LABEL........................ 83
+             8.8.8. NOT MACRO............................ 83
+             8.8.9. NESTING ERROR........................ 83
+             8.8.10. BAD "PUT"........................... 83
+             8.8.11. BAD "SAV" .......................... 84
+             8.8.12. BAD INPUT........................... 84
+             8.8.13. BREAK............................... 84
+             8.8.14. BAD LABEL........................... 84
+        8.9. Special Note = Memory Full Errors........... 84
+```
+```
+     9. SOURCEROR............................................ 87
+        9.1. Introduction.................................... 87
+        9.2, Using SOURCEROR................................. 87
+        9.3. Commands Used in Disassembly.................... 89
+        9.4. Command DescriptionS............................ 89
+             9.4.1. L (List)................................. 89
+             9.4.2. S (SWEET) ............................... 90
+             9.4.3. N (Normal)............................... 90
+             9.4.4. H (HeX).................................. 90
+             9.4.5. T (Text)................................. 90
+             9.4.6. W (Word) ................................ 91
+        9.5. Housekeeping Commands........................... 92
+             9.5.1. / (Cancel)............................... 92
+             9.5.2. R (Read) ................................ 92
+             9.5.3. Q (Quit)................................. 93
+        9.6. Final Processing................................ 93
+        9.7. Dealing with the Finished Source................ 94
+        9.8. The Memory Full Message......................... 95
+        9.9. The LABELER Program............................. 96
+        9.10. Labeler Commands............................... 96
+             9.10.1. Q:QUIT.................................. 96
+             9.10.2. L:LIST.................................. 96
+             9.10.3. D:DELETE LABEL(S)....................... 96
+             9.10.4. A:ADD LABEL............................. 96
+             9.10.5. F:FREE SPACE............................ 96
+             9.10.6. U:UNLOCK SRCRR.OBJ...................... 97
+
+     10. SWEET 16 — INTRODUCTION............................. 99
+        10.1. Listing #1.................................... 104
+        10.2. Listing #2.................................... 105
+        10,3, Listing #3.................................... 105
+
+     11. SWEET 16: A Pseudo 16 Bit Microprocessor........... 107
+        11.1. Descriptionn.................................. 107
+        11.2. Instruction Descriptions...................... 108
+        11.3. Sweet 16 Opcode Summary....................... 109
+             11.3.1. Register OPS........................... 109
+             11.3.2. Non-register OPS....................... 110
+        11.4. Register Instructions......................... 110
+             11.4.l. SET.................................... 110
+             11.4.2. LOAD................................... 111
+             11.4.3. STORE.,................................ 111
+             11.4.4. LOAD INDIRECT.......................... 111
+```
+```
 MERLIN Users Manual                            THE ASSEMBLER
 
 6. THE ASSEMBLER
@@ -373,6 +460,9 @@ a two byte skip as this would be interpreted by ROM Sweet
 
                                                           50
 ```
+
+<div name=EQU></div><div name=ORG></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -410,6 +500,9 @@ instead by DS-1.
                                                           51
 
 ```
+
+<div name=OBJ></div><div name=PUT></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -456,6 +549,9 @@ PUT opcode.
                                                           52
 
 ```
+
+<div name=VAR></div><div name=SAV></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -493,6 +589,9 @@ HIMEM by default.
                                                           53
 
 ```
+
+<div name=DSK></div><div name=END></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -528,6 +627,9 @@ occurring after END will not be recognized.
                                                           54
 
 ```
+
+<div name=LST></div><div name=EXP></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -566,6 +668,9 @@ generated.
 
                                                           55
 ```
+
+<div name=PAU></div><div name=PAG></div><div name=AST></div><div name=SKP></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -607,6 +712,9 @@ listing. The number format is the same as in AST.
                                                           56
 
 ```
+
+<div name=TR></div><div name=ASC></div><div name=DCI></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -649,6 +757,9 @@ to the others.
                                                           57
 
 ```
+
+<div name=INV></div><div name=FLS></div><div name=REV></div><div name=DA></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -686,6 +797,9 @@ generate FØ FD. Also accepts multiple data (e.g. DA 1,10,100)
                                                           58
 
 ```
+
+<div name=DDB></div><div name=DFB></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -721,8 +835,10 @@ the object code (hex) 34 64 DE ØB09, assuming that
 LABI=$81A2 and LAB2=$77C4.
 
                                                           59
-
 ```
+
+<div name=HEX></div><div name=DS></div><div name=KBD></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -759,6 +875,9 @@ assembly. Its syntax is: LABEL KBD.
                                                           60
 
 ```
+
+<div name=LUP></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -797,6 +916,9 @@ you try to use more than this.
                                                           61
 
 ```
+
+<div name=CHK></div><div name=ERR></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -837,10 +959,11 @@ assembly, if location $300 does not contain the value $4C.
                                                           62
 
 ```
-```
-THE ASSEMBLER
 
-MERLIN Users Manual
+<div name=USR></div>
+
+```
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.10.10. USR
 
@@ -959,6 +1082,9 @@ etc.
 
                                                           65
 ```
+
+<div name=DO></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -998,6 +1124,9 @@ MACROS.
 
                                                           66
 ```
+
+<div name=ELSE></div><div name=FIN></div><div name=MAC></div><div name=EOM></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -1033,8 +1162,11 @@ one of its copies.
 
                                                           67
 ```
+
+<div name=PMC></div>
+
 ```
-MERLIN Users Manual THE ASSEMBLER
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.12.2. PMC ( >>> )
 
@@ -1059,6 +1191,9 @@ That is, a variable should be defined before it is used.
 
                                                           68
 ```
+
+<div name="NAME MAC"></div>
+
 ```
 MERLIN Users Manual                                   MACROS
 
@@ -1102,6 +1237,9 @@ must be defined with DO condition off.
 
                                                           69
 ```
+
+<div name="TRDB MAC"></div>
+
 ```
 MERLIN Users Manual                                   MACROS
 
