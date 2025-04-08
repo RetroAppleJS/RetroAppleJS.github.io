@@ -373,7 +373,7 @@ a two byte skip as this would be interpreted by ROM Sweet
 
                                                           50
 ```
-<a href=#EQU></a>
+<a href=#EQU>EQU</a>
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
