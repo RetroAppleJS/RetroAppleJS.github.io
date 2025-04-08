@@ -1081,7 +1081,7 @@ one of its copies.
 <div name=PMC></div>
 
 ```
-MERLIN Users Manual THE ASSEMBLER
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.12.2. PMC ( >>> )
 
