@@ -876,9 +876,7 @@ assembly, if location $300 does not contain the value $4C.
 <div name=USR></div>
 
 ```
-THE ASSEMBLER
-
-MERLIN Users Manual
+MERLIN Users Manual                            THE ASSEMBLER
 
 6.10.10. USR
 
