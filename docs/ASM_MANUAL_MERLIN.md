@@ -374,7 +374,7 @@ a two byte skip as this would be interpreted by ROM Sweet
                                                           50
 ```
 
-<div id=#EQU></div>
+<div id=#EQU>EQU</div>
 
 ```
 MERLIN Users Manual                            THE ASSEMBLER
