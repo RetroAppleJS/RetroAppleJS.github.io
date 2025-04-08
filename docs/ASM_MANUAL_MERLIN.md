@@ -374,7 +374,7 @@ a two byte skip as this would be interpreted by ROM Sweet
                                                           50
 ```
 
-<div name=EQU>EQU</div>
+<div name=EQU></div><div name=ORG></div>
 
 ```
 MERLIN Users Manual                            THE ASSEMBLER
@@ -413,6 +413,9 @@ instead by DS-1.
                                                           51
 
 ```
+
+<div name=OBJ></div><div name=PUT></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -459,6 +462,9 @@ PUT opcode.
                                                           52
 
 ```
+
+<div name=VAR></div><div name=SAV></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -496,6 +502,9 @@ HIMEM by default.
                                                           53
 
 ```
+
+<div name=DSK></div><div name=END></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -531,6 +540,9 @@ occurring after END will not be recognized.
                                                           54
 
 ```
+
+<div name=LST></div><div name=EXP></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -569,6 +581,9 @@ generated.
 
                                                           55
 ```
+
+<div name=PAU></div><div name=PAG></div><div name=AST></div><div name=SKP></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -610,6 +625,9 @@ listing. The number format is the same as in AST.
                                                           56
 
 ```
+
+<div name=TR></div><div name=ASC></div><div name=DCI></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -652,6 +670,9 @@ to the others.
                                                           57
 
 ```
+
+<div name=INV></div><div name=FLS></div><div name=REV></div><div name=DA></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -689,6 +710,9 @@ generate FØ FD. Also accepts multiple data (e.g. DA 1,10,100)
                                                           58
 
 ```
+
+<div name=DDB></div><div name=DFB></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -724,8 +748,10 @@ the object code (hex) 34 64 DE ØB09, assuming that
 LABI=$81A2 and LAB2=$77C4.
 
                                                           59
-
 ```
+
+<div name=HEX></div><div name=DS></div><div name=KBD></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -762,6 +788,9 @@ assembly. Its syntax is: LABEL KBD.
                                                           60
 
 ```
+
+<div name=LUP></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -800,6 +829,9 @@ you try to use more than this.
                                                           61
 
 ```
+
+<div name=CHK></div><div name=ERR></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -840,6 +872,9 @@ assembly, if location $300 does not contain the value $4C.
                                                           62
 
 ```
+
+<div name=USR></div>
+
 ```
 THE ASSEMBLER
 
@@ -962,6 +997,9 @@ etc.
 
                                                           65
 ```
+
+<div name=DO></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -1001,6 +1039,9 @@ MACROS.
 
                                                           66
 ```
+
+<div name=ELSE></div><div name=FIN></div><div name=MAC></div><div name=EOM></div>
+
 ```
 MERLIN Users Manual                            THE ASSEMBLER
 
@@ -1036,6 +1077,9 @@ one of its copies.
 
                                                           67
 ```
+
+<div name=PMC></div>
+
 ```
 MERLIN Users Manual THE ASSEMBLER
 
@@ -1062,6 +1106,9 @@ That is, a variable should be defined before it is used.
 
                                                           68
 ```
+
+<div name="NAME MAC"></div>
+
 ```
 MERLIN Users Manual                                   MACROS
 
@@ -1105,6 +1152,9 @@ must be defined with DO condition off.
 
                                                           69
 ```
+
+<div name="TRDB MAC"></div>
+
 ```
 MERLIN Users Manual                                   MACROS
 
