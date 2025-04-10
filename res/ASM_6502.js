@@ -590,7 +590,7 @@ function doPass(pass)
 							listing.value += ' ' + getHexByte(op);
 						}
 					}
-					if (e.warn) { listing.value += '\n' + e.warn  }
+					if (e && e.warn) { listing.value += '\n' + e.warn  }
 				}
 				pc += steptab[mode];
 			}
