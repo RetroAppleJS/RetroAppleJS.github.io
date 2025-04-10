@@ -28,6 +28,10 @@ function ASM()
 	{
 		if(a!=null)
 		{
+			// TODO load maxNumBytes,mnemonics and pragma here !!!!!!!!!!!!
+
+			if(a.maxNumBytes!=null)		this.maxNumBytes = a.maxNumBytes;
+
 			if(a.label_len!=null) 		this.label_len	 = a.label_len;
 
 			if(a.codefield_el!=null) 	this.codefield_el  = a.codefield_el; // el: binary pane
@@ -60,6 +64,133 @@ function ASM()
 		this.label_len  = label_len;
 		this.listing_rewrite = true;
 		this.bDebug 	= false;
+	}
+
+	this.ext = " [A]";
+
+	this.pragma_sym = 
+	{
+		"*=":{"ref":".ORG","asm":["MAC/65"]}   // sym[0] (ignore) & sym[1] = '='	// sym[0] = '*'    & sym[1] = '='
+		,"ORG":{"ref":".ORG","asm":["ASL","DASM"]} 
+		,".ORG":
+		{
+			 "asm":["ca65"]
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+				var dat = [];
+				var e = this.getExpression(arr[0]);
+				if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
+				if (e.err) { displayError(e.err); return {"val":false}  }
+				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
+				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
+
+				oASM.code_pc[oASM.get_code_len()] = e.val & 0xFFFF;		//  register ORG as program counter change at byte index (for byte stream listing) 
+
+				pc = e.val & 0xFFFF;
+				listing.value += "$"+this.getHexWord(pc)+this.ext;
+				return {"val":true}
+			}
+		}
+		,"=":{"ref":"EQU"}   // sym[0] (ignore) & sym[1] = '='
+		,"EQU":
+		{
+			"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+				var dat = [];
+				var e = this.getExpression(arr[0]);
+				if(e.bytes>2) e.err += "expression exceeds 2 bytes "+(e.bytes==undefined?"":("("+e.bytes+")"))
+				if (e.err) { displayError(e.err); return {"val":false}  }
+	
+				if(pass==1)
+				{
+					var lbl = oASM.getID(sym[0]).val;
+					oASM.symtab[lbl] = e.val;
+					oASM.sym_link(
+					{
+						 "type": "def"
+						,"PC": pc
+						,"val": e.val
+						,"sym": lbl
+						,"sym0": sym[0]
+					})
+				}
+				listing.value += "$"+(e.bytes==1? this.getHexByte(e.val) : this.getHexWord(e.val) )+this.ext;
+				return {"val":true}
+			}
+		}
+		,"CONSTANT":{"asm":"ASL","description":"In contrast to EQU, always expects comma separated name and value as arguments"}
+		,"HEX": 
+		{
+			"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				var arg = sym.slice(ofs + 1, sym.length).join(" ");
+				var dat = this.getByteArray(arg);
+				if (pass == 1) listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
+				if (pass == 2)
+				{
+					oASM.concat_code(dat);
+					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "")+this.ext;
+				}
+				pc += dat.length;
+				return {"val":true};
+			}
+		}
+		,"BIN": true
+		,"ASC": true
+		,".END":true
+		,".WORD":true
+		,"DFB":{"ref":".BYTE","asm":["Merlin"]}
+		,".BYTE":
+		{
+			 "asm":["ca65"]
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				// numerical expressions and strings are split as array with byte size elements 
+				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
+				if(pass==1) listing.value += arr.join(",");
+				if(pass==2)
+				{
+					var dat = [];
+					for(var i=0;i<arr.length;i++)  // loop through CSV elements
+					{
+						var e = this.getExpression(arr[i]);
+						if (e.err) { displayError(e.err); return {"val":false} }
+						if(e.type=="string") byte_arr = e.val;
+						else 
+							var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
+
+						var k = dat.length;
+						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
+							dat[k+j] = byte_arr[j];
+					}
+
+					for(var i=0;i<dat.length;i++)			// overwrite arr
+						arr[i] = this.getHexByte(dat[i]);
+
+					oASM.concat_code(dat);
+					listing.value += arr.join(" ")+this.ext;
+				}
+				pc += arr.length;
+				return {"val":true}
+			}
+		}
+		,".AT":true
+		,".DEFINE":true
+		,".IFDEF":true
+		,".IFNDEF":true
+		,".ENDIF":true
+		,".SYMBOLS":true
+		,".EQ":true
 	}
 
 	this.assemble_step = function(srcfield_el,listing_el,codefield_el)
@@ -268,7 +399,8 @@ function ASM()
 	}
 
 	// Parse prefixed strings & return base10 equivalent
-	this.getNumber = function(str)   
+	// TODO ALWAYS ASSUME r.bytes as the byte size of the address bus
+	this.getNumber = function(str,arg)   
 	{
 		var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
 		Array.prototype.mr = function (m) {  return this[0].match(new RegExp(m))!=null || (this[0]=="0" && this[1]=="")? [m,this[1]] : this }
@@ -287,6 +419,7 @@ function ASM()
 				if(str.split("-").length>2) { r.err = "number malformation"; break}
 				r = this.getNumber(str.substring(1));
 				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
+				if(this.maxNumBytes!=null) r.bytes = this.maxNumBytes
 				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				break;
 			case "+":		// POSITIVE
@@ -315,16 +448,19 @@ function ASM()
 					r =  {"val":parseInt(str,10),"fmt":"DEC","bytes":b};
 				}
 				break;
-			case "\"":		// ASCII
-				var p = c[1].lastIndexOf("\"");
+			case "\"":		    // ASCII  -  high bit will be on if a double quote (") is used and off if enclosed by a signle quote (')
+				var h = 0x80;	// set high bit
 			case "'":
-				var p = p>=0?p:c[1].lastIndexOf("'");
-				if(p<0) err = "open quote"
+				var h = h??0x00;
+				err = (str.replace(RegExp(c[0],"g"),"").split(c[0]).length-1)%2!=0 ? "open quote" : null;
+				
+				var p = p>=0?p:c[1].lastIndexOf(c[0]);
 				var s = c[1].substring(0,p);
+
 				if(s.length>0)
 					for(var i=s.length-1,v=0;i>=0;i--)
-						v += s.charCodeAt(s.length-1-i) << (8*i);
-				r =  {"val":v,"fmt":"ASC","bytes":s.length};
+						v += (s.charCodeAt(s.length-1-i) | h) << (8*i);
+				r =  {"val":v,"fmt":"ASC","bytes":s.length,"err":err};
 				break;
 			default:
 				if(this.validate(str,"[A-Za-z0-9_.-]+")) // IDENTIFIER
@@ -369,9 +505,9 @@ function ASM()
 	this.getExpression = function(str)
 	{
 		if(typeof(str)==="number") str += "";
-
 		var exp = str.split(new RegExp("[+\\-\\*^~\\&\\|]","g"));  // slice at math operators to dig out deeper numbers and symbols
-		var r = "NaN", err = "expression malformation";
+		var r = {"val":NaN}, err = "expression malformation";
+
 		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
 		switch(c[0])
 		{
@@ -388,14 +524,45 @@ function ASM()
 				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
 				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
 				return r;
-			case "'":
-				r = oCOM.rtrim(str).substring(1,str.length-1);
-				if((r.replace(/\\'/g,"").split("'").length-1)%2!=0) return {"val":false,"err":"inproperly closed quotes in expression"};
+							// TODO PROCESS SINGLE LONG STRING BETWEEN QUOTES (only containing escaped characters)
 			case "\"":
-				if(isNaN(r)) r = oCOM.rtrim(str).substring(1,str.length-1);
-				if((r.replace(/\\"/g,"").split("\"").length-1)%2!=0) return {"val":false,"err":"inproperly closed quotes in expression"};
-				//var e = this.getNumber(r);
-				return {"val":r,"bytes":r.length,"type":"string"};
+			case "'":		// TODO process as Number if a single character was enclosed and go further to default, otherwise assume string
+				r = oCOM.rtrim(str);
+				r = r.substring(1,r.length-1)   //.replace(RegExp("\\"+c[0],"g"))
+
+				var m1 = r.match(RegExp("\\w*(?<!\\\\)"+c[0],"g"))!=null;	// any unescaped quotes ?           true   = BAD!
+				var m2 = (r.split(RegExp("\\\\"+c[0],"g")).length-1)%2==0;	// count even amount of escaped quotes ? uneven = BAD!
+				r = r.replace(RegExp("\\\\"+c[0],"g"),"");
+				var m3 = r.length;
+
+				// m1==true && m2==even && m3>1 ? most likely a long expression ==> default
+				// m1==false && m3==1 ? Surely a one-letter expression			==> default
+				// m1==false && m2==even && m3>1 ? most likely a long string	==> process string
+
+				if(m1==true && m2==true && m3>1)	// Most likely a long expression
+				{
+
+				}
+				else if(m1==false && m3==1)
+				{
+
+				}
+				else if(m1==false)
+				{
+					if(m2==true && m3>1)
+					{
+						// TODO: process long string
+						var e={"val":[],"type":"string","bytes":r.length}
+						for(var i=0;i<r.length;i++)
+						{
+							e.val[i] = r.charCodeAt(i) | (c[0]=="'"?0x00:0x80)
+						}
+						return e;
+					}
+					else return {"err":"unpaired quotes in string"};
+				}
+				//alert("getExpression (unesc="+m1+") (esc="+(m2?"even":"uneven")+") (l="+m3+")");
+
 			default:
 				//if(str=="'%'")
 				//	console.log("DEBUG THIS");
@@ -413,6 +580,7 @@ function ASM()
 
 				var parser = new oCOM.MathParser();
 				if(this.bDebug) console.log(str+" >> oCOM.MathParser().parse('"+nexp+"') = "+parser.parse(nexp))
+				
 				var e = this.getNumber(parser.parse(nexp)+"")
 
 				r = {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
@@ -496,10 +664,35 @@ function ASM()
 		}
 	}
 	
-
 	this.peekChar = function()
 	{
 		return this.codesrc[this.srcl].charAt(this.srcc);
+	}
+
+	this.getByteArray = function(arg)
+	{
+		str = arg.replace(/[^A-Fa-f0-9]/g, "");
+		if (str.length % 2 != 0) { displayError('format error:\nwrong or odd digits'); return false }
+		for (var dat = []; dat.length < (arg.length / 2);)
+		{
+			dat[dat.length] = parseInt(arg.substring(dat.length * 2, dat.length * 2 + 2), 16);
+		}
+		return dat;
+	}
+
+	this.getBitArray = function(arg)
+	{
+		str = arg.replace(/[^0-1]/g, "");
+		if (arg != str || arg.length % 8 != 0)
+		{
+			displayError('format error:\nwrong or odd digits');
+			return false;
+		}
+		for (var dat = []; dat.length < (arg.length / 8);)
+		{
+			dat[dat.length] = parseInt(arg.substring(dat.length * 8, dat.length * 8 + 8), 2);
+		}
+		return dat;
 	}
 
 	// A pragma is a directive that provides instructions
@@ -507,35 +700,10 @@ function ASM()
 
 	this.parse_pragma = function(sym,pass,xarg)
 	{
-		function getByteArray(arg)
-		{
-			str = arg.replace(/[^A-Fa-f0-9]/g, "");
-			if (str.length % 2 != 0) { displayError('format error:\nwrong or odd digits'); return false }
-			for (var dat = []; dat.length < (arg.length / 2);)
-			{
-				dat[dat.length] = parseInt(arg.substring(dat.length * 2, dat.length * 2 + 2), 16);
-			}
-			return dat;
-		}
-
-		function getBitArray(arg)
-		{
-			str = arg.replace(/[^0-1]/g, "");
-			if (arg != str || arg.length % 8 != 0)
-			{
-				displayError('format error:\nwrong or odd digits');
-				return false;
-			}
-			for (var dat = []; dat.length < (arg.length / 8);)
-			{
-				dat[dat.length] = parseInt(arg.substring(dat.length * 8, dat.length * 8 + 8), 2);
-			}
-			return dat;
-		}
-
 		var ofs = xarg===undefined || xarg.ofs===undefined ? 0 : xarg.ofs  
 		switch(sym[ofs])
 		{
+/*
 			case "ORG":
 			case "*=":
 				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
@@ -554,18 +722,12 @@ function ASM()
 
 			case "EQU":
 			case "=":
-
-// TODO OVERWRITE LABEL !!!
-
 				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-	
 				var dat = [];
 				var e = this.getExpression(arr[0]);
 				if(e.bytes>2) e.err += "expression exceeds 2 bytes "+(e.bytes==undefined?"":("("+e.bytes+")"))
 				if (e.err) { displayError(e.err); return {"val":false}  }
-				//dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
-				//dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
-
+	
 				if(pass==1)
 				{
 					var lbl = oASM.getID(sym[0]).val;
@@ -579,14 +741,12 @@ function ASM()
 						,"sym0": sym[0]
 					})
 				}
-
-				//oASM.concat_code(dat);
 				listing.value += "$"+(e.bytes==1? this.getHexByte(e.val) : this.getHexWord(e.val) );
 				return {"val":true}
 
 			case "HEX":
 				var arg = sym.slice(ofs + 1, sym.length).join(" ");
-				var dat = getByteArray(arg);
+				var dat = this.getByteArray(arg);
 				if (pass == 1) listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
 				if (pass == 2)
 				{
@@ -598,7 +758,7 @@ function ASM()
 
 			case "BIN":
 				var arg = sym.slice(ofs + 1, sym.length).join(" ");
-				var dat = getBitArray(arg);
+				var dat = this.getBitArray(arg);
 				if (pass == 1) listing.value += arg;
 				if (pass == 2)
 				{
@@ -607,8 +767,9 @@ function ASM()
 				}
 				pc += dat.length;
 				return {"val":true};
-
+*/
 			case "ASC":
+				// TODO process escape characters !
 				var str = sym.join(" ").split(/"|“|”/g)[1];
 				eval("var arg=\"" + str + "\"");
 				if (pass == 1) listing.value += "\"" + arg + "\"";
@@ -629,6 +790,7 @@ function ASM()
 				// Define a string with a trailing zero.
 				// https://cc65.github.io/doc/ca65.html#ss11.5
 				return {"val":false};
+
 			case ".END":
 				//listing.value += sym[0];
 				return {"val":true};
@@ -664,12 +826,10 @@ function ASM()
 
 				return {"val":true}
 
-			case ".BYTE":
-				// Merlin: .BYTE=comma separated byte Array
-				// numerical expressions trucated to byte size, strings split as array with byte size elements 
-				//var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
+			case ".BYTE":	// ca65
+			case "DFB":		// Merlin
+				// numerical expressions and strings are split as array with byte size elements 
 				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
-
 				if(pass==1) listing.value += arr.join(",");
 				if(pass==2)
 				{
@@ -697,7 +857,6 @@ function ASM()
 					listing.value += arr.join(" ");
 				}
 				pc += arr.length;
-
 				return {"val":true}
 
 			case ".DS":

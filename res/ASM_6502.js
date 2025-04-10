@@ -87,7 +87,6 @@ var instrtab = {
 
 var steptab = [1, 1, 2, 3, 3, 3, 2, 2, 2, 3, 2, 2, 2];
 
-
 var addrtab = {	// unused right now
 	imp: 0,
 	acc: 1,
@@ -104,39 +103,19 @@ var addrtab = {	// unused right now
 	rel: 12
 };
 
-// FVD
-var macrotab = {
-	"HEX": true,
-	"BIN": true,
-	"ASC": true
-}
 var dbgsym = {}
 
 
+// maxNumBytes = max number width in bytes (CPU-specific)
+// mnemonics   = table with mnemonics (CPU-specific)
+// pragma_sym  = pragma symbols (ASSMBLER-specific) 
+
 var oASM = new ASM();
-oASM.init();
+oASM.init({maxNumBytes:2});
 oASM.mnemonics = instrtab;
-oASM.pragma_sym = {}
 oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 {
-	"*=":true	// sym[0] = '*'    & sym[1] = '='
-	,"=":true   // sym[0] (ignore) & sym[1] = '='
-	,"ORG":true
-	,"EQU":true
-	,"HEX": true
-	,"BIN": true
-	,"ASC": true
-
-	,".END":true
-	,".WORD":true
-	,".BYTE":true
-	,".AT":true
-	,".DEFINE":true
-	,".IFDEF":true
-	,".IFNDEF":true
-	,".ENDIF":true
-	,".SYMBOLS":true
-	,".EQ":true
+	// in case CPU-specific pragmas are required
 });
 
 
@@ -386,26 +365,14 @@ function doPass(pass)
 		var padd = 0;
 		var lbl = null;
 
-
 		// List PROGRAM COUNTER (PC)
-		listing.value += getHexWord(pc) + ' ';
-
-		/*
-		if (c1 == '.')				// PRAGMA
-		{
-			listing.value += (ofs==0?paddRight("",oASM.label_len):"") + " " + sym[ofs] + " ";
-			r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
-			sym = getSym();
-			continue;
-
-		}
-		else 
-		*/		
+		listing.value += getHexWord(pc) + ' ';	
 	
 		var opc = sym[ofs];						// read next opcode
 		var opctab = instrtab[opc];				// opcode lookup table
 		var mactab = oASM.pragma_sym[opc];		// macro lookup table
 
+		// LABEL
 		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{
 			listing.value += sym[0];
@@ -485,7 +452,28 @@ function doPass(pass)
 			else if(mactab != null)  // MACRO CODE
 			{
 				listing.value += sym[ofs]+" ";
-				r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
+
+
+				
+				if(mactab.ref) mactab = oASM.pragma_sym[mactab.ref];
+				if(mactab.parser)
+				{
+					oASM.pragma = mactab.parser;
+					r = oASM.pragma({"sym":sym,"pass":pass,"ofs":ofs});
+				}
+				else
+					r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
+
+/*
+				// THIS DOES NOT WORK HERE
+					if(oASM.pragma_sym[mactab.parser])
+						r = oASM.pragma_sym[mactab].parser({"sym":sym,"pass":pass,"ofs":ofs})
+					else if(oASM.pragma_sym[mactab.ref])
+						r = oASM.pragma_sym[mactab.ref].parser({"sym":sym,"pass":pass,"ofs":ofs})
+					else
+						r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
+*/
+
 			}
 			else
 			{
@@ -557,6 +545,11 @@ function doPass(pass)
 						// operand
 						addr = addr.substring(b1, b2);
 						var e = oASM.getExpression(addr);
+						if(typeof(e.val)=="object")
+						{
+							e.val = e.val[1];
+							e.warn = 'warning: one-character string expected';
+						}
 
 						this.listing_rewrite = true;
 						if(this.listing_rewrite)
@@ -597,6 +590,7 @@ function doPass(pass)
 							listing.value += ' ' + getHexByte(op);
 						}
 					}
+					if (e.warn) { listing.value += '\n' + e.warn  }
 				}
 				pc += steptab[mode];
 			}
