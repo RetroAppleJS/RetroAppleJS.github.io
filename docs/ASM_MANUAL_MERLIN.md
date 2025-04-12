@@ -1634,11 +1634,11 @@ Examples :
 VAL "LABEL" gives the address (or value) of LABEL for the 
 last assembly done or "unknown label"
 
-|                 | if not   | found.   |
-|:----------------|:---------|:---------|
-| VAL "$1000/2"   | returns  | $0800    |
-| VAL "%1000"     | returns  | $0008    |
-| VAL !"A" - "Ø"! | returns  | $0011    |
+                  if not    found.   
+:----------------:---------:---------
+ VAL "$1000/2"    returns   $0800    
+ VAL "%1000"      returns   $0008    
+ VAL !"A" - "Ø"!  returns   $0011    
 
 NOTE: For the commands involving a string, the character 
 """ acts as a "WILD CARD". Therefore, F"Jon's" will find 
@@ -3107,8 +3107,6 @@ increased.
                                                           75
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 The default ORG and OBJ addresses equal the present value 
@@ -3130,8 +3128,6 @@ up.
                                                           76
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.2. MERLIN Memory Map (Ram Card Version)
@@ -3210,8 +3206,6 @@ SO ☐
                                                           77
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.3. MERLIN Memory Map (48k Version)
@@ -3282,8 +3276,6 @@ $O ☐
                                                           78
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.4. Symbol Table
@@ -3325,8 +3317,6 @@ used on another machine without reconfiguration.
                                                           79
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.6. Using MERLIN With 80 Column Boards
@@ -3366,8 +3356,6 @@ EDIT mode and simply produces a CTRL-A in the file line.
                                                           80
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.7. The Configure ASM Program
@@ -3412,8 +3400,6 @@ use FID to copy MERLIN or ASM.OBJ (the main program.)
                                                           81
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 NOTE: MERLIN will RUN only on the original disk or a pro- 
@@ -3454,8 +3440,6 @@ characters. This error will abort assembly.
                                                           82
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.8.5. DUPLICATE SYMBOL
@@ -3495,8 +3479,6 @@ another PUT file.
                                                           83
 ```
 ```
-
-
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.8.11. BAD "SAV"
@@ -3566,8 +3548,6 @@ directly to disk, using the DSK pseudo-op.
                                                           85
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9. SOURCEROR
@@ -3612,8 +3592,6 @@ locations.
                                                           87
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 3. You will be told that the default address for the source 
@@ -3657,8 +3635,6 @@ monitor rom.
                                                           88
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9.3. Commands Used in Disassembly
@@ -3700,8 +3676,6 @@ bly (SWEET 16 or normal).
                                                           89
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 If an illegal opcode is encountered, the bell will sound 
@@ -3743,8 +3717,6 @@ automatically changed to DCI.
                                                           90
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 Sometimes the change to DCI is inappropriate. This change 
@@ -3780,8 +3752,6 @@ tage to do the disassembly again with some notes in hand.
                                                           91
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9.5. Housekeeping Commands
@@ -3818,8 +3788,6 @@ before the R.
                                                           92
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9.5.3. Q (Quit)
@@ -3861,8 +3829,6 @@ ASSEM, and load it in.
                                                           93
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9.7. Dealing with the Finished Source
@@ -3908,8 +3874,6 @@ assembly.
                                                           94
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9.8. The Memory Full Message
@@ -3995,8 +3959,6 @@ new label entries.
                                                           96
 ```
 ```
-
-
 MERLIN Users Manual                                SOURCEROR
 
 9.10.6. U: UNLOCK SRCRR.OBJ
@@ -4051,8 +4013,6 @@ complete source assembly listings, indexed on page 65.
                                                           99
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 The demonstration program is written to be introductory and 
@@ -4137,16 +4097,15 @@ this purpose .
 
 These four registers are established as RØ, R1, R2, R3:
 
-|:----|:------|:-------|:--------------------------|
-| RØ  | $0000 | & ØØØ1 | -SWEET 16 accumulator     |
-| R1  | $0002 | & 0003 | -Source address           |
-| R2  | $0003 | & 0004 | -Destination address      |
-| R3  | $0004 | & ØØØ5 | -Number of bytes to move  |
-| @   |       |        |                           |
-| .   |       |        |                           |
-| -   |       |        |                           |
-| R14 | $ØØ1C | & ØØ1D | -Prior result register    |
-| R15 | $001E | & ØØ1F | -SWEET 16 Program counter |
+RØ   $0000  & ØØØ1  -SWEET 16 accumulator     
+R1   $0002  & 0003  -Source address           
+R2   $0003  & 0004  -Destination address      
+R3   $0004  & ØØØ5  -Number of bytes to move  
+@                                             
+.                                             
+-                                             
+R14  $ØØ1C  & ØØ1D  -Prior result register    
+R15  $001E  & ØØ1F  -SWEET 16 Program counter
 
                                                          101
 ```
@@ -4297,8 +4256,6 @@ CALL -605 : RETURN : REM XAM8 IN MONITOR 170
                                                          104
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 10.2. Listing #2
@@ -4325,13 +4282,12 @@ $303
 
 length
 
-| $3ØC   | 41   | LD   | @R1   |
-|:-------|:-----|:-----|:------|
-| $3ØD   | 52   | ST   | @R2   |
-| $30E   | F3   | DCR  | R3    |
-| $3ØF   | Ø7   | BNZ  | $30C  |
-| $311   | ØØ   | RTN  |       |
-| $312   | 60   | RTS  |       |
+ $3ØC    41    LD    @R1   
+ $3ØD    52    ST    @R2   
+ $30E    F3    DCR   R3    
+ $3ØF    Ø7    BNZ   $30C  
+ $311    ØØ    RTN         
+ $312    60    RTS         
 
 Data will be poked from the Integer Basic program:
 
@@ -4401,8 +4357,6 @@ added to the SWEET 16 PC, effecting a branch.
                                                          107
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 SWEET 16 is intended as a 6502 enhancement package, not a 
@@ -4413,19 +4367,18 @@ returns the user program to 6502 mode after restoring the
 internal register contents (A, S, Y, P, and S). The fol- 
 lowing example illustrates how to use SWEET 16.
 
-
-| 300 | B9 | 00 02 |        | LDA | IN, Y  | get a char.          |
-| 303 | C9 | CD    |        | CMP | #"M"   | "M" for move         |
-| 305 | DØ | 09    |        | BNE | NOMOVE | No. skip move        |
-| 307 | 20 | 89 F6 |        | JSR | SW16   | Yes, call SWEET 16   |
-| 3ØA | 41 |       | MLOOP  | LD  | @R1    | R1 holds source      |
-| 3ØB | 52 |       |        | ST  | @R2    | R2 holds dest. addr. |
-| 30C | F3 |       |        | DCR | R3     | Decr. length         |
-| 3ØD | Ø7 | FB    |        | BNZ | MLOOP  | Loop until done      |
-| 3ØF | ØØ |       |        | RTN |        | Return to 6502 mode. |
-| 310 | C9 | C5    | NOMOVE | CMP | #"E"   | "E" char?            |
-| 312 | DØ | 13    |        | BEQ | EXIT   | Yes, exit            |
-| 314 | C8 |       |        | INY |        | No, cont.            |
+300  B9  00 02          LDA  IN, Y   get a char.          
+303  C9  CD             CMP  #"M"    "M" for move         
+305  DØ  09             BNE  NOMOVE  No. skip move        
+307  20  89 F6          JSR  SW16    Yes, call SWEET 16   
+3ØA  41         MLOOP   LD   @R1     R1 holds source      
+3ØB  52                 ST   @R2     R2 holds dest. addr. 
+30C  F3                 DCR  R3      Decr. length         
+3ØD  Ø7  FB             BNZ  MLOOP   Loop until done      
+3ØF  ØØ                 RTN          Return to 6502 mode. 
+310  C9  C5     NOMOVE  CMP  #"E"    "E" char?            
+312  DØ  13             BEQ  EXIT    Yes, exit            
+314  C8                 INY          No, cont.
 
 NOTE: Registers A, X, Y, P, and S are not disturbed by SWEET 16.
 
@@ -4468,28 +4421,25 @@ if NonZero are opcodes 6 and 7.
 
 11.3.1. Register OPS
 
-|:---|:-----|:----|:------------------------|
-| In | SET  | Rn  | Constant (Set)          |
-| 2n | LD   | Rn  | (Load)                  |
-| 3n | ST   | Rn  | (Store)                 |
-| 4n | LD   | @Rn | (Load Indirect)         |
-| 5n | ST   | @Rn | (Store Indirect)        |
-| 6n | LDD  | @Rn | (Load Double Indirect)  |
-| 7n | STD  | @Rn | (Store Double Indirect) |
-| 8n | POP  | @Rn | (Pop Indirect)          |
-| 9n | STP  | @Rn | (Store POP Indirect)    |
-| An | ADD  | Rn  | (Add)                   |
-| Bn | SUB  | Rn  | (Sub)                   |
-| Cn | POPD | @Rn | (Pop Double Indirect)   |
-| Dn | CPR  | Rn  | (Compare)               |
-| En | INR  | Rn  | (Increment )            |
-| Fn | DCR  | Rn  | (Decrement)             |
+In  SET   Rn   Constant (Set)          
+2n  LD    Rn   (Load)                  
+3n  ST    Rn   (Store)                 
+4n  LD    @Rn  (Load Indirect)         
+5n  ST    @Rn  (Store Indirect)        
+6n  LDD   @Rn  (Load Double Indirect)  
+7n  STD   @Rn  (Store Double Indirect) 
+8n  POP   @Rn  (Pop Indirect)          
+9n  STP   @Rn  (Store POP Indirect)    
+An  ADD   Rn   (Add)                   
+Bn  SUB   Rn   (Sub)                   
+Cn  POPD  @Rn  (Pop Double Indirect)   
+Dn  CPR   Rn   (Compare)               
+En  INR   Rn   (Increment)            
+Fn  DCR   Rn   (Decrement)
 
                                                          109
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.3.2. Non-register OPS
@@ -4528,8 +4478,6 @@ EXAMPLE :
                                                          110
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.4.2. LOAD
@@ -4737,11 +4685,11 @@ otherwise it is cleared. Rn is not disturbed.
 
 EXAMPLE :
 
- 10  34  76  SET RØ, $7634           Init RØ (ACC)           
- 11  27  42  SET RI,          $4227  and R1                  
- B1          SUB R1                  Subtract R1             
-                                     (diff=$34ØD with c set) 
- BØ          SUB RØ                  Clears ACC. (RØ)        
+10  34  76  SET RØ, $7634           Init RØ (ACC)           
+11  27  42  SET RI, $4227           and R1                  
+B1          SUB R1                  Subtract R1             
+                                    (diff=$34ØD with c set) 
+BØ          SUB RØ                  Clears ACC. (RØ)        
 
                                                          115
 ```
@@ -4765,13 +4713,13 @@ stack pointer).
 
 EXAMPLE :
 
- 15 34 AØ  SET R5,   $A034  Init stack pointer    
- 10 12 AA  SET RØ,   SAA12  Load $AA12 into ACC.  
- 75        STD @R5          Push $AA12 onto stack 
- 10 34 BB  SET RØ,   $BB34  Load $BB34 into ACC.  
- 75        STD @R5          Push $BB34 onto stack             
- C5        POPD @R5         Pop  $BB34 off stack              
- C5        POPD @R5         Pop  $AA12 off stacy                               
+15 34 AØ  SET R5, $A034  Init stack pointer    
+10 12 AA  SET RØ, SAA12  Load $AA12 into ACC.  
+75        STD @R5        Push $AA12 onto stack 
+10 34 BB  SET RØ, $BB34  Load $BB34 into ACC.  
+75        STD @R5        Push $BB34 onto stack             
+C5        POPD @R5       Pop  $BB34 off stack              
+C5        POPD @R5       Pop  $AA12 off stacy                               
 
 11.4.13. COMPARE
 
@@ -4788,21 +4736,18 @@ and Rn are disturbed.
                                                          116
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 EXAMPLE :
 
-|:------|:------|:--------------|:-------------------|
-| 15    | 34 AØ | SET R5, SAØ34 | Pointer to memory  |
-| 16 BF | AØ    | SET R6, SAØBF | Limit address      |
-| BØ    |       | LOOP1 SUB RØ  | Zero data          |
-| 75    |       | STD @R5       | Clear 2 locns      |
-|       |       |               | Increment R5 by 2  |
-| 25    |       | LD R5         | Compare pointer R5 |
-| D6    |       | CPR R6        | to limit R6        |
-| Ø2 FA |       | BNC LOOP1     | Loop if c clear    |
+ 15     34 AØ  SET R5, SAØ34  Pointer to memory  
+ 16 BF  AØ     SET R6, SAØBF  Limit address      
+ BØ            LOOP1 SUB RØ   Zero data          
+ 75            STD @R5        Clear 2 locns      
+                              Increment R5 by 2  
+ 25            LD R5          Compare pointer R5 
+ D6            CPR R6         to limit R6        
+ Ø2 FA         BNC LOOP1      Loop if c clear    
 
 11.4.14. INCREMENT
 
@@ -4814,13 +4759,12 @@ mented value.
 
 EXAMPLE :
 
-|:------|:-|:---|:--------------|:-|:-----------------|
-| 15 34 |  | AØ | SET R5, SA034 |  | (Pointer)        |
-| BØ    |  |    | SUB RØ        |  | Zero to RØ       |
-| 55    |  |    | ST @R5        |  | Clr Locn SAØ34   |
-| E5    |  |    | INR R5        |  | Incr R5 to $A036 |
-| 55    |  |    | ST @R5        |  | C1rs locn SA036  |
-|       |  |    |               |  | (not $A035)      |
+ 15 34    AØ  SET R5, SA034    (Pointer)        
+ BØ           SUB RØ           Zero to RØ       
+ 55           ST @R5           Clr Locn SAØ34   
+ E5           INR R5           Incr R5 to $A036 
+ 55           ST @R5           C1rs locn SA036  
+                               (not $A035)      
 
 11.4.15. DECREMENT
 
@@ -4833,19 +4777,16 @@ mented value.
                                                          117
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 EXAMPLE: (Clear 9 bytes beginning at location AØ34)
 
-|:---|:---|:---|:--------------|:-----------------|
-| 15 | 34 | AØ | SET R5, SAØ34 | Init Pointer     |
-| 14 | 09 | 00 | SET R4, 9     | Init counter     |
-| BØ |    |    | SUB RØ        | Zero ACC         |
-| 55 |    |    | LOOP2 ST @R5  | Clear a mem byte |
-| F4 |    |    | DCR R4        | Decrement count  |
-| Ø7 | FC |    | BNZ LOOP2     | Loop until Zero  |
+15  34  AØ  SET R5, SAØ34  Init Pointer     
+14  09  00  SET R4, 9      Init counter     
+BØ          SUB RØ         Zero ACC         
+55          LOOP2 ST @R5   Clear a mem byte 
+F4          DCR R4         Decrement count  
+Ø7  FC      BNZ LOOP2      Loop until Zero  
 
 11.5. Non-Register Instructions
 
@@ -4873,8 +4814,6 @@ conditions are not changed.
                                                          118
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 NOTE: The effective address calculation is identical to 
@@ -4912,8 +4851,6 @@ conditions are not changed.
                                                          119
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.5.5. BRANCH IF PLUS
@@ -4926,15 +4863,14 @@ tions are not changed.
 
 EXAMPLE: (Clear mem from A034 to AØ3F)
 
-|:---|:---|:---|:--------|:-------|:----------------|
-| 15 | 34 | AØ | SET R5, | $A034  | Init pointer    |
-| 14 | 3F | AØ | SET R4, | SAØ3F  | Init limit      |
-| BØ |    |    | LOOP 3  | SUB RØ |                 |
-| 55 |    |    |         | ST @R5 | Clear mem byte  |
-|    |    |    |         |        | ; Increment R5  |
-| 24 |    |    |         | LD R4  | Compare limit   |
-| D5 |    |    |         | CPR R5 | to pointer      |
-| Ø4 | FA |    | BP      | LOOP3  | Loop until done |
+ 15  34  AØ  SET R5,  $A034   Init pointer    
+ 14  3F  AØ  SET R4,  SAØ3F   Init limit      
+ BØ          LOOP 3   SUB RØ                  
+ 55                   ST @R5  Clear mem byte  
+                              ; Increment R5  
+ 24                   LD R4   Compare limit   
+ D5                   CPR R5  to pointer      
+ Ø4  FA      BP       LOOP3   Loop until done 
 
 11.5.6. BRANCH IF MINUS
 
@@ -4953,8 +4889,6 @@ Branch conditions are not changed.
                                                          120
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.5.8. BRANCH IF NONZERO
@@ -5015,23 +4949,20 @@ the current ACC contents.
 
 EXAMPLE: (Calling a 'memory move' subroutine to move AØ34-AØ3B to 3000-3007)
 
-|:---|:-----|:---|:----|:----------|:-----------------|
-| 15 | 34   | AØ | SET | R5, $A034 | Init pointer 1   |
-| 14 | 3B   | AØ | SET | R4, ŞAØ3B | Init limit 1     |
-| 16 | 00   | 30 | SET | R6, $3000 | Init pointer 2   |
-| ØC | 15   |    | BS  | MOVE      | Call move subrtn |
-| 45 | MOVE |    | LD  | @R5       | Move one         |
-| 56 |      |    | ST  | @R6       | byte             |
-| 24 |      |    | LD  | R4        |                  |
-| D5 |      |    | CPR | R5        | Test if done     |
-| Ø4 | FA   |    | BP  | MOVE      |                  |
-| ØB |      |    | RS  |           | ; Return         |
+ 15  34    AØ  SET  R5, $A034  Init pointer 1   
+ 14  3B    AØ  SET  R4, ŞAØ3B  Init limit 1     
+ 16  00    30  SET  R6, $3000  Init pointer 2   
+ ØC  15        BS   MOVE       Call move subrtn 
+ 45  MOVE      LD   @R5        Move one         
+ 56            ST   @R6        byte             
+ 24            LD   R4                          
+ D5            CPR  R5         Test if done     
+ Ø4  FA        BP   MOVE                        
+ ØB            RS              ; Return         
 
                                                          122
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.6. Theory of Operation
@@ -5073,8 +5004,6 @@ testing, and clear the Y-reg.
                                                          123
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.7. When is an RTS really a JSR?
@@ -5087,12 +5016,11 @@ need be stored per routine. The 6502 indirect jump might
 have been used as follows to transfer control to the 
 appropriate sub- routine.
 
-|:----|:---------|:-----------------|
-| LDA | #ADRH    | High-order byte. |
-| STA | IND+1    |                  |
-| LDA | OPTBL, X | Low-order byte.  |
-| STA | IND      |                  |
-| JMP | (IND)    |                  |
+ LDA  #ADRH     High-order byte. 
+ STA  IND+1                      
+ LDA  OPTBL, X  Low-order byte.  
+ STA  IND                        
+ JMP  (IND)                      
 
 To save code, the subroutine entry address (minus 1) is 
 pushed onto the stack, high -order byte first. A 6502 RTS 
@@ -5165,8 +5093,6 @@ YSAV, and PSAV.
                                                          125
 ```
 ```
-
-
 MERLIN Users Manual                                 SWEET 16
 
 11.10. User Modifications
@@ -5186,8 +5112,6 @@ instruction.
                                                          126
 ```
 ```
-
-
 MERLIN Users Manual            APPLESOFT LISTING INFORMATION
 
 12. APPLESOFT LISTING INFORMATION
@@ -5229,8 +5153,6 @@ MERLIN assembler.
                                                          127
 ```
 ```
-
-
 MERLIN Users Manual            APPLESOFT LISTING INFORMATION
 
 WARNING: SOURCEROR.FP and some temporary work files that 
@@ -5275,8 +5197,6 @@ LISTING" as a header at the top of every page.
                                                          128
 ```
 ```
-
-
 MERLIN Users Manual            APPLESOFT LISTING INFORMATION
 
 MERLIN will then ask "GIVE VALUE FOR SAVEOBJ :" This refers 
@@ -5345,8 +5265,6 @@ MERLIN Users Manual                                 GLOSSARY
                                                          131
 ```
 ```
-
-
 MERLIN Users Manual                                 GLOSSARY
 
 |:-------------|:-------------------------------|
@@ -5390,8 +5308,6 @@ MERLIN Users Manual                                 GLOSSARY
                                                          132
 ```
 ```
-
-
 MERLIN Users Manual                                 GLOSSARY
 
 |:---------------|:-------------------------------|
@@ -5436,8 +5352,6 @@ MERLIN Users Manual                                 GLOSSARY
                                                          133
 ```
 ```
-
-
 MERLIN Users Manual                                 GLOSSARY
 
 |:------------|:-------------------------------|
@@ -5478,8 +5392,6 @@ MERLIN Users Manual                                 GLOSSARY
                                                          134
 ```
 ```
-
-
 MERLIN Users Manual                                 GLOSSARY
 
 | SIGN BIT      | -bit seven of a byte; negative   |
@@ -5554,8 +5466,6 @@ the low byte in $F2, and call PRDEC+4.
                                                          137
 ```
 ```
-
-
 MERLIN Users Manual                          SAMPLE PROGRAMS
 
 14.4. MSGOUT
@@ -5602,8 +5512,6 @@ a catalog, etc.
                                                          138
 ```
 ```
-
-
 MERLIN Users Manual                          SAMPLE PROGRAMS
 
 Concurrently, many new interface cards of all kinds were 
@@ -5637,8 +5545,6 @@ for different applications, etc.
                                                          139
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 15. UTILITIES
@@ -5686,8 +5592,6 @@ the file.
                                                          141
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 Don't forget to use the TABS command before printing out a 
@@ -5733,8 +5637,6 @@ course, that CHRGEN 70 is still intact at $900.
                                                          142
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 CHRGEN 70 includes a version of the FORMATTER program. To 
@@ -5782,8 +5684,6 @@ program.
                                                          143
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 This is where XREF, XREF.XL and STRIP come in.
@@ -5805,33 +5705,29 @@ comments from source code.
 
 Symbol table - alphabetical order:
 
-| ADD                      | =$F786   | BC   | =$F7BØ   | BK   | =$F706   |
-|:-------------------------|:---------|:-----|:---------|:-----|:---------|
-| Symbol table - numerical |          |      |          |      |          |
-| order:                   |          |      |          |      |          |
-| BK                       | =$F706   | ADD  | =$F786   | BC   | =$F7BØ   |
+    ADD       =$F786    BC    =$F7BØ    BK    =$F706   
+
+ Symbol table - numerical order:                                                             
+ 
+    BK        =$F706    ADD   =$F786    BC    =$F7BØ
 
 15.3.2. Sample MERLIN XREF Printout :
 
 Cross referenced symbol table - alphabetical order:
 
-|:----|:-------|----:|:-----|
-| ADD | =$F786 | 101 | 185* |
-| BC  | =$F7BØ |  90 | 207* |
-| BK  | =$F706 | 104 | 121* |
+    ADD  =$F786  101  185* 
+    BC   =$F7BØ   90  207* 
+    BK   =$F706  104  121* 
 
 Cross referenced symbol table - numerical order:
 
-|:----|:-------|----:|:-----|
-| BK  | =$F706 | 104 | 121* |
-| ADD | =$F786 | 101 | 185* |
-| BC  | =$F7BØ |  90 | 207* |
+    BK   =$F706  104  121* 
+    ADD  =$F786  101  185* 
+    BC   =$F7BØ   90  207*
 
                                                          144
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 As you can see from the above example (taken from the SWEET 
@@ -5878,8 +5774,6 @@ betical cross reference only.
                                                          145
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 USER 3 -Do not print assembly listing but print both 
@@ -5918,8 +5812,6 @@ which represents the lowest position you can set HIMEM).
                                                          146
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 Since the program requires assembler output, code in areas 
@@ -5952,17 +5844,13 @@ that labels defined within macro definitions have no global
 meaning and are therefore not 
 cross-referenced.
 
-<--- Macro definition
-
-|:-----|:----|:-----------|
-| DEF  | MAC |            |
-|      | CMP | #]1        |
-|      | BNE | DONE       |
-|      | ASL |            |
-| DONE | <<< |            |
-|      | >>> | DEF.GLOBAL |
-
-<--- Beg. of program <--- Macro call
+        DEF   MAC              <--- Macro definition
+              CMP  #]1        
+              BNE  DONE       
+              ASL             
+        DONE  <<<
+        ---------------------  <--- Beg. of program   
+              >>>  DEF.GLOBAL  <--- Macro call
 
 In the above example, variable GLOBAL will be cross ref- 
 erenced, but local label DONE will not.
@@ -5970,8 +5858,6 @@ erenced, but local label DONE will not.
                                                          147
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 15.3.5. XREF.XL Instructions
@@ -6013,8 +5899,6 @@ parameters in the PUT directive.
                                                          148
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 -Unlike XREF, the setting of HIMEM does not affect XREF.XL. 
@@ -6058,8 +5942,6 @@ approximately 25 pages long.
 149
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 15.4. STRIP
@@ -6104,8 +5986,6 @@ turn video output off for faster operation.
                                                          150
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 Text files generated by PRINTFILER include the object code 
@@ -6144,8 +6024,6 @@ may skip this step if you've already BRUN PRINTFILER).
                                                          151
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 3. Q)uit the editor, select the D)rive that you want to 
@@ -6192,21 +6070,20 @@ PRINTFILER down. (See benchmarking results, next.)
                                                          152
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 15.5.4. Benchmarking PRINTFILER
 
 Source File: SWEET 16.S (21 sectors)
 
-| *   | File Type   | : Video   |            |     | : Sectrs:   |    |    | Time   |    |
-|:----|:------------|:----------|:-----------|:----|:------------|:---|:---|:-------|:---|
-| *   |             |           |            |     |             |    |    |        |    |
-| *   | Unpacked    | :         | Video on   |     | : 61        |    | :  | 59     | *  |
-| *   | Unpacked    | :         | Video off: |     |             | 61 | :  | 44     | *  |
-| *   | Packed      | :         | Video      | on  | :           | 38 | :  | 42     |    |
-| *   | Packed      | :         | Video      | off | :           | 38 | :  | 30     |    |
+            ***************************************
+            *  File Type: Video    : Sectrs: Time * 
+            *-------------------------------------*
+            *  Unpacked : Video on :  61  :   59  *
+            *  Unpacked : Video off:  61  :   44  *
+            *  Packed   : Video on :  38  :   42  * 
+            *  Packed   : Video off:  38  :   30  *
+            ***************************************
 
 As you can see from the above, turning off video output 
 makes PRINTFILER run approximately 25% faster. Additional 
@@ -6239,8 +6116,6 @@ PRINTFILER again.
                                                          153
 ```
 ```
-
-
 MERLIN Users Manual                                UTILITIES
 
 To Change PRINTFILER options (permanently)
@@ -6265,7 +6140,5 @@ different versions of PRINTFILER instead of setting options.
 
 154
 ```
-
-
 \n((.){0,60}(?<= ))
 \n$1\n
