@@ -3067,7 +3067,8 @@ MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8. TECHNICAL INFORMATION
 
-The SOURCE is placed at $901 when loaded, regardless of its original address.
+The SOURCE is placed at $901 when loaded, regardless of its 
+original address.
 
 The important pointers are:
 
@@ -3075,15 +3076,36 @@ The important pointers are:
   HIMEM             in   $C,$D   (defaults to $8000)  
   END OF SOURCE     in   ŞE,ŞF                       
 
-When you exit to BASIC or to the monitor, these pointers are saved at $EØØA-SEØØF. They are restored upon re-entry to MERLIN.
+When you exit to BASIC or to the monitor, these pointers 
+are saved at $EØØA-SEØØF. They are restored upon re-entry 
+to MERLIN.
 
-Entry into MERLIN replaces the current I/0 hooks with the standard ones and reconnects DOS. This is the same as typing PR#Ø and IN#Ø from the keyboard. Entry to the EDITOR discon- nects DOS, so that you can use labels such as INIT without disastrous consequences. Re-entry to EXEC MODE disconnects any I/O hooks that you may have established via the editor's PR# command, and reconnects DOS. Exit from assembly (com- pletion of assembly or CTRL-C) also disconnects I/0 hooks.
+Entry into MERLIN replaces the current I/0 hooks with the 
+standard ones and reconnects DOS. This is the same as 
+typing PR#Ø and IN#Ø from the keyboard. Entry to the EDITOR 
+discon- nects DOS, so that you can use labels such as INIT 
+without disastrous consequences. Re-entry to EXEC MODE 
+disconnects any I/O hooks that you may have established via 
+the editor's PR# command, and reconnects DOS. Exit from 
+assembly (com- pletion of assembly or CTRL-C) also 
+disconnects I/0 hooks.
 
 8.1. General Information
 
-Re-entry after exit to BASIC is made by the "ASSEM" command. A BRUN MERLIN or a disk boot will also provide a warm re- entry and will not reload MERLIN if it is already there. This may be forced by BRUN BOOT ASM which would then be a cold entry, "destroying" any file in memory.
+Re-entry after exit to BASIC is made by the "ASSEM" 
+command. A BRUN MERLIN or a disk boot will also provide a 
+warm re- entry and will not reload MERLIN if it is already 
+there. This may be forced by BRUN BOOT ASM which would then 
+be a cold entry, "destroying" any file in memory.
 
-Memory organization, for ordinary sized files is of no con- cern to the user, but it is important to understand certain constraints for the handling of large files. HIMEM (which defaults to $8000) is an upper limit to the source file. It is also an upper limit for PUT files. If a memory error occurs during assembly, indicating a PUT line, it means the PUT file exceeded HIMEM and that HIMEM will have to be increased.
+Memory organization, for ordinary sized files is of no con- 
+cern to the user, but it is important to understand certain 
+constraints for the handling of large files. HIMEM (which 
+defaults to $8000) is an upper limit to the source file. It 
+is also an upper limit for PUT files. If a memory error 
+occurs during assembly, indicating a PUT line, it means the 
+PUT file exceeded HIMEM and that HIMEM will have to be
+increased.
 
                                                           75
 ```
@@ -3092,7 +3114,21 @@ Memory organization, for ordinary sized files is of no con- cern to the user, bu
 
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
-The default ORG and OBJ addresses equal the present value of HIMEM. It is illegal to specify an OBJ address that is less than HIMEM except that a page 3 address is allowed. If a page 3 OBJ address is used, the user MUST be careful that the file will not write over the DOS jumps at $3DØ-$3FF as the assembler does NOT check for this error. If, during assem- bly, the object code exceeds BASIC HIMEM (or the SYM address, if one has been specified) then the code will not be written to memory, but assembly will appear to proceed and its output sent to the screen or printer. The only clue that this has happened, if not intentional, is that the object SAVE command is disabled in this event. Therefore, if a listing for a very long file is desired, without actually creating code, the user can assemble over DOS and up.
+The default ORG and OBJ addresses equal the present value 
+of HIMEM. It is illegal to specify an OBJ address that is 
+less than HIMEM except that a page 3 address is allowed. If 
+a page 3 OBJ address is used, the user MUST be careful that 
+the file will not write over the DOS jumps at $3DØ-$3FF as 
+the assembler does NOT check for this error. If, during 
+assem- bly, the object code exceeds BASIC HIMEM (or the SYM 
+address, if one has been specified) then the code will not 
+be written to memory, but assembly will appear to proceed 
+and its output sent to the screen or printer. The only clue 
+that this has happened, if not intentional, is that the 
+object SAVE command is disabled in this event. Therefore, 
+if a listing for a very long file is desired, without 
+actually creating code, the user can assemble over DOS and
+up.
 
                                                           76
 ```
@@ -3255,25 +3291,39 @@ MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.4. Symbol Table
 
-The symbol table is printed after assembly unless LST OFF has been invoked. It comes first in alphabetical order and then in numerical order. The symbol table is flagged as follows:
+The symbol table is printed after assembly unless LST OFF 
+has been invoked. It comes first in alphabetical order and 
+then in numerical order. The symbol table is flagged as
+follows:
 
 = Macro Definition
 
-MD M = Label defined in a macro (LOOP and OUT in the example)
+MD M = Label defined in a macro (LOOP and OUT in the 
+example)
 
 V = Variable (symbols starting with ])
 
 ? = A symbol that was never referenced
 
-Internally, these are flagged by setting bits 7 to 4 of the symbols length byte:
+Internally, these are flagged by setting bits 7 to 4 of the 
+symbols length byte:
 
 ?= bit 7 MD=bit 5 M=bit 4
 
-Also, bit 6 is set during the alphabetical printout to flag printed symbols, then removed during the numerical order printout. The symbol printout is formatted for an 80 column printer, or for one which will send a carriage return after 40 columns.
+Also, bit 6 is set during the alphabetical printout to flag 
+printed symbols, then removed during the numerical order 
+printout. The symbol printout is formatted for an 80 column 
+printer, or for one which will send a carriage return after 
+40 columns.
 
 8.5. Using MERLIN With Shift Key Mods
 
-MERLIN supports all hardware shift key modifications. The CONFIGURATION program will establish the modification that you want supported. MERLIN is smart enough to know if the modification actually exists in the Apple you are using and defeats the modification if it is not there. Thus it can be used on another machine without reconfiguration.
+MERLIN supports all hardware shift key modifications. The 
+CONFIGURATION program will establish the modification that 
+you want supported. MERLIN is smart enough to know if the 
+modification actually exists in the Apple you are using and 
+defeats the modification if it is not there. Thus it can be 
+used on another machine without reconfiguration.
 
                                                           79
 ```
@@ -3284,15 +3334,37 @@ MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.6. Using MERLIN With 80 Column Boards
 
-Most, but not all, 80 column boards are supported. You may use the VIDEO command to enable the 80 column board. To have the board selected upon boot, use the CONFIGURATION program. Then the VIDEO Ø or $10 command followed by RESET will switch back to the normal Apple screen.
+Most, but not all, 80 column boards are supported. You may 
+use the VIDEO command to enable the 80 column board. To 
+have the board selected upon boot, use the CONFIGURATION 
+program. Then the VIDEO Ø or $10 command followed by RESET 
+will switch back to the normal Apple screen.
 
-If your board does not support inverse, control characters in the source will show as ordinary capital letters instead of inverse letters as with boards that support inverse. You can use the editor's FIND command to search for particular con- trol characters, verify their presence or absence, or simply switch over to the normal Apple screen.
+If your board does not support inverse, control characters 
+in the source will show as ordinary capital letters instead 
+of inverse letters as with boards that support inverse. You 
+can use the editor's FIND command to search for particular 
+con- trol characters, verify their presence or absence, or 
+simply switch over to the normal Apple screen.
 
-If your copy of MERLIN has been configured to support an 80 column card in slot 3, and there is no card in that slot, MERLIN will recognize this and defeat the 80 column pro- vision. There is no need to reconfigure for use on another computer.
+If your copy of MERLIN has been configured to support an 80 
+column card in slot 3, and there is no card in that slot, 
+MERLIN will recognize this and defeat the 80 column pro- 
+vision. There is no need to reconfigure for use on another 
+computer.
 
-MERLIN will NOT support any board that does not recognize the "POKE 36" method of tabbing. As far as we know this only means it will not support older versions of the FULL VIEW 80 card.
+MERLIN will NOT support any board that does not recognize 
+the "POKE 36" method of tabbing. As far as we know this 
+only means it will not support older versions of the FULL 
+VIEW 80 card.
 
-When in EDIT mode, MERLIN takes total control of input and output. The effect of typing a control character will be as described in this manual and NOT as described in the manual for your 80 column card. For example, CTRL-L will not blank the screen, but is the case toggle. CTRL-A, which acts as a case toggle on many 80 column cards, will not do this in EDIT mode and simply produces a CTRL-A in the file line.
+When in EDIT mode, MERLIN takes total control of input and 
+output. The effect of typing a control character will be as 
+described in this manual and NOT as described in the manual 
+for your 80 column card. For example, CTRL-L will not blank 
+the screen, but is the case toggle. CTRL-A, which acts as a 
+case toggle on many 80 column cards, will not do this in 
+EDIT mode and simply produces a CTRL-A in the file line.
 
                                                           80
 ```
@@ -3303,17 +3375,42 @@ MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.7. The Configure ASM Program
 
-This program allows you to make several minor modifications to MERLIN's default conditions. It allows you to change the "UPDATE SOURCE" character searched for at the entry to the assembler, the editor's wild card character, and the number of symbol fields printed per line in the symbol table print- out. It also allows you to specify whether you want to have an 80 column board supported, and if so, which slot it is in.
+This program allows you to make several minor modifications 
+to MERLIN's default conditions. It allows you to change the 
+"UPDATE SOURCE" character searched for at the entry to the 
+assembler, the editor's wild card character, and the number 
+of symbol fields printed per line in the symbol table 
+print- out. It also allows you to specify whether you want 
+to have an 80 column board supported, and if so, which slot 
+it is in.
 
-You can also specify a hardware shift key modification. Any such modification can be supported. However, if your modifi- cation is the type that enables direct input of lower case (as with the VIDEX Keyboard Enhancer) instead of providing a memory location to be tested (as with the "game button 2" modification), then the default at the start of each line will be lower case rather than upper case and CTRL-L will function as a case lock toggle.
+You can also specify a hardware shift key modification. Any 
+such modification can be supported. However, if your 
+modifi- cation is the type that enables direct input of 
+lower case (as with the VIDEX Keyboard Enhancer) instead of 
+providing a memory location to be tested (as with the "game 
+button 2" modification), then the default at the start of 
+each line will be lower case rather than upper case and 
+CTRL-L will function as a case lock toggle.
 
-It allows you to specify whether you have a lower case adaptor. This will affect the condition on boot if you have not elected to have an 80 column board selected. It may always be defeated from the editor using the VIDEO command, so this only selects the initial condition.
+It allows you to specify whether you have a lower case 
+adaptor. This will affect the condition on boot if you have 
+not elected to have an 80 column board selected. It may 
+always be defeated from the editor using the VIDEO command, 
+so this only selects the initial condition.
 
-You may select a number of other options including certain printer options for use by the PRTR command.
+You may select a number of other options including certain 
+printer options for use by the PRTR command.
 
-Finally, you can save the configured version to another, or the same disk. There is no reason to keep the original version since you can always return to it by reconfiguration.
+Finally, you can save the configured version to another, or 
+the same disk. There is no reason to keep the original 
+version since you can always return to it by reconfiguration.
 
-At the end of the configuration program the user is given the opportunity to transfer the boot program "MERLIN" to another disk. This is just a convenient way of transferring that program since it cannot be done manually. You can also use FID to copy MERLIN or ASM.OBJ (the main program.)
+At the end of the configuration program the user is given 
+the opportunity to transfer the boot program "MERLIN" to 
+another disk. This is just a convenient way of transferring 
+that program since it cannot be done manually. You can also 
+use FID to copy MERLIN or ASM.OBJ (the main program.)
 
                                                           81
 ```
@@ -3322,27 +3419,40 @@ At the end of the configuration program the user is given the opportunity to tra
 
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
-NOTE: MERLIN will RUN only on the original disk or a pro- tected copy. The files may be kept for safety on another disk, but cannot function until recopied onto a protected disk. The configuration program should be BRUN only when the standard Apple screen is in use.
+NOTE: MERLIN will RUN only on the original disk or a pro- 
+tected copy. The files may be kept for safety on another 
+disk, but cannot function until recopied onto a protected 
+disk. The configuration program should be BRUN only when 
+the standard Apple screen is in use.
 
 8.8. Error Messages
 
 8.8.1. BAD OPCODE
 
-Occurs when the opcode is not valid (perhaps misspelled) or the opcode is in the label column.
+Occurs when the opcode is not valid (perhaps misspelled) or 
+the opcode is in the label column.
 
 8.8.2. BAD ADDRESS MODE
 
-The addressing mode is not a valid 6502 instruction; for example, JSR (LABEL) or LDX (LABEL), Y.
+The addressing mode is not a valid 6502 instruction; for 
+example, JSR (LABEL) or LDX (LABEL), Y.
 
 8.8.3. BAD BRANCH
 
-A branch (BEQ, BCC, etc) to an address that is out of range, i.e. further away than +127 bytes.
+A branch (BEQ, BCC, etc) to an address that is out of 
+range, i.e. further away than +127 bytes.
 
-NOTE: Most errors will throw off the assembler's address calculations. Bad branch errors should be ignored until previous errors have been dealt with.
+NOTE: Most errors will throw off the assembler's address 
+calculations. Bad branch errors should be ignored until 
+previous errors have been dealt with.
 
 8.8.4. BAD OPERAND
 
-An illegally formatted operand. This also occurs if you "EQU" a label to a zero page number after the label has been used. It may also mean that your operand is longer than 64 characters, or that a comment line exceeds 64 characters. This error will abort assembly.
+An illegally formatted operand. This also occurs if you 
+"EQU" a label to a zero page number after the label has 
+been used. It may also mean that your operand is longer 
+than 64 characters, or that a comment line exceeds 64 
+characters. This error will abort assembly.
 
                                                           82
 ```
@@ -3357,23 +3467,33 @@ On the first pass, the assembler finds two identical labels.
 
 8.8.6. MEMORY FULL
 
-This is usually caused by one of four conditions; Incorrect OBJ setting, source code too large, object code too large or symbol table too large. See "Special Note" at the end of this section.
+This is usually caused by one of four conditions; Incorrect 
+OBJ setting, source code too large, object code too large 
+or symbol table too large. See "Special Note" at the end of 
+this section.
 
 8.8.7. UNKNOWN LABEL
 
-Your program refers to a LABEL that does not exist. This also occurs if you try to reference a MACRO defini- tion by anything other than PMC. It can also occur if the referenced label is in an area with conditional assembly OFF. The latter will not happen with a MACRO definition.
+Your program refers to a LABEL that does not exist. This 
+also occurs if you try to reference a MACRO defini- tion by 
+anything other than PMC. It can also occur if the 
+referenced label is in an area with conditional assembly 
+OFF. The latter will not happen with a MACRO definition.
 
 8.8.8. NOT MACRO
 
-Forward reference to a MACRO, or reference by PMC to a label that is not a MACRO.
+Forward reference to a MACRO, or reference by PMC to a 
+label that is not a MACRO.
 
 8.8.9. NESTING ERROR
 
-Macros nested more than 15 deep or conditionals nested more than 8 deep.
+Macros nested more than 15 deep or conditionals nested more 
+than 8 deep.
 
 8.8.10. BAD "PUT"
 
-This is caused by a PUT inside a macro or by a PUT inside another PUT file.
+This is caused by a PUT inside a macro or by a PUT inside 
+another PUT file.
 
                                                           83
 ```
@@ -3384,36 +3504,67 @@ MERLIN Users Manual                    TECHNICAL INFORMATION
 
 8.8.11. BAD "SAV"
 
-This is caused by a SAV inside a macro or a SAV after a multiple OBJ after the last SAV.
+This is caused by a SAV inside a macro or a SAV after a 
+multiple OBJ after the last SAV.
 
 8.8.12. BAD INPUT
 
-This results from either no input ( [RTN] alone) or an input exceeding 37 characters in answer to the KBD op- code's request for the value of a label.
+This results from either no input ( [RTN] alone) or an 
+input exceeding 37 characters in answer to the KBD op- 
+code's request for the value of a label.
 
 8.8.13. BREAK
 
-This message is caused by the ERR opcode when the ex- pression in the operand is found to be nonzero.
+This message is caused by the ERR opcode when the ex- 
+pression in the operand is found to be nonzero.
 
 8.8.14. BAD LABEL
 
-This is caused by an unlabeled EQU or MAC, a label that is too long or one containing illegal characters.
+This is caused by an unlabeled EQU or MAC, a label that is 
+too long or one containing illegal characters.
 
 8.9. Special Note - Memory Full Errors
 
-There are four common causes for the "memory full" error message. A more detailed description of this problem and some ways to overcome it follow.
+There are four common causes for the "memory full" error 
+message. A more detailed description of this problem and 
+some ways to overcome it follow.
 
-ERROR MESSAGE: "MEMORY FULL IN LINE: n". Generated during pass l prior to assembly (line number points to an OBJ in- struction). CAUSE: An OBJ was specified that was below MERLIN's HIMEM (normally $8000) and also not within Page 3 ($300.3FF). MERLIN will not allow you to put object code in this range in order to protect your source file and the system. REMEDY: Remove the OBJ instruction or change it to specify an address within the legal range.
+ERROR MESSAGE: "MEMORY FULL IN LINE: n". Generated during 
+pass l prior to assembly (line number points to an OBJ in- 
+struction). CAUSE: An OBJ was specified that was below 
+MERLIN's HIMEM (normally $8000) and also not within Page 3 
+($300.3FF). MERLIN will not allow you to put object code in 
+this range in order to protect your source file and the 
+system. REMEDY: Remove the OBJ instruction or change it to 
+specify an address within the legal range.
 
                                                           84
 ```
 ```
 MERLIN Users Manual                    TECHNICAL INFORMATION
 
-ERROR MESSAGE: "ERR: MEMORY FULL". Generated immediately after you type in one line too many. CAUSE: The source code is too large and has exceeded MERLIN's HIMEM (normally $8000 on the RAM card version; $5000 on the 48K version). REMEDY: Raise MERLIN's HIMEM (see the section on the HIMEM command) or break the source file up into smaller sections and bring them in when necessary by using the "PUT" pseudo-op.
+ERROR MESSAGE: "ERR: MEMORY FULL". Generated immediately 
+after you type in one line too many. CAUSE: The source code 
+is too large and has exceeded MERLIN's HIMEM (normally 
+$8000 on the RAM card version; $5000 on the 48K version). 
+REMEDY: Raise MERLIN's HIMEM (see the section on the HIMEM 
+command) or break the source file up into smaller sections 
+and bring them in when necessary by using the "PUT"
+pseudo-op.
 
-ERROR MESSAGE: "MEMORY FULL IN LINE: n". Generated during assembly. CAUSE: Too many symbols have been placed into the symbol table, causing it to exceed Applesoft's HIMEM (nor- mally $9853 for the RAM card version and $6F53 for the 48K version). REMEDY: Make the symbol table larger by using the SYM command to lower its beginning address.
+ERROR MESSAGE: "MEMORY FULL IN LINE: n". Generated during 
+assembly. CAUSE: Too many symbols have been placed into the 
+symbol table, causing it to exceed Applesoft's HIMEM (nor- 
+mally $9853 for the RAM card version and $6F53 for the 48K 
+version). REMEDY: Make the symbol table larger by using the 
+SYM command to lower its beginning address.
 
-ERROR MESSAGE: None, but no object code will be generated (there will be no Object information displayed on the EXEC menu). CAUSE: Object code generated from an assembly would have exceeded the symbol table or Applesoft's HIMEM. REMEDY: Lower MERLIN's HIMEM or write the object code directly to disk, using the DSK pseudo-op.
+ERROR MESSAGE: None, but no object code will be generated 
+(there will be no Object information displayed on the EXEC 
+menu). CAUSE: Object code generated from an assembly would 
+have exceeded the symbol table or Applesoft's HIMEM. 
+REMEDY: Lower MERLIN's HIMEM or write the object code 
+directly to disk, using the DSK pseudo-op.
 
                                                           85
 ```
@@ -3426,15 +3577,38 @@ MERLIN Users Manual                                SOURCEROR
 
 9.1. Introduction
 
-SOURCEROR is a sophisticated and easy to use disassembler designed as a subsidiary to create MERLIN source files out of binary programs, usually in a matter of minutes. SOURCEROR disassembles SWEET 16 code as well as 6502 code.
+SOURCEROR is a sophisticated and easy to use disassembler 
+designed as a subsidiary to create MERLIN source files out 
+of binary programs, usually in a matter of minutes. 
+SOURCEROR disassembles SWEET 16 code as well as 6502 code.
 
-The main part of SOURCEROR is called SRCRR.OBJ, but this cannot be run (conveniently) directly, since it may overwrite DOS buffers and crash the system. For this reason, a small program named SOURCEROR is provided. It runs in the input buffer, and does not conflict with any program in memory. This small program simply checks memory size, gets rid of any program such as PLE which would conflict with the main SOURCEROR program, sets MAXFILES 1, then runs SRCRR.OBJ (at $8800-$9AA5).
+The main part of SOURCEROR is called SRCRR.OBJ, but this 
+cannot be run (conveniently) directly, since it may 
+overwrite DOS buffers and crash the system. For this 
+reason, a small program named SOURCEROR is provided. It 
+runs in the input buffer, and does not conflict with any 
+program in memory. This small program simply checks memory 
+size, gets rid of any program such as PLE which would 
+conflict with the main SOURCEROR program, sets MAXFILES 1, 
+then runs SRCRR.OBJ (at $8800-$9AA5).
 
-To minimize the possibility of accident, SRCRR.OBJ has a default location of $4000 and if you BRUN it, it will just return without doing anything. If you try to BRUN it at its designed location of $8800, however, you could be in for big trouble. SOURCEROR assumes the standard Apple screen is being used and will not function with an 80 column card.
+To minimize the possibility of accident, SRCRR.OBJ has a 
+default location of $4000 and if you BRUN it, it will just 
+return without doing anything. If you try to BRUN it at its 
+designed location of $8800, however, you could be in for 
+big trouble. SOURCEROR assumes the standard Apple screen is 
+being used and will not function with an 80 column card.
 
 9.2. Using SOURCEROR
 
-1. Load in the program to be disassembled. Although Sourceror will handle programs at any location, the original location for the program is preferable as long as it will not conflict with SOURCEROR and the build up of the source file. When in doubt, load it in at $800 or $803. Small programs at $4000 and above, or medium sized ones above $6000 will probably be okay at their original locations.
+1. Load in the program to be disassembled. Although 
+Sourceror will handle programs at any location, the 
+original location for the program is preferable as long as 
+it will not conflict with SOURCEROR and the build up of the 
+source file. When in doubt, load it in at $800 or $803. 
+Small programs at $4000 and above, or medium sized ones 
+above $6000 will probably be okay at their original
+locations.
 
 2. BRUN SOURCEROR
 
@@ -3445,17 +3619,43 @@ To minimize the possibility of accident, SRCRR.OBJ has a default location of $40
 
 MERLIN Users Manual                                SOURCEROR
 
-3. You will be told that the default address for the source file is $2500. This was selected because it does not conflict with the addresses of most binary programs you may wish to disassemble. Just hit RETURN to accept this default address. Otherwise, specify (in Hex) the ad- dress you want.
+3. You will be told that the default address for the source 
+file is $2500. This was selected because it does not 
+conflict with the addresses of most binary programs you may 
+wish to disassemble. Just hit RETURN to accept this default 
+address. Otherwise, specify (in Hex) the ad- dress you want.
 
-You may also access a "secret" provision at this point. This is done by typing CTRL-S (for "SWEET") after, or in lieu of the source address. Then you will be asked to specify a (nonstandard) address for the SWEET 16 inter- preter. This is intended to facilitate disassembly of programs which use a RAM version of SWEET 16.
+You may also access a "secret" provision at this point. 
+This is done by typing CTRL-S (for "SWEET") after, or in 
+lieu of the source address. Then you will be asked to 
+specify a (nonstandard) address for the SWEET 16 inter- 
+preter. This is intended to facilitate disassembly of 
+programs which use a RAM version of SWEET 16.
 
-4. Next, you will be asked to hit RETURN if the program to be disassembled is at its original (running) location, or you must specify in Hex, the present location of the code to be disassembled. Finally, you will be asked to give the ORIGINAL location of that program.
+4. Next, you will be asked to hit RETURN if the program to 
+be disassembled is at its original (running) location, or 
+you must specify in Hex, the present location of the code 
+to be disassembled. Finally, you will be asked to give the 
+ORIGINAL location of that program.
 
-When disassembling, you must use the ORIGINAL address of the program, not the address where the program currently resides. It will appear that you are disassembling the program at its original location, but actually, SOURCEROR is disassembling the code at its present loca- tion and translating the addresses.
+When disassembling, you must use the ORIGINAL address of 
+the program, not the address where the program currently 
+resides. It will appear that you are disassembling the 
+program at its original location, but actually, SOURCEROR 
+is disassembling the code at its present loca- tion and 
+translating the addresses.
 
-5. Lastly, the title page which contains a synopsis of the commands to be used in disassembly will display. You may now start disassembling or using any of the other commands. Your first command must include a Hex ad- dress. Thereafter this is optional, as we shall explain.
+5. Lastly, the title page which contains a synopsis of the 
+commands to be used in disassembly will display. You may 
+now start disassembling or using any of the other commands. 
+Your first command must include a Hex ad- dress. Thereafter 
+this is optional, as we shall explain.
 
-At this point, and until the final processing, you may hit RESET to return to the start of the SOURCEROR pro- gram. If you hit RESET once more, you will exit SOURCEROR and return to BASIC. Using RESET assumes you are using the Autostart monitor rom.
+At this point, and until the final processing, you may hit 
+RESET to return to the start of the SOURCEROR pro- gram. If 
+you hit RESET once more, you will exit SOURCEROR and return 
+to BASIC. Using RESET assumes you are using the Autostart 
+monitor rom.
 
                                                           88
 ```
@@ -3466,19 +3666,39 @@ MERLIN Users Manual                                SOURCEROR
 
 9.3. Commands Used in Disassembly
 
-The disassembly commands are very similar to those used by the disassembler in the Apple monitor. All commands accept a 4-digit hex address before the command letter. If this number is omitted, then the disassembly continues from its present address. A number must be specified only upon initial entry.
+The disassembly commands are very similar to those used by 
+the disassembler in the Apple monitor. All commands accept 
+a 4-digit hex address before the command letter. If this 
+number is omitted, then the disassembly continues from its 
+present address. A number must be specified only upon 
+initial entry.
 
-If you specify a number greater than the present address, a new ORG will be created.
+If you specify a number greater than the present address, a 
+new ORG will be created.
 
-More commonly, you will specify an address less than the present default value. In this case, the disassembler checks to see if this address equals the address of one of the previous lines. If so, it simply backs up to that point. If not, then it backs up to the next used address and creates a new ORG. Subsequent source lines are "erased". It is gen- erally best to avoid new ORGs when possible. If you get a new ORG and don't want it, try backing up a bit more until you no longer get a new ORG upon disassembly.
+More commonly, you will specify an address less than the 
+present default value. In this case, the disassembler 
+checks to see if this address equals the address of one of 
+the previous lines. If so, it simply backs up to that 
+point. If not, then it backs up to the next used address 
+and creates a new ORG. Subsequent source lines are 
+"erased". It is gen- erally best to avoid new ORGs when 
+possible. If you get a new ORG and don't want it, try 
+backing up a bit more until you no longer get a new ORG 
+upon disassembly.
 
 9.4. Command Descriptions
 
 9.4.1. L (List)
 
-This is the main disassembly command. It disassembles 20 lines of code. It may be repeated (e.g. 2ØØØLLL will disassemble 60 lines of code starting at $2000). If a JSR to the SWEET 16 interpreter is found, disassembly is automatically switched to the SWEET 16 mode.
+This is the main disassembly command. It disassembles 20 
+lines of code. It may be repeated (e.g. 2ØØØLLL will 
+disassemble 60 lines of code starting at $2000). If a JSR 
+to the SWEET 16 interpreter is found, disassembly is 
+automatically switched to the SWEET 16 mode.
 
-Command L always continues the present mode of disassem- bly (SWEET 16 or normal).
+Command L always continues the present mode of disassem- 
+bly (SWEET 16 or normal).
 
                                                           89
 ```
@@ -3487,23 +3707,41 @@ Command L always continues the present mode of disassem- bly (SWEET 16 or normal
 
 MERLIN Users Manual                                SOURCEROR
 
-If an illegal opcode is encountered, the bell will sound and opcode will be printed as three question marks in flashing format. This is only to call your attention to the situation. In the source code itself, unrecognized opcodes are converted to HEX data, but not displayed on the screen.
+If an illegal opcode is encountered, the bell will sound 
+and opcode will be printed as three question marks in 
+flashing format. This is only to call your attention to the 
+situation. In the source code itself, unrecognized opcodes 
+are converted to HEX data, but not displayed on the screen.
 
 9.4.2. S (SWEET)
 
-This is similar to L, but forces the disassembly to start in SWEET 16 mode. SWEET 16 mode returns to normal 6502 mode whenever the SWEET 16 RTN opcode is found.
+This is similar to L, but forces the disassembly to start 
+in SWEET 16 mode. SWEET 16 mode returns to normal 6502 mode 
+whenever the SWEET 16 RTN opcode is found.
 
 9.4.3. N (Normal)
 
-This is the same as L, but forces disassembly to start in normal 6502 mode.
+This is the same as L, but forces disassembly to start in 
+normal 6502 mode.
 
 9.4.4. H (Hex)
 
-This creates the HEX data opcode. It defaults to one byte of data. If you insert a one byte (one or two digits) hex number after the H, that number of data bytes will be generated.
+This creates the HEX data opcode. It defaults to one byte 
+of data. If you insert a one byte (one or two digits) hex 
+number after the H, that number of data bytes will be 
+generated.
 
 9.4.5. T (Text)
 
-This attempts to disassemble the data at the current address as an ASCII string. Depending on the form of the data, this will (automatically) be disassembled under the pseudo opcode ASC, DCI, INV or FLS. The appropriate delimiter " or ' is automatically chosen. The disassem- bly will end when the data encountered is inappropriate, when 62 characters have been treated, or when the high bit of the data changes. In the last condition, the ASC opcode is automatically changed to DCI.
+This attempts to disassemble the data at the current 
+address as an ASCII string. Depending on the form of the 
+data, this will (automatically) be disassembled under the 
+pseudo opcode ASC, DCI, INV or FLS. The appropriate 
+delimiter " or ' is automatically chosen. The disassem- bly 
+will end when the data encountered is inappropriate, when 
+62 characters have been treated, or when the high bit of 
+the data changes. In the last condition, the ASC opcode is 
+automatically changed to DCI.
 
                                                           90
 ```
@@ -3512,17 +3750,35 @@ This attempts to disassemble the data at the current address as an ASCII string.
 
 MERLIN Users Manual                                SOURCEROR
 
-Sometimes the change to DCI is inappropriate. This change can be defeated by using TT instead of T in the command .
+Sometimes the change to DCI is inappropriate. This change 
+can be defeated by using TT instead of T in the command .
 
-Occasionally, the disassembled string may not stop at the appropriate place because the following code looks like ASCII data to SOURCEROR. In this event, you may limit the number of characters put into the string by inserting a one or two digit hex number after the T command.
+Occasionally, the disassembled string may not stop at the 
+appropriate place because the following code looks like 
+ASCII data to SOURCEROR. In this event, you may limit the 
+number of characters put into the string by inserting a one 
+or two digit hex number after the T command.
 
-This or TT, may also have to be used to establish the correct boundary between a regular ASCII string and a flashing one. It is usually obvious where this should be done.
+This or TT, may also have to be used to establish the 
+correct boundary between a regular ASCII string and a 
+flashing one. It is usually obvious where this should be 
+done.
 
-Any lower case letters appearing in the text string are shown as flashing uppercase letters.
+Any lower case letters appearing in the text string are 
+shown as flashing uppercase letters.
 
 9.4.6. W (Word)
 
-This disassembles the next two bytes at the current location as a DA opcode. Optionally, if the command WW is used, these bytes are disassembled as a DDB opcode. Finally, if W- is used as the command, the two bytes are disassembled in the form DA LABEL-1. The latter is often the appropriate form when the program uses the address by pushing it on the stack. You may detect this while disassembling, or after the program has been dis- assembled. In the latter case, it may be to your advan- tage to do the disassembly again with some notes in hand.
+This disassembles the next two bytes at the current 
+location as a DA opcode. Optionally, if the command WW is 
+used, these bytes are disassembled as a DDB opcode. 
+Finally, if W- is used as the command, the two bytes are 
+disassembled in the form DA LABEL-1. The latter is often 
+the appropriate form when the program uses the address by 
+pushing it on the stack. You may detect this while 
+disassembling, or after the program has been dis- 
+assembled. In the latter case, it may be to your advan- 
+tage to do the disassembly again with some notes in hand.
 
                                                           91
 ```
@@ -3535,13 +3791,32 @@ MERLIN Users Manual                                SOURCEROR
 
 9.5.1. / (Cancel)
 
-This essentially cancels the last command. More exactly, it re-establishes the last default address (the address used for a command not necessarily attached to an address). This is a useful convenience which allows you to ignore the typing of an address when a backup is desired. As an example, suppose you type T to dis- assemble some text. You may not know what to expect following the text, so you can just type to L to look at it. Then if the text turns out to be followed by some Hex data (such as $8D for a carriage return), simply type / to cancel the L and type the appropriate H command.
+This essentially cancels the last command. More exactly, it 
+re-establishes the last default address (the address used 
+for a command not necessarily attached to an address). This 
+is a useful convenience which allows you to ignore the 
+typing of an address when a backup is desired. As an 
+example, suppose you type T to dis- assemble some text. You 
+may not know what to expect following the text, so you can 
+just type to L to look at it. Then if the text turns out to 
+be followed by some Hex data (such as $8D for a carriage 
+return), simply type / to cancel the L and type the 
+appropriate H command.
 
 9.5.2. R (Read)
 
-This allows you to look at memory in a format that makes imbedded text stand out. To look at the data from $1234 to $1333 type 1234R. After that, R alone will bring up the next page of memory. The numbers you use for this command are totally independent of the disassembly address.
+This allows you to look at memory in a format that makes 
+imbedded text stand out. To look at the data from $1234 to 
+$1333 type 1234R. After that, R alone will bring up the 
+next page of memory. The numbers you use for this command 
+are totally independent of the disassembly address.
 
-However, you may disassemble, then use (address)R, then L alone, and the disassembly will proceed just as if you never used R at all. If you don't intend to use the default address when you return to disassembly, it may be wise to make a note on where you wanted to resume, or to use the / before the R.
+However, you may disassemble, then use (address)R, then L 
+alone, and the disassembly will proceed just as if you 
+never used R at all. If you don't intend to use the default 
+address when you return to disassembly, it may be wise to 
+make a note on where you wanted to resume, or to use the / 
+before the R.
 
                                                           92
 ```
@@ -3552,24 +3827,39 @@ MERLIN Users Manual                                SOURCEROR
 
 9.5.3. Q (Quit)
 
-This ends disassembly and goes to the final processing which is automatic. If you type an address before the Q, the address pointer is backed to (but not including) that point before the processing. If, at the end of the disassembly, the disassembled lines include:
+This ends disassembly and goes to the final processing 
+which is automatic. If you type an address before the Q, 
+the address pointer is backed to (but not including) that 
+point before the processing. If, at the end of the 
+disassembly, the disassembled lines include:
 
   2341-     4C 03 EØ   JMP $EØØ3     
   2344-     A9 BE 94   LDA $94BE,Y
 
-and the last line is just garbage, type 2344Q. This will cancel the last line, but retain the first.
+and the last line is just garbage, type 2344Q. This will 
+cancel the last line, but retain the first.
 
 9.6. Final Processing
 
-After the Q command, the program does some last minute pro- cessing of the assembled code. If you hit RESET at this time, you will return to BASIC and lose the disassembled code .
+After the Q command, the program does some last minute pro- 
+cessing of the assembled code. If you hit RESET at this 
+time, you will return to BASIC and lose the disassembled 
+code .
 
-The processing may take from a second or two for a short program, to two or three minutes for a long one. Be patient.
+The processing may take from a second or two for a short 
+program, to two or three minutes for a long one. Be patient.
 
-When the processing is done, you are asked if you want to save the source. If so, you will be asked for a file name. SOURCEROR will append the suffix ".S" to this name and save it to disk.
+When the processing is done, you are asked if you want to 
+save the source. If so, you will be asked for a file name. 
+SOURCEROR will append the suffix ".S" to this name and save 
+it to disk.
 
-The drive used will be the one used to BRUN SOURCEROR. Re- place the disk first if you want the source to go on another disk.
+The drive used will be the one used to BRUN SOURCEROR. Re- 
+place the disk first if you want the source to go on 
+another disk.
 
-To look at the disassembled source, BRUN MERLIN, or type ASSEM, and load it in.
+To look at the disassembled source, BRUN MERLIN, or type 
+ASSEM, and load it in.
 
                                                           93
 ```
@@ -3580,15 +3870,43 @@ MERLIN Users Manual                                SOURCEROR
 
 9.7. Dealing with the Finished Source
 
-In most cases, after you have some experience and assuming you used reasonable care, the source will have few, if any, defects.
+In most cases, after you have some experience and assuming 
+you used reasonable care, the source will have few, if any, 
+defects.
 
-You may notice that some DA's would have been more appro- priate in the DA LABEL-1 or the DDB LABEL formats. In this, and similar cases, it may be best to do the disassembly again with some notes in hand. The disassembly is so quick and painless, that it is often much easier than trying to alter the source appropriately.
+You may notice that some DA's would have been more appro- 
+priate in the DA LABEL-1 or the DDB LABEL formats. In this, 
+and similar cases, it may be best to do the disassembly 
+again with some notes in hand. The disassembly is so quick 
+and painless, that it is often much easier than trying to 
+alter the source appropriately.
 
-The source will have all the exterior or otherwise un- recognized labels at the end in a table of equates. You should look at this table closely. It should not contain any zero page equates except ones resulting from DA's, JMP's or JSR's. This is almost a sure sign of an error in the disas- sembly (yours, not SOURCEROR's). It may have resulted from an attempt to disassemble a data area as regular code.
+The source will have all the exterior or otherwise un- 
+recognized labels at the end in a table of equates. You 
+should look at this table closely. It should not contain 
+any zero page equates except ones resulting from DA's, 
+JMP's or JSR's. This is almost a sure sign of an error in 
+the disas- sembly (yours, not SOURCEROR's). It may have 
+resulted from an attempt to disassemble a data area as 
+regular code.
 
-NOTE: If you try to assemble the source under these con- ditions, you will get an error as soon as the equates appear. If, as eventually you should, you move the equates to the start of the program, you will not get an error, but the assembly MAY NOT BE CORRECT. It is important to deal with this situation first as trouble could occur if, for example, the disassembler finds the data AD ØØ 8D. It will disassem- ble it correctly, as LDA $008D.
+NOTE: If you try to assemble the source under these con- 
+ditions, you will get an error as soon as the equates 
+appear. If, as eventually you should, you move the equates 
+to the start of the program, you will not get an error, but 
+the assembly MAY NOT BE CORRECT. It is important to deal 
+with this situation first as trouble could occur if, for 
+example, the disassembler finds the data AD ØØ 8D. It will 
+disassem- ble it correctly, as LDA $008D.
 
-The assembler always assembles this code as a zero page instruction, giving the two bytes A5 8D. Occasionally you will find a program that uses this form for a zero page instruction. In that case, you will have to insert a char- acter after the LDA opcode to have it assemble identically to its original form. Often it was data in the first place rather than code, and must be dealt with to get a correct assembly.
+The assembler always assembles this code as a zero page 
+instruction, giving the two bytes A5 8D. Occasionally you 
+will find a program that uses this form for a zero page 
+instruction. In that case, you will have to insert a char- 
+acter after the LDA opcode to have it assemble identically 
+to its original form. Often it was data in the first place 
+rather than code, and must be dealt with to get a correct 
+assembly.
 
                                                           94
 ```
@@ -3599,15 +3917,42 @@ MERLIN Users Manual                                SOURCEROR
 
 9.8. The Memory Full Message
 
-When the source file reaches within $600 of the start of SOURCEROR (that is, when it goes beyond $8200) you will see "MEMORY FULL" and "HIT A KEY" in flashing format. When you hit a key, SOURCEROR will go directly to the final pro- cessing. The reason for the $600 gap is that SOURCEROR needs a certain amount of space for this processing. It is pos- sible (but not likely) that part of SOURCEROR will be over- written during final processing, but this should not cause problems since the front end of SOURCEROR will not be used again by that point. There is a "secret" override provision at the memory full point. If the key you hit is CTRL-0 (for override), then SOURCEROR will return for another command. You can use this to specify the desired ending point. You can also use it to go a little further than SOURCEROR wants you to, and disassemble a few more lines. Obviously, you should not carry this to extremes.
+When the source file reaches within $600 of the start of 
+SOURCEROR (that is, when it goes beyond $8200) you will see 
+"MEMORY FULL" and "HIT A KEY" in flashing format. When you 
+hit a key, SOURCEROR will go directly to the final pro- 
+cessing. The reason for the $600 gap is that SOURCEROR 
+needs a certain amount of space for this processing. It is 
+pos- sible (but not likely) that part of SOURCEROR will be 
+over- written during final processing, but this should not 
+cause problems since the front end of SOURCEROR will not be 
+used again by that point. There is a "secret" override 
+provision at the memory full point. If the key you hit is 
+CTRL-0 (for override), then SOURCEROR will return for 
+another command. You can use this to specify the desired 
+ending point. You can also use it to go a little further 
+than SOURCEROR wants you to, and disassemble a few more 
+lines. Obviously, you should not carry this to extremes.
 
-CAUTION: After exiting SOURCEROR, do not try to run it again with a CALL. Instead, run it again from disk. This is because the DOS buffers have been re-established upon exit, and will have partially destroyed SOURCEROR.
+CAUTION: After exiting SOURCEROR, do not try to run it 
+again with a CALL. Instead, run it again from disk. This is 
+because the DOS buffers have been re-established upon exit, 
+and will have partially destroyed SOURCEROR.
 
 9.9. The LABELER program
 
-One of the nicest features of the SOURCEROR program is the automatic assignment of labels to all recognizable addresses in the binary file being disassembled. Addresses are recog- nized by being found in a table which SOURCEROR references during the disassembly process. For example, all JSR $FC58 instructions within a binary file will be listed by SOURCEROR as JSR HOME. This table of address labels may be edited by using the program LABELER.
+One of the nicest features of the SOURCEROR program is the 
+automatic assignment of labels to all recognizable 
+addresses in the binary file being disassembled. Addresses 
+are recog- nized by being found in a table which SOURCEROR 
+references during the disassembly process. For example, all 
+JSR $FC58 instructions within a binary file will be listed 
+by SOURCEROR as JSR HOME. This table of address labels may 
+be edited by using the program LABELER.
 
-To use labeler, BRUN LABELER. The program will then mention that SRCRR.OBJ is being loaded into memory, and present the main program menu.
+To use labeler, BRUN LABELER. The program will then mention 
+that SRCRR.OBJ is being loaded into memory, and present the 
+main program menu.
 
                                                           95
 ```
@@ -3618,23 +3963,37 @@ MERLIN Users Manual                                SOURCEROR
 
 9.10.1. Q: QUIT
 
-When finished with any modifications you wish to make to the label table, press 'Q' to exit the LABELER program. If you wish to save the new file, press 'S'. Otherwise, press ESCAPE to exit without saving the table, for instance, if you had only been reviewing the table.
+When finished with any modifications you wish to make to 
+the label table, press 'Q' to exit the LABELER program. If 
+you wish to save the new file, press 'S'. Otherwise, press 
+ESCAPE to exit without saving the table, for instance, if 
+you had only been reviewing the table.
 
 9.10.2. L:LIST
 
-This allows you to list the current label table. After 'L', press any key to start the listing. Pressing any key will go to the next page; CTRL-C will abort the listing.
+This allows you to list the current label table. After 'L', 
+press any key to start the listing. Pressing any key will 
+go to the next page; CTRL-C will abort the listing.
 
 9.10.3. D: DELETE LABEL(S)
 
-Use this option to delete any address labels you do not want in the list. After entering the D command, simply enter the NUMBER of the label you want to delete. If you want to delete a range, enter the beginning and ending label numbers, separated by a comma.
+Use this option to delete any address labels you do not 
+want in the list. After entering the D command, simply 
+enter the NUMBER of the label you want to delete. If you 
+want to delete a range, enter the beginning and ending 
+label numbers, separated by a comma.
 
 9.10.4. A:ADD LABEL
 
-Use this option to add a new label to the list. Simply tell the program the hex address and the name you wish to associate with that address. Press RETURN only, to abort this option at any point.
+Use this option to add a new label to the list. Simply tell 
+the program the hex address and the name you wish to 
+associate with that address. Press RETURN only, to abort 
+this option at any point.
 
 9.10.5. F: FREE SPACE
 
-This tells you how much free space remains in the table for new label entries.
+This tells you how much free space remains in the table for 
+new label entries.
 
                                                           96
 ```
@@ -3645,7 +4004,9 @@ MERLIN Users Manual                                SOURCEROR
 
 9.10.6. U: UNLOCK SRCRR.OBJ
 
-☑ Before saving a new label table, you will need to UNLOCK the SRCRR.OBJ file. Use this command before (Q)uitting the LABELER program, if you intend to save a new file.
+Before saving a new label table, you will need to UNLOCK 
+the SRCRR.OBJ file. Use this command before (Q)uitting the 
+LABELER program, if you intend to save a new file.
 
                                                           97
 ```
@@ -3656,19 +4017,39 @@ MERLIN Users Manual                                 SWEET 16
 
 by Dick Sedgewick
 
-SWEET 16 is probably the least used and least understood seed in the Apple ] [.
+SWEET 16 is probably the least used and least understood 
+seed in the Apple ] [.
 
-In exactly the same sense that Integer and Applesoft Basics are languages, SWEET 16 is a language. Compared to the Basics, however, it would be classed as low level with a strong likeness to conventional 6502 Assembly language.
+In exactly the same sense that Integer and Applesoft Basics 
+are languages, SWEET 16 is a language. Compared to the 
+Basics, however, it would be classed as low level with a 
+strong likeness to conventional 6502 Assembly language.
 
-To use SWEET 16, you must learn the language - and to quote "WOZ", "The opcode list is short and uncomplicated". "WOZ" (Steve Wozniak), of course is Mr. Apple, and the creator of SWEET 16.
+To use SWEET 16, you must learn the language - and to quote 
+"WOZ", "The opcode list is short and uncomplicated". "WOZ" 
+(Steve Wozniak), of course is Mr. Apple, and the creator of 
+SWEET 16.
 
-SWEET 16 is ROM based in every Apple ] [ from $F689 to $F7FC. It has its own set of opcodes and instruction sets, and uses the SAVE and RESTORE routines from the Apple Monitor to preserve the 6502 registers when in use, allowing SWEET 16 to be used as a subroutine.
+SWEET 16 is ROM based in every Apple ] [ from $F689 to 
+$F7FC. It has its own set of opcodes and instruction sets, 
+and uses the SAVE and RESTORE routines from the Apple 
+Monitor to preserve the 6502 registers when in use, 
+allowing SWEET 16 to be used as a subroutine.
 
-It uses the first 32 locations on zero page to set up its 16 double byte registers, and is therefore not compatible with Applesoft Basic without some additional efforts.
+It uses the first 32 locations on zero page to set up its 
+16 double byte registers, and is therefore not compatible 
+with Applesoft Basic without some additional efforts.
 
-The original article, "SWEET 16: The 6502 Dream Machine", first appeared in Byte Magazine, November 1977 and later in the original "WOZ PAK". The article is included here and again as test material to help understand the use and imple- mentation of SWEET 16.
+The original article, "SWEET 16: The 6502 Dream Machine", 
+first appeared in Byte Magazine, November 1977 and later in 
+the original "WOZ PAK". The article is included here and 
+again as test material to help understand the use and 
+imple- mentation of SWEET 16.
 
-Examples of the use of SWEET 16 are found in the Programmer's Aid #1, in the Renumber, Append, and Relocate programs. The Programmers Aid Operating Manual contains complete source assembly listings, indexed on page 65.
+Examples of the use of SWEET 16 are found in the 
+Programmer's Aid #1, in the Renumber, Append, and Relocate 
+programs. The Programmers Aid Operating Manual contains 
+complete source assembly listings, indexed on page 65.
 
                                                           99
 ```
@@ -3677,7 +4058,8 @@ Examples of the use of SWEET 16 are found in the Programmer's Aid #1, in the Ren
 
 MERLIN Users Manual                                 SWEET 16
 
-The demonstration program is written to be introductory and simple, consisting of three parts:
+The demonstration program is written to be introductory and 
+simple, consisting of three parts:
 
 1. Integer Basic Program
 
@@ -3685,36 +4067,76 @@ The demonstration program is written to be introductory and simple, consisting o
 
 3. SWEET 16 Subroutine
 
-The task of the program will be to move data. Parameters of the move will be entered in the Integer Basic Program.
+The task of the program will be to move data. Parameters of 
+the move will be entered in the Integer Basic Program.
 
-The "CALL 768" ($300) at line 120, enters a 6502 machine language subroutine having the single purpose of entering SWEET 16 and subsequently returning to BASIC (addresses $300, $301, $302, and $312 respectively). The SWEET 16 subroutine of course performs the move, and is entered at Hex locations $303 to $311 (see listing Number 3).
+The "CALL 768" ($300) at line 120, enters a 6502 machine 
+language subroutine having the single purpose of entering 
+SWEET 16 and subsequently returning to BASIC (addresses 
+$300, $301, $302, and $312 respectively). The SWEET 16 
+subroutine of course performs the move, and is entered at 
+Hex locations $303 to $311 (see listing Number 3).
 
-After the move, the screen will display three lines of data, each 8 bytes long, and await entry of a new set of para- meters. The three lines of data displayed on the screen are as follows:
+After the move, the screen will display three lines of 
+data, each 8 bytes long, and await entry of a new set of 
+para- meters. The three lines of data displayed on the 
+screen are as follows:
 
-Line 1: The first 8 bytes of data starting a $800, which is the fixed source data to be moved (in this case, the string A$).
+Line 1: The first 8 bytes of data starting a $800, which is 
+the fixed source data to be moved (in this case, the string A$).
 
-Line 2: The first 8 bytes of data starting at the hex address entered as the destination of the move (high order byte only).
+Line 2: The first 8 bytes of data starting at the hex 
+address entered as the destination of the move (high order 
+byte only).
 
-Line 3: The first 8 bytes of data starting at $0000 (the first four SWEET 16 registers).
+Line 3: The first 8 bytes of data starting at $0000 (the 
+first four SWEET 16 registers).
 
-The display of 8 bytes of data was chosen to simplify the illustration of what goes on.
+The display of 8 bytes of data was chosen to simplify the 
+illustration of what goes on.
 
-Integer Basic has its own way of recording the string A$. Because the name chosen for the string "A$" is stored in 2 bytes, a total of five housekeeping bytes precede the data entered as A$, leaving only three additional bytes available for display. Integer Basic also adds a housekeeping byte at the end of a string, known as the "string terminator".
+Integer Basic has its own way of recording the string A$. 
+Because the name chosen for the string "A$" is stored in 2 
+bytes, a total of five housekeeping bytes precede the data 
+entered as A$, leaving only three additional bytes 
+available for display. Integer Basic also adds a 
+housekeeping byte at the end of a string, known as the 
+"string terminator".
 
                                                          100
 ```
 ```
 MERLIN Users Manual                                 SWEET 16
 
-Consequently, for convenience purposes of the display, and to see the string terminator as the 8th byte, the string data entered via the keyboard should be limited to two characters, and will appear as the 6th and 7th bytes. Additionally, parameters to be entered include the number of bytes to be moved. A useful range for this demonstration would be 1-8 inclusive, but of course 1-255 will work.
+Consequently, for convenience purposes of the display, and 
+to see the string terminator as the 8th byte, the string 
+data entered via the keyboard should be limited to two 
+characters, and will appear as the 6th and 7th bytes. 
+Additionally, parameters to be entered include the number 
+of bytes to be moved. A useful range for this demonstration 
+would be 1-8 inclusive, but of course 1-255 will work.
 
-Finally, the starting address of the destination of the move must be entered. Again, for simplicity, only the high-order byte is entered, and the program allows a choice between Decimal 9 and high-order byte of program pointer 1, to avoid unnecessary problems (in this demonstration enter a decimal number between 9 and 144 for a 48K APPLE).
+Finally, the starting address of the destination of the 
+move must be entered. Again, for simplicity, only the 
+high-order byte is entered, and the program allows a choice 
+between Decimal 9 and high-order byte of program pointer 1, 
+to avoid unnecessary problems (in this demonstration enter 
+a decimal number between 9 and 144 for a 48K APPLE).
 
-The 8 bytes of data displayed starting at $00 will enable one to observe the condition of the SWEET 16 registers after a move has been accomplished, and thereby understand how the SWEET 16 program works.
+The 8 bytes of data displayed starting at $00 will enable 
+one to observe the condition of the SWEET 16 registers 
+after a move has been accomplished, and thereby understand 
+how the SWEET 16 program works.
 
-From the article "SWEET 16: The 6502 Dream Machine", remember that SWEET 16 can establish 16 double byte registers starting at $ØØ. This means that SWEET 16 can use the first 32 addresses on zero page.
+From the article "SWEET 16: The 6502 Dream Machine", 
+remember that SWEET 16 can establish 16 double byte 
+registers starting at $ØØ. This means that SWEET 16 can use 
+the first 32 addresses on zero page.
 
-The "events" occurring in this demonstration program can be studied in the first four SWEET 16 registers. Therefore, the 8 byte display starting at $0000 is large enough for this purpose .
+The "events" occurring in this demonstration program can be 
+studied in the first four SWEET 16 registers. Therefore, 
+the 8 byte display starting at $0000 is large enough for 
+this purpose .
 
 These four registers are established as RØ, R1, R2, R3:
 
@@ -3734,19 +4156,41 @@ These four registers are established as RØ, R1, R2, R3:
 ```
 MERLIN Users Manual                                 SWEET 16
 
-Additionally, an examination of registers R14 and R15 will extend an understanding of SWEET 16, as fully explained in the "WOZ" text. Notice that the high order byte of R14, (located at $1D) contains $06, and is the doubled register specification (3X2=$06). R15, the SWEET 16 program counter contains the address of the next operation as it did for each step during execution of the program, which was $0312 when execution ended and the 6502 machine code resumed.
+Additionally, an examination of registers R14 and R15 will 
+extend an understanding of SWEET 16, as fully explained in 
+the "WOZ" text. Notice that the high order byte of R14, 
+(located at $1D) contains $06, and is the doubled register 
+specification (3X2=$06). R15, the SWEET 16 program counter 
+contains the address of the next operation as it did for 
+each step during execution of the program, which was $0312 
+when execution ended and the 6502 machine code resumed.
 
-To try a sample run, enter the Integer Basic program as shown in Listing #1. Of course, REM statements can be omitted, and line 10 is only helpful if the machine code is to be stored on disk. Listing #2 must also be entered starting at $300.
+To try a sample run, enter the Integer Basic program as 
+shown in Listing #1. Of course, REM statements can be 
+omitted, and line 10 is only helpful if the machine code is 
+to be stored on disk. Listing #2 must also be entered 
+starting at $300.
 
-NOTE: A 6502 disassembly does not look like Listing #3, but the included SOURCEROR disassembler would create a correct disassembly.
+NOTE: A 6502 disassembly does not look like Listing #3, but 
+the included SOURCEROR disassembler would create a correct 
+disassembly.
 
-Enter "RUN" and hit RETURN Enter "12" and hit RETURN (A$ - A$ string data) Enter "18" and hit RETURN (high-order byte of destination)
+Enter "RUN" and hit RETURN Enter "12" and hit RETURN (A$ - 
+A$ string data) Enter "18" and hit RETURN (high-order byte 
+of destination)
 
 The display should appear as follows:
 
-$0800-C1 40 00 10 08 B1 B2 1E (SOURCE) SØAØØ-C1 40 ØØ 10 08 B1 B2 1E (Dest.) $Ø000-1E ØØ 08 08 08 ØA ØØ ØØ (SWEET 16)
+$0800-C1 40 00 10 08 B1 B2 1E (SOURCE)
+SØAØØ-C1 40 ØØ 10 08 B1 B2 1E (Dest.)
+$Ø000-1E ØØ 08 08 08 ØA ØØ ØØ (SWEET 16)
 
-NOTE: The 8 bytes stored at SØAØØ are identical to the 8 bytes starting at $0800, indicating an accurate move of 8 bytes length has been made. They are moved one byte at a time starting with token Cl and ending with token 1E. If moving less that 8 bytes, the data following the moved data would be whatever existed at those locations before the move.
+NOTE: The 8 bytes stored at SØAØØ are identical to the 8 
+bytes starting at $0800, indicating an accurate move of 8 
+bytes length has been made. They are moved one byte at a 
+time starting with token Cl and ending with token 1E. If 
+moving less that 8 bytes, the data following the moved data 
+would be whatever existed at those locations before the move.
 
                                                          102
 ```
@@ -3760,28 +4204,50 @@ A Token$
 Image With Text:
 $0000
 
-The low order byte of RØ, the SWEET 16 accumulator, has $1E in it, the last byte moved (the 8th).
+The low order byte of RØ, the SWEET 16 accumulator, has $1E 
+in it, the last byte moved (the 8th).
 
-The low order byte of the source register Rl started as SØ0 and was incremented eight times, once for each byte of moved data.
+The low order byte of the source register Rl started as SØ0 
+and was incremented eight times, once for each byte of 
+moved data.
 
-The high order byte of the destination register R2 contains $ØA, which was entered as 10 (the variable) and poked into the SWEET 16 code. The low-order byte of R2 was incremented exactly like Rl.
+The high order byte of the destination register R2 contains 
+$ØA, which was entered as 10 (the variable) and poked into 
+the SWEET 16 code. The low-order byte of R2 was incremented 
+exactly like Rl.
 
-Finally, register R3, the register that stores the number of bytes to be moved, has been poked to 8 (the variable B) and decremented eight times as each byte got moved, ending up $Ø000.
+Finally, register R3, the register that stores the number 
+of bytes to be moved, has been poked to 8 (the variable B) 
+and decremented eight times as each byte got moved, ending 
+up $Ø000.
 
-By entering character strings and varying the number of bytes to be moved, the SWEET 16 registers can be observed and the contents predicted.
+By entering character strings and varying the number of 
+bytes to be moved, the SWEET 16 registers can be observed 
+and the contents predicted.
 
                                                          103
 ```
 ```
 MERLIN Users Manual                                 SWEET 16
 
-Working with this demonstration program, and study of the text material will enable you to write SWEET 16 programs that perform additional 16 bit manipulations. The unassigned opcodes mentioned in the "WOZ Dream Machine" article should present a most interesting opportunity to "play".
+Working with this demonstration program, and study of the 
+text material will enable you to write SWEET 16 programs 
+that perform additional 16 bit manipulations. The 
+unassigned opcodes mentioned in the "WOZ Dream Machine" 
+article should present a most interesting opportunity to 
+"play".
 
-SWEET 16 as a language - or tool - opens a new direction to Apple ][ owners without spending a dime, and it's been there all the time.
+SWEET 16 as a language - or tool - opens a new direction to 
+Apple ][ owners without spending a dime, and it's been 
+there all the time.
 
-"Apple-ites" who desire to learn machine language program- ming, can use SWEET 16 as a starting point. With this text material to use, and less opcodes to learn, a user can quickly be effective.
+"Apple-ites" who desire to learn machine language program- 
+ming, can use SWEET 16 as a starting point. With this text 
+material to use, and less opcodes to learn, a user can 
+quickly be effective.
 
-For those without Integer Basic, SWEET 16 is supplied as a source file on this diskette.
+For those without Integer Basic, SWEET 16 is supplied as a 
+source file on this diskette.
 
 10.1. Listing #1
 
@@ -3899,11 +4365,41 @@ By Steve Wozniak
 
 11.1. Description
 
-While writing APPLE BASIC for a 6502 microprocessor, I re- peatedly encountered a variant of MURPHY'S LAW. Briefly stated, any routine operating on 16-bit data will require at least twice the code that it should. Programs making exten- sive use of 16-bit pointers (such as compilers, editors, and assemblers) are included in this category. In my case, even the addition of a few double-byte instructions to the 6502 would have only slightly alleviated the problem. What I really needed was a 6502/RCA 1800 hybrid - an abundance of 16-bit registers and excellent pointer capability. My solu- tion was to implement a non-existent (meta) 16-bit processor in software, interpreter style, which I call SWEET 16.
+While writing APPLE BASIC for a 6502 microprocessor, I re- 
+peatedly encountered a variant of MURPHY'S LAW. Briefly 
+stated, any routine operating on 16-bit data will require 
+at least twice the code that it should. Programs making 
+exten- sive use of 16-bit pointers (such as compilers, 
+editors, and assemblers) are included in this category. In 
+my case, even the addition of a few double-byte 
+instructions to the 6502 would have only slightly 
+alleviated the problem. What I really needed was a 6502/RCA 
+1800 hybrid - an abundance of 16-bit registers and 
+excellent pointer capability. My solu- tion was to 
+implement a non-existent (meta) 16-bit processor in 
+software, interpreter style, which I call SWEET 16.
 
-SWEET 16 is based on sixteen 16-bit registers (RØ-15), which are actually 32 memory locations. RØ doubles as the SWEET 16 accumulator (ACC), R15 as the program counter (PC), and R14 as the status register. R13 holds compare instruction re- sults and R12 is the subroutine return stack pointer if SWEET 16 subroutines are used. All other SWEET 16 registers are at the user's unrestricted disposal.
+SWEET 16 is based on sixteen 16-bit registers (RØ-15), 
+which are actually 32 memory locations. RØ doubles as the 
+SWEET 16 accumulator (ACC), R15 as the program counter 
+(PC), and R14 as the status register. R13 holds compare 
+instruction re- sults and R12 is the subroutine return 
+stack pointer if SWEET 16 subroutines are used. All other 
+SWEET 16 registers are at the user's unrestricted disposal.
 
-SWEET 16 instructions fall into register and non-register categories. The register ops specify one of the sixteen registers to be used as either a data element or a pointer to data element or a pointer to data in memory, depending on the specific instruction. For example INR R5 uses R5 as data and ST @R7 uses R7 as a pointer to data in memory. Except for the SET instruction, register ops take one byte of code each. The non-register ops are primarily 6502 style branches with the second byte specifying a +/-127 byte displacement rela- tive to the address of the following instruction. Providing that the prior register op result meets a specified branch condition, the displacement is added to the SWEET 16 PC, effecting a branch.
+SWEET 16 instructions fall into register and non-register 
+categories. The register ops specify one of the sixteen 
+registers to be used as either a data element or a pointer 
+to data element or a pointer to data in memory, depending 
+on the specific instruction. For example INR R5 uses R5 as 
+data and ST @R7 uses R7 as a pointer to data in memory. 
+Except for the SET instruction, register ops take one byte 
+of code each. The non-register ops are primarily 6502 style 
+branches with the second byte specifying a +/-127 byte 
+displacement rela- tive to the address of the following 
+instruction. Providing that the prior register op result 
+meets a specified branch condition, the displacement is 
+added to the SWEET 16 PC, effecting a branch.
 
                                                          107
 ```
@@ -3912,9 +4408,15 @@ SWEET 16 instructions fall into register and non-register categories. The regist
 
 MERLIN Users Manual                                 SWEET 16
 
-SWEET 16 is intended as a 6502 enhancement package, not a stand-alone processor. A 6502 program switches to SWEET 16 mode with a subroutine call and subsequent code is inter- preted as SWEET 16 instructions. The nonregister op RTN returns the user program to 6502 mode after restoring the internal register contents (A, S, Y, P, and S). The fol- lowing example illustrates how to use SWEET 16.
+SWEET 16 is intended as a 6502 enhancement package, not a 
+stand-alone processor. A 6502 program switches to SWEET 16 
+mode with a subroutine call and subsequent code is inter- 
+preted as SWEET 16 instructions. The nonregister op RTN 
+returns the user program to 6502 mode after restoring the 
+internal register contents (A, S, Y, P, and S). The fol- 
+lowing example illustrates how to use SWEET 16.
 
-|:----|:---|:------|:-------|:----|:-------|:---------------------|
+
 | 300 | B9 | 00 02 |        | LDA | IN, Y  | get a char.          |
 | 303 | C9 | CD    |        | CMP | #"M"   | "M" for move         |
 | 305 | DØ | 09    |        | BNE | NOMOVE | No. skip move        |
@@ -3932,16 +4434,38 @@ NOTE: Registers A, X, Y, P, and S are not disturbed by SWEET 16.
 
 11.2. Instruction Descriptions
 
-The SWEET 16 opcode listing is short and uncomplicated. Excepting relative branch displacements, hand assembly is trivial. All register opcodes are formed by combining two Hex digits, one for the opcode and one to specify a register. For example, opcodes 15 and 45 both specify register R5 while codes 23, 27 and 29 are all ST ops. Most register ops are assigned in complementary pairs to facilitate remembering them. Therefore, LD and ST are opcodes 2N and 3N respec- tively, while LD @ and ST @ are codes 4N and 5N.
+The SWEET 16 opcode listing is short and uncomplicated. 
+Excepting relative branch displacements, hand assembly is 
+trivial. All register opcodes are formed by combining two 
+Hex digits, one for the opcode and one to specify a 
+register. For example, opcodes 15 and 45 both specify 
+register R5 while codes 23, 27 and 29 are all ST ops. Most 
+register ops are assigned in complementary pairs to 
+facilitate remembering them. Therefore, LD and ST are 
+opcodes 2N and 3N respec- tively, while LD @ and ST @ are 
+codes 4N and 5N.
 
                                                          108
 ```
 ```
 MERLIN Users Manual                                 SWEET 16
 
-Opcodes Ø to C (Hex) are assigned to the thirteen non-regis- ter ops. Except for RTN (opcode Ø), BK (ØA), and RS (ØB), the non register ops are 6502 style branches. The second byte of a branch instruction contains a +/-127 byte displace- ment value (in two's complement form) relative to the address of the instruction immediately following the branch.
+Opcodes Ø to C (Hex) are assigned to the thirteen 
+non-regis- ter ops. Except for RTN (opcode Ø), BK (ØA), and 
+RS (ØB), the non register ops are 6502 style branches. The 
+second byte of a branch instruction contains a +/-127 byte 
+displace- ment value (in two's complement form) relative to 
+the address of the instruction immediately following the 
+branch.
 
-If a specified branch condition is met by the prior register op result, the displacement is added to the PC effecting a branch. Except for BR (Branch always) and BS (Branch to Subroutine), the branch opcodes are assigned in complementary pairs, rendering them easily remembered for hand coding. For example, Branch if Plus and Branch if Minus are opcodes 4 and 5 while Branch if Zero and Branch if NonZero are opcodes 6 and 7.
+If a specified branch condition is met by the prior 
+register op result, the displacement is added to the PC 
+effecting a branch. Except for BR (Branch always) and BS 
+(Branch to Subroutine), the branch opcodes are assigned in 
+complementary pairs, rendering them easily remembered for 
+hand coding. For example, Branch if Plus and Branch if 
+Minus are opcodes 4 and 5 while Branch if Zero and Branch 
+if NonZero are opcodes 6 and 7.
 
 11.3. Sweet 16 Opcode Summary
 
@@ -3997,7 +4521,8 @@ MERLIN Users Manual                                 SWEET 16
 
 SET Rn, Constant In Low High
 
-The 2-byte constant is loaded into Rn (n=Ø to F, Hex) and branch conditions set accordingly. The carry is cleared.
+The 2-byte constant is loaded into Rn (n=Ø to F, Hex) and 
+branch conditions set accordingly. The carry is cleared.
 
 EXAMPLE :
 
@@ -4014,7 +4539,9 @@ MERLIN Users Manual                                 SWEET 16
 
 LD Rn 2n
 
-The ACC (RØ) is loaded from Rn and branch conditions set according to the data transferred. The carry is cleared and contents of Rn are not disturbed.
+The ACC (RØ) is loaded from Rn and branch conditions set 
+according to the data transferred. The carry is cleared and 
+contents of Rn are not disturbed.
 
 EXAMPLE:
 
@@ -4026,7 +4553,9 @@ EXAMPLE:
 
 ST Rn 3n
 
-The ACC is stored into Rn and branch conditions set according to the data transferred. The carry is cleared and the ACC contents are not disturbed.
+The ACC is stored into Rn and branch conditions set 
+according to the data transferred. The carry is cleared and 
+the ACC contents are not disturbed.
 
 EXAMPLE:
 
@@ -4038,7 +4567,11 @@ EXAMPLE:
 
 LD @Rn 4n
 
-The low-order ACC byte is loaded from the memory loca- tion whose address resides in Rn and the high-order ACC byte is cleared. Branch conditions reflect the final ACC contents which will always be positive and never minus 1. The carry is cleared. After the transfer, Rn is incremented by 1.
+The low-order ACC byte is loaded from the memory loca- tion 
+whose address resides in Rn and the high-order ACC byte is 
+cleared. Branch conditions reflect the final ACC contents 
+which will always be positive and never minus 1. The carry 
+is cleared. After the transfer, Rn is incremented by 1.
 
                                                          111
 ```
@@ -4048,13 +4581,17 @@ MERLIN Users Manual                                 SWEET 16
 
 EXAMPLE :
 
-15 34 AØ SET R5, SAØ34 45 LD @R5 ACC is loaded from memory location $AØ34 R5 is incr to $A035
+15 34 AØ SET R5, SAØ34 45 LD @R5 ACC is loaded from memory 
+location $AØ34 R5 is incr to $A035
 
 11.4.5. STORE INDIRECT
 
 ST @Rn 5n
 
-The low-order ACC byte is stored into the memory loca- tion whose address resides in Rn. Branch conditions reflect the 2-byte ACC contents. The carry is cleared. After the transfer Rn is incremented by 1.
+The low-order ACC byte is stored into the memory loca- tion 
+whose address resides in Rn. Branch conditions reflect the 
+2-byte ACC contents. The carry is cleared. After the 
+transfer Rn is incremented by 1.
 
 EXAMPLE :
 
@@ -4068,13 +4605,19 @@ EXAMPLE :
 
 LDD @Rn 6n
 
-The low order ACC byte is loaded from memory location whose address resides in Rn, and Rn is then incremented by 1. The high order ACC byte is loaded from the memory location whose address resides in the incremented Rn, and Rn is again incremented by 1. Branch conditions reflect the final ACC contents. The carry is cleared.
+The low order ACC byte is loaded from memory location whose 
+address resides in Rn, and Rn is then incremented by 1. The 
+high order ACC byte is loaded from the memory location 
+whose address resides in the incremented Rn, and Rn is 
+again incremented by 1. Branch conditions reflect the final 
+ACC contents. The carry is cleared.
 
 EXAMPLE :
 
 15 34 AØ SET R5, SA034 65 LDD @R6
 
-The low-order ACC byte is loaded from $A034, high-order from $A035, R5 is incr to $A036
+The low-order ACC byte is loaded from $A034, high-order 
+from $A035, R5 is incr to $A036
 
                                                          112
 ```
@@ -4085,7 +4628,12 @@ MERLIN Users Manual                                 SWEET 16
 
 STD @Rn 7n
 
-The low-order ACC byte is stored into memory location whose address resides in Rn, and Rn is then incremented by 1. The high-order ACC byte is stored into the memory location whose address resides in the incremented Rn, and Rn is again incremented by 1. Branch conditions reflect the ACC contents which are not disturbed. The carry is cleared.
+The low-order ACC byte is stored into memory location whose 
+address resides in Rn, and Rn is then incremented by 1. The 
+high-order ACC byte is stored into the memory location 
+whose address resides in the incremented Rn, and Rn is 
+again incremented by 1. Branch conditions reflect the ACC 
+contents which are not disturbed. The carry is cleared.
 
 EXAMPLE :
 
@@ -4103,7 +4651,14 @@ EXAMPLE :
 
 POP @Rn 8n
 
-The low-order ACC byte is loaded from the memory loca- tion whose address resides in Rn after Rn is decremented by 1, and the high order ACC byte is cleared. Branch conditions reflect the final 2-byte ACC contents which will always be positive and never minus one. The carry is cleared. Because Rn is decremented prior to loading the ACC, single byte stacks may be implemented with the ST @Rn and POP @Rn ops (Rn is the stack pointer).
+The low-order ACC byte is loaded from the memory loca- tion 
+whose address resides in Rn after Rn is decremented by 1, 
+and the high order ACC byte is cleared. Branch conditions 
+reflect the final 2-byte ACC contents which will always be 
+positive and never minus one. The carry is cleared. Because 
+Rn is decremented prior to loading the ACC, single byte 
+stacks may be implemented with the ST @Rn and POP @Rn ops 
+(Rn is the stack pointer).
 
                                                          113
 ```
@@ -4128,7 +4683,13 @@ EXAMPLE :
 
 STP @Rn 9n
 
-The low-order ACC byte is stored into the memory loca- tion whose address resides in Rn after Rn is decremented by 1. Branch conditions will reflect the 2-byte ACC contents which are not modified. STP @Rn and POP @Rn are used together to move data blocks beginning at the greatest address and working down. Additionally, single-byte stacks may be implemented with the STP @Rn ops .
+The low-order ACC byte is stored into the memory loca- tion 
+whose address resides in Rn after Rn is decremented by 1. 
+Branch conditions will reflect the 2-byte ACC contents 
+which are not modified. STP @Rn and POP @Rn are used 
+together to move data blocks beginning at the greatest 
+address and working down. Additionally, single-byte stacks 
+may be implemented with the STP @Rn ops .
 
 EXAMPLE :
 
@@ -4149,7 +4710,10 @@ MERLIN Users Manual                                 SWEET 16
 
 ADD Rn An
 
-The contents of Rn are added to the contents of ACC (R) and the low-order 16 bits of the sum restored in ACC. The 17th sum bit becomes the carry and the other branch conditions reflect the final ACC contents.
+The contents of Rn are added to the contents of ACC (R) and 
+the low-order 16 bits of the sum restored in ACC. The 17th 
+sum bit becomes the carry and the other branch conditions 
+reflect the final ACC contents.
 
 EXAMPLE :
 
@@ -4164,11 +4728,17 @@ EXAMPLE :
 
 SUB Rn Bn
 
-The contents of Rn are Subtracted from the ACC contents by performing a two's complement addition:
+The contents of Rn are Subtracted from the ACC contents by 
+performing a two's complement addition:
 
 ACC = ACC + Rn + 1
 
-The low-order 16 bits of the subtraction are restored in the ACC, the 17th sum bit becomes the carry and other branch conditions reflect the final ACC contents. If the 16-bit unsigned ACC contents are greater than or equal to the 16-bit unsigned Rn contents, then the carry is set, otherwise it is cleared. Rn is not disturbed.
+The low-order 16 bits of the subtraction are restored in 
+the ACC, the 17th sum bit becomes the carry and other 
+branch conditions reflect the final ACC contents. If the 
+16-bit unsigned ACC contents are greater than or equal to 
+the 16-bit unsigned Rn contents, then the carry is set, 
+otherwise it is cleared. Rn is not disturbed.
 
 EXAMPLE :
 
@@ -4188,9 +4758,16 @@ MERLIN Users Manual                                 SWEET 16
 
 POP @Rn Cn
 
-Rn is decremented by 1 and the high-order ACC byte is loaded from the memory location whose address now re- sides in Rn. Rn is again decremented by 1 and the low- order ACC byte is loaded from the corresponding memory location. Branch conditions reflect the final ACC con- tents.
+Rn is decremented by 1 and the high-order ACC byte is 
+loaded from the memory location whose address now re- sides 
+in Rn. Rn is again decremented by 1 and the low- order ACC 
+byte is loaded from the corresponding memory location. 
+Branch conditions reflect the final ACC con- tents.
 
-The carry is cleared. Because Rn is decremented prior to loading each of the ACC halves, double-byte stacks may be implemented with the STD @Rn and POPD @Rn ops (Rn is the stack pointer).
+The carry is cleared. Because Rn is decremented prior to 
+loading each of the ACC halves, double-byte stacks may be 
+implemented with the STD @Rn and POPD @Rn ops (Rn is the 
+stack pointer).
 
 EXAMPLE :
 
@@ -4207,7 +4784,13 @@ EXAMPLE :
 
 CPR Rn Dn
 
-The ACC (RØ) contents are compared to Rn by performing the 16-bit binary subtraction ACC-Rn and storing the low order 16 difference bits in R13 for subsequent branch tests. If the 16-bit unsigned ACC contents are greater than or equal to the 16-bit unsigned Rn contents, then the carry is set, otherwise it is cleared. No other registers, including ACC and Rn are disturbed.
+The ACC (RØ) contents are compared to Rn by performing the 
+16-bit binary subtraction ACC-Rn and storing the low order 
+16 difference bits in R13 for subsequent branch tests. If 
+the 16-bit unsigned ACC contents are greater than or equal 
+to the 16-bit unsigned Rn contents, then the carry is set, 
+otherwise it is cleared. No other registers, including ACC 
+and Rn are disturbed.
 
                                                          116
 ```
@@ -4232,7 +4815,9 @@ EXAMPLE :
 
 INR Rn En
 
-The contents of Rn are incremented by 1. The carry is cleared and other branch conditions reflect the incre- mented value.
+The contents of Rn are incremented by 1. The carry is 
+cleared and other branch conditions reflect the incre- 
+mented value.
 
 EXAMPLE :
 
@@ -4248,7 +4833,9 @@ EXAMPLE :
 
 DCR Rn Fn
 
-The contents of Rn are decremented by 1. The carry is cleared and other branch conditions reflect the decre- mented value.
+The contents of Rn are decremented by 1. The carry is 
+cleared and other branch conditions reflect the decre- 
+mented value.
 
                                                          117
 ```
@@ -4273,13 +4860,22 @@ EXAMPLE: (Clear 9 bytes beginning at location AØ34)
 
 RTN ØØ
 
-Control is returned to the 6502 and program execution continues at the location immediately following the RTN instruction. The 6502 registers and status conditions are restored to their original contents (prior to en- tering SWEET 16 mode).
+Control is returned to the 6502 and program execution 
+continues at the location immediately following the RTN 
+instruction. The 6502 registers and status conditions are 
+restored to their original contents (prior to en- tering 
+SWEET 16 mode).
 
 11.5.2. BRANCH ALWAYS
 
 BR ea Øl d
 
-An effective address (ea) is calculated by adding the signed displacement byte (d) to the PC. The PC contains the address of the instruction immediately following the BR, or the address of the BR op plus 2. The displace- ment is a signed two's complement value from -128 to +127. Branch conditions are not changed.
+An effective address (ea) is calculated by adding the 
+signed displacement byte (d) to the PC. The PC contains the 
+address of the instruction immediately following the BR, or 
+the address of the BR op plus 2. The displace- ment is a 
+signed two's complement value from -128 to +127. Branch 
+conditions are not changed.
 
                                                          118
 ```
@@ -4288,7 +4884,10 @@ An effective address (ea) is calculated by adding the signed displacement byte (
 
 MERLIN Users Manual                                 SWEET 16
 
-NOTE: The effective address calculation is identical to that for 6502 relative branches. The Hex add & subtract features of the APPLE ] [ monitor may be used to calcu- late displacements.
+NOTE: The effective address calculation is identical to 
+that for 6502 relative branches. The Hex add & subtract 
+features of the APPLE ] [ monitor may be used to calcu- 
+late displacements.
 
 d = $80 ea = PC + 2 - 128
 
@@ -4306,13 +4905,16 @@ EXAMPLE : $300: 01 50 BR $352
 
 BNC ea Ø2 d
 
-A branch to the effective address is taken only if the carry is clear, otherwise execution resumes as normal with the next instruction. Branch conditions are not changed.
+A branch to the effective address is taken only if the 
+carry is clear, otherwise execution resumes as normal with 
+the next instruction. Branch conditions are not changed.
 
 11.5.4. BRANCH IF CARRY SET
 
 BC ea Ø3 d
 
-A branch is effected only if the carry is set. Branch conditions are not changed.
+A branch is effected only if the carry is set. Branch 
+conditions are not changed.
 
                                                          119
 ```
@@ -4325,7 +4927,9 @@ MERLIN Users Manual                                 SWEET 16
 
 BP ea 04 d
 
-A branch is effected only if the prior 'result' (or most recently transferred data) was positive. Branch condi- tions are not changed.
+A branch is effected only if the prior 'result' (or most 
+recently transferred data) was positive. Branch condi- 
+tions are not changed.
 
 EXAMPLE: (Clear mem from A034 to AØ3F)
 
@@ -4343,13 +4947,15 @@ EXAMPLE: (Clear mem from A034 to AØ3F)
 
 BM ea Ø5 d
 
-A branch is effected only if prior 'result' was minus (negative, MSB = 1). Branch conditions are not changed.
+A branch is effected only if prior 'result' was minus 
+(negative, MSB = 1). Branch conditions are not changed.
 
 11.5.7. BRANCH IF ZERO
 
 BZ ea 06 d
 
-A branch is effected only if the prior 'result' was zero. Branch conditions are not changed.
+A branch is effected only if the prior 'result' was zero. 
+Branch conditions are not changed.
 
                                                          120
 ```
@@ -4362,25 +4968,30 @@ MERLIN Users Manual                                 SWEET 16
 
 BNZ ea 07 d
 
-A branch is effected only if the prior 'result' was non- zero. Branch conditions are not changed.
+A branch is effected only if the prior 'result' was non- 
+zero. Branch conditions are not changed.
 
 11.5.9. BRANCH IF MINUS ONE
 
 BM1 ea 08 d
 
-A branch is effected only if the prior 'result' was minus one ($FFFF Hex). Branch conditions are not changed.
+A branch is effected only if the prior 'result' was minus 
+one ($FFFF Hex). Branch conditions are not changed.
 
 11.5.10. BRANCH IF NOT MINUS ONE
 
 BNM 1 ea Ø9 d
 
-A branch is effected only if the prior 'result' was not minus 1. Branch conditions are not changed.
+A branch is effected only if the prior 'result' was not 
+minus 1. Branch conditions are not changed.
 
 11.5.11. BREAK
 
 BK ØA
 
-A 6502 BRK (break) instruction is executed. SWEET 16 may be re-entered non destructively at SW16d after cor- recting the stack pointer to its value prior to ex- ecuting the BRK.
+A 6502 BRK (break) instruction is executed. SWEET 16 may be 
+re-entered non destructively at SW16d after correcting 
+the stack pointer to its value prior to ex- ecuting the BRK.
 
                                                          121
 ```
@@ -4392,13 +5003,22 @@ MERLIN Users Manual                                 SWEET 16
 
 RS ØB
 
-RS terminates execution of a SWEET 16 subroutine and returns to the SWEET 16 calling program which resumes execution (in SWEET 16 mode). R12, which is the SWEET 16 subroutine return stack pointer, is decremented twice. Branch conditions are not changed.
+RS terminates execution of a SWEET 16 subroutine and 
+returns to the SWEET 16 calling program which resumes 
+execution (in SWEET 16 mode). R12, which is the SWEET 16 
+subroutine return stack pointer, is decremented twice. 
+Branch conditions are not changed.
 
 11.5.13. BRANCH TO SWEET 16 SUBROUTINE
 
 BS ea ØC d
 
-A branch to the effective address (PC + 2 + d) is taken and execution is resumed in SWEET 16 mode. The current PC is pushed onto a 'SWEET 16 subroutine return address' stack whose pointer is R12, and R12 is incremented by 2. The carry is cleared and branch conditions set to indi- cate the current ACC contents.
+A branch to the effective address (PC + 2 + d) is taken and 
+execution is resumed in SWEET 16 mode. The current PC is 
+pushed onto a 'SWEET 16 subroutine return address' stack 
+whose pointer is R12, and R12 is incremented by 2. The 
+carry is cleared and branch conditions set to indicate 
+the current ACC contents.
 
 EXAMPLE: (Calling a 'memory move' subroutine to move AØ34-AØ3B to 3000-3007)
 
@@ -4423,11 +5043,39 @@ MERLIN Users Manual                                 SWEET 16
 
 11.6. Theory of Operation
 
-SWEET 16 execution mode begins with a subroutine call to SW16. All 6502 registers are saved at this time, to be restored when a SWEET 16 RTN instruction returns control to the 6502. If you can tolerate indefinite 6502 register contents upon exit, approximately 30 usec may be saved by entering at SW16 + 3. Because this might cause an inadver- tent switch from Hex to Decimal mode, it is advisable to enter at SW16 the first time through.
+SWEET 16 execution mode begins with a subroutine call to 
+SW16. All 6502 registers are saved at this time, to be 
+restored when a SWEET 16 RTN instruction returns control to 
+the 6502. If you can tolerate indefinite 6502 register 
+contents upon exit, approximately 30 usec may be saved by 
+entering at SW16 + 3. Because this might cause an inadver- 
+tent switch from Hex to Decimal mode, it is advisable to 
+enter at SW16 the first time through.
 
-After saving the 6502 registers, SWEET 16 initializes its PC (R15) with the subroutine return address off the 6502 stack. SWEET 16's PC points to the location preceding the next instruction to be executed. Following the subroutine call are 1-,2-, and 3-byte SWEET 16 instructions, stored in ascending memory locations like 6502 instructions. The main loop at SW16B repeatedly calls the 'execute instruction' routine to execute it.
+After saving the 6502 registers, SWEET 16 initializes its 
+PC (R15) with the subroutine return address off the 6502 
+stack. SWEET 16's PC points to the location preceding the 
+next instruction to be executed. Following the subroutine 
+call are 1-,2-, and 3-byte SWEET 16 instructions, stored in 
+ascending memory locations like 6502 instructions. The main 
+loop at SW16B repeatedly calls the 'execute instruction' 
+routine to execute it.
 
-Subroutine SW16C increments the PC (R15) and fetches the next opcode, which is either a register op of the form OP REG with OP between 1 and 15 or a non-register op of the form Ø OP with OP between Ø and 13. Assuming a register op, the regis- ter specification is doubled to account for the 3 byte SWEET 16 registers and placed in the X-reg for indexing. Then the instruction type is determined. Register ops place the doubled register specification in the high order byte of R 14 indicating the 'prior result register' to subsequent branch instructions. Non-register ops treat the register specifica- tion (right-hand half-byte) as their opcode, increment the SWEET 16 PC to point at the displacement byte of branch instructions, load the A-reg with the 'prior result register' index for branch condition testing, and clear the Y-reg.
+Subroutine SW16C increments the PC (R15) and fetches the 
+next opcode, which is either a register op of the form OP 
+REG with OP between 1 and 15 or a non-register op of the 
+form Ø OP with OP between Ø and 13. Assuming a register op, 
+the regis- ter specification is doubled to account for the 
+3 byte SWEET 16 registers and placed in the X-reg for 
+indexing. Then the instruction type is determined. Register 
+ops place the doubled register specification in the high 
+order byte of R 14 indicating the 'prior result register' 
+to subsequent branch instructions. Non-register ops treat 
+the register specifica- tion (right-hand half-byte) as 
+their opcode, increment the SWEET 16 PC to point at the 
+displacement byte of branch instructions, load the A-reg 
+with the 'prior result register' index for branch condition 
+testing, and clear the Y-reg.
 
                                                          123
 ```
@@ -4438,7 +5086,13 @@ MERLIN Users Manual                                 SWEET 16
 
 11.7. When is an RTS really a JSR?
 
-Each instruction type has a corresponding subroutine. The subroutine entry points are stored in a table which is direc- tly indexed into by the opcode. By assigning all the entries to a common page, only a single byte of address need be stored per routine. The 6502 indirect jump might have been used as follows to transfer control to the appropriate sub- routine.
+Each instruction type has a corresponding subroutine. The 
+subroutine entry points are stored in a table which is 
+direc- tly indexed into by the opcode. By assigning all the 
+entries to a common page, only a single byte of address 
+need be stored per routine. The 6502 indirect jump might 
+have been used as follows to transfer control to the 
+appropriate sub- routine.
 
 |:----|:---------|:-----------------|
 | LDA | #ADRH    | High-order byte. |
@@ -4447,32 +5101,73 @@ Each instruction type has a corresponding subroutine. The subroutine entry point
 | STA | IND      |                  |
 | JMP | (IND)    |                  |
 
-To save code, the subroutine entry address (minus 1) is pushed onto the stack, high -order byte first. A 6502 RTS (return from subroutine) is used to pop the address off the stack and into the 6502 PC (after incrementing by 1). The net result is that the desired subroutine is reached by executing a subroutine return instruction!
+To save code, the subroutine entry address (minus 1) is 
+pushed onto the stack, high -order byte first. A 6502 RTS 
+(return from subroutine) is used to pop the address off the 
+stack and into the 6502 PC (after incrementing by 1). The 
+net result is that the desired subroutine is reached by 
+executing a subroutine return instruction!
 
 11.8. OPcode Subroutines
 
-The register op routines make use of the 6502 'zero page indexed by X' and 'indexed by X indirect' addressing modes to access the specified registers and indirect data. The 're- sult' of most register ops is left in the specified register and can be sensed by subsequent branch instructions, since the register specification is saved in the high-order byte of R14. This specification is changed to indicate RØ (ACC) for ADD and SUB instructions and R13 for the CPR (compare) in- struction.
+The register op routines make use of the 6502 'zero page 
+indexed by X' and 'indexed by X indirect' addressing modes 
+to access the specified registers and indirect data. The 
+'re- sult' of most register ops is left in the specified 
+register and can be sensed by subsequent branch 
+instructions, since the register specification is saved in 
+the high-order byte of R14. This specification is changed 
+to indicate RØ (ACC) for ADD and SUB instructions and R13 
+for the CPR (compare) in- struction.
 
-Normally the high-order R14 byte holds the 'prior result register' index times 2 to account for the 2-byte SWEET 16 registers and the LSB is zero. If ADD, SUB, or CPR instruc- tions generate carries, then this index is incremented, set- ting the LSB.
+Normally the high-order R14 byte holds the 'prior result 
+register' index times 2 to account for the 2-byte SWEET 16 
+registers and the LSB is zero. If ADD, SUB, or CPR instruc- 
+tions generate carries, then this index is incremented, 
+set- ting the LSB.
 
                                                          124
 ```
 ```
 MERLIN Users Manual                                 SWEET 16
 
-The SET instruction increments the PC twice, picking up data bytes in the specified register. In accordance with 6502 convention, the low-order data byte precedes the high-order byte.
+The SET instruction increments the PC twice, picking up 
+data bytes in the specified register. In accordance with 
+6502 convention, the low-order data byte precedes the 
+high-order byte.
 
-Most SWEET 16 non-register ops are relative branches. The corresponding subroutines determine whether or not the 'prior result' meets the specified branch condition and if so, update the SWEET 16 PC by adding the displacement value (-128 to +127 bytes).
+Most SWEET 16 non-register ops are relative branches. The 
+corresponding subroutines determine whether or not the 
+'prior result' meets the specified branch condition and if 
+so, update the SWEET 16 PC by adding the displacement value 
+(-128 to +127 bytes).
 
-The RTN op restores the 6502 register contents, pops the subroutine return stack and jumps indirect through the SWEET 16 PC. This transfers control to the 6502 at the instruction immediately following the RTN instruction.
+The RTN op restores the 6502 register contents, pops the 
+subroutine return stack and jumps indirect through the 
+SWEET 16 PC. This transfers control to the 6502 at the 
+instruction immediately following the RTN instruction.
 
-The BK op actually executes a 6502 break instruction (BRK), transferring control to the interrupt handler.
+The BK op actually executes a 6502 break instruction (BRK), 
+transferring control to the interrupt handler.
 
-Any number of subroutine levels may be implemented within SWEET 16 code via the BS (Branch to Subroutine) and RS (Re- turn from Subroutine) instructions. The user must initialize and otherwise not disturb R12 if the SWEET 16 subroutine capability is used since it is utilized as the automatic subroutine return stack pointer.
+Any number of subroutine levels may be implemented within 
+SWEET 16 code via the BS (Branch to Subroutine) and RS (Re- 
+turn from Subroutine) instructions. The user must 
+initialize and otherwise not disturb R12 if the SWEET 16 
+subroutine capability is used since it is utilized as the 
+automatic subroutine return stack pointer.
 
 11.9. Memory Allocation
 
-The only storage that must be allocated for SWEET 16 vari- ables are 32 consecutive locations in page zero for the SWEET 16 registers, four locations to save the 6502 register con- tents, and a few levels of the 6502 subroutine return address stack. If you don't need to preserve the 6502 register contents, delete the SAVE and RESTORE subroutines and the corresponding subroutine calls. This will free the four page zero locations ASAV, XSAV, YSAV, and PSAV.
+The only storage that must be allocated for SWEET 16 vari- 
+ables are 32 consecutive locations in page zero for the 
+SWEET 16 registers, four locations to save the 6502 
+register con- tents, and a few levels of the 6502 
+subroutine return address stack. If you don't need to 
+preserve the 6502 register contents, delete the SAVE and 
+RESTORE subroutines and the corresponding subroutine calls. 
+This will free the four page zero locations ASAV, XSAV, 
+YSAV, and PSAV.
 
                                                          125
 ```
@@ -4483,7 +5178,17 @@ MERLIN Users Manual                                 SWEET 16
 
 11.10. User Modifications
 
-You may wish to add some of your own instruction to this implementation of SWEET 16. If you use the unassigned op- codes $ØE and $ØF, remember that SWEET 16 treats these as 2- byte instructions. You may wish to handle the break instruc- tion as a SWEET 16 call, saving two bytes of code each time you transfer into SWEET 16 mode. Or you may wish to use the SWEET 16 BK (break) op as a 'CHAROUT' call in the interrupt handler. You can perform absolute jumps within SWEET 16 by loading the ACC (RØ) with the address you wish to jump to (minus 1) and executing a ST R15 instruction.
+You may wish to add some of your own instruction to this 
+implementation of SWEET 16. If you use the unassigned op- 
+codes $ØE and $ØF, remember that SWEET 16 treats these as 
+2- byte instructions. You may wish to handle the break 
+instruc- tion as a SWEET 16 call, saving two bytes of code 
+each time you transfer into SWEET 16 mode. Or you may wish 
+to use the SWEET 16 BK (break) op as a 'CHAROUT' call in 
+the interrupt handler. You can perform absolute jumps 
+within SWEET 16 by loading the ACC (RØ) with the address 
+you wish to jump to (minus 1) and executing a ST R15 
+instruction.
 
                                                          126
 ```
@@ -4496,15 +5201,37 @@ MERLIN Users Manual            APPLESOFT LISTING INFORMATION
 
 12.1. SOURCEROR.FP
 
-A fully labelled and commented source listing of Applesoft BASIC can be generated by the program, SOURCEROR.FP on the opposite side of the MERLIN diskette.
+A fully labelled and commented source listing of Applesoft 
+BASIC can be generated by the program, SOURCEROR.FP on the 
+opposite side of the MERLIN diskette.
 
-This program works by scanning the resident copy of Applesoft present in your computer and by generating text files con- taining the bulk of Applesoft BASIC: T.APSOFT I, T.APSOFT II, T.APSOFT III and T.APSOFT IV (the 48K version uses T.APSOFT 1 through T.APSOFT 7 instead).
+This program works by scanning the resident copy of 
+Applesoft present in your computer and by generating text 
+files con- taining the bulk of Applesoft BASIC: T.APSOFT I, 
+T.APSOFT II, T.APSOFT III and T.APSOFT IV (the 48K version 
+uses T.APSOFT 1 through T.APSOFT 7 instead).
 
-To conserve space, these files contain macros that are de- fined in another file on the disk entitled, APPLESOFT.S. This file, when assembled using the PRTR command, will print out a nicely formatted disassembly of Applesoft, auto- matically bringing in and using the APSOFT files as necessary. Exact details on doing this are outlined below.
+To conserve space, these files contain macros that are de- 
+fined in another file on the disk entitled, APPLESOFT.S. 
+This file, when assembled using the PRTR command, will 
+print out a nicely formatted disassembly of Applesoft, 
+auto- matically bringing in and using the APSOFT files as 
+necessary. Exact details on doing this are outlined below.
 
-PLEASE NOTE that this is NOT an "official" source listing from Apple Computer, Inc., but rather a product of the Author's own research and interpretation of the original Applesoft ROM. Apple Computer, Inc. was not in any way involved in the preparation of this data, nor was the final product reviewed for accuracy by that company. Use of the term APPLE should not be construed to represent any endorse- ment, official or otherwise, by Apple Computer, Inc.
+PLEASE NOTE that this is NOT an "official" source listing 
+from Apple Computer, Inc., but rather a product of the 
+Author's own research and interpretation of the original 
+Applesoft ROM. Apple Computer, Inc. was not in any way 
+involved in the preparation of this data, nor was the final 
+product reviewed for accuracy by that company. Use of the 
+term APPLE should not be construed to represent any 
+endorse- ment, official or otherwise, by Apple Computer, 
+Inc.
 
-Additionally, Southwestern Data Systems makes no warranties concerning the accuracy or usability of this data. It is provided solely for the entertainment of users of the MERLIN assembler.
+Additionally, Southwestern Data Systems makes no warranties 
+concerning the accuracy or usability of this data. It is 
+provided solely for the entertainment of users of the 
+MERLIN assembler.
 
                                                          127
 ```
@@ -4513,21 +5240,33 @@ Additionally, Southwestern Data Systems makes no warranties concerning the accur
 
 MERLIN Users Manual            APPLESOFT LISTING INFORMATION
 
-WARNING: SOURCEROR.FP and some temporary work files that are not normally visible with the CATALOG command are DELETED when SOURCEROR.FP is BRUN. For this reason, you should make a backup copy of the SOURCEROR.FP side of the MERLIN disk with the COPYA program on the DOS 3.3 System Master diskette. Use the backup copy to make the Applesoft listing as explained next.
+WARNING: SOURCEROR.FP and some temporary work files that 
+are not normally visible with the CATALOG command are 
+DELETED when SOURCEROR.FP is BRUN. For this reason, you 
+should make a backup copy of the SOURCEROR.FP side of the 
+MERLIN disk with the COPYA program on the DOS 3.3 System 
+Master diskette. Use the backup copy to make the Applesoft 
+listing as explained next.
 
 12.1.1. Steps to list the Applesoft Disassembly
 
-1. BRUN SOURCEROR.FP on your backup copy (see warning above).
+1. BRUN SOURCEROR.FP on your backup copy (see warning 
+above).
 
-2. Boot MERLIN, select the D)rive that contains your backup copy and L)oad APPLESOFT.
+2. Boot MERLIN, select the D)rive that contains your backup 
+copy and L)oad APPLESOFT.
 
-3. RAM CARD VERSION: From the editor mode, set SYM to $8000, enter your PRTR command and ASM)ble the file. The screen should look something like this when you're done:
+3. RAM CARD VERSION: From the editor mode, set SYM to 
+$8000, enter your PRTR command and ASM)ble the file. The 
+screen should look something like this when you're done:
 
 : SYM $8000
 
 : PRTR 1 "I8ØN"APPLESOFT LISTING" : ASM
 
-4. 48K VERSION: From the editor mode, set HIMEM and SYM to $4EØØ, enter your PRTR command and ASM)ble the file. The screen should look something like this when you're done:
+4. 48K VERSION: From the editor mode, set HIMEM and SYM to 
+$4EØØ, enter your PRTR command and ASM)ble the file. The 
+screen should look something like this when you're done:
 
 : HIMEM: $4EØØ <-- Note colon
 
@@ -4535,7 +5274,10 @@ WARNING: SOURCEROR.FP and some temporary work files that are not normally visibl
 
 : PRTR 1 "I8ØN"APPLESOFT LISTING" : ASM
 
-In the examples above, the PRTR command will send output to slot 1, initialize the printer interface card with <CTRL I>8ØN" (the I is in inverse), and will print "APPLESOFT LISTING" as a header at the top of every page.
+In the examples above, the PRTR command will send output to 
+slot 1, initialize the printer interface card with <CTRL 
+I>8ØN" (the I is in inverse), and will print "APPLESOFT 
+LISTING" as a header at the top of every page.
 
                                                          128
 ```
@@ -4544,11 +5286,25 @@ In the examples above, the PRTR command will send output to slot 1, initialize t
 
 MERLIN Users Manual            APPLESOFT LISTING INFORMATION
 
-MERLIN will then ask "GIVE VALUE FOR SAVEOBJ :" This refers to whether or not you want to save object code generated by the assembly. It is recommended that you answer, "Ø". This is all you need to do to begin the printing process. If you answer "1", you will save object code at the cost of slowing down the system. Saved object code allows you to verify it against where it was taken from.
+MERLIN will then ask "GIVE VALUE FOR SAVEOBJ :" This refers 
+to whether or not you want to save object code generated by 
+the assembly. It is recommended that you answer, "Ø". This 
+is all you need to do to begin the printing process. If you 
+answer "1", you will save object code at the cost of 
+slowing down the system. Saved object code allows you to 
+verify it against where it was taken from.
 
-MERLIN will now do some preliminary checking to make sure everything is OK before printing out the listing. The disk will be accessed a few times, sometimes with long periods between accesses. This is normal. The entire checking pro- cess takes about 3.5 minutes.
+MERLIN will now do some preliminary checking to make sure 
+everything is OK before printing out the listing. The disk 
+will be accessed a few times, sometimes with long periods 
+between accesses. This is normal. The entire checking pro- 
+cess takes about 3.5 minutes.
 
-MERLIN will then begin to print out a completely disassembled and commented listing of Applesoft. It will take 105 pages (including the symbol tables) and nearly an hour and a half to print out (at a printer rate of 80 characters per second).
+MERLIN will then begin to print out a completely 
+disassembled and commented listing of Applesoft. It will 
+take 105 pages (including the symbol tables) and nearly an 
+hour and a half to print out (at a printer rate of 80 
+characters per second).
 
                                                          129
 ```
@@ -4768,19 +5524,39 @@ MERLIN Users Manual                          SAMPLE PROGRAMS
 
 14. SAMPLE PROGRAMS
 
-The first group of three programs are superb Assembly Lan- guage utilities written by Steve Wozniak and Allen Baum, and are still found on the original Integer Basic F4 ROM. They are Supplied in source code format on this diskette for the benefit of Apple ][ Plus owners who do not have Integer Basic. They may be located at any convenient memory location.
+The first group of three programs are superb Assembly Lan- 
+guage utilities written by Steve Wozniak and Allen Baum, 
+and are still found on the original Integer Basic F4 ROM. 
+They are Supplied in source code format on this diskette 
+for the benefit of Apple ][ Plus owners who do not have 
+Integer Basic. They may be located at any convenient memory 
+location.
 
 14.1. The Floating Point Routines
 
-These are single precision floating point routines that may be interfaced to a BASIC or assembly language program. In- formation on their use may be found in the source listings themselves.
+These are single precision floating point routines that may 
+be interfaced to a BASIC or assembly language program. In- 
+formation on their use may be found in the source listings 
+themselves.
 
 14.2. The Multiply /Divide Routines
 
-These routines are intended to be used as subroutines in assembly language programs providing a four byte multiply or divide result. Brief information on their use is provided in the source listings, and a multiply demo by Dave Garson is included on this diskette.
+These routines are intended to be used as subroutines in 
+assembly language programs providing a four byte multiply 
+or divide result. Brief information on their use is 
+provided in the source listings, and a multiply demo by 
+Dave Garson is included on this diskette.
 
 14.3. PRDEC
 
-This is one the most used subroutines in the Integer Basic ROM set. It is called by virtually every routine which re- quires the output of an integer number in the range 0-65535. It is easily integrated in any Assembly Language program. To use it, load the accumulator with the high-order byte of [number], load X with the low-byte and call PRDEC. Alter- natively, store the high-byte in $F3, the low byte in $F2, and call PRDEC+4.
+This is one the most used subroutines in the Integer Basic 
+ROM set. It is called by virtually every routine which re- 
+quires the output of an integer number in the range 
+0-65535. It is easily integrated in any Assembly Language 
+program. To use it, load the accumulator with the 
+high-order byte of [number], load X with the low-byte and 
+call PRDEC. Alter- natively, store the high-byte in $F3, 
+the low byte in $F2, and call PRDEC+4.
 
                                                          137
 ```
@@ -4791,15 +5567,44 @@ MERLIN Users Manual                          SAMPLE PROGRAMS
 
 14.4. MSGOUT
 
-This is a subroutine by Andy Hertzfeld to output ASCII strings from an Assembly Language program. If MERLIN INV or FLS Pseudo-ops are used in connection with it, the ORA #$80 must be removed, and all normal ASCII must have the high-bit set. Also in the same source file are two simple subroutines to read ASCII and hexadecimal characters input by the user.
+This is a subroutine by Andy Hertzfeld to output ASCII 
+strings from an Assembly Language program. If MERLIN INV or 
+FLS Pseudo-ops are used in connection with it, the ORA #$80 
+must be removed, and all normal ASCII must have the 
+high-bit set. Also in the same source file are two simple 
+subroutines to read ASCII and hexadecimal characters input 
+by the user.
 
 14.5. UPCON
 
-This utility by Glen Bredon is provided for users who do not have a lowercase video display chip. It will search for source file comments beginning with either "*" or ";", and convert all lower case characters to upper case. Load the source file with MERLIN, then BRUN UPCON, via the 'C' command in the EXEC mode.
+This utility by Glen Bredon is provided for users who do 
+not have a lowercase video display chip. It will search for 
+source file comments beginning with either "*" or ";", and 
+convert all lower case characters to upper case. Load the 
+source file with MERLIN, then BRUN UPCON, via the 'C' 
+command in the EXEC mode.
 
 14.6. Game Paddle Printer Driver
 
-When the Apple ][ was first developed, there were no printer interface cards, nor was there really much consideration even given to the need for a printer. Obviously, the folks at Apple computer had a requirement to hard copy their develop- ment routines, thus a primitive teletype driver was written by Randy Wiggington and Steve Wozniak to serve their in-house needs. This was subsequently published in the famous "red book" instruction manual, the second for the Apple ][. Along came the Disk ][, and lo and behold, the driver would not work, since it ignored DOS and set its own I/0 hooks. Next the Aldrich brothers took care of this problem, and we were back in business. By this time, of course, there was no desperate need for a game paddle driver; interface cards were developed, and worked well. Nevertheless, some users con- tinued using the game I/O driver, so Dave Garson and Val Golding again modified the drive so that inverse and flashing characters would not upset the printer when doing a catalog, etc.
+When the Apple ][ was first developed, there were no 
+printer interface cards, nor was there really much 
+consideration even given to the need for a printer. 
+Obviously, the folks at Apple computer had a requirement to 
+hard copy their develop- ment routines, thus a primitive 
+teletype driver was written by Randy Wiggington and Steve 
+Wozniak to serve their in-house needs. This was 
+subsequently published in the famous "red book" instruction 
+manual, the second for the Apple ][. Along came the Disk 
+][, and lo and behold, the driver would not work, since it 
+ignored DOS and set its own I/0 hooks. Next the Aldrich 
+brothers took care of this problem, and we were back in 
+business. By this time, of course, there was no desperate 
+need for a game paddle driver; interface cards were 
+developed, and worked well. Nevertheless, some users con- 
+tinued using the game I/O driver, so Dave Garson and Val 
+Golding again modified the drive so that inverse and 
+flashing characters would not upset the printer when doing 
+a catalog, etc.
 
                                                          138
 ```
@@ -4808,13 +5613,33 @@ When the Apple ][ was first developed, there were no printer interface cards, no
 
 MERLIN Users Manual                          SAMPLE PROGRAMS
 
-Concurrently, many new interface cards of all kinds were developed for the Apple; clock cards, 80 column cards, ROM cards, etc., until card space is now at a premium. Running a serial printer from the game I/O port is one way in which the user can save both the cost of a printer interface and the slot space it would occupy. Already the teletype driver has been adapted to such printers as Integral Data, Base 2, Heath H-14, and others.
+Concurrently, many new interface cards of all kinds were 
+developed for the Apple; clock cards, 80 column cards, ROM 
+cards, etc., until card space is now at a premium. Running 
+a serial printer from the game I/O port is one way in which 
+the user can save both the cost of a printer interface and 
+the slot space it would occupy. Already the teletype driver 
+has been adapted to such printers as Integral Data, Base 2, 
+Heath H-14, and others.
 
-As a last step, Glen Bredon has added a number of improve- ments to the driver. It can print formatted BASIC listings to any column width, starting with column one, can be output with or without video. The video may be left on even when printing beyond 40 columns, something most interface cards can not do. These functions are handled by Basic POKE state- ments to the flags at the end of the program.
+As a last step, Glen Bredon has added a number of improve- 
+ments to the driver. It can print formatted BASIC listings 
+to any column width, starting with column one, can be 
+output with or without video. The video may be left on even 
+when printing beyond 40 columns, something most interface 
+cards can not do. These functions are handled by Basic POKE 
+state- ments to the flags at the end of the program.
 
-Full documentation and instructions are contained in the source file included on this diskette. Naturally, it is completely compatible with MERLIN, and called with the MERLIN USER command. This is set up when it is first BRUN, which establishes the ampersand hooks, which may also be used from BASIC.
+Full documentation and instructions are contained in the 
+source file included on this diskette. Naturally, it is 
+completely compatible with MERLIN, and called with the 
+MERLIN USER command. This is set up when it is first BRUN, 
+which establishes the ampersand hooks, which may also be 
+used from BASIC.
 
-In addition, the source code is well commented, so that it in itself, serves as a tutorial on writing driver routines for different applications, etc.
+In addition, the source code is well commented, so that it 
+in itself, serves as a tutorial on writing driver routines 
+for different applications, etc.
 
                                                          139
 ```
@@ -4829,15 +5654,41 @@ MERLIN Users Manual                                UTILITIES
 
 15.1. Formatter
 
-This program is provided to enhance the use of MERLIN as a general text editor. It will automatically format a file into paragraphs using a specified line length. Paragraphs are separated by empty lines in the original file.
+This program is provided to enhance the use of MERLIN as a 
+general text editor. It will automatically format a file 
+into paragraphs using a specified line length. Paragraphs 
+are separated by empty lines in the original file.
 
-To use FORMATTER, you should first BRUN it from EXEC mode. FORMATTER loads itself $9064 and relocates itself to $94A0. This will simply set up the editor's USER vector. To format a file which is in memory, issue the USER command from the editor.
+To use FORMATTER, you should first BRUN it from EXEC mode. 
+FORMATTER loads itself $9064 and relocates itself to $94A0. 
+This will simply set up the editor's USER vector. To format 
+a file which is in memory, issue the USER command from the 
+editor.
 
-The formatter program will request a range to format. If you just specify one number, the file will be formatted from that line to the end. Then you will be asked for a line length, which must be less than 250. Finally, you may specify whether you want the file justified on both sides (rather than just on the left).
+The formatter program will request a range to format. If 
+you just specify one number, the file will be formatted 
+from that line to the end. Then you will be asked for a 
+line length, which must be less than 250. Finally, you may 
+specify whether you want the file justified on both sides 
+(rather than just on the left).
 
-The first thing done by the program is to check whether or not each line of the file starts with a space. If not, a space is inserted at the start of each line. This is to be used to give a left margin using the editor's TAB command before using the PRINT command to print out the file.
+The first thing done by the program is to check whether or 
+not each line of the file starts with a space. If not, a 
+space is inserted at the start of each line. This is to be 
+used to give a left margin using the editor's TAB command 
+before using the PRINT command to print out the file.
 
-Formatter uses inverse spaces for the fill required by two- sided justification. This is done so that they can be lo- cated and removed if you want to reformat the file later. It is important that you do not use the FIX or TEXT commands on a file after it has been formatted (unless another copy has been saved). For files coming from external sources, it is desirable to first use the FIX command on them to make sure they have the form expected by FORMATTER. For the same reason, it is advisable to reformat a file using only left justification prior to any edit of the file.
+Formatter uses inverse spaces for the fill required by two- 
+sided justification. This is done so that they can be lo- 
+cated and removed if you want to reformat the file later. 
+It is important that you do not use the FIX or TEXT 
+commands on a file after it has been formatted (unless 
+another copy has been saved). For files coming from 
+external sources, it is desirable to first use the FIX 
+command on them to make sure they have the form expected by 
+FORMATTER. For the same reason, it is advisable to reformat 
+a file using only left justification prior to any edit of 
+the file.
 
                                                          141
 ```
@@ -4846,21 +5697,45 @@ Formatter uses inverse spaces for the fill required by two- sided justification.
 
 MERLIN Users Manual                                UTILITIES
 
-Don't forget to use the TABS command before printing out a formatted file.
+Don't forget to use the TABS command before printing out a 
+formatted file.
 
 15.2. CHRGEN 70
 
-CHRGEN 70 is a 70-column character generator which is de- signed specifically to allow the use of MERLIN with a 70 column by 24 line display on the Hi-Res screen. Because of the large amount of memory required, CHRGEN 70 is available only with the RAM card version of MERLIN.
+CHRGEN 70 is a 70-column character generator which is de- 
+signed specifically to allow the use of MERLIN with a 70 
+column by 24 line display on the Hi-Res screen. Because of 
+the large amount of memory required, CHRGEN 70 is available 
+only with the RAM card version of MERLIN.
 
-TV sets do not provide sufficient resolution for use with CHRGEN 70, thus requiring use of a display monitor for satisfactory results.
+TV sets do not provide sufficient resolution for use with 
+CHRGEN 70, thus requiring use of a display monitor for 
+satisfactory results.
 
-To use CHRGEN 70, you must first BRUN it from MERLIN's EXEC mode as a DOS command (after a CATALOG). This will reset the source address to $4001 (above the Hi-Res screen which must be used by CHRGEN 70). This, of course, will delete any source file in memory at the time. Once it has been BRUN, you can invoke it at any time by typing "USER" from the editor.
+To use CHRGEN 70, you must first BRUN it from MERLIN's EXEC 
+mode as a DOS command (after a CATALOG). This will reset 
+the source address to $4001 (above the Hi-Res screen which 
+must be used by CHRGEN 70). This, of course, will delete 
+any source file in memory at the time. Once it has been 
+BRUN, you can invoke it at any time by typing "USER" from 
+the editor.
 
-To exit CHRGEN 70, simply type VID Ø, VID 16, or PR#Ø from the editor. CHRGEN 70 is automatically disconnected when you exit the editor to the EXEC Mode. Upon return to the editor, you can reconnect it by typing "USER" again. To permanently remove CHRGEN 70 in order to free up the area normally used by long source listings, you will have to BRUN MERLIN again.
+To exit CHRGEN 70, simply type VID Ø, VID 16, or PR#Ø from 
+the editor. CHRGEN 70 is automatically disconnected when 
+you exit the editor to the EXEC Mode. Upon return to the 
+editor, you can reconnect it by typing "USER" again. To 
+permanently remove CHRGEN 70 in order to free up the area 
+normally used by long source listings, you will have to 
+BRUN MERLIN again.
 
-To use CHRGEN 70 with the editor's PRTR command, just type PRTR 8 "filename", with CHRGEN 70 installed in the system.
+To use CHRGEN 70 with the editor's PRTR command, just type 
+PRTR 8 "filename", with CHRGEN 70 installed in the system.
 
-If the USER vector has been written over by some other USER routine, it can be reset to point to CHRGEN 70 either by BRUNing CHRGEN 70 again, or by going to the Monitor (use the MON command) and typing in 900G. The latter assumes, of course, that CHRGEN 70 is still intact at $900.
+If the USER vector has been written over by some other USER 
+routine, it can be reset to point to CHRGEN 70 either by 
+BRUNing CHRGEN 70 again, or by going to the Monitor (use 
+the MON command) and typing in 900G. The latter assumes, of 
+course, that CHRGEN 70 is still intact at $900.
 
                                                          142
 ```
@@ -4869,23 +5744,47 @@ If the USER vector has been written over by some other USER routine, it can be r
 
 MERLIN Users Manual                                UTILITIES
 
-CHRGEN 70 includes a version of the FORMATTER program. To implement FORMATTER when CHRGEN 70 is connected, just type CTRL-T from the editor's command mode. NOTE: This command may not be accepted unless something has been listed previously.
+CHRGEN 70 includes a version of the FORMATTER program. To 
+implement FORMATTER when CHRGEN 70 is connected, just type 
+CTRL-T from the editor's command mode. NOTE: This command 
+may not be accepted unless something has been listed 
+previously.
 
-CHRGEN 70 also includes some keyboard macros. Typing the ESCAPE key followed by certain other keys will produce the keyboard macros. These are presently defined for these keys as:
+CHRGEN 70 also includes some keyboard macros. Typing the 
+ESCAPE key followed by certain other keys will produce the 
+keyboard macros. These are presently defined for these keys 
+as:
 
 * > " ' # + : . 27 3 ; X Y D HP @ LS - O CA E
 
-The macro table lies at the end of the CHRGEN 70 program at $1500 and is modifiable. It must end with a $FF.
+The macro table lies at the end of the CHRGEN 70 program at 
+$1500 and is modifiable. It must end with a $FF.
 
-CAUTION: When CHRGEN 70 is up, you must not load any binary source file longer than 88 sectors or it will overwrite the DOS buffers and bomb the system. Text files do not present this danger since they are never allowed to go beyond HIMEM.
+CAUTION: When CHRGEN 70 is up, you must not load any binary 
+source file longer than 88 sectors or it will overwrite the 
+DOS buffers and bomb the system. Text files do not present 
+this danger since they are never allowed to go beyond 
+HIMEM.
 
 15.3. XREF, XREF. XL and STRIP
 
-Utility programs XREF, XREF.XL and STRIP provide a convenient means of generating a cross-reference listing of all labels used within a MERLIN assembly language (i.e., source) program.
+Utility programs XREF, XREF.XL and STRIP provide a 
+convenient means of generating a cross-reference listing of 
+all labels used within a MERLIN assembly language (i.e., 
+source) program.
 
-Such a listing can help you quickly find, identify and trace values throughout a program. This becomes especially im- portant when attempting to understand, debug or fine tune portions of code within a large program.
+Such a listing can help you quickly find, identify and 
+trace values throughout a program. This becomes especially 
+im- portant when attempting to understand, debug or fine 
+tune portions of code within a large program.
 
-The MERLIN assembler by itself provides a printout of its symbol table only at the end of a successful assembly (pro- vided that you have not defeated this feature with the LST OFF pseudo op code). While the symbol table allows you to see what the actual value or address of a label is, it does not allow you to follow the use of the label through the program.
+The MERLIN assembler by itself provides a printout of its 
+symbol table only at the end of a successful assembly (pro- 
+vided that you have not defeated this feature with the LST 
+OFF pseudo op code). While the symbol table allows you to 
+see what the actual value or address of a label is, it does 
+not allow you to follow the use of the label through the 
+program.
 
                                                          143
 ```
@@ -4896,11 +5795,18 @@ MERLIN Users Manual                                UTILITIES
 
 This is where XREF, XREF.XL and STRIP come in.
 
-XREF gives you a complete alphabetical and numerical printout of label usage within an assembly language program with a length of up to approximately 1,000 lines (heavily commented) or 2,000 lines (lightly commented).
+XREF gives you a complete alphabetical and numerical 
+printout of label usage within an assembly language program 
+with a length of up to approximately 1,000 lines (heavily 
+commented) or 2,000 lines (lightly commented).
 
-XREF.XL handles "extra-large" files of up to three or four times the size of those handled by XREF by storing the gen- erated cross reference table on disk and printing it out later.
+XREF.XL handles "extra-large" files of up to three or four 
+times the size of those handled by XREF by storing the gen- 
+erated cross reference table on disk and printing it out
+later.
 
-STRIP provides a method of reducing file size by removing comments from source code.
+STRIP provides a method of reducing file size by removing 
+comments from source code.
 
 15.3.1. Sample MERLIN Symbol Table Printout :
 
@@ -4935,25 +5841,46 @@ Cross referenced symbol table - numerical order:
 
 MERLIN Users Manual                                UTILITIES
 
-As you can see from the above example (taken from the SWEET 16 source file on the MERLIN diskette), the "definition" or actual value of the label is indicated by the "=" sign, and the line number of each line in the source file that the label appears in is listed to the right of the definition. In addition, the line number where the label is either de- fined or used as a major entry point is suffixed ("flagged") with a "*".
+As you can see from the above example (taken from the SWEET 
+16 source file on the MERLIN diskette), the "definition" or 
+actual value of the label is indicated by the "=" sign, and 
+the line number of each line in the source file that the 
+label appears in is listed to the right of the definition. 
+In addition, the line number where the label is either de- 
+fined or used as a major entry point is suffixed 
+("flagged") with a "*".
 
-An added feature is a special notation for additional source files that are brought in during assembly with the PUT pseudo opcode: "134.82", for example, indicates line number 134 of the main source file (which will be the line containing the PUT opcode) and line number 82 of the PUT file, where the label is actually used.
+An added feature is a special notation for additional 
+source files that are brought in during assembly with the 
+PUT pseudo opcode: "134.82", for example, indicates line 
+number 134 of the main source file (which will be the line 
+containing the PUT opcode) and line number 82 of the PUT 
+file, where the label is actually used.
 
 15.3.3. XREF Instructions
 
-1. Get into MERLIN's Executive Mode, make sure you've S)aved the file that you're working on and select the D)rive no. that the MERLIN disk is in.
+1. Get into MERLIN's Executive Mode, make sure you've 
+S)aved the file that you're working on and select the 
+D)rive no. that the MERLIN disk is in.
 
-2. C)atalog the disk and when MERLIN asks you for a COMMAND: after the Catalog, enter: BRUN XREF. (Your file in memory will now be erased.)
+2. C)atalog the disk and when MERLIN asks you for a 
+COMMAND: after the Catalog, enter: BRUN XREF. (Your file in 
+memory will now be erased.)
 
-3. Hit <CTRL C> <RETURN> and re-L)oad your file. Initialize your printer with the appropriate PR# or PRTR command (XREF is a printer oriented command).
+3. Hit <CTRL C> <RETURN> and re-L)oad your file. Initialize 
+your printer with the appropriate PR# or PRTR command (XREF 
+is a printer oriented command).
 
 4. Type in the appropriate USER command :
 
-USER Ø -Print assembly listing and alphabetical cross reference only. (USER has the same effect as USER Ø).
+USER Ø -Print assembly listing and alphabetical cross 
+reference only. (USER has the same effect as USER Ø).
 
-USER 1 -Print assembly listing and both alphabetical and numerically sorted cross reference listings.
+USER 1 -Print assembly listing and both alphabetical and 
+numerically sorted cross reference listings.
 
-USER 2 -Do not print assembly listing but print alpha- betical cross reference only.
+USER 2 -Do not print assembly listing but print alpha- 
+betical cross reference only.
 
                                                          145
 ```
@@ -4962,19 +5889,38 @@ USER 2 -Do not print assembly listing but print alpha- betical cross reference o
 
 MERLIN Users Manual                                UTILITIES
 
-USER 3 -Do not print assembly listing but print both alphabetical and numerical cross reference listings.
+USER 3 -Do not print assembly listing but print both 
+alphabetical and numerical cross reference listings.
 
-USER commands 0-3 (above) cause labels within conditional assembly areas with the DO condition OFF to be ignored and not printed in the cross reference table.
+USER commands 0-3 (above) cause labels within conditional 
+assembly areas with the DO condition OFF to be ignored and not printed in the cross reference table.
 
-There are additional USER commands (4-7) that function the same as USER 0-3, except that they cause labels within con- ditional assembly areas to be printed no matter what the state of the DO setting is. The only exception to this is that labels defined in such areas and not elsewhere will be ignored.
+There are additional USER commands (4-7) that function the 
+same as USER 0-3, except that they cause labels within con- 
+ditional assembly areas to be printed no matter what the 
+state of the DO setting is. The only exception to this is 
+that labels defined in such areas and not elsewhere will be 
+ignored.
 
-NOTE: You may change the USER command as many times as you wish (e.g., from USER 1 to USER 2). The change is not per- manent until you enter the ASM command (below).
+NOTE: You may change the USER command as many times as you 
+wish (e.g., from USER 1 to USER 2). The change is not per- 
+manent until you enter the ASM command (below).
 
-5. Enter the ASM command to begin the assembly and printing process.
+5. Enter the ASM command to begin the assembly and printing 
+process.
 
 15.3.4. CAUTIONS for the use of XREF
 
-XREF works by examining the listing output of the assembler. On the second assembly pass, it builds a cross reference list beginning at HIMEM instead of creating object code there. (If direct assembly to disk is selected by the DSK opcode, however, the object code will be generated). The list uses six bytes per symbol reference which can use up available memory very quickly. Thus, on long files, you should set HIMEM as low as possible. (The WØ command can be used to find the end of the source file, which represents the lowest position you can set HIMEM).
+XREF works by examining the listing output of the 
+assembler. On the second assembly pass, it builds a cross 
+reference list beginning at HIMEM instead of creating 
+object code there. (If direct assembly to disk is selected 
+by the DSK opcode, however, the object code will be 
+generated). The list uses six bytes per symbol reference 
+which can use up available memory very quickly. Thus, on 
+long files, you should set HIMEM as low as possible. (The 
+WØ command can be used to find the end of the source file, 
+which represents the lowest position you can set HIMEM).
 
                                                          146
 ```
@@ -4983,11 +5929,35 @@ XREF works by examining the listing output of the assembler. On the second assem
 
 MERLIN Users Manual                                UTILITIES
 
-Since the program requires assembler output, code in areas with LST OFF will not be processed and labels in those areas will not appear in the table. In particular, it is essential to the proper working of XREF that the LST condition be ON at the end of assembly (since the program also intercepts the regular symbol table output). For the same reason, the CTRL D flush command must not be used during assembly. The pro- gram attempts to determine when the assembler is sending it an error message on the first pass and it aborts assembly in this case, but this is not 100% reliable.
+Since the program requires assembler output, code in areas 
+with LST OFF will not be processed and labels in those 
+areas will not appear in the table. In particular, it is 
+essential to the proper working of XREF that the LST 
+condition be ON at the end of assembly (since the program 
+also intercepts the regular symbol table output). For the 
+same reason, the CTRL D flush command must not be used 
+during assembly. The pro- gram attempts to determine when 
+the assembler is sending it an error message on the first 
+pass and it aborts assembly in this case, but this is not 
+100% reliable.
 
-Macros require special consideration. Since the syntax in these structures can become very complicated, XREF may get confused and cause assembly to stop. This usually happens when lines containing the >>> (PMC or "Put MaCro) pseudo opcode are followed by string literals or parentheses and you have chosen to suppress printing the expanded form of the macro in your assembled listing with the EXP OFF pseudo opcode. You can get around this problem by printing out the assembly listing first in the usual manner (with the symbol table suppressed by the LST OFF pseudo opcode) and then printing out just the cross reference table with EXP ON and using USER 2 or 3.
+Macros require special consideration. Since the syntax in 
+these structures can become very complicated, XREF may get 
+confused and cause assembly to stop. This usually happens 
+when lines containing the >>> (PMC or "Put MaCro) pseudo 
+opcode are followed by string literals or parentheses and 
+you have chosen to suppress printing the expanded form of 
+the macro in your assembled listing with the EXP OFF pseudo 
+opcode. You can get around this problem by printing out the 
+assembly listing first in the usual manner (with the symbol 
+table suppressed by the LST OFF pseudo opcode) and then 
+printing out just the cross reference table with EXP ON and 
+using USER 2 or 3.
 
-Another thing to look out for when using macros is the fact that labels defined within macro definitions have no global meaning and are therefore not cross-referenced.
+Another thing to look out for when using macros is the fact 
+that labels defined within macro definitions have no global 
+meaning and are therefore not 
+cross-referenced.
 
 <--- Macro definition
 
@@ -5001,7 +5971,8 @@ Another thing to look out for when using macros is the fact that labels defined 
 
 <--- Beg. of program <--- Macro call
 
-In the above example, variable GLOBAL will be cross ref- erenced, but local label DONE will not.
+In the above example, variable GLOBAL will be cross ref- 
+erenced, but local label DONE will not.
 
                                                          147
 ```
@@ -5012,19 +5983,39 @@ MERLIN Users Manual                                UTILITIES
 
 15.3.5. XREF.XL Instructions
 
-XREF.XL is designed to handle files three to four times as large as those handled by XREF. It was originally designed to cross reference the Applesoft Basic source file, which is approximately the largest source file it can process.
+XREF.XL is designed to handle files three to four times as 
+large as those handled by XREF. It was originally designed 
+to cross reference the Applesoft Basic source file, which 
+is approximately the largest source file it can process.
 
-To use XREF.XL, just follow the same five steps in the XREF instructions explained previously, substituting "XREF.XL" for "XREF" in step 2.
+To use XREF.XL, just follow the same five steps in the XREF 
+instructions explained previously, substituting "XREF.XL" 
+for "XREF" in step 2.
 
-XREF.XL works in a manner similar to XREF, except that it writes the cross reference label table to disk in a file called X.R.FILE (You can delete this file when you are done with the table). At the end of assembly, this file is loaded from disk and placed in memory, overwriting your source file. As explained in step 1, make sure that you've saved your source file first, because the source file will be deleted from memory when you return to the editor.
+XREF.XL works in a manner similar to XREF, except that it 
+writes the cross reference label table to disk in a file 
+called X.R.FILE (You can delete this file when you are done 
+with the table). At the end of assembly, this file is 
+loaded from disk and placed in memory, overwriting your 
+source file. As explained in step 1, make sure that you've 
+saved your source file first, because the source file will 
+be deleted from memory when you return to the editor.
 
 15.3.6. CAUTIONS for the use of XREF.XL
 
--The source file will be deleted from memory as explained above when you return to the editor. Make sure that you have saved your file first.
+-The source file will be deleted from memory as explained 
+above when you return to the editor. Make sure that you 
+have saved your file first.
 
--Consider using a blank disk when using XREF.XL. The disk file generated, X.R.FILE, can become quite large.
+-Consider using a blank disk when using XREF.XL. The disk 
+file generated, X.R.FILE, can become quite large.
 
--The cross reference label table X.R.FILE is written on the disk in the disk drive last used. If your source file contains PUT directives, you will have to make sure XREF.XL can find the additional source files by either moving the files onto the blank disk or by specifying drive and slot parameters in the PUT directive.
+-The cross reference label table X.R.FILE is written on the 
+disk in the disk drive last used. If your source file 
+contains PUT directives, you will have to make sure XREF.XL 
+can find the additional source files by either moving the 
+files onto the blank disk or by specifying drive and slot 
+parameters in the PUT directive.
 
                                                          148
 ```
@@ -5033,25 +6024,45 @@ XREF.XL works in a manner similar to XREF, except that it writes the cross refer
 
 MERLIN Users Manual                                UTILITIES
 
--Unlike XREF, the setting of HIMEM does not affect XREF.XL. While building the cross reference table, XREF.XL checks to see if it will fit in the space from the source address (approximately) to the SYM address, if specified, or to $9853 if not. If it is too large, XREF.XL will quit with an OUT OF MEMORY message.
+-Unlike XREF, the setting of HIMEM does not affect XREF.XL. 
+While building the cross reference table, XREF.XL checks to 
+see if it will fit in the space from the source address 
+(approximately) to the SYM address, if specified, or to 
+$9853 if not. If it is too large, XREF.XL will quit with an 
+OUT OF MEMORY message.
 
--XREF.XL will quit with an ILLEGAL DSK ATTEMPTED error message if it finds a DSK pseudo op code in your source file. A handy way of avoiding this problem while at the same time maintaining the same line numbers in the source file is to use the editor to change any DSK directives into comments.
+-XREF.XL will quit with an ILLEGAL DSK ATTEMPTED error 
+message if it finds a DSK pseudo op code in your source 
+file. A handy way of avoiding this problem while at the 
+same time maintaining the same line numbers in the source 
+file is to use the editor to change any DSK directives into 
+comments.
 
-Special Instructions for Cross Referencing the Applesoft Source File:
+Special Instructions for Cross Referencing the Applesoft 
+Source File:
 
-1. Use STRIP on all the Applesoft files and save them on a blank disk.
+1. Use STRIP on all the Applesoft files and save them on a 
+blank disk.
 
-2. In the file APPLESOFT.S (after stripping it) change the line EXP OFF to EXP ON (or just delete it).
+2. In the file APPLESOFT.S (after stripping it) change the 
+line EXP OFF to EXP ON (or just delete it).
 
-3. Delete the lines containing the SAVOBJ KBD directives and the DO-FIN segment containing the DSK opcode. While this is not necessary, it does avoid having SAVOBJ put in the symbol table.
+3. Delete the lines containing the SAVOBJ KBD directives 
+and the DO-FIN segment containing the DSK opcode. While 
+this is not necessary, it does avoid having SAVOBJ put in 
+the symbol table.
 
-4. Make sure the last used drive (as shown in the EXEC menu) is the one containing the disk with the stripped files.
+4. Make sure the last used drive (as shown in the EXEC 
+menu) is the one containing the disk with the stripped files.
 
-5. Enter the desired PRTR command, and then USER 2 or USER 3.
+5. Enter the desired PRTR command, and then USER 2 or USER 
+3.
 
-6. Enter ASM and be prepared for a cross reference table approximately 25 pages long.
+6. Enter ASM and be prepared for a cross reference table 
+approximately 25 pages long.
 
-                                                         149
+                                                         
+149
 ```
 ```
 
@@ -5060,25 +6071,42 @@ MERLIN Users Manual                                UTILITIES
 
 15.4. STRIP
 
-Very long source files, or ones that contain numerous com- ments, may require too much memory for the cross reference table to be generated. In this case, assembly will stop with the OUT OF MEMORY error message.
+Very long source files, or ones that contain numerous com- 
+ments, may require too much memory for the cross reference 
+table to be generated. In this case, assembly will stop 
+with the OUT OF MEMORY error message.
 
-The utility program STRIP allows you to cross reference files approximately twice as large by removing comments from the source file.
+The utility program STRIP allows you to cross reference 
+files approximately twice as large by removing comments 
+from the source file.
 
 To use STRIP, follow the following procedure:
 
-1. Make sure that you have a copy of your commented source file in memory and that you have S)aved a copy of it on disk.
+1. Make sure that you have a copy of your commented source 
+file in memory and that you have S)aved a copy of it on
+disk.
 
-2. Enter the E)ditor, put a LST OFF at the end of your source file and ASM it.
+2. Enter the E)ditor, put a LST OFF at the end of your 
+source file and ASM it.
 
-3. Remove the LST OFF statement at the end of your program (important ! ).
+3. Remove the LST OFF statement at the end of your program 
+(important ! ).
 
-4. Q)uit the editor, select the D)rive with MERLIN in it and do a C)atalog. At the COMMAND: prompt, enter: BRUN STRIP. This will remove the comments from your source file in memory .
+4. Q)uit the editor, select the D)rive with MERLIN in it 
+and do a C)atalog. At the COMMAND: prompt, enter: BRUN 
+STRIP. This will remove the comments from your source file 
+in memory .
 
-5. Hit <CTRL C> <RETURN> and enter the E)ditor. You may now use the XREF and XREF.XL procedures as outlined above.
+5. Hit <CTRL C> <RETURN> and enter the E)ditor. You may now 
+use the XREF and XREF.XL procedures as outlined above.
 
 15.5. PRINTFILER
 
-PRINTFILER is a utility included on the MERLIN diskette that saves an assembled listing to disk as a sequential disk file. It optionally allows you to also select "file packing" for smaller space requirements and allows you to turn video output off for faster operation.
+PRINTFILER is a utility included on the MERLIN diskette 
+that saves an assembled listing to disk as a sequential 
+disk file. It optionally allows you to also select "file 
+packing" for smaller space requirements and allows you to 
+turn video output off for faster operation.
 
                                                          150
 ```
@@ -5087,23 +6115,38 @@ PRINTFILER is a utility included on the MERLIN diskette that saves an assembled 
 
 MERLIN Users Manual                                UTILITIES
 
-Text files generated by PRINTFILER include the object code portion of a disassembled listing, something not normally available when saving a source file. This allows a complete display of an assembly language program and provides the convenience of not having to assemble the program to see what the object code looks like.
+Text files generated by PRINTFILER include the object code 
+portion of a disassembled listing, something not normally 
+available when saving a source file. This allows a complete 
+display of an assembly language program and provides the 
+convenience of not having to assemble the program to see 
+what the object code looks like.
 
 15.5.1. Applications
 
 Applications include :
 
--Incorporating the assembled text file in a document being prepared by a word processor.
+-Incorporating the assembled text file in a document being 
+prepared by a word processor.
 
 -Sending the file over a telephone line using a modem.
 
--Mailing the file to someone who wants to work with the complete disassembly without having to assemble the program (such as magazine editors, etc.)
+-Mailing the file to someone who wants to work with the 
+complete disassembly without having to assemble the program 
+(such as magazine editors, etc.)
 
 15.5.2. How To Use PRINTFILER
 
-1. From EXEC mode, make sure that you've S)aved any source file that you may be working on (select the D)rive to save it on, first), select the D)rive containing PRINTFILER (usually this is on the MERLIN disk) and do a C)atalog. When you see the "COMMAND:" prompt, enter: BRUN PRINTFILER. (You may skip this step if you've already BRUN PRINTFILER).
+1. From EXEC mode, make sure that you've S)aved any source 
+file that you may be working on (select the D)rive to save 
+it on, first), select the D)rive containing PRINTFILER 
+(usually this is on the MERLIN disk) and do a C)atalog. 
+When you see the "COMMAND:" prompt, enter: BRUN PRINTFILER. 
+(You may skip this step if you've already BRUN PRINTFILER).
 
-2. Press <RETURN>, select the D)rive containing the file you want to assemble and L)oad the file into memory. (You may skip this step if you've already BRUN PRINTFILER).
+2. Press <RETURN>, select the D)rive containing the file 
+you want to assemble and L)oad the file into memory. (You 
+may skip this step if you've already BRUN PRINTFILER).
 
                                                          151
 ```
@@ -5112,19 +6155,46 @@ Applications include :
 
 MERLIN Users Manual                                UTILITIES
 
-3. Q)uit the editor, select the D)rive that you want to save the assembly to, enter the E)ditor again and enter: USER "your file name" (include the quotes). Be aware that if you later intend to R)ead this file using MERLIN's text file reader, you will have to put a "T." in front of the filename in the USER command above; e.g., "T.DUMMY" instead of "DUMMY". Also, you may use a PRTR command instead of USER, if you wish; e.g., PRTR 9 "T.DUMMY"THIS IS A PAGE HEADER"
+3. Q)uit the editor, select the D)rive that you want to 
+save the assembly to, enter the E)ditor again and enter: 
+USER "your file name" (include the quotes). Be aware that 
+if you later intend to R)ead this file using MERLIN's text 
+file reader, you will have to put a "T." in front of the 
+filename in the USER command above; e.g., "T.DUMMY" instead 
+of "DUMMY". Also, you may use a PRTR command instead of 
+USER, if you wish; e.g., PRTR 9 "T.DUMMY"THIS IS A PAGE 
+HEADER"
 
-4. Enter: ASM and after asking whether you want to "UPDATE SOURCE", PRINTFILER will automatically assemble the source file directly to disk. Note that you will not see any- thing on your video screen because PRINTFILER is precon- figured to operate with the video output turned off for faster operation.
+4. Enter: ASM and after asking whether you want to "UPDATE 
+SOURCE", PRINTFILER will automatically assemble the source 
+file directly to disk. Note that you will not see any- 
+thing on your video screen because PRINTFILER is precon- 
+figured to operate with the video output turned off for 
+faster operation.
 
 15.5.3. Changing PRINTFILER's Options
 
-PRINTFILER has two options that you may change: file packing and video output ("echoing"). In addition, you can make the change temporary or permanent.
+PRINTFILER has two options that you may change: file 
+packing and video output ("echoing"). In addition, you can 
+make the change temporary or permanent.
 
-File packing reduces the size of the text file saved to disk by replacing blanks from the source file with a single char- acter with its high bit turned off. A listing of a packed file will display the packed blank characters as an inverse letter. (inverse A=1 blank, inverse B=2 blanks, inverse C=3 blanks, etc.)
+File packing reduces the size of the text file saved to 
+disk by replacing blanks from the source file with a single 
+char- acter with its high bit turned off. A listing of a 
+packed file will display the packed blank characters as an 
+inverse letter. (inverse A=1 blank, inverse B=2 blanks, 
+inverse C=3 blanks, etc.)
 
-Unpacking means restoring the text file to its original appearance. Note that while you cannot ASM (assemble) such a file, you can at least read it. Packed files are primarily intended for use with another SDS product, "DOUBLETIME PRINTER", which unpacks the file and "spools" it from disk to the printer.
+Unpacking means restoring the text file to its original 
+appearance. Note that while you cannot ASM (assemble) such 
+a file, you can at least read it. Packed files are 
+primarily intended for use with another SDS product, 
+"DOUBLETIME PRINTER", which unpacks the file and "spools" 
+it from disk to the printer.
 
-Video "echoing" means printing on the screen what is sent to the disk. The time it takes to do this can slow PRINTFILER down. (See benchmarking results, next.)
+Video "echoing" means printing on the screen what is sent 
+to the disk. The time it takes to do this can slow 
+PRINTFILER down. (See benchmarking results, next.)
 
                                                          152
 ```
@@ -5145,9 +6215,13 @@ Source File: SWEET 16.S (21 sectors)
 | *   | Packed      | :         | Video      | on  | :           | 38 | :  | 42     |    |
 | *   | Packed      | :         | Video      | off | :           | 38 | :  | 30     |    |
 
-As you can see from the above, turning off video output makes PRINTFILER run approximately 25% faster. Additional speed can be gained by using packed files.
+As you can see from the above, turning off video output 
+makes PRINTFILER run approximately 25% faster. Additional 
+speed can be gained by using packed files.
 
-In addition, unpacked files are nearly twice as large as packed files and nearly three times the size of the original source file.
+In addition, unpacked files are nearly twice as large as 
+packed files and nearly three times the size of the 
+original source file.
 
 15.5.5. Changing PRINTFILER options
 
@@ -5165,7 +6239,9 @@ Get into the E)ditor, enter: MON and enter:
 
 (normal values are 300:80 00 (unpacked, video off))
 
-Hit <RETURN> <CTRL Y> <RETURN> to return to EXEC mode. The values you select will stay in effect until you BRUN PRINTFILER again.
+Hit <RETURN> <CTRL Y> <RETURN> to return to EXEC mode. The 
+values you select will stay in effect until you BRUN 
+PRINTFILER again.
 
                                                          153
 ```
@@ -5176,13 +6252,23 @@ MERLIN Users Manual                                UTILITIES
 
 To Change PRINTFILER options (permanently)
 
-1. L)oad PRINTFILER and ASM it. During assembly, it will ask you the following questions in the steps below:
+1. L)oad PRINTFILER and ASM it. During assembly, it will 
+ask you the following questions in the steps below:
 
-2. After the UPDATE SOURCE? question, PRINTFILER will ask, "GIVE VALUE FOR FORMAT:". If you hit "@", you will turn the Pack option ON. If you hit "1", you will turn the Pack option OFF.
+2. After the UPDATE SOURCE? question, PRINTFILER will ask, 
+"GIVE VALUE FOR FORMAT:". If you hit "@", you will turn the 
+Pack option ON. If you hit "1", you will turn the Pack 
+option OFF.
 
-3. PRINTFILER will then ask, "GIVE VALUE FOR MONITOR". If you hit "Ø", video output will be turned OFF. If you hit "1", video output will be turned ON. PRINTFILER will then immediately assemble into object code.
+3. PRINTFILER will then ask, "GIVE VALUE FOR MONITOR". If 
+you hit "Ø", video output will be turned OFF. If you hit 
+"1", video output will be turned ON. PRINTFILER will then 
+immediately assemble into object code.
 
-4. Q)uit the editor and save the 0)bject code. Any time you BRUN this object code, it will use the values you put in it in steps 2 and 3 above. Thus, it is possible to use different versions of PRINTFILER instead of setting options.
+4. Q)uit the editor and save the 0)bject code. Any time you 
+BRUN this object code, it will use the values you put in it 
+in steps 2 and 3 above. Thus, it is possible to use 
+different versions of PRINTFILER instead of setting options.
 
 154
 ```
