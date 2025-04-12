@@ -1,4 +1,4 @@
-<img src="../res/ASM_MANUAL_MERLIN_1.svg" width=30% align=left />
+<img src="../res/ASM_MANUAL_MERLIN_1.svg" width=50%  />
 
 ```
 MERLIN Users Manual                        TABLE OF CONTENTS
