@@ -1,6 +1,3 @@
-Replace \n((.){0,60}(?<= ))
-By \n$1\n
-
 ```
 MERLIN Users Manual                        TABLE OF CONTENTS
 
@@ -6272,3 +6269,7 @@ different versions of PRINTFILER instead of setting options.
 
 154
 ```
+
+
+\n((.){0,60}(?<= ))
+\n$1\n
