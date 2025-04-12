@@ -468,39 +468,26 @@ Call-APPLE in Depth, No. 1
 5
 ```
 ```
-MERLIN Users Manual
-
-SYSTEM REQUIREMENTS
+MERLIN Users Manual                      SYSTEM REQUIREMENTS
 
 2. SYSTEM REQUIREMENTS
 
-* 48K APPLE ][
-
-* 16K RAM CARD
-
-* 80 COLUMN BOARD (optional)
-
-* LOWER CASE BOARD (optional)
+    * 48K APPLE ][
+    * 16K RAM CARD
+    * 80 COLUMN BOARD (optional)
+    * LOWER CASE BOARD (optional)
 
 2.1. Hardware Compatibility List
 
-* VIDEX VIDEOTERM
-
-* FULL-VIEW 80 - 80 COLUMN BOARD
-
-* M & R SUP'R'TERMINAL 80 COLUMN BOARD
-
-* ALS SMARTERM 80 COLUMN BOARD
-
-* VISTA VISION 80 - 80 COLUMN BOARD
-
-OMEGA MICROWARE RAMTEX 16 - 16K RAM BOARD
-
-ANDROMEDA 16K BOARD
-
-MICROSOFT 16K RAM BOARD
-
-* WIZARD 80 - 80 COLUMN BOARD
+    * VIDEX VIDEOTERM
+    * FULL-VIEW 80 - 80 COLUMN BOARD
+    * M & R SUP'R'TERMINAL 80 COLUMN BOARD
+    * ALS SMARTERM 80 COLUMN BOARD
+    * VISTA VISION 80 - 80 COLUMN BOARD
+    * OMEGA MICROWARE RAMTEX 16 - 16K RAM BOARD
+    *  ANDROMEDA 16K BOARD
+    * MICROSOFT 16K RAM BOARD
+    * WIZARD 80 - 80 COLUMN BOARD
 
 NOTE: MERLIN has been tested with the cards/boards listed 
 above. The author makes no guarantees with respect to the 
@@ -541,16 +528,14 @@ program component of the MERLIN system. There are four
 MODULES :
 
 1. The EXECUTIVE
-
 2. The EDITOR
-
 3. The ASSEMBLER
-
 4. The SYMBOL TABLE GENERATOR
 
 Each module is grouped under one of the two CONTROL MODES:
 
-1) The EXECUTIVE, abbreviated EXEC and indicated by the '%' prompt.
+1) The EXECUTIVE, abbreviated EXEC and indicated by the 
+    '%' prompt.
 
 2) The EDITOR, indicated by the ':' prompt.
 
@@ -559,11 +544,14 @@ Each module is grouped under one of the two CONTROL MODES:
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
 
-EXECUTIVE CONTROL MODE Executive Module
+EXECUTIVE CONTROL MODE
+    Executive Module
 
 EDITOR CONTROL MODE
-
-Editor Module Assembler Module Symbol Table Generator Module
+    Editor Module
+    Assembler Module
+    Symbol Table
+    Generator Module
 
 The term "mode" may be used to indicate either the current 
 control mode (as indicated by the prompt) or alternatively, 
@@ -654,13 +642,12 @@ MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
 
 12. The screen should now appear like this:
 
-|--:|:------|:----------|:------|:-------|:----|:-----|
-| 1 | *DEMO | PROGRAM 1 |       |        |     |      |
-| 2 |       | OBJ $300  |       |        |     |      |
-| 3 |       | ORG       | $300  |        |     |      |
-| 4 | BELL  | EQU       | $FBDD |        |     |      |
-| 5 | START | JSR       | BELL  | ; RING | THE | BELL |
-| 6 | END   | RTS       |       |        |     |      |
+    1   *DEMO   PROGRAM 1                                
+    2           OBJ $300                                 
+    3           ORG         $300                         
+    4   BELL    EQU         $FBDD                        
+    5   START   JSR         BELL    ;RING THE BELL  
+    6   END     RTS                                      
 
 Note that each string of characters has been moved to a 
 specific field. There are four such fields, not including 
