@@ -210,7 +210,7 @@ MERLIN Users Manual                        TABLE OF CONTENTS
    11.4. Register Instructions.......................... 110
           11.4.1. SET................................... 110
           11.4.2. LOAD.................................. 111
-          11.4.3. STORE. ................................ 111
+          11.4.3. STORE. ............................... 111
           11.4.4. LOAD INDIRECT......................... 111
           11.4.5. STORE INDIRECT........................ 112
           11.4.6. LOAD DOUBLE-BYTE INDIRECT............. 112
@@ -4494,23 +4494,23 @@ MERLIN Users Manual                                 SWEET 16
 
 11.3.2. Non-register OPS
 
-|:---|:-----|:---|:-------------|:-----------------|
-| ØØ | RTN  |    | (Return      | to 6502 mode)    |
-| Ø1 | BR   | ea | (Branch      | always)          |
-| Ø2 | BNC  | ea | (Branch      | if No Carry)     |
-| Ø3 | BC   | ea | (Branch      | if Carry)        |
-| Ø4 | BP   | ea | (Branch      | if Plus)         |
-| Ø5 | BM   | ea | (Branch      | if Minus)        |
-| Ø6 | BZ   | ea | (Branch      | if Zero)         |
-| Ø7 | BNZ  | ea | (Branch      | if NonZero)      |
-| Ø8 | BM1  | ea | (Branch      | if Minus 1)      |
-| Ø9 | BNM1 | ea | (Branch      | if Not Minus 1)  |
-| ØA | BK   |    | (Break)      |                  |
-| ØB | RS   |    | (Return      | from Subroutine) |
-| ØC | BS   | ea | (Branch      | to Subroutine)   |
-| ØD |      |    | (Unassigned) |                  |
-| ØE |      |    | (Unassigned) |                  |
-| ØF |      |    | (Unassigned) |                  |
+
+  ØØ   RTN         (Return        to 6502 mode)     
+  Ø1   BR     ea   (Branch        always)           
+  Ø2   BNC    ea   (Branch        if No Carry)      
+  Ø3   BC     ea   (Branch        if Carry)         
+  Ø4   BP     ea   (Branch        if Plus)          
+  Ø5   BM     ea   (Branch        if Minus)         
+  Ø6   BZ     ea   (Branch        if Zero)          
+  Ø7   BNZ    ea   (Branch        if NonZero)       
+  Ø8   BM1    ea   (Branch        if Minus 1)       
+  Ø9   BNM1   ea   (Branch        if Not Minus 1)   
+  ØA   BK          (Break)                          
+  ØB   RS          (Return        from Subroutine)  
+  ØC   BS     ea   (Branch        to Subroutine)    
+  ØD               (Unassigned)                     
+  ØE               (Unassigned)                     
+  ØF               (Unassigned)                     
 
 11.4. Register Instructions
 
@@ -4556,9 +4556,9 @@ the ACC contents are not disturbed.
 
 EXAMPLE:
 
-|---:|:---|:---|:------------------|
-| 25 | LD | R5 | Copy the contents |
-| 36 | ST | R6 | of R5 to R6       |
+
+  25   LD   R5   Copy the contents  
+  36   ST   R6   of R5 to R6        
 
 11.4.4. LOAD INDIRECT
 
@@ -4592,11 +4592,10 @@ transfer Rn is incremented by 1.
 
 EXAMPLE :
 
-|---:|:---|:---|:----|:----|:-------------------------------|:---------------------|
-| 15 | 34 | AØ | SET | R5, | $A034Load pointers R5, R6 with |                      |
-| 16 | 22 | 90 | SET | R6, | $9022$A034 and $9022           |                      |
-| 45 |    |    | LD  | @R5 | Move byte from $A034 to $9022  |                      |
-| 56 |    |    | ST  | @R6 | Both                           | ptrs are incremented |
+ 15  34  AØ  SET  R5,  $A034Load pointers R5, R6 with                       
+ 16  22  90  SET  R6,  $9022$A034 and $9022                                 
+ 45          LD   @R5  Move byte from $A034 to $9022                        
+ 56          ST   @R6  Both                            ptrs are incremented 
 
 11.4.6. LOAD DOUBLE-BYTE INDIRECT
 
@@ -4634,15 +4633,15 @@ contents which are not disturbed. The carry is cleared.
 
 EXAMPLE :
 
-|:---|:---|:---|:------------------------------|:-----------------------------|
-| 15 | 34 | AØ | SET R5, $A034 Load pointers   |                              |
-|    |    |    | R5, R6                        |                              |
-| 16 | 22 | 90 | SET R6, $9022 with $A034 AND  |                              |
-|    |    |    | $9022                         |                              |
-| 65 |    |    | LDD @R5 Move double byte from |                              |
-| 76 |    |    | STD @R $A034-35 TO $9022-23.  |                              |
-|    |    |    |                               | Both pointers incremented by |
-|    |    |    |                               | 2.                           |
+
+ 15  34  AØ  SET R5, $A034 Load pointers                                 
+             R5, R6                                                      
+ 16  22  90  SET R6, $9022 with $A034 AND                                
+             $9022                                                       
+ 65          LDD @R5 Move double byte from                               
+ 76          STD @R $A034-35 TO $9022-23.                                
+                                            Both pointers incremented by 
+                                            2.                           
 
 11.4.8. POP INDIRECT
 
@@ -4664,17 +4663,17 @@ MERLIN Users Manual                                 SWEET 16
 
 EXAMPLE :
 
-|---:|:---|:---|:----|:----|:------|:-------------------------|
-| 15 | 34 | AØ | SET | R5, | SA034 | Init stack pointer       |
-| 10 | 04 | 00 | SET | RØ, | 4     | Load 4 into ACC          |
-| 55 |    |    | ST  | @R5 |       | PUSH 4 onto stack        |
-| 10 | 05 | 00 | SET | RØ, | 5     | Load 5 into ACC          |
-| 55 |    |    | ST  | @R5 |       | Push 5 onto stack        |
-| 10 | 06 | 00 | SET | RØ, | 6     | Load 6 into ACC          |
-| 55 |    |    | ST  | @R5 |       | Push 6 onto stack        |
-| 85 |    |    | POP | @R5 |       | Pop 6 off stack into ACC |
-| 85 |    |    | POP | @R5 |       | Pop 5 off stack          |
-| 85 |    |    | POP | @R5 |       | Pop 4 off stack          |
+
+ 15  34  AØ  SET  R5,  SA034  Init stack pointer       
+ 10  04  00  SET  RØ,  4      Load 4 into ACC          
+ 55          ST   @R5         PUSH 4 onto stack        
+ 10  05  00  SET  RØ,  5      Load 5 into ACC          
+ 55          ST   @R5         Push 5 onto stack        
+ 10  06  00  SET  RØ,  6      Load 6 into ACC          
+ 55          ST   @R5         Push 6 onto stack        
+ 85          POP  @R5         Pop 6 off stack into ACC 
+ 85          POP  @R5         Pop 5 off stack          
+ 85          POP  @R5         Pop 4 off stack          
 
 11.4.9. STORE POP INDIRECT
 
@@ -4690,13 +4689,13 @@ may be implemented with the STP @Rn ops .
 
 EXAMPLE :
 
-|---:|:---|:---|:--------------|:----------|:-|:---------------|
-| 14 | 34 | AØ | SET R4, $A034 |           |  | Init pointers  |
-| 15 | 22 | 90 | SET           | R5, $9022 |  |                |
-| 84 |    |    | POP           | @R4       |  | Move byte from |
-| 95 |    |    | STP           | @R5       |  | $A033 to $9021 |
-| 84 |    |    | POP           | @R4       |  | Move byte from |
-| 95 |    |    | STP           | @R5       |  | $A032 to $9020 |
+
+ 14  34  AØ  SET R4, $A034               Init pointers  
+ 15  22  90  SET            R5, $9022                   
+ 84          POP            @R4          Move byte from 
+ 95          STP            @R5          $A033 to $9021 
+ 84          POP            @R4          Move byte from 
+ 95          STP            @R5          $A032 to $9020 
 
                                                          114
 ```
@@ -4714,12 +4713,11 @@ reflect the final ACC contents.
 
 EXAMPLE :
 
-|:---|:---|:---|:--------------|:--------------------------|
-| 10 | 34 | 76 | SET RØ, $7634 | Init RØ (ACC) and RI      |
-| 11 | 27 | 42 | SET RI, $4227 |                           |
-| Al |    |    | ADD R1        | Add RI (sum=B85B c clear) |
-| AØ |    |    | ADD RØ        | Double ACC (RØ) to $70B6  |
-|    |    |    |               | with carry set.           |
+ 10  34  76  SET RØ, $7634  Init RØ (ACC) and RI      
+ 11  27  42  SET RI, $4227                            
+ Al          ADD R1         Add RI (sum=B85B c clear) 
+ AØ          ADD RØ         Double ACC (RØ) to $70B6  
+                            with carry set.           
 
 11.4.11. SUBTRACT
 
@@ -4739,12 +4737,11 @@ otherwise it is cleared. Rn is not disturbed.
 
 EXAMPLE :
 
-|:---|:---|:---|:--------------|:-|:------|:------------------------|
-| 10 | 34 | 76 | SET RØ, $7634 |  |       | Init RØ (ACC)           |
-| 11 | 27 | 42 | SET RI,       |  | $4227 | and R1                  |
-| B1 |    |    | SUB R1        |  |       | Subtract R1             |
-|    |    |    |               |  |       | (diff=$34ØD with c set) |
-| BØ |    |    | SUB RØ        |  |       | Clears ACC. (RØ)        |
+ 10  34  76  SET RØ, $7634           Init RØ (ACC)           
+ 11  27  42  SET RI,          $4227  and R1                  
+ B1          SUB R1                  Subtract R1             
+                                     (diff=$34ØD with c set) 
+ BØ          SUB RØ                  Clears ACC. (RØ)        
 
                                                          115
 ```
@@ -4768,14 +4765,13 @@ stack pointer).
 
 EXAMPLE :
 
-|:---|:---|:---|:---------|:------|:--------------------|:-----------------|:-----------|
-| 15 | 34 | AØ | SET R5,  | $A034 | Init                | stack            | pointer    |
-| 10 | 12 | AA | SET RØ,  | SAA12 | Load                | $AA12            | into ACC.  |
-| 75 |    |    | STD @R5  |       | Push                | $AA12            | onto stack |
-| 10 | 34 | BB | SET RØ,  | $BB34 | Load                | $BB34            | into ACC.  |
-| 75 |    |    | STD @R5  |       | Push                | $BB34 onto stack |            |
-| C5 |    |    | POPD @R5 |       | Pop                 | $BB34 off stack  |            |
-| C5 |    |    | POPD @R5 |       | Pop $AA12 off stacy |                  |            |
+ 15 34 AØ  SET R5,   $A034  Init stack pointer    
+ 10 12 AA  SET RØ,   SAA12  Load $AA12 into ACC.  
+ 75        STD @R5          Push $AA12 onto stack 
+ 10 34 BB  SET RØ,   $BB34  Load $BB34 into ACC.  
+ 75        STD @R5          Push $BB34 onto stack             
+ C5        POPD @R5         Pop  $BB34 off stack              
+ C5        POPD @R5         Pop  $AA12 off stacy                               
 
 11.4.13. COMPARE
 
