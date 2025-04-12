@@ -316,7 +316,7 @@ function correctly. This program is hard wired within the
 cycles. It fetches an instruction from RAM memory in the 
 computer, decodes it and executes it.
 
-1
+                                                           1
 ```
 ```
 MERLIN Users Manual                             INTRODUCTION
@@ -361,7 +361,7 @@ intended to teach Assembly Language programming. Many good
 books on 6502 Assembly programming are available at your 
 local dealer; some are referenced later in this section.
 
-2
+                                                           2
 ```
 ```
 MERLIN Users Manual                             INTRODUCTION
@@ -401,7 +401,7 @@ operates under 3.3 DOS. BEWARE of "custom" DOS's. MERLIN
 does an automatic MAXFILES 2 upon entry, then reverts to 
 the usual value on exit.
 
-3
+                                                           3
 ```
 ```
 MERLIN Users Manual                             INTRODUCTION
@@ -447,7 +447,7 @@ CONVERTING BRAND X TO BRAND Y - by Randall Hyde Apple
 Orchard, Volume 1, No.1, March/April 80. Useful notes and 
 cross references on converting among assemblers.
 
-4
+                                                           4
 ```
 ```
 MERLIN Users Manual                             INTRODUCTION
@@ -462,7 +462,7 @@ MACHINE TOOLS
 
 Call-APPLE in Depth, No. 1
 
-5
+                                                           5
 ```
 ```
 MERLIN Users Manual                      SYSTEM REQUIREMENTS
@@ -490,7 +490,7 @@ NOTE: MERLIN has been tested with the cards/boards listed
 above. The author makes no guarantees with respect to the 
 operation of MERLIN with any 80 column boards not listed.
 
-7
+                                                           7
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -536,7 +536,7 @@ Each module is grouped under one of the two CONTROL MODES:
 
 2) The EDITOR, indicated by the ':' prompt.
 
-9
+                                                           9
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -584,7 +584,7 @@ Steps from the very beginning:
 mode menu, type 'E'. This instantly places the system in 
 EDITOR control mode.
 
-10
+                                                          10
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -632,7 +632,7 @@ type CTRL-X, RETURN. The ':' prompt reappears at the left
 of the screen, indicating that the system has returned to 
 control mode.
 
-11
+                                                          11
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -676,7 +676,7 @@ there is no label, once after the line number) for the opcode.
 after the operand for the comment. If there is no operand, 
 type a space and a semicolon.
 
-12
+                                                          12
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -724,7 +724,7 @@ On the screen is the following:
    7    TYA
    8
 
-13
+                                                          13
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -769,7 +769,7 @@ the remaining asterisk and the TYA opcode, have been
 deleted, and the subsequent lines renumbered. The listing 
 appears the same as in the subsection on INPUT, Step 13.
 
-14
+                                                          14
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -806,7 +806,7 @@ space bar or arrow keys. Type the word 'END', and RETURN.
 
 6. LIST the program. Line 6 has been restored.
 
-15
+                                                          15
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -852,7 +852,7 @@ ERRORS: Ø
 4 BYTES
 
 
-16
+                                                          16
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -898,7 +898,7 @@ utility of the programmer and the use of the assembler pro-
 gram. They are of no use to the computer and therefore, are 
 not translated into the machine's language.
 
-17
+                                                          17
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -940,7 +940,7 @@ which indicates the subject file is source code. This
 suffix is automatically appended to the name by the 'S' 
 (SAVE SOURCE FILE) command.
 
-18
+                                                          18
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -984,7 +984,7 @@ alternate the original and copy diskettes. If at any time,
 you make an error, STOP IMMEDIATELY and re-boot to start 
 over.
 
-19
+                                                          19
 ```
 ```
 MERLIN Users Manual          BEGINNERS GUIDE TO USING MERLIN
@@ -1003,7 +1003,7 @@ on which the file was damaged. All library files, and also
 the side containing SOURCEROR.FP can be moved to any DOS 
 3.3 diskette using the FID utility program.
 
-20
+                                                          20
 ```
 ```
 MERLIN Users Manual                           EXECUTIVE MODE
@@ -1043,7 +1043,7 @@ by mistake, just hit RETURN twice and the command will be
 cancelled without affecting any file that may be in
 memory.
 
-21
+                                                          21
 ```
 ```
 MERLIN Users Manual                           EXECUTIVE MODE
@@ -1079,7 +1079,7 @@ same way as the load command, and does not affect the
 default file name. It does not save the appended file; you 
 are free to do that if you wish.
 
-22
+                                                          22
 ```
 ```
 MERLIN Users Manual                           EXECUTIVE MODE
@@ -1118,7 +1118,7 @@ command, you are asked for a name for the object file.
 Unlike the source file case, no suffix will be appended to 
 this name.
 
-23
+                                                          23
 ```
 ```
 MERLIN Users Manual                           EXECUTIVE MODE
@@ -1160,7 +1160,7 @@ filename with a space or any other character in the ASCII
 range of $20 to $40. This character will be ignored and not 
 used by DOS in the actual filename.
 
-24
+                                                          24
 ```
 ```
 MERLIN Users Manual                           EXECUTIVE MODE
@@ -1172,7 +1172,7 @@ binary file. The speed of the READ and WRITE routines is
 approximately that of a BLOAD or BSAVE. The WRITE routine 
 does a VERIFY after the write.
 
-25
+                                                          25
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1215,7 +1215,7 @@ address for the OBJ file (default OBJ address). HIMEM
 defaults to $8000, and does not have to be set unless you 
 use a non-default object address.
 
-27
+                                                          27
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1254,7 +1254,7 @@ operands. If you don't specify the tab character, then the
 last one used remains. Entering TABS and a carriage return 
 will set all tabs to zero.
 
-28
+                                                          28
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1289,7 +1289,7 @@ This re-entry, unlike the others, will use the zero page
 pointers at $ØA - $ØF instead of the ones saved upon exit. 
 Therefore, you must be sure that they have not been altered.
 
-29
+                                                          29
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1330,7 +1330,7 @@ any I/O hooks you have established, by PR# etc., will have
 been disconnected. This will also happen if there is no 
 line with a "/".
 
-30
+                                                          30
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1365,7 +1365,7 @@ Replace (range)
 This deletes the line number or range, then places you into 
 INSERT mode at that location.
 
-31
+                                                          31
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1398,7 +1398,7 @@ or, when a line number is specified, from that line. This
 listing continues to the end of the file or until it is 
 stopped as in LIST.
 
-32
+                                                          32
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1439,7 +1439,7 @@ where the page breaks occur. If an 80 column card is in use
 in slot 3, then use PRTR 3 for this. No output is sent to 
 the printer until a LIST, PRINT, or ASM command is issued.
 
-33
+                                                          33
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1483,7 +1483,7 @@ COPY (line number or range) TO (line number)
 This copies the range to just 'above' the specified number. 
 It does not delete anything.
 
-34
+                                                          34
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1521,7 +1521,7 @@ you type a hex number, prefixed by "$", the decimal
 equivalent is returned. All commands accept hex numbers, 
 which are mainly convenient for the HIMEM and SYM commands.
 
-35
+                                                          35
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1562,7 +1562,7 @@ above HIMEM and below BASIC HIMEM. If the symbol table
 grows beyond the allotted space, you will get a memory 
 error during the first pass of assembly.
 
-36
+                                                          36
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1605,7 +1605,7 @@ CAT CAT-1 (CAT, X)
 
 but will not find CATALOG or SCAT.
 
-37
+                                                          37
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1644,7 +1644,7 @@ NOTE: For the commands involving a string, the character
 """ acts as a "WILD CARD". Therefore, F"Jon's" will find 
 both "Jones" and "Jonas".
 
-38
+                                                          38
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1687,7 +1687,7 @@ defaulted to when entering each new line.
 To change the case of a word, type CTRL-L, then copy over 
 the word using the right arrow.
 
-39
+                                                          39
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1725,7 +1725,7 @@ Deletes the character under the cursor.
 Finds the next occurrence of the character typed after the 
 CTRL-F. This is recursive.
 
-40
+                                                          40
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1768,7 +1768,7 @@ If entered as first character of a line gives 32 *'s.
 If entered as first character of a line gives 30 spaces 
 bordered by *'s.
 
-41
+                                                          41
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1808,7 +1808,7 @@ converts them back, so you never notice this. Its purpose
 is to avoid inappropriate tabbing of comments and ASCII 
 strings.
 
-42
+                                                          42
 ```
 ```
 MERLIN Users Manual                               THE EDITOR
@@ -1820,7 +1820,7 @@ replacing the first delimiter with a quote, hitting RETURN,
 then editing again and changing the delimiter back to the 
 desired one.
 
-43
+                                                          43
 ```
 ```
 MERLIN Users Manual                            THE ASSEMBLER
