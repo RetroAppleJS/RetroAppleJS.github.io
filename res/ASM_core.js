@@ -71,7 +71,8 @@ function ASM()
 	this.pragma_sym = 
 	{
 		"*=":{"ref":".ORG","asm":["MAC/65"]}   // sym[0] (ignore) & sym[1] = '='	// sym[0] = '*'    & sym[1] = '='
-		,"ORG":{"ref":".ORG","asm":["ASL","DASM"]} 
+		,"ORG":{"ref":".ORG","asm":["ASL","DASM"]}
+		,"OBJ":{"ref":".ORG","asm":["Merlin"]}
 		,".ORG":
 		{
 			 "asm":["ca65"]
@@ -129,6 +130,7 @@ function ASM()
 		{
 			"parser":function(arg)
 			{
+				// TODO DEBUG:   HEX $00 should produce an error !
 				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
 
 				var arg = sym.slice(ofs + 1, sym.length).join(" ");
@@ -137,14 +139,37 @@ function ASM()
 				if (pass == 2)
 				{
 					oASM.concat_code(dat);
-					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "")+this.ext;
+					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
 				}
+				listing.value += this.ext;
 				pc += dat.length;
 				return {"val":true};
 			}
 		}
 		,"BIN": true
-		,"ASC": true
+		,"ASC":    // TODO IMPLEMENT APPROX SAME WAY AS .BYTE
+        {
+			//https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ASM_MANUAL_MERLIN.md#ASC
+			 "asm":["Merlin"]
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				var str = sym.slice(ofs + 1, sym.length).join("");
+				var e = this.getExpression(str);
+				if (e.err) { displayError("malformed expression | "+e.err); return {"val":false} }
+				if(typeof(e.val)=="number") { e.val = [e.val]; e.type = "string"	} // string is always expected here
+				for (var i = 0; i < e.val.length; i++)
+					listing.value += this.getHexByte(e.val[i]);
+				if (pass == 2) oASM.concat_code(e.val);
+				listing.value += this.ext;
+				pc += e.val.length;
+				return {"val":true}
+			}
+		}
+
+
+
 		,".END":true
 		,".WORD":true
 		,"DFB":{"ref":".BYTE","asm":["Merlin"]}
@@ -539,19 +564,16 @@ function ASM()
 				// m1==false && m3==1 ? Surely a one-letter expression			==> default
 				// m1==false && m2==even && m3>1 ? most likely a long string	==> process string
 
-				if(m1==true && m2==true && m3>1)	// Most likely a long expression
+				if(m3==1)					// one-letter expression ?
 				{
-
+					if(m1==true) return {"err":"unpaired quotes in string"};
+					var e={"val":[ r.charCodeAt(0) | (c[0]=="'"?0x00:0x80) ],"type":"string","bytes":1}
 				}
-				else if(m1==false && m3==1)
+				else if(m3>1)				// long string ?
 				{
-
-				}
-				else if(m1==false)
-				{
-					if(m2==true && m3>1)
+					if(m1==true) return {"err":"unpaired quotes in string"};
+					if(m3>1 && m2==true)
 					{
-						// TODO: process long string
 						var e={"val":[],"type":"string","bytes":r.length}
 						for(var i=0;i<r.length;i++)
 						{
@@ -561,11 +583,12 @@ function ASM()
 					}
 					else return {"err":"unpaired quotes in string"};
 				}
-				//alert("getExpression (unesc="+m1+") (esc="+(m2?"even":"uneven")+") (l="+m3+")");
+				//else if( m1==true && m2==true ) // long expression ?
+				//{
+					// -> flow to default
+				//}
 
-			default:
-				//if(str=="'%'")
-				//	console.log("DEBUG THIS");
+			default:	// long expression ?
 				var nexp = "",l=0,err = "";
 				for(var i=0;i<exp.length;i++)
 				{
@@ -573,7 +596,7 @@ function ASM()
 					var oper = str.charAt(l-1);
 					var e = this.getNumber(exp[i]);
 					exp[i] = e.val;
-					err += e.err==undefined?"":(e.err+"|")
+					err += e.err==undefined?"":e.err
 					nexp += exp[i]+oper;
 				}
 				if(err.length>0) return {"val":"NaN","err":err}
