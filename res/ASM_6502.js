@@ -150,7 +150,7 @@ function assemble()
 	//var codefield = document.forms.ass.codefield;
 	var codefield = document.getElementById('codefield');
 
-	getSrc(document.forms.ass.srcfield);
+	oASM.getSrc(document.forms.ass.srcfield);
 	codefield.innerHTML = ' '+crlf;
 	//listing.value = 'starting assembly\npass 1\n';
 	var pass1 = false;
@@ -212,35 +212,6 @@ function displayError(er)
 	return false;
 }
 
-/////////////////////////////////////////
-// GetSrc()                            //
-// Slice ASM source into lines         //
-// & Remove all comments               //
-/////////////////////////////////////////
-
-function getSrc(formfield, bComments)
-{
-	if (formfield.value.indexOf('\r\n') >= 0)
-	{
-		codesrc = formfield.value.split('\r\n');
-	}
-	else if (formfield.value.indexOf('\r') >= 0)
-	{
-		codesrc = formfield.value.split('\r');
-	}
-	else
-	{
-		codesrc = formfield.value.split('\n');
-	}
-	//FVD remove all comments
-	if (!bComments)
-	{
-		for (var i = 0; i < codesrc.length; i++)
-			codesrc[i] = codesrc[i].split(";")[0]
-	}
-}
-
-
 function getChar()
 {
 	if (srcl >= codesrc.length) return 'EOF';
@@ -271,6 +242,10 @@ function getSym()
 	var s = 0;		// string index
 	var m = false;  // multi character
 	var q = false;	// quote
+
+	// TODO rule out semicolons located between single or double quotes
+	// otherwise string values with semicolons get abruptly trucated
+
 	while ((c != ';') && (c != '\n') && (c != 'EOF'))
 	{
 		if ((c == ' ' || c == '\t') && !q)

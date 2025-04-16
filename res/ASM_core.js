@@ -303,7 +303,11 @@ function ASM()
 		
 	}
 
-	// Slice ASM lines -> codesrc (array)
+	/////////////////////////////////////////
+	// GetSrc()                            //
+	// Slice ASM source into lines         //
+	// & Remove all comments               //
+	/////////////////////////////////////////
 	this.getSrc = function(formfield, bComments)
 	{
 		if (formfield.value.indexOf('\r\n') >= 0)
@@ -319,6 +323,7 @@ function ASM()
 			codesrc = formfield.value.split('\n');
 		}
 		//FVD remove all comments
+		// TODO rule out semicolons between single/double quotes
 		if (!bComments)
 		{
 			for (var i = 0; i < codesrc.length; i++)
