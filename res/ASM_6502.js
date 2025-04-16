@@ -121,8 +121,8 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 
 // globals
 
-var codesrc, srcl, srcc, pc, listing;
-var codesrc_buf = new Array();
+var srcl, srcc, pc, listing;
+var codesrc_buf = new Array();  // TODO move codesrc_buf to oASM
 
 
 // functions
@@ -150,7 +150,7 @@ function assemble()
 	//var codefield = document.forms.ass.codefield;
 	var codefield = document.getElementById('codefield');
 
-	oASM.getSrc(document.forms.ass.srcfield);
+	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield);
 	codefield.innerHTML = ' '+crlf;
 	//listing.value = 'starting assembly\npass 1\n';
 	var pass1 = false;
@@ -214,8 +214,8 @@ function displayError(er)
 
 function getChar()
 {
-	if (srcl >= codesrc.length) return 'EOF';
-	if (srcc >= codesrc[srcl].length)
+	if (srcl >= oASM.codesrc.length) return 'EOF';
+	if (srcc >= oASM.codesrc[srcl].length)
 	{
 		srcc = 0;
 		srcl++;
@@ -223,7 +223,7 @@ function getChar()
 	}
 	else
 	{
-		var c = codesrc[srcl].charAt(srcc);
+		var c = oASM.codesrc[srcl].charAt(srcc);
 		srcc++;
 		return c //.toUpperCase();
 	}

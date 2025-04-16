@@ -310,32 +310,29 @@ function ASM()
 	/////////////////////////////////////////
 	this.getSrc = function(formfield, bComments)
 	{
+		var src;
 		if (formfield.value.indexOf('\r\n') >= 0)
-		{
-			codesrc = formfield.value.split('\r\n');
-		}
+			src = formfield.value.split('\r\n');
 		else if (formfield.value.indexOf('\r') >= 0)
-		{
-			codesrc = formfield.value.split('\r');
-		}
+			src = formfield.value.split('\r');
 		else
-		{
-			codesrc = formfield.value.split('\n');
-		}
+			src = formfield.value.split('\n');
+
 		//FVD remove all comments
 		// TODO rule out semicolons between single/double quotes
 		if (!bComments)
 		{
-			for (var i = 0; i < codesrc.length; i++)
-				codesrc[i] = codesrc[i].split(";")[0]
+			for (var i = 0; i < src.length; i++)
+				src[i] = src[i].split(";")[0];
 		}
-		return codesrc;
+		return src;
 	}
 
 	this.mocha_test = function(_o)
 	{
 		// https://www.chaijs.com/api/assert/#method_deepequal
-		Object.prototype.f = function (arr) { 
+		Object.prototype.f = function (arr)
+		{ 
 			var val = this,r = {},arr = arr===undefined?["val","fmt","bytes","err"]:arr;
 			arr.forEach(function(v, i) { if(typeof(val[v])!="undefined") r[v] = val[v]});
 			return r;

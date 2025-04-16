@@ -54,24 +54,28 @@ function onToolBox(el) {
   e.hidden = !e.hidden;
 }
 
-function onSrcMargin(dir, obj) {
-  getSrc(obj, true)
-  switch (dir) {
+function onSrcMargin(dir, obj) 
+{
+  oASM.codesrc = oASM.getSrc(obj, true);
+  switch (dir)
+  {
     case '+':
-      for (var i = 0; i < codesrc.length; i++) {
-        var buf = codesrc_buf[i].charAt(codesrc_buf[i].length - 1)
-        codesrc[i] = buf + codesrc[i];
-        codesrc_buf[i] = codesrc_buf[i].substring(0, codesrc_buf[i].length - 1)
+      for (var i = 0; i < oASM.codesrc.length; i++)
+      {
+        var buf = codesrc_buf[i].charAt(codesrc_buf[i].length - 1);
+        oASM.codesrc[i] = buf + oASM.codesrc[i];
+        codesrc_buf[i]  = codesrc_buf[i].substring(0, codesrc_buf[i].length - 1);
       }
-      obj.value = codesrc.join("\n");
-      break;
+      obj.value = oASM.codesrc.join("\n");
+    break;
     case '-':
-      for (var i = 0; i < codesrc.length; i++) {
-        codesrc_buf[i] = (codesrc_buf[i] == null ? "" : codesrc_buf[i]) + codesrc[i].charAt(0);
-        codesrc[i] = codesrc[i].substring(1, codesrc[i].length)
+      for (var i = 0; i < oASM.codesrc.length; i++)
+      {
+        codesrc_buf[i]  = (codesrc_buf[i] == null ? "" : codesrc_buf[i]) + oASM.codesrc[i].charAt(0);
+        oASM.codesrc[i] = oASM.codesrc[i].substring(1, oASM.codesrc[i].length);
       }
-      obj.value = codesrc.join("\n");
-      break;
+      obj.value = oASM.codesrc.join("\n");
+    break;
   }
 }
 
@@ -102,14 +106,15 @@ function lim3(str) {
   return str ? str.substring(0, 3) : "";
 }
 
-function onSrcComment(dir, obj) {
-  getSrc(obj, true);
+function onSrcComment(dir, obj)
+{
+  oASM.getSrc(obj, true);
   switch (dir) {
     case '2Space':
-      for (var i = 0; i < codesrc.length; i++) {
+      for (var i = 0; i < oASM.codesrc.length; i++) {
         // FVD splitting with RegExp
 
-        var opc = codesrc[i].ltrim();
+        var opc = oASM.codesrc[i].ltrim();
         //var part = opc.split(/([\s](?=[^\s]))(?=(?:[^'][^\s][^']))/g)
         var part = space_segment(opc);
         if (instrtab[lim3(part[0])] && part[2] != null) // first part = opcode ?
@@ -121,7 +126,7 @@ function onSrcComment(dir, obj) {
           var idx = idx_val ? (off + 1) : (off + 2)       //  0 or 1 operand ?
           var spc = part[idx - 1].slice(-1);
           part[idx] = ";" + part[idx];
-          codesrc[i] = part.join(" ");
+          oASM.codesrc[i] = part.join(" ");
         } else if (instrtab[lim3(part[1])] && part[3] != null) // second part = opcode ?
         {
           //alert(part[1] +" "+ instrtab[part[1]])
@@ -131,11 +136,11 @@ function onSrcComment(dir, obj) {
           var idx = idx_val ? (off + 1) : (off + 2);     //  2 or 3 operand ?
           var spc = part[idx - 1].slice(-1);
           part[idx] = ";" + part[idx];
-          codesrc[i] = part.join(" ");
+          oASM.codesrc[i] = part.join(" ");
         }
 
       }
-      obj.value = codesrc.join("\n");
+      obj.value = oASM.codesrc.join("\n");
       break;
   }
 }
@@ -149,7 +154,7 @@ function onSrcTransform(dir, obj)
 
   if(dir=="transform")
   {
-    getSrc(obj, true);
+    oASM.getSrc(obj, true);
     var tin = document.getElementById("TFUNCTION_in").value;
     var tout = document.getElementById("TFUNCTION_out").value; 
 
@@ -157,23 +162,23 @@ function onSrcTransform(dir, obj)
     try
     {
       var re = new RegExp(tin,"g");
-      for (var i = 0; i < codesrc.length; i++)
+      for (var i = 0; i < oASM.codesrc.length; i++)
       {
-        //codesrc[i] = codesrc[i].replace(re,tout);
+        //oASM.codesrc[i] = oASM.codesrc[i].replace(re,tout);
         //  ( [a-z][a-z][a-z] )
         // x => x[1].toUpperCase()
-        //codesrc[i] = codesrc[i].replace(re,x => x.toUpperCase())
-        //codesrc[i] = codesrc[i].replace(re,eval("x => 'EQU'"))
-        //codesrc[i] = codesrc[i].replace(re,eval("x => x.toUpperCase()"))
+        //oASM.codesrc[i] = oASM.codesrc[i].replace(re,x => x.toUpperCase())
+        //oASM.codesrc[i] = oASM.codesrc[i].replace(re,eval("x => 'EQU'"))
+        //oASM.codesrc[i] = oASM.codesrc[i].replace(re,eval("x => x.toUpperCase()"))
         //console.log(tout.match(/^'/))
         //console.log("len "+tout.split(/(["'])(?:(?=(\\?))\2.)*?\1/g).length)
         if(tout.split(/(["'])(?:(?=(\\?))\2.)*?\1/g).length==4)
-          codesrc[i] = (codesrc[i]+"\n").replace(re,tout.substring(1,tout.length-1));
+          oASM.codesrc[i] = (oASM.codesrc[i]+"\n").replace(re,tout.substring(1,tout.length-1));
         else
-          codesrc[i] = (codesrc[i]+"\n").replace(re,eval("x => "+tout));
-        codesrc[i] = codesrc[i].substring(0,codesrc[i].length-1);
+          oASM.codesrc[i] = (oASM.codesrc[i]+"\n").replace(re,eval("x => "+tout));
+        oASM.codesrc[i] = oASM.codesrc[i].substring(0,oASM.codesrc[i].length-1);
       } 
-      obj.value = codesrc.join("\n");
+      obj.value = oASM.codesrc.join("\n");
     }
     catch(e)
     {
