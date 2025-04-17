@@ -598,11 +598,11 @@ function debug_symbols(showDBG)
 		if(showDBG.RAM && oASM.symtab[i]<parseInt("C000",16)
 			|| showDBG.ROM && oASM.symtab[i]>=parseInt("C000",16))
 		{
-			
 			m = (i+" ".repeat(oASM.label_len-(i.length>oASM.label_len?oASM.label_len:i.length) )) + " = $" + getHexVar(oASM.symtab[i])
 			if(alt) s += m+" ".repeat(m.length>17?1:17-m.length); else s += m+"\n";
 			alt = !alt;
 
+			// Encode 6 characters (label) to 4 Bytes (5.322 bits per character = 31.319 bits per 6 characters )
 			var lbl = conv(i,{"dbg":false,"slen":6,"glen":3,"wlen":4,"defc":"_","c":"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .-_"}) // max = F9FF (base40)
 			var adr = oCOM.getHexWord(oASM.symtab[i]);
 			str += lbl + adr;
