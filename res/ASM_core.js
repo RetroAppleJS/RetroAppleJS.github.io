@@ -323,7 +323,10 @@ function ASM()
 		if (!bComments)
 		{
 			for (var i = 0; i < src.length; i++)
-				src[i] = src[i].split(";")[0];
+			{
+				var lidx = src[i].lastIndexOf(" ;")
+				if(lidx>0)  src[i] = src[i].substring(0,lidx);
+			}
 		}
 		return src;
 	}
