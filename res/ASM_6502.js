@@ -145,14 +145,10 @@ function assemble()
 	listing = document.forms.ass.listing;
 	var showADR = document.ass.showADR.checked;
 	var showDBG = {"RAM":document.ass.showDBG_RAM.checked == true,"ROM":document.ass.showDBG_ROM.checked == true}
-
-
-	//var codefield = document.forms.ass.codefield;
 	var codefield = document.getElementById('codefield');
-
 	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield);
 	codefield.innerHTML = ' '+crlf;
-	//listing.value = 'starting assembly\npass 1\n';
+
 	var pass1 = false;
 	var pass2 = false;
 	oASM.clear_code();
@@ -183,19 +179,15 @@ function assemble()
 				if (((n > 0) && (n % 8 == 0)) || new_pc >= 0)
 				{
 					c += (i == 0 ? '' : crlf)
-					+ (showADR == 1 && (l - i - 1) >= 0 ? (getHexWord(pc - l + i + 1) + ': ') : '');
+					+ (showADR == 1 && (l - i - 1) >= 0 ? (oCOM.getHexWord(pc - l + i + 1) + ': ') : '');
 					n = 0;
 				}
-				c += getHexByte(oASM.read_code(i)) + ' ';
+				c += oCOM.getHexByte(oASM.read_code(i)) + ' ';
 				n++;
 			}
 			codefield.innerHTML = c;
 			listing.value += '\ndone.';
 		}
-	}
-	if ((pass1) && (pass2))
-	{
-		//alert('6502 Assembler:\ndone.');
 	}
 	else
 	{
@@ -228,11 +220,6 @@ function getChar()
 		return c //.toUpperCase();
 	}
 }
-
-
-
-
-
 
 function getSym()
 {
@@ -341,7 +328,7 @@ function doPass(pass)
 		var lbl = null;
 
 		// List PROGRAM COUNTER (PC)
-		listing.value += getHexWord(pc) + ' ';	
+		listing.value += oCOM.getHexWord(pc) + ' ';	
 	
 		var opc = sym[ofs];						// read next opcode
 		var opctab = instrtab[opc];				// opcode lookup table
@@ -414,7 +401,7 @@ function doPass(pass)
 				if(pass == 2)
 				{
 					padd = 3;
-					listing.value += listing_gen(mode,{"opcode":opc+' '.repeat(opspace-padd)+getHexByte(opctab[0])})
+					listing.value += listing_gen(mode,{"opcode":opc+' '.repeat(opspace-padd)+oCOM.getHexByte(opctab[0])})
 					oASM.write_code( opctab[0] );
 				}
 				pc++;
@@ -427,9 +414,6 @@ function doPass(pass)
 			else if(mactab != null)  // MACRO CODE
 			{
 				listing.value += sym[ofs]+" ";
-
-
-				
 				if(mactab.ref) mactab = oASM.pragma_sym[mactab.ref];
 				if(mactab.parser)
 				{
@@ -438,17 +422,6 @@ function doPass(pass)
 				}
 				else
 					r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
-
-/*
-				// THIS DOES NOT WORK HERE
-					if(oASM.pragma_sym[mactab.parser])
-						r = oASM.pragma_sym[mactab].parser({"sym":sym,"pass":pass,"ofs":ofs})
-					else if(oASM.pragma_sym[mactab.ref])
-						r = oASM.pragma_sym[mactab.ref].parser({"sym":sym,"pass":pass,"ofs":ofs})
-					else
-						r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
-*/
-
 			}
 			else
 			{
@@ -552,17 +525,17 @@ function doPass(pass)
 					// compile
 					listing.value += ' '.repeat(opspace-padd);
 
-					listing.value += getHexByte(instr);  	// add first byte to listing
+					listing.value += oCOM.getHexByte(instr);  	// add first byte to listing
 					if (mode > 1)							// add following bytes
 					{
 						var op = oper & 0xff;
 						oASM.write_code( op );
-						listing.value += ' ' + getHexByte(op);
+						listing.value += ' ' + oCOM.getHexByte(op);
 						if (steptab[mode] > 2)
 						{
 							op = (Math.floor(oper / 256)) & 0xff;
 							oASM.write_code( op );
-							listing.value += ' ' + getHexByte(op);
+							listing.value += ' ' + oCOM.getHexByte(op);
 						}
 					}
 					if (e && e.warn) { listing.value += '\n' + e.warn  }
@@ -630,11 +603,8 @@ function debug_symbols(showDBG)
 			if(alt) s += m+" ".repeat(m.length>17?1:17-m.length); else s += m+"\n";
 			alt = !alt;
 
-			var lbl = conv(i //"______"
-			//.toUpperCase().replace(/Q/g,"O").replace(/0/g,"O").replace(/U/g,"V")
-			//,{"dbg":true,"slen":6,"glen":6,"blen":4,"s.defc":".","c":"123456789ABCDEFGHIJKLMNOPRSTVWXYZ ."});
-			,{"dbg":false,"slen":6,"glen":3,"wlen":4,"defc":"_","c":"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .-_"}) // max = F9FF
-			var adr = getHexWord(oASM.symtab[i]);
+			var lbl = conv(i,{"dbg":false,"slen":6,"glen":3,"wlen":4,"defc":"_","c":"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .-_"}) // max = F9FF (base40)
+			var adr = oCOM.getHexWord(oASM.symtab[i]);
 			str += lbl + adr;
 		}
 
@@ -655,15 +625,6 @@ function conv(inp,s)
 	if(s.dbg) document.write(inp+"<br>");
 	for(var i=0, str="";i<inp.length;i+=s.glen)
 	{
-		//for(var j=0,n=0;j<s.glen;j++)
-		//{
-		//	var exp = s.glen-j-1;  var chr = s.c.indexOf(inp.charAt(i+j));
-		//	var p = chr * Math.pow(s.c.length,exp); n+=p
-		//	if(s.dbg) document.write(chr+" * Math.pow("+s.c.length+","+exp+") = "+p+" ("+getHexMulti(p,s.wlen)+")<br>")
-		//}
-		//if(s.dbg) document.write("$"+getHexMulti(n,s.wlen)+" "+n+" %"+getBinMulti(n,s.wlen) +"<br>")
-		//var w = getHexMulti(n,s.wlen);
-
 		var w = ("0".repeat(s.wlen)+oCOM.base_convert(inp.substring(i,i+s.glen),[s.c],["0123456789ABCDEF"])).slice(-s.wlen);
 		if(s.dbg) document.write("oCOM.base_convert["+w+"]");
 		str+=w;
@@ -679,101 +640,8 @@ function conv(inp,s)
 //     ██    ██   ██ ██ ███████ 
 
 
-/*
-var JSON = function ()
-{
-	this.stringify = JSON_stringify;
-}()
-
-function JSON_stringify(_o)
-{
-	var s = "{";
-	for (var i in _o) s += i + ":" + _o[i];
-	return s;
-}
-*/
-
-var hextab = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
-
-
-function getHexByte(v)
-{
-	return '' + hextab[Math.floor(v / 16)] + hextab[v & 0x0f];
-}
-
-function getHexWord(v)
-{
-	return '' + hextab[Math.floor(v / 0x1000)]
-						+ hextab[Math.floor((v & 0x0f00) / 256)]
-						+ hextab[Math.floor((v & 0xf0) / 16)]
-						+ hextab[v & 0x000f];
-}
-
-function getHexMulti(v,m)
-{
-	return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
-}
-
-function getBinMulti(v,m)
-{
-	var s = "";
-	var r = ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase();
-  for(var i=0;i<r.length;i++)
-		s+= ("0000"+parseInt(r.charAt(i),16).toString(2)).slice(-4)
-	return s;
-}
-
 function getHexVar(v)
 {
-	if (v < 256) return getHexByte(v)
-	return getHexWord(v)
-}
-
-// constructor mods (IE4 fixes)
-
-var IE4_keyref;
-var IE4_keycoderef;
-
-function IE4_makeKeyref()
-{
-	IE4_keyref = new Array();
-	IE4_keycoderef = new Array();
-	var hex = new Array('A', 'B', 'C', 'D', 'E', 'F');
-	for (var i = 0; i <= 15; i++)
-	{
-		var high = (i < 10) ? i : hex[i - 10];
-		for (var k = 0; k <= 15; k++)
-		{
-			var low = (k < 10) ? k : hex[k - 10];
-			var cc = i * 16 + k;
-			if (cc >= 32)
-			{
-				var cs = unescape('%' + high + low);
-				IE4_keyref[cc] = cs;
-				IE4_keycoderef[cs] = cc;
-			}
-		}
-	}
-}
-
-function _ie4_strfrchr(cc)
-{
-	return (cc != null) ? IE4_keyref[cc] : '';
-}
-
-function _ie4_strchcdat(n)
-{
-	cs = this.charAt(n);
-	return (IE4_keycoderef[cs]) ? IE4_keycoderef[cs] : 0;
-}
-
-if (!String.fromCharCode)
-{
-	IE4_makeKeyref();
-	String.fromCharCode = _ie4_strfrchr;
-}
-if (!String.prototype.charCodeAt)
-{
-	if (!IE4_keycoderef) IE4_makeKeyref();
-	String.prototype.charCodeAt = _ie4_strchcdat;
+	if (v < 256) return oCOM.getHexByte(v)
+	return oCOM.getHexWord(v)
 }
