@@ -33,7 +33,7 @@ var oBASE = new function BASE() {
   "geohash":   ["[0-9][b-h]jkmn[p-z]"],                      // base 32
   "RFC 4648":  ["[A-Z][2-7]"],                               // base 32
   "base32hex": ["[0-9][A-V]"],                               // base 32
-  "ASM"      : ["[0-9][A-Z] .-_"]                            // base 40
+  "ASM"      : ["[0-9][A-Z] .-_"],                           // base 40
   "qr-alnum":  ["[0-9][A-Z] $%*+-./:"],                      // base 45
   "Bitcoin":   ["[1-9][A-H]JKLMN[P-Z][a-k][m-z]"],           // base 58
   "appleII":   ["[0-9][A-Z]![#-/][:-@]]^ "],                 // base 60
