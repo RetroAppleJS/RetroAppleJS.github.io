@@ -320,14 +320,38 @@ function ASM()
 
 		//FVD remove all comments
 		// TODO rule out semicolons between single/double quotes
+		// comments start at position where an unquoted (single/double) and unescaped semicolon extists
+
 		if (!bComments)
 		{
 			for (var i = 0; i < src.length; i++)
 			{
-				var lidx = src[i].lastIndexOf(" ;")
-				if(lidx>0)  src[i] = src[i].substring(0,lidx);
+				if(src[i].charAt(0)==";") { src[i] = ""; continue }
+				if(src[i].indexOf(";")<0) continue;
+
+				var csrc = src[i].replace(/[\\][^\\]/g," ");				// substitute any escaped character by space
+				var dq_src = csrc.replace(/"([^"]*)"/g, function(match) // replace any character between double quotes by space
+				{
+					for (var i = 0, spaces=""; i < match.length - 2; i++) spaces += " ";
+					return '"' + spaces + '"';
+				});
+
+				var sq_src = csrc.replace(/'([^']*)"/g, function(match) // replace any character between single quotes by space
+				{
+					for (var i = 0, spaces=""; i < match.length - 2; i++) spaces += " ";
+					return '"' + spaces + '"';
+				});
+
+				var dqp = dq_src.indexOf(";");
+				var sqp = sq_src.indexOf(";");
+				if(dqp==sqp)
+				{
+					src[i] = src[i].substring(0,dqp);
+				}
+				else alert("can' mix single quotes and double quotes in same statement");
 			}
 		}
+
 		return src;
 	}
 

@@ -5,7 +5,8 @@
 // ASM_6502.js
 
 
-
+// TODO: FIX LDA #";"
+// TODO: split GUI & business functions <> gui functions
 
 
 // lookup tables
@@ -146,7 +147,7 @@ function assemble()
 	var showADR = document.ass.showADR.checked;
 	var showDBG = {"RAM":document.ass.showDBG_RAM.checked == true,"ROM":document.ass.showDBG_ROM.checked == true}
 	var codefield = document.getElementById('codefield');
-	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield);
+	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield,false);
 	codefield.innerHTML = ' '+crlf;
 
 	var pass1 = false;
@@ -233,7 +234,9 @@ function getSym()
 	// TODO rule out semicolons located between single or double quotes
 	// otherwise string values with semicolons get abruptly trucated
 
-	while ((c != ';') && (c != '\n') && (c != 'EOF'))
+	while (
+		//(c != ';') &&
+	(c != '\n') && (c != 'EOF'))
 	{
 		if ((c == ' ' || c == '\t') && !q)
 		{
