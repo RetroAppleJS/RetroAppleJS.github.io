@@ -56,7 +56,7 @@ function onToolBox(el) {
 
 function onSrcMargin(dir, obj) 
 {
-  oASM.codesrc = oASM.getSrc(obj, true);
+  oASM.codesrc = oASM.getSrc(obj);
   switch (dir)
   {
     case '+':
@@ -108,7 +108,7 @@ function lim3(str) {
 
 function onSrcComment(dir, obj)
 {
-  oASM.getSrc(obj, true);
+  oASM.getSrc(obj);
   switch (dir) {
     case '2Space':
       for (var i = 0; i < oASM.codesrc.length; i++) {
@@ -154,7 +154,7 @@ function onSrcTransform(dir, obj)
 
   if(dir=="transform")
   {
-    oASM.getSrc(obj, true);
+    oASM.getSrc(obj);
     var tin = document.getElementById("TFUNCTION_in").value;
     var tout = document.getElementById("TFUNCTION_out").value; 
 

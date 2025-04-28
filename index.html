@@ -544,8 +544,17 @@
               document.getElementById('MemCapture').disabled = !bValid
               return bValid;
             }
-            </script>
 
+            function onSnapshot(canvas)
+            {
+              var canvas = document.getElementById("applescreen");
+              const dataURL = canvas.toDataURL('image/png');
+              document.write(dataURL);
+            }
+
+            </script>
+            
+            <button onclick="onSnapshot()">SNAP</button>
             <!--input id=foo type=text oninput="apple2plus.keystroke(event)"    onclick=document.getElementById('foo').focus()-->
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onkeydown="oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
             <!--/input-->

@@ -147,7 +147,7 @@ function assemble()
 	var showADR = document.ass.showADR.checked;
 	var showDBG = {"RAM":document.ass.showDBG_RAM.checked == true,"ROM":document.ass.showDBG_ROM.checked == true}
 	var codefield = document.getElementById('codefield');
-	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield,false);
+	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield,{"LComment":"*;","RComment":";"});
 	codefield.innerHTML = ' '+crlf;
 
 	var pass1 = false;

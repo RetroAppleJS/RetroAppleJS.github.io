@@ -70,9 +70,10 @@ function ASM()
 
 	this.pragma_sym = 
 	{
-		"*=":{"ref":".ORG","asm":["MAC/65"]}   // sym[0] (ignore) & sym[1] = '='	// sym[0] = '*'    & sym[1] = '='
+		"*=":  {"ref":".ORG","asm":["MAC/65"]}      // sym[0] (ignore) & sym[1] = '='	// sym[0] = '*'    & sym[1] = '='
 		,"ORG":{"ref":".ORG","asm":["ASL","DASM"]}
 		,"OBJ":{"ref":".ORG","asm":["Merlin"]}
+		,".OR":{"ref":".ORG","asm":["S-C"]}
 		,".ORG":
 		{
 			 "asm":["ca65"]
@@ -96,6 +97,7 @@ function ASM()
 			}
 		}
 		,"=":{"ref":"EQU"}   // sym[0] (ignore) & sym[1] = '='
+		,".EQ":{"ref":"EQU","asm":["S-C"]}   // sym[0] (ignore) & sym[1] = '='
 		,"EQU":
 		{
 			"parser":function(arg)
@@ -216,6 +218,14 @@ function ASM()
 		,".ENDIF":true
 		,".SYMBOLS":true
 		,".EQ":true
+		,".TF":
+		{
+			 "asm":["S-C"]
+	   		,"parser":function(arg)
+			{
+				 displayError("Skipped expression - not implemented");
+			}
+		}
 	}
 
 	this.assemble_step = function(srcfield_el,listing_el,codefield_el)
@@ -308,50 +318,62 @@ function ASM()
 	// Slice ASM source into lines         //
 	// & Remove all comments               //
 	/////////////////////////////////////////
-	this.getSrc = function(formfield, bComments)
+	this.getSrc = function(formfield, arg)
 	{
-		var src;
-		if (formfield.value.indexOf('\r\n') >= 0)
-			src = formfield.value.split('\r\n');
-		else if (formfield.value.indexOf('\r') >= 0)
-			src = formfield.value.split('\r');
+		var src = formfield.value!=null ? formfield.value.replace(/[“”]/g,"\"") : "";
+
+		if(src.indexOf('\r\n') >= 0)
+			src = src.split('\r\n');
+		else if (src.indexOf('\r') >= 0)
+			src = src.split('\r');
 		else
-			src = formfield.value.split('\n');
+			src = src.split('\n');
+
+			// TODO: rename src to srcArr (because it is an array)
 
 		//FVD remove all comments
 		// TODO rule out semicolons between single/double quotes
 		// comments start at position where an unquoted (single/double) and unescaped semicolon extists
 
-		if (!bComments)
+
+		if (arg!=null && arg.LComment!=null)		//  strip out left comments if applicable
 		{
+			var cc = oCOM.escapeREGEXP(arg.LComment);
 			for (var i = 0; i < src.length; i++)
 			{
-				if(src[i].charAt(0)==";") { src[i] = ""; continue }
-				if(src[i].indexOf(";")<0) continue;
-
-				var csrc = src[i].replace(/[\\][^\\]/g," ");				// substitute any escaped character by space
-				var dq_src = csrc.replace(/"([^"]*)"/g, function(match) // replace any character between double quotes by space
-				{
-					for (var i = 0, spaces=""; i < match.length - 2; i++) spaces += " ";
-					return '"' + spaces + '"';
-				});
-
-				var sq_src = csrc.replace(/'([^']*)"/g, function(match) // replace any character between single quotes by space
-				{
-					for (var i = 0, spaces=""; i < match.length - 2; i++) spaces += " ";
-					return '"' + spaces + '"';
-				});
-
-				var dqp = dq_src.indexOf(";");
-				var sqp = sq_src.indexOf(";");
-				if(dqp==sqp)
-				{
-					src[i] = src[i].substring(0,dqp);
-				}
-				else alert("can' mix single quotes and double quotes in same statement");
+				var r = RegExp("^[ ]*["+cc+"]"); 
+				if(src[i].match(r) != null) { src[i] = ""; continue }	// skip if line starts with comment
 			}
 		}
 
+		if (arg!=null && arg.RComment!=null)		//  strip out right comments if applicable
+		{
+			var cc = oCOM.escapeREGEXP(arg.RComment);
+			for (var i = 0; i < src.length; i++)
+			{
+				var r = RegExp("[ ]["+cc+"]");
+				var csrc = src[i].replace(/[\\][^\\]/g," ");			// substitute any escaped character by space
+				if(csrc.match(r) == null) { continue }					// skip if no comment character found
+
+				var dq_src = csrc.replace(/"([^"]*)"/g, function(match) 					    // replace any character between double quotes by space
+				{
+					for (var i=0, spaces=""; i<match.length-2; i++) spaces += " ";
+					return '"'+spaces+'"';
+				});
+
+				var sq_src = csrc.replace(/'([^']*)"/g, function(match)							// replace any character between single quotes by space
+				{
+					for (var i=0, spaces=""; i<match.length-2; i++) spaces += " ";
+					return '\''+spaces+'\'';
+				});
+
+				;
+				var dqp = dq_src.indexOf( dq_src.match(r)[0] );
+				var sqp = sq_src.indexOf( sq_src.match(r)[0] );
+				if(dqp==sqp) src[i] = src[i].substring(0,dqp);									// truncate comments
+				else alert("can't mix single quotes and double quotes in same statement");
+			}
+		}
 		return src;
 	}
 
