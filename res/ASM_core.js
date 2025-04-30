@@ -169,15 +169,11 @@ function ASM()
 				return {"val":true}
 			}
 		}
-
-
-
 		,".END":true
-		,".WORD":true
-		,"DFB":{"ref":".BYTE","asm":["Merlin"]}
+		,"DFB":{"ref":".BYTE","asm":["Merlin"],"description":"Define Byte"}
 		,".BYTE":
 		{
-			 "asm":["ca65"]
+			 "asm":["ca65","S-C"]
 			,"parser":function(arg)
 			{
 				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
@@ -192,9 +188,9 @@ function ASM()
 					{
 						var e = this.getExpression(arr[i]);
 						if (e.err) { displayError(e.err); return {"val":false} }
+						e.val = e.val & 0xFF;
 						if(e.type=="string") byte_arr = e.val;
-						else 
-							var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
+						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
 
 						var k = dat.length;
 						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
@@ -209,6 +205,96 @@ function ASM()
 				}
 				pc += arr.length;
 				return {"val":true}
+			}
+		}
+		,"DFB":{"ref":"DA","asm":["Merlin"],"description":"Define Address"}
+		,".WORD":
+		{
+			 "asm":["ca65","S-C"]
+			,"parser":function(arg)
+			{
+				// process all other symbols !
+				// expect ANY aritmetic expression 
+				// from which the outcome is 2 bytes long
+				// e.g. $FFFF
+				// e.g. %01010
+				// e.g. >ADR - generates only one byte !
+				// e.g. *12
+				// e.g. >$FFFF - generates only one byte !
+
+				// TODO:ELIMINATE DUPLICATE CODE WITH .BYTE and DBB (by function override?)
+
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				// numerical expressions and strings are split as array with byte size elements 
+				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
+				if(pass==1) listing.value += arr.join(",");
+				if(pass==2)
+				{
+					var dat = [];
+					for(var i=0;i<arr.length;i++)  // loop through CSV elements
+					{
+						var e = this.getExpression(arr[i]);
+						if (e.err) { displayError(e.err); return {"val":false} }
+						e.val = e.val & 0xFFFF;
+						e.bytes = 2;
+						if(e.type=="string") byte_arr = e.val;
+						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
+
+						var k = dat.length;
+						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
+							dat[k+j] = byte_arr[j];
+					}
+
+					for(var i=0;i<dat.length;i++)			// overwrite arr
+						arr[i] = this.getHexByte(dat[i]);
+
+					oASM.concat_code(dat);
+					listing.value += arr.join(" ")+this.ext;
+				}
+				pc += arr.length << 1;
+				return {"val":true}
+			}
+		}
+		,"DDB":
+		{
+			 "asm":["Merlin"]
+			 ,"description":"Define Double-Byte"
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+
+				// numerical expressions and strings are split as array with byte size elements 
+				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
+				if(pass==1) listing.value += arr.join(",");
+				if(pass==2)
+				{
+					var dat = [];
+					for(var i=0;i<arr.length;i++)  // loop through CSV elements
+					{
+						var e = this.getExpression(arr[i]);
+						if (e.err) { displayError(e.err); return {"val":false} }
+						e.val = e.val & 0xFFFF;
+						e.bytes = 2;
+						if(e.type=="string") byte_arr = e.val;
+						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
+
+						var k = dat.length;
+						for(var j=0;j<byte_arr.length;j+=2)  // loop through element, with potentially larger byte size
+						{
+							dat[k+j] = byte_arr[j+1];
+							dat[k+j+1] = byte_arr[j];
+						}
+					}
+
+					for(var i=0;i<dat.length;i++)			// overwrite arr
+						arr[i] = this.getHexByte(dat[i]);
+
+					oASM.concat_code(dat);
+					listing.value += arr.join(" ")+this.ext;
+				}
+				pc += arr.length << 1;
+				return {"val":true}				
 			}
 		}
 		,".AT":true
