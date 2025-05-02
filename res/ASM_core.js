@@ -694,31 +694,31 @@ function ASM()
 
 				var m1 = r.match(RegExp("\\w*(?<!\\\\)"+c[0],"g"))!=null;	// any unescaped quotes ?           true   = BAD!
 				var m2 = (r.split(RegExp("\\\\"+c[0],"g")).length-1)%2==0;	// count even amount of escaped quotes ? uneven = BAD!
-				r = r.replace(RegExp("\\\\"+c[0],"g"),"");
+				r = r.replace(RegExp("\\\\"+c[0],"g"),c[0]);
 				var m3 = r.length;
 
 				// m1==true && m2==even && m3>1 ? most likely a long expression ==> default
 				// m1==false && m3==1 ? Surely a one-letter expression			==> default
 				// m1==false && m2==even && m3>1 ? most likely a long string	==> process string
 
-				if(m3==1)					// one-letter expression ?
+				if(m3==1)	    // one-letter expression ?
 				{
 					if(m1==true) return {"err":"unpaired quotes in string"};
 					var e={"val":[ r.charCodeAt(0) | (c[0]=="'"?0x00:0x80) ],"type":"string","bytes":1}
 				}
-				else if(m3>1)				// long string ?
+				else if(m3>1 && m1==false)				// long string ?
 				{
-					if(m1==true) return {"err":"unpaired quotes in string"};
-					if(m3>1 && m2==true)
-					{
+					//if(m1==true) return {"err":"unpaired quotes in string"};
+					//if(m3>1 && m2==true)
+					//{
 						var e={"val":[],"type":"string","bytes":r.length}
 						for(var i=0;i<r.length;i++)
 						{
 							e.val[i] = r.charCodeAt(i) | (c[0]=="'"?0x00:0x80)
 						}
 						return e;
-					}
-					else return {"err":"unpaired quotes in string"};
+					//}
+					//else return {"err":"unpaired quotes in string"};
 				}
 				//else if( m1==true && m2==true ) // long expression ?
 				//{
@@ -726,6 +726,8 @@ function ASM()
 				//}
 
 			default:	// long expression ?
+				// TODO: check if quote enclosures always contain correctly escaped characters (quotes or double quotes)
+
 				var nexp = "",l=0,err = "";
 				for(var i=0;i<exp.length;i++)
 				{
