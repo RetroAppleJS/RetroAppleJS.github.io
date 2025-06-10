@@ -1,0 +1,34 @@
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<body style="font-family:'Courier New', Courier, monospace">
+
+
+<script>
+function line_decoder(adr)
+{
+    var enu = adr<256 ? adr & 0xF0 : adr & 0xF00
+    document.write(oCOM.getHexWord(adr)+" "+oCOM.getHexWord(enu)+" <br>")
+}
+
+for(var i=0;i<0x80;i++)
+    line_decoder(i); 
+document.write("<hr>")
+
+for(var i=0x80;i<0xFF;i++)
+{
+   line_decoder(i); 
+}
+document.write("<hr>")
+
+for(var i=0x100;i<0x7FF;i++)
+{
+    line_decoder(i)
+}
+
+
+var txt = "DISKII"
+var d = oCOM.crc16( new TextEncoder("utf-8").encode(txt)  )
+
+alert(oCOM.getHexWord(d))
+
+</script>
+</body>
