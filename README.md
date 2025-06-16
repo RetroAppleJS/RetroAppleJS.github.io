@@ -1,6 +1,6 @@
 # Apple II+ emulator, assembler & debugger in JavaScript 
 
-<img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" href="https://retroapplejs.github.io" />
+<a href="https://retroapplejs.github.io"><img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" href="https://retroapplejs.github.io" /></a>
 
 Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. Yes indeed, this project **runs as-is, locally on any browser, no server required**.
 
