@@ -1298,7 +1298,7 @@ function DASM()
 				if (opv&128) targ-=(opv^255)+1; else targ +=opv;
 				targ&=0xffff;
 				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;'+this.sym_search("$"+getHexWord(targ),adm);
+				expr+='&nbsp;'+this.sym_search("$"+oCOM.getHexWord(targ),adm);
 				break;
 			case 'ind' :
 				ops+='&nbsp;'+op1+'&nbsp;'+op2;
@@ -1307,7 +1307,7 @@ function DASM()
 			default :
 				ops+='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
 		}
-		var ret = {"adr_lst":getHexWord(arg.pc),"opcode_lst":ops,"mnemonic":expr}
+		var ret = {"adr_lst":oCOM.getHexWord(arg.pc),"opcode_lst":ops,"mnemonic":expr}
 		return ret;
     }
 
@@ -1352,7 +1352,7 @@ function DASM()
 		var oper  = d.substring(4,d.length);
 		var ops = o.split("&nbsp;");
 	  var nreg = Object.assign({},
-			{"PC":getHexWord(this.getReg("PC")),"AC":this.getHexByte(this.getReg("AC")),"XR":this.getHexByte(this.getReg("XR")),"YR":this.getHexByte(this.getReg("YR")),"SR":this.getHexByte(this.getReg("SR")),"SP":this.getHexByte(this.getReg("SP"))},
+			{"PC":oCOM.getHexWord(this.getReg("PC")),"AC":this.getHexByte(this.getReg("AC")),"XR":this.getHexByte(this.getReg("XR")),"YR":this.getHexByte(this.getReg("YR")),"SR":this.getHexByte(this.getReg("SR")),"SP":this.getHexByte(this.getReg("SP"))},
 			this.nameBit(this.getReg("SR"),["neg","over","&nbsp;","break","deci","interr","zero","carry"]),
 			{"ops":ops});
 
@@ -1630,13 +1630,13 @@ function DASM()
 			case "RTI":
 			  	s  = "Return from Interrupt<br>";
 				// TODO PULL SR ???
-				s += "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>";
+				s += "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+oCOM.getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>";
 				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>";
 				s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
 			break;
 			case "RTS":
 			  	s  = "Return from subroutine<br>";
-				s += "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>"
+				s += "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+oCOM.getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>"
 				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>";
 			break;
 			case "SBC":
@@ -1787,7 +1787,7 @@ function DASM()
 				var adr = parseInt(narr.ops[1],16);
 				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256
 				narr["mem"]=this.ByteAt(rel + parseInt(narr.YR,16));
-				s += "[$"+getHexWord(rel)+"+"+narr.YR+"h]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
+				s += "[$"+oCOM.getHexWord(rel)+"+"+narr.YR+"h]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
 				if(rw_mode=="w")
 					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":this.getHexByte(narr["mem"]),"ins":narr.ops[0]});
 			break;
@@ -1796,7 +1796,7 @@ function DASM()
 				var idx = parseInt(narr.XR,16);
 				var rel = this.ByteAt(adr+idx)+this.ByteAt(adr+idx+1)*256
 				narr["mem"]=this.ByteAt(rel);
-				s += "[[$"+narr.ops[1]+"+"+idx+"]<sub>"+getHexWord(rel)+"h</sub>] = "+this.getHexByte(narr["mem"])+"h";
+				s += "[[$"+narr.ops[1]+"+"+idx+"]<sub>"+oCOM.getHexWord(rel)+"h</sub>] = "+this.getHexByte(narr["mem"])+"h";
 				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
 			break;
 			//case "rel":
@@ -1805,7 +1805,7 @@ function DASM()
 				var adr = parseInt(narr.ops[2]+narr.ops[1],16);
 				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256;
 				narr["mem"]=rel;
-				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+getHexWord(narr["mem"])+"h</sub>";
+				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+oCOM.getHexWord(narr["mem"])+"h</sub>";
 			break;
 		}
 		return s;
