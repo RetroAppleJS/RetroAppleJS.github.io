@@ -1,14 +1,14 @@
 # Apple II+ emulator, assembler & debugger in JavaScript 
 
-<img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" />
+<a href="https://retroapplejs.github.io"><img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" href="https://retroapplejs.github.io" /></a>
 
 Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. Yes indeed, this project **runs as-is, locally on any browser, no server required**.
 
-Back in 1980, a few young chaps like me were passionate about coding on the Apple II+.  Machine coding was the way to get something done gracefully on the 6502, a low-cost & spec CPU originally designed for calculators.  Before starting, several [authors](/docs/CREDITS.md) made this project possible, mainly as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  Enjoy the elegance of 8-bit computing, clever math tricks, and one of the few instruction sets simple enough to code by hand.
+Back in 1980, a few young chaps like me were passionate about coding on the Apple II+.  Machine coding was the way to get something done gracefully on the 6502, a low-cost & spec CPU originally designed for calculators.  Several [sources](/docs/CREDITS.md) made this project possible, serving as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still today a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  Enjoy the elegance of 8-bit computing, clever math tricks, and one of the few machine codes instruction sets simple enough to code by hand.
 
 ## Install & Run
   
-- **install:** Bear in mind that this source code = directly executable in your browser.  Hence, __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser, or run directly in github.io just here below:
+- **install:** Bear in mind this source code = directly executable in your browser.  Hence, __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser, or run directly in github.io just here below:
 - **w/o install:**  ==> [Run last version directly](https://retroapplejs.github.io)
 - **bootable** ==> [Run last version (incl. DOS3.3 bootdisk) directly](https://retroapplejs.github.io/index.html?D1_DIR=Apple%20DOS%203.3.dsk&boot=true)  (booting takes avg. ~90s)
 
@@ -19,14 +19,14 @@ Back in 1980, a few young chaps like me were passionate about coding on the Appl
 3) Inside the emulator, tap the **'paste'** button
 4) Type **6000G** to run the code at address 6000h, that's it !
 
-<img src="/res/Start_Step12.png?raw=true" width=100% />
+<a href=https://retroapplejs.github.io/index.html#tab2><img src="/res/Start_Step12.png?raw=true" width=100% /></a>
 
 <br>
 Other assembler listings can be found here: (https://github.com/RetroAppleJS/RetroAppleJS.github.io/tree/main/asm), feel free to copy any of those in the left pane of the assembler and proceed the same way as described here above.
 
 ## Vintage Lab
 
-<img src="/res/VintageLab256.png?raw=true" width=100% />
+<a href=https://retroapplejs.github.io/tools/TOOLS_CATALOG.html><img src="/res/VintageLab256.png?raw=true" width=100% /></a>
 
 Explore our [vintage computing laboratory](https://retroapplejs.github.io/tools/TOOLS_CATALOG.html), an exciting hub where all the components of our cutting-edge emulator are thoroughly tested and refined before being transformed into the retro-inspired recipes. Each of these components is a distinct project, meticulously crafted to allow you to delve into the complexities of our vast codebase in a fun and engaging way. Here, you can watch as we use a variety of techniques, including boiling, baking, smoking, and aging, to ensure that every component is primed and ready for use. Whether you're a developer looking to explore new codebases or a tech enthusiast interested in the history of computing, 
 
@@ -36,7 +36,7 @@ Explore our [vintage computing laboratory](https://retroapplejs.github.io/tools/
 
 The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
 One can:
-1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)   Just mind that a 1 MHz computer does not ingest many characters per second, so be patient.
+1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)
 2) insert any disk found on the internet (.do, .dsk)
 
 ### Assembler
