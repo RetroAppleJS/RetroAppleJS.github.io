@@ -31,6 +31,7 @@ S0.TX        EQU $19     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TY        EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TZ        EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
+DEF 
 
 ORG $6000
         LDA #$00        ; PRINT METHOD 0     >> WELCOME MESSAGE
