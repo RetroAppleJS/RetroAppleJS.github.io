@@ -256,9 +256,8 @@ PRM.5   CPX #$06       ;>> PRINT ROLLING INDICATOR
         JMP PRM.6
 
 PRM.6   JSR COUT
-PRM.61  LDA #"."
+        LDA #"."
         JMP COUT
-
 
 PRM_D2  HEX 000000
 PRM_D3  HEX 00         ; CYCLE COUNTER
@@ -280,7 +279,6 @@ PRM.70  LDA CH_RNG
 
 ;E707
 
-
 PRM.71  CMP #$01     ; CH_RNG=1 : ALPHANUMERIC
         BNE PRM.72
 ; TODO  ALPHANUMERIC ENCODING
@@ -289,7 +287,6 @@ PRM.72  CMP #$03     ; CH_RNG=1 : BYTE
         BNE PRM.8
 
 ; TODO  BYTE ENCODING
-
 PRM.8   RTS
 
 
@@ -335,7 +332,7 @@ STR.00   ASC "[QR-CHARSET] (M)ENU (I)NPUT"
          HEX 00
          ASC "[QR-CHARSET] (N)UMERIC (A)LNUM (B)YTE"
          HEX 00
-         ASC "Hello, world! 123"
+         ASC "123 HELLO world"
          HEX 00
          ASC "PROJECT NAYUKI"
          HEX 00
