@@ -1,4 +1,4 @@
-; LAST BUILD 11-MAR-2025
+; LAST BUILD 25-JUN-2025
 
 M.PRBYTE  EQU $FDDA   ; print hex byte
 M.CRDO    EQU $DAFB   ; line feed
@@ -66,9 +66,9 @@ CMEN    LDA #$02        ; CHOICE >>> MENU
 CME.0   JSR M.CRDO
         LDA STR_IX
         CLC
-        ADC #'0'-2      ; ISTROUT offset = 2
+        ADC #"0"-2      ; ISTROUT offset = 2
         JSR M.COUT
-        LDA #')'
+        LDA #")"
         JSR M.COUT
         JSR M.OUTSP
         LDA STR_IX
@@ -210,27 +210,27 @@ PRM.2   CPX #$03        ;>> PRINT NUM COMPLIANCE
         BNE PRM.3
         JSR DENUM
         BCC PRM.21
-        LDA #' '
+        LDA #" "
         JMP PRM.6
-PRM.21  LDA #'N'
+PRM.21  LDA #"N"
         JMP PRM.6
 
 PRM.3   CPX #$04       ;>> PRINT ALNUM COMPLIANCE
         BNE PRM.4
         JSR DESYM
         BCC PRM.31
-        LDA #' '
+        LDA #" "
         JMP PRM.6
-PRM.31  LDA #'A'
+PRM.31  LDA #"A"
         JMP PRM.6
 
 PRM.4   CPX #$05       ;>> PRINT BYTE COMPLIANCE
         BNE PRM.5
         JSR DEBYT
         BCC PRM.41
-        LDA #' '
+        LDA #" "
         JMP PRM.6
-PRM.41  LDA #'B'
+PRM.41  LDA #"B"
         JMP PRM.6
 
 PRM_D1   HEX 00
@@ -256,7 +256,7 @@ PRM.5   CPX #$06       ;>> PRINT ROLLING INDICATOR
         JMP PRM.6
 
 PRM.6   JSR COUT
-PRM.61  LDA #'.'
+PRM.61  LDA #"."
         JMP COUT
 
 
@@ -302,15 +302,15 @@ DE.1    INX
         CPX #$08
         BNE DE.1
 
-DEALP   CMP #'A'      ; *** DETECT ALPHA RANGE ***
+DEALP   CMP #"A"      ; *** DETECT ALPHA RANGE ***
         BCC DENUM
-        CMP #'Z'+1
+        CMP #"Z"+1
         BCS DENUM
         JMP DE.2
 
-DENUM   CMP #'0'      ; *** DETECT NUMERIC RANGE ***
+DENUM   CMP #"0"      ; *** DETECT NUMERIC RANGE ***
         BCC DE.3
-        CMP #'9'+1
+        CMP #"9"+1
         BCS DE.3
 
 DE.2    ;CLC          ; *** IN RANGE ***
@@ -321,9 +321,7 @@ DE.3    LDA CH_RNG    ; *** OUT OF RANGE ***
         STA CH_RNG
         SEC
         RTS
-
-
-
+R
 ;*** MAIN PARAMETERS ***
 DEB_LV  HEX 00          ; DEBUG LEVEL 0=NOLOG 1=ANALYSE
 CH_SET  HEX 01          ; CHARACTESET 0=II+ 1=IIe
@@ -341,7 +339,7 @@ STR.00   ASC "[QR-CHARSET] (M)ENU (I)NPUT"
          HEX 00
          ASC "PROJECT NAYUKI"
          HEX 00
-         ASC "31415926535897932384626433832795028841971693993"
+         ASC "3141592653589793238"
          HEX 00
 ;        ASC "00000.UFF7THUFF7000001F8F7THUFF7UF00000000UFF7UFF7F7UFF7UF00000000UFF7UEUFF7T*000005F7UFF7UEUFF7UFF500000001F7T*00000.UFF7UF7QF7SK000.QOM:UPUFF7UFEA0000001+F7UFF7THUFF7UFEA0000001+F7UEUFF7UE0000003ZUFF7UF7QF7UFF7SK000000F7UF"             ;3
 ;        HEX 00
