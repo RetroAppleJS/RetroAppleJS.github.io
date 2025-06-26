@@ -327,6 +327,17 @@ function ASM()
 				//	alert(sym.slice(2, sym.length).join(" "));
 				//}
 		}
+		,"ELSE":
+		{
+			"asm":["Merlin"]
+			,"description":"Else (DO range)"
+			,"parser":function(arg)
+			{
+				var l = this.pragma_sym["DO"]["STACK"].length-1;
+				this.pragma_sym["DO"]["STACK"][l] = !this.pragma_sym["DO"]["STACK"][l];		// invert status
+				if(this.bDebug) listing.value +=  arg.sym[0] + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
+			}
+		}		
 		,"FIN":
 		{
 			"asm":["Merlin"]
@@ -334,7 +345,7 @@ function ASM()
 			,"parser":function(arg)
 			{
 				var s = this.pragma_sym["DO"]["STACK"].pop();
-				if(this.bDebug) listing.value +=  arg.sym[0] +  JSON.stringify(this.pragma_sym["DO"]["STACK"]);
+				if(this.bDebug) listing.value +=  arg.sym[0] + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
 			}
 		}
 		,".DEFINE":true
