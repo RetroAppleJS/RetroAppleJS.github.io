@@ -1,4 +1,6 @@
-; LAST BUILD 25-JUN-2025
+; LAST BUILD 26-JUN-2025
+
+DEBUG = 0
 
 M.PRBYTE  EQU $FDDA   ; print hex byte
 M.CRDO    EQU $DAFB   ; line feed
@@ -31,9 +33,8 @@ S0.TX        EQU $19     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TY        EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TZ        EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
-DEF 
-
 ORG $6000
+DO DEBUG
         LDA #$00        ; PRINT METHOD 0     >> WELCOME MESSAGE
         STA *S0.TA
         LDA #$00
@@ -41,6 +42,7 @@ ORG $6000
         JSR M.KPRESS
         CMP #$CD        ; 'M'
         BEQ CMEN
+FIN
 
 CINP    LDA #$05        ; CHOICE >>> INPUT
         STA STR_IX
@@ -62,6 +64,7 @@ CIN.1   JSR M.KPRESS
         JMP CIN.1
         RTS
 
+DO DEBUG
 CMEN    LDA #$02        ; CHOICE >>> MENU
         STA STR_IX      ; ISTROUT offset = 2
 CME.0   JSR M.CRDO
@@ -84,6 +87,7 @@ CME.1   JSR M.KPRESS
         CMP #$0C        ; 0A + ISTROUT offset
         BPL CME.1
         STA STR_IX
+FIN
 
 MAIN    JSR M.CRDO
         JSR M.CRDO
@@ -143,7 +147,7 @@ MAIN    JSR M.CRDO
         JSR ISTROUT     ; PRINT STRING IX
         JSR M.CRDO
 
-        RTS
+        RTS      
 
 ; *** PRINT STRING from A = INDEX ***
 IST_D   HEX 00
