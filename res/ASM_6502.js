@@ -424,6 +424,7 @@ function doPass(pass)
 				{
 					oASM.pragma = mactab.parser;
 					r = oASM.pragma({"sym":sym,"pass":pass,"ofs":ofs});		// PROCESS PRAGMA
+					if(r==false) return false;
 				}
 				else
 					r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
@@ -561,7 +562,6 @@ function doPass(pass)
 	{
 		if(typeof(oASM.pragma_sym[o].STACK)!="undefined")
 		{
-			alert("PASS"+pass)
 			// CHECK IF EMPTY ARRAY ==> SUBMIT ASSEMBLER WARNING
 			if(oASM.pragma_sym[o].STACK.length>0)
 				listing.value += '\n' + 'warning: '+o+' statement'+(oASM.pragma_sym[o].STACK.lengt>1?'':'s')+' not properly closed'
