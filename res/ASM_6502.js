@@ -337,6 +337,8 @@ function doPass(pass)
 		var opctab = instrtab[opc];				// opcode lookup table
 		var mactab = oASM.pragma_sym[opc];		// macro lookup table
 
+		var bEncode = oASM.pragma_sym.DO.STACK===undefined ? true :  (oASM.pragma_sym.DO.STACK[0] == true || oASM.pragma_sym.DO.STACK.length == 0);
+
 		// LABEL
 		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{
@@ -344,7 +346,7 @@ function doPass(pass)
 			displayError('syntax error:\ncharacter expected');
 			return false;
 		}
-		else if (opctab == null && mactab == null)			// no assembler mnemonic or pragma ?
+		else if (opctab == null && mactab == null && bEncode == true)			// no assembler mnemonic or pragma ==> probably a label
 		{
 			// label
 			var lbl = oASM.getID(sym[0]).val;
@@ -421,12 +423,12 @@ function doPass(pass)
 				if(mactab.parser)
 				{
 					oASM.pragma = mactab.parser;
-					r = oASM.pragma({"sym":sym,"pass":pass,"ofs":ofs});
+					r = oASM.pragma({"sym":sym,"pass":pass,"ofs":ofs});		// PROCESS PRAGMA
 				}
 				else
 					r = oASM.parse_pragma(sym,pass,{"ofs":ofs});
 			}
-			else
+			else if(bEncode == true)
 			{
 				var a1 = addr===undefined ? "" : addr.charAt(0);
 				var b1 = 0;
@@ -437,7 +439,7 @@ function doPass(pass)
 					mode = 1;					// accumulator
 					if (pass == 2)
 					{
-						listing.value += listing_gen(mode,{"opcode":opc})
+						listing.value += cDO ? listing_gen(mode,{"opcode":opc}) : "<font color=grey>" + listing_gen(mode,{"opcode":opc}) + "<font>"
 						padd = 4+1;
 					}
 				}
@@ -525,7 +527,10 @@ function doPass(pass)
 						//padd += (listing.value.length - l);
 					}
 
-					// compile
+					////////////////////////////
+					// COMPILE TO OBJECT CODE //
+					////////////////////////////
+					
 					listing.value += ' '.repeat(opspace-padd);
 
 					listing.value += oCOM.getHexByte(instr);  	// add first byte to listing
@@ -549,6 +554,25 @@ function doPass(pass)
 		sym = getSym();
 		//listing.value += '\n';
 	}
+
+
+	// GARBAGE COLLECT STACK REFERENCES AT THE END OF ASSEMBLY
+	for(var o in oASM.pragma_sym)
+	{
+		if(typeof(oASM.pragma_sym[o].STACK)!="undefined")
+		{
+			alert("PASS"+pass)
+			// CHECK IF EMPTY ARRAY ==> SUBMIT ASSEMBLER WARNING
+			if(oASM.pragma_sym[o].STACK.length>0)
+				listing.value += '\n' + 'warning: '+o+' statement'+(oASM.pragma_sym[o].STACK.lengt>1?'':'s')+' not properly closed'
+
+			// FORCE EMPTY ARRAY!!!!
+			delete oASM.pragma_sym[o].STACK;
+		}
+	}
+	
+
+
 	return true;
 }
 
@@ -566,8 +590,8 @@ function listing_gen(mode,a)
 		case 6:  return r(a,"OPC *$LL");		// zeropage
 		case 7:  return r(a,"OPC *$LL,X");		// zeropage, X-indexed
 		case 8:  return r(a,"OPC *$LL,Y");		// zeropage, Y-indexed
-		case 9: return r(a,"OPC ($HHLL)");		// indirect
-		case 10:  return r(a,"OPC ($LL,X)");	// X-indexed, indirect
+		case 9:  return r(a,"OPC ($HHLL)");		// indirect
+		case 10: return r(a,"OPC ($LL,X)");	// X-indexed, indirect
 		case 11: return r(a,"OPC ($LL),Y");		// indirect, Y-indexed
 		case 12: return r(a,"OPC $HHLL");		// relative (alt display method)
 		//case 12: return r(a,"OPC $BB");		// relative

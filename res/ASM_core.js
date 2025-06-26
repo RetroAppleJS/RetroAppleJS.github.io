@@ -298,6 +298,45 @@ function ASM()
 			}
 		}
 		,".AT":true
+		,"DO":
+		{
+			"asm":["Merlin"]
+			,"description":"Disable Output (stop assembling code range when expression >< 0"
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+				// numerical expressions and strings are split as array with byte size elements 
+				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
+				if(pass==1 || pass==2)
+				{
+					var e = this.getExpression(arr[0]);
+					
+					if(this.pragma_sym["DO"]["STACK"]===undefined) this.pragma_sym["DO"]["STACK"] = [ e.val!=0 ];
+					else this.pragma_sym["DO"]["STACK"][  this.pragma_sym["DO"]["STACK"].length  ] = e.val!=0;
+					
+					// TODO SUBMIT WARNING IF STACKS ARE NOT EMPTY AFTER ASSEMBLY IS DONE
+					// TODO GARBAGE COLLECT STACKS AFTER ASSEMBLY IS DONE
+
+					if(this.bDebug) listing.value += arr.join(",") + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
+					listing.value += e.val!=0;
+				}
+			}
+
+				//if (sym.length >= 2 && pass==1)	// more than two operands
+				//{
+				//	alert(sym.slice(2, sym.length).join(" "));
+				//}
+		}
+		,"FIN":
+		{
+			"asm":["Merlin"]
+			,"description":"Finish (DO range)"
+			,"parser":function(arg)
+			{
+				var s = this.pragma_sym["DO"]["STACK"].pop();
+				if(this.bDebug) listing.value +=  arg.sym[0] +  JSON.stringify(this.pragma_sym["DO"]["STACK"]);
+			}
+		}
 		,".DEFINE":true
 		,".IFDEF":true
 		,".IFNDEF":true
