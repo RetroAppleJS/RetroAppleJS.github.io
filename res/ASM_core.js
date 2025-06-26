@@ -333,6 +333,8 @@ function ASM()
 			,"description":"Else (DO range)"
 			,"parser":function(arg)
 			{
+				if(this.pragma_sym["DO"]["STACK"]===undefined || this.pragma_sym["DO"]["STACK"].length==0)
+				{ displayError("ELSE without DO"); return false }
 				var l = this.pragma_sym["DO"]["STACK"].length-1;
 				this.pragma_sym["DO"]["STACK"][l] = !this.pragma_sym["DO"]["STACK"][l];		// invert status
 				if(this.bDebug) listing.value +=  arg.sym[0] + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
@@ -344,6 +346,8 @@ function ASM()
 			,"description":"Finish (DO range)"
 			,"parser":function(arg)
 			{
+				if(this.pragma_sym["DO"]["STACK"]===undefined || this.pragma_sym["DO"]["STACK"].length==0)
+				{ displayError("FIN without DO"); return false }				
 				var s = this.pragma_sym["DO"]["STACK"].pop();
 				if(this.bDebug) listing.value +=  arg.sym[0] + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
 			}
