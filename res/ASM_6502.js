@@ -401,7 +401,7 @@ function doPass(pass)
 
 			var addr = sym[ofs + 1];
 			var mode = 0;  						// implied
-			if(addr === undefined && mactab == null && opctab[0] >= 0)
+			if(addr === undefined && mactab == null && opctab[0] >= 0 && bEncode == true)
 			{
 				if(pass == 2)
 				{
