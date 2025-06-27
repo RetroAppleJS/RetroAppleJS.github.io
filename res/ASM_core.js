@@ -725,6 +725,8 @@ function ASM()
 
 	this.getExpression = function(str)
 	{
+		// TODO: DEBUG str = '"-"' 
+
 		if(typeof(str)==="number") str += "";
 		var exp = str.split(new RegExp("[+\\-\\*^~\\&\\|]","g"));  // slice at math operators to dig out deeper numbers and symbols
 		var r = {"val":NaN}, err = "expression malformation";
