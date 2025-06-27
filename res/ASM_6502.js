@@ -171,7 +171,7 @@ function assemble()
 			// byte stream listing
 
 			c = '';
-			var n = 0;
+			var n = 0, nn = 0;
 			var l = oASM.get_code_len();
 			for (var i = 0; i < l; i++)
 			{
@@ -184,10 +184,10 @@ function assemble()
 					n = 0;
 				}
 				c += oCOM.getHexByte(oASM.read_code(i)) + ' ';
-				n++;
+				n++; nn++;
 			}
 			codefield.innerHTML = c;
-			listing.value += '\ndone.';
+			listing.value += '\ndone. ('+nn+' bytes)';
 		}
 	}
 	else
