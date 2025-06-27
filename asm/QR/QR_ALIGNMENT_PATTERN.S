@@ -1,4 +1,4 @@
-; LAST BUILD 11-MAR-2025
+; LAST BUILD 27-JUN-2025
 
 ORG $6000
 
@@ -181,7 +181,8 @@ NIBTST  LDA #<ALPRE2
 NT.01   NOP
         LDA *S0.TA    ; VERSION COUNTER
         JSR M.PRBYTE
-        LDA #'-'
+        ;LDA #"-"   ; CAUSES BUG IN getExpression()
+        LDA #$AD
         JSR M.COUT
         LDA *S0.TA
         JSR NIB.02
