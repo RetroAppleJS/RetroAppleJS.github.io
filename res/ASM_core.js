@@ -489,29 +489,34 @@ function ASM()
 		if (arg!=null && arg.RComment!=null)		//  strip out right comments if applicable
 		{
 			var cc = oCOM.escapeREGEXP(arg.RComment);
-			for (var i = 0; i < src.length; i++)
+			for (var _i = 0; _i < src.length; _i++)
 			{
-				var r = RegExp("[ ]["+cc+"]");
-				var csrc = src[i].replace(/[\\][^\\]/g," ");			// substitute any escaped character by space
-				if(csrc.match(r) == null) { continue }					// skip if no comment character found
+				var p_src = src[_i];
 
-				var dq_src = csrc.replace(/"([^"]*)"/g, function(match) 					    // replace any character between double quotes by space
+				var r = RegExp("[ \t]["+cc+"]");
+				var csrc = src[_i].replace(/[\\][^\\]/g," ");			// substitute any escaped character by space
+				if(csrc.match(r) != null)
 				{
-					for (var i=0, spaces=""; i<match.length-2; i++) spaces += " ";
-					return '"'+spaces+'"';
-				});
+					var dq_src = csrc.replace(/"([^"]*)"/g, function(match) 					    // replace any character between double quotes by space
+					{
+						for (var j=0, spaces=""; j<match.length-2; j++) spaces += " ";
+						return '"'+spaces+'"';
+					});
 
-				var sq_src = csrc.replace(/'([^']*)"/g, function(match)							// replace any character between single quotes by space
-				{
-					for (var i=0, spaces=""; i<match.length-2; i++) spaces += " ";
-					return '\''+spaces+'\'';
-				});
+					var sq_src = csrc.replace(/'([^']*)"/g, function(match)							// replace any character between single quotes by space
+					{
+						for (var j=0, spaces=""; j<match.length-2; j++) spaces += " ";
+						return '\''+spaces+'\'';
+					});
 
-				;
-				var dqp = dq_src.indexOf( dq_src.match(r)[0] );
-				var sqp = sq_src.indexOf( sq_src.match(r)[0] );
-				if(dqp==sqp) src[i] = src[i].substring(0,dqp);									// truncate comments
-				else alert("can't mix single quotes and double quotes in same statement");
+					var dqp = dq_src.indexOf( dq_src.match(r)[0] );
+					var sqp = sq_src.indexOf( sq_src.match(r)[0] );
+					if(dqp==sqp) src[_i] = src[_i].substring(0,dqp);									// truncate comments
+					else alert("can't mix single quotes and double quotes in same statement");
+				}
+
+				p_src = "";
+
 			}
 		}
 		return src;

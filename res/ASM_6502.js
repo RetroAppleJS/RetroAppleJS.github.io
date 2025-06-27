@@ -148,6 +148,7 @@ function assemble()
 	var showDBG = {"RAM":document.ass.showDBG_RAM.checked == true,"ROM":document.ass.showDBG_ROM.checked == true}
 	var codefield = document.getElementById('codefield');
 	oASM.codesrc = oASM.getSrc(document.forms.ass.srcfield,{"LComment":"*;","RComment":";"});
+	//alert(oASM.codesrc);
 	codefield.innerHTML = ' '+crlf;
 
 	var pass1 = false;
@@ -400,15 +401,17 @@ function doPass(pass)
 			if (opctab == null && mactab == null && lbl == null) { displayError('syntax error:\nopcode or macro expected'); return false }
 
 			var addr = sym[ofs + 1];
-			var mode = 0;  						// implied
+			var mode = 0;  						// implied (TODO: why check implied before macros ?)
 			if(addr === undefined && mactab == null && opctab[0] >= 0 && bEncode == true)
 			{
+				
 				if(pass == 2)
 				{
 					padd = 3;
 					listing.value += listing_gen(mode,{"opcode":opc+' '.repeat(opspace-padd)+oCOM.getHexByte(opctab[0])})
 					oASM.write_code( opctab[0] );
 				}
+				else listing.value += listing_gen(mode,{"opcode":opc});
 				pc++;
 			}
 			else if(opctab != null && sym.length > ofs + 2)
@@ -440,7 +443,7 @@ function doPass(pass)
 					mode = 1;					// accumulator
 					if (pass == 2)
 					{
-						listing.value += cDO ? listing_gen(mode,{"opcode":opc}) : "<font color=grey>" + listing_gen(mode,{"opcode":opc}) + "<font>"
+						listing.value += bEncode ? listing_gen(mode,{"opcode":opc}) : "<font color=grey>" + listing_gen(mode,{"opcode":opc}) + "<font>"
 						padd = 4+1;
 					}
 				}

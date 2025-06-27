@@ -168,25 +168,25 @@ TMP_Y   EQU  $0F
 TMP_I   EQU  $10
 
 DB_EXP  JSR SAVE
-        LDA #'X'+128
+        LDA #"X"+128
         ;JSR M.COUT
         LDA EXPTAB,X
         STX *TMP_I
         JMP DL1
 
 DB_LOG  JSR SAVE
-        LDA #'L'+128
+        LDA #"L"+128
         ;JSR M.COUT
         LDA LOGTAB,Y
         STY *TMP_I
 DL1     CMP *TMP_A
         BEQ DL2
         ;JSR M.PRBYTE    ; PRINT CHECK VALUE
-        LDA #'<'+128
+        LDA #"<"+128
         JSR M.COUT
         LDA *TMP_A
         ;JSR M.PRBYTE    ; PRINT CALCULATED VALUE
-        LDA #'.'+128
+        LDA #"."+128
         JSR M.COUT
         LDA *TMP_I
         ;JSR M.PRBYTE    ; PRINT INDEX
