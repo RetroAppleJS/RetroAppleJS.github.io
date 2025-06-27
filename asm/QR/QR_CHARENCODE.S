@@ -132,14 +132,12 @@ MAIN    DO DEBUG
 
         LDA #$00        ; RESET CHARACTER COMPATIBILITY INDICATOR
         STA CH_RNG
-       
+
         LDA #$06        ; PRINT METHOD 6    >> ROLLING INDICATOR
         STA *S0.TA
         LDA STR_IX
         JSR ISTROUT     ; PRINT STRING IX
         JSR M.CRDO
-
-
         LDA CH_RNG
         JSR M.PRBYTE    ; CATCH RESULT 0=NUMERIC 1=ALPHA 2=BYTE
 
@@ -322,14 +320,9 @@ CHAR    HEX 00
                 PRM.8   RTS
         ELSE
 
-
-                PRMETH  
-                
-                        LDX *S0.TA      ; PRINT METHOD
-                PRM.5   ;CPX #$06       ;>> PRINT ROLLING INDICATOR
-                        ;BNE PRM.7
+                PRMETH  LDX *S0.TA      ; PRINT METHOD
                         ;>>>>>>>>>>>>>>>>>>>>>>>
-                        STA PRM_D1       ; STORE ASCII CHARACTER TO BE ANALYSED
+                PRM.5   STA PRM_D1       ; STORE ASCII CHARACTER TO BE ANALYSED
 
                         LDA #$01        ; INITIALISE FISRT COMPATIBILITY TYPE (1=NUMBERIC)
                         STA *S0.TZ
@@ -381,7 +374,9 @@ DE.3    LDA CH_RNG    ; *** OUT OF RANGE ***
         RTS
 
 ;*** MAIN PARAMETERS ***
-CH_SET  HEX 01          ; CHARACTESET 0=II+ 1=IIe
+        DO DEBUG
+                CH_SET  HEX 01          ; CHARACTESET 0=II+ 1=IIe
+        FIN
 CH_RNG  HEX 00          ; CHARACTER RANGE
 STR_IX  HEX 00          ; STRING INDEX
 ;**************************
