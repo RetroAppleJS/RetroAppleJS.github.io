@@ -1,4 +1,4 @@
-; LAST BUILD 26-JUN-2025
+; LAST BUILD 25-JUN-2025
 
 DEBUG = 0
 
@@ -34,15 +34,15 @@ S0.TY        EQU $1A     ; ONLY USE IN FUNCTIONS with no SUBS
 S0.TZ        EQU $1B     ; ONLY USE IN FUNCTIONS with no SUBS
 
 ORG $6000
-DO DEBUG
-        LDA #$00        ; PRINT METHOD 0     >> WELCOME MESSAGE
-        STA *S0.TA
-        LDA #$00
-        JSR ISTROUT     ; PRINT STRING 0
-        JSR M.KPRESS
-        CMP #$CD        ; 'M'
-        BEQ CMEN
-FIN
+        DO DEBUG
+                LDA #$00        ; PRINT METHOD 0     >> WELCOME MESSAGE
+                STA *S0.TA
+                LDA #$00
+                JSR ISTROUT     ; PRINT STRING 0
+                JSR M.KPRESS
+                CMP #$CD        ; 'M'
+                BEQ CMEN
+        FIN
 
 CINP    LDA #$05        ; CHOICE >>> INPUT
         STA STR_IX
@@ -64,78 +64,83 @@ CIN.1   JSR M.KPRESS
         JMP CIN.1
         RTS
 
-DO DEBUG
-CMEN    LDA #$02        ; CHOICE >>> MENU
-        STA STR_IX      ; ISTROUT offset = 2
-CME.0   JSR M.CRDO
-        LDA STR_IX
-        CLC
-        ADC #"0"-2      ; ISTROUT offset = 2
-        JSR M.COUT
-        LDA #")"
-        JSR M.COUT
-        JSR M.OUTSP
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING 2
-        INC STR_IX
-        INY
-        LDA (S0.TX),Y
-        BNE CME.0
-CME.1   JSR M.KPRESS
-        SEC
-        SBC #$AE
-        CMP #$0C        ; 0A + ISTROUT offset
-        BPL CME.1
-        STA STR_IX
-FIN
+        DO DEBUG
+        CMEN    LDA #$02        ; CHOICE >>> MENU
+                STA STR_IX      ; ISTROUT offset = 2
+        CME.0   JSR M.CRDO
+                LDA STR_IX
+                CLC
+                ADC #"0"-2      ; ISTROUT offset = 2
+                JSR M.COUT
+                LDA #")"
+                JSR M.COUT
+                JSR M.OUTSP
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING 2
+                INC STR_IX
+                INY
+                LDA (S0.TX),Y
+                BNE CME.0
+        CME.1   JSR M.KPRESS
+                SEC
+                SBC #$AE
+                CMP #$0C        ; 0A + ISTROUT offset
+                BPL CME.1
+                STA STR_IX
+        FIN
 
 MAIN    JSR M.CRDO
-        JSR M.CRDO
+        DO DEBUG
+                JSR M.CRDO
 
-        LDA #$00        ; PRINT METHOD 0     >> TITLE MESSAGE
-        STA *S0.TA
-        LDA #$01
-        JSR ISTROUT     ; PRINT STRING 1
-        JSR M.CRDO
+                LDA #$00        ; PRINT METHOD 0     >> TITLE MESSAGE
+                STA *S0.TA
+                LDA #$01
+                JSR ISTROUT     ; PRINT STRING 1
+                JSR M.CRDO
 
-        LDA #$01        ; PRINT METHOD 1     >> STRING (with SPACE)
-        STA *S0.TA
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+                LDA #$01        ; PRINT METHOD 1     >> STRING (with SPACE)
+                STA *S0.TA
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING IX
+                JSR M.CRDO
 
-        LDA #$02        ; PRINT METHOD 2     >> HEX
-        STA *S0.TA
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+                LDA #$02        ; PRINT METHOD 2     >> HEX
+                STA *S0.TA
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING IX
+                JSR M.CRDO
 
-        LDA #$03        ; PRINT METHOD 3     >> NUM
-        STA *S0.TA
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+                LDA #$03        ; PRINT METHOD 3     >> NUM
+                STA *S0.TA
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING IX
+                JSR M.CRDO
 
-        LDA #$04        ; PRINT METHOD 4    >> ALNUM
-        STA *S0.TA
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+                LDA #$04        ; PRINT METHOD 4    >> ALNUM
+                STA *S0.TA
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING IX
+                JSR M.CRDO
 
-        LDA #$05        ; PRINT METHOD 5    >> BYTE
-        STA *S0.TA
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+                LDA #$05        ; PRINT METHOD 5    >> BYTE
+                STA *S0.TA
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING IX
+                JSR M.CRDO
+
+        FIN
 
         LDA #$00        ; RESET CHARACTER COMPATIBILITY INDICATOR
         STA CH_RNG
-
+       
         LDA #$06        ; PRINT METHOD 6    >> ROLLING INDICATOR
         STA *S0.TA
         LDA STR_IX
         JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+        DO DEBUG        
+                JSR M.CRDO
+        FIN
 
         LDA CH_RNG
         JSR M.PRBYTE    ; CATCH RESULT 0=NUMERIC 1=ALPHA 2=BYTE
@@ -146,8 +151,7 @@ MAIN    JSR M.CRDO
         LDA STR_IX
         JSR ISTROUT     ; PRINT STRING IX
         JSR M.CRDO
-
-        RTS      
+        RTS
 
 ; *** PRINT STRING from A = INDEX ***
 IST_D   HEX 00
@@ -175,25 +179,33 @@ IST.2   LDA (S0.TX),Y   ; Print string until next zero
         INY
         BNE IST.2
 IST.3   RTS
+
 CHAR    HEX 00
-COUT    STA CHAR
-        LDA CH_SET
-        CMP #$01
-        BEQ COU.1     ; SKIP IF APPPLE IIe
 
-        LDA CHAR
-        CMP #$E1      ; *** DETECT LOWERCASE RANGE ***
-        BCC COU.1
-        CMP #$FB
-        BCS COU.1
-        SEC
-        SBC #$20
-        STA CHAR
 
-COU.1   LDA CHAR
-        JSR M.COUT
-        RTS
+        DO DEBUG
+                COUT    STA CHAR
+                        LDA CH_SET
+                        CMP #$01
+                        BEQ COU.1     ; SKIP IF APPPLE IIe
 
+                        LDA CHAR
+                        CMP #$E1      ; *** DETECT LOWERCASE RANGE ***
+                        BCC COU.1
+                        CMP #$FB
+                        BCS COU.1
+                        SEC
+                        SBC #$20
+                        STA CHAR
+
+                COU.1   LDA CHAR
+                        JSR M.COUT
+                        RTS
+        ELSE
+                COUT
+                        STA CHAR
+                        RTS
+        FIN
 
 PRMETH  LDX *S0.TA      ; PRINT METHOD
         CPX #$00        ;>> PRINT NORMAL ASCII
