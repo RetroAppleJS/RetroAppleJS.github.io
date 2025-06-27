@@ -1,7 +1,6 @@
-; LAST BUILD 25-JUN-2025
+; LAST BUILD 27-JUN-2025
 
-DEBUG = 0
-
+DEBUG     EQU 0       ; DEBUG LEVEL 0=NOLOG 1=ANALYSE
 M.PRBYTE  EQU $FDDA   ; print hex byte
 M.CRDO    EQU $DAFB   ; line feed
 M.OUTSP   EQU $DB57   ; space
@@ -42,11 +41,11 @@ ORG $6000
                 JSR M.KPRESS
                 CMP #$CD        ; 'M'
                 BEQ CMEN
+                JSR M.CRDO
         FIN
 
 CINP    LDA #$05        ; CHOICE >>> INPUT
         STA STR_IX
-        JSR M.CRDO
         LDA #$00
         STA *S0.TA
         LDX #$00
@@ -89,8 +88,8 @@ CIN.1   JSR M.KPRESS
                 STA STR_IX
         FIN
 
-MAIN    JSR M.CRDO
-        DO DEBUG
+MAIN    DO DEBUG
+                JSR M.CRDO
                 JSR M.CRDO
 
                 LDA #$00        ; PRINT METHOD 0     >> TITLE MESSAGE
@@ -138,50 +137,64 @@ MAIN    JSR M.CRDO
         STA *S0.TA
         LDA STR_IX
         JSR ISTROUT     ; PRINT STRING IX
-        DO DEBUG        
-                JSR M.CRDO
-        FIN
+        JSR M.CRDO
+
 
         LDA CH_RNG
         JSR M.PRBYTE    ; CATCH RESULT 0=NUMERIC 1=ALPHA 2=BYTE
-        JSR M.CRDO
 
-        LDA #$07        ; PRINT METHOD 7    >> ROLLING INDICATOR
-        STA *S0.TA
-        LDA STR_IX
-        JSR ISTROUT     ; PRINT STRING IX
-        JSR M.CRDO
+        DO DEBUG
+                JSR M.CRDO
+                LDA #$07        ; PRINT METHOD 7    >> ROLLING INDICATOR
+                STA *S0.TA
+                LDA STR_IX
+                JSR ISTROUT     ; PRINT STRING IX
+                JSR M.CRDO
+        FIN
         RTS
 
-; *** PRINT STRING from A = INDEX ***
-IST_D   HEX 00
-ISTROUT LDY #<STR.00    ; init pointer
-        STY *S0.TX
-        LDY #>STR.00    ; init pointer
-        STY *S0.TY
-IST.0   LDY #$00
-        ;TAX
-        STA IST_D
-        CMP #$00
-        BEQ IST.2
-        DEY
-IST.1   INY
-        LDA (S0.TX),Y
-        BNE IST.1
-        ;DEX
-        DEC IST_D
-        BNE IST.1
-        INY             ; Y = found starting index
-IST.2   LDA (S0.TX),Y   ; Print string until next zero
-        BEQ IST.3
+        DO DEBUG
+                ; *** PRINT STRING from A = INDEX ***
+                IST_D   HEX 00
+                ISTROUT LDY #<STR.00    ; init pointer
+                        STY *S0.TX
+                        LDY #>STR.00    ; init pointer
+                        STY *S0.TY
+                IST.0   LDY #$00
+                        ;TAX
+                        STA IST_D
+                        CMP #$00
+                        BEQ IST.2
+                        DEY
+                IST.1   INY
+                        LDA (S0.TX),Y
+                        BNE IST.1
+                        ;DEX
+                        DEC IST_D
+                        BNE IST.1
+                        INY             ; Y = found starting index
+                IST.2   LDA (S0.TX),Y   ; Print string until next zero
+                        BEQ IST.3
 
-        JSR PRMETH
-        INY
-        BNE IST.2
-IST.3   RTS
+                        JSR PRMETH
+                        INY
+                        BNE IST.2
+                IST.3   RTS
+        ELSE
+                ISTROUT LDY #<STR.01    ; init pointer
+                        STY *S0.TX
+                        LDY #>STR.01    ; init pointer
+                        STY *S0.TY
+                IST.0   LDY #$00
+                IST.2   LDA (S0.TX),Y   ; Print string until next zero
+                        BEQ IST.3
+                        JSR PRMETH
+                        INY
+                        BNE IST.2
+                IST.3   
+        FIN
 
 CHAR    HEX 00
-
 
         DO DEBUG
                 COUT    STA CHAR
@@ -207,105 +220,136 @@ CHAR    HEX 00
                         RTS
         FIN
 
-PRMETH  LDX *S0.TA      ; PRINT METHOD
-        CPX #$00        ;>> PRINT NORMAL ASCII
-        BNE PRM.0
-        CLC
-        ADC CH_IDX
-        JMP COUT
 
-PRM.0   CPX #$01        ;>> PRINT NORMAL ASCII with SPACE
-        BNE PRM.1
-        JSR COUT
-        JMP M.OUTSP
+        DO DEBUG
+                PRMETH  LDX *S0.TA      ; PRINT METHOD
+                        CPX #$00        ;>> PRINT NORMAL ASCII
+                        BNE PRM.0
+                        CLC
+                        ADC CH_IDX
+                        JMP COUT
 
-PRM.1   CPX #$02        ;>> PRINT HEX
-        BNE PRM.2
-        JMP M.PRBYTE
+                PRM.0   CPX #$01        ;>> PRINT NORMAL ASCII with SPACE
+                        BNE PRM.1
+                        JSR COUT
+                        JMP M.OUTSP
 
-PRM.2   CPX #$03        ;>> PRINT NUM COMPLIANCE
-        BNE PRM.3
-        JSR DENUM
-        BCC PRM.21
-        LDA #" "
-        JMP PRM.6
-PRM.21  LDA #"N"
-        JMP PRM.6
+                PRM.1   CPX #$02        ;>> PRINT HEX
+                        BNE PRM.2
+                        JMP M.PRBYTE
 
-PRM.3   CPX #$04       ;>> PRINT ALNUM COMPLIANCE
-        BNE PRM.4
-        JSR DESYM
-        BCC PRM.31
-        LDA #" "
-        JMP PRM.6
-PRM.31  LDA #"A"
-        JMP PRM.6
+                PRM.2   CPX #$03        ;>> PRINT NUM COMPLIANCE
+                        BNE PRM.3
+                        JSR DENUM
+                        BCC PRM.21
+                        LDA #" "
+                        JMP PRM.6
+                PRM.21  LDA #"N"
+                        JMP PRM.6
 
-PRM.4   CPX #$05       ;>> PRINT BYTE COMPLIANCE
-        BNE PRM.5
-        JSR DEBYT
-        BCC PRM.41
-        LDA #" "
-        JMP PRM.6
-PRM.41  LDA #"B"
-        JMP PRM.6
+                PRM.3   CPX #$04       ;>> PRINT ALNUM COMPLIANCE
+                        BNE PRM.4
+                        JSR DESYM
+                        BCC PRM.31
+                        LDA #" "
+                        JMP PRM.6
+                PRM.31  LDA #"A"
+                        JMP PRM.6
 
-PRM_D1   HEX 00
-PRM_S   ASC "NA B"
-PRM.5   CPX #$06       ;>> PRINT ROLLING INDICATOR
-        BNE PRM.7
-        ;>>>>>>>>>>>>>>>>>>>>>>>
-        STA PRM_D1       ; STORE ASCII CHARACTER TO BE ANALYSED
+                PRM.4   CPX #$05       ;>> PRINT BYTE COMPLIANCE
+                        BNE PRM.5
+                        JSR DEBYT
+                        BCC PRM.41
+                        LDA #" "
+                        JMP PRM.6
+                PRM.41  LDA #"B"
+                        JMP PRM.6
 
-        LDA #$01        ; INITIALISE FISRT COMPATIBILITY TYPE (1=NUMBERIC)
-        STA *S0.TZ
-        LDA PRM_D1
-        JSR DENUM
+                PRM_D1   HEX 00
+                PRM_S   ASC "NA B"
+                PRM.5   CPX #$06       ;>> PRINT ROLLING INDICATOR
+                        BNE PRM.7
+                        ;>>>>>>>>>>>>>>>>>>>>>>>
+                        STA PRM_D1       ; STORE ASCII CHARACTER TO BE ANALYSED
 
-        LDA #$02        ; INITIALISE FISRT COMPATIBILITY TYPE (2=ALPHANUM)
-        STA *S0.TZ
-        LDA PRM_D1
-        JSR DESYM
+                        LDA #$01        ; INITIALISE FISRT COMPATIBILITY TYPE (1=NUMBERIC)
+                        STA *S0.TZ
+                        LDA PRM_D1
+                        JSR DENUM
 
-        ;>>>>>>>>>>>>>>>>>>>>>>>
-        LDX CH_RNG      ; LOAD RESULT IN A
-        LDA PRM_S,X
-        JMP PRM.6
+                        LDA #$02        ; INITIALISE FISRT COMPATIBILITY TYPE (2=ALPHANUM)
+                        STA *S0.TZ
+                        LDA PRM_D1
+                        JSR DESYM
 
-PRM.6   JSR COUT
-        LDA #"."
-        JMP COUT
+                        ;>>>>>>>>>>>>>>>>>>>>>>>
+                        LDX CH_RNG      ; LOAD RESULT IN A
+                        LDA PRM_S,X
+                        JMP PRM.6
 
-PRM_D2  HEX 000000
-PRM_D3  HEX 00         ; CYCLE COUNTER
-PRM_D4  HEX 00         ; ROLLING RESULT
+                PRM.6   JSR COUT
+                        LDA #"."
+                        JMP COUT
 
-PRM.7   CPX #$07       ;>> PRINT ROLLING INDICATOR
-        BNE PRM.8
-        STA PRM_D2
+                PRM_D2  HEX 000000
+                PRM_D3  HEX 00         ; CYCLE COUNTER
+                PRM_D4  HEX 00         ; ROLLING RESULT
 
-        CPY #$00      ; IF Y=0 RESET CYCLE COUNTER & ROLLING RESULT
-        BNE PRM.70
-        LDA #$00
-        STA PRM_D3
-        STA PRM_D4
+                PRM.7   CPX #$07       ;>> PRINT ROLLING INDICATOR
+                        BNE PRM.8
+                        STA PRM_D2
 
-PRM.70  LDA CH_RNG
-        BNE PRM.71     ; CH_RNG=0 : NUMERIC
-; TODO  NUMERIC ENCODING
+                        CPY #$00      ; IF Y=0 RESET CYCLE COUNTER & ROLLING RESULT
+                        BNE PRM.70
+                        LDA #$00
+                        STA PRM_D3
+                        STA PRM_D4
 
-;E707
+                PRM.70  LDA CH_RNG
+                        BNE PRM.71     ; CH_RNG=0 : NUMERIC
+                ; TODO  NUMERIC ENCODING
 
-PRM.71  CMP #$01     ; CH_RNG=1 : ALPHANUMERIC
-        BNE PRM.72
-; TODO  ALPHANUMERIC ENCODING
+                ;E707
 
-PRM.72  CMP #$03     ; CH_RNG=1 : BYTE
-        BNE PRM.8
+                PRM.71  CMP #$01     ; CH_RNG=1 : ALPHANUMERIC
+                        BNE PRM.72
+                ; TODO  ALPHANUMERIC ENCODING
 
-; TODO  BYTE ENCODING
-PRM.8   RTS
+                PRM.72  CMP #$03     ; CH_RNG=1 : BYTE
+                        BNE PRM.8
 
+                ; TODO  BYTE ENCODING
+                PRM.8   RTS
+        ELSE
+
+
+                PRMETH  
+                
+                        LDX *S0.TA      ; PRINT METHOD
+                PRM.5   ;CPX #$06       ;>> PRINT ROLLING INDICATOR
+                        ;BNE PRM.7
+                        ;>>>>>>>>>>>>>>>>>>>>>>>
+                        STA PRM_D1       ; STORE ASCII CHARACTER TO BE ANALYSED
+
+                        LDA #$01        ; INITIALISE FISRT COMPATIBILITY TYPE (1=NUMBERIC)
+                        STA *S0.TZ
+                        LDA PRM_D1
+                        JSR DENUM
+
+                        LDA #$02        ; INITIALISE FISRT COMPATIBILITY TYPE (2=ALPHANUM)
+                        STA *S0.TZ
+                        LDA PRM_D1
+                        JSR DESYM
+
+                        ;>>>>>>>>>>>>>>>>>>>>>>>
+                        LDX CH_RNG      ; LOAD RESULT IN A
+                        LDA PRM_S,X
+                        STA CHAR
+                        RTS
+
+                PRM_D1  HEX 00
+                PRM_S   ASC "NA B"                
+        FIN
 
 DEBYT   JMP DE.2      ; *** DETECT BYTES (ALWAYS IN RANGE, ADAPTED FOR KANJI) ***
 DES_D   ASC " $%*+-./:"
@@ -335,28 +379,30 @@ DE.3    LDA CH_RNG    ; *** OUT OF RANGE ***
         STA CH_RNG
         SEC
         RTS
-R
+
 ;*** MAIN PARAMETERS ***
-DEB_LV  HEX 00          ; DEBUG LEVEL 0=NOLOG 1=ANALYSE
 CH_SET  HEX 01          ; CHARACTESET 0=II+ 1=IIe
 CH_RNG  HEX 00          ; CHARACTER RANGE
 STR_IX  HEX 00          ; STRING INDEX
 ;**************************
 CH_IDX  HEX 00
 
+
 ; *** STRING DATA ***
-STR.00   ASC "[QR-CHARSET] (M)ENU (I)NPUT"
-         HEX 00
-         ASC "[QR-CHARSET] (N)UMERIC (A)LNUM (B)YTE"
-         HEX 00
-         ASC "123 HELLO world"
-         HEX 00
-         ASC "PROJECT NAYUKI"
-         HEX 00
-         ASC "3141592653589793238"
-         HEX 00
-;        ASC "00000.UFF7THUFF7000001F8F7THUFF7UF00000000UFF7UFF7F7UFF7UF00000000UFF7UEUFF7T*000005F7UFF7UEUFF7UFF500000001F7T*00000.UFF7UF7QF7SK000.QOM:UPUFF7UFEA0000001+F7UFF7THUFF7UFEA0000001+F7UEUFF7UE0000003ZUFF7UF7QF7UFF7SK000000F7UF"             ;3
-;        HEX 00
-;        ASC "963780963783060422602361783060204414120483523180722843312481903540481542120481909180722841190481903542103542120483523180722843312481903540481542120481909180722783060240828240963809421660240963819481903536436843301180647542120487542481903542210843301178993542120481888481903536436843301180647542120487542481903542210843301"     ;4
-;        HEX 00
+        DO DEBUG
+                STR.00   ASC "[QR-CHARSET] (M)ENU (I)NPUT"
+                        HEX 00
+                        ASC "00 = (N)UMERIC 01 = (A)LNUM 02 = (B)YTE"
+                        HEX 00
+                        ASC "123 HELLO world"
+                        HEX 00
+                        ASC "PROJECT NAYUKI"
+                        HEX 00
+                        ASC "3141592653589793238"
+                        HEX 00
+                ;        ASC "00000.UFF7THUFF7000001F8F7THUFF7UF00000000UFF7UFF7F7UFF7UF00000000UFF7UEUFF7T*000005F7UFF7UEUFF7UFF500000001F7T*00000.UFF7UF7QF7SK000.QOM:UPUFF7UFEA0000001+F7UFF7THUFF7UFEA0000001+F7UEUFF7UE0000003ZUFF7UF7QF7UFF7SK000000F7UF"             ;3
+                ;        HEX 00
+                ;        ASC "963780963783060422602361783060204414120483523180722843312481903540481542120481909180722841190481903542103542120483523180722843312481903540481542120481909180722783060240828240963809421660240963819481903536436843301180647542120487542481903542210843301178993542120481888481903536436843301180647542120487542481903542210843301"     ;4
+                ;        HEX 00
+        FIN
 STR.01   HEX 00
