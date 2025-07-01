@@ -1,5 +1,7 @@
 ; LAST BUILD 11-MAR-2025
 
+DEBUG      EQU 0
+
 ;*** TXT CALLS ***
 M.PRBYTE   EQU $FDDA   ; print hex byte
 M.LINPRT   EQU $ED24   ; print A,X as decimal integer
@@ -87,7 +89,7 @@ USRCMD  LDA #>USRCMD      ; PUSH USRCMD RETURN ADDRESS INTO STACK
         PHA
         LDA #<USRCMD-1
         PHA
-UCM.00  JSR M.KPRESS
+UCM.00  JSR M.KPRESS    ; "M" = $CD
         STA *S0.TA
         LDX #$00-8
 UCM.01  TXA
@@ -97,7 +99,7 @@ UCM.01  TXA
         LDA *S0.TA
         ORA #$80          ; uppercase or lowercase doesn't matter
         CMP J_MAIN,X    
-        BEQ UCM.02        ; is A = first character of menu item ? 
+        BEQ UCM.02        ; is A = first character of menu item ?       ; TODO: CHECK WRONG POINTER ?
         LDA J_MAIN+8,X    ; get next character
         BNE UCM.01        ; loop to next menu item
         JMP UCM.00        ; loop end -> back to key input
@@ -105,6 +107,7 @@ UCM.02  LDA J_MAIN+8-2,X  ; Load low byte of address
         STA CJMP         ; Store to temporary zero page pointer
         LDA J_MAIN+8-1,X  ; Load high byte of address
         STA CJMP+1       ; Store high byte to pointer
+
         JMP (CJMP)       ; Jump to pointer
 
 CJMP    HEX 00 00
@@ -481,7 +484,7 @@ PLT.00  ROL MO_VAR+3
         LDY MO_VAR+2
         RTS
 
-TXTPLT  LDA #' '
+TXTPLT  LDA #" "
         BCS TXP.02
 TXP.01  LDA #$20
 TXP.02  JSR M.COUT
