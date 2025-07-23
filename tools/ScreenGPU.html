@@ -152,7 +152,7 @@ function EMU_init()
     //    |  __'.   [  | / /'`\] | '' <  ( (`\] | | `'_\ : [ `/'`\]| |   
     //   _| |  \ \_  | | | \__.  | |`\ \  `'.'. | |,// | |, | |    | |,  
     //  |____||____|[___]'.___.'[__|  \_][\__) )\__/\'-;__/[___]   \__/
-    
+
     var vidContext      = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
     apple2plus.restart(); // restart the AppleII+
@@ -434,7 +434,7 @@ var Apple2Video = function(ctx)
       const adr = (PAGE>>3) + adr_ofs + x7;                                 // locate hardware address
       const d8  = mem[adr];                                                 // read byte from memory
       const y4  = (yp>>2&1)<<2;                                             // hi/lo nibble filter
-      cp += ((d8>>y4&15)<<4);                                               // color pointer
+      cp += (d8>>y4&15)<<4;                                                 // color pointer
     }
     else // TEXT
     {
