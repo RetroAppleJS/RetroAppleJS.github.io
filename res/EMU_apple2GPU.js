@@ -83,7 +83,7 @@ function Apple2Video(ctx)
       {
         flash_on = ! flash_on;
         flash_count = 0;
-        this.reflash();
+        this.reflash();   // non-maskable interrupt at flashing cursor
       }
 
       //if(frame_count%17030 == 0)  // ~50 fps
@@ -93,7 +93,7 @@ function Apple2Video(ctx)
         if(frame_redraw==true)
         {
           frame_count = 0;
-          this.redraw();
+          this.redraw();  // redraw only if flag is set
         }
       }
     }
@@ -108,12 +108,11 @@ function Apple2Video(ctx)
       this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
   
       // RUN THE KERNEL !
-      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel(apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8)} );
+      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel( apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8 )} );
       frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
 
       //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
-
 
     this.write    = function(addr, d8) { this.vidram[addr] = d8; frame_redraw = true; }   // FLOATING BUS behavior ?
     this.setGfx   = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
