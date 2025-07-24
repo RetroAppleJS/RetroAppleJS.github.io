@@ -129,36 +129,53 @@ function Apple2Video(ctx)
         return loresCols[idx][column] = val;
     }
 
+    const INTCols = new Uint8Array([
+    0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black       * color 0 & 4
+    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
+    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
+    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple      * color 2
+    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
+    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue * color 6
+    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
+    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
+    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange      * color 5
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
+    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
+    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green * color 1
+    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
+    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
+    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White       * color 3 & 7
+    ]);
+    var ColNames = ["Black","Magenta","Dark Blue","Purple","Dark Green","Grey 1","Medium Blue","Light Blue","Brown","Orange","Grey 2","Pink","Light Green","Yellow","Aquamarine","White"];
 
-    // Lores color to RGB table. (* Hires)
-    var loresCols = [
-    ["#000000","#000000","#000000","#000000","Black"]  // *
-    ,["#901740","#4D4D4D","#304D48","#4C4631","Magenta"] 
-    ,["#402CA5","#5B5B5B","#395B56","#5A5239","Dark Blue"] 
-    ,["#D143E6","#A8A8A8","#69A89E","#A6986A","Purple"]  // *
-    ,["#006940","#383838","#233835","#383324","Dark Green"] 
-    ,["#808080","#808080","#508078","#7E7451","Grey 1"] 
-    ,["#2F96E6","#8E8E8E","#598E85","#8C8059","Medium Blue"]  // *
-    ,["#BFABFF","#CECECE","#81CEC2","#CBBA82","Light Blue"] 
-    ,["#405400","#313131","#1F312E","#312D1F","Brown"] 
-    ,["#D06B1A","#717171","#47716B","#706748","Orange"]  // *
-    ,["#808080","#808080","#508078","#7E7451","Grey 2"] 
-    ,["#FF96BF","#C7C7C7","#7DC7BB","#C4B47D","Pink"] 
-    ,["#30BD1B","#575757","#375752","#564F37","Light Green"]  // *
-    ,["#BFD35A","#A4A4A4","#67A49A","#A29568","Yellow"] 
-    ,["#6FE8BF","#B2B2B2","#70B2A8","#B0A170","Aquamarine"] 
-    ,["#FFFFFF","#FFFFFF","#A0FFF0","#FCE7A1","White"]  // *
-    ];
+    const hex2tab=[
+    "00","01","02","03","04","05","06","07","08","09","0A","0B","0C","0D","0E","0F","10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F",
+    "20","21","22","23","24","25","26","27","28","29","2A","2B","2C","2D","2E","2F","30","31","32","33","34","35","36","37","38","39","3A","3B","3C","3D","3E","3F",
+    "40","41","42","43","44","45","46","47","48","49","4A","4B","4C","4D","4E","4F","50","51","52","53","54","55","56","57","58","59","5A","5B","5C","5D","5E","5F",
+    "60","61","62","63","64","65","66","67","68","69","6A","6B","6C","6D","6E","6F","70","71","72","73","74","75","76","77","78","79","7A","7B","7C","7D","7E","7F",
+    "80","81","82","83","84","85","86","87","88","89","8A","8B","8C","8D","8E","8F","90","91","92","93","94","95","96","97","98","99","9A","9B","9C","9D","9E","9F",
+    "A0","A1","A2","A3","A4","A5","A6","A7","A8","A9","AA","AB","AC","AD","AE","AF","B0","B1","B2","B3","B4","B5","B6","B7","B8","B9","BA","BB","BC","BD","BE","BF",
+    "C0","C1","C2","C3","C4","C5","C6","C7","C8","C9","CA","CB","CC","CD","CE","CF","D0","D1","D2","D3","D4","D5","D6","D7","D8","D9","DA","DB","DC","DD","DE","DF",
+    "E0","E1","E2","E3","E4","E5","E6","E7","E8","E9","EA","EB","EC","ED","EE","EF","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","FA","FB","FC","FD","FE","FF"];
+    var RGB2HEX = function(color) { return [hex2tab[color[0]&0xFF],hex2tab[color[1]&0xFF],hex2tab[color[2]&0xFF]] }
 
-    var hiresCols = [
-     loresCols[0]
-    ,loresCols[3]
-    ,loresCols[6]
-    ,loresCols[9]
-    ,loresCols[12]
-    ,loresCols[15]
-    ];
+    const transformColors = function(INTCols, ColNames, indexes)
+    {
+        const colorsPerEntry = 4;
+        if (!Array.isArray(indexes)) indexes = ColNames.map((_, i) => i);
+        return indexes.map(function(i)
+        {
+            const ofs = i * colorsPerEntry * 4, row = [];
+            for (let j = 0; j < 4; j++)
+                row.push( "#" + RGB2HEX([INTCols[ofs + (j << 2)],INTCols[ofs + 1 +(j << 2)],INTCols[ofs + 2 + (j << 2)]]).join("") );
+            row.push(ColNames[i]);
+            return row;
+        });
+    };
 
+    var hiresCols = transformColors(INTCols,ColNames,[0,3,6,9,12,15]);
+    var loresCols = transformColors(INTCols,ColNames);
 
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
@@ -230,37 +247,16 @@ function Apple2Video(ctx)
         return loresCols[d8 & 0x0f][m];
     }
 
-    this.hgr_PixelColor = function(x, y, left, me, right, b7) {
-        var a0 = x & 0x01;
-
-        // If pixel is set and either adjacent pixels are set, it's white.
-        if (me != 0 && (left != 0 || right != 0))
-            return loresCols[15][0];  // White
-        // If pixel is set but no adjacent pixels are set, pick a color
-        // based on column and b7.
-        else if (me != 0) {
-            if (b7 != 0) {
-                if (a0 != 0) return loresCols[9][0]; // Orange
-                else         return loresCols[6][0]; // Medium Blue
-            } else {
-                if (a0 != 0) return loresCols[12][0]; // Green
-                else         return loresCols[3][0];  // Purple
-            }
-        }
-        // If pixel is not set and both adjacent pixels are set, pick a
-        // color based on column (of adjacent pixel) and b7 (of this byte).
-        else if (left != 0 && right != 0) {
-            if (b7 != 0) {
-                if (a0 != 0) return loresCols[6][0]; // Medium Blue
-                else         return loresCols[9][0]; // Orange
-            } else {
-                if (a0 != 0) return loresCols[3][0];  // Purple
-                else         return loresCols[12][0]; // Green
-            }
-        }
-        // Else it's black.
-        else
-           return loresCols[0][0];    // Black
+    this.hgr_PixelColor = function(x, y, left, me, right, b7) 
+    {
+        const Chroma = 0;
+        var b = (x&1)<<4 | left<<3 | me<<1 | right>>1 | b7>>7;
+        var col =  3*(0xF4E0F8D0 >>> b & 1        // bit 0
+                | (0x08200820 >>> b & 1) << 1  // bit 1
+                | (0xF0D0F4C0 >>> b & 1) << 2); // bit 2
+        var ofs = col<<4 | Chroma<<1 | Chroma; 
+        var a = INTCols.slice(ofs, ofs | 3);
+        return "#"+RGB2HEX(a).join("");
     }
 
     // Called if a write lands in any possible video RAM area.
