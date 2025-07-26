@@ -1,29 +1,7 @@
+// 2025 adaptations by Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// Copyright (c) 2014 Thomas Skibo.
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED.  IN NO EVENT SHALL AUTHOR OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-// SUCH DAMAGE.
-//
-
+// Thanks to Thomas Skibo - Copyright (c) 2014.
 // apple2video.js
 
 //oEMU.component.Video["A2P"] = {Apple2Video};
@@ -247,15 +225,13 @@ function Apple2Video(ctx)
         return loresCols[d8 & 0x0f][m];
     }
 
-    this.hgr_PixelColor = function(x, y, left, me, right, b7) 
+    this.hgr_PixelColor = function(x, y, l, m, r, b7) 
     {
-        const Chroma = 0;
-        var b = (x&1)<<4 | left<<3 | me<<1 | right>>1 | b7>>7;
-        var col =  3*(0xF4E0F8D0 >>> b & 1        // bit 0
-                | (0x08200820 >>> b & 1) << 1  // bit 1
-                | (0xF0D0F4C0 >>> b & 1) << 2); // bit 2
-        var ofs = col<<4 | Chroma<<1 | Chroma; 
-        var a = INTCols.slice(ofs, ofs | 3);
+        const chr = 0;
+        const b   = x<<4 | l<<3 | (m<<2 | m<<1)&4 | (r<<1 | r>>1)&2 | b7>>7;
+        const col =  0xF4E0F8D0>>>b &1 | 0x08200820>>>b-1 &2 | 0xF0D0F4C0>>>b-2 &4;
+        const ofs = (col<<4)+(col<<5) | chr<<2;
+        const a   = INTCols.slice(ofs,ofs+3);
         return "#"+RGB2HEX(a).join("");
     }
 
@@ -322,10 +298,9 @@ function Apple2Video(ctx)
 
         if (!gfx_mode || mix_mode) {            
             for (var col = 0; col < 40; col++)
-                for (var row = (gfx_mode && mix_mode) ? 20 : 0; row < 24; row++)
+               for (var row = (gfx_mode && mix_mode) ? 20 : 0; row < 24; row++)
                {
-                    var addr = (((row & 0x07) << 7) |
-                        (row & 0x18) | ((row & 0x18) << 2) |
+                    var addr = (((row & 0x07) << 7) | (row & 0x18) | ((row & 0x18) << 2) |
                         (page2_mode ? LORES2_ADDR : LORES1_ADDR)) + col;
                     var d8 = this.vidram[addr];
 
@@ -333,6 +308,7 @@ function Apple2Video(ctx)
                     if ((d8 & 0xc0) == 0x40) text_Draw(col, row, d8);
                 }
         }
+        //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
 
     // Redraw everything.  Called whenever the graphics modes change.
@@ -342,40 +318,43 @@ function Apple2Video(ctx)
         
         this.register_mode();
         for (var row = 0; row < 24; row++)
-            for (var col = 0; col < 40; col++) {
-
+            for (var col = 0; col < 40; col++)
+            {
                 var addr = (((row & 0x07) << 7) |
                             (row & 0x18) |
                             ((row & 0x18) << 2)) + col;
 
-                if (gfx_mode && (!mix_mode || row < 20)) {
-                    if (hires_mode) {
-                        var y;
+                if (gfx_mode && (!mix_mode || row < 20))
+                {
+                    if (hires_mode)
+                    {
                         addr += page2_mode ? HIRES2_ADDR : HIRES1_ADDR;
-                        for (y = 0; y < 8; y++) {
+                        for (var y = 0; y < 8; y++)
+                        {
                             // HIRES graphics
                             var d8_l = 0, d8, d8_r = 0;
                             addr = (addr & 0xe3ff) | (y << 10);
-
                             d8 = this.vidram[addr];
-                            if (col > 0)
-                                d8_l = this.vidram[addr - 1];
-                            if (col < 39)
-                                d8_r = this.vidram[addr + 1];
-
+                            if (col > 0)  d8_l = this.vidram[addr - 1];
+                            if (col < 39) d8_r = this.vidram[addr + 1];
                             this.hgr_Draw(col, row * 8 + y, d8_l, d8, d8_r, this.modes);
                         }
-                    } else {
+                    }
+                    else
+                    {
                         // LORES graphics
                         addr += page2_mode ? LORES2_ADDR : LORES1_ADDR;
                         lores_Draw(col, row, this.vidram[addr]);
                     }
-                } else {
+                } 
+                else
+                {
                     // Text
                     addr += page2_mode ? LORES2_ADDR : LORES1_ADDR;
                     text_Draw(col, row, this.vidram[addr]);
                 }
             }
+            //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
 
     this.rept = function() {
