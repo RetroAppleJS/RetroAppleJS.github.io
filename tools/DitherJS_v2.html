@@ -141,6 +141,19 @@ var oDITHER = new function()
         return palette[pos];
     }
 
+    this.approximateColorConstraint = function(color,UsedColors)
+    {
+        //const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
+        const palette = PATPAL
+        const l = palette.length;
+        for(var i=0,min=16581375,pos=-1,d;i<l;i++)
+        {
+            d = this.colorDistance(palette[i],color)
+            if(d<min) { min=d; pos=i }
+        }
+        return palette[pos];
+    }    
+
     this.downsample = function(in_imgdata,step)
     {
         var out_imgdata = this.ctx[0].createImageData(in_imgdata);
@@ -196,12 +209,15 @@ var oDITHER = new function()
         var d   = new Uint8ClampedArray(in_imgdata.data);
         var out = new Uint8ClampedArray(in_imgdata.data);
         // Step
-        var step = opt && opt.step?opt.step:1;
+        var stepX = opt && opt.step?opt.step:1;
+        var stepY = stepX
+        stepX++;
+
         // Ratio >=1
         var ratio = 1/16;
 
-        for (var y=0;y<h;y += step) {
-            for (var x=0;x<w;x += step) {
+        for (var y=0;y<h;y += stepY) {
+            for (var x=0;x<w;x += stepX) {
                 var i = (4*x) + (4*y*w);
                 
                 var $i = function(x,y) {
@@ -215,34 +231,49 @@ var oDITHER = new function()
                 var a = i+3;
 
                 var color = new Array(d[r],d[g],d[b]); 
-                var approx = this.approximateColor(color);
+                //var approx = this.approximateColor(color);
+                var previousPix = x%7;
+                //for(var pp=0)
+                var approx = this.approximateColorConstraint(color,);
                 
                 var q = [];   // 
                 q[r] = d[r] - approx[0];
                 q[g] = d[g] - approx[1];
                 q[b] = d[b] - approx[2];
                             
-                var xps = (x+step)*4
-                var xms = (x-step)*4
+                var xps = (x+stepX)*4
+                var xms = (x-stepX)*4
                 var x4 = x*4
+
+//  real color - approx = ↓error↓
+//  diffused over neigboring pixels
+//
+//              ┌──────┬──────┐
+//              │ appox│ 7/16 │
+//              │  ┌────→err  │
+//       ┌──────+─/↓──\+──────┤
+//       │   err⤶ err  ⤷err  │ 
+//       │ 3/16 │ 5/16 │ 1/16 │ 
+//       └──────┴──────┴──────┘
+
 
                 // Diffuse the error - RED component
                 d[$i(xps,y)] =  d[$i(xps,y)] + 7 * ratio * q[r];
-                d[$i(xms,y+1)] =  d[$i(x4-4,y+step)] + 3 * ratio * q[r];
-                d[$i(x4,y+step)] =  d[$i(x4,y+step)] + 5 * ratio * q[r];
-                d[$i(xps,y+step)] =  d[$i(x4+4,y+step)] + 1 * ratio * q[r];
+                d[$i(xms,y+1)] =  d[$i(x4-4,y+stepY)] + 3 * ratio * q[r];
+                d[$i(x4,y+stepY)] =  d[$i(x4,y+stepY)] + 5 * ratio * q[r];
+                d[$i(xps,y+stepY)] =  d[$i(x4+4,y+stepY)] + 1 * ratio * q[r];
 
                     // Diffuse the error - GREEN component
                 d[$i(xps,y)+1] =  d[$i(xps,y)+1] + 7 * ratio * q[g];
-                d[$i(xms,y+step)+1] =  d[$i(xms,y+step)+1] + 3 * ratio * q[g];
-                d[$i(x4,y+step)+1] =  d[$i(x4,y+step)+1] + 5 * ratio * q[g];
-                d[$i(xps,y+step)+1] =  d[$i(xps,y+step)+1] + 1 * ratio * q[g];
+                d[$i(xms,y+stepY)+1] =  d[$i(xms,y+stepY)+1] + 3 * ratio * q[g];
+                d[$i(x4,y+stepY)+1] =  d[$i(x4,y+stepY)+1] + 5 * ratio * q[g];
+                d[$i(xps,y+stepY)+1] =  d[$i(xps,y+stepY)+1] + 1 * ratio * q[g];
 
                     // Diffuse the error - BLUE component
                 d[$i(xps,y)+2] =  d[$i(xps,y)+2] + 7 * ratio * q[b];
-                d[$i(xms,y+step)+2] =  d[$i(xms,y+step)+2] + 3 * ratio * q[b];
-                d[$i(x4,y+step)+2] =  d[$i(x4,y+step)+2] + 5 * ratio * q[b];
-                d[$i(xps,y+step)+2] =  d[$i(xps,y+step)+2] + 1 * ratio * q[b];
+                d[$i(xms,y+stepY)+2] =  d[$i(xms,y+stepY)+2] + 3 * ratio * q[b];
+                d[$i(x4,y+stepY)+2] =  d[$i(x4,y+stepY)+2] + 5 * ratio * q[b];
+                d[$i(xps,y+stepY)+2] =  d[$i(xps,y+stepY)+2] + 1 * ratio * q[b];
 
                 // Color
                 var tr = approx[0];
@@ -250,8 +281,8 @@ var oDITHER = new function()
                 var tb = approx[2];
 
                 // Draw a block
-                for (var dx=0;dx<step;dx++){
-                    for (var dy=0;dy<step;dy++){
+                for (var dx=0;dx<stepX;dx++){
+                    for (var dy=0;dy<stepX;dy++){
                         var di = i + (4 * dx) + (4 * w * dy);
 
                         // Draw pixel
@@ -321,7 +352,10 @@ var oDITHER = new function()
 
 
 
-
+function Cpix(arg)
+{
+    console.log(arg);
+}
 
 
 function gen_cell(img_arr,x,y,i,w)
@@ -361,6 +395,7 @@ function gen_cell(img_arr,x,y,i,w)
   //document.write(pix+"<br>")
 
   var s= "<td class='"+css+"tcell10' alt=\""+alt+"\" style=\""+pix+";padding:0;"+bck+"\">"
+    //+dot[0].replace(/this/g,"this,"+x+","+y+",1")
     //+img[0].replace(/this/g,"this,"+x+","+y+",0")+alt
     +"<font color="+(avgcol>128?"black":"white")+">"+color[i]+"</font><br>"
     +"<font color=red>"+0+"</font>"
@@ -368,6 +403,7 @@ function gen_cell(img_arr,x,y,i,w)
   if((x+1)%7==0)
     s+= "<td class=tcell5 style=\""+(c[2]==128?"background-color:black":"")+"\">"+dot[1].replace(/this/g,"this,"+x+","+y+",1")
         +"</td>"
+
   return s;
 }
 
@@ -1452,7 +1488,7 @@ for(var i in d)
     if(!d[i].cri || d[i].cri["GREY"])
     {
         PATPAL[PATPAL.length] = HEX2RGB( d[i].col );
-        //document.write(d[i].col.substring(1)+" "+HEX2RGB( d[i].col.substring(1) )+"<br>")
+        document.write(d[i].col.substring(1)+" "+HEX2RGB( d[i].col.substring(1) )+" <br>")
         //document.write(i+":["+PATPAL[PATPAL.length-1].join(",")+"]<br>")
     }
 }
