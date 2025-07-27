@@ -215,14 +215,12 @@ var oDITHER = new function()
 
         // Ratio >=1
         var ratio = 1/16;
+        var $i = function(x,y) { return x + (y*w<<2) };
 
         for (var y=0;y<h;y += stepY) {
             for (var x=0;x<w;x += stepX) {
-                var i = (4*x) + (4*y*w);
-                
-                var $i = function(x,y) {
-                    return x + (4*y*w);
-                };
+
+                var i =   $i(x<<2,y);
 
                 // Define bytes
                 var r = i;
@@ -234,45 +232,45 @@ var oDITHER = new function()
                 //var approx = this.approximateColor(color);
                 var previousPix = x%7;
                 //for(var pp=0)
-                var approx = this.approximateColorConstraint(color,);
+                var approx = this.approximateColorConstraint(color,); // TODO CONTINUE HERE
                 
-                var q = [];   // 
+//  ERROR = real color (incl. error deviation) - approximated color
+
+                var q = [];
                 q[r] = d[r] - approx[0];
                 q[g] = d[g] - approx[1];
                 q[b] = d[b] - approx[2];
                             
-                var xps = (x+stepX)*4
-                var xms = (x-stepX)*4
-                var x4 = x*4
+                var xps = (x+stepX)<<2;
+                var xms = (x-stepX)<<2;
+                var x4  = x<<2;
 
-//  real color - approx = ↓error↓
-//  diffused over neigboring pixels
+//  diffuse ERROR over neighboring pixels
 //
 //              ┌──────┬──────┐
-//              │ appox│ 7/16 │
-//              │  ┌────→err  │
-//       ┌──────+─/↓──\+──────┤
+//  real color◄──►appox│ 7/16 │
+//              │   ┌───→err  │
+//       ┌──────┘─/─↓─\└──────┤
 //       │   err⤶ err  ⤷err  │ 
 //       │ 3/16 │ 5/16 │ 1/16 │ 
 //       └──────┴──────┴──────┘
 
-
                 // Diffuse the error - RED component
-                d[$i(xps,y)] =  d[$i(xps,y)] + 7 * ratio * q[r];
-                d[$i(xms,y+1)] =  d[$i(x4-4,y+stepY)] + 3 * ratio * q[r];
-                d[$i(x4,y+stepY)] =  d[$i(x4,y+stepY)] + 5 * ratio * q[r];
-                d[$i(xps,y+stepY)] =  d[$i(x4+4,y+stepY)] + 1 * ratio * q[r];
+                d[$i(xps,y)]         =  d[$i(xps,y)]        + 7 * ratio * q[r];
+                d[$i(xms,y+1)]       =  d[$i(x4-4,y+stepY)] + 3 * ratio * q[r];
+                d[$i(x4,y+stepY)]    =  d[$i(x4,y+stepY)]   + 5 * ratio * q[r];
+                d[$i(xps,y+stepY)]   =  d[$i(x4+4,y+stepY)] + 1 * ratio * q[r];
 
-                    // Diffuse the error - GREEN component
-                d[$i(xps,y)+1] =  d[$i(xps,y)+1] + 7 * ratio * q[g];
+                // Diffuse the error - GREEN component
+                d[$i(xps,y)+1]       =  d[$i(xps,y)+1]       + 7 * ratio * q[g];
                 d[$i(xms,y+stepY)+1] =  d[$i(xms,y+stepY)+1] + 3 * ratio * q[g];
-                d[$i(x4,y+stepY)+1] =  d[$i(x4,y+stepY)+1] + 5 * ratio * q[g];
+                d[$i(x4,y+stepY)+1]  =  d[$i(x4,y+stepY)+1]  + 5 * ratio * q[g];
                 d[$i(xps,y+stepY)+1] =  d[$i(xps,y+stepY)+1] + 1 * ratio * q[g];
 
-                    // Diffuse the error - BLUE component
-                d[$i(xps,y)+2] =  d[$i(xps,y)+2] + 7 * ratio * q[b];
+                // Diffuse the error - BLUE component
+                d[$i(xps,y)+2]       =  d[$i(xps,y)+2]       + 7 * ratio * q[b];
                 d[$i(xms,y+stepY)+2] =  d[$i(xms,y+stepY)+2] + 3 * ratio * q[b];
-                d[$i(x4,y+stepY)+2] =  d[$i(x4,y+stepY)+2] + 5 * ratio * q[b];
+                d[$i(x4,y+stepY)+2]  =  d[$i(x4,y+stepY)+2]  + 5 * ratio * q[b];
                 d[$i(xps,y+stepY)+2] =  d[$i(xps,y+stepY)+2] + 1 * ratio * q[b];
 
                 // Color
@@ -281,16 +279,15 @@ var oDITHER = new function()
                 var tb = approx[2];
 
                 // Draw a block
-                for (var dx=0;dx<stepX;dx++){
-                    for (var dy=0;dy<stepX;dy++){
-                        var di = i + (4 * dx) + (4 * w * dy);
-
+                for (var dx=0;dx<stepX;dx++)
+                    for (var dy=0;dy<stepX;dy++)
+                    {
+                        var di = $i(i + (dx<<2), dy);
                         // Draw pixel
-                        out[di] = tr;
+                        out[di]   = tr;
                         out[di+1] = tg;
                         out[di+2] = tb;
                     }
-                }
             }
         }
         out_imgdata.data.set(out);
