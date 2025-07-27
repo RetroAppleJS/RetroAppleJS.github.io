@@ -79,7 +79,7 @@ function update_dither(bInit,idx)
         var in_image = ctx.getImageData(0,0,w,h);
         //var in_image = oDITHER.downsample(in_image,2);
 
-        var out_image = oDITHER.errorDiffusionDither(in_image,{"step":1});
+        var out_image = oDITHER.errorDiffusionDither(in_image,{"stepX":2,"stepY":1});
         // oDITHER.canvas[1].style.margin = "0px 0px 0px "+oDITHER.canvas[1].width+"px"
 
         var anchor = document.getElementById("dst2");
@@ -209,78 +209,73 @@ var oDITHER = new function()
         var d   = new Uint8ClampedArray(in_imgdata.data);
         var out = new Uint8ClampedArray(in_imgdata.data);
         // Step
-        var stepX = opt && opt.step?opt.step:1;
-        var stepY = stepX
-        stepX++;
+        var stepX = opt && opt.stepX?opt.stepX:1;
+        var stepY = opt && opt.stepY?opt.stepY:1;
 
         // Ratio >=1
         var ratio = 1/16;
         var $i = function(x,y) { return x + (y*w<<2) };
 
-        for (var y=0;y<h;y += stepY) {
-            for (var x=0;x<w;x += stepX) {
-
-                var i =   $i(x<<2,y);
-
+        for (var y=0;y<h;y += stepY)
+        {
+            for (var x=0;x<w;x += stepX)
+            {
                 // Define bytes
-                var r = i;
-                var g = i+1;
-                var b = i+2;
-                var a = i+3;
+                const i = $i(x<<2,y);
+                const r = i, g = i+1, b = i+2, a = i+3;
 
                 var color = new Array(d[r],d[g],d[b]); 
                 //var approx = this.approximateColor(color);
-                var previousPix = x%7;
+                const previousPix = x%7;
                 //for(var pp=0)
-                var approx = this.approximateColorConstraint(color,); // TODO CONTINUE HERE
+                const approx = this.approximateColorConstraint(color,); // TODO CONTINUE HERE
                 
-//  ERROR = real color (incl. error deviation) - approximated color
-
+                //  ERROR = real color (incl. error deviation) - approximated color
                 var q = [];
                 q[r] = d[r] - approx[0];
                 q[g] = d[g] - approx[1];
                 q[b] = d[b] - approx[2];
                             
-                var xps = (x+stepX)<<2;
-                var xms = (x-stepX)<<2;
-                var x4  = x<<2;
+                const xps = (x+stepX)<<2;
+                const xms = (x-stepX)<<2;
+                const xx4  = x<<2;
+                const yx4  = y;
+                const yps = y+stepY;
 
-//  diffuse ERROR over neighboring pixels
-//
-//              ┌──────┬──────┐
-//  real color◄──►appox│ 7/16 │
-//              │   ┌───→err  │
-//       ┌──────┘─/─↓─\└──────┤
-//       │   err⤶ err  ⤷err  │ 
-//       │ 3/16 │ 5/16 │ 1/16 │ 
-//       └──────┴──────┴──────┘
+                //  diffuse ERROR over neighboring pixels
+                //
+                //              ┌──────┬──────┐
+                //  real color◄──►appox│ 7/16 │
+                //              │   ┌───→err  │
+                //       ┌──────┘─/─↓─\└──────┤
+                //       │   err⤶ err  ⤷err  │ 
+                //       │ 3/16 │ 5/16 │ 1/16 │ 
+                //       └──────┴──────┴──────┘
 
                 // Diffuse the error - RED component
-                d[$i(xps,y)]         =  d[$i(xps,y)]        + 7 * ratio * q[r];
-                d[$i(xms,y+1)]       =  d[$i(x4-4,y+stepY)] + 3 * ratio * q[r];
-                d[$i(x4,y+stepY)]    =  d[$i(x4,y+stepY)]   + 5 * ratio * q[r];
-                d[$i(xps,y+stepY)]   =  d[$i(x4+4,y+stepY)] + 1 * ratio * q[r];
+                d[$i(xps,yx4)]    =  d[$i(xps,yx4)]   + 7 * ratio * q[r];
+                d[$i(xms,yps)]    =  d[$i(xms,yps)]   + 3 * ratio * q[r];
+                d[$i(xx4,yps)]    =  d[$i(xx4,yps)]   + 5 * ratio * q[r];
+                d[$i(xps,yps)]    =  d[$i(xps,yps)]   + 1 * ratio * q[r];
 
                 // Diffuse the error - GREEN component
-                d[$i(xps,y)+1]       =  d[$i(xps,y)+1]       + 7 * ratio * q[g];
-                d[$i(xms,y+stepY)+1] =  d[$i(xms,y+stepY)+1] + 3 * ratio * q[g];
-                d[$i(x4,y+stepY)+1]  =  d[$i(x4,y+stepY)+1]  + 5 * ratio * q[g];
-                d[$i(xps,y+stepY)+1] =  d[$i(xps,y+stepY)+1] + 1 * ratio * q[g];
+                d[$i(xps,yx4)+1]  =  d[$i(xps,yx4)+1] + 7 * ratio * q[g];
+                d[$i(xms,yps)+1]  =  d[$i(xms,yps)+1] + 3 * ratio * q[g];
+                d[$i(xx4,yps)+1]  =  d[$i(xx4,yps)+1] + 5 * ratio * q[g];
+                d[$i(xps,yps)+1]  =  d[$i(xps,yps)+1] + 1 * ratio * q[g];
 
                 // Diffuse the error - BLUE component
-                d[$i(xps,y)+2]       =  d[$i(xps,y)+2]       + 7 * ratio * q[b];
-                d[$i(xms,y+stepY)+2] =  d[$i(xms,y+stepY)+2] + 3 * ratio * q[b];
-                d[$i(x4,y+stepY)+2]  =  d[$i(x4,y+stepY)+2]  + 5 * ratio * q[b];
-                d[$i(xps,y+stepY)+2] =  d[$i(xps,y+stepY)+2] + 1 * ratio * q[b];
+                d[$i(xps,yx4)+2]  =  d[$i(xps,yx4)+2] + 7 * ratio * q[b];
+                d[$i(xms,yps)+2]  =  d[$i(xms,yps)+2] + 3 * ratio * q[b];
+                d[$i(xx4,yps)+2]  =  d[$i(xx4,yps)+2] + 5 * ratio * q[b];
+                d[$i(xps,yps)+2]  =  d[$i(xps,yps)+2] + 1 * ratio * q[b];
 
                 // Color
-                var tr = approx[0];
-                var tg = approx[1];
-                var tb = approx[2];
+                const tr = approx[0], tg = approx[1], tb = approx[2];
 
                 // Draw a block
                 for (var dx=0;dx<stepX;dx++)
-                    for (var dy=0;dy<stepX;dy++)
+                    for (var dy=0;dy<stepY;dy++)
                     {
                         var di = $i(i + (dx<<2), dy);
                         // Draw pixel
