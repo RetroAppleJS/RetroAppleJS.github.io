@@ -211,17 +211,14 @@ var oDITHER = new function()
         // Step
         var stepX = opt && opt.stepX?opt.stepX:1;
         var stepY = opt && opt.stepY?opt.stepY:1;
-
-        // Ratio >=1
-        var ratio = 1/16;
-        var $i = function(x,y) { return x + (y*w<<2) };
+        var $i = function(x,y) { return x+y*w <<2 };
 
         for (var y=0;y<h;y += stepY)
         {
             for (var x=0;x<w;x += stepX)
             {
                 // Define bytes
-                const i = $i(x<<2,y);
+                const i = $i(x,y);
                 const r = i, g = i+1, b = i+2, a = i+3;
 
                 var color = new Array(d[r],d[g],d[b]); 
@@ -236,9 +233,9 @@ var oDITHER = new function()
                 q[g] = d[g] - approx[1];
                 q[b] = d[b] - approx[2];
                             
-                const xps = (x+stepX)<<2;
-                const xms = (x-stepX)<<2;
-                const xx4  = x<<2;
+                const xps = x+stepX;
+                const xms = x-stepX;
+                const xx4  = x;
                 const yx4  = y;
                 const yps = y+stepY;
 
@@ -253,22 +250,22 @@ var oDITHER = new function()
                 //       └──────┴──────┴──────┘
 
                 // Diffuse the error - RED component
-                d[$i(xps,yx4)]    =  d[$i(xps,yx4)]   + 7 * ratio * q[r];
-                d[$i(xms,yps)]    =  d[$i(xms,yps)]   + 3 * ratio * q[r];
-                d[$i(xx4,yps)]    =  d[$i(xx4,yps)]   + 5 * ratio * q[r];
-                d[$i(xps,yps)]    =  d[$i(xps,yps)]   + 1 * ratio * q[r];
+                d[$i(xps,yx4)]    =  d[$i(xps,yx4)]   + (7 * q[r] >> 4);
+                d[$i(xms,yps)]    =  d[$i(xms,yps)]   + (3 * q[r] >> 4);
+                d[$i(xx4,yps)]    =  d[$i(xx4,yps)]   + (5 * q[r] >> 4);
+                d[$i(xps,yps)]    =  d[$i(xps,yps)]   + (1 * q[r] >> 4);
 
                 // Diffuse the error - GREEN component
-                d[$i(xps,yx4)+1]  =  d[$i(xps,yx4)+1] + 7 * ratio * q[g];
-                d[$i(xms,yps)+1]  =  d[$i(xms,yps)+1] + 3 * ratio * q[g];
-                d[$i(xx4,yps)+1]  =  d[$i(xx4,yps)+1] + 5 * ratio * q[g];
-                d[$i(xps,yps)+1]  =  d[$i(xps,yps)+1] + 1 * ratio * q[g];
+                d[$i(xps,yx4)+1]  =  d[$i(xps,yx4)+1] + (7 * q[g] >> 4);
+                d[$i(xms,yps)+1]  =  d[$i(xms,yps)+1] + (3 * q[g] >> 4);
+                d[$i(xx4,yps)+1]  =  d[$i(xx4,yps)+1] + (5 * q[g] >> 4);
+                d[$i(xps,yps)+1]  =  d[$i(xps,yps)+1] + (1 * q[g] >> 4);
 
                 // Diffuse the error - BLUE component
-                d[$i(xps,yx4)+2]  =  d[$i(xps,yx4)+2] + 7 * ratio * q[b];
-                d[$i(xms,yps)+2]  =  d[$i(xms,yps)+2] + 3 * ratio * q[b];
-                d[$i(xx4,yps)+2]  =  d[$i(xx4,yps)+2] + 5 * ratio * q[b];
-                d[$i(xps,yps)+2]  =  d[$i(xps,yps)+2] + 1 * ratio * q[b];
+                d[$i(xps,yx4)+2]  =  d[$i(xps,yx4)+2] + (7 * q[b] >> 4);
+                d[$i(xms,yps)+2]  =  d[$i(xms,yps)+2] + (3 * q[b] >> 4);
+                d[$i(xx4,yps)+2]  =  d[$i(xx4,yps)+2] + (5 * q[b] >> 4);
+                d[$i(xps,yps)+2]  =  d[$i(xps,yps)+2] + (1 * q[b] >> 4);
 
                 // Color
                 const tr = approx[0], tg = approx[1], tb = approx[2];
@@ -277,7 +274,7 @@ var oDITHER = new function()
                 for (var dx=0;dx<stepX;dx++)
                     for (var dy=0;dy<stepY;dy++)
                     {
-                        var di = $i(i + (dx<<2), dy);
+                        var di = $i((i>>2) + dx, dy);
                         // Draw pixel
                         out[di]   = tr;
                         out[di+1] = tg;
