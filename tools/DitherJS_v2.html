@@ -141,10 +141,12 @@ var oDITHER = new function()
         return palette[pos];
     }
 
-    this.approximateColorConstraint = function(color,UsedColors)
+    this.approximateColorConstraint = function(color,p)
     {
+        const previousPix = p.x%7;
+
         //const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
-        const palette = PATPAL
+        const palette = PATPAL;
         const l = palette.length;
         for(var i=0,min=16581375,pos=-1,d;i<l;i++)
         {
@@ -223,9 +225,8 @@ var oDITHER = new function()
 
                 var color = new Array(d[r],d[g],d[b]); 
                 //var approx = this.approximateColor(color);
-                const previousPix = x%7;
                 //for(var pp=0)
-                const approx = this.approximateColorConstraint(color,); // TODO CONTINUE HERE
+                const approx = this.approximateColorConstraint(color,{"x":x,"y":y,"d":d}); // TODO CONTINUE HERE
                 
                 //  ERROR = real color (incl. error deviation) - approximated color
                 var q = [];
@@ -338,7 +339,6 @@ var oDITHER = new function()
     // Math.pow is faster than multiplying 2x
     this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
 }
-
 
 
 function Cpix(arg)
@@ -1465,20 +1465,32 @@ d[2] = {
 42:{"col":"#FA7E00","sat":141,"cmp":["#000000","#FF8000"]},
 }
 
+// FULL HGR PALLETTE (with repetitions)
+d[3] = {
+0:{"col":"#000000","name":"Black"},
+1:{"col":"#30BD1B","name":"Light Green"},
+2:{"col":"#D143E6","name":"Purple"},
+3:{"col":"#FFFFFF","name":"White"},
+4:{"col":"#000000","name":"Black"},
+5:{"col":"#D06B1A","name":"Orange"},
+6:{"col":"#2F96E6","name":"Medium Blue"},
+7:{"col":"#FFFFFF","name":"White"}
+}
+
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
 function RGB2HEX(dec) { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] }
 function HEX2RGB(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
 
 var PATPAL = [];
-d = d[2]
+d = d[3];           // select pallette
 for(var i in d)
 {
     if(!d[i].cri || d[i].cri["GREY"])
     {
         PATPAL[PATPAL.length] = HEX2RGB( d[i].col );
-        document.write(d[i].col.substring(1)+" "+HEX2RGB( d[i].col.substring(1) )+" <br>")
-        //document.write(i+":["+PATPAL[PATPAL.length-1].join(",")+"]<br>")
+        //document.write(d[i].col.substring(1)+" "+HEX2RGB( d[i].col.substring(1) )+" <br>")
+        document.write(i+":["+PATPAL[PATPAL.length-1].join(",")+"]<br>")
     }
 }
 //var PATPAL = [[0,0,0],[255,255,255]];
