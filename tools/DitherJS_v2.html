@@ -215,17 +215,15 @@ var oDITHER = new function()
         var stepY = opt && opt.stepY?opt.stepY:1;
         var $i = function(x,y) { return x+y*w <<2 };
 
-        for (var y=0;y<h;y += stepY)
+        for (var y=0 ; y<h ; y+=stepY )
         {
-            for (var x=0;x<w;x += stepX)
+            for (var x=0 ; x<w ; x+=stepX )
             {
                 // Define bytes
-                const i = $i(x,y);
-                const r = i, g = i+1, b = i+2, a = i+3;
-
+                var i = $i(x,y), r = i, g = i+1, b = i+2;
                 var color = new Array(d[r],d[g],d[b]); 
+
                 //var approx = this.approximateColor(color);
-                //for(var pp=0)
                 const approx = this.approximateColorConstraint(color,{"x":x,"y":y,"d":d}); // TODO CONTINUE HERE
                 
                 //  ERROR = real color (incl. error deviation) - approximated color
@@ -276,10 +274,15 @@ var oDITHER = new function()
                     for (var dy=0;dy<stepY;dy++)
                     {
                         var di = $i((i>>2) + dx, dy);
+                        //out.splice(di,0,approx[0],approx[1],approx[2])
+
+                        //out[di] = approx;
+                        out.set(approx, di);
+
                         // Draw pixel
-                        out[di]   = tr;
-                        out[di+1] = tg;
-                        out[di+2] = tb;
+                        //out[di]   = tr;
+                        //out[di+1] = tg;
+                        //out[di+2] = tb;
                     }
             }
         }
@@ -337,7 +340,10 @@ var oDITHER = new function()
     }
 
     // Math.pow is faster than multiplying 2x
-    this.colorDistance = function(a,b) { return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2)) }
+    this.colorDistance = function(a,b) 
+    { 
+        return Math.sqrt(Math.pow(a[0]-b[0],2)+Math.pow(a[1]-b[1],2)+Math.pow(a[2]-b[2],2))
+    }
 }
 
 
@@ -1477,10 +1483,10 @@ d[3] = {
 7:{"col":"#FFFFFF","name":"White"}
 }
 
-var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
 function getHexByte(v) { return hextab[v>>4]+hextab[v&0xf] }
-function RGB2HEX(dec) { return [getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])] }
-function HEX2RGB(hex) { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
+function RGB2HEX(dec)  { return new Uint8Array([getHexByte(dec[0]),getHexByte(dec[1]),getHexByte(dec[2])]) }
+function HEX2RGB(hex)  { var n=parseInt(hex.slice(1),16); return new Uint8Array([n>>16,n>>8,n]) }
 
 var PATPAL = [];
 d = d[3];           // select pallette
@@ -1490,7 +1496,7 @@ for(var i in d)
     {
         PATPAL[PATPAL.length] = HEX2RGB( d[i].col );
         //document.write(d[i].col.substring(1)+" "+HEX2RGB( d[i].col.substring(1) )+" <br>")
-        document.write(i+":["+PATPAL[PATPAL.length-1].join(",")+"]<br>")
+        document.write(i+":["+PATPAL[PATPAL.length-1].join(",")+"]<br>");
     }
 }
 //var PATPAL = [[0,0,0],[255,255,255]];
