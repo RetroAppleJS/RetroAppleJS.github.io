@@ -143,14 +143,48 @@ var oDITHER = new function()
 
     this.approximateColorConstraint = function(color,p)
     {
-        const previousPix = p.x%7;
+        if(p.x%7==0)
+        {
+             const $i = function(x,y,p) { return x+y*p <<2 };
+
+            // test if b7 should be high or low
+            // (more green and purple, or more orange and blue ?)
+
+            var da = new Array(8);
+            var d1 = 0;  // equilibrium
+            for(var _j=0;_j<7;_j++)
+            {
+                var _i = $i(p.x+_j,p.y,p.w), _r = _i, _g = _i+1, _b = _i+2;
+                var _color = new Uint8Array([p.d[_r],p.d[_g],p.d[_b]]);
+                const palette = [PATPAL[1],PATPAL[2],PATPAL[5],PATPAL[6]];
+
+                const l = palette.length;
+                for(var i=0,min=16581375,pos=-1,d;i<l;i++)
+                {
+                    d = this.colorDistance(palette[i],_color)
+                    if(d<min) { min=d; pos=i }
+                }
+                da[_j] = pos;
+                d1 = pos<2 ? d1-1 : d1+1;
+            }
+            
+            if(d1<=0) 
+            {
+                console.log(_color.join(",")+" = green/purple | "+d1+" | "+da.join(","));
+            }
+            else
+            {
+                console.log(_color.join(",")+" = orange/blue | "+d1+" | "+da.join(","));
+            }
+
+        }
 
         //const palette =  [ [0,0,0],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,255,255] ];
         const palette = PATPAL;
         const l = palette.length;
         for(var i=0,min=16581375,pos=-1,d;i<l;i++)
         {
-            d = this.colorDistance(palette[i],color)
+            d = this.colorDistance(palette[i],color);
             if(d<min) { min=d; pos=i }
         }
         return palette[pos];
@@ -175,7 +209,7 @@ var oDITHER = new function()
                 var b = i+2;
                 var a = i+3;
 
-                var color = new Array(d[r],d[g],d[b]); 
+                var color = new Uint8Array([d[r],d[g],d[b]]); 
                 var approx = color //this.approximateColor(color);
 
                 // Color
@@ -213,7 +247,7 @@ var oDITHER = new function()
         // Step
         var stepX = opt && opt.stepX?opt.stepX:1;
         var stepY = opt && opt.stepY?opt.stepY:1;
-        var $i = function(x,y) { return x+y*w <<2 };
+        const $i = function(x,y) { return x+y*w <<2 };
 
         for (var y=0 ; y<h ; y+=stepY )
         {
@@ -224,7 +258,7 @@ var oDITHER = new function()
                 var color = new Array(d[r],d[g],d[b]); 
 
                 //var approx = this.approximateColor(color);
-                const approx = this.approximateColorConstraint(color,{"x":x,"y":y,"d":d}); // TODO CONTINUE HERE
+                const approx = this.approximateColorConstraint(color,{"x":x,"y":y,"w":w,"d":d}); // TODO CONTINUE HERE
                 
                 //  ERROR = real color (incl. error deviation) - approximated color
                 var q = [];
