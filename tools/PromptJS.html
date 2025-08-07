@@ -129,7 +129,7 @@ const generate = async () => {
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-5-nano",
         messages: [{ role: "user", content: promptInput.value }],
         max_tokens: 1024,
         stream: true, // For streaming responses
