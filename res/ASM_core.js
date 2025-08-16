@@ -66,7 +66,7 @@ function ASM()
 		this.bDebug 	= false;
 	}
 
-	this.ext = " [A]";
+	this.ext = " [A]";		// TODO: tag compiler compatibility
 
 	this.pragma_sym = 
 	{
@@ -98,35 +98,53 @@ function ASM()
 		}
 		,"=":{"ref":"EQU"}   // sym[0] (ignore) & sym[1] = '='
 		,".EQ":{"ref":"EQU","asm":["S-C"]}   // sym[0] (ignore) & sym[1] = '='
-		,"EQU":
+		,".RES":
 		{
-			"parser":function(arg)
+			"asm":["ca65","ACME"]
+			,"description":"Reserve storage — Command takes one or two constant expressions. The first (required) sets the number of bytes to reserve. The second (optional) sets the fill byte; if omitted, the linker uses the value from its configuration (default: 0)."
+			,"parser":function(arg)
 			{
 				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
 				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-				var dat = [];
-				var e = this.getExpression(arr[0]);
-				if(e.bytes>2) e.err += "expression exceeds 2 bytes "+(e.bytes==undefined?"":("("+e.bytes+")"))
-				if (e.err) { displayError(e.err); return {"val":false}  }
 	
+				var e = this.getExpression(arr[0]);
+				var len = e.val;
+
+				var val = 0;    // default
+				if(typeof(arr[1])!="undefined") 
+				{
+					var e = this.getExpression(arr[1]);
+					val = e.val
+				}
+
 				if(pass==1)
 				{
 					var lbl = oASM.getID(sym[0]).val;
-					oASM.symtab[lbl] = e.val;
+					oASM.symtab[lbl] = pc;
 					oASM.sym_link(
 					{
 						 "type": "def"
 						,"PC": pc
-						,"val": e.val
+						,"val": 0
 						,"sym": lbl
 						,"sym0": sym[0]
 					})
+					listing.value += len+",$"+oCOM.getHexByte(val)+" "+this.ext;
 				}
-				listing.value += "$"+(e.bytes==1? this.getHexByte(e.val) : this.getHexWord(e.val) )+this.ext;
+
+				if(pass==2)
+				{
+					for(var i=0,dat = [],arr=[];i<len;i++) { dat[i] = val; arr[i] = this.getHexByte(val) }
+					oASM.concat_code(dat);
+			
+					listing.value += arr.join(" ");
+				}
+
+				pc += len;
 				return {"val":true}
 			}
-		}
+			
+		}		
 		,"CONSTANT":{"asm":"ASL","description":"In contrast to EQU, always expects comma separated name and value as arguments"}
 		,"HEX": 
 		{
