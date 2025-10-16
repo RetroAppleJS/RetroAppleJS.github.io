@@ -3,7 +3,9 @@
 ; Key expansion + encrypt + decrypt
 ; ------------------------------------------------------------
 
-                .ORG $0800
+                .ORG $6000
+
+JMP START
 
 ; ------------------------------------------------------------
 ; ZP SCRATCH (keep these in zero page for speed)
@@ -30,6 +32,10 @@ T0              .RES 1
 T1              .RES 1
 T2              .RES 1
 T3              .RES 1
+BT_AD1          EQU $06
+BT_AD2          EQU $07
+
+//$EB,$EC,$ED,$EE,$EF
 
 ; 16-byte temp for ShiftRows
 STMP            .RES 16
@@ -55,9 +61,11 @@ ST_CPY          LDA PLAINT,Y
                 ; (At this point STATE should equal CIPH for test vector.)
 
                 ; Decrypt back to plaintext
-                JSR DECRYP
-
-                BRK                 ; End demo (replace as needed)
+                ;JSR DECRYP
+                ;LDA #<STATE            ; LO
+                ;LDY #>STATE            ; HI
+                ;JSR PRTSTR
+                RTS                 ; End demo (replace as needed)
 
 ; ------------------------------------------------------------
 ; ENCRYPT ONE 16-BYTE BLOCK (STATE) WITH EXPANDED KEYS (RK)
@@ -689,6 +697,20 @@ MUL14
                 EOR TMPA          ; ^ 2A
                 RTS
 
+; *** PRINT STRING ***
+PRTSTR  STA *BT_AD1   ; Print String from A=lowbyte Y=highbyte, ending with 0
+        STY *BT_AD2
+        LDY #$00
+PR.01   LDA (BT_AD1),Y
+        BEQ PR.02
+        JSR $FDF0     ; Prints ASCII character & advance cursor
+        INY
+        BNE PR.01
+        INC BT_AD2
+        BNE PR.01
+        LDA *BT_AD1
+PR.02   RTS
+
 ; ------------------------------------------------------------
 ; DATA
 ; ------------------------------------------------------------
@@ -720,6 +742,7 @@ RCON
 ; BUFFERS
 ; ------------------------------------------------------------
 STATE   .RES 16       ; in-place block buffer
+
 KEY     .BYTE $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E,$0F
 RK      .RES 176      ; expanded key (11 round keys)
 
