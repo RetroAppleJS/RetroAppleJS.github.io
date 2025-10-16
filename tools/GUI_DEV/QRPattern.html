@@ -3,10 +3,11 @@
 var s = ""
 m = 6
 
-function pattern(idx,j,i)
+function pattern(idx,x,y)
 {
 	switch(idx)
 	{
+		/*
 	case 7: return  ((i*j)%2+(i*j)%3)==0;
 	case 6: return  ((Math.floor(i/2) + Math.floor(j/3))%2)==0;
 	case 5: return  (((i*j)%3+i+j)%2)==0;
@@ -15,8 +16,32 @@ function pattern(idx,j,i)
 	case 2: return  ((i+j)%2)==0;
 	case 1: return  ((i+j)%3)==0;
 	case 0: return  (j%3)==0;
+	*/
+           case 0: return  (octa_pattern(idx,x) >> y) & 1;
+			case 1: return  (octa_pattern(idx,x) >> y) & 1;
+			case 2: return  (octa_pattern(idx,x) >> y) & 1;
+			case 3: return  (octa_pattern(idx,x) >> y) & 1;
+            default: return 0;
+
 	}
 }
+
+function octa_pattern(idx,x)
+{
+	var odd_even = x & 1;
+	var alt = 0x55 << odd_even;
+	switch(idx)
+	{
+		case 0: return 0xFF;
+		case 1: return alt | 0xAA;
+		case 2: return 0x55 << odd_even;
+		case 3: return (alt & 0xAA) >> 1;
+		default: return 0;
+   }
+}
+
+
+
 
 for(var p=0;p<8;p++)
 {
