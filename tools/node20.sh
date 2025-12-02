@@ -126,4 +126,15 @@ fi
 echo
 echo "Installation complete."
 echo "Node.js binary: ${TARGET_DIR}/bin/node"
-echo "Global symlink: $(command -v node || echo "${BIN_DI_
+echo "Global symlink: $(command -v node || echo "${BIN_DIR}/node")"
+echo
+
+echo "Node version:"
+node -v || true
+
+echo
+echo "To verify TLS defaults (should be TLSv1.2..TLSv1.3 on Node 20):"
+echo "  node -p \"require('tls').DEFAULT_MIN_VERSION\""
+echo "  node -p \"require('tls').DEFAULT_MAX_VERSION\""
+echo
+echo "Note: These are EXPERIMENTAL unofficial builds for ARMv6."
