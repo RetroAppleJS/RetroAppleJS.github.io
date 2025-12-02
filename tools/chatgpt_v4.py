@@ -50,7 +50,7 @@ while True:
 
     # Build API request
     data = json.dumps({
-        "model": "gpt-4.1",
+        "model": "gpt-4o",
         "messages": messages
     }).encode("utf-8")
 
