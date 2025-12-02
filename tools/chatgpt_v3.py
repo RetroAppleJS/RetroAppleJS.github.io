@@ -92,10 +92,22 @@ def save_conversation(messages):
 # Markdown Rendering
 # =====================================
 def render_markdown(text):
-    """Convert markdown-like text to ANSI colors for terminal."""
-    text = re.sub(r'\*\*(.+?)\*\*', COLOR_BOLD+r'\1'+COLOR_RESET, text)  # bold
-    text = re.sub(r'\*(.+?)\*', COLOR_ITALIC+r'\1'+COLOR_RESET, text)    # italics
-    text = re.sub(r'`(.+?)`', COLOR_CODE+r'\1'+COLOR_RESET, text)        # inline code
+    # Bold: **text**
+    text = re.sub(r"\*\*(.*?)\*\*", COLOR_BOLD + r"\1" + COLOR_RESET, text)
+
+    # Italic: *text*  → fallback to dim (safe for all terminals)
+    text = re.sub(r"(?<!\*)\*(?!\*)(.*?)\*(?<!\*)",
+                  "\033[2m" + r"\1" + COLOR_RESET, text)
+
+    # Underline: __text__ → true underline
+    text = re.sub(r"__(.*?)__",
+                  "\033[4m" + r"\1" + COLOR_RESET, text)
+
+    # Headings: # / ## / ###
+    text = re.sub(r"^### (.*)$", COLOR_BOLD + r"\1" + COLOR_RESET, text, flags=re.MULTILINE)
+    text = re.sub(r"^## (.*)$", COLOR_BOLD + r"\1" + COLOR_RESET, text, flags=re.MULTILINE)
+    text = re.sub(r"^# (.*)$",  COLOR_BOLD + r"\1" + COLOR_RESET, text, flags=re.MULTILINE)
+
     return text
 
 
@@ -103,7 +115,7 @@ def render_markdown(text):
 # Header
 # =====================================
 def show_header():
-    print("\033c", end="")
+    # print("\033c", end="")  # <- REMOVE this
     print(COLOR_HEADER + "="*60)
     print(f" Model: {ACTIVE_MODEL} | Available: {SHORT_MODELS}")
     print("\n Recent Conversations:")
@@ -124,7 +136,6 @@ def show_header():
 
     print("="*60 + COLOR_RESET)
     print("\n"*2)
-
 
 # =====================================
 # Scroll Output
