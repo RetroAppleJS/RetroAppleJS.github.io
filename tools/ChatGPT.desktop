@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=ChatGPT CLI
+Comment=Run ChatGPT in terminal
+Exec=lxterminal -e 'bash -c "export OPENAI_API_KEY=sk-XXXXXXXXXXXXXXXXXXXXXXXXX; python3 /home/pi/chatgpt_minimal.py; exec bash"'
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Utility;
