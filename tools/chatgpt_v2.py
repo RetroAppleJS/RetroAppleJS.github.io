@@ -121,8 +121,7 @@ def show_header():
     print("\033c", end="")  # clear screen
     print(COLOR_HEADER + "=" * 60)
 
-    avail = ", ".join(AVAILABLE_MODELS)
-    print(f" Model: {ACTIVE_MODEL} | Available: {avail}")
+    print(f" Model: {ACTIVE_MODEL} | Available: {SHORT_MODELS}")
 
     print(" Recent Conversations:")
     convs = list_conversations()
