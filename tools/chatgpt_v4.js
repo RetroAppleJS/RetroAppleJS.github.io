@@ -175,11 +175,11 @@ function showHeader() {
   console.log(
     ` Model: ${ACTIVE_MODEL}`
   );
-  console.log("\n Recent Conversations:");
+  console.log(" Recent Conversations:");
 
   const convs = listConversations();
   if (convs.length === 0) {
-    console.log("   (none yet)");
+    console.log(" (none yet)");
   } else {
     for (const f of convs) {
       const num = path.basename(f).split(".")[0];
@@ -197,7 +197,7 @@ function showHeader() {
   }
 
   console.log("=".repeat(60) + COLOR_RESET);
-  console.log("\n\n");
+  console.log("\n");
 }
 
 // =====================================
