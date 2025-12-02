@@ -21,9 +21,26 @@ COLOR_RESET = "\033[0m"
 if not os.path.exists(CONV_DIR):
     os.makedirs(CONV_DIR)
 
+AVAILABLE_MODELS = get_available_models()
+
 # =====================================
 # Helpers
 # =====================================
+
+def get_available_models():
+    """Return a list of model IDs accessible with the current API key."""
+    req = urllib.request.Request(
+        url="https://api.openai.com/v1/models",
+        headers={"Authorization": f"Bearer {API_KEY}"}
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.load(resp)
+            return sorted([m["id"] for m in data.get("data", [])])
+    except:
+        return ["(unavailable)"]
+
+
 
 def list_conversations():
     """Return sorted list of conversation filenames."""
@@ -56,7 +73,9 @@ def save_conversation(messages):
 def show_header():
     print("\033c", end="")  # clear screen
     print(COLOR_HEADER + "=" * 60)
-    print(f" Active Model: {MODEL}")
+
+    avail = ", ".join(AVAILABLE_MODELS)
+    print(f" Model: {MODEL} | Available: {avail}")
 
     print(" Recent Conversations:")
     convs = list_conversations()
