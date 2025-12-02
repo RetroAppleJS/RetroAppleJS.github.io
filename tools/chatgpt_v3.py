@@ -23,6 +23,13 @@ COLOR_BOLD = "\033[1m"
 COLOR_ITALIC = "\033[4m"
 COLOR_CODE = "\033[7m"  # reverse video
 
+# ANSI fallbacks (use same reset constant as your script)
+COLOR_RESET = "\033[0m"
+COLOR_BOLD = "\033[1m"
+COLOR_DIM = "\033[2m"    # reliable fallback for italics
+COLOR_UNDER = "\033[4m"
+COLOR_CODE = "\033[7m"   # reverse video for inline code
+
 if not os.path.exists(CONV_DIR):
     os.makedirs(CONV_DIR)
 
@@ -91,25 +98,37 @@ def save_conversation(messages):
 # =====================================
 # Markdown Rendering
 # =====================================
+
 def render_markdown(text):
-    # Bold: **text**
-    text = re.sub(r"\*\*(.*?)\*\*", COLOR_BOLD + r"\1" + COLOR_RESET, text)
+    """
+    Render a small subset of Markdown to ANSI for terminals that often
+    do NOT support true italic. Order matters to avoid double-replacements.
+    - Inline code: `code`
+    - Bold: **bold**
+    - Underline: __underline__
+    - Italic: *italic*  -> fallback to dim (not underline)
+    - Headings: # / ## / ###
+    """
 
-    # Italic: *text*  → fallback to dim (safe for all terminals)
-    text = re.sub(r"(?<!\*)\*(?!\*)(.*?)\*(?<!\*)",
-                  "\033[2m" + r"\1" + COLOR_RESET, text)
+    # 1) Inline code (use reverse-video)
+    text = re.sub(r'`([^`]+?)`', COLOR_CODE + r'\1' + COLOR_RESET, text)
 
-    # Underline: __text__ → true underline
-    text = re.sub(r"__(.*?)__",
-                  "\033[4m" + r"\1" + COLOR_RESET, text)
+    # 2) Bold (strong)
+    text = re.sub(r'\*\*([^*]+?)\*\*', COLOR_BOLD + r'\1' + COLOR_RESET, text)
 
-    # Headings: # / ## / ###
-    text = re.sub(r"^### (.*)$", COLOR_BOLD + r"\1" + COLOR_RESET, text, flags=re.MULTILINE)
-    text = re.sub(r"^## (.*)$", COLOR_BOLD + r"\1" + COLOR_RESET, text, flags=re.MULTILINE)
-    text = re.sub(r"^# (.*)$",  COLOR_BOLD + r"\1" + COLOR_RESET, text, flags=re.MULTILINE)
+    # 3) Underline with double underscores (explicit)
+    text = re.sub(r'__([^_]+?)__', COLOR_UNDER + r'\1' + COLOR_RESET, text)
+
+    # 4) Italic single-star fallback -> use DIM (safe)
+    #    Use lookarounds so we don't match the stars used in bold (**)
+    text = re.sub(r'(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)', COLOR_DIM + r'\1' + COLOR_RESET, text)
+
+    # 5) Headings (apply bold to heading text)
+    text = re.sub(r'(?m)^###\s+(.*)$', COLOR_BOLD + r'\1' + COLOR_RESET, text)
+    text = re.sub(r'(?m)^##\s+(.*)$', COLOR_BOLD + r'\1' + COLOR_RESET, text)
+    text = re.sub(r'(?m)^#\s+(.*)$', COLOR_BOLD + r'\1' + COLOR_RESET, text)
 
     return text
-
 
 # =====================================
 # Header
