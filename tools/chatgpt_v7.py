@@ -106,7 +106,7 @@ def show_header():
     #avail = ", ".join(AVAILABLE_MODELS)
     #print(f" Model: {MODEL} | Available: {avail}")
 
-    short_models = group_model_names(available_models)
+    short_models = group_model_names(AVAILABLE_MODELS)
     print(f"Model: {active_model} | Available: {short_models}")
 
     print(" Recent Conversations:")
