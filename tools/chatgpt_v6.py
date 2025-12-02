@@ -42,6 +42,33 @@ AVAILABLE_MODELS = get_available_models()
 # Helpers
 # =====================================
 
+def group_model_names(models):
+    """
+    Group models by prefix up to the second dash.
+    Example: 'gpt-5.1-mini' → 'gpt-5.1'
+    """
+    grouped = {}
+
+    for m in models:
+        parts = m.split("-")
+        if len(parts) >= 2:
+            # prefix is first two components joined with a dash
+            prefix = "-".join(parts[:2])
+        else:
+            prefix = m  # fallback
+
+        grouped.setdefault(prefix, 0)
+        grouped[prefix] += 1
+
+    # Convert to display format
+    display_list = []
+    for prefix, count in grouped.items():
+        if count == 1:
+            display_list.append(prefix)
+        else:
+            display_list.append(f"{prefix} ({count})")
+
+    return ", ".join(sorted(display_list))
 
 
 def list_conversations():
@@ -76,8 +103,11 @@ def show_header():
     print("\033c", end="")  # clear screen
     print(COLOR_HEADER + "=" * 60)
 
-    avail = ", ".join(AVAILABLE_MODELS)
-    print(f" Model: {MODEL} | Available: {avail}")
+    #avail = ", ".join(AVAILABLE_MODELS)
+    #print(f" Model: {MODEL} | Available: {avail}")
+
+    short_models = group_model_names(available_models)
+    print(f"Model: {active_model} | Available: {short_models}")
 
     print(" Recent Conversations:")
     convs = list_conversations()
