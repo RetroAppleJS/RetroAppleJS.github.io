@@ -335,4 +335,33 @@ Commands:
 
     // API request
     try {
-      const re
+      const reply = await sendChatCompletion(messages);
+      messages.push({ role: "assistant", content: reply });
+
+      const rendered = renderMarkdown(reply);
+      await printPaginated(
+        rl,
+        COLOR_GPT + "GPT: " + rendered + COLOR_RESET
+      );
+    } catch (err) {
+      console.log("Error:", err.message || err);
+      await ask(rl, "Press ENTER to continue...");
+    }
+  }
+}
+
+// =====================================
+// Start
+// =====================================
+
+(async () => {
+  if (!API_KEY) {
+    console.error("ERROR: Set your API key: export OPENAI_OPENAI_API_KEY=xxxxx");
+    process.exit(1);
+  }
+
+  const models = await getAvailableModels();
+  const shortModels = groupModelNames(models);
+
+  await runConversation(shortModels);
+})();
