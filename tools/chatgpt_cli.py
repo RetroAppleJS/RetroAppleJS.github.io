@@ -1,5 +1,3 @@
-#BDg8pbklfyT5tHE58TWOS99H4b68X8rzSY7xv1bIa2E8dPoEymi-vIhpxDndotT3BlbkFJwDcpjfDg4_SfWq1f_1fdDGW6eINXyPRBjmjWovjn4r9CX6zRW9q0vEu3BFvDF_8EZp2NZHzm
-
 #!/usr/bin/env python3
 import os
 import json
@@ -22,18 +20,19 @@ while True:
 
     messages.append({"role": "user", "content": user_input})
 
-    data = {
-        "model": "gpt-4-mini",
+    data = json.dumps({
+        "model": "gpt-3.5-turbo",
         "messages": messages
-    }
+    }).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(data).encode("utf-8"),
+        url="https://api.openai.com/v1/chat/completions",
+        data=data,
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {API_KEY}"
-        }
+        },
+        method="POST"
     )
 
     try:
@@ -42,5 +41,8 @@ while True:
             reply = result["choices"][0]["message"]["content"].strip()
             print(f"GPT: {reply}\n")
             messages.append({"role": "assistant", "content": reply})
+    except urllib.error.HTTPError as e:
+        print(f"HTTP Error {e.code}: {e.reason}")
+        print(e.read().decode())
     except Exception as e:
         print(f"Error: {e}")
