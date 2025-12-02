@@ -76,7 +76,7 @@ def group_model_names(model_list):
     formatted = []
     for key, items in groups.items():
         if len(items) > 1:
-            formatted.append(f"{key} ({len(items)})")
+            formatted.append(f"{key}({len(items)})")
         else:
             formatted.append(key)
 
