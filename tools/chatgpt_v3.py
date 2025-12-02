@@ -132,4 +132,103 @@ def show_header():
 def print_paginated(text):
     lines = text.splitlines()
     for i in range(0, len(lines), PAGE_LINES):
-        chunk = lines[i:i+PAGE]()
+        chunk = lines[i:i+PAGE_LINES]
+        print("\n".join(chunk))
+        if i + PAGE_LINES < len(lines):
+            input(COLOR_GPT + "--- Press ENTER to continue ---" + COLOR_RESET)
+
+
+# =====================================
+# Main loop
+# =====================================
+def run_conversation(messages):
+    while True:
+        show_header()
+        print(COLOR_GPT + "(Type /help for commands)" + COLOR_RESET)
+
+        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
+
+        if user_input.lower() in ["/exit", "/quit"]:
+            print("Goodbye!")
+            exit(0)
+
+        if user_input.lower() == "/help":
+            print("""
+Commands:
+  /new          Start a new empty conversation
+  /save         Save the current conversation
+  /load N       Load conversation number N
+  /quit         Quit
+""")
+            input("Press ENTER to continue...")
+            continue
+
+        if user_input.lower() == "/new":
+            messages.clear()
+            continue
+
+        if user_input.lower() == "/save":
+            save_conversation(messages)
+            print("Saved.")
+            input("Press ENTER to continue...")
+            continue
+
+        if user_input.startswith("/load "):
+            try:
+                n = int(user_input.split()[1])
+                loaded, fname = load_conversation(n)
+                if loaded is None:
+                    print("Conversation not found.")
+                else:
+                    messages.clear()
+                    messages.extend(loaded)
+                    print(f"Loaded {fname}.")
+            except:
+                print("Invalid load command.")
+            input("Press ENTER to continue...")
+            continue
+
+        # Add user message
+        messages.append({"role":"user","content":user_input})
+
+        # API request
+        data = json.dumps({
+            "model": ACTIVE_MODEL,
+            "messages": messages
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            url="https://api.openai.com/v1/chat/completions",
+            data=data,
+            headers={
+                "Content-Type":"application/json",
+                "Authorization":f"Bearer {API_KEY}"
+            }
+        )
+
+        try:
+            with urllib.request.urlopen(req) as resp:
+                result = json.load(resp)
+                reply = result["choices"][0]["message"]["content"].strip()
+                messages.append({"role":"assistant","content":reply})
+
+                rendered = render_markdown(reply)
+                print_paginated(COLOR_GPT + "GPT: " + rendered + COLOR_RESET)
+        except urllib.error.HTTPError as e:
+            print("HTTP Error:", e.code)
+            print(e.read().decode())
+            input("Press ENTER to continue...")
+        except Exception as e:
+            print("Error:", e)
+            input("Press ENTER to continue...")
+
+
+# =====================================
+# Start
+# =====================================
+if not API_KEY:
+    print("ERROR: Set your API key: export OPENAI_API_KEY=xxxxx")
+    exit(1)
+
+messages = []
+run_conversation(messages)
