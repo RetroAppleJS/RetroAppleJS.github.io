@@ -23,7 +23,7 @@ def get_available_models():
 # Configuration
 # =====================================
 API_KEY = os.environ.get("OPENAI_API_KEY")
-MODEL = "gpt-4.1-mini"   # <--- Change model here
+ACTIVE_MODEL = "gpt-4.1-mini"   # <--- Change model here
 CONV_DIR = os.path.expanduser("~/chatgpt_conversations")
 
 # ANSI Colors
@@ -84,26 +84,45 @@ def group_model_names(model_list):
 
 SHORT_MODELS = group_model_names(AVAILABLE_MODELS)
 
+# -----------------------------
+# SAVE / LOAD CONVERSATIONS
+# -----------------------------
+def list_saved_conversations():
+    files = sorted(os.listdir(CONV_DIR))
+    return [f for f in files if f.endswith(".json")]
+
+def load_conversation(num):
+    files = list_saved_conversations()
+    if num < 1 or num > len(files):
+        return None, None
+
+    filename = files[num - 1]
+    path = os.path.join(CONV_DIR, filename)
+
+    with open(path, "r") as f:
+        data = json.load(f)
+
+    return data.get("messages", []), filename
 
 def save_conversation(messages):
-    """Save conversation with automatic numbering."""
-    files = sorted(glob.glob(os.path.join(CONV_DIR, "*.json")))
-    if files:
-        last_num = int(os.path.basename(files[-1]).split(".")[0])
-    else:
-        last_num = 0
+    title = "conversation"
+    index = len(list_saved_conversations()) + 1
+    filename = f"{index:03d}-{title}.json"
+    path = os.path.join(CONV_DIR, filename)
 
-    fname = os.path.join(CONV_DIR, f"{last_num+1:04d}.json")
-    with open(fname, "w") as f:
-        json.dump(messages, f, indent=2)
+    with open(path, "w") as f:
+        json.dump({"messages": messages}, f, indent=2)
 
 
+# -----------------------------
+# DISPLAY HEADER
+# -----------------------------
 def show_header():
     print("\033c", end="")  # clear screen
     print(COLOR_HEADER + "=" * 60)
 
     avail = ", ".join(AVAILABLE_MODELS)
-    print(f" Model: {MODEL} | Available: {avail}")
+    print(f" Model: {ACTIVE_MODEL} | Available: {avail}")
 
     print(" Recent Conversations:")
     convs = list_conversations()
@@ -182,7 +201,7 @@ Commands:
 
         # Build API request
         data = json.dumps({
-            "model": MODEL,
+            "model": ACTIVE_MODEL,
             "messages": messages
         }).encode("utf-8")
 
