@@ -18,10 +18,7 @@ COLOR_GPT = "\033[1;32m"
 COLOR_HEADER = "\033[1;33m"
 COLOR_RESET = "\033[0m"
 
-if not os.path.exists(CONV_DIR):
-    os.makedirs(CONV_DIR)
 
-AVAILABLE_MODELS = get_available_models()
 
 # =====================================
 # Helpers
@@ -40,6 +37,10 @@ def get_available_models():
     except:
         return ["(unavailable)"]
 
+if not os.path.exists(CONV_DIR):
+    os.makedirs(CONV_DIR)
+
+AVAILABLE_MODELS = get_available_models()
 
 
 def list_conversations():
