@@ -5,24 +5,6 @@ import glob
 import urllib.request
 import urllib.error
 
-# =====================================
-# Configuration
-# =====================================
-API_KEY = os.environ.get("OPENAI_API_KEY")
-MODEL = "gpt-4.1-mini"   # <--- Change model here
-CONV_DIR = os.path.expanduser("~/chatgpt_conversations")
-
-# ANSI Colors
-COLOR_USER = "\033[1;34m"
-COLOR_GPT = "\033[1;32m"
-COLOR_HEADER = "\033[1;33m"
-COLOR_RESET = "\033[0m"
-
-
-
-# =====================================
-# Helpers
-# =====================================
 
 def get_available_models():
     """Return a list of model IDs accessible with the current API key."""
@@ -37,10 +19,29 @@ def get_available_models():
     except:
         return ["(unavailable)"]
 
+
+# =====================================
+# Configuration
+# =====================================
+API_KEY = os.environ.get("OPENAI_API_KEY")
+MODEL = "gpt-4.1-mini"   # <--- Change model here
+CONV_DIR = os.path.expanduser("~/chatgpt_conversations")
+
+# ANSI Colors
+COLOR_USER = "\033[1;34m"
+COLOR_GPT = "\033[1;32m"
+COLOR_HEADER = "\033[1;33m"
+COLOR_RESET = "\033[0m"
+
 if not os.path.exists(CONV_DIR):
     os.makedirs(CONV_DIR)
 
 AVAILABLE_MODELS = get_available_models()
+
+# =====================================
+# Helpers
+# =====================================
+
 
 
 def list_conversations():
