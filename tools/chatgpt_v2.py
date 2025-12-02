@@ -1,42 +1,61 @@
 #!/usr/bin/env python3
 import os
 import json
-import readline
-import openai
+import glob
+import urllib.request
+import urllib.error
 
-# -----------------------------
-# CONFIG
-# -----------------------------
-API_KEY = os.getenv("OPENAI_API_KEY")
-if not API_KEY:
-    raise SystemExit("ERROR: OPENAI_API_KEY is not set")
+def get_available_models():
+    """Return a list of model IDs accessible with the current API key."""
+    req = urllib.request.Request(
+        url="https://api.openai.com/v1/models",
+        headers={"Authorization": f"Bearer {API_KEY}"}
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.load(resp)
+            return sorted([m["id"] for m in data.get("data", [])])
+    except:
+        return ["(unavailable)"]
 
-client = OpenAI(api_key=API_KEY)
 
-ACTIVE_MODEL = "gpt-4o-mini"      # ← Change this if desired
+# =====================================
+# Configuration
+# =====================================
+API_KEY = os.environ.get("OPENAI_API_KEY")
+MODEL = "gpt-4.1-mini"   # <--- Change model here
+CONV_DIR = os.path.expanduser("~/chatgpt_conversations")
 
-CONV_DIR = os.path.expanduser("~/.chatgpt_conversations")
-os.makedirs(CONV_DIR, exist_ok=True)
-
-# -----------------------------
-# COLOR HELPERS
-# -----------------------------
-COLOR_USER = "\033[96m"      # cyan
-COLOR_GPT = "\033[92m"       # green
-COLOR_SYS = "\033[95m"       # purple
+# ANSI Colors
+COLOR_USER = "\033[1;34m"
+COLOR_GPT = "\033[1;32m"
+COLOR_HEADER = "\033[1;33m"
 COLOR_RESET = "\033[0m"
 
-# -----------------------------
-# LOAD AVAILABLE MODELS
-# -----------------------------
-def load_available_models():
-    try:
-        response = client.models.list()
-        return [m.id for m in response.data]
-    except Exception:
-        return ["unknown"]
+if not os.path.exists(CONV_DIR):
+    os.makedirs(CONV_DIR)
 
-AVAILABLE_MODELS = load_available_models()
+AVAILABLE_MODELS = get_available_models()
+
+
+# =====================================
+# Helpers
+# =====================================
+
+def list_conversations():
+    """Return sorted list of conversation filenames."""
+    files = sorted(glob.glob(os.path.join(CONV_DIR, "*.json")))
+    return files[-10:]   # only last 10
+
+
+def load_conversation(n):
+    """Load a conversation by number."""
+    fname = os.path.join(CONV_DIR, f"{n:04d}.json")
+    if not os.path.exists(fname):
+        return None
+    with open(fname, "r") as f:
+        return json.load(f)
+
 
 # -----------------------------
 # GROUP MODEL NAMES
@@ -65,100 +84,142 @@ def group_model_names(model_list):
 
 SHORT_MODELS = group_model_names(AVAILABLE_MODELS)
 
-# -----------------------------
-# SAVE / LOAD CONVERSATIONS
-# -----------------------------
-def list_saved_conversations():
-    files = sorted(os.listdir(CONV_DIR))
-    return [f for f in files if f.endswith(".json")]
-
-def load_conversation(num):
-    files = list_saved_conversations()
-    if num < 1 or num > len(files):
-        return None, None
-
-    filename = files[num - 1]
-    path = os.path.join(CONV_DIR, filename)
-
-    with open(path, "r") as f:
-        data = json.load(f)
-
-    return data.get("messages", []), filename
 
 def save_conversation(messages):
-    title = "conversation"
-    index = len(list_saved_conversations()) + 1
-    filename = f"{index:03d}-{title}.json"
-    path = os.path.join(CONV_DIR, filename)
-
-    with open(path, "w") as f:
-        json.dump({"messages": messages}, f, indent=2)
-
-# -----------------------------
-# DISPLAY HEADER
-# -----------------------------
-def print_header():
-    print("\n" * 5)  # 5-line header space
-    print(f"{COLOR_SYS}Model: {ACTIVE_MODEL} | Available: {SHORT_MODELS}{COLOR_RESET}")
-
-    files = list_saved_conversations()
+    """Save conversation with automatic numbering."""
+    files = sorted(glob.glob(os.path.join(CONV_DIR, "*.json")))
     if files:
-        print(f"{COLOR_SYS}Saved conversations:{COLOR_RESET}")
-        for i, f in enumerate(files[:10], start=1):
-            title = f.replace(".json", "")
-            print(f"  {i}: {title}")
+        last_num = int(os.path.basename(files[-1]).split(".")[0])
     else:
-        print(f"{COLOR_SYS}(No saved conversations){COLOR_RESET}")
+        last_num = 0
 
-    print("\n" + "-"*80)
+    fname = os.path.join(CONV_DIR, f"{last_num+1:04d}.json")
+    with open(fname, "w") as f:
+        json.dump(messages, f, indent=2)
 
-# -----------------------------
-# MAIN CHAT LOOP
-# -----------------------------
-def chat():
-    messages = []
 
-    while True:
-        print_header()
+def show_header():
+    print("\033c", end="")  # clear screen
+    print(COLOR_HEADER + "=" * 60)
 
-        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}").strip()
+    avail = ", ".join(AVAILABLE_MODELS)
+    print(f" Model: {MODEL} | Available: {avail}")
 
-        if user_input.lower() == "/quit":
-            save_conversation(messages)
-            print("Conversation saved. Exiting.")
-            break
-
-        if user_input.lower().startswith("/load"):
+    print(" Recent Conversations:")
+    convs = list_conversations()
+    if not convs:
+        print("   (none yet)")
+    else:
+        for f in convs:
+            num = os.path.basename(f).split(".")[0]
             try:
-                num = int(user_input.split()[1])
-                loaded, name = load_conversation(num)
-                if loaded is None:
-                    print("Invalid conversation number.")
-                else:
-                    messages = loaded
-                    print(f"Loaded: {name}")
+                with open(f, "r") as fd:
+                    msgs = json.load(fd)
+                    title = msgs[0]['content'][:40] if msgs else "(empty)"
             except:
-                print("Usage: /load <number>")
+                title = "(unable to read)"
+            print(f"   {num}: {title}")
+
+    print("=" * 60 + COLOR_RESET)
+    print()  # 2 blank lines
+
+
+# =====================================
+# Main loop
+# =====================================
+
+def run_conversation(messages):
+    """Main interactive loop for a conversation."""
+    while True:
+        show_header()
+        print(COLOR_GPT + "(Type /help for commands)" + COLOR_RESET)
+
+        user_input = input(f"{COLOR_USER}You: {COLOR_RESET}")
+
+        # Commands
+        if user_input.lower() in ["/exit", "/quit"]:
+            print("Goodbye!")
+            exit(0)
+
+        if user_input.lower() == "/help":
+            print("""
+Commands:
+  /new          Start a new empty conversation
+  /save         Save the current conversation
+  /load N       Load conversation number N
+  /quit         Quit
+""")
+            input("Press ENTER to continue...")
             continue
 
-        # Add user msg
+        if user_input.lower() == "/new":
+            messages.clear()
+            continue
+
+        if user_input.lower() == "/save":
+            save_conversation(messages)
+            print("Saved.")
+            input("Press ENTER to continue...")
+            continue
+
+        if user_input.startswith("/load "):
+            try:
+                n = int(user_input.split()[1])
+                loaded = load_conversation(n)
+                if loaded is None:
+                    print("Conversation not found.")
+                else:
+                    messages.clear()
+                    messages.extend(loaded)
+                    print(f"Loaded conversation {n}.")
+            except:
+                print("Invalid load command.")
+            input("Press ENTER to continue...")
+            continue
+
+        # Add user message
         messages.append({"role": "user", "content": user_input})
 
-        # Send to OpenAI
+        # Build API request
+        data = json.dumps({
+            "model": MODEL,
+            "messages": messages
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            url="https://api.openai.com/v1/chat/completions",
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {API_KEY}"
+            }
+        )
+
+        # Perform request
         try:
-            response = client.chat.completions.create(
-                model=ACTIVE_MODEL,
-                messages=messages
-            )
-            assistant_reply = response.choices[0].message["content"]
+            with urllib.request.urlopen(req) as response:
+                result = json.load(response)
+                reply = result["choices"][0]["message"]["content"].strip()
+                messages.append({"role": "assistant", "content": reply})
+                print(f"{COLOR_GPT}GPT: {reply}{COLOR_RESET}\n")
+                input("Press ENTER to continue...")
+        except urllib.error.HTTPError as e:
+            print("HTTP Error:", e.code)
+            print(e.read().decode())
+            input("Press ENTER to continue...")
         except Exception as e:
-            assistant_reply = f"[ERROR] {e}"
-
-        # Add assistant response
-        messages.append({"role": "assistant", "content": assistant_reply})
-
-        print(f"{COLOR_GPT}GPT: {assistant_reply}{COLOR_RESET}")
+            print("Error:", e)
+            input("Press ENTER to continue()...")
 
 
-if __name__ == "__main__":
-    chat()
+# =====================================
+# Start
+# =====================================
+
+if not API_KEY:
+    print("ERROR: Set your API key: export OPENAI_API_KEY=xxxxx")
+    exit(1)
+
+# Start with an empty conversation
+messages = []
+run_conversation(messages)
