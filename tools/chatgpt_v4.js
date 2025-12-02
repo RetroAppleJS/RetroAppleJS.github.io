@@ -12,7 +12,7 @@ const readline = require("readline");
 // Configuration
 // =====================================
 const API_KEY = process.env.OPENAI_API_KEY;
-const ACTIVE_MODEL = "gpt-4.1-mini"; // Change if needed
+const ACTIVE_MODEL = "gpt-4o"; // Change if needed
 const CONV_DIR = path.join(os.homedir(), "chatgpt_conversations");
 const PAGE_LINES = 15; // lines per page when scrolling long output
 
@@ -173,7 +173,7 @@ function renderMarkdown(text) {
 function showHeader() {
   console.log(COLOR_HEADER + "=".repeat(60));
   console.log(
-    ` Model: ${ACTIVE_MODEL} (type /show_models to list all models)`
+    ` Model: ${ACTIVE_MODEL}`
   );
   console.log("\n Recent Conversations:");
 
