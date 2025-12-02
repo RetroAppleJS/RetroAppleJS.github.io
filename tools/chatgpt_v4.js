@@ -197,7 +197,7 @@ function showHeader() {
   }
 
   console.log("=".repeat(60) + COLOR_RESET);
-  console.log("\n");
+  console.log("");
 }
 
 // =====================================
