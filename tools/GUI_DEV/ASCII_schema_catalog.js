@@ -24,8 +24,8 @@
     }
     ,
     {
-      name: 'ATTiny85',
-      type: 'OLED SSD1309',
+      name: 'OLED SSD1309',
+      type: 'Display',
       description: '',
       MFR: 'SSD1309',
       pin_data: null,
