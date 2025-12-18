@@ -326,6 +326,23 @@ function deEscapeLiteralNewlines(t) {
     .replace(/\\r/g, "\n");
 }
 
+function sanitizeForSave(text) {
+  return String(text ?? "")
+    // 1) Convert literal escape sequences to real newlines
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\n")
+
+    // 2) Normalize real CRLF / CR to LF
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+
+    // 3) Remove trailing spaces and tabs on each line
+    .split("\n")
+    .map(line => line.replace(/[ \t]+$/g, ""))
+    .join("\n");
+}
+
 
   function downloadText(text, filename) {
     const name = filename || 'ascii-drawing.txt';
@@ -858,7 +875,7 @@ function deEscapeLiteralNewlines(t) {
 
   saveBtn.addEventListener("click", () => {
     const raw = serializeToText();
-    const cleaned = deEscapeLiteralNewlines(raw);
+    const cleaned = sanitizeForSave(raw);   //deEscapeLiteralNewlines(raw);
     downloadText(cleaned, "ascii-schema.txt");
   });
   loadBtn.addEventListener('click', () => fileInput.click());
