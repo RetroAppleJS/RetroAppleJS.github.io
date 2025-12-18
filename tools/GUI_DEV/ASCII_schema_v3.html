@@ -309,8 +309,16 @@
   function serializeToText() {
     const lines = [];
     for (let r = 0; r < ROWS; r++) lines.push(ascii[r].join(''));
-    return lines.join('\\n');
+    return lines.join("\n");
   }
+
+  function deEscapeLiteralNewlines(t) {
+    return String(t || "")
+      .replace(/\\r\\n/g, "\n")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\n");
+  }
+
 
   function downloadText(text, filename) {
     const name = filename || 'ascii-drawing.txt';
@@ -843,7 +851,7 @@
 
   saveBtn.addEventListener("click", () => {
     const raw = serializeToText();
-    const cleaned = sanitizeForSave(raw);
+    const cleaned = deEscapeLiteralNewlines(raw);
     downloadText(cleaned, "ascii-schema.txt");
   });
   loadBtn.addEventListener('click', () => fileInput.click());
@@ -852,7 +860,7 @@
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const text = await file.text();
-    const lines = toLines(text);
+    const toLines = (t) => normalizeNewlines(t).split("\n"); // ✅ NOT "\\n"
     const stroke = [];
     for (let r = 0; r < ROWS; r++) {
       const line = lines[r] || '';
