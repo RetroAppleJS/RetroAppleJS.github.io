@@ -20,5 +20,27 @@
         '└───┬─────┬─────┬─────┬───┘\n',
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAA9fX1ZmVmPj0+fAufOQAAAAR0Uk5TAP/7Xe+ZR0gAAAGFSURBVHicldI9SgNBFADgga1sklOk8AAWm0JP8R7upE4gq+AVvIHVDGFjO8Gsi9gaLALpLJJTRDBVwCrBwvdmdnd21kJ9kMB88/4WRogyuksRRv85PEfmKoRzwDDlA+AmSFAAct+AA1AU/txVDAM/OQYbddvIOKgnd9wZsKrZllBN7qgKyskHqOPVz3RNisZMW3LdmMlhLoOWIGHA4DPmFk7GkDtDZVeLMYPEwpiKGGCUz1xLgBHBGeSQupaAM4IepcoyIZUWJGCZMGfY0V3iWqYJw9aATO1MyC30UkCj7Eyd8GI9uhuObQIm/C08hdrxrwJJt0OeiXOGU7uBoaUkHsrPlwypzvDIEG35qKhlhuuJfSpUDkpKzHFlIaZ6pXKJiwpeaO9MS3wbRA7uqG1OsK7glp6PJtjcV7BTBNSyhndDsGjCkYBaetgYrddTD7tlnOnVxMOF6D4FQH+fOgohmnro/4BlC9xTdVC0oPH6/whFC8RXG8R/4aEFYt8G8Qs8tqBe6huGHP6l63xHWgAAAABJRU5ErkJggg=='
+  
     }
-  ];
+    ,
+    {
+      name: 'ATTiny85',
+      type: 'OLED SSD1309',
+      description: '',
+      MFR: 'SSD1309',
+      pin_data: null,
+              text_data:
+        '┌───┴─────┴─────┴─────┴───┐\n' +
+        '│  GND   VCC   SCL   SDA  │\n' +
+        '│╔═SSD1309═══════════════╗│\n' +
+        '│║                       ║│\n' +
+        '│║                       ║│\n' +
+        '│║      64 x 32 OLED     ║│\n' +                       
+        '│║                       ║│\n' +  
+        '│║                       ║│\n' +  
+        '│╚═══════════════════════╝│\n' +  
+        '│                         │\n' +  
+        '└─────────────────────────┘\n',
+        image_data:''
+    }
+];
