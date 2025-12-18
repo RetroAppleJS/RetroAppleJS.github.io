@@ -867,7 +867,7 @@ function sanitizeForSave(text) {
 
   // Save/load
   function sanitizeForSave(text) {
-    return String(text ?? "")
+    let t = String(text ?? "")
       // 1) Convert literal escape sequences to real newlines
       .replace(/\\r\\n/g, "\n")
       .replace(/\\n/g, "\n")
@@ -875,12 +875,17 @@ function sanitizeForSave(text) {
 
       // 2) Normalize real CRLF / CR to LF
       .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n")
+      .replace(/\r/g, "\n");
 
-      // 3) Remove trailing spaces and tabs on each line
-      .split("\n")
-      .map(line => line.replace(/[ \t]+$/g, ""))
-      .join("\n");
+    // 3) Trim trailing spaces/tabs per line
+    let lines = t.split("\n").map(line => line.replace(/[ \t]+$/g, ""));
+
+    // 4) Remove trailing empty lines
+    while (lines.length > 0 && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
+
+    return lines.join("\n");
   }
 
   saveBtn.addEventListener("click", () => {
@@ -1059,6 +1064,22 @@ function sanitizeForSave(text) {
     console.assert(serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
     console.assert(toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
     console.assert(!serializeToText().includes("\\n"), "Save must not contain literal \\n");
+
+    console.assert(
+      sanitizeForSave("A\\nB\\rC\\r\\nD").split("\n").length === 4,
+      "Literal escape normalization failed"
+    );
+
+    console.assert(
+      sanitizeForSave("A   \nB\t\t\n\n").endsWith("A\nB"),
+      "Trailing whitespace or empty-line trimming failed"
+    );
+
+    console.assert(
+      !sanitizeForSave("A\\nB").includes("\\n"),
+      "Saved text must not contain literal \\n"
+    );
+
     updateUI();
     draw();
   })();
