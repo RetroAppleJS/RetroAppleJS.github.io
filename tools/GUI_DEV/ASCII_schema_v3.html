@@ -738,7 +738,7 @@ function toLines(t) {
 
       card.addEventListener('click', () => {
         closeCatalog();
-        startPasteWithText(it.text_data || '');
+        startPasteWithText(expandWideCharsForGrid(it.text_data) || '');
         canvas.focus();
       });
 
@@ -1012,11 +1012,11 @@ function toLines(t) {
 
   // Paste capture (also allow direct paste anywhere)
   window.addEventListener('paste', (e) => {
-    const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData('text/plain')) : '';
     if (typeof text === 'string' && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
   });
   pasteSink.addEventListener('paste', (e) => {
-    const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData('text/plain')) : '';
     if (typeof text === 'string' && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
   });
 
