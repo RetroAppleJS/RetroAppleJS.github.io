@@ -834,7 +834,18 @@
   redoBtn.addEventListener('click', doRedo);
 
   // Save/load
-  saveBtn.addEventListener('click', () => downloadText(serializeToText()));
+  function sanitizeForSave(text) {
+  return String(text)
+    .replace(/\\r\\n/g, "\n") // literal "\r\n" -> newline
+    .replace(/\\n/g, "\n")    // literal "\n" -> newline
+    .replace(/\\r/g, "\n");   // literal "\r" -> newline
+}
+
+  saveBtn.addEventListener("click", () => {
+    const raw = serializeToText();
+    const cleaned = sanitizeForSave(raw);
+    downloadText(cleaned, "ascii-schema.txt");
+  });
   loadBtn.addEventListener('click', () => fileInput.click());
 
   fileInput.addEventListener('change', async (e) => {
