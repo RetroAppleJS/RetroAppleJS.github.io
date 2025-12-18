@@ -878,15 +878,23 @@ function sanitizeForSave(text) {
       .replace(/\r/g, "\n");
 
     // 3) Trim trailing spaces/tabs per line
-    let lines = t.split("\n").map(line => line.replace(/[ \t]+$/g, ""));
+    let lines = t
+      .split("\n")
+      .map(line => line.replace(/[ \t]+$/g, ""));
 
-    // 4) Remove trailing empty lines
+    // 4) Remove leading empty lines
+    while (lines.length > 0 && lines[0] === "") {
+      lines.shift();
+    }
+
+    // 5) Remove trailing empty lines
     while (lines.length > 0 && lines[lines.length - 1] === "") {
       lines.pop();
     }
 
     return lines.join("\n");
   }
+
 
   saveBtn.addEventListener("click", () => {
     const raw = serializeToText();
