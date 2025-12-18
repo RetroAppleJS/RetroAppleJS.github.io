@@ -97,6 +97,36 @@
      } 
      ,
      {
+      name: 'ST7789V2',
+      type: 'Display',
+      description: '2.4 inch TFT Display 240x280 with ST7789V2 Driver',
+      MFR: 'ST7789V2',
+      pin_data: null,
+      text_data:
+        '┌─┴─┴─┴─┴─┴─┴─┴─┴─┴─┐\n' +
+        '│GND SCL RES CS  RES│\n' +
+        '│  VCC SDA DC  BLK  │\n' +
+        '│                   │\n' +
+        '│  ╭──ST7789V2───╮  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │ TFT display │  │\n' +
+        '│  │  240 x 280  │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  │             │  │\n' +
+        '│  ╰─────────────╯  │\n' +
+        '└───────────────────┘',
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAJyMj/v7+ZYSlo7TLD264GoHJwL/DS57TTklLW9vMyQAAAAp0Uk5TAP4Q+/f5hSc8P1j1BksAAAGySURBVHic3dSxb4JAFAbwS5uIjC/awa1jV3N3adcGWrvrGeYmwHqJiehGmoqMEif+2x7I4cHd4dCl6Vvvl4/PBx56RINzh/4nyKJ8GER5lA6BUZAcggHghixizwOgAIBlYgfVOUB5sgEXLjMrLaAAOaURuACa6IACdKECNaAVCnCLLoATGkepCnrnMDsd2PqrBU4/QAgW74IW6OcAD3HSAu0B9azDTwlMAQAskCXNAUBjCcwBkxfeAEsASZtFaTtqAj7kJktLwFECS8CCN8DWgMuXZW9wAaO5EfhpA8ahEUwX8nvI2KsxgDfgKWQrQ8R0IcE2zphvDRAgTEaMeJYGFThEISG4L2SAADvK/BXuiTag+hU5rYDvGQPqRW0oIR5We1wDanCP6erN95WMa0ANXMB06RG/zVACLi/rDBMsirQZSsAFiP/MhGIimtYbI0pAA5xSCLEMUWQO5J3rYL8XPVYCMIJZjHTA9xvA4hGUMbbmGkAO50nV1GN51g1o7wee1D3W6bYbcL1AElFE9IjCIzKDugicacAHAC/Rd4psADmiCNKmcw3eBIjfAob5G+DX8wMlrItB+ZBHngAAAABJRU5ErkJggg=='
+    }
+,
+     {
       name: 'ENS160 + AHT2X ',
       type: 'Sensor',
       description: 'Air Quality Sensor ENS160 with AHT2X Temperature and Humidity Sensor',
@@ -110,7 +140,7 @@
       '│ eCO2 400 – 65,000                               │\n' +
       '│                                                 │\n' +
       '│  VIN   3V3   GND   SCL   SDA   ADO   CS    INT  │\n' +
-      '───┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬───┘',
+      '└───┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬───┘',
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAL2qkmaa2ZYao0NPbUmF6LzhOqrvJUo/AwcbL5e1P5QAAAAp0Uk5TAP78/vz//xJZf3NBpVAAAAKSSURBVHic7VQ9b9swEM3mdDzRCrKKlB14JCm5XUMSATJKtLQ7rjgXaIBYWz6G5gcYCPpvexRlw45lD90K9AAJFt7hvXePR19c/K+/qbfn8/garn+cxSVl387gly+pMfzXSXz0Qowxt6dF3qFrgFMUaygAGxKA52EDr1UNY6MB4Hqw4SWuXQGhhkTW4FxDeWgY8LmGqnaNFyCGD4isXyvn7HfFCsg6G598jryBemW1LaIwyCeRVtfOUU7rJZTYMEGK9wOB1EydS3U2X4oqM6obZk/k8o2ldw8LxXKIJsWKzsMkewnAlZivrLIApSvragki2adYA1w9KMhyByAainjE+F4YiAOLEhhPPTGZL+OmRFzyrchP/Ei7BAk+UY2JokkpMNWQeMvHRvqGOA9HMXccpMWOXqRVmUm8qzwXXcO0gLhiQCkLFKMNU0AoF1W56JRygEpmumSCh0m+4ARKSNFMWX/alRVmUeuc9T43OjVAc13GTYeTJkmN0jIqe58tmiRCLYraVb4hFiQzRhc+jutO5FFDqplE/413QShIY3IuFH59DT650ehz4oIGByKYRVL8PQtZKC/CcCkgCltnLeQ4BYj7sDCbhBjGk/mSTFb9KNLiUBH9uNhSmIQgpcjLQEEwK3Tzsd2sjZYANBG5nNx2aVUlvsVst3kjwyPDE5JXsiOILfcCe5vZqjH2aFFWu+tDtgZ6n4wB/j0ksWv6Djo7WO1WwVjh4ljngk1xiHuKzABhcePssYCvJyMZIYKXLgjcHF1QFElxWrIcEujzTHE3wn7Sp2McKTB+PEuP3xzhIU9Ib/kJgeCTd5f/IMKDetT+jI8n3Pc5POGuWlyzUwYCxW8dnRYIImp4wl093Z/H/836A07RrdM9ywO5AAAAAElFTkSuQmCC'
      } 
