@@ -237,7 +237,7 @@ function toLines(t) {
         '│  @0    @1    @2         │\n' +
         '└───┬─────┬─────┬─────┬───┘\n',
       image_data:
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAQMAAACQp+OdAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAAZQTFRFCgkKysnMcoPptgAAAAJ0Uk5TCf1kXfjQAAAAoUlEQVR4nI3OOw7CMBBF0bFSUKamylKyFZYQKkpnac5OYrmgRUoBBeLh+TgiSA64mSPr+kP0uYaCp80GhhajosOs8HjIdIDWBwDWAoHRZ9wYeUrtGC9rwVd2BV4QtGU0Ncx2+k+0NYQ96PFreTSVjzHkq9FwZ1wyFsaZkylj4OQbiyIhKWJuBScfFXQscCumLWiDMBZQFaNBN3YRVtBPyHoDhKEMQVVKl8QAAAAASUVORK5CYII='
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAA9fX1ZmVmPj0+fAufOQAAAAR0Uk5TAP/7Xe+ZR0gAAAGFSURBVHicldI9SgNBFADgga1sklOk8AAWm0JP8R7upE4gq+AVvIHVDGFjO8Gsi9gaLALpLJJTRDBVwCrBwvdmdnd21kJ9kMB88/4WRogyuksRRv85PEfmKoRzwDDlA+AmSFAAct+AA1AU/txVDAM/OQYbddvIOKgnd9wZsKrZllBN7qgKyskHqOPVz3RNisZMW3LdmMlhLoOWIGHA4DPmFk7GkDtDZVeLMYPEwpiKGGCUz1xLgBHBGeSQupaAM4IepcoyIZUWJGCZMGfY0V3iWqYJw9aATO1MyC30UkCj7Eyd8GI9uhuObQIm/C08hdrxrwJJt0OeiXOGU7uBoaUkHsrPlwypzvDIEG35qKhlhuuJfSpUDkpKzHFlIaZ6pXKJiwpeaO9MS3wbRA7uqG1OsK7glp6PJtjcV7BTBNSyhndDsGjCkYBaetgYrddTD7tlnOnVxMOF6D4FQH+fOgohmnro/4BlC9xTdVC0oPH6/whFC8RXG8R/4aEFYt8G8Qs8tqBe6huGHP6l63xHWgAAAABJRU5ErkJggg=='
     }
   ];
 
@@ -344,8 +344,7 @@ function toLines(t) {
       .split("\n")
       .map(line => line.replace(/[ \t]+$/g, ""));
 
-   
-
+  
     // 4) Remove leading empty lines
     while (lines.length > 0 && lines[0] === "") {
       lines.shift();
