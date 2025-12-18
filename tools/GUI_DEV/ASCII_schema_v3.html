@@ -1021,21 +1021,44 @@ function toLines(t) {
   });
 
   // Zoom / pan with wheel
-  canvas.addEventListener('wheel', (e) => {
+canvas.addEventListener(
+  "wheel",
+  (e) => {
     e.preventDefault();
-    if (e.buttons && e.buttons !== 0) {
-      // KiCad-style: wheel pans while button pressed
+
+    // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
+    if (e.ctrlKey) {
+      const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+      scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+      updateUI();
+      draw();
+      return;
+    }
+
+    // Heuristic: treat "smooth, small deltas" as trackpad scrolling => PAN.
+    // Treat "large, stepped deltas" as mouse wheel => ZOOM.
+    const absX = Math.abs(e.deltaX || 0);
+    const absY = Math.abs(e.deltaY || 0);
+    const looksLikeTrackpad = absX > 0 || (e.deltaMode === 0 && absY > 0 && absY < 50);
+
+    if (looksLikeTrackpad) {
+      // Two-finger scroll pans (KiCad-like)
       panX += (e.deltaX || 0) / scale;
       panY += (e.deltaY || 0) / scale;
       updateUI();
       draw();
       return;
     }
+
+    // Mouse wheel zooms
     const zoomFactor = Math.exp(-e.deltaY * 0.0015);
     scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
     updateUI();
     draw();
-  }, { passive: false });
+  },
+  { passive: false }
+);
+
 
   // Mouse
   canvas.addEventListener('mousemove', (e) => {
@@ -1062,8 +1085,18 @@ function toLines(t) {
     else moveSelect(cell);
   });
 
-  canvas.addEventListener('mousedown', (e) => {
-    // Middle mouse drag = pan
+  canvas.addEventListener("mousedown", (e) => {
+
+    // Middle OR right mouse drag = pan
+    if (e.button === 1 || e.button === 2) {
+      e.preventDefault();
+      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+      canvas.style.cursor = "grabbing";
+      return;
+    }
+
+    if (e.button !== 0) return;
+
     if (e.button === 1) {
       e.preventDefault();
       panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
