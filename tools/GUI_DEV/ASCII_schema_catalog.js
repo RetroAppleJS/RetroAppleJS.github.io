@@ -53,8 +53,8 @@
         MFR: 'Z4T-XIAOESP32C3',
         pin_data: null,
         text_data:
-' ┌─────────────────────────────┐\n' +
-' │                             │\n' +
+' ╭─────────┬───────┬───────────╮\n' +
+' │         ╰──USB──╯           │\n' +
 '─┤D0 A0  ╔═SeedStudio═╗      5V├─\n' +
 ' │       ║            ║        │\n' +
 '─┤D1 A1  ║            ║     GND├─\n' +
@@ -70,10 +70,75 @@
 '─┤D6 TX  ║            ║  RX  D7├─\n' +
 ' │       ╚════════════╝        │\n' +
 ' │                             │\n' +
-' └─────────────────────────────┘',
+' ╰─────────────────────────────╯',
 
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAHyEl4uHmtK+yfHZ3WlRTNjU4oYVkbmNaoI18rvRBjQAAAAp0Uk5TAP///f7+/fGIPaqpVkYAAAMySURBVHichZbBctowEIZzDEfNYKXXrswDVLLpGSy7Z8Byzwq2Mr01kzSGW3IJyS2nJLxtV3ZsSybTLpix8Yf2/3cXwdlZH+/Pxy6eXs4+iVfTh/4c0KQNbcjnAOmC/g8gJ8D7E8ajA9jrZ+e+zZ67wOMmJqYnJg/2PTUGyJcOOG/k+ys0Wjsl5+QEyIpyQch9Bxi7RJk5wELqFTUdMKlvkZh6QJFndd2lmOzeFmOA0Kv9AOwn1y0QZB+58ANXL2+9zfrwsUKQIlC1wMWwwnn9h7RAie7Jdt4A9Gft22w0VIqootFgY7Bpr5r81NjnGGhtorZKY6dJQIsmxY+RTZPRapVEVKZUNSJ3I5sqM6YqjCnx+LDZA/VhhSk05tG0HSm8no5tBsS0dwmS+sQmVYZ0Q9uf3DtAwoXqh94YIWIXQOEcMBgIG815hCmGOhyKBEYR+zbveoDjAyLOZ67N3RsCSbSUYSLXmySRqYxir5u3OgGZyzyWyTpOpAVmqOG3M5MJRFIk4VIupcCFRDJD657NscjQtVmnPcC4NcoED8mQorVpb4RYhKYUjIfTsU1bIYYH51gwTOHa3L/fnWqY7g+DzdqMAAahb5NamzxWlsu2EBsU6dlEYC6jMio4hCUH1OzZTAu7AmRCiiVkHGaXtg4qH7pZFxbYZukaoAT4iv0Kg3po9/6ILmK23lp9UwSqNYQXR6eb1uY3s77sgASlXAw22xQxu9zAEkABzDBTiF+cXqQxKDKG7dwgMF8CK63IYYdpbcYwT0S8BmY2MK+4Z1MVDcAqWdlx3QBIBCrl2Fw1pWaSD70Iaq+b+bhZzBva4510b2LDGbs6ujZXOTSzwkUkcCBxYpiTAkWSFli282RfGX5d/zm0zO8mWZ4CyrNZSidShTGtR1tQG8GqO3Nd7I7XQY6f1GTz3e42mhqtfZuFyKXKM4r6b/RWykhKz6YhQmlaZYEQIBbbWJkqx+vBZqAj3HiKLGC1EIvNvDBVSamzR5WLqDJGpQG7GYC0//WcPJSZqHDZLIAuhcmp6n/1zl4DXWL9xQr3MiF0kOZYClL86oHJk1K2QEohFhmDeUSs2v8IfwEGVmNubcXoKQAAAABJRU5ErkJggg=='
+    }
+    ,
+        {
+        name: 'Arduino Nano',
+        type: 'MCU',
+        description: 'Arduino Nano with ATmega328P microcontroller.',
+        MFR: 'Arduino Nano',
+        pin_data: null,
+        text_data:
+' ┌───────────┬───────┬───────────┐\n' +
+' │           ╰──USB──╯           │\n' +
+'─┤D13 SCK  Arduino Nano  MISO D12├─\n' +
+'─┤3V3         16MHz      MOSI D11├─\n' +
+'─┤AREF                     SS D10├─\n' +
+'─┤A0/D14                       D9├─\n' +
+'─┤A1/D15                       D8├─\n' +
+'─┤A2/D16                       D7├─\n' +
+'─┤A3/D17                       D6├─\n' +
+'─┤A4/D18 SDA                   D5├─\n' +
+'─┤A5/D19 SCL                   D4├─\n' +
+'─┤A6                      INT1 D3├─\n' +
+'─┤A7                      INT0 D2├─\n' +
+'─┤5V                          GND├─\n' +
+'─┤RESET                     RESET├─\n' +
+'─┤GND                      RXD D0├─\n' +
+'─┤VIN                      TXD D1├─\n' +
+' │                               │\n' +
+' └───────────────────────────────┘',
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAEXSQeJunysvOPUBBS32NPICVHXmUd4mNzNbcCOcmxgAAAAp0Uk5TAP/++vuh9TM8KPPBRGkAAAHFSURBVHicnZRBTwIxEIU5ep1dnfu2pIlHW7LRI1C5a4DIsQs0HP0JEqNnE07+W6dlUQ8zJdoLm/TjvXmdaQeDP63PvArAwdG6K/z9MJna4TV9fHDANlR6Mm2H2uDymQNW+9ploL26eOGA3cMJwDdWIQBqPR1Z2wCwwLaDtfPeWej4GnZLAqxKgGCBsLbOaQuRtwgR9cg5ZYkULGpyUNq1kbfYdjXtE9EKRQasVKVU0xk5Zr+kmI/fgBizX1JM+Fn/s8hF4ixZCDHT/sYH0SIpoPezUkwS8CQhxcwCWYK3iACXCRgXYmaFKFlEkthkhxjkmElAjJm2NrMgHtQun2Q+6vdys7pQ7iYqATh1s2oKMSFGmhssxFSq3M21o5snxiQLnYFCzCMgdxPSxaEfvsizQxtjF6oGDSoxpr6pbyqLTuzmCRC7qZsjIF1/aiNSDWBi5ItEpEZBA0Y79ilOMZE0wKhXFoh5mpKFoNC/D/TgCjX8PEGloS29UXmijlPJn6Rz/diawPfiVp2Alu/mt0IUFKiGs9f/cjgbTsbR8BYJSNd/bATglwV/kk97skgKULkXDljt+xoIYBUWi8Xcz72/pw8W4NcX3Eyu7NIFgekAAAAASUVORK5CYII='
+    }
+    ,
+    {
+        name: 'Daisy Seed',
+        type: 'MCU',
+        description: 'Daisy Seed is a development board based on the ARM Cortex-M7 microcontroller.',
+        MFR: 'Daisy Seed',
+        pin_data: null,
+        text_data:
+' ┌────────────────────Daisy Seed─────────────────┐\n' +
+' │                                               │\n' +
+'─┤3V3_Analog         ARM Cortex-M7           AGND├─\n' +
+'─┤ADC0   A0/D15         480MHz          AudioOut2├─\n' +
+'─┤ADC1   A1/D16                         AudioOut1├─\n' +
+'─┤ADC2   A2/D17                          AudioIn2├─\n' +
+'─┤ADC3   A3/D18                          AudioIn1├─\n' +
+'─┤ADC4   A4/D19            D14 USART1_Rx/I2C4_SDA├─\n' +
+'─┤ADC5   A5/D20            D13 USART1_Tx/I2C4_SCL├─\n' +
+'─┤ADC6   A6/D21            D12 I2C1_SDA /UART4_Tx├─\n' +
+'─┤ADC7   A7/D22 DAC_OUT2   D11 I2C1_SCL /UART4_Rx├─\n' +
+'─┤ADC8   A8/D23 DAC_OUT1   D10 SPI1_MOSI/UART2_Tx├─\n' +
+'─┤ADC9   A9/D24 SAI_MCLK   D9 SPI1_MISO          ├─\n' +
+'─┤ADC10 A10/D25 SAI2_SDB   D8 SPI1_SCK  /SPDIFRX1├─\n' +
+'─┤          D26 SAI2_SDA   D7 SPI1_CS            ├─\n' +
+'─┤          D27 SAI2_FS    D6 SD_CLK.  /USART5_Tx├─\n' +
+'─┤ADC11 A11/D28 SAI2_SCK   D5 SD_CMD.  /USART5_Rx├─\n' +
+'─┤USART1_Tx D29 USB_D-     D4 SD_Data0           ├─\n' +
+'─┤USART1_Rx D30 USB_D+     D3 SD_Data1           ├─\n' +
+'─┤3V3_Digital              D2 SD_Data2 /USART3_Tx├─\n' +
+'─┤VIN                      D1 SD_Data3 /USART3_Rx├─\n' +
+'─┤DGND                    D0 USB ID              ├─\n' +
+' │                    ╭──USB──╮                  │\n' +
+' └────────────────────┴───────┴──────────────────┘',
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA2qg/MTMz2LV01KtJ19XPoINMYFdCxad+1rUs7IThTgAAAAp0Uk5TAPr//7P+/f5ZWoTOXAoAAAFnSURBVHicvZSxSsRAEIbzCsN4eYAUpl6HxNbACteGsNeH02AdjmxrQMVSwca3dTabHAj3GxH1b/MxX2Z2Z5PkmHer2Vr7YO1LciqvlRG6zLJzOrs6DYwidJFludkCgCgCRACoiGIFqOAIEFTImoJlTbHWxQL8XCFiAiBfKUrvBzYIEDZErcB/GGmK4EGxTIGDom4OAp6ymBwqFgAq1oBVRfWPCnSaq4pxmSRUMHM4CbhZdAxScBnPCirS+JNYsQBQMQPw0v6CopwBqCi/qcB7sQB/2AX5KbiLuJlEFinY6H0weDd1u8V7/Y4UY1NQn28agQrn0qzfuwYqXNP1nt3uDgK7rs8VuIEKraCKskUV0i4ougFVGKnTNpng4sxLgZ9BHbW+ccwGzSFMkpi4xopwDjVevUrEiTRSw9e+KZzGYIVsAtDiLswEDPDCjKZQx+2A7sObtdd7BQ4WVNA8BsU9+qp5DvkMfAAoh7C+1ipazQAAAABJRU5ErkJggg=='
     }
     ,
     {
@@ -155,7 +220,7 @@
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAJyMj/v7+ZYSlo7TLD264GoHJwL/DS57TTklLW9vMyQAAAAp0Uk5TAP4Q+/f5hSc8P1j1BksAAAGySURBVHic3dSxb4JAFAbwS5uIjC/awa1jV3N3adcGWrvrGeYmwHqJiehGmoqMEif+2x7I4cHd4dCl6Vvvl4/PBx56RINzh/4nyKJ8GER5lA6BUZAcggHghixizwOgAIBlYgfVOUB5sgEXLjMrLaAAOaURuACa6IACdKECNaAVCnCLLoATGkepCnrnMDsd2PqrBU4/QAgW74IW6OcAD3HSAu0B9azDTwlMAQAskCXNAUBjCcwBkxfeAEsASZtFaTtqAj7kJktLwFECS8CCN8DWgMuXZW9wAaO5EfhpA8ahEUwX8nvI2KsxgDfgKWQrQ8R0IcE2zphvDRAgTEaMeJYGFThEISG4L2SAADvK/BXuiTag+hU5rYDvGQPqRW0oIR5We1wDanCP6erN95WMa0ANXMB06RG/zVACLi/rDBMsirQZSsAFiP/MhGIimtYbI0pAA5xSCLEMUWQO5J3rYL8XPVYCMIJZjHTA9xvA4hGUMbbmGkAO50nV1GN51g1o7wee1D3W6bYbcL1AElFE9IjCIzKDugicacAHAC/Rd4psADmiCNKmcw3eBIjfAob5G+DX8wMlrItB+ZBHngAAAABJRU5ErkJggg=='
     }
-,
+    ,
      {
       name: 'ENS160 + AHT2X ',
       type: 'Sensor',
@@ -174,4 +239,42 @@
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAL2qkmaa2ZYao0NPbUmF6LzhOqrvJUo/AwcbL5e1P5QAAAAp0Uk5TAP78/vz//xJZf3NBpVAAAAKSSURBVHic7VQ9b9swEM3mdDzRCrKKlB14JCm5XUMSATJKtLQ7rjgXaIBYWz6G5gcYCPpvexRlw45lD90K9AAJFt7hvXePR19c/K+/qbfn8/garn+cxSVl387gly+pMfzXSXz0Qowxt6dF3qFrgFMUaygAGxKA52EDr1UNY6MB4Hqw4SWuXQGhhkTW4FxDeWgY8LmGqnaNFyCGD4isXyvn7HfFCsg6G598jryBemW1LaIwyCeRVtfOUU7rJZTYMEGK9wOB1EydS3U2X4oqM6obZk/k8o2ldw8LxXKIJsWKzsMkewnAlZivrLIApSvragki2adYA1w9KMhyByAainjE+F4YiAOLEhhPPTGZL+OmRFzyrchP/Ei7BAk+UY2JokkpMNWQeMvHRvqGOA9HMXccpMWOXqRVmUm8qzwXXcO0gLhiQCkLFKMNU0AoF1W56JRygEpmumSCh0m+4ARKSNFMWX/alRVmUeuc9T43OjVAc13GTYeTJkmN0jIqe58tmiRCLYraVb4hFiQzRhc+jutO5FFDqplE/413QShIY3IuFH59DT650ehz4oIGByKYRVL8PQtZKC/CcCkgCltnLeQ4BYj7sDCbhBjGk/mSTFb9KNLiUBH9uNhSmIQgpcjLQEEwK3Tzsd2sjZYANBG5nNx2aVUlvsVst3kjwyPDE5JXsiOILfcCe5vZqjH2aFFWu+tDtgZ6n4wB/j0ksWv6Djo7WO1WwVjh4ljngk1xiHuKzABhcePssYCvJyMZIYKXLgjcHF1QFElxWrIcEujzTHE3wn7Sp2McKTB+PEuP3xzhIU9Ib/kJgeCTd5f/IMKDetT+jI8n3Pc5POGuWlyzUwYCxW8dnRYIImp4wl093Z/H/836A07RrdM9ywO5AAAAAElFTkSuQmCC'
      } 
+     ,
+    {
+      name: 'DHT22',
+      type: 'Sensor',
+      description: 'DHT22 Temperature and Humidity Sensor',
+      MFR: 'DHT22',
+      pin_data: null,
+      text_data:
+      '┌───────────┐\n' +
+      '│           │\n' +
+      '│           │\n' +
+      '│   DHT22   │\n' +
+      '│           │\n' +
+      '│ +   D   - │\n' +
+      '└─┬───┬───┬─┘\n',
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA1NXUvr685+fmDg4OpaSfQUA8zs7MdHJsfXp1+LVFjQAAAAp0Uk5TAP3/Hf74/IX7Y2s63FgAAAIcSURBVHic3ZTBitswEIYDfgIpmPaqAdE9uuigFxCix9agrvauCO3RhLD0WjauclvwC3ck24mVOHssSyeDCdKnmX9GYjab/8KajwTIO+i8LMindWJarTpyh5gWJUF7B6i+4j6V+7uAxAy0JVuxDoguJSCMflmR0YwCCeEsubghmkkgqRmhBLrtLTDuAyG/0/dGRjMmSECbZVwX24wBMD4jn/N3XxYryAVAx1BdWUpOQLPznAWAFcQsgJ4dALZXAIZmOcsPdGg5LIXmFpA6VZAdWsyxBJIGToBhlBr/AU8BYAHIrJERw7IAgwpQxgIQ0z21SSnQlmIwKIBuBLIMyAqhAKZOUhRCMQ7kAAVQTa1i6SRa2i+Ay3NJSMvgBjjLwDp4SsDbtgQ2s4zUczxuTP/UFEAlZyDdhLExuOcCmF5lvjbg5mfwvXougFkoAtzYPvSvSg0FMBM0CfA+KLRBLIFZKCpw0bsE6DgsgUkoN77HXyb8qVkAI0G51dGH2Dul/UhcCk6l0AfcdvFoEQhOhaEYQUhQG3qvjqT23uleHe1bMaNEV8eYDsKDi70KcX84lUNMvhjvkzynXHj9Zk7i19WUq6TNBSjtdNzt7Zu4HoPVi80VaqV2dpDfb+dkdehTAOX0H/kkmpVBmgmt9HFfHYpGXWo54FXp8IhvbR3YSINtepw31mYjlrI7D4nV4SntOcA6UMnyTb5r/wD4APYXVEeax8UgV4IAAAAASUVORK5CYII='
+    } 
+    ,
+    {
+      name: '6N137',
+      type: 'Optocoupler',
+      description: 'DHT22 Temperature and Humidity Sensor',
+      MFR: 'DHT22',
+      pin_data: null,
+      text_data:
+      ' ┌───6N137───┐\n' +
+      '─┤       VCC ├─\n' +
+      ' │           │\n' +
+      '─┤ VF+    VE ├─\n' +
+      ' │           │\n' +
+      '─┤ VF-    VO ├─\n' +
+      ' │           │\n' +
+      '─┤       GND ├─\n' +
+      ' └───────────┘\n',
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA8On31s/hyL3T+fn5pp2t1NDd39zm5+Lwt6/ApoTanQAAAAp0Uk5TAP///gr8cjSvtXR6DwUAAAJYSURBVHic1dS9c9MwFABwDSqm43M5jrF+btqsSJjQzUOapGPjU++ypTThjs3lXEq20JZjxwf8u8jPki3bqVlYeEPurPfL09OHzWL2l/g/AV/FvWB8Bas+wL8AQNYDZjoPr9L4KeABlOIJwL+CEfFOwK8AOsIBfAZ1vIy74Bm48T1uA882ABiQaIGqQfAhcGpYwG+qfKjzRB5d4DboAx6QSGswqbM6deAHBLYVmFYNUHFEpGaPLHB2CPUSMKC8jycG0BGa/2PRgl/m8dgAp0GkRFDWwmFMYNpYAMBrm0ckUO+QqVGso6hjwQ00wzZQgfsAuoE14KanXXkogGd2pTELpVUASw2eY0eU+VBd+I8WNEVZX6oE9WHEn7AtyoEwUhEeanBfPgetCdAfJCW4xqbw7eNgcVscZ/wgUbiirJ8E/mC1J/Vxjr9J4dYwDajiKAm8j6QUYdWob8Ech2xP6PP+oUFVw+4gRhq8Y/tiyNhmkWuBjQBUKglFvJ9gxsbZRlZCVOB3LkXsJeK0uA/X0s5CP9GFj29ZAdhntShuVClqkKDeYgJsmtKd9HISgkCo9BIP2ZqATtO1n5hJBC1AYXjEbktgXxwjNICB+ik0OBO4ct9uWooQusHB5bmUI3YWiTcuMEvRDYapLnfC+AfVqGBE0SDzkuIM2F3rA0JLUYnAmM/DUfXdcT5Bk1xG6pcGbB4e7wJsJqPFnZQpzwWmuwDfnGZcyiVbq2i5CzCeMQ22bLpZ7KxAkdP+OKMtwPNw2xzpVBAv+sFajfrBubrsB/xj1g86Ax3wz+MPhMOw/hNWW5oAAAAASUVORK5CYII='
+    }     
 ];
