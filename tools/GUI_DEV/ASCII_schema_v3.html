@@ -189,10 +189,17 @@
 
   // Helpers
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const normalizeNewlines = (t) =>
-    String(t || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 
-  const toLines = (t) => normalizeNewlines(t).split('\\n')
+function normalizeNewlines(t) {
+  return String(t ?? "")
+    .replace(/\r\n/g, "\n") // real CRLF -> LF
+    .replace(/\r/g, "\n");  // real CR   -> LF
+}
+
+function toLines(t) {
+  return normalizeNewlines(t).split("\n"); // split on real LF
+}
+
   const normRect = (a, b) => ({ r0: Math.min(a.r,b.r), r1: Math.max(a.r,b.r), c0: Math.min(a.c,b.c), c1: Math.max(a.c,b.c) });
 
   const rangeChars = (start, end) => {
@@ -312,12 +319,12 @@
     return lines.join("\n");
   }
 
-  function deEscapeLiteralNewlines(t) {
-    return String(t || "")
-      .replace(/\\r\\n/g, "\n")
-      .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\n");
-  }
+function deEscapeLiteralNewlines(t) {
+  return String(t ?? "")
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\n");
+}
 
 
   function downloadText(text, filename) {
@@ -1025,7 +1032,6 @@
     console.assert(serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
     console.assert(toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
     console.assert(!serializeToText().includes("\\n"), "Save must not contain literal \\n");
-
     updateUI();
     draw();
   })();
