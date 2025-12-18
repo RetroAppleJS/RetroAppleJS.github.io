@@ -47,6 +47,36 @@
     }
     ,
     {
+        name: 'XIAO_ESP32-C3',
+        type: 'MCU',
+        description: '',
+        MFR: 'Z4T-XIAOESP32C3',
+        pin_data: null,
+        text_data:
+' ┌─────────────────────────────┐\n' +
+' │                             │\n' +
+'─┤D0 A0  ╔═SeedStudio═╗      5V├─\n' +
+' │       ║            ║        │\n' +
+'─┤D1 A1  ║            ║     GND├─\n' +
+' │       ║    XIAO    ║        │\n' +
+'─┤D2 A2  ║            ║     3V3├─\n' +
+' │       ║  ESP32-C3  ║        │\n' +
+'─┤D3     ║            ║MOSI D10├─\n' +
+' │       ║            ║        │\n' +
+'─┤D4 SDA ║            ║MISO  D9├─\n' +
+' │       ║            ║        │\n' +
+'─┤D5 SCL ║            ║ SCK  D8├─\n' +
+' │       ║            ║        │\n' +
+'─┤D6 TX  ║            ║  RX  D7├─\n' +
+' │       ╚════════════╝        │\n' +
+' │                             │\n' +
+' └─────────────────────────────┘',
+
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAHyEl4uHmtK+yfHZ3WlRTNjU4oYVkbmNaoI18rvRBjQAAAAp0Uk5TAP///f7+/fGIPaqpVkYAAAMySURBVHichZbBctowEIZzDEfNYKXXrswDVLLpGSy7Z8Byzwq2Mr01kzSGW3IJyS2nJLxtV3ZsSybTLpix8Yf2/3cXwdlZH+/Pxy6eXs4+iVfTh/4c0KQNbcjnAOmC/g8gJ8D7E8ajA9jrZ+e+zZ67wOMmJqYnJg/2PTUGyJcOOG/k+ys0Wjsl5+QEyIpyQch9Bxi7RJk5wELqFTUdMKlvkZh6QJFndd2lmOzeFmOA0Kv9AOwn1y0QZB+58ANXL2+9zfrwsUKQIlC1wMWwwnn9h7RAie7Jdt4A9Gft22w0VIqootFgY7Bpr5r81NjnGGhtorZKY6dJQIsmxY+RTZPRapVEVKZUNSJ3I5sqM6YqjCnx+LDZA/VhhSk05tG0HSm8no5tBsS0dwmS+sQmVYZ0Q9uf3DtAwoXqh94YIWIXQOEcMBgIG815hCmGOhyKBEYR+zbveoDjAyLOZ67N3RsCSbSUYSLXmySRqYxir5u3OgGZyzyWyTpOpAVmqOG3M5MJRFIk4VIupcCFRDJD657NscjQtVmnPcC4NcoED8mQorVpb4RYhKYUjIfTsU1bIYYH51gwTOHa3L/fnWqY7g+DzdqMAAahb5NamzxWlsu2EBsU6dlEYC6jMio4hCUH1OzZTAu7AmRCiiVkHGaXtg4qH7pZFxbYZukaoAT4iv0Kg3po9/6ILmK23lp9UwSqNYQXR6eb1uY3s77sgASlXAw22xQxu9zAEkABzDBTiF+cXqQxKDKG7dwgMF8CK63IYYdpbcYwT0S8BmY2MK+4Z1MVDcAqWdlx3QBIBCrl2Fw1pWaSD70Iaq+b+bhZzBva4510b2LDGbs6ujZXOTSzwkUkcCBxYpiTAkWSFli282RfGX5d/zm0zO8mWZ4CyrNZSidShTGtR1tQG8GqO3Nd7I7XQY6f1GTz3e42mhqtfZuFyKXKM4r6b/RWykhKz6YhQmlaZYEQIBbbWJkqx+vBZqAj3HiKLGC1EIvNvDBVSamzR5WLqDJGpQG7GYC0//WcPJSZqHDZLIAuhcmp6n/1zl4DXWL9xQr3MiF0kOZYClL86oHJk1K2QEohFhmDeUSs2v8IfwEGVmNubcXoKQAAAABJRU5ErkJggg=='
+    }
+    ,
+    {
       name: 'OLED SSD1309',
       type: 'Display',
       description: '',
