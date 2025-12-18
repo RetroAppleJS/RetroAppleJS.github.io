@@ -260,7 +260,7 @@
     ,
     {
       name: '6N137',
-      type: 'Optocoupler',
+      type: 'OpAmp/Opto',
       description: 'DHT22 Temperature and Humidity Sensor',
       MFR: 'DHT22',
       pin_data: null,
