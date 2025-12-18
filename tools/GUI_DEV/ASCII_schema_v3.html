@@ -867,11 +867,21 @@ function sanitizeForSave(text) {
 
   // Save/load
   function sanitizeForSave(text) {
-  return String(text)
-    .replace(/\\r\\n/g, "\n") // literal "\r\n" -> newline
-    .replace(/\\n/g, "\n")    // literal "\n" -> newline
-    .replace(/\\r/g, "\n");   // literal "\r" -> newline
-}
+    return String(text ?? "")
+      // 1) Convert literal escape sequences to real newlines
+      .replace(/\\r\\n/g, "\n")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\n")
+
+      // 2) Normalize real CRLF / CR to LF
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+
+      // 3) Remove trailing spaces and tabs on each line
+      .split("\n")
+      .map(line => line.replace(/[ \t]+$/g, ""))
+      .join("\n");
+  }
 
   saveBtn.addEventListener("click", () => {
     const raw = serializeToText();
