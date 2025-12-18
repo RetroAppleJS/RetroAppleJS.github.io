@@ -967,28 +967,48 @@ function toLines(t) {
   });
   loadBtn.addEventListener('click', () => fileInput.click());
 
-  fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const raw = await file.text();
-    const text = expandWideCharsForGrid(raw);
-    const toLines = (t) => normalizeNewlines(t).split("\n"); // ✅ NOT "\\n"
-    const stroke = [];
+  fileInput.addEventListener("change", async (e) => {
+    try {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
 
+      const raw = await file.text();
 
-    for (let r = 0; r < ROWS; r++) {
-      const line = lines[r] || '';
-      for (let c = 0; c < COLS; c++) {
-        const prev = ascii[r][c];
-        const next = line[c] || ' ';
-        if (prev !== next) { stroke.push({ r, c, prev, next }); ascii[r][c] = next; }
+      // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
+      const expanded = expandWideCharsForGrid(raw);
+
+      // Convert to lines (using your existing normalizeNewlines)
+      const lines = toLines(expanded); // <-- IMPORTANT
+
+      const stroke = [];
+
+      for (let r = 0; r < ROWS; r++) {
+        const line = lines[r] || "";
+        for (let c = 0; c < COLS; c++) {
+          const prev = ascii[r][c];
+          const next = line[c] || " ";
+          if (prev !== next) {
+            stroke.push({ r, c, prev, next });
+            ascii[r][c] = next;
+          }
+        }
       }
+
+      selection = null;
+      selectDrag = null;
+      moveDrag = null;
+      cancelPaste();
+
+      pushStrokeIfNonEmpty(stroke);
+      draw();
+
+      fileInput.value = "";
+    } catch (err) {
+      console.error("Load failed:", err);
+      alert("Load failed. See console for details.");
     }
-    selection = null; selectDrag = null; moveDrag = null; cancelPaste();
-    pushStrokeIfNonEmpty(stroke);
-    draw();
-    fileInput.value = '';
   });
+
 
   // Clear
   clearBtn.addEventListener('click', () => {
