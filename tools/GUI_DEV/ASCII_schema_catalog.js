@@ -73,7 +73,7 @@
       description: 'TFT Touch Screen 320*240 with ILI9341 and XPT2046',
       MFR: 'COM-28380',
       pin_data: null,
-              text_data:
+      text_data:
         ' ┌────────────────────────────────────────────────┐\n' +
         ' │  ╔═COM-28380 Touch Screen 320*240═══════════╗  │\n' +
         ' │  ║                                   ┌T_IRQ ║  ├─\n' +
@@ -94,5 +94,24 @@
         ' └────────────────────────────────────────────────┘\n',
           image_data:
           'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAFCc2rhIPjT84hnx4zMrIpV9ZRlJVt5iWfEtK1b+H0wAAAAp0Uk5TAP/8+/r/k/4RPOYmyfEAAAFVSURBVHic7dQxT4NAFAfwF4emjKQmN/sYGjflFRrHlmuJM+1erSG6SSQSt8bBMDYORr6t964Uq95RByfT/0Tu/R4Q7h4AhxyyL2VVVVdrY+EtTaWUhcro/nNd+UoXYlVw62RPaYqnut7lhqbQgB5RDZzse3EDgoQuuZwuLQCRQgY0NAJXAY9BJ4iNQDQAT1rACuAZ+8YnCLcGr22gt7aDYwb0G7BEYQe9hQK+GQjXV3dYQPfG/7ENGyAZ3IEz8DMLIH0Hh1oA0hk4kz2gIz0zcDW4gE5kA/lIgyPs20CGeB62gGKsT4ztSysQIQ6nLSCOPL//CNcmIPiYx3L04BHgzl7p41/wdPBr5TJIcAweCfa5HppM8JWUkzknGUhEoKjQnXm9Op/PpKQmIQSzTUH1yWi7mqqocSzL7gqIBhHtJLwtV18Gesq6fNEdVfVe/vWf5JD/lQ+QJpbNzPkPXwAAAABJRU5ErkJggg=='
-     }  
+     } 
+     ,
+     {
+      name: 'ENS160 + AHT2X ',
+      type: 'Sensor',
+      description: 'Air Quality Sensor ENS160 with AHT2X Temperature and Humidity Sensor',
+      MFR: 'COM-28380',
+      pin_data: null,
+      text_data:
+      '┌─────────────────────────────────────────────────┐\n' +
+      '│ ENS160 + AHT2X                                  │\n' +
+      '│ AQI  0 - 5                                      │\n' +
+      '│ TVOC 0 – 65,000                                 │\n' +
+      '│ eCO2 400 – 65,000                               │\n' +
+      '│                                                 │\n' +
+      '│  VIN   3V3   GND   SCL   SDA   ADO   CS    INT  │\n' +
+      '───┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬───┘',
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAL2qkmaa2ZYao0NPbUmF6LzhOqrvJUo/AwcbL5e1P5QAAAAp0Uk5TAP78/vz//xJZf3NBpVAAAAKSSURBVHic7VQ9b9swEM3mdDzRCrKKlB14JCm5XUMSATJKtLQ7rjgXaIBYWz6G5gcYCPpvexRlw45lD90K9AAJFt7hvXePR19c/K+/qbfn8/garn+cxSVl387gly+pMfzXSXz0Qowxt6dF3qFrgFMUaygAGxKA52EDr1UNY6MB4Hqw4SWuXQGhhkTW4FxDeWgY8LmGqnaNFyCGD4isXyvn7HfFCsg6G598jryBemW1LaIwyCeRVtfOUU7rJZTYMEGK9wOB1EydS3U2X4oqM6obZk/k8o2ldw8LxXKIJsWKzsMkewnAlZivrLIApSvragki2adYA1w9KMhyByAainjE+F4YiAOLEhhPPTGZL+OmRFzyrchP/Ei7BAk+UY2JokkpMNWQeMvHRvqGOA9HMXccpMWOXqRVmUm8qzwXXcO0gLhiQCkLFKMNU0AoF1W56JRygEpmumSCh0m+4ARKSNFMWX/alRVmUeuc9T43OjVAc13GTYeTJkmN0jIqe58tmiRCLYraVb4hFiQzRhc+jutO5FFDqplE/413QShIY3IuFH59DT650ehz4oIGByKYRVL8PQtZKC/CcCkgCltnLeQ4BYj7sDCbhBjGk/mSTFb9KNLiUBH9uNhSmIQgpcjLQEEwK3Tzsd2sjZYANBG5nNx2aVUlvsVst3kjwyPDE5JXsiOILfcCe5vZqjH2aFFWu+tDtgZ6n4wB/j0ksWv6Djo7WO1WwVjh4ljngk1xiHuKzABhcePssYCvJyMZIYKXLgjcHF1QFElxWrIcEujzTHE3wn7Sp2McKTB+PEuP3xzhIU9Ib/kJgeCTd5f/IMKDetT+jI8n3Pc5POGuWlyzUwYCxW8dnRYIImp4wl093Z/H/836A07RrdM9ywO5AAAAAElFTkSuQmCC'
+     } 
 ];
