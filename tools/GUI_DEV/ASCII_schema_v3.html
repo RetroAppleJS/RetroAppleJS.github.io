@@ -327,7 +327,7 @@ function toLines(t) {
   }
 
   function sanitizeForSave(text) {
-    return String(text ?? "")
+    let t = String(text ?? "")
       // 1) Convert literal escape sequences to real newlines
       .replace(/\\r\\n/g, "\n")
       .replace(/\\n/g, "\n")
@@ -335,12 +335,28 @@ function toLines(t) {
 
       // 2) Normalize real CRLF / CR to LF
       .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n")
+      .replace(/\r/g, "\n");
 
-      // 3) Remove trailing spaces and tabs on each line
+    t = collapseAfterWideCharsForSave(t);
+
+    // 3) Trim trailing spaces/tabs per line
+    let lines = t
       .split("\n")
-      .map(line => line.replace(/[ \t]+$/g, ""))
-      .join("\n");
+      .map(line => line.replace(/[ \t]+$/g, ""));
+
+   
+
+    // 4) Remove leading empty lines
+    while (lines.length > 0 && lines[0] === "") {
+      lines.shift();
+    }
+
+    // 5) Remove trailing empty lines
+    while (lines.length > 0 && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
+
+    return lines.join("\n");
   }
 
   function isDoubleWidthChar(ch) {
@@ -928,38 +944,6 @@ function toLines(t) {
   redoBtn.addEventListener('click', doRedo);
 
   // Save/load
-  function sanitizeForSave(text) {
-    let t = String(text ?? "")
-      // 1) Convert literal escape sequences to real newlines
-      .replace(/\\r\\n/g, "\n")
-      .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\n")
-
-      // 2) Normalize real CRLF / CR to LF
-      .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n");
-
-    // 3) Trim trailing spaces/tabs per line
-    let lines = t
-      .split("\n")
-      .map(line => line.replace(/[ \t]+$/g, ""));
-
-    t = collapseAfterWideCharsForSave(t);
-
-    // 4) Remove leading empty lines
-    while (lines.length > 0 && lines[0] === "") {
-      lines.shift();
-    }
-
-    // 5) Remove trailing empty lines
-    while (lines.length > 0 && lines[lines.length - 1] === "") {
-      lines.pop();
-    }
-
-    return lines.join("\n");
-  }
-
-
   saveBtn.addEventListener("click", () => {
     const raw = serializeToText();
     const cleaned = sanitizeForSave(raw);   //deEscapeLiteralNewlines(raw);
