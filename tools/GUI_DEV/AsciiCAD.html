@@ -783,9 +783,8 @@ const baseCellH = 20;
 
   function draw() {
     const dpr = window.devicePixelRatio || 1;
-    const { cw, ch } = getCellSize();
-    const wCss = stageSize.w;
-    const hCss = stageSize.h;
+    var wCss = stageSize.w;
+    var hCss = stageSize.h;
 
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -794,13 +793,60 @@ const baseCellH = 20;
     ctx.fillStyle = GRID_BG;
     ctx.fillRect(0,0,wCss,hCss);
 
-    const cx = wCss/2, cy = hCss/2;
+    var cx = wCss/2, cy = hCss/2;
     ctx.translate(cx, cy);
     ctx.scale(scale, scale);
     ctx.translate(-cx + panX, -cy + panY);
 
     const { snap, snapLine } = getSnapFns(dpr, scale);
 
+
+
+
+
+var { cw, ch } = { cw: baseCellW, ch: baseCellH };
+var wCss = stageSize.w;
+var hCss = stageSize.h;
+
+var cx = wCss / 2;
+var cy = hCss / 2;
+
+// Visible bounds in WORLD coordinates (undo pan/zoom around center)
+const left   = (0 - cx) / scale + cx - panX;
+const right  = (wCss - cx) / scale + cx - panX;
+const top    = (0 - cy) / scale + cy - panY;
+const bottom = (hCss - cy) / scale + cy - panY;
+
+// Convert bounds -> grid indices (clamped)
+const c0 = Math.max(0, Math.floor(left / cw));
+const c1 = Math.min(COLS, Math.ceil(right / cw));
+const r0 = Math.max(0, Math.floor(top / ch));
+const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
+
+
+ctx.beginPath();
+ctx.strokeStyle = GRID_LINE;
+ctx.lineWidth = 1 / scale;
+
+// vertical lines
+for (let c = c0; c <= c1; c++) {
+  const x = snapLine(c * cw);
+  ctx.moveTo(x, snapLine(r0 * ch));
+  ctx.lineTo(x, snapLine(r1 * ch));
+}
+
+// horizontal lines
+for (let r = r0; r <= r1; r++) {
+  const y = snapLine(r * ch);
+  ctx.moveTo(snapLine(c0 * cw), y);
+  ctx.lineTo(snapLine(c1 * cw), y);
+}
+
+ctx.stroke();
+
+
+
+/*
     // Grid lines (pixel-snapped)
     ctx.beginPath();
     ctx.strokeStyle = GRID_LINE;
@@ -816,6 +862,7 @@ const baseCellH = 20;
       ctx.lineTo(wCss, y);
     }
     ctx.stroke();
+*/
 
     // Font sized to cell
     ctx.fillStyle = '#000';
