@@ -58,7 +58,7 @@
         </div>
 
         <div class="card">
-          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan</div>
+          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate</div>
         </div>
       </div>
     </aside>
@@ -219,6 +219,7 @@ function toLines(t) {
 
   const catalogTypes = () => Array.from(new Set(CATALOG.map(it => String(it.type || 'Other')))).sort();
   const catalogItemsForTab = (tab) => tab === 'All' ? CATALOG : CATALOG.filter(it => String(it.type || 'Other') === tab);
+  const catalogItemByUID = (uid) => CATALOG.find(it => (it.name+'_'+it.type+'_'+it.MFR) === uid);
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   function computeStageSize() {
@@ -264,7 +265,7 @@ function toLines(t) {
   function updateUI() {
     cellsLine.textContent = 'Cells: ' + COLS + ' × ' + ROWS;
     zoomLine.textContent = 'Zoom: ' + Math.round(scale * 100) + '%';
-    coordLine.textContent = hoverCell ? ('Cell: r ' + hoverCell.r + ' · c ' + hoverCell.c + ' (1-based: ' + (hoverCell.r+1) + ', ' + (hoverCell.c+1) + ')') : 'Cell: —';
+    coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + (hoverCell.c+1)) : 'Cell: —';
 
     pasteLine.style.display = pasteDrag ? 'block' : 'none';
 
@@ -458,6 +459,7 @@ function toLines(t) {
       lines,
       h: lines.length,
       w: maxW,
+      item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
       anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
       transparentSpaces: true,
     };
@@ -471,6 +473,42 @@ function toLines(t) {
 
     updateUI();
     draw();
+  }
+
+  function updatePasteWithData(metadata)
+  {
+    console.log(pasteDrag);
+    /*
+    const raw = normalizeNewlines(text).split('\n');
+    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
+    if (raw.length === 0) { pasteDrag = null; updateUI(); draw(); return; }
+
+    let w = 0;
+    for (const ln of raw) w = Math.max(w, ln.length);
+
+    const maxH = Math.min(raw.length, ROWS);
+    const maxW = Math.min(w, COLS);
+    const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
+
+    pasteDrag = {
+      lines,
+      h: lines.length,
+      w: maxW,
+      r: 0,
+      anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
+      transparentSpaces: true,
+    };
+
+    // Paste mode implies Select tool (so cursor behavior matches your workflow)
+    tool = 'select';
+    // Clear selection overlay while pasting
+    selection = null;
+    selectDrag = null;
+    moveDrag = null;
+
+    updateUI();
+    draw();
+    */
   }
 
   function commitPasteAt(cell) {
@@ -714,7 +752,14 @@ function toLines(t) {
 
       card.addEventListener('click', () => {
         closeCatalog();
-        startPasteWithText(expandWideCharsForGrid(it.text_data) || '');
+
+        // FVD TODO
+          if(pasteDrag==null) pasteDrag = {item_data:{}};
+          pasteDrag.item_data.rotation = 0;                           // default rotation
+          pasteDrag.item_data.uid = it.name+'_'+it.type+'_'+it.MFR;   // unique id for this catalog item
+          const text_data = it.text_data[ pasteDrag.item_data.rotation ];
+
+        startPasteWithText(expandWideCharsForGrid(text_data) || '');
         canvas.focus();
       });
 
@@ -726,6 +771,8 @@ function toLines(t) {
   function drawPastePreview(cw, ch, snap) {
     if (!pasteDrag || !pasteDrag.anchor) return;
     const a = pasteDrag.anchor;
+
+   //console.log('drawPastePreview at', a, 'size', pasteDrag.w, 'x', pasteDrag.h, 'r', pasteDrag.r);
 
     // Preview fill (clipped to visible grid)
     const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
@@ -1114,11 +1161,30 @@ canvas.addEventListener(
     const isMac = /mac/i.test(navigator.platform);
     const mod = isMac ? e.metaKey : e.ctrlKey;
     if (e.key === 'Escape') { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
-    if (!mod) return;
+    
+    if(e.key.toLowerCase() === 'r' && pasteDrag!=null) // r for rotating
+    { 
+        const it = catalogItemByUID(pasteDrag.item_data.uid);
+        if(it)
+        {
+          pasteDrag.item_data.rotation = (pasteDrag.item_data.rotation+1) % it.text_data.length;
+          const text_data = it.text_data[ pasteDrag.item_data.rotation ];
+          startPasteWithText(expandWideCharsForGrid(text_data) || '');
+        }
+    }
+
+    if (!mod) return;  
+
+    // Cmd / Ctrl + ...
     const k = String(e.key || '').toLowerCase();
+    
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
     else if (k === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); }
-    else if (k === 'v') { pasteSink.value = ''; pasteSink.focus(); }
+    else if (k === 'v') {
+             alert('V');
+       pasteSink.value = '';
+       pasteSink.focus(); 
+      }
   }, { passive: false });
 
   // Resize observer (debounced via rAF)
