@@ -107,10 +107,15 @@
 
   const COLS = 256;
   const ROWS = 128;
+
   const GRID_BG = '#FFFFFF';
   const GRID_LINE = '#EEEEEE';
+
   const MIN_SCALE = 0.5;
   const MAX_SCALE = 10;
+
+  const baseCellW = 10;
+  const baseCellH = 20;
 
   // UI refs
   const sidebar = document.getElementById('sidebar');
@@ -238,12 +243,6 @@ function toLines(t) {
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
 
-const baseCellW = 10;
-
-const baseCellH = 20;
-
-  //FVD
-  //const getCellSize = () => ({ cw: stageSize.w / COLS, ch: stageSize.h / ROWS });
   const getCellSize = () => ({ cw: baseCellW, ch: baseCellH });
 
   function getSnapFns(dpr, scaleNow) {
