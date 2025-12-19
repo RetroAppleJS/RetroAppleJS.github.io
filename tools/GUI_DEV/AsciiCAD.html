@@ -238,7 +238,13 @@ function toLines(t) {
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
 
-  const getCellSize = () => ({ cw: stageSize.w / COLS, ch: stageSize.h / ROWS });
+const baseCellW = 10;
+
+const baseCellH = 20;
+
+  //FVD
+  //const getCellSize = () => ({ cw: stageSize.w / COLS, ch: stageSize.h / ROWS });
+  const getCellSize = () => ({ cw: baseCellW, ch: baseCellH });
 
   function getSnapFns(dpr, scaleNow) {
     const pxScale = (dpr || 1) * (scaleNow || 1);
@@ -640,6 +646,7 @@ function toLines(t) {
     renderCharGrid();
     updateUI();
   }
+
   function closePicker() {
     picker.classList.remove('open');
     picker.setAttribute('aria-hidden', 'true');
@@ -656,6 +663,7 @@ function toLines(t) {
       tabsEl.appendChild(b);
     }
   }
+
   function renderCharGrid() {
     charGrid.innerHTML = '';
     const arr = PICKER_TABS[pickerTab] || [];
@@ -676,6 +684,7 @@ function toLines(t) {
     renderCatalogGrid();
     updateUI();
   }
+
   function closeCatalog() {
     catalogModal.classList.remove('open');
     catalogModal.setAttribute('aria-hidden', 'true');
