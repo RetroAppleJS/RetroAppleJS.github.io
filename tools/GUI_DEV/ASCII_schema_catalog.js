@@ -276,5 +276,53 @@
       ' └───────────┘\n',
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA8On31s/hyL3T+fn5pp2t1NDd39zm5+Lwt6/ApoTanQAAAAp0Uk5TAP///gr8cjSvtXR6DwUAAAJYSURBVHic1dS9c9MwFABwDSqm43M5jrF+btqsSJjQzUOapGPjU++ypTThjs3lXEq20JZjxwf8u8jPki3bqVlYeEPurPfL09OHzWL2l/g/AV/FvWB8Bas+wL8AQNYDZjoPr9L4KeABlOIJwL+CEfFOwK8AOsIBfAZ1vIy74Bm48T1uA882ABiQaIGqQfAhcGpYwG+qfKjzRB5d4DboAx6QSGswqbM6deAHBLYVmFYNUHFEpGaPLHB2CPUSMKC8jycG0BGa/2PRgl/m8dgAp0GkRFDWwmFMYNpYAMBrm0ckUO+QqVGso6hjwQ00wzZQgfsAuoE14KanXXkogGd2pTELpVUASw2eY0eU+VBd+I8WNEVZX6oE9WHEn7AtyoEwUhEeanBfPgetCdAfJCW4xqbw7eNgcVscZ/wgUbiirJ8E/mC1J/Vxjr9J4dYwDajiKAm8j6QUYdWob8Ech2xP6PP+oUFVw+4gRhq8Y/tiyNhmkWuBjQBUKglFvJ9gxsbZRlZCVOB3LkXsJeK0uA/X0s5CP9GFj29ZAdhntShuVClqkKDeYgJsmtKd9HISgkCo9BIP2ZqATtO1n5hJBC1AYXjEbktgXxwjNICB+ik0OBO4ct9uWooQusHB5bmUI3YWiTcuMEvRDYapLnfC+AfVqGBE0SDzkuIM2F3rA0JLUYnAmM/DUfXdcT5Bk1xG6pcGbB4e7wJsJqPFnZQpzwWmuwDfnGZcyiVbq2i5CzCeMQ22bLpZ7KxAkdP+OKMtwPNw2xzpVBAv+sFajfrBubrsB/xj1g86Ax3wz+MPhMOw/hNWW5oAAAAASUVORK5CYII='
-    }     
+    } 
+    ,
+    {
+      name: 'Resistor',
+      type: 'Discrete',
+      description: 'Resistor',
+      MFR: 'R',
+      pin_data: null,
+      text_data:
+      ['──/////──\n' +
+      '       Ω\n'],
+      image_data:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAB5QTFRFAAAAzLKK3wsKp4llhUkO1cWpzMnEX19f0L8l1kM6uVcIQAAAAAp0Uk5TAP/////9d////yyk2eIAAADrSURBVHic7ZKxbsIwEIbdIcz94xqREZgYw6WqupI8ABY6ZjIkL9ChM+qSFXXK29aXFKSYIBYWJH/ycNL/6RzfRalA4Gmp6PVcTqw5XOWW29O0LyPMjth6ecRsDX+eWBPAgicwI55z8su73IW2MTxsEQGIV3J04Uo0R0wHwksvJAsnpL2AgVDeFuQ9FUvbpBNwEcy+E/Z1XVuMCTAuqtW344vGBP0h2f1vuH4FxgSZw7qbw5sIukm9OSgQrZdysoIcDaXeMkqizZJat4vUasp+6N3bhbK0yc3/fTrL/QbSo73cOsHI/xAIBB7IH1KuPbXzHyuIAAAAAElFTkSuQmCC'
+    }  
+    ,
+    {
+      name: 'Capacitor',
+      type: 'Discrete',
+      description: 'Polarised Capacitor',
+      MFR: 'C',
+      pin_data: null,
+      text_data:
+      '+\n' +
+      '─┨┠─\n',
+      image_data:
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRF///+KsX429/YHWuTIZrMJkZZesbpEyMrX4KOubaqeGVSLAAAAnZJREFUeJzt0ztv2zAQAGCBW8aDVCNjYKBBNAok46wCqSBrcbxYo+MCQtbCUZmxSCqD3oqgSa1/W0qyUj/TDt1absZ9uuPd0UHwTx1WFCdvxl0Kb4ozjviWYDeRwSg5LE4BlBSHqww9gOiwYPVHCBEifUjEL0pEXEHEca9g9Q1PQzNKUlBc610Rv4CIMJXyE4AIRbojPIBRohAN91fVsF2Fxd8FSJxlUhJ0Z1OwukIDWSmlMdCLjSHUqjRpxIkw6QFM10GsJRoFMpNKqCYa8WSwVmT4fqbVjFT67i7jbY5McpierAGLWuNI6JR3ADINg6KvwoY/rBUafX4A3RQgCDlXyWDVSwNQouZKdp9HRqVa8Q/qcrICz5ZbazT4VbVAkJeKi8G0B6WvTxp412GW3Q0KL86L1TTqZSm5zrjRHRBKDIrQwLwHcU2ShEIrOpBwMb0JBRR9H3G9dHws0PZCpnM/q+vqum+09kITH78KSCKMHN2/TqKub7+qBpT9MrLkuKruJ7/2uXSP6IEt2xwpjM5dNf78CgK2dO6xAU0OpfxunaP8em1hcXVRtaARzcrCKi/r9WezpJUYWxNynQ6I7OJpr7A2UZm5ICof2HoO9kyu6sAMQuGI8om//VoKVnnR5cAoqohe/Bjip70C9VVe5adsuCWOvKCmETXOrVtMA+ajw2BDoK9NKMUx0WJxErCNcDuO3E/IIFxROY9bcbIpzigvXI7cjWcPwVkj6p0c5Bxe3Frxxf9oxBZoe3mE+WVRPzVP5dt23N+U/D2KYhI04mixRyxp3j3HVrhdwCqcd/+ZZkpHu8B/5Vbz25jj3vNXxO/A//On5ydsJeXI5TLNqQAAAABJRU5ErkJggg=='
+    }  
+    ,
+    {
+      name: 'Diode',
+      type: 'Discrete',
+      description: 'Diode',
+      MFR: 'Diode',
+      pin_data: null,
+      text_data:
+      '─▷|─\n' +
+    }   
+    // INDUCTORS, TRANSISTORS, SWITCHES, CONNECTORS, POWER SOURCES, MOTORS
 ];
+
+/*
+Diode:     ─▶│─
+Inductor:  ─∿∿∿─
+NPN:       ─▶│
+PNP:       ─◀│
+Switch:    ─o/ o─
+Connector: ─( )─
+Battery:   ─| |‾─
+Motor:     ─Ⓜ─
+*/
