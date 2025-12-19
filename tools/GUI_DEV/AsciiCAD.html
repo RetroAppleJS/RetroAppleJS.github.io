@@ -161,7 +161,7 @@
 
   // View state
   let sidebarOpen = true;
-  let scale = 1;
+  let scale = 2.5;
   let panX = 0;
   let panY = 0;
   let panDrag = null; // {x,y,panX0,panY0}
@@ -263,7 +263,7 @@ function toLines(t) {
   }
 
   function updateUI() {
-    cellsLine.textContent = 'Cells: ' + COLS + ' × ' + ROWS;
+    cellsLine.textContent = 'Cells: ' + COLS + ' x ' + ROWS;
     zoomLine.textContent = 'Zoom: ' + Math.round(scale * 100) + '%';
     coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + (hoverCell.c+1)) : 'Cell: —';
 
@@ -473,42 +473,6 @@ function toLines(t) {
 
     updateUI();
     draw();
-  }
-
-  function updatePasteWithData(metadata)
-  {
-    console.log(pasteDrag);
-    /*
-    const raw = normalizeNewlines(text).split('\n');
-    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
-    if (raw.length === 0) { pasteDrag = null; updateUI(); draw(); return; }
-
-    let w = 0;
-    for (const ln of raw) w = Math.max(w, ln.length);
-
-    const maxH = Math.min(raw.length, ROWS);
-    const maxW = Math.min(w, COLS);
-    const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
-
-    pasteDrag = {
-      lines,
-      h: lines.length,
-      w: maxW,
-      r: 0,
-      anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
-      transparentSpaces: true,
-    };
-
-    // Paste mode implies Select tool (so cursor behavior matches your workflow)
-    tool = 'select';
-    // Clear selection overlay while pasting
-    selection = null;
-    selectDrag = null;
-    moveDrag = null;
-
-    updateUI();
-    draw();
-    */
   }
 
   function commitPasteAt(cell) {
@@ -846,8 +810,11 @@ function toLines(t) {
 
     // Font sized to cell
     ctx.fillStyle = '#000';
+    
+    const cwr = 0.62;   // 0.62
+
     const maxByHeight = ch * 0.98;
-    const maxByWidth = (cw / 0.62) * 0.98;
+    const maxByWidth = (cw / cwr) * 0.98;
     const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
     ctx.font = fontPx + 'px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
     ctx.textAlign = 'center';
