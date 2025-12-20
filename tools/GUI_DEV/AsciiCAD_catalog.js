@@ -312,8 +312,26 @@
       MFR: 'R',
       pin_data: null,
       text_data:
-      ['──/////──\n' +
-      '       Ω\n'],
+      [
+        '──╲╱╲╱╲╱╲──\n' +
+        '       Ω\n'
+    ,' │ \n'+
+     ' ╱\n'+
+     ' ╲     Ω\n'+
+     ' ╱\n'+
+     ' │\n'
+     ,
+     '       Ω\n'+
+     '──╲╱╲╱╲╱╲──\n'
+     ,
+     '      │ \n'+
+     '      ╱\n'+
+     '   Ω  ╲\n'+
+     '      ╱\n'+
+     '      │\n'
+     ,
+    
+    ],
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAB5QTFRFAAAAzLKK3wsKp4llhUkO1cWpzMnEX19f0L8l1kM6uVcIQAAAAAp0Uk5TAP/////9d////yyk2eIAAADrSURBVHic7ZKxbsIwEIbdIcz94xqREZgYw6WqupI8ABY6ZjIkL9ChM+qSFXXK29aXFKSYIBYWJH/ycNL/6RzfRalA4Gmp6PVcTqw5XOWW29O0LyPMjth6ecRsDX+eWBPAgicwI55z8su73IW2MTxsEQGIV3J04Uo0R0wHwksvJAsnpL2AgVDeFuQ9FUvbpBNwEcy+E/Z1XVuMCTAuqtW344vGBP0h2f1vuH4FxgSZw7qbw5sIukm9OSgQrZdysoIcDaXeMkqizZJat4vUasp+6N3bhbK0yc3/fTrL/QbSo73cOsHI/xAIBB7IH1KuPbXzHyuIAAAAAElFTkSuQmCC'
     }  
