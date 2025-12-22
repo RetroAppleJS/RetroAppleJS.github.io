@@ -215,12 +215,14 @@ return out;
 };
 
 const PICKER_TABS = {
-Box: rangeChars(0x2500, 0x257F),
-Arrows: rangeChars(0x2190, 0x21FF),
+Box: rangeChars(0x2500, 0x257F).concat(['⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟']),
+Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
 Geometric: rangeChars(0x2580, 0x25FF),
-Technical: rangeChars(0x2300, 0x23FF),
-Misc: ['⏚','⎓','⌁','⊕','⊖','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','⅄','☚','☛','☜','☝','☞','☟','·','•','⬤','Ω','π','µ','☼','♀','♂','☯','☮','☢','☣','✈','✉','✌','✔','⏄','⏛'],
+Enum: rangeChars(0x2460, 0x24FF),
+Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','⬤','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄'].concat(rangeChars(0x2400,0x2424)),
+Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','☢','☣','✈','✉','✌','⏄']),
 };
+
 
 const catalogTypes = () => Array.from(new Set(CATALOG.map(it => String(it.type || 'Other')))).sort();
 const catalogItemsForTab = (tab) => tab === 'All' ? CATALOG : CATALOG.filter(it => String(it.type || 'Other') === tab);
@@ -670,7 +672,7 @@ for (const ch of arr) {
     const b = document.createElement('button');
     b.className = 'char';
     b.textContent = ch;
-    b.title = "Select '" + ch + "'";
+    b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
     b.addEventListener('click', () => { op = { type: 'place', ch }; closePicker(); updateUI(); });
     charGrid.appendChild(b);
 }
@@ -1173,7 +1175,6 @@ const k = String(e.key || '').toLowerCase();
 if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
 else if (k === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); }
 else if (k === 'v') {
-            alert('V');
     pasteSink.value = '';
     pasteSink.focus(); 
     }

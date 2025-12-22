@@ -368,13 +368,45 @@
         MFR: 'OpAmp',
         pin_data: null,
         text_data:[
-'  ⌠⟍ │\n' +
-'  │  ⟍\n' +
-'──┤ +  ⟍\n' +
-'  │      ≻──\n' +
-'──┤ -  ⟋\n' +
-'  │  ⟋\n' +
-'  ⎩⟋ │\n'],
+' ⌠⟍ │\n' +
+' │  ⟍\n' +
+'─┤ +  ⟍\n' +
+' │      ≻─\n' +
+'─┤ -  ⟋\n' +
+' │  ⟋\n' +
+' ⎩⟋ │\n'
+,
+'       │\n' +
+'       ⅄\n' +
+'     ⟋   ⟍\n' +
+' ──⟋       ⟍──\n' +
+' ⟋   +   -   ⟍\n' +
+'⌎────┬───┬────⌏\n' +
+'     │   │\n' 
+,
+'     │ ⟋⎫\n' +
+'     ⟋  │\n' +
+'   ⟋  - ├─\n' +
+'─≺       │\n' +
+'   ⟍  + ├─\n' +
+'     ⟍  │\n' +
+'     │ ⟍⎭\n'
+,
+'     │   │\n' +
+'⌌────┴───┴────⌍\n' +
+' ⟍   +   -   ⟋\n' +
+' ──⟍       ⟋──\n' +
+'     ⟍   ⟋\n' +
+'       ү\n' + 
+'       │\n' 
+,
+' ⌠⟍ │\n' +
+'─┤ +⟍\n' +
+' │    ≻─\n' +
+'─┤ -⟋\n' +
+' ⎩⟋ │\n'
+],
+
 image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFGxwf/v7+LS4x6urqgoOA0tLSQENImZmZtra1ZWVj29Zh3QAAAx9JREFUeJzV1M9v0zAUB/AnAxkcpwkJbpYPkThOUbRxm5jXLEfoovWYmWLUI1K2lOOA0hxHFWXyf8v32emvdYgLFzxpqvr9+Pn5JRvt/2XRfwzSH529/SNAKono6nGQVgsiKRTR3iPg+GtJJMrIxkKSeAAOLnNJUikTGYojgvyyBgfpHGkkjbEqjmJppAJ4sgRplZvYEllrjImFUaS4SXrag9ccWUsCeUwmhIQm6H0AH6QHkowthQ8poojP+BXAjaQYoMTlqF9CCouLPgsAUxEAhjZWSWVE9MKDl4gY8JbVikMntwxexYb6JnbW1QqEJrYWd/ncHyEAtpoQpMhIjIPEIcABf/IlQqooxk+JSxNPG2CxBP2EsFvIWChcgz76a3pQin6EEVkjjAh32mPwkxNF/VcoT3I5LkwC4K2RXHgJ+nEqXzACSI6MErSa8kYaQJIcW6X8wxNyO+VyDI46/sooFZcI1VYpkTCwUoUHarZTXt8BLm2JfQBG7uR0Skl6MeFbi93dwsq9hEHbPZJiXRd3nwCKCzeQD0DU1iVRXS9OGVy2N+U22CuS9ITIOTdkMKors34bJwMGo/kJRVqfFQHUdpmfJUmKE7Rz3cQxGFIKXfNfc9Te4Vbgkt5orfNWZ/q6KAIYoKVh8o3os9bOqDEDl2s9C6Cpc4DrBmDSas0gqzxoABIP8D6O8477YuCPcOihmfVAL9C+zoVioDzoALIACoDOTrBJyXYDtGswr1xntcYEGAgP7DbIO6P1Ow9yD9wa8D0B7ArgpZlUmNMGQBMOAOPHBBZ4tSYYJS7xENyRitsBCsTjyqGAPvdzWHapMS0G/Ic+rvi+WyB3XBsA3Vh7X2GWmT6feRAm4TALo+w9Jujcvc7qut4Ec9T0ezM8xRzn13Uz1+cFvw9J36b2e3VY2bRpmmpaDD1ACTzyrH9AKI4OGvRXz5B5kPIhmk/V+D3F5yly1Gew35doGEDUqN1k0z5O+D9M34X2x4a9s6FPD8M/0nBIAPOM8xBj+xrgtdFcdjTtSy/zFUhH2WzZ12a+AknarEuvGtgEO2v/X4Hf+WCC9DLN3NMAAAAASUVORK5CYII='
     }
