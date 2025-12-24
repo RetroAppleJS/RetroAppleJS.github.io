@@ -105,6 +105,12 @@
   <script>
   'use strict';
 
+//    ███████  ██████ ██████  ██ ██████  ████████ 
+//    ██      ██      ██   ██ ██ ██   ██    ██    
+//    ███████ ██      ██████  ██ ██████     ██    
+//         ██ ██      ██   ██ ██ ██         ██    
+//    ███████  ██████ ██   ██ ██ ██         ██   
+
 const COLS = 256;
 const ROWS = 128;
 
@@ -193,7 +199,12 @@ let pasteDrag = null; // {lines,w,h,anchor,transparentSpaces}
 let pickerTab = 'Box';
 let catalogTab = 'All';
 
-// Helpers
+//    ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
+//    ██   ██ ██      ██      ██   ██ ██      ██   ██ ██      
+//    ███████ █████   ██      ██████  █████   ██████  ███████ 
+//    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
+//    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
+
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 function normalizeNewlines(t) {
@@ -782,7 +793,19 @@ ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
 ctx.restore();
 }
 
-function draw() {
+
+
+
+//    ███    ███  █████  ██ ███    ██ 
+//    ████  ████ ██   ██ ██ ████   ██ 
+//    ██ ████ ██ ███████ ██ ██ ██  ██ 
+//    ██  ██  ██ ██   ██ ██ ██  ██ ██ 
+//    ██      ██ ██   ██ ██ ██   ████ 
+
+
+
+function draw() 
+{
 const dpr = window.devicePixelRatio || 1;
 const wCss = stageSize.w;
 const hCss = stageSize.h;
@@ -912,6 +935,15 @@ if (selectDrag) {
 
 if (pasteDrag) drawPastePreview(cw, ch, snap);
 }
+
+
+
+//     ██████  ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
+//    ██       ██    ██ ██     ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ ██      
+//    ██   ███ ██    ██ ██     ███████ ███████ ██ ██  ██ ██   ██ ██      █████   ██████  ███████ 
+//    ██    ██ ██    ██ ██     ██   ██ ██   ██ ██  ██ ██ ██   ██ ██      ██      ██   ██      ██ 
+//     ██████   ██████  ██     ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ ███████ 
+
 
 // Events
 function setHoverFromEvent(e) {
@@ -1199,7 +1231,14 @@ resizeRaf = requestAnimationFrame(() => {
 const ro = new ResizeObserver(() => scheduleResize());
 ro.observe(container);
 
-// Init
+
+//    ███████  █████  ███    ██ ██ ████████ ██    ██      ██████ ██   ██ ███████  ██████ ██   ██ 
+//    ██      ██   ██ ████   ██ ██    ██     ██  ██      ██      ██   ██ ██      ██      ██  ██  
+//    ███████ ███████ ██ ██  ██ ██    ██      ████       ██      ███████ █████   ██      █████   
+//         ██ ██   ██ ██  ██ ██ ██    ██       ██        ██      ██   ██ ██      ██      ██  ██  
+//    ███████ ██   ██ ██   ████ ██    ██       ██         ██████ ██   ██ ███████  ██████ ██   ██ 
+
+
 (function init() {
 stageSize = computeStageSize();
 stage.style.width = stageSize.w + 'px';
