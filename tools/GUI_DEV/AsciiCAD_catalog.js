@@ -509,6 +509,68 @@
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRF/v7+EhMTIiMi0tPSOz4+TFFQ5ubmY2ZlhYeGsLGwxrJ6QgAAApNJREFUeJztlE1vm0AQhpGsEue4yJV6ZQJyjpG2NvgYuqu0xzastr5ZQtqq19jWwi2V8+Uzctz8286yYNzWplJPPXRsDjAPM+/MDuM4/+1vLHuZdfp7+dOqEzjheX7R4Xe/AJPPXQpGHvAyOypD0Y0Qck3HxxLQrTCWU3rEH1V+KYuDhEvpQliTJS0P+WMuUl4Rc/pbDPTTEU8ZMnhhjl+VZvjoLeMmAgIoU03oXrW9lxKBO8ZM/FRojXf3It8R7qPGdyYACEj868U1jZjUtw3QZ3q5orFPwGjUWqdn2QiAP9Qh8AQgmdOIEOIBQxPJGR0REszrkz3dApA5jYk1ZC7fZXjnPc4t8AoIeY0qfQtgFHhQaiueZAP4nlyh7m9NCHgzVop+l8s2wvu16QNpbKqUirCk6wYAMsDuNiLIsMxUbBpSRzjxPQgA2/vR+gd5mX1dpizlDQDGvJJuK5kex3x3nGHLd4CHPzZcTe7BRz92dVO1Q+xF8H1IBiV9TILgc0kjPFfgjF/vpcDqknNKPzExpTGeeQKM/6Sh6tAHmgCfmmNlRoJN4TojIJYIruglGRSTZQ3UncyiOgJmOb8k3nS5YFajrlP0dwAiZLgQlZ/JfF2PXT/ZAR65uucW4Fo3H+HpTRuBeEEF8FTIYvcZGxH4sgVCrNEMt5C3ytkjdicZWoFC5hduO9ZRgk22UMBYNfxmDczaud4kfp0ksD0SBT5ucyAB9cQFVQZZmJddNWuJu5oIK6BeRG4LOL2FJcJUcKkP7aHeDXimzBQTHF51fVOKH+IwFgf9jhNjKRDmT8c3YYynMizGHZtyAxAWs+N+046Qqg7AcbfTWdcuRmLsqP32HGRUdmzX1pZ1y8Cejv+Q45+zH54M0rz1tPHvAAAAAElFTkSuQmCC'
     }
+    ,
+    {
+      name: 'Power Delivery',
+      type: 'Power module',
+      description: '140W USB-C Fast Charge Trigger Board Module PD/QC Decoy Board PD3.1 28V/36V/48V',
+      MFR: 'PD',
+      pin_data: null,
+      text_data:[
+      '┌─PD3.1──────┐\n' +
+      '├─╮        + ├─\n' +
+      '│ │USB-C     ├─\n' +
+      '├─╯        - ├─\n' +
+      '└────────────┘\n'
+   ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA5+fnNoFqK2zeXJztLz5NkKu5pLS6Z5uPb6fBLANYmAAAAAp0Uk5TAPv+/f3/GPv7fGnkMyUAAAKhSURBVHicxZW9b9swEMU9CcjIDpVnIoI5h3LTnYd8jFVAOKOBBkk0ynBCZQzTmOetqFPH/m97pC0nViVlKnqLBj797r0jKfV6/6yuPxSMu9ejm5/dgrxgnYjolbHPXYKbIu5EXBtWdiGi16LvWAeCHKKzj62IyDB2dzlgrAUR3RSMxaJgcQsid4wiUE0Yaxz4bdFn1IT1R4zdNzSJfg/0Nw9IHJqiAZE/a829QODINLiI3J2+DBb62jQNa2UTrX2MgpmiQZCjMFpnJDDBad1DtEJuycTgUxGy3jcABLeEiEceENdTRtyi5ZxcPArfwCxrgl96xKmoRzagBsbULOSJzrxAaHLh9+OhWlmPNw6tTgQJElJc0l5gBcjhxD9ucZJZHopciNjNKmsvAKQ9QJxQgmyrGJUPVYYrADgf0wio6NXg4lkPyirCNSgpYZmv/PvUnIIK7hK3G9ILSH2Rnq/XyGmMWvhGxDDjnUP19cimcFquiI0Zljw4Xb4B1NSYQwCz4jbh3BmScD6vABHAaRwXU5WeOxSaAAYtudgBSADGFNPhIeAgZMCyLPlst00HCqCIjbogIacQmZhgieJtG69kCjBVMqXnUeIF1hp8t4tXNAMAmaqh9AgUVpRu/gbovUhSKEmz0B7BKSPi+6/LIghSGGp9AYoGRNd21qsJCK5Sa8nnmfAxx/sC2okU1A9jnsgMWlfun7MF+fdNnmgWXuBwPt4XDLMNAkJZh7WD+l3qw+AiVFribH+9F0mpAyINAtx3GBBfErVDpGd1QLDhBelGMP8LQCXVsaoE9au0TXo83bZoakCHTmZmm7KpAQVZaDcN640NAiKNIVyOFgG5uOsC0LlbLmj9pHXd22h1uBXIrgYbQrvDjQv44C8XffSf/J/1BxnX/ZzwNy6FAAAAAElFTkSuQmCC'
+    }
+    ,
+    {
+      name: 'DC/DC Converter',
+      type: 'Power module',
+      description: 'DC/DC Converters - Through Hole 40W 18-75Vin +/-12V +/-1667mA DIP 1X1',
+      MFR: 'DKMW40G-12',
+      instructions:'https://www.meanwellusa.com/webapp/product/search.aspx?prod=SKMW40',
+      pin_data: null,
+      text_data:[
+      ' ┌─DKMW40G-12─┐\n' +
+      '─┤ +VIN   +VO ├─\n' +
+      ' │        COM ├─\n' +
+      '─┤ +VIN   -VO ├─\n' +
+      ' └────────────┘\n'
+
+   ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAANzY3SUhJYmFh////iIiIW1pZcXFvtre0trSonN4mXAAAAAp0Uk5TAP/++xr+kCcMsXOvzm4AAAJtSURBVHic3dQxbxMxFAdwTyTr86ll9rOuEuPZciu2DIgyn+WdpqJhDCAuGbOUlhmpn5e/fb47X9uUgQk8RX6/+D0/+yzEX4/V/wjuXwaLG77ZvwAWa6r4bH8ULNdE0tLp52PgKxFpRSw3z4MOcVLOWJqJEfxQEiCEYGkmVmO88i1JxBuShjaPweJKehtastqgUFSymYPdurLOBYd/M6UhN9sCLNbSeeuCJ2IAJj2JCJYd1UiA/IpZxRQOLosIOiU5OMRZG7bSKhdiPbw59GCn6hB8CIyoMsxNzb4ORlreJIANBOeDRIFWWWZ20jplpZF0iiSr5RVJD4CyNKLYpq9IO5N2g2NZvaJGYYctkTVsFIoMAbVaFcFrgC9kjMT/CAVqNrqlKoQ2TmCcCvEBGfrWkG6Vbk6a1KaYAPO8FZe5cVjRsuXmBLmUjAkwxT2AlnFFaQzC6IdJBcQ4wHv8RLSKU1z7GidKqQCO8Qyor0hT0L72Tb8cujuBNKWNl8F7y308LTCAJNg4awKaodIueABqFIpcq9tcgBxA3ma87xi1T3GtcrwAWaQW49xyHOd5qUbh070fd5jGRQHyGkUBzOdbXHeahFdTB+LQO3wPthBV0Na1U4J0ozpDhWjITfE3/aX9Vop01EMBb/Otvp6LsYCPA7idi6mAEdyXImeQZ2ICh0UhMogv0X4EohC5gPLr/okv7O66mYH01c0ekF+DGFr8GDzcfWpGYIunMIPlg9g5lYF+5hEDEN9TFsQvDk+BuEOxuyikLgoQs4f0dtvZ+L7M3tE5EBB2/hLPAFJ39vxwFKTRbcXL4Mn4J8C7P4zffy2/PwpFOr0AAAAASUVORK5CYII='
+    }
+    ,
+        {
+      name: 'PCM5102',
+      type: 'DAC/ADC',
+      description: 'Low Power Digital Audio Converters I2S Module for Raspberry Projects 0.3V/5V Digital Stereo Converters',
+      MFR: 'DAC',
+      pin_data: null,
+      instructions:'https://docs.cirkitdesigner.com/component/6eb5249e-9d81-4cbb-8a54-a23db8023969/pcm5102a',
+      text_data:[
+' ┌──┴────┴────┴────┴────┴────┴────┴────┴────┴───┐\n' +
+' │ FLT  DEMP XSMT FMT  A3V3 AGND ROUT AGND ROUT │\n' +
+' │                                              │\n' +
+'─┤ SCK                                       ⟋⟍ │\n' +
+'─┤ BCK                                    ╭─❪  ❫│\n' +
+'─┤ DIN  H1L H2L                       LOUT╯ ████│\n' +
+'─┤ LCK  ▯▯▯ ▯▯▯                       ROUT──│  ││\n' +
+'─┤ GND  H3L H4L                        GND╮ ████│\n' +
+'─┤ VIN  ▯▯▯ ▯▯▯                 PCM510    ╰─│  ││\n' +
+' └──────────────────────────────────────────┴──┴┘\n'
+
+   ],
+      image_data:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAOjI8UDtYioN+Z15iHRshubWe4uTocmiCsLS62esjNwAAAAp0Uk5TAP/5/f3//Ro1jwaBOcsAAAL+SURBVHic1ZU9j+M2EEDVySmHpNyT4gluRfIEpOSHhbQyzB9gi2DgTsgCcdwtFgfEZXC7wP3dkHt7u/ba3ibNhYIa62nmkTMaF8VPsKb/FXA83n8IzKxZfATMHkJgv30APNBOCvb3TWDWdNCMhl3ReAbKh6YHFgNbXG7q+ZejNH1go2DuUjQDMx428+g6I6U4XgO+GDkiGxx38lIjAcdeQgyUIUZRHRf374EZsx3FnRWIzWPfs8V74ItkVtBGYSRGA65W5xrTsXFbLrfYCbCUbLHF5xp/PXAZWD22NWJsaSlgwc80/pCBR8F619a9Ihr8UilxqmHy+7HWdiAyPV77UVhxKvqVW8VkWxOwCigMxAoF0ryJfk35jVVrvZYUGMBG4ghh+yb6ZJgdBabIGgSUAdVRUefkq+idY8xg46wFcECJYDVFrJGvonuV3oQKsEacUVCSb+jIeDQ/NKaD0xRg9FUyoDgFoghvI2u6F40pJ4F5y8HDkAJohhRYw3NR7r8D5ZNBAnGohsGlrYIj4ZPuN6gOi5dy75VOlQbjVzadFTbKzXVcDqRnx5eGObhkUa09tgKolXZFfDdWYFnWyED56Cq/5CJlB5MuABJjXEKfT+O5afdPxqd+a/SAFF1BqlkX44h6mYryvc8PgmKs7HZQpAUkPWSCEvMKlHeO8vkIg/0MjLgWAMfgU4e4H59e0oC6hXZYQgCkk/NcJ03z6+vXXSpTU7BLwCPkVaXm4KLevc2HtFcUeQsk+AxgV/FOdt9OJsydgy4QTbDOQEssknY3nQD7fOTNBl7W0Ic6BTidUYd05P0mJ0i3H0iUKcDZEEsarB0S8LkFj6DLAc6n3GM+ZkRhXPq1be2ueA+UivrcuaIaUk3jtwugOGg/pPS4QmvR76ZLoHz0eTX602DjVFwCxZ9VBrCkpPu9uAb8ssnAqhvr3XQVKGPlK6/7+LzFK0BxCFCtUkvsihtAGVPjAun+uQUUhzimWbabbgLF/hCV3Re3gZRm//b8p/hT+8/rX2F71gA4BKweAAAAAElFTkSuQmCC'
+    }
+,
+
 
     ,
     {
