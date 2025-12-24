@@ -448,18 +448,18 @@
     }   
     ,
         {
-      name: 'Transistor NPN',
+      name: 'Transistor',
       type: 'Discrete',
-      description: 'NPN Transistor',
+      description: 'Transistor',
       MFR: 'Q',
       pin_data: null,
       text_data:
       [
-' ⟋  ⎺⎺ ⟋\n' +
-'⎛   ╷⟋   ⎞\n'+
+'  ⟋  ⎺⎺ ⟋\n' +
+' ⎛   ╷⟋    ⎞\n'+
 '─────┤\n'+
-'⎝   ╵↘   ⎠\n'+
-' ⟍  __  ⟋\n'
+' ⎝   ╵↘    ⎠\n'+
+'  ⟍  __  ⟋\n'
 
       ],
       image_data:
@@ -493,6 +493,23 @@
       image_data:
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAjIKAmkQw0W1J0dTVvLy8RzQutbCuuLq6uLi4l8L6gAAAAAp0Uk5TAPj///0P//tltQW66gsAAAGbSURBVHicrZSxTsMwEIa7WCqjU6hhjCN1r/0EEUZeydRkLIPLGhLkshUpKHOlVPC4XAISi+9cBF396ct/v92bWX6akb+2vrkngS6mmJuYov+zgnVW0IqytS8xRSRFaWpaAYNEUsz/QXHmjTAcKqc6qw+UYH0uTqX3b7jC18I3HB+G9V40ek1UetHeSq1SfBhmrJRyRSgGq4DYoinmbaNkpiWq2GitFZXifQIylYpwF2xoVDaGyNb7sKKzSmsApOJhRVUn4zfSJOXXQQU7JhnEWKWcIykKLgGQ2yQT4RSM19CDepBSI5da+IWegGwdrpMdAZB6BPhVWCEauRgB7bZhxWCTry6cCysqz6fCV849Iik4hFBwjnwDunj6BvghCLAhhyrcCCCXXplGjwKHPRsYZBIgESbFEo6dwB/3Ec7Npb/DgFnh3C43xNZiS7fzxhD7onDbU2VyQvEKT64zPra1LD7IpDljd1pxIIne8Gc6RZvTKWYbw/ckwEBBp6iMjygGi/wJfxQ1sgp+oYimMIIExhQ0AAoaAEUEYMMncg+EkMAhsPUAAAAASUVORK5CYII='
     }
+    ,
+    {
+      name: 'Switch',
+      type: 'Discrete',
+      description: 'Switch',
+      MFR: 'SW',
+      pin_data: null,
+      text_data:[
+      '  ╷\n' +
+      '─•⎺•─\n'
+      ,
+      '─•⏊•─\n'
+   ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRF/v7+EhMTIiMi0tPSOz4+TFFQ5ubmY2ZlhYeGsLGwxrJ6QgAAApNJREFUeJztlE1vm0AQhpGsEue4yJV6ZQJyjpG2NvgYuqu0xzastr5ZQtqq19jWwi2V8+Uzctz8286yYNzWplJPPXRsDjAPM+/MDuM4/+1vLHuZdfp7+dOqEzjheX7R4Xe/AJPPXQpGHvAyOypD0Y0Qck3HxxLQrTCWU3rEH1V+KYuDhEvpQliTJS0P+WMuUl4Rc/pbDPTTEU8ZMnhhjl+VZvjoLeMmAgIoU03oXrW9lxKBO8ZM/FRojXf3It8R7qPGdyYACEj868U1jZjUtw3QZ3q5orFPwGjUWqdn2QiAP9Qh8AQgmdOIEOIBQxPJGR0REszrkz3dApA5jYk1ZC7fZXjnPc4t8AoIeY0qfQtgFHhQaiueZAP4nlyh7m9NCHgzVop+l8s2wvu16QNpbKqUirCk6wYAMsDuNiLIsMxUbBpSRzjxPQgA2/vR+gd5mX1dpizlDQDGvJJuK5kex3x3nGHLd4CHPzZcTe7BRz92dVO1Q+xF8H1IBiV9TILgc0kjPFfgjF/vpcDqknNKPzExpTGeeQKM/6Sh6tAHmgCfmmNlRoJN4TojIJYIruglGRSTZQ3UncyiOgJmOb8k3nS5YFajrlP0dwAiZLgQlZ/JfF2PXT/ZAR65uucW4Fo3H+HpTRuBeEEF8FTIYvcZGxH4sgVCrNEMt5C3ytkjdicZWoFC5hduO9ZRgk22UMBYNfxmDczaud4kfp0ksD0SBT5ucyAB9cQFVQZZmJddNWuJu5oIK6BeRG4LOL2FJcJUcKkP7aHeDXimzBQTHF51fVOKH+IwFgf9jhNjKRDmT8c3YYynMizGHZtyAxAWs+N+046Qqg7AcbfTWdcuRmLsqP32HGRUdmzX1pZ1y8Cejv+Q45+zH54M0rz1tPHvAAAAAElFTkSuQmCC'
+    }
+
     ,
     {
         name: 'OpAmp',
