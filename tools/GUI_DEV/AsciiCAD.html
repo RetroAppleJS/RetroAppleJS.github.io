@@ -196,6 +196,8 @@ let moveDrag = null; // {startCell, offset, baseRect, snapshot}
 
 let pasteDrag = null; // {lines,w,h,anchor,transparentSpaces}
 
+let lineDrag = null;  // { start:{r,c}, cur:{r,c} }
+
 // Picker tabs
 let pickerTab = 'Box';
 let catalogTab = 'All';
@@ -206,6 +208,107 @@ let catalogTab = 'All';
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
+function cornerCharVH(r0, c0, r1, c1) {
+  const goingDown = r1 > r0;
+  const goingRight = c1 > c0;
+
+  // We go vertical to r1 first, then horizontal to c1.
+  // Corner is at (r1, c0): it must connect vertical + horizontal.
+  if (goingDown && goingRight) return "└"; // up + right
+  if (goingDown && !goingRight) return "┘"; // up + left
+  if (!goingDown && goingRight) return "┌"; // down + right
+  return "┐"; // down + left
+}
+
+function buildVHPath(start, end) {
+  const r0 = start.r, c0 = start.c;
+  const r1 = end.r, c1 = end.c;
+
+  const out = [];
+
+  // same cell: nothing (or return a dot if you prefer)
+  if (r0 === r1 && c0 === c1) return out;
+
+  // 1) vertical segment at column c0 from r0 -> r1 (inclusive)
+  if (r0 !== r1) {
+    const stepR = r1 > r0 ? 1 : -1;
+    for (let r = r0; r !== r1; r += stepR) {
+      out.push({ r, c: c0, ch: "│" });
+    }
+    out.push({ r: r1, c: c0, ch: "│" });
+  }
+
+  // 2) corner at (r1, c0) if there is also a horizontal leg
+  if (r0 !== r1 && c0 !== c1) {
+    out[out.length - 1].ch = cornerCharVH(r0, c0, r1, c1); // replace last vertical cell with corner
+  }
+
+  // 3) horizontal segment at row r1 from c0 -> c1 (inclusive)
+  if (c0 !== c1) {
+    const stepC = c1 > c0 ? 1 : -1;
+
+    // start after the corner if we had a vertical leg, otherwise start at c0
+    let cStart = c0;
+    if (r0 !== r1) cStart = c0 + stepC;
+
+    for (let c = cStart; c !== c1; c += stepC) {
+      out.push({ r: r1, c, ch: "─" });
+    }
+    out.push({ r: r1, c: c1, ch: "─" });
+  }
+
+  return out;
+}
+
+function beginLine(cell) {
+  if (!cell) return;
+  // hide selection box when starting a line tool action
+  selection = null; selectDrag = null; moveDrag = null;
+  lineDrag = { start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+  draw();
+}
+
+function moveLine(cell) {
+  if (!lineDrag) return;
+  if (!cell) return;
+  if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
+  lineDrag.cur = { r: cell.r, c: cell.c };
+  draw();
+}
+
+function endLine() {
+  if (!lineDrag) return;
+
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+  const stroke = [];
+
+  for (const p of path) {
+    if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+
+    const prev = ascii[p.r][p.c];
+    const next = p.ch;
+
+    if (prev !== next) {
+      stroke.push({ r: p.r, c: p.c, prev, next });
+      drawCharAtCell(p.r, p.c, next); // ✅ commit writes to ascii
+    }
+  }
+
+  lineDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  draw();
+}
+
+
+  lineDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  draw();
+}
+
+function cancelLine() {
+  lineDrag = null;
+  draw();
+}
 
 
 function cornerChar(r0, c0, r1, c1) {
@@ -215,6 +318,15 @@ function cornerChar(r0, c0, r1, c1) {
   if (goingDown && !goingRight) return "┘";
   if (!goingDown && goingRight) return "┌";
   return "┐";
+}
+
+function setToolLine() {
+  tool = 'line';
+  selection = null; selectDrag = null; moveDrag = null;
+  cancelPaste();
+  cancelLine();
+  updateUI();
+  draw();
 }
 
 function buildVHPath(start, end) {
@@ -763,6 +875,15 @@ ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
 ctx.restore();
 }
 
+function drawCharPreviewAtCell(ctx, r, c, ch) {
+  // Compute the screen position the same way you draw normal characters.
+  // Example placeholders:
+  const x = c * baseCellW + baseCellW / 2;
+  const y = r * baseCellH + baseCellH / 2;
+
+  // Use your existing font/baseline setup (whatever you use for normal draw).
+  ctx.fillText(ch, x, y);
+}
 
 
 
@@ -906,6 +1027,21 @@ if (selectDrag) {
 if (pasteDrag) drawPastePreview(cw, ch, snap);
 
 drawLinePreview();
+
+
+
+
+// Line preview overlay
+if (lineDrag) {
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+  for (const p of path) {
+    if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+    drawCharPreviewAtCell(ctx, p.r, p.c, p.ch);
+  }
+}
+
+
+
 
 }
 
@@ -1094,75 +1230,89 @@ draw();
 
 
 // Mouse
-canvas.addEventListener('mousemove', (e) => {
-if (panDrag) {
-    const dx = e.clientX - panDrag.x;
-    const dy = e.clientY - panDrag.y;
-    panX = panDrag.panX0 + dx / scale;
-    panY = panDrag.panY0 + dy / scale;
+canvas.addEventListener('mousemove', (e) => 
+{
+    if (panDrag) {
+        const dx = e.clientX - panDrag.x;
+        const dy = e.clientY - panDrag.y;
+        panX = panDrag.panX0 + dx / scale;
+        panY = panDrag.panY0 + dy / scale;
+        setHoverFromEvent(e);
+        draw();
+        return;
+    }
+
     setHoverFromEvent(e);
-    draw();
-    return;
-}
+    const cell = canvasPointToCell(e.clientX, e.clientY);
 
-setHoverFromEvent(e);
-const cell = canvasPointToCell(e.clientX, e.clientY);
+    if (pasteDrag) {
+        if (cell) pasteDrag.anchor = { r: cell.r, c: cell.c };
+        draw();
+        return;
+    }
 
-if (pasteDrag) {
-    if (cell) pasteDrag.anchor = { r: cell.r, c: cell.c };
-    draw();
-    return;
-}
+    if (tool === 'freeform') moveFreeform(cell);
+    else if (tool === 'line') moveLine(cell);
+    else moveSelect(cell);
 
-if (tool === 'freeform') moveFreeform(cell);
-else moveSelect(cell);
 });
 
-canvas.addEventListener("mousedown", (e) => {
+canvas.addEventListener("mousedown", (e) => 
+{
+    // Middle OR right mouse drag = pan
+    if (e.button === 1 || e.button === 2) 
+    {
+        e.preventDefault();
+        panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+        canvas.style.cursor = "grabbing";
+        return;
+    }
 
-// Middle OR right mouse drag = pan
-if (e.button === 1 || e.button === 2) {
-    e.preventDefault();
-    panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-    canvas.style.cursor = "grabbing";
-    return;
-}
+    if (e.button !== 0) return;
 
-if (e.button !== 0) return;
+    if (e.button === 1) {
+        e.preventDefault();
+        panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
 
-if (e.button === 1) {
-    e.preventDefault();
-    panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-    canvas.style.cursor = 'grabbing';
-    return;
-}
+    if (e.button !== 0) return;
+    canvas.focus();
+    setHoverFromEvent(e);
+    const cell = canvasPointToCell(e.clientX, e.clientY);
 
-if (e.button !== 0) return;
-canvas.focus();
-setHoverFromEvent(e);
-const cell = canvasPointToCell(e.clientX, e.clientY);
+    if (pasteDrag) { commitPasteAt(cell); return; }
 
-if (pasteDrag) { commitPasteAt(cell); return; }
+    if (tool === 'freeform') beginFreeform(cell);
+    else if (tool === 'line') beginLine(cell);
+    else beginSelect(cell);
 
-if (tool === 'freeform') beginFreeform(cell);
-else beginSelect(cell);
 });
 
-window.addEventListener('mouseup', () => {
-if (panDrag) { panDrag = null; canvas.style.cursor = ''; return; }
-if (pasteDrag) return;
-if (isDrawing) endFreeform();
-if (selectDrag || moveDrag) endSelect();
+window.addEventListener('mouseup', () => 
+{
+  if (panDrag) { panDrag = null; canvas.style.cursor = ''; return; }
+  if (pasteDrag) return;
+
+  if (tool === 'line' && lineDrag) { endLine(); return; }
+
+  if (isDrawing) endFreeform();
+  if (selectDrag || moveDrag) endSelect();
 });
 
 canvas.addEventListener('mouseleave', () => {
-if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
-hoverCell = null;
-updateUI();
-if (pasteDrag) return;
-if (isDrawing) endFreeform();
-if (selectDrag || moveDrag) endSelect();
+  if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
+  hoverCell = null;
+  updateUI();
+  if (pasteDrag) return;
+
+  if (tool === 'line' && lineDrag) { cancelLine(); return; }
+
+  if (isDrawing) endFreeform();
+  if (selectDrag || moveDrag) endSelect();
 });
+
 
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
