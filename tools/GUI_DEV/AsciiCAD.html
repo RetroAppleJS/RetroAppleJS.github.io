@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AsciiCAD</title>
  <link rel="stylesheet" href="AsciiCAD.css">
+  <script src="AsciiCAD_helpers.js"></script>
  <script src="AsciiCAD_catalog.js"></script>
- <script src="AsciiCAD_helpers.js"></script>
 </head>
 <body>
   <div class="app">
@@ -28,6 +28,7 @@
           <div class="row">
             <button id="modeFreeform" class="btn primary">Freeform</button>
             <button id="modeSelect" class="btn">Select &amp; Move</button>
+            <button id="modeLine" class="btn">Line</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -140,6 +141,7 @@ const zoomLine = document.getElementById('zoomLine');
 const coordLine = document.getElementById('coordLine');
 const modeFreeform = document.getElementById('modeFreeform');
 const modeSelect = document.getElementById('modeSelect');
+const modeLine = document.getElementById('modeLine');
 const modeHint = document.getElementById('modeHint');
 const pickCharBtn = document.getElementById('pickChar');
 const openCatalogBtn = document.getElementById('openCatalog');
@@ -299,12 +301,6 @@ function endLine() {
   draw();
 }
 
-
-  lineDrag = null;
-  pushStrokeIfNonEmpty(stroke);
-  draw();
-}
-
 function cancelLine() {
   lineDrag = null;
   draw();
@@ -390,11 +386,21 @@ coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + 
 
 pasteLine.style.display = pasteDrag ? 'block' : 'none';
 
-if (tool === 'freeform') {
+if (tool === 'freeform')
+{
     modeFreeform.classList.add('primary');
     modeSelect.classList.remove('primary');
+    modeLine.classList.remove('primary');
     modeHint.textContent = pasteDrag ? 'Pasting: move preview with mouse, click to place.' : 'Drag to draw (cell-by-cell).';
-} else {
+}
+else if (tool === 'line') 
+{
+    modeLine.classList.add('primary');
+    modeFreeform.classList.remove('primary');
+    modeSelect.classList.remove('primary');
+    modeHint.textContent = pasteDrag ? 'Pasting: move preview with mouse, click to place.' : 'Click to set start, move to preview, click to place line.';
+}
+else if (tool === 'select') {
     modeSelect.classList.add('primary');
     modeFreeform.classList.remove('primary');
     modeHint.textContent = pasteDrag ? 'Pasting: move preview with mouse, click to place.' : 'Drag to select. Drag inside selection to move.';
@@ -1057,6 +1063,8 @@ function drawLinePreview() {
   }
 }
 
+function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
+
 
 //     ██████  ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
 //    ██       ██    ██ ██     ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ ██      
@@ -1095,6 +1103,22 @@ tool = 'select';
 if (isDrawing) endFreeform();
 updateUI();
 draw();
+});
+
+modeLine.addEventListener('click', () => {
+  tool = 'line';
+
+  // Clear selection / move state when entering Line mode
+  selection = null;
+  selectDrag = null;
+  moveDrag = null;
+
+  // Cancel any ongoing preview modes
+  lineDrag = null;
+  cancelPaste?.();
+
+  updateUI();
+  draw();
 });
 
 // Picker/catalog
