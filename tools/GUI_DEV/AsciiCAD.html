@@ -386,24 +386,29 @@ coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + 
 
 pasteLine.style.display = pasteDrag ? 'block' : 'none';
 
-if (tool === 'freeform')
-{
-    modeFreeform.classList.add('primary');
-    modeSelect.classList.remove('primary');
-    modeLine.classList.remove('primary');
-    modeHint.textContent = pasteDrag ? 'Pasting: move preview with mouse, click to place.' : 'Drag to draw (cell-by-cell).';
+if (tool === 'freeform') {
+  modeFreeform.classList.add('primary');
+  modeSelect.classList.remove('primary');
+  modeLine.classList.remove('primary');
+  modeHint.textContent = pasteDrag
+    ? 'Pasting: move preview with mouse, click to place.'
+    : 'Drag to draw (cell-by-cell).';
 }
-else if (tool === 'line') 
-{
-    modeLine.classList.add('primary');
-    modeFreeform.classList.remove('primary');
-    modeSelect.classList.remove('primary');
-    modeHint.textContent = pasteDrag ? 'Pasting: move preview with mouse, click to place.' : 'Click to set start, move to preview, click to place line.';
+else if (tool === 'line') {
+  modeLine.classList.add('primary');
+  modeFreeform.classList.remove('primary');
+  modeSelect.classList.remove('primary');
+  modeHint.textContent = pasteDrag
+    ? 'Pasting: move preview with mouse, click to place.'
+    : 'Drag: press to set start, move to preview, release to place line.';
 }
 else if (tool === 'select') {
-    modeSelect.classList.add('primary');
-    modeFreeform.classList.remove('primary');
-    modeHint.textContent = pasteDrag ? 'Pasting: move preview with mouse, click to place.' : 'Drag to select. Drag inside selection to move.';
+  modeSelect.classList.add('primary');
+  modeFreeform.classList.remove('primary');
+  modeLine.classList.remove('primary'); // ✅ missing before
+  modeHint.textContent = pasteDrag
+    ? 'Pasting: move preview with mouse, click to place.'
+    : 'Drag to select. Drag inside selection to move.';
 }
 
 currentOpLine.textContent = op.type === 'place' ? ('Current: place \' ' + op.ch + ' \'' ) : 'Current: space';
