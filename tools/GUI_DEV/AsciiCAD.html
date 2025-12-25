@@ -782,6 +782,17 @@ for (const ch of arr) {
 }
 }
 
+function renderCharAtCell(ctx, r, c, ch) {
+  // Use the SAME positioning math you already use when drawing ascii[][] in draw().
+  // If your draw() loops cells and does ctx.fillText(...) at some (x,y),
+  // copy that exact x/y logic here.
+  const x = c * baseCellW + baseCellW / 2;
+  const y = r * baseCellH + baseCellH / 2;
+
+  ctx.fillText(ch, x, y);
+}
+
+
 function openCatalog() {
 catalogModal.classList.add('open');
 catalogModal.setAttribute('aria-hidden', 'false');
@@ -913,7 +924,7 @@ const wCss = stageSize.w;
 const hCss = stageSize.h;
 
 ctx.setTransform(1,0,0,1,0,0);
-ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.clearRect(0, 0, canvas.width, canvas.height);
 ctx.setTransform(dpr,0,0,dpr,0,0);
 
 ctx.fillStyle = GRID_BG;
@@ -1044,11 +1055,16 @@ drawLinePreview();
 
 // Line preview overlay
 if (lineDrag) {
+  const old = ctx.fillStyle;
+  ctx.fillStyle = "rgba(59,130,246,0.9)";
+
   const path = buildVHPath(lineDrag.start, lineDrag.cur);
   for (const p of path) {
     if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-    drawCharPreviewAtCell(ctx, p.r, p.c, p.ch);
+    renderCharAtCell(ctx, p.r, p.c, p.ch);   // ✅ canvas-only
   }
+
+  ctx.fillStyle = old;
 }
 
 
