@@ -47,3 +47,50 @@ const snap = (v) => Math.round(v * pxScale) / pxScale;
 const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
 return { snap, snapLine };
 }
+
+
+
+function serializeToText() {
+const lines = [];
+for (let r = 0; r < ROWS; r++) lines.push(ascii[r].join(''));
+return lines.join("\n");
+}
+
+function deEscapeLiteralNewlines(t) {
+return String(t ?? "")
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\n");
+}
+
+function sanitizeForSave(text) {
+let t = String(text ?? "")
+    // 1) Convert literal escape sequences to real newlines
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\n")
+
+    // 2) Normalize real CRLF / CR to LF
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+t = collapseAfterWideCharsForSave(t);
+
+// 3) Trim trailing spaces/tabs per line
+let lines = t
+    .split("\n")
+    .map(line => line.replace(/[ \t]+$/g, ""));
+
+
+// 4) Remove leading empty lines
+while (lines.length > 0 && lines[0] === "") {
+    lines.shift();
+}
+
+// 5) Remove trailing empty lines
+while (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
+}
+
+return lines.join("\n");
+}
