@@ -208,7 +208,52 @@ let catalogTab = 'All';
 
 
 
+function cornerChar(r0, c0, r1, c1) {
+  const goingDown = r1 > r0;
+  const goingRight = c1 > c0;
+  if (goingDown && goingRight) return "└";
+  if (goingDown && !goingRight) return "┘";
+  if (!goingDown && goingRight) return "┌";
+  return "┐";
+}
 
+function buildVHPath(start, end) {
+  const r0 = start.r, c0 = start.c;
+  const r1 = end.r, c1 = end.c;
+
+  const out = [];
+
+  // 1) vertical segment from r0 -> r1 at column c0
+  if (r0 !== r1) {
+    const step = r1 > r0 ? 1 : -1;
+    for (let r = r0; r !== r1; r += step) {
+      out.push({ r, c: c0, ch: "│" });
+    }
+  }
+
+  // Corner cell at (r1, c0)
+  if (c0 !== c1 && r0 !== r1) {
+    out.push({ r: r1, c: c0, ch: cornerChar(r0, c0, r1, c1) });
+  } else if (r0 !== r1) {
+    // If only vertical, include the last cell as vertical
+    out.push({ r: r1, c: c0, ch: "│" });
+  }
+
+  // 2) horizontal segment from c0 -> c1 at row r1
+  if (c0 !== c1) {
+    const step = c1 > c0 ? 1 : -1;
+    // start from c0 if no corner was placed (pure horizontal),
+    // otherwise start after the corner to avoid overwriting it.
+    const startC = (r0 !== r1) ? (c0 + step) : c0;
+    for (let c = startC; c !== c1; c += step) {
+      out.push({ r: r1, c, ch: "─" });
+    }
+    out.push({ r: r1, c: c1, ch: "─" }); // include end cell
+  }
+
+  // If start==end: draw nothing (or a dot if you prefer)
+  return out;
+}
 
 
 function canvasPointToCell(clientX, clientY) {
@@ -394,6 +439,28 @@ moveDrag = null;
 
 updateUI();
 draw();
+}
+
+function commitLine() {
+  if (!lineDrag) return;
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+
+  const stroke = [];
+  for (const p of path) {
+    if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+
+    const prev = ascii[p.r][p.c];
+    const next = p.ch;
+
+    if (prev !== next) {
+      stroke.push({ r: p.r, c: p.c, prev, next });
+      ascii[p.r][p.c] = next;
+    }
+  }
+
+  lineDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  draw();
 }
 
 function commitPasteAt(cell) {
@@ -837,8 +904,22 @@ if (selectDrag) {
 }
 
 if (pasteDrag) drawPastePreview(cw, ch, snap);
+
+drawLinePreview();
+
 }
 
+function drawLinePreview() {
+  if (!lineDrag) return;
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+
+  // Draw overlay: same font as normal text but with a different fillStyle if you want.
+  // Or keep same color to match Asciiflow feel.
+  for (const p of path) {
+    if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+    drawCharAtCell(p.r, p.c, p.ch); // whatever your existing cell->canvas text draw is
+  }
+}
 
 
 //     ██████  ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
