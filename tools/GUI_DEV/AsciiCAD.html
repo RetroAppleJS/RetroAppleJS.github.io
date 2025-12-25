@@ -6,6 +6,7 @@
   <title>AsciiCAD</title>
  <link rel="stylesheet" href="AsciiCAD.css">
  <script src="AsciiCAD_catalog.js"></script>
+ <script src="AsciiCAD_helpers.js"></script>
 </head>
 <body>
   <div class="app">
@@ -205,25 +206,8 @@ let catalogTab = 'All';
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-function normalizeNewlines(t) {
-return String(t ?? "")
-.replace(/\r\n/g, "\n") // real CRLF -> LF
-.replace(/\r/g, "\n");  // real CR   -> LF
-}
 
-function toLines(t) {
-return normalizeNewlines(t).split("\n"); // split on real LF
-}
-
-const normRect = (a, b) => ({ r0: Math.min(a.r,b.r), r1: Math.max(a.r,b.r), c0: Math.min(a.c,b.c), c1: Math.max(a.c,b.c) });
-
-const rangeChars = (start, end) => {
-const out = [];
-for (let cp = start; cp <= end; cp++) out.push(String.fromCharCode(cp));
-return out;
-};
 
 const PICKER_TABS = {
 Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x2010, 0x2017)).concat(['⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','𐤯','⊥','⊺','⟂','⟘','𝍮','⟙','𐄼','⟝','⟞','𐘀','⋮','⋯','⋰','⋱','⵰']),
@@ -233,7 +217,6 @@ AlphaNumeric: rangeChars(0x0021, 0x007A).concat(rangeChars(0x2460, 0x24FF)),
 Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','⬤','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓'].concat(rangeChars(0x2400,0x2424)),
 Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','☢','☣','✈','✉','✌','⏄']),
 };
-
 
 const catalogTypes = () => Array.from(new Set(CATALOG.map(it => String(it.type || 'Other')))).sort();
 const catalogItemsForTab = (tab) => tab === 'All' ? CATALOG : CATALOG.filter(it => String(it.type || 'Other') === tab);
