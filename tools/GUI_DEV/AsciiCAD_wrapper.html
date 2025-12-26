@@ -5,34 +5,51 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>AsciiCAD (Wrapper)</title>
     <style>
-      html, body { height: 100%; margin: 0; }
-      body { overflow: hidden; background: #111; }
-      .topbar{
-        height: 40px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0 10px;
-        font: 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        color: #ddd;
-        background: #1b1b1b;
-        border-bottom: 1px solid #2a2a2a;
-        box-sizing: border-box;
-      }
-      .topbar a{ color:#93c5fd; text-decoration:none; }
-      .topbar a:hover{ text-decoration:underline; }
-      .frame{
-        height: calc(100% - 40px - 140px);
-        width: 100%;
-        border: 0;
-        display: block;
-        background: #fff;
-      }
-      button{
-        cursor:pointer;
-        font: inherit;
-        padding: 4px 8px;
-      }
+html, body { height: 100%; margin: 0; }
+body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.topbar{
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  font: 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #ddd;
+  background: #1b1b1b;
+  border-bottom: 1px solid #2a2a2a;
+  box-sizing: border-box;
+}
+
+.frame{
+  flex: 1 1 auto;
+  width: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+
+#logPanel{
+  flex: 0 0 140px;
+  height: 140px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #0f172a;
+  color: #e5e7eb;
+  font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 6px;
+  margin: 0;
+  border-top: 1px solid #334155;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+}
+
     </style>
   </head>
   <body>
