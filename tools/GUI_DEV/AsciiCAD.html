@@ -405,7 +405,7 @@ else if (tool === 'line') {
 else if (tool === 'select') {
   modeSelect.classList.add('primary');
   modeFreeform.classList.remove('primary');
-  modeLine.classList.remove('primary'); // ✅ missing before
+  modeLine.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag to select. Drag inside selection to move.';
@@ -1076,12 +1076,14 @@ function drawLinePreview() {
   if (!lineDrag) return;
   const path = buildVHPath(lineDrag.start, lineDrag.cur);
 
+  /*
   // Draw overlay: same font as normal text but with a different fillStyle if you want.
   // Or keep same color to match Asciiflow feel.
   for (const p of path) {
     if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
     drawCharAtCell(p.r, p.c, p.ch); // whatever your existing cell->canvas text draw is
   }
+  */
 }
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
