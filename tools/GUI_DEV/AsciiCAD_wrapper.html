@@ -67,6 +67,13 @@
     });
 
     document.getElementById("reloadIframe").addEventListener("click", loadFresh);
+
+
+    window.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "asciicad-log") {
+      consoleOutput.textContent += e.data.args.join(" ") + "\n";
+    }
+  });
     </script>
 
   </body>
