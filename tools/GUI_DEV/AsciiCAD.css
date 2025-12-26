@@ -47,6 +47,7 @@
    border-top: 1px solid #334155;
    box-sizing: border-box;
    }
+
    .log-log   { color: #e5e7eb; }
    .log-warn  { color: #fde047; }
    .log-error { color: #f87171; }
