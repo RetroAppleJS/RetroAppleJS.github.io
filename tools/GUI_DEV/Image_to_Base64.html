@@ -1,32 +1,61 @@
+<!--
+//     _____                       _____   ______                         ______   _    _    
+//    |_   _|                     / ___ `.|_   _ \                      .' ____ \ | |  | |   
+//      | |   _ .--..--.   .--./)|_/___) |  | |_) |  ,--.   .--.  .---. | |____\_|| |__| |_  
+//      | |  [ `.-. .-. | / /'`\; .'____.'  |  __'. `'_\ : ( (`\]/ /__\\| '____`'.|____   _| 
+//     _| |_  | | | | | | \ \._/// /_____  _| |__) |// | |, `'.'.| \__.,| (____) |    _| |_  
+//    |_____|[___||__||__].',__` |_______||_______/ \'-;__/[\__) )'.__.''.______.'   |_____| 
+//                       ( ( __))                                                            
+// Copyright (c) 2025 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+// Image_to_Base64.html
+-->
+
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+      <title>Image to Base64</title>
+      <script type="text/javascript" src="../TOOLS_Header.js"></script>
   </head>
   <body>
-    <input id="myinput" type="file" onchange="encode();" />
-    <div id="dummy">
+
+
+<body onload="document.getElementById('slider_title').outerHTML=_TITLE();update()">
+
+    <div id="slider_title">
     </div>
-    <div>
-      <textarea style="width:100%;height:500px;" id="txt">
-      </textarea>
-    </div>
-    <script>
-      function encode() {
-        var selectedfile = document.getElementById("myinput").files;
-        if (selectedfile.length > 0) {
-          var imageFile = selectedfile[0];
-          var fileReader = new FileReader();
-          fileReader.onload = function(fileLoadedEvent) {
-            var srcData = fileLoadedEvent.target.result;
-            var newImage = document.createElement('img');
-            newImage.src = srcData;
-            document.getElementById("dummy").innerHTML = newImage.outerHTML;
-            document.getElementById("txt").value = document.getElementById("dummy").innerHTML;
+    <div class="slider_overlay">
+      <div id="topmenu">
+      </div>
+      <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+      <input id="myinput" type="file" onchange="encode();" />
+      <div id="dummy">
+      </div>
+      <div>
+        <textarea style="width:100%;height:500px;" id="txt">
+        </textarea>
+      </div>
+      <script>
+        function encode() {
+          var selectedfile = document.getElementById("myinput").files;
+          if (selectedfile.length > 0) {
+            var imageFile = selectedfile[0];
+            var fileReader = new FileReader();
+            fileReader.onload = function(fileLoadedEvent) {
+              var srcData = fileLoadedEvent.target.result;
+              var newImage = document.createElement('img');
+              newImage.src = srcData;
+              document.getElementById("dummy").innerHTML = newImage.outerHTML;
+              document.getElementById("txt").value = document.getElementById("dummy").innerHTML;
+            }
+            fileReader.readAsDataURL(imageFile);
           }
-          fileReader.readAsDataURL(imageFile);
         }
-      }
-    </script>
-  </body>
+      </script>
+
+      </div>
+    </div>
+</body>
+
 </html>
