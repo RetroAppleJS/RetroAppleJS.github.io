@@ -71,22 +71,21 @@
     iframe.src = baseURL + "?t=" + Date.now();
   }
 
-  window.addEventListener("message", (e) => {
+    window.addEventListener("message", (e) => {
     if (!e.data || !e.data.__asciicadLog) return;
 
     const line = document.createElement("div");
     line.style.whiteSpace = "pre-wrap";
-    line.style.color = e.data.type === "error" ? "#f87171" :
-                    e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
+    line.style.color =
+        e.data.type === "error" ? "#f87171" :
+        e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
+
     line.textContent = `[${e.data.type}] ${(e.data.args || []).join(" ")}`;
-
     logPanel.appendChild(line);
-    requestAnimationFrame(() => {
-    logPanel.scrollTop = logPanel.scrollHeight;
+
+    // Most reliable autoscroll:
+    line.scrollIntoView({ block: "end" });
     });
-
-
-  });
 
   // hook up your buttons as you already did...
 </script>
