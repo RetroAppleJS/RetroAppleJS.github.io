@@ -1,9 +1,29 @@
 (function () {
-  const orig = console.log;
-  console.log = (...args) => {
-    try { parent.postMessage({ type: "asciicad-log", args }, "*"); } catch {}
-    orig(...args);
-  };
+  if (window.__ASCIICAD_LOG_FORWARD__) return;
+  window.__ASCIICAD_LOG_FORWARD__ = true;
+
+  function forward(type, args) {
+    try {
+      parent.postMessage(
+        {
+          __asciicadLog: true,
+          type,
+          args: args.map(a =>
+            typeof a === "object" ? JSON.stringify(a) : String(a)
+          )
+        },
+        "*"
+      );
+    } catch {}
+  }
+
+  ["log", "warn", "error"].forEach(type => {
+    const orig = console[type];
+    console[type] = (...args) => {
+      forward(type, args);
+      orig.apply(console, args);
+    };
+  });
 })();
 
 
