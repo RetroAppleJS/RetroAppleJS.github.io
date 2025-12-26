@@ -1,11 +1,62 @@
 <!doctype html>
-<html>
-  <head><meta charset="utf-8" /></head>
-  <body style="margin:0;height:100vh">
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AsciiCAD (Wrapper)</title>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body { overflow: hidden; background: #111; }
+      .topbar{
+        height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+        font: 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: #ddd;
+        background: #1b1b1b;
+        border-bottom: 1px solid #2a2a2a;
+        box-sizing: border-box;
+      }
+      .topbar a{ color:#93c5fd; text-decoration:none; }
+      .topbar a:hover{ text-decoration:underline; }
+      .frame{
+        height: calc(100% - 40px);
+        width: 100%;
+        border: 0;
+        display: block;
+        background: #fff;
+      }
+      button{
+        cursor:pointer;
+        font: inherit;
+        padding: 4px 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <button id="openNewTab">Open AsciiCAD</button>
+      <span>
+        Source:
+        <a id="srcLink" href="AsciiCAD.html" target="_blank" rel="noopener">AsciiCAD.html</a>
+      </span>
+    </div>
+
     <iframe
-      src="https://retroapplejs.github.io/tools/GUI_DEV/AsciiCAD.html"
-      style="border:0;width:100%;height:100%"
+      id="app"
+      class="frame"
+      src="AsciiCAD.html"
+      title="AsciiCAD"
       sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"
     ></iframe>
+
+    <script>
+      const url = "AsciiCAD.html";
+      document.getElementById("openNewTab").addEventListener("click", () => {
+        window.open(url, "_blank", "noopener,noreferrer");
+      });
+    </script>
   </body>
 </html>
