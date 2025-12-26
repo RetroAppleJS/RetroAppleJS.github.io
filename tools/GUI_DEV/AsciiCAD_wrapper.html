@@ -56,33 +56,39 @@
 
 <pre id="logPanel"></pre>
 
-    <script>
-    const baseURL = "AsciiCAD.html";
+<script>
+  const baseURL = "AsciiCAD.html";
   const iframe = document.getElementById("app");
   const logPanel = document.getElementById("logPanel");
+
+  // FORCE readable colors even if CSS is overridden
+  logPanel.style.background = "#0f172a";
+  logPanel.style.color = "#e5e7eb";
+  logPanel.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  logPanel.style.fontSize = "12px";
 
   function loadFresh() {
     iframe.src = baseURL + "?t=" + Date.now();
   }
 
-  document.getElementById("openNewTab").onclick = () =>
-    window.open(baseURL, "_blank", "noopener,noreferrer");
-
-  document.getElementById("reloadIframe").onclick = loadFresh;
-
   window.addEventListener("message", (e) => {
     if (!e.data || !e.data.__asciicadLog) return;
 
     const line = document.createElement("div");
-    line.className = "log-" + e.data.type;
-    line.style.whiteSpace = "pre-wrap"; // preserve spacing
-    line.textContent = `[${e.data.type}] ` + e.data.args.join(" ");
+    line.style.whiteSpace = "pre-wrap";
 
+    // Inline per-level colors (cannot be overridden by normal CSS)
+    if (e.data.type === "error") line.style.color = "#f87171";
+    else if (e.data.type === "warn") line.style.color = "#fde047";
+    else line.style.color = "#e5e7eb";
 
+    line.textContent = `[${e.data.type}] ` + (e.data.args || []).join(" ");
     logPanel.appendChild(line);
     logPanel.scrollTop = logPanel.scrollHeight;
   });
-    </script>
+
+  // hook up your buttons as you already did...
+</script>
 
   </body>
 </html>
