@@ -33,6 +33,7 @@
       <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
       <input id="myinput" type="file" onchange="encode();" />
+      <button onclick="copy(document.getElementById('txt').value)"></button>
       <div id="dummy">
       </div>
       <div>
@@ -57,6 +58,14 @@
             }
             fileReader.readAsDataURL(imageFile);
           }
+        }
+
+        function copy(text) {
+          navigator.clipboard.writeText(text).then(function() {
+            alert('Copied to clipboard');
+          }, function(err) {
+            alert('Could not copy text: ', err);
+          });
         }
       </script>
 
