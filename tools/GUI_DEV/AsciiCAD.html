@@ -224,6 +224,94 @@ let catalogTab = 'All';
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
+
+// Bit flags for connections
+const N = 1, E = 2, S = 4, W = 8;
+
+// Only "light" box drawing for now (keeps it simple & readable)
+const glyphToMask = new Map([
+  [" ", 0],
+  ["─", E | W],
+  ["│", N | S],
+  ["┌", E | S],
+  ["┐", W | S],
+  ["└", E | N],
+  ["┘", W | N],
+  ["├", N | E | S],
+  ["┤", N | W | S],
+  ["┬", E | S | W],
+  ["┴", E | N | W],
+  ["┼", N | E | S | W],
+]);
+
+const maskToGlyph = new Map([
+  [0, " "],
+
+  [E | W, "─"],
+  [N | S, "│"],
+
+  [E | S, "┌"],
+  [W | S, "┐"],
+  [E | N, "└"],
+  [W | N, "┘"],
+
+  [N | E | S, "├"],
+  [N | W | S, "┤"],
+  [E | S | W, "┬"],
+  [E | N | W, "┴"],
+
+  [N | E | S | W, "┼"],
+]);
+
+function isWireGlyph(ch) {
+  return glyphToMask.has(ch);
+}
+
+function mergedWireGlyph(prevCh, nextCh) {
+  const pm = glyphToMask.get(prevCh) ?? 0;
+  const nm = glyphToMask.get(nextCh) ?? 0;
+  const m = pm | nm;
+  return maskToGlyph.get(m) ?? nextCh; // fallback: keep nextCh
+}
+
+function cellMaskFromNeighbors(r, c) {
+  let m = 0;
+
+  // Neighbor contributes if it has a connection pointing toward (r,c)
+  if (r > 0) {
+    const up = ascii[r - 1][c];
+    if ((glyphToMask.get(up) ?? 0) & S) m |= N;
+  }
+  if (r < ROWS - 1) {
+    const dn = ascii[r + 1][c];
+    if ((glyphToMask.get(dn) ?? 0) & N) m |= S;
+  }
+  if (c > 0) {
+    const lt = ascii[r][c - 1];
+    if ((glyphToMask.get(lt) ?? 0) & E) m |= W;
+  }
+  if (c < COLS - 1) {
+    const rt = ascii[r][c + 1];
+    if ((glyphToMask.get(rt) ?? 0) & W) m |= E;
+  }
+
+  return m;
+}
+
+function recomputeWireCell(r, c) {
+  const cur = ascii[r][c];
+
+  // Don't touch non-wire symbols (IC art, labels, arrows, etc.)
+  if (!isWireGlyph(cur) && cur !== " ") return cur;
+
+  const m = cellMaskFromNeighbors(r, c);
+  const g = maskToGlyph.get(m) ?? cur;
+  ascii[r][c] = g;
+  return g;
+}
+
+
+
 function cornerCharVH(r0, c0, r1, c1) {
   const goingDown = r1 > r0;
   const goingRight = c1 > c0;
@@ -599,6 +687,69 @@ function commitLine() {
   pushStrokeIfNonEmpty(stroke);
   draw();
 }
+
+function commitLineWithOptionalMerge(mergeEnabled) {
+  if (!lineDrag) return;
+
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+
+  // De-dup: last char wins
+  const m = new Map();
+  for (const p of path) {
+    if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+    m.set(p.r + "," + p.c, p.ch);
+  }
+
+  const stroke = [];
+  const touched = []; // cells we should recompute + their neighbors (if merge)
+
+  for (const [key, ch] of m) {
+    const [r, c] = key.split(",").map(Number);
+
+    const prev = ascii[r][c];
+    let next = ch;
+
+    if (mergeEnabled) {
+      // Only merge if prev is wire/blank; otherwise we overwrite like normal (or you can choose to skip)
+      if (prev === " " || isWireGlyph(prev)) {
+        next = mergedWireGlyph(prev, ch);
+      }
+    }
+
+    if (prev !== next) {
+      stroke.push({ r, c, prev, next });
+      ascii[r][c] = next;
+      touched.push({ r, c });
+    }
+  }
+
+  if (mergeEnabled && touched.length) {
+    // Second pass: recompute junctions on touched cells and their 4-neighbors
+    const keys = new Set();
+    for (const t of touched) {
+      for (const [dr, dc] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]]) {
+        const rr = t.r + dr, cc = t.c + dc;
+        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+        keys.add(rr + "," + cc);
+      }
+    }
+
+    for (const k of keys) {
+      const [r, c] = k.split(",").map(Number);
+      const prev = ascii[r][c];
+      const next = recomputeWireCell(r, c);
+      if (prev !== next) {
+        // add recompute changes into the SAME stroke so undo is correct
+        stroke.push({ r, c, prev, next });
+      }
+    }
+  }
+
+  lineDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  draw();
+}
+
 
 function commitPasteAt(cell) {
 if (!pasteDrag || !cell) return;
@@ -1338,7 +1489,10 @@ window.addEventListener('mouseup', () =>
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; return; }
   if (pasteDrag) return;
 
-  if (tool === 'line' && lineDrag) { endLine(); return; }
+  if (tool === 'line' && lineDrag) {
+    commitLineWithOptionalMerge(lineMerge); // lineMerge is true while 'm' is held
+      endLine();  // TODO !!!!!!!!!!!!!!!!
+     return; }
 
   if (isDrawing) endFreeform();
   if (selectDrag || moveDrag) endSelect();
