@@ -16,6 +16,9 @@
   <head>
       <title>Image to Base64</title>
       <script type="text/javascript" src="../TOOLS_Header.js"></script>
+        <meta name="description" content="Scroller">
+        <meta name="author" content="Freddy Vandriessche">
+        <meta charset="utf-8"> 
   </head>
   <body>
 
@@ -37,6 +40,9 @@
         </textarea>
       </div>
       <script>
+      var CONF_version="0.0.1"
+      var CONF_builddate="20251226-090000" 
+
         function encode() {
           var selectedfile = document.getElementById("myinput").files;
           if (selectedfile.length > 0) {
