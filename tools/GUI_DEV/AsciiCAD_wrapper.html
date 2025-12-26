@@ -22,7 +22,7 @@
       .topbar a{ color:#93c5fd; text-decoration:none; }
       .topbar a:hover{ text-decoration:underline; }
       .frame{
-        height: calc(100% - 40px);
+        height: calc(100% - 40px - 140px);
         width: 100%;
         border: 0;
         display: block;
@@ -53,26 +53,31 @@
       sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"
     ></iframe>
 
+<pre id="logPanel"></pre>
+
     <script>
     const baseURL = "AsciiCAD.html";
-    const iframe = document.getElementById("app");
+  const iframe = document.getElementById("app");
+  const logPanel = document.getElementById("logPanel");
 
-    function loadFresh() {
-        const bust = Date.now();
-        iframe.src = baseURL + "?t=" + bust;
-    }
+  function loadFresh() {
+    iframe.src = baseURL + "?t=" + Date.now();
+  }
 
-    document.getElementById("openNewTab").addEventListener("click", () => {
-        window.open(baseURL, "_blank", "noopener,noreferrer");
-    });
+  document.getElementById("openNewTab").onclick = () =>
+    window.open(baseURL, "_blank", "noopener,noreferrer");
 
-    document.getElementById("reloadIframe").addEventListener("click", loadFresh);
+  document.getElementById("reloadIframe").onclick = loadFresh;
 
+  window.addEventListener("message", (e) => {
+    if (!e.data || !e.data.__asciicadLog) return;
 
-    window.addEventListener("message", (e) => {
-    if (e.data && e.data.type === "asciicad-log") {
-      consoleOutput.textContent += e.data.args.join(" ") + "\n";
-    }
+    const line = document.createElement("div");
+    line.className = "log-" + e.data.type;
+    line.textContent = `[${e.data.type}] ` + e.data.args.join(" ");
+
+    logPanel.appendChild(line);
+    logPanel.scrollTop = logPanel.scrollHeight;
   });
     </script>
 
