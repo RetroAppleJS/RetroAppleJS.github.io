@@ -53,11 +53,6 @@ console.assert(
     "Saved text must not contain literal \\n"
 );
 
-
-console.log("AsciiCAD log test");
-console.warn("AsciiCAD warn test");
-console.error("AsciiCAD error test");
-
 updateUI();
 draw();
 })();
