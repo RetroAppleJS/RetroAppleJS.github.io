@@ -1,3 +1,11 @@
+(function () {
+  const orig = console.log;
+  console.log = (...args) => {
+    try { parent.postMessage({ type: "asciicad-log", args }, "*"); } catch {}
+    orig(...args);
+  };
+})();
+
 
 (function init() {
 stageSize = computeStageSize();
@@ -29,10 +37,3 @@ updateUI();
 draw();
 })();
 
-(function () {
-  const orig = console.log;
-  console.log = (...args) => {
-    try { parent.postMessage({ type: "asciicad-log", args }, "*"); } catch {}
-    orig(...args);
-  };
-})();
