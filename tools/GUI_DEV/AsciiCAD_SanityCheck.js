@@ -28,3 +28,11 @@ console.assert(
 updateUI();
 draw();
 })();
+
+(function () {
+  const orig = console.log;
+  console.log = (...args) => {
+    try { parent.postMessage({ type: "asciicad-log", args }, "*"); } catch {}
+    orig(...args);
+  };
+})();
