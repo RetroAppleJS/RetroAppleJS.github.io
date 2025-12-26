@@ -35,3 +35,17 @@
     .cat-name{font-size:12px;color:var(--text);line-height:1.1;word-break:break-word}
 
     #pasteSink{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0}
+
+   #logPanel {
+      height: 140px;
+      overflow: auto;
+      background: #0f172a;
+      color: #e5e7eb;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 6px;
+      margin: 0;
+      border-top: 1px solid #334155;
+      box-sizing: border-box;
+      }
+   .log-warn { color: #fde047; }
+   .log-error { color: #f87171; }
