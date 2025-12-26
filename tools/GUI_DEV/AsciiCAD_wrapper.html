@@ -54,7 +54,7 @@
       sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"
     ></iframe>
 
-<pre id="logPanel"></pre>
+<div id="logPanel"></div>
 
 <script>
   const baseURL = "AsciiCAD.html";
@@ -76,15 +76,16 @@
 
     const line = document.createElement("div");
     line.style.whiteSpace = "pre-wrap";
+    line.style.color = e.data.type === "error" ? "#f87171" :
+                    e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
+    line.textContent = `[${e.data.type}] ${(e.data.args || []).join(" ")}`;
 
-    // Inline per-level colors (cannot be overridden by normal CSS)
-    if (e.data.type === "error") line.style.color = "#f87171";
-    else if (e.data.type === "warn") line.style.color = "#fde047";
-    else line.style.color = "#e5e7eb";
-
-    line.textContent = `[${e.data.type}] ` + (e.data.args || []).join(" ");
     logPanel.appendChild(line);
+    requestAnimationFrame(() => {
     logPanel.scrollTop = logPanel.scrollHeight;
+    });
+
+
   });
 
   // hook up your buttons as you already did...
