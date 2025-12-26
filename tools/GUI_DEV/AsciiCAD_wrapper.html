@@ -38,6 +38,7 @@
   <body>
     <div class="topbar">
       <button id="openNewTab">Open AsciiCAD</button>
+      <button id="reloadIframe">Hard Reload</button>
       <span>
         Source:
         <a id="srcLink" href="AsciiCAD.html" target="_blank" rel="noopener">AsciiCAD.html</a>
@@ -53,10 +54,20 @@
     ></iframe>
 
     <script>
-      const url = "AsciiCAD.html";
-      document.getElementById("openNewTab").addEventListener("click", () => {
-        window.open(url, "_blank", "noopener,noreferrer");
-      });
+    const baseURL = "AsciiCAD.html";
+    const iframe = document.getElementById("app");
+
+    function loadFresh() {
+        const bust = Date.now();
+        iframe.src = baseURL + "?t=" + bust;
+    }
+
+    document.getElementById("openNewTab").addEventListener("click", () => {
+        window.open(baseURL, "_blank", "noopener,noreferrer");
+    });
+
+    document.getElementById("reloadIframe").addEventListener("click", loadFresh);
     </script>
+
   </body>
 </html>
