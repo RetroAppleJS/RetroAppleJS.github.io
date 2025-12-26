@@ -75,7 +75,9 @@
 
     const line = document.createElement("div");
     line.className = "log-" + e.data.type;
+    line.style.whiteSpace = "pre-wrap"; // preserve spacing
     line.textContent = `[${e.data.type}] ` + e.data.args.join(" ");
+
 
     logPanel.appendChild(line);
     logPanel.scrollTop = logPanel.scrollHeight;
