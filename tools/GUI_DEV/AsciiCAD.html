@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.4</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.5</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -209,8 +209,10 @@ let selectDrag = null; // {start,current}
 let moveDrag = null; // {startCell, offset, baseRect, snapshot}
 
 let pasteDrag = null; // {lines,w,h,anchor,transparentSpaces}
-
 let lineDrag = null;  // { start:{r,c}, cur:{r,c} }
+
+let lineFlip = false;   // Shift
+let lineMerge = false; // M
 
 // Picker tabs
 let pickerTab = 'Box';
@@ -1359,34 +1361,43 @@ canvas.addEventListener('mouseleave', () => {
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // Shortcuts
-window.addEventListener('keydown', (e) => {
-const isMac = /mac/i.test(navigator.platform);
-const mod = isMac ? e.metaKey : e.ctrlKey;
-if (e.key === 'Escape') { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
+window.addEventListener('keydown', (e) => 
+{
+    const isMac = /mac/i.test(navigator.platform);
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (e.key === 'Escape') { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
 
-if(e.key.toLowerCase() === 'r' && pasteDrag!=null) // r for rotating
-{ 
+    if(e.key.toLowerCase() === 'r' && pasteDrag!=null) // r for rotating
+    { 
     const it = catalogItemByUID(pasteDrag.item_data.uid);
-    if(it)
-    {
-        pasteDrag.item_data.rotation = (pasteDrag.item_data.rotation+1) % it.text_data.length;
-        const text_data = it.text_data[ pasteDrag.item_data.rotation ];
-        startPasteWithText(expandWideCharsForGrid(text_data) || '');
+        if(it)
+        {
+            pasteDrag.item_data.rotation = (pasteDrag.item_data.rotation+1) % it.text_data.length;
+            const text_data = it.text_data[ pasteDrag.item_data.rotation ];
+            startPasteWithText(expandWideCharsForGrid(text_data) || '');
+        }
     }
-}
 
-if (!mod) return;  
+    if (e.key === "Shift") lineFlip = true;
+    if (e.key.toLowerCase() === "m") lineMerge = true;
 
-// Cmd / Ctrl + ...
-const k = String(e.key || '').toLowerCase();
+    if (!mod) return;  
 
-if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
-else if (k === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); }
-else if (k === 'v') {
-    pasteSink.value = '';
-    pasteSink.focus(); 
-    }
+    // Cmd / Ctrl + ...
+    const k = String(e.key || '').toLowerCase();
+
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+    else if (k === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); }
+    else if (k === 'v') {
+        pasteSink.value = '';
+        pasteSink.focus(); 
+        }
 }, { passive: false });
+
+window.addEventListener("keyup", e => {
+  if (e.key === "Shift") lineFlip = false;
+  if (e.key.toLowerCase() === "m") lineMerge = false;
+});
 
 // Resize observer (debounced via rAF)
 let resizeRaf = null;
