@@ -1831,10 +1831,7 @@ window.addEventListener('keydown', (e) =>
         draw();
     }
 
-
-
     // Cmd / Ctrl + ...
-
     if (!mod) return;           
     const k = String(e.key || '').toLowerCase();
 
@@ -1852,8 +1849,11 @@ window.addEventListener('keydown', (e) =>
 }, { passive: false });
 
 window.addEventListener('keyup', e => {
-  if (e.key === "Shift") lineFlip = false;
-  if (e.key.toLowerCase() === "m") lineMerge = false;
+  if (lineDrag)
+  {
+    if (e.key === "Shift") lineFlip = false;
+    if (e.key.toLowerCase() === "m") lineMerge = false;
+  }
 });
 
 // Resize observer (debounced via rAF)
