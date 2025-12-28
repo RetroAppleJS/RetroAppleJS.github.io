@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.5</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.6</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -41,6 +41,8 @@
             <button id="modeFreeform" class="btn primary">Freeform</button>
             <button id="modeSelect" class="btn">Select &amp; Move</button>
             <button id="modeLine" class="btn">Line</button>
+            <button id="modeSBox" class="btn">SBox</button>
+            <button id="modeDBox" class="btn">DBox</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -210,6 +212,7 @@ let moveDrag = null; // {startCell, offset, baseRect, snapshot}
 
 let pasteDrag = null; // {lines,w,h,anchor,transparentSpaces}
 let lineDrag = null;  // { start:{r,c}, cur:{r,c} }
+let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
 
 let lineFlip = false;   // Shift
 let lineMerge = false; // M
@@ -380,6 +383,50 @@ function buildVHPath(start, end) {
   return out;
 }
 
+const BOX_SINGLE = { h:"─", v:"│", tl:"┌", tr:"┐", bl:"└", br:"┘" };
+const BOX_DOUBLE = { h:"═", v:"║", tl:"╔", tr:"╗", bl:"╚", br:"╝" };
+
+function buildBoxPath(start, end, style) {
+  const r0 = start.r, c0 = start.c;
+  const r1 = end.r, c1 = end.c;
+
+  const top = Math.min(r0, r1);
+  const bot = Math.max(r0, r1);
+  const left = Math.min(c0, c1);
+  const right = Math.max(c0, c1);
+
+  const out = [];
+
+  // Degenerate: a line or a point — we still draw something useful
+  if (top === bot && left === right) {
+    out.push({ r: top, c: left, ch: style.tl }); // or "+"; your call
+    return out;
+  }
+
+  // Top edge
+  for (let c = left + 1; c <= right - 1; c++) out.push({ r: top, c, ch: style.h });
+  // Bottom edge
+  if (bot !== top) {
+    for (let c = left + 1; c <= right - 1; c++) out.push({ r: bot, c, ch: style.h });
+  }
+
+  // Left edge
+  for (let r = top + 1; r <= bot - 1; r++) out.push({ r, c: left, ch: style.v });
+  // Right edge
+  if (right !== left) {
+    for (let r = top + 1; r <= bot - 1; r++) out.push({ r, c: right, ch: style.v });
+  }
+
+  // Corners (only if box has width/height)
+  out.push({ r: top, c: left, ch: style.tl });
+  if (right !== left) out.push({ r: top, c: right, ch: style.tr });
+  if (bot !== top) out.push({ r: bot, c: left, ch: style.bl });
+  if (bot !== top && right !== left) out.push({ r: bot, c: right, ch: style.br });
+
+  return out;
+}
+
+
 function beginLine(cell) {
   if (!cell) return;
   // hide selection box when starting a line tool action
@@ -410,7 +457,7 @@ function endLine() {
 
     if (prev !== next) {
       stroke.push({ r: p.r, c: p.c, prev, next });
-      drawCharAtCell(p.r, p.c, next); // ✅ commit writes to ascii
+      drawCharAtCell(p.r, p.c, next); // commit writes to ascii
     }
   }
 
@@ -423,6 +470,58 @@ function cancelLine() {
   lineDrag = null;
   draw();
 }
+
+
+
+
+function beginBox(cell, kind) {
+  if (!cell) return;
+  selection = null; selectDrag = null; moveDrag = null;
+  boxDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+  draw();
+}
+
+function moveBox(cell) {
+  if (!boxDrag || !cell) return;
+  if (cell.r === boxDrag.cur.r && cell.c === boxDrag.cur.c) return;
+  boxDrag.cur = { r: cell.r, c: cell.c };
+  draw();
+}
+
+function commitBox() {
+  if (!boxDrag) return;
+
+  const style = boxDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
+
+  // De-dup (corners overwrite edges)
+  const m = new Map();
+  for (const p of path) {
+    if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+    m.set(p.r + "," + p.c, p.ch);
+  }
+
+  const stroke = [];
+  for (const [key, ch] of m) {
+    const [r, c] = key.split(",").map(Number);
+    const prev = ascii[r][c];
+    const next = ch;
+    if (prev !== next) stroke.push({ r, c, prev, next });
+  }
+
+  for (const s of stroke) ascii[s.r][s.c] = s.next;
+
+  boxDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  draw();
+}
+
+function cancelBox() {
+  boxDrag = null;
+  draw();
+}
+
+
 
 
 function cornerChar(r0, c0, r1, c1) {
@@ -497,36 +596,63 @@ if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
 return { r, c };
 }
 
-function updateUI() {
+function updateUI()
+{
 cellsLine.textContent = 'Cells: ' + COLS + ' x ' + ROWS;
 zoomLine.textContent = 'Zoom: ' + Math.round(scale * 100) + '%';
 coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + (hoverCell.c+1)) : 'Cell: —';
 
 pasteLine.style.display = pasteDrag ? 'block' : 'none';
-
+// TODO: SIMPIFY !!!!!!!!!
 if (tool === 'freeform') {
   modeFreeform.classList.add('primary');
   modeSelect.classList.remove('primary');
   modeLine.classList.remove('primary');
+  modeSBox.classList.remove('primary');
+  modeDBox.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag to draw (cell-by-cell).';
 }
+else if (tool === 'select') {
+  modeFreeform.classList.remove('primary');
+  modeSelect.classList.add('primary');
+  modeLine.classList.remove('primary');
+  modeSBox.classList.remove('primary');
+  modeDBox.classList.remove('primary');
+  modeHint.textContent = pasteDrag
+    ? 'Pasting: move preview with mouse, click to place.'
+    : 'Drag to select. Drag inside selection to move.';
+}
 else if (tool === 'line') {
-  modeLine.classList.add('primary');
   modeFreeform.classList.remove('primary');
   modeSelect.classList.remove('primary');
+  modeLine.classList.add('primary');
+  modeSBox.classList.remove('primary');
+  modeDBox.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag: press to set start, move to preview, release to place line.';
 }
-else if (tool === 'select') {
-  modeSelect.classList.add('primary');
+else if (tool === 'sbox') {
   modeFreeform.classList.remove('primary');
+  modeSelect.classList.remove('primary');
   modeLine.classList.remove('primary');
+  modeSBox.classList.add('primary');
+  modeDBox.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
-    : 'Drag to select. Drag inside selection to move.';
+    : 'Drag: press to set start, move to preview, release to place line.';
+}
+else if (tool === 'dbox') {
+  modeFreeform.classList.remove('primary');
+  modeSelect.classList.remove('primary');
+  modeLine.classList.remove('primary');
+  modeSBox.classList.remove('primary');
+  modeDBox.classList.add('primary');
+  modeHint.textContent = pasteDrag
+    ? 'Pasting: move preview with mouse, click to place.'
+    : 'Drag: press to set start, move to preview, release to place line.';
 }
 
 currentOpLine.textContent = op.type === 'place' ? ('Current: place \' ' + op.ch + ' \'' ) : 'Current: space';
@@ -1230,18 +1356,40 @@ function draw()
     drawLinePreview();
 
     // Line preview overlay
-    if (lineDrag) {
-    const old = ctx.fillStyle;
-    ctx.fillStyle = "rgba(59,130,246,0.9)";
+    if (lineDrag)
+    {
+        const old = ctx.fillStyle;
+        ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-    const path = buildVHPath(lineDrag.start, lineDrag.cur);
-    for (const p of path) {
-        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-        renderCharAtCell(ctx, p.r, p.c, p.ch);   // ✅ canvas-only
+        const path = buildVHPath(lineDrag.start, lineDrag.cur);
+        for (const p of path) {
+            if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+            renderCharAtCell(ctx, p.r, p.c, p.ch);   // ✅ canvas-only
+        }
+
+        ctx.fillStyle = old;
     }
 
-    ctx.fillStyle = old;
+    if (boxDrag)
+    {
+        const old = ctx.fillStyle;
+        ctx.fillStyle = "rgba(59,130,246,0.9)";
+
+        const style = boxDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+        const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
+
+        for (const p of path) {
+            if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+            renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
+        }
+
+        ctx.fillStyle = old;
     }
+
+
+
+
+
 }
 
 function drawLinePreview() {
@@ -1276,36 +1424,37 @@ scheduleResize();
 
 // Mode buttons
 modeFreeform.addEventListener('click', () => {
-tool = 'freeform';
-// Requirement: selection box disappears in Freeform mode
-selection = null;
-selectDrag = null;
-moveDrag = null;
-updateUI();
-draw();
+    tool = 'freeform';
+    // Requirement: selection box disappears in Freeform mode
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    updateUI(); draw();
 });
+
 modeSelect.addEventListener('click', () => {
-tool = 'select';
-if (isDrawing) endFreeform();
-updateUI();
-draw();
+    tool = 'select';
+    if (isDrawing) endFreeform();
+    updateUI(); draw();
 });
 
 modeLine.addEventListener('click', () => {
-  tool = 'line';
-
-  // Clear selection / move state when entering Line mode
-  selection = null;
-  selectDrag = null;
-  moveDrag = null;
-
-  // Cancel any ongoing preview modes
-  lineDrag = null;
-  cancelPaste?.();
-
-  updateUI();
-  draw();
+    tool = 'line';
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    cancelPaste?.();
+    updateUI(); draw();
 });
+
+modeSBox.addEventListener("click", () => {
+    tool = "sbox";
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    updateUI(); draw();
+});
+
+modeDBox.addEventListener("click", () => {
+    tool = "dbox";
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    updateUI(); draw();
+});
+
 
 // Picker/catalog
 pickerBackdrop.addEventListener('click', closePicker);
@@ -1463,6 +1612,7 @@ canvas.addEventListener('mousemove', (e) =>
 
     if (tool === 'freeform') moveFreeform(cell);
     else if (tool === 'line') moveLine(cell);
+    else if (tool === 'sbox' || tool === 'dbox') moveBox(cell);
     else moveSelect(cell);
 
 });
@@ -1496,6 +1646,8 @@ canvas.addEventListener("mousedown", (e) =>
 
     if (tool === 'freeform') beginFreeform(cell);
     else if (tool === 'line') beginLine(cell);
+    else if (tool === 'sbox') beginBox(cell, "single");
+    else if (tool === 'dbox') beginBox(cell, "double");
     else beginSelect(cell);
 
 });
@@ -1510,6 +1662,8 @@ window.addEventListener('mouseup', () =>
       endLine();  // TODO !!!!!!!!!!!!!!!!
      return; }
 
+  if ((tool === "sbox" || tool === "dbox") && boxDrag) { commitBox(); return; }
+
   if (isDrawing) endFreeform();
   if (selectDrag || moveDrag) endSelect();
 });
@@ -1521,6 +1675,8 @@ canvas.addEventListener('mouseleave', () => {
   if (pasteDrag) return;
 
   if (tool === 'line' && lineDrag) { cancelLine(); return; }
+
+  if ((tool === "sbox" || tool === "dbox") && boxDrag) { cancelBox(); return; }
 
   if (isDrawing) endFreeform();
   if (selectDrag || moveDrag) endSelect();
