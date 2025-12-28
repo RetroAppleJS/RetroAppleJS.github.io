@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.6</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.7</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -43,6 +43,7 @@
             <button id="modeLine" class="btn">Line</button>
             <button id="modeSBox" class="btn">SBox</button>
             <button id="modeDBox" class="btn">DBox</button>
+            <button id="modeFreetext" class="btn">Freetext</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -156,6 +157,7 @@ const coordLine = document.getElementById('coordLine');
 const modeFreeform = document.getElementById('modeFreeform');
 const modeSelect = document.getElementById('modeSelect');
 const modeLine = document.getElementById('modeLine');
+const modeFreetext = document.getElementById("modeFreetext");
 const modeHint = document.getElementById('modeHint');
 const pickCharBtn = document.getElementById('pickChar');
 const openCatalogBtn = document.getElementById('openCatalog');
@@ -209,11 +211,10 @@ const redoStack = [];
 let selection = null; // {r0,r1,c0,c1}
 let selectDrag = null; // {start,current}
 let moveDrag = null; // {startCell, offset, baseRect, snapshot}
-
 let pasteDrag = null; // {lines,w,h,anchor,transparentSpaces}
 let lineDrag = null;  // { start:{r,c}, cur:{r,c} }
-let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
-
+let boxDrag = null;;  // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
+let textDrag = null;  // { anchor:{r,c}, text:"" }
 let lineFlip = false;   // Shift
 let lineMerge = false; // M
 
@@ -471,9 +472,6 @@ function cancelLine() {
   draw();
 }
 
-
-
-
 function beginBox(cell, kind) {
   if (!cell) return;
   selection = null; selectDrag = null; moveDrag = null;
@@ -522,6 +520,53 @@ function cancelBox() {
 }
 
 
+function beginFreetext(cell) {
+  if (!cell) return;
+
+  // Start a new preview at this anchor.
+  textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };
+
+  // Ensure canvas can receive key events
+  canvas.focus?.();
+
+  draw();
+}
+
+
+
+function commitFreetext() {
+  if (!textDrag) return;
+
+  const r = textDrag.anchor.r;
+  let c = textDrag.anchor.c;
+
+  const stroke = [];
+
+  for (const ch of Array.from(textDrag.text)) {
+    if (ch === "\n" || ch === "\r") continue;
+    if (r < 0 || r >= ROWS) break;
+    if (c < 0) { c++; continue; }
+    if (c >= COLS) break;
+
+    const prev = ascii[r][c];
+    const next = ch;
+
+    if (prev !== next) stroke.push({ r, c, prev, next });
+    c++;
+  }
+
+  // apply after capturing prev
+  for (const s of stroke) ascii[s.r][s.c] = s.next;
+
+  textDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  draw();
+}
+
+function cancelFreetext() {
+  textDrag = null;
+  draw();
+}
 
 
 function cornerChar(r0, c0, r1, c1) {
@@ -610,6 +655,7 @@ if (tool === 'freeform') {
   modeLine.classList.remove('primary');
   modeSBox.classList.remove('primary');
   modeDBox.classList.remove('primary');
+  modeFreetext.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag to draw (cell-by-cell).';
@@ -620,6 +666,7 @@ else if (tool === 'select') {
   modeLine.classList.remove('primary');
   modeSBox.classList.remove('primary');
   modeDBox.classList.remove('primary');
+  modeFreetext.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag to select. Drag inside selection to move.';
@@ -630,6 +677,7 @@ else if (tool === 'line') {
   modeLine.classList.add('primary');
   modeSBox.classList.remove('primary');
   modeDBox.classList.remove('primary');
+  modeFreetext.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag: press to set start, move to preview, release to place line.';
@@ -640,6 +688,7 @@ else if (tool === 'sbox') {
   modeLine.classList.remove('primary');
   modeSBox.classList.add('primary');
   modeDBox.classList.remove('primary');
+  modeFreetext.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag: press to set start, move to preview, release to place line.';
@@ -650,9 +699,19 @@ else if (tool === 'dbox') {
   modeLine.classList.remove('primary');
   modeSBox.classList.remove('primary');
   modeDBox.classList.add('primary');
+  modeFreetext.classList.remove('primary');
   modeHint.textContent = pasteDrag
     ? 'Pasting: move preview with mouse, click to place.'
     : 'Drag: press to set start, move to preview, release to place line.';
+}
+else if (tool === 'freetext') {
+  modeFreeform.classList.remove('primary');
+  modeSelect.classList.remove('primary');
+  modeLine.classList.remove('primary');
+  modeSBox.classList.remove('primary');
+  modeDBox.classList.remove('primary');
+  modeFreetext.classList.add('primary');
+  modeHint.textContent = 'Point (not click) at text origin, enter free text, press enter to commit.';
 }
 
 currentOpLine.textContent = op.type === 'place' ? ('Current: place \' ' + op.ch + ' \'' ) : 'Current: space';
@@ -1386,6 +1445,26 @@ function draw()
         ctx.fillStyle = old;
     }
 
+    if (textDrag) 
+    {
+        const old = ctx.fillStyle;
+        ctx.fillStyle = "rgba(59,130,246,0.9)";
+
+        const r = textDrag.anchor.r;
+        let c = textDrag.anchor.c;
+
+        for (const ch of Array.from(textDrag.text)) {
+            if (ch === "\n" || ch === "\r") continue;
+            if (r < 0 || r >= ROWS) break;
+            if (c < 0) { c++; continue; }
+            if (c >= COLS) break;
+
+            renderCharAtCell(ctx, r, c, ch); // canvas-only renderer
+            c++;
+        }
+
+        ctx.fillStyle = old;
+    }
 
 
 
@@ -1426,7 +1505,7 @@ scheduleResize();
 modeFreeform.addEventListener('click', () => {
     tool = 'freeform';
     // Requirement: selection box disappears in Freeform mode
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
     updateUI(); draw();
 });
 
@@ -1438,21 +1517,28 @@ modeSelect.addEventListener('click', () => {
 
 modeLine.addEventListener('click', () => {
     tool = 'line';
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
     cancelPaste?.();
     updateUI(); draw();
 });
 
 modeSBox.addEventListener("click", () => {
     tool = "sbox";
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
     updateUI(); draw();
 });
 
 modeDBox.addEventListener("click", () => {
     tool = "dbox";
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
     updateUI(); draw();
+});
+
+modeFreetext.addEventListener("click", () => {
+  tool = "freetext";
+  selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
+  cancelPaste?.();
+  updateUI(); draw();
 });
 
 
@@ -1613,6 +1699,7 @@ canvas.addEventListener('mousemove', (e) =>
     if (tool === 'freeform') moveFreeform(cell);
     else if (tool === 'line') moveLine(cell);
     else if (tool === 'sbox' || tool === 'dbox') moveBox(cell);
+    else if (tool === 'freetext') beginFreetext(cell);
     else moveSelect(cell);
 
 });
@@ -1694,7 +1781,7 @@ window.addEventListener('keydown', (e) =>
 
     if(e.key.toLowerCase() === 'r' && pasteDrag!=null) // r for rotating
     { 
-    const it = catalogItemByUID(pasteDrag.item_data.uid);
+        const it = catalogItemByUID(pasteDrag.item_data.uid);
         if(it)
         {
             pasteDrag.item_data.rotation = (pasteDrag.item_data.rotation+1) % it.text_data.length;
@@ -1703,8 +1790,49 @@ window.addEventListener('keydown', (e) =>
         }
     }
 
-    if (e.key === "Shift") lineFlip = true;
+    if (e.key === 'Shift') lineFlip = true;
     if (e.key.toLowerCase() === "m") lineMerge = true;
+
+
+
+
+
+
+    if (!textDrag) return;
+
+    // Cancel
+    if (e.key === "Escape") {
+        e.preventDefault();
+        cancelFreetext();
+        return;
+    }
+
+    // Commit
+    if (e.key === "Enter") {
+        e.preventDefault();
+        commitFreetext();
+        return;
+    }
+
+    // Edit
+    if (e.key === "Backspace") {
+        e.preventDefault();
+        textDrag.text = textDrag.text.slice(0, -1);
+        draw();
+        return;
+    }
+
+    // Ignore control keys
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length !== 1) return;
+
+    // Append typed character
+    e.preventDefault();
+    textDrag.text += e.key;
+    draw();
+
+
+
 
     if (!mod) return;  
 
@@ -1713,13 +1841,18 @@ window.addEventListener('keydown', (e) =>
 
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
     else if (k === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); }
-    else if (k === 'v') {
+    else if (k === 'v') 
+    {
         pasteSink.value = '';
         pasteSink.focus(); 
-        }
+    }
+
+    if (tool !== "freetext") return;
+    
+
 }, { passive: false });
 
-window.addEventListener("keyup", e => {
+window.addEventListener('keyup', e => {
   if (e.key === "Shift") lineFlip = false;
   if (e.key.toLowerCase() === "m") lineMerge = false;
 });
