@@ -1779,7 +1779,8 @@ window.addEventListener('keydown', (e) =>
     const mod = isMac ? e.metaKey : e.ctrlKey;
     if (e.key === 'Escape') { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
 
-    if(e.key.toLowerCase() === 'r' && pasteDrag!=null) // r for rotating
+    // r for rotating
+    if(e.key.toLowerCase() === 'r' && pasteDrag!=null)
     { 
         const it = catalogItemByUID(pasteDrag.item_data.uid);
         if(it)
@@ -1790,53 +1791,51 @@ window.addEventListener('keydown', (e) =>
         }
     }
 
-    if (e.key === 'Shift') lineFlip = true;
-    if (e.key.toLowerCase() === "m") lineMerge = true;
-
-
-
-
-
-
-    if (!textDrag) return;
-
-    // Cancel
-    if (e.key === "Escape") {
-        e.preventDefault();
-        cancelFreetext();
-        return;
+    if (lineDrag)
+    {
+        if (e.key === 'Shift') lineFlip = true;
+        if (e.key.toLowerCase() === "m") lineMerge = true;
     }
 
-    // Commit
-    if (e.key === "Enter") {
-        e.preventDefault();
-        commitFreetext();
-        return;
-    }
+    if (textDrag)
+    {
+        // Cancel
+        if (e.key === "Escape") {
+            e.preventDefault();
+            cancelFreetext();
+            return;
+        }
 
-    // Edit
-    if (e.key === "Backspace") {
+        // Commit
+        if (e.key === "Enter") {
+            e.preventDefault();
+            commitFreetext();
+            return;
+        }
+
+        // Edit
+        if (e.key === "Backspace") {
+            e.preventDefault();
+            textDrag.text = textDrag.text.slice(0, -1);
+            draw();
+            return;
+        }
+
+        // Ignore control keys
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key.length !== 1) return;
+
+        // Append typed character
         e.preventDefault();
-        textDrag.text = textDrag.text.slice(0, -1);
+        textDrag.text += e.key;
         draw();
-        return;
     }
 
-    // Ignore control keys
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key.length !== 1) return;
 
-    // Append typed character
-    e.preventDefault();
-    textDrag.text += e.key;
-    draw();
-
-
-
-
-    if (!mod) return;  
 
     // Cmd / Ctrl + ...
+
+    if (!mod) return;           
     const k = String(e.key || '').toLowerCase();
 
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
