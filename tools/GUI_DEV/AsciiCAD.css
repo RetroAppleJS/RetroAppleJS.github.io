@@ -20,11 +20,15 @@
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:999}
     .modal.open{display:flex}
     .modal .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.2)}
+   /*
     .modal .panel{position:relative;width:min(780px,92vw);background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:14px}
+   */
+    .modal .panel{position:relative;width:min(850px,150vw);background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:14px}
+
     .panel-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
     .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 
-    .char-grid{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:8px}
+    .char-grid{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:8px}
     .char{height:40px;border-radius:14px;border:1px solid var(--border);background:#fff;font-size:18px;cursor:pointer}
     .char:hover{background:#f8fafc}
 
