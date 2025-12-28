@@ -380,54 +380,6 @@ function buildVHPath(start, end) {
   return out;
 }
 
-function buildHVPath(start, end) {
-  const r0 = start.r, c0 = start.c;
-  const r1 = end.r, c1 = end.c;
-
-  const out = [];
-
-  if (r0 === r1 && c0 === c1) return out;
-
-  // 1) horizontal segment at row r0 from c0 -> c1 (inclusive)
-  if (c0 !== c1) {
-    const stepC = c1 > c0 ? 1 : -1;
-    for (let c = c0; c !== c1; c += stepC) {
-      out.push({ r: r0, c, ch: "─" });
-    }
-    out.push({ r: r0, c: c1, ch: "─" });
-  }
-
-  // 2) corner at (r0, c1) if there is also a vertical leg
-  if (c0 !== c1 && r0 !== r1) {
-    // replace last horizontal cell with corner
-    out[out.length - 1].ch = cornerCharHV(r0, c0, r1, c1);
-  } else if (c0 !== c1) {
-    // purely horizontal: nothing else
-    return out;
-  }
-
-  // 3) vertical segment at column c1 from r0 -> r1 (inclusive)
-  if (r0 !== r1) {
-    const stepR = r1 > r0 ? 1 : -1;
-
-    // start after the corner if we had a horizontal leg, otherwise start at r0
-    let rStart = r0;
-    if (c0 !== c1) rStart = r0 + stepR;
-
-    for (let r = rStart; r !== r1; r += stepR) {
-      out.push({ r, c: c1, ch: "│" });
-    }
-    out.push({ r: r1, c: c1, ch: "│" });
-  }
-
-  return out;
-}
-
-function buildLinePath(start, end) {
-  return lineFlip ? buildHVPath(start, end) : buildVHPath(start, end);
-}
-
-
 function beginLine(cell) {
   if (!cell) return;
   // hide selection box when starting a line tool action
@@ -447,7 +399,7 @@ function moveLine(cell) {
 function endLine() {
   if (!lineDrag) return;
 
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
   const stroke = [];
 
   for (const p of path) {
@@ -732,7 +684,7 @@ draw();
 
 function commitLine() {
   if (!lineDrag) return;
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
 
   const stroke = [];
   for (const p of path) {
@@ -755,7 +707,7 @@ function commitLine() {
 function commitLineWithOptionalMerge(mergeEnabled) {
   if (!lineDrag) return;
 
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
 
   // De-dup: last char wins
   const m = new Map();
@@ -1282,7 +1234,7 @@ function draw()
     const old = ctx.fillStyle;
     ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-    const path = buildLinePath(lineDrag.start, lineDrag.cur);
+    const path = buildVHPath(lineDrag.start, lineDrag.cur);
     for (const p of path) {
         if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
         renderCharAtCell(ctx, p.r, p.c, p.ch);   // ✅ canvas-only
@@ -1294,7 +1246,7 @@ function draw()
 
 function drawLinePreview() {
   if (!lineDrag) return;
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+  const path = buildVHPath(lineDrag.start, lineDrag.cur);
 }
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
