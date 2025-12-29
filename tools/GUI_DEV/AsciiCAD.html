@@ -157,14 +157,8 @@ const cellsLine = document.getElementById("cellsLine");
 const zoomLine = document.getElementById("zoomLine");
 const coordLine = document.getElementById("coordLine");
 
-const buttons = document.querySelectorAll("button[id^=\"mode\"]");
-const mode_list = ["modeFreeform","modeSelect","modeLine","modeSBox","modeDBox","modeFreetext"];
-const mode_el = Object.fromEntries( mode_list.map(id => [id, document.getElementById(id)]) );
-
-const modeFreeform = document.getElementById("modeFreeform"); // TODO decommission when mode_el is fully replacing
-const modeSelect = document.getElementById("modeSelect");
-const modeLine = document.getElementById("modeLine");
-const modeFreetext = document.getElementById("modeFreetext");
+const button_list = document.querySelectorAll("button[id^=\"mode\"]");
+const mode_el = Object.fromEntries( Array.from(button_list).map(btn => [btn.id, btn]) );
 
 const modeHint = document.getElementById("modeHint");
 const pickCharBtn = document.getElementById("pickChar");
