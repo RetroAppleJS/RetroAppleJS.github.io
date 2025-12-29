@@ -711,14 +711,6 @@ function updateModeUI(mode)
 {
     for(var i in mode_el)
     {
-        /*
-        if(mode_el[i].className.indexOf("primary")>=0)
-        {
-            modeRECALL = i;
-            console.log("modeRECALL = "+i);
-        }
-        */
-
         if(mode==i)
         {
             mode_el[i].classList.add("primary");
@@ -1685,11 +1677,11 @@ canvas.addEventListener("mousemove", (e) =>
     }
 
     // TODO SERIALISE ??
-    if (tool === "modeFreeform")   moveFreeform(cell);
-    else if(tool === "modeSelect") moveSelect(cell)
-    else if (tool === "modeLine")  moveLine(cell);
-    else if (tool === "modeSBox")  moveBox(cell);
-    else if (tool === "modeDBox")  moveBox(cell);
+    if (tool === "modeFreeform")      moveFreeform(cell);
+    else if(tool === "modeSelect")    moveSelect(cell)
+    else if (tool === "modeLine")     moveLine(cell);
+    else if (tool === "modeSBox")     moveBox(cell);
+    else if (tool === "modeDBox")     moveBox(cell);
     else if (tool === "modeFreetext") beginFreetext(cell);
     else console.error("tool mismatch (move)");
 
@@ -1729,11 +1721,11 @@ canvas.addEventListener("mousedown", (e) =>
     }
 
     // TODO SERIALISE (BEGIN functions)??
-    if (tool === "modeFreeform") beginFreeform(cell);
-    else if (tool === "modeSelect") beginSelect(cell)
-    else if (tool === "modeLine") beginLine(cell);
-    else if (tool === "modeSBox") beginBox(cell, "single");
-    else if (tool === "modeDBox") beginBox(cell, "double");
+    if (tool === "modeFreeform")      beginFreeform(cell);
+    else if (tool === "modeSelect")   beginSelect(cell)
+    else if (tool === "modeLine")     beginLine(cell);
+    else if (tool === "modeSBox")     beginBox(cell, "single");
+    else if (tool === "modeDBox")     beginBox(cell, "double");
     else if (tool === "modeFreetext") beginFreetext(cell);
     else console.error("tool mismatch (begin)");
 
