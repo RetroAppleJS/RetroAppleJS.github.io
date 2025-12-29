@@ -216,15 +216,15 @@ let currentStroke = [];
 const undoStack = [];
 const redoStack = [];
 
-let selection = null; // {r0,r1,c0,c1}
+let selection = null;  // {r0,r1,c0,c1}
 let selectDrag = null; // {start,current}
-let moveDrag = null; // {startCell, offset, baseRect, snapshot}
-let pasteDrag = null; // {lines,w,h,anchor,transparentSpaces}
-let lineDrag = null;  // { start:{r,c}, cur:{r,c} }
-let boxDrag = null;;  // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
-let textDrag = null;  // { anchor:{r,c}, text:"" }
-let lineFlip = false;   // Shift
-let lineMerge = true; // 'o' = override line Merge
+let moveDrag = null;   // {startCell, offset, baseRect, snapshot}
+let pasteDrag = null;  // {lines,w,h,anchor,transparentSpaces}
+let lineDrag = null;   // { start:{r,c}, cur:{r,c} }
+let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
+let textDrag = null;   // { anchor:{r,c}, text:"" }
+let lineFlip = false;  // Shift
+let lineMerge = true;  // merge lines by default, use 'o' to override
 
 let modeRECALL = null;
 
