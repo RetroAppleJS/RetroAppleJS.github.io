@@ -40,7 +40,7 @@
           <div class="row">
             <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Freeform</button>
             <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Select &amp; Move</button>
-            <button id="modeLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line.">Line</button>
+            <button id="modeLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line. Use 'o' to override instead of merge lines.">Line</button>
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
             <button id="modeFreetext" class="btn" data-hint="Point (not click) at text origin, enter free text preview, press enter to commit."">Freetext</button>
@@ -224,7 +224,7 @@ let lineDrag = null;  // { start:{r,c}, cur:{r,c} }
 let boxDrag = null;;  // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
 let textDrag = null;  // { anchor:{r,c}, text:"" }
 let lineFlip = false;   // Shift
-let lineMerge = false; // M
+let lineMerge = true; // 'O' = override line Merge
 
 let modeRECALL = null;
 
@@ -1821,7 +1821,7 @@ window.addEventListener("keydown", (e) =>
         console.log("FLIP? "+ (e.key === "Shift"));
 
         if (e.key === "Shift") lineFlip = true;
-        if (e.key.toLowerCase() === 'm') lineMerge = true;
+        if (e.key.toLowerCase() === 'o') lineMerge = false;
         draw();
     }
 
@@ -1880,7 +1880,7 @@ window.addEventListener("keyup", e => {
   //if (lineDrag)
   {
     if (e.key === "Shift") lineFlip = false;
-    if (e.key.toLowerCase() === 'm') lineMerge = false;
+    if (e.key.toLowerCase() === 'o') lineMerge = true;
     console.log("KEYUP: lineFlip="+lineFlip+" lineMerge="+lineMerge);
     draw();
   }
