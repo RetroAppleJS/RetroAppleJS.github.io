@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.7</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.75</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -38,12 +38,12 @@
         <div class="card">
           <h3>Mode</h3>
           <div class="row">
-            <button id="modeFreeform" class="btn primary">Freeform</button>
-            <button id="modeSelect" class="btn">Select &amp; Move</button>
-            <button id="modeLine" class="btn">Line</button>
-            <button id="modeSBox" class="btn">SBox</button>
-            <button id="modeDBox" class="btn">DBox</button>
-            <button id="modeFreetext" class="btn">Freetext</button>
+            <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Freeform</button>
+            <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Select &amp; Move</button>
+            <button id="modeLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line.">Line</button>
+            <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
+            <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
+            <button id="modeFreetext" class="btn" data-hint="Point (not click) at text origin, enter free text preview, press enter to commit."">Freetext</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -154,10 +154,17 @@ const sbTitle = document.getElementById('sbTitle');
 const cellsLine = document.getElementById('cellsLine');
 const zoomLine = document.getElementById('zoomLine');
 const coordLine = document.getElementById('coordLine');
+
+const buttons = document.querySelectorAll("button[id^='mode']");
+const mode_list = ['modeFreeform','modeSelect','modeLine','modeSBox','modeDBox','modeFreetext'];
+const mode_el = Object.fromEntries( mode_list.map(id => [id, document.getElementById(id)]) );
+
+
 const modeFreeform = document.getElementById('modeFreeform');
 const modeSelect = document.getElementById('modeSelect');
 const modeLine = document.getElementById('modeLine');
-const modeFreetext = document.getElementById("modeFreetext");
+const modeFreetext = document.getElementById('modeFreetext');
+
 const modeHint = document.getElementById('modeHint');
 const pickCharBtn = document.getElementById('pickChar');
 const openCatalogBtn = document.getElementById('openCatalog');
@@ -648,71 +655,21 @@ zoomLine.textContent = 'Zoom: ' + Math.round(scale * 100) + '%';
 coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + (hoverCell.c+1)) : 'Cell: —';
 
 pasteLine.style.display = pasteDrag ? 'block' : 'none';
-// TODO: SIMPIFY !!!!!!!!!
-if (tool === 'freeform') {
-  modeFreeform.classList.add('primary');
-  modeSelect.classList.remove('primary');
-  modeLine.classList.remove('primary');
-  modeSBox.classList.remove('primary');
-  modeDBox.classList.remove('primary');
-  modeFreetext.classList.remove('primary');
-  modeHint.textContent = pasteDrag
-    ? 'Pasting: move preview with mouse, click to place.'
-    : 'Drag to draw (cell-by-cell).';
+
+
+// Make mode button act like radio buttons (add/remove primary)
+for(var i in mode_el)
+{
+    if(tool==i.substring(4,i.length).toLowerCase())
+    {
+        mode_el[i].classList.add('primary');
+        const hints = mode_el[i].dataset.hint.split("|");
+        modeHint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
+    }
+    else mode_el[i].classList.remove('primary');
 }
-else if (tool === 'select') {
-  modeFreeform.classList.remove('primary');
-  modeSelect.classList.add('primary');
-  modeLine.classList.remove('primary');
-  modeSBox.classList.remove('primary');
-  modeDBox.classList.remove('primary');
-  modeFreetext.classList.remove('primary');
-  modeHint.textContent = pasteDrag
-    ? 'Pasting: move preview with mouse, click to place.'
-    : 'Drag to select. Drag inside selection to move.';
-}
-else if (tool === 'line') {
-  modeFreeform.classList.remove('primary');
-  modeSelect.classList.remove('primary');
-  modeLine.classList.add('primary');
-  modeSBox.classList.remove('primary');
-  modeDBox.classList.remove('primary');
-  modeFreetext.classList.remove('primary');
-  modeHint.textContent = pasteDrag
-    ? 'Pasting: move preview with mouse, click to place.'
-    : 'Drag: press to set start, move to preview, release to place line.';
-}
-else if (tool === 'sbox') {
-  modeFreeform.classList.remove('primary');
-  modeSelect.classList.remove('primary');
-  modeLine.classList.remove('primary');
-  modeSBox.classList.add('primary');
-  modeDBox.classList.remove('primary');
-  modeFreetext.classList.remove('primary');
-  modeHint.textContent = pasteDrag
-    ? 'Pasting: move preview with mouse, click to place.'
-    : 'Drag: press to set start, move to preview, release to place line.';
-}
-else if (tool === 'dbox') {
-  modeFreeform.classList.remove('primary');
-  modeSelect.classList.remove('primary');
-  modeLine.classList.remove('primary');
-  modeSBox.classList.remove('primary');
-  modeDBox.classList.add('primary');
-  modeFreetext.classList.remove('primary');
-  modeHint.textContent = pasteDrag
-    ? 'Pasting: move preview with mouse, click to place.'
-    : 'Drag: press to set start, move to preview, release to place line.';
-}
-else if (tool === 'freetext') {
-  modeFreeform.classList.remove('primary');
-  modeSelect.classList.remove('primary');
-  modeLine.classList.remove('primary');
-  modeSBox.classList.remove('primary');
-  modeDBox.classList.remove('primary');
-  modeFreetext.classList.add('primary');
-  modeHint.textContent = 'Point (not click) at text origin, enter free text, press enter to commit.';
-}
+
+
 
 currentOpLine.textContent = op.type === 'place' ? ('Current: place \' ' + op.ch + ' \'' ) : 'Current: space';
 selectedCharEl.textContent = op.type === 'place' ? op.ch : '(space)';
