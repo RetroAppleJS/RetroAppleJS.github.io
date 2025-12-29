@@ -161,7 +161,7 @@ const buttons = document.querySelectorAll("button[id^=\"mode\"]");
 const mode_list = ["modeFreeform","modeSelect","modeLine","modeSBox","modeDBox","modeFreetext"];
 const mode_el = Object.fromEntries( mode_list.map(id => [id, document.getElementById(id)]) );
 
-const modeFreeform = document.getElementById("modeFreeform");
+const modeFreeform = document.getElementById("modeFreeform"); // TODO decommission when mode_el is fully replacing
 const modeSelect = document.getElementById("modeSelect");
 const modeLine = document.getElementById("modeLine");
 const modeFreetext = document.getElementById("modeFreetext");
@@ -580,16 +580,17 @@ function cancelBox() {
 }
 
 
-function beginFreetext(cell) {
-  if (!cell) return;
+function beginFreetext(cell)
+{
+    if (!cell) return;
 
-  // Start a new preview at this anchor.
-  textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };
+    // Start a new preview at this anchor.
+    textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };
 
-  // Ensure canvas can receive key events
-  canvas.focus?.();
+    // Ensure canvas can receive key events
+    canvas.focus?.();
 
-  draw();
+    draw();
 }
 
 
@@ -687,19 +688,20 @@ function buildVHPath(start, end) {
 }
 
 
-function canvasPointToCell(clientX, clientY) {
-const rect = canvas.getBoundingClientRect();
-const px = ((clientX - rect.left) * stageSize.w) / rect.width;
-const py = ((clientY - rect.top) * stageSize.h) / rect.height;
-const cx = stageSize.w / 2;
-const cy = stageSize.h / 2;
-const ux = (px - cx) / scale + cx - panX;
-const uy = (py - cy) / scale + cy - panY;
-const { cw, ch } = getCellSize();
-const c = Math.floor(ux / cw);
-const r = Math.floor(uy / ch);
-if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
-return { r, c };
+function canvasPointToCell(clientX, clientY)
+{
+    const rect = canvas.getBoundingClientRect();
+    const px = ((clientX - rect.left) * stageSize.w) / rect.width;
+    const py = ((clientY - rect.top) * stageSize.h) / rect.height;
+    const cx = stageSize.w / 2;
+    const cy = stageSize.h / 2;
+    const ux = (px - cx) / scale + cx - panX;
+    const uy = (py - cy) / scale + cy - panY;
+    const { cw, ch } = getCellSize();
+    const c = Math.floor(ux / cw);
+    const r = Math.floor(uy / ch);
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+    return { r, c };
 }
 
 function setMode(mode)
@@ -1063,35 +1065,36 @@ for (let r = baseRect.r0; r <= baseRect.r1; r++) {
 pushStrokeIfNonEmpty(stroke);
 }
 
-function beginSelect(cell) {
-if (!cell) return;
-
-if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1) {
-    moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
-    draw();
-    return;
-}
-
-selection = null;
-moveDrag = null;
-selectDrag = { start: cell, current: cell };
-draw();
-}
-
-function moveSelect(cell) {
-if (!cell) return;
-if (moveDrag) {
-    const dr = cell.r - moveDrag.startCell.r;
-    const dc = cell.c - moveDrag.startCell.c;
-    if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
-    moveDrag.offset = { dr, dc };
-    draw();
-    return;
-}
-if (selectDrag) {
-    selectDrag.current = cell;
+function beginSelect(cell) 
+{
+    if (!cell) return;
+    if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
+    {
+        moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
+        draw();
+        return;
+    }
+    selection  = null;
+    moveDrag   = null;
+    selectDrag = { start: cell, current: cell };
     draw();
 }
+
+function moveSelect(cell)
+{
+    if (!cell) return;
+    if (moveDrag) {
+        const dr = cell.r - moveDrag.startCell.r;
+        const dc = cell.c - moveDrag.startCell.c;
+        if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
+        moveDrag.offset = { dr, dc };
+        draw();
+        return;
+    }
+    if (selectDrag) {
+        selectDrag.current = cell;
+        draw();
+    }
 }
 
 function endSelect() {
@@ -1243,7 +1246,8 @@ const a = pasteDrag.anchor;
 // Preview fill (clipped to visible grid)
 const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
 const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
-if (pxW > 0 && pxH > 0) {
+if (pxW > 0 && pxH > 0)
+{
     ctx.save();
     ctx.globalAlpha = 0.75;
     ctx.fillStyle = "rgba(16,185,129,0.10)";
@@ -1465,6 +1469,32 @@ function draw()
         const r = textDrag.anchor.r;
         let c = textDrag.anchor.c;
 
+        // TODO draw box
+
+        
+
+
+        const w = (c - c + 1) * baseCellW;
+        const h = (r - r + 1) * baseCellH;
+
+        const x0 = c * baseCellW + baseCellW / 2;
+        const y0 = r * baseCellH + baseCellH / 2;
+
+        ctx.fillText('\u2588', x0, y0);
+
+        /*
+        ctx.save();
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = "rgba(16,185,129,0.10)";
+        ctx.fillRect(x0,y0,w,h);
+        ctx.restore();
+        console.log("ctx.fillRect("+x0+", "+y0+", "+w+", "+h+")");
+*/
+
+
+
+
+
         for (const ch of Array.from(textDrag.text)) {
             if (ch === '\n' || ch === '\r') continue;
             if (r < 0 || r >= ROWS) break;
@@ -1499,60 +1529,33 @@ function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
 
 
 // Events
-function setHoverFromEvent(e) {
-hoverCell = canvasPointToCell(e.clientX, e.clientY);
-if (pasteDrag && hoverCell) pasteDrag.anchor = { r: hoverCell.r, c: hoverCell.c };
-updateUI();
+function setHoverFromEvent(e)
+{
+    hoverCell = canvasPointToCell(e.clientX, e.clientY);
+    if (pasteDrag && hoverCell) pasteDrag.anchor = { r: hoverCell.r, c: hoverCell.c };
+    updateUI();
 }
 
 // Sidebar toggle
 toggleSidebar.addEventListener("click", () => {
-sidebarOpen = !sidebarOpen;
-sidebar.classList.toggle("closed", !sidebarOpen);
-updateUI();
-scheduleResize();
+    sidebarOpen = !sidebarOpen;
+    sidebar.classList.toggle("closed", !sidebarOpen);
+    updateUI();
+    scheduleResize();
 });
 
-// Mode buttons
-// TODO SERIALISE !!!
-modeFreeform.addEventListener("click", () => {
-    setMode("modeFreeform");
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
-    updateUI(); draw();
-});
-
-modeSelect.addEventListener("click", () => {
-    setMode("modeSelect");
-    if (isDrawing) endFreeform();
-    updateUI(); draw();
-});
-
-modeLine.addEventListener("click", () => {
-    setMode("modeLine");
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
-    //cancelPaste?.();
-    updateUI(); draw();
-});
-
-modeSBox.addEventListener("click", () => {
-    setMode("modeSBox");
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
-    updateUI(); draw();
-});
-
-modeDBox.addEventListener("click", () => {
-    setMode("modeDBox");
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
-    updateUI(); draw();
-});
-
-modeFreetext.addEventListener("click", () => {
-    setMode("modeFreetext");
-    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
-    //cancelPaste?.();
-    updateUI(); draw();
-});
-
+// Capture Mode button events
+for(var i in mode_el)
+{
+    if(bDebug) console.log("mode_el["+i+"].addEventListener('click')",mode_el[i].innerHTML)
+    mode_el[i].addEventListener("click", (e) => 
+    {
+        setMode(e.currentTarget.id);
+        selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
+        cancelPaste?.();
+        updateUI(); draw();
+    });
+}
 
 // Picker/catalog
 pickerBackdrop.addEventListener("click", closePicker);
@@ -1758,6 +1761,7 @@ canvas.addEventListener("mousedown", (e) =>
     else if (tool === "modeLine") beginLine(cell);
     else if (tool === "modeSBox") beginBox(cell, "single");
     else if (tool === "modeDBox") beginBox(cell, "double");
+    else if (tool === "modeFreetext") beginFreetext(cell);
     else console.error("tool mismatch (begin)");
 
 });
@@ -1816,14 +1820,9 @@ window.addEventListener("keydown", (e) =>
         }
     }
 
-    //if (lineDrag)
-    {
-        console.log("FLIP? "+ (e.key === "Shift"));
-
-        if (e.key === "Shift") lineFlip = true;
-        if (e.key.toLowerCase() === 'o') lineMerge = false;
-        draw();
-    }
+    if (e.key === "Shift") lineFlip = true;
+    if (e.key.toLowerCase() === 'o') lineMerge = false;
+    draw();
 
     if (textDrag)
     {
@@ -1877,13 +1876,10 @@ window.addEventListener("keydown", (e) =>
 }, { passive: false });
 
 window.addEventListener("keyup", e => {
-  //if (lineDrag)
-  {
     if (e.key === "Shift") lineFlip = false;
     if (e.key.toLowerCase() === 'o') lineMerge = true;
     console.log("KEYUP: lineFlip="+lineFlip+" lineMerge="+lineMerge);
     draw();
-  }
 });
 
 // Resize observer (debounced via rAF)
