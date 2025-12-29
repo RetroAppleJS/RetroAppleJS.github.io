@@ -43,7 +43,7 @@
             <button id="modeLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line. Use 'o' to override instead of merge lines.">Line</button>
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
-            <button id="modeFreetext" class="btn" data-hint="Point (not click) at text origin, enter free text preview, press enter to commit."">Freetext</button>
+            <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit."">Freetext</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -1469,31 +1469,10 @@ function draw()
         const r = textDrag.anchor.r;
         let c = textDrag.anchor.c;
 
-        // TODO draw box
-
-        
-
-
-        const w = (c - c + 1) * baseCellW;
-        const h = (r - r + 1) * baseCellH;
-
-        const x0 = c * baseCellW + baseCellW / 2;
+        const x0 = (c+textDrag.text.length) * baseCellW + baseCellW / 2;
         const y0 = r * baseCellH + baseCellH / 2;
 
         ctx.fillText('\u2588', x0, y0);
-
-        /*
-        ctx.save();
-        ctx.globalAlpha = 0.75;
-        ctx.fillStyle = "rgba(16,185,129,0.10)";
-        ctx.fillRect(x0,y0,w,h);
-        ctx.restore();
-        console.log("ctx.fillRect("+x0+", "+y0+", "+w+", "+h+")");
-*/
-
-
-
-
 
         for (const ch of Array.from(textDrag.text)) {
             if (ch === '\n' || ch === '\r') continue;
