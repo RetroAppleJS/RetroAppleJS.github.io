@@ -2,12 +2,12 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 function normalizeNewlines(t) {
 return String(t ?? "")
-.replace(/\r\n/g, "\n") // real CRLF -> LF
-.replace(/\r/g, "\n");  // real CR   -> LF
+.replace(/\r\n/g, '\n') // real CRLF -> LF
+.replace(/\r/g, '\n');  // real CR   -> LF
 }
 
 function toLines(t) {
-return normalizeNewlines(t).split("\n"); // split on real LF
+return normalizeNewlines(t).split('\n'); // split on real LF
 }
 
 const normRect = (a, b) => ({ r0: Math.min(a.r,b.r), r1: Math.max(a.r,b.r), c0: Math.min(a.c,b.c), c1: Math.max(a.c,b.c) });
@@ -53,32 +53,32 @@ return { snap, snapLine };
 function serializeToText() {
 const lines = [];
 for (let r = 0; r < ROWS; r++) lines.push(ascii[r].join(''));
-return lines.join("\n");
+return lines.join('\n');
 }
 
 function deEscapeLiteralNewlines(t) {
 return String(t ?? "")
-    .replace(/\\r\\n/g, "\n")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\n");
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n');
 }
 
 function sanitizeForSave(text) {
 let t = String(text ?? "")
     // 1) Convert literal escape sequences to real newlines
-    .replace(/\\r\\n/g, "\n")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\n")
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n')
 
     // 2) Normalize real CRLF / CR to LF
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n");
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
 
 t = collapseAfterWideCharsForSave(t);
 
 // 3) Trim trailing spaces/tabs per line
 let lines = t
-    .split("\n")
+    .split('\n')
     .map(line => line.replace(/[ \t]+$/g, ""));
 
 
@@ -92,5 +92,31 @@ while (lines.length > 0 && lines[lines.length - 1] === "") {
     lines.pop();
 }
 
-return lines.join("\n");
+return lines.join('\n');
+}
+
+
+function isDoubleWidthChar(ch)
+{
+    if (!ch) return false;
+    const cp = ch.codePointAt(0);
+
+    // Quick ASCII / Latin
+    if (cp <= 0x1FFF) return false;
+
+    // Common wide ranges (wcwidth-style; not exhaustive but good enough)
+    return (
+        (cp >= 0x1100 && cp <= 0x115F) || // Hangul Jamo init.
+        cp === 0x2329 || cp === 0x232A ||
+        (cp >= 0x2E80 && cp <= 0xA4CF) || // CJK, Yi, radicals...
+        (cp >= 0xAC00 && cp <= 0xD7A3) || // Hangul syllables
+        (cp >= 0xF900 && cp <= 0xFAFF) || // CJK compatibility ideographs
+        (cp >= 0xFE10 && cp <= 0xFE19) ||
+        (cp >= 0xFE30 && cp <= 0xFE6F) ||
+        (cp >= 0xFF00 && cp <= 0xFF60) || // Fullwidth forms
+        (cp >= 0xFFE0 && cp <= 0xFFE6) ||
+        (cp >= 0x1F300 && cp <= 0x1FAFF) || // emoji blocks (often wide)
+        (cp >= 0x20000 && cp <= 0x3FFFD) || // CJK ext
+        cp === 0x2B24 // ⬤ specifically
+    );
 }

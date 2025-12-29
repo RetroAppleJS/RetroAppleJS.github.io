@@ -83,7 +83,7 @@
     <main class="main">
       <div id="container" class="container">
         <div id="stage" class="stage">
-          <canvas id="canvas" tabindex="0"></canvas>
+          <canvas id="canvas" tabindex='0'></canvas>
         </div>
       </div>
     </main>
@@ -128,11 +128,13 @@
 //         ██ ██      ██   ██ ██ ██         ██    
 //    ███████  ██████ ██   ██ ██ ██         ██   
 
+const bDebug = true;
+
 const COLS = 256;
 const ROWS = 128;
 
-const GRID_BG = '#FFFFFF';
-const GRID_LINE = '#EEEEEE';
+const GRID_BG = "#FFFFFF";
+const GRID_LINE = "#EEEEEE";
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 10;
@@ -148,64 +150,63 @@ let panY = 0;
 let panDrag = null; // {x,y,panX0,panY0}
 
 // UI refs
-const sidebar = document.getElementById('sidebar');
-const toggleSidebar = document.getElementById('toggleSidebar');
-const sbTitle = document.getElementById('sbTitle');
-const cellsLine = document.getElementById('cellsLine');
-const zoomLine = document.getElementById('zoomLine');
-const coordLine = document.getElementById('coordLine');
+const sidebar = document.getElementById("sidebar");
+const toggleSidebar = document.getElementById("toggleSidebar");
+const sbTitle = document.getElementById("sbTitle");
+const cellsLine = document.getElementById("cellsLine");
+const zoomLine = document.getElementById("zoomLine");
+const coordLine = document.getElementById("coordLine");
 
-const buttons = document.querySelectorAll("button[id^='mode']");
-const mode_list = ['modeFreeform','modeSelect','modeLine','modeSBox','modeDBox','modeFreetext'];
+const buttons = document.querySelectorAll("button[id^=\"mode\"]");
+const mode_list = ["modeFreeform","modeSelect","modeLine","modeSBox","modeDBox","modeFreetext"];
 const mode_el = Object.fromEntries( mode_list.map(id => [id, document.getElementById(id)]) );
 
+const modeFreeform = document.getElementById("modeFreeform");
+const modeSelect = document.getElementById("modeSelect");
+const modeLine = document.getElementById("modeLine");
+const modeFreetext = document.getElementById("modeFreetext");
 
-const modeFreeform = document.getElementById('modeFreeform');
-const modeSelect = document.getElementById('modeSelect');
-const modeLine = document.getElementById('modeLine');
-const modeFreetext = document.getElementById('modeFreetext');
+const modeHint = document.getElementById("modeHint");
+const pickCharBtn = document.getElementById("pickChar");
+const openCatalogBtn = document.getElementById("openCatalog");
+const eraserBtn = document.getElementById("eraser");
+const currentOpLine = document.getElementById("currentOp");
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
+const saveBtn = document.getElementById("saveBtn");
+const loadBtn = document.getElementById("loadBtn");
+const pasteBtn = document.getElementById("pasteBtn");
+const clearBtn = document.getElementById("clearBtn");
+const fileInput = document.getElementById("fileInput");
+const historyLine = document.getElementById("historyLine");
+const pasteLine = document.getElementById("pasteLine");
 
-const modeHint = document.getElementById('modeHint');
-const pickCharBtn = document.getElementById('pickChar');
-const openCatalogBtn = document.getElementById('openCatalog');
-const eraserBtn = document.getElementById('eraser');
-const currentOpLine = document.getElementById('currentOp');
-const undoBtn = document.getElementById('undoBtn');
-const redoBtn = document.getElementById('redoBtn');
-const saveBtn = document.getElementById('saveBtn');
-const loadBtn = document.getElementById('loadBtn');
-const pasteBtn = document.getElementById('pasteBtn');
-const clearBtn = document.getElementById('clearBtn');
-const fileInput = document.getElementById('fileInput');
-const historyLine = document.getElementById('historyLine');
-const pasteLine = document.getElementById('pasteLine');
+const container = document.getElementById("container");
+const stage = document.getElementById("stage");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-const container = document.getElementById('container');
-const stage = document.getElementById('stage');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const picker = document.getElementById("picker");
+const pickerBackdrop = document.getElementById("pickerBackdrop");
+const pickerClose = document.getElementById("pickerClose");
+const tabsEl = document.getElementById("tabs");
+const charGrid = document.getElementById("charGrid");
+const selectedCharEl = document.getElementById("selectedChar");
 
-const picker = document.getElementById('picker');
-const pickerBackdrop = document.getElementById('pickerBackdrop');
-const pickerClose = document.getElementById('pickerClose');
-const tabsEl = document.getElementById('tabs');
-const charGrid = document.getElementById('charGrid');
-const selectedCharEl = document.getElementById('selectedChar');
+const catalogModal = document.getElementById("catalogModal");
+const catalogBackdrop = document.getElementById("catalogBackdrop");
+const catalogClose = document.getElementById("catalogClose");
+const catalogTabsEl = document.getElementById("catalogTabs");
+const catalogGridEl = document.getElementById("catalogGrid");
 
-const catalogModal = document.getElementById('catalogModal');
-const catalogBackdrop = document.getElementById('catalogBackdrop');
-const catalogClose = document.getElementById('catalogClose');
-const catalogTabsEl = document.getElementById('catalogTabs');
-const catalogGridEl = document.getElementById('catalogGrid');
-
-const pasteSink = document.getElementById('pasteSink');
+const pasteSink = document.getElementById("pasteSink");
 
 // Data model
 const ascii = Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => ' '));
 
 // Tool state
-let tool = 'freeform';
-let op = { type: 'place', ch: '+' };
+let tool = "modeFreeform";
+let op = { type: "place", ch: '+' };
 let hoverCell = null;
 let stageSize = { w: 1, h: 1 };
 
@@ -225,9 +226,11 @@ let textDrag = null;  // { anchor:{r,c}, text:"" }
 let lineFlip = false;   // Shift
 let lineMerge = false; // M
 
+let modeRECALL = null;
+
 // Picker tabs
-let pickerTab = 'Box';
-let catalogTab = 'All';
+let pickerTab = "Box";
+let catalogTab = "All";
 
 //    ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
 //    ██   ██ ██      ██      ██   ██ ██      ██   ██ ██      
@@ -243,37 +246,37 @@ const N = 1, E = 2, S = 4, W = 8;
 
 // Only "light" box drawing for now (keeps it simple & readable)
 const glyphToMask = new Map([
-  [" ", 0],
-  ["─", E | W],
-  ["│", N | S],
-  ["┌", E | S],
-  ["┐", W | S],
-  ["└", E | N],
-  ["┘", W | N],
-  ["├", N | E | S],
-  ["┤", N | W | S],
-  ["┬", E | S | W],
-  ["┴", E | N | W],
-  ["┼", N | E | S | W],
+  [' ', 0],
+  ['─', E | W],
+  ['│', N | S],
+  ['┌', E | S],
+  ['┐', W | S],
+  ['└', E | N],
+  ['┘', W | N],
+  ['├', N | E | S],
+  ['┤', N | W | S],
+  ['┬', E | S | W],
+  ['┴', E | N | W],
+  ['┼', N | E | S | W],
 ]);
 
 const maskToGlyph = new Map([
-  [0, " "],
+  [0, ' '],
 
-  [E | W, "─"],
-  [N | S, "│"],
+  [E | W, '─'],
+  [N | S, '│'],
 
-  [E | S, "┌"],
-  [W | S, "┐"],
-  [E | N, "└"],
-  [W | N, "┘"],
+  [E | S, '┌'],
+  [W | S, '┐'],
+  [E | N, '└'],
+  [W | N, '┘'],
 
-  [N | E | S, "├"],
-  [N | W | S, "┤"],
-  [E | S | W, "┬"],
-  [E | N | W, "┴"],
+  [N | E | S, '├'],
+  [N | W | S, '┤'],
+  [E | S | W, '┬'],
+  [E | N | W, '┴'],
 
-  [N | E | S | W, "┼"],
+  [N | E | S | W, '┼'],
 ]);
 
 function isWireGlyph(ch) {
@@ -315,7 +318,7 @@ function recomputeWireCell(r, c) {
   const cur = ascii[r][c];
 
   // Don't touch non-wire symbols (IC art, labels, arrows, etc.)
-  if (!isWireGlyph(cur) && cur !== " ") return cur;
+  if (!isWireGlyph(cur) && cur !== ' ') return cur;
 
   const m = cellMaskFromNeighbors(r, c);
   const g = maskToGlyph.get(m) ?? cur;
@@ -331,10 +334,10 @@ function cornerCharVH(r0, c0, r1, c1) {
 
   // We go vertical to r1 first, then horizontal to c1.
   // Corner is at (r1, c0): it must connect vertical + horizontal.
-  if (goingDown && goingRight) return "└"; // up + right
-  if (goingDown && !goingRight) return "┘"; // up + left
-  if (!goingDown && goingRight) return "┌"; // down + right
-  return "┐"; // down + left
+  if (goingDown && goingRight) return '└'; // up + right
+  if (goingDown && !goingRight) return '┘'; // up + left
+  if (!goingDown && goingRight) return '┌'; // down + right
+  return '┐'; // down + left
 }
 
 function cornerCharHV(r0, c0, r1, c1) {
@@ -344,10 +347,10 @@ function cornerCharHV(r0, c0, r1, c1) {
   // We go horizontal to c1 first, then vertical to r1.
   // Corner at (r0, c1) must connect horizontal + vertical.
 
-  if (goingRight && goingDown) return "┐"; // left + down
-  if (goingRight && !goingDown) return "┘"; // left + up
-  if (!goingRight && goingDown) return "┌"; // right + down
-  return "└"; // right + up
+  if (goingRight && goingDown) return '┐'; // left + down
+  if (goingRight && !goingDown) return '┘'; // left + up
+  if (!goingRight && goingDown) return '┌'; // right + down
+  return '└'; // right + up
 }
 
 
@@ -364,9 +367,9 @@ function buildVHPath(start, end) {
   if (r0 !== r1) {
     const stepR = r1 > r0 ? 1 : -1;
     for (let r = r0; r !== r1; r += stepR) {
-      out.push({ r, c: c0, ch: "│" });
+      out.push({ r, c: c0, ch: '│' });
     }
-    out.push({ r: r1, c: c0, ch: "│" });
+    out.push({ r: r1, c: c0, ch: '│' });
   }
 
   // 2) corner at (r1, c0) if there is also a horizontal leg
@@ -383,16 +386,63 @@ function buildVHPath(start, end) {
     if (r0 !== r1) cStart = c0 + stepC;
 
     for (let c = cStart; c !== c1; c += stepC) {
-      out.push({ r: r1, c, ch: "─" });
+      out.push({ r: r1, c, ch: '─' });
     }
-    out.push({ r: r1, c: c1, ch: "─" });
+    out.push({ r: r1, c: c1, ch: '─' });
   }
 
   return out;
 }
 
-const BOX_SINGLE = { h:"─", v:"│", tl:"┌", tr:"┐", bl:"└", br:"┘" };
-const BOX_DOUBLE = { h:"═", v:"║", tl:"╔", tr:"╗", bl:"╚", br:"╝" };
+function buildHVPath(start, end) {
+  const r0 = start.r, c0 = start.c;
+  const r1 = end.r, c1 = end.c;
+
+  const out = [];
+
+  if (r0 === r1 && c0 === c1) return out;
+
+  // 1) horizontal segment at row r0 from c0 -> c1 (inclusive)
+  if (c0 !== c1) {
+    const stepC = c1 > c0 ? 1 : -1;
+    for (let c = c0; c !== c1; c += stepC) {
+      out.push({ r: r0, c, ch: "─" });
+    }
+    out.push({ r: r0, c: c1, ch: "─" });
+  }
+
+  // 2) corner at (r0, c1) if there is also a vertical leg
+  if (c0 !== c1 && r0 !== r1) {
+    // replace last horizontal cell with corner
+    out[out.length - 1].ch = cornerCharHV(r0, c0, r1, c1);
+  } else if (c0 !== c1) {
+    // purely horizontal: nothing else
+    return out;
+  }
+
+  // 3) vertical segment at column c1 from r0 -> r1 (inclusive)
+  if (r0 !== r1) {
+    const stepR = r1 > r0 ? 1 : -1;
+
+    // start after the corner if we had a horizontal leg, otherwise start at r0
+    let rStart = r0;
+    if (c0 !== c1) rStart = r0 + stepR;
+
+    for (let r = rStart; r !== r1; r += stepR) {
+      out.push({ r, c: c1, ch: "│" });
+    }
+    out.push({ r: r1, c: c1, ch: "│" });
+  }
+
+  return out;
+}
+
+function buildLinePath(start, end) {
+  return lineFlip ? buildHVPath(start, end) : buildVHPath(start, end);
+}
+
+const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
+const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
 function buildBoxPath(start, end, style) {
   const r0 = start.r, c0 = start.c;
@@ -407,7 +457,7 @@ function buildBoxPath(start, end, style) {
 
   // Degenerate: a line or a point — we still draw something useful
   if (top === bot && left === right) {
-    out.push({ r: top, c: left, ch: style.tl }); // or "+"; your call
+    out.push({ r: top, c: left, ch: style.tl }); // or '+'; your call
     return out;
   }
 
@@ -437,13 +487,16 @@ function buildBoxPath(start, end, style) {
 
 function beginLine(cell) {
   if (!cell) return;
+  if(bDebug) console.log("beginLine()")
+
   // hide selection box when starting a line tool action
   selection = null; selectDrag = null; moveDrag = null;
   lineDrag = { start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
   draw();
 }
 
-function moveLine(cell) {
+function moveLine(cell)
+{
   if (!lineDrag) return;
   if (!cell) return;
   if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
@@ -454,7 +507,7 @@ function moveLine(cell) {
 function endLine() {
   if (!lineDrag) return;
 
-  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+  const path = buildLinePath(lineDrag.start, lineDrag.cur);
   const stroke = [];
 
   for (const p of path) {
@@ -503,12 +556,12 @@ function commitBox() {
   const m = new Map();
   for (const p of path) {
     if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-    m.set(p.r + "," + p.c, p.ch);
+    m.set(p.r + ',' + p.c, p.ch);
   }
 
   const stroke = [];
   for (const [key, ch] of m) {
-    const [r, c] = key.split(",").map(Number);
+    const [r, c] = key.split(',').map(Number);
     const prev = ascii[r][c];
     const next = ch;
     if (prev !== next) stroke.push({ r, c, prev, next });
@@ -550,7 +603,7 @@ function commitFreetext() {
   const stroke = [];
 
   for (const ch of Array.from(textDrag.text)) {
-    if (ch === "\n" || ch === "\r") continue;
+    if (ch === '\n' || ch === '\r') continue;
     if (r < 0 || r >= ROWS) break;
     if (c < 0) { c++; continue; }
     if (c >= COLS) break;
@@ -579,14 +632,15 @@ function cancelFreetext() {
 function cornerChar(r0, c0, r1, c1) {
   const goingDown = r1 > r0;
   const goingRight = c1 > c0;
-  if (goingDown && goingRight) return "└";
-  if (goingDown && !goingRight) return "┘";
-  if (!goingDown && goingRight) return "┌";
-  return "┐";
+  if (goingDown && goingRight) return '└';
+  if (goingDown && !goingRight) return '┘';
+  if (!goingDown && goingRight) return '┌';
+  return '┐';
 }
 
-function setToolLine() {
-  tool = 'line';
+function setToolLine()
+{
+  setMode("modeLine");
   selection = null; selectDrag = null; moveDrag = null;
   cancelPaste();
   cancelLine();
@@ -604,7 +658,7 @@ function buildVHPath(start, end) {
   if (r0 !== r1) {
     const step = r1 > r0 ? 1 : -1;
     for (let r = r0; r !== r1; r += step) {
-      out.push({ r, c: c0, ch: "│" });
+      out.push({ r, c: c0, ch: '│' });
     }
   }
 
@@ -613,7 +667,7 @@ function buildVHPath(start, end) {
     out.push({ r: r1, c: c0, ch: cornerChar(r0, c0, r1, c1) });
   } else if (r0 !== r1) {
     // If only vertical, include the last cell as vertical
-    out.push({ r: r1, c: c0, ch: "│" });
+    out.push({ r: r1, c: c0, ch: '│' });
   }
 
   // 2) horizontal segment from c0 -> c1 at row r1
@@ -623,9 +677,9 @@ function buildVHPath(start, end) {
     // otherwise start after the corner to avoid overwriting it.
     const startC = (r0 !== r1) ? (c0 + step) : c0;
     for (let c = startC; c !== c1; c += step) {
-      out.push({ r: r1, c, ch: "─" });
+      out.push({ r: r1, c, ch: '─' });
     }
-    out.push({ r: r1, c: c1, ch: "─" }); // include end cell
+    out.push({ r: r1, c: c1, ch: '─' }); // include end cell
   }
 
   // If start==end: draw nothing (or a dot if you prefer)
@@ -648,77 +702,71 @@ if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
 return { r, c };
 }
 
+function setMode(mode)
+{
+    updateModeUI(mode);
+
+    modeRECALL = tool;
+    tool = mode;
+}
+
+// Let mode button act like radio buttons (add/remove primary)
+function updateModeUI(mode)
+{
+    for(var i in mode_el)
+    {
+        /*
+        if(mode_el[i].className.indexOf("primary")>=0)
+        {
+            modeRECALL = i;
+            console.log("modeRECALL = "+i);
+        }
+        */
+
+        if(mode==i)
+        {
+            mode_el[i].classList.add("primary");
+            const hints = mode_el[i].dataset.hint.split('|');
+            modeHint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
+        }
+        else mode_el[i].classList.remove("primary");
+    }
+    
+    if(mode === "modeFreeform")
+    {
+        currentOpLine.textContent = op.type === "place" ? ("Current: place ' " + op.ch + " '" ) : "Current: space";
+        selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
+    }
+}
+
 function updateUI()
 {
-cellsLine.textContent = 'Cells: ' + COLS + ' x ' + ROWS;
-zoomLine.textContent = 'Zoom: ' + Math.round(scale * 100) + '%';
-coordLine.textContent = hoverCell ? ('Cell: Ln ' + (hoverCell.r+1) + ', Col ' + (hoverCell.c+1)) : 'Cell: —';
+    cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
+    zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
+    coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r+1) + ", Col " + (hoverCell.c+1)) : "Cell: —";
 
-pasteLine.style.display = pasteDrag ? 'block' : 'none';
+    pasteLine.style.display = pasteDrag ? "block" : "none";
 
+    undoBtn.disabled = undoStack.length === 0;
+    redoBtn.disabled = redoStack.length === 0;
+    historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
 
-// Make mode button act like radio buttons (add/remove primary)
-for(var i in mode_el)
-{
-    if(tool==i.substring(4,i.length).toLowerCase())
-    {
-        mode_el[i].classList.add('primary');
-        const hints = mode_el[i].dataset.hint.split("|");
-        modeHint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
-    }
-    else mode_el[i].classList.remove('primary');
-}
-
-
-
-currentOpLine.textContent = op.type === 'place' ? ('Current: place \' ' + op.ch + ' \'' ) : 'Current: space';
-selectedCharEl.textContent = op.type === 'place' ? op.ch : '(space)';
-
-undoBtn.disabled = undoStack.length === 0;
-redoBtn.disabled = redoStack.length === 0;
-historyLine.textContent = 'Undo stack: ' + undoStack.length + ' · Redo stack: ' + redoStack.length;
-
-toggleSidebar.textContent = sidebarOpen ? '◀' : '▶';
-sbTitle.style.display = sidebarOpen ? 'block' : 'none';
-}
-
-
-function isDoubleWidthChar(ch) {
-if (!ch) return false;
-const cp = ch.codePointAt(0);
-
-// Quick ASCII / Latin
-if (cp <= 0x1FFF) return false;
-
-// Common wide ranges (wcwidth-style; not exhaustive but good enough)
-return (
-    (cp >= 0x1100 && cp <= 0x115F) || // Hangul Jamo init.
-    cp === 0x2329 || cp === 0x232A ||
-    (cp >= 0x2E80 && cp <= 0xA4CF) || // CJK, Yi, radicals...
-    (cp >= 0xAC00 && cp <= 0xD7A3) || // Hangul syllables
-    (cp >= 0xF900 && cp <= 0xFAFF) || // CJK compatibility ideographs
-    (cp >= 0xFE10 && cp <= 0xFE19) ||
-    (cp >= 0xFE30 && cp <= 0xFE6F) ||
-    (cp >= 0xFF00 && cp <= 0xFF60) || // Fullwidth forms
-    (cp >= 0xFFE0 && cp <= 0xFFE6) ||
-    (cp >= 0x1F300 && cp <= 0x1FAFF) || // emoji blocks (often wide)
-    (cp >= 0x20000 && cp <= 0x3FFFD) || // CJK ext
-    cp === 0x2B24 // ⬤ specifically
-);
+    toggleSidebar.textContent = sidebarOpen ? '◀' : '▶';
+    sbTitle.style.display = sidebarOpen ? "block" : "none";
 }
 
 function expandWideCharsForGrid(text) {
 const outLines = [];
-const lines = toLines(text); // your normalizeNewlines + split("\n")
+const lines = toLines(text); // your normalizeNewlines + split('\n')
 for (const line of lines) {
     let out = "";
     for (const ch of line) {           // code-point safe
     out += ch;
-    if (isDoubleWidthChar(ch)) out += " ";  // pad one cell
+    if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
     }
     outLines.push(out);
 }
-return outLines.join("\n");
+return outLines.join('\n');
 }
 
 function collapseAfterWideCharsForSave(text)
@@ -743,18 +791,18 @@ for (const line of lines) {
     out.push(filtered.join(""));
 }
 
-return out.join("\n");
+return out.join('\n');
 }
 
 function downloadText(text, filename) {
-const name = filename || 'ascii-drawing.txt';
-const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+const name = filename || "ascii-drawing.txt";
+const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
 const url = URL.createObjectURL(blob);
 const a = document.createElement('a');
 a.href = url;
 a.download = name;
-a.rel = 'noopener';
-a.style.display = 'none';
+a.rel = "noopener";
+a.style.display = "none";
 document.body.appendChild(a);
 try { a.click(); } finally { setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0); }
 }
@@ -814,7 +862,7 @@ pasteDrag = {
 };
 
 // Paste mode implies Select tool (so cursor behavior matches your workflow)
-tool = 'select';
+setMode("modeSelect");
 // Clear selection overlay while pasting
 selection = null;
 selectDrag = null;
@@ -826,7 +874,7 @@ draw();
 
 function commitLine() {
   if (!lineDrag) return;
-  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+  const path = buildLinePath(lineDrag.start, lineDrag.cur);
 
   const stroke = [];
   for (const p of path) {
@@ -849,27 +897,27 @@ function commitLine() {
 function commitLineWithOptionalMerge(mergeEnabled) {
   if (!lineDrag) return;
 
-  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+   const path = buildLinePath(lineDrag.start, lineDrag.cur);
 
   // De-dup: last char wins
   const m = new Map();
   for (const p of path) {
     if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-    m.set(p.r + "," + p.c, p.ch);
+    m.set(p.r + ',' + p.c, p.ch);
   }
 
   const stroke = [];
   const touched = []; // cells we should recompute + their neighbors (if merge)
 
   for (const [key, ch] of m) {
-    const [r, c] = key.split(",").map(Number);
+    const [r, c] = key.split(',').map(Number);
 
     const prev = ascii[r][c];
     let next = ch;
 
     if (mergeEnabled) {
       // Only merge if prev is wire/blank; otherwise we overwrite like normal (or you can choose to skip)
-      if (prev === " " || isWireGlyph(prev)) {
+      if (prev === ' ' || isWireGlyph(prev)) {
         next = mergedWireGlyph(prev, ch);
       }
     }
@@ -888,12 +936,12 @@ function commitLineWithOptionalMerge(mergeEnabled) {
       for (const [dr, dc] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]]) {
         const rr = t.r + dr, cc = t.c + dc;
         if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-        keys.add(rr + "," + cc);
+        keys.add(rr + ',' + cc);
       }
     }
 
     for (const k of keys) {
-      const [r, c] = k.split(",").map(Number);
+      const [r, c] = k.split(',').map(Number);
       const prev = ascii[r][c];
       const next = recomputeWireCell(r, c);
       if (prev !== next) {
@@ -946,7 +994,7 @@ draw();
 // Freeform drawing
 function applyOpAtCell(cell) {
 const prev = ascii[cell.r][cell.c];
-const next = (op.type === 'place') ? op.ch : ' ';
+const next = (op.type === "place") ? op.ch : ' ';
 if (prev === next) return;
 currentStroke.push({ r: cell.r, c: cell.c, prev, next });
 ascii[cell.r][cell.c] = next;
@@ -1068,26 +1116,26 @@ if (selectDrag) {
 
 // Modals
 function openPicker() {
-picker.classList.add('open');
-picker.setAttribute('aria-hidden', 'false');
+picker.classList.add("open");
+picker.setAttribute("aria-hidden", "false");
 renderTabs();
 renderCharGrid();
 updateUI();
 }
 
 function closePicker() {
-picker.classList.remove('open');
-picker.setAttribute('aria-hidden', 'true');
+picker.classList.remove("open");
+picker.setAttribute("aria-hidden", "true");
 updateUI();
 }
 
 function renderTabs() {
 tabsEl.innerHTML = '';
 for (const tab of Object.keys(PICKER_TABS)) {
-    const b = document.createElement('button');
-    b.className = 'btn' + (tab === pickerTab ? ' primary' : '');
+    const b = document.createElement("button");
+    b.className = "btn" + (tab === pickerTab ? " primary" : '');
     b.textContent = tab;
-    b.addEventListener('click', () => { pickerTab = tab; renderTabs(); renderCharGrid(); });
+    b.addEventListener("click", () => { pickerTab = tab; renderTabs(); renderCharGrid(); });
     tabsEl.appendChild(b);
 }
 }
@@ -1096,11 +1144,11 @@ function renderCharGrid() {
 charGrid.innerHTML = '';
 const arr = PICKER_TABS[pickerTab] || [];
 for (const ch of arr) {
-    const b = document.createElement('button');
-    b.className = 'char';
+    const b = document.createElement("button");
+    b.className = "char";
     b.textContent = ch;
     b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
-    b.addEventListener('click', () => { op = { type: 'place', ch }; closePicker(); updateUI(); });
+    b.addEventListener("click", () => { op = { type: "place", ch }; closePicker(); updateUI(); });
     charGrid.appendChild(b);
 }
 }
@@ -1117,27 +1165,28 @@ function renderCharAtCell(ctx, r, c, ch) {
 
 
 function openCatalog() {
-catalogModal.classList.add('open');
-catalogModal.setAttribute('aria-hidden', 'false');
+catalogModal.classList.add("open");
+catalogModal.setAttribute("aria-hidden", "false");
 renderCatalogTabs();
 renderCatalogGrid();
 updateUI();
 }
 
-function closeCatalog() {
-catalogModal.classList.remove('open');
-catalogModal.setAttribute('aria-hidden', 'true');
-updateUI();
+function closeCatalog()
+{
+    catalogModal.classList.remove("open");
+    catalogModal.setAttribute("aria-hidden", "true");
+    updateUI();
 }
 
 function renderCatalogTabs() {
 catalogTabsEl.innerHTML = '';
-const types = ['All', ...catalogTypes()];
+const types = ["All", ...catalogTypes()];
 for (const t of types) {
-    const b = document.createElement('button');
-    b.className = 'btn' + (t === catalogTab ? ' primary' : '');
+    const b = document.createElement("button");
+    b.className = "btn" + (t === catalogTab ? " primary" : '');
     b.textContent = t;
-    b.addEventListener('click', () => { catalogTab = t; renderCatalogTabs(); renderCatalogGrid(); });
+    b.addEventListener("click", () => { catalogTab = t; renderCatalogTabs(); renderCatalogGrid(); });
     catalogTabsEl.appendChild(b);
 }
 }
@@ -1146,33 +1195,38 @@ function renderCatalogGrid() {
 catalogGridEl.innerHTML = '';
 const items = catalogItemsForTab(catalogTab);
 for (const it of items) {
-    const card = document.createElement('div');
-    card.className = 'cat-item';
-    card.title = it.name + (it.MFR ? (' · ' + it.MFR) : '');
+    const card = document.createElement("div");
+    card.className = "cat-item";
+    card.title = it.name + (it.MFR ? (" · " + it.MFR) : '');
 
-    const img = document.createElement('img');
-    img.className = 'cat-thumb';
+    const img = document.createElement("img");
+    img.className = "cat-thumb";
     img.alt = it.name;
     img.src = it.image_data;
 
-    const cap = document.createElement('div');
-    cap.className = 'cat-name';
+    const cap = document.createElement("div");
+    cap.className = "cat-name";
     cap.textContent = it.name;
 
     card.appendChild(img);
     card.appendChild(cap);
 
-    card.addEventListener('click', () => {
-    closeCatalog();
+    // USER CLICK ON CATALOG ITEM
+    card.addEventListener("click", () => {
+        closeCatalog();
 
-    // FVD TODO
         if(pasteDrag==null) pasteDrag = {item_data:{}};
         pasteDrag.item_data.rotation = 0;                           // default rotation
         pasteDrag.item_data.uid = it.name+'_'+it.type+'_'+it.MFR;   // unique id for this catalog item
         const text_data = it.text_data[ pasteDrag.item_data.rotation ];
 
-    startPasteWithText(expandWideCharsForGrid(text_data) || '');
-    canvas.focus();
+    if(bDebug) console.log("pasteDrag.item_data.uid="+pasteDrag.item_data.uid)
+    currentOpLine.textContent =  it.type+": "+it.name;
+    //selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
+
+
+        startPasteWithText(expandWideCharsForGrid(text_data) || '');
+        canvas.focus();
     });
 
     catalogGridEl.appendChild(card);
@@ -1192,7 +1246,7 @@ const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
 if (pxW > 0 && pxH > 0) {
     ctx.save();
     ctx.globalAlpha = 0.75;
-    ctx.fillStyle = 'rgba(16,185,129,0.10)';
+    ctx.fillStyle = "rgba(16,185,129,0.10)";
     ctx.fillRect(a.c * cw, a.r * ch, pxW, pxH);
     ctx.restore();
 }
@@ -1215,7 +1269,7 @@ ctx.restore();
 ctx.save();
 ctx.lineWidth = 2 / scale;
 ctx.setLineDash([6 / scale, 4 / scale]);
-ctx.strokeStyle = 'rgba(16,185,129,0.95)';
+ctx.strokeStyle = "rgba(16,185,129,0.95)";
 ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
 ctx.restore();
 }
@@ -1293,16 +1347,16 @@ function draw()
     ctx.stroke();
 
     // Font sized to cell
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = "#000";
 
     const cwr = 0.62;   // 0.62
 
     const maxByHeight = ch * 0.98;
     const maxByWidth = (cw / cwr) * 0.98;
     const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
-    ctx.font = fontPx + 'px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
     // Move preview
     if (moveDrag) {
@@ -1345,8 +1399,8 @@ function draw()
         const h = (selection.r1 - selection.r0 + 1) * ch;
         ctx.save();
         ctx.lineWidth = 2 / scale;
-        ctx.strokeStyle = 'rgba(59,130,246,0.9)';
-        ctx.fillStyle = 'rgba(59,130,246,0.12)';
+        ctx.strokeStyle = "rgba(59,130,246,0.9)";
+        ctx.fillStyle = "rgba(59,130,246,0.12)";
         ctx.fillRect(x0, y0, w, h);
         ctx.strokeRect(x0, y0, w, h);
         ctx.restore();
@@ -1362,7 +1416,7 @@ function draw()
         ctx.save();
         ctx.lineWidth = 2 / scale;
         ctx.setLineDash([6/scale, 4/scale]);
-        ctx.strokeStyle = 'rgba(16,185,129,0.95)';
+        ctx.strokeStyle = "rgba(16,185,129,0.95)";
         ctx.strokeRect(x0, y0, w, h);
         ctx.restore();
     }
@@ -1377,10 +1431,11 @@ function draw()
         const old = ctx.fillStyle;
         ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-        const path = buildVHPath(lineDrag.start, lineDrag.cur);
+        const path = buildLinePath(lineDrag.start, lineDrag.cur);
+
         for (const p of path) {
             if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-            renderCharAtCell(ctx, p.r, p.c, p.ch);   // ✅ canvas-only
+            renderCharAtCell(ctx, p.r, p.c, p.ch);
         }
 
         ctx.fillStyle = old;
@@ -1411,7 +1466,7 @@ function draw()
         let c = textDrag.anchor.c;
 
         for (const ch of Array.from(textDrag.text)) {
-            if (ch === "\n" || ch === "\r") continue;
+            if (ch === '\n' || ch === '\r') continue;
             if (r < 0 || r >= ROWS) break;
             if (c < 0) { c++; continue; }
             if (c >= COLS) break;
@@ -1430,7 +1485,7 @@ function draw()
 
 function drawLinePreview() {
   if (!lineDrag) return;
-  const path = buildVHPath(lineDrag.start, lineDrag.cur);
+  const path = buildLinePath(lineDrag.start, lineDrag.cur);
 }
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
@@ -1451,67 +1506,67 @@ updateUI();
 }
 
 // Sidebar toggle
-toggleSidebar.addEventListener('click', () => {
+toggleSidebar.addEventListener("click", () => {
 sidebarOpen = !sidebarOpen;
-sidebar.classList.toggle('closed', !sidebarOpen);
+sidebar.classList.toggle("closed", !sidebarOpen);
 updateUI();
 scheduleResize();
 });
 
 // Mode buttons
-modeFreeform.addEventListener('click', () => {
-    tool = 'freeform';
-    // Requirement: selection box disappears in Freeform mode
+// TODO SERIALISE !!!
+modeFreeform.addEventListener("click", () => {
+    setMode("modeFreeform");
     selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
     updateUI(); draw();
 });
 
-modeSelect.addEventListener('click', () => {
-    tool = 'select';
+modeSelect.addEventListener("click", () => {
+    setMode("modeSelect");
     if (isDrawing) endFreeform();
     updateUI(); draw();
 });
 
-modeLine.addEventListener('click', () => {
-    tool = 'line';
+modeLine.addEventListener("click", () => {
+    setMode("modeLine");
     selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
-    cancelPaste?.();
+    //cancelPaste?.();
     updateUI(); draw();
 });
 
 modeSBox.addEventListener("click", () => {
-    tool = "sbox";
+    setMode("modeSBox");
     selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
     updateUI(); draw();
 });
 
 modeDBox.addEventListener("click", () => {
-    tool = "dbox";
+    setMode("modeDBox");
     selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
     updateUI(); draw();
 });
 
 modeFreetext.addEventListener("click", () => {
-  tool = "freetext";
-  selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
-  cancelPaste?.();
-  updateUI(); draw();
+    setMode("modeFreetext");
+    selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;   textDrag = null;
+    //cancelPaste?.();
+    updateUI(); draw();
 });
 
 
 // Picker/catalog
-pickerBackdrop.addEventListener('click', closePicker);
-pickerClose.addEventListener('click', closePicker);
-catalogBackdrop.addEventListener('click', closeCatalog);
-catalogClose.addEventListener('click', closeCatalog);
+pickerBackdrop.addEventListener("click", closePicker);
+pickerClose.addEventListener("click", closePicker);
+catalogBackdrop.addEventListener("click", closeCatalog);
+catalogClose.addEventListener("click", closeCatalog);
 
-pickCharBtn.addEventListener('click', () => { if (op.type !== 'place') op = { type: 'place', ch: '+' }; openPicker(); });
-openCatalogBtn.addEventListener('click', () => openCatalog());
-eraserBtn.addEventListener('click', () => { op = { type: 'erase' }; updateUI(); });
+pickCharBtn.addEventListener("click", () => { if (op.type !== "place") op = { type: "place", ch: '+' }; openPicker(); });
+openCatalogBtn.addEventListener("click", () => openCatalog());
+eraserBtn.addEventListener("click", () => { op = { type: "erase" }; updateUI(); });
 
 // Undo/redo
-undoBtn.addEventListener('click', doUndo);
-redoBtn.addEventListener('click', doRedo);
+undoBtn.addEventListener("click", doUndo);
+redoBtn.addEventListener("click", doRedo);
 
 // Save/load
 saveBtn.addEventListener("click", () => {
@@ -1519,7 +1574,7 @@ const raw = serializeToText();
 const cleaned = sanitizeForSave(raw);
 downloadText(cleaned, "ascii-schema.txt");
 });
-loadBtn.addEventListener('click', () => fileInput.click());
+loadBtn.addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", async (e) => {
 try {
@@ -1540,7 +1595,7 @@ try {
     const line = lines[r] || "";
     for (let c = 0; c < COLS; c++) {
         const prev = ascii[r][c];
-        const next = line[c] || " ";
+        const next = line[c] || ' ';
         if (prev !== next) {
         stroke.push({ r, c, prev, next });
         ascii[r][c] = next;
@@ -1565,7 +1620,7 @@ try {
 
 
 // Clear
-clearBtn.addEventListener('click', () => {
+clearBtn.addEventListener("click", () => {
 const stroke = [];
 for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -1579,62 +1634,61 @@ draw();
 });
 
 // Paste button focuses hidden textarea, then user Cmd/Ctrl+V
-pasteBtn.addEventListener('click', () => { pasteSink.value = ''; pasteSink.focus(); });
+pasteBtn.addEventListener("click", () => { pasteSink.value = ''; pasteSink.focus(); });
 
 // Paste capture (also allow direct paste anywhere)
-window.addEventListener('paste', (e) => {
-const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData('text/plain')) : '';
-if (typeof text === 'string' && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+window.addEventListener("paste", (e) => {
+const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
+if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
 });
-pasteSink.addEventListener('paste', (e) => {
-const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData('text/plain')) : '';
-if (typeof text === 'string' && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+pasteSink.addEventListener("paste", (e) => {
+const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
+if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
 });
 
 // Zoom / pan with wheel
-canvas.addEventListener(
-"wheel",
-(e) => {
-e.preventDefault();
+canvas.addEventListener("wheel",(e) => {
+    e.preventDefault();
 
-// Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
-if (e.ctrlKey) {
+    // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
+    if (e.ctrlKey) {
+        const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+        scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+        updateUI();
+        draw();
+        return;
+    }
+
+    // Heuristic: treat "smooth, small deltas" as trackpad scrolling => PAN.
+    // Treat "large, stepped deltas" as mouse wheel => ZOOM.
+    const absX = Math.abs(e.deltaX || 0);
+    const absY = Math.abs(e.deltaY || 0);
+    const looksLikeTrackpad = absX > 0 || (e.deltaMode === 0 && absY > 0 && absY < 50);
+
+    if (looksLikeTrackpad) {
+        // Two-finger scroll pans (KiCad-like)
+        panX += (e.deltaX || 0) / scale;
+        panY += (e.deltaY || 0) / scale;
+        updateUI();
+        draw();
+        return;
+    }
+
+    // Mouse wheel zooms
     const zoomFactor = Math.exp(-e.deltaY * 0.0015);
     scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
     updateUI();
     draw();
-    return;
-}
-
-// Heuristic: treat "smooth, small deltas" as trackpad scrolling => PAN.
-// Treat "large, stepped deltas" as mouse wheel => ZOOM.
-const absX = Math.abs(e.deltaX || 0);
-const absY = Math.abs(e.deltaY || 0);
-const looksLikeTrackpad = absX > 0 || (e.deltaMode === 0 && absY > 0 && absY < 50);
-
-if (looksLikeTrackpad) {
-    // Two-finger scroll pans (KiCad-like)
-    panX += (e.deltaX || 0) / scale;
-    panY += (e.deltaY || 0) / scale;
-    updateUI();
-    draw();
-    return;
-}
-
-// Mouse wheel zooms
-const zoomFactor = Math.exp(-e.deltaY * 0.0015);
-scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
-updateUI();
-draw();
 },
 { passive: false }
 );
 
 
 // Mouse
-canvas.addEventListener('mousemove', (e) => 
+canvas.addEventListener("mousemove", (e) => 
 {
-    if (panDrag) {
+    if (panDrag)
+    {
         const dx = e.clientX - panDrag.x;
         const dy = e.clientY - panDrag.y;
         panX = panDrag.panX0 + dx / scale;
@@ -1647,17 +1701,21 @@ canvas.addEventListener('mousemove', (e) =>
     setHoverFromEvent(e);
     const cell = canvasPointToCell(e.clientX, e.clientY);
 
-    if (pasteDrag) {
+    if (pasteDrag)
+    {
         if (cell) pasteDrag.anchor = { r: cell.r, c: cell.c };
         draw();
         return;
     }
 
-    if (tool === 'freeform') moveFreeform(cell);
-    else if (tool === 'line') moveLine(cell);
-    else if (tool === 'sbox' || tool === 'dbox') moveBox(cell);
-    else if (tool === 'freetext') beginFreetext(cell);
-    else moveSelect(cell);
+    // TODO SERIALISE ??
+    if (tool === "modeFreeform")   moveFreeform(cell);
+    else if(tool === "modeSelect") moveSelect(cell)
+    else if (tool === "modeLine")  moveLine(cell);
+    else if (tool === "modeSBox")  moveBox(cell);
+    else if (tool === "modeDBox")  moveBox(cell);
+    else if (tool === "modeFreetext") beginFreetext(cell);
+    else console.error("tool mismatch (move)");
 
 });
 
@@ -1677,7 +1735,7 @@ canvas.addEventListener("mousedown", (e) =>
     if (e.button === 1) {
         e.preventDefault();
         panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-        canvas.style.cursor = 'grabbing';
+        canvas.style.cursor = "grabbing";
         return;
     }
 
@@ -1686,55 +1744,65 @@ canvas.addEventListener("mousedown", (e) =>
     setHoverFromEvent(e);
     const cell = canvasPointToCell(e.clientX, e.clientY);
 
-    if (pasteDrag) { commitPasteAt(cell); return; }
+    if (pasteDrag)
+    { 
+        commitPasteAt(cell); 
+        console.log("setMode('"+modeRECALL+"')");
+        setMode(modeRECALL);
+        return;
+    }
 
-    if (tool === 'freeform') beginFreeform(cell);
-    else if (tool === 'line') beginLine(cell);
-    else if (tool === 'sbox') beginBox(cell, "single");
-    else if (tool === 'dbox') beginBox(cell, "double");
-    else beginSelect(cell);
+    // TODO SERIALISE (BEGIN functions)??
+    if (tool === "modeFreeform") beginFreeform(cell);
+    else if (tool === "modeSelect") beginSelect(cell)
+    else if (tool === "modeLine") beginLine(cell);
+    else if (tool === "modeSBox") beginBox(cell, "single");
+    else if (tool === "modeDBox") beginBox(cell, "double");
+    else console.error("tool mismatch (begin)");
 
 });
 
-window.addEventListener('mouseup', () => 
+window.addEventListener("mouseup", () => 
 {
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; return; }
   if (pasteDrag) return;
 
-  if (tool === 'line' && lineDrag) {
-    commitLineWithOptionalMerge(lineMerge); // lineMerge is true while 'm' is held
-      endLine();  // TODO !!!!!!!!!!!!!!!!
-     return; }
-
-  if ((tool === "sbox" || tool === "dbox") && boxDrag) { commitBox(); return; }
+  if      (tool === "modeLine" && lineDrag) { commitLineWithOptionalMerge(lineMerge); endLine(); return; }
+  else if (tool === "modeSBox" && boxDrag)  { commitBox(); return; }
+  else if (tool === "modeDBox" && boxDrag)  { commitBox(); return; }
 
   if (isDrawing) endFreeform();
   if (selectDrag || moveDrag) endSelect();
 });
 
-canvas.addEventListener('mouseleave', () => {
+canvas.addEventListener("mouseleave", () => {
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
   hoverCell = null;
   updateUI();
   if (pasteDrag) return;
 
-  if (tool === 'line' && lineDrag) { cancelLine(); return; }
-
-  if ((tool === "sbox" || tool === "dbox") && boxDrag) { cancelBox(); return; }
+  if (tool === "modeLine" && lineDrag) { cancelLine(); return; }
+  if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
+  if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
 
   if (isDrawing) endFreeform();
   if (selectDrag || moveDrag) endSelect();
 });
 
 
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 // Shortcuts
-window.addEventListener('keydown', (e) => 
+window.addEventListener("keydown", (e) => 
 {
+
     const isMac = /mac/i.test(navigator.platform);
     const mod = isMac ? e.metaKey : e.ctrlKey;
-    if (e.key === 'Escape') { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
+
+
+    console.log("e.key = "+e.key+" mod="+mod+" lineDrag="+(lineDrag!=null));
+
+    if (e.key === "Escape") { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
 
     // r for rotating
     if(e.key.toLowerCase() === 'r' && pasteDrag!=null)
@@ -1748,10 +1816,13 @@ window.addEventListener('keydown', (e) =>
         }
     }
 
-    if (lineDrag)
+    //if (lineDrag)
     {
-        if (e.key === 'Shift') lineFlip = true;
-        if (e.key.toLowerCase() === "m") lineMerge = true;
+        console.log("FLIP? "+ (e.key === "Shift"));
+
+        if (e.key === "Shift") lineFlip = true;
+        if (e.key.toLowerCase() === 'm') lineMerge = true;
+        draw();
     }
 
     if (textDrag)
@@ -1800,16 +1871,18 @@ window.addEventListener('keydown', (e) =>
         pasteSink.focus(); 
     }
 
-    if (tool !== "freetext") return;
+    if (tool !== "modeFreetext") return;
     
 
 }, { passive: false });
 
-window.addEventListener('keyup', e => {
-  if (lineDrag)
+window.addEventListener("keyup", e => {
+  //if (lineDrag)
   {
     if (e.key === "Shift") lineFlip = false;
-    if (e.key.toLowerCase() === "m") lineMerge = false;
+    if (e.key.toLowerCase() === 'm') lineMerge = false;
+    console.log("KEYUP: lineFlip="+lineFlip+" lineMerge="+lineMerge);
+    draw();
   }
 });
 
@@ -1822,8 +1895,8 @@ resizeRaf = requestAnimationFrame(() => {
     const next = computeStageSize();
     if (next.w === stageSize.w && next.h === stageSize.h) return;
     stageSize = next;
-    stage.style.width = stageSize.w + 'px';
-    stage.style.height = stageSize.h + 'px';
+    stage.style.width = stageSize.w + "px";
+    stage.style.height = stageSize.h + "px";
     syncCanvasBufferToStage();
     draw();
 });
