@@ -24,7 +24,258 @@
     }
     ,
     {
-        name: 'ATTinyx24',
+        name: 'ATTinyX12',
+        type: 'MCU',
+        description: '',
+        MFR: 'ATTINY412',
+        pin_data: 
+        
+        
+        
+{
+  "mcu": "ATtiny24/ATtiny24A",
+  "package": "PDIP-14 / SOIC-14",
+  "pins": [
+    {
+      "pin_num": 1,
+      "port": "VCC",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": false,
+      "analog": null,
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": "VCC"
+    },
+    {
+      "pin_num": 2,
+      "port": "PB0",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": null,
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT8", "XTAL1", "CLKI"]
+    },
+    {
+      "pin_num": 3,
+      "port": "PB1",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": null,
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT9", "XTAL2"]
+    },
+    {
+      "pin_num": 4,
+      "port": "PB3",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": null,
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT11", "RESET", "dW"]
+    },
+    {
+      "pin_num": 5,
+      "port": "PB2",
+      "PWM": true,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": null,
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT10", "INT0", "OC0A", "CKOUT"]
+    },
+    {
+      "pin_num": 6,
+      "port": "PA7",
+      "PWM": true,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC7",
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT7", "ICP", "OC0B"]
+    },
+    {
+      "pin_num": 7,
+      "port": "PA6",
+      "PWM": true,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC6",
+      "I2C": "SDA",
+      "SPI": "MOSI",
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT6", "OC1A"]
+    },
+    {
+      "pin_num": 8,
+      "port": "PA5",
+      "PWM": true,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC5",
+      "I2C": null,
+      "SPI": "MISO",
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT5", "OC1B", "DO"]
+    },
+    {
+      "pin_num": 9,
+      "port": "PA4",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC4",
+      "I2C": "SCL",
+      "SPI": "SCK",
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT4", "USCK", "T1"]
+    },
+    {
+      "pin_num": 10,
+      "port": "PA3",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC3",
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT3", "T0"]
+    },
+    {
+      "pin_num": 11,
+      "port": "PA2",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC2",
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT2", "AIN1"]
+    },
+    {
+      "pin_num": 12,
+      "port": "PA1",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC1",
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT1", "AIN0"]
+    },
+    {
+      "pin_num": 13,
+      "port": "PA0",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": true,
+      "analog": "ADC0",
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": null,
+      "alt": ["PCINT0", "AREF"]
+    },
+    {
+      "pin_num": 14,
+      "port": "GND",
+      "PWM": false,
+      "digital_audio": null,
+      "serial": null,
+      "digital": false,
+      "analog": null,
+      "I2C": null,
+      "SPI": null,
+      "CAN_bus": null,
+      "Power": "GND"
+    }
+  ],
+  "power_pins": [
+    { "name": "VCC", "pin_num": 1, "voltage": "1.8–5.5V (device dependent)" },
+    { "name": "GND", "pin_num": 14, "voltage": "0V" }
+  ],
+  "notes": {
+    "digital_audio": "Not supported on ATtiny24 (no I2S/SPDIF).",
+    "serial": "No hardware UART. USI can be used for I2C/SPI; UART can be bit-banged.",
+    "I2C": "Provided via USI: SCL=PA4 (USCK/SCL), SDA=PA6 (SDA).",
+    "SPI": "Provided via USI: SCK=PA4 (USCK), MISO=PA5 (DO/MISO), MOSI=PA6 (SDA/MOSI).",
+    "CAN_bus": "Not supported."
+  }
+}
+        
+        ,
+        text_data:[
+'╔══╧════╧════╧════╧══╗\n' +
+'║ PA1  PA7  PA6  VDD ║\n' +
+'║ MOSI RX   TX    ⬤ ║\n' +
+'║                    ║\n' +
+'║     [ATTinyX12]    ║\n' +
+'║                    ║\n' +
+'║ MISO UPDI SCK      ║\n' +
+'║ PA2  PA0  PA3  GND ║\n' +
+'╚══╤════╤════╤════╤══╝'
+,
+'╔════════════════════╗\n' +
+'║ ⬤  [ATTinyX12]    ║\n' +
+'║                    ║\n' +
+'╢ VCC            GND ╟\n' +
+'║                    ║\n' +
+'╢ PA6 TX     SCK PA3 ╟\n' +
+'║                    ║\n' +
+'╢ PA7 RX    UPDI PA0 ╟\n' +
+'║                    ║\n' +
+'╢ PA1 MOSI  MISO PA2 ╟\n' +
+'║                    ║\n' +
+'╚════════════════════╝'
+],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAGRoaNjY2Wlpa1tbWhYWF4+Pjtra2iYmJw8PDKiwzSgAAAAp0Uk5TAP/8+Br3/fhahha3s/EAAAJ/SURBVHic1ZWxT9tAFMZvMFIYz24Cq8+N6Nj49XBHSzgKjLF7NWyV2l7EVgXsU7YKguRuSEAj/ts+21xydhw6deg3REq+3/fy3vOLQsi/krV8xYzC08J/tzv7PEsYpU7YHY6iAtCm1O4EzqpwrZ9bpc90uNbbtr/KfJcaMru0oscCGi7KMQAM0y1tuuz57XANrLvsdbheQukHDZy2CzDG089Gl3ejVjgLlMIKhxq4XQM2tT0lgjgYJmaXFeCkMYUBF1ylqfCbuzzB93YuhXt8nGU8gfXI+omfAqUHX5UTB0qI2Oj4ox4TgcG8P+VHtu5lODWX3cMtD4ajVGfdmLO4WvZLl1biUrv/PZ9XLvjsql/uabNL6wbHOJAzlzKADI76wmZ+Y4xyThtcNoyhD8JxdSv0vTEnSrBp3wHPWKq+mXH9oYinTvOhHBpjoEas/dT0sq2ta9LSYySjHYDu8mEXoLu87TjJSm+ac25Lj7EHOwB9+r2/ATvmtBlooGtOm6G277ZhrytsAejhjQBwDYz9pl1W4CoBfZWkxxrp8sUXvgef1oCe066eqJcmAL4nfoUasGATxvaCxANI1TXZCH8OrK7NYwwzfr5UDeCm6huhIPPL8IJYc88ETso8j5nn42UXqxK44iYwRj9QWJ0rFZIHdkGsDC4MYA9QzIPzlVJ4QByBVX4ZboB99HmqluSJBYQ8CQyvpDQAC17CT5Cip9CbNABSFNEEMDwR4sU7k/KeNDT2gpCM0zp8T/Zz1QImWaI9Kb/g30IUtoC09n4QK29scT2JlNdYWH7D8HPYDaCXzzAcddg4ai4vccTFY6dbAr/lovxH2+W/Gq4VdX/1f6A/CEK+3lEmwEYAAAAASUVORK5CYII='
+    }
+
+    ,
+    {
+        name: 'ATTinyX24',
         type: 'MCU',
         description: '',
         MFR: 'ATTINY3224-SSU',
@@ -57,7 +308,6 @@
 '╢ PB2 TX  SDA PB1 ╟\n' +
 '╚═════════════════╝'
 ],
-
       image_data:
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAC1QTFRFAAAAJiYmFxcXNzc4bW1urKytTE1N297fxcfIjo6Ptbe4ycnKtLa3iYmK5ufoGiz2AAAAAA90Uk5TAP///vj4/Qoo/WH8n7rxUfwZowAAAwhJREFUeJy9lc9r02AYx99bwpiHJ6mBHXZo9hd0tUGcO8RtascuwjIJK4MuU3B66EFsqR30MOl+9TC6zGWtMhDp5k7CIpTKGHiYslOZbEOcN0Ud9G/wSdLWvMuamz6H5PB8eZ7P+32eNyHkP0Yymcz55Zmjr8rvhI+gM9T3S8/6CD6AYK775DviANJdH8EsYEwnU+2asLIl4L+p9TacdgGAtpxMzRHwldLFBfIhRwDSMWEuaMIe2lkhehP6cwsfvYoZp8DDs7rMf1GqGx6CVyCKCKAXJn5YnB5BOs6JYhBbyBNmnFdKnhazgAIR+CGtEA2BcEIILWFrEOZEDrrq2vIgoiDnT0qRB5ia7NFAqE8tr0II+BGV4mRrIgi9Ah7kZV0uRO4ARL5TnJc4BOSCHEBgV9bGB2TgjXV3iycWICfaPoYCevEtHpjifAz2GRvD6Cs2OP+u30x00qUAQy3gc0Td3WsKDkYnrSbNiOo68l4+izY5map5JLqbjAqr+NJbc2ejsVTNXSJiFHG9+DW8KbbgqXqM03SXGDJX8BXILTjrp5h7DmerBBimwzlhc87j8M5x3hsYRc6uM90WsGXCjpufOVcTQVHG8DXUmnuHEZujOK+MPcB7xA8nGpxL6hqZ4d2cRmTA4iy/qWctwWuzTDIUZ0BXLcWjisOZL2XJwQ5leEhV4xan4XBuEuYcJ1803lGcrPE+dUhx2m7xt5qGL6rPSf6+u4mwjI/w1aZgy9wgS4M33H5aBeKtCvlSgtneofzEkAKt3WQ2PX5iAW3avZss+klxgiSVXXmSqayRTNhdQrvmzpOt6j766eIUwvuUIIOmUJzhfvqKMjnLz9PWfgrhY3I+2JVYssUpdWc9ggz62dng5OO3PXnyDPcz0/BTCngLkDTOfXEnbn9NtGlvnjBzeNHM015sIkkbFwgsjRHLIWdQu97mm5xWh0laE3tC3jM6MY9+pgflnu52P5+0kkBOOdiuACHIuV19MZVtK0DOT7HcnE+epCrrfn8/9LN64psnC4ofwD+IPwq/D/44ndVIAAAAAElFTkSuQmCC'
     }
@@ -90,6 +340,83 @@
 
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAHyEl4uHmtK+yfHZ3WlRTNjU4oYVkbmNaoI18rvRBjQAAAAp0Uk5TAP///f7+/fGIPaqpVkYAAAMySURBVHichZbBctowEIZzDEfNYKXXrswDVLLpGSy7Z8Byzwq2Mr01kzSGW3IJyS2nJLxtV3ZsSybTLpix8Yf2/3cXwdlZH+/Pxy6eXs4+iVfTh/4c0KQNbcjnAOmC/g8gJ8D7E8ajA9jrZ+e+zZ67wOMmJqYnJg/2PTUGyJcOOG/k+ys0Wjsl5+QEyIpyQch9Bxi7RJk5wELqFTUdMKlvkZh6QJFndd2lmOzeFmOA0Kv9AOwn1y0QZB+58ANXL2+9zfrwsUKQIlC1wMWwwnn9h7RAie7Jdt4A9Gft22w0VIqootFgY7Bpr5r81NjnGGhtorZKY6dJQIsmxY+RTZPRapVEVKZUNSJ3I5sqM6YqjCnx+LDZA/VhhSk05tG0HSm8no5tBsS0dwmS+sQmVYZ0Q9uf3DtAwoXqh94YIWIXQOEcMBgIG815hCmGOhyKBEYR+zbveoDjAyLOZ67N3RsCSbSUYSLXmySRqYxir5u3OgGZyzyWyTpOpAVmqOG3M5MJRFIk4VIupcCFRDJD657NscjQtVmnPcC4NcoED8mQorVpb4RYhKYUjIfTsU1bIYYH51gwTOHa3L/fnWqY7g+DzdqMAAahb5NamzxWlsu2EBsU6dlEYC6jMio4hCUH1OzZTAu7AmRCiiVkHGaXtg4qH7pZFxbYZukaoAT4iv0Kg3po9/6ILmK23lp9UwSqNYQXR6eb1uY3s77sgASlXAw22xQxu9zAEkABzDBTiF+cXqQxKDKG7dwgMF8CK63IYYdpbcYwT0S8BmY2MK+4Z1MVDcAqWdlx3QBIBCrl2Fw1pWaSD70Iaq+b+bhZzBva4510b2LDGbs6ujZXOTSzwkUkcCBxYpiTAkWSFli282RfGX5d/zm0zO8mWZ4CyrNZSidShTGtR1tQG8GqO3Nd7I7XQY6f1GTz3e42mhqtfZuFyKXKM4r6b/RWykhKz6YhQmlaZYEQIBbbWJkqx+vBZqAj3HiKLGC1EIvNvDBVSamzR5WLqDJGpQG7GYC0//WcPJSZqHDZLIAuhcmp6n/1zl4DXWL9xQr3MiF0kOZYClL86oHJk1K2QEohFhmDeUSs2v8IfwEGVmNubcXoKQAAAABJRU5ErkJggg=='
+    }
+    ,
+    {
+        name: 'Teensy 4.1',
+        type: 'MCU',
+        description: '',
+        MFR: 'Teensy_41',
+        pin_data: 
+        
+        
+        
+        {
+  "board": "Teensy 4.1",
+  "pins": [
+    { "pin_num": 0, "PWM": true, "digital_audio": null, "serial": "Serial1_RX", "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 1, "PWM": true, "digital_audio": null, "serial": "Serial1_TX", "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 2, "PWM": true, "digital_audio": null, "serial": "Serial2_RX", "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 3, "PWM": true, "digital_audio": null, "serial": "Serial2_TX", "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 4, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 5, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 6, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 7, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 8, "PWM": true, "digital_audio": null, "serial": "Serial3_TX", "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 9, "PWM": true, "digital_audio": null, "serial": "Serial3_RX", "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 10, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": "SPI0_CS", "CAN_bus": null, "Power": null },
+    { "pin_num": 11, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": "SPI0_MOSI", "CAN_bus": null, "Power": null },
+    { "pin_num": 12, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": "SPI0_MISO", "CAN_bus": null, "Power": null },
+    { "pin_num": 13, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": "SPI0_SCK", "CAN_bus": null, "Power": null },
+
+    { "pin_num": 14, "PWM": true, "digital_audio": null, "serial": "Serial4_TX", "digital": true, "analog": "A0", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 15, "PWM": true, "digital_audio": null, "serial": "Serial4_RX", "digital": true, "analog": "A1", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 16, "PWM": true, "digital_audio": null, "serial": "Serial5_RX", "digital": true, "analog": "A2", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 17, "PWM": true, "digital_audio": null, "serial": "Serial5_TX", "digital": true, "analog": "A3", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 18, "PWM": false, "digital_audio": null, "serial": null, "digital": true, "analog": "A4", "I2C": "I2C0_SDA", "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 19, "PWM": false, "digital_audio": null, "serial": null, "digital": true, "analog": "A5", "I2C": "I2C0_SCL", "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 20, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": "A6", "I2C": "I2C1_SDA", "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 21, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": "A7", "I2C": "I2C1_SCL", "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 22, "PWM": true, "digital_audio": null, "serial": "Serial6_RX", "digital": true, "analog": "A8", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 23, "PWM": true, "digital_audio": null, "serial": "Serial6_TX", "digital": true, "analog": "A9", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 24, "PWM": true, "digital_audio": "I2S1_BCLK", "serial": null, "digital": true, "analog": "A10", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 25, "PWM": true, "digital_audio": "I2S1_LRCLK", "serial": null, "digital": true, "analog": "A11", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 26, "PWM": true, "digital_audio": "I2S1_TX", "serial": null, "digital": true, "analog": "A12", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 27, "PWM": true, "digital_audio": "I2S1_RX", "serial": null, "digital": true, "analog": "A13", "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 34, "PWM": true, "digital_audio": "MQS_R", "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+    { "pin_num": 35, "PWM": true, "digital_audio": "MQS_L", "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": null, "Power": null },
+
+    { "pin_num": 36, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": "CAN1_TX", "Power": null },
+    { "pin_num": 37, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": "CAN1_RX", "Power": null },
+
+    { "pin_num": 38, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": "CAN2_TX", "Power": null },
+    { "pin_num": 39, "PWM": true, "digital_audio": null, "serial": null, "digital": true, "analog": null, "I2C": null, "SPI": null, "CAN_bus": "CAN2_RX", "Power": null }
+  ],
+
+  "power_pins": [
+    { "name": "VIN", "voltage": "5–6V" },
+    { "name": "3V3", "voltage": "3.3V" },
+    { "name": "VBAT", "voltage": "3.0–3.6V" },
+    { "name": "USB_5V", "voltage": "5V" },
+    { "name": "GND", "voltage": "0V" }
+  ]
+}
+
+        
+        
+        
+        
+        ,
+        text_data:[''],
+      image_data:
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAB5QTFRFAAAAc5J7TFJUVHhl3NLLoaeI9vj1ibiT28JwhK+BLPkEGgAAAAp0Uk5TAPv//vz8FSD9imlocvAAAAJsSURBVHic1dVBa9swFAdwnyZ2lBWR9Ojn9gNIQpAc0yqHHjXZ1L15sK5Xl7ENHV3X4N4WSpPs20520jWVnQ5WGMyHXN7P7y89ySQI/ocnf7387u8B+gNAm9XrwE5U8RpAk1qN88MAbbRSan0YWJo6sCgOgW1dqfN8GKDN7agD6mIY2JLugPo+BKw2IWzr5/NvfYCWJa7gpAOPk/s++FoazW7hWCr1k+pVD9jS0CQ945Cqc63vexHooSSyVqqKwRyn5Y/eIm9qgsXoTpkKIlqOe9u0pZCKyDslSMjIZeED9KABJ3ORzGNW43rtjxo91ABxShIMIHA9DnxgSw4xxDQNncO08AEiBtyrACkHwFl72i9AFwCxCCHSQJtZ4IMuIATiWlCCae9O7gJiwTkc7wJegKVr4B4Sux+azQof2KptEOOYcGBYrgIPIFIJ0XZw+4xwNg48gDala9BluB1OWeEDqzVpR9AOirHJOvCAlSXWYSykbpeRHRUecAG0mhohTPoBmHwOeAJWEoYJDQk/OY3EXsAO2KkmQmIZRjxanGRHuQfQhgp3BBPNY8zmTO436MDN1Lj9CSYYy7TIxrkH3jcCtx04F1jqbH+FHbheSjMy3NXdALHIXgS04GNDk4WRDDhOGW5muQ+ucJioOQvBENeArgIfXJPRQinDjWvAmnHQA7ltv9KFm1RKSlkMAPTYgjPcaNb4Ads52ER9UGcsxeWsV99O8kuSziMgrO4F7M7iU6pOuZBlb4VPAF3pRGBymR8CweclkdOqv8Lg+UYRSi6G6r/v5M3kfihg71bj9WD9+buwww3e8pf0L8Gbn18sp7KgkeW1twAAAABJRU5ErkJggg=='
     }
     ,
         {
@@ -536,6 +863,20 @@
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRF/v7+EhMTIiMi0tPSOz4+TFFQ5ubmY2ZlhYeGsLGwxrJ6QgAAApNJREFUeJztlE1vm0AQhpGsEue4yJV6ZQJyjpG2NvgYuqu0xzastr5ZQtqq19jWwi2V8+Uzctz8286yYNzWplJPPXRsDjAPM+/MDuM4/+1vLHuZdfp7+dOqEzjheX7R4Xe/AJPPXQpGHvAyOypD0Y0Qck3HxxLQrTCWU3rEH1V+KYuDhEvpQliTJS0P+WMuUl4Rc/pbDPTTEU8ZMnhhjl+VZvjoLeMmAgIoU03oXrW9lxKBO8ZM/FRojXf3It8R7qPGdyYACEj868U1jZjUtw3QZ3q5orFPwGjUWqdn2QiAP9Qh8AQgmdOIEOIBQxPJGR0REszrkz3dApA5jYk1ZC7fZXjnPc4t8AoIeY0qfQtgFHhQaiueZAP4nlyh7m9NCHgzVop+l8s2wvu16QNpbKqUirCk6wYAMsDuNiLIsMxUbBpSRzjxPQgA2/vR+gd5mX1dpizlDQDGvJJuK5kex3x3nGHLd4CHPzZcTe7BRz92dVO1Q+xF8H1IBiV9TILgc0kjPFfgjF/vpcDqknNKPzExpTGeeQKM/6Sh6tAHmgCfmmNlRoJN4TojIJYIruglGRSTZQ3UncyiOgJmOb8k3nS5YFajrlP0dwAiZLgQlZ/JfF2PXT/ZAR65uucW4Fo3H+HpTRuBeEEF8FTIYvcZGxH4sgVCrNEMt5C3ytkjdicZWoFC5hduO9ZRgk22UMBYNfxmDczaud4kfp0ksD0SBT5ucyAB9cQFVQZZmJddNWuJu5oIK6BeRG4LOL2FJcJUcKkP7aHeDXimzBQTHF51fVOKH+IwFgf9jhNjKRDmT8c3YYynMizGHZtyAxAWs+N+046Qqg7AcbfTWdcuRmLsqP32HGRUdmzX1pZ1y8Cejv+Q45+zH54M0rz1tPHvAAAAAElFTkSuQmCC'
     }
+    ,
+    {
+      name: 'DP Switch',
+      type: 'Discrete',
+      description: 'Double Pole Switch',
+      MFR: 'TL2202EEYA',
+      pin_data: null,
+      text_data:[
+      '─○▏▕○─\n' +
+      '─○▏▕○─\n' +
+      '─○  ○─'
+   ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAALy8vIiAgggQJUw0RJyUmHx8fKSkpgICAQBETL8gyHgAAAAp0Uk5TAP/+//++fiHy1vJeSnQAAAHRSURBVHictdXNT8IwFADwcdB6fU38uLYu3rG9cDQrJtwcQbiqCUFvaMLk6kHiXSL/ru+1G7CuXTjoS4DB+9G+vq1bkvxxsMVk3gqKdW/WJoq1UoOHlglGCqM/i4JRRkDfRsHaoNBmEAXfxmTamF4cKIOh2gAK1Q501gZecA0IfqLgOCVgNrFespE2KjOXehPJD41dhTb992B+ylPsQoq96I4Dk7ApcKNRZDrrwrg5xgIQ4Crp1QWYNPLCAmWUA74oMG9BVgGon/Qh/cTTEtzQt6sayGkEkBZcS6vP6oBbkSLQ9ogLD+AvICVgJ8o8+AA4lyRsHvC9AcACqPIBANu8/QyMIORePgjAFQhxQKLMRwCIKu+BYQVcwwKtllWuAtJvtawD6dfgAdkssgZ4qNViB3ig1XyvSHfQqGE7QrlSH3ACkoAIdtJNgeezOmMeeHSrkLtLwgO4bSTNLbedhLsaYE/49/1O8ntve9LWLIu00dyc7M1dMaE1uuhQBdwBsQqAkw+OhboL+jkIPse5W8XpbBkEq6TIyy0TA3QXEBzHD4LOih44ICbLCDimOwbL5RyHej0PABeLCwJJ/LF09GVBPA4BLP7McqAtfQBgrc/V/4lfpAJ//mhZe2QAAAAASUVORK5CYII='    }
     ,
     {
       name: 'Power Delivery',
