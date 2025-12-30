@@ -18,7 +18,20 @@ for (let cp = start; cp <= end; cp++) out.push(String.fromCharCode(cp));
 return out;
 };
 
-const catalogTypes = () => Array.from(new Set(CATALOG.map(it => String(it.type || 'Other')))).sort();
+function catalogTypes()
+{
+  const set = new Set();
+  for (let i = 0; i < CATALOG.length; i++)
+  {
+    const item = CATALOG[i];
+    let type = item && item.type;
+    if (type === null || type === undefined) type = "Other";
+    else { type = String(type).trim(); if (type === "") type = "Other"; }
+    set.add(type);
+  }
+  return Array.from(set).sort();
+}
+
 const catalogItemsForTab = (tab) => tab === 'All' ? CATALOG : CATALOG.filter(it => String(it.type || 'Other') === tab);
 const catalogItemByUID = (uid) => CATALOG.find(it => (it.name+'_'+it.type+'_'+it.MFR) === uid);
 
