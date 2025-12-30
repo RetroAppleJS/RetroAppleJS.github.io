@@ -1168,16 +1168,22 @@ function closeCatalog()
     updateUI();
 }
 
-function renderCatalogTabs() {
-catalogTabsEl.innerHTML = '';
-const types = ["All", ...catalogTypes()];
-for (const t of types) {
-    const b = document.createElement("button");
-    b.className = "btn" + (t === catalogTab ? " primary" : '');
-    b.textContent = t;
-    b.addEventListener("click", () => { catalogTab = t; renderCatalogTabs(); renderCatalogGrid(); });
-    catalogTabsEl.appendChild(b);
-}
+function renderCatalogTabs()
+{
+
+
+    catalogTabsEl.innerHTML = '';
+    const types = ["All", ...catalogTypes()];
+
+    console.log( types );
+
+    for (const t of types) {
+        const b = document.createElement("button");
+        b.className = "btn" + (t === catalogTab ? " primary" : '');
+        b.textContent = t;
+        b.addEventListener("click", () => { catalogTab = t; renderCatalogTabs(); renderCatalogGrid(); });
+        catalogTabsEl.appendChild(b);
+    }
 }
 
 function renderCatalogGrid() {
