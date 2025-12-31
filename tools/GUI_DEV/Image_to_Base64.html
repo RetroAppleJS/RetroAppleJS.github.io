@@ -33,7 +33,7 @@
       <div id=main style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
       <input id="myinput" type="file" onchange="encode();" style="padding: 5px 10px; margin: 10px;" />
-      <button style="padding: 5px 10px; margin: 10px;" onclick="copy(document.getElementById('txt').value.substring(10,document.getElementById('txt').value.length-2))">COPY</button>
+      <button style="padding: 5px 10px; margin: 10px;" onclick=copy(document.getElementById('dummy').innerHTML.split('\"')[1])>COPY</button>
       <div id="dummy">
       </div>
       <div>
@@ -53,8 +53,8 @@
               var srcData = fileLoadedEvent.target.result;
               var newImage = document.createElement('img');
               newImage.src = srcData;
-              document.getElementById("dummy").innerHTML = newImage.outerHTML.slice("\"")[1];
-              document.getElementById("txt").value = document.getElementById("dummy").innerHTML;
+              document.getElementById("dummy").innerHTML = newImage.outerHTML;
+              document.getElementById("txt").value = document.getElementById("dummy").innerHTML.split("\"")[1];
             }
             fileReader.readAsDataURL(imageFile);
           }
