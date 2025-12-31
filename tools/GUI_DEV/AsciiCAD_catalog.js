@@ -247,7 +247,7 @@
         ,
         text_data:[
 '╔══╧════╧════╧════╧══╗\n' +
-'║ PA1  PA7  PA6  VDD ║\n' +
+'║ PA1  PA7  PA6  VCC ║\n' +
 '║ MOSI RX   TX    ⬤ ║\n' +
 '║                    ║\n' +
 '║     [ATTinyX12]    ║\n' +
@@ -764,7 +764,14 @@
      '      ╱\n'+
      '      │\n'
      ,
-    
+     '  ⎽⎽⎽⎽⎽⎽\n' +
+     '─┤     Ω├\n' +
+     '  ⎺⎺⎺⎺⎺⎺\n'
+    ,
+     ' ⏊\n' +
+     '▕ ▏\n' +
+     '▕ ▏\n' +
+     ' ⏉\n'
     ],
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAB5QTFRFAAAAzLKK3wsKp4llhUkO1cWpzMnEX19f0L8l1kM6uVcIQAAAAAp0Uk5TAP/////9d////yyk2eIAAADrSURBVHic7ZKxbsIwEIbdIcz94xqREZgYw6WqupI8ABY6ZjIkL9ChM+qSFXXK29aXFKSYIBYWJH/ycNL/6RzfRalA4Gmp6PVcTqw5XOWW29O0LyPMjth6ecRsDX+eWBPAgicwI55z8su73IW2MTxsEQGIV3J04Uo0R0wHwksvJAsnpL2AgVDeFuQ9FUvbpBNwEcy+E/Z1XVuMCTAuqtW344vGBP0h2f1vuH4FxgSZw7qbw5sIukm9OSgQrZdysoIcDaXeMkqizZJat4vUasp+6N3bhbK0yc3/fTrL/QbSo73cOsHI/xAIBB7IH1KuPbXzHyuIAAAAAElFTkSuQmCC'
@@ -1039,12 +1046,12 @@ Motor:     ─Ⓜ─
 
 // https://www.charset.org/utf-8/10
 const PICKER_TABS = {
-Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦']),
+Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
 Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
-Geometric: rangeChars(0x2580, 0x25FF).concat(rangeChars(0x20D8, 0x20E4)).concat(['⬛']),
+Geometric: rangeChars(0x2580, 0x25FF).concat(rangeChars(0x20D8, 0x20E4)).concat(['⬛','❘','❙','❚']),
 Icons1: rangeChars(0x2600, 0x26FF),
-Icons2: rangeChars(0x2701, 0x2775).concat(rangeChars(0x2794, 0x27C1)),
+Icons2: rangeChars(0x2701, 0x2775).concat(rangeChars(0x2794, 0x27C1)).concat([]),
 AlphaNumeric: rangeChars(0x0021, 0x007A).concat(rangeChars(0x2460, 0x24FF)),
 Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','⬤','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓','ᯤ'].concat(rangeChars(0x2400,0x2424)),
-Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','☢','☣','✈','✉','✌','⏄']),
+Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌','⏄']),
 };
