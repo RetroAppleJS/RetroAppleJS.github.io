@@ -1186,46 +1186,48 @@ function renderCatalogTabs()
     }
 }
 
-function renderCatalogGrid() {
-catalogGridEl.innerHTML = '';
-const items = catalogItemsForTab(catalogTab);
-for (const it of items) {
-    const card = document.createElement("div");
-    card.className = "cat-item";
-    card.title = it.name + (it.MFR ? (" · " + it.MFR) : '');
+function renderCatalogGrid()
+{
+    catalogGridEl.innerHTML = '';
+    const items = catalogItemsForTab(catalogTab);
+    for (const it of items)
+    {
+        if(it===undefined) return;
+        const card = document.createElement("div");
+        card.className = "cat-item";
+        card.title = it.name + (it.MFR ? (" · " + it.MFR) : '');
 
-    const img = document.createElement("img");
-    img.className = "cat-thumb";
-    img.alt = it.name;
-    img.src = it.image_data;
+        const img = document.createElement("img");
+        img.className = "cat-thumb";
+        img.alt = it.name;
+        img.src = it.image_data;
 
-    const cap = document.createElement("div");
-    cap.className = "cat-name";
-    cap.textContent = it.name;
+        const cap = document.createElement("div");
+        cap.className = "cat-name";
+        cap.textContent = it.name;
 
-    card.appendChild(img);
-    card.appendChild(cap);
+        card.appendChild(img);
+        card.appendChild(cap);
 
-    // USER CLICK ON CATALOG ITEM
-    card.addEventListener("click", () => {
-        closeCatalog();
+        // USER CLICK ON CATALOG ITEM
+        card.addEventListener("click", () => {
+            closeCatalog();
 
-        if(pasteDrag==null) pasteDrag = {item_data:{}};
-        pasteDrag.item_data.rotation = 0;                           // default rotation
-        pasteDrag.item_data.uid = it.name+'_'+it.type+'_'+it.MFR;   // unique id for this catalog item
-        const text_data = it.text_data[ pasteDrag.item_data.rotation ];
+            if(pasteDrag==null) pasteDrag = {item_data:{}};
+            pasteDrag.item_data.rotation = 0;                           // default rotation
+            pasteDrag.item_data.uid = it.name+'_'+it.type+'_'+it.MFR;   // unique id for this catalog item
+            const text_data = it.text_data[ pasteDrag.item_data.rotation ];
 
-    if(bDebug) console.log("pasteDrag.item_data.uid="+pasteDrag.item_data.uid)
-    currentOpLine.textContent =  it.type+": "+it.name;
-    //selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
+            if(bDebug) console.log("pasteDrag.item_data.uid="+pasteDrag.item_data.uid)
+            currentOpLine.textContent =  it.type+": "+it.name;
+            //selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
 
+            startPasteWithText(expandWideCharsForGrid(text_data) || '');
+            canvas.focus();
+        });
 
-        startPasteWithText(expandWideCharsForGrid(text_data) || '');
-        canvas.focus();
-    });
-
-    catalogGridEl.appendChild(card);
-}
+        catalogGridEl.appendChild(card);
+    }
 }
 
 // Drawing
