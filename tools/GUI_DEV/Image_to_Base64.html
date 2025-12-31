@@ -53,7 +53,7 @@
               var srcData = fileLoadedEvent.target.result;
               var newImage = document.createElement('img');
               newImage.src = srcData;
-              document.getElementById("dummy").innerHTML = newImage.outerHTML;
+              document.getElementById("dummy").innerHTML = newImage.outerHTML.slice("\"")[1];
               document.getElementById("txt").value = document.getElementById("dummy").innerHTML;
             }
             fileReader.readAsDataURL(imageFile);
