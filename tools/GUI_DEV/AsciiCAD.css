@@ -2,7 +2,7 @@
     *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:var(--bg);overflow:hidden}
     .app{height:100vh;display:flex}
-    .sidebar{height:100vh;border-right:1px solid var(--border);background:#fff;display:flex;flex-direction:column;transition:width 200ms ease;width:280px;min-width:180px}
+    .sidebar{height:100vh;border-right:1px solid var(--border);background:#fff;display:flex;flex-direction:column;transition:width 200ms ease;width:290px;min-width:180px}
     .sidebar.closed{width:48px}
     .sb-top{padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
     .btn{border:1px solid #cbd5e1;background:#fff;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none}
