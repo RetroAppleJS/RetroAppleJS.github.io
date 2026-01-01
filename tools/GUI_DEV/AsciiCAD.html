@@ -1673,15 +1673,17 @@ window.addEventListener("mouseup", () =>
 });
 
 canvas.addEventListener("mouseleave", () => {
+    if(bDebug) console.log("EVENT: mouseleave()");
+
     if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
     hoverCell = null;
     updateUI();
     if (pasteDrag) return;
 
     // TODO SERIALISE (CANCEL functions)??
-    if (tool === "modeLine" && lineDrag) { cancelLine(); return; }
-    if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
-    if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
+    //if (tool === "modeLine" && lineDrag) { cancelLine(); return; }
+    //if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
+    //if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
 });
 
 
