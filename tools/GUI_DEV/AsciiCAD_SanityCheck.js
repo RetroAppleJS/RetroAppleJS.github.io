@@ -53,6 +53,10 @@ console.assert(
     "Saved text must not contain literal \\n"
 );
 
+console.assert(!catalogTypes().includes(null), "catalogTypes contains null");
+
+console.assert(!catalogTypes().includes(""), "catalogTypes contains empty string");
+
 updateUI();
 draw();
 })();
