@@ -218,8 +218,6 @@ let pasteDrag = null;  // {lines,w,h,anchor,transparentSpaces}
 let lineDrag = null;   // { start:{r,c}, cur:{r,c} }
 let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
 let textDrag = null;   // { anchor:{r,c}, text:"" }
-//let lineMerge = true;  // merge lines by default, use 'o' to override
-
 let modeRECALL = null;
 
 // Picker tabs
@@ -273,9 +271,7 @@ const maskToGlyph = new Map([
   [N | E | S | W, '┼'],
 ]);
 
-function isWireGlyph(ch) {
-  return glyphToMask.has(ch);
-}
+function isWireGlyph(ch) { return glyphToMask.has(ch); }
 
 function mergedWireGlyph(prevCh, nextCh) {
   const pm = glyphToMask.get(prevCh) ?? 0;
