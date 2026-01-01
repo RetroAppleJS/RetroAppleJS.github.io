@@ -273,8 +273,14 @@ const maskToGlyph = new Map([
 
 function isWireGlyph(ch) { return glyphToMask.has(ch); }
 
-function mergedWireGlyph(prevCh, nextCh)
+function mergedWireGlyph(prevCh, nextCh, lineKind)
 {
+  // If we're drawing a double line, and the merge logic doesn't understand it yet,
+  // never collapse it — keep the drawn glyph.
+  if (lineKind === "double" && !glyphToMask.has(nextCh)) {
+    return nextCh;
+  }
+
   const pm = glyphToMask.get(prevCh) ?? 0;
   const nm = glyphToMask.get(nextCh) ?? 0;
   const m = pm | nm;
@@ -797,7 +803,7 @@ function commitLine()
   draw();
 }
 
-function commitLineWithOptionalMerge(mergeEnabled) 
+function commitLineWithOptionalMerge(mergeEnabled, lineKind) 
 {
   if(bDebug) console.log("commitLineWithOptionalMerge() lineDrag="+lineDrag);
 
@@ -818,14 +824,24 @@ function commitLineWithOptionalMerge(mergeEnabled)
     const [r, c] = key.split(',').map(Number);
 
     const prev = ascii[r][c];
+
     let next = ch;
 
     if (mergeEnabled) {
-      // Only merge if prev is wire/blank; otherwise we overwrite like normal (or you can choose to skip)
-      if (prev === ' ' || isWireGlyph(prev)) {
-        next = mergedWireGlyph(prev, ch);
+      // Only merge when both glyphs are compatible with the merge system
+      const prevMergeable = (prev === ' ') || isWireGlyph(prev);
+      const nextMergeable = (ch === ' ')   || isWireGlyph(ch);
+
+      if (prevMergeable && nextMergeable) {
+        // Pass the intended line kind so merging can respect single vs double
+        next = mergedWireGlyph(prev, ch, lineKind);
+      } else {
+        // IMPORTANT:
+        // Never let unknown glyphs (e.g. double wires) collapse to space
+        next = ch;
       }
     }
+
 
     if (prev !== next) {
       stroke.push({ r, c, prev, next });
@@ -1659,9 +1675,9 @@ window.addEventListener("mouseup", () =>
   if (pasteDrag) return;
 
 // TODO SERIALISE (COMMIT functions)??
-  if      (tool === "modeLine" && lineDrag)
+  if (tool === "modeLine" && lineDrag)
   { 
-    commitLineWithOptionalMerge(lineDrag.merge);
+    commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind);
     return; 
   }
   else if (tool === "modeSBox" && boxDrag)  { commitBox(); return; }
