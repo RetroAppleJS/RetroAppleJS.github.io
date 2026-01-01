@@ -218,8 +218,7 @@ let pasteDrag = null;  // {lines,w,h,anchor,transparentSpaces}
 let lineDrag = null;   // { start:{r,c}, cur:{r,c} }
 let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
 let textDrag = null;   // { anchor:{r,c}, text:"" }
-let lineFlip = false;  // Shift
-let lineMerge = true;  // merge lines by default, use 'o' to override
+//let lineMerge = true;  // merge lines by default, use 'o' to override
 
 let modeRECALL = null;
 
@@ -321,8 +320,9 @@ function recomputeWireCell(r, c) {
   return g;
 }
 
-function buildOrthogonalPath(start, end, start_vleg, chset)
+function buildOrthogonalPath(start, end, start_vleg, kind)
 {
+  const chset = kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
   const r0 = start.r, c0 = start.c;
   const r1 = end.r, c1 = end.c;
   const out = [];
@@ -393,11 +393,6 @@ function buildOrthogonalPath(start, end, start_vleg, chset)
   return out;
 }
 
-function buildLinePath(start, end, style)
-{
-   return buildOrthogonalPath(start,end,!lineFlip,style);
-}
-
 const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
 const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
@@ -449,7 +444,7 @@ function beginLine(cell,kind)
 
   // hide selection box when starting a line tool action
   selection = null; selectDrag = null; moveDrag = null;
-  lineDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+  lineDrag = { kind, flip:true , merge:true ,start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
   draw();
 }
 
@@ -466,8 +461,7 @@ function endLine()
 {
   if (!lineDrag) return;
 
-  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
   const stroke = [];
 
   for (const p of path)
@@ -792,8 +786,7 @@ function commitLine()
 {
   if (!lineDrag) return;
 
-  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
   const stroke = [];
   for (const p of path) {
@@ -818,9 +811,7 @@ function commitLineWithOptionalMerge(mergeEnabled)
   if (!lineDrag) return;
 
   if(bDebug) console.log("commitLineWithOptionalMerge()");
-
-  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
   // De-dup: last char wins
   const m = new Map();
@@ -1365,8 +1356,7 @@ function draw()
         const old = ctx.fillStyle;
         ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-        const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
-        const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
+        const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
         for (const p of path) {
             if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
@@ -1421,9 +1411,7 @@ function draw()
 
 function drawLinePreview() {
   if (!lineDrag) return;
-
-  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 }
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
@@ -1679,7 +1667,7 @@ window.addEventListener("mouseup", () =>
 // TODO SERIALISE (COMMIT functions)??
   if      (tool === "modeLine" && lineDrag)
   { 
-    if(lineMerge) commitLineWithOptionalMerge(lineMerge)
+    if(lineDrag.merge) commitLineWithOptionalMerge(lineDrag.merge)
     else          endLine(); 
     return; 
   }
@@ -1729,8 +1717,8 @@ window.addEventListener("keydown", (e) =>
         }
     }
 
-    if (e.key === "Shift") lineFlip = true;
-    if (e.key.toLowerCase() === 'o') lineMerge = false;
+    if (e.key === "Shift") lineDrag.flip = false;
+    if (e.key.toLowerCase() === 'o') lineDrag.merge = false;
     draw();
 
     if (textDrag)
@@ -1785,9 +1773,9 @@ window.addEventListener("keydown", (e) =>
 }, { passive: false });
 
 window.addEventListener("keyup", e => {
-    if (e.key === "Shift") lineFlip = false;
-    if (e.key.toLowerCase() === 'o') lineMerge = true;
-    if(bDebug) console.log("KEYUP: lineFlip="+lineFlip+" lineMerge="+lineMerge);
+    if (e.key === "Shift") lineDrag.flip = true;
+    if (e.key.toLowerCase() === 'o') lineDrag.merge = true;
+    if(bDebug) console.log("KEYUP: lineFlip="+lineDrag.flip+" lineMerge="+lineDrag.merge);
     draw();
 });
 
