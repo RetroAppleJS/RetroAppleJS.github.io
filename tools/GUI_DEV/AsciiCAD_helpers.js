@@ -52,16 +52,20 @@ const h = Math.max(1, Math.floor(stageSize.h * dpr));
 if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
 }
 
-const getCellSize = () => ({ cw: baseCellW, ch: baseCellH });
-
-function getSnapFns(dpr, scaleNow) {
-const pxScale = (dpr || 1) * (scaleNow || 1);
-const snap = (v) => Math.round(v * pxScale) / pxScale;
-const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
-return { snap, snapLine };
+function getSnapFns(dpr, scaleNow)
+{
+    const pxScale = (dpr || 1) * (scaleNow || 1);
+    const snap = (v) => Math.round(v * pxScale) / pxScale;
+    const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
+    return { snap, snapLine };
 }
 
+const getCellSize = () => ({ cw: baseCellW, ch: baseCellH });
 
+function PanZoomSize(pos,centre,scale,pan,size)
+{
+    return ((pos - centre) / scale + centre - pan) / size;
+}
 
 function serializeToText() {
 const lines = [];

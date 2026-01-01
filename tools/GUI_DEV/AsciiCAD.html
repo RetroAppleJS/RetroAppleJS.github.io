@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.76</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.77</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -66,7 +66,9 @@
             <button id="redoBtn" class="btn" disabled>Redo</button>
             <button id="saveBtn" class="btn">Save</button>
             <button id="loadBtn" class="btn">Load</button>
+            <!--
             <button id="pasteBtn" class="btn">Paste</button>
+            -->
             <button id="clearBtn" class="btn">Clear</button>
             <input id="fileInput" type="file" accept="text/plain" style="display:none" />
           </div>
@@ -169,7 +171,7 @@ const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const saveBtn = document.getElementById("saveBtn");
 const loadBtn = document.getElementById("loadBtn");
-const pasteBtn = document.getElementById("pasteBtn");
+//const pasteBtn = document.getElementById("pasteBtn");
 const clearBtn = document.getElementById("clearBtn");
 const fileInput = document.getElementById("fileInput");
 const historyLine = document.getElementById("historyLine");
@@ -320,125 +322,95 @@ function recomputeWireCell(r, c) {
   return g;
 }
 
-
-
-function cornerCharVH(r0, c0, r1, c1) {
-  const goingDown = r1 > r0;
-  const goingRight = c1 > c0;
-
-  // We go vertical to r1 first, then horizontal to c1.
-  // Corner is at (r1, c0): it must connect vertical + horizontal.
-  if (goingDown && goingRight) return '└'; // up + right
-  if (goingDown && !goingRight) return '┘'; // up + left
-  if (!goingDown && goingRight) return '┌'; // down + right
-  return '┐'; // down + left
-}
-
-function cornerCharHV(r0, c0, r1, c1) {
-  const goingRight = c1 > c0; // first leg
-  const goingDown  = r1 > r0; // second leg
-
-  // We go horizontal to c1 first, then vertical to r1.
-  // Corner at (r0, c1) must connect horizontal + vertical.
-
-  if (goingRight && goingDown) return '┐'; // left + down
-  if (goingRight && !goingDown) return '┘'; // left + up
-  if (!goingRight && goingDown) return '┌'; // right + down
-  return '└'; // right + up
-}
-
-
-function buildVHPath(start, end) {
+function buildOrthogonalPath(start, end, start_vleg, chset)
+{
   const r0 = start.r, c0 = start.c;
   const r1 = end.r, c1 = end.c;
-
   const out = [];
 
-  // same cell: nothing (or return a dot if you prefer)
+  // Same cell → nothing
   if (r0 === r1 && c0 === c1) return out;
 
-  // 1) vertical segment at column c0 from r0 -> r1 (inclusive)
-  if (r0 !== r1) {
-    const stepR = r1 > r0 ? 1 : -1;
-    for (let r = r0; r !== r1; r += stepR) {
-      out.push({ r, c: c0, ch: '│' });
+  if (start_vleg) {
+    // ===== Vertical then Horizontal =====
+
+    // 1) Vertical segment at column c0
+    if (r0 !== r1) {
+      const stepR = r1 > r0 ? 1 : -1;
+      for (let r = r0; r !== r1; r += stepR) {
+        out.push({ r, c: c0, ch: chset.v });
+      }
+      out.push({ r: r1, c: c0, ch: chset.v });
     }
-    out.push({ r: r1, c: c0, ch: '│' });
-  }
 
-  // 2) corner at (r1, c0) if there is also a horizontal leg
-  if (r0 !== r1 && c0 !== c1) {
-    out[out.length - 1].ch = cornerCharVH(r0, c0, r1, c1); // replace last vertical cell with corner
-  }
-
-  // 3) horizontal segment at row r1 from c0 -> c1 (inclusive)
-  if (c0 !== c1) {
-    const stepC = c1 > c0 ? 1 : -1;
-
-    // start after the corner if we had a vertical leg, otherwise start at c0
-    let cStart = c0;
-    if (r0 !== r1) cStart = c0 + stepC;
-
-    for (let c = cStart; c !== c1; c += stepC) {
-      out.push({ r: r1, c, ch: '─' });
+    // 2) Corner
+    if (r0 !== r1 && c0 !== c1)
+    {
+      out[out.length - 1].ch = cornerChar_V2(r0, c0, r1, c1, start_vleg, [chset.tr,chset.br,chset.tl,chset.bl])
+      //out[out.length - 1].ch = cornerCharFn(r0, c0, r1, c1);
     }
-    out.push({ r: r1, c: c1, ch: '─' });
+
+    // 3) Horizontal segment at row r1
+    if (c0 !== c1) {
+      const stepC = c1 > c0 ? 1 : -1;
+      let cStart = c0;
+      if (r0 !== r1) cStart = c0 + stepC;
+
+      for (let c = cStart; c !== c1; c += stepC) {
+        out.push({ r: r1, c, ch: chset.h });
+      }
+      out.push({ r: r1, c: c1, ch: chset.h });
+    }
+
+  } else {
+    // ===== Horizontal then Vertical =====
+
+    // 1) Horizontal segment at row r0
+    if (c0 !== c1) {
+      const stepC = c1 > c0 ? 1 : -1;
+      for (let c = c0; c !== c1; c += stepC) {
+        out.push({ r: r0, c, ch: chset.h });
+      }
+      out.push({ r: r0, c: c1, ch: chset.h });
+    }
+
+    // 2) Corner
+    if (c0 !== c1 && r0 !== r1)
+    {
+      out[out.length - 1].ch = cornerChar_V2(r0, c0, r1, c1, start_vleg, [chset.tr,chset.br,chset.tl,chset.bl])
+      //out[out.length - 1].ch = cornerCharFn(r0, c0, r1, c1);
+
+    } else if (c0 !== c1) {
+      // purely horizontal
+      return out;
+    }
+
+    // 3) Vertical segment at column c1
+    if (r0 !== r1) {
+      const stepR = r1 > r0 ? 1 : -1;
+      let rStart = r0;
+      if (c0 !== c1) rStart = r0 + stepR;
+
+      for (let r = rStart; r !== r1; r += stepR) {
+        out.push({ r, c: c1, ch: chset.v });
+      }
+      out.push({ r: r1, c: c1, ch: chset.v });
+    }
   }
 
   return out;
 }
 
-function buildHVPath(start, end) {
-  const r0 = start.r, c0 = start.c;
-  const r1 = end.r, c1 = end.c;
-
-  const out = [];
-
-  if (r0 === r1 && c0 === c1) return out;
-
-  // 1) horizontal segment at row r0 from c0 -> c1 (inclusive)
-  if (c0 !== c1) {
-    const stepC = c1 > c0 ? 1 : -1;
-    for (let c = c0; c !== c1; c += stepC) {
-      out.push({ r: r0, c, ch: "─" });
-    }
-    out.push({ r: r0, c: c1, ch: "─" });
-  }
-
-  // 2) corner at (r0, c1) if there is also a vertical leg
-  if (c0 !== c1 && r0 !== r1) {
-    // replace last horizontal cell with corner
-    out[out.length - 1].ch = cornerCharHV(r0, c0, r1, c1);
-  } else if (c0 !== c1) {
-    // purely horizontal: nothing else
-    return out;
-  }
-
-  // 3) vertical segment at column c1 from r0 -> r1 (inclusive)
-  if (r0 !== r1) {
-    const stepR = r1 > r0 ? 1 : -1;
-
-    // start after the corner if we had a horizontal leg, otherwise start at r0
-    let rStart = r0;
-    if (c0 !== c1) rStart = r0 + stepR;
-
-    for (let r = rStart; r !== r1; r += stepR) {
-      out.push({ r, c: c1, ch: "│" });
-    }
-    out.push({ r: r1, c: c1, ch: "│" });
-  }
-
-  return out;
-}
-
-function buildLinePath(start, end) {
-  return lineFlip ? buildHVPath(start, end) : buildVHPath(start, end);
+function buildLinePath(start, end, style)
+{
+   return buildOrthogonalPath(start,end,!lineFlip,style);
 }
 
 const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
 const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
-function buildBoxPath(start, end, style) {
+function buildBoxPath(start, end, style) 
+{
   const r0 = start.r, c0 = start.c;
   const r1 = end.r, c1 = end.c;
 
@@ -478,14 +450,13 @@ function buildBoxPath(start, end, style) {
   return out;
 }
 
-
-function beginLine(cell) {
+function beginLine(cell,kind) {
   if (!cell) return;
   if(bDebug) console.log("beginLine()")
 
   // hide selection box when starting a line tool action
   selection = null; selectDrag = null; moveDrag = null;
-  lineDrag = { start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+  lineDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
   draw();
 }
 
@@ -498,13 +469,16 @@ function moveLine(cell)
   draw();
 }
 
-function endLine() {
+function endLine()
+{
   if (!lineDrag) return;
 
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
   const stroke = [];
 
-  for (const p of path) {
+  for (const p of path)
+  {
     if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
 
     const prev = ascii[p.r][p.c];
@@ -521,7 +495,8 @@ function endLine() {
   draw();
 }
 
-function cancelLine() {
+function cancelLine() 
+{
   lineDrag = null;
   draw();
 }
@@ -573,21 +548,13 @@ function cancelBox() {
   draw();
 }
 
-
 function beginFreetext(cell)
 {
     if (!cell) return;
-
-    // Start a new preview at this anchor.
-    textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };
-
-    // Ensure canvas can receive key events
-    canvas.focus?.();
-
+    textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };        // Start a new preview at this anchor.
+    canvas.focus?.();                                                 // Ensure canvas can receive key events
     draw();
 }
-
-
 
 function commitFreetext() {
   if (!textDrag) return;
@@ -623,14 +590,13 @@ function cancelFreetext() {
   draw();
 }
 
-
-function cornerChar(r0, c0, r1, c1) {
-  const goingDown = r1 > r0;
-  const goingRight = c1 > c0;
-  if (goingDown && goingRight) return '└';
-  if (goingDown && !goingRight) return '┘';
-  if (!goingDown && goingRight) return '┌';
-  return '┐';
+// ['┐','┘','┌','└']
+function cornerChar_V2(r0, c0, r1, c1, v_leg, c_arr)
+{
+  if ( (c1 > c0) &&  (r1 > r0)) return v_leg?c_arr[3]:c_arr[0];  // left + down  | up + right
+  if ( (c1 > c0) && !(r1 > r0)) return v_leg?c_arr[2]:c_arr[1];  // left + up    | up + left
+  if (!(c1 > c0) &&  (r1 > r0)) return v_leg?c_arr[1]:c_arr[2];  // right + down | down + right
+  return v_leg?c_arr[0]:c_arr[3];                                // right + up   | down + left
 }
 
 function setToolLine()
@@ -643,57 +609,26 @@ function setToolLine()
   draw();
 }
 
-function buildVHPath(start, end) {
-  const r0 = start.r, c0 = start.c;
-  const r1 = end.r, c1 = end.c;
-
-  const out = [];
-
-  // 1) vertical segment from r0 -> r1 at column c0
-  if (r0 !== r1) {
-    const step = r1 > r0 ? 1 : -1;
-    for (let r = r0; r !== r1; r += step) {
-      out.push({ r, c: c0, ch: '│' });
-    }
-  }
-
-  // Corner cell at (r1, c0)
-  if (c0 !== c1 && r0 !== r1) {
-    out.push({ r: r1, c: c0, ch: cornerChar(r0, c0, r1, c1) });
-  } else if (r0 !== r1) {
-    // If only vertical, include the last cell as vertical
-    out.push({ r: r1, c: c0, ch: '│' });
-  }
-
-  // 2) horizontal segment from c0 -> c1 at row r1
-  if (c0 !== c1) {
-    const step = c1 > c0 ? 1 : -1;
-    // start from c0 if no corner was placed (pure horizontal),
-    // otherwise start after the corner to avoid overwriting it.
-    const startC = (r0 !== r1) ? (c0 + step) : c0;
-    for (let c = startC; c !== c1; c += step) {
-      out.push({ r: r1, c, ch: '─' });
-    }
-    out.push({ r: r1, c: c1, ch: '─' }); // include end cell
-  }
-
-  // If start==end: draw nothing (or a dot if you prefer)
-  return out;
-}
-
-
 function canvasPointToCell(clientX, clientY)
 {
     const rect = canvas.getBoundingClientRect();
-    const px = ((clientX - rect.left) * stageSize.w) / rect.width;
-    const py = ((clientY - rect.top) * stageSize.h) / rect.height;
+
+    //const px = ((clientX - rect.left) * stageSize.w) / rect.width;
+    const px = PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w   ,rect.width)
+    //const py = ((clientY - rect.top) * stageSize.h) / rect.height;
+    const py = PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h   ,rect.height)
+
     const cx = stageSize.w / 2;
     const cy = stageSize.h / 2;
-    const ux = (px - cx) / scale + cx - panX;
-    const uy = (py - cy) / scale + cy - panY;
+    
+    //const ux = (px - cx) / scale + cx - panX;
+    //const uy = (py - cy) / scale + cy - panY;
     const { cw, ch } = getCellSize();
-    const c = Math.floor(ux / cw);
-    const r = Math.floor(uy / ch);
+    //const c = Math.floor(ux / cw);
+    const c = Math.floor( PanZoomSize(px,cx,scale,panX,cw) );
+    //const r = Math.floor(uy / ch);
+    const r = Math.floor( PanZoomSize(py,cy,scale,panY,ch) );
+
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
     return { r, c };
 }
@@ -701,7 +636,6 @@ function canvasPointToCell(clientX, clientY)
 function setMode(mode)
 {
     updateModeUI(mode);
-
     modeRECALL = tool;
     tool = mode;
 }
@@ -746,11 +680,13 @@ function updateUI()
 function expandWideCharsForGrid(text) {
 const outLines = [];
 const lines = toLines(text); // your normalizeNewlines + split('\n')
-for (const line of lines) {
+for (const line of lines)
+{
     let out = "";
-    for (const ch of line) {           // code-point safe
-    out += ch;
-    if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+    for (const ch of line)  // code-point safe
+    {
+        out += ch;
+        if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
     }
     outLines.push(out);
 }
@@ -829,40 +765,43 @@ return m;
 // Paste (preview + commit)
 function startPasteWithText(text) 
 {
-const raw = normalizeNewlines(text).split('\n');
-while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
-if (raw.length === 0) { pasteDrag = null; updateUI(); draw(); return; }
+    const raw = normalizeNewlines(text).split('\n');
+    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
+    if (raw.length === 0) { pasteDrag = null; updateUI(); draw(); return; }
 
-let w = 0;
-for (const ln of raw) w = Math.max(w, ln.length);
+    let w = 0;
+    for (const ln of raw) w = Math.max(w, ln.length);
 
-const maxH = Math.min(raw.length, ROWS);
-const maxW = Math.min(w, COLS);
-const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
+    const maxH = Math.min(raw.length, ROWS);
+    const maxW = Math.min(w, COLS);
+    const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
 
-pasteDrag = {
-    lines,
-    h: lines.length,
-    w: maxW,
-    item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
-    anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
-    transparentSpaces: true,
-};
+    pasteDrag = {
+        lines,
+        h: lines.length,
+        w: maxW,
+        item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
+        anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
+        transparentSpaces: true,
+    };
 
-// Paste mode implies Select tool (so cursor behavior matches your workflow)
-setMode("modeSelect");
-// Clear selection overlay while pasting
-selection = null;
-selectDrag = null;
-moveDrag = null;
+    // Paste mode implies Select tool (so cursor behavior matches your workflow)
+    setMode("modeSelect");
+    // Clear selection overlay while pasting
+    selection = null;
+    selectDrag = null;
+    moveDrag = null;
 
-updateUI();
-draw();
+    updateUI();
+    draw();
 }
 
-function commitLine() {
+function commitLine()
+{
   if (!lineDrag) return;
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+
+  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
 
   const stroke = [];
   for (const p of path) {
@@ -882,10 +821,14 @@ function commitLine() {
   draw();
 }
 
-function commitLineWithOptionalMerge(mergeEnabled) {
+function commitLineWithOptionalMerge(mergeEnabled) 
+{
   if (!lineDrag) return;
 
-   const path = buildLinePath(lineDrag.start, lineDrag.cur);
+  console.log("commitLineWithOptionalMerge()");
+
+  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
 
   // De-dup: last char wins
   const m = new Map();
@@ -945,38 +888,40 @@ function commitLineWithOptionalMerge(mergeEnabled) {
 }
 
 
-function commitPasteAt(cell) {
-if (!pasteDrag || !cell) return;
-const a = { r: cell.r, c: cell.c };
-const stroke = [];
+function commitPasteAt(cell) 
+{
+    if (!pasteDrag || !cell) return;
+    const a = { r: cell.r, c: cell.c };
+    const stroke = [];
 
-for (let rr = 0; rr < pasteDrag.h; rr++) {
-    const line = pasteDrag.lines[rr] || '';
-    for (let cc = 0; cc < pasteDrag.w; cc++) {
-    const chx = line[cc] || ' ';
-    if (pasteDrag.transparentSpaces && chx === ' ') continue;
-    const tr = a.r + rr;
-    const tc = a.c + cc;
-    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue; // clip
-    const prev = ascii[tr][tc];
-    const next = chx;
-    if (prev === next) continue;
-    stroke.push({ r: tr, c: tc, prev, next });
-    ascii[tr][tc] = next;
+    for (let rr = 0; rr < pasteDrag.h; rr++) {
+        const line = pasteDrag.lines[rr] || '';
+        for (let cc = 0; cc < pasteDrag.w; cc++) {
+        const chx = line[cc] || ' ';
+        if (pasteDrag.transparentSpaces && chx === ' ') continue;
+        const tr = a.r + rr;
+        const tc = a.c + cc;
+        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue; // clip
+        const prev = ascii[tr][tc];
+        const next = chx;
+        if (prev === next) continue;
+        stroke.push({ r: tr, c: tc, prev, next });
+        ascii[tr][tc] = next;
+        }
     }
+
+    pasteDrag = null;
+    pushStrokeIfNonEmpty(stroke);
+    updateUI();
+    draw();
 }
 
-pasteDrag = null;
-pushStrokeIfNonEmpty(stroke);
-updateUI();
-draw();
-}
-
-function cancelPaste() {
-if (!pasteDrag) return;
-pasteDrag = null;
-updateUI();
-draw();
+function cancelPaste() 
+{
+    if (!pasteDrag) return;
+    pasteDrag = null;
+    updateUI();
+    draw();
 }
 
 // Freeform drawing
@@ -1017,38 +962,43 @@ pushStrokeIfNonEmpty(stroke);
 }
 
 // Select & move
-function applyMove(baseRect, dr, dc, snapMap) {
-if (dr === 0 && dc === 0) return;
-const stroke = [];
+function applyMove(baseRect, dr, dc, snapMap) 
+{
+    if (dr === 0 && dc === 0) return;
+    const stroke = [];
 
-// Clear base rect
-for (let r = baseRect.r0; r <= baseRect.r1; r++) {
-    for (let c = baseRect.c0; c <= baseRect.c1; c++) {
-    const prev = ascii[r][c];
-    if (prev !== ' ') {
-        stroke.push({ r, c, prev, next: ' ' });
-        ascii[r][c] = ' ';
+    // Clear base rect
+    for (let r = baseRect.r0; r <= baseRect.r1; r++) {
+        for (let c = baseRect.c0; c <= baseRect.c1; c++)
+        {
+            const prev = ascii[r][c];
+            if (prev !== ' ')
+            {
+                stroke.push({ r, c, prev, next: ' ' });
+                ascii[r][c] = ' ';
+            }
+        }
     }
-    }
-}
 
-// Paste moved snapshot (clip to grid)
-for (let r = baseRect.r0; r <= baseRect.r1; r++) {
-    for (let c = baseRect.c0; c <= baseRect.c1; c++) {
-    const chx = snapMap.get(r + ',' + c) || ' ';
-    const rr = r + dr;
-    const cc = c + dc;
-    if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-    const prev = ascii[rr][cc];
-    const next = chx;
-    if (prev !== next) {
-        stroke.push({ r: rr, c: cc, prev, next });
-        ascii[rr][cc] = next;
+    // Paste moved snapshot (clip to grid)
+    for (let r = baseRect.r0; r <= baseRect.r1; r++)
+    {
+        for (let c = baseRect.c0; c <= baseRect.c1; c++)
+        {
+            const chx = snapMap.get(r + ',' + c) || ' ';
+            const rr = r + dr;
+            const cc = c + dc;
+            if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+            const prev = ascii[rr][cc];
+            const next = chx;
+            if (prev !== next)
+            {
+                stroke.push({ r: rr, c: cc, prev, next });
+                ascii[rr][cc] = next;
+            }
+        }
     }
-    }
-}
-
-pushStrokeIfNonEmpty(stroke);
+    pushStrokeIfNonEmpty(stroke);
 }
 
 function beginSelect(cell) 
@@ -1083,24 +1033,26 @@ function moveSelect(cell)
     }
 }
 
-function endSelect() {
-// Keep selection after selecting; clear after move commit.
-if (moveDrag) {
-    const base = moveDrag.baseRect;
-    const snapMap = moveDrag.snapshot;
-    const { dr, dc } = moveDrag.offset;
-    applyMove(base, dr, dc, snapMap);
-    moveDrag = null;
-    selectDrag = null;
-    selection = null; // disappear after move mouseup
-    draw();
-    return;
-}
-if (selectDrag) {
-    selection = normRect(selectDrag.start, selectDrag.current);
-    selectDrag = null;
-    draw();
-}
+function endSelect() 
+{
+    // Keep selection after selecting; clear after move commit.
+    if (moveDrag) {
+        const base = moveDrag.baseRect;
+        const snapMap = moveDrag.snapshot;
+        const { dr, dc } = moveDrag.offset;
+        applyMove(base, dr, dc, snapMap);
+        moveDrag = null;
+        selectDrag = null;
+        selection = null; // disappear after move mouseup
+        draw();
+        return;
+    }
+    if (selectDrag) 
+    {
+        selection = normRect(selectDrag.start, selectDrag.current);
+        selectDrag = null;
+        draw();
+    }
 }
 
 // Modals
@@ -1148,12 +1100,8 @@ function renderCharGrid() {
 
 function renderCharAtCell(ctx, r, c, ch) 
 {
-  // Use the SAME positioning math you already use when drawing ascii[][] in draw().
-  // If your draw() loops cells and does ctx.fillText(...) at some (x,y),
-  // copy that exact x/y logic here.
   const x = c * baseCellW + baseCellW / 2;
   const y = r * baseCellH + baseCellH / 2;
-
   ctx.fillText(ch, x, y);
 }
 
@@ -1198,7 +1146,7 @@ function renderCatalogGrid()
         if(it===undefined) return;
         const card = document.createElement("div");
         card.className = "cat-item";
-        card.title = it.name + (it.MFR ? (" · " + it.MFR) : '');
+        card.title = it.description ? it.description : it.name;   // catalog item tooltip
 
         const img = document.createElement("img");
         img.className = "cat-thumb";
@@ -1234,45 +1182,44 @@ function renderCatalogGrid()
 }
 
 // Drawing
-function drawPastePreview(cw, ch, snap) {
-if (!pasteDrag || !pasteDrag.anchor) return;
-const a = pasteDrag.anchor;
-
-//console.log('drawPastePreview at', a, 'size', pasteDrag.w, 'x', pasteDrag.h, 'r', pasteDrag.r);
-
-// Preview fill (clipped to visible grid)
-const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
-const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
-if (pxW > 0 && pxH > 0)
+function drawPastePreview(cw, ch, snap) 
 {
-    ctx.save();
-    ctx.globalAlpha = 0.75;
-    ctx.fillStyle = "rgba(16,185,129,0.10)";
-    ctx.fillRect(a.c * cw, a.r * ch, pxW, pxH);
-    ctx.restore();
-}
+    if (!pasteDrag || !pasteDrag.anchor) return;
+    const a = pasteDrag.anchor;
 
-ctx.save();
-ctx.globalAlpha = 0.9;
-for (let rr = 0; rr < pasteDrag.h; rr++) {
-    const line = pasteDrag.lines[rr] || '';
-    for (let cc = 0; cc < pasteDrag.w; cc++) {
-    const chx = line[cc] || ' ';
-    if (pasteDrag.transparentSpaces && chx === ' ') continue;
-    const tr = a.r + rr;
-    const tc = a.c + cc;
-    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue;
-    ctx.fillText(chx, snap(tc * cw + cw/2), snap(tr * ch + ch/2));
+    // Preview fill (clipped to visible grid)
+    const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
+    const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
+    if (pxW > 0 && pxH > 0)
+    {
+        ctx.save();
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = "rgba(16,185,129,0.10)";
+        ctx.fillRect(a.c * cw, a.r * ch, pxW, pxH);
+        ctx.restore();
     }
-}
-ctx.restore();
 
-ctx.save();
-ctx.lineWidth = 2 / scale;
-ctx.setLineDash([6 / scale, 4 / scale]);
-ctx.strokeStyle = "rgba(16,185,129,0.95)";
-ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
-ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    for (let rr = 0; rr < pasteDrag.h; rr++) {
+        const line = pasteDrag.lines[rr] || '';
+        for (let cc = 0; cc < pasteDrag.w; cc++) {
+        const chx = line[cc] || ' ';
+        if (pasteDrag.transparentSpaces && chx === ' ') continue;
+        const tr = a.r + rr;
+        const tc = a.c + cc;
+        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue;
+        ctx.fillText(chx, snap(tc * cw + cw/2), snap(tr * ch + ch/2));
+        }
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.lineWidth = 2 / scale;
+    ctx.setLineDash([6 / scale, 4 / scale]);
+    ctx.strokeStyle = "rgba(16,185,129,0.95)";
+    ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
+    ctx.restore();
 }
 
 
@@ -1282,6 +1229,8 @@ ctx.restore();
 //    ██ ████ ██ ███████ ██ ██ ██  ██ 
 //    ██  ██  ██ ██   ██ ██ ██  ██ ██ 
 //    ██      ██ ██   ██ ██ ██   ████ 
+
+
 
 function draw() 
 {
@@ -1302,20 +1251,24 @@ function draw()
     ctx.translate(-cx + panX, -cy + panY);
 
     const { snap, snapLine } = getSnapFns(dpr, scale);
-
-    var { cw, ch } = { cw: baseCellW, ch: baseCellH };
+    var { cw, ch } = getCellSize();
 
     // Visible bounds in WORLD coordinates (undo pan/zoom around center)
     const left   = (0 - cx) / scale + cx - panX;
-    const right  = (wCss - cx) / scale + cx - panX;
     const top    = (0 - cy) / scale + cy - panY;
+
+    const right  = (wCss - cx) / scale + cx - panX;
     const bottom = (hCss - cy) / scale + cy - panY;
 
     // Convert bounds -> grid indices (clamped)
-    const c0 = Math.max(0, Math.floor(left / cw));
-    const c1 = Math.min(COLS, Math.ceil(right / cw));
-    const r0 = Math.max(0, Math.floor(top / ch));
-    const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
+    //const c0 = Math.max(0, Math.floor(left / cw));
+    const c0 = Math.max(0, Math.floor( PanZoomSize(0,cx,scale,panX,cw) ));
+    //const r0 = Math.max(0, Math.floor(top / ch));
+    const r0 = Math.max(0, Math.floor( PanZoomSize(0,cy,scale,panY,ch) ));
+    //const c1 = Math.min(COLS, Math.ceil(right / cw));
+    const c1 = Math.min(COLS, Math.ceil( PanZoomSize(wCss,cx,scale,panX,cw) ));
+    //const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
+    const r1 = Math.min(ROWS, Math.ceil( PanZoomSize(hCss,cy,scale,panY,ch)  ));
 
     ctx.beginPath();
     ctx.strokeStyle = GRID_LINE;
@@ -1422,7 +1375,8 @@ function draw()
         const old = ctx.fillStyle;
         ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-        const path = buildLinePath(lineDrag.start, lineDrag.cur);
+        const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+        const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
 
         for (const p of path) {
             if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
@@ -1477,7 +1431,9 @@ function draw()
 
 function drawLinePreview() {
   if (!lineDrag) return;
-  const path = buildLinePath(lineDrag.start, lineDrag.cur);
+
+  const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
 }
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
@@ -1598,17 +1554,14 @@ pushStrokeIfNonEmpty(stroke);
 draw();
 });
 
-// Paste button focuses hidden textarea, then user Cmd/Ctrl+V
-pasteBtn.addEventListener("click", () => { pasteSink.value = ''; pasteSink.focus(); });
-
 // Paste capture (also allow direct paste anywhere)
 window.addEventListener("paste", (e) => {
-const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
-if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+    const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
+    if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
 });
 pasteSink.addEventListener("paste", (e) => {
-const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
-if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+    const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
+    if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
 });
 
 // Zoom / pan with wheel
@@ -1673,7 +1626,7 @@ canvas.addEventListener("mousemove", (e) =>
         return;
     }
 
-    // TODO SERIALISE ??
+    // TODO SERIALISE (MOVE functions) ??
     if (tool === "modeFreeform")      moveFreeform(cell);
     else if(tool === "modeSelect")    moveSelect(cell)
     else if (tool === "modeLine")     moveLine(cell);
@@ -1720,7 +1673,7 @@ canvas.addEventListener("mousedown", (e) =>
     // TODO SERIALISE (BEGIN functions)??
     if (tool === "modeFreeform")      beginFreeform(cell);
     else if (tool === "modeSelect")   beginSelect(cell)
-    else if (tool === "modeLine")     beginLine(cell);
+    else if (tool === "modeLine")     beginLine(cell,"single");
     else if (tool === "modeSBox")     beginBox(cell, "single");
     else if (tool === "modeDBox")     beginBox(cell, "double");
     else if (tool === "modeFreetext") beginFreetext(cell);
@@ -1733,7 +1686,13 @@ window.addEventListener("mouseup", () =>
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; return; }
   if (pasteDrag) return;
 
-  if      (tool === "modeLine" && lineDrag) { commitLineWithOptionalMerge(lineMerge); endLine(); return; }
+// TODO SERIALISE (COMMIT functions)??
+  if      (tool === "modeLine" && lineDrag)
+  { 
+    if(lineMerge) commitLineWithOptionalMerge(lineMerge)
+    else          endLine(); 
+    return; 
+  }
   else if (tool === "modeSBox" && boxDrag)  { commitBox(); return; }
   else if (tool === "modeDBox" && boxDrag)  { commitBox(); return; }
 
@@ -1742,17 +1701,15 @@ window.addEventListener("mouseup", () =>
 });
 
 canvas.addEventListener("mouseleave", () => {
-  if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
-  hoverCell = null;
-  updateUI();
-  if (pasteDrag) return;
+    if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
+    hoverCell = null;
+    updateUI();
+    if (pasteDrag) return;
 
-  if (tool === "modeLine" && lineDrag) { cancelLine(); return; }
-  if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
-  if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
-
-  if (isDrawing) endFreeform();
-  if (selectDrag || moveDrag) endSelect();
+    // TODO SERIALISE (CANCEL functions)??
+    if (tool === "modeLine" && lineDrag) { cancelLine(); return; }
+    if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
+    if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
 });
 
 
