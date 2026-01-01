@@ -13,9 +13,9 @@ return normalizeNewlines(t).split('\n'); // split on real LF
 const normRect = (a, b) => ({ r0: Math.min(a.r,b.r), r1: Math.max(a.r,b.r), c0: Math.min(a.c,b.c), c1: Math.max(a.c,b.c) });
 
 const rangeChars = (start, end) => {
-const out = [];
-for (let cp = start; cp <= end; cp++) out.push(String.fromCharCode(cp));
-return out;
+    const out = [];
+    for (let cp = start; cp <= end; cp++) out.push(String.fromCharCode(cp));
+    return out;
 };
 
 function catalogTypes()
@@ -36,20 +36,22 @@ const catalogItemsForTab = (tab) => tab === 'All' ? CATALOG : CATALOG.filter(it 
 const catalogItemByUID = (uid) => CATALOG.find(it => (it.name+'_'+it.type+'_'+it.MFR) === uid);
 
 // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
-function computeStageSize() {
-const r = container.getBoundingClientRect();
-let w = Math.max(1, Math.floor(r.width));
-let h = Math.max(1, Math.floor(r.height));
-if (w >= COLS) w = Math.floor(w / COLS) * COLS;
-if (h >= ROWS) h = Math.floor(h / ROWS) * ROWS;
-return { w: Math.max(1, w), h: Math.max(1, h) };
+function computeStageSize() 
+{
+    const r = container.getBoundingClientRect();
+    let w = Math.max(1, Math.floor(r.width));
+    let h = Math.max(1, Math.floor(r.height));
+    if (w >= COLS) w = Math.floor(w / COLS) * COLS;
+    if (h >= ROWS) h = Math.floor(h / ROWS) * ROWS;
+    return { w: Math.max(1, w), h: Math.max(1, h) };
 }
 
-function syncCanvasBufferToStage() {
-const dpr = window.devicePixelRatio || 1;
-const w = Math.max(1, Math.floor(stageSize.w * dpr));
-const h = Math.max(1, Math.floor(stageSize.h * dpr));
-if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+function syncCanvasBufferToStage() 
+{
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(stageSize.w * dpr));
+    const h = Math.max(1, Math.floor(stageSize.h * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
 }
 
 function getSnapFns(dpr, scaleNow)
