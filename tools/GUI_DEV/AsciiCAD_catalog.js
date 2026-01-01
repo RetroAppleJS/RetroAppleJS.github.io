@@ -693,13 +693,15 @@
       pin_data: null,
       text_data:[
     
-      '┌─┴────┴────┴────┴─┐\n' +
-      '│ V+  AMP+ AMP- V- │\n' +
-      '│                  │\n' +
-      '│ INA226           │\n' +
-      '│                  │\n' +
-      '│ GND SCL SDQ VCC  │\n' +
-      '└──┬───┬───┬───┬───┘'],
+'╔═╧════╧════╧════╧═╗\n' +
+'║ V+  AMP+ AMP- V- ║\n' +
+'║                  ║\n' +
+'║ INA226           ║\n' +
+'║                  ║\n' +
+'║ GND SCL SDA VCC  ║\n' +
+'╚══╤═══╤═══╤═══╤═══╝\n'
+    
+    ],
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAt496tL6f1YJBuRMdSEpExKeKljY7vKqaiWllxbqCyQAAAAp0Uk5TAP36/f/+jvwfc9nVT2oAAAKvSURBVHic5ZMxb9swEIU5Gep4pGW2I1koziqJgNtRMQGho4IQRjfLQ+CMQhSw3dLFsDcvbaJ/26McJyaVIkO79cEgLPHDu3dHipB/pOujVhJ15v6styf7Eb4V4ETls9YnwCg/KnveF+9DQB0AY6SRsQmBMkVgzvIsMTE1iUkufUA1wJRK4TaL40qaBAxMfSCFsVIALDMgKhMnsQmATHKlBAKxlBU6QADkFzRXWOc2ExIujUCbAEhbDFmoYxfG0OmgzWAObwJemxHL5257jkByibtuCYA8zaF3EO44kqEDAjn7Y4YIR4RHyfKZXVh4UgCgNMqYq1brxj1+OwWcJ+jSWn5nbavTECDybLsSunQZGUNgcr8JgDUZCV24jD1wTiLhA0t88wRAq7MlIfUAkAcAL4YDQodzMjoAggEC52TjtUmkxAuPAMZ3GTJ5XYcASs8VNmpTBEQwKCL7QV0IB8gxzoGlfpvKTVEX3AHYRS8PsL0a3gg5hsND6wFAOcU5iEJQhSUyCfKjB9QSqGgLoW3ZQltCjV+pF1Jsph9WSrdlb24nG7b2bhSpr/lEjDEm9iJ5CSs2Eb4DUHDpS2M0nWkYHHdOZ5S1RXtnjGtznutc+XNoLHbXWASupNKYI/UnuaJYQ1BuDgCFaTDqlXSXFjg6LKx9BWDpzFr8OQCE6zUAsMMWp6ARqKDmQ4ABBwuNK1FNfoxpFZaQFI4ZqgbGr2RwuwfAcjwMLOgfN2bQJUADd7gIPrwPvGt1IUUzjbHYFIGye/CAm+5Ba97glaliW6Hfl67zgO6+cwf1pIXW3/e7tQeQXfsCGK078m49dIhNZXCJEbB7H7j57ICfpjNfcVm4DL8+eQ7b7ln1DpfH7cZz6BXtyYZESzLceQF2ZLQkN28B3f8A7P/OYUuie/J4+vI3t3YN1A2lMzQAAAAASUVORK5CYII='
     }
@@ -737,41 +739,7 @@
       '│ DHT22  D ├─\n' +
       '│        + ├─\n' +
       '└──────────┘\n'
-      ,
-      '┌───────────┐\n' +
-      '│           │\n' +
-      '│           │\n' +
-      '│   DHT22   │\n' +
-      '│           │\n' +
-      '│           │\n' +
-      '│ +   D   - │\n' +
-      '└─┬───┬───┬─┘\n'
-      ,
-      ' ┌───────────┐\n' +
-      '─┤ +         │\n' +
-      ' │           │\n' +
-      '─┤ D   DHT22 │\n' +
-      ' │           │\n' +
-      '─┤ -         │\n' +
-      ' └───────────┘\n'  
-     ,
-      '┌─┴───┴───┴─┐\n' +
-      '│ -   D   + │\n' +
-      '│           │\n' +
-      '│           │\n' +
-      '│   DHT22   │\n' +
-      '│           │\n' +
-      '│           │\n' +
-      '└───────────┘\n'  
-    ,
-      '┌───────────┐\n' +
-      '│         - ├─\n' +
-      '│           │\n' +
-      '│ DHT22   D ├─\n' +
-      '│           │\n' +
-      '│         + ├─\n' +
-      '└───────────┘\n'
-
+    
       ],
 
       image_data:
