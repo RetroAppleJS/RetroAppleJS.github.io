@@ -539,12 +539,12 @@ function beginFreetext(cell)
     draw();
 }
 
-function commitFreetext() {
+function commitFreetext()
+{
   if (!textDrag) return;
 
   const r = textDrag.anchor.r;
-  let c = textDrag.anchor.c;
-
+  let   c = textDrag.anchor.c;
   const stroke = [];
 
   for (const ch of Array.from(textDrag.text)) {
@@ -568,7 +568,8 @@ function commitFreetext() {
   draw();
 }
 
-function cancelFreetext() {
+function cancelFreetext()
+{
   textDrag = null;
   draw();
 }
@@ -594,21 +595,14 @@ function setToolLine()
 function canvasPointToCell(clientX, clientY)
 {
     const rect = canvas.getBoundingClientRect();
-
-    //const px = ((clientX - rect.left) * stageSize.w) / rect.width;
-    const px = PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w   ,rect.width)
-    //const py = ((clientY - rect.top) * stageSize.h) / rect.height;
-    const py = PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h   ,rect.height)
+    const px = PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w,rect.width)
+    const py = PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h ,rect.height)
 
     const cx = stageSize.w / 2;
     const cy = stageSize.h / 2;
-    
-    //const ux = (px - cx) / scale + cx - panX;
-    //const uy = (py - cy) / scale + cy - panY;
+
     const { cw, ch } = getCellSize();
-    //const c = Math.floor(ux / cw);
     const c = Math.floor( PanZoomSize(px,cx,scale,panX,cw) );
-    //const r = Math.floor(uy / ch);
     const r = Math.floor( PanZoomSize(py,cy,scale,panY,ch) );
 
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
@@ -659,45 +653,42 @@ function updateUI()
     sbTitle.style.display = sidebarOpen ? "block" : "none";
 }
 
-function expandWideCharsForGrid(text) {
-const outLines = [];
-const lines = toLines(text); // your normalizeNewlines + split('\n')
-for (const line of lines)
+function expandWideCharsForGrid(text) 
 {
-    let out = "";
-    for (const ch of line)  // code-point safe
+    const outLines = [];
+    const lines = toLines(text); // your normalizeNewlines + split('\n')
+    for (const line of lines)
     {
-        out += ch;
-        if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+        let out = "";
+        for (const ch of line)  // code-point safe
+        {
+            out += ch;
+            if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+        }
+        outLines.push(out);
     }
-    outLines.push(out);
-}
-return outLines.join('\n');
+    return outLines.join('\n');
 }
 
 function collapseAfterWideCharsForSave(text)
 {
-const lines = toLines(text);
-const out = [];
-
-for (const line of lines) {
-    // Work at code-point level but treat output as "cells"
-    const cells = Array.from(line); // code points
-    const filtered = [];
-
-    for (let i = 0; i < cells.length; i++) {
-    const ch = cells[i];
-    filtered.push(ch);
-
-    if (isDoubleWidthChar(ch)) {
-        // Remove the following cell by skipping it
-        i += 1;
+    const lines = toLines(text);
+    const out = [];
+    for (const line of lines)
+    {
+        // Work at code-point level but treat output as "cells"
+        const cells = Array.from(line); // code points
+        const filtered = [];
+        for (let i = 0; i < cells.length; i++)
+        {
+            const ch = cells[i];
+            filtered.push(ch);
+            if (isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
+        }
+        out.push(filtered.join(""));
     }
-    }
-    out.push(filtered.join(""));
-}
 
-return out.join('\n');
+    return out.join('\n');
 }
 
 function downloadText(text, filename) {
