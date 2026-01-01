@@ -1662,7 +1662,7 @@ window.addEventListener("mouseup", () =>
   if      (tool === "modeLine" && lineDrag)
   { 
     if(lineDrag.merge) commitLineWithOptionalMerge(lineDrag.merge)
-    else          endLine(); 
+    else  endLine(); 
     return; 
   }
   else if (tool === "modeSBox" && boxDrag)  { commitBox(); return; }
