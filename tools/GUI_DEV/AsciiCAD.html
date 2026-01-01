@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.75</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.76</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -1104,18 +1104,21 @@ if (selectDrag) {
 }
 
 // Modals
-function openPicker() {
-picker.classList.add("open");
-picker.setAttribute("aria-hidden", "false");
-renderTabs();
-renderCharGrid();
-updateUI();
+function openPicker() 
+{
+    picker.classList.add("open");
+    picker.setAttribute("aria-hidden", "false");
+    renderTabs();
+    renderCharGrid();
+    updateUI();
 }
 
-function closePicker() {
-picker.classList.remove("open");
-picker.setAttribute("aria-hidden", "true");
-updateUI();
+function closePicker()
+{
+    picker.classList.remove("open");
+    picker.setAttribute("aria-hidden", "true");
+    setMode("modeFreeform");
+    updateUI();
 }
 
 function renderTabs() {
@@ -1130,19 +1133,21 @@ for (const tab of Object.keys(PICKER_TABS)) {
 }
 
 function renderCharGrid() {
-charGrid.innerHTML = '';
-const arr = PICKER_TABS[pickerTab] || [];
-for (const ch of arr) {
-    const b = document.createElement("button");
-    b.className = "char";
-    b.textContent = ch;
-    b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
-    b.addEventListener("click", () => { op = { type: "place", ch }; closePicker(); updateUI(); });
-    charGrid.appendChild(b);
-}
+    charGrid.innerHTML = '';
+    const arr = PICKER_TABS[pickerTab] || [];
+    for (const ch of arr)
+    {
+        const b = document.createElement("button");
+        b.className = "char";
+        b.textContent = ch;
+        b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
+        b.addEventListener("click", () => { op = { type: "place", ch }; closePicker(); updateUI(); });
+        charGrid.appendChild(b);
+    }
 }
 
-function renderCharAtCell(ctx, r, c, ch) {
+function renderCharAtCell(ctx, r, c, ch) 
+{
   // Use the SAME positioning math you already use when drawing ascii[][] in draw().
   // If your draw() loops cells and does ctx.fillText(...) at some (x,y),
   // copy that exact x/y logic here.
@@ -1152,13 +1157,13 @@ function renderCharAtCell(ctx, r, c, ch) {
   ctx.fillText(ch, x, y);
 }
 
-
-function openCatalog() {
-catalogModal.classList.add("open");
-catalogModal.setAttribute("aria-hidden", "false");
-renderCatalogTabs();
-renderCatalogGrid();
-updateUI();
+function openCatalog()
+{
+    catalogModal.classList.add("open");
+    catalogModal.setAttribute("aria-hidden", "false");
+    renderCatalogTabs();
+    renderCatalogGrid();
+    updateUI();
 }
 
 function closeCatalog()
@@ -1170,8 +1175,6 @@ function closeCatalog()
 
 function renderCatalogTabs()
 {
-
-
     catalogTabsEl.innerHTML = '';
     const types = ["All", ...catalogTypes()];
 
@@ -1270,16 +1273,6 @@ ctx.setLineDash([6 / scale, 4 / scale]);
 ctx.strokeStyle = "rgba(16,185,129,0.95)";
 ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
 ctx.restore();
-}
-
-function drawCharPreviewAtCell(ctx, r, c, ch) {
-  // Compute the screen position the same way you draw normal characters.
-  // Example placeholders:
-  const x = c * baseCellW + baseCellW / 2;
-  const y = r * baseCellH + baseCellH / 2;
-
-  // Use your existing font/baseline setup (whatever you use for normal draw).
-  ctx.fillText(ch, x, y);
 }
 
 
@@ -1462,13 +1455,9 @@ function draw()
 
         const r = textDrag.anchor.r;
         let c = textDrag.anchor.c;
-
-        const x0 = (c+textDrag.text.length) * baseCellW + baseCellW / 2;
-        const y0 = r * baseCellH + baseCellH / 2;
-
-        ctx.fillText('\u2588', x0, y0);
-
-        for (const ch of Array.from(textDrag.text)) {
+    
+        for (const ch of Array.from(textDrag.text)) 
+        {
             if (ch === '\n' || ch === '\r') continue;
             if (r < 0 || r >= ROWS) break;
             if (c < 0) { c++; continue; }
