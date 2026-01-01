@@ -171,7 +171,6 @@ const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const saveBtn = document.getElementById("saveBtn");
 const loadBtn = document.getElementById("loadBtn");
-//const pasteBtn = document.getElementById("pasteBtn");
 const clearBtn = document.getElementById("clearBtn");
 const fileInput = document.getElementById("fileInput");
 const historyLine = document.getElementById("historyLine");
@@ -346,8 +345,7 @@ function buildOrthogonalPath(start, end, start_vleg, chset)
     // 2) Corner
     if (r0 !== r1 && c0 !== c1)
     {
-      out[out.length - 1].ch = cornerChar_V2(r0, c0, r1, c1, start_vleg, [chset.tr,chset.br,chset.tl,chset.bl])
-      //out[out.length - 1].ch = cornerCharFn(r0, c0, r1, c1);
+      out[out.length - 1].ch = cornerChar(r0, c0, r1, c1, start_vleg, chset);
     }
 
     // 3) Horizontal segment at row r1
@@ -376,14 +374,8 @@ function buildOrthogonalPath(start, end, start_vleg, chset)
 
     // 2) Corner
     if (c0 !== c1 && r0 !== r1)
-    {
-      out[out.length - 1].ch = cornerChar_V2(r0, c0, r1, c1, start_vleg, [chset.tr,chset.br,chset.tl,chset.bl])
-      //out[out.length - 1].ch = cornerCharFn(r0, c0, r1, c1);
-
-    } else if (c0 !== c1) {
-      // purely horizontal
-      return out;
-    }
+      out[out.length - 1].ch = cornerChar(r0, c0, r1, c1, start_vleg, chset);
+    else if (c0 !== c1) return out;  // purely horizontal
 
     // 3) Vertical segment at column c1
     if (r0 !== r1) {
@@ -590,13 +582,12 @@ function cancelFreetext() {
   draw();
 }
 
-// ['┐','┘','┌','└']
-function cornerChar_V2(r0, c0, r1, c1, v_leg, c_arr)
+function cornerChar(r0, c0, r1, c1, v_leg, chset)
 {
-  if ( (c1 > c0) &&  (r1 > r0)) return v_leg?c_arr[3]:c_arr[0];  // left + down  | up + right
-  if ( (c1 > c0) && !(r1 > r0)) return v_leg?c_arr[2]:c_arr[1];  // left + up    | up + left
-  if (!(c1 > c0) &&  (r1 > r0)) return v_leg?c_arr[1]:c_arr[2];  // right + down | down + right
-  return v_leg?c_arr[0]:c_arr[3];                                // right + up   | down + left
+  if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;  // left + down  | up + right
+  if ( (c1 > c0) && !(r1 > r0)) return v_leg?chset.tl:chset.br;  // left + up    | up + left
+  if (!(c1 > c0) &&  (r1 > r0)) return v_leg?chset.br:chset.tl;  // right + down | down + right
+  return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
 }
 
 function setToolLine()
