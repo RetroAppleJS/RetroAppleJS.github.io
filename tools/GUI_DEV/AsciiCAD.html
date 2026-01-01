@@ -38,12 +38,12 @@
         <div class="card">
           <h3>Mode</h3>
           <div class="row">
-            <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Freeform</button>
-            <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Select &amp; Move</button>
+            <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
+            <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Move</button>
             <button id="modeLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line. Use 'o' to override instead of merge lines.">Line</button>
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
-            <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit."">Freetext</button>
+            <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit."">Text</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -273,14 +273,16 @@ const maskToGlyph = new Map([
 
 function isWireGlyph(ch) { return glyphToMask.has(ch); }
 
-function mergedWireGlyph(prevCh, nextCh) {
+function mergedWireGlyph(prevCh, nextCh)
+{
   const pm = glyphToMask.get(prevCh) ?? 0;
   const nm = glyphToMask.get(nextCh) ?? 0;
   const m = pm | nm;
   return maskToGlyph.get(m) ?? nextCh; // fallback: keep nextCh
 }
 
-function cellMaskFromNeighbors(r, c) {
+function cellMaskFromNeighbors(r, c)
+{
   let m = 0;
 
   // Neighbor contributes if it has a connection pointing toward (r,c)
@@ -446,6 +448,7 @@ function beginLine(cell,kind)
 
 function moveLine(cell)
 {
+  //if(bDebug) console.log("moveLine() "+lineDrag);
   if (!lineDrag) return;
   if (!cell) return;
   if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
@@ -473,6 +476,7 @@ function endLine()
     }
   }
 
+  if(bDebug) console.log("endLine()");
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
   draw();
@@ -795,9 +799,9 @@ function commitLine()
 
 function commitLineWithOptionalMerge(mergeEnabled) 
 {
-  if (!lineDrag) return;
+  if(bDebug) console.log("commitLineWithOptionalMerge() lineDrag="+lineDrag);
 
-  if(bDebug) console.log("commitLineWithOptionalMerge()");
+  if (!lineDrag) return;
   const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
   // De-dup: last char wins
@@ -1373,9 +1377,10 @@ function draw()
     {
         const old = ctx.fillStyle;
         ctx.fillStyle = "rgba(59,130,246,0.9)";
-
         const r = textDrag.anchor.r;
         let c = textDrag.anchor.c;
+
+        renderCharAtCell(ctx, r, c-1, '█');
     
         for (const ch of Array.from(textDrag.text)) 
         {
@@ -1448,7 +1453,7 @@ catalogClose.addEventListener("click", closeCatalog);
 
 pickCharBtn.addEventListener("click", () => { if (op.type !== "place") op = { type: "place", ch: '+' }; openPicker(); });
 openCatalogBtn.addEventListener("click", () => openCatalog());
-eraserBtn.addEventListener("click", () => { op = { type: "erase" }; updateUI(); });
+eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreeform'); updateUI(); });
 
 // Undo/redo
 undoBtn.addEventListener("click", doUndo);
@@ -1492,6 +1497,8 @@ try {
     selection = null;
     selectDrag = null;
     moveDrag = null;
+    textDrag = null;
+    boxDrag = null;
     cancelPaste();
 
     pushStrokeIfNonEmpty(stroke);
@@ -1683,12 +1690,10 @@ canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 // Shortcuts
 window.addEventListener("keydown", (e) => 
 {
-
     const isMac = /mac/i.test(navigator.platform);
     const mod = isMac ? e.metaKey : e.ctrlKey;
 
-
-    if(bDebug) console.log("e.key = "+e.key+" mod="+mod+" lineDrag="+(lineDrag!=null));
+    if(bDebug) console.log("e.key = "+e.key+" mod="+mod+" lineDrag="+(lineDrag!=null)+" textDrag="+(textDrag!=null)+" shiftKey="+e.shiftKey+" ctrlKey="+e.ctrlKey+" metaKey="+e.metaKey+" altKey="+e.altKey);
 
     if (e.key === "Escape") { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
 
@@ -1733,7 +1738,7 @@ window.addEventListener("keydown", (e) =>
         }
 
         // Ignore control keys
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.ctrlKey || e.metaKey) return;
         if (e.key.length !== 1) return;
 
         // Append typed character
