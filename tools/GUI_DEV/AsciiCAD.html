@@ -1661,8 +1661,7 @@ window.addEventListener("mouseup", () =>
 // TODO SERIALISE (COMMIT functions)??
   if      (tool === "modeLine" && lineDrag)
   { 
-    if(lineDrag.merge) commitLineWithOptionalMerge(lineDrag.merge)
-    else  endLine(); 
+    commitLineWithOptionalMerge(lineDrag.merge);
     return; 
   }
   else if (tool === "modeSBox" && boxDrag)  { commitBox(); return; }
