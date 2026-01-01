@@ -406,9 +406,9 @@ function buildBoxPath(start, end, style)
   const r0 = start.r, c0 = start.c;
   const r1 = end.r, c1 = end.c;
 
-  const top = Math.min(r0, r1);
-  const bot = Math.max(r0, r1);
-  const left = Math.min(c0, c1);
+  const top   = Math.min(r0, r1);
+  const bot   = Math.max(r0, r1);
+  const left  = Math.min(c0, c1);
   const right = Math.max(c0, c1);
 
   const out = [];
@@ -442,7 +442,8 @@ function buildBoxPath(start, end, style)
   return out;
 }
 
-function beginLine(cell,kind) {
+function beginLine(cell,kind) 
+{
   if (!cell) return;
   if(bDebug) console.log("beginLine()")
 
@@ -816,7 +817,7 @@ function commitLineWithOptionalMerge(mergeEnabled)
 {
   if (!lineDrag) return;
 
-  console.log("commitLineWithOptionalMerge()");
+  if(bDebug) console.log("commitLineWithOptionalMerge()");
 
   const style = lineDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
   const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,!lineFlip,style);
@@ -1116,8 +1117,6 @@ function renderCatalogTabs()
 {
     catalogTabsEl.innerHTML = '';
     const types = ["All", ...catalogTypes()];
-
-    console.log( types );
 
     for (const t of types) {
         const b = document.createElement("button");
@@ -1656,7 +1655,7 @@ canvas.addEventListener("mousedown", (e) =>
     if (pasteDrag)
     { 
         commitPasteAt(cell); 
-        console.log("setMode('"+modeRECALL+"')");
+        if(bDebug) console.log("setMode('"+modeRECALL+"')");
         setMode(modeRECALL);
         return;
     }
@@ -1714,7 +1713,7 @@ window.addEventListener("keydown", (e) =>
     const mod = isMac ? e.metaKey : e.ctrlKey;
 
 
-    console.log("e.key = "+e.key+" mod="+mod+" lineDrag="+(lineDrag!=null));
+    if(bDebug) console.log("e.key = "+e.key+" mod="+mod+" lineDrag="+(lineDrag!=null));
 
     if (e.key === "Escape") { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
 
@@ -1788,7 +1787,7 @@ window.addEventListener("keydown", (e) =>
 window.addEventListener("keyup", e => {
     if (e.key === "Shift") lineFlip = false;
     if (e.key.toLowerCase() === 'o') lineMerge = true;
-    console.log("KEYUP: lineFlip="+lineFlip+" lineMerge="+lineMerge);
+    if(bDebug) console.log("KEYUP: lineFlip="+lineFlip+" lineMerge="+lineMerge);
     draw();
 });
 
