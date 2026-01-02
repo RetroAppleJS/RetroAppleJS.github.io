@@ -473,7 +473,35 @@
         
         
         ,
-        text_data:[''],
+        text_data:[
+
+' ┌────────────────────Teensy 4.1─────────────────┐\n' +
+' │                                               │\n' +
+'─┤3V3_Analog         ARM Cortex-M7           AGND├─\n' +
+'─┤ADC0   A0/D15         480MHz          AudioOut2├─\n' +
+'─┤ADC1   A1/D16                         AudioOut1├─\n' +
+'─┤ADC2   A2/D17                          AudioIn2├─\n' +
+'─┤ADC3   A3/D18                          AudioIn1├─\n' +
+'─┤ADC4   A4/D19            D14 USART1_Rx/I2C4_SDA├─\n' +
+'─┤ADC5   A5/D20            D13 USART1_Tx/I2C4_SCL├─\n' +
+'─┤ADC6   A6/D21            D12 I2C1_SDA /UART4_Tx├─\n' +
+'─┤ADC7   A7/D22 DAC_OUT2   D11 I2C1_SCL /UART4_Rx├─\n' +
+'─┤ADC8   A8/D23 DAC_OUT1   D10 SPI1_MOSI/UART2_Tx├─\n' +
+'─┤ADC9   A9/D24 SAI_MCLK   D9 SPI1_MISO          ├─\n' +
+'─┤ADC10 A10/D25 SAI2_SDB   D8 SPI1_SCK  /SPDIFRX1├─\n' +
+'─┤          D26 SAI2_SDA   D7 SPI1_CS            ├─\n' +
+'─┤          D27 SAI2_FS    D6 SD_CLK.  /USART5_Tx├─\n' +
+'─┤ADC11 A11/D28 SAI2_SCK   D5 SD_CMD.  /USART5_Rx├─\n' +
+'─┤USART1_Tx D29 USB_D-     D4 SD_Data0           ├─\n' +
+'─┤USART1_Rx D30 USB_D+     D3 SD_Data1           ├─\n' +
+'─┤3V3_Digital              D2 SD_Data2 /USART3_Tx├─\n' +
+'─┤VIN                      D1 SD_Data3 /USART3_Rx├─\n' +
+'─┤DGND                    D0 USB ID              ├─\n' +
+' │                    ╭──USB──╮                  │\n' +
+' └────────────────────┴───────┴──────────────────┘\n'
+
+        
+        ],
       image_data:
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAB5QTFRFAAAAc5J7TFJUVHhl3NLLoaeI9vj1ibiT28JwhK+BLPkEGgAAAAp0Uk5TAPv//vz8FSD9imlocvAAAAJsSURBVHic1dVBa9swFAdwnyZ2lBWR9Ojn9gNIQpAc0yqHHjXZ1L15sK5Xl7ENHV3X4N4WSpPs20520jWVnQ5WGMyHXN7P7y89ySQI/ocnf7387u8B+gNAm9XrwE5U8RpAk1qN88MAbbRSan0YWJo6sCgOgW1dqfN8GKDN7agD6mIY2JLugPo+BKw2IWzr5/NvfYCWJa7gpAOPk/s++FoazW7hWCr1k+pVD9jS0CQ945Cqc63vexHooSSyVqqKwRyn5Y/eIm9qgsXoTpkKIlqOe9u0pZCKyDslSMjIZeED9KABJ3ORzGNW43rtjxo91ABxShIMIHA9DnxgSw4xxDQNncO08AEiBtyrACkHwFl72i9AFwCxCCHSQJtZ4IMuIATiWlCCae9O7gJiwTkc7wJegKVr4B4Sux+azQof2KptEOOYcGBYrgIPIFIJ0XZw+4xwNg48gDala9BluB1OWeEDqzVpR9AOirHJOvCAlSXWYSykbpeRHRUecAG0mhohTPoBmHwOeAJWEoYJDQk/OY3EXsAO2KkmQmIZRjxanGRHuQfQhgp3BBPNY8zmTO436MDN1Lj9CSYYy7TIxrkH3jcCtx04F1jqbH+FHbheSjMy3NXdALHIXgS04GNDk4WRDDhOGW5muQ+ucJioOQvBENeArgIfXJPRQinDjWvAmnHQA7ltv9KFm1RKSlkMAPTYgjPcaNb4Ads52ER9UGcsxeWsV99O8kuSziMgrO4F7M7iU6pOuZBlb4VPAF3pRGBymR8CweclkdOqv8Lg+UYRSi6G6r/v5M3kfihg71bj9WD9+buwww3e8pf0L8Gbn18sp7KgkeW1twAAAABJRU5ErkJggg=='
     }
@@ -543,24 +571,78 @@
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA2qg/MTMz2LV01KtJ19XPoINMYFdCxad+1rUs7IThTgAAAAp0Uk5TAPr//7P+/f5ZWoTOXAoAAAFnSURBVHicvZSxSsRAEIbzCsN4eYAUpl6HxNbACteGsNeH02AdjmxrQMVSwca3dTabHAj3GxH1b/MxX2Z2Z5PkmHer2Vr7YO1LciqvlRG6zLJzOrs6DYwidJFludkCgCgCRACoiGIFqOAIEFTImoJlTbHWxQL8XCFiAiBfKUrvBzYIEDZErcB/GGmK4EGxTIGDom4OAp6ymBwqFgAq1oBVRfWPCnSaq4pxmSRUMHM4CbhZdAxScBnPCirS+JNYsQBQMQPw0v6CopwBqCi/qcB7sQB/2AX5KbiLuJlEFinY6H0weDd1u8V7/Y4UY1NQn28agQrn0qzfuwYqXNP1nt3uDgK7rs8VuIEKraCKskUV0i4ougFVGKnTNpng4sxLgZ9BHbW+ccwGzSFMkpi4xopwDjVevUrEiTRSw9e+KZzGYIVsAtDiLswEDPDCjKZQx+2A7sObtdd7BQ4WVNA8BsU9+qp5DvkMfAAoh7C+1ipazQAAAABJRU5ErkJggg=='
     }
     ,
+     {
+        name: 'Fanstel BC805M',
+        type: 'MCU',
+        description: 'Compact, Lowest Cost BLE 5.2 Module based on Nordic NRF52',
+        MFR: 'BC805M',
+        instructions:'https://www.mouser.com/datasheet/2/915/Fanstel_01282921_BC805M-1991530.pdf?srsltid=AfmBOopO7jHS7nlUla2l5xjwrb8fOhMJLuO4hD-Gcxs01p5W5C_G_JFV',
+        pin_data: null,
+        text_data:[
+'╔═══════════════════╗\n' +
+'║     [BC805M]      ║\n' +
+'║    NRF52 64MHz    ║\n' +
+'║                   ║\n' +
+'╢SWDIO          P001╟\n' +
+'║                   ║\n' +
+'╢SWCLK          P000╟\n' +
+'║                   ║\n' +
+'╢P020           P004╟\n' +
+'║                   ║\n' +
+'╢P021           P014╟\n' +
+'║                   ║\n' +
+'╢P018           P005╟\n' +
+'║                   ║\n' +
+'╢P016            VDD╟\n' +
+'║                   ║\n' +
+'╢P012            GND╟\n' +
+'╚═══════════════════╝\n'
+
+        ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAcHVjkJeDEE5CKXVYvMGrtbqjy9HET3VlmpuGH+vLkwAAAAp0Uk5TAP/+////tyvBQHwYTJYAAAKPSURBVHicpZTBjtowEIa59WyDpfZoUz9AsJF6BRup14xw712pXe2xHHYfYKWqVy6Ifdv+4wRib6Kyq44gRPjTzD//TDKbzWYfnv5Mxu+nWR+PMXo3ji+zAgCCr8M38E2OEeAzECeB0B2H643zFbAI8T+B7uQNgHsXEGoN/84wCYT3lHgDIGLc+AUm0UwDMUmy+CzCTqrFRBcx2Y211nxerFK7H3cRPNkNWRXx0+r9OIPzSWljyCyd3+OSgXJhLjvk+YMLgJU2ZYlXywZACjmRoQCEEPXKCY44RAUcwo7whxSmDyJc7NfXwBBGG2FkCahWvAqILIB4C1iMAZQZRJ5oIoMRn4Y200YLS0lXwObnAFDTCqsSVcD2fgBaDyBRn0EmI4TS8uEKnOcADDJII6U0NqGY0vHjFXj5xYBIpCjh1BCKKb39NpT44bsuLI5TskQM7ArgwBoIfaRMpNQyUIg8Akgy6W5UvYZtIfI5akHS4jBX4n4rkadjZKMMaSkvPlQZHu8ASM6OMfOY2Ay9Lpw8RLSZjIRZ3IXNOdaDyJdj7Jy0CfXBcIawKp0EgC5bNoq9yIAvRPIsjKVqmm41GHUg12JE1V5Kty6cbBs4Q0r0PuRwhcjzMwBrSWAIRnO/6NKVTs6vAGbJvWqhXShFAoAJKME6tWanXDluavKiX0J3Ggonvze8hDCa60vJhtcilx6AlZp4HfiCjt1qyHCeuzwsjX2xeWkA+MpJGCWug8wiMItB5Ck7iS5TUpI3jk2fV05mQPKsTV7LDNwXJZquRE6PXrjQshTpd+Onuw03nu5293ADUIWTdxMAqWIn202/TMYMK1E8emcXm/zfPL9Gu/OmcPIc4jY/dB2Qb7Vw+SX2F+n5Mq1W0UcQAAAAAElFTkSuQmCC'
+    }
+    ,
     {
-      name: 'OLED SSD1309',
+      name: 'OLED SSD1306',
       type: 'Display',
       description: '',
-      MFR: 'SSD1309',
+      MFR: 'SSD1306',
       pin_data: null,
               text_data:[
-        '┌───┴─────┴─────┴─────┴───┐\n' +
-        '│  GND   VCC   SCL   SDA  │\n' +
-        '│╔═SSD1309═══════════════╗│\n' +
-        '│║                       ║│\n' +
-        '│║                       ║│\n' +
-        '│║      64 x 32 OLED     ║│\n' +                       
-        '│║                       ║│\n' +  
-        '│║                       ║│\n' +  
-        '│╚═══════════════════════╝│\n' +  
-        '│                         │\n' +  
-        '└─────────────────────────┘\n'],
+'╔═══╧═══╧═══╧═══╧═══╗\n' +
+'║  GND VCC SCL SDA  ║\n' +
+'║                   ║\n' +
+'║┌─────────────────┐║\n' +
+'║│                 │║\n' +
+'║│    [SSD1306]    │║\n' +
+'║│  64 x 32 OLED   │║\n' +
+'║│                 │║\n' +
+'║└─────────────────┘║\n' +
+'╚═══════════════════╝\n'
+,
+  '╔════════════════════════════╧═══╧═══╧═══╧═════════════════════════╗\n' +
+  '║ [SSD1306]  64x32 OLED     GND VCC SCL SDA                        ║\n' +
+  '║┌────────────────────────────────────────────────────────────────┐║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║│                                                                │║\n' +
+  '║└────────────────────────────────────────────────────────────────┘║\n' +
+  '╚══════════════════════════════════════════════════════════════════╝\n'     
+      ],
         image_data:
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAAgMNESlTWmNv3eLlvsLHOERYZ3iMNEhm19jYkDYxiQAAAAp0Uk5TAP/+/x/6/DmTiZs+NYQAAAHnSURBVHicjdU9b9swEAZgDgSUlTLg3cdW9UxCBLoJiD1otUDPldQma5oWQbIlaAChc50C/bflUUpj8UvlJEAP717cQTYh/3nuh5s0uIWhWgAwLIG0QADP43Ow1y3vsEZWEVqHASCAp4HUO7ILgEsYD/u5I/XJJ5k+voqhPlX05IKLL1ZgG3ZN6J+KOkEu8lIfoDzYGs+nirhJM2aE0AeOIh9o7YbIGFuX+si1sDUe/JDMirIBeTYxB7C11qLUCLbeai1gK61L8R6Tbr+7YGMF1/pqnIhbYwJGNM04MKcGnQDr9QRgOwctc8UckH/ADAwFjwIUJiYXUTAJFzy9ATt0L8M5QCHgQwLYoSeBGdgxDVivFsDKBV898G4O7pbAN7UEZLsE5mKlPntAbc6B+DQH99KIGXicg+yHVOeCu8D0EGspkkC2/C2oB+jvvlBmA5sYqKX59FneqxjYG2Bur1+D9l6LRiEwogsD00OBrT0G9YFpcjXelRsLvA+c/hrv5jZGAJgYo7BBQwBjYIUWFxsEdI8iN2uTbRBMMQoUsqsCYIwBPa4egsDGKLo+DuiLFFwVcYDCvCykKsLvbQwF0CuIAVI3En9g4gCnATzewsboIAUwRgcpYGKojlcpsZfyYxLQF+39rcXOX9eIntwzgoWWAAAAAElFTkSuQmCC'
      }
@@ -887,7 +969,7 @@
 '  ⟋  ⎺⎺ ⟋\n' +
 ' ⎛   ╷⟋    ⎞\n'+
 '─────┤\n'+
-' ⎝   ╵↘    ⎠\n'+
+' ⎝   ╵↖    ⎠\n'+
 '  ⟍  __  ⟋\n'
 
       ],
@@ -921,12 +1003,20 @@
       MFR: 'Diode',
       pin_data: null,
       text_data:[
-      '─▶⊢\n'
+      '─▶⊢─\n'
       ,
+      '│\n'+
+      '▼\n'+
+      '⏉\n'+
+      '│\n'
+      ,
+      '─⊣◀─\n'
+      ,
+      '│\n'+
       '⏊\n'+
-      '⭡\n'
-      ,
-      '⊣◀─\n'
+      '▲\n'+
+      '│\n'
+      
     
 
 ],
@@ -942,10 +1032,25 @@
       pin_data: null,
       text_data:[
       ' ⬈⬈\n' +  
-      '─▶⊢\n'
+      '─▶⊢─\n'
       ,
-      '⬉⬉\n' + 
-      '⊣◀─\n'],
+      '│\n'+
+      '▼⬈⬈\n'+
+      '⏉\n'+
+      '│\n'
+      ,
+      ' ⬈⬈\n' + 
+      '─⊣◀─\n'
+      ,
+      '│\n'+
+      '⏊\n'+
+      '▲⬈⬈\n'+
+      '│\n'  
+      ,
+      '│\n'+
+      '⏄ ⇉\n'+
+      '│\n'  
+    ],
       image_data: 
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA5ujrjpOYw8bK8vT1WV5lJyowu77BkZacj5OZzWhluwAAAAp0Uk5TAP79/hX+/1jMa9ghZAAAAAGSSURBVHic3dTNS8MwFADwHAZ1xzbsLq8E57F5VDwOFLajZEun10Gq3mQOhzfxY/Poyel/a9KtMjSvGXjzHQprfrz3eH0ZY4ydbsX8dbb1i/2M/hMiLHu/3tfRQhewJMEJYhyj7N5QCW7tuRVkiggyB7jsEl0MVAViKYga0zReg+LZD5INSMzY32MNuCYArwGEMsC1H3R2BTFcNJeIqQzfIA2BcA8hQJXYBSC6D5qeU026jcvsoEgAWqeYIQmgMJBKAEUBrY1WR8ZQQA4x12lelqZLgZgLlGVZUiWGduVRmgbApWgCHYW5Qqkt6FEZhJ0V0AD5epKl/2q1EindrC0AL+jbGVb3Xxbgu3t20qICGS+U72JEHISqSsTFxLfWFmxKUBkSBZvQw0MfkCC0BhDCABz4mpyvPuB41b9/nCzn1L/Ui6s9VTPimLH3kX20r3o02K8AeV6DQIbo34O7P4O8AhMStIT7mnv6jQTa7eIgBBozXIYyjANAjCpAbSRjizP7iAx5zhYPDjSs3KerHrVp4IkvOPx66zRN23wAAAAASUVORK5CYII='
    }
@@ -1142,11 +1247,11 @@ Motor:     ─Ⓜ─
 // https://www.charset.org/utf-8/10
 const PICKER_TABS = {
 Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
-Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(rangeChars(0x2B00, 0x2B11)).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
+Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(rangeChars(0x2B00, 0x2B11)).concat(rangeChars(0x2B60,0x2B65)).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
 Geometric: rangeChars(0x2580, 0x25FF).concat(rangeChars(0x20D8, 0x20E4)).concat(rangeChars(0x2B12, 0x2B2F)).concat(['❘','❙','❚']),
 Icons1: rangeChars(0x2600, 0x26FF),
 Icons2: rangeChars(0x2701, 0x2775).concat(rangeChars(0x2794, 0x27C1)).concat([]),
 AlphaNumeric: rangeChars(0x0021, 0x007A).concat(rangeChars(0x2460, 0x24FF)),
 Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','⬤','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓','ᯤ'].concat(rangeChars(0x2400,0x2424)),
-Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌','⏄']),
+Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌']),
 };
