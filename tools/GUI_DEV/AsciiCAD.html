@@ -864,54 +864,46 @@ function commitLine()
 
 function addNeighborsToSet(set, r, c) {
   set.add(r + "," + c);
-  if (r > 0) set.add((r-1) + "," + c);
-  if (r < ROWS-1) set.add((r+1) + "," + c);
-  if (c > 0) set.add(r + "," + (c-1));
-  if (c < COLS-1) set.add(r + "," + (c+1));
+  if (r > 0) set.add((r - 1) + "," + c);
+  if (r < ROWS - 1) set.add((r + 1) + "," + c);
+  if (c > 0) set.add(r + "," + (c - 1));
+  if (c < COLS - 1) set.add(r + "," + (c + 1));
 }
 
-function commitLineWithOptionalMerge(mergeEnabled, lineKind) 
+function commitLineWithOptionalMerge(mergeEnabled, lineKind)
 {
-  if(bDebug) console.log("commitLineWithOptionalMerge() lineDrag="+lineDrag);
-
+  if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
   if (!lineDrag) return;
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+
+  const path = buildOrthogonalPath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind);
 
   // De-dup: last char wins
-  const m = new Map();
+  const cellMap = new Map();
   for (const p of path) {
     if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-    m.set(p.r + ',' + p.c, p.ch);
+    cellMap.set(p.r + "," + p.c, p.ch);
   }
 
   const stroke = [];
-  const touched = []; // cells we should recompute + their neighbors (if merge)
+  const touched = [];
 
-  for (const [key, ch] of m) {
-    const [r, c] = key.split(',').map(Number);
+  // PASS 1: write the line characters
+  for (const [key, ch] of cellMap) {
+    const parts = key.split(",");
+    const r = Number(parts[0]);
+    const c = Number(parts[1]);
 
     const prev = ascii[r][c];
-
     let next = ch;
 
+    // Merge only if both are mergeable (and your mergedWireGlyph supports single/double)
     if (mergeEnabled) {
-      const affected = new Set();
-      for (let i = 0; i < touched.length; i++) {
-        addNeighborsToSet(affected, touched[i].r, touched[i].c);
+      const prevMergeable = (prev === " ") || isWireGlyph(prev);
+      const nextMergeable = (next === " ") || isWireGlyph(next);
+
+      if (prevMergeable && nextMergeable) {
+        next = mergedWireGlyph(prev, next, lineKind); // <-- important for double
       }
-
-      affected.forEach((key) => {
-        const parts = key.split(",");
-        const r = Number(parts[0]);
-        const c = Number(parts[1]);
-
-        const prev = ascii[r][c];
-        const next = recomputeWireCell(r, c);
-
-        if (prev !== next) {
-          stroke.push({ r, c, prev, next });
-        }
-      });
     }
 
     if (prev !== next) {
@@ -921,32 +913,34 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     }
   }
 
+  // PASS 2: recompute junctions on touched cells + 4-neighbors
   if (mergeEnabled && touched.length) {
-    // Second pass: recompute junctions on touched cells and their 4-neighbors
-    const keys = new Set();
-    for (const t of touched) {
-      for (const [dr, dc] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]]) {
-        const rr = t.r + dr, cc = t.c + dc;
-        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-        keys.add(rr + ',' + cc);
-      }
+    const affected = new Set();
+
+    for (let i = 0; i < touched.length; i++) {
+      addNeighborsToSet(affected, touched[i].r, touched[i].c);
     }
 
-    for (const k of keys) {
-      const [r, c] = k.split(',').map(Number);
+    affected.forEach((key) => {
+      const parts = key.split(",");
+      const r = Number(parts[0]);
+      const c = Number(parts[1]);
+
       const prev = ascii[r][c];
-      const next = recomputeWireCell(r, c);
+      const next = recomputeWireCell(r, c); // recomputeWireCell may write ascii[r][c] itself
+
       if (prev !== next) {
-        // add recompute changes into the SAME stroke so undo is correct
         stroke.push({ r, c, prev, next });
+        ascii[r][c] = next; // harmless even if recompute already set it
       }
-    }
+    });
   }
 
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
   draw();
 }
+
 
 
 function commitPasteAt(cell) 
@@ -1732,7 +1726,7 @@ canvas.addEventListener("mousedown", (e) =>
     // TODO SERIALISE (BEGIN functions)??
     if (tool === "modeFreeform")      beginFreeform(cell);
     else if (tool === "modeSelect")   beginSelect(cell)
-    else if (tool === "modeLine")     beginLine(cell,"double");
+    else if (tool === "modeLine")     beginLine(cell,"signle");
     else if (tool === "modeSBox")     beginBox(cell, "single");
     else if (tool === "modeDBox")     beginBox(cell, "double");
     else if (tool === "modeFreetext") beginFreetext(cell);
