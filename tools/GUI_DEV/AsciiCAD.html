@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.83</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.84</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -40,7 +40,8 @@
           <div class="row">
             <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
             <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Move</button>
-            <button id="modeLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line. Use 'o' to override instead of merge lines.">Line</button>
+            <button id="modeSLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line. Use 'o' to override instead of merge lines.">SLine</button>
+            <button id="modeDLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place line. Use 'o' to override instead of merge lines.">DLine</button>
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
             <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit."">Text</button>
@@ -343,7 +344,8 @@ function cellMaskFromNeighbors(r, c)
   return m;
 }
 
-function recomputeWireCell(r, c) {
+function recomputeWireCell(r, c) 
+{
   const cur = ascii[r][c];
 
   // Only recompute blanks or existing wire glyphs
@@ -377,6 +379,26 @@ function recomputeWireCell(r, c) {
     if (isDoubleWire(rt)) wantDouble = true;
   }
 
+
+  // Mixed cross support:
+  if (mask === (N|E|S|W)) {
+    const ax = axisStylesFromNeighbors(r, c);
+
+    // vertical double, horizontal single => ╫
+    if (ax.vert === "double" && ax.horz === "single") {
+      ascii[r][c] = "╫";
+      return "╫";
+    }
+    // vertical single, horizontal double => ╪
+    if (ax.vert === "single" && ax.horz === "double") {
+      ascii[r][c] = "╪";
+      return "╪";
+    }
+    // otherwise fall through (pure single or pure double)
+  }
+
+
+
   // choose glyph from mask tables
   let next;
   if (wantDouble) next = maskToDouble.get(mask);
@@ -391,6 +413,40 @@ function recomputeWireCell(r, c) {
   ascii[r][c] = next;
   return next;
 }
+
+
+function axisStylesFromNeighbors(r, c) {
+  // Returns { vert: "single"|"double"|null, horz: "single"|"double"|null }
+  let vert = null;
+  let horz = null;
+
+  // vertical comes from up/down neighbors
+  if (r > 0) {
+    const up = ascii[r - 1][c];
+    const m = glyphToMask.get(up) ?? 0;
+    if (m & S) vert = isDoubleWire(up) ? "double" : "single";
+  }
+  if (r < ROWS - 1) {
+    const dn = ascii[r + 1][c];
+    const m = glyphToMask.get(dn) ?? 0;
+    if (m & N) vert = isDoubleWire(dn) ? "double" : "single";
+  }
+
+  // horizontal comes from left/right neighbors
+  if (c > 0) {
+    const lt = ascii[r][c - 1];
+    const m = glyphToMask.get(lt) ?? 0;
+    if (m & E) horz = isDoubleWire(lt) ? "double" : "single";
+  }
+  if (c < COLS - 1) {
+    const rt = ascii[r][c + 1];
+    const m = glyphToMask.get(rt) ?? 0;
+    if (m & W) horz = isDoubleWire(rt) ? "double" : "single";
+  }
+
+  return { vert, horz };
+}
+
 
 
 function buildOrthogonalPath(start, end, start_vleg, kind)
@@ -661,16 +717,6 @@ function cornerChar(r0, c0, r1, c1, v_leg, chset)
   return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
 }
 
-function setToolLine()
-{
-  setMode("modeLine");
-  selection = null; selectDrag = null; moveDrag = null;
-  cancelPaste();
-  cancelLine();
-  updateUI();
-  draw();
-}
-
 function canvasPointToCell(clientX, clientY)
 {
     const rect = canvas.getBoundingClientRect();
@@ -908,13 +954,23 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
 
     // Merge only if both are mergeable (and your mergedWireGlyph supports single/double)
     if (mergeEnabled) {
-      const prevMergeable = (prev === " ") || isWireGlyph(prev);
-      const nextMergeable = (next === " ") || isWireGlyph(next);
+      const prevIsWire = (prev === " ") || isWireGlyph(prev);
+      const nextIsWire = (next === " ") || isWireGlyph(next);
 
-      if (prevMergeable && nextMergeable) {
-        next = mergedWireGlyph(prev, next, lineKind); // <-- important for double
+      if (prevIsWire && nextIsWire) {
+        // If styles differ and prev is not blank, keep prev style here.
+        const prevStyle = isDoubleWire(prev) ? "double" : (prev === " " ? null : "single");
+        const nextStyle = isDoubleWire(next) ? "double" : (next === " " ? null : "single");
+
+        if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
+          // leave it for recompute to resolve as mixed junction; don't upgrade
+          next = prev;
+        } else {
+          next = mergedWireGlyph(prev, next, lineKind);
+        }
       }
     }
+
 
     if (prev !== next) {
       stroke.push({ r, c, prev, next });
@@ -1692,7 +1748,8 @@ canvas.addEventListener("mousemove", (e) =>
     // TODO SERIALISE (MOVE functions) ??
     if (tool === "modeFreeform")      moveFreeform(cell);
     else if(tool === "modeSelect")    moveSelect(cell)
-    else if (tool === "modeLine")     moveLine(cell);
+    else if (tool === "modeSLine")    moveLine(cell);
+    else if (tool === "modeDLine")    moveLine(cell);
     else if (tool === "modeSBox")     moveBox(cell);
     else if (tool === "modeDBox")     moveBox(cell);
     else if (tool === "modeFreetext") beginFreetext(cell);
@@ -1735,8 +1792,9 @@ canvas.addEventListener("mousedown", (e) =>
 
     // TODO SERIALISE (BEGIN functions)??
     if (tool === "modeFreeform")      beginFreeform(cell);
-    else if (tool === "modeSelect")   beginSelect(cell)
-    else if (tool === "modeLine")     beginLine(cell,"double");
+    else if (tool === "modeSelect")   beginSelect(cell);
+    else if (tool === "modeSLine")    beginLine(cell,"single");
+    else if (tool === "modeDLine")    beginLine(cell,"double");
     else if (tool === "modeSBox")     beginBox(cell, "single");
     else if (tool === "modeDBox")     beginBox(cell, "double");
     else if (tool === "modeFreetext") beginFreetext(cell);
@@ -1750,7 +1808,7 @@ window.addEventListener("mouseup", () =>
   if (pasteDrag) return;
 
 // TODO SERIALISE (COMMIT functions)??
-  if (tool === "modeLine" && lineDrag)
+  if ((tool == "modeSLine" || tool == "modeDLine") && lineDrag!=null)
   { 
     commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind);
     return; 
@@ -1771,7 +1829,8 @@ canvas.addEventListener("mouseleave", () => {
     if (pasteDrag) return;
 
     // TODO SERIALISE (CANCEL functions)??
-    //if (tool === "modeLine" && lineDrag) { cancelLine(); return; }
+    //if (tool === "modeSLine" && lineDrag) { cancelLine(); return; }
+    //if (tool === "modeDLine" && lineDrag) { cancelLine(); return; }
     //if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
     //if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
 });
