@@ -822,7 +822,48 @@
       ],
       image_data:
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFAAAAk2I9SEZGXFxdent9jpKTrayqtYJZgHp1uL7BOwpWWQAAAAp0Uk5TAP///v77Nv95945lfPQAAAGUSURBVHic7ZMxT8MwEIW9EHV1FrP28gsal9IV1aDuEIlurYRMVxeJW4GqVUd+Mmc3Tdv4TBgYGHhDFOm+vHt3joVoZJebKuhxOxeMbF0mmamN69m+/mCCppFHtjFnuosA01LboteqT96+ByY6ArQ2h4QkzQHa3Fb3wyp8zwOkstBDE94SAEAKEOuiCMAwJNCjdl0sSiiPwCAyEAuZQ+Fb+Iw3kgGcdDlAXgwU0msMPEsnSYhIT6cYByWlQkUAGSi2hfLf7l0kcg4uNAg9kGtBxsHeE4oNiU4eeqRCYq1ESIlYT5rYA9Z7oDBsixByP4njQ6pDSNW1B5faQz1n4rAWTcjuPbAtsvezw3KXbaB3LY+HRXvI2xa90qfD5peBGIDTPeQxQP9rv9mDBBbw8klxBbpkWvhbAa4vwxXkMtC10PBCV8/fXRYghABtkg5ePwWYKWpgpTVFGKcBctDjrd3t5ixwtXu1T7NPwShb+yEquxUXPCCWHwCjioxTAHmMrQeyWbv9CdMJzP6B3wGE7QIam78FfAFEf9bLnKjzgQAAAABJRU5ErkJggg=='
-    }   
+    }
+    ,
+    {
+      name: 'Dimmer module',
+      type: 'Electric',
+      description: 'Connected lighting micromodule (with dimmer option) 0 648 99',
+      MFR: 'LEG 064899',
+      instructions:'https://assets.legrand.com/pim/NP-FT-GT/LE13719AA_EN.pdf',
+      pin_data: null,
+      text_data:
+      [
+'╔════════════╗\n' +
+'║ [ZLD23 RF] ║\n' +
+'║            ║\n' +
+'║            ║\n' +
+'║ SW DI L  N ║\n' +
+'╚═╤══╤══╤══╤═╝\n'
+      ,
+'╔═══════════════╗\n' +
+'╢ SW            ║\n' +
+'╢ DI            ║\n' +
+'╢ L             ║\n' +
+'╢ N  [ZLD23 RF] ║\n' +
+'╚═══════════════╝\n'
+,
+'╔═╧══╧══╧══╧═╗\n' +
+'║ SW DI L  N ║\n' +
+'║            ║\n' +
+'║            ║\n' +
+'║ [ZLD23 RF] ║\n' +
+'╚════════════╝\n'
+,
+'╔═══════════════╗\n' +
+'║ [ZLD23 RF]  N ╟\n' +
+'║             L ╟\n' +
+'║            DI ╟\n' +
+'║            SW ╟\n' +
+'╚═══════════════╝\n'
+      ],
+      image_data:
+   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAD8AAABABAMAAABfBbL4AAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFQEA/TEpFVVVSZGRh+/v7Ojo4JCIgzdHGqaymgIV8Tqo1JgAAA3tJREFUeJx1ls9r21gQx+fJSOxxpFLD3qQnEuqbLOFufMsh4B4llxfaW6E07HGhATvHJQXLt9ROifPfdn48y1I2OwHbeu+j+fGdkV7gim3dsl0dbSGXP/jnJcjK/bSqyvntEfhQ5VU1evQA4/vS5mW1UUftYVtZa/OLtt3cEvD9z2e2/X4+31di35rn5/e1LD4S8Ku0YlNbBrJf3kwS+/6rLP9FQPpTgbNwvFQPNyNw559l8YKAs5lzrnbLsTsBzo0/AtmyA5wAwQBwYT0EwiNwLUBYQ9gD6uW4zqwH5gK4Xgggb2OX57JvzU5C1Aqs33bAGwWqvBAPPsmdm7m6SoFyaLRei9AB7y5hQR4m7T0BlAh468p8JznA02pdLMdNEsdBHCceoCqcB3CzWj0QEBv6g1iBr6ELPVDg0+1CAIxN1gHAtSsAT7cfUgbivgdg9TRJGLX/UpIgIUwXgpUkYOZmwHeRkgrYowdfxfptAW8OO9AQ0AtxKhMvVuuUPQQYIKXZA/KHQZn4Hw8pElAqENW8aQz0ABBgyjoUAiCg6XuIaqQyC5hs7pABuhtPIYIYoy8I964AMy9gGTW8BWGXZBBgSDdswxkYandDQA19Jel3WKN0k9qNTVTzDMFJqIAuJElqFrW7iZxr+lKzh6hJpVlcJgMUIoOkn+TnfyTEZrUQoEnIQ3rygOEfOlEstYag+wdJEnBHVYwOP7kKm6R+YMLah/h0CXsCgAa5iZZxxikiq8EAqc7A4qzzEJqMPJyAGI20e4oX7VZyqA0Ynfval/lJgcOqVR3QYCCCgzZLqyBgozqIUNADor+1zMPmhZId4JOctFtorjXEAABK8oGnOudu0mNAE6kjxUBgseHngnrBRgAEJFRgOw8owNXOvwap3YZDdB5MpjrsjwAy0EuSUAFKkQ7CLwg9Y8Cqh5T7G8rj1wc+cg4KTGMx+F8gHW4Zg6gAaA5TvZ16p4001sIAkCIyWk8ymyWEZtkLQDMwMc0LMhD3gAmHuCH7BhJEYngAQ5oPAc6cvCETr4NJNAd0HiiKRLLUYhHkCVbAeUA36BWaxTS9RiQZeFCA+iDfdGigz8HrULwQ6uiBPgMp00s9tPNRd6jd29cs1S8+Fu/KV4mcP6offHbTgbzLyKs9tN62li4TPpqPh/v3GWVWnQ53S8J1h7usvPbvgfCXvwHpjk3M774arQAAAABJRU5ErkJggg=='
+    }     
     ,
         {
       name: 'Transistor',
