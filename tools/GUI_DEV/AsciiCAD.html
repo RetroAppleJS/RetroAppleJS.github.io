@@ -377,7 +377,17 @@ function recomputeWireCell(r, c) {
     if (isDoubleWire(rt)) wantDouble = true;
   }
 
-  const next = wantDouble ? (maskToDouble.get(mask) || " ") : (maskToSingle.get(mask) || " ");
+  // choose glyph from mask tables
+  let next;
+  if (wantDouble) next = maskToDouble.get(mask);
+  else            next = maskToSingle.get(mask);
+
+  // ✅ Critical fix:
+  // If there is a connection mask but no mapping (endpoint), DO NOT erase.
+  // Keep whatever is already there (─/│/═/║), otherwise endpoints disappear and cascade.
+  if (mask === 0) next = " ";
+  else if (!next) next = cur;  // keep existing wire glyph
+
   ascii[r][c] = next;
   return next;
 }
