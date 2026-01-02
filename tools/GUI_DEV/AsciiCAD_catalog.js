@@ -922,7 +922,14 @@
       pin_data: null,
       text_data:[
       '─▶⊢\n'
-    ,'⊣◀─\n'],
+      ,
+      '⏊\n'+
+      '⭡\n'
+      ,
+      '⊣◀─\n'
+    
+
+],
       image_data:
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAjIKAmkQw0W1J0dTVvLy8RzQutbCuuLq6uLi4l8L6gAAAAAp0Uk5TAPj///0P//tltQW66gsAAAGbSURBVHicrZSxTsMwEIa7WCqjU6hhjCN1r/0EEUZeydRkLIPLGhLkshUpKHOlVPC4XAISi+9cBF396ct/v92bWX6akb+2vrkngS6mmJuYov+zgnVW0IqytS8xRSRFaWpaAYNEUsz/QXHmjTAcKqc6qw+UYH0uTqX3b7jC18I3HB+G9V40ek1UetHeSq1SfBhmrJRyRSgGq4DYoinmbaNkpiWq2GitFZXifQIylYpwF2xoVDaGyNb7sKKzSmsApOJhRVUn4zfSJOXXQQU7JhnEWKWcIykKLgGQ2yQT4RSM19CDepBSI5da+IWegGwdrpMdAZB6BPhVWCEauRgB7bZhxWCTry6cCysqz6fCV849Iik4hFBwjnwDunj6BvghCLAhhyrcCCCXXplGjwKHPRsYZBIgESbFEo6dwB/3Ec7Npb/DgFnh3C43xNZiS7fzxhD7onDbU2VyQvEKT64zPra1LD7IpDljd1pxIIne8Gc6RZvTKWYbw/ckwEBBp6iMjygGi/wJfxQ1sgp+oYimMIIExhQ0AAoaAEUEYMMncg+EkMAhsPUAAAAASUVORK5CYII='
     }
@@ -1134,9 +1141,9 @@ Motor:     ─Ⓜ─
 
 // https://www.charset.org/utf-8/10
 const PICKER_TABS = {
-Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(rangeChars(0x2B08, 0x2B0B)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
-Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
-Geometric: rangeChars(0x2580, 0x25FF).concat(rangeChars(0x20D8, 0x20E4)).concat(['⬛','❘','❙','❚']),
+Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
+Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(rangeChars(0x2B00, 0x2B11)).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
+Geometric: rangeChars(0x2580, 0x25FF).concat(rangeChars(0x20D8, 0x20E4)).concat(rangeChars(0x2B12, 0x2B2F)).concat(['❘','❙','❚']),
 Icons1: rangeChars(0x2600, 0x26FF),
 Icons2: rangeChars(0x2701, 0x2775).concat(rangeChars(0x2794, 0x27C1)).concat([]),
 AlphaNumeric: rangeChars(0x0021, 0x007A).concat(rangeChars(0x2460, 0x24FF)),
