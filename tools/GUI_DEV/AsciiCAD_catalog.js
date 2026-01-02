@@ -927,6 +927,22 @@
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAjIKAmkQw0W1J0dTVvLy8RzQutbCuuLq6uLi4l8L6gAAAAAp0Uk5TAPj///0P//tltQW66gsAAAGbSURBVHicrZSxTsMwEIa7WCqjU6hhjCN1r/0EEUZeydRkLIPLGhLkshUpKHOlVPC4XAISi+9cBF396ct/v92bWX6akb+2vrkngS6mmJuYov+zgnVW0IqytS8xRSRFaWpaAYNEUsz/QXHmjTAcKqc6qw+UYH0uTqX3b7jC18I3HB+G9V40ek1UetHeSq1SfBhmrJRyRSgGq4DYoinmbaNkpiWq2GitFZXifQIylYpwF2xoVDaGyNb7sKKzSmsApOJhRVUn4zfSJOXXQQU7JhnEWKWcIykKLgGQ2yQT4RSM19CDepBSI5da+IWegGwdrpMdAZB6BPhVWCEauRgB7bZhxWCTry6cCysqz6fCV849Iik4hFBwjnwDunj6BvghCLAhhyrcCCCXXplGjwKHPRsYZBIgESbFEo6dwB/3Ec7Npb/DgFnh3C43xNZiS7fzxhD7onDbU2VyQvEKT64zPra1LD7IpDljd1pxIIne8Gc6RZvTKWYbw/ckwEBBp6iMjygGi/wJfxQ1sgp+oYimMIIExhQ0AAoaAEUEYMMncg+EkMAhsPUAAAAASUVORK5CYII='
     }
     ,
+     {
+      name: 'LED',
+      type: 'Discrete',
+      description: 'LED',
+      MFR: 'LED',
+      pin_data: null,
+      text_data:[
+      ' ⬈⬈\n' +  
+      '─▶⊢\n'
+      ,
+      '⬉⬉\n' + 
+      '⊣◀─\n'],
+      image_data: 
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA5ujrjpOYw8bK8vT1WV5lJyowu77BkZacj5OZzWhluwAAAAp0Uk5TAP79/hX+/1jMa9ghZAAAAAGSSURBVHic3dTNS8MwFADwHAZ1xzbsLq8E57F5VDwOFLajZEun10Gq3mQOhzfxY/Poyel/a9KtMjSvGXjzHQprfrz3eH0ZY4ydbsX8dbb1i/2M/hMiLHu/3tfRQhewJMEJYhyj7N5QCW7tuRVkiggyB7jsEl0MVAViKYga0zReg+LZD5INSMzY32MNuCYArwGEMsC1H3R2BTFcNJeIqQzfIA2BcA8hQJXYBSC6D5qeU026jcvsoEgAWqeYIQmgMJBKAEUBrY1WR8ZQQA4x12lelqZLgZgLlGVZUiWGduVRmgbApWgCHYW5Qqkt6FEZhJ0V0AD5epKl/2q1EindrC0AL+jbGVb3Xxbgu3t20qICGS+U72JEHISqSsTFxLfWFmxKUBkSBZvQw0MfkCC0BhDCABz4mpyvPuB41b9/nCzn1L/Ui6s9VTPimLH3kX20r3o02K8AeV6DQIbo34O7P4O8AhMStIT7mnv6jQTa7eIgBBozXIYyjANAjCpAbSRjizP7iAx5zhYPDjSs3KerHrVp4IkvOPx66zRN23wAAAAASUVORK5CYII='
+   }
+    ,
     {
       name: 'Switch',
       type: 'Discrete',
@@ -1118,7 +1134,7 @@ Motor:     ─Ⓜ─
 
 // https://www.charset.org/utf-8/10
 const PICKER_TABS = {
-Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
+Box: rangeChars(0x2500, 0x257F).concat(rangeChars(0x0331,0x0338)).concat(rangeChars(0x035C,0x0361)).concat(rangeChars(0x2010, 0x2017)).concat(rangeChars(0x2B08, 0x2B0B)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
 Arrows: rangeChars(0x2190, 0x21FF).concat(rangeChars(0x27F0, 0x27FF).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
 Geometric: rangeChars(0x2580, 0x25FF).concat(rangeChars(0x20D8, 0x20E4)).concat(['⬛','❘','❙','❚']),
 Icons1: rangeChars(0x2600, 0x26FF),
