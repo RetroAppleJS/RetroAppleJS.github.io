@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.81</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.82</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -238,19 +238,23 @@ const N = 1, E = 2, S = 4, W = 8;
 
 // Only "light" box drawing for now (keeps it simple & readable)
 const glyphToMask = new Map([
-  [' ', 0],
-  ['─', E | W],
-  ['│', N | S],
-  ['┌', E | S],
-  ['┐', W | S],
-  ['└', E | N],
-  ['┘', W | N],
-  ['├', N | E | S],
-  ['┤', N | W | S],
-  ['┬', E | S | W],
-  ['┴', E | N | W],
-  ['┼', N | E | S | W],
+  [" ", 0],
+
+  // single
+  ["─", E|W], ["│", N|S],
+  ["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
+  ["├", N|E|S], ["┤", N|W|S],
+  ["┬", E|S|W], ["┴", E|N|W],
+  ["┼", N|E|S|W],
+
+  // double
+  ["═", E|W], ["║", N|S],
+  ["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
+  ["╠", N|E|S], ["╣", N|W|S],
+  ["╦", E|S|W], ["╩", E|N|W],
+  ["╬", N|E|S|W],
 ]);
+
 
 const maskToGlyph = new Map([
   [0, ' '],
@@ -271,21 +275,48 @@ const maskToGlyph = new Map([
   [N | E | S | W, '┼'],
 ]);
 
+const maskToSingle = new Map([
+  [0," "],
+  [E|W,"─"], [N|S,"│"],
+  [E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
+  [N|E|S,"├"], [N|W|S,"┤"],
+  [E|S|W,"┬"], [E|N|W,"┴"],
+  [N|E|S|W,"┼"],
+]);
+
+const maskToDouble = new Map([
+  [0," "],
+  [E|W,"═"], [N|S,"║"],
+  [E|S,"╔"], [W|S,"╗"], [E|N,"╚"], [W|N,"╝"],
+  [N|E|S,"╠"], [N|W|S,"╣"],
+  [E|S|W,"╦"], [E|N|W,"╩"],
+  [N|E|S|W,"╬"],
+]);
+
+function isDoubleWire(ch) {
+  return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
+         ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
+}
+
+function isWireGlyph(ch) {
+  return glyphToMask.has(ch); // now includes both single+double+space
+}
+
 function isWireGlyph(ch) { return glyphToMask.has(ch); }
 
-function mergedWireGlyph(prevCh, nextCh, lineKind)
+function mergedWireGlyph(prevCh, nextCh, lineKind /* "single"|"double" */)
 {
-  // If we're drawing a double line, and the merge logic doesn't understand it yet,
-  // never collapse it — keep the drawn glyph.
-  if (lineKind === "double" && !glyphToMask.has(nextCh)) {
-    return nextCh;
-  }
-
   const pm = glyphToMask.get(prevCh) ?? 0;
   const nm = glyphToMask.get(nextCh) ?? 0;
-  const m = pm | nm;
-  return maskToGlyph.get(m) ?? nextCh; // fallback: keep nextCh
+  const m  = pm | nm;
+
+  // double wins:
+  const wantDouble = (lineKind === "double") || isDoubleWire(prevCh) || isDoubleWire(nextCh);
+
+  const out = wantDouble ? maskToDouble.get(m) : maskToSingle.get(m);
+  return out ?? nextCh;
 }
+
 
 function cellMaskFromNeighbors(r, c)
 {
@@ -315,14 +346,42 @@ function cellMaskFromNeighbors(r, c)
 function recomputeWireCell(r, c) {
   const cur = ascii[r][c];
 
-  // Don't touch non-wire symbols (IC art, labels, arrows, etc.)
-  if (!isWireGlyph(cur) && cur !== ' ') return cur;
+  // Only recompute blanks or existing wire glyphs
+  if (cur !== " " && !isWireGlyph(cur)) return cur;
 
-  const m = cellMaskFromNeighbors(r, c);
-  const g = maskToGlyph.get(m) ?? cur;
-  ascii[r][c] = g;
-  return g;
+  let mask = 0;
+  let wantDouble = isDoubleWire(cur);
+
+  // Up neighbor contributes N if it connects down (S)
+  if (r > 0) {
+    const up = ascii[r-1][c];
+    if ((glyphToMask.get(up) ?? 0) & S) mask |= N;
+    if (isDoubleWire(up)) wantDouble = true;
+  }
+  // Down neighbor contributes S if it connects up (N)
+  if (r < ROWS-1) {
+    const dn = ascii[r+1][c];
+    if ((glyphToMask.get(dn) ?? 0) & N) mask |= S;
+    if (isDoubleWire(dn)) wantDouble = true;
+  }
+  // Left neighbor contributes W if it connects right (E)
+  if (c > 0) {
+    const lt = ascii[r][c-1];
+    if ((glyphToMask.get(lt) ?? 0) & E) mask |= W;
+    if (isDoubleWire(lt)) wantDouble = true;
+  }
+  // Right neighbor contributes E if it connects left (W)
+  if (c < COLS-1) {
+    const rt = ascii[r][c+1];
+    if ((glyphToMask.get(rt) ?? 0) & W) mask |= E;
+    if (isDoubleWire(rt)) wantDouble = true;
+  }
+
+  const next = wantDouble ? (maskToDouble.get(mask) || " ") : (maskToSingle.get(mask) || " ");
+  ascii[r][c] = next;
+  return next;
 }
+
 
 function buildOrthogonalPath(start, end, start_vleg, kind)
 {
@@ -803,6 +862,14 @@ function commitLine()
   draw();
 }
 
+function addNeighborsToSet(set, r, c) {
+  set.add(r + "," + c);
+  if (r > 0) set.add((r-1) + "," + c);
+  if (r < ROWS-1) set.add((r+1) + "," + c);
+  if (c > 0) set.add(r + "," + (c-1));
+  if (c < COLS-1) set.add(r + "," + (c+1));
+}
+
 function commitLineWithOptionalMerge(mergeEnabled, lineKind) 
 {
   if(bDebug) console.log("commitLineWithOptionalMerge() lineDrag="+lineDrag);
@@ -828,20 +895,24 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     let next = ch;
 
     if (mergeEnabled) {
-      // Only merge when both glyphs are compatible with the merge system
-      const prevMergeable = (prev === ' ') || isWireGlyph(prev);
-      const nextMergeable = (ch === ' ')   || isWireGlyph(ch);
-
-      if (prevMergeable && nextMergeable) {
-        // Pass the intended line kind so merging can respect single vs double
-        next = mergedWireGlyph(prev, ch, lineKind);
-      } else {
-        // IMPORTANT:
-        // Never let unknown glyphs (e.g. double wires) collapse to space
-        next = ch;
+      const affected = new Set();
+      for (let i = 0; i < touched.length; i++) {
+        addNeighborsToSet(affected, touched[i].r, touched[i].c);
       }
-    }
 
+      affected.forEach((key) => {
+        const parts = key.split(",");
+        const r = Number(parts[0]);
+        const c = Number(parts[1]);
+
+        const prev = ascii[r][c];
+        const next = recomputeWireCell(r, c);
+
+        if (prev !== next) {
+          stroke.push({ r, c, prev, next });
+        }
+      });
+    }
 
     if (prev !== next) {
       stroke.push({ r, c, prev, next });
