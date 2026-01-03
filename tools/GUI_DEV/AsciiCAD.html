@@ -344,75 +344,160 @@ function cellMaskFromNeighbors(r, c)
   return m;
 }
 
-function recomputeWireCell(r, c) 
-{
+
+
+
+
+function styleOf(ch) {
+  return isDoubleWire(ch) ? "double" : (isWireGlyph(ch) && ch !== " " ? "single" : null);
+}
+
+function horizGlyph(isDouble) { return isDouble ? "═" : "─"; }
+function vertGlyph(isDouble)  { return isDouble ? "║" : "│"; }
+
+// Corners (E+S, W+S, E+N, W+N)
+function cornerGlyph(mask, hDouble, vDouble) {
+  // mask indicates which corner: ES, WS, EN, WN
+  if (mask === (E|S)) { // top-left
+    if (!hDouble && !vDouble) return "┌";
+    if ( hDouble &&  vDouble) return "╔";
+    if ( hDouble && !vDouble) return "╒"; // down single, right double
+    return "╓";                             // down double, right single
+  }
+  if (mask === (W|S)) { // top-right
+    if (!hDouble && !vDouble) return "┐";
+    if ( hDouble &&  vDouble) return "╗";
+    if ( hDouble && !vDouble) return "╕"; // down single, left double
+    return "╖";                             // down double, left single
+  }
+  if (mask === (E|N)) { // bottom-left
+    if (!hDouble && !vDouble) return "└";
+    if ( hDouble &&  vDouble) return "╚";
+    if ( hDouble && !vDouble) return "╘"; // up single, right double
+    return "╙";                             // up double, right single
+  }
+  if (mask === (W|N)) { // bottom-right
+    if (!hDouble && !vDouble) return "┘";
+    if ( hDouble &&  vDouble) return "╝";
+    if ( hDouble && !vDouble) return "╛"; // up single, left double
+    return "╜";                             // up double, left single
+  }
+  return " ";
+}
+
+// T junctions
+function teeGlyph(mask, hDouble, vDouble) {
+  // top tee: E+S+W
+  if (mask === (E|S|W)) {
+    if (!hDouble && !vDouble) return "┬";
+    if ( hDouble &&  vDouble) return "╦";
+    if ( hDouble && !vDouble) return "╤"; // down single, horizontal double
+    return "╥";                             // down double, horizontal single
+  }
+  // bottom tee: E+N+W
+  if (mask === (E|N|W)) {
+    if (!hDouble && !vDouble) return "┴";
+    if ( hDouble &&  vDouble) return "╩";
+    if ( hDouble && !vDouble) return "╧"; // up single, horizontal double
+    return "╨";                             // up double, horizontal single
+  }
+  // left tee: N+E+S
+  if (mask === (N|E|S)) {
+    if (!hDouble && !vDouble) return "├";
+    if ( hDouble &&  vDouble) return "╠";
+    if ( hDouble && !vDouble) return "╞"; // vertical single, right double
+    return "╟";                             // vertical double, right single
+  }
+  // right tee: N+W+S
+  if (mask === (N|W|S)) {
+    if (!hDouble && !vDouble) return "┤";
+    if ( hDouble &&  vDouble) return "╣";
+    if ( hDouble && !vDouble) return "╡"; // vertical single, left double
+    return "╢";                             // vertical double, left single
+  }
+  return " ";
+}
+
+// Cross
+function crossGlyph(hDouble, vDouble) {
+  if (!hDouble && !vDouble) return "┼";
+  if ( hDouble &&  vDouble) return "╬";
+  if ( hDouble && !vDouble) return "╪"; // horiz double, vert single
+  return "╫";                             // horiz single, vert double
+}
+
+
+
+
+function recomputeWireCell(r, c) {
   const cur = ascii[r][c];
 
-  // Only recompute blanks or existing wire glyphs
+  // Only recompute blanks or existing wires
   if (cur !== " " && !isWireGlyph(cur)) return cur;
 
-  let mask = 0;
-  let wantDouble = isDoubleWire(cur);
+  // For each direction: is there a connection? and what style is it?
+  let m = 0;
+  let nStyle = null, eStyle = null, sStyle = null, wStyle = null;
 
-  // Up neighbor contributes N if it connects down (S)
   if (r > 0) {
     const up = ascii[r-1][c];
-    if ((glyphToMask.get(up) ?? 0) & S) mask |= N;
-    if (isDoubleWire(up)) wantDouble = true;
+    if ((glyphToMask.get(up) ?? 0) & S) { m |= N; nStyle = styleOf(up); }
   }
-  // Down neighbor contributes S if it connects up (N)
   if (r < ROWS-1) {
     const dn = ascii[r+1][c];
-    if ((glyphToMask.get(dn) ?? 0) & N) mask |= S;
-    if (isDoubleWire(dn)) wantDouble = true;
+    if ((glyphToMask.get(dn) ?? 0) & N) { m |= S; sStyle = styleOf(dn); }
   }
-  // Left neighbor contributes W if it connects right (E)
   if (c > 0) {
     const lt = ascii[r][c-1];
-    if ((glyphToMask.get(lt) ?? 0) & E) mask |= W;
-    if (isDoubleWire(lt)) wantDouble = true;
+    if ((glyphToMask.get(lt) ?? 0) & E) { m |= W; wStyle = styleOf(lt); }
   }
-  // Right neighbor contributes E if it connects left (W)
   if (c < COLS-1) {
     const rt = ascii[r][c+1];
-    if ((glyphToMask.get(rt) ?? 0) & W) mask |= E;
-    if (isDoubleWire(rt)) wantDouble = true;
+    if ((glyphToMask.get(rt) ?? 0) & W) { m |= E; eStyle = styleOf(rt); }
   }
 
-
-  // Mixed cross support:
-  if (mask === (N|E|S|W)) {
-    const ax = axisStylesFromNeighbors(r, c);
-
-    // vertical double, horizontal single => ╫
-    if (ax.vert === "double" && ax.horz === "single") {
-      ascii[r][c] = "╫";
-      return "╫";
-    }
-    // vertical single, horizontal double => ╪
-    if (ax.vert === "single" && ax.horz === "double") {
-      ascii[r][c] = "╪";
-      return "╪";
-    }
-    // otherwise fall through (pure single or pure double)
+  // No connections => blank
+  if (m === 0) {
+    ascii[r][c] = " ";
+    return " ";
   }
 
+  // Determine axis styles:
+  // Horizontal is double if either side contributing is double.
+  // Vertical is double if either side contributing is double.
+  const hDouble = (eStyle === "double") || (wStyle === "double");
+  const vDouble = (nStyle === "double") || (sStyle === "double");
 
+  let next = " ";
 
-  // choose glyph from mask tables
-  let next;
-  if (wantDouble) next = maskToDouble.get(mask);
-  else            next = maskToSingle.get(mask);
+  // Straight segments
+  if (m === (E|W)) next = horizGlyph(hDouble);
+  else if (m === (N|S)) next = vertGlyph(vDouble);
 
-  // ✅ Critical fix:
-  // If there is a connection mask but no mapping (endpoint), DO NOT erase.
-  // Keep whatever is already there (─/│/═/║), otherwise endpoints disappear and cascade.
-  if (mask === 0) next = " ";
-  else if (!next) next = cur;  // keep existing wire glyph
+  // Corners
+  else if (m === (E|S) || m === (W|S) || m === (E|N) || m === (W|N)) {
+    next = cornerGlyph(m, hDouble, vDouble);
+  }
+
+  // Tees
+  else if (m === (E|S|W) || m === (E|N|W) || m === (N|E|S) || m === (N|W|S)) {
+    next = teeGlyph(m, hDouble, vDouble);
+  }
+
+  // Cross
+  else if (m === (N|E|S|W)) {
+    next = crossGlyph(hDouble, vDouble);
+  }
+
+  // Endpoint (single direction masks): keep what was drawn (prevents erasing)
+  else {
+    next = cur;
+  }
 
   ascii[r][c] = next;
   return next;
 }
+
 
 
 function axisStylesFromNeighbors(r, c) {
@@ -952,6 +1037,10 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     const prev = ascii[r][c];
     let next = ch;
 
+
+
+    
+
     // Merge only if both are mergeable (and your mergedWireGlyph supports single/double)
     if (mergeEnabled) {
       const prevIsWire = (prev === " ") || isWireGlyph(prev);
@@ -971,12 +1060,23 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
       }
     }
 
+        if (prev === " ") {
+    next = ch;             // draw into blank
+    } else if (!isWireGlyph(prev)) {
+    next = ch;             // overwrite non-wire (optional: you may prefer keep prev)
+    } else {
+    next = prev;           // keep existing wire as-is; recompute will place junction
+    }
 
     if (prev !== next) {
-      stroke.push({ r, c, prev, next });
-      ascii[r][c] = next;
-      touched.push({ r, c });
+    stroke.push({ r, c, prev, next });
+    ascii[r][c] = next;
+    touched.push({ r, c });
+    } else {
+    // even if unchanged, mark touched so recompute can update the crossing cell
+    touched.push({ r, c });
     }
+
   }
 
   // PASS 2: recompute junctions on touched cells + 4-neighbors
@@ -1555,6 +1655,21 @@ function drawLinePreview() {
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
 
+function wipeSelection(ch)
+{
+  // TODO use range selection as parameter
+  const stroke = [];
+  for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+      const prev = ascii[r][c];
+      if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); drawCharAtCell(r,c,ch);}
+      }
+  }
+  selection = null; selectDrag = null; moveDrag = null; cancelPaste();
+  pushStrokeIfNonEmpty(stroke);
+  draw();
+}
+
 
 //     ██████  ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
 //    ██       ██    ██ ██     ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ ██      
@@ -1660,18 +1775,11 @@ try {
 
 
 // Clear
-clearBtn.addEventListener("click", () => {
-const stroke = [];
-for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-    const prev = ascii[r][c];
-    if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); ascii[r][c] = ' '; }
-    }
-}
-selection = null; selectDrag = null; moveDrag = null; cancelPaste();
-pushStrokeIfNonEmpty(stroke);
-draw();
+clearBtn.addEventListener("click", () =>{
+   wipeSelection(' ');
 });
+
+
 
 // Paste capture (also allow direct paste anywhere)
 window.addEventListener("paste", (e) => {
