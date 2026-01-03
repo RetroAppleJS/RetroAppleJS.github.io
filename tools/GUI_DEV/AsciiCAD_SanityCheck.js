@@ -187,6 +187,103 @@ function runJunctionTests() {
 }
 
 
+function setSmallGridFromLines(lines) {
+  for (let r = 0; r < lines.length; r++) {
+    for (let c = 0; c < lines[r].length; c++) ascii[r][c] = lines[r][c];
+  }
+}
+
+function getSmallGridText(h, w) {
+  let s = "";
+  for (let r = 0; r < h; r++) {
+    let line = "";
+    for (let c = 0; c < w; c++) line += ascii[r][c];
+    s += line + "\n";
+  }
+  return s;
+}
+
+function assertGrid(name, got, exp) {
+  console.assert(got === exp, name + "\nGOT:\n" + got + "\nEXP:\n" + exp);
+}
+
+function runMixedJunctionTests() {
+  // Use a 5x5 window in the real grid
+  const H=5, W=5;
+
+  // single×single => ┼
+  setSmallGridFromLines([
+    "  │  ",
+    "  │  ",
+    "─────",
+    "  │  ",
+    "  │  ",
+  ]);
+  // normalize center
+  recomputeWireCell(2,2);
+  assertGrid("single×single => ┼", getSmallGridText(H,W),
+    "  │  \n  │  \n──┼──\n  │  \n  │  \n"
+  );
+
+  // double×double => ╬
+  setSmallGridFromLines([
+    "  ║  ",
+    "  ║  ",
+    "═════",
+    "  ║  ",
+    "  ║  ",
+  ]);
+  recomputeWireCell(2,2);
+  assertGrid("double×double => ╬", getSmallGridText(H,W),
+    "  ║  \n  ║  \n══╬══\n  ║  \n  ║  \n"
+  );
+
+  // single vert × double horz => ╪
+  setSmallGridFromLines([
+    "  │  ",
+    "  │  ",
+    "═════",
+    "  │  ",
+    "  │  ",
+  ]);
+  recomputeWireCell(2,2);
+  assertGrid("single vert × double horz => ╪", getSmallGridText(H,W),
+    "  │  \n  │  \n══╪══\n  │  \n  │  \n"
+  );
+
+  // double vert × single horz => ╫
+  setSmallGridFromLines([
+    "  ║  ",
+    "  ║  ",
+    "─────",
+    "  ║  ",
+    "  ║  ",
+  ]);
+  recomputeWireCell(2,2);
+  assertGrid("double vert × single horz => ╫", getSmallGridText(H,W),
+    "  ║  \n  ║  \n──╫──\n  ║  \n  ║  \n"
+  );
+
+  // Your example: two single verticals crossed by double horizontal => ╪ ╪
+  setSmallGridFromLines([
+    " ││  ",
+    " ││  ",
+    " ││  ",
+    "     ",
+    "     ",
+  ]);
+  // draw the double line into row 1 (like your example), then normalize around
+  for (let c=0;c<4;c++) ascii[1][c] = "═";
+  for (let c=0;c<4;c++) { recomputeWireCell(1,c); recomputeWireCell(0,c); recomputeWireCell(2,c); }
+  assertGrid("two single verticals crossed by double horiz", getSmallGridText(3,4),
+    " ││ \n═╪╪═\n ││ \n"
+  );
+
+  console.log("Mixed junction tests done.");
+}
+
+
+
 (function init() {
 stageSize = computeStageSize();
 stage.style.width = stageSize.w + 'px';
@@ -218,7 +315,8 @@ console.assert(!catalogTypes().includes(null), "catalogTypes contains null");
 console.assert(!catalogTypes().includes(""), "catalogTypes contains empty string");
 
 
-if (bDebug) runJunctionTests();
+if (bDebug) { runJunctionTests(); wipeSelection(' '); }
+if (bDebug) { runMixedJunctionTests(); wipeSelection(' '); }
 
 updateUI();
 draw();
