@@ -400,6 +400,44 @@
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAHyEl4uHmtK+yfHZ3WlRTNjU4oYVkbmNaoI18rvRBjQAAAAp0Uk5TAP///f7+/fGIPaqpVkYAAAMySURBVHichZbBctowEIZzDEfNYKXXrswDVLLpGSy7Z8Byzwq2Mr01kzSGW3IJyS2nJLxtV3ZsSybTLpix8Yf2/3cXwdlZH+/Pxy6eXs4+iVfTh/4c0KQNbcjnAOmC/g8gJ8D7E8ajA9jrZ+e+zZ67wOMmJqYnJg/2PTUGyJcOOG/k+ys0Wjsl5+QEyIpyQch9Bxi7RJk5wELqFTUdMKlvkZh6QJFndd2lmOzeFmOA0Kv9AOwn1y0QZB+58ANXL2+9zfrwsUKQIlC1wMWwwnn9h7RAie7Jdt4A9Gft22w0VIqootFgY7Bpr5r81NjnGGhtorZKY6dJQIsmxY+RTZPRapVEVKZUNSJ3I5sqM6YqjCnx+LDZA/VhhSk05tG0HSm8no5tBsS0dwmS+sQmVYZ0Q9uf3DtAwoXqh94YIWIXQOEcMBgIG815hCmGOhyKBEYR+zbveoDjAyLOZ67N3RsCSbSUYSLXmySRqYxir5u3OgGZyzyWyTpOpAVmqOG3M5MJRFIk4VIupcCFRDJD657NscjQtVmnPcC4NcoED8mQorVpb4RYhKYUjIfTsU1bIYYH51gwTOHa3L/fnWqY7g+DzdqMAAahb5NamzxWlsu2EBsU6dlEYC6jMio4hCUH1OzZTAu7AmRCiiVkHGaXtg4qH7pZFxbYZukaoAT4iv0Kg3po9/6ILmK23lp9UwSqNYQXR6eb1uY3s77sgASlXAw22xQxu9zAEkABzDBTiF+cXqQxKDKG7dwgMF8CK63IYYdpbcYwT0S8BmY2MK+4Z1MVDcAqWdlx3QBIBCrl2Fw1pWaSD70Iaq+b+bhZzBva4510b2LDGbs6ujZXOTSzwkUkcCBxYpiTAkWSFli282RfGX5d/zm0zO8mWZ4CyrNZSidShTGtR1tQG8GqO3Nd7I7XQY6f1GTz3e42mhqtfZuFyKXKM4r6b/RWykhKz6YhQmlaZYEQIBbbWJkqx+vBZqAj3HiKLGC1EIvNvDBVSamzR5WLqDJGpQG7GYC0//WcPJSZqHDZLIAuhcmp6n/1zl4DXWL9xQr3MiF0kOZYClL86oHJk1K2QEohFhmDeUSs2v8IfwEGVmNubcXoKQAAAABJRU5ErkJggg=='
     }
+
+    ,
+
+    {
+        name: 'Teensy 4.0',
+        type: 'MCU',
+        description: '',
+        MFR: 'Teensy_40',
+        pin_data: null,   
+  "text_data":[
+
+' ╔══════════════════════════════════╗\n' +
+' ║           ╰──USB──╯              ║\n' +
+' ║                                  ║\n' +
+' ║         [Teensy 4.0]             ║\n' +
+' ║      ARM Cortex-M7 600MHz        ║\n' +
+' ║                                  ║\n' +
+'─╢GND                            VIN╟─\n' +
+'─╢RX1  CRX2   -0                 GND╟─\n' +
+'─╢TX1  CTX2   -1                 3V3╟─\n' +
+'─╢     OUT2   -2  23- MCLK1 CRX1  A9╟─\n' +
+'─╢     LRCLK2 -3  22-       CTX1  A8╟─\n' +
+'─╢     BCLK2  -4  21-  BCLK1 RXS  A7╟─\n' +
+'─╢     IN2    -5  20-       TXS   A6╟─\n' +
+'─╢     OUT1D  -6  19-  SCL0       A5╟─\n' +
+'─╢RX2  OUT1A  -7  18-  SDA0       A4╟─\n' +
+'─╢TX2  IN1    -8  17-  SDA1 TX4   A3╟─\n' +
+'─╢     OUT1C  -9  16-  SCL1 RX4   A2╟─\n' +
+'─╢MQSR CS     -10 15-      RX3    A1╟─\n' +
+'─╢MOSI CTX1   -11 14-      TX3    A0╟─\n' +
+'─╢MISO MQSL   -12 13- CRX1 SCK (LED)╟─\n' +
+' ║                                  ║\n' +
+' ╚══════════════════════════════════╝\n'
+
+        ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAO1xXYntyjJ6Pu7ur5uPfxdLCYqmOwcGkz8msWUisjAAAAAp0Uk5TAP/9+fX0E3isXC+tOyYAAAKVSURBVHiclZRBaxsxEIVNUzbJUaOF5ippS51bLamtc7Qkp/Y12YUeDQGTY0tKfa4N7vpWbCjJv+2MHKeHHR86xodFHzNvZp7U6/1XFPPerFcUR07n++jNZkeAB+v6DUb7ZYHxtQu0S/eWgFRbE+N7Btg9A00w6Z4BHpzKQNMEcCsG+FaNynxeCwiC0fA9qDKNmzrVwjrbBYrNLpbpQ7qt6ou78p4B/MCCTy76WG7LRwZQQmtxCMVmAA3KWCG1Vhyw2RLgrABt/I4Bhj8BhMhVqj4nMh85raQ2WnNtOgUjTA8ajwUzqGK6MiPsJBJQrhhgskTAaUyi1cVdFzjFowGNggDJaDg1oPKMCOA1BOoDci8msCLjYdDu8u43U0Jr55ymiNWSAXTOTyUk/rtAMR1kiYoAOegC5+tVQMBQBne1Y0q4vREIMNWWAdR+BIBjQiWzLjAhJ2hNAIDqAufrNHoegzSXWyaDV7TsrMH1OYA07A0lsQ4DDEWWmecggNPgUYMm60vTX3JdqMOupL86piGvSgFIywB5kpBnxWv44wYvc+hzGSYvV1Omj0c0iIMpKy6DfbaroXsju8DZxlsCwBmHl48BpoZaFLJO0V0vO+foydyigOiDGVoOQA1CRJk82v9NFzhrDbpeBZlS1PIdA2wIwBcSFxavfzEl8HFyXtgMXHEA7kjQGiQuBbgSrcFd1P62ikEBJ3Ljnbcp1VWIcfqpC5w4cuS4iVWQcf25C7zKi8pAUIbRcLIyag/EwA/qiUSOG+rBToZMhkgPRIy1TPZm7RkNQC+QNzdyPBK+4jJYK15cVXaB1/fyUT5CC62YCNfnMkCLwBM86bXiNKBpdf45MRQTJkOxyJFtJ4AB/pHz+WLx4/D1F50MqomekmLCAAAAAElFTkSuQmCC'
+    }
     ,
     {
         name: 'Teensy 4.1',
