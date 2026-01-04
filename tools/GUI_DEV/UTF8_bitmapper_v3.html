@@ -28,6 +28,20 @@
     .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; margin-left: 6px; }
     .cols { display: flex; gap: 12px; flex-wrap: wrap; }
     .col { flex: 1; min-width: 280px; }
+
+    #outWrap {
+    border-radius: 8px;
+    }
+    #outWrap.blackBlocks {
+    background: #fff;
+    color: #000;
+    }
+    #outWrap.whiteBlocks {
+    background: #111;
+    color: #fff;
+    }
+
+
   </style>
 </head>
 
@@ -92,9 +106,28 @@
     </div>
 
     <div class="col">
-      <label>Block grid output</label>
-      <pre id="out"></pre>
-      <div class="status" id="copyStatus"></div>
+    <label>Block grid output</label>
+
+    <div class="row" style="gap:10px; align-items:center; margin-bottom:8px;">
+        <div>
+        <label style="margin-bottom:2px;">Background char</label>
+        <input id="bgChar" value="H" size="2" />
+        </div>
+
+        <div>
+        <label style="margin-bottom:2px;">Blocks color</label>
+        <select id="blockColor">
+            <option value="black" selected>Black blocks</option>
+            <option value="white">White blocks</option>
+        </select>
+        </div>
+    </div>
+
+    <div id="outWrap">
+        <pre id="out"></pre>
+    </div>
+
+    <div class="status" id="copyStatus"></div>
     </div>
 
     <div class="col">
@@ -148,6 +181,12 @@
     return "U+" + cp.toString(16).toUpperCase().padStart(4, "0");
   }
 
+function applyBlockTheme(blockColor) {
+  const wrap = el('outWrap');
+  wrap.classList.toggle('blackBlocks', blockColor === 'black');
+  wrap.classList.toggle('whiteBlocks', blockColor === 'white');
+}
+
   function currentSettings() {
     const ch = enforceSingleCodePointInput();
     const font = el('font').value;
@@ -159,7 +198,13 @@
     const minPct = clampNum(el('minPct').value, 0, 100, 90);
     el('minPct').value = minPct;
 
-    return { ch, font, w, h, thr, minPct };
+
+    const bgCharRaw = (el('bgChar').value ?? "H");
+    const bgChar = Array.from(bgCharRaw)[0] ?? "H"; // 1 code point
+    el('bgChar').value = bgChar;
+
+    const blockColor = el('blockColor').value === "white" ? "white" : "black";
+    return { ch, font, w, h, thr, minPct, bgChar, blockColor };
   }
 
   // Render character into fixed WxH and return grayscale flat buffer (0..255), row-major.
@@ -201,28 +246,31 @@
   }
 
   // Display-only: convert grayscale to block grid via thresholding.
-  function grayToBlockGrid(gray, w, h, threshold) {
-    const outRows = Math.floor(h / 2);
-    const lines = [];
+function grayToBlockGrid(gray, w, h, threshold, bgChar) {
+  const outRows = Math.floor(h / 2);
+  const lines = [];
 
-    for (let y = 0; y < outRows; y++) {
-      let line = "";
-      const topRow = (y * 2) * w;
-      const botRow = (y * 2 + 1) * w;
+  for (let y = 0; y < outRows; y++) {
+    let line = "";
+    const topRow = (y * 2) * w;
+    const botRow = (y * 2 + 1) * w;
 
-      for (let x = 0; x < w; x++) {
-        const topOn = (gray[topRow + x] < threshold) ? 1 : 0;
-        const botOn = (gray[botRow + x] < threshold) ? 1 : 0;
+    for (let x = 0; x < w; x++) {
+      const topOn = (gray[topRow + x] < threshold) ? 1 : 0;
+      const botOn = (gray[botRow + x] < threshold) ? 1 : 0;
 
-        // Desired: 00 ' ', 10 '▀', 01 '▄', 11 '█'
-        const idx = (topOn << 1) | botOn;   // 00,10,01,11 => 0,2,1,3
-        const remap = [0, 2, 1, 3];         // -> 0,1,2,3
-        line += BLOCKS[remap[idx]];
-      }
-      lines.push(line);
+      const idx = (topOn << 1) | botOn;   // 00,10,01,11 => 0,2,1,3
+      const remap = [0, 2, 1, 3];
+      const ch = BLOCKS[remap[idx]];      // ' ', '▀', '▄', '█'
+
+      // Replace blank with background marker char
+      line += (ch === ' ') ? bgChar : ch;
     }
-    return lines;
+    lines.push(line);
   }
+  return lines;
+}
+
 
   // Convolutional grayscale similarity (%).
   // For each target pixel, we look for best nearby candidate pixel:
@@ -286,8 +334,10 @@
     return `${toHex(cp)}  ${safe}`;
   }
 
-  function render() {
-    const { ch, font, w, h, thr } = currentSettings();
+  function render() 
+  {
+    const { ch, font, w, h, thr, bgChar, blockColor } = currentSettings();
+    applyBlockTheme(blockColor);
 
     if (!ch) {
       el('meta').textContent = "Enter one character.";
@@ -303,7 +353,7 @@
       ` <span class="pill">display thr=${thr}</span>`;
 
     const gray = rasterizeTextToFlatGray(ch, w, h, font);
-    el('out').textContent = grayToBlockGrid(gray, w, h, thr).join("\n");
+    el('out').textContent = grayToBlockGrid(gray, w, h, thr, bgChar).join("\n");
 
     state.target = { w, h, font, ch, gray };
   }
@@ -412,6 +462,10 @@
   el('copy').addEventListener('click', copyGrid);
   el('compare').addEventListener('click', compareAll);
   el('cancel').addEventListener('click', () => { state.cancel = true; });
+
+  el('bgChar').addEventListener('input', render);
+  el('blockColor').addEventListener('change', render);
+
 
   // initial render
   enforceSingleCodePointInput();
