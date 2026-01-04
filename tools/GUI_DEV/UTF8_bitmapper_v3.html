@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Single UTF Character → Bitmap → Block Grid + Copy + Convolution Compare</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    label { display: block; font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
+    input, select { font-size: 14px; padding: 6px 8px; }
+    button { font-size: 14px; padding: 6px 10px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    pre, textarea {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.0;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      white-space: pre;
+      overflow: auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    canvas { border: 1px dashed #bbb; border-radius: 8px; image-rendering: pixelated; }
+    .status { font-size: 12px; opacity: 0.85; margin-top: 8px; }
+    .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; margin-left: 6px; }
+    .cols { display: flex; gap: 12px; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 280px; }
+  </style>
+</head>
+<body>
+  <h2>Single UTF character → bitmap → block grid</h2>
+
+  <div class="row">
+    <div>
+      <label>Character (1 code point)</label>
+      <input id="txt" value="é" size="6" inputmode="text" autocomplete="off" />
+    </div>
+
+    <div>
+      <label>Font</label>
+      <select id="font">
+        <option value="sans">Sans</option>
+        <option value="serif">Serif</option>
+        <option value="mono">Monospace</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Cell</label>
+      <select id="cell">
+        <option value="16x32" selected>16×32</option>
+        <option value="8x16">8×16</option>
+        <option value="32x64">32×64</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Threshold</label>
+      <input id="thr" type="number" value="96" min="0" max="255" style="width: 84px" />
+    </div>
+
+    <div>
+      <label>Min match %</label>
+      <input id="minPct" type="number" value="90" min="0" max="100" step="0.1" style="width: 92px" />
+    </div>
+
+    <div>
+      <label>&nbsp;</label>
+      <button id="copy">Copy grid</button>
+    </div>
+
+    <div>
+      <label>&nbsp;</label>
+      <button id="compare">Compare U+0000..U+1869F</button>
+    </div>
+
+    <div>
+      <label>&nbsp;</label>
+      <button id="cancel" disabled>Cancel</button>
+    </div>
+  </div>
+
+  <div class="cols" style="margin-top: 14px;">
+    <div>
+      <label>Canvas preview (actual pixels)</label>
+      <canvas id="cv" width="16" height="32"></canvas>
+      <div class="status" id="meta"></div>
+    </div>
+
+    <div class="col">
+      <label>Block grid output</label>
+      <pre id="out"></pre>
+      <div class="status" id="copyStatus"></div>
+    </div>
+
+    <div class="col">
+      <label>Compare results (matches ≥ min %)</label>
+      <textarea id="results" rows="12" readonly placeholder="Matches will appear here..."></textarea>
+      <div class="status" id="cmpStatus"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // Desired mapping:
+  // (top,bottom): 00 ' ', 10 '▀', 01 '▄', 11 '█'
+  const BLOCKS = [' ', '▀', '▄', '█'];
+  const RANGE_MAX = 0x1869F;
+
+  const el = (id) => document.getElementById(id);
+
+  const state = {
+    comparing: false,
+    cancel: false,
+    target: null // { w,h, font, threshold, ch, flat, darkCount }
+  };
+
+  function parseCell(sel) {
+    const [w, h] = sel.split('x').map(n => parseInt(n, 10));
+    return { w, h };
+  }
+
+  function fontCSS(kind) {
+    switch (kind) {
+      case "serif": return `serif`;
+      case "mono": return `ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`;
+      default: return `system-ui, -apple-system, Segoe UI, sans-serif`;
+    }
+  }
+
+  // Force input to a single Unicode code point (handles surrogate pairs).
+  function enforceSingleCodePointInput() {
+    const raw = el('txt').value ?? "";
+    const first = Array.from(raw)[0] ?? "";
+    if (raw !== first) el('txt').value = first;
+    return first;
+  }
+
+  function pixelOn(r, g, b, a, threshold) {
+    if (a === 0) return 0;
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return lum < threshold ? 1 : 0;
+  }
+
+  // Render text into fixed WxH cell and return a flat bitmap (row-major) Uint8Array of 0/1.
+  // Render text into fixed WxH cell and return flat grayscale (0..255), row-major.
+// 0 = black, 255 = white. Alpha is blended over white background.
+function rasterizeTextToFlatGray(text, w, h, fontKind) {
+  const cv = el('cv');
+  cv.width = w;
+  cv.height = h;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+
+  // white background
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+
+  // draw text in black
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const size = Math.floor(h * 0.78);
+  ctx.font = `${size}px ${fontCSS(fontKind)}`;
+  const yShift = Math.floor(h * 0.04);
+  ctx.fillText(text, Math.floor(w / 2), Math.floor(h / 2) + yShift);
+
+  const img = ctx.getImageData(0, 0, w, h).data;
+  const gray = new Uint8Array(w * h);
+
+  let k = 0;
+  for (let i = 0; i < img.length; i += 4) {
+    const r = img[i], g = img[i+1], b = img[i+2], a = img[i+3] / 255;
+
+    // luminance of source pixel
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+    // alpha blend over white background: out = a*lum + (1-a)*255
+    const out = a * lum + (1 - a) * 255;
+
+    gray[k++] = Math.round(out);
+  }
+  return gray;
+}
+
+
+  function flatToBlockGrid(flat, w, h) {
+    const outRows = Math.floor(h / 2);
+    const lines = [];
+    for (let y = 0; y < outRows; y++) {
+      let line = "";
+      const yTop = (y * 2) * w;
+      const yBot = (y * 2 + 1) * w;
+      for (let x = 0; x < w; x++) {
+        const top = flat[yTop + x] ? 1 : 0;
+        const bottom = flat[yBot + x] ? 1 : 0;
+
+        // idx = (top<<1)|bottom gives: 00->0, 10->2, 01->1, 11->3
+        const idx = (top << 1) | bottom;
+        const remap = [0, 2, 1, 3]; // idx -> BLOCKS index ( ' ', '▀', '▄', '█' )
+        line += BLOCKS[remap[idx]];
+      }
+      lines.push(line);
+    }
+    return lines;
+  }
+
+
+function grayToBlockGrid(gray, w, h, threshold) {
+  const outRows = Math.floor(h / 2);
+  const lines = [];
+
+  for (let y = 0; y < outRows; y++) {
+    let line = "";
+    const yTop = (y * 2) * w;
+    const yBot = (y * 2 + 1) * w;
+
+    for (let x = 0; x < w; x++) {
+      const topOn = (gray[yTop + x] < threshold) ? 1 : 0;
+      const botOn = (gray[yBot + x] < threshold) ? 1 : 0;
+
+      const idx = (topOn << 1) | botOn;   // 00,10,01,11 => 0,2,1,3
+      const remap = [0, 2, 1, 3];
+      line += [' ', '▀', '▄', '█'][remap[idx]];
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+
+  function countDark(flat) {
+    let c = 0;
+    for (let i = 0; i < flat.length; i++) c += flat[i];
+    return c;
+  }
+
+  function currentSettings() {
+    const ch = enforceSingleCodePointInput();
+    const font = el('font').value;
+    const { w, h } = parseCell(el('cell').value);
+    const threshold = Math.max(0, Math.min(255, parseInt(el('thr').value, 10) || 96));
+    el('thr').value = threshold;
+
+    const minPct = Math.max(0, Math.min(100, parseFloat(el('minPct').value) || 0));
+    el('minPct').value = minPct;
+
+    return { ch, font, w, h, threshold, minPct };
+  }
+
+  function toHex(cp) {
+    return "U+" + cp.toString(16).toUpperCase().padStart(4, "0");
+  }
+
+  function describeChar(cp) {
+    const ch = String.fromCodePoint(cp);
+    const safe = (cp >= 0x20 && cp !== 0x7F) ? ch : "�";
+    return `${toHex(cp)}  ${safe}`;
+  }
+
+  function render() 
+  {
+    const { ch, font, w, h, threshold } = currentSettings();
+
+    const cp = ch ? ch.codePointAt(0) : null;
+    el('meta').innerHTML = ch
+      ? `Code point: <span class="pill">${toHex(cp)}</span> <span class="pill">${w}×${h}</span> <span class="pill">thr=${threshold}</span>`
+      : `Enter one character.`;
+
+    if (!ch) {
+      el('out').textContent = "";
+      state.target = null;
+      return;
+    }
+
+    //const flat = rasterizeTextToFlatBitmap(ch, w, h, font, threshold);
+    const targetGray = rasterizeTextToFlatGray(ch, w, h, font, threshold);
+    //const grid = flatToBlockGrid(flat, w, h);
+    const grid = grayToBlockGrid(targetGray, w,h, threshold);
+    el('out').textContent = grid.join("\n");
+
+    /*
+    state.target = {
+      w, h, font, threshold, ch,
+      flat,
+      darkCount: countDark(flat)
+    };
+    */
+
+    state.target = {
+      w, h, font, threshold, ch,
+      targetGray
+    };
+
+  }
+
+  async function copyGrid() {
+    const text = el('out').textContent || "";
+    el('copyStatus').textContent = "";
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text + "\n");
+      el('copyStatus').textContent = "Copied to clipboard.";
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text + "\n";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        el('copyStatus').textContent = "Copied to clipboard (fallback).";
+      } catch {
+        el('copyStatus').textContent = "Clipboard copy failed (browser blocked it).";
+      }
+    }
+  }
+
+  function setCompareUI(running) {
+    el('compare').disabled = running;
+    el('cancel').disabled = !running;
+    el('txt').disabled = running;
+    el('font').disabled = running;
+    el('cell').disabled = running;
+    el('thr').disabled = running;
+    el('minPct').disabled = running;
+  }
+
+  function shouldSkipCodePoint(cp) {
+    // Skip surrogate range (invalid as standalone code points)
+    return (cp >= 0xD800 && cp <= 0xDFFF);
+  }
+
+// Convolutional grayscale similarity in percent.
+// For each target pixel, find best nearby candidate pixel match with proximity weights.
+// Same pixel weight = 1.0; 8-neighbors weight = 0.5.
+// Similarity of grayscale values: 1 - |T-C|/255.
+function convGraySimilarityPct(targetGray, candGray, w, h) {
+  const neighborOffsets = [
+    [ 0, 0, 1.0],  // same pixel
+    [-1,-1, 0.5],[0,-1, 0.5],[1,-1, 0.5],
+    [-1, 0, 0.5],          [1, 0, 0.5],
+    [-1, 1, 0.5],[0, 1, 0.5],[1, 1, 0.5],
+  ];
+
+  let sum = 0;
+  const WH = w * h;
+
+  for (let y = 0; y < h; y++) {
+    const rowBase = y * w;
+    for (let x = 0; x < w; x++) {
+      const tIdx = rowBase + x;
+      const tVal = targetGray[tIdx];
+
+      let best = 0;
+
+      for (let k = 0; k < neighborOffsets.length; k++) {
+        const dx = neighborOffsets[k][0];
+        const dy = neighborOffsets[k][1];
+        const wgt = neighborOffsets[k][2];
+
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+
+        const cVal = candGray[ny * w + nx];
+        const sim = 1 - (Math.abs(tVal - cVal) / 255); // 0..1
+        const scored = wgt * sim;
+
+        if (scored > best) best = scored;
+      }
+
+      sum += best; // 0..1 per pixel (max 1.0)
+    }
+  }
+
+  return (sum / WH) * 100;
+}
+
+
+  async function compareAll() 
+  {
+    render(); // refresh target cache
+    el('results').value = "";
+    el('cmpStatus').textContent = "";
+
+    const t = state.target;
+    if (!t) {
+      el('cmpStatus').textContent = "Nothing to compare (empty input).";
+      return;
+    }
+
+    const { minPct } = currentSettings();
+    const { w, h, font, threshold, darkCount, ch } = t;
+
+    state.comparing = true;
+    state.cancel = false;
+    setCompareUI(true);
+
+    let matches = 0;
+    let processed = 0;
+    let cp = 0;
+
+    const t0 = performance.now();
+    const CHUNK = 200; // keep UI responsive; adjust for speed vs responsiveness
+
+    el('cmpStatus').textContent = `Comparing… 0 / ${RANGE_MAX + 1} (min ${minPct}%)`;
+
+    while (cp <= RANGE_MAX) {
+      if (state.cancel) break;
+
+      const end = Math.min(RANGE_MAX + 1, cp + CHUNK);
+      for (; cp < end; cp++) {
+        if (state.cancel) break;
+        if (shouldSkipCodePoint(cp)) continue;
+
+        const candidate = String.fromCodePoint(cp);
+
+        // Render candidate in same settings (note: uses the same canvas element).
+        //const candFlat = rasterizeTextToFlatBitmap(candidate, w, h, font, threshold);
+        const candGray = rasterizeTextToFlatGray(candidate, w,h, font)
+
+        //const score = convSimilarityPct(t.flat, candFlat, w, h, darkCount);
+        const score = convGraySimilarityPct(targetGray, candGray, w,h)
+
+        if (score >= minPct) {
+          matches++;
+          el('results').value += `${score.toFixed(1).padStart(5, " ")}%  ${describeChar(cp)}\n`;
+        }
+
+        processed++;
+      }
+
+      const pctDone = Math.round((cp / (RANGE_MAX + 1)) * 1000) / 10;
+      const elapsed = Math.round(performance.now() - t0);
+      el('cmpStatus').textContent =
+        `Comparing… ${toHex(cp)} / ${toHex(RANGE_MAX)} (${pctDone}%). ` +
+        `Shown matches: ${matches} (≥ ${minPct}%). Elapsed: ${elapsed} ms.`;
+
+      await new Promise(r => setTimeout(r, 0)); // yield
+    }
+
+    const elapsed = Math.round(performance.now() - t0);
+    if (!state.cancel) {
+      el('cmpStatus').textContent =
+        `Done. Scanned U+0000..U+1869F. Shown matches: ${matches} (≥ ${minPct}%). Elapsed: ${elapsed} ms.`;
+      if (matches === 0) el('results').value = "(No matches at/above threshold.)\n";
+    } else {
+      el('cmpStatus').textContent =
+        `Cancelled at ${toHex(cp)}. Shown matches: ${matches}. Elapsed: ${elapsed} ms.`;
+      if (!el('results').value.trim()) el('results').value = "(Cancelled — no matches recorded yet.)\n";
+    }
+
+    state.comparing = false;
+    setCompareUI(false);
+  }
+
+  // Wire up
+  el('txt').addEventListener('input', () => { enforceSingleCodePointInput(); render(); });
+  el('font').addEventListener('change', render);
+  el('cell').addEventListener('change', render);
+  el('thr').addEventListener('change', render);
+  el('minPct').addEventListener('change', () => {
+    const v = Math.max(0, Math.min(100, parseFloat(el('minPct').value) || 0));
+    el('minPct').value = v;
+  });
+
+  el('copy').addEventListener('click', copyGrid);
+  el('compare').addEventListener('click', compareAll);
+  el('cancel').addEventListener('click', () => { state.cancel = true; });
+
+  // initial
+  enforceSingleCodePointInput();
+  render();
+})();
+</script>
+</body>
+</html>
