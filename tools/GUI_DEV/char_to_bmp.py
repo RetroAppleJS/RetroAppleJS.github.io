@@ -5,6 +5,24 @@ import argparse
 
 import freetype
 
+
+def pick_font_for_char(char) -> str:
+    # ... your existing logic that prints "Success! Using: ..."
+    return chosen_font_path
+
+def generate_reference_bmp(char: str, font_path: str):
+    cp = ord(char)
+    if not font_has_glyph(font_path, cp):
+        raise RuntimeError(f"Glyph missing in font: U+{cp:04X} ({font_path})")
+    # ... render using font_path ...
+
+if __name__ == "__main__":
+    char = args.char
+    font_path = pick_font_for_char(char)
+    generate_reference_bmp(char, font_path)
+
+
+
 def font_has_glyph(font_path: str, codepoint: int) -> bool:
     face = freetype.Face(font_path)
     # Ensure Unicode charmap if available
@@ -31,13 +49,13 @@ def find_font(font_name):
             return path
     return None
 
-def generate_reference_bmp(character):
+def generate_reference_bmp(char, font_path):
 
-    if len(character) != 1:
+    if len(char) != 1:
         raise ValueError("Expected exactly one Unicode character")
 
     size = 64
-    codepoint = ord(character)
+    codepoint = ord(char)
     hex_str = f"0x{codepoint:04X}"
     filename = f"char_64x64_{hex_str}.bmp"
 
@@ -58,7 +76,7 @@ def generate_reference_bmp(character):
             try:
                 f = ImageFont.truetype(path, 48)
                 # Check if glyph is actually in this font
-                if f.getmask(character).getbbox() is not None:
+                if f.getmask(char).getbbox() is not None:
                     selected_font = f
                     print(f"Success! Using: {path}")
                     break
@@ -70,20 +88,20 @@ def generate_reference_bmp(character):
         selected_font = ImageFont.load_default()
 
 
-    cp = ord(character)  # or codepoint from your argv character
+    cp = ord(char)  # (or codepoint)
     if not font_has_glyph(font_path, cp):
         raise RuntimeError(f"Glyph missing in font: U+{cp:04X} ({font_path})")
 
     # Render
     img = Image.new('1', (size, size), 0)
     draw = ImageDraw.Draw(img)
-    bbox = draw.textbbox((0, 0), character, font=selected_font)
+    bbox = draw.textbbox((0, 0), char, font=selected_font)
     w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
     
     x = (size - w) / 2 - bbox[0]
     y = (size - h) / 2 - bbox[1]
 
-    draw.text((x, y), character, font=selected_font, fill=1)
+    draw.text((x, y), char, font=selected_font, fill=1)
     img.save(filename)
     print(f"File saved: {filename}")
 
@@ -91,4 +109,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("char")
     args = parser.parse_args()
-    generate_reference_bmp(args.char)
+    generate_reference_bmp(args.char, font_path)
