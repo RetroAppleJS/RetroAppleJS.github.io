@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# char_to_bmp.py v0.4 — macOS font fallback + strict missing-glyph detection
+# char_to_bmp.py v0.5 — macOS font fallback + strict missing-glyph detection
 
 import os
 import argparse
