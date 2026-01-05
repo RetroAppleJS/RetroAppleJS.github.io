@@ -338,15 +338,6 @@
         MFR: 'ATTINY3224-SSU',
         pin_data: null,
         text_data:[
-'╔══╧════╧════╧════╧════╧════╧════╧══╗\n' +
-'║ PB2  PB3  PA7  PA6  PA5  PA4  VCC ║\n' +
-'║ TX   RX                        ⬤ ║\n' +
-'║           [ATTinyX24]             ║\n' +
-'║                                   ║\n' +
-'║ SDA  SCL UPDI  MOSI MISO SCK      ║\n' +
-'║ PB1  PB0  PA0  PA1  PA2  PA3  GND ║\n' +
-'╚══╤════╤════╤════╤════╤════╤════╤══╝'
-,
 '╔═════════════════╗\n' +
 '║ ⬤ [ATTinyX24]  ║\n' +
 '║                 ║\n' +
@@ -364,6 +355,42 @@
 '║                 ║\n' +
 '╢ PB2 TX  SDA PB1 ╟\n' +
 '╚═════════════════╝'
+,
+'╔══╧════╧════╧════╧════╧════╧════╧══╗\n' +
+'║ PB2  PB3  PA7  PA6  PA5  PA4  VCC ║\n' +
+'║ TX   RX                        ⬤ ║\n' +
+'║           [ATTinyX24]             ║\n' +
+'║                                   ║\n' +
+'║ SDA  SCL UPDI  MOSI MISO SCK      ║\n' +
+'║ PB1  PB0  PA0  PA1  PA2  PA3  GND ║\n' +
+'╚══╤════╤════╤════╤════╤════╤════╤══╝'
+,
+'╔═════════════════╗\n' +
+'║   [ATTinyX24]   ║\n' +
+'║                 ║\n' +
+'╢ PB1 SDA  TX PB2 ╟\n' +
+'║                 ║\n' +
+'╢ PB0 SCL  RX PB3 ╟\n' +
+'║                 ║\n' +
+'╢ PA0         PA7 ╟\n' +
+'║                 ║\n' +
+'╢ PA1         PA6 ╟\n' +
+'║                 ║\n' +
+'╢ PA2         PA5 ╟\n' +
+'║                 ║\n' +
+'╢ PA3         PA4 ╟\n' +
+'║                 ║\n' +
+'╢ GND      ⬤ VCC ╟\n' +
+'╚═════════════════╝'
+,
+'╔══╧════╧════╧════╧════╧════╧════╧══╗\n' +
+'║ GND  PA3  PA2  PA1  PA0  PB0  PB1 ║\n' +
+'║      SCK  MISO MOSI UPDI SCL  SDA ║\n' +
+'║                                   ║\n' +
+'║           [ATTinyX24]             ║\n' +
+'║ ⬤                       RX   TX  ║\n' +
+'║ VCC  PA4  PA5  PA6  PA7  PB3  PB2 ║\n' +
+'╚══╤════╤════╤════╤════╤════╤════╤══╝'
 ],
       image_data:
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAC1QTFRFAAAAJiYmFxcXNzc4bW1urKytTE1N297fxcfIjo6Ptbe4ycnKtLa3iYmK5ufoGiz2AAAAAA90Uk5TAP///vj4/Qoo/WH8n7rxUfwZowAAAwhJREFUeJy9lc9r02AYx99bwpiHJ6mBHXZo9hd0tUGcO8RtascuwjIJK4MuU3B66EFsqR30MOl+9TC6zGWtMhDp5k7CIpTKGHiYslOZbEOcN0Ud9G/wSdLWvMuamz6H5PB8eZ7P+32eNyHkP0Yymcz55Zmjr8rvhI+gM9T3S8/6CD6AYK775DviANJdH8EsYEwnU+2asLIl4L+p9TacdgGAtpxMzRHwldLFBfIhRwDSMWEuaMIe2lkhehP6cwsfvYoZp8DDs7rMf1GqGx6CVyCKCKAXJn5YnB5BOs6JYhBbyBNmnFdKnhazgAIR+CGtEA2BcEIILWFrEOZEDrrq2vIgoiDnT0qRB5ia7NFAqE8tr0II+BGV4mRrIgi9Ah7kZV0uRO4ARL5TnJc4BOSCHEBgV9bGB2TgjXV3iycWICfaPoYCevEtHpjifAz2GRvD6Cs2OP+u30x00qUAQy3gc0Td3WsKDkYnrSbNiOo68l4+izY5map5JLqbjAqr+NJbc2ejsVTNXSJiFHG9+DW8KbbgqXqM03SXGDJX8BXILTjrp5h7DmerBBimwzlhc87j8M5x3hsYRc6uM90WsGXCjpufOVcTQVHG8DXUmnuHEZujOK+MPcB7xA8nGpxL6hqZ4d2cRmTA4iy/qWctwWuzTDIUZ0BXLcWjisOZL2XJwQ5leEhV4xan4XBuEuYcJ1803lGcrPE+dUhx2m7xt5qGL6rPSf6+u4mwjI/w1aZgy9wgS4M33H5aBeKtCvlSgtneofzEkAKt3WQ2PX5iAW3avZss+klxgiSVXXmSqayRTNhdQrvmzpOt6j766eIUwvuUIIOmUJzhfvqKMjnLz9PWfgrhY3I+2JVYssUpdWc9ggz62dng5OO3PXnyDPcz0/BTCngLkDTOfXEnbn9NtGlvnjBzeNHM015sIkkbFwgsjRHLIWdQu97mm5xWh0laE3tC3jM6MY9+pgflnu52P5+0kkBOOdiuACHIuV19MZVtK0DOT7HcnE+epCrrfn8/9LN64psnC4ofwD+IPwq/D/44ndVIAAAAAElFTkSuQmCC'
@@ -640,6 +667,39 @@
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAcHVjkJeDEE5CKXVYvMGrtbqjy9HET3VlmpuGH+vLkwAAAAp0Uk5TAP/+////tyvBQHwYTJYAAAKPSURBVHicpZTBjtowEIa59WyDpfZoUz9AsJF6BRup14xw712pXe2xHHYfYKWqVy6Ifdv+4wRib6Kyq44gRPjTzD//TDKbzWYfnv5Mxu+nWR+PMXo3ji+zAgCCr8M38E2OEeAzECeB0B2H643zFbAI8T+B7uQNgHsXEGoN/84wCYT3lHgDIGLc+AUm0UwDMUmy+CzCTqrFRBcx2Y211nxerFK7H3cRPNkNWRXx0+r9OIPzSWljyCyd3+OSgXJhLjvk+YMLgJU2ZYlXywZACjmRoQCEEPXKCY44RAUcwo7whxSmDyJc7NfXwBBGG2FkCahWvAqILIB4C1iMAZQZRJ5oIoMRn4Y200YLS0lXwObnAFDTCqsSVcD2fgBaDyBRn0EmI4TS8uEKnOcADDJII6U0NqGY0vHjFXj5xYBIpCjh1BCKKb39NpT44bsuLI5TskQM7ArgwBoIfaRMpNQyUIg8Akgy6W5UvYZtIfI5akHS4jBX4n4rkadjZKMMaSkvPlQZHu8ASM6OMfOY2Ay9Lpw8RLSZjIRZ3IXNOdaDyJdj7Jy0CfXBcIawKp0EgC5bNoq9yIAvRPIsjKVqmm41GHUg12JE1V5Kty6cbBs4Q0r0PuRwhcjzMwBrSWAIRnO/6NKVTs6vAGbJvWqhXShFAoAJKME6tWanXDluavKiX0J3Ggonvze8hDCa60vJhtcilx6AlZp4HfiCjt1qyHCeuzwsjX2xeWkA+MpJGCWug8wiMItB5Ck7iS5TUpI3jk2fV05mQPKsTV7LDNwXJZquRE6PXrjQshTpd+Onuw03nu5293ADUIWTdxMAqWIn202/TMYMK1E8emcXm/zfPL9Gu/OmcPIc4jY/dB2Qb7Vw+SX2F+n5Mq1W0UcQAAAAAElFTkSuQmCC'
     }
+     ,
+     {
+        name: 'TMC22209 V4.0',
+        type: 'Power/Driver',
+        description: 'Ultra-silent motor driver IC for two phase stepper motors',
+        MFR: 'TMC22209',
+        instructions:'https://wiki.fysetc.com/docs/Silent2209',
+        pin_data: null,
+        text_data:[
+'╔═══════════════════╗\n' +
+'║                   ║\n' +
+'║  [TMC2209 V4.0]   ║\n' +
+'║                   ║\n' +
+'╢EN               VM╟\n' +
+'║                   ║\n' +
+'╢MS1             GND╟\n' +
+'║                   ║\n' +
+'╢MS2              A2╟\n' +
+'║                   ║\n' +
+'╢TX               A1╟\n' +
+'║                   ║\n' +
+'╢RX               B1╟\n' +
+'║                   ║\n' +
+'╢CK               B2╟\n' +
+'║                   ║\n' +
+'╢STEP            VIO╟\n' +
+'║                   ║\n' +
+'╢DIR             GND╟\n' +
+'╚═══════════════════╝\n'
+        ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA5eXmzMrGy7mbp6mrVZ7N8fLxhH971tnYVk1GSJDrPwAAAAp0Uk5TAP37/v7+GP91/w66yssAAANxSURBVHiczZW9b+NGEMUXVxAqM6uN5XTZ4UZSSokHf5SkeaHSHk5ASp4Kgi1pAoQ7WTYEtacYEPTf5s2StnwHJwiS5gaGKfL95nF2d3ap1HcQ+T/Lwf8ByvzvgMG6KKc70pR/BRRQtkXJUCzRnIjtugOKXAXbcre5Jx0TOdIAmC1r9kC500SEnJD0MBHFaKdjtjq0ZwJ8JmfJ+gTNTgDNDH9CDR2goQjAYkzaK0QJXlb1gEt8Av58OGsSMpmlrDrvXoFUqSGNIeCXi0cpUWtptPfAhrKYTAOg0qlJTJxVo5YIDqMGExGoR5pUZA6Ei27I1KhA5gGVj7IegAO13VCJKjoF01oAa9pGHPuHUuvQht19BwzvjpW4iBJF0dxfZh49E2Cmj8cvfX4kMdNhFGGUx9oDpSU40ItBF3Oqm8nRngMosEYZJ5mrWxtFf15HrQDWPGWH378IkH/GFKSpy7I2fjGIyByb9G5PPeDqZJK1ExtGt5e3195BH7OD21MOYIU5qps0STSF8L/1DiisyeKK1gA2fp2sjUfVqUiLdxxi64EHP+I03Y94GF1Hh8tbDxCn+PeDd2Dcj9I2rfVrBz91ZwBK0qntmuEEEJn2GQhIJ8PL2fNSiCwdIsCkOvcApvCyRqWNn4i5rBPWHF3z0xMBGMgtFiChpkLLS2uReSJqrPRRIQA2Ahq3jVsAB2ktMtJ0lbxGAC193VAb/4pHaMsMF6RzLNZbAKzDxLR2Upk9ASSHjtD9HrAekKLu4sx3dbfNoMhmcprP/Cj8VnrZN2ytYY3Jt3qI3Zere11xLfstgUKdEnK/mc7hcD+xnDo2Amjd70tmDmVWxnDYuBmnzwpLRO9vuhlnRpHBhm848Tl8ailOfSSFADY8CaF/vnyOjwDUSodzIO9F+bT8Oj7KEbTR8Pv0YflW/CFAqd9QJGG3XI4FCH78Vp0ul4tVsiv0tpAagl+6x7hMPywXpdsVm3ExmKogXPtjUICFKOmuWE1xUubqYatWAuQeGCTIWS2KwGFEYzWYK/Wwll8Bd0Cwc0hYqOAGI/pZlVfeW9CrDlAFrB4v4NSlXvnUjQD9WS2pr4ALFcwBrNXg4jUwVu8WSoUeEG8AwbYHJPVx2wG+TlGKVx+UARTU+e43pXb+8P/2iyMAlOCtj09XQ/Hfvln/FvgO4i+kdiUapRI1FgAAAABJRU5ErkJggg=='
+    }
     ,
     {
       name: 'OLED SSD1306',
@@ -650,7 +710,6 @@
               text_data:[
 '╔═══╧═══╧═══╧═══╧═══╗\n' +
 '║  GND VCC SCL SDA  ║\n' +
-'║                   ║\n' +
 '║┌─────────────────┐║\n' +
 '║│                 │║\n' +
 '║│    [SSD1306]    │║\n' +
@@ -658,6 +717,16 @@
 '║│                 │║\n' +
 '║└─────────────────┘║\n' +
 '╚═══════════════════╝\n'
+,
+'╔═══════════════════╗\n' +
+'║┌─────────────────┐║\n' +
+'║│                 │║\n' +
+'║│    [SSD1306]    │║\n' +
+'║│  64 x 32 OLED   │║\n' +
+'║│                 │║\n' +
+'║└─────────────────┘║\n' +
+'║  SDA SCL VCC GND  ║\n' +
+'╚═══╤═══╤═══╤═══╤═══╝\n'
 ,
   '╔════════════════════════════╧═══╧═══╧═══╧═════════════════════════╗\n' +
   '║ [SSD1306]  64x32 OLED     GND VCC SCL SDA                        ║\n' +
@@ -944,6 +1013,32 @@
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFAAAAk2I9SEZGXFxdent9jpKTrayqtYJZgHp1uL7BOwpWWQAAAAp0Uk5TAP///v77Nv95945lfPQAAAGUSURBVHic7ZMxT8MwEIW9EHV1FrP28gsal9IV1aDuEIlurYRMVxeJW4GqVUd+Mmc3Tdv4TBgYGHhDFOm+vHt3joVoZJebKuhxOxeMbF0mmamN69m+/mCCppFHtjFnuosA01LboteqT96+ByY6ArQ2h4QkzQHa3Fb3wyp8zwOkstBDE94SAEAKEOuiCMAwJNCjdl0sSiiPwCAyEAuZQ+Fb+Iw3kgGcdDlAXgwU0msMPEsnSYhIT6cYByWlQkUAGSi2hfLf7l0kcg4uNAg9kGtBxsHeE4oNiU4eeqRCYq1ESIlYT5rYA9Z7oDBsixByP4njQ6pDSNW1B5faQz1n4rAWTcjuPbAtsvezw3KXbaB3LY+HRXvI2xa90qfD5peBGIDTPeQxQP9rv9mDBBbw8klxBbpkWvhbAa4vwxXkMtC10PBCV8/fXRYghABtkg5ePwWYKWpgpTVFGKcBctDjrd3t5ixwtXu1T7NPwShb+yEquxUXPCCWHwCjioxTAHmMrQeyWbv9CdMJzP6B3wGE7QIam78FfAFEf9bLnKjzgQAAAABJRU5ErkJggg=='
     }
     ,
+       {
+      name: 'Stepper motor',
+      type: 'Discrete',
+      description: 'Stepper motor',
+      MFR: 'Stepper motor',
+      pin_data: null,
+      text_data:
+      [
+'─┐\n' +
+'─⌇  Ⓜ\n' +
+'─┘┌◠◠◠┐\n' +
+'──┘ │ │\n' +
+'────┘ │\n' +
+'──────┘\n'
+,
+'     ┌─\n' +
+'  Ⓜ  ⌇─\n' +
+'┌◠◠◠┐└─\n' +
+'│ │ └──\n' +
+'│ └────\n' +
+'└──────\n'
+      ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAmZmZfn5+ERISKysrWlpaREREoaCgi4uLW1pa3PQKVwAAAAp0Uk5TAP7+//78/RiLUVU9lU0AAALASURBVHicxZW7j9NAEIctJORLx1pESeuVDFeze+khG/f2Zay78hx7aoRkLnQnRBToKO6h/LfMeNePWE5okBi5ynz5zew8dj3vX9r957Nuf7u7PeffQoYA+5Mi/o4BLG9OEH4FkBmj9OpynNhCimapyFbvRwW+y7UxlohfRoAvMjJsDOjV4TAM40tZ1ABpxCUi3twPBMQ746wECEUg5VEcPxVOwORRKGoL+lEqaARy6fxCzHvEDjbWH4uePbT+SZkpCyR9oJOocKNqYiXEqMQzUoH0UECIWXMGRK6POs6AzcWYxBtlKxiOA19tC5Qq0wHwxgI/jPVrGAI2CX/tgAUOQwQ/uSV+4YC4AQJspS73lGOTQlw6IMp6WvsOMGUgrULUy2bmvXaANnkopfVzy63JeQ9IJZkI2d9KgKBOuAhGSqAvzRgAIaZceewBseT/GkReIIqxuaJ8y7lXZRYoVvR3LDRNZA1M1YKAcNYAOsoDybsT41IvAJKpurI9d8AHmz/Ppja6Bj7ST3PPATq0FSgKs1yUWQkJHcA2tMr4mJ+aKtMC6jgFTFwdHbBoChdhsVS6TKO6EPVYVkBAzQdFKGSGS14fKVMn4L0iwAq8VXc1oGtCRG4eLoCC1ileU94BQKEM0oQHENqJ8vloSURBNqxA9wiNDha0pOFDB4iYQl7TWQkALjYiAW5od2udTXlppgSxApeaKgHNZVRlBgK8c4UgBWonlQnSZnEuCBBN/+tp4WYLGTar58OytzKyG5d2eZ8KnbcESWTW3233NtMmbse0ndgmBT5HXd1EHFt3gdByUXVXg8XrX0HedqPVohwAXt+21GNeJ/4Cm/DgpvxGN2jC96Oz8FiAiYPOhexsPwQ87xD3/GOPgv+Yd8DYje9NntPG/2vMTxpPzn/ycbMacPv7FOBNHrHEl7PP518e1/9jfwCJyQTxTNHBRgAAAABJRU5ErkJggg=='
+    }
+    ,
     {
       name: 'Dimmer module',
       type: 'Electric',
@@ -1029,6 +1124,12 @@
       ,
       '⏊+\n' +
       '⏉\n'
+      ,
+      '   +\n' +
+      '─┨┠─\n'
+      ,
+      '⏊\n' +
+      '⏉+\n'
     ],
       image_data:
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRF///+KsX429/YHWuTIZrMJkZZesbpEyMrX4KOubaqeGVSLAAAAnZJREFUeJzt0ztv2zAQAGCBW8aDVCNjYKBBNAok46wCqSBrcbxYo+MCQtbCUZmxSCqD3oqgSa1/W0qyUj/TDt1absZ9uuPd0UHwTx1WFCdvxl0Kb4ozjviWYDeRwSg5LE4BlBSHqww9gOiwYPVHCBEifUjEL0pEXEHEca9g9Q1PQzNKUlBc610Rv4CIMJXyE4AIRbojPIBRohAN91fVsF2Fxd8FSJxlUhJ0Z1OwukIDWSmlMdCLjSHUqjRpxIkw6QFM10GsJRoFMpNKqCYa8WSwVmT4fqbVjFT67i7jbY5McpierAGLWuNI6JR3ADINg6KvwoY/rBUafX4A3RQgCDlXyWDVSwNQouZKdp9HRqVa8Q/qcrICz5ZbazT4VbVAkJeKi8G0B6WvTxp412GW3Q0KL86L1TTqZSm5zrjRHRBKDIrQwLwHcU2ShEIrOpBwMb0JBRR9H3G9dHws0PZCpnM/q+vqum+09kITH78KSCKMHN2/TqKub7+qBpT9MrLkuKruJ7/2uXSP6IEt2xwpjM5dNf78CgK2dO6xAU0OpfxunaP8em1hcXVRtaARzcrCKi/r9WezpJUYWxNynQ6I7OJpr7A2UZm5ICof2HoO9kyu6sAMQuGI8om//VoKVnnR5cAoqohe/Bjip70C9VVe5adsuCWOvKCmETXOrVtMA+ajw2BDoK9NKMUx0WJxErCNcDuO3E/IIFxROY9bcbIpzigvXI7cjWcPwVkj6p0c5Bxe3Frxxf9oxBZoe3mE+WVRPzVP5dt23N+U/D2KYhI04mixRyxp3j3HVrhdwCqcd/+ZZkpHu8B/5Vbz25jj3vNXxO/A//On5ydsJeXI5TLNqQAAAABJRU5ErkJggg=='
@@ -1125,7 +1226,7 @@
     ,
     {
       name: 'Power Delivery',
-      type: 'Power module',
+      type: 'Power/Driver',
       description: '140W USB-C Fast Charge Trigger Board Module PD/QC Decoy Board PD3.1 28V/36V/48V',
       MFR: 'PD',
       pin_data: null,
@@ -1142,7 +1243,7 @@
     ,
     {
       name: 'DC/DC Converter',
-      type: 'Power module',
+      type: 'Power/Driver',
       description: 'DC/DC Converters - Through Hole 40W 18-75Vin +/-12V +/-1667mA DIP 1X1',
       MFR: 'DKMW40G-12',
       instructions:'https://www.meanwellusa.com/webapp/product/search.aspx?prod=SKMW40',
@@ -1183,6 +1284,8 @@
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAOjI8UDtYioN+Z15iHRshubWe4uTocmiCsLS62esjNwAAAAp0Uk5TAP/5/f3//Ro1jwaBOcsAAAL+SURBVHic1ZU9j+M2EEDVySmHpNyT4gluRfIEpOSHhbQyzB9gi2DgTsgCcdwtFgfEZXC7wP3dkHt7u/ba3ibNhYIa62nmkTMaF8VPsKb/FXA83n8IzKxZfATMHkJgv30APNBOCvb3TWDWdNCMhl3ReAbKh6YHFgNbXG7q+ZejNH1go2DuUjQDMx428+g6I6U4XgO+GDkiGxx38lIjAcdeQgyUIUZRHRf374EZsx3FnRWIzWPfs8V74ItkVtBGYSRGA65W5xrTsXFbLrfYCbCUbLHF5xp/PXAZWD22NWJsaSlgwc80/pCBR8F619a9Ihr8UilxqmHy+7HWdiAyPV77UVhxKvqVW8VkWxOwCigMxAoF0ryJfk35jVVrvZYUGMBG4ghh+yb6ZJgdBabIGgSUAdVRUefkq+idY8xg46wFcECJYDVFrJGvonuV3oQKsEacUVCSb+jIeDQ/NKaD0xRg9FUyoDgFoghvI2u6F40pJ4F5y8HDkAJohhRYw3NR7r8D5ZNBAnGohsGlrYIj4ZPuN6gOi5dy75VOlQbjVzadFTbKzXVcDqRnx5eGObhkUa09tgKolXZFfDdWYFnWyED56Cq/5CJlB5MuABJjXEKfT+O5afdPxqd+a/SAFF1BqlkX44h6mYryvc8PgmKs7HZQpAUkPWSCEvMKlHeO8vkIg/0MjLgWAMfgU4e4H59e0oC6hXZYQgCkk/NcJ03z6+vXXSpTU7BLwCPkVaXm4KLevc2HtFcUeQsk+AxgV/FOdt9OJsydgy4QTbDOQEssknY3nQD7fOTNBl7W0Ic6BTidUYd05P0mJ0i3H0iUKcDZEEsarB0S8LkFj6DLAc6n3GM+ZkRhXPq1be2ueA+UivrcuaIaUk3jtwugOGg/pPS4QmvR76ZLoHz0eTX602DjVFwCxZ9VBrCkpPu9uAb8ssnAqhvr3XQVKGPlK6/7+LzFK0BxCFCtUkvsihtAGVPjAun+uQUUhzimWbabbgLF/hCV3Re3gZRm//b8p/hT+8/rX2F71gA4BKweAAAAAElFTkSuQmCC'
     }
 ,
+
+
 
 
     ,
@@ -1279,6 +1382,11 @@ Switch:    ─o/ o─
 Connector: ─( )─
 Battery:   ─| |‾─
 Motor:     ─Ⓜ─
+
+⎛
+⎜
+⎝
+
 */
 
 
