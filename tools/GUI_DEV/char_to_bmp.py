@@ -1,9 +1,23 @@
-# v0.2
+# v0.3
 
 import os
+import freetype
+
+
 import argparse
 
-import freetype
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("char", help="single UTF-8 character")
+    args = parser.parse_args()
+
+    char = args.char
+    font_path = pick_font_for_char(char)
+    generate_reference_bmp(char, font_path)
+
+if __name__ == "__main__":
+    main()
+
 
 
 def pick_font_for_char(char) -> str:
