@@ -105,7 +105,7 @@ def ensure_single_codepoint(s: str) -> str:
 def render_char_to_1bit_bmp(char: str, font: ImageFont.FreeTypeFont, size: int, out_path: str) -> None:
     # 1-bit image: 0=black, 1=white (we'll invert at the end if you prefer)
     # Using mode "1" is fine for BMP; Pillow writes 1bpp.
-    img = Image.new("1", (size, size), 0)
+    img = Image.new("1", (size, size), 1)
     draw = ImageDraw.Draw(img)
 
     # Compute bbox and center it
@@ -115,7 +115,7 @@ def render_char_to_1bit_bmp(char: str, font: ImageFont.FreeTypeFont, size: int, 
     x = (size - w) / 2 - bbox[0]
     y = (size - h) / 2 - bbox[1]
 
-    draw.text((x, y), char, font=font, fill=1)
+    draw.text((x, y), char, font=font, fill=0)
     img.save(out_path)
     print(f"File saved: {out_path}")
 
