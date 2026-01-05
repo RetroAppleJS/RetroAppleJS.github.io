@@ -1583,7 +1583,12 @@ function draw()
     const maxByHeight = ch * 0.98;
     const maxByWidth = (cw / cwr) * 0.98;
     const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
+
     ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    //ctx.font = fontPx + "px Menlo, monospace";
+
+    
+
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
