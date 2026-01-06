@@ -338,63 +338,92 @@
         MFR: 'ATTINY3224-SSU',
         pin_data: null,
         text_data:[
-'╔═════════════════╗\n' +
-'║ ⬤ [ATTinyX24]  ║\n' +
-'║                 ║\n' +
-'╢ VCC         GND ╟\n' +
-'║                 ║\n' +
-'╢ PA4     SCK PA3 ╟\n' +
-'║                 ║\n' +
-'╢ PA5    MISO PA2 ╟\n' +
-'║                 ║\n' +
-'╢ PA6    MOSI PA1 ╟\n' +
-'║                 ║\n' +
-'╢ PA7    UPDI PA0 ╟\n' +
-'║                 ║\n' +
-'╢ PB3 RX  SCL PB0 ╟\n' +
-'║                 ║\n' +
-'╢ PB2 TX  SDA PB1 ╟\n' +
-'╚═════════════════╝'
+'╔═══════════════════╗\n' +
+'║ ⬤  [ATTinyX24]   ║\n' +
+'║                   ║\n' +
+'╢ VCC           GND ╟\n' +
+'║                   ║\n' +
+'╢ PA4       SCK PA3 ╟\n' +
+'║                   ║\n' +
+'╢ PA5  RX1 MISO PA2 ╟\n' +
+'║                   ║\n' +
+'╢ PA6  TX1 MOSI PA1 ╟\n' +
+'║                   ║\n' +
+'╢ PA7      UPDI PA0 ╟\n' +
+'║                   ║\n' +
+'╢ PB3 RX0   SCL PB0 ╟\n' +
+'║                   ║\n' +
+'╢ PB2 TX0   SDA PB1 ╟\n' +
+'╚═══════════════════╝'
 ,
 '╔══╧════╧════╧════╧════╧════╧════╧══╗\n' +
 '║ PB2  PB3  PA7  PA6  PA5  PA4  VCC ║\n' +
-'║ TX   RX                        ⬤ ║\n' +
+'║ TX0  RX0                       ⬤ ║\n' +
+'║                                   ║\n' +
 '║           [ATTinyX24]             ║\n' +
 '║                                   ║\n' +
+'║                TX1  RX1           ║\n' +
 '║ SDA  SCL UPDI  MOSI MISO SCK      ║\n' +
 '║ PB1  PB0  PA0  PA1  PA2  PA3  GND ║\n' +
 '╚══╤════╤════╤════╤════╤════╤════╤══╝'
 ,
-'╔═════════════════╗\n' +
-'║   [ATTinyX24]   ║\n' +
-'║                 ║\n' +
-'╢ PB1 SDA  TX PB2 ╟\n' +
-'║                 ║\n' +
-'╢ PB0 SCL  RX PB3 ╟\n' +
-'║                 ║\n' +
-'╢ PA0         PA7 ╟\n' +
-'║                 ║\n' +
-'╢ PA1         PA6 ╟\n' +
-'║                 ║\n' +
-'╢ PA2         PA5 ╟\n' +
-'║                 ║\n' +
-'╢ PA3         PA4 ╟\n' +
-'║                 ║\n' +
-'╢ GND      ⬤ VCC ╟\n' +
-'╚═════════════════╝'
+'╔═══════════════════╗\n' +
+'║    [ATTinyX24]    ║\n' +
+'║                   ║\n' +
+'╢ PB1 SDA   TX0 PB2 ╟\n' +
+'║                   ║\n' +
+'╢ PB0 SCL   RX0 PB3 ╟\n' +
+'║                   ║\n' +
+'╢ PA0 UPDI      PA7 ╟\n' +
+'║                   ║\n' +
+'╢ PA1 MOSI RX1  PA6 ╟\n' +
+'║                   ║\n' +
+'╢ PA2 MISO TX1  PA5 ╟\n' +
+'║                   ║\n' +
+'╢ PA3 SCK       PA4 ╟\n' +
+'║                   ║\n' +
+'╢ GND        ⬤ VCC ╟\n' +
+'╚═══════════════════╝'
 ,
 '╔══╧════╧════╧════╧════╧════╧════╧══╗\n' +
 '║ GND  PA3  PA2  PA1  PA0  PB0  PB1 ║\n' +
 '║      SCK  MISO MOSI UPDI SCL  SDA ║\n' +
+'║           RX1  TX1                ║\n' +
 '║                                   ║\n' +
 '║           [ATTinyX24]             ║\n' +
-'║ ⬤                       RX   TX  ║\n' +
+'║                                   ║\n' +
+'║ ⬤                       RX0  TX0 ║\n' +
 '║ VCC  PA4  PA5  PA6  PA7  PB3  PB2 ║\n' +
 '╚══╤════╤════╤════╤════╤════╤════╤══╝'
 ],
       image_data:
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAC1QTFRFAAAAJiYmFxcXNzc4bW1urKytTE1N297fxcfIjo6Ptbe4ycnKtLa3iYmK5ufoGiz2AAAAAA90Uk5TAP///vj4/Qoo/WH8n7rxUfwZowAAAwhJREFUeJy9lc9r02AYx99bwpiHJ6mBHXZo9hd0tUGcO8RtascuwjIJK4MuU3B66EFsqR30MOl+9TC6zGWtMhDp5k7CIpTKGHiYslOZbEOcN0Ud9G/wSdLWvMuamz6H5PB8eZ7P+32eNyHkP0Yymcz55Zmjr8rvhI+gM9T3S8/6CD6AYK775DviANJdH8EsYEwnU+2asLIl4L+p9TacdgGAtpxMzRHwldLFBfIhRwDSMWEuaMIe2lkhehP6cwsfvYoZp8DDs7rMf1GqGx6CVyCKCKAXJn5YnB5BOs6JYhBbyBNmnFdKnhazgAIR+CGtEA2BcEIILWFrEOZEDrrq2vIgoiDnT0qRB5ia7NFAqE8tr0II+BGV4mRrIgi9Ah7kZV0uRO4ARL5TnJc4BOSCHEBgV9bGB2TgjXV3iycWICfaPoYCevEtHpjifAz2GRvD6Cs2OP+u30x00qUAQy3gc0Td3WsKDkYnrSbNiOo68l4+izY5map5JLqbjAqr+NJbc2ejsVTNXSJiFHG9+DW8KbbgqXqM03SXGDJX8BXILTjrp5h7DmerBBimwzlhc87j8M5x3hsYRc6uM90WsGXCjpufOVcTQVHG8DXUmnuHEZujOK+MPcB7xA8nGpxL6hqZ4d2cRmTA4iy/qWctwWuzTDIUZ0BXLcWjisOZL2XJwQ5leEhV4xan4XBuEuYcJ1803lGcrPE+dUhx2m7xt5qGL6rPSf6+u4mwjI/w1aZgy9wgS4M33H5aBeKtCvlSgtneofzEkAKt3WQ2PX5iAW3avZss+klxgiSVXXmSqayRTNhdQrvmzpOt6j766eIUwvuUIIOmUJzhfvqKMjnLz9PWfgrhY3I+2JVYssUpdWc9ggz62dng5OO3PXnyDPcz0/BTCngLkDTOfXEnbn9NtGlvnjBzeNHM015sIkkbFwgsjRHLIWdQu97mm5xWh0laE3tC3jM6MY9+pgflnu52P5+0kkBOOdiuACHIuV19MZVtK0DOT7HcnE+epCrrfn8/9LN64psnC4ofwD+IPwq/D/44ndVIAAAAAElFTkSuQmCC'
     }
+    ,
+
+
+ {
+      name: 'CH340N',
+      type: 'Power/Driver',
+      description: 'USB to TTL Serial Port Module CH340N 5V to 3.3V Converter Adapter Board',
+      MFR: 'CH340N',
+      pin_data: null,
+      text_data:
+      [
+'╔═════════════╗\n' +
+'║             ║\n' +
+'║   [CH340N]  ║\n' +
+'║             ║\n' +
+'║  TXD GND RTS║\n' +
+'║3V3 RXD 5V   ║\n' +
+'╚═╤═╤═╤═╤═╤═╤═╝\n'
+      ],
+
+      image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAApaWlSUlJaGhoioqKk5OTlZWVvb29tLS08fHxLCU2VgAAAAp0Uk5TAP7+/fskivURF2gpfKwAAAH7SURBVHic7dS/r9MwEAdwSxBwR1OrnTlH7PG5iNV2JNYsrWB7em1D14hCGCtQo/Jfc3Z/Jm3KG2B7Nyaffn2202Psuf5JDZ4IpsVfQFP2icEhYFtO7wEK4OWmH8SA2bIfzMoiKR/hZhsBNCGgeVQPfSDZB8DkVgSBhMSnxAGY7zcEgWZJW/gJAMqMrvc6YLvQI58DIJHxlRhQAJuWvxS99alOx93NDhifLYvkK72nCGP9x2UX0DmVjdKAOvXKG+yIeFDbeQgweWaHCimj6IJkrsHoNJcOtfK5/VZ0wAutKcCuc4OYGo9ZvWqDl9SeVmipA8RMq6EQqxZ4hQp0tkbM0SNqnYqz2CdoChBjaeJrWkycRQSvK1o9ryQCokIIAScRAf8ihFZW0oVpryGTB7E5AsbrSmqVrx1QAFhxqB+b81ctqpBRe+XAiFONNkfAGxFWMVJfBAzBjjbHfxaf0XMHmOv09HtHdvSbnUQeHimXncBQhVVYS3iAt6JV8nwtvIlC2eoSuMu7j0LDXsjYjDStr6NZhN5NFC5ux71vAbYlkXtRk3ChRaE+sCshva2DsHEjnzuA7Uq5wL0IZze5HkF8uysPGUKqh5szijfzIKR4867oGWLbBYmaVuidcnuhiv4xyBe02cm9OclndbW6O0j5rimePmn/J3iuQ/0BH/+EHeDJmf4AAAAASUVORK5CYII='
+    } 
+
+
     ,
     {
         name: 'XIAO_ESP32-C3',
@@ -936,23 +965,49 @@
     } 
     ,
     {
-      name: '6N137',
+      name: '6N137 Optocopler',
       type: 'OpAmp/Opto',
-      description: 'DHT22 Temperature and Humidity Sensor',
-      MFR: 'DHT22',
+      description: 'High Speed Optocoupler',
+      MFR: '6N137',
+      instructions:'https://www.vishay.com/docs/84732/6n137_vo2601_vo2611.pdf',
       pin_data: null,
       text_data:[
-      ' ┌───6N137───┐\n' +
-      '─┤       VCC ├─\n' +
-      ' │           │\n' +
-      '─┤ VF+    VE ├─\n' +
-      ' │           │\n' +
-      '─┤ VF-    VO ├─\n' +
-      ' │           │\n' +
-      '─┤       GND ├─\n' +
-      ' └───────────┘\n'],
+      ' ╔═══════════╗\n' +
+      ' ║  [6N137]  ║\n' +
+      ' ║           ║\n' +
+      '─╢ (NC)  VCC ╟─\n' +
+      '─╢ VF+    VE ╟─\n' +
+      '─╢ VF-    VO ╟─\n' +
+      '─╢ (NC)  GND ╟─\n' +
+      ' ╚═══════════╝\n'
+    
+    ],
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA8On31s/hyL3T+fn5pp2t1NDd39zm5+Lwt6/ApoTanQAAAAp0Uk5TAP///gr8cjSvtXR6DwUAAAJYSURBVHic1dS9c9MwFABwDSqm43M5jrF+btqsSJjQzUOapGPjU++ypTThjs3lXEq20JZjxwf8u8jPki3bqVlYeEPurPfL09OHzWL2l/g/AV/FvWB8Bas+wL8AQNYDZjoPr9L4KeABlOIJwL+CEfFOwK8AOsIBfAZ1vIy74Bm48T1uA882ABiQaIGqQfAhcGpYwG+qfKjzRB5d4DboAx6QSGswqbM6deAHBLYVmFYNUHFEpGaPLHB2CPUSMKC8jycG0BGa/2PRgl/m8dgAp0GkRFDWwmFMYNpYAMBrm0ckUO+QqVGso6hjwQ00wzZQgfsAuoE14KanXXkogGd2pTELpVUASw2eY0eU+VBd+I8WNEVZX6oE9WHEn7AtyoEwUhEeanBfPgetCdAfJCW4xqbw7eNgcVscZ/wgUbiirJ8E/mC1J/Vxjr9J4dYwDajiKAm8j6QUYdWob8Ech2xP6PP+oUFVw+4gRhq8Y/tiyNhmkWuBjQBUKglFvJ9gxsbZRlZCVOB3LkXsJeK0uA/X0s5CP9GFj29ZAdhntShuVClqkKDeYgJsmtKd9HISgkCo9BIP2ZqATtO1n5hJBC1AYXjEbktgXxwjNICB+ik0OBO4ct9uWooQusHB5bmUI3YWiTcuMEvRDYapLnfC+AfVqGBE0SDzkuIM2F3rA0JLUYnAmM/DUfXdcT5Bk1xG6pcGbB4e7wJsJqPFnZQpzwWmuwDfnGZcyiVbq2i5CzCeMQ22bLpZ7KxAkdP+OKMtwPNw2xzpVBAv+sFajfrBubrsB/xj1g86Ax3wz+MPhMOw/hNWW5oAAAAASUVORK5CYII='
+    } 
+    ,
+    {
+      name: 'Digital isolator',
+      type: 'OpAmp/Opto',
+      description: 'High-Speed, Robust EMC, Reinforced Dual Digital Isolator',
+      MFR: 'ISO7720DR',
+      instructions:'https://www.ti.com/lit/ds/symlink/iso7720.pdf?ts=1767651970378',
+      pin_data: null,
+      text_data:[
+' ╔═══════════════════╗\n' +
+' ║    [ISO7720DR]    ║\n' +
+' ║VCC1     ┊┊    VCC2║\n' +
+'─╢         ┊┊        ╟─\n' +
+' ║INA⌠⟍    ┊┊⌠⟍  OUTA║\n' +
+'─╢───┤⎎ ≻──┊┊┤  ≻────╫─\n' +
+' ║INB⎩⟋⌠⟍  ┊┊⎩⟋⌠⟍OUTB║\n' +
+'─╢─────┤⎎ ≻┊┊──┤  ≻  ╟─\n' +
+' ║GND1 ⎩⟋  ┊┊  ⎩⟋GND2║\n' +
+'─╢         ┊┊        ╟─\n' +
+' ╚═══════════════════╝\n'
+    ],
+      image_data:
+ 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAFhslIygz3t3bPEFM6errWl9qjI2Q39vbqaywT2ZA/QAAAAp0Uk5TAP//+vwX+s6FWD2UHeMAAAJgSURBVHic7VQ9b9swFOQioB5JCOhMgvDeEm7U0aygrAQK1faYmJGbMf4qshUwjGSvnSD/to+PFC0rlqaOfRAECe90d+9IipD/9c/r7djfH9ji0fQBXrXIF29lZz9ZCyFk8dipM7gVroCkQ+eHFoL1kIACF5TBrYNkoKFNXTFH8t7ri+DY5pShk2OLJFkK9zFihHdyjphoR8C41/DjNL0mByG8AFKwQHLSgRB8L/gQ7UwmugnwGkhyjAp13z1AGjXoLipQ2mTgNc98X8fsOw0aBMh5FmI+Y/AUAODDKqtjvghghd2ggmjO4BGUc8HTqjCokLcYkIIzOrT3aMHqXEcKFhhcqpVXAAtC5q1B3bqAAk45wWTPEB4wtAuM+iWE0piFuZVlVXGPgANmA5c8I3EKGxIYXHHYa/m4YbWw136tBtUtrbPPdQgb3ivtFcgHdTUOn7lx6oHTMKQDqBsaEZGksIuwt78rRZnmfj+CkPT7s8qDAgC+wHvxy+u4RXYk0g6DAgDAA5urJa0RIs95oRcmAr7OtnqlPtcRYK5W3pEIGJWzV6UewIEce4RMbRHPxW41giVVCnrpahvWIrVRIdkpD1hz+rGOhKZ5VIDWb7yb2fabUtwfL1mZkwVlMC1Dkj84saw4lYt4LncqIwEAz2v4eg5+YwiETJ0F4MkM3g9arNRSnmYgpjToNEO2EZltlfrEfrZ+IKCwDwCgVA/ppgWYogUYZYTg9XX7J1U+Zx6wR0D5/k+YtCa+XDscZXqlOvrkaeUn7gQkz4bUyV0uPMs4Sk/1eAw6T1k/gJT7/n6r/gKPkLIFOsHCUAAAAABJRU5ErkJggg=='
     } 
     ,
     {
@@ -1092,19 +1147,21 @@
   '│⎺⎺⎺│\n' +
   '└┬┬┬┘\n'
 ,
-'  ⟋  ⎺⎺ ⟋\n' +
-' ⎛   ╷⟋    ⎞\n'+
-'─────┤\n'+
-' ⎝   ╵↘    ⎠\n'+
-'  ⟍  __  ⟋\n'
-
+'       │\n' +
+'  ⟋  ⎺⎺⏌ ⟍\n' +
+' ⎛   ╷⟋   ⎞\n' +
+'─────┤    ▕\n' +
+' ⎝   ╵↘   ⎠\n' +
+'  ⟍  __⏋ ⟋\n' + 
+'       │\n' 
   ,
-'  ⟋  ⎺⎺ ⟋\n' +
-' ⎛   ╷⟋    ⎞\n'+
-'─────┤\n'+
-' ⎝   ╵↖    ⎠\n'+
-'  ⟍  __  ⟋\n'
-
+'       │\n' +
+'  ⟋  ⎺⎺⏌ ⟍\n' +
+' ⎛   ╷⟋   ⎞\n' +
+'─────┤    ▕\n' +
+' ⎝   ╵↖   ⎠\n' +
+'  ⟍  __⏋ ⟋\n' +
+'       │\n' 
       ],
       image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFAAAAR0dHr6+vbW1tlpaWs7Ozt7e3TExMjIyMVVVV9weW8wAAAAp0Uk5TAP72/7VsF6YvSZ1EwLoAAADWSURBVHicY2BABhnTy8vLKxsYcACO6YJgID4BhwKovKCgJA4DYPKC4mQq4CTWBGFhHArYINLGxrhMYADJA6VxWgFRgMcNDBAn4LGikEgFuK0ohPrTEEdQwxQY41dgbGyIX4GwISETDHFGN8wNBKwAOQK/FcK4FUyEGlA5A58CQ0HcqRqcpMSLHXDJMzB0FgoWm+FTwNBkMdmsKAC/AgUnfAqSNJoJKFBtGlVAjAKmwaIggaYKWKihQI0yBawjRoHGUFCgFkpAgQMeaZACNnz6gVWnK4YQAJ4OXF8E1+IVAAAAAElFTkSuQmCC'    } 
@@ -1283,12 +1340,9 @@
       image_data:
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAOjI8UDtYioN+Z15iHRshubWe4uTocmiCsLS62esjNwAAAAp0Uk5TAP/5/f3//Ro1jwaBOcsAAAL+SURBVHic1ZU9j+M2EEDVySmHpNyT4gluRfIEpOSHhbQyzB9gi2DgTsgCcdwtFgfEZXC7wP3dkHt7u/ba3ibNhYIa62nmkTMaF8VPsKb/FXA83n8IzKxZfATMHkJgv30APNBOCvb3TWDWdNCMhl3ReAbKh6YHFgNbXG7q+ZejNH1go2DuUjQDMx428+g6I6U4XgO+GDkiGxx38lIjAcdeQgyUIUZRHRf374EZsx3FnRWIzWPfs8V74ItkVtBGYSRGA65W5xrTsXFbLrfYCbCUbLHF5xp/PXAZWD22NWJsaSlgwc80/pCBR8F619a9Ihr8UilxqmHy+7HWdiAyPV77UVhxKvqVW8VkWxOwCigMxAoF0ryJfk35jVVrvZYUGMBG4ghh+yb6ZJgdBabIGgSUAdVRUefkq+idY8xg46wFcECJYDVFrJGvonuV3oQKsEacUVCSb+jIeDQ/NKaD0xRg9FUyoDgFoghvI2u6F40pJ4F5y8HDkAJohhRYw3NR7r8D5ZNBAnGohsGlrYIj4ZPuN6gOi5dy75VOlQbjVzadFTbKzXVcDqRnx5eGObhkUa09tgKolXZFfDdWYFnWyED56Cq/5CJlB5MuABJjXEKfT+O5afdPxqd+a/SAFF1BqlkX44h6mYryvc8PgmKs7HZQpAUkPWSCEvMKlHeO8vkIg/0MjLgWAMfgU4e4H59e0oC6hXZYQgCkk/NcJ03z6+vXXSpTU7BLwCPkVaXm4KLevc2HtFcUeQsk+AxgV/FOdt9OJsydgy4QTbDOQEssknY3nQD7fOTNBl7W0Ic6BTidUYd05P0mJ0i3H0iUKcDZEEsarB0S8LkFj6DLAc6n3GM+ZkRhXPq1be2ueA+UivrcuaIaUk3jtwugOGg/pPS4QmvR76ZLoHz0eTX602DjVFwCxZ9VBrCkpPu9uAb8ssnAqhvr3XQVKGPlK6/7+LzFK0BxCFCtUkvsihtAGVPjAun+uQUUhzimWbabbgLF/hCV3Re3gZRm//b8p/hT+8/rX2F71gA4BKweAAAAAElFTkSuQmCC'
     }
-,
-
-
-
 
     ,
+
     {
         name: 'OpAmp',
         type: 'OpAmp/Opto',
@@ -1361,14 +1415,76 @@
 ' ⟋   +   -   ⟍\n' +
 '⌎────┬───┬────⌏\n' +
 '     │   │\n' 
+]
+,
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAB5QTFRFAAAA/f39JCQkOjo6WFhY1NTULi4uTk5OhYWFnJycx40YDgAAAAp0Uk5TAP/6aCb/0///CZcNWMgAAAFNSURBVHic7ZU7b4MwFIVRidg9WGW+TiFjlaBK2RCpulMpImNFoux4SdawtGOH/uD6AYlNbd/u7RnxJ/vcJ1H0L4dmT/syCMQAhyCQLJosCNx11At8KeAh9QLtWntgXiArRRRLePQCnAki8V4QtTs4lEGgbqAIA6TPyjBAOXsJAiSFYxggjT8NGhA21pPvs1VxBQRCVTZMJTDkrq3piUgb+08LqBY9W0m19TbXNuyOWF7uQavmkDtsSOAoBfU7nCUgbJiPVDl/Gz2oC6SN+XC4EQHEqsw6ig8NEFkUqVgFsLmFeVWfFc9CVd7Pb2+ZAOXad5eyXwDYE6bJUZZJI8zx3A7TSFRz6hyJMlL9Cp0j1Uax6NZVLKPcg4FJuc2GIa6GmSTqZ8vZANa0WNujg4ONHja86PijCwRdQdgSQ9egUmiRKqGrGF3m6O/gz+obylxsjlRjyRIAAAAASUVORK5CYII='
 
-
-
+}
+,
+   {
+        name: 'Gates',
+        type: 'Logic',
+        description: 'Logic gates',
+        MFR: 'Gates',
+        pin_data: null,
+        text_data:[
+' ↽──╌_\n' +
+'──⎞   `⟍ \n' +
+'  ▕ OR  `≻──\n' +
+'──⎠    ⟋́\n' +
+' ↼──╌́͞\n'
+,
+' ↽──╌_\n' +
+'──⎞   `⟍ \n' +
+'  ▕ NOR `≻ⵔ─\n' +
+'──⎠    ⟋́\n' +
+' ↼──╌́͞\n'
+,
+' ↽───╌_\n' +
+'─⎞⎞    `⟍ \n' +
+' ▕▕ XOR  `≻─\n' +
+'─⎠⎠     ⟋́\n' +
+' ↼───╌́͞\n'
+,
+' ↽──╌_\n' +
+'─⎞⎞   `⟍ \n' +
+' ▕▕ XNOR`≻ⵔ─\n' +
+'─⎠⎠    ⟋́\n' +
+'↼──╌́͞\n'
+,
+' ┌─────╴⎽\n' +
+'─┤       ⎞\n' +
+' │  AND   ⊢─\n' +
+'─┤       ⎠\n' +
+' └─────╴͞\n'
+,
+' ┌─────╴⎽\n' +
+'─┤       ⎞\n' +
+' │  NAND  ᘰ─\n' +
+'─┤       ⎠\n' +
+' └─────╴͞\n'
+,
+'.  ⌠⟍\n' +
+'   │  ⟍\n' +
+'───┤BUF ≻───\n' +
+'   │  ⟋\n' +
+'   ⎩⟋\n'
+,
+'   ⌠⟍\n' +
+'   │  ⟍\n' +
+'───┤NOT ≻ⵔ──\n' +
+'   │  ⟋\n' +
+'   ⎩⟋\n'
+,
+'.  ⌠⟍\n' +
+'───┤⎎ ≻───\n' +
+'   ⎩⟋\n'
 ],
 
 image_data:
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFGxwf/v7+LS4x6urqgoOA0tLSQENImZmZtra1ZWVj29Zh3QAAAx9JREFUeJzV1M9v0zAUB/AnAxkcpwkJbpYPkThOUbRxm5jXLEfoovWYmWLUI1K2lOOA0hxHFWXyf8v32emvdYgLFzxpqvr9+Pn5JRvt/2XRfwzSH529/SNAKono6nGQVgsiKRTR3iPg+GtJJMrIxkKSeAAOLnNJUikTGYojgvyyBgfpHGkkjbEqjmJppAJ4sgRplZvYEllrjImFUaS4SXrag9ccWUsCeUwmhIQm6H0AH6QHkowthQ8poojP+BXAjaQYoMTlqF9CCouLPgsAUxEAhjZWSWVE9MKDl4gY8JbVikMntwxexYb6JnbW1QqEJrYWd/ncHyEAtpoQpMhIjIPEIcABf/IlQqooxk+JSxNPG2CxBP2EsFvIWChcgz76a3pQin6EEVkjjAh32mPwkxNF/VcoT3I5LkwC4K2RXHgJ+nEqXzACSI6MErSa8kYaQJIcW6X8wxNyO+VyDI46/sooFZcI1VYpkTCwUoUHarZTXt8BLm2JfQBG7uR0Skl6MeFbi93dwsq9hEHbPZJiXRd3nwCKCzeQD0DU1iVRXS9OGVy2N+U22CuS9ITIOTdkMKors34bJwMGo/kJRVqfFQHUdpmfJUmKE7Rz3cQxGFIKXfNfc9Te4Vbgkt5orfNWZ/q6KAIYoKVh8o3os9bOqDEDl2s9C6Cpc4DrBmDSas0gqzxoABIP8D6O8477YuCPcOihmfVAL9C+zoVioDzoALIACoDOTrBJyXYDtGswr1xntcYEGAgP7DbIO6P1Ow9yD9wa8D0B7ArgpZlUmNMGQBMOAOPHBBZ4tSYYJS7xENyRitsBCsTjyqGAPvdzWHapMS0G/Ic+rvi+WyB3XBsA3Vh7X2GWmT6feRAm4TALo+w9Jujcvc7qut4Ec9T0ezM8xRzn13Uz1+cFvw9J36b2e3VY2bRpmmpaDD1ACTzyrH9AKI4OGvRXz5B5kPIhmk/V+D3F5yly1Gew35doGEDUqN1k0z5O+D9M34X2x4a9s6FPD8M/0nBIAPOM8xBj+xrgtdFcdjTtSy/zFUhH2WzZ12a+AknarEuvGtgEO2v/X4Hf+WCC9DLN3NMAAAAASUVORK5CYII='
-    }
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFAAAA/v7+BAQEQUFBHx8fFBQUNTU1dXV1oaGhxMTEM+NY4QAAAAp0Uk5TAP/4KoDM//8R/1G/ko0AAAIjSURBVHicrdU7b9swEABgAlQAr+pQw2NPopJshGkBHg2JBDoaehRe6yFFxmhwVgFJga7J4KL/tkdKsmWHpy49eLHvMyXenSjGusikkWUhJCNi9m2Tbcoo3VCAP0amKqNgS4GfSWyWUXRDrrBcpyaIBH0Piin8SDKPaYyWTDNe26hyGsADxj6mwW2IsdiXFAgcCOe+JcBFB8K9ZxvahulBo7V/p7wH7wC7aZAcY7eI0lLnrQfcL/CGEGT1ThSSWMEmKh7FSx8A+Iqz44CIByBPdQibPJcOmFUUmQEU5zrYyzuwqtdlOgA41aGrZHZdCnHVCy/ouyl7MHtZt5egmwfFepACiGo9AuyXjf5PFiSHBxD5CIwDAU/C8E8ziA8A2wtvtipx6wd2QJ7crnZe8IorZN9HE3YNbNx86SZsQ4Hg3oFPsZ4Gc4Bp8Nm7wgxr9tqBxnsPbpvuJuei9YJK68Jtsym927Ttzmyhjv1xYYG6BLYX4RHOveCQX4A0eT7sYdRNfu6tAyuc0/r0ixu5RqgRYC9sfV7SgcVZEEO72A8PCjXVTig5MfYoVhB/AEoJPAFvu94VP0CpKzA+gubw9t49/qNwT0TdgQaeGvziOYW6R+8AGRCntQNYe26Iw9aCI9AnsQW/oWynAObpdwGCBKqpPLZ7Os/4P/L/IxSXHFvNSWDUXVYbIN84LMvtW9XQlzBVfBdsJ4DG93I6tYIOtpmQ2pP5C7DoiqmIx+QBAAAAAElFTkSuQmCC'
+}
 ];
 
     // INDUCTORS, TRANSISTORS, SWITCHES, CONNECTORS, POWER SOURCES, MOTORS
