@@ -66,7 +66,7 @@ function ASM()
 		this.bDebug 	= false;
 	}
 
-	this.ext = " [A]";		// TODO: tag compiler compatibility
+	this.ext = "";  //" [A]";		// TODO: tag compiler compatibility
 
 	this.pragma_sym = 
 	{
@@ -120,8 +120,7 @@ function ASM()
 				if(pass==1)
 				{
 					var lbl = oASM.getID(sym[0]).val;
-					oASM.symtab[lbl] = pc;
-					oASM.sym_link(
+					oASM.sym_link(				// STORE SYMBOL
 					{
 						 "type": "def"
 						,"PC": pc
@@ -129,6 +128,8 @@ function ASM()
 						,"sym": lbl
 						,"sym0": sym[0]
 					})
+					oASM.symtab[lbl] = pc;		// LINK ADDRESS TO SYMBOL
+
 					listing.value += len+",$"+oCOM.getHexByte(val)+" "+this.ext;
 				}
 
