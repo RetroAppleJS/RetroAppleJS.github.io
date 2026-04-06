@@ -61,7 +61,7 @@ oMEMGRID.paint_grid = function(data,cnf)
 
             var bit = raster_char(x,y,"TEXT",data,cnf)
             if(bit)  el.style.backgroundColor = "#000000"
-                else el.style.backgroundColor = "#FAFAFA"
+                else el.style.backgroundColor = "#F5F5F5"
             //el.innerHTML = "<span class=gt>"+blk_txt[idx]+"</span>"
         }
     }
@@ -135,14 +135,15 @@ function load_char_data(name,el_id)
     var n = document.getElementById(el_id).innerHTML;
     update_char(n);
 
-    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
+/*
     var cnf2 = Object.assign({}, cnf);
     cnf2.rows       = 24;
     cnf2.columns    = 40;
     cnf2.id_prefix   = "n";
     document.getElementById("outputGPU").innerHTML = oMEMGRID.build_grid(0,cnf2.rows,1,cnf2); 
-
+*/
 
 
 }
@@ -177,6 +178,5 @@ function update_char(n)
     </select>
 
     <br><br><hr>
-    <textarea></textarea>
     <div id="outputGPU"></div>
 </body>
