@@ -31,6 +31,21 @@ var VIDEX_ROM =
 
 var THIS_ROM,char_length,char_count,char_data,n_el_id = "char_n";
 
+var oTEXTMODE = {
+    cols: 80,
+    rows: 24,
+    cell_w: 8,
+    cell_h: 20,
+    crop_rows: 10,
+    scale_x: 1,
+    scale_y: 2,
+    cursor_x: 0,
+    cursor_y: 0,
+    canvas: null,
+    ctx: null,
+    text_el: null
+};
+
 oMEMGRID.line = function(start,len,step,digits)
 {
     var end = start+len*step;
@@ -76,6 +91,123 @@ function raster_char(x,y,mem_data,font_data,cnf)
     return bit;
 }
 
+function init_textmode()
+{
+    oTEXTMODE.canvas = document.getElementById("print_canvas");
+    oTEXTMODE.text_el = document.getElementById("screen_text");
+    if(!oTEXTMODE.canvas || !oTEXTMODE.text_el)
+        return false;
+    oTEXTMODE.ctx = oTEXTMODE.canvas.getContext("2d");
+    reset_textmode();
+    return true;
+}
+
+function blank_text_screen()
+{
+    var lines = [];
+    for(var y=0; y<oTEXTMODE.rows; y++)
+        lines.push((" ").repeat(oTEXTMODE.cols));
+    return lines.join("\n");
+}
+
+function reset_textmode()
+{
+    oTEXTMODE.cursor_x = 0;
+    oTEXTMODE.cursor_y = 0;
+    if(oTEXTMODE.ctx)
+    {
+        oTEXTMODE.ctx.fillStyle = "#000000";
+        oTEXTMODE.ctx.fillRect(0,0,oTEXTMODE.canvas.width,oTEXTMODE.canvas.height);
+        oTEXTMODE.ctx.fillStyle = "#FFFFFF";
+    }
+    if(oTEXTMODE.text_el)
+        oTEXTMODE.text_el.value = blank_text_screen();
+    update_cursor_readout();
+}
+
+function update_cursor_readout()
+{
+    var el = document.getElementById("cursor_xy");
+    if(el)
+        el.innerHTML = oTEXTMODE.cursor_x + "," + oTEXTMODE.cursor_y;
+}
+
+function get_char_bytes(n)
+{
+    return char_data.slice(n*char_length,n*char_length+char_length);
+}
+
+function glyph_preview_x_to_data_x(x)
+{
+    return cnf.mirror==false ? (cnf.columns - x - 1) : x;
+}
+
+function glyph_index_to_text(n)
+{
+    if(n===10 || n===13) return " ";
+    if(n>=32 && n<=126) return String.fromCharCode(n);
+    return " ";
+}
+
+function put_textarea_char(ch,x,y)
+{
+    if(!oTEXTMODE.text_el) return;
+    var lines = oTEXTMODE.text_el.value.split("\n");
+    while(lines.length < oTEXTMODE.rows) lines.push((" ").repeat(oTEXTMODE.cols));
+    var line = lines[y] || "";
+    if(line.length < oTEXTMODE.cols) line += (" ").repeat(oTEXTMODE.cols - line.length);
+    lines[y] = line.substring(0,x) + ch + line.substring(x+1);
+    oTEXTMODE.text_el.value = lines.slice(0,oTEXTMODE.rows).join("\n");
+}
+
+function draw_glyph_on_canvas(data,px,py)
+{
+    var max_rows = Math.min(oTEXTMODE.crop_rows, cnf.rows);
+    var scale_x = oTEXTMODE.scale_x || 1;
+    var scale_y = oTEXTMODE.scale_y || 1;
+    for(var y=0; y<max_rows; y++)
+    {
+        for(var x=0; x<cnf.columns; x++)
+        {
+            var src_x = glyph_preview_x_to_data_x(x);
+            var bit = raster_char(src_x,y,"TEXT",data,cnf);
+            if(bit)
+                oTEXTMODE.ctx.fillRect(px + x*scale_x, py + y*scale_y, scale_x, scale_y);
+        }
+    }
+}
+
+function advance_text_cursor()
+{
+    oTEXTMODE.cursor_x++;
+    if(oTEXTMODE.cursor_x >= oTEXTMODE.cols)
+    {
+        oTEXTMODE.cursor_x = 0;
+        oTEXTMODE.cursor_y++;
+    }
+    if(oTEXTMODE.cursor_y >= oTEXTMODE.rows)
+        oTEXTMODE.cursor_y = 0;
+    update_cursor_readout();
+}
+
+function print_char(n)
+{
+    if(!oTEXTMODE.ctx && !init_textmode()) return;
+    n = Number(n);
+    if(isNaN(n) || n < 0 || n >= char_count) return;
+
+    var data = get_char_bytes(n);
+    var px = oTEXTMODE.cursor_x * oTEXTMODE.cell_w;
+    var py = oTEXTMODE.cursor_y * oTEXTMODE.cell_h;
+
+    oTEXTMODE.ctx.fillStyle = "#000000";
+    oTEXTMODE.ctx.fillRect(px, py, oTEXTMODE.cell_w, oTEXTMODE.cell_h);
+    oTEXTMODE.ctx.fillStyle = "#FFFFFF";
+    draw_glyph_on_canvas(data, px, py);
+    put_textarea_char(glyph_index_to_text(n), oTEXTMODE.cursor_x, oTEXTMODE.cursor_y);
+    advance_text_cursor();
+}
+
 
 var cnf = {};
 
@@ -94,6 +226,7 @@ function init()
     var n = document.getElementById(n_el_id).innerHTML;
     var char_offset = n * char_length;
     oMEMGRID.paint_grid(char_data.slice(char_offset,char_offset+char_length),cnf);
+    init_textmode();
 
 }
 
@@ -144,8 +277,6 @@ function load_char_data(name,el_id)
     cnf2.id_prefix   = "n";
     document.getElementById("outputGPU").innerHTML = oMEMGRID.build_grid(0,cnf2.rows,1,cnf2); 
 */
-
-
 }
 
 function up_dn(el_id,step)
@@ -162,10 +293,6 @@ function update_char(n)
     oMEMGRID.paint_grid(char_data.slice(n*char_length,n*char_length+char_length),cnf);
 }
 
-
-
-
-
 </script>
 <body onload="init()" style="font-family: 'Courier New', Courier, monospace;">
     <div id="output"></div>
@@ -179,4 +306,16 @@ function update_char(n)
 
     <br><br><hr>
     <div id="outputGPU"></div>
+
+    <div style="margin-top:12px;">
+        <button onclick="print_char(Number(document.getElementById(n_el_id).innerHTML))">PRINT</button>
+        <button onclick="reset_textmode()">CLEAR</button>
+        <span style="margin-left:12px;">cursor: <span id="cursor_xy">0,0</span></span>
+    </div>
+    <div style="margin-top:8px;">
+        <canvas id="print_canvas" width="640" height="480" style="background:#000000;border:1px solid #444;display:block;"></canvas>
+    </div>
+    <div style="margin-top:8px;">
+        <textarea id="screen_text" cols="80" rows="24" spellcheck="false" style="font-family:'Courier New', Courier, monospace;white-space:pre;overflow:auto;"></textarea>
+    </div>
 </body>
