@@ -42,8 +42,6 @@ The code comment defines them as:
 - `T` = Apple III family
 - `G` = Apple IIgs family
 
-A useful correction to the earlier notes: there is also a `T` family for Apple III, not only `O/E/C/G`.
-
 ---
 
 ## 3. The embedded `IOMAP` string
