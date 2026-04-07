@@ -80,7 +80,7 @@ function raster_char(x,y,mem_data,font_data,cnf)
 
 var TEXT_MODES = {
     "mode1": {
-        label: "640×240 raster · 80×24 text · 8×10 cell",
+        label: "640x240 raster - 80x24 text - 8x10 cell",
         raster_w: 640,
         raster_h: 240,
         cols: 80,
@@ -92,7 +92,7 @@ var TEXT_MODES = {
         scale_y: 1
     },
     "mode2": {
-        label: "720×216 raster · 80×24 text · 9×9 cell",
+        label: "720x216 raster - 80x24 text - 9x9 cell",
         raster_w: 720,
         raster_h: 216,
         cols: 80,
@@ -104,7 +104,7 @@ var TEXT_MODES = {
         scale_y: 1
     },
     "mode3": {
-        label: "720×216 raster · 80×18 text · 9×12 cell",
+        label: "720x216 raster - 80x18 text - 9x12 cell",
         raster_w: 720,
         raster_h: 216,
         cols: 80,
@@ -388,15 +388,15 @@ function update_char(n)
     <div style="margin-top:12px;">
         <label for="textmode_sel">Text mode:</label>
         <select id="textmode_sel" onchange="set_text_mode(this.value)">
-            <option value="mode1">640×240 · 80×24 · 8×10</option>
-            <option value="mode2">720×216 · 80×24 · 9×9</option>
-            <option value="mode3">720×216 · 80×18 · 9×12</option>
+            <option value="mode1">640x240 - 80x24 - 8x10</option>
+            <option value="mode2">720x216 - 80x24 - 9x9</option>
+            <option value="mode3">720x216 - 80x18 - 9x12</option>
         </select>
         <button onclick="print_char(Number(document.getElementById(n_el_id).innerHTML))">PRINT</button>
         <button onclick="reset_textmode()">CLEAR</button>
         <span style="margin-left:12px;">cursor: <span id="cursor_xy">0,0</span></span>
     </div>
-    <div id="textmode_info" style="margin-top:6px;">640×240 raster · 80×24 text · 8×10 cell</div>
+    <div id="textmode_info" style="margin-top:6px;">640x240 raster - 80x24 text - 8x10 cell</div>
     <div style="margin-top:8px;">
         <canvas id="print_canvas" width="640" height="240" style="background:#000000;border:1px solid #444;display:block;"></canvas>
     </div>
