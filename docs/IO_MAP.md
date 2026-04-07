@@ -75,6 +75,7 @@ The content is clearly based on classic Apple I/O memory maps, and the code itse
 ## 4. How `IOMAP_ID` is chosen
 
 `IOMAP_ID` is not the index of a specific machine like `A2P` inside a flat list of machines. It is the index of the **matching machine group** inside `_CFG_IORANGES`.
+For the purpose of mapping I/O addresses, we have grouped all machines with the same I/O address mapping.  Since it's already hard to keep up with emulating different apple systems in one emulator, identifying the machine group helps understanding we can apply the same memory-mapped I/O and soft switches across all the apple systems in the same group.
 
 The groups in `COM_CONFIG.js` are:
 
