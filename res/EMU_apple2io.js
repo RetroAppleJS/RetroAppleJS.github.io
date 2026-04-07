@@ -346,15 +346,7 @@ function Apple2IO(vid)
             if(family.charAt(4)=="G") {iomap_bitmap |= 0b1100000000000000}
 
             var iomap_idstr = family.replace("O","A2,A2P,A2PE,A2JP,A2B,").replace("E","A2E,A2Ee,A2eP,").replace("C","A2c,A2cM,").replace("T","A3,A3P,A3R,").replace("G","A2G3,A2GS,");
-            
-            /*
-            var act_names = [];
-            if(act.charAt(0)=="W")      act_names.push("WR"); // WRITE
-            if(act.slice(1,2)=="RR")    act_names.push("RR"); // DOUBLE READ
-            else if(act.charAt(1)=="R") act_names.push("RD"); // READ
-            if(act.charAt(2)=="7")      act_names.push("BI"); // BIT
-            if(act.charAt(3)=="V")      act_names.push("RG"); // REGISTER
-            */
+        
 
             var act_name_str = [];
             if(act.charAt(0)=="W")      act_name_str.push("WR"); // WRITE
@@ -406,9 +398,7 @@ function Apple2IO(vid)
         {
             //case 0xA545:  // DISKII
             case 0xE0: return this.disk2.read(addr - DISK_IO);
-            case 0x0600:
-                if(this.disk2.diskBytes[this.disk2.drv])
-                    return this.disk2.ROM[addr - DISK_PROM];
+            case 0x0600: return this.disk2.readROM(addr - DISK_PROM);
 
             default:
 
@@ -462,7 +452,7 @@ function Apple2IO(vid)
 
     this.write = function(addr, d8)
     {
-        if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
+        if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
             this.disk2.write(addr - DISK_IO, d8);
         else if(this.ramcard.active &&
             addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
@@ -471,7 +461,7 @@ function Apple2IO(vid)
         // I/O ACTION MAP FOR WRITE OPERATIONS
         if(ACTION_MAP.WR[addr]!==undefined)
             {
-                if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
+                //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
                 return ACTION_MAP.WR[addr]();   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
             }
 

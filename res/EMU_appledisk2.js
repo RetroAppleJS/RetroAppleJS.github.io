@@ -143,6 +143,13 @@ function AppleDisk2()
 //  ██   ██ ██      ██   ██ ██   ██ 
 //  ██   ██ ███████ ██   ██ ██████  
 
+    this.readROM = function(addr)
+    {
+        if(this.diskBytes[this.drv])        // if disk data is loaded on the selected drive
+                    return this.ROM[addr];    // return content of disk ROM addres
+        return null;
+    }
+
     this.read = function(addr) {
         //console.log("AppleDisk2: read %s", addr.toString(16));
         var drv = this.drv
