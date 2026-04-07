@@ -31,21 +31,6 @@ var VIDEX_ROM =
 
 var THIS_ROM,char_length,char_count,char_data,n_el_id = "char_n";
 
-var oTEXTMODE = {
-    cols: 80,
-    rows: 24,
-    cell_w: 8,
-    cell_h: 20,
-    crop_rows: 10,
-    scale_x: 1,
-    scale_y: 2,
-    cursor_x: 0,
-    cursor_y: 0,
-    canvas: null,
-    ctx: null,
-    text_el: null
-};
-
 oMEMGRID.line = function(start,len,step,digits)
 {
     var end = start+len*step;
@@ -91,6 +76,63 @@ function raster_char(x,y,mem_data,font_data,cnf)
     return bit;
 }
 
+
+
+var TEXT_MODES = {
+    "mode1": {
+        label: "640×240 raster · 80×24 text · 8×10 cell",
+        raster_w: 640,
+        raster_h: 240,
+        cols: 80,
+        rows: 24,
+        cell_w: 8,
+        cell_h: 10,
+        crop_rows: 10,
+        scale_x: 1,
+        scale_y: 1
+    },
+    "mode2": {
+        label: "720×216 raster · 80×24 text · 9×9 cell",
+        raster_w: 720,
+        raster_h: 216,
+        cols: 80,
+        rows: 24,
+        cell_w: 9,
+        cell_h: 9,
+        crop_rows: 9,
+        scale_x: 1,
+        scale_y: 1
+    },
+    "mode3": {
+        label: "720×216 raster · 80×18 text · 9×12 cell",
+        raster_w: 720,
+        raster_h: 216,
+        cols: 80,
+        rows: 18,
+        cell_w: 9,
+        cell_h: 12,
+        crop_rows: 12,
+        scale_x: 1,
+        scale_y: 1
+    }
+};
+
+var oTEXTMODE = {
+    mode: "mode1",
+    cols: 80,
+    rows: 24,
+    cell_w: 8,
+    cell_h: 10,
+    crop_rows: 10,
+    scale_x: 1,
+    scale_y: 1,
+    cursor_x: 0,
+    cursor_y: 0,
+    canvas: null,
+    ctx: null,
+    text_el: null
+};
+
 function init_textmode()
 {
     oTEXTMODE.canvas = document.getElementById("print_canvas");
@@ -98,7 +140,6 @@ function init_textmode()
     if(!oTEXTMODE.canvas || !oTEXTMODE.text_el)
         return false;
     oTEXTMODE.ctx = oTEXTMODE.canvas.getContext("2d");
-    reset_textmode();
     return true;
 }
 
@@ -108,6 +149,13 @@ function blank_text_screen()
     for(var y=0; y<oTEXTMODE.rows; y++)
         lines.push((" ").repeat(oTEXTMODE.cols));
     return lines.join("\n");
+}
+
+function update_cursor_readout()
+{
+    var el = document.getElementById("cursor_xy");
+    if(el)
+        el.innerHTML = oTEXTMODE.cursor_x + "," + oTEXTMODE.cursor_y;
 }
 
 function reset_textmode()
@@ -125,11 +173,40 @@ function reset_textmode()
     update_cursor_readout();
 }
 
-function update_cursor_readout()
+function set_text_mode(mode_key)
 {
-    var el = document.getElementById("cursor_xy");
+    var mode = TEXT_MODES[mode_key];
+    if(!mode) mode = TEXT_MODES.mode1;
+    oTEXTMODE.mode = mode_key in TEXT_MODES ? mode_key : "mode1";
+    oTEXTMODE.cols = mode.cols;
+    oTEXTMODE.rows = mode.rows;
+    oTEXTMODE.cell_w = mode.cell_w;
+    oTEXTMODE.cell_h = mode.cell_h;
+    oTEXTMODE.crop_rows = mode.crop_rows;
+    oTEXTMODE.scale_x = mode.scale_x;
+    oTEXTMODE.scale_y = mode.scale_y;
+
+    if(!oTEXTMODE.ctx && !init_textmode())
+        return false;
+
+    oTEXTMODE.canvas.width = mode.raster_w;
+    oTEXTMODE.canvas.height = mode.raster_h;
+    oTEXTMODE.canvas.style.width = mode.raster_w + "px";
+    oTEXTMODE.canvas.style.height = mode.raster_h + "px";
+
+    oTEXTMODE.text_el.cols = mode.cols;
+    oTEXTMODE.text_el.rows = mode.rows;
+
+    var el = document.getElementById("textmode_info");
     if(el)
-        el.innerHTML = oTEXTMODE.cursor_x + "," + oTEXTMODE.cursor_y;
+        el.innerHTML = mode.label;
+
+    var sel = document.getElementById("textmode_sel");
+    if(sel)
+        sel.value = oTEXTMODE.mode;
+
+    reset_textmode();
+    return true;
 }
 
 function get_char_bytes(n)
@@ -227,6 +304,7 @@ function init()
     var char_offset = n * char_length;
     oMEMGRID.paint_grid(char_data.slice(char_offset,char_offset+char_length),cnf);
     init_textmode();
+    set_text_mode("mode1");
 
 }
 
@@ -308,12 +386,19 @@ function update_char(n)
     <div id="outputGPU"></div>
 
     <div style="margin-top:12px;">
+        <label for="textmode_sel">Text mode:</label>
+        <select id="textmode_sel" onchange="set_text_mode(this.value)">
+            <option value="mode1">640×240 · 80×24 · 8×10</option>
+            <option value="mode2">720×216 · 80×24 · 9×9</option>
+            <option value="mode3">720×216 · 80×18 · 9×12</option>
+        </select>
         <button onclick="print_char(Number(document.getElementById(n_el_id).innerHTML))">PRINT</button>
         <button onclick="reset_textmode()">CLEAR</button>
         <span style="margin-left:12px;">cursor: <span id="cursor_xy">0,0</span></span>
     </div>
+    <div id="textmode_info" style="margin-top:6px;">640×240 raster · 80×24 text · 8×10 cell</div>
     <div style="margin-top:8px;">
-        <canvas id="print_canvas" width="640" height="480" style="background:#000000;border:1px solid #444;display:block;"></canvas>
+        <canvas id="print_canvas" width="640" height="240" style="background:#000000;border:1px solid #444;display:block;"></canvas>
     </div>
     <div style="margin-top:8px;">
         <textarea id="screen_text" cols="80" rows="24" spellcheck="false" style="font-family:'Courier New', Courier, monospace;white-space:pre;overflow:auto;"></textarea>
