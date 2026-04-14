@@ -45,6 +45,7 @@ function Cpu6502(hwobj)
 
 
     // Instruction length by opcode (including 65c02 extended instructions).
+    // (2 bits per instruction)
     const instrlen = new Uint8Array([
         2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
         2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
@@ -68,6 +69,7 @@ function Cpu6502(hwobj)
     ]);
 
     // Cycle count by opcode (not including some caveats, added inline)
+    // (3 bits per instruction)
     const cycle_count = new Uint8Array([
         7, 6, 2, 0, 5, 3, 5, 5,  3, 2, 2, 0, 6, 4, 6, 2,
         2, 5, 5, 0, 5, 4, 6, 6,  2, 4, 2, 0, 6, 4, 6, 2,
@@ -89,6 +91,9 @@ function Cpu6502(hwobj)
         2, 6, 2, 0, 3, 3, 5, 5,  2, 2, 2, 0, 4, 4, 6, 2,
         2, 5, 5, 0, 4, 4, 6, 6,  2, 4, 4, 0, 0, 4, 6, 2
     ]);
+
+    // (3 bytes + 4 bits)
+    // imp,rel,abs,zpg,ind,zpx,abx,aby,imm,inx,iny,acc
 
     const opctab= [
         ['BRK','imp'], ['ORA','inx'], ['???','imp'], ['???','imp'],
