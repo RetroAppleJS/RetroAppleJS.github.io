@@ -303,6 +303,7 @@ function Apple2IO(vid)
         }
 
         var IOMAP_TBL = [];
+        var iomap_rows = [];
 
         var arr = IOMAP.split("\n");
         var output = {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{}};
@@ -360,6 +361,16 @@ function Apple2IO(vid)
             //IOMAP_TBL.push(["0x"+addr,name,"0b"+oCOM.getBinMulti(iomap_bitmap,16),act_names,desc])
             //IOMAP_TBL.push(["0x"+addr,name,"0x"+oCOM.getHexMulti(iomap_bitmap,4),act_names,desc])
 
+            iomap_rows.push({
+                addr: "0x"+addr,
+                addr_n: addr_n,
+                name: name,
+                systems: iomap_str,
+                act: act_name_str,
+                desc: desc,
+                model_match: family_C[IOMAP_ID]
+            });
+
             var cm  = IOMAP_CALLS[IOMAP_ID]===undefined || IOMAP_CALLS[IOMAP_ID][name]===undefined ? null : IOMAP_CALLS[IOMAP_ID][name];
             if(family_C[IOMAP_ID] && cm!=null && (cm.ST!=null || cm!=null))
             {
@@ -384,8 +395,7 @@ function Apple2IO(vid)
         }
         console.log(s);
         
-
-
+        this.IOMAP_ROWS = iomap_rows;
         return output;
         
     }
@@ -579,6 +589,47 @@ function Apple2IO(vid)
         SLOT_MAP[idx+7] = 0;
     }
 
+
+    this.getBoardIORows = function(model)
+    {
+        model = model || (typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P");
+
+        IO_map(model);   // refresh parsed rows for this model
+
+        return (self.IOMAP_ROWS || []).filter(function(r){
+            return r.model_match
+                && r.addr_n < 0x80
+                && (r.act.indexOf("RD") >= 0 || r.act.indexOf("RR") >= 0);
+        });
+    }
+
+    this.boardIO_html = function(model)
+    {
+        var rows = this.getBoardIORows(model);
+
+        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
+              + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+              + '<tr>'
+              + '<th style="text-align:left;padding:2px 4px;">Addr</th>'
+              + '<th style="text-align:left;padding:2px 4px;">Name</th>'
+              + '<th style="text-align:left;padding:2px 4px;">Act</th>'
+              + '<th style="text-align:left;padding:2px 4px;">Description</th>'
+              + '</tr>';
+
+        for(var i=0;i<rows.length;i++)
+        {
+            s += '<tr>'
+               + '<td style="vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].addr)+'</td>'
+               + '<td style="vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
+               + '<td style="vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].act)+'</td>'
+               + '<td style="vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].desc)+'</td>'
+               + '</tr>';
+        }
+
+        s += '</table></div>';
+        return s;
+    }
+
     // SLOT MAPPING
     var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
     //var SLOT_NAME = new Array(8);           // 8 SLOTS, 6 CHARACTERS PER SLOT NAME
@@ -605,4 +656,8 @@ function Apple2IO(vid)
     //[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C080-C08F ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 563)
     //[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C0B0-C0BF ROM range: undefined60-undefined5F LROM range: null METHODS: active) (EMU_apple2io.js, line 563)
     //[Log] mounted DISKII [active:true deviceID:A545] into SLOT #6 (I/O range: C0E0-C0EF ROM range: undefinedC0-undefinedBF LROM range: null METHODS: diskBytes,drv,active,buffers,init,reset,DSK_led,getDataObj,GUI_update,update_logs,read,write,convertDsk2Nib,dNd,s_load_all,s_getFile,dN_update,dN_launcher,dN_spindown,dN_speed_update,dN_play,dN_stop,ROM) (EMU_apple2io.js, line 563)
+
+
+
+
 }
