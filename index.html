@@ -281,8 +281,18 @@
                   <button class=appbut                 onclick="javascript:oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute'}).muteAct()"  title="Sound"><i id="mutebutton" class="fa fa-volume-mute"></i></button>
                   <button class=appbut                 onclick="javascript:oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause'})" id="pausebutton"   title="Pause"><i  class="fa fa-play"></i></button>
                   <br>
-                  <button class=appbut value="Reset"   onclick="javascript:oEMUI.resetBtn()"     id="resetbutton"   title="Reset"><i  class="fa fa-undo-alt"></i></button>                  
-                  <button class=appbut value="Restart" ontouchstart="javascript:oEMUI.restartBtn()" onclick="javascript:oEMUI.restartBtn()"   id="restartbutton" title="Restart"><i class="fa fa-power-off"></i></button>
+<button class=appbut
+        value="Restart"
+        id="restartbutton"
+        title="Short press: warm boot / hold 1/2s: cold boot"
+        onmousedown="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+        onmouseup="return oEMUI.restartBtnUp();"
+        onmouseleave="return oEMUI.restartBtnCancel();"
+        ontouchstart="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+        ontouchend="return oEMUI.restartBtnUp();"
+        ontouchcancel="return oEMUI.restartBtnCancel();">
+  <i class="fa fa-power-off"></i>
+</button>
                 </div>
                 <!--  DISK TOOLBOX -->
                 <div class=toolbox>
@@ -559,7 +569,7 @@
             <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onclick="EMU_audio_event_unlock();" onkeydown="EMU_audio_event_unlock();oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
             <!--/input-->
 
-<button onclick="onSnapshot()">SNAP</button>
+<!--button onclick="onSnapshot()">SNAP</button-->
 
             <div class="appdskLED" id="dskLED_D1" style="left:392px;top:666px"></div>
             <div class="appdskLED" id="dskLED_D2" style="left:750px;top:666px"></div>

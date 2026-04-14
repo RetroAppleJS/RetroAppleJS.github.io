@@ -478,6 +478,89 @@ function EMUI()
         }
     }
 
+    this.restartHold = {
+        timer: null,
+        armed: false,
+        longPress: false,
+        threshold_ms: 500
+    };
+
+    this.restartBtnGlyph = function(iconClass)
+    {
+        var el = document.getElementById("restartbutton");
+        if(!el) return;
+        el.innerHTML = '<i class="fa ' + iconClass + '"></i>';
+    }
+
+    this.restartBtnDown = function()
+    {
+        var o = this.restartHold;
+
+        // ignore re-entry while already armed
+        if(o.armed) return false;
+
+        o.armed = true;
+        o.longPress = false;
+
+        // show warm-reset glyph first
+        this.restartBtnGlyph("fa-undo-alt");
+
+        o.timer = window.setTimeout(() =>
+        {
+            o.longPress = true;
+
+            // long press reached: switch back to cold-restart glyph
+            this.restartBtnGlyph("fa-power-off");
+        }, o.threshold_ms);
+
+        return false;
+    }
+
+    this.restartBtnUp = function()
+    {
+        var o = this.restartHold;
+
+        if(!o.armed) return false;
+
+        if(o.timer !== null)
+        {
+            window.clearTimeout(o.timer);
+            o.timer = null;
+        }
+
+        var bLong = o.longPress;
+
+        o.armed = false;
+        o.longPress = false;
+
+        // restore default glyph
+        this.restartBtnGlyph("fa-power-off");
+
+        if(bLong) this.restartBtn();
+        else      this.resetBtn();
+
+        return false;
+    }
+
+    this.restartBtnCancel = function()
+    {
+        var o = this.restartHold;
+
+        if(o.timer !== null)
+        {
+            window.clearTimeout(o.timer);
+            o.timer = null;
+        }
+
+        o.armed = false;
+        o.longPress = false;
+
+        // restore default glyph without triggering an action
+        this.restartBtnGlyph("fa-power-off");
+
+        return false;
+    }
+
     this.resetBtn = function() { apple2plus.reset() }
     this.restartBtn = function() { apple2plus.restart() }
 
