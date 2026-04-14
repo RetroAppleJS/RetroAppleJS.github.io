@@ -344,10 +344,11 @@ function EMU_init()
     */ 
 
     // PREP FEATURE POPUP HTML CONTENT
-
     document.getElementById("feature_box").innerHTML += 
         "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
+
+    oEMUI.slotConfig({"id":"slotB","active":true});
 
 }
 
@@ -401,8 +402,16 @@ function EMUI()
     this.slotConfig_detail = function(id)
     {
         oCOM.POPUP.on("slotConfig_popup");
-        document.getElementById("slotConfig_popup").innerHTML = id+"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
-        console.log("oEMUI.slotConfig_detail('"+id+"')")
+        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
+        if(id=="slotB")
+        {
+            var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+            document.getElementById("slotConfig_popup").innerHTML =
+                "board I/O ["+model+"]" + close + apple2plus.hwObj().io.boardIO_html(model);
+            return;
+        }
+        document.getElementById("slotConfig_popup").innerHTML = id + close;
+        console.log("oEMUI.slotConfig_detail('"+id+"')");
     }
 
     this.muteBtn = function(arg)
