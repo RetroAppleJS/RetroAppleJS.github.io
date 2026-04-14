@@ -433,7 +433,7 @@ function EMUI()
     {
         if(arg===undefined) arg = this.muteArg;
         var b = arg.override===undefined?
-            (oCOM.POPUP.states[arg.id]==arg.class2):arg.override
+            (oCOM.POPUP.states[arg.id]==arg.class1):arg.override
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
