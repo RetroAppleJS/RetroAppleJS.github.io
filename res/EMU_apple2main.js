@@ -348,8 +348,7 @@ function EMU_init()
         "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
 
-    oEMUI.slotConfig({"id":"slotB","active":true});
-
+    oEMUI.slotConfig({"id":"slotB","active":true});   
 }
 
 function EMU_system_get()
@@ -412,6 +411,9 @@ function EMUI()
         }
         document.getElementById("slotConfig_popup").innerHTML = id + close;
         console.log("oEMUI.slotConfig_detail('"+id+"')");
+
+
+        oCOM.POPUP.on("slotConfig_popup");
     }
 
     this.muteBtn = function(arg)
@@ -431,7 +433,7 @@ function EMUI()
     {
         if(arg===undefined) arg = this.muteArg;
         var b = arg.override===undefined?
-            (oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+            (oCOM.POPUP.states[arg.id]==arg.class2):arg.override
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
