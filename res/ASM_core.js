@@ -1322,7 +1322,7 @@ function DASM()
 
 	this.disassemble = function(arg)
     {
-		var ops=this.getHexByte(arg.code_arr[0]);							// instruction
+		var ops=this.getHexByte(arg.code_arr[0]);					    // instruction
 		var op1=this.getHexByte(arg.code_arr[1]); if (op1==null) op1=0;	// operand 1
 		var op2=this.getHexByte(arg.code_arr[2]); if (op2==null) op2=0;	// operand 2
 
