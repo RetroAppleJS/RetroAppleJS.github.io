@@ -290,7 +290,7 @@
                     <div class=appbut style="padding:5px 5px 0px 5px;margin-top:0px;text-align:center">
                       <form action="index.html" id="f_D1" style="display:inline;">
                         <input type=button method=get class=appbut value="Drive1" onclick="ejectDisk(this,'D1')" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive1'">
-                        <input type="file" name="D1" id="file_D1" onchange="javascript:loadDisk_fromFile(this,'D1')">
+                        <input type="file" name="D1" id="file_D1" onchange="javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')">
                       </form>
                       <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dump_D1" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
                     </div>
@@ -298,7 +298,7 @@
                     <div class=appbut style="padding:0px 5px 5px 5px;margin-top:0px;text-align:center">
                       <form action="index.html" id="f_D2" style="display:inline;">
                         <input type=button method=get class=appbut value="Drive2" onclick="ejectDisk(this,'D2')" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive2'">
-                        <input type="file" name="D2" id="file_D2" onchange="javascript:loadDisk_fromFile(this,'D2')">
+                        <input type="file" name="D2" id="file_D2" onchange="javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')">
                       </form>
                       <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dump_D2" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
                     </div>
@@ -556,7 +556,7 @@
             </script>
             
             <!--input id=foo type=text oninput="apple2plus.keystroke(event)"    onclick=document.getElementById('foo').focus()-->
-            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onkeydown="oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onclick="EMU_audio_event_unlock();" onkeydown="EMU_audio_event_unlock();oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
             <!--/input-->
 
 <button onclick="onSnapshot()">SNAP</button>

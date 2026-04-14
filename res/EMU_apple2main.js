@@ -36,6 +36,7 @@ const _o = {"tools":{}
         ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
         //,"CPU_ClocksTicks_s":1000000      // CPU clocksTicks per second
         ,"CPU_ClocksTicks_s":1021800        // CPU clocksTicks per second
+        ,"EMU_audio":{ "prepared": false, "unlocked": false, "trying": false}
     };
 
     // 100 000 intervals per frame
@@ -632,6 +633,99 @@ function loadDisk_fromFile(file_obj,drv)
             }            
         break; 
     }
+}
+
+async function EMU_audio_prepare()
+{
+    if (_o.EMU_audio.prepared) return true;
+
+    try
+    {
+        // Create contexts early. This may still leave them suspended.
+        await oEMU.component.IO.AppleSpeaker.init("audio_ctx");
+        await oEMU.component.IO.AppleDisk.init("audio_ctx");
+
+        _o.EMU_audio.prepared = true;
+        return true;
+    }
+    catch(e)
+    {
+        console.warn("EMU_audio_prepare failed", e);
+        return false;
+    }
+}
+
+async function EMU_audio_try_unlock(forceButtonState)
+{
+    if (_o.EMU_audio.unlocked || _o.EMU_audio.trying) return _o.EMU_audio.unlocked;
+    _o.EMU_audio.trying = true;
+
+    try
+    {
+        await EMU_audio_prepare();
+
+        const spk = oEMU.component.IO.AppleSpeaker;
+        const dsk = oEMU.component.IO.AppleDisk;
+
+        const spkRunning = spk.audio && spk.audio.state === "running";
+        const dskRunning = dsk.audio && dsk.audio.state === "running";
+
+        // If both are already running, cold-start worked.
+        if (spkRunning && dskRunning)
+        {
+            _o.EMU_audio.unlocked = true;
+        }
+        else
+        {
+            // Try to resume from inside the current user gesture.
+            if (spk.audio && spk.audio.state !== "running")
+                await spk.audio.resume();
+
+            if (dsk.audio && dsk.audio.state !== "running")
+                await dsk.audio.resume();
+
+            if (dsk.init) await dsk.init("audio_buffer");
+
+            _o.EMU_audio.unlocked =
+                spk.audio && spk.audio.state === "running" &&
+                dsk.audio && dsk.audio.state === "running";
+        }
+
+        if (_o.EMU_audio.unlocked)
+        {
+            // Put the sound button in the enabled/unmuted state once.
+            if (forceButtonState !== false)
+            {
+                oEMUI.muteBtn({
+                    id:'mutebutton',
+                    class1:'fa-volume-up',
+                    class2:'fa-volume-mute',
+                    override:true
+                });
+            }
+
+            // Ensure normal sound-on logic is active.
+            await oEMU.component.IO.AppleSpeaker.init("audio_on");
+            await oEMU.component.IO.AppleDisk.init("audio_buffer");
+        }
+
+        return _o.EMU_audio.unlocked;
+    }
+    catch(e)
+    {
+        console.warn("EMU_audio_try_unlock failed", e);
+        return false;
+    }
+    finally
+    {
+        _o.EMU_audio.trying = false;
+    }
+}
+
+function EMU_audio_event_unlock()
+{
+    // Fire and forget from a trusted event.
+    EMU_audio_try_unlock(true);
 }
 
 function loadDisk_fromBuffer(arr_buffer,dsk)
