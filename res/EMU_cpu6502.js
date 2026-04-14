@@ -1028,6 +1028,19 @@ function Cpu6502(hwobj)
         if (++sp > 0xff) sp = 0;
         return hw.read(STACK_ADDR + sp);
     }
+/*
+function push(d8)
+{
+    writeByte(STACK_ADDR + sp, d8);
+    if (--sp < 0) sp = 0xff;
+}
+
+function pull()
+{
+    if (++sp > 0xff) sp = 0;
+    return readByte(STACK_ADDR + sp);
+}
+*/
 
 //    ______                                            _    _                   
 //  .' ____ \                                          / |_ (_)                  
