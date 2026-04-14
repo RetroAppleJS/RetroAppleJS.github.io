@@ -34,7 +34,7 @@ const _o = {"tools":{}
         ,"KBD_Yoff":0       
         ,"EMU_Updates_s":10                 // Emulator intervals per second 
         ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
-        //,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
+        //,"CPU_ClocksTicks_s":1000000      // CPU clocksTicks per second
         ,"CPU_ClocksTicks_s":1021800        // CPU clocksTicks per second
     };
 
