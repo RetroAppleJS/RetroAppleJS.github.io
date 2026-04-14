@@ -457,6 +457,36 @@ function(csv)
     }
   }
 
+  this.escapeHTML = function(str) 
+  {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("&lt;b&gt;", "<b>")
+      .replaceAll("&lt;/b&gt;", "</b>")
+      .replaceAll("&lt;u&gt;", "<u>")
+      .replaceAll("&lt;/u&gt;", "</u>")
+      .replaceAll("&lt;i&gt;", "<i>")
+      .replaceAll("&lt;/i&gt;", "</i>")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;")
+      .replaceAll("\n","<br>")
+      .replaceAll(" ", "&nbsp;");
+  }
+
+  this.unescapeHTML = function(str)
+  {
+    return String(str)
+    .replace(/&nbsp;/g, " ")
+    .replace(/<br>/g,   "\n")
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g,   ">")
+    .replace(/&lt;/g,   "<")
+    .replace(/&amp;/g,  "&");
+  }
+/*
   this.unescapeHTML = function(str)
   {
     return str
@@ -466,7 +496,7 @@ function(csv)
     .replace(/&nbsp;/g, '\u00A0')
     .replace(/&amp;/g, '&');
   }
-
+*/
   this.escapeREGEXP = function(str)
   {
     return str
