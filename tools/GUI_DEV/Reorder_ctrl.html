@@ -65,7 +65,7 @@
 <div class="appbox slotbox">
   board<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
+    <button class="appbut cogbtn" style="margin-left:0px" onclick="config('deviceB')">
       <i class="fa fa-cog"></i>
     </button>
 
@@ -75,10 +75,10 @@
 <div class="appbox slotbox">
   #0<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
+    <button class="appbut cogbtn" style="margin-left:0px" onclick="config('MS16K')">
       <i class="fa fa-cog"></i>
     </button>
-    <div id="d_slotB">
+    <div id="d_slot0">
         <i class="fa fa-ellipsis-h dots dots1"></i>
         <i class="fa fa-ellipsis-h dots dots2"></i>
     </div>
@@ -88,36 +88,22 @@
 <div class="appbox slotbox">
   #1<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
-      <i class="fa fa-cog"></i>
-    </button>
-    <div id="d_slotB">
-        <i class="fa fa-ellipsis-h dots dots1"></i>
-        <i class="fa fa-ellipsis-h dots dots2"></i>
-    </div>
   </div>
 </div>
 
 <div class="appbox slotbox">
   #2<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
-      <i class="fa fa-cog"></i>
-    </button>
-    <div id="d_slotB">
-        <i class="fa fa-ellipsis-h dots dots1"></i>
-        <i class="fa fa-ellipsis-h dots dots2"></i>
-    </div>
   </div>
 </div>
 
 <div class="appbox slotbox">
   #3<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
+    <button class="appbut cogbtn" style="margin-left:0px"  onclick="config('VIDEX')">
       <i class="fa fa-cog"></i>
     </button>
-    <div id="d_slotB">
+    <div id="d_slot3">
         <i class="fa fa-ellipsis-h dots dots1"></i>
         <i class="fa fa-ellipsis-h dots dots2"></i>
     </div>
@@ -127,36 +113,22 @@
 <div class="appbox slotbox">
   #4<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
-      <i class="fa fa-cog"></i>
-    </button>
-    <div id="d_slotB">
-        <i class="fa fa-ellipsis-h dots dots1"></i>
-        <i class="fa fa-ellipsis-h dots dots2"></i>
-    </div>
   </div>
 </div>
 
 <div class="appbox slotbox">
   #5<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
-      <i class="fa fa-cog"></i>
-    </button>
-    <div id="d_slotB">
-        <i class="fa fa-ellipsis-h dots dots1"></i>
-        <i class="fa fa-ellipsis-h dots dots2"></i>
-    </div>
   </div>
 </div>
 
 <div class="appbox slotbox">
   #6<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
+    <button class="appbut cogbtn" style="margin-left:0px" onclick="config('DISKII')">
       <i class="fa fa-cog"></i>
     </button>
-    <div id="d_slotB">
+    <div id="d_slot6">
         <i class="fa fa-ellipsis-h dots dots1"></i>
         <i class="fa fa-ellipsis-h dots dots2"></i>
     </div>
@@ -167,15 +139,17 @@
 <div class="appbox slotbox">
   #7<br>
   <div class="sloticons">
-    <button class="appbut cogbtn" style="margin-left:0px">
-      <i class="fa fa-cog"></i>
-    </button>
-    <div id="d_slotB">
-        <i class="fa fa-ellipsis-h dots dots1"></i>
-        <i class="fa fa-ellipsis-h dots dots2"></i>
-    </div>
+
   </div>
 </div>
 
 </div>
+
+
+<script>
+    function config(str)
+    {
+        alert("configure device: "+str);
+    }
+</script>
 </body>
