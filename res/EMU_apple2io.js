@@ -83,11 +83,11 @@ function Apple2IO(vid)
         // TODO: autosearch for self-declared oEMU.component.IO objects ?
 
         //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
-        var keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},cycle:function(){},keystroke:function(){},strobe:function(){},polling:function(){},events:function(){},KbdHTML:function(){},reset:function(){},lastkey:0x00},"A2Pkeys");
-        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{toggle:function(){}},"AppleSpeaker");
-        this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{active:false,"status":{active:false}},"RamCard");
-        this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false,"status":{active:false}},"col80card");
-        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},diskBytes:[]},"AppleDisk");
+        var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
+        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
+        this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
+        this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
+        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
         oEMU.component.IO.self = this;
     }
 
@@ -433,21 +433,21 @@ function Apple2IO(vid)
                     return this.disk2.ROM[addr - DISK_PROM];
                 }
                 */
-
                 // TODO: decode soft switches based on registry (auto declared mask)
                 // ACTION_MAP = global registry ??
 
-                if(this.ramcard.status.active  && // RAMCARD SOFT SWITCHES
+
+                if(this.ramcard.state.active  && // RAMCARD SOFT SWITCHES
                     addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
                 {// 0080
                     return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
                 }
-                else if(this.ramcard.status.active &&
+                else if(this.ramcard.state.active &&
                     addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
                 {// FD00
                     return this.ramcard.read(addr - ROM_ADDR);
                 }
-                else if(this.col80card.status.active &&
+                else if(this.col80card.state.active &&
                     addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
                 {
                     // TODO: read ROM from 80-column card !!
@@ -472,7 +472,7 @@ function Apple2IO(vid)
     {
         if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
             this.disk2.write(addr - DISK_IO, d8);
-        else if(this.ramcard.status.active &&
+        else if(this.ramcard.state.active &&
             addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             return this.ramcard.write(addr - ROM_ADDR,d8)
         
@@ -503,7 +503,6 @@ function Apple2IO(vid)
      
 
     // SLOT MAPPING
-
     this.listDeviceNames = function()
     {
         var names = [];
@@ -512,6 +511,8 @@ function Apple2IO(vid)
         return names;
     }
 
+    
+    // SLOT MAPPING
     this.mount = function(cfg,slot_num)
     {
         const idx = slot_num<<3;
@@ -634,7 +635,7 @@ function Apple2IO(vid)
 
     //[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C080-C08F ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 563)
     //[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C0B0-C0BF ROM range: undefined60-undefined5F LROM range: null METHODS: active) (EMU_apple2io.js, line 563)
-    //[Log] mounted DISKII [active:true deviceID:A545] into SLOT #6 (I/O range: C0E0-C0EF ROM range: undefinedC0-undefinedBF LROM range: null METHODS: diskBytes,drv,active,buffers,init,reset,DSK_led,getDataObj,GUI_update,update_logs,read,write,convertDsk2Nib,dNd,s_load_all,s_getFile,dN_update,dN_launcher,dN_spindown,dN_speed_update,dN_play,dN_stop,ROM) (EMU_apple2io.js, line 563)
+    //[Log] mounted DISKII [active:true deviceID:A545] into SLOT #6 (I/O range: C0E0-C0EF ROM range: undefinedC0-undefinedBF LROM range: null METHODS: state.diskData,drv,active,buffers,init,reset,DSK_led,getDataObj,GUI_update,update_logs,read,write,convertDsk2Nib,dNd,s_load_all,s_getFile,dN_update,dN_launcher,dN_spindown,dN_speed_update,dN_play,dN_stop,ROM) (EMU_apple2io.js, line 563)
 
 
 
