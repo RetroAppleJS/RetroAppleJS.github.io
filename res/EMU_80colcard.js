@@ -16,7 +16,7 @@ function col80card()
     //console.log("oEMU="+typeof(oEMU))
     this.id     = {"PCODE":"VIDEX", "icon":"fa fa-tv"}
     this.state = {"active":true};
-
+        
     this.init = function()
     {
         //oEMU.component.IO.DRIVER.mount("VIDEX",3,this.col80card,false);
