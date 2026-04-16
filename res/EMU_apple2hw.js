@@ -60,7 +60,7 @@ function Apple2Hw(vid,keys)
         var d8;
         addr = addr & 0xFFFF;
 
-        if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
+        if(this.io.ramcard && this.io.ramcard.state.active == true && addr >= ROM_ADDR)
             d8 = this.io.read(addr);
         else if (addr < RAM_SIZE) // RAM_SIZE
             d8 = ram[addr];
@@ -79,7 +79,7 @@ function Apple2Hw(vid,keys)
         var d8;
         addr = addr & 0xFFFF;
 
-        if(this.io.ramcard && this.io.ramcard.active == true && addr >= ROM_ADDR)
+        if(this.io.ramcard && this.io.ramcard.state.active == true && addr >= ROM_ADDR)
             d8 = this.io.read(addr);
         else if (addr < RAM_SIZE)
             d8 = ram[addr];
@@ -104,7 +104,7 @@ function Apple2Hw(vid,keys)
             console.error("apple2hw.write(%s %s) d8 too big!",
                         addr.toString(16), d8.toString(16));
 
-        if(this.io.ramcard &&  this.io.ramcard.active == true && addr >= ROM_ADDR)
+        if(this.io.ramcard &&  this.io.ramcard.state.active == true && addr >= ROM_ADDR)
             d8 = this.io.write(addr,d8);
         else if (addr < RAM_SIZE)
         {

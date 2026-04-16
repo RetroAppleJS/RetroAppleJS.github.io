@@ -263,10 +263,10 @@ function EMU_init()
     apple2plus.restart(); // restart the AppleII+
     appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
 
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,active:false},"AppleDisk");
+    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,state:{active:false}},"AppleDisk");
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
 
-    var s = disk2.active ? "apple2plus.DiskObj().GUI_update();":"" 
+    var s = disk2.state.active ? "apple2plus.DiskObj().GUI_update();":"" 
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
                 ,key_events:"onclick=keys.keystroke(event)"});
@@ -681,8 +681,8 @@ function EMUI()
 
 function loadDisk_fromFile(file_obj,drv)
 {
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
-    if(file_obj==null || disk2.active==false) {apple2plus.loadDisk([],drv); return}
+    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
+    if(file_obj==null || disk2.state.active==false) {apple2plus.loadDisk([],drv); return}
     var file = file_obj.files[0];
     if (!file) return;
 
@@ -821,17 +821,17 @@ function EMU_audio_event_unlock()
 
 function loadDisk_fromBuffer(arr_buffer,dsk)
 {
-    oCOM.POPUP.html("disk2.active==true");
+    oCOM.POPUP.html("disk2.state.active==true");
 
     try
     {
-        var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{active:false},"AppleDisk");
-        if(disk2.active==false)
+        var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
+        if(disk2.state.active==false)
         { 
-            //oCOM.POPUP.html("disk2.active==false");
+            //oCOM.POPUP.html("disk2.state.active==false");
             return;
         }
-        //oCOM.POPUP.html("disk2.active==true");
+        //oCOM.POPUP.html("disk2.state.active==true");
 
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);

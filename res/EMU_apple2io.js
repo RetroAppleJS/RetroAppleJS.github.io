@@ -86,8 +86,8 @@ function Apple2IO(vid)
         var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
         this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
-        this.col80card = oCOM.default(oEMU.component.IO.col80card,{active:false},"col80card");
-        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
+        this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
+        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{"reset":function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
         oEMU.component.IO.self = this;
     }
 
@@ -472,16 +472,15 @@ function Apple2IO(vid)
     {
         if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
             this.disk2.write(addr - DISK_IO, d8);
-        else if(this.ramcard.state.active &&
-            addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+        else if(this.ramcard.state.active && addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             return this.ramcard.write(addr - ROM_ADDR,d8)
         
         // I/O ACTION MAP FOR WRITE OPERATIONS
         if(ACTION_MAP.WR[addr]!==undefined)
-            {
-                //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-                return ACTION_MAP.WR[addr]();   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
-            }
+        {
+            //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
+            return ACTION_MAP.WR[addr]();   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+        }
 
         // Implement same side-effects as read.
         this.read(addr);
@@ -545,8 +544,8 @@ function Apple2IO(vid)
             +")");
     
             if(obj.id===undefined) { obj_names.icon = ""; obj.id = {"icon":"fa fa-cube"}}
-            oEMUI.slotConfig({"id":"d_slot"+slot_num,"icon":obj.id.icon===undefined?"fa fa-cube":obj.id.icon,"active":SLOT_MAP[idx+0]});
-            oEMUI.slotConfig({"id":"slot"+slot_num,"icon":"fa fa-cog","active":SLOT_MAP[idx+0]});
+            oEMUI.slotConfig({"id":"d_slot"+slot_num ,"icon":obj.id.icon===undefined?"fa fa-cube":obj.id.icon   ,"active":SLOT_MAP[idx+0]});
+            oEMUI.slotConfig({"id":"slot"+slot_num   ,"icon":"fa fa-cog"                                        ,"active":SLOT_MAP[idx+0]});
         }
 
         var n = this.listDeviceNames();
@@ -620,7 +619,7 @@ function Apple2IO(vid)
     //this.mount({"name":"DISKII","slot":0x6,"driver":this.disk2    ,"active":true});
 
 
-   this["MS16K"]  = this.ramcard;
+    this["MS16K"]  = this.ramcard;
     this["VIDEX"]  = this.col80card;
     this["DISKII"] = this.disk2;
 
@@ -636,8 +635,5 @@ function Apple2IO(vid)
     //[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C080-C08F ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 563)
     //[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C0B0-C0BF ROM range: undefined60-undefined5F LROM range: null METHODS: active) (EMU_apple2io.js, line 563)
     //[Log] mounted DISKII [active:true deviceID:A545] into SLOT #6 (I/O range: C0E0-C0EF ROM range: undefinedC0-undefinedBF LROM range: null METHODS: state.diskData,drv,active,buffers,init,reset,DSK_led,getDataObj,GUI_update,update_logs,read,write,convertDsk2Nib,dNd,s_load_all,s_getFile,dN_update,dN_launcher,dN_spindown,dN_speed_update,dN_play,dN_stop,ROM) (EMU_apple2io.js, line 563)
-
-
-
 
 }
