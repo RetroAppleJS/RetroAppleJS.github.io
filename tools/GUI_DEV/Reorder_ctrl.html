@@ -2,6 +2,8 @@
 
 <body style="background-color:rgb(233, 223, 217)">
 <style>
+
+
 .appbox
 {
   font-family: "Arial";
@@ -13,6 +15,7 @@
   background: rgba(255, 255, 255, 0.8);
   float:left;
   text-align:center;
+  z-index: 1;
 }
 
 .slotbox
@@ -21,58 +24,158 @@
   padding:6px 0px 6px 0px;
 }
 
-.slotmenu
-{
-  display:block;
-  margin-top:2px;
-  margin-bottom:2px;
-  line-height:1;
-  opacity:0.2;
-}
-
-.slotstack
+.sloticons
 {
   position:relative;
   width:100%;
-  height:18px;   /* adjust as needed */
+  height:30px;
 }
 
-.slotstack > div
+.cogbtn
+{
+  position:relative;
+  z-index:3;
+}
+
+.dots
 {
   position:absolute;
-  top:0;
-  left:0;
-  width:100%;
+  left:50%;
+  transform:translateX(-50%);
+  line-height:1;
+  opacity:0.2;
+  margin:0;
+  padding:0;
+  z-index:1;
+}
+
+.dots1
+{
+  top:16px;
+}
+
+.dots2
+{
+  top:21px;   /* exactly 5px lower */
 }
 </style>
 
 <div class=toolbox id="device_slots">
-    <div class=appbox style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
-    SLOTS<br>
 
-  <div class="appbox slotbox">
-    board<br>
-    <button class=appbut style="margin-left:0px"><i class="fa fa-cog"></i></button><br>
-      <i class="fa fa-ellipsis-h slotmenu" style="z-index:2;padding:0px"></i>
-      <i class="fa fa-ellipsis-h slotmenu" style="z-index:3;padding:5px"></i>
+<div class="appbox slotbox">
+  board<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+
   </div>
 </div>
 
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#0   <br><div id="d_slot0"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#1   <br><div id="d_slot1"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#2   <br><div id="d_slot2"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#3   <br><div id="d_slot3"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#4   <br><div id="d_slot4"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#5   <br><div id="d_slot5"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#6   <br><div id="d_slot6"></div></div>
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#7   <br><div id="d_slot7"></div></div>
-
+<div class="appbox slotbox">
+  #0<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
     </div>
+  </div>
+</div>
+
+<div class="appbox slotbox">
+  #1<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
+<div class="appbox slotbox">
+  #2<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
+<div class="appbox slotbox">
+  #3<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
+<div class="appbox slotbox">
+  #4<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
+<div class="appbox slotbox">
+  #5<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
+<div class="appbox slotbox">
+  #6<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
+
+<div class="appbox slotbox">
+  #7<br>
+  <div class="sloticons">
+    <button class="appbut cogbtn" style="margin-left:0px">
+      <i class="fa fa-cog"></i>
+    </button>
+    <div id="d_slotB">
+        <i class="fa fa-ellipsis-h dots dots1"></i>
+        <i class="fa fa-ellipsis-h dots dots2"></i>
+    </div>
+  </div>
+</div>
+
 </div>
 </body>
-
-
-<i class="fa fa-ellipsis-h"></i>
-<!--
-<i class="fa fa-ellipsis-h"></i><br><i class="fa fa-ellipsis-h"></i>
--->
