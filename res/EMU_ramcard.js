@@ -13,13 +13,12 @@ function RamCard()
          ,RAMCARD       =  4096
          ,RAMCARD_SIZE  =  8192
 
-    this.id     = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
-    this.status = {"active":true};
+    this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
+    this.state = {"active":true};
 
-    var bDebug = false;   // debug all RAM R/W operations
-    var bDebug_S = false; // debug soft switch updates
+    var bDebug = true;   // debug all RAM R/W operations
+    var bDebug_S = true; // debug soft switch updates
 
- 
     var softswitch = {
         0x0: {"RAMCARD":true                       }
        ,0x1: {               "WE":true             }
