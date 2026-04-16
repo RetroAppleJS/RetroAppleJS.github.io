@@ -503,7 +503,7 @@ function Apple2IO(vid)
      
 
     // SLOT MAPPING
-    this.listDeviceNames = function()
+  this.listDeviceNames = function()
     {
         var names = [];
         for(var o in oEMU.component.IO)
@@ -511,7 +511,7 @@ function Apple2IO(vid)
         return names;
     }
 
-    
+
     // SLOT MAPPING
     this.mount = function(cfg,slot_num)
     {
@@ -620,7 +620,7 @@ function Apple2IO(vid)
     //this.mount({"name":"DISKII","slot":0x6,"driver":this.disk2    ,"active":true});
 
 
-    this["MS16K"]  = this.ramcard;
+   this["MS16K"]  = this.ramcard;
     this["VIDEX"]  = this.col80card;
     this["DISKII"] = this.disk2;
 
