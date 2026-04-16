@@ -17,8 +17,9 @@ function AppleDisk2()
     {
         "active":true
         ,"drv":0
+        ,"diskData":[null,null]
         ,"hw":[{
-            "track":20
+             "track":20
             ,"phase":0
             ,"data_latch":0
             ,"motor":0
@@ -26,8 +27,9 @@ function AppleDisk2()
             ,"q7":0
             ,"offset":0
             ,"stats":{"motor":0}
+            ,"LED":false
         },{
-            "track":20
+             "track":20
             ,"phase":0
             ,"data_latch":0
             ,"motor":0
@@ -35,12 +37,10 @@ function AppleDisk2()
             ,"q7":0
             ,"offset":0
             ,"stats":{"motor":0}
+            ,"LED":false
         }]
         ,"DSK_led" :[]
     };
-
-    // TODO change to this.state?
-    this.diskBytes = [null,null];      // disk content
 
     const MOTOR_OFF =     0x08,
         MOTOR_ON =      0x09,
@@ -150,7 +150,7 @@ function AppleDisk2()
 
     this.readROM = function(addr)
     {
-        if(this.diskBytes[this.state.drv])        // if disk data is loaded on the selected drive
+        if(this.state.diskData[this.state.drv])        // if disk data is loaded on the selected drive
                     return this.ROM[addr];    // return content of disk ROM addres
         return null;
     }
@@ -217,7 +217,7 @@ function AppleDisk2()
                 this.state.hw[drv].q6 = 0;
                 this.update_logs("q6");
                 // Strobe Data Latch for I/O
-                if (!this.diskBytes[drv] || !this.state.hw[drv].motor)
+                if (!this.state.diskData[drv] || !this.state.hw[drv].motor)
                     return 0xff;
                 else
                 {
@@ -227,12 +227,12 @@ function AppleDisk2()
                     if (this.state.hw[drv].q7)
                     {
                         // Write to disk.
-                        this.diskBytes[drv][loc] = this.state.hw[drv].data_latch;
+                        this.state.diskData[drv][loc] = this.state.hw[drv].data_latch;
                         return this.state.hw[drv].data_latch;
                     }
                     else
                         // Read from disk.
-                        return this.diskBytes[drv][loc];
+                        return this.state.diskData[drv][loc];
                 }
                 // NOTREACHED
             case Q6H:
@@ -389,8 +389,8 @@ function AppleDisk2()
 
     this.dN_update = function(status)
     {
-        this.dNd.status = status;
-        this.dNd.bRep   = this.dNd.last.status==status;
+        this.dNd.state = status;
+        this.dNd.bRep   = this.dNd.last.state==status;
 
         this.dN_launcher();
         set_action(this.dNd);
@@ -404,20 +404,20 @@ function AppleDisk2()
         var o = this.dNd;
         var l = o.last;
 
-        //console.log(o.status);
+        //console.log(o.state);
         if(o.enable==true)
         {
             //o.enable = true;
             //if(l.enable==false && o.enable==true && o.motor=="OFF")             return this.dN_play("DiskII_spin");
-            if(l.status=="MOTOR_ON" && o.motor=="OFF") { o.motor="ON"; return this.dN_play("DiskII_spin") }
-            if(o.status=="CLICK_IN" || o.status=="CLICK_OUT")                   return this.dN_play("DiskII_click");
-            if((l.status=="ARM_OUT" || l.status=="ARM_IN")==true 
+            if(l.state=="MOTOR_ON" && o.motor=="OFF") { o.motor="ON"; return this.dN_play("DiskII_spin") }
+            if(o.state=="CLICK_IN" || o.state=="CLICK_OUT")                   return this.dN_play("DiskII_click");
+            if((l.state=="ARM_OUT" || l.state=="ARM_IN")==true 
                 && o.bRep==false && l.bRep==true && l.rept<10)                  return this.dN_play("DiskII_shortswipe");
-            if((o.status=="ARM_OUT" || o.status=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
-            if(l.status=="MOTOR_OFF" && o.status=="SPINDOWN") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown") }
-            if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
-            if((o.motor=="OFF" && (o.status=="MOTOR_ON" || l.status===undefined)) 
-            || (l.status=="SPINDOWN" && o.status=="MOTOR_ON")
+            if((o.state=="ARM_OUT" || o.state=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
+            if(l.state=="MOTOR_OFF" && o.state=="SPINDOWN") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown") }
+            if(l.state=="MOTOR_ON" && o.state=="MOTOR_OFF") setTimeout( this.dN_spindown , 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
+            if((o.motor=="OFF" && (o.state=="MOTOR_ON" || l.state===undefined)) 
+            || (l.state=="SPINDOWN" && o.state=="MOTOR_ON")
             || (o.motor=="OFF" && l.enable==false && o.enable==true))         {o.motor="ON"; return this.dN_play("DiskII_spin")}
             return null;
         }
@@ -425,7 +425,7 @@ function AppleDisk2()
         {
             //o.enable = false;
             
-            if(l.status=="MOTOR_ON" && o.status=="MOTOR_OFF") setTimeout( this.dN_spindown, 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
+            if(l.state=="MOTOR_ON" && o.state=="MOTOR_OFF") setTimeout( this.dN_spindown, 1000, this);                               // spindown if no MOTOR_ON event during cutoff period
             //if(l.enable==true && o.enable==false) return this.dN_stop("DiskII_spin");
         }
     }
@@ -433,8 +433,8 @@ function AppleDisk2()
     var set_action = function(o)
     {
         if(o.bRep) o.rept++; else o.rept = 0;
-        //o.motor = o.status=="MOTOR_OFF" ? "OFF" : "ON";
-        if(o.status=="MOTOR_ON" && o.motor != "ON") 
+        //o.motor = o.state=="MOTOR_OFF" ? "OFF" : "ON";
+        if(o.state=="MOTOR_ON" && o.motor != "ON") 
         {
             //o.motor = "ON";
             //console.log("ON");
@@ -443,8 +443,8 @@ function AppleDisk2()
 
     this.dN_spindown = function(t)
     {
-        if(bDebug_S) console.log("TIMER EXP ("+t.dNd.motor+") - "+t.dNd.status);
-        if(t.dNd.status=="MOTOR_OFF")
+        if(bDebug_S) console.log("TIMER EXP ("+t.dNd.motor+") - "+t.dNd.state);
+        if(t.dNd.state=="MOTOR_OFF")
         {
             t.dNd.motor="OFF";
             //console.log(t.dNd.motor);
