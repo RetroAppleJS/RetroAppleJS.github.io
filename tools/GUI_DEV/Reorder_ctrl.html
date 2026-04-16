@@ -2,48 +2,62 @@
 
 <body style="background-color:rgb(233, 223, 217)">
 <style>
-  .appbox
-  {
-    font-family: "Arial";
-    font-size:13px;
-    margin:1px 1px 1px 1px;
-    padding: 6px;
-    border-radius: 5px;
-    border-style: none;
-    background: rgba(255, 255, 255, 0.8);
-    float:left;
-    text-align:center;
-    z-index: 1;
-  }
+.appbox
+{
+  font-family: "Arial";
+  font-size:13px;
+  margin:1px 1px 1px 1px;
+  padding: 6px;
+  border-radius: 5px;
+  border-style: none;
+  background: rgba(255, 255, 255, 0.8);
+  float:left;
+  text-align:center;
+}
 
-  .appbox2
-  {
-    font-family: "Arial";
-    font-size:13px;
-    margin:1px 1px 1px 1px;
-    padding: 6px;
-    border-radius: 5px;
-    border-style: none;
-    float:left;
-    text-align:center;
-    z-index: 2;
-  }  
+.slotbox
+{
+  width:36px;
+  padding:6px 0px 6px 0px;
+}
 
-  .toolbox
-  {
-    height:80px;
-    /*border:1px solid yellow;*/
-    float:left;
-  }
+.slotmenu
+{
+  display:block;
+  margin-top:2px;
+  margin-bottom:2px;
+  line-height:1;
+  opacity:0.2;
+}
 
+.slotstack
+{
+  position:relative;
+  width:100%;
+  height:18px;   /* adjust as needed */
+}
 
+.slotstack > div
+{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+}
 </style>
 
 <div class=toolbox id="device_slots">
     <div class=appbox style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
     SLOTS<br>
 
-        <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">board<br><div id="d_slotB"></div></div>
+  <div class="appbox slotbox">
+    board<br>
+    <button class=appbut style="margin-left:0px"><i class="fa fa-cog"></i></button><br>
+      <i class="fa fa-ellipsis-h slotmenu" style="z-index:2;padding:0px"></i>
+      <i class="fa fa-ellipsis-h slotmenu" style="z-index:3;padding:5px"></i>
+  </div>
+</div>
+
         <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#0   <br><div id="d_slot0"></div></div>
         <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#1   <br><div id="d_slot1"></div></div>
         <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#2   <br><div id="d_slot2"></div></div>
