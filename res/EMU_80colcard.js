@@ -15,7 +15,7 @@ function col80card()
 {
     //console.log("oEMU="+typeof(oEMU))
     this.id     = {"PCODE":"VIDEX", "icon":"fa fa-tv"}
-    this.status = {"active":true};
+    this.state = {"active":true};
 
     this.init = function()
     {
