@@ -287,10 +287,10 @@ function EMU_init()
 
     disk2.GUI_update = function(o)  // override
     {
-        if(this.DSK_led.length) this.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
-        if(_o.EMU_keyb_active) { this.DSK_led[0].style.visibility="hidden"; this.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
-        if(o[this.drv].motor==1) { this.DSK_led[this.drv].style.visibility = "visible"; }
-        else this.DSK_led[this.drv].style.visibility = "hidden";
+        if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
+        if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
+        if(o[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
+        else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
     }
     
     // overrides function that defines conditions for having an active emulator keyboard
@@ -302,8 +302,8 @@ function EMU_init()
         return b;
     }
 
-    disk2.DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
-    disk2.DSK_led[1] = document.getElementById("dskLED_D2");
+    disk2.state.DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
+    disk2.state.DSK_led[1] = document.getElementById("dskLED_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
@@ -349,7 +349,9 @@ function EMU_init()
         "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
 
-    oEMUI.slotConfig({"id":"slotB","active":true});   
+    oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});
+    oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});
+    // all other slots are configured in EMU_apple2io.js --> this.mount()
 }
 
 function EMU_system_get()
@@ -396,13 +398,14 @@ function EMUI()
         //var ss = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
         var s = "document.getElementById('"+arg.id+"').innerHTML='"+arg.id+"';"
         if(document.getElementById(arg.id)!=null)
-            document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"oEMUI.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\"fa fa-cog\"></i></button>"
+            document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"oEMUI.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\""+arg.icon+"\"></i></button>"
     }
 
     this.slotConfig_detail = function(id)
     {
         oCOM.POPUP.on("slotConfig_popup");
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
+        // TODO extend here to all popup customisations?
         if(id=="slotB")
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
@@ -476,6 +479,11 @@ function EMUI()
             oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:!bMuted,disabled:true})
                 .muteAct();
         }
+    }
+
+    this.deviceBtn = function(arg)
+    {
+
     }
 
     this.restartHold = {

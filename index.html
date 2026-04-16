@@ -281,21 +281,42 @@
                   <button class=appbut                 onclick="javascript:oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute'}).muteAct()"  title="Sound"><i id="mutebutton" class="fa fa-volume-mute"></i></button>
                   <button class=appbut                 onclick="javascript:oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause'})" id="pausebutton"   title="Pause"><i  class="fa fa-play"></i></button>
                   <br>
-<button class=appbut
-        value="Restart"
-        id="restartbutton"
-        title="Short press: warm boot / hold 1/2s: cold boot"
-        onmousedown="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
-        onmouseup="return oEMUI.restartBtnUp();"
-        onmouseleave="return oEMUI.restartBtnCancel();"
-        ontouchstart="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
-        ontouchend="return oEMUI.restartBtnUp();"
-        ontouchcancel="return oEMUI.restartBtnCancel();">
-  <i class="fa fa-power-off"></i>
-</button>
+                <button class=appbut
+                        value="Restart"
+                        id="restartbutton"
+                        title="Short press: warm boot / hold 1/2s: cold boot"
+                        onmousedown="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+                        onmouseup="return oEMUI.restartBtnUp();"
+                        onmouseleave="return oEMUI.restartBtnCancel();"
+                        ontouchstart="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+                        ontouchend="return oEMUI.restartBtnUp();"
+                        ontouchcancel="return oEMUI.restartBtnCancel();">
+                  <i class="fa fa-power-off"></i>
+                </button>
+                <button class=appbut onclick="javascript:oEMUI.deviceBtn({id:'devices',class1:'fa-play',class2:'fa-pause'})" id="devices"   title="Devices"><i class="fa fa-cube"></i></button>
+
                 </div>
-                <!--  DISK TOOLBOX -->
-                <div class=toolbox>
+                <!--  DEVICE TOOLBOX -->
+                <div class=toolbox id="device_slots">
+                  <div class=appbox style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
+                    SLOTS<br>
+
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">board<br><div id="d_slotB"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#0   <br><div id="d_slot0"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#1   <br><div id="d_slot1"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#2   <br><div id="d_slot2"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#3   <br><div id="d_slot3"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#4   <br><div id="d_slot4"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#5   <br><div id="d_slot5"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#6   <br><div id="d_slot6"></div></div>
+                      <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#7   <br><div id="d_slot7"></div></div>
+
+                  </div>
+                </div>
+
+
+
+                <div class=toolbox id="device_disk">
 
                     <div class=appbut style="padding:5px 5px 0px 5px;margin-top:0px;text-align:center">
                       <form action="index.html" id="f_D1" style="display:inline;">
@@ -304,7 +325,6 @@
                       </form>
                       <button class=appbut value="Download" onclick="oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])" id="dump_D1" title="Dump"><i  class="fa fa-cloud-download-alt"></i></button>
                     </div>
-
                     <div class=appbut style="padding:0px 5px 5px 5px;margin-top:0px;text-align:center">
                       <form action="index.html" id="f_D2" style="display:inline;">
                         <input type=button method=get class=appbut value="Drive2" onclick="ejectDisk(this,'D2')" onmouseover="this.value='&nbsp;Eject&nbsp;'" onmouseout="this.value='Drive2'">
@@ -384,11 +404,10 @@
 
                 <!--  SLOT SETTINGS -->
                 <div class=toolbox>
-                  <div class=appbox style="text-align:left;height:80px;padding:0px 6px 0px 6px;">
+                  <div class=appbox style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
                     SLOTS<br>
                     <!--form name="DEVboard"-->
                       <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">board<br><div id="slotB"></div></div>
-                      <!--div class=appbox style="width:36px;padding:6px 0px 6px 0px;">board<br><div id="slotB"><button class=appbut onclick="" id="resetbutton" title="Configure On-Board Slot" style="margin-left:0px"><i class="fa fa-cog"></i></button></div></div-->
                       <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#0   <br><div id="slot0"></div></div>
                       <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#1   <br><div id="slot1"></div></div>
                       <div class=appbox style="width:36px;padding:6px 0px 6px 0px;">#2   <br><div id="slot2"></div></div>

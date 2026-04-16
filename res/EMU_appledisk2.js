@@ -3,15 +3,46 @@
 //
 // EMU_apple2disk2.js
 
+// Add object to device registry
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
 function AppleDisk2()
 {
-    var bDebug = false;
+    var bDebug   = false;
     var bDebug_S = false;   // debug disk status only
 
-    var MOTOR_OFF =     0x08,
+    this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
+    this.state = 
+    {
+        "active":true
+        ,"drv":0
+        ,"hw":[{
+            "track":20
+            ,"phase":0
+            ,"data_latch":0
+            ,"motor":0
+            ,"q6":0
+            ,"q7":0
+            ,"offset":0
+            ,"stats":{"motor":0}
+        },{
+            "track":20
+            ,"phase":0
+            ,"data_latch":0
+            ,"motor":0
+            ,"q6":0
+            ,"q7":0
+            ,"offset":0
+            ,"stats":{"motor":0}
+        }]
+        ,"DSK_led" :[]
+    };
+
+    // TODO change to this.state?
+    this.diskBytes = [null,null];      // disk content
+
+    const MOTOR_OFF =     0x08,
         MOTOR_ON =      0x09,
         DRV0EN =        0x0a,
         DRV1EN =        0x0b,
@@ -19,34 +50,9 @@ function AppleDisk2()
         Q6H =           0x0d,
         Q7L =           0x0e,
         Q7H =           0x0f;
-    var TRACK_SIZE =    6656;
+    const TRACK_SIZE =  6656;
 
-    var o = 
-    [{
-         "track":20
-        ,"phase":0
-        ,"data_latch":0
-        ,"motor":0
-        ,"q6":0
-        ,"q7":0
-        ,"offset":0
-        ,"stats":{"motor":0}
-    },{
-        "track":20
-        ,"phase":0
-        ,"data_latch":0
-        ,"motor":0
-        ,"q6":0
-        ,"q7":0
-        ,"offset":0
-        ,"stats":{"motor":0}
-    }];
 
-    this.diskBytes = [null,null];      // disk content
-    this.drv = 0;
-    this.active = true;
-
-    this.buffers={};
     this.init = async function(action)
     {
         switch(action)
@@ -80,8 +86,8 @@ function AppleDisk2()
                 this.dNd.enable = false;
                 if(this.audio===undefined) return;
                 //try{ this.gain.disconnect(this.audio.destination) } catch(e) { console.warn("this.gain.disconnect(this.audio.destination)") }
-                for(var name in this.buffers)
-                    if(this.buffers[name].loop) try{ this.buffers[name].disconnect(this.gain) } catch(e) { console.warn("this.buffers['"+name+"'].disconnect(this.gain)") }
+                for(var name in this.AUD_buffer)
+                    if(this.AUD_buffer[name].loop) try{ this.AUD_buffer[name].disconnect(this.gain) } catch(e) { console.warn("this.AUD_buffer['"+name+"'].disconnect(this.gain)") }
   
                 this.audio.suspend();
             break;
@@ -90,24 +96,23 @@ function AppleDisk2()
 
     this.reset = function() {
 
-        o[0].phase = 0;
-        o[0].motor = 0;
-        o[0].q6 = 0;
-        o[0].q7 = 0;
-        o[0].offset = 0;
+        this.state.hw[0].phase = 0;
+        this.state.hw[0].motor = 0;
+        this.state.hw[0].q6 = 0;
+        this.state.hw[0].q7 = 0;
+        this.state.hw[0].offset = 0;
 
-        o[1].phase = 0;
-        o[1].motor = 0;
-        o[1].q6 = 0;
-        o[1].q7 = 0;
-        o[1].offset = 0;
+        this.state.hw[1].phase = 0;
+        this.state.hw[1].motor = 0;
+        this.state.hw[1].q6 = 0;
+        this.state.hw[1].q7 = 0;
+        this.state.hw[1].offset = 0;
 
-        this.drv = 0;
+        this.state.drv = 0;
     }
 
-    this.DSK_led = [];
 
-    this.getDataObj = function() { return o }
+    this.getDataObj = function() { return this.state.hw }
 
     this.GUI_update = function()    // overridable function to update drive status (LED)
     {
@@ -116,17 +121,17 @@ function AppleDisk2()
     this.update_logs = function(name)    // overridable function
     {
         /*
-        name += " track"+o[this.drv].track;
+        name += " track"+this.state.hw[this.state.drv].track;
 
         if(prev_name != name)
         {
             var n = prev_name.split(" ")[0];
             if(prev_name != "") 
             {
-                if(o[this.drv][n]===undefined)
+                if(this.state.hw[this.state.drv][n]===undefined)
                 console.log(prev_name+" ["+prev_name_cnt+"]");
                 else
-                    console.log(prev_name+" "+(o[this.drv][n])+" ["+prev_name_cnt+"]");
+                    console.log(prev_name+" "+(this.state.hw[this.state.drv][n])+" ["+prev_name_cnt+"]");
             }
             prev_name_cnt = 1;
         }
@@ -145,39 +150,39 @@ function AppleDisk2()
 
     this.readROM = function(addr)
     {
-        if(this.diskBytes[this.drv])        // if disk data is loaded on the selected drive
+        if(this.diskBytes[this.state.drv])        // if disk data is loaded on the selected drive
                     return this.ROM[addr];    // return content of disk ROM addres
         return null;
     }
 
     this.read = function(addr) {
         //console.log("AppleDisk2: read %s", addr.toString(16));
-        var drv = this.drv
+        var drv = this.state.drv
         if (addr < 0x08) {
             // Stepper motor on.
             if ((addr & 1) != 0) {
                 var p = ((addr >> 1) & 3); // phase we're turning on.
 
-                if (((o[drv].phase + 1) & 3) == p) {
+                if (((this.state.hw[drv].phase + 1) & 3) == p) {
                     // Ascending order, track arm moves inward.
-                    o[drv].phase = p;
+                    this.state.hw[drv].phase = p;
                     this.update_logs("phase");
-                    if ((o[drv].phase & 1) == 0) {
-                        if (++o[drv].track >= 35)
+                    if ((this.state.hw[drv].phase & 1) == 0) {
+                        if (++this.state.hw[drv].track >= 35)
                         {
-                            o[drv].track = 35; // CLICK! CLICK! CLICK!
+                            this.state.hw[drv].track = 35; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_OUT");
                         }
                         else this.dN_update("ARM_OUT");
                     }
                 }
-                else if (((o[drv].phase - 1) & 3) == p) {
+                else if (((this.state.hw[drv].phase - 1) & 3) == p) {
                     // Descending order, track arm moves outward.
-                    o[drv].phase = p;
-                    if ((o[drv].phase & 1) == 0) {
-                        if (--o[drv].track < 0)
+                    this.state.hw[drv].phase = p;
+                    if ((this.state.hw[drv].phase & 1) == 0) {
+                        if (--this.state.hw[drv].track < 0)
                         {
-                            o[drv].track = 0; // CLICK! CLICK! CLICK!
+                            this.state.hw[drv].track = 0; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_IN");
                         }
                         else this.dN_update("ARM_IN");
@@ -188,42 +193,42 @@ function AppleDisk2()
         else {
             switch (addr) {
             case MOTOR_ON:
-                o[drv].motor = 1;
+                this.state.hw[drv].motor = 1;
                 this.dN_update("MOTOR_ON");
                 //document.getElementById("LEDS").innerHTML = this.dNd.motor;
                 
                 break;
             case MOTOR_OFF:
-                o[drv].motor = 0;
+                this.state.hw[drv].motor = 0;
                 this.dN_update("MOTOR_OFF");
                 //document.getElementById("LED1").style.visibility = "hidden";
                 //document.getElementById("LEDS").innerHTML = this.dNd.motor;
                 
                 break;                
             case DRV0EN:
-                this.drv = 0;
+                this.state.drv = 0;
                 this.update_logs("D1");
                 break;
             case DRV1EN:
-                this.drv = 1;
+                this.state.drv = 1;
                 this.update_logs("D2");
                 break;
             case Q6L:
-                o[drv].q6 = 0;
+                this.state.hw[drv].q6 = 0;
                 this.update_logs("q6");
                 // Strobe Data Latch for I/O
-                if (!this.diskBytes[drv] || !o[drv].motor)
+                if (!this.diskBytes[drv] || !this.state.hw[drv].motor)
                     return 0xff;
                 else
                 {
-                    if (++o[drv].offset == TRACK_SIZE) o[drv].offset = 0;                   
+                    if (++this.state.hw[drv].offset == TRACK_SIZE) this.state.hw[drv].offset = 0;                   
 
-                    var loc = o[drv].track * TRACK_SIZE + o[drv].offset;
-                    if (o[drv].q7)
+                    var loc = this.state.hw[drv].track * TRACK_SIZE + this.state.hw[drv].offset;
+                    if (this.state.hw[drv].q7)
                     {
                         // Write to disk.
-                        this.diskBytes[drv][loc] = o[drv].data_latch;
-                        return o[drv].data_latch;
+                        this.diskBytes[drv][loc] = this.state.hw[drv].data_latch;
+                        return this.state.hw[drv].data_latch;
                     }
                     else
                         // Read from disk.
@@ -233,17 +238,17 @@ function AppleDisk2()
             case Q6H:
                 // Load data latch.  Also sense write-protect
                 // but defaults to zero below anyway.
-                o[drv].q6 = 1;
+                this.state.hw[drv].q6 = 1;
                 this.update_logs("q6");
                 break;
             case Q7L:
                 // Prepare latch for input.
-                o[drv].q7 = 0;
+                this.state.hw[drv].q7 = 0;
                 this.update_logs("q7");
                 break;
             case Q7H:
                 // Prepare latch for output.
-                o[drv].q7 = 1;
+                this.state.hw[drv].q7 = 1;
                 this.update_logs("q7");
                 break;
             default:
@@ -264,7 +269,7 @@ function AppleDisk2()
 
     this.write = function(addr, d8)
     {
-        if (addr == Q6H) o[this.drv].data_latch = d8;
+        if (addr == Q6H) this.state.hw[this.state.drv].data_latch = d8;
     }
 
 //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
@@ -360,7 +365,8 @@ function AppleDisk2()
 //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
 //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
-    this.dNd = {enable:false,motor:"OFF",status:"",detune:0,rept:0,last:{}};
+    this.dNd = {enable:false,motor:"OFF",status:"",detune:0,rept:0,last:{}};  // disk Noise data
+    this.AUD_buffer={};
 
     this.s_load_all = async function(samplesDS)
     {
@@ -454,12 +460,12 @@ function AppleDisk2()
 
       if(bDebug) { console.log("play('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
 
-      this.buffers[name]        = this.audio.createBufferSource();  // create buffers
-      this.buffers[name].buffer = dN_samples[name].audio;           // fill buffers
-      this.buffers[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
-      this.buffers[name].loop           = dN_samples[name].loop;    // configure loop parameter
-      this.buffers[name].detune.value   = this.dNd.detune;          // tune according to CPU clock
-      this.buffers[name].start(this.audio.currentTime);
+      this.AUD_buffer[name]        = this.audio.createBufferSource();  // create buffers
+      this.AUD_buffer[name].buffer = dN_samples[name].audio;           // fill buffers
+      this.AUD_buffer[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
+      this.AUD_buffer[name].loop           = dN_samples[name].loop;    // configure loop parameter
+      this.AUD_buffer[name].detune.value   = this.dNd.detune;          // tune according to CPU clock
+      this.AUD_buffer[name].start(this.audio.currentTime);
     }
 
     this.dN_stop = function(name)
@@ -467,8 +473,8 @@ function AppleDisk2()
       if(name==null) return;
 
       if(bDebug) { console.log("stop('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
-      this.buffers[name].loop = false;
-      this.buffers[name].stop();
+      this.AUD_buffer[name].loop = false;
+      this.AUD_buffer[name].stop();
     }
 
 

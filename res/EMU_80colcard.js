@@ -8,13 +8,15 @@
 // ABOUT SPECIAL SOFT SWITCH OPERATION
 // https://retrocomputing.stackexchange.com/questions/5056/why-are-some-soft-switches-on-the-apple-ii-only-triggered-with-a-write
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"EightyColCard":new EightyColCard()}}}
-else oEMU.component.IO.EightyColCard = new EightyColCard();
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"col80card":new col80card()}}}
+else oEMU.component.IO.col80card= new col80card();
 
-function EightyColCard()
+function col80card()
 {
     //console.log("oEMU="+typeof(oEMU))
-    
+    this.id     = {"PCODE":"VIDEX", "icon":"fa fa-tv"}
+    this.status = {"active":true};
+
     this.init = function()
     {
         //oEMU.component.IO.DRIVER.mount("VIDEX",3,this.col80card,false);
