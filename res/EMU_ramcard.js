@@ -15,10 +15,10 @@ function RamCard()
 
     this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
     this.state = {"active":true};
-
+    this.active = true; 
     var bDebug = true;   // debug all RAM R/W operations
     var bDebug_S = true; // debug soft switch updates
-
+ 
     var softswitch = {
         0x0: {"RAMCARD":true                       }
        ,0x1: {               "WE":true             }
