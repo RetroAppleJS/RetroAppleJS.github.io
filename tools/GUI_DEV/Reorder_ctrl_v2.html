@@ -315,8 +315,34 @@ function onDragStart(ev)
 function onDragEnd()
 {
   dragFromSlotId = null;
+  touchFromSlotId = null;
   clearDropHints();
+  clearTouchPick();
   document.querySelectorAll(".slot.drag-source").forEach(el => el.classList.remove("drag-source"));
+}
+
+function onTouchPick(ev)
+{
+  if (!isTouchLike(ev)) return;
+
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const slotEl = ev.currentTarget.closest(".slot");
+  touchFromSlotId = slotEl.dataset.slotId;
+  clearTouchPick();
+  slotEl.classList.add("armed");
+}
+
+function onTouchDrop(ev)
+{
+  if (!isTouchLike(ev) || !touchFromSlotId) return;
+
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const toSlotId = ev.currentTarget.dataset.slotId;
+  movePeripheral(touchFromSlotId, toSlotId);
 }
 
 function onDragOver(ev)
@@ -363,6 +389,8 @@ function movePeripheral(fromSlotId, toSlotId)
 
   to.peripheral = from.peripheral;
   from.peripheral = null;
+  dragFromSlotId = null;
+  touchFromSlotId = null;
 
   renderSlots();
 
@@ -376,6 +404,14 @@ function clearDropHints()
   document.querySelectorAll(".slot-anchor.drop-ok").forEach(el =>
   {
     el.classList.remove("drop-ok");
+  });
+}
+
+function clearTouchPick()
+{
+  document.querySelectorAll(".slot.armed").forEach(el =>
+  {
+    el.classList.remove("armed");
   });
 }
 
