@@ -2,77 +2,73 @@
 
 <body style="background-color:rgb(233, 223, 217)">
 <style>
+
+.appbox
+{
+  font-family: "Arial";
+  font-size:13px;
+  margin:1px;
+  padding:6px;
+  border-radius:5px;
+  border-style:none;
+  background:rgba(255,255,255,0.8);
+  text-align:center;
+  z-index:1;
+  box-sizing:border-box;
+}
+
 #device_slots
 {
   display:flex;
-  gap:4px;
+  gap:1px;
   align-items:flex-start;
 }
 
 .slotbox
 {
-  width:74px;
-  min-height:118px;
-  padding:6px 4px;
-  box-sizing:border-box;
+  width:36px;
+  padding:6px 0px 6px 0px;
+  min-height:auto;
 }
 
 .slot-label
 {
-  font-weight:bold;
-  margin-bottom:4px;
+  font-weight:normal;
+  margin:0;
+}
+
+.sloticons
+{
+  position:relative;
+  width:100%;
+  height:30px;
 }
 
 .cogbtn
 {
-  margin:0 0 6px 0 !important;
+  position:relative;
+  z-index:3;
+  display:block;
+  margin:0 auto !important;
 }
 
-.slot-anchor
+.dots
 {
-  min-height:52px;
-  padding:4px;
-  border-radius:8px;
-  box-sizing:border-box;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  line-height:1;
+  opacity:0.2;
+  margin:0;
+  padding:0;
+  z-index:1;
 }
 
-.slot-anchor.occupied
+.dots1
 {
-  background:rgba(0,0,0,0.05);
+  top:16px;
 }
 
-.slot-anchor.locked
+.dots2
 {
-  background:rgba(0,0,0,0.08);
-}
-
-.slot-anchor.empty
-{
-  border:1px dashed rgba(0,0,0,0.20);
-  background:rgba(255,255,255,0.55);
-}
-
-.slot-anchor.drop-ok
-{
-  border-color:#3a7;
-  background:rgba(70,180,120,0.14);
-}
-
-.slot.drag-source .peripheral-card
-{
-  opacity:0.45;
-}
-
-.peripheral-card
-{
-  width:100%;
-  padding:5px 4px;
-  border-radius:6px;
-  background:rgba(255,255,255,0.95);
-  box-sizing:border-box;
+  top:21px;   /* exactly 5px lower */
 }
 
 .peripheral-name
@@ -86,12 +82,7 @@
 
 .drag-handle
 {
-  display:inline-flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  margin-top:4px;
-  opacity:0.45;
+  display:block;
   cursor:grab;
   user-select:none;
 }
@@ -124,13 +115,13 @@
 </style>
 
 <div class=toolbox id="device_slots">
-    
+
 </div>
 
 
 <script>
 const slots = [
-  { slotId: "board", label: "board", locked: true,  peripheral: { id: "mainboard", name: "MAINBOARD" } },
+  { slotId: "board", label: "board", locked: true,  peripheral: { id: "mainboard", name: "BOARD" } },
   { slotId: "0",     label: "#0",    locked: false, peripheral: null },
   { slotId: "1",     label: "#1",    locked: false, peripheral: null },
   { slotId: "2",     label: "#2",    locked: false, peripheral: null },
@@ -155,9 +146,7 @@ function renderSlot(slot)
   return `
     <div class="appbox slotbox slot" data-slot-id="${slot.slotId}">
       <div class="slot-label">${slot.label}</div>
-      <button class="appbut cogbtn" type="button">
-        <i class="fa fa-cog"></i>
-      </button>
+          ${ slot.peripheral ? `<button class="appbut cogbtn" type="button"><i class="fa fa-cog"></i></button>`:"" }
       ${renderAnchor(slot)}
     </div>
   `;
@@ -175,16 +164,14 @@ function renderAnchor(slot)
         id="${anchorId}"
         data-slot-id="${slot.slotId}">
         <div class="peripheral-card">
-          <span class="peripheral-name">${slot.peripheral.name}</span>
+          <!--span class="peripheral-name">${slot.peripheral.name}</span-->
+
           ${
-            slot.locked
-              ? ""
-              : `
-                <span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
-                  <i class="fa fa-ellipsis-h"></i>
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-              `
+            slot.locked ?
+              "":`<span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
+                  <i class="fa fa-ellipsis-h dots dots1"></i>
+                  <i class="fa fa-ellipsis-h dots dots2"></i>
+                </span>`
           }
         </div>
       </div>
@@ -197,7 +184,7 @@ function renderAnchor(slot)
       id="${anchorId}"
       data-slot-id="${slot.slotId}">
       <button class="slot-add" type="button" title="Add peripheral to ${slot.label}">
-        <i class="fa fa-plus"></i>
+        <i class="fa fa-plus  dots dots1"></i>
       </button>
     </div>
   `;
