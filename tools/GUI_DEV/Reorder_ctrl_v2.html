@@ -2,6 +2,17 @@
 
 <body style="background-color:rgb(233, 223, 217)">
 <style>
+:root
+{
+  --slot-w:35px;
+  --slot-gap:1px;
+  --slot-pad-y:6px;
+  --slot-min-h:30px;
+  --anchor-bottom:-4px;
+  --anchor-bottom-empty:-2px;
+  --glyph-alpha:0.2;
+  --touch-hit:24px;
+}
 
 .appbox
 {
@@ -20,40 +31,46 @@
 #device_slots
 {
   display:flex;
-  gap:1px;
+  gap:var(--slot-gap);
   align-items:flex-start;
 }
 
 .slotbox
 {
- width:35px;
- padding:6px 0px 6px 0px;
- display:flex;
- flex-direction:column;
- align-items:stretch;
+  width:var(--slot-w);
+  padding:var(--slot-pad-y) 0;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
 }
 
 .slot-label
 {
   font-weight:normal;
-  margin:0 0 0 0;
+  margin:0;
 }
 
 .sloticons
 {
   position:relative;
   width:100%;
-  flex:1;
-  min-height:30px;
+  min-height:var(--slot-min-h);
+}
+
+.cogbtn,
+.slot-add,
+.drag-handle
+{
+  position:relative;
+  display:block;
+  margin:0 auto !important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
 
 .cogbtn
 {
-  position:relative;
   z-index:3;
-  display:block;
-  top: 0px;
-  margin:0 auto !important;
   cursor:pointer;
 }
 
@@ -63,22 +80,27 @@
   position:absolute;
   left:0;
   right:0;
-  bottom:-4px;
+  bottom:var(--anchor-bottom);
   text-align:center;
 }
 
 .slot-anchor.empty
 {
-  bottom:-2px;
+  bottom:var(--anchor-bottom-empty);
 }
 
-.dots
+.dots,
+.drag-handle .fa,
+.slot-add .fa
 {
- line-height:1;
- opacity:0.2;
- margin:0;
- padding:0;
- z-index:1;
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  line-height:1;
+  opacity:var(--glyph-alpha);
+  margin:0;
+  padding:0;
+  z-index:1;
 }
 
 .peripheral-name
@@ -91,13 +113,10 @@
 
 .drag-handle
 {
- position:relative;
- display:block;
- width:16px;
- height:13px;
- margin:0 auto;
- cursor:grab;
- user-select:none;
+  width:var(--touch-hit);
+  height:18px;
+  cursor:grab;
+  user-select:none; 
 }
 
 .drag-handle:active
@@ -105,16 +124,14 @@
   cursor:grabbing;
 }
 
-.drag-handle .fa
-{
- position:absolute;
- left:50%;
- transform:translateX(-50%);
-}
-
-.drag-handle .dots1
+.drag-handle .fa:first-child
 {
  bottom:5px;
+}
+
+.drag-handle .fa:last-child
+{
+  bottom:0;
 }
 
 .slot-add
@@ -124,12 +141,50 @@
   background:rgba(255,255,255,0.95);
   cursor:pointer;
   font-size:14px;
+  width:var(--touch-hit);
+  height:18px;
+}
+
+.slot-add .fa
+{
+  bottom:-1px;
 }
 
 .slot-add:hover
 {
   background:rgba(255,255,255,1);
 }
+
+
+.slot.armed
+{
+  outline:1px dashed rgba(0,0,0,0.25);
+  outline-offset:1px;
+}
+
+.slot-anchor.drop-ok
+{
+  outline:1px dashed rgba(0,0,0,0.25);
+  outline-offset:1px;
+}
+
+@media (pointer:coarse)
+{
+  :root
+  {
+    --slot-w:40px;
+    --touch-hit:32px;
+  }
+
+  .cogbtn,
+  .slot-add,
+  .drag-handle
+  {
+    min-width:var(--touch-hit);
+  }
+}
+
+
 </style>
 
 <div class=toolbox id="device_slots">
@@ -151,6 +206,16 @@ const slots = [
 ];
 
 let dragFromSlotId = null;
+let touchFromSlotId = null;
+
+function isTouchLike(ev)
+{
+  return !!(
+    (ev && ev.pointerType && ev.pointerType !== "mouse") ||
+    window.matchMedia("(pointer: coarse)").matches ||
+    navigator.maxTouchPoints > 0
+  );
+}
 
 function renderSlots()
 {
@@ -218,6 +283,7 @@ function wireEvents()
   {
     el.addEventListener("dragstart", onDragStart);
     el.addEventListener("dragend", onDragEnd);
+    el.addEventListener("pointerup", onTouchPick);
   });
 
   document.querySelectorAll(".slot-anchor.empty").forEach(el =>
@@ -226,6 +292,7 @@ function wireEvents()
     el.addEventListener("dragenter", onDragEnter);
     el.addEventListener("dragleave", onDragLeave);
     el.addEventListener("drop", onDrop);
+    el.addEventListener("pointerup", onTouchDrop);
   });
 
   document.querySelectorAll(".slot-add").forEach(el =>
