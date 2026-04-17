@@ -117,11 +117,6 @@
  bottom:5px;
 }
 
-.drag-handle .dots2
-{
- bottom:0;
-}
-
 .slot-add
 {
   border:0;
@@ -197,7 +192,7 @@ function renderAnchor(slot)
             slot.locked ?
               "":`<span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
                   <i class="fa fa-ellipsis-h dots dots1"></i>
-                  <i class="fa fa-ellipsis-h dots dots2"></i>
+                  <i class="fa fa-ellipsis-h dots"></i>
                 </span>`
           }
         </div>
