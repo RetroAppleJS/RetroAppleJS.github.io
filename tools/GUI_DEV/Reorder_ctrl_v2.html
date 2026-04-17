@@ -26,7 +26,7 @@
 
 .slotbox
 {
- width:36px;
+ width:35px;
  padding:6px 0px 6px 0px;
  display:flex;
  flex-direction:column;
@@ -36,15 +36,15 @@
 .slot-label
 {
   font-weight:normal;
-  margin:0 0 4px 0;
+  margin:0 0 0 0;
 }
 
 .sloticons
 {
   position:relative;
   width:100%;
- flex:1;
- min-height:25px;
+  flex:1;
+  min-height:30px;
 }
 
 .cogbtn
@@ -52,7 +52,9 @@
   position:relative;
   z-index:3;
   display:block;
+  top: 0px;
   margin:0 auto !important;
+  cursor:pointer;
 }
 
 
@@ -61,32 +63,22 @@
   position:absolute;
   left:0;
   right:0;
-  bottom:0;
+  bottom:-4px;
   text-align:center;
 }
 
 .slot-anchor.empty
 {
-  bottom:-4px;
+  bottom:-2px;
 }
 
 .dots
 {
-  line-height:1;
-  opacity:0.2;
-  margin:0;
-  padding:0;
-  z-index:1;
-}
-
-.dots1
-{
-  top:16px;
-}
-
-.dots2
-{
-  top:21px;   /* exactly 5px lower */
+ line-height:1;
+ opacity:0.2;
+ margin:0;
+ padding:0;
+ z-index:1;
 }
 
 .peripheral-name
@@ -94,17 +86,18 @@
   display:block;
   min-height:24px;
   font-size:11px;
-  line-height:1.05;
   word-break:break-word;
 }
 
 .drag-handle
 {
-  display:inline-flex;
-  flex-direction:column;
-  align-items:center;
-  cursor:grab;
-  user-select:none;
+ position:relative;
+ display:block;
+ width:16px;
+ height:13px;
+ margin:0 auto;
+ cursor:grab;
+ user-select:none;
 }
 
 .drag-handle:active
@@ -112,15 +105,25 @@
   cursor:grabbing;
 }
 
-.drag-handle .fa + .fa
+.drag-handle .fa
 {
-  margin-top:5px;
+ position:absolute;
+ left:50%;
+ transform:translateX(-50%);
+}
+
+.drag-handle .dots1
+{
+ bottom:5px;
+}
+
+.drag-handle .dots2
+{
+ bottom:0;
 }
 
 .slot-add
 {
-  width:28px;
-  height:28px;
   border:0;
   border-radius:999px;
   background:rgba(255,255,255,0.95);
