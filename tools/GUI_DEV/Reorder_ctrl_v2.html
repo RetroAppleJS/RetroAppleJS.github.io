@@ -26,22 +26,25 @@
 
 .slotbox
 {
-  width:36px;
-  padding:6px 0px 6px 0px;
-  min-height:auto;
+ width:36px;
+ padding:6px 0px 6px 0px;
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
 }
 
 .slot-label
 {
   font-weight:normal;
-  margin:0;
+  margin:0 0 4px 0;
 }
 
 .sloticons
 {
   position:relative;
   width:100%;
-  height:30px;
+ flex:1;
+ min-height:56px;
 }
 
 .cogbtn
@@ -52,11 +55,23 @@
   margin:0 auto !important;
 }
 
-.dots1
+
+.slot-anchor
 {
   position:absolute;
-  left:50%;
-  transform:translateX(-50%);
+  left:0;
+  right:0;
+  bottom:0;
+  text-align:center;
+}
+
+.slot-anchor.empty
+{
+  bottom:-4px;
+}
+
+.dots
+{
   line-height:1;
   opacity:0.2;
   margin:0;
@@ -69,9 +84,9 @@
   top:16px;
 }
 
-.dots2 
+.dots2
 {
-    top:21px;
+  top:21px;   /* exactly 5px lower */
 }
 
 .peripheral-name
@@ -85,7 +100,9 @@
 
 .drag-handle
 {
-  display:block;
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
   cursor:grab;
   user-select:none;
 }
@@ -95,27 +112,25 @@
   cursor:grabbing;
 }
 
+.drag-handle .fa + .fa
+{
+  margin-top:5px;
+}
+
 .slot-add
 {
+  width:28px;
+  height:28px;
   border:0;
-  background:none;
-  padding:0;
-  margin:0;
-  border-radius:0;
-  width:auto;
-  height:auto;
+  border-radius:999px;
+  background:rgba(255,255,255,0.95);
   cursor:pointer;
+  font-size:14px;
 }
 
-.slot-add:hover .fa
+.slot-add:hover
 {
-  opacity:0.35;
-}
-
-.slot.drop-target.drag-over
-{
-  outline:1px dashed rgba(0,0,0,0.25);
-  outline-offset:1px;
+  background:rgba(255,255,255,1);
 }
 </style>
 
@@ -126,15 +141,15 @@
 
 <script>
 const slots = [
-  { slotId: "board", label: "board", locked: true,  configId: "deviceB", peripheral: { id: "mainboard", name: "MAINBOARD" } },
-  { slotId: "0",     label: "#0",    locked: false, configId: "MS16K",   peripheral: { id: "ms16k", name: "MS16K" } },
-  { slotId: "1",     label: "#1",    locked: false, configId: null,      peripheral: null },
-  { slotId: "2",     label: "#2",    locked: false, configId: null,      peripheral: null },
-  { slotId: "3",     label: "#3",    locked: false, configId: "VIDEX",   peripheral: { id: "videx", name: "VIDEX" } },
-  { slotId: "4",     label: "#4",    locked: false, configId: null,      peripheral: null },
-  { slotId: "5",     label: "#5",    locked: false, configId: null,      peripheral: null },
-  { slotId: "6",     label: "#6",    locked: false, configId: "DISKII",  peripheral: { id: "diskii", name: "DISKII" } },
-  { slotId: "7",     label: "#7",    locked: false, configId: null,      peripheral: null }
+  { slotId: "board", label: "board", locked: true,  peripheral: { id: "mainboard", name: "BOARD" } },
+  { slotId: "0",     label: "#0",    locked: false, peripheral: null },
+  { slotId: "1",     label: "#1",    locked: false, peripheral: null },
+  { slotId: "2",     label: "#2",    locked: false, peripheral: null },
+  { slotId: "3",     label: "#3",    locked: false, peripheral: null },
+  { slotId: "4",     label: "#4",    locked: false, peripheral: null },
+  { slotId: "5",     label: "#5",    locked: false, peripheral: null },
+  { slotId: "6",     label: "#6",    locked: false, peripheral: { id: "diskii", name: "DISKII" } },
+  { slotId: "7",     label: "#7",    locked: false, peripheral: null }
 ];
 
 let dragFromSlotId = null;
@@ -148,23 +163,15 @@ function renderSlots()
 
 function renderSlot(slot)
 {
-  const isEmptyDropTarget = !slot.locked && !slot.peripheral;
-
   return `
-    <div class="appbox slotbox slot ${isEmptyDropTarget ? "drop-target" : ""}" data-slot-id="${slot.slotId}">
+    <div class="appbox slotbox slot" data-slot-id="${slot.slotId}">
       <div class="slot-label">${slot.label}</div>
+
       <div class="sloticons">
-        ${
-          slot.peripheral
-            ? `
-              <button class="appbut cogbtn" type="button" onclick="config('${slot.configId || slot.peripheral.id}', this)">
-                <i class="fa fa-cog"></i>
-              </button>
-            `
-            : ""
-        }
-        ${renderAnchor(slot)}
-      </div>    
+      ${ slot.peripheral ? `<button class="appbut cogbtn" type="button"><i class="fa fa-cog"></i></button>`:"" }
+      ${renderAnchor(slot)}
+      </div>
+
     </div>
   `;
 }
@@ -173,7 +180,7 @@ function renderAnchor(slot)
 {
   const anchorId = "d_slot" + slot.slotId;
 
-if (slot.peripheral && !slot.locked)
+  if (slot.peripheral)
   {
     return `
       <div
@@ -181,39 +188,30 @@ if (slot.peripheral && !slot.locked)
         id="${anchorId}"
         data-slot-id="${slot.slotId}">
         <div class="peripheral-card">
-          <span class="peripheral-name">${slot.peripheral.name}</span>
+          <!--span class="peripheral-name">${slot.peripheral.name}</span-->
+
           ${
-            slot.locked
-              ? ""
-              : `
-                <span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
-                  <i class="fa fa-ellipsis-h"></i>
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-              `
+            slot.locked ?
+              "":`<span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
+                  <i class="fa fa-ellipsis-h dots dots1"></i>
+                  <i class="fa fa-ellipsis-h dots dots2"></i>
+                </span>`
           }
-      <div id="${anchorId}" data-slot-id="${slot.slotId}">
-        <span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
-          <i class="fa fa-ellipsis-h dots dots1"></i>
-          <i class="fa fa-ellipsis-h dots dots2"></i>
-        </span>
+        </div>
       </div>
     `;
   }
 
-  if (!slot.peripheral)
-  {
-    return `
-      <div id="${anchorId}" data-slot-id="${slot.slotId}">
-        <button class="slot-add" type="button" title="Add peripheral to ${slot.label}">
-          <i class="fa fa-plus dots dots1"></i>
-        </button>
-      </div>
-    `;
-  }
-
-  return `<div id="${anchorId}" data-slot-id="${slot.slotId}"></div>`;
-
+  return `
+    <div
+      class="slot-anchor empty"
+      id="${anchorId}"
+      data-slot-id="${slot.slotId}">
+      <button class="slot-add" type="button" title="Add peripheral to ${slot.label}">
+        <i class="fa fa-plus dots dots1"></i>
+      </button>
+    </div>
+  `;
 }
 
 function wireEvents()
