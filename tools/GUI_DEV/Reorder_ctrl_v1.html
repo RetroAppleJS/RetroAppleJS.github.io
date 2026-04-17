@@ -1,0 +1,316 @@
+<link rel="stylesheet" href="../../res/COM_fontawesome/all.css">
+
+<body style="background-color:rgb(233, 223, 217)">
+<style>
+#device_slots
+{
+  display:flex;
+  gap:4px;
+  align-items:flex-start;
+}
+
+.slotbox
+{
+  width:74px;
+  min-height:118px;
+  padding:6px 4px;
+  box-sizing:border-box;
+}
+
+.slot-label
+{
+  font-weight:bold;
+  margin-bottom:4px;
+}
+
+.cogbtn
+{
+  margin:0 0 6px 0 !important;
+}
+
+.slot-anchor
+{
+  min-height:52px;
+  padding:4px;
+  border-radius:8px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.slot-anchor.occupied
+{
+  background:rgba(0,0,0,0.05);
+}
+
+.slot-anchor.locked
+{
+  background:rgba(0,0,0,0.08);
+}
+
+.slot-anchor.empty
+{
+  border:1px dashed rgba(0,0,0,0.20);
+  background:rgba(255,255,255,0.55);
+}
+
+.slot-anchor.drop-ok
+{
+  border-color:#3a7;
+  background:rgba(70,180,120,0.14);
+}
+
+.slot.drag-source .peripheral-card
+{
+  opacity:0.45;
+}
+
+.peripheral-card
+{
+  width:100%;
+  padding:5px 4px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.95);
+  box-sizing:border-box;
+}
+
+.peripheral-name
+{
+  display:block;
+  min-height:24px;
+  font-size:11px;
+  line-height:1.05;
+  word-break:break-word;
+}
+
+.drag-handle
+{
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  margin-top:4px;
+  opacity:0.45;
+  cursor:grab;
+  user-select:none;
+}
+
+.drag-handle:active
+{
+  cursor:grabbing;
+}
+
+.drag-handle .fa + .fa
+{
+  margin-top:5px;
+}
+
+.slot-add
+{
+  width:28px;
+  height:28px;
+  border:0;
+  border-radius:999px;
+  background:rgba(255,255,255,0.95);
+  cursor:pointer;
+  font-size:14px;
+}
+
+.slot-add:hover
+{
+  background:rgba(255,255,255,1);
+}
+</style>
+
+<div class=toolbox id="device_slots">
+    
+</div>
+
+
+<script>
+const slots = [
+  { slotId: "board", label: "board", locked: true,  peripheral: { id: "mainboard", name: "MAINBOARD" } },
+  { slotId: "0",     label: "#0",    locked: false, peripheral: null },
+  { slotId: "1",     label: "#1",    locked: false, peripheral: null },
+  { slotId: "2",     label: "#2",    locked: false, peripheral: null },
+  { slotId: "3",     label: "#3",    locked: false, peripheral: null },
+  { slotId: "4",     label: "#4",    locked: false, peripheral: null },
+  { slotId: "5",     label: "#5",    locked: false, peripheral: null },
+  { slotId: "6",     label: "#6",    locked: false, peripheral: { id: "diskii", name: "DISKII" } },
+  { slotId: "7",     label: "#7",    locked: false, peripheral: null }
+];
+
+let dragFromSlotId = null;
+
+function renderSlots()
+{
+  const host = document.getElementById("device_slots");
+  host.innerHTML = slots.map(renderSlot).join("");
+  wireEvents();
+}
+
+function renderSlot(slot)
+{
+  return `
+    <div class="appbox slotbox slot" data-slot-id="${slot.slotId}">
+      <div class="slot-label">${slot.label}</div>
+      <button class="appbut cogbtn" type="button">
+        <i class="fa fa-cog"></i>
+      </button>
+      ${renderAnchor(slot)}
+    </div>
+  `;
+}
+
+function renderAnchor(slot)
+{
+  const anchorId = "d_slot" + slot.slotId;
+
+  if (slot.peripheral)
+  {
+    return `
+      <div
+        class="slot-anchor occupied ${slot.locked ? "locked" : "movable"}"
+        id="${anchorId}"
+        data-slot-id="${slot.slotId}">
+        <div class="peripheral-card">
+          <span class="peripheral-name">${slot.peripheral.name}</span>
+          ${
+            slot.locked
+              ? ""
+              : `
+                <span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
+                  <i class="fa fa-ellipsis-h"></i>
+                  <i class="fa fa-ellipsis-h"></i>
+                </span>
+              `
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div
+      class="slot-anchor empty"
+      id="${anchorId}"
+      data-slot-id="${slot.slotId}">
+      <button class="slot-add" type="button" title="Add peripheral to ${slot.label}">
+        <i class="fa fa-plus"></i>
+      </button>
+    </div>
+  `;
+}
+
+function wireEvents()
+{
+  document.querySelectorAll(".drag-handle").forEach(el =>
+  {
+    el.addEventListener("dragstart", onDragStart);
+    el.addEventListener("dragend", onDragEnd);
+  });
+
+  document.querySelectorAll(".slot-anchor.empty").forEach(el =>
+  {
+    el.addEventListener("dragover", onDragOver);
+    el.addEventListener("dragenter", onDragEnter);
+    el.addEventListener("dragleave", onDragLeave);
+    el.addEventListener("drop", onDrop);
+  });
+
+  document.querySelectorAll(".slot-add").forEach(el =>
+  {
+    el.addEventListener("click", onAddClick);
+  });
+}
+
+function onDragStart(ev)
+{
+  const slotEl = ev.currentTarget.closest(".slot");
+  dragFromSlotId = slotEl.dataset.slotId;
+
+  ev.dataTransfer.effectAllowed = "move";
+  ev.dataTransfer.setData("text/plain", dragFromSlotId);
+
+  slotEl.classList.add("drag-source");
+}
+
+function onDragEnd()
+{
+  dragFromSlotId = null;
+  clearDropHints();
+  document.querySelectorAll(".slot.drag-source").forEach(el => el.classList.remove("drag-source"));
+}
+
+function onDragOver(ev)
+{
+  if (!dragFromSlotId) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = "move";
+}
+
+function onDragEnter(ev)
+{
+  if (!dragFromSlotId) return;
+  ev.currentTarget.classList.add("drop-ok");
+}
+
+function onDragLeave(ev)
+{
+  ev.currentTarget.classList.remove("drop-ok");
+}
+
+function onDrop(ev)
+{
+  ev.preventDefault();
+
+  const toSlotId = ev.currentTarget.dataset.slotId;
+  const fromSlotId = dragFromSlotId || ev.dataTransfer.getData("text/plain");
+
+  clearDropHints();
+  movePeripheral(fromSlotId, toSlotId);
+}
+
+function movePeripheral(fromSlotId, toSlotId)
+{
+  if (!fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
+
+  const from = slots.find(s => s.slotId === fromSlotId);
+  const to   = slots.find(s => s.slotId === toSlotId);
+
+  if (!from) return;
+  if (!to) return;
+  if (from.locked) return;
+  if (!from.peripheral) return;
+  if (to.peripheral) return;   // only drop on empty slots for now
+
+  to.peripheral = from.peripheral;
+  from.peripheral = null;
+
+  renderSlots();
+
+  // Persist here if needed:
+  // saveSlotAssignment(slots);
+  // emulator.reassignPeripheral(fromSlotId, toSlotId);
+}
+
+function clearDropHints()
+{
+  document.querySelectorAll(".slot-anchor.drop-ok").forEach(el =>
+  {
+    el.classList.remove("drop-ok");
+  });
+}
+
+function onAddClick(ev)
+{
+  const slotId = ev.currentTarget.closest(".slot-anchor").dataset.slotId;
+  console.log("Add peripheral in slot", slotId);
+  // openPeripheralPicker(slotId);
+}
+
+renderSlots();
+</script>
+
+</body>
