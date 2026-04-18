@@ -18,14 +18,13 @@
 {
   font-family: "Arial";
   font-size:13px;
-  margin:1px;
+  margin:1px 1px 1px 1px;
   padding:6px;
   border-radius:5px;
   border-style:none;
   background:rgba(255,255,255,0.8);
+  float:left;
   text-align:center;
-  z-index:1;
-  box-sizing:border-box;
 }
 
 #device_slots
@@ -73,7 +72,6 @@
   z-index:3;
   cursor:pointer;
 }
-
 
 .slot-anchor
 {
@@ -246,15 +244,15 @@ body.dragging
 
 <script>
 const slots = [
-  { slotId: "board", label: "board", locked: true,  peripheral: { id: "mainboard", name: "BOARD" } },
-  { slotId: "0",     label: "#0",    locked: false, peripheral: { id: "ramcard", name: "MS16K" } },
-  { slotId: "1",     label: "#1",    locked: false, peripheral: null },
-  { slotId: "2",     label: "#2",    locked: false, peripheral: null },
-  { slotId: "3",     label: "#3",    locked: false, peripheral: { id: "col80card", name: "VIDEX" } },
-  { slotId: "4",     label: "#4",    locked: false, peripheral: null },
-  { slotId: "5",     label: "#5",    locked: false, peripheral: null },
-  { slotId: "6",     label: "#6",    locked: false, peripheral: { id: "disk2", name: "DISKII" } },
-  { slotId: "7",     label: "#7",    locked: false, peripheral: null }
+  { slotId: "board", icon: "fa fa-cube",locked: true,peripheral: { id: "mainboard", name: "BOARD" } },
+  { slotId: "#0",    icon: "fa fa-microchip",        peripheral: { id: "ramcard", name: "MS16K" } },
+  { slotId: "#1",                                    peripheral: null },
+  { slotId: "#2",                                    peripheral: null },
+  { slotId: "#3",    icon: "fa fa-tv",               peripheral: { id: "col80card", name: "VIDEX" } },
+  { slotId: "#4",                                    peripheral: null },
+  { slotId: "#5",                                    peripheral: null },
+  { slotId: "#6",    icon: "fa fa-save",             peripheral: { id: "disk2", name: "DISKII" } },
+  { slotId: "#7",                                    peripheral: null }
 ];
 
 let dragFromSlotId = null;
@@ -272,10 +270,9 @@ function renderSlot(slot)
 {
   return `
     <div class="appbox slotbox slot" data-slot-id="${slot.slotId}">
-      <div class="slot-label">${slot.label}</div>
-
+      <div class="slot-label">${slot.slotId}</div>
       <div class="sloticons">
-      ${ slot.peripheral ? `<button class="appbut cogbtn" type="button"><i class="fa fa-cog"></i></button>`:"" }
+      ${ slot.peripheral ? "<button class=\"appbut cogbtn\" type=\"button\"><i class=\""+(slot.icon?slot.icon:"")+"\"></i></button>" : ""}
       ${renderAnchor(slot)}
       </div>
 
@@ -314,7 +311,7 @@ function renderAnchor(slot)
       class="slot-anchor empty"
       id="${anchorId}"
       data-slot-id="${slot.slotId}">
-      <button class="slot-add" type="button" title="Add peripheral to ${slot.label}">
+      <button class="slot-add" type="button" title="Add peripheral to ${slot.slotId}">
         <i class="fa fa-plus dots dots1"></i>
       </button>
     </div>
