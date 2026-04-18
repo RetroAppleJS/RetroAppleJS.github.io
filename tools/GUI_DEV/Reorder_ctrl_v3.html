@@ -207,16 +207,13 @@ body.dragging
   padding:0;
 }
 
-.drag-ghost .fa:first-child
+.drag-ghost .drag-icon
 {
-  bottom:5px;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-size:14px;
+  opacity:0.85;
 }
-
-.drag-ghost .fa:last-child
-{
-  bottom:0;
-}
-
 
 @media (pointer:coarse)
 {
@@ -372,12 +369,16 @@ function onPointerDragStart(ev)
 
   if (!slotEl) return;
 
+ const fromSlotId = slotEl.dataset.slotId;
+ const fromSlot = slots.find(s => s.slotId === fromSlotId);
+ if (!fromSlot || !fromSlot.peripheral) return;
+
   pointerDrag = {
     pointerId: ev.pointerId,
-    fromSlotId: slotEl.dataset.slotId,
+    fromSlotId: fromSlotId,
     handleEl: ev.currentTarget,
     hotTarget: null,
-    ghostEl: buildDragGhost()
+    ghostEl: buildDragGhost(fromSlot)
   };
 
   document.body.classList.add("dragging");
@@ -424,14 +425,13 @@ function onPointerDragCancel(ev)
   cleanupPointerDrag();
 }
 
-function buildDragGhost()
+function buildDragGhost(slot)
 {
   const ghost = document.createElement("div");
   ghost.className = "drag-ghost";
-  ghost.innerHTML = `
-    <i class="fa fa-ellipsis-h"></i>
-    <i class="fa fa-ellipsis-h"></i>
-  `;
+  ghost.innerHTML = slot && slot.icon
+   ? `<i class="${slot.icon} drag-icon"></i>`
+   : `<i class="fa fa-circle drag-icon"></i>`;
   document.body.appendChild(ghost);
   return ghost;
 }
@@ -535,9 +535,12 @@ function movePeripheral(fromSlotId, toSlotId)
   if (from.locked) return;
   if (!from.peripheral) return;
   if (to.peripheral) return;   // only drop on empty slots for now
-
-  to.peripheral = from.peripheral;
+  const movedPeripheral = from.peripheral;
+  const movedIcon = from.icon;
+  to.peripheral = movedPeripheral;
+  to.icon = movedIcon;
   from.peripheral = null;
+  delete from.icon;
   dragFromSlotId = null;
 
   renderSlots();
