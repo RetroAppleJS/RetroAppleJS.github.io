@@ -226,18 +226,22 @@
 <script>
 function EMUI()
 {
+  this.slotCfg = [];
+
   var dragFromSlotId = null;
   var pointerDrag    = null;
-  var hostId       = null;
-  this.host = null;
-  this.slotsData = [];
+  var hostId         = null;
+  this.host          = null;
 
-  this.onSlotMove = function() { /* overridable: do somthing after change */  }
-  this.movePeripheral = function movePeripheral(fromSlotId, toSlotId)
+  this.onSlotAdd = function() { /* overridable: do somthing after add */ alert("onSlotAdd - placeholder") }
+  
+  this.onSlotMove = function() { /* overridable: do somthing after move */ alert("onSlotMove - placeholder")  }
+
+  this.slotMove = function slotMove(fromSlotId, toSlotId)
   {
     function getSlotById(emui, slotId)
     {
-      return emui.slotsData.find(function(slot) { return slot.slotId === slotId; });
+      return emui.slotCfg.find(function(slot) { return slot.slotId === slotId; });
     }
 
     if (!fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
@@ -262,15 +266,17 @@ function EMUI()
 
   this.slotsRender = function slotsRender(elid)
   {
-    if (elid) hostId = elid;
-    //if (data) this.slotsData = cloneSlots(data);
-
-    this.host = document.getElementById(hostId);
+    if (elid)
+    {
+      hostId = elid;
+      this.host = document.getElementById(hostId);
+      if(this.host) this.host.addEventListener("click", oEMUI.onSlotAdd);
+    }
     if (!this.host) return;
 
     function getSlotById(emui, slotId)
     {
-      return emui.slotsData.find(function(slot) { return slot.slotId === slotId; });
+      return emui.slotCfg.find(function(slot) { return slot.slotId === slotId; });
     }
 
     // HTML rendering
@@ -501,7 +507,7 @@ function EMUI()
 
       cleanupPointerDrag();
 
-      if (toSlotId) emui.movePeripheral(fromSlotId, toSlotId);
+      if (toSlotId) emui.slotMove(fromSlotId, toSlotId);
     }
 
     function onPointerDragCancel(ev)
@@ -532,13 +538,7 @@ function EMUI()
       var fromSlotId = dragFromSlotId || ev.dataTransfer.getData("text/plain");
 
       clearDropHints(host);
-      emui.movePeripheral(fromSlotId, toSlotId);
-    }
-
-    function onAddClick(ev)
-    {
-      var slotId = ev.currentTarget.closest(".slot-anchor").dataset.slotId;
-      console.log("Add peripheral in slot", slotId);
+      emui.slotMove(fromSlotId, toSlotId);
     }
 
     function wireEvents(emui, host)
@@ -550,21 +550,17 @@ function EMUI()
           onPointerDragStart(emui, host, ev);
         });
       });
-
-      host.querySelectorAll(".slot-add").forEach(function(el)
-      {
-        el.addEventListener("click", onAddClick);
-      });
     }
 
-    this.host.innerHTML = this.slotsData.map(renderSlot).join("");
+    this.host.innerHTML = this.slotCfg.map(renderSlot).join("");
     wireEvents(this, this.host);
   };
 }
 
 var oEMUI = new EMUI();
 
-oEMUI.slotsData = [
+// slot data
+oEMUI.slotCfg = [
   { slotId: "board", icon: "fa fa-cube", lock:true, peripheral: { id: "mainboard", name: "BOARD" } },
   { slotId: "PR#0",  icon: "fa fa-microchip",      peripheral: { id: "ramcard",   name: "MS16K" } },
   { slotId: "PR#1" },
@@ -576,21 +572,20 @@ oEMUI.slotsData = [
   { slotId: "PR#7" }
 ];
 
-oEMUI.slotsRender("device_slots");
-oEMUI.onSlotMove = function(fromSlotId, toSlotId)
-{
-  console.log(JSON.stringify(this.slotsData));
-  alert("move "+fromSlotId+"->"+toSlotId);
-}
-
+// slot custom event handling
 oEMUI.onSlotAdd = function(ev)
 {
   var anchor = ev.target.closest(".slot-anchor.empty");
   if (!anchor || !oEMUI.host.contains(anchor)) return;
-
   var slotId = anchor.dataset.slotId;
-  alert("Add peripheral in slot " + slotId);
-};
-oEMUI.host.addEventListener("click", oEMUI.onSlotAdd);
+  alert("Plugin peripheral slot " + slotId);
+}
+oEMUI.onSlotMove = function(fromSlotId, toSlotId)
+{
+  console.log(JSON.stringify(this.slotCfg));
+  alert("Move peripheral slot "+fromSlotId+"->"+toSlotId);
+}
+
+oEMUI.slotsRender("device_slots");
 
 </script>
