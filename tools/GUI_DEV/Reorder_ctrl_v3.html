@@ -17,7 +17,7 @@
 .appbox
 {
   font-family: "Arial";
-  font-size:13px;
+  font-size:12px;
   margin:1px 1px 1px 1px;
   padding:6px;
   border-radius:5px;
@@ -135,8 +135,7 @@
 .slot-add
 {
   border:0;
-  border-radius:999px;
-  background:rgba(255,255,255,0.95);
+  background:rgba(255,255,255,0);
   cursor:pointer;
   font-size:14px;
   width:var(--touch-hit);
@@ -146,11 +145,6 @@
 .slot-add .fa
 {
   bottom:-1px;
-}
-
-.slot-add:hover
-{
-  background:rgba(255,255,255,1);
 }
 
 
@@ -234,34 +228,55 @@ body.dragging
 
 </style>
 
-<div class=toolbox id="device_slots">
-
-</div>
+<div class=toolbox id="device_slots"></div>
 
 
 <script>
+
+const slotsID = "device_slots"
 const slots = [
-  { slotId: "board", icon: "fa fa-cube",locked: true,peripheral: { id: "mainboard", name: "BOARD" } },
-  { slotId: "#0",    icon: "fa fa-microchip",        peripheral: { id: "ramcard", name: "MS16K" } },
-  { slotId: "#1",                                    peripheral: null },
-  { slotId: "#2",                                    peripheral: null },
-  { slotId: "#3",    icon: "fa fa-tv",               peripheral: { id: "col80card", name: "VIDEX" } },
-  { slotId: "#4",                                    peripheral: null },
-  { slotId: "#5",                                    peripheral: null },
-  { slotId: "#6",    icon: "fa fa-save",             peripheral: { id: "disk2", name: "DISKII" } },
-  { slotId: "#7",                                    peripheral: null }
+  { slotId: "board",icon: "fa fa-cube", lock:true ,peripheral: { id: "mainboard",name: "BOARD" } },
+  { slotId: "PR#0", icon: "fa fa-microchip"       ,peripheral: { id: "ramcard"  ,name: "MS16K" } },
+  { slotId: "PR#1"},
+  { slotId: "PR#2"},
+  { slotId: "PR#3", icon: "fa fa-tv"              ,peripheral: { id: "col80card",name: "VIDEX" } },
+  { slotId: "PR#4"},
+  { slotId: "PR#5"},
+  { slotId: "PR#6", icon: "fa fa-save"            ,peripheral: { id: "disk2"    ,name: "DISKII" } },
+  { slotId: "PR#7"}
 ];
 
 let dragFromSlotId = null;
-
-function renderSlots()
-{
-  const host = document.getElementById("device_slots");
-  host.innerHTML = slots.map(renderSlot).join("");
-  wireEvents();
-}
-
 let pointerDrag = null;
+
+// HTML RENDERING
+function renderSlots(elid)
+{
+  const host = document.getElementById(elid);
+  host.innerHTML = slots.map(renderSlot).join("");
+
+  // initialise event capture
+  document.querySelectorAll(".drag-handle").forEach(el =>
+  {
+    el.addEventListener("dragstart",   onDragStart);
+    el.addEventListener("dragend",     onDragEnd);
+    el.addEventListener("pointerdown", onPointerDragStart);
+  });
+
+  document.querySelectorAll(".slot-anchor.empty").forEach(el =>
+  {
+    el.addEventListener("dragover",  onDragOver);
+    el.addEventListener("dragenter", onDragEnter);
+    el.addEventListener("dragleave", onDragLeave);
+    el.addEventListener("drop",      onDrop);
+  });
+
+  document.querySelectorAll(".slot-add").forEach(el =>
+  {
+    el.addEventListener("click", onAddClick);
+  });
+
+}
 
 function renderSlot(slot)
 {
@@ -285,14 +300,13 @@ function renderAnchor(slot)
   {
     return `
       <div
-        class="slot-anchor occupied ${slot.locked ? "locked" : "movable"}"
+        class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}"
         id="${anchorId}"
         data-slot-id="${slot.slotId}">
         <div class="peripheral-card">
           <!--span class="peripheral-name">${slot.peripheral.name}</span-->
-
           ${
-            slot.locked ?
+            slot.lock ?
               "":`<span class="drag-handle" draggable="true" title="Move ${slot.peripheral.name}">
                   <i class="fa fa-ellipsis-h dots dots1"></i>
                   <i class="fa fa-ellipsis-h dots"></i>
@@ -315,37 +329,20 @@ function renderAnchor(slot)
   `;
 }
 
-function wireEvents()
+function renderGhost(slot)
 {
-  document.querySelectorAll(".drag-handle").forEach(el =>
-  {
-    el.addEventListener("dragstart", onDragStart);
-    el.addEventListener("dragend", onDragEnd);
-    el.addEventListener("pointerdown", onPointerDragStart);
-  });
-
-  document.querySelectorAll(".slot-anchor.empty").forEach(el =>
-  {
-    el.addEventListener("dragover", onDragOver);
-    el.addEventListener("dragenter", onDragEnter);
-    el.addEventListener("dragleave", onDragLeave);
-    el.addEventListener("drop", onDrop);
-  });
-
-  document.querySelectorAll(".slot-add").forEach(el =>
-  {
-    el.addEventListener("click", onAddClick);
-  });
+  return slot && slot.icon
+   ? `<i class="${slot.icon} drag-icon"></i>`
+   : `<i class="fa fa-circle drag-icon"></i>`;
 }
 
+// Event handlers
 function onDragStart(ev)
 {
   const slotEl = ev.currentTarget.closest(".slot");
   dragFromSlotId = slotEl.dataset.slotId;
-
   ev.dataTransfer.effectAllowed = "move";
   ev.dataTransfer.setData("text/plain", dragFromSlotId);
-
   slotEl.classList.add("drag-source");
 }
 
@@ -360,18 +357,16 @@ function onPointerDragStart(ev)
 {
   if (ev.pointerType === "mouse") return;   // keep desktop HTML DnD
   if (ev.button != null && ev.button !== 0) return;
- 
 
   ev.preventDefault();
   ev.stopPropagation();
 
   const slotEl = ev.currentTarget.closest(".slot");
-
   if (!slotEl) return;
 
- const fromSlotId = slotEl.dataset.slotId;
- const fromSlot = slots.find(s => s.slotId === fromSlotId);
- if (!fromSlot || !fromSlot.peripheral) return;
+  const fromSlotId = slotEl.dataset.slotId;
+  const fromSlot = slots.find(s => s.slotId === fromSlotId);
+  if (!fromSlot || !fromSlot.peripheral) return;
 
   pointerDrag = {
     pointerId: ev.pointerId,
@@ -396,10 +391,7 @@ function onPointerDragStart(ev)
 function onPointerDragMove(ev)
 {
   if (!pointerDrag || ev.pointerId !== pointerDrag.pointerId) return;
- 
   ev.preventDefault();
-
-
   positionDragGhost(ev.clientX, ev.clientY);
   updatePointerHotTarget(ev.clientX, ev.clientY);
 }
@@ -407,16 +399,11 @@ function onPointerDragMove(ev)
 function onPointerDragEnd(ev)
 {
   if (!pointerDrag || ev.pointerId !== pointerDrag.pointerId) return;
-
   ev.preventDefault();
-
   const fromSlotId = pointerDrag.fromSlotId;
   const toSlotId = pointerDrag.hotTarget ? pointerDrag.hotTarget.dataset.slotId : null;
-
   cleanupPointerDrag();
-
-  if (toSlotId)
-    movePeripheral(fromSlotId, toSlotId);
+  if (toSlotId) movePeripheral(fromSlotId, toSlotId);
 }
 
 function onPointerDragCancel(ev)
@@ -425,13 +412,12 @@ function onPointerDragCancel(ev)
   cleanupPointerDrag();
 }
 
+// render helpers
 function buildDragGhost(slot)
 {
   const ghost = document.createElement("div");
   ghost.className = "drag-ghost";
-  ghost.innerHTML = slot && slot.icon
-   ? `<i class="${slot.icon} drag-icon"></i>`
-   : `<i class="fa fa-circle drag-icon"></i>`;
+  ghost.innerHTML = renderGhost(slot);
   document.body.appendChild(ghost);
   return ghost;
 }
@@ -446,42 +432,27 @@ function positionDragGhost(x, y)
 function updatePointerHotTarget(x, y)
 {
   if (!pointerDrag) return;
-
   const el = document.elementFromPoint(x, y);
   const nextHot = el ? el.closest(".slot-anchor.empty") : null;
-
   if (pointerDrag.hotTarget === nextHot) return;
-
-  if (pointerDrag.hotTarget)
-    pointerDrag.hotTarget.classList.remove("drop-ok");
-
+  if (pointerDrag.hotTarget) pointerDrag.hotTarget.classList.remove("drop-ok");
   pointerDrag.hotTarget = nextHot;
-
-  if (pointerDrag.hotTarget)
-    pointerDrag.hotTarget.classList.add("drop-ok");
+  if (pointerDrag.hotTarget) pointerDrag.hotTarget.classList.add("drop-ok");
 }
 
 function cleanupPointerDrag()
 {
   if (!pointerDrag) return;
-
   const handleEl = pointerDrag.handleEl;
   const pointerId = pointerDrag.pointerId;
-
-  if (pointerDrag.hotTarget)
-    pointerDrag.hotTarget.classList.remove("drop-ok");
-
-  if (pointerDrag.ghostEl)
-    pointerDrag.ghostEl.remove();
-
+  if (pointerDrag.hotTarget) pointerDrag.hotTarget.classList.remove("drop-ok");
+  if (pointerDrag.ghostEl) pointerDrag.ghostEl.remove();
   if (handleEl)
   {
     try
     {
-      if (handleEl.hasPointerCapture(pointerId))
-        handleEl.releasePointerCapture(pointerId);
-    }
-    catch (e) {}
+      if (handleEl.hasPointerCapture(pointerId)) handleEl.releasePointerCapture(pointerId);
+    } catch (e) {}
 
     handleEl.removeEventListener("pointermove", onPointerDragMove);
     handleEl.removeEventListener("pointerup", onPointerDragEnd);
@@ -490,35 +461,18 @@ function cleanupPointerDrag()
 
   document.body.classList.remove("dragging");
   document.querySelectorAll(".slot.drag-source").forEach(el => el.classList.remove("drag-source"));
- 
   pointerDrag = null;
 }
 
-function onDragOver(ev)
-{
-  if (!dragFromSlotId) return;
-  ev.preventDefault();
-  ev.dataTransfer.dropEffect = "move";
-}
-
-function onDragEnter(ev)
-{
-  if (!dragFromSlotId) return;
-  ev.currentTarget.classList.add("drop-ok");
-}
-
-function onDragLeave(ev)
-{
-  ev.currentTarget.classList.remove("drop-ok");
-}
+function onDragOver(ev)  { if (dragFromSlotId) {ev.preventDefault(); ev.dataTransfer.dropEffect = "move"} }
+function onDragEnter(ev) { if (dragFromSlotId) ev.currentTarget.classList.add("drop-ok") }
+function onDragLeave(ev) { ev.currentTarget.classList.remove("drop-ok") }
 
 function onDrop(ev)
 {
   ev.preventDefault();
-
   const toSlotId = ev.currentTarget.dataset.slotId;
   const fromSlotId = dragFromSlotId || ev.dataTransfer.getData("text/plain");
-
   clearDropHints();
   movePeripheral(fromSlotId, toSlotId);
 }
@@ -526,15 +480,9 @@ function onDrop(ev)
 function movePeripheral(fromSlotId, toSlotId)
 {
   if (!fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
-
   const from = slots.find(s => s.slotId === fromSlotId);
   const to   = slots.find(s => s.slotId === toSlotId);
-
-  if (!from) return;
-  if (!to) return;
-  if (from.locked) return;
-  if (!from.peripheral) return;
-  if (to.peripheral) return;   // only drop on empty slots for now
+  if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
   const movedPeripheral = from.peripheral;
   const movedIcon = from.icon;
   to.peripheral = movedPeripheral;
@@ -543,20 +491,15 @@ function movePeripheral(fromSlotId, toSlotId)
   delete from.icon;
   dragFromSlotId = null;
 
-  renderSlots();
+  renderSlots(slotsID);
+  console.log("Move peripheral from->to ",fromSlotId,toSlotId);
 
   // Persist here if needed:
   // saveSlotAssignment(slots);
   // emulator.reassignPeripheral(fromSlotId, toSlotId);
 }
 
-function clearDropHints()
-{
-  document.querySelectorAll(".slot-anchor.drop-ok").forEach(el =>
-  {
-    el.classList.remove("drop-ok");
-  });
-}
+function clearDropHints() { document.querySelectorAll(".slot-anchor.drop-ok").forEach(el => { el.classList.remove("drop-ok") }) }
 
 function onAddClick(ev)
 {
@@ -565,7 +508,8 @@ function onAddClick(ev)
   // openPeripheralPicker(slotId);
 }
 
-renderSlots();
+
+renderSlots(slotsID);
 </script>
 
 </body>
