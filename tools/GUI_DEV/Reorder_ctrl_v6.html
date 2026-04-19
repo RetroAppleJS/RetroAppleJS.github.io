@@ -143,7 +143,6 @@
 
 .drag-handle { touch-action:none; }
 
-body.dragging { cursor:grabbing; }
 .drag-ghost
 {
   position:fixed;
@@ -199,15 +198,8 @@ body.dragging { cursor:grabbing; }
   padding:0;
 }
 
-.drag-ghost .ghost-handle i:first-child
-{
-  bottom:5px;
-}
-
-.drag-ghost .ghost-handle i:last-child
-{
-  bottom:0;
-}
+.drag-ghost .ghost-handle i:first-child { bottom:5px }
+.drag-ghost .ghost-handle i:last-child { bottom:0 }
 
 @media (pointer:coarse)
 {
@@ -234,12 +226,13 @@ body.dragging { cursor:grabbing; }
 <script>
 function EMUI()
 {
-  var hostId         = null;
   var dragFromSlotId = null;
   var pointerDrag    = null;
+  var hostId       = null;
+  this.host = null;
   this.slotsData = [];
 
-  this.onSlotChanged = function() { /* overridable: do somthing after change */  }
+  this.onSlotMove = function() { /* overridable: do somthing after change */  }
   this.movePeripheral = function movePeripheral(fromSlotId, toSlotId)
   {
     function getSlotById(emui, slotId)
@@ -264,7 +257,7 @@ function EMUI()
 
     this.slotsRender();
     console.log("Move peripheral from->to", fromSlotId, toSlotId);
-    this.onSlotChanged();
+    this.onSlotMove(fromSlotId, toSlotId);
   };
 
   this.slotsRender = function slotsRender(elid)
@@ -272,8 +265,8 @@ function EMUI()
     if (elid) hostId = elid;
     //if (data) this.slotsData = cloneSlots(data);
 
-    var host = document.getElementById(hostId);
-    if (!host) return;
+    this.host = document.getElementById(hostId);
+    if (!this.host) return;
 
     function getSlotById(emui, slotId)
     {
@@ -526,14 +519,10 @@ function EMUI()
 
     function onDragEnter(ev)
     {
-      if (!dragFromSlotId) return;
-      ev.currentTarget.classList.add("drop-ok");
+      if (dragFromSlotId) ev.currentTarget.classList.add("drop-ok");
     }
 
-    function onDragLeave(ev)
-    {
-      ev.currentTarget.classList.remove("drop-ok");
-    }
+    function onDragLeave(ev) { ev.currentTarget.classList.remove("drop-ok") }
 
     function onDrop(emui, host, ev)
     {
@@ -568,8 +557,8 @@ function EMUI()
       });
     }
 
-    host.innerHTML = this.slotsData.map(renderSlot).join("");
-    wireEvents(this, host);
+    this.host.innerHTML = this.slotsData.map(renderSlot).join("");
+    wireEvents(this, this.host);
   };
 }
 
@@ -588,9 +577,20 @@ oEMUI.slotsData = [
 ];
 
 oEMUI.slotsRender("device_slots");
-oEMUI.onSlotChanged = function()
+oEMUI.onSlotMove = function(fromSlotId, toSlotId)
 {
   console.log(JSON.stringify(this.slotsData));
+  alert("move "+fromSlotId+"->"+toSlotId);
 }
+
+oEMUI.onSlotAdd = function(ev)
+{
+  var anchor = ev.target.closest(".slot-anchor.empty");
+  if (!anchor || !oEMUI.host.contains(anchor)) return;
+
+  var slotId = anchor.dataset.slotId;
+  alert("Add peripheral in slot " + slotId);
+};
+oEMUI.host.addEventListener("click", oEMUI.onSlotAdd);
 
 </script>
