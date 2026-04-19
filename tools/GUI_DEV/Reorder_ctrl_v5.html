@@ -151,38 +151,26 @@ body.dragging { cursor:grabbing; }
   left:0;
   top:0;
   width:var(--touch-hit);
-  height:18px;
+  height:30px;          /* was 18px */
   pointer-events:none;
   z-index:9999;
   transform:translate(-50%,-50%);
+  overflow:visible;     /* helps Chrome snapshot the full ghost */
 }
-
-.drag-ghost .fa
-{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  line-height:1;
-  opacity:0.55;
-  margin:0;
-  padding:0;
-}
-
-.drag-ghost .drag-icon
-{
-  position:relative;
-  display:block;
-  margin:0 auto !important;
-  z-index:3;
-  pointer-events:none;
-}
-
 
 .drag-ghost .ghost-cog
- {
-  position:relative;
+{
+  position:absolute;    /* not relative */
+  left:50%;
+  top:0;
+  transform:translateX(-50%);
   display:block;
-  margin:0 auto !important;
+  min-width:var(--touch-hit);
+  height:18px;
+  line-height:18px;
+  text-align:center;
+  border-radius:999px;
+  background:rgba(255,255,255,0.95);
   z-index:3;
   pointer-events:none;
 }
@@ -203,10 +191,6 @@ body.dragging { cursor:grabbing; }
   height:18px;
   transform:translateX(-50%);
 }
-
-.drag-ghost .ghost-handle .fa:first-child { bottom:5px }
-
-.drag-ghost .ghost-handle .fa:last-child { bottom:0; }
 
 @media (pointer:coarse)
 {
@@ -282,9 +266,17 @@ function EMUI()
     // HTML rendering
     function renderGhost(slot)
     {
-      return slot && slot.icon
-        ? `<i class="${slot.icon} drag-icon"></i>`
-        : `<i class="fa fa-circle drag-icon"></i>`;
+      var iconClass = (slot && slot.icon) ? slot.icon : "fa fa-circle";
+
+      return `
+        <span class="ghost-cog" aria-hidden="true">
+          <i class="${iconClass}"></i>
+        </span>
+        <span class="ghost-handle" aria-hidden="true">
+          <i class="fa fa-ellipsis-h"></i>
+          <i class="fa fa-ellipsis-h"></i>
+        </span>
+      `;
     }
 
     function renderAnchor(slot)
