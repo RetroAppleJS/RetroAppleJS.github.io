@@ -100,8 +100,8 @@
 
 .drag-handle
 {
-  width:var(--touch-hit);
-  height:18px;
+ width:var(--touch-hit);
+ height:30px;
   cursor:grab;
   user-select:none; 
 }
@@ -170,11 +170,49 @@ body.dragging { cursor:grabbing; }
 
 .drag-ghost .drag-icon
 {
-  top:50%;
-  transform:translate(-50%,-50%);
-  font-size:14px;
+  position:relative;
+  display:block;
+  margin:0 auto !important;
+  z-index:3;
+  pointer-events:none;
+}
+
+
+.drag-ghost .ghost-cog
+ {
+  position:relative;
+  display:block;
+  margin:0 auto !important;
+  z-index:3;
+  pointer-events:none;
+}
+
+.drag-ghost .ghost-cog .fa
+{
+  position:static;
+  transform:none;
   opacity:0.85;
 }
+
+.drag-ghost .ghost-handle
+{
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:var(--touch-hit);
+  height:18px;
+  transform:translateX(-50%);
+}
+
+.drag-ghost .ghost-handle .fa:first-child
+{
+  bottom:5px;
+}
+
+.drag-ghost .ghost-handle .fa:last-child
+{
+  bottom:0;
+ }
 
 @media (pointer:coarse)
 {
