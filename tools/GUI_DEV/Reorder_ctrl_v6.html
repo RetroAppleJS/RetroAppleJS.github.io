@@ -44,13 +44,7 @@
 }
 
 .slot-label { font-weight:normal; margin:0 }
-
-.sloticons
-{
-  position:relative;
-  width:100%;
-  min-height:var(--slot-min-h);
-}
+.sloticons  { position:relative; width:100%; min-height:var(--slot-min-h); }
 
 .cogbtn,
 .slot-add,
@@ -90,22 +84,8 @@
   z-index:1;
 }
 
-.peripheral-name
-{
-  display:block;
-  min-height:24px;
-  font-size:11px;
-  word-break:break-word;
-}
-
-.drag-handle
-{
- width:var(--touch-hit);
- height:30px;
-  cursor:grab;
-  user-select:none; 
-}
-
+.peripheral-name { display:block; min-height:24px; font-size:11px; word-break:break-word; }
+.drag-handle { width:var(--touch-hit); height:30px; cursor:grab; user-select:none; }
 .drag-handle:active { cursor:grabbing; }
 .drag-handle .fa:first-child { bottom:5px;}
 .drag-handle .fa:last-child { bottom:0; }
@@ -121,26 +101,9 @@
   bottom:4px;
 }
 
-.slot.armed
-{
-  outline:1px dashed rgba(0,0,0,0.25);
-  outline-offset:1px;
-}
-
-.slot-anchor.drop-ok
-{
-  outline:1px dashed rgba(0,0,0,0.25);
-  outline-offset:1px;
-}
-
-.slot,
-.slot *
-{
-  -webkit-user-select:none;
-  user-select:none;
-  -webkit-touch-callout:none;
-}
-
+.slot.armed { outline:1px dashed rgba(0,0,0,0.25); outline-offset:1px; }
+.slot-anchor.drop-ok { outline:1px dashed rgba(0,0,0,0.25); outline-offset:1px; }
+.slot, .slot * { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 .drag-handle { touch-action:none; }
 
 .drag-ghost
@@ -170,12 +133,9 @@
   z-index:3;
 }
 
-.drag-ghost .ghost-cog i
-{
-  position:static;
-  transform:none;
-  opacity:0.85;
-}
+.drag-ghost .ghost-cog i { position:static; transform:none; opacity:0.85; }
+.drag-ghost .ghost-handle i:first-child { bottom:5px }
+.drag-ghost .ghost-handle i:last-child { bottom:0 }
 
 .drag-ghost .ghost-handle
 {
@@ -198,25 +158,11 @@
   padding:0;
 }
 
-.drag-ghost .ghost-handle i:first-child { bottom:5px }
-.drag-ghost .ghost-handle i:last-child { bottom:0 }
-
 @media (pointer:coarse)
 {
-  :root
-  {
-    --slot-w:40px;
-    --touch-hit:32px;
-  }
-
-  .cogbtn,
-  .slot-add,
-  .drag-handle
-  {
-    min-width:var(--touch-hit);
-  }
+  :root { --slot-w:40px; --touch-hit:32px; }
+  .cogbtn, .slot-add, .drag-handle { min-width:var(--touch-hit); }
 }
-
 
 </style>
 
