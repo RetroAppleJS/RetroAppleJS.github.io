@@ -22,10 +22,10 @@ function RamCard()
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
     this.mem_layout = {
-        "3F000-40000":["#D06060","RAMCARD $F000-$FFFF","RF"]
-       ,"3E000-3F000":["#D06060","RAMCARD $E000-$EFFF","RE"]
-       ,"2D000-2E000":["#B05050","BANK B $D000-$DFFF","DB"]
-       ,"1D000-1E000":["#A04040","BANK A $D000-$DFFF","DA"]
+        "3F000-40000":["#D06060","MS16K","RF"]
+       ,"3E000-3F000":["#D06060","MS16K","RE"]
+       ,"2D000-2E000":["#B05050","MS16K BANK B","DB"]
+       ,"1D000-1E000":["#A04040","MS16K BANK A","DA"]
     };    
     
     var bDebug   = true;   // debug all RAM R/W operations
