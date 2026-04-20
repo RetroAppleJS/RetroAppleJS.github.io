@@ -544,8 +544,8 @@ function Apple2IO(vid)
             +")");
     
             if(obj.id===undefined) { obj_names.icon = ""; obj.id = {"icon":"fa fa-cube"}}
-            oEMUI.slotConfig({"id":"d_slot"+slot_num ,"icon":obj.id.icon===undefined?"fa fa-cube":obj.id.icon   ,"active":SLOT_MAP[idx+0]});
-            oEMUI.slotConfig({"id":"slot"+slot_num   ,"icon":"fa fa-cog"                                        ,"active":SLOT_MAP[idx+0]});
+            oEMUI.slotConfig({"id":"slot"+slot_num ,"icon":obj.id.icon===undefined?"fa fa-cube":obj.id.icon   ,"active":SLOT_MAP[idx+0]});
+            //oEMUI.slotConfig({"id":"d_slot"+slot_num   ,"icon":"fa fa-cog"                                        ,"active":SLOT_MAP[idx+0]});
         }
 
         var n = this.listDeviceNames();

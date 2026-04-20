@@ -352,6 +352,7 @@ function EMU_init()
     oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});
     oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});
     // all other slots are configured in EMU_apple2io.js --> this.mount()
+    oEMUI.deviceBtn({"id":"devices","init":true,"preserve":6});
 }
 
 function EMU_system_get()
@@ -483,7 +484,103 @@ function EMUI()
 
     this.deviceBtn = function(arg)
     {
+        var btn = document.getElementById(arg.id);
+        if(btn == null) return;
 
+        var slots = this.deviceSlots();
+        if(slots.length == 0)
+        {
+            btn.innerHTML = "∅";
+            btn.setAttribute("data-slot","");
+            this.renderDeviceTool("H");
+            return;
+        }
+
+        var cur = btn.getAttribute("data-slot");
+        var slot = cur=="H" ? "H"
+                 : (cur==null || cur=="" ? null : Number(cur));
+
+        if(arg.init === true)
+        {
+            var pref = arg.preserve;
+            if(pref === "H" && slots.indexOf("H") >= 0) slot = "H";
+            else if(typeof(pref)=="number" && slots.indexOf(pref) >= 0) slot = pref;
+            else if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
+        }
+        else
+        {
+            if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
+            else slot = slots[(slots.indexOf(slot)+1)%slots.length];
+        }
+
+        btn.setAttribute("data-slot", slot==="H" ? "H" : String(slot));
+        btn.innerHTML = this.deviceLabel(slot);
+        this.renderDeviceTool(slot);
+     }
+
+    this.deviceSlots = function()
+    {
+        var slots = ["H"];
+        if(typeof(_CFG_SLOT) == "object")
+        {
+            for(var i=0;i<8;i++)
+                if(_CFG_SLOT[i] && _CFG_SLOT[i].PCODE)
+                    slots.push(i);
+        }
+        return slots;
+    }
+
+    this.deviceLabel = function(slot)
+    {
+        return slot==="H" ? "H▹" : slot + "▹";
+    }
+
+    this.renderDeviceTool = function(slot)
+    {
+        var box = document.getElementById("device_toolbox_body");
+        if(box == null) return;
+        box.innerHTML = this.deviceToolHTML(slot);
+    }
+
+    this.deviceToolHTML = function(slot)
+    {
+        var pcode = slot==="H" ? "HostIO"
+                                   : (_CFG_SLOT[slot] && _CFG_SLOT[slot].PCODE ? _CFG_SLOT[slot].PCODE : "");
+
+        switch(pcode)
+        {
+            case "HostIO":
+                var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+                return ""
+                    + "<div><b>HostIO ["+model+"]</b>"
+                    + "<button class=appbut style=\"float:right;margin-top:0px\" onclick=\"oEMUI.slotConfig_detail('slotB')\">details</button></div>"
+                    + "<div style=\"padding-top:4px\">keyboard, speaker, cassette, paddles<br>and other soft-switches.</div>";
+
+            case "MS16K":
+                return "<b>#0 MS16K</b><br>Language card / memory expansion.<br>No user controls.";
+
+            case "VIDEX":
+                return "<b>#"+slot+" VIDEX</b><br>80-column toolbox is under construction.";
+
+            case "DISKII":
+                return ""
+                    + "<div class=appbut style=\"padding:5px 0px 0px 0px;text-align:center\">"
+                    + "  <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
+                    + "    <input type=button method=get class=appbut value=\"Drive1\" onclick=\"ejectDisk(this,'D1')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive1'\">"
+                    + "    <input type=\"file\" name=\"D1\" id=\"file_D1\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
+                    + "  </form>"
+                    + "  <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])\" id=\"dump_D1\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "</div>"
+                    + "<div class=appbut style=\"padding:0px 0px 0px 0px;text-align:center\">"
+                    + "  <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
+                    + "    <input type=button method=get class=appbut value=\"Drive2\" onclick=\"ejectDisk(this,'D2')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive2'\">"
+                    + "    <input type=\"file\" name=\"D2\" id=\"file_D2\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
+                    + "  </form>"
+                    + "  <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "</div>";
+        }
+
+        return "<b>#"+slot+" "+pcode+"</b><br>No toolbox is available yet.";
     }
 
     this.restartHold = {
