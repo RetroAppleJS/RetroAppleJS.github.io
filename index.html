@@ -422,15 +422,16 @@
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
               var lc = apple2plus.hwObj().io.ramcard;
-              var bLC = lc && lc.state && lc.state.active && lc.mem_layout;
+              var bLC = lc && lc.state && lc.state.active && lc.MEM_grid;
               el.innerHTML =
                 "<div style='display:flex;flex-wrap:nowrap;gap:6px;align-items:flex-start'>"
               +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
               +   oMEMGRID.build_grid(15*linestep,8,-linestep,cnf)
               +   (bLC
                     ? "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
-                    +   oMEMGRID.build_grid(0x3F000,2,-linestep,{id_prefix:"x",digits:5,table_id:"xEF"})
-                    +   oMEMGRID.build_grid(0x2D000,2,-0x10000,{id_prefix:"x",digits:5,table_id:"xD"})
+                    +   oMEMGRID.build_grid(0xF000,2,-linestep,{id_prefix:"x",digits:4,table_id:"xEF"})
+                    +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"z",digits:4,table_id:"zD"})
+                    +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"y",digits:4,table_id:"yD"})
                     + "</div>"
                     : "")
               + "</div>";
@@ -438,8 +439,11 @@
               if(bLC)
               {
                 oMEMGRID.relabel_grid_rows("xEF",["F000\u00a0\u00a0\u00a0\u00a0","E000\u00a0\u00a0\u00a0\u00a0"]);
-                oMEMGRID.relabel_grid_rows("xD",["D000-B","D000-A"]);
-                oMEMGRID.paint_grid(lc.mem_layout, lc.MEM_grid_cnf);
+                oMEMGRID.relabel_grid_rows("zD",["D000-B"]);
+                oMEMGRID.relabel_grid_rows("yD",["D000-A"]);
+                oMEMGRID.paint_grid(lc.MEM_grid.ramcard.layout, lc.MEM_grid.ramcard.cnf);
+                oMEMGRID.paint_grid(lc.MEM_grid.bankB.layout,   lc.MEM_grid.bankB.cnf);
+                oMEMGRID.paint_grid(lc.MEM_grid.bankA.layout,   lc.MEM_grid.bankA.cnf);
               }              
             }
 

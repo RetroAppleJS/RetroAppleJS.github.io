@@ -12,13 +12,10 @@ function RamCard()
     const BANK_SIZE     =  4096
          ,RAMCARD       =  4096
          ,RAMCARD_SIZE  =  8192
-         ,VIRT_BANK_A   =  0x10000
-         ,VIRT_BANK_B   =  0x20000
-         ,VIRT_RAMCARD  =  0x30000
 
     this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
     this.state = {"active":true};
-    this.mem_mon = {};
+    this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
     this.mem_layout = {
@@ -27,7 +24,29 @@ function RamCard()
        ,"2D000-2E000":["#B05050","MS16K BANK B","DB"]
        ,"1D000-1E000":["#A04040","MS16K BANK A","DA"]
     };    
-    
+
+    this.MEM_grid = {
+        "ramcard":{
+            "cnf":{"id_prefix":"x","digits":4},
+            "layout":{
+                "F000-10000":["#D06060","MS16K","RF"],
+                "E000-F000":["#D06060","MS16K","RE"]
+            }
+        },
+        "bankB":{
+            "cnf":{"id_prefix":"z","digits":4},
+            "layout":{
+                "D000-E000":["#B05050","MS16K BANK B","DB"]
+            }
+        },
+        "bankA":{
+            "cnf":{"id_prefix":"y","digits":4},
+            "layout":{
+                "D000-E000":["#A04040","MS16K BANK A","DA"]
+            }
+        }
+    };
+
     var bDebug   = true;   // debug all RAM R/W operations
     var bDebug_S = true; // debug soft switch updates
  
@@ -49,15 +68,15 @@ function RamCard()
     var NEXT  = false;         // flag to remember double-triggered Write-Enables
 
 
-    this.mark_MEM_monitoring = function(addr)
+    this.mark_MEM_monitoring = function(bucket, addr)
     {
         if(this.bMEM_monitoring)
-            this.mem_mon[ addr >> oMEMGRID.mem_gran ] = true;
+            this.mem_mon[bucket][ addr >> oMEMGRID.mem_gran ] = true;
     }
 
     this.reset_MEM_monitoring = function()
     {
-        this.mem_mon = {};
+        this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
     }
 
     this.enable_MEM_monitoring = function(b)
@@ -121,7 +140,7 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 BANK_MEM[sw.BANK1?0:1][addr] = d8;
-                this.mark_MEM_monitoring((sw.BANK1 ? VIRT_BANK_A : VIRT_BANK_B) + addr + 0xD000);
+                this.mark_MEM_monitoring(sw.BANK1 ? "bankA" : "bankB", addr + 0xD000);
                 if(bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
             } 
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));       
@@ -132,7 +151,7 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 RAMCARD_MEM[addr-RAMCARD] = d8;
-                this.mark_MEM_monitoring(VIRT_RAMCARD + addr + 0xD000);
+                this.mark_MEM_monitoring("ramcard", addr + 0xD000);
                 if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
             }
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
