@@ -417,6 +417,8 @@
             {
               var el = document.getElementById("EMU_mem_map");
               if(!el) return;
+              if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
+ 
 
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
@@ -857,6 +859,7 @@ function rrr()
                     oCOM.addToEventStack("onload",DBG_mem_map)
                   function DBG_mem_map()
                   {
+                      if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
                       var linestep = 4096;
                       var cnf = {id_prefix:"d",digits:4}
                       document.getElementById("DBG_mem_map").innerHTML = 
