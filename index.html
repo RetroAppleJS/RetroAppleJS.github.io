@@ -415,12 +415,17 @@
             oCOM.addToEventStack("onload",EMU_mem_map)
             function EMU_mem_map()
             {
+              var el = document.getElementById("EMU_mem_map");
+              if(!el) return;
+
               var linestep = 4096;
-              var cnf = {id_prefix:"m",digits:4}
-              document.getElementById("EMU_mem_map").innerHTML = 
-                oMEMGRID.build_grid(7*linestep,8,-linestep) 
-              + oMEMGRID.build_grid(15*linestep,8,-linestep);
-              oMEMGRID.paint_grid(apple2plus.mem_layout);
+              var cnf = {id_prefix:"m",digits:4};
+              el.innerHTML =
+                "<div style='display:flex;gap:6px;align-items:flex-start'>"
+              +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
+              +   oMEMGRID.build_grid(15*linestep,8,-linestep,cnf)
+              + "</div>";
+              oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
             }
 
             function EMU_update_mem_map()

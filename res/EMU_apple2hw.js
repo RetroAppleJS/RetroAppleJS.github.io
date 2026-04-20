@@ -119,7 +119,7 @@ function Apple2Hw(vid,keys)
         else if (addr & 0xF000 ^ 0xC000 == 0)  //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
             this.io.write(addr - IO_ADDR, d8);
 
-        if( this.bMEM_monitoring )
+        if( this.bMEM_monitoring && addr < RAM_SIZE )
             this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
     }
 

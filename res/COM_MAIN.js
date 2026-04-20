@@ -1116,6 +1116,8 @@ var oMEMGRID = new function()
   this.paint_grid = function(layout,cnf)
   {
     var fix = this.conf_grid.id_prefix;
+    if(cnf===undefined) cnf = this.conf_grid;
+    fix = cnf.id_prefix;
     this.build_mem_map(layout);  // populate this.mem_pg array (not for display, but later lookup)
 
     // PREPARE DISPLAY DATA
@@ -1156,6 +1158,27 @@ var oMEMGRID = new function()
       }
     }
   }
+
+  this.update_grid = function(mem_mon,cnf,bgcolor)
+  {
+    if(mem_mon===undefined || mem_mon==null) return;
+    if(cnf===undefined) cnf = this.conf_grid;
+    if(bgcolor===undefined) bgcolor = "#FFFFFF";
+
+    var fix = cnf.id_prefix;
+    var digits = cnf.digits===undefined ? this.conf_grid.digits : cnf.digits;
+
+    for(var i in mem_mon)
+    {
+      if(!mem_mon[i]) continue;
+
+      var addr = Number(i) << mem_gran;
+      var idx = this.oCOM.getHexMulti(addr,digits);
+      var el = document.getElementById(fix + idx);
+      if(el!=null) el.style.backgroundColor = bgcolor;
+    }
+  }
+
 }(COM)
 
 function GRID()

@@ -551,6 +551,7 @@ function EMUI()
         {
             box.innerHTML = this.deviceToolHTML();
             box.setAttribute("data-topology",sig);
+            if(typeof(EMU_mem_map)=="function") EMU_mem_map();
         }
 
         if(slots.length == 0)
@@ -627,9 +628,9 @@ function EMUI()
             case "MS16K":
                 return ""
                 + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
-                + "  <div class=appbox style=\"width:340px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                + "    <div style=\"float:left\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);\"></i></div>"
-                + "    <div id=\"EMU_mem_map\"></div>"
+                + "  <div class=appbox style=\"width:372px;height:132px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
+                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></div>"
+                + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px\"></div>"
                 + "  </div>"
                 + "</div>";
 

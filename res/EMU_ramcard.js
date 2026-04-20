@@ -15,6 +15,9 @@ function RamCard()
 
     this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
     this.state = {"active":true};
+    this.mem_mon = {};
+    this.bMEM_monitoring = false;
+    
     
     var bDebug   = true;   // debug all RAM R/W operations
     var bDebug_S = true; // debug soft switch updates
@@ -36,6 +39,25 @@ function RamCard()
 
     var softswitch_pos = 1;    // default softswitch
     var NEXT  = false;         // flag to remember double-triggered Write-Enables
+
+
+    this.mark_MEM_monitoring = function(addr)
+    {
+        if(this.bMEM_monitoring)
+            this.mem_mon[ addr >> oMEMGRID.mem_gran ] = true;
+    }
+
+    this.reset_MEM_monitoring = function()
+    {
+        this.mem_mon = {};
+    }
+
+    this.enable_MEM_monitoring = function(b)
+    {
+        this.bMEM_monitoring = b;
+        if(b) this.reset_MEM_monitoring();
+    }
+
 
     this.soft_switch = function(addr)
     {
@@ -91,6 +113,7 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 BANK_MEM[sw.BANK1?0:1][addr] = d8;
+                this.mark_MEM_monitoring(addr + 0xD000);
                 if(bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
             } 
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));       
@@ -101,6 +124,7 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 RAMCARD_MEM[addr-RAMCARD] = d8;
+                this.mark_MEM_monitoring(addr + 0xD000);
                 if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
             }
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));

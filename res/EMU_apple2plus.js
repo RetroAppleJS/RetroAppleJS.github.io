@@ -108,27 +108,34 @@ function Apple2Plus(context)
 
     this.MEM_monitoring = function()
     {
-        oMEMGRID.paint_grid();                      // clear memory map
-        //var s = "";
-        for(var i=0;i<(1<<oMEMGRID.mem_gran);i++)   // draw memory map
-        {
-            if(hw.mem_mon[i]) 
-            {
-                var id = oCOM.getHexByte(i);
-                el = document.getElementById( oMEMGRID.conf_grid.id_prefix + id + "00" );
-                el.style.backgroundColor = "#FFFFFF";
-                //s+= id+"00<br>"
-            }
-        }
-        //COM_PopupHTML(s);
-        //document.getElementById('COM_popup_text').innerHTML = s;
+        oMEMGRID.paint_grid(this.mem_layout);
+        oMEMGRID.update_grid(hw.mem_mon);
 
-        hw.mem_mon = {}
+        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.mem_mon)
+            oMEMGRID.update_grid(hw.io.ramcard.mem_mon);
+
+        hw.mem_mon = {};
+        if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
+            hw.io.ramcard.reset_MEM_monitoring();       
+    }
+
+    this.reset_MEM_monitoring = function()
+    {
+        hw.mem_mon = {};
+
+        if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
+            hw.io.ramcard.reset_MEM_monitoring();
+
+        oMEMGRID.paint_grid(this.mem_layout);
     }
 
     this.enable_MEM_monitoring = function(b)
     {
         hw.bMEM_monitoring = b;
+        if(hw.io.ramcard && hw.io.ramcard.enable_MEM_monitoring)
+            hw.io.ramcard.enable_MEM_monitoring(b);
+
+        if(b) this.reset_MEM_monitoring();
     }
 
     this.DSK_monitoring = function()
