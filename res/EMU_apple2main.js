@@ -539,54 +539,102 @@ function EMUI()
     {
         var box = document.getElementById("device_toolbox_body");
         if(box == null) return;
-        box.innerHTML = this.deviceToolHTML(slot);
+
+        // Build all device toolboxes only once.
+        if(box.getAttribute("data-init") != "1")
+        {
+            box.innerHTML = this.deviceToolHTML();
+            box.setAttribute("data-init","1");
+        }
+
+        this.showDeviceTool(slot);
     }
 
-    this.deviceToolHTML = function(slot)
+    this.showDeviceTool = function(slot)
     {
-        var pcode = slot==="H" ? "HostIO"
-                                   : (_CFG_SLOT[slot] && _CFG_SLOT[slot].PCODE ? _CFG_SLOT[slot].PCODE : "");
+        var slots = this.deviceSlots();
+        for(var i=0;i<slots.length;i++)
+        {
+            var s = slots[i];
+            var el = document.getElementById("device_tool_" + (s==="H" ? "H" : s));
+            if(el) el.hidden = (s !== slot);
+        }
+    }
+
+    this.deviceToolHTML = function()
+    {
+        var slots = this.deviceSlots();
+        var out = [];
+
+        for(var i=0;i<slots.length;i++)
+            out.push(this.deviceToolSlotHTML(slots[i]));
+
+        return out.join("");
+    }
+
+    this.deviceToolSlotHTML = function(slot)
+    {
+        var pcode = slot==="H"
+            ? "HostIO"
+            : (_CFG_SLOT[slot] && _CFG_SLOT[slot].PCODE ? _CFG_SLOT[slot].PCODE : "");
+ 
 
         switch(pcode)
         {
             case "HostIO":
                 var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
                 return ""
-                    + "<div><b>HostIO ["+model+"]</b>"
-                    + "<button class=appbut style=\"float:right;margin-top:0px\" onclick=\"oEMUI.slotConfig_detail('slotB')\">details</button></div>"
-                    + "<div style=\"padding-top:4px\">keyboard, speaker, cassette, paddles<br>and other soft-switches.</div>";
-
+                    + "<div class=toolbox id=\"device_tool_H\" hidden>"
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "    <div><b>HostIO ["+model+"]</b>"
+                    + "    <button class=appbut style=\"float:right;margin-top:0px\" onclick=\"oEMUI.slotConfig_detail('slotB')\">details</button></div>"
+                    + "    <div style=\"padding-top:4px\">keyboard, speaker, cassette, paddles<br>and other soft-switches.</div>"
+                    + "  </div>"
+                    + "</div>";
             case "MS16K":
-                return "<div class=toolbox>"
-                +"  <div class=appbox style=\"width:340px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                +"    <div style=\"float:left\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);\"></i></div>"
-                +"    <div id=\"EMU_mem_map\"></div>"
-                +"  </div>"
-                +"</div>";
-
+                return ""
+                + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                + "  <div class=appbox style=\"width:340px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
+                + "    <div style=\"float:left\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);\"></i></div>"
+                + "    <div id=\"EMU_mem_map\"></div>"
+                + "  </div>"
+                + "</div>";
 
             case "VIDEX":
-                return "<b>#"+slot+" VIDEX</b><br>80-column toolbox is under construction.";
-
+                return ""
+                    + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "    <b>#"+slot+" VIDEX</b><br>80-column toolbox is under construction."
+                    + "  </div>"
+                    + "</div>";
             case "DISKII":
                 return ""
-                    + "<div class=appbut style=\"padding:5px 0px 0px 0px;text-align:center\">"
-                    + "  <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
-                    + "    <input type=button method=get class=appbut value=\"Drive1\" onclick=\"ejectDisk(this,'D1')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive1'\">"
-                    + "    <input type=\"file\" name=\"D1\" id=\"file_D1\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
-                    + "  </form>"
-                    + "  <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])\" id=\"dump_D1\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-                    + "</div>"
-                    + "<div class=appbut style=\"padding:0px 0px 0px 0px;text-align:center\">"
-                    + "  <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
-                    + "    <input type=button method=get class=appbut value=\"Drive2\" onclick=\"ejectDisk(this,'D2')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive2'\">"
-                    + "    <input type=\"file\" name=\"D2\" id=\"file_D2\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
-                    + "  </form>"
-                    + "  <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:center\">"
+                    + "      <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
+                    + "        <input type=button method=get class=appbut value=\"Drive1\" onclick=\"ejectDisk(this,'D1')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive1'\">"
+                    + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
+                    + "      </form>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])\" id=\"dump_D1\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "    </div>"
+                    + "    <div class=appbut style=\"padding:0px 0px 0px 0px;text-align:center\">"
+                    + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
+                    + "        <input type=button method=get class=appbut value=\"Drive2\" onclick=\"ejectDisk(this,'D2')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive2'\">"
+                    + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
+                    + "      </form>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "    </div>"
+                    + "  </div>"
                     + "</div>";
         }
 
-        return "<b>#"+slot+" "+pcode+"</b><br>No toolbox is available yet.";
+        return ""
+            + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <b>#"+slot+" "+pcode+"</b><br>No toolbox is available yet."
+            + "  </div>"
+            + "</div>";
     }
 
     this.restartHold = {
