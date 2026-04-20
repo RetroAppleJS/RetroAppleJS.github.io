@@ -551,7 +551,10 @@ function EMUI()
         {
             box.innerHTML = this.deviceToolHTML();
             box.setAttribute("data-topology",sig);
-            if(typeof(EMU_mem_map)=="function") EMU_mem_map();
+            if(typeof(EMU_mem_map)=="function"
+            && typeof(apple2plus)=="object"
+            && apple2plus!=null)
+                EMU_mem_map();
         }
 
         if(slots.length == 0)
