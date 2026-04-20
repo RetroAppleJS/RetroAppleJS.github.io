@@ -557,7 +557,13 @@ function EMUI()
                     + "<div style=\"padding-top:4px\">keyboard, speaker, cassette, paddles<br>and other soft-switches.</div>";
 
             case "MS16K":
-                return "<b>#0 MS16K</b><br>Language card / memory expansion.<br>No user controls.";
+                return "<div class=toolbox>"
+                +"  <div class=appbox style=\"width:340px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
+                +"    <div style=\"float:left\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oMEMGRID.paint_grid(oCOM.mem_layout);\"></i></div>"
+                +"    <div id=\"EMU_mem_map\"></div>"
+                +"  </div>"
+                +"</div>";
+
 
             case "VIDEX":
                 return "<b>#"+slot+" VIDEX</b><br>80-column toolbox is under construction.";
