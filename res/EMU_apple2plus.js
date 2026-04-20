@@ -113,13 +113,10 @@ function Apple2Plus(context)
 
         if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.mem_layout)
         {
-            oMEMGRID.paint_grid(hw.io.ramcard.mem_layout, hw.io.ramcard.MEM_grid_cnf);
             oMEMGRID.update_grid(hw.io.ramcard.mem_mon, hw.io.ramcard.MEM_grid_cnf);
         }
 
-        hw.mem_mon = {};
-        if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
-            hw.io.ramcard.reset_MEM_monitoring();       
+        hw.mem_mon = {};     
     }
 
     this.reset_MEM_monitoring = function()
