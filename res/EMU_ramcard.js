@@ -12,12 +12,21 @@ function RamCard()
     const BANK_SIZE     =  4096
          ,RAMCARD       =  4096
          ,RAMCARD_SIZE  =  8192
+         ,VIRT_BANK_A   =  0x10000
+         ,VIRT_BANK_B   =  0x20000
+         ,VIRT_RAMCARD  =  0x30000
 
     this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
     this.state = {"active":true};
     this.mem_mon = {};
     this.bMEM_monitoring = false;
-    
+    this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
+    this.mem_layout = {
+        "3F000-40000":["#D06060","RAMCARD $F000-$FFFF","RF"]
+       ,"3E000-3F000":["#D06060","RAMCARD $E000-$EFFF","RE"]
+       ,"2D000-2E000":["#B05050","BANK B $D000-$DFFF","DB"]
+       ,"1D000-1E000":["#A04040","BANK A $D000-$DFFF","DA"]
+    };    
     
     var bDebug   = true;   // debug all RAM R/W operations
     var bDebug_S = true; // debug soft switch updates
@@ -112,7 +121,7 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 BANK_MEM[sw.BANK1?0:1][addr] = d8;
-                this.mark_MEM_monitoring(addr + 0xD000);
+                this.mark_MEM_monitoring((sw.BANK1 ? VIRT_BANK_A : VIRT_BANK_B) + addr + 0xD000);
                 if(bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
             } 
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));       
@@ -123,7 +132,7 @@ function RamCard()
             if(sw.WE && NEXT)
             {
                 RAMCARD_MEM[addr-RAMCARD] = d8;
-                this.mark_MEM_monitoring(addr + 0xD000);
+                this.mark_MEM_monitoring(VIRT_RAMCARD + addr + 0xD000);
                 if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
             }
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));

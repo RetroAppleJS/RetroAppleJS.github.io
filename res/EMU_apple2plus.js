@@ -111,8 +111,11 @@ function Apple2Plus(context)
         oMEMGRID.paint_grid(this.mem_layout);
         oMEMGRID.update_grid(hw.mem_mon);
 
-        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.mem_mon)
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon);
+        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.mem_layout)
+        {
+            oMEMGRID.paint_grid(hw.io.ramcard.mem_layout, hw.io.ramcard.MEM_grid_cnf);
+            oMEMGRID.update_grid(hw.io.ramcard.mem_mon, hw.io.ramcard.MEM_grid_cnf);
+        }
 
         hw.mem_mon = {};
         if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
@@ -127,6 +130,8 @@ function Apple2Plus(context)
             hw.io.ramcard.reset_MEM_monitoring();
 
         oMEMGRID.paint_grid(this.mem_layout);
+        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.mem_layout)
+            oMEMGRID.paint_grid(hw.io.ramcard.mem_layout, hw.io.ramcard.MEM_grid_cnf);
     }
 
     this.enable_MEM_monitoring = function(b)

@@ -1105,13 +1105,24 @@ var oMEMGRID = new function()
   this.build_grid = function(start,len,step,cnf)
   {
     if(cnf===undefined) var cnf = this.conf_grid;
-    var s = "<table class=gtable style='display:inline-block;' id='gtable_"+cnf.id_prefix+"'>\n";
+    var table_id = cnf.table_id===undefined ? cnf.id_prefix : cnf.table_id;
+    var s = "<table class=gtable style='display:inline-block;' id='gtable_"+table_id+"'>\n";
     var end = start+len*step;
     for(var i=start;i!=end;i+=step)
       s += "<tr><td>"+this.oCOM.getHexMulti(i,cnf.digits)+"</td>"
               +"<td id='"+cnf.id_prefix+this.line(i,16,256,cnf.digits).join("'></td><td id='"+cnf.id_prefix)+"'></td></tr>\n";
     return s+"</table>"
   }
+
+  this.relabel_grid_rows = function(table_id, labels)
+  {
+    var tbl = document.getElementById("gtable_"+table_id);
+    if(tbl==null) return;
+    var rows = tbl.getElementsByTagName("tr");
+    for(var i=0;i<rows.length && i<labels.length;i++)
+      if(rows[i].cells.length>0)
+        rows[i].cells[0].textContent = labels[i];
+  }  
 
   this.paint_grid = function(layout,cnf)
   {
