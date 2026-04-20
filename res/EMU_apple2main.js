@@ -487,35 +487,17 @@ function EMUI()
         var btn = document.getElementById(arg.id);
         if(btn == null) return;
 
+        // First reconcile the UI with the currently mounted topology.
+        var slot = this.refreshDeviceToolboxes(arg);
         var slots = this.deviceSlots();
-        if(slots.length == 0)
-        {
-            btn.innerHTML = "∅";
-            btn.setAttribute("data-slot","");
-            this.renderDeviceTool("H");
-            return;
-        }
 
-        var cur = btn.getAttribute("data-slot");
-        var slot = cur=="H" ? "H"
-                 : (cur==null || cur=="" ? null : Number(cur));
+        if(slots.length == 0) return;
+        if(arg.init === true) return;
 
-        if(arg.init === true)
-        {
-            var pref = arg.preserve;
-            if(pref === "H" && slots.indexOf("H") >= 0) slot = "H";
-            else if(typeof(pref)=="number" && slots.indexOf(pref) >= 0) slot = pref;
-            else if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
-        }
-        else
-        {
-            if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
-            else slot = slots[(slots.indexOf(slot)+1)%slots.length];
-        }
+        if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
+        else slot = slots[(slots.indexOf(slot)+1)%slots.length];
 
-        btn.setAttribute("data-slot", slot==="H" ? "H" : String(slot));
-        btn.innerHTML = this.deviceLabel(slot);
-        this.renderDeviceTool(slot);
+        this.refreshDeviceToolboxes({"id":arg.id,"preserve":slot});       
      }
 
     this.deviceSlots = function()
@@ -535,30 +517,81 @@ function EMUI()
         return slot==="H" ? "H▹" : slot + "▹";
     }
 
-    this.renderDeviceTool = function(slot)
+    this.deviceTopologySig = function()
     {
-        var box = document.getElementById("device_toolbox_body");
-        if(box == null) return;
+        var slots = this.deviceSlots();
+        var sig = [];
 
-        // Build all device toolboxes only once.
-        if(box.getAttribute("data-init") != "1")
+        for(var i=0;i<slots.length;i++)
         {
-            box.innerHTML = this.deviceToolHTML();
-            box.setAttribute("data-init","1");
+            var s = slots[i];
+            var pcode = s==="H"
+                ? "HostIO"
+                : (_CFG_SLOT[s] && _CFG_SLOT[s].PCODE ? _CFG_SLOT[s].PCODE : "");
+            sig.push(String(s)+":"+pcode);
         }
 
+        return sig.join("|");
+    }
+
+    this.refreshDeviceToolboxes = function(arg)
+    {
+        arg = arg || {};
+
+        var box = document.getElementById("device_toolbox_body");
+        var btn = document.getElementById(arg.id || "devices");
+        if(box == null || btn == null) return null;
+
+        var slots = this.deviceSlots();
+        var sig = this.deviceTopologySig();
+        var oldSig = box.getAttribute("data-topology");
+
+        // Rebuild only when mounted devices changed.
+        if(oldSig !== sig)
+        {
+            box.innerHTML = this.deviceToolHTML();
+            box.setAttribute("data-topology",sig);
+        }
+
+        if(slots.length == 0)
+        {
+            btn.innerHTML = "∅";
+            btn.setAttribute("data-slot","");
+            this.showDeviceTool(null);
+            return null;
+        }
+
+        var cur = btn.getAttribute("data-slot");
+        var slot = cur==="H" ? "H"
+                 : (cur==null || cur==="" ? null : Number(cur));
+
+        // preserve explicitly requested slot if still mounted
+        if(arg.preserve === "H" && slots.indexOf("H") >= 0) slot = "H";
+        else if(typeof(arg.preserve)=="number" && slots.indexOf(arg.preserve) >= 0) slot = arg.preserve;
+        else if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
+
+        btn.setAttribute("data-slot", slot==="H" ? "H" : String(slot));
+        btn.innerHTML = this.deviceLabel(slot);
         this.showDeviceTool(slot);
+        return slot;
+    }
+
+
+    this.renderDeviceTool = function(slot)
+    {
+      this.refreshDeviceToolboxes({"id":"devices","preserve":slot});
     }
 
     this.showDeviceTool = function(slot)
     {
-        var slots = this.deviceSlots();
-        for(var i=0;i<slots.length;i++)
-        {
-            var s = slots[i];
-            var el = document.getElementById("device_tool_" + (s==="H" ? "H" : s));
-            if(el) el.hidden = (s !== slot);
-        }
+        var all = document.querySelectorAll("[id^='device_tool_']");
+        for(var i=0;i<all.length;i++)
+            all[i].hidden = true;
+
+        if(slot == null) return;
+
+        var el = document.getElementById("device_tool_" + (slot==="H" ? "H" : slot));
+        if(el) el.hidden = false;
     }
 
     this.deviceToolHTML = function()

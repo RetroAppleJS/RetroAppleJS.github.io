@@ -548,6 +548,9 @@ function Apple2IO(vid)
             //oEMUI.slotConfig({"id":"d_slot"+slot_num   ,"icon":"fa fa-cog"                                        ,"active":SLOT_MAP[idx+0]});
         }
 
+        if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
+            oEMUI.refreshDeviceToolboxes({"id":"devices"});
+
         var n = this.listDeviceNames();
     }
 
@@ -563,6 +566,12 @@ function Apple2IO(vid)
         SLOT_MAP[idx+5] = 0;
         SLOT_MAP[idx+6] = 0;
         SLOT_MAP[idx+7] = 0;
+
+        if(typeof(oEMUI.slotConfig)=="function")
+            oEMUI.slotConfig({"id":"slot"+slot_num,"icon":"fa fa-cube","active":false});
+
+        if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
+            oEMUI.refreshDeviceToolboxes({"id":"devices"});
     }
 
 
