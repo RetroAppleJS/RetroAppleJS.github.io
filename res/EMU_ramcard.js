@@ -32,8 +32,7 @@ function RamCard()
        ,0x9: {               "WE":true,"BANK1":true}
        ,0xA:{                         "BANK1":true}
        ,0xB:{"RAMCARD":true,"WE":true,"BANK1":true}
-    } 
-
+    }
 
     // TODO FVD - emulate status leds !
 
