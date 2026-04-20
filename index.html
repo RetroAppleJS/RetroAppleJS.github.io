@@ -419,11 +419,10 @@
               if(!el) return;
               if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
  
-
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
               el.innerHTML =
-                "<div style='display:flex;gap:6px;align-items:flex-start'>"
+                "<div style='display:flex;flex-wrap:nowrap;gap:6px;align-items:flex-start'>"
               +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
               +   oMEMGRID.build_grid(15*linestep,8,-linestep,cnf)
               + "</div>";
