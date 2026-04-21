@@ -552,6 +552,7 @@ oEMUI.onSlotClick = function(ctx, ev)
   var hostId = ctx.hostId;
 
   alert("Configure " + hostId + " peripheral " + ev.currentTarget.id + " in slot " + slotID);
+  console.log(JSON.stringify(ctx.slotCfg));
 };
 
 oEMUI.onSlotAdd = function(ctx, ev)
@@ -561,7 +562,6 @@ oEMUI.onSlotAdd = function(ctx, ev)
   if (!anchor || !ctx.host.contains(anchor)) return;
   var slotId = anchor.dataset.slotId;
   alert("Plug " + ctx.hostId + " new peripheral in slot " + slotId);
-
   console.log(JSON.stringify(ctx.slotCfg));
 };
 
