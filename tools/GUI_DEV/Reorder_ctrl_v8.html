@@ -168,23 +168,37 @@
 <script>
 function EMUI()
 {
-
-
   this.ctx = {};
   this.cfg = {};
-  this.onSlotClick = function(ctx,ev) { /* overridable: do somthing after click */ alert("onSlotClick - placeholder") }
-  this.onSlotAdd   = function(ctx,ev) { /* overridable: do somthing after add */   alert("onSlotAdd - placeholder") }
-  this.onSlotMove  = function(ctx,ev, fromSlotId, toSlotId) { /* overridable: do somthing after move */  alert("onSlotMove - placeholder")  }
-
-  function getCtx(emui, hostId)
+  this.onSlotClick = function(ctx, ev)
   {
-    if (!emui.ctx[hostId]) emui.ctx[hostId] = { hostId: hostId, host: null, clickBound: false, pointerDrag: null };
-    return emui.ctx[hostId];
-  }
+    var parent = ev.currentTarget.closest(".slot");
+    var slotID = parent ? parent.dataset.slotId : "";
+    var hostId = ctx.hostId;
+
+    alert("Configure " + hostId + " peripheral " + ev.currentTarget.id + " in slot " + slotID);
+    console.log(JSON.stringify(this.cfg[ctx.hostId]));
+  };
+
+  this.onSlotAdd = function(ctx, ev)
+  {
+    var anchor = ev.target.closest(".slot-anchor.empty");
+    if (!anchor || !ctx.host.contains(anchor)) return;
+
+    var slotId = anchor.dataset.slotId;
+    alert("Plug " + ctx.hostId + " new peripheral in slot " + slotId);
+    console.log(JSON.stringify(this.cfg[ctx.hostId]));
+  };
+
+  this.onSlotMove = function(ctx, ev, fromSlotId, toSlotId)
+  {
+    console.log(JSON.stringify(this.cfg[ctx.hostId]));
+    alert("Move " + ctx.hostId + " peripheral slot " + fromSlotId + "->" + toSlotId);
+  };
 
   function getSlotById(slotCfg, slotId) { return slotCfg.find(function(slot) { return slot.slotId === slotId; }) }
 
-  this.slotMove = function slotMove(ctx, ev, fromSlotId, toSlotId)
+  this.slotMove = function(ctx, ev, fromSlotId, toSlotId)
   {
     if (!ctx || !fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
 
@@ -203,7 +217,7 @@ function EMUI()
     this.onSlotMove(ctx, ev, fromSlotId, toSlotId);
   };
 
-  this.slotsRender = function slotsRender(elid, cfg)
+  this.slotsRender = function(elid, cfg)
   {
     if (!elid) return;
 
@@ -214,6 +228,13 @@ function EMUI()
 
     ctx.host = document.getElementById(elid);
     if (!ctx.host) return;
+
+    function getCtx(emui, hostId)
+    {
+      if (!emui.ctx[hostId]) emui.ctx[hostId] = { hostId: hostId, host: null, clickBound: false, pointerDrag: null };
+      return emui.ctx[hostId];
+    }
+
     function renderGhost(slot)
     {
       var iconClass = (slot && slot.icon) ? slot.icon : "fa fa-circle";
