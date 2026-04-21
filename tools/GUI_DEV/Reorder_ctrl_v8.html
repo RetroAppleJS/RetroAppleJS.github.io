@@ -173,11 +173,11 @@ function EMUI()
   this.onSlotClick = function(ctx, ev)
   {
     var parent  = ev.currentTarget.closest(".slot");
-    var perifID = ev.currentTarget.id;
+    var periID = ev.currentTarget.id;
     var slotID  = parent ? parent.dataset.slotId : "";
     var hostId  = ctx.hostId;
 
-    alert("Configure " + hostId + " peripheral " + perifID + " in slot " + slotID);
+    alert("Configure " + hostId + " peripheral " + periID + " in slot " + slotID);
     console.log(JSON.stringify(this.cfg[ctx.hostId]));
   };
 
@@ -194,10 +194,10 @@ function EMUI()
   this.onSlotMove = function(ctx, ev, fromSlotId, toSlotId)
   {
     var parent = ev.currentTarget.parentElement.parentElement.parentElement;
-    var perifID = parent.children[0].id;
+    var periID = parent.children[0].id;
 
     console.log(JSON.stringify(this.cfg[ctx.hostId]));
-    alert("Move " + ctx.hostId + " peripheral "+perifID+" slot " + fromSlotId + "->" + toSlotId);
+    alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
   };
 
   this.slotsRender = function(elid, cfg)
