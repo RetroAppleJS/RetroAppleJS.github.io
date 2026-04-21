@@ -185,8 +185,8 @@ function EMUI()
     var anchor = ev.target.closest(".slot-anchor.empty");
     if (!anchor || !ctx.host.contains(anchor)) return;
 
-    var slotId = anchor.dataset.slotId;
-    alert("Plug " + ctx.hostId + " new peripheral in slot " + slotId);
+    var slotTitle = anchor.dataset.slotId;
+    alert("Plug " + ctx.hostId + " new peripheral in slot " + slotTitle);
     console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
   };
 
@@ -209,11 +209,11 @@ function EMUI()
     ctx.host = document.getElementById(elid);
     if (!ctx.host) return;
 
-    function getSlotById(slotCfg, slotId) { return slotCfg.find(function(slot) { return slot.slotId === slotId; }) }
+    function getSlotById(slotCfg, slotTitle) { return slotCfg.find(function(slot) { return slot.slotTitle === slotTitle; }) }
 
     function renderGhost(slot)
     {
-      var iconClass = (slot && slot.icon) ? slot.icon : "fa fa-circle";
+      var iconClass = (slot && slot.peripheral && slot.peripheral.icon) ? slot.peripheral.icon : "fa fa-circle";
 
       return `
         <button class="appbut ghost-cog" type="button" tabindex="-1" aria-hidden="true">
@@ -228,14 +228,14 @@ function EMUI()
 
     function renderAnchor(slot)
     {
-      var anchorId = "d_slot_" + ctx.hostId + "_" + slot.slotId.replace(/[^a-zA-Z0-9_-]/g, "_");
+      var anchorId = "d_slot_" + ctx.hostId + "_" + slot.slotTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
  
       if (slot.peripheral)
       {
         return `
           <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}"
                id="${anchorId}"
-               data-slot-id="${slot.slotId}"
+               data-slot-id="${slot.slotTitle}"
                data-host-id="${ctx.hostId}">
             <div class="peripheral-card">
               ${slot.lock ? "" : `
@@ -252,9 +252,9 @@ function EMUI()
       return `
         <div class="slot-anchor empty"
              id="${anchorId}"
-             data-slot-id="${slot.slotId}"
+             data-slot-id="${slot.slotTitle}"
              data-host-id="${ctx.hostId}">
-          <button class="slot-add" type="button" title="Add peripheral to ${slot.slotId}">
+          <button class="slot-add" type="button" title="Add peripheral to ${slot.slotTitle}">
             <i class="fa fa-plus dots dots1"></i>
           </button>
         </div>
@@ -265,12 +265,12 @@ function EMUI()
     {
       return `
         <div class="appbox slotbox slot"
-             data-slot-id="${slot.slotId}"
+             data-slot-id="${slot.slotTitle}"
              data-host-id="${ctx.hostId}">
-          <div class="slot-label">${slot.slotId}</div>
+          <div class="slot-label">${slot.slotTitle}</div>
           <div class="sloticons">
             ${slot.peripheral
-              ? `<button id="${slot.peripheral.name}" class="appbut cogbtn" type="button"><i class="${slot.icon || ""}"></i></button>`
+              ? `<button id="${slot.peripheral.name}" class="appbut cogbtn" type="button"><i class="${slot.peripheral.icon || ""}"></i></button>`
               : ""}
             ${renderAnchor(slot)}
           </div>
@@ -401,10 +401,10 @@ function EMUI()
         if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
 
         to.peripheral = from.peripheral;
-        to.icon = from.icon;
+        //to.icon = from.icon;
 
         from.peripheral = null;
-        delete from.icon;
+        //delete from.icon;
       };
     }
 
@@ -440,29 +440,29 @@ var oEMUI = new EMUI();
 
 // slot data
 var slotCfg1 = [
-  { slotId: "board", icon: "fa fa-cube", lock:true, peripheral: { id: "mainboard", name: "BOARD" } },
-  { slotId: "PR#0",  icon: "fa fa-microchip",       peripheral: { id: "ramcard",   name: "MS16K" } },
-  { slotId: "PR#1" },
-  { slotId: "PR#2" },
-  { slotId: "PR#3",  icon: "fa fa-tv",              peripheral: { id: "col80card", name: "VIDEX" } },
-  { slotId: "PR#4" },
-  { slotId: "PR#5" },
-  { slotId: "PR#6",  icon: "fa fa-save",            peripheral: { id: "disk2",     name: "DISKII" } },
-  { slotId: "PR#7" }
+  { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", name: "BOARD" ,icon: "fa fa-cube",} },
+  { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   name: "MS16K", icon: "fa fa-microchip" } },
+  { slotTitle: "PR#1" },
+  { slotTitle: "PR#2" },
+  { slotTitle: "PR#3",              peripheral: { objID: "col80card", name: "VIDEX", icon: "fa fa-tv" } },
+  { slotTitle: "PR#4" },
+  { slotTitle: "PR#5" },
+  { slotTitle: "PR#6",             peripheral: { objID: "disk2",     name: "DISKII",icon: "fa fa-save",  } },
+  { slotTitle: "PR#7" }
 ];
 oEMUI.slotsRender("device_slots1",slotCfg1);
 
 
 var slotCfg2 = [
-  { slotId: "board", icon: "fa fa-cube", lock:true, peripheral: { id: "mainboard", name: "BOARD" } },
-  { slotId: "PR#0",  icon: "fa fa-microchip",       peripheral: { id: "ramcard",   name: "MS16K" } },
-  { slotId: "PR#1" },
-  { slotId: "PR#2" },
-  { slotId: "PR#3",  icon: "fa fa-tv",              peripheral: { id: "col80card", name: "VIDEX" } },
-  { slotId: "PR#4" },
-  { slotId: "PR#5" },
-  { slotId: "PR#6",  icon: "fa fa-save",            peripheral: { id: "disk2",     name: "DISKII" } },
-  { slotId: "PR#7" }
+  { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", name: "BOARD" ,icon: "fa fa-cube",} },
+  { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   name: "MS16K", icon: "fa fa-microchip" } },
+  { slotTitle: "PR#1" },
+  { slotTitle: "PR#2" },
+  { slotTitle: "PR#3",              peripheral: { objID: "col80card", name: "VIDEX", icon: "fa fa-tv" } },
+  { slotTitle: "PR#4" },
+  { slotTitle: "PR#5" },
+  { slotTitle: "PR#6",             peripheral: { objID: "disk2",     name: "DISKII",icon: "fa fa-save",  } },
+  { slotTitle: "PR#7" }
 ];
 oEMUI.slotsRender("device_slots2",slotCfg2);
 
