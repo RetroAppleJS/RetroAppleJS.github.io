@@ -168,7 +168,6 @@
 <script>
 function EMUI()
 {
-  //this.slot_ctx = {};
   this.slot_cfg = {};
   this.onSlotClick = function(ctx, ev)
   {
@@ -203,13 +202,7 @@ function EMUI()
   this.slotsRender = function(elid, cfg)
   {
     if (!elid) return;
-
-    //elid,this
     if(!ctx) var ctx = { hostId: elid, host: null, clickBound: false, pointerDrag: null };
-
-    //if (!this.slot_ctx[elid]) this.slot_ctx[elid] = { hostId: elid, host: null, clickBound: false, pointerDrag: null };
-    //var ctx = this.slot_ctx[elid];
-    
     if (cfg !== undefined) this.slot_cfg[elid] = cfg;
     if (!this.slot_cfg[elid]) this.slot_cfg[elid] = [];
 
@@ -315,23 +308,13 @@ function EMUI()
     function cleanupPointerDrag()
     {
       if (!ctx.pointerDrag) return;
-
       var handleEl = ctx.pointerDrag.handleEl;
       var pointerId = ctx.pointerDrag.pointerId;
-
-      if (ctx.pointerDrag.hotTarget)
-        ctx.pointerDrag.hotTarget.classList.remove("drop-ok");
-
-      if (ctx.pointerDrag.ghostEl)
-        ctx.pointerDrag.ghostEl.remove();  
-
+      if (ctx.pointerDrag.hotTarget) ctx.pointerDrag.hotTarget.classList.remove("drop-ok");
+      if (ctx.pointerDrag.ghostEl) ctx.pointerDrag.ghostEl.remove();
       if (handleEl)
       {
-        try
-        {
-          if (handleEl.hasPointerCapture(pointerId))
-            handleEl.releasePointerCapture(pointerId);
-        }
+        try { if (handleEl.hasPointerCapture(pointerId)) handleEl.releasePointerCapture(pointerId) }
         catch (e) {}
 
         handleEl.removeEventListener("pointermove", onPointerDragMove);
