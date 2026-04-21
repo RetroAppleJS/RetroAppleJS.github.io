@@ -166,8 +166,8 @@
 
 </style>
 
-<div class=toolbox id="device_slots"></div>
-
+<div class=toolbox id="device_slots1"></div>
+<div class=toolbox id="device_slots2"></div>
 
 <script>
 function EMUI()
@@ -179,11 +179,11 @@ function EMUI()
   var hostId         = null;
   this.host          = null;
 
-  this.onSlotAdd = function() { /* overridable: do somthing after add */ alert("onSlotAdd - placeholder") }
-  
-  this.onSlotMove = function() { /* overridable: do somthing after move */ alert("onSlotMove - placeholder")  }
+  this.onSlotClick = function() { /* overridable: do somthing after click */ alert("onSlotClick - placeholder") }
+  this.onSlotAdd   = function() { /* overridable: do somthing after add */   alert("onSlotAdd - placeholder") }
+  this.onSlotMove  = function() { /* overridable: do somthing after move */  alert("onSlotMove - placeholder")  }
 
-  this.slotMove = function slotMove(fromSlotId, toSlotId)
+  this.slotMove = function slotMove(ev, fromSlotId, toSlotId)
   {
     function getSlotById(emui, slotId)
     {
@@ -207,14 +207,15 @@ function EMUI()
 
     this.slotsRender();
     console.log("Move peripheral from->to", fromSlotId, toSlotId);
-    this.onSlotMove(fromSlotId, toSlotId);
+    this.onSlotMove(ev, fromSlotId, toSlotId);
   };
 
-  this.slotsRender = function slotsRender(elid)
+  this.slotsRender = function slotsRender(elid,cfg)
   {
     if (elid)
     {
       hostId = elid;
+      this.slotCfg = cfg;
       this.host = document.getElementById(hostId);
       if(this.host) this.host.addEventListener("click", oEMUI.onSlotAdd);
     }
@@ -248,9 +249,7 @@ function EMUI()
       if (slot.peripheral)
       {
         return `
-          <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}"
-               id="${anchorId}"
-               data-slot-id="${slot.slotId}">
+          <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}" id="${anchorId}" data-slot-id="${slot.slotId}">
             <div class="peripheral-card">
               ${slot.lock ? "" : `
                 <span class="drag-handle" title="Move ${slot.peripheral.name}">
@@ -264,9 +263,7 @@ function EMUI()
       }
 
       return `
-        <div class="slot-anchor empty"
-             id="${anchorId}"
-             data-slot-id="${slot.slotId}">
+        <div class="slot-anchor empty" id="${anchorId}" data-slot-id="${slot.slotId}">
           <button class="slot-add" type="button" title="Add peripheral to ${slot.slotId}">
             <i class="fa fa-plus dots dots1"></i>
           </button>
@@ -281,7 +278,7 @@ function EMUI()
           <div class="slot-label">${slot.slotId}</div>
           <div class="sloticons">
             ${slot.peripheral
-              ? `<button class="appbut cogbtn" type="button"><i class="${slot.icon || ""}"></i></button>`
+              ? `<button id="${slot.peripheral.name}" class="appbut cogbtn" type="button"><i class="${slot.icon || ""}"></i></button>`
               : ""}
             ${renderAnchor(slot)}
           </div>
@@ -453,7 +450,7 @@ function EMUI()
 
       cleanupPointerDrag();
 
-      if (toSlotId) emui.slotMove(fromSlotId, toSlotId);
+      if (toSlotId) emui.slotMove(ev,fromSlotId, toSlotId);
     }
 
     function onPointerDragCancel(ev)
@@ -487,6 +484,11 @@ function EMUI()
       emui.slotMove(fromSlotId, toSlotId);
     }
 
+    function onClick(emui, host, ev)
+    {
+       emui.onSlotClick(ev);
+    }
+
     function wireEvents(emui, host)
     {
       host.querySelectorAll(".drag-handle").forEach(function(el)
@@ -496,6 +498,13 @@ function EMUI()
           onPointerDragStart(emui, host, ev);
         });
       });
+
+      host.querySelectorAll(".appbut").forEach(function(el)
+      {
+        el.addEventListener("click", function(ev)
+        {  onClick(emui, host, ev) })
+      })
+
     }
 
     this.host.innerHTML = this.slotCfg.map(renderSlot).join("");
@@ -505,33 +514,62 @@ function EMUI()
 
 var oEMUI = new EMUI();
 
-// slot data
-oEMUI.slotCfg = [
-  { slotId: "board", icon: "fa fa-cube", lock:true, peripheral: { id: "mainboard", name: "BOARD" } },
-  { slotId: "PR#0",  icon: "fa fa-microchip",      peripheral: { id: "ramcard",   name: "MS16K" } },
-  { slotId: "PR#1" },
-  { slotId: "PR#2" },
-  { slotId: "PR#3",  icon: "fa fa-tv",             peripheral: { id: "col80card", name: "VIDEX" } },
-  { slotId: "PR#4" },
-  { slotId: "PR#5" },
-  { slotId: "PR#6",  icon: "fa fa-save",           peripheral: { id: "disk2",     name: "DISKII" } },
-  { slotId: "PR#7" }
-];
 
 // slot custom event handling
+
+oEMUI.onSlotClick = function(ev)
+{
+  var parent =  ev.currentTarget.parentElement.parentElement;
+  var slotID =  parent.firstElementChild.innerText;
+  var hostId =  parent.parentElement.id;
+
+  alert("Configure "+hostId+" peripheral " + ev.currentTarget.id + " in slot "+slotID);
+}
+
 oEMUI.onSlotAdd = function(ev)
 {
+  var hostId =  ev.currentTarget.id
   var anchor = ev.target.closest(".slot-anchor.empty");
   if (!anchor || !oEMUI.host.contains(anchor)) return;
   var slotId = anchor.dataset.slotId;
-  alert("Plugin peripheral slot " + slotId);
-}
-oEMUI.onSlotMove = function(fromSlotId, toSlotId)
-{
+  alert("Plug "+hostId+" new peripheral in slot " + slotId);
+
   console.log(JSON.stringify(this.slotCfg));
-  alert("Move peripheral slot "+fromSlotId+"->"+toSlotId);
+}
+oEMUI.onSlotMove = function(ev, fromSlotId, toSlotId)
+{
+  var hostId =  "";
+  console.log(JSON.stringify(this.slotCfg));
+  alert("Move "+hostId+" peripheral slot "+fromSlotId+"->"+toSlotId);
 }
 
-oEMUI.slotsRender("device_slots");
+// slot data
+var slotCfg1 = [
+  { slotId: "board", icon: "fa fa-cube", lock:true, peripheral: { id: "mainboard", name: "BOARD" } },
+  { slotId: "PR#0",  icon: "fa fa-microchip",       peripheral: { id: "ramcard",   name: "MS16K" } },
+  { slotId: "PR#1" },
+  { slotId: "PR#2" },
+  { slotId: "PR#3",  icon: "fa fa-tv",              peripheral: { id: "col80card", name: "VIDEX" } },
+  { slotId: "PR#4" },
+  { slotId: "PR#5" },
+  { slotId: "PR#6",  icon: "fa fa-save",            peripheral: { id: "disk2",     name: "DISKII" } },
+  { slotId: "PR#7" }
+];
+oEMUI.slotsRender("device_slots1",slotCfg1);
+
+/*
+var slotCfg2 = [
+  { slotId: "board", icon: "fa fa-cube", lock:true, peripheral: { id: "mainboard", name: "BOARD" } },
+  { slotId: "PR#0",  icon: "fa fa-microchip",       peripheral: { id: "ramcard",   name: "MS16K" } },
+  { slotId: "PR#1" },
+  { slotId: "PR#2" },
+  { slotId: "PR#3",  icon: "fa fa-tv",              peripheral: { id: "col80card", name: "VIDEX" } },
+  { slotId: "PR#4" },
+  { slotId: "PR#5" },
+  { slotId: "PR#6",  icon: "fa fa-save",            peripheral: { id: "disk2",     name: "DISKII" } },
+  { slotId: "PR#7" }
+];
+oEMUI.slotsRender("device_slots2",slotCfg2);
+*/
 
 </script>
