@@ -179,9 +179,24 @@ function EMUI()
   var hostId         = null;
   this.host          = null;
 
-  this.onSlotClick = function() { /* overridable: do somthing after click */ alert("onSlotClick - placeholder") }
-  this.onSlotAdd   = function() { /* overridable: do somthing after add */   alert("onSlotAdd - placeholder") }
-  this.onSlotMove  = function() { /* overridable: do somthing after move */  alert("onSlotMove - placeholder")  }
+  this.onSlotClick = function(ctx,ev) { /* overridable: do somthing after click */ alert("onSlotClick - placeholder") }
+  this.onSlotAdd   = function(ctx,ev) { /* overridable: do somthing after add */   alert("onSlotAdd - placeholder") }
+  this.onSlotMove  = function(ctx,ev) { /* overridable: do somthing after move */  alert("onSlotMove - placeholder")  }
+
+  function getCtx(emui, hostId)
+  {
+    if (!emui.ctx[hostId])
+    {
+      emui.ctx[hostId] = {
+        hostId: hostId,
+        host: null,
+        slotCfg: [],
+        dragFromSlotId: null,
+        pointerDrag: null
+      };
+    }
+    return emui.ctx[hostId];
+  }
 
   this.slotMove = function slotMove(ev, fromSlotId, toSlotId)
   {
