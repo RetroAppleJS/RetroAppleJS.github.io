@@ -184,13 +184,13 @@ const _CFG_PCODE = {
 }
 
 const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":[0xC080,0xC08F],"ROMrange":[],"LROMrange":[] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
+ 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
 ,1:{"PCODE":"" ,"DESCRIPTION":""}
 ,2:{"PCODE":"" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":[0xC0B0,0xC0BF],"ROMrange":[0xC060,0xC15F],"LROMrange":[0xC800,0xCFFF] ,"DESCRIPTION":""}
+,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
 ,4:{"PCODE":"" ,"DESCRIPTION":""}
 ,5:{"PCODE":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":[0xC0E0,0xC0EF],"ROMrange":[0xC0C0,0xC1BF],"LROMrange":[] ,"DESCRIPTION":""}
+,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
 ,7:{"PCODE":"" ,"DESCRIPTION":""}
 }
 
