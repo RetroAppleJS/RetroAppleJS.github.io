@@ -528,7 +528,7 @@ oEMUI.onSlotClick = function(ev)
 
 oEMUI.onSlotAdd = function(ev)
 {
-  var hostId =  ev.currentTarget.id
+  var hostId = this.host && this.host.id;
   var anchor = ev.target.closest(".slot-anchor.empty");
   if (!anchor || !oEMUI.host.contains(anchor)) return;
   var slotId = anchor.dataset.slotId;
@@ -538,7 +538,7 @@ oEMUI.onSlotAdd = function(ev)
 }
 oEMUI.onSlotMove = function(ev, fromSlotId, toSlotId)
 {
-  var hostId =  "";
+  var hostId = this.host && this.host.id;
   console.log(JSON.stringify(this.slotCfg));
   alert("Move "+hostId+" peripheral slot "+fromSlotId+"->"+toSlotId);
 }
