@@ -200,23 +200,6 @@ function EMUI()
     alert("Move " + ctx.hostId + " peripheral "+perifID+" slot " + fromSlotId + "->" + toSlotId);
   };
 
-  function getSlotById(slotCfg, slotId) { return slotCfg.find(function(slot) { return slot.slotId === slotId; }) }
-
-  this.slotMove = function(ctx, ev, fromSlotId, toSlotId)
-  {
-    if (!ctx || !fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
-
-    var from = getSlotById(this.cfg[ctx.hostId], fromSlotId);
-    var to   = getSlotById(this.cfg[ctx.hostId], toSlotId);
-    if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
-
-    to.peripheral = from.peripheral;
-    to.icon = from.icon;
-
-    from.peripheral = null;
-    delete from.icon;
-  };
-
   this.slotsRender = function(elid, cfg)
   {
     if (!elid) return;
@@ -234,6 +217,8 @@ function EMUI()
       if (!emui.ctx[hostId]) emui.ctx[hostId] = { hostId: hostId, host: null, clickBound: false, pointerDrag: null };
       return emui.ctx[hostId];
     }
+
+    function getSlotById(slotCfg, slotId) { return slotCfg.find(function(slot) { return slot.slotId === slotId; }) }
 
     function renderGhost(slot)
     {
@@ -420,11 +405,26 @@ function EMUI()
       cleanupPointerDrag();
       if (toSlotId)
       {
-        emui.slotMove(ctx, ev, fromSlotId, toSlotId);
+        slotMove(emui.cfg, ctx, ev, fromSlotId, toSlotId);
         emui.slotsRender(ctx.hostId);
         console.log("Move peripheral from->to", ctx.hostId, fromSlotId, toSlotId);
         emui.onSlotMove(ctx, ev, fromSlotId, toSlotId);
       }
+
+      function slotMove(cfg, ctx, ev, fromSlotId, toSlotId)
+      {
+        if (!ctx || !fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
+
+        var from = getSlotById(cfg[ctx.hostId], fromSlotId);
+        var to   = getSlotById(cfg[ctx.hostId], toSlotId);
+        if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
+
+        to.peripheral = from.peripheral;
+        to.icon = from.icon;
+
+        from.peripheral = null;
+        delete from.icon;
+      };
     }
 
     function onPointerDragCancel(ev) { if (ctx.pointerDrag && ev.pointerId == ctx.pointerDrag.pointerId) cleanupPointerDrag() }
