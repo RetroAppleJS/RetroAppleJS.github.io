@@ -8,10 +8,10 @@
   --slot-gap:1px;
   --slot-pad-y:6px;
   --slot-min-h:30px;
-  --anchor-bottom:-4px;
-  --anchor-bottom-empty:-2px;
-  --glyph-alpha:0.2;
-  --touch-hit:24px;
+  --slot-anchor-bottom:-4px;
+  --slot-anchor-bottom-empty:-2px;
+  --slot-glyph-alpha:0.2;
+  --slot-touch-hit:24px;
 }
 
 .appbox
@@ -64,11 +64,11 @@
   position:absolute;
   left:0;
   right:0;
-  bottom:var(--anchor-bottom);
+  bottom:var(--slot-anchor-bottom);
   text-align:center;
 }
 
-.slot-anchor.empty { bottom:var(--anchor-bottom-empty) }
+.slot-anchor.empty { bottom:var(--slot-anchor-bottom-empty) }
 
 .dots,
 .drag-handle .fa,
@@ -78,14 +78,14 @@
   left:50%;
   transform:translateX(-50%);
   line-height:1;
-  opacity:var(--glyph-alpha);
+  opacity:var(--slot-glyph-alpha);
   margin:0;
   padding:0;
   z-index:1;
 }
 
 .peripheral-name { display:block; min-height:24px; font-size:11px; word-break:break-word; }
-.drag-handle { width:var(--touch-hit); height:30px; cursor:grab; user-select:none; }
+.drag-handle { width:var(--slot-touch-hit); height:30px; cursor:grab; user-select:none; }
 .drag-handle:active { cursor:grabbing; }
 .drag-handle .fa:first-child { bottom:5px;}
 .drag-handle .fa:last-child { bottom:0; }
@@ -96,7 +96,7 @@
   background:rgba(255,255,255,0);
   cursor:pointer;
   font-size:14px;
-  width:var(--touch-hit);
+  width:var(--slot-touch-hit);
   height:18px;
   bottom:4px;
 }
@@ -125,7 +125,7 @@
   left:50%;
   top:0;
   transform:translateX(-50%);
-  min-width:var(--touch-hit);
+  min-width:var(--slot-touch-hit);
   height:18px;
   line-height:18px;
   margin:0 !important;
@@ -142,7 +142,7 @@
   position:absolute;
   left:50%;
   bottom:0;
-  width:var(--touch-hit);
+  width:var(--slot-touch-hit);
   height:12px;
   transform:translateX(-50%);
 }
@@ -158,11 +158,6 @@
   padding:0;
 }
 
-@media (pointer:coarse)
-{
-  :root { --slot-w:40px; --touch-hit:32px; }
-  .cogbtn, .slot-add, .drag-handle { min-width:var(--touch-hit); }
-}
 
 </style>
 
@@ -173,9 +168,10 @@
 <script>
 function EMUI()
 {
+
+
   this.ctx = {};
   this.cfg = {};
-
   this.onSlotClick = function(ctx,ev) { /* overridable: do somthing after click */ alert("onSlotClick - placeholder") }
   this.onSlotAdd   = function(ctx,ev) { /* overridable: do somthing after add */   alert("onSlotAdd - placeholder") }
   this.onSlotMove  = function(ctx,ev, fromSlotId, toSlotId) { /* overridable: do somthing after move */  alert("onSlotMove - placeholder")  }
