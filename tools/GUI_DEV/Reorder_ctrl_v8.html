@@ -168,7 +168,7 @@
 <script>
 function EMUI()
 {
-  this.slot_ctx = {};
+  //this.slot_ctx = {};
   this.slot_cfg = {};
   this.onSlotClick = function(ctx, ev)
   {
@@ -204,19 +204,17 @@ function EMUI()
   {
     if (!elid) return;
 
-    var ctx = getCtx(this, elid);
+    //elid,this
+    if(!ctx) var ctx = { hostId: elid, host: null, clickBound: false, pointerDrag: null };
 
+    //if (!this.slot_ctx[elid]) this.slot_ctx[elid] = { hostId: elid, host: null, clickBound: false, pointerDrag: null };
+    //var ctx = this.slot_ctx[elid];
+    
     if (cfg !== undefined) this.slot_cfg[elid] = cfg;
     if (!this.slot_cfg[elid]) this.slot_cfg[elid] = [];
 
     ctx.host = document.getElementById(elid);
     if (!ctx.host) return;
-
-    function getCtx(emui, hostId)
-    {
-      if (!emui.slot_ctx[hostId]) emui.slot_ctx[hostId] = { hostId: hostId, host: null, clickBound: false, pointerDrag: null };
-      return emui.slot_ctx[hostId];
-    }
 
     function getSlotById(slotCfg, slotId) { return slotCfg.find(function(slot) { return slot.slotId === slotId; }) }
 
@@ -456,7 +454,6 @@ function EMUI()
 }
 
 var oEMUI = new EMUI();
-
 
 // slot data
 var slotCfg1 = [
