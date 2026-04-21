@@ -390,7 +390,7 @@ function EMUI()
       if (!slotEl) return;
 
       var fromSlotId = slotEl.dataset.slotId;
-      var fromSlot = getSlotById(emui, fromSlotId);
+      var fromSlot = getSlotById(ctx.slotCfg, fromSlotId);
       if (!fromSlot || !fromSlot.peripheral) return;
 
       ctx.pointerDrag = {
@@ -415,6 +415,51 @@ function EMUI()
       updatePointerHotTarget(ev.clientX, ev.clientY);
     }
 
+    function onPointerDragEnd(ev)
+    {
+      if (!ctx.pointerDrag || ev.pointerId !== ctx.pointerDrag.pointerId) return;
+
+      ev.preventDefault();
+
+      var fromSlotId = ctx.pointerDrag.fromSlotId;
+      var toSlotId = ctx.pointerDrag.hotTarget
+        ? ctx.pointerDrag.hotTarget.dataset.slotId
+        : null;
+      var emui = ctx.pointerDrag.emui;
+
+      cleanupPointerDrag();
+
+      if (toSlotId) emui.slotMove(ctx, ev, fromSlotId, toSlotId);
+    }
+
+    function wireEvents(emui, ctx)
+    {
+      ctx.host.querySelectorAll(".drag-handle").forEach(function(el)
+      {
+        el.addEventListener("pointerdown", function(ev)
+        {
+          onPointerDragStart(emui, ctx, ev);
+        });
+      });
+
+      ctx.host.querySelectorAll(".appbut").forEach(function(el)
+      {
+        el.addEventListener("click", function(ev)
+        {
+          onClick(emui, ctx, ev);
+        });
+      });
+
+      if (!ctx.clickBound)
+      {
+        ctx.host.addEventListener("click", function(ev)
+        {
+          onHostClick(emui, ctx, ev);
+        });
+        ctx.clickBound = true;
+      }
+    }
+
     function onPointerDragMove(ev)
     {
       if (!ctx.pointerDrag || ev.pointerId !== ctx.pointerDrag.pointerId) return;
@@ -433,7 +478,8 @@ function EMUI()
       var fromSlotId = ctx.pointerDrag.fromSlotId;
       var toSlotId = ctx.pointerDrag.hotTarget
         ? ctx.pointerDrag.hotTarget.dataset.slotId
-         : null;
+        : null;
+      var emui = ctx.pointerDrag.emui;
 
       cleanupPointerDrag();
 
@@ -463,14 +509,20 @@ function EMUI()
     function wireEvents(emui, ctx)
     {
       ctx.host.querySelectorAll(".drag-handle").forEach(function(el)
+      {
+        el.addEventListener("pointerdown", function(ev)
         {
           onPointerDragStart(emui, ctx, ev);
         });
+      });
 
       ctx.host.querySelectorAll(".appbut").forEach(function(el)
+      {
+        el.addEventListener("click", function(ev)
         {
           onClick(emui, ctx, ev);
         });
+      });
 
       if (!ctx.clickBound)
       {
@@ -480,7 +532,6 @@ function EMUI()
         });
         ctx.clickBound = true;
       }
-
     }
 
     ctx.host.innerHTML = ctx.slotCfg.map(renderSlot).join("");
