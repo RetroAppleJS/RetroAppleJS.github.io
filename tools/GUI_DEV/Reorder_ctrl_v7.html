@@ -172,28 +172,38 @@
 <script>
 function EMUI()
 {
-  this.slotCfg = [];
+  this.ctx = {};
 
-  var dragFromSlotId = null;
-  var pointerDrag    = null;
-  var hostId         = null;
-  this.host          = null;
-
-  this.onSlotClick = function() { /* overridable: do somthing after click */ alert("onSlotClick - placeholder") }
-  this.onSlotAdd   = function() { /* overridable: do somthing after add */   alert("onSlotAdd - placeholder") }
-  this.onSlotMove  = function() { /* overridable: do somthing after move */  alert("onSlotMove - placeholder")  }
-
-  this.slotMove = function slotMove(ev, fromSlotId, toSlotId)
+  function getCtx(emui, hostId)
   {
-    function getSlotById(emui, slotId)
+    if (!emui.ctx[hostId])
     {
-      return emui.slotCfg.find(function(slot) { return slot.slotId === slotId; });
+      emui.ctx[hostId] = {
+        hostId: hostId,
+        host: null,
+        slotCfg: [],
+        dragFromSlotId: null,
+        pointerDrag: null
+      };
+    }
+    return emui.ctx[hostId];
+  }
+
+  this.onSlotClick = function(ctx, ev) {};
+  this.onSlotAdd   = function(ctx, ev) {};
+  this.onSlotMove  = function(ctx, ev, fromSlotId, toSlotId) {};
+
+  this.slotMove = function slotMove(ctx, ev, fromSlotId, toSlotId)
+  {
+    function getSlotById(slotCfg, slotId)
+    {
+      return slotCfg.find(function(slot) { return slot.slotId === slotId; });
     }
 
     if (!fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
 
-    var from = getSlotById(this, fromSlotId);
-    var to   = getSlotById(this, toSlotId);
+    var from = getSlotById(ctx.slotCfg, fromSlotId);
+    var to   = getSlotById(ctx.slotCfg, toSlotId);
 
     if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
 
@@ -203,58 +213,35 @@ function EMUI()
     from.peripheral = null;
     delete from.icon;
 
-    dragFromSlotId = null;
+    ctx.dragFromSlotId = null;
 
-    this.slotsRender();
-    this.onSlotMove(ev, fromSlotId, toSlotId);
+    this.slotsRender(ctx.hostId);
+    this.onSlotMove(ctx, ev, fromSlotId, toSlotId);
   };
 
-  this.slotsRender = function slotsRender(elid,cfg)
+  this.slotsRender = function slotsRender(elid, cfg)
   {
-    if (elid)
+    var ctx = getCtx(this, elid);
+    if (cfg) ctx.slotCfg = cfg;
+    ctx.host = document.getElementById(elid);
+    if (!ctx.host) return;
+
+    function getSlotById(slotCfg, slotId)
     {
-      hostId = elid;
-      this.slotCfg = cfg;
-      this.host = document.getElementById(hostId);
-
-
-    }
-    if (!this.host) return;
-
-    function getSlotById(emui, slotId)
-    {
-      return emui.slotCfg.find(function(slot) { return slot.slotId === slotId; });
-    }
-
-    // HTML rendering
-    function renderGhost(slot)
-    {
-      var iconClass = (slot && slot.icon) ? slot.icon : "fa fa-circle";
-
-      return `
-        <button class="appbut ghost-cog" type="button" tabindex="-1" aria-hidden="true">
-          <i class="${iconClass}"></i>
-        </button>
-        <span class="ghost-handle" aria-hidden="true">
-          <i class="fa fa-ellipsis-h"></i>
-          <i class="fa fa-ellipsis-h"></i>
-        </span>
-      `;
-    }
-
-    function SlotAdd(emui, host, ev)
-    {
-      emui.onSlotAdd(ev);
+      return slotCfg.find(function(slot) { return slot.slotId === slotId; });
     }
 
     function renderAnchor(slot)
     {
-      var anchorId = "d_slot" + slot.slotId.replace(/[^a-zA-Z0-9_-]/g, "_");
+      var anchorId = "d_slot_" + ctx.hostId + "_" + slot.slotId.replace(/[^a-zA-Z0-9_-]/g, "_");
 
       if (slot.peripheral)
       {
         return `
-          <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}" id="${anchorId}" data-slot-id="${slot.slotId}">
+          <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}"
+               id="${anchorId}"
+               data-slot-id="${slot.slotId}"
+               data-host-id="${ctx.hostId}">
             <div class="peripheral-card">
               ${slot.lock ? "" : `
                 <span class="drag-handle" title="Move ${slot.peripheral.name}">
@@ -268,7 +255,10 @@ function EMUI()
       }
 
       return `
-        <div class="slot-anchor empty" id="${anchorId}" data-slot-id="${slot.slotId}">
+        <div class="slot-anchor empty"
+             id="${anchorId}"
+             data-slot-id="${slot.slotId}"
+             data-host-id="${ctx.hostId}">
           <button class="slot-add" type="button" title="Add peripheral to ${slot.slotId}">
             <i class="fa fa-plus dots dots1"></i>
           </button>
@@ -279,11 +269,13 @@ function EMUI()
     function renderSlot(slot)
     {
       return `
-        <div class="appbox slotbox slot" data-slot-id="${slot.slotId}">
+        <div class="appbox slotbox slot"
+             data-slot-id="${slot.slotId}"
+             data-host-id="${ctx.hostId}">
           <div class="slot-label">${slot.slotId}</div>
           <div class="sloticons">
             ${slot.peripheral
-              ? `<button id="${slot.peripheral.name}" class="appbut cogbtn" type="button"><i class="${slot.icon || ""}"></i></button>`
+              ? `<button class="appbut cogbtn" type="button"><i class="${slot.icon || ""}"></i></button>`
               : ""}
             ${renderAnchor(slot)}
           </div>
@@ -291,112 +283,17 @@ function EMUI()
       `;
     }
 
-    function buildDragGhost(slot)
+    function onClick(emui, ctx, ev)
     {
-      var ghost = document.createElement("div");
-      ghost.className = "drag-ghost";
-      ghost.innerHTML = renderGhost(slot);
-      document.body.appendChild(ghost);
-      return ghost;
+      emui.onSlotClick(ctx, ev);
     }
 
-    function positionDragGhost(x, y)
+    function onAdd(emui, ctx, ev)
     {
-      if (!pointerDrag || !pointerDrag.ghostEl) return;
-      pointerDrag.ghostEl.style.left = x + "px";
-      pointerDrag.ghostEl.style.top  = y + "px";
+      emui.onSlotAdd(ctx, ev);
     }
 
-    function updatePointerHotTarget(x, y)
-    {
-      if (!pointerDrag) return;
-
-      var el = document.elementFromPoint(x, y);
-      var nextHot = el ? el.closest(".slot-anchor.empty") : null;
-
-      if (pointerDrag.hotTarget === nextHot) return;
-
-      if (pointerDrag.hotTarget)
-        pointerDrag.hotTarget.classList.remove("drop-ok");
-
-      pointerDrag.hotTarget = nextHot;
-
-      if (pointerDrag.hotTarget)
-        pointerDrag.hotTarget.classList.add("drop-ok");
-    }
-
-    function clearDropHints(host)
-    {
-      host.querySelectorAll(".slot-anchor.drop-ok").forEach(function(el)
-      {
-        el.classList.remove("drop-ok");
-      });
-    }
-
-    function cleanupPointerDrag()
-    {
-      if (!pointerDrag) return;
-
-      var handleEl = pointerDrag.handleEl;
-      var pointerId = pointerDrag.pointerId;
-      var dragHost = pointerDrag.host;
-
-      if (pointerDrag.hotTarget)
-        pointerDrag.hotTarget.classList.remove("drop-ok");
-
-      if (pointerDrag.ghostEl)
-        pointerDrag.ghostEl.remove();
-
-      if (handleEl)
-      {
-        try
-        {
-          if (handleEl.hasPointerCapture(pointerId))
-            handleEl.releasePointerCapture(pointerId);
-        }
-        catch (e) {}
-
-        handleEl.removeEventListener("pointermove", onPointerDragMove);
-        handleEl.removeEventListener("pointerup",   onPointerDragEnd);
-        handleEl.removeEventListener("pointercancel", onPointerDragCancel);
-      }
-
-      document.body.classList.remove("dragging");
-
-      if (dragHost)
-      {
-        dragHost.querySelectorAll(".slot.drag-source").forEach(function(el)
-        {
-          el.classList.remove("drag-source");
-        });
-      }
-
-      pointerDrag = null;
-    }
-
-    function onDragStart(emui, host, ev)
-    {
-      var slotEl = ev.currentTarget.closest(".slot");
-      dragFromSlotId = slotEl.dataset.slotId;
-
-      ev.dataTransfer.effectAllowed = "move";
-      ev.dataTransfer.setData("text/plain", dragFromSlotId);
-
-      slotEl.classList.add("drag-source");
-    }
-
-    function onDragEnd(host)
-    {
-      dragFromSlotId = null;
-      clearDropHints(host);
-
-      host.querySelectorAll(".slot.drag-source").forEach(function(el)
-      {
-        el.classList.remove("drag-source");
-      });
-    }
-
-    function onPointerDragStart(emui, host, ev)
+    function onPointerDragStart(emui, ctx, ev)
     {
       if (ev.button != null && ev.button !== 0) return;
 
@@ -407,120 +304,48 @@ function EMUI()
       if (!slotEl) return;
 
       var fromSlotId = slotEl.dataset.slotId;
-      var fromSlot = getSlotById(emui, fromSlotId);
+      var fromSlot = getSlotById(ctx.slotCfg, fromSlotId);
       if (!fromSlot || !fromSlot.peripheral) return;
 
-      pointerDrag = {
+      ctx.pointerDrag = {
         emui: emui,
-        host: host,
+        ctx: ctx,
         pointerId: ev.pointerId,
         fromSlotId: fromSlotId,
         handleEl: ev.currentTarget,
-        hotTarget: null,
-        ghostEl: buildDragGhost(fromSlot)
+        hotTarget: null
       };
-
-      document.body.classList.add("dragging");
-      slotEl.classList.add("drag-source");
-
-      ev.currentTarget.setPointerCapture(ev.pointerId);
-      ev.currentTarget.addEventListener("pointermove", onPointerDragMove);
-      ev.currentTarget.addEventListener("pointerup", onPointerDragEnd);
-      ev.currentTarget.addEventListener("pointercancel", onPointerDragCancel);
-
-      positionDragGhost(ev.clientX, ev.clientY);
-      updatePointerHotTarget(ev.clientX, ev.clientY);
     }
 
-    function onPointerDragMove(ev)
+    function wireEvents(emui, ctx)
     {
-      if (!pointerDrag || ev.pointerId !== pointerDrag.pointerId) return;
-
-      ev.preventDefault();
-      positionDragGhost(ev.clientX, ev.clientY);
-      updatePointerHotTarget(ev.clientX, ev.clientY);
-    }
-
-    function onPointerDragEnd(ev)
-    {
-      if (!pointerDrag || ev.pointerId !== pointerDrag.pointerId) return;
-
-      ev.preventDefault();
-
-      var fromSlotId = pointerDrag.fromSlotId;
-      var toSlotId = pointerDrag.hotTarget
-        ? pointerDrag.hotTarget.dataset.slotId
-        : null;
-      var emui = pointerDrag.emui;
-
-      cleanupPointerDrag();
-
-      if (toSlotId) emui.slotMove(ev,fromSlotId, toSlotId);
-    }
-
-    function onPointerDragCancel(ev)
-    {
-      if (!pointerDrag || ev.pointerId !== pointerDrag.pointerId) return;
-      cleanupPointerDrag();
-    }
-
-    function onDragOver(ev)
-    {
-      if (!dragFromSlotId) return;
-      ev.preventDefault();
-      ev.dataTransfer.dropEffect = "move";
-    }
-
-    function onDragEnter(ev)
-    {
-      if (dragFromSlotId) ev.currentTarget.classList.add("drop-ok");
-    }
-
-    function onDragLeave(ev) { ev.currentTarget.classList.remove("drop-ok") }
-
-    function onDrop(emui, host, ev)
-    {
-      ev.preventDefault();
-
-      var toSlotId = ev.currentTarget.dataset.slotId;
-      var fromSlotId = dragFromSlotId || ev.dataTransfer.getData("text/plain");
-
-      clearDropHints(host);
-      emui.slotMove(fromSlotId, toSlotId);
-    }
-
-    function onClick(emui, host, ev)
-    {
-       emui.onSlotClick(ev);
-    }
-
-    function wireEvents(emui, host)
-    {
-      host.querySelectorAll(".drag-handle").forEach(function(el)
+      ctx.host.querySelectorAll(".drag-handle").forEach(function(el)
       {
         el.addEventListener("pointerdown", function(ev)
         {
-          onPointerDragStart(emui, host, ev);
+          onPointerDragStart(emui, ctx, ev);
         });
       });
 
-      host.querySelectorAll(".appbut").forEach(function(el)
+      ctx.host.querySelectorAll(".appbut").forEach(function(el)
       {
         el.addEventListener("click", function(ev)
-        {  onClick(emui, host, ev) })
+        {
+          onClick(emui, ctx, ev);
+        });
       });
 
-
-      host.querySelectorAll(".slot-add").forEach(function(el)
+      ctx.host.querySelectorAll(".slot-add").forEach(function(el)
       {
-
         el.addEventListener("click", function(ev)
-        {  SlotAdd(emui, host, ev) })
+        {
+          onAdd(emui, ctx, ev);
+        });
       });
     }
 
-    this.host.innerHTML = this.slotCfg.map(renderSlot).join("");
-    wireEvents(this, this.host);
+    ctx.host.innerHTML = ctx.slotCfg.map(renderSlot).join("");
+    wireEvents(this, ctx);
   };
 }
 
@@ -528,33 +353,26 @@ var oEMUI = new EMUI();
 
 
 // slot custom event handling
-
-oEMUI.onSlotClick = function(ev)
+oEMUI.onSlotClick = function(ctx, ev)
 {
   var parent =  ev.currentTarget.parentElement.parentElement;
   var slotID =  parent.firstElementChild.innerText;
-  //var hostId =  parent.parentElement.id;
-  var hostId = this.host && this.host.id;
 
-  alert("Configure "+hostId+" peripheral " + ev.currentTarget.id + " in slot "+slotID);
-}
+  alert("Configure "+ctx.hostId+" peripheral " + ev.currentTarget.id + " in slot "+slotID);
+};
 
-oEMUI.onSlotAdd = function(ev)
+
+oEMUI.onSlotAdd = function(ctx, ev)
 {
-  var hostId = this.host && this.host.id;
   var anchor = ev.target.closest(".slot-anchor.empty");
-  if (!anchor || !oEMUI.host.contains(anchor)) return;
-  var slotId = anchor.dataset.slotId;
-  alert("Plug "+hostId+" new peripheral in slot " + slotId);
+  if (!anchor || !ctx.host.contains(anchor)) return;
+  alert("add in " + ctx.hostId + " slot " + anchor.dataset.slotId);
+};
 
-  console.log(JSON.stringify(this.slotCfg));
-}
-oEMUI.onSlotMove = function(ev, fromSlotId, toSlotId)
+oEMUI.onSlotMove = function(ctx, ev, fromSlotId, toSlotId)
 {
-  var hostId = this.host && this.host.id;
-  console.log(JSON.stringify(this.slotCfg));
-  alert("Move "+hostId+" peripheral slot "+fromSlotId+"->"+toSlotId);
-}
+  alert("move in " + ctx.hostId + ": " + fromSlotId + " -> " + toSlotId);
+};
 
 // slot data
 var slotCfg1 = [
