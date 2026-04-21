@@ -623,13 +623,16 @@ function EMUI()
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
                     + "    <div><b>HostIO ["+model+"]</b>"
                     + "    <button class=appbut style=\"float:right;margin-top:0px\" onclick=\"oEMUI.slotConfig_detail('slotB')\">details</button></div>"
-                    + "    <div style=\"padding-top:4px\">keyboard, speaker, cassette, paddles<br>and other soft-switches.</div>"
+                    + "    <div style=\"padding-top:4px\">"
+                    + "    <img src=res/cassette_50.png style=\"height:40px\">"
+                    //+ "keyboard, speaker, cassette, paddles<br>and other soft-switches."
+                    + "    </div>"
                     + "  </div>"
                     + "</div>";
             case "MS16K":
                 return ""
                 + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
-                + "  <div class=appbox style=\"width:610px;height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
+                + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
                 + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
