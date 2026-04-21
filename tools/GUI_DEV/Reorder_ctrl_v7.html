@@ -239,6 +239,8 @@ function EMUI()
     if (!elid) return;
 
     var ctx = getCtx(this, elid);
+    this.cfg = {};
+    this.cfg[elid] = cfg;
 
     if (cfg) ctx.slotCfg = cloneSlotCfg(cfg);
     ctx.host = document.getElementById(elid);
