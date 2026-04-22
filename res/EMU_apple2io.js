@@ -295,13 +295,33 @@ function Apple2IO(vid)
 
 
         var IOMAP_ID = null;
-        for(var o in _CFG_IORANGES)
+        update_IORANGES(model);
+
+        // READ SYSTEM-SPECIFIC I/O RANGES and update oEMU
+        function update_IORANGES(sys_model)
         {
-            if(o.indexOf(model) >= 0)
+            for(var o in _CFG_IORANGES)
             {
-                break;
+                if(o.indexOf(model) >= 0)
+                {
+                    oEMU.system["IORANGES"] = _CFG_IORANGES[o];
+
+                    oEMU.system["IORANGES-SLOT"] = {};
+                    for(var r in _CFG_IORANGES[o])
+                    {
+                        oEMU.system["IORANGES-SLOT"][r] = oCOM.parseRngExpr(_CFG_IORANGES[o][r],{n:3});
+   
+                    }
+
+                    
+          //var a = [this.LData[FIELDdata].IOrange.split(","),this.LData[FIELDdata].ROMrange.split(","),this.LData[FIELDdata].LROMrange.split(",")]
+          //a[0] = [oCOM.parseRngExpr(a[0][0]),oCOM.parseRngExpr(a[0][1])];
+          //a[0] =  oCOM.format("0x%4x-0x%4x",a[0][0],a[0][1]);
+
+                    break;
+                }
+                IOMAP_ID++;
             }
-            IOMAP_ID++;
         }
 
         var IOMAP_TBL = [];
@@ -530,10 +550,12 @@ function Apple2IO(vid)
         // transform range as RNG12 into Uint16Array(4096) - containing CRC16 device IDs by index
         // transform range as RNG8  into Uint16Array(256)  - containing CRC16 device IDs by index
 
+        var map = {slotId:"PR#"+slot_num}
         if(cfg[slot_num].PCODE)
         {
             var obj_names = new Array();
-            var obj = this[cfg[slot_num].PCODE];
+            var pcode = cfg[slot_num].PCODE;
+            var obj = this[pcode];           // find peripheral object from PCODE
             for(var o in obj) obj_names.push(o);
     
             console.log("mounted "+cfg[slot_num].PCODE+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+idx+" ("
@@ -543,9 +565,20 @@ function Apple2IO(vid)
             +"METHODS: "+obj_names.join(",")   
             +")");
     
+ //"0":{"PCODE":"MS16K","IOrange":[49280,49295],"ROMrange":[],"LROMrange":[],"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
+            //SLOT_REG[slot_num] = cfg[slot_num];
+            
+            SLOT_REG[slot_num] = {};
+            SLOT_REG[slot_num].slotTitle = "PR#"+slot_num;
+            SLOT_REG[slot_num].peripheral = cfg[slot_num];
+            SLOT_REG[slot_num].peripheral.icon = obj.id.icon;
+            
+
             if(obj.id===undefined) { obj_names.icon = ""; obj.id = {"icon":"fa fa-cube"}}
             oEMUI.slotConfig({"id":"slot"+slot_num ,"icon":obj.id.icon===undefined?"fa fa-cube":obj.id.icon   ,"active":SLOT_MAP[idx+0]});
             //oEMUI.slotConfig({"id":"d_slot"+slot_num   ,"icon":"fa fa-cog"                                        ,"active":SLOT_MAP[idx+0]});
+        
+    
         }
 
         if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
@@ -618,7 +651,8 @@ function Apple2IO(vid)
     // SLOT MAPPING
     var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
     //var SLOT_NAME = new Array(8);           // 8 SLOTS, 6 CHARACTERS PER SLOT NAME
-    var SLOT_IDX  = new Array(8); 
+    var SLOT_IDX  = new Array(8);
+    var SLOT_REG  = [];
 
     // SLOT MAPPING - TODO: take it from _CFG_SLOT
     //this.mount({"name":"BOARD" ,"slot":0xB,"driver":this.ramcard  ,"active":true});
@@ -633,13 +667,26 @@ function Apple2IO(vid)
     this["DISKII"] = this.disk2;
 
     // TODO: obsolete?
-    
     if(typeof(_CFG_SLOT)!="undefined")
     {
         for(var idx in _CFG_SLOT)
             this.mount(_CFG_SLOT,Number(idx));       
     }
+
+    console.log("_CFG_SLOT = "+JSON.stringify(SLOT_REG));
     
+/*
+ _CFG_SLOT = 
+ {
+  "0":{"PCODE":"MS16K","IOrange":[49280,49295],"ROMrange":[],"LROMrange":[],"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
+ ,"1":{"PCODE":"","DESCRIPTION":""}
+ ,"2":{"PCODE":"","DESCRIPTION":""}
+ ,"3":{"PCODE":"VIDEX","IOrange":[49328,49343],"ROMrange":[49248,49503],"LROMrange":[51200,53247],"DESCRIPTION":""}
+ ,"4":{"PCODE":"","DESCRIPTION":""}
+ ,"5":{"PCODE":"","DESCRIPTION":""}
+ ,"6":{"PCODE":"DISKII","IOrange":[49376,49391],"ROMrange":[49344,49599],"LROMrange":[],"DESCRIPTION":""}
+ ,"7":{"PCODE":"","DESCRIPTION":""}}
+*/
 
     //[Log] mounted MS16K [active:true deviceID:121F] into SLOT #0 (I/O range: C080-C08F ROM range: null LROM range: null METHODS: active,soft_switch,read,write) (EMU_apple2io.js, line 563)
     //[Log] mounted VIDEX [active:true deviceID:2F09] into SLOT #3 (I/O range: C0B0-C0BF ROM range: undefined60-undefined5F LROM range: null METHODS: active) (EMU_apple2io.js, line 563)
