@@ -538,7 +538,8 @@ function ASMhex2JShex(str) { return str.replace(/(\$)([0-9A-F]+)/g,"0x$2") }
 
 
 // TODO TEST THIS WITH DIFFERENT CASES!!!
-//var ret = HexSTR2NUM("$D080<sub>n*16</sub>,$D08<sub>n</sub>0",{"n":3,"_locate_":["<sub>","</sub>"]});
+var ret = HexSTR2NUM("$D08<sub>n*16</sub>,$D08<sub>n</sub>0",{"n":3,"_locate_":["<sub>","</sub>"]});
+alert(JSON.stringify(ret));
 //var ret = HexSTR2NUM("$D080,$D08<sub>n</sub>0",{"n":3,"_locate_":["<sub>","</sub>"]});
 //var ret = HexSTR2NUM("$D080,$D080",{"n":3,"_locate_":["<sub>","</sub>"]});
 
