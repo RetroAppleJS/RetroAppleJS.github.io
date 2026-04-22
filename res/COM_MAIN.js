@@ -57,7 +57,7 @@ function COM()
     const to   = this.resolveNumericToken(toPart.trim(), vars, locate);
     const step = stepPart == null
       ? 1
-      : resolveNumericToken(stepPart.trim(), vars, locate);
+      : this.resolveNumericToken(stepPart.trim(), vars, locate);
 
     return expandRange(from, to, step);
   }
