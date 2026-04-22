@@ -179,6 +179,26 @@ const _CFG_PCODE = {
 ,3:{"NAME":"#FCE7A1" ,"IO":"AMBER"}
 }
 
+const _CFG_SLOT = {
+ ":---:":{"XmlHttpinclude":":-----------------" ,"includeExtractmdReadnextmdfile":":---------" ,"PreviewtestHTML":":--------" ,"":":-------" ,"DownloadJSfile":":--" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":":----" ,"indocsappendtoJSfile":":------------"}
+,"A1":{"XmlHttpinclude":"Apple I" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A1_txt" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A1_US"}
+,"A2":{"XmlHttpinclude":"Apple II" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A2_US"}
+,"A2P":{"XmlHttpinclude":"Apple II Plus" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"A2P_R" ,"indocsappendtoJSfile":"A2_US"}
+,"A2PE":{"XmlHttpinclude":"Apple II EuroPlus" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A2_US"}
+,"A2JP":{"XmlHttpinclude":"Apple II J-Plus" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A2_JP"}
+,"A2B":{"XmlHttpinclude":"Bell & Howell" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A1_US_blk"}
+,"A3":{"XmlHttpinclude":"Apple III" ,"includeExtractmdReadnextmdfile":"6502B" ,"PreviewtestHTML":"1.8" ,"":"A3_dhgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A3_US"}
+,"A3R":{"XmlHttpinclude":"Apple III Revised" ,"includeExtractmdReadnextmdfile":"6502B" ,"PreviewtestHTML":"1.8" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A3_US"}
+,"A2e":{"XmlHttpinclude":"Apple IIe RevA/B" ,"includeExtractmdReadnextmdfile":"6502" ,"PreviewtestHTML":"1.023" ,"":"A2_hgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":"A2e_US,A2e_UK,A2e_CA,A2e_FR"}
+,"A2c":{"XmlHttpinclude":"Apple IIc" ,"includeExtractmdReadnextmdfile":"65C02" ,"PreviewtestHTML":"1.023" ,"":"A2_dhgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+,"A3P":{"XmlHttpinclude":"Apple III Plus" ,"includeExtractmdReadnextmdfile":"6502B" ,"PreviewtestHTML":"1.8" ,"":"A3_dhgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+,"A2eE":{"XmlHttpinclude":"Apple IIe Enhanced" ,"includeExtractmdReadnextmdfile":"65C02" ,"PreviewtestHTML":"1.023" ,"":"A2_dhgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+,"A2GS":{"XmlHttpinclude":"Apple IIGS" ,"includeExtractmdReadnextmdfile":"65C816" ,"PreviewtestHTML":"2.8" ,"":"AGS" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+,"A2cM":{"XmlHttpinclude":"Apple IIc MemoryExp" ,"includeExtractmdReadnextmdfile":"65C02" ,"PreviewtestHTML":"1.023" ,"":"A2_dhgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+,"A2G3":{"XmlHttpinclude":"Apple IIGS ROM3" ,"includeExtractmdReadnextmdfile":"65C816" ,"PreviewtestHTML":"2.8" ,"":"AGS" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+,"A2eP":{"XmlHttpinclude":"Apple IIe Platinum" ,"includeExtractmdReadnextmdfile":"65C02" ,"PreviewtestHTML":"1.023" ,"":"A2_dhgr" ,"DownloadJSfile":"" ,"linkslocatedconverttoHTMLgeneratedbyCOM_CONFIGjs":"" ,"indocsappendtoJSfile":""}
+}
+
 const _CFG = {"SYS":{"A2":false,"A2P":true,"A2E":false,"A2C":false},"PCODE":_CFG_PCODE,"SLOT":_CFG_SLOT};
 
 const _CFG_CHROMA = {
