@@ -18,12 +18,12 @@ const _CFG_SYSCODE = {
 }
 
 const _CFG_IORANGES = {
- "A1":{"HostIOHI":"$D010-$D013" ,"HostROMHR":"" ,"SlotIOSI":"" ,"SlotROMSR":""}
-,"A2,A2P,A2PE,A2JP,A2B":{"HostIOHI":"$C000-$C07F" ,"HostROMHR":"$C800-$CFFF" ,"SlotIOSI":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROMSR":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
-,"A2E,A2Ee,A2eP":{"HostIOHI":"$C000-$C07F" ,"HostROMHR":"$C800-$CFFF" ,"SlotIOSI":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROMSR":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
-,"A2c,A2cM":{"HostIOHI":"$C000-$C07F" ,"HostROMHR":"$C800-$CFFF" ,"SlotIOSI":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROMSR":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
-,"A3,A3P,A3R":{"HostIOHI":"$C000-$C07F" ,"HostROMHR":"" ,"SlotIOSI":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROMSR":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
-,"A2G3,A2GS":{"HostIOHI":"$C000-$C07F" ,"HostROMHR":"" ,"SlotIOSI":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROMSR":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
+ "A1":{"HostIO":"$D010-$D013" ,"HostROM":"" ,"SlotIO":"" ,"SlotROM":""}
+,"A2,A2P,A2PE,A2JP,A2B":{"HostIO":"$C000-$C07F" ,"HostROM":"$C800-$CFFF" ,"SlotIO":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROM":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
+,"A2E,A2Ee,A2eP":{"HostIO":"$C000-$C07F" ,"HostROM":"$C800-$CFFF" ,"SlotIO":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROM":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
+,"A2c,A2cM":{"HostIO":"$C000-$C07F" ,"HostROM":"$C800-$CFFF" ,"SlotIO":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROM":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
+,"A3,A3P,A3R":{"HostIO":"$C000-$C07F" ,"HostROM":"" ,"SlotIO":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROM":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
+,"A2G3,A2GS":{"HostIO":"$C000-$C07F" ,"HostROM":"" ,"SlotIO":"$C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F" ,"SlotROM":"$C<sub>n</sub>00-$C<sub>n</sub>FF"}
 }
 
 const _CFG_IOADDR = {
@@ -168,30 +168,15 @@ const _CFG_IOADDR = {
 }
 
 const _CFG_PCODE = {
- "MS16K":{"NAME":"Microsoft 16K Language card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"" ,"LROMrange":"" ,"SLOTrange":"0" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"$C800,$CFFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2E"}
-,"[SLOT#]":{"NAME":"PCODE" ,"IOrange":"DESCRIPTION"}
-,":----:":{"NAME":":---------" ,"IOrange":":-----------------"}
-,0:{"NAME":"MS16K" ,"IOrange":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
-,1:{"NAME":"" ,"IOrange":""}
-,2:{"NAME":"" ,"IOrange":""}
-,3:{"NAME":"VIDEX" ,"IOrange":""}
-,4:{"NAME":"" ,"IOrange":""}
-,5:{"NAME":"" ,"IOrange":""}
-,6:{"NAME":"DISKII" ,"IOrange":""}
-,7:{"NAME":"" ,"IOrange":""}
-}
-
-const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
-,1:{"PCODE":"" ,"DESCRIPTION":""}
-,2:{"PCODE":"" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
-,4:{"PCODE":"" ,"DESCRIPTION":""}
-,5:{"PCODE":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,7:{"PCODE":"" ,"DESCRIPTION":""}
+ "MS16K":{"NAME":"Microsoft 16K Language card" ,"IO":"X" ,"ROM":"" ,"LROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IO":"X" ,"ROM":"X" ,"LROM":"" ,"SLOTrange":"1,2,3,4,5,6*,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IO":"X" ,"ROM":"X" ,"LROM":"X" ,"SLOTrange":"1,2,3*,4,5,6,7" ,"SYScode":"A2,A2P,A2E"}
+,"[CHROMA]":{"NAME":"COL_num" ,"IO":"COL_name"}
+,":-----:":{"NAME":":------" ,"IO":":----------"}
+,0:{"NAME":"" ,"IO":"FULL-COLOR"}
+,1:{"NAME":"#FFFFFF" ,"IO":"B&W"}
+,2:{"NAME":"#A0FFF0" ,"IO":"GREEN"}
+,3:{"NAME":"#FCE7A1" ,"IO":"AMBER"}
 }
 
 const _CFG = {"SYS":{"A2":false,"A2P":true,"A2E":false,"A2C":false},"PCODE":_CFG_PCODE,"SLOT":_CFG_SLOT};
@@ -224,190 +209,6 @@ const _CFG_TFUNCTION = {
 }
 
 var _DOCS = new Array();
-_DOCS["PERIPHERALS"] = "<h2 id=\"peripheral-interfacing-explained\">PERIPHERAL interfacing Explained</h2><hr>"
-+"<p>As we can ignore the electrical and signal layer of the peripheral interface, our only real concern is software compatibility.<br>"
-+"We only need to mind about the memory map dedicated to I/O, called memory-mapped I/O, which is exactly 4K wide  (between $C000 - $D000). Here is an enlarged map of this memory space :</p>"
-+"<pre><code>      <div style=width:800px><br>"
-+" D000 ┌────────────────────────────────────┐   ▲                  ▲<br>"
-+"      │                                    │   │                  │<br>"
-+"      │   Open for large ROM programs      │  2048 Bytes HostROM  │<br>"
-+"      │   Activated by I/O strobe (pin 20) │   │                  │<br>"
-+"      │                                    │   │                  │<br>"
-+" C800 ├────────────────────────────────────┤  ─┘                  │<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#7           │   │                  │<br>"
-+"      │                                    │  256 Bytes SlotROM   │<br>"
-+" C700 ├────────────────────────────────────┤  ─┘                  │<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#6           │   │                  │<br>"
-+"      │                                    │  256 Bytes SlotROM   │<br>"
-+" C600 ├────────────────────────────────────┤  ─┘                 4096 bytes<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#5           │   │                  │<br>"
-+"      │                                    │  256 Bytes SlotROM   │<br>"
-+" C500 ├────────────────────────────────────┤  ─┘                  │<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#4           │   │                  │<br>"
-+"      │                                    │  256 Bytes SlotROM   │<br>"
-+" C400 ├────────────────────────────────────┤  ─┘                  │<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#3           │   │                  │<br>"
-+"      │                                    │  256 Bytes SlotROM   │<br>"
-+" C300 ├────────────────────────────────────┤  ─┘                  │<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#2           │   │                  │<br>"
-+"      │                                    │  256 Bytes SlotROM   │<br>"
-+" C200 ├────────────────────────────────────┤  ─┘                  │<br>"
-+"      │                                    │   ▲                  │<br>"
-+"      │  RAM/ROM open for slot#1           │   │                  │<br>"
-+"      │  (No mem mapped for slot#0)        │  256 Bytes SlotROM   │<br>"
-+" C100 └────┬───────────────────────────────┤  ─┘                  │<br>"
-+"      C0F0 │ I/O slot #7  ─┐               │   ▲                  │<br>"
-+"      C0E0 │ I/O slot #6  ─┘ 16 Bytes      │   │                  │<br>"
-+"      C0D0 │ I/O slot #5                   │  128 Bytes SlotIO    │<br>"
-+"      C0C0 │ I/O slot #4     X 8           │   │                  │<br>"
-+"      C0B0 │ I/O slot #3                   │   │                  │<br>"
-+"      C0A0 │ I/O slot #2                   │   │                  │<br>"
-+"      C090 │ I/O slot #1                   │   │                  │<br>"
-+"      C080 │ I/O slot #0                   │   │                  │<br>"
-+" C080 ┌────┴───────────────────────────────┤  ─┘                  │<br>"
-+"      │  Built-in I/O locations            │   ▲                  │<br>"
-+"      │  (keyboard,speaker,casette,game..  │  128 Bytes HostIO    │<br>"
-+" C000 └────────────────────────────────────┘  ─┘                  ▼<br>"
-+"<br>"
-+"<br>"
-+"      </div></code></pre>"
-+"<h2 id=\"the-16k-language-cards\">The 16K Language cards</h2><hr>"
-+"<p>We will discuss two similar cards, with the same functions and same soft switches.</p>"
-+"<ul>"
-+"<li><a href=\"http://www.applelogic.org/files/LANGCARDMAN.pdf\">Apple Language Card</a>  </li>"
-+"<li><a href=\"https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Language%20Cards/Microsoft%2016K%20RAM%20Card/Manuals/Microsoft%20RAMCard%20-%20Manual.pdf\">Microsoft Ramcard</a>  </li>"
-+"<li><a href=\"https://usermanual.wiki/Document/ae16kpocketrocketbrochure.1819483971.pdf\">Applied Engineering - Pocket Rocket RamCard</a></li>"
-+"</ul>"
-+"<p>The only difference between Apple vs Microsoft and others, is that the Apple card overrides KICKSTART ROM addresses F800-FFFF permanently, which only served as a ROM upgrade for old Apple II's. As we emulate the Apple II+, the Kickstart ROM on Apple Language card is bit-by-bit equal with the Kickstart ROM shipped with the Apple II+.  All other functions are identical.</p>"
-+"<p><a href=\"https://archive.org/details/Schematic_Diagram_of_the_Apple_II/page/n1/mode/2up\">Apple II+ motherboard schematics</a>"
-+"TODO: check which chip has to be removed, and to which address locations this chip corresponds.</p>"
-+"<p>Language Card Memory map</p>"
-+"<pre><code>      <div style=width:800px><br>"
-+" FFFF ┌────────────────┐ - - >┌───────────────┐ - -▲    ▲<br>"
-+"      │  KICKSTART ROM │      │               │    │    │<br>"
-+" F800 ├────────────────┤      │  RAMCARD RAM  │    8K   │<br>"
-+"      │  APPLE ROM     │      │               │    │    │<br>"
-+" E000 │                │ - - >├───────────────┤    ▼    │ 16K    <br>"
-+"      │                │      │  BANK A or B  │    ▲    │<br>"
-+"      │                │      │  (switchable) │  2 X 4K │<br>"
-+" D000 ├────────────────┤ - - >└───────────────┘ - -▼    ▼ <br>"
-+"      │ large ROM prog │                           ▲ <br>"
-+"      │  (unused)      │                           ▼ 2K<br>"
-+" C800 ├────────────────┤- - - - - - - - - - - - - -          <br>"
-+"      │  SLOT ROM/RAM  │                <br>"
-+"      │  (unused)      │              <br>"
-+"      │                │             <br>"
-+" C100 └──┬─────────────┤                <br>"
-+"    C0F0 │ I/O slot #7 │<br>"
-+"    C0E0 │ I/O slot #6 │<br>"
-+"    C0D0 │ I/O slot #5 │<br>"
-+"    C0C0 │ I/O slot #4 │<br>"
-+"    C0B0 │ I/O slot #3 │<br>"
-+"    C0A0 │ I/O slot #2 │<br>"
-+"    C090 │ I/O slot #1 │     ┌─────────────────┐   <br>"
-+"    C080 │ I/O slot #0 ├─────┤ 8 soft switches │<br>"
-+"         └─────────────┘     └─────────────────┘  <br>"
-+"<br>"
-+"      </div></code></pre>"
-+"<p><a href=\"https://www.youtube.com/watch?v=1KPIAoO1dTU\">video</a>  <br>"
-+"<a href=\"https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Language%20Cards/Apple%20Language%20Card/Schematics/Apple%20Language%20Card%20-%20Schematics%20050-0019-01.pdf\">schematics</a> </p>"
-+"<table>"
-+"<thead>"
-+"<tr>"
-+"<th id=\"language_card_soft_switches\">Language card soft switches</th>"
-+"</tr>"
-+"</thead>"
-+"<tbody>"
-+"</tbody>"
-+"</table>"
-+"<table>"
-+"<thead>"
-+"<tr>"
-+"<th id=\"address\" style=\"text-align:center;\">Address</th>"
-+"<th id=\"rom\">ROM</th>"
-+"<th id=\"ramcard\">RAMCARD</th>"
-+"<th id=\"banka\">BANKA</th>"
-+"<th id=\"bankb\">BANKB</th>"
-+"<th id=\"description\">Description</th>"
-+"</tr>"
-+"</thead>"
-+"<tbody>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C080</td>"
-+"<td></td>"
-+"<td>R</td>"
-+"<td></td>"
-+"<td>R</td>"
-+"<td>write-protect</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">*C081</td>"
-+"<td>R</td>"
-+"<td>W</td>"
-+"<td></td>"
-+"<td>W</td>"
-+"<td>write (access 2x)</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C082</td>"
-+"<td>R</td>"
-+"<td></td>"
-+"<td></td>"
-+"<td></td>"
-+"<td>ROM-only</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C083</td>"
-+"<td></td>"
-+"<td>R/W</td>"
-+"<td></td>"
-+"<td>R/W</td>"
-+"<td>write (access 2x)</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C088</td>"
-+"<td></td>"
-+"<td>R</td>"
-+"<td>R</td>"
-+"<td></td>"
-+"<td>write-protect</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C089</td>"
-+"<td>R</td>"
-+"<td>W</td>"
-+"<td>W</td>"
-+"<td></td>"
-+"<td>write (access 2x)</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C08A</td>"
-+"<td>R</td>"
-+"<td></td>"
-+"<td></td>"
-+"<td></td>"
-+"<td>ROM-only</td>"
-+"</tr>"
-+"<tr>"
-+"<td style=\"text-align:center;\">C08B</td>"
-+"<td></td>"
-+"<td>R/W</td>"
-+"<td>R/W</td>"
-+"<td></td>"
-+"<td>write (access 2x)</td>"
-+"</tr>"
-+"</tbody>"
-+"</table>"
-+"<p>* default setting after cold boot</p>"
-+"<h3 id=\"testing\">Testing</h3>"
-+"<p><a href=\"http://www.ivanhogan.com/kfest/MemUtil/\">http://www.ivanhogan.com/kfest/MemUtil/</a></p>"
-
 _DOCS["EMULATOR"] = "<h2 id=\"emulator-user-instructions\">EMULATOR User Instructions</h2><hr>"
 +"<p><img src=\"https://github.com/RetroAppleJS/RetroAppleJS.github.io/raw/main/res/appleIIplus_bck_650.png?raw=true\" width=35% align=\"left\" /></p>"
 +"<p>While the end-user experience with this emulator hardly differs from the real hardware, there are some essential adaptations, mostly to accomodate contemporary user expecations, like copy-paste.  There is no point in creating an emulator that is completely offline like it was mostly the case in it's pre-internet era.  </p>"
