@@ -194,8 +194,6 @@ const _CFG_SLOT = {
 ,7:{"PCODE":"" ,"DESCRIPTION":""}
 }
 
-const _CFG = {"SYS":{"A2":false,"A2P":true,"A2E":false,"A2C":false},"PCODE":_CFG_PCODE,"SLOT":_CFG_SLOT};
-
 const _CFG_CHROMA = {
  0:{"COL_num":"" ,"COL_name":"FULL-COLOR"}
 ,1:{"COL_num":"#FFFFFF" ,"COL_name":"B&W"}
