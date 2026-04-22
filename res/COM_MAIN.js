@@ -47,36 +47,67 @@ function COM()
     const vars = { ...modifiers };
     delete vars._locate_;
 
-    const segments = splitAllOutsideTags(String(spec), ",", locate)
-      .map(s => s.trim())
-      .filter(Boolean);
+    const [rangePart, stepPart] = splitOutsideTags(spec, "/", locate);
+    const [fromPart, toPart]   = splitOutsideTags(rangePart, "-", locate);
 
-    const out = [];
-    for (const segment of segments) {
-      out.push(...expandSegment(segment, vars, locate));
-    }
-    return out;
-  }
+    const from = this.resolveNumericToken(fromPart.trim(), vars, locate);
 
-  function expandSegment(segment, vars, locate) {
-    const [rangePart, stepPart] = splitOutsideTags(segment, "/", locate);
-    const [fromPart, toPart] = splitOutsideTags(rangePart, "-", locate);
-
-    const from = parseNumericToken(fromPart.trim(), vars, locate);
-
-    // single value
     if (toPart == null) return [from];
 
-    const to = parseNumericToken(toPart.trim(), vars, locate);
-    let step = stepPart == null ? 1 : parseNumericToken(stepPart.trim(), vars, locate);
+    const to   = this.resolveNumericToken(toPart.trim(), vars, locate);
+    const step = stepPart == null
+      ? 1
+      : resolveNumericToken(stepPart.trim(), vars, locate);
 
-    if (!Number.isInteger(step) || step === 0) {
-      throw new Error(`Invalid step in segment: ${segment}`);
+    return expandRange(from, to, step);
+  }
+
+  this.resolveNumericToken = function(token, vars = {}, locate = ["<sub>", "</sub>"]) 
+  {
+    let s = token.replace(/\s+/g, "");
+    const isHex = s.startsWith("$");
+    if (isHex) s = s.slice(1);
+
+    const base = isHex ? 16 : 10;
+    const [openTag, closeTag] = locate;
+
+    let skeleton = "";
+    const terms = [];
+
+    for (let i = 0; i < s.length;) {
+      if (s.startsWith(openTag, i)) {
+        const end = s.indexOf(closeTag, i + openTag.length);
+        if (end < 0) throw new Error("Missing closing tag");
+
+        const expr = s.slice(i + openTag.length, end).trim();
+        terms.push({ expr, pos: skeleton.length });
+        skeleton += "0";
+        i = end + closeTag.length;
+        continue;
+      }
+
+      skeleton += s[i];
+      i++;
     }
 
-    // auto-handle descending ranges
-    if (from < to && step < 0) step = -step;
+    const baseValue = parseInt(skeleton, base);
+    let value = baseValue;
+
+    for (const term of terms) {
+      const digitsRight = skeleton.length - term.pos - 1;
+      value += evalExpr(term.expr, vars) * (base ** digitsRight);
+    }
+
+    return value;
+  }
+
+  function expandRange(from, to, step = 1) {
+    if (!Number.isInteger(step) || step === 0) {
+      throw new Error("step must be a non-zero integer");
+    }
+
     if (from > to && step > 0) step = -step;
+    if (from < to && step < 0) step = -step;
 
     const out = [];
     if (step > 0) {
@@ -87,83 +118,11 @@ function COM()
     return out;
   }
 
-  function parseNumericToken(token, vars, locate) {
-    let s = token.replace(/\s+/g, "");
-    if (!s) throw new Error("Empty numeric token");
-
-    const isHex = s.startsWith("$");
-    if (isHex) s = s.slice(1);
-
-    const base = isHex ? 16 : 10;
-    const { baseValue, terms } = buildSkeletonAndTerms(s, base, locate);
-
-    let value = baseValue;
-    for (const term of terms) {
-      const exprValue = evaluateExpr(term.expr, vars);
-      value += exprValue * (base ** term.digitsRight);
-    }
-
-    return value;
-  }
-
-  function buildSkeletonAndTerms(source, base, locate) {
-    const [openTag, closeTag] = locate;
-    const digitRe = base === 16 ? /[0-9A-Fa-f]/ : /[0-9]/;
-
-    let skeleton = "";
-    const placeholders = [];
-
-    for (let i = 0; i < source.length;) {
-      if (source.startsWith(openTag, i)) {
-        const end = source.indexOf(closeTag, i + openTag.length);
-        if (end < 0) throw new Error(`Missing closing tag in: ${source}`);
-
-        const expr = source.slice(i + openTag.length, end).trim();
-        if (!expr) throw new Error(`Empty expression in: ${source}`);
-
-        // placeholder occupies exactly one digit slot
-        placeholders.push({ expr, pos: skeleton.length });
-        skeleton += "0";
-        i = end + closeTag.length;
-        continue;
-      }
-
-      const ch = source[i];
-      if (!digitRe.test(ch)) {
-        throw new Error(`Invalid digit '${ch}' for base ${base} in: ${source}`);
-      }
-
-      skeleton += ch;
-      i += 1;
-    }
-
-    if (!skeleton) throw new Error(`No digits found in: ${source}`);
-
-    const baseValue = parseInt(skeleton, base);
-    const terms = placeholders.map(p => ({
-      expr: p.expr,
-      digitsRight: skeleton.length - p.pos - 1
-    }));
-
-    return { baseValue, terms };
-  }
-
-  function evaluateExpr(expr, vars) {
-    // trusted-input evaluator
-    const names = Object.keys(vars);
-    const values = names.map(k => vars[k]);
-
-    // allow $FF style hex inside expressions too
+  function evalExpr(expr, vars) {
     const jsExpr = expr.replace(/\$/g, "0x");
-
-    const fn = new Function(...names, "Math", `"use strict"; return (${jsExpr});`);
-    const result = fn(...values, Math);
-
-    if (!Number.isFinite(result) || !Number.isInteger(result)) {
-      throw new Error(`Expression must evaluate to an integer: ${expr}`);
-    }
-
-    return result;
+    const names = Object.keys(vars);
+    const vals = names.map(k => vars[k]);
+    return Function(...names, `"use strict"; return (${jsExpr});`)(...vals);
   }
 
   function splitOutsideTags(str, sep, locate) {
@@ -187,38 +146,6 @@ function COM()
     }
 
     return [str, null];
-  }
-
-  function splitAllOutsideTags(str, sep, locate) {
-    const [openTag, closeTag] = locate;
-    const out = [];
-    let depth = 0;
-    let start = 0;
-
-    for (let i = 0; i < str.length; i++) {
-      if (str.startsWith(openTag, i)) {
-        depth++;
-        i += openTag.length - 1;
-        continue;
-      }
-      if (depth > 0 && str.startsWith(closeTag, i)) {
-        depth--;
-        i += closeTag.length - 1;
-        continue;
-      }
-      if (depth === 0 && str[i] === sep) {
-        out.push(str.slice(start, i));
-        start = i + 1;
-      }
-    }
-
-    out.push(str.slice(start));
-    return out;
-  }
-
-  // optional helper for display
-  function asHex(arr) {
-    return arr.map(n => "0x" + n.toString(16).toUpperCase());
   }
 
 
