@@ -666,11 +666,28 @@ function Apple2IO(vid)
     this["VIDEX"]  = this.col80card;
     this["DISKII"] = this.disk2;
 
-    // TODO: obsolete?
+    // MOUNT ALL PERIPHERALS
     if(typeof(_CFG_SLOT)!="undefined")
     {
         for(var idx in _CFG_SLOT)
-            this.mount(_CFG_SLOT,Number(idx));       
+            this.mount(_CFG_SLOT,Number(idx));
+        
+        
+
+        var slotCfg = [
+        { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
+        { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
+        { slotTitle: "PR#1" },
+        { slotTitle: "PR#2" },
+        { slotTitle: "PR#3",              peripheral: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
+        { slotTitle: "PR#4" },
+        { slotTitle: "PR#5" },
+        { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
+        { slotTitle: "PR#7" }
+        ];
+        oEMUI.slotsRender("peripheral_slots",slotCfg);
+
+
     }
 
     console.log("_CFG_SLOT = "+JSON.stringify(SLOT_REG));

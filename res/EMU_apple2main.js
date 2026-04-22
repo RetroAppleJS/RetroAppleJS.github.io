@@ -874,6 +874,7 @@ function EMUI()
 //     \______.'[___]'.__.' \__/  '.___.' '.__.' [___||__][___] [___].',__`  
 //                                                                  ( ( __)) 
 
+    this.slot_ctx = {};
     this.slot_cfg = {};
     this.onSlotClick = function(ctx, ev)
     {
@@ -908,7 +909,19 @@ function EMUI()
     this.slotsRender = function(elid, cfg)
     {
       if (!elid) return;
-      if(!ctx) var ctx = { hostId: elid, host: null, clickBound: false, pointerDrag: null };
+
+      if (!this.slot_ctx[elid])
+      {
+        this.slot_ctx[elid] = {
+          hostId: elid,
+          host: null,
+          clickBound: false,
+          pointerDrag: null
+        };
+      }
+
+      var ctx = this.slot_ctx[elid];
+
       if (cfg !== undefined) this.slot_cfg[elid] = cfg;
       if (!this.slot_cfg[elid]) this.slot_cfg[elid] = [];
 
@@ -1116,7 +1129,11 @@ function EMUI()
 
       function onPointerDragCancel(ev) { if (ctx.pointerDrag && ev.pointerId == ctx.pointerDrag.pointerId) cleanupPointerDrag() }
       function onClick(emui, ctx, ev) { emui.onSlotClick(ctx, ev) }
-      function onHostClick(emui, ctx, ev) { var addBtn = ev.target.closest(".slot-add"); if (addBtn && ctx.host.contains(addBtn)) emui.onSlotAdd(ctx, ev) }
+      function onHostClick(emui, ctx, ev) 
+      { 
+        var addBtn = ev.target.closest(".slot-add");
+        if (addBtn && ctx.host.contains(addBtn)) emui.onSlotAdd(ctx, ev); 
+      }
 
       function wireEvents(emui, ctx)
       {
