@@ -68,11 +68,11 @@ We aim to have all the documentation available in markdown format, for easy onli
 |[IORANGES]            | HostIO (HI)   | HostROM (HR)  | SlotIO (SI)        | SlotROM (SR)        |
 | :------------------: | :-----------: | :-----------: | :----------------: | :-----------------: |
 | A1                   | $D010-$D013 |               |                    |                     |
-| A2,A2P,A2PE,A2JP,A2B | $C000-$C07F | $C800-$CFFF | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C080-$C0F0/$100 |
-| A2E,A2Ee,A2eP        | $C000-$C07F | $C800-$CFFF | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C080-$C0F0/$100 |
-| A2c,A2cM             | $C000-$C07F | $C800-$CFFF | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C080-$C0F0/$100 |
-| A3,A3P,A3R           | $C000-$C07F |               | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C080-$C0F0/$100 |
-| A2G3,A2GS            | $C000-$C07F |               | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C080-$C0F0/$100 |
+| A2,A2P,A2PE,A2JP,A2B | $C000-$C07F | $C800-$CFFF | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
+| A2E,A2Ee,A2eP        | $C000-$C07F | $C800-$CFFF | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
+| A2c,A2cM             | $C000-$C07F | $C800-$CFFF | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
+| A3,A3P,A3R           | $C000-$C07F |               | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
+| A2G3,A2GS            | $C000-$C07F |               | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
 
 ## I/O ADDRESS MAP
 
