@@ -522,11 +522,17 @@ function Apple2IO(vid)
      
 
     // SLOT MAPPING
-  this.listDeviceNames = function()
+    this.listPeripheralNames = function()
     {
-        var names = [];
+        var names = {};
         for(var o in oEMU.component.IO)
-            names.push(oEMU.component.IO[o].constructor.name)
+        {
+            var objID = oEMU.component.IO[o].constructor.name;
+            var PCODE = oEMU.component.IO[o]?.id?.PCODE;
+            if(PCODE===undefined) continue;
+            names[PCODE] = oEMU.component.IO[o].id;
+            names[PCODE]["objID"] = oEMU.component.IO[o].constructor.name;
+        }
         return names;
     }
 
@@ -584,7 +590,7 @@ function Apple2IO(vid)
         if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
             oEMUI.refreshDeviceToolboxes({"id":"devices"});
 
-        var n = this.listDeviceNames();
+        var n = this.listPeripheralNames();
     }
 
     this.unmount = function(name,slot_num)
@@ -669,28 +675,41 @@ function Apple2IO(vid)
     // MOUNT ALL PERIPHERALS
     if(typeof(_CFG_SLOT)!="undefined")
     {
-        for(var idx in _CFG_SLOT)
-            this.mount(_CFG_SLOT,Number(idx));
-        
-        
 
-        var slotCfg = [
-        { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
-        { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
-        { slotTitle: "PR#1" },
-        { slotTitle: "PR#2" },
-        { slotTitle: "PR#3",              peripheral: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
-        { slotTitle: "PR#4" },
-        { slotTitle: "PR#5" },
-        { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
-        { slotTitle: "PR#7" }
-        ];
+        var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}]
+        var peripheral_names = this.listPeripheralNames();
+
+        for(var idx in _CFG_SLOT)
+        {
+            if(slotCfg["PR#"+Number(idx)]===undefined) slotCfg["PR#"+Number(idx)] = {};
+            var pcode = _CFG_SLOT[idx].PCODE;
+            var pinfo = peripheral_names[pcode];
+
+            slotCfg.push({"slotTitle":"PR#"+Number(idx),"peripheral":pinfo});       //  ATTACH BASIC PERIPHERAL INFO to slotCfg
+
+            /* example:
+            [{ slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
+            { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
+            { slotTitle: "PR#1" },
+            { slotTitle: "PR#2" },
+            { slotTitle: "PR#3",              peripheral: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
+            { slotTitle: "PR#4" },
+            { slotTitle: "PR#5" },
+            { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
+            { slotTitle: "PR#7" }];
+            */
+
+            this.mount(_CFG_SLOT,Number(idx));
+        }
+        
         oEMUI.slotsRender("peripheral_slots",slotCfg);
 
 
     }
 
     console.log("_CFG_SLOT = "+JSON.stringify(SLOT_REG));
+
+
     
 /*
  _CFG_SLOT = 
