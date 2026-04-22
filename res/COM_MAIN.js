@@ -39,72 +39,50 @@ function COM()
       return [(idx & msk)<<scl,((idx>>sig_bits) & msk)<<scl,((idx>>sig_bits>>sig_bits) & msk)<<scl];
   }
 
+  this.expandRngExpr = function(spec, modifiers = {})
+  {
+    return this.expandRng(this.parseRngExpr(spec, modifiers));
+  };
 
-
-  this.expandNumericSpec = function(spec, modifiers = {}) 
+  this.parseRngExpr = function(spec, modifiers = {})
   {
     const locate = modifiers._locate_ || ["<sub>", "</sub>"];
     const vars = { ...modifiers };
     delete vars._locate_;
 
     const [rangePart, stepPart] = splitOutsideTags(spec, "/", locate);
-    const [fromPart, toPart]   = splitOutsideTags(rangePart, "-", locate);
+    const [fromPart, toPart]    = splitOutsideTags(rangePart, "-", locate);
 
-    const from = this.resolveNumericToken(fromPart.trim(), vars, locate);
+    const from = parseRngToken(fromPart.trim(), vars, locate);
 
-    if (toPart == null) return [from];
+    // single value expression
+    if (toPart == null)
+      return { from: from, to: from, step: 1 };
 
-    const to   = this.resolveNumericToken(toPart.trim(), vars, locate);
-    const step = stepPart == null
+    const to = parseRngToken(toPart.trim(), vars, locate);
+    const step = (stepPart == null)
       ? 1
-      : this.resolveNumericToken(stepPart.trim(), vars, locate);
+      : parseRngToken(stepPart.trim(), vars, locate);
 
-    return this.expandRange(from, to, step);
-  }
+    return { from: from, to: to, step: step };
+  };
 
-  this.resolveNumericToken = function(token, vars = {}, locate = ["<sub>", "</sub>"]) 
+  this.expandRng = function(a, b, c)
   {
-    let s = token.replace(/\s+/g, "");
-    const isHex = s.startsWith("$");
-    if (isHex) s = s.slice(1);
+    let from, to, step;
 
-    const base = isHex ? 16 : 10;
-    const [openTag, closeTag] = locate;
-
-    let skeleton = "";
-    const terms = [];
-
-    for (let i = 0; i < s.length;) {
-      if (s.startsWith(openTag, i)) {
-        const end = s.indexOf(closeTag, i + openTag.length);
-        if (end < 0) throw new Error("Missing closing tag");
-
-        const expr = s.slice(i + openTag.length, end).trim();
-        terms.push({ expr, pos: skeleton.length });
-        skeleton += "0";
-        i = end + closeTag.length;
-        continue;
-      }
-
-      skeleton += s[i];
-      i++;
+    if (typeof a === "object" && a !== null) {
+      from = a.from;
+      to   = a.to;
+      step = (a.step === undefined) ? 1 : a.step;
+    } else {
+      from = a;
+      to   = b;
+      step = (c === undefined) ? 1 : c;
     }
 
-    const baseValue = parseInt(skeleton, base);
-    let value = baseValue;
-
-    for (const term of terms) {
-      const digitsRight = skeleton.length - term.pos - 1;
-      value += evalExpr(term.expr, vars) * (base ** digitsRight);
-    }
-
-    return value;
-  }
-
-  this.expandRange = function(from, to, step = 1)
-  {
-    if (!Number.isInteger(step) || step === 0) {
-      throw new Error("step must be a non-zero integer");
+    if (!Number.isInteger(from) || !Number.isInteger(to) || !Number.isInteger(step) || step === 0) {
+      throw new Error("expandRng expects integer from/to and a non-zero integer step");
     }
 
     if (from > to && step > 0) step = -step;
@@ -117,16 +95,80 @@ function COM()
       for (let n = from; n >= to; n += step) out.push(n);
     }
     return out;
+  };
+
+  this.asHex = function(arr)
+  {
+    if (typeof arr === "number") arr = [arr];
+    return arr.map(function(n) {
+      return "0x" + n.toString(16).toUpperCase();
+    });
+  };
+
+  function parseRngToken(token, vars = {}, locate = ["<sub>", "</sub>"])
+  {
+    let s = String(token).replace(/\s+/g, "");
+    const isHex = s.startsWith("$");
+    if (isHex) s = s.slice(1);
+
+    const base = isHex ? 16 : 10;
+    const [openTag, closeTag] = locate;
+    const digitRe = isHex ? /[0-9A-Fa-f]/ : /[0-9]/;
+
+    let skeleton = "";
+    const terms = [];
+
+    for (let i = 0; i < s.length;) {
+      if (s.startsWith(openTag, i)) {
+        const end = s.indexOf(closeTag, i + openTag.length);
+        if (end < 0) throw new Error("Missing closing tag");
+
+        const expr = s.slice(i + openTag.length, end).trim();
+        if (!expr) throw new Error("Empty tagged expression");
+
+        terms.push({ expr: expr, pos: skeleton.length });
+        skeleton += "0";   // one digit slot placeholder
+        i = end + closeTag.length;
+        continue;
+      }
+
+      if (!digitRe.test(s[i])) {
+        throw new Error("Invalid digit '" + s[i] + "' in token: " + token);
+      }
+
+      skeleton += s[i];
+      i++;
+    }
+
+    if (!skeleton.length) throw new Error("Empty numeric token");
+
+    const baseValue = parseInt(skeleton, base);
+    let value = baseValue;
+
+    for (let i = 0; i < terms.length; i++) {
+      const digitsRight = skeleton.length - terms[i].pos - 1;
+      value += evalExpr(terms[i].expr, vars) * (base ** digitsRight);
+    }
+
+    return value;
   }
 
-  function evalExpr(expr, vars) {
+  function evalExpr(expr, vars)
+  {
     const jsExpr = expr.replace(/\$/g, "0x");
     const names = Object.keys(vars);
-    const vals = names.map(k => vars[k]);
-    return Function(...names, `"use strict"; return (${jsExpr});`)(...vals);
+    const vals  = names.map(function(k) { return vars[k]; });
+
+    const ret = Function(...names, `"use strict"; return (${jsExpr});`)(...vals);
+
+    if (!Number.isFinite(ret) || !Number.isInteger(ret))
+      throw new Error("Expression must evaluate to an integer: " + expr);
+
+    return ret;
   }
 
-  function splitOutsideTags(str, sep, locate) {
+  function splitOutsideTags(str, sep, locate)
+  {
     const [openTag, closeTag] = locate;
     let depth = 0;
 
@@ -147,11 +189,6 @@ function COM()
     }
 
     return [str, null];
-  }
-
-  this.asHex = function(arr)  // helper for user-friendly hex number array printing
-  {
-    return arr.map(n => "0x" + n.toString(16).toUpperCase());
   }
 
 
