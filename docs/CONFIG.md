@@ -223,7 +223,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 \* Range: HI = HostIO, HR = HostROM, SI = SlotIO, SR = SlotROM
 
-## PERIPHERALS LIST
+## PERIPHERALS & SLOT ASSIGNMENT
 
 |[PCODE]| NAME                                   | IO                        | ROM         |   LROM    |   SLOTrange   | SYScode     | Manuals       |
 | :-----: | :----------------------------------- | :------------------------ | :---------- | :-------- | :------------ |:----------- |:------------- |
@@ -231,7 +231,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | DISKII  | Apple Disk II Floppy Disk Subsystem  | X | X |   | 1,2,3,4,5,6*,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
 | VIDEX  | Videx Videoterm 80 Column Display     | X | X | X | 1,2,3*,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)
 
-\* = default slot
+\* = default slot assignment
 
 ## COLOR MODES
 
