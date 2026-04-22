@@ -233,6 +233,21 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 \* = default slot
 
+
+## SLOT CONFIGURATION
+
+|[SLOT#] | PCODE      |  DESCRIPTION        |
+| :----: | :--------- |  :----------------- |
+|   0    | MS16K      | [16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards) |
+|   1    |            |                   |
+|   2    |            |                   |
+|   3    | VIDEX      |                   |
+|   4    |            |                   |
+|   5    |            |                   |
+|   6    | DISKII     |                   |
+|   7    |            |                   |
+
+
 ## COLOR MODES
 
 |[CHROMA] | COL_num  | COL_name   |
