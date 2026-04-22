@@ -74,6 +74,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A3,A3P,A3R           | $C000-$C07F |               | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
 | A2G3,A2GS            | $C000-$C07F |               | $C0<sub>8+n</sub>0-$C0<sub>8+n</sub>F | $C<sub>n</sub>00-$C<sub>n</sub>FF |
 
+* n = slot number on which the peripheral card is installed
+
 ## I/O ADDRESS MAP
 
 |[IOADDR]| Name | SYScode | Range\* | Behaviors\* | Description |
