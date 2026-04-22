@@ -989,7 +989,7 @@ function EMUI()
             <div class="slot-label">${slot.slotTitle}</div>
             <div class="sloticons">
               ${slot.peripheral
-                ? `<button id="${slot.peripheral.PCODE}" class="appbut cogbtn" type="button"><i class="${slot.peripheral.icon || ""}"></i></button>`
+                ? `<button id="${slot.peripheral.PCODE}" class="appbut cogbtn" type="button" title="configure ${slot.peripheral.PCODE} / ${slot.peripheral.objID}()"><i class="${slot.peripheral.icon || ""}"></i></button>`
                 : ""}
               ${renderAnchor(slot)}
             </div>
