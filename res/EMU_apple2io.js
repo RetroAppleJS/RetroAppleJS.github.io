@@ -715,7 +715,7 @@ function Apple2IO(vid)
             {"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""],"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)","icon":"fa fa-microchip"}},null,null
             ,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"],"DESCRIPTION":"","icon":"fa fa-tv"}},null,null
             ,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""],"DESCRIPTION":"","icon":"fa fa-save"}}]
-
+            */
             // HostIO  (HI)	- 
             // HostROM (HR)	- LROMrange
             // SlotIO  (SI)	- IOrange
