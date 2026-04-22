@@ -59,7 +59,7 @@ function COM()
       ? 1
       : this.resolveNumericToken(stepPart.trim(), vars, locate);
 
-    return expandRange(from, to, step);
+    return this.expandRange(from, to, step);
   }
 
   this.resolveNumericToken = function(token, vars = {}, locate = ["<sub>", "</sub>"]) 
@@ -101,7 +101,8 @@ function COM()
     return value;
   }
 
-  function expandRange(from, to, step = 1) {
+  this.expandRange = function(from, to, step = 1)
+  {
     if (!Number.isInteger(step) || step === 0) {
       throw new Error("step must be a non-zero integer");
     }
