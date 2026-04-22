@@ -148,6 +148,10 @@ function COM()
     return [str, null];
   }
 
+  function asHex(arr)  // helper for user-friendly hex number array printing
+  {
+    return arr.map(n => "0x" + n.toString(16).toUpperCase());
+  }
 
 
 
