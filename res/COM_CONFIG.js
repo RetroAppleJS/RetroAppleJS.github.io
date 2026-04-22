@@ -183,14 +183,26 @@ const _CFG_PCODE = {
 ,7:{"NAME":"" ,"IOrange":""}
 }
 
+const _CFG_PSLOT = {
+ "MS16K":{"NAME":"Microsoft 16K Language card" ,"IOrange":"X" ,"ROMrange":"" ,"LROMrange":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IOrange":"X" ,"ROMrange":"X" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6*,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IOrange":"X" ,"ROMrange":"X" ,"LROMrange":"X" ,"SLOTrange":"1,2,3*,4,5,6,7" ,"SYScode":"A2,A2P,A2E"}
+,"[CHROMA]":{"NAME":"COL_num" ,"IOrange":"COL_name"}
+,":-----:":{"NAME":":------" ,"IOrange":":----------"}
+,0:{"NAME":"" ,"IOrange":"FULL-COLOR"}
+,1:{"NAME":"#FFFFFF" ,"IOrange":"B&W"}
+,2:{"NAME":"#A0FFF0" ,"IOrange":"GREEN"}
+,3:{"NAME":"#FCE7A1" ,"IOrange":"AMBER"}
+}
+
 const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
+ 0:{"PCODE":"MS16K","IOrange":["X"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
 ,1:{"PCODE":"" ,"DESCRIPTION":""}
 ,2:{"PCODE":"" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
+,3:{"PCODE":"VIDEX","IOrange":["X"],"ROMrange":["X"],"LROMrange":["X"] ,"DESCRIPTION":""}
 ,4:{"PCODE":"" ,"DESCRIPTION":""}
 ,5:{"PCODE":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
+,6:{"PCODE":"DISKII","IOrange":["X"],"ROMrange":["X"],"LROMrange":[""] ,"DESCRIPTION":""}
 ,7:{"PCODE":"" ,"DESCRIPTION":""}
 }
 
