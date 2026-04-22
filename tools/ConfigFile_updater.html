@@ -2,6 +2,7 @@
 <head>
     <meta charset='utf-8'>
     <script type="text/javascript" src="../res/showdown.js"></script>
+    <script type="text/javascript" src="../res/COM_MAIN.js"></script>
     <link rel="stylesheet" href="../res/COM_MAIN.css">
 </head>
 <body>
@@ -123,17 +124,40 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     }
     */
 
+
+    //oCOM.parseRngExpr("$C08<sub>n*2</sub>-$C<sub>n</sub>F0/$<sub>m</sub>", {n:3,m:10})
     oPROCESS.insertDATA = function(ROWname,FIELDname,FIELDdata)  // method override
     {
       var s = "";
       var IOrange_addr = Number(ROWname)*16+0xC800
       if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
+      {
+          //var a = [this.LData[FIELDdata].IOrange.split(","),this.LData[FIELDdata].ROMrange.split(","),this.LData[FIELDdata].LROMrange.split(",")]
+          //a[0] = [oCOM.parseRngExpr(a[0][0]),oCOM.parseRngExpr(a[0][1])];
+          //a[0] =  oCOM.format("0x%4x-0x%4x",a[0][0],a[0][1]);
+          
+
+
           s+=//",\"IOrange\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
              ",\"IOrange\":[\""+this.LData[FIELDdata].IOrange.split(",").join("\",\"")+"\"]"
            +",\"ROMrange\":[\""+this.LData[FIELDdata].ROMrange.split(",").join("\",\"")+"\"]"
            +",\"LROMrange\":[\""+this.LData[FIELDdata].LROMrange.split(",").join("\",\"")+"\"]";
+
+      }
       return s
     }
+
+/*
+const _CFG_SLOT = {
+ 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
+,1:{"PCODE":"" ,"DESCRIPTION":""}
+,2:{"PCODE":"" ,"DESCRIPTION":""}
+,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
+,4:{"PCODE":"" ,"DESCRIPTION":""}
+,5:{"PCODE":"" ,"DESCRIPTION":""}
+,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
+,7:{"PCODE":"" ,"DESCRIPTION":""}
+*/
 
     // EXECUTE
     var s = oPROCESS.process_table(["[SLOT#]","\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
@@ -538,10 +562,30 @@ function ASMhex2JShex(str) { return str.replace(/(\$)([0-9A-F]+)/g,"0x$2") }
 
 
 // TODO TEST THIS WITH DIFFERENT CASES!!!
-var ret = HexSTR2NUM("$D08<sub>n*16</sub>,$D08<sub>n</sub>0",{"n":3,"_locate_":["<sub>","</sub>"]});
-alert(JSON.stringify(ret));
+//var ret = HexSTR2NUM("$D08<sub>n*16</sub>,$D08<sub>n</sub>0",{"n":3,"_locate_":["<sub>","</sub>"]});
 //var ret = HexSTR2NUM("$D080,$D08<sub>n</sub>0",{"n":3,"_locate_":["<sub>","</sub>"]});
 //var ret = HexSTR2NUM("$D080,$D080",{"n":3,"_locate_":["<sub>","</sub>"]});
+/*
+alert(oCOM.asHex(
+  oCOM.expandRng({from:0xC080, to:0xC0F0, step:0x10})
+));
+// ["0xC080","0xC090","0xC0A0","0xC0B0","0xC0C0","0xC0D0","0xC0E0","0xC0F0"]
+//0xC080,0xC090,0xC0A0,0xC0B0,0xC0C0,0xC0D0,0xC0E0,0xC0F0
+
+alert(JSON.stringify(
+  oCOM.parseRngExpr("$C08<sub>n*2</sub>-$C<sub>n</sub>F0/$<sub>m</sub>", {n:3,m:10})
+));
+// {"from":49286,"to":50160,"step":10}
+//{"from":49286,"to":50160,"step":10}
+
+alert(oCOM.asHex(
+  oCOM.expandRng(
+    oCOM.parseRngExpr("$C08<sub>n*2</sub>-$C<sub>n</sub>F0/$<sub>m</sub>", {n:3,m:0x10})
+  )
+));
+//0xC086,0xC096,0xC0A6,0xC0B6,0xC0C6,0xC0D6,0xC0E6,0xC0F6,0xC106,0xC116,0xC126,0xC136,0xC146,0xC156,0xC166,0xC176,0xC186,0xC196,0xC1A6,0xC1B6,0xC1C6,0xC1D6,0xC1E6,0xC1F6,0xC206,0xC216,0xC226,0xC236,0xC246,0xC256,0xC266,0xC276,0xC286,0xC296,0xC2A6,0xC2B6,0xC2C6,0xC2D6,0xC2E6,0xC2F6,0xC306,0xC316,0xC326,0xC336,0xC346,0xC356,0xC366,0xC376,0xC386,0xC396,0xC3A6,0xC3B6,0xC3C6,0xC3D6,0xC3E6
+*/
+
 
 
 function HexSTR2NUM(str,substitutes)
