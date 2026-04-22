@@ -663,6 +663,7 @@ table { border-collapse: collapse; position: relative;}
 .slot-add,
 .drag-handle
 {
+  padding: 2px;
   position:relative;
   display:block;
   margin:0 auto !important;

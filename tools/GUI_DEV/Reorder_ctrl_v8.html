@@ -27,6 +27,24 @@
   text-align:center;
 }
 
+.appbut
+{
+    font-family: "Arial";
+    font-size:13px;
+    margin-left:6px;
+    padding: 6px;
+    border-radius: 10px;
+    border-style: none;
+    background: rgba(240, 240, 255, 0.65);
+    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+    cursor:pointer;
+}
+
+.appbut:hover
+{
+    background: rgba(255, 255, 255, 1);
+}
+
 #device_slots
 {
   display:flex;
@@ -50,6 +68,7 @@
 .slot-add,
 .drag-handle
 {
+  padding: 2px;
   position:relative;
   display:block;
   margin:0 auto !important;
@@ -168,6 +187,7 @@
 <script>
 function EMUI()
 {
+    this.slot_ctx = {};
     this.slot_cfg = {};
     this.onSlotClick = function(ctx, ev)
     {
@@ -202,7 +222,19 @@ function EMUI()
     this.slotsRender = function(elid, cfg)
     {
       if (!elid) return;
-      if(!ctx) var ctx = { hostId: elid, host: null, clickBound: false, pointerDrag: null };
+
+      if (!this.slot_ctx[elid])
+      {
+        this.slot_ctx[elid] = {
+          hostId: elid,
+          host: null,
+          clickBound: false,
+          pointerDrag: null
+        };
+      }
+
+      var ctx = this.slot_ctx[elid];
+
       if (cfg !== undefined) this.slot_cfg[elid] = cfg;
       if (!this.slot_cfg[elid]) this.slot_cfg[elid] = [];
 
@@ -410,7 +442,11 @@ function EMUI()
 
       function onPointerDragCancel(ev) { if (ctx.pointerDrag && ev.pointerId == ctx.pointerDrag.pointerId) cleanupPointerDrag() }
       function onClick(emui, ctx, ev) { emui.onSlotClick(ctx, ev) }
-      function onHostClick(emui, ctx, ev) { var addBtn = ev.target.closest(".slot-add"); if (addBtn && ctx.host.contains(addBtn)) emui.onSlotAdd(ctx, ev) }
+      function onHostClick(emui, ctx, ev) 
+      { 
+        var addBtn = ev.target.closest(".slot-add");
+        if (addBtn && ctx.host.contains(addBtn)) emui.onSlotAdd(ctx, ev); 
+      }
 
       function wireEvents(emui, ctx)
       {
