@@ -102,8 +102,12 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     oPROCESS.changeDATA = bck_method; // restore the abstract method
 
 
-       // EXECUTE
+    // EXECUTE
     var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+
+    // EXECUTE
+    var s = oPROCESS.process_table(["[PSLOT]","\|","\n|","\|\n\n"],"const _CFG_PSLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
     // METHOD TAILORING
