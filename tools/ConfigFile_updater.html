@@ -138,8 +138,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
           
 
 
-          s+=//",\"IOrange\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
-             ",\"IOrange\":[\""+this.LData[FIELDdata].IOrange.split(",").join("\",\"")+"\"]"
+          s+= ",\"IOrange\":[\""+this.LData[FIELDdata].IOrange.split(",").join("\",\"")+"\"]"
            +",\"ROMrange\":[\""+this.LData[FIELDdata].ROMrange.split(",").join("\",\"")+"\"]"
            +",\"LROMrange\":[\""+this.LData[FIELDdata].LROMrange.split(",").join("\",\"")+"\"]";
 
