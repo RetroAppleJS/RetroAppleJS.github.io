@@ -349,10 +349,10 @@ function EMU_init()
         "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
 
-    oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});
-    oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});
+    //oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});        // replaced by oEMUI.
+    //oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});     // replaced by oEMUI.
     // all other slots are configured in EMU_apple2io.js --> this.mount()
-    oEMUI.deviceBtn({"id":"devices","init":true,"preserve":6});
+    
 }
 
 function EMU_system_get()
@@ -407,7 +407,7 @@ function EMUI()
         oCOM.POPUP.on("slotConfig_popup");
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
         // TODO extend here to all popup customisations?
-        if(id=="slotB")
+        if(id=="board")
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             document.getElementById("slotConfig_popup").innerHTML =
@@ -497,7 +497,7 @@ function EMUI()
         if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
         else slot = slots[(slots.indexOf(slot)+1)%slots.length];
 
-        this.refreshDeviceToolboxes({"id":arg.id,"preserve":slot});       
+        this.refreshDeviceToolboxes({"id":arg.id,"default_slot":slot});       
      }
 
     this.deviceSlots = function()
@@ -567,9 +567,9 @@ function EMUI()
         var slot = cur==="H" ? "H"
                  : (cur==null || cur==="" ? null : Number(cur));
 
-        // preserve explicitly requested slot if still mounted
-        if(arg.preserve === "H" && slots.indexOf("H") >= 0) slot = "H";
-        else if(typeof(arg.preserve)=="number" && slots.indexOf(arg.preserve) >= 0) slot = arg.preserve;
+        // default_slot explicitly requested slot if still mounted
+        if(arg.default_slot === "H" && slots.indexOf("H") >= 0) slot = "H";
+        else if(typeof(arg.default_slot)=="number" && slots.indexOf(arg.default_slot) >= 0) slot = arg.default_slot;
         else if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
 
         btn.setAttribute("data-slot", slot==="H" ? "H" : String(slot));
@@ -581,7 +581,7 @@ function EMUI()
 
     this.renderDeviceTool = function(slot)
     {
-      this.refreshDeviceToolboxes({"id":"devices","preserve":slot});
+      this.refreshDeviceToolboxes({"id":"devices","default_slot":slot});
     }
 
     this.showDeviceTool = function(slot)
@@ -622,7 +622,7 @@ function EMUI()
                     + "<div class=toolbox id=\"device_tool_H\" hidden>"
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
                     + "    <div><b>HostIO ["+model+"]</b>"
-                    + "    <button class=appbut style=\"float:right;margin-top:0px\" onclick=\"oEMUI.slotConfig_detail('slotB')\">details</button></div>"
+                    + "    <button class=appbut style=\"float:right;margin-top:0px\" onclick=\"oEMUI.slotConfig_detail('BOARD')\">details</button></div>"
                     + "    <div style=\"padding-top:4px\">"
                     + "    <img src=res/cassette_50.png style=\"height:40px\">"
                     //+ "keyboard, speaker, cassette, paddles<br>and other soft-switches."
@@ -876,6 +876,7 @@ function EMUI()
 
     this.slot_ctx = {};
     this.slot_cfg = {};
+    /*
     this.onSlotClick = function(ctx, ev)
     {
       var parent  = ev.currentTarget.closest(".slot");
@@ -886,6 +887,7 @@ function EMUI()
       alert("Configure " + hostId + " peripheral " + periID + " in slot " + slotID);
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
     };
+    */
 
     this.onSlotAdd = function(ctx, ev)
     {
@@ -1158,7 +1160,23 @@ function EMUI()
       wireEvents(this, ctx);
     };
 
+
+
+    this.onSlotClick = function(ctx, ev)
+    {
+      var parent  = ev.currentTarget.closest(".slot");
+      var periID = ev.currentTarget.id;
+      var slotID  = parent ? parent.dataset.slotId : "";
+      var hostId  = ctx.hostId;
+
+      this.slotConfig_detail(slotID);
+      //oCOM.POPUP.toggle("slotConfig_popup");
+
+      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
+    };
+
 }
+
 
 
 

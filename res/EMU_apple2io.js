@@ -744,10 +744,13 @@ function Apple2IO(vid)
     }
 
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}]
-    for(var i=0;i<8;i++) if(slotRef[i]) slotCfg.push(slotRef[i]);
-
+    for(var i=0;i<8;i++) if(slotRef[i]) slotCfg.push(slotRef[i]);   // add slot configuration if there's a periheral
     console.log("slotCfg = "+JSON.stringify(slotCfg));
-    oEMUI.slotsRender("peripheral_slots",slotCfg);
+
+
+    oEMUI.slotsRender("peripheral_slots",slotCfg);                      // sets oEMUI.slot_cfg = slotCfg
+    oEMUI.deviceBtn({"id":"devices","init":true,"default_slot":6});     //     
+
 
 
     
