@@ -538,6 +538,7 @@ function Apple2IO(vid)
 
 
     // SLOT MAPPING
+    /*
     this.mount = function(cfg,slot_num)
     {
         const idx = slot_num<<3;
@@ -592,6 +593,7 @@ function Apple2IO(vid)
 
         var n = this.listPeripheralNames();
     }
+    */
 
     this.unmount = function(name,slot_num)
     {
@@ -660,7 +662,7 @@ function Apple2IO(vid)
     var SLOT_IDX  = new Array(8);
     var SLOT_REG  = [];
 
-    // SLOT MAPPING - TODO: take it from _CFG_SLOT
+    // SLOT MAPPING - TODO: take it from _CFG_PSLOT
     //this.mount({"name":"BOARD" ,"slot":0xB,"driver":this.ramcard  ,"active":true});
 
     //this.mount({"name":"MS16K" ,"slot":0x0,"driver":this.ramcard  ,"active":true});
@@ -672,33 +674,39 @@ function Apple2IO(vid)
     this["VIDEX"]  = this.col80card;
     this["DISKII"] = this.disk2;
 
-    // MOUNT ALL PERIPHERALS
-    if(typeof(_CFG_SLOT)!="undefined")
-    {
 
-        var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}]
+
+    var slotRef = {};
+    // MOUNT ALL PERIPHERALS
+    if(typeof(_CFG_PSLOT)!="undefined")
+    {
+        for(var i=0;i<8;i++) slotRef[i] = {"slotTitle":"PR#"+i}
         var peripheral_names = this.listPeripheralNames();
 
-        for(var idx in _CFG_SLOT)
+        for(var PCODE in _CFG_PSLOT)
         {
-            if(slotCfg["PR#"+Number(idx)]===undefined) slotCfg["PR#"+Number(idx)] = {};
-            var pcode = _CFG_SLOT[idx].PCODE;
-            var pinfo = peripheral_names[pcode];    // BASIC PERIPHERAL INFO
-            if(oEMU.system["IORANGES"] && pinfo)
+            var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
+            var idxs = []
+            for(var i=0;i<srange.length;i++) if(srange[i].indexOf("*")>=0) idxs.push( Number(srange[i].replace(RegExp("\\*","g"),"")) );
+            for(var i=0;i<idxs.length;i++)
             {
-                // TODO:  CHECK (FLAGS in _CFG_SLOT) if the device needs the address ranges or not!!!!
-                //if(typeof(oEMU.system.IORANGES.HostIOHI)!="undefined")  pinfo["HostIOHI"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO,{n:Number(idx)});
-                if(typeof(oEMU.system.IORANGES.HostROMHR)!="undefined") pinfo["HostROMHR"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:Number(idx)});     // _CFG_SLOT -> LROMrange
-                if(typeof(oEMU.system.IORANGES.SlotIOSI)!="undefined")  pinfo["SlotIOSI"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:Number(idx)});      // _CFG_SLOT -> IOrange
-                if(typeof(oEMU.system.IORANGES.SlotROMSR)!="undefined") pinfo["SlotROMSR"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:Number(idx)});     
-            }
-
-            slotCfg.push(
+                var idx = idxs[i];
+                var pinfo = peripheral_names[PCODE];    // BASIC PERIPHERAL INFO
+                if(oEMU.system["IORANGES"] && pinfo)
                 {
-                "slotTitle":"PR#"+Number(idx)    
-                ,"peripheral":pinfo                 //  ATTACH PERIPHERAL INFO to slotCfg
+                    // TODO:  CHECK (FLAGS in _CFG_PSLOT) if the device needs the address ranges or not!!!!
+                    //if(typeof(oEMU.system.IORANGES.HostIOHI)!="undefined")  pinfo["HostIOHI"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO,{n:Number(idx)});
+                    if(typeof(oEMU.system.IORANGES.HostROMHR)!="undefined") pinfo["HostROMHR"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:Number(idx)});     // _CFG_PSLOT -> LROMrange
+                    if(typeof(oEMU.system.IORANGES.SlotIOSI)!="undefined")  pinfo["SlotIOSI"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:Number(idx)});      // _CFG_PSLOT -> IOrange
+                    if(typeof(oEMU.system.IORANGES.SlotROMSR)!="undefined") pinfo["SlotROMSR"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:Number(idx)});     
                 }
-            );  
+
+                slotRef[idx] = 
+                {
+                    "slotTitle":"PR#"+idx   
+                    ,"peripheral":pinfo                 //  ATTACH PERIPHERAL INFO to slotCfg
+                } 
+            }
 
             /* example:
             [{ slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
@@ -711,32 +719,40 @@ function Apple2IO(vid)
             { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
             { slotTitle: "PR#7" }];
 
-            _CFG_SLOT = [
-            {"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""],"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)","icon":"fa fa-microchip"}},null,null
-            ,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"],"DESCRIPTION":"","icon":"fa fa-tv"}},null,null
-            ,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""],"DESCRIPTION":"","icon":"fa fa-save"}}]
-            */
+            slotCfg = [
+            {"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
+            ,{"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard"}}
+            ,{"slotTitle":"PR#1"}
+            ,{"slotTitle":"PR#2","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card"}}
+            ,{"slotTitle":"PR#3"}
+            ,{"slotTitle":"PR#4"}
+            ,{"slotTitle":"PR#5","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2"}}
+            ,{"slotTitle":"PR#6"}
+            ,{"slotTitle":"PR#7"}]
+
+
             // HostIO  (HI)	- 
             // HostROM (HR)	- LROMrange
             // SlotIO  (SI)	- IOrange
             // SlotROM (SR) - SlotROM
             
-            this.mount(_CFG_SLOT,Number(idx));
+            //this.mount(_CFG_PSLOT,Number(idx));
+            */
         }
-        
-        console.log("slotCfg="+JSON.stringify(slotCfg));
-
-        oEMUI.slotsRender("peripheral_slots",slotCfg);
 
 
     }
 
-    console.log("_CFG_SLOT = "+JSON.stringify(SLOT_REG));
+    var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}]
+    for(var i=0;i<8;i++) if(slotRef[i]) slotCfg.push(slotRef[i]);
+
+    console.log("slotCfg = "+JSON.stringify(slotCfg));
+    oEMUI.slotsRender("peripheral_slots",slotCfg);
 
 
     
 /*
- _CFG_SLOT = 
+ _CFG_PSLOT = 
  {
   "0":{"PCODE":"MS16K","IOrange":[49280,49295],"ROMrange":[],"LROMrange":[],"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
  ,"1":{"PCODE":"","DESCRIPTION":""}

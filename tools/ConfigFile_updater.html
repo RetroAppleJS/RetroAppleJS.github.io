@@ -106,9 +106,6 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
 
-    // EXECUTE
-    var s = oPROCESS.process_table(["[PSLOT]","\|","\n|","\|\n\n"],"const _CFG_PSLOT",this.responseText,this.responseURL);
-    document.getElementById('dest').innerHTML += s;
 
     // METHOD TAILORING
     oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata){}; // method override
@@ -165,6 +162,11 @@ const _CFG_SLOT = {
     // EXECUTE
     var s = oPROCESS.process_table(["[SLOT#]","\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
+
+    // EXECUTE
+   var s = oPROCESS.process_table(["[PSLOT]","\|","\n|","\|\n\n"],"const _CFG_PSLOT",this.responseText,this.responseURL);
+   document.getElementById('dest').innerHTML += s.replace(/&#x7C;/g,"|");
+
 
     // EXECUTE
     //var s = "const _CFG = {\"SYS\":{\"A2\":false,\"A2P\":true,\"A2E\":false,\"A2C\":false},\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
