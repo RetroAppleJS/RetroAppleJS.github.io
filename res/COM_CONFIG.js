@@ -1,20 +1,20 @@
 const _CFG_SYSCODE = {
- "A1":{"Model":"Apple I" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A1_txt" ,"IO":"" ,"ROM":"" ,"KeyFont":"A1_US"}
-,"A2":{"Model":"Apple II" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A2_US"}
-,"A2P":{"Model":"Apple II Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"A2P_R" ,"KeyFont":"A2_US"}
-,"A2PE":{"Model":"Apple II EuroPlus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A2_US"}
-,"A2JP":{"Model":"Apple II J-Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A2_JP"}
-,"A2B":{"Model":"Bell & Howell" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A1_US_blk"}
-,"A3":{"Model":"Apple III" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A3_US"}
-,"A3R":{"Model":"Apple III Revised" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A3_US"}
-,"A2e":{"Model":"Apple IIe RevA/B" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"IO":"" ,"ROM":"" ,"KeyFont":"A2e_US,A2e_UK,A2e_CA,A2e_FR"}
-,"A2c":{"Model":"Apple IIc" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
-,"A3P":{"Model":"Apple III Plus" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
-,"A2eE":{"Model":"Apple IIe Enhanced" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
-,"A2GS":{"Model":"Apple IIGS" ,"CPU":"65C816" ,"Speeds":"2.8" ,"Display":"AGS" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
-,"A2cM":{"Model":"Apple IIc MemoryExp" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
-,"A2G3":{"Model":"Apple IIGS ROM3" ,"CPU":"65C816" ,"Speeds":"2.8" ,"Display":"AGS" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
-,"A2eP":{"Model":"Apple IIe Platinum" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"IO":"" ,"ROM":"" ,"KeyFont":""}
+ "A1":{"Model":"Apple I" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A1_txt" ,"Slots":"" ,"ROM":"" ,"KeyFont":"A1_US"}
+,"A2":{"Model":"Apple II" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A2_US"}
+,"A2P":{"Model":"Apple II Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"A2P_R" ,"KeyFont":"A2_US"}
+,"A2PE":{"Model":"Apple II EuroPlus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A2_US"}
+,"A2JP":{"Model":"Apple II J-Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A2_JP"}
+,"A2B":{"Model":"Bell & Howell" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A1_US_blk"}
+,"A3":{"Model":"Apple III" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A3_US"}
+,"A3R":{"Model":"Apple III Revised" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A3_US"}
+,"A2e":{"Model":"Apple IIe RevA/B" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slots":"8" ,"ROM":"" ,"KeyFont":"A2e_US,A2e_UK,A2e_CA,A2e_FR"}
+,"A2c":{"Model":"Apple IIc" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
+,"A3P":{"Model":"Apple III Plus" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
+,"A2eE":{"Model":"Apple IIe Enhanced" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
+,"A2GS":{"Model":"Apple IIGS" ,"CPU":"65C816" ,"Speeds":"2.8" ,"Display":"AGS" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
+,"A2cM":{"Model":"Apple IIc MemoryExp" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
+,"A2G3":{"Model":"Apple IIGS ROM3" ,"CPU":"65C816" ,"Speeds":"2.8" ,"Display":"AGS" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
+,"A2eP":{"Model":"Apple IIe Platinum" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slots":"" ,"ROM":"" ,"KeyFont":""}
 }
 
 const _CFG_IORANGES = {
