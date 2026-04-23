@@ -685,14 +685,14 @@ function Apple2IO(vid)
 
         function extract_slotrange_mask(str)
         {
-            var mask = Uint16Array(2);
+            var mask = new Uint16Array(2);
             mask[0] = 0; mask[1] = 0;
 
             var arr = str.split(",");
             for(var i=0;i<arr.length;i++)
             {
                 var n = Number( arr[i].replace(RegExp("\\*","g")) );
-                if(isNaN(str1)==false)      mask[0] |= 1<<n
+                if(isNaN(n)==false)         mask[0] |= 1<<n
                 if(arr[i].indexOf("*")>=0)  mask[1] |= 1<<n
             } 
             return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
