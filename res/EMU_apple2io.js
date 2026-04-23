@@ -670,9 +670,9 @@ function Apple2IO(vid)
     //this.mount({"name":"DISKII","slot":0x6,"driver":this.disk2    ,"active":true});
 
 
-    this["MS16K"]  = this.ramcard;
-    this["VIDEX"]  = this.col80card;
-    this["DISKII"] = this.disk2;
+    //this["MS16K"]  = this.ramcard;
+    //this["VIDEX"]  = this.col80card;
+    //this["DISKII"] = this.disk2;
 
 
 
@@ -683,16 +683,35 @@ function Apple2IO(vid)
         for(var i=0;i<8;i++) slotRef[i] = {"slotTitle":"PR#"+i}
         var peripheral_names = this.listPeripheralNames();
 
+        function extract_slotrange_mask(str)
+        {
+            var mask = Uint16Array(2);
+            mask[0] = 0; mask[1] = 0;
+
+            var arr = str.split(",");
+            for(var i=0;i<arr.length;i++)
+            {
+                var n = Number( arr[i].replace(RegExp("\\*","g")) );
+                if(isNaN(str1)==false)      mask[0] |= 1<<n
+                if(arr[i].indexOf("*")>=0)  mask[1] |= 1<<n
+            } 
+            return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
+        }
+
         for(var PCODE in _CFG_PSLOT)
         {
+            // SLOT RANGE
+            
             var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
+            var slotrange_mask = extract_slotrange_mask(_CFG_PSLOT[PCODE].SLOTrange)
+
             var idxs = []
             for(var i=0;i<srange.length;i++) if(srange[i].indexOf("*")>=0) idxs.push( Number(srange[i].replace(RegExp("\\*","g"),"")) );
             for(var i=0;i<idxs.length;i++)
             {
                 var idx = idxs[i];
                 var pinfo = peripheral_names[PCODE];    // BASIC PERIPHERAL INFO
-                if(oEMU.system["IORANGES"] && pinfo)
+                if(oEMU.system["IORANGES"] && pinfo)    // ADD ADDRESS RANGES
                 {
                     // TODO:  CHECK (FLAGS in _CFG_PSLOT) if the device needs the address ranges or not!!!!
                     //if(typeof(oEMU.system.IORANGES.HostIOHI)!="undefined")  pinfo["HostIOHI"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO,{n:Number(idx)});
