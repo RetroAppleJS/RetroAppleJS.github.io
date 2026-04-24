@@ -1,4 +1,4 @@
-name: Build standalone AsciiCAD.html
+name: Build standalone RetroAppleJS.html
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
       - name: Verify output
         run: |
           ls -la dist || true
-          test -f dist/AsciiCAD.html
+          test -f dist/RetroAppleJS.html
     
       - name: Commit dist if changed
         run: |
