@@ -60,9 +60,7 @@ function COM()
       return { from: from, to: from, step: 1 };
 
     const to = parseRngToken(toPart.trim(), vars, locate);
-    const step = (stepPart == null)
-      ? 1
-      : parseRngToken(stepPart.trim(), vars, locate);
+    const step = (stepPart == null) ? 1 : parseRngToken(stepPart.trim(), vars, locate);
 
     return { from: from, to: to, step: step };
   };
