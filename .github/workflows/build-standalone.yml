@@ -1,0 +1,72 @@
+name: Build standalone AsciiCAD.html
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "index.html"
+      - "res/**"
+      - "build/**"
+      - ".github/workflows/build-standalone.yml"
+      - '!dist/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Debug dist path
+        run: |
+          pwd
+          ls -la
+          echo "---- dist (if any) ----"
+          ls -la dist || true
+          echo "---- dist stat ----"
+          stat dist || true
+
+      - name: Build dist/RetroAppleJS.html
+        run: node .github/scripts/inline.cjs
+
+      - name: Show dist contents
+        run: |
+          echo "PWD=$(pwd)"
+          ls -la
+          echo "---- dist ----"
+          ls -la dist || true
+        
+      - name: Verify output
+        run: |
+          ls -la dist || true
+          test -f dist/AsciiCAD.html
+    
+      - name: Commit dist if changed
+        run: |
+          if [ ! -f dist/RetroAppleJS.html ]; then
+            echo "dist/RetroAppleJS.html was not generated. Failing."
+            ls -la
+            ls -la dist || true
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add dist/RetroAppleJS.html
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Update dist/RetroAppleJS.html [skip ci]"
+            git push
+          fi
