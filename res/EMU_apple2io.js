@@ -762,10 +762,12 @@ function Apple2IO(vid)
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
             if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
             {
+                pinfo["description"] = _CFG_PSLOT[pinfo.PCODE].NAME;
+
                 // TODO: check if range is applicable or not
-                if(typeof(oEMU.system.IORANGES.HostROM)!="undefined") pinfo["HostROMHR"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
-                if(typeof(oEMU.system.IORANGES.SlotIO)!="undefined")  pinfo["SlotIOSI"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:slotIdx});      // _CFG_PSLOT -> IOrange
-                if(typeof(oEMU.system.IORANGES.SlotROM)!="undefined") pinfo["SlotROMSR"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     
+                if(typeof(oEMU.system.IORANGES.HostROM)!="undefined" && _CFG_PSLOT[pinfo.PCODE].HostROM == "X") pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
+                if(typeof(oEMU.system.IORANGES.SlotIO)!="undefined"  && _CFG_PSLOT[pinfo.PCODE].SlotIO  == "X") pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:slotIdx});      // _CFG_PSLOT -> IOrange
+                if(typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && _CFG_PSLOT[pinfo.PCODE].SlotROM == "X") pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     
             }
             slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
         }
@@ -774,12 +776,19 @@ function Apple2IO(vid)
     console.log("slotCfg = "+JSON.stringify(slotCfg));;
 
     oEMUI.slotsRender("peripheral_slots",slotCfg);                      // sets oEMUI.slot_cfg = slotCfg
-    
+
     oEMUI.deviceBtn({"id":"devices","init":true,"default_slot":6});    
 
-
-//slotCfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}},{"slotTitle":"PR#0","peripheral":[{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","HostROMHR":{"from":51200,"to":53247,"step":1},"SlotIOSI":{"from":49280,"to":49295,"step":1},"SlotROMSR":{"from":49152,"to":49407,"step":1}}]},{"slotTitle":"PR#1"},{"slotTitle":"PR#2"},{"slotTitle":"PR#3","peripheral":[{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","HostROMHR":{"from":51200,"to":53247,"step":1},"SlotIOSI":{"from":49328,"to":49343,"step":1},"SlotROMSR":{"from":49920,"to":50175,"step":1}}]},{"slotTitle":"PR#4"},{"slotTitle":"PR#5"},{"slotTitle":"PR#6","peripheral":[{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","HostROMHR":{"from":51200,"to":53247,"step":1},"SlotIOSI":{"from":49376,"to":49391,"step":1},"SlotROMSR":{"from":50688,"to":50943,"step":1}}]},{"slotTitle":"PR#7"}]
-//slotCfg =   [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}},{"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","HostROMHR":{"from":51200,"to":53247,"step":1},"SlotIOSI":{"from":49280,"to":49295,"step":1},"SlotROMSR":{"from":49152,"to":49407,"step":1}}},{"slotTitle":"PR#1"},{"slotTitle":"PR#2"},{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","HostROMHR":{"from":51200,"to":53247,"step":1},"SlotIOSI":{"from":49328,"to":49343,"step":1},"SlotROMSR":{"from":49920,"to":50175,"step":1}}},{"slotTitle":"PR#4"},{"slotTitle":"PR#5"},{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","HostROMHR":{"from":51200,"to":53247,"step":1},"SlotIOSI":{"from":49376,"to":49391,"step":1},"SlotROMSR":{"from":50688,"to":50943,"step":1}}},{"slotTitle":"PR#7"}]
-
+/*
+slotCfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
+,{"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","description":"Microsoft 16K Language card","SlotIO":{"from":49280,"to":49295}}}
+,{"slotTitle":"PR#1"}
+,{"slotTitle":"PR#2"}
+,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","description":"Videx Videoterm 80 Column Display","HostROM":{"from":51200,"to":53247},"SlotIO":{"from":49328,"to":49343},"SlotROM":{"from":49920,"to":50175}}}
+,{"slotTitle":"PR#4"}
+,{"slotTitle":"PR#5"}
+,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","description":"Apple Disk II Floppy Disk Subsystem","SlotIO":{"from":49376,"to":49391},"SlotROM":{"from":50688,"to":50943}}}
+,{"slotTitle":"PR#7"}]
+*/
 
 }

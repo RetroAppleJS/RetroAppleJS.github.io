@@ -54,15 +54,11 @@ function COM()
     const [fromPart, toPart]    = splitOutsideTags(rangePart, "-", locate);
 
     const from = parseRngToken(fromPart.trim(), vars, locate);
-
-    // single value expression
-    if (toPart == null)
-      return { from: from, to: from, step: 1 };
-
-    const to = parseRngToken(toPart.trim(), vars, locate);
-    const step = (stepPart == null) ? 1 : parseRngToken(stepPart.trim(), vars, locate);
-
-    return { from: from, to: to, step: step };
+    var ret = {"from":from};
+    if (toPart == null) return ret;       // single value expression
+    ret.to = parseRngToken(toPart.trim(), vars, locate);
+    if(stepPart != null) ret.step = parseRngToken(stepPart.trim(), vars, locate);
+    return ret;
   };
 
   this.expandRng = function(a, b, c)

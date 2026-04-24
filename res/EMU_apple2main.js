@@ -906,6 +906,7 @@ function EMUI()
 
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
       alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
+      alert(JSON.stringify(this.slot_cfg[ctx.hostId]));
     };
 
     this.slotsRender = function(elid, cfg)
@@ -1124,7 +1125,8 @@ function EMUI()
           to.peripheral = from.peripheral;
           //to.icon = from.icon;
 
-          from.peripheral = null;
+          //from.peripheral = null;
+          delete from.peripheral;
           //delete from.icon;
         };
       }
