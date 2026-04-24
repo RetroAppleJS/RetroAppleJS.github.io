@@ -9,7 +9,7 @@ const repoRoot = idx >= 0 ? __dirname.slice(0, idx) : path.resolve(__dirname, ".
 
 const srcHtmlPath = path.join(repoRoot, "index.html");
 const outDir = path.join(repoRoot, "dist");
-const outHtmlPath = path.join(outDir, "AsciiCAD.html");
+const outHtmlPath = path.join(outDir, "RetroAppleJS.html");
 
 function readUtf8(p) {
   if (!fs.existsSync(p)) {
