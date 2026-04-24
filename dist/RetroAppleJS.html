@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apple II+ in Javascript</title>
+    <link rel="icon" type="image/x-icon" href="res/favicon.ico">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAEXRFWHRTb2Z0d2FyZQBKVEwtRGV2J4CxQ84AAAAwUExURf7///7///j4+PLy8u3t7eXl5dvb283NzcLCwrW1ta6urqenp5qamo6OjnV1dWhoaJTpFr4AAAABYktHRACIBR1IAAAACXBIWXMAAB7CAAAewgFu0HU+AAAAAXRSTlMAQObYZgAAAIFJREFUeJwtzTEKwkAQBdC9wp/NkqTcsJC0IVXKlCE3SCrBxjKI6D3sBY9g4R1EEEEbr5AD2Psn8VeP+bM7BoxkwIzhvEAe4wI3QSGnqb43RHdsr/kLRg6lt2Ek9lxIPasLkSh2+o4VCiL6ErFO3oRbA/1Wf948b5/5RBXs6n9d8wM0Ahk+0eMaYgAAAABJRU5ErkJggg==" />
+    <!--link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"-->
+    <link rel="stylesheet" href="res/COM_fontawesome/all.css">
+    <link rel="stylesheet" href="res/COM_MAIN.css">
+
+    <!--
+    <link rel="stylesheet" href="res/mocha.css" />
+    <style> /* mocha.css style corrector */
+    #mocha { margin: 60px 0px }
+    #mocha-stats { right: auto }
+    </style>
+    <script src="res/chai.js"></script>
+    <script src="res/mocha.js"></script>
+    -->
+
+    <script type="text/javascript" src="res/COM_MAIN.js"></script>
+    <script type="text/javascript" src="res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
+    <!--
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/3.1.1/gsap.min.js'></script>
+    -->
+    <script type="text/javascript" src='res/COM_gsap.js'></script>
+    <script type="text/javascript" src="res/pako.min.js"></script>
+    <script type="text/javascript" src="res/purify.min.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script id="rendered-js">
+      
+//   ____    ____          _            
+//  |_   \  /   _|        (_)           
+//    |   \/   |   ,--.   __   _ .--.   
+//    | |\  /| |  `'_\ : [  | [ `.-. |  
+//   _| |_\/_| |_ // | |, | |  | | | |  
+//  |_____||_____|\'-;__/[___][___||__]
+//  ███████  ██████ ██████  ██ ██████  ████████ ███████ 
+//  ██      ██      ██   ██ ██ ██   ██    ██    ██      
+//  ███████ ██      ██████  ██ ██████     ██    ███████ 
+//       ██ ██      ██   ██ ██ ██         ██         ██ 
+//  ███████  ██████ ██   ██ ██ ██         ██    ███████ 
+
+    //////////////////////
+    // TAB ANIMATOR     //
+    //////////////////////  
+
+    tl = gsap.timeline();
+    startPosIndex = 1;
+    reachedEnd    = false;
+    activeIndex   = startPosIndex;
+    animDuration  = 0.1;
+    var liContainer,liEls,slideEl_1,slideEl_2 
+
+    oCOM.addToEventStack("onload",COM_switchTab);
+    oCOM.addToEventStack("onhashchange",COM_switchTab);
+
+    ////////////////////////////
+    // TAB EVENT HANDLER      //
+    ////////////////////////////
+
+    function COM_switchTab(sel)
+    {
+        if(typeof(liContainer)=="undefined")
+        {
+            liContainer = document.querySelector("ul");
+            liEls       = [...document.querySelectorAll("ul a")];
+            slideEl_1   = document.querySelector(".focus-el.el--1");
+            slideEl_2   = document.querySelector(".focus-el.el--2");
+
+            liRect = liContainer.getBoundingClientRect();
+            slideEl_1_DefWidth = slideEl_1.getBoundingClientRect().width;
+            slideEl_1_DefLeft  = slideEl_1.getBoundingClientRect().left;
+            slideEl_2_DefLeft  = slideEl_2.getBoundingClientRect().left;
+        }
+
+        // read hash value from url
+        if(typeof(sel)=="string") location.hash = "#"+sel;
+        var sel_id = location.hash.slice(1)
+        if(sel_id.indexOf("_")>0) sel_id = sel_id.split("_")[0];
+        // find tab object corresponding to hash value
+        var node = document.getElementById("app").childNodes[1].childNodes;
+        for(var index=0,cnt=1;index<node.length;index++)
+        {
+            if(node[index].href)
+            {
+                if (node[index].href.split("#")[1] == sel_id || (typeof(el)=="undefined" && cnt == startPosIndex))
+                var el = node[index];
+                cnt++
+            }
+        }
+        switchTabHeader(tl,index,el.getBoundingClientRect());
+        switchTabContent('tabs',el.href.split("#")[1]);
+    }
+
+    //////////////////////////////
+    // TAB HEADER SELECTOR      //
+    //////////////////////////////
+
+    function switchTabHeader(tl,index,elRect)
+    {
+      if (reachedEnd && index + 1 == startPosIndex)
+      {
+        tl.to( slideEl_1, animDuration, { left: `${liRect.width}px` });
+        tl.to( slideEl_2, animDuration, { left: `${elRect.left - liRect.left}px` },`-=${animDuration}`);
+        tl.set(slideEl_1, { left: `${slideEl_1_DefLeft - liRect.left}px` },`+=${animDuration}`);
+        tl.set(slideEl_2, { left: `${slideEl_2_DefLeft - liRect.left}px` },`+=${animDuration}`);
+      }
+      timesWidth = index + 1 - activeIndex + 1 <= 0 ? 1 : index + 1 - activeIndex + 1;
+      activeIndex = index + 1;
+      tl.to(slideEl_1, animDuration, { width: `${timesWidth * slideEl_1_DefWidth}px` });
+      if (index + 1 != startPosIndex || reachedEnd == false)
+      {
+        tl.to(slideEl_1, animDuration, {
+            left: `${elRect.left - liRect.left}px`,
+            width: `${slideEl_1_DefWidth}px` });
+      }
+      reachedEnd = (index + 1 == liEls.length) ? true : false;
+    }
+
+    //////////////////////////////
+    // TAB CONTENT SELECTOR     //
+    //////////////////////////////
+
+    function switchTabContent(node_name,sel_id)
+    {
+      var node = document.getElementsByClassName(node_name)[0].childNodes
+      for(var i=0;i<node.length;i++)
+      {
+        if(node[i].id)
+        {
+          if(node[i].id == sel_id) node[i].classList.add('active');
+          else                     node[i].classList.remove('active');
+        }
+      }        
+    }
+
+    ////////////////////
+    // ON-SCREEN HELP //
+    ////////////////////
+
+    function onhelp(txt,target)
+    {
+        if( typeof(_o.tools[target.id])=="undefined" )
+        _o.tools[target.id] = {"toggle":false,"cache":""}
+
+        var t = target.tagName;
+        switch(target.tagName.toUpperCase())
+        {
+        case "DIV":
+            _o.tools[target.id].toggle = !_o.tools[target.id].toggle
+            if(_o.tools[target.id].toggle)
+            {
+            _o.tools[target.id].cache = target.innerHTML;
+            target.innerHTML = txt;
+            }
+            else
+            target.innerHTML = _o.tools[target.id].cache;
+        break;
+        case "TEXTAREA":
+            target.innerHTML = txt;
+        break;
+        }
+    }
+</script>
+</head>
+
+
+<!--
+   ____    ____          _            
+  |_   \  /   _|        (_)           
+    |   \/   |   ,--.   __   _ .--.   
+    | |\  /| |  `'_\ : [  | [ `.-. |  
+   _| |_\/_| |_ // | |, | |  | | | |  
+  |_____||_____|\'-;__/[___][___||__]
+  ██   ██ ████████ ███    ███ ██      
+  ██   ██    ██    ████  ████ ██      
+  ███████    ██    ██ ████ ██ ██      
+  ██   ██    ██    ██  ██  ██ ██      
+  ██   ██    ██    ██      ██ ███████ 
+-->  
+<body>
+
+ <!-- 
+  <div id="mocha"></div>
+  <script>
+  if(typeof(mocha)=="object")
+  {
+    mocha.setup('bdd');
+    mocha.checkLeaks();
+    mocha.run();
+  }
+</script>
+-->
+
+
+</script>
+
+  <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
+  <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+  <div id=COM_popup_text></div>
+  </div>
+
+  <table id=box style=width:450px;margin-top:0px>
+    <tr>
+      <td valign=top>
+        <!--i class="fa fa-bars" onmouseover="document.getElementById('app').style.display=''" style=float:left;></i!-->
+
+        <!-- tab menu  -->
+        <div id=app>
+          <ul style="width:350px;float:left">
+            <!-- links -->
+            <a id="tab0" href="#tab1">Emulator</a>
+            <a id="tab0" href="#tab2">Assembler</a>
+            <a id="tab0" href="#tab3">Debugger</a>
+            <a id="tab0" href="#tab4">Manual</a>
+            <div class="focus-el el--1"></div>
+            <div class="focus-el el--2"></div>
+          </ul>
+        </div>
+       
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab1" style="height:1300px;width:1300px;background-image:url('res/appleIIplus_bck_650_v2.png');background-size:1300px;background-repeat:no-repeat;image-rendering:pixelated;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+            <!--form name="tab1" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
+            <!--
+              ███████ ███    ███ ██    ██ ██       █████  ████████  ██████  ██████  
+              ██      ████  ████ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
+              █████   ██ ████ ██ ██    ██ ██      ███████    ██    ██    ██ ██████  
+              ██      ██  ██  ██ ██    ██ ██      ██   ██    ██    ██    ██ ██   ██ 
+              ███████ ██      ██  ██████  ███████ ██   ██    ██     ██████  ██   ██  
+            -->
+
+            <script type="text/javascript" src="res/EMU_apple2main.js"></script>
+            <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2debug.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2spk.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
+            <script type="text/javascript" src="res/gpu-browser.min.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2GPU.js"></script>
+            <!--script type="text/javascript" src="res/EMU_apple2video.js"></script-->
+            <script type="text/javascript" src="res/EMU_appledisk2.js"></script>
+            <script type="text/javascript" src="res/EMU_ramcard.js"></script>
+            <!--script type="text/javascript" src="res/EMU_saturnRAM.js"></script-->
+            <script type="text/javascript" src="res/EMU_80colcard.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2io.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2hw.js"></script>
+            <!--script type="text/javascript" src="res/EMU_A2Pkeys_v0.js"></script-->
+            <script type="text/javascript" src="res/EMU_A2Pkeys.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
+
+            <!--  EMULATOR TAB PANE -->
+            <div style="height:115px;padding:0px 0px 0px 0px;z-index:1;">
+
+              <div style="height:30px;padding:0px 90px 0px 0px;">
+                <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab1.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab1.2');" title="Tools"><i class="fa fa-toolbox"></i></button>
+              </div>
+  
+              <!--  TOOLS TAB WINDOW -->
+              <div class="hints1" id="tab1.2">
+                <!--  PASTE-BOARD TOOLBOX -->
+                <div class=toolbox>
+                <form name="EMUboard">
+                  <textarea cols=40 rows=4 placeholder="Paste here" name=boardText style="float:left"></textarea><br>
+                  <input type="button"  value="Paste"              onclick="javascript:oCOM.POPUP.toggle('tab1.2');oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause',pause:false});onBoardPaste()">
+                  
+                  <input type="button"  value="TxtCap" id=TxtCapture onclick="javascript:onTxtCapture(this)">   
+                  
+                  <input type="button"  value="MemCap" id=MemCapture onclick="javascript:onMemCapture('CapF','CapT')">  
+                  
+                  <input type="text"    value="$0000" size=5 id="CapF" onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 id="CapT" onkeyup="onCaptureAddr(this)">
+                  <input type="button"  value="Clear"              onclick="javascript:onEMUBoardClear()">
+                  <input type="button"  value="X"                  onclick="javascript:oCOM.POPUP.off('tab1.2')">
+                </form>
+                </div>
+                <!--  EMULATOR ACTION BUTTONS -->
+                <div class=toolbox>
+                  <button class=appbut                 onclick="javascript:oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute'}).muteAct()"  title="Sound"><i id="mutebutton" class="fa fa-volume-mute"></i></button>
+                  <button class=appbut                 onclick="javascript:oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause'})" id="pausebutton"   title="Pause"><i  class="fa fa-play"></i></button>
+                  <br>
+                <button class=appbut
+                        value="Restart"
+                        id="restartbutton"
+                        title="Short press: warm boot / hold 1/2s: cold boot"
+                        onmousedown="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+                        onmouseup="return oEMUI.restartBtnUp();"
+                        onmouseleave="return oEMUI.restartBtnCancel();"
+                        ontouchstart="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+                        ontouchend="return oEMUI.restartBtnUp();"
+                        ontouchcancel="return oEMUI.restartBtnCancel();">
+                  <i class="fa fa-power-off"></i>
+                </button>
+                <button class=appbut onclick="javascript:oEMUI.deviceBtn({id:'devices'})" id="devices" title="Peripheral controls" data-slot=""></button>
+                  <!-- <i class="fa fa-cube"></i> -->
+                </button>
+
+                </div>
+                <!--  DEVICE TOOLBOX -->
+
+                <div id="device_toolbox_body"></div>
+
+                <div class="toolbox">
+                  <div id=LEDS class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                    
+                  </div>
+                </div>
+
+
+                <!--  DEBUG  -->
+                <!--
+                <div class=toolbox>
+                  <div class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                    <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
+                    <div style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                      <input type="range" min="0" max="250" value="0" class="slider" onchange="slider_scroll(this,250)" style="width:250px">
+                      <i class="fa fa-arrow-circle-left"></i>932<i class="fa fa-arrow-circle-right"></i>
+                    </div>
+                  </div>
+                </div>
+                -->
+
+
+              </div>
+
+              <!--  SETTINGS TAB WINDOW -->
+              <div class="hints1" id="tab1.1" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+
+                <!--  SYSTEM SETTINGS -->
+                <div class=toolbox>
+                  <div class=appbox title="SYSTEM" style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
+                    SYSTEM
+                    <div style="font-family:arial;font-size:11px">
+
+                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;">
+                          <div id="cpu_component" style="float:left;border:0px solid;padding-top:1px;"></div>&nbsp;load
+                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
+                          <input id="cpu_pct" value="" size="4" style="background:transparent;border: none;">
+                        </div>
+                        <br>
+                        <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<i class=\'fa fa-bug\' onclick=oEMUI.cpuDbg(\'feature_box\') title=\'Step trace\'></i>&nbsp;')" style="width:65px">
+                        <div id="all_components"></div>
+                      <script>
+                        oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
+                        oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
+
+                        function system_tab_update()
+                        {
+                          document.getElementById("cpu_component").innerHTML = _CFG_SYSCODE["A2P"].CPU;
+                          document.getElementById("all_components").innerHTML = ""
+                          //_CFG_SYSCODE[oEMU.system.Video].Display
+                          +_CFG_SYSCODE["A2P"].Display+" Vid <i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i>"
+                          +"<div class=blink style=display:inline><i class='fa fa-low-vision'></i></div><br>" 
+                          +_CFG_SYSCODE["A2P"].KeysROM+" Kbd <i class='fa fa-keyboard' title='Keyboard'></i><i class='fa fa-cog'></i>"
+                        }
+                      </script>
+                    </div>
+                  </div>
+                </div>
+
+
+                <!--  SLOT SETTINGS -->
+                <div class=toolbox>
+                  <div class=appbox style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
+                    SLOTS<br>
+                    <div id="peripheral_slots"></div>
+                  </div>
+                </div>
+              
+                <div id=feature_box class=toolbox style="margin:0px 0px 0px 1px;"></div>
+                
+              </div>
+            </div>
+
+              <script>
+              function slider_scroll(obj,max)
+              {
+                  var pct = Math.round(1000*obj.value/max)/10;
+
+                  // Plot Line
+                  var canvas = slider_canvas;
+                  var ctx = slider_scroll_ctx;
+
+                  ctx.font = "8px Arial";
+                  //ctx.font = "8px Tahoma";
+                  //ctx.font = "8px MS Sans Serif";
+                  ctx.fillText("1A2B", 10, 50-3);
+                  ctx.fillText("3C4D", 10, 58-3);
+
+                  ctx.strokeStyle = '#ff0000';
+                  ctx.beginPath();
+                  ctx.moveTo(0, 40);
+                  ctx.lineTo(300, 40);
+                  ctx.stroke();
+
+                  //ctx.clearRect(0, 0, canvas.width, canvas.height);
+              }
+              const slider_canvas = document.getElementById("scopeCanvas");
+              if(slider_canvas) var slider_scroll_ctx = slider_canvas.getContext("2d");
+
+
+            oCOM.addToEventStack("onload",EMU_mem_map)
+            function EMU_mem_map()
+            {
+              var el = document.getElementById("EMU_mem_map");
+              if(!el) return;
+              if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
+ 
+              var linestep = 4096;
+              var cnf = {id_prefix:"m",digits:4};
+              var lc = apple2plus.hwObj().io.ramcard;
+              var bLC = lc && lc.state && lc.state.active && lc.MEM_grid;
+              el.innerHTML =
+                "<div style='display:flex;flex-wrap:nowrap;gap:6px;align-items:flex-start'>"
+              +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
+              +   oMEMGRID.build_grid(15*linestep,8,-linestep,cnf)
+              +   (bLC
+                    ? "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
+                    +   oMEMGRID.build_grid(0xF000,2,-linestep,{id_prefix:"x",digits:4,table_id:"xEF"})
+                    +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"z",digits:4,table_id:"zD"})
+                    +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"y",digits:4,table_id:"yD"})
+                    + "</div>"
+                    : "")
+              + "</div>";
+              oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
+              if(bLC)
+              {
+                oMEMGRID.relabel_grid_rows("xEF",["F000\u00a0\u00a0\u00a0\u00a0","E000\u00a0\u00a0\u00a0\u00a0"]);
+                oMEMGRID.relabel_grid_rows("zD",["D000-B"]);
+                oMEMGRID.relabel_grid_rows("yD",["D000-A"]);
+                oMEMGRID.paint_grid(lc.MEM_grid.ramcard.layout, lc.MEM_grid.ramcard.cnf);
+                oMEMGRID.paint_grid(lc.MEM_grid.bankB.layout,   lc.MEM_grid.bankB.cnf);
+                oMEMGRID.paint_grid(lc.MEM_grid.bankA.layout,   lc.MEM_grid.bankA.cnf);
+              }              
+            }
+
+            function EMU_update_mem_map()
+            {
+              // TODO refresh memory map (efficiently please !!)
+            }
+
+            function isHidden(el)
+            {
+              var style = window.getComputedStyle(el);
+              return (style.display === 'none')
+            }
+
+            function onBoardPaste()
+            {
+              var e = EMUboard.boardText.value;
+              e = e.replace(/\r\n/g,"\r");
+              e = e.replace(/\n/g,"\r");
+              oEMU.component.Keyboard.pastebuffer = e;
+              oEMU.component.Keyboard._i = 0;
+
+              // temporarily override polling function (super fast paste function!)
+              oEMU.component.Keyboard.polling = function(key)
+              {
+                 if(key & 0x80)                   return key;   // keyboard strobe: someone is typing!
+                 if(this._i < this.pastebuffer.length)
+                 {
+                   const k = this.pastebuffer.charCodeAt(this._i++); 
+                   oEMU.component.Keyboard.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k} );
+                   return k;
+                 }
+                 this._i = 0;
+                 return oEMU.component.Keyboard.stop_polling();  // self-destroy override
+              }
+
+              /*
+              for(var _i=0;_i<e.length;_i++)
+              {
+                  //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
+                  //apple2OnKeyPress(event);
+                  var code = oEMU.component.Keyboard.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
+                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
+                  apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
+              }
+              */
+            }
+
+            function onTxtCapture(el)
+            {
+              var hw = apple2plus.hwObj();
+              var s = "";
+              for(var y=0;y<24;y++)
+              {
+                for(var x=0;x<40;x++)
+                {
+                    // calculate TEXT address from x & y text coordinates
+                    var adr = 0x0400 + (y-(y&0xF8) << 7) + (y&0xF8) * 5 + x;
+                    var b = hw.read(adr);
+                    s += b>=160 && b<=223 ? String.fromCharCode(b-128) : " "; // filter out chars out of range
+                }
+                s+="\r"
+              }
+              EMUboard.boardText.value = s;
+            }
+
+            function onEMUBoardClear() { EMUboard.boardText.value = "" };  
+            function onCaptureBase(tag)
+            {
+              tag.value=tag.value=="hex"?"dec":"hex";
+            }
+            function onMemCapture(id1,id2)
+            {
+              var hw = apple2plus.hwObj();
+              var id1 = document.getElementById(id1).value;
+              var id2 = document.getElementById(id2).value;
+              var base = id1.charAt(0)=="$" && id2.charAt(0)=="$"?"hex":"dec";
+              var val = id1+"►"+id2;
+
+              var template = {"hex":["\\$([0-9A-F]{1,4})►\\$([0-9A-F]{1,4})",16],
+                              "dec":["([0-9]{1,5})►([0-9]{1,5})",10]};
+              // VALIDATE
+              var re = new RegExp(template[base][0],'g');
+              var addr_arr = val.replace(re,'$1,$2').split(",");
+              if(base=="hex") addr_arr = [Number(oCOM.base_convert(addr_arr[0],["0123456789ABCDEF"],["0123456789"])),Number(oCOM.base_convert(addr_arr[1],16,10))];
+
+              if(addr_arr.length==2)
+              {
+                var s = [];
+                for(var i=addr_arr[0];i<=addr_arr[1];i++)
+                {
+                  var idx = Math.floor((i-addr_arr[0])/8);
+                  if((i-addr_arr[0])%8==0)
+                  {
+                    var adr = oCOM.getHexWord(i);
+                    s[idx] = adr+":";
+                  }
+                  var b = oCOM.getHexByte(hw.safe_read(i));
+                  s[idx] += " "+b;
+                }
+                EMUboard.boardText.value = s.join("\r");
+              }           
+            }
+
+            function onCaptureAddr(el)
+            {
+              var template = {16:"\\$([0-9A-F]{1,4})",
+                              10:"([0-9]{1,5})"};
+              var base = el.value.charAt(1)=="$"?16:10;
+              var bValid = el.value.match(template[base])==null?false:el.value;
+
+              document.getElementById('MemCapture').disabled = !bValid
+              return bValid;
+            }
+
+            function onSnapshot(canvas)
+            {
+              var canvas = document.getElementById("applescreen");
+              const dataURL = canvas.toDataURL('image/png');
+              document.write(dataURL);
+            }
+
+            </script>
+            
+            <!--input id=foo type=text oninput="apple2plus.keystroke(event)"    onclick=document.getElementById('foo').focus()-->
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onclick="EMU_audio_event_unlock();" onkeydown="EMU_audio_event_unlock();oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
+            <!--/input-->
+
+<!--button onclick="onSnapshot()">SNAP</button-->
+
+            <div class="appdskLED" id="dskLED_D1" style="left:392px;top:666px"></div>
+            <div class="appdskLED" id="dskLED_D2" style="left:750px;top:666px"></div>
+
+            <div id="kbd"></div>
+            <script>
+            var keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
+            var keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
+            var keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
+            </script>
+
+
+            <!--
+            <br>
+            <img src=res/appleIIplus_kbd_650.png id=kbdimg style="padding-top:0px;padding-left:105px;opacity:0.5;image-rendering:pixelated;user-drag:none;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;" ontouchstart=apple2OnKeyHover_b(event) onclick=apple2OnKeyHover_b(event) onmousemove=apple2OnKeyHover_b(event) onmouseover="apple2OnKeyHover_b(event)" onmouseout="apple2OnKeyHover_b(event)">
+            -->
+            <!-- TODO: FIND A WAY TO MOVE UP THIS INCLUDE (TRIGGER A FUNCTION ONLOAD ?)-->
+            <br>
+            <input hidden id="debug" style="width:400px" value="">
+          </div>
+
+          <!--
+             █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
+            ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
+            ███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████
+            ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
+            ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
+          -->
+          <div id="tab2" style="height:1024px;width:700px">
+            <!--form name="tab2" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
+            <script type="text/javascript" src="res/ASM_core.js"></script>
+            <script type="text/javascript" src="res/ASM_6502.js"></script>
+            <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
+            <link   rel="stylesheet"       href="res/ASM_6502.css">
+
+            <div style="padding:0px 90px">
+              <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+              <button class=appbut value="Tools" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
+            </div>
+
+            <!--  ASM SETTINGS -->
+
+            <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <div class=toolbox>
+                <div class=appbox title="System" style="text-align:left;padding:0px 6px 0px 6px;">
+                  PRESETS
+                  <div style="font-family:arial;font-size:11px">
+                    
+                    <script>
+                      _TABS["tab2"].SYS = _TABS["tab2"].DEF_SYS;
+                      document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
+                    </script>
+                      
+                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('ASM_system_param');"></i>
+                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
+                      <!--  PRELOAD SYSTEM INFO !-->
+                      <script>document.write( oCOM.onSystemSelect(_TABS["tab2"].SYS,"tab2") )</script>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!--  ASM TOOLS -->
+
+            <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;margin-top:3px">
+              <div class=toolbox>
+                <form name="ASMboard">
+                  <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
+                  <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
+                  <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
+                  <input type="button" value="X" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')">
+                </form>
+              </div>
+            </div>
+
+            <script type="text/javascript">
+            function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
+            function onASMBoardPaste()
+            {
+              var e = ASMboard.boardText.value.toUpperCase(); 
+              e = e.replace(/^.*[!-\/;-@G-~].*$/gm,"");   // remove each line with incompliant characters
+              e = e.replace(/[\r\n ]/g,"");               // remove all [cr] [lf] [spaces]                
+              e = e.replace(/([0-9A-F]{4}:)/g,"\n$1");    // introduce linefeed
+              e = e.replace(/([0-9A-F]{2})/g," $1");      // equally separate bytes
+              e = e.replace(/ ([0-9A-F]{2}) ([0-9A-F]{2}): /g,"$1$2:"); // re-join 16-bit addresses
+              e = e.replace(/^[\s\n]/g,"");               // remove heading spaces and linefeeds
+              ass.srcfield.value = e;
+              //ass.listing.value = e;
+              
+              var s = "";
+            }
+            function onASMBoardClear() { ASMboard.boardText.value = "" }; 
+            </script>
+
+            <form name="ass" onsubmit="return false">
+              <table style="background:#76B9CE;border-radius:10px;">
+                <tr>
+                  <td valign=top style="display:flex;flex-wrap:wrap;width:300px;">
+                    <!-- LEFT PANE -->
+                    <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>ORG $6000
+       LDX #0
+Label1 TXA
+       STA $0400,X
+       LDA #1
+       STA $D800,X
+       INX
+       BNE Label1
+       RTS
+.END
+                    </textarea>
+                    <br>
+                    <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
+                    
+                    <!--
+                    <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
+                    -->
+                    <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';oCOM.POPUP.toggle('tab1.2');COM_switchTab('tab1')">
+                      <i class="fa fa-arrow-circle-up"></i> to emulator</button>
+                    <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
+                        <i class="fa fa-arrow-circle-up"></i> to debugger</button>
+                    <button onclick="javascript:onToolBox('SrcTools');"><i class="fa fa-wrench"></i> tools & config</button>
+      
+                    <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
+                    <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
+      
+                    <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));rrr()"><i class="fa fa-road"></i> trace</button>
+      
+<script>
+
+function rrr()
+{
+  //this.updateScroll(document.getElementById('dispStep'));
+  oASM.updateScroll(document.getElementsByName('listing')[0])
+}
+</script>
+
+                  </td>
+                  <td valign=top>
+                    <!-- RIGHT PANE -->
+                    <textarea name="listing" onscroll="syncScroll(document.forms.ass.listing,document.forms.ass.srcfield)" readonly="readonly" wrap="virtual" class="dotmatrix_bck" style="width:340px;height:400px;margin:10px 10px 10px 0px;-webkit-filter: brightness(0.95);filter: brightness(0.95);" placeholder="Listing"></textarea>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan=2>
+                    <div id="SrcTools" hidden="">
+                      <script>document.write(sTools);</script>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                    <div style="height:90px"></div>
+                    <div name="codefield" id="codefield" class="markdown_mon" style="background-color: transparent; border-color: transparent; resize: none;"></div>
+                    <div style="height:180px"></div>
+                  </td>
+                </tr>
+              </table>
+            </form>
+
+            <script>
+            function syncScroll(element1, element2) { element2.scrollTop = element1.scrollTop; }
+            </script>
+
+          </div>
+
+
+          <!--
+            ██████  ███████ ██████  ██    ██  ██████   ██████  ███████ ██████ 
+            ██   ██ ██      ██   ██ ██    ██ ██       ██       ██      ██   ██
+            ██   ██ █████   ██████  ██    ██ ██   ███ ██   ███ █████   ██████
+            ██   ██ ██      ██   ██ ██    ██ ██    ██ ██    ██ ██      ██   ██
+            ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
+          -->
+          <div id="tab3" style="height:250px;width:700px">
+
+            <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
+            <script type="text/javascript" src="res/DBG_6502gui.js"></script>
+            <link rel="stylesheet"        href="res/DBG_6502.css">
+      
+            <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+              <tr>
+                <td>
+                  <form action="#" onsubmit="singleStep(); return false"></form>
+                  <form name="MemLoader" onsubmit="showMem();return false"></form>
+                  <textarea id="mem" name="mem" rows="16" cols="62" wrap="virtual" hidden=""></textarea>
+                </td>
+              </tr>
+              <tr>
+                <td>
+              
+                  <!-- LEFT PANE -->
+                  <div class="displayLr" style="float:left;width:250px;height:200px;font-size:small/*;border-style:solid;border-width:1px;border-color:yellow*/">
+                    <div id="dispStep" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
+                    <div style="width:248px;height:4px"></div>
+                    <div id="watchdisp" style="width:248px;height:98px;font-size:small;" contenteditable="true" oncut="return false" onpaste="return false" onkeydown="if(event.metaKey) return true; return false;"></div>
+                  </div>
+                  <!-- RIGHT PANE -->
+                  <div style="float:left;font-family: 'Courier New', Courier, monospace;font-weight: 500;/*border-style:solid;border-width:1px;border-color:yellow;*/">
+
+                    <!-- BEGIN DASHBOARD -->
+                    <div id="regdisp" class="regdisp" style="font-size:14px""></div>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="setRegister('PC'); return false;" onfocus="if(this.blur) this.blur();" title="set PC">PC</a></td>
+                        <td>&nbsp;</td>
+                        <td><a onclick="setRegister('AC'); return false;" onfocus="if(this.blur) this.blur();" title="set AC">A</a></td>
+                        <td><a onclick="setRegister('XR'); return false;" onfocus="if(this.blur) this.blur();" title="set XR">X</a></td>
+                        <td><a onclick="setRegister('YR'); return false;" onfocus="if(this.blur) this.blur();" title="set YR">Y</a></td>
+                        <td><a onclick="setRegister('SR'); return false;" onfocus="if(this.blur) this.blur();" title="set SR">SR</a></td>
+                        <td><a onclick="setRegister('SP'); return false;" onfocus="if(this.blur) this.blur();" title="set SP">SP</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="dispPC" class="displayLr" onclick="setRegister('PC');return false;" style="cursor: pointer;">0000</div></td>
+                        <td>&nbsp;</td>
+                        <td><div id="dispAC" class="displayLr">00</div></td>
+                        <td><div id="dispXR" class="displayLr">00</div></td>
+                        <td><div id="dispYR" class="displayLr">00</div></td>
+                        <td><div id="dispSR" class="displayLr">20</div></td>
+                        <td><div id="dispSP" class="displayLr">FF</div></td>
+                      </tr>
+                    </table>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="flipSRBit(7); return false;" onfocus="if(this.blur) this.blur();" title="flip Negative flag">N</a></td>
+                        <td><a onclick="flipSRBit(6); return false;" onfocus="if(this.blur) this.blur();" title="flip Overflow flag">V</a></td>
+                        <td><a onclick="flipSRBit(5); return false;" onfocus="if(this.blur) this.blur();" title="flip bit 5 (ignored)">-</a></td>
+                        <td><a onclick="flipSRBit(4); return false;" onfocus="if(this.blur) this.blur();" title="flip Break flag">B</a></td>
+                        <td><a onclick="flipSRBit(3); return false;" onfocus="if(this.blur) this.blur();" title="flip Decimal flag">D</a></td>
+                        <td><a onclick="flipSRBit(2); return false;" onfocus="if(this.blur) this.blur();" title="flip Interrupt flag">I</a></td>
+                        <td><a onclick="flipSRBit(1); return false;" onfocus="if(this.blur) this.blur();" title="flip Zero flag">Z</a></td>
+                        <td><a onclick="flipSRBit(0); return false;" onfocus="if(this.blur) this.blur();" title="flip Carry flag">C</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="dispSR7" class="displayLr">0</div></td>
+                        <td><div id="dispSR6" class="displayLr">0</div></td>
+                        <td><div id="dispSR5" class="displayLr">1</div></td>
+                        <td><div id="dispSR4" class="displayLr">0</div></td>
+                        <td><div id="dispSR3" class="displayLr">0</div></td>
+                        <td><div id="dispSR2" class="displayLr">0</div></td>
+                        <td><div id="dispSR1" class="displayLr">0</div></td>
+                        <td><div id="dispSR0" class="displayLr">0</div></td>
+                      </tr>
+                    </table>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="setWatchByte('AD'); return false;" onfocus="if(this.blur) this.blur();" title="set AD">AD</a></td>
+                        <td>&nbsp;</td>
+                        <td><a onclick="setWatchByte('R1'); return false;" onfocus="if(this.blur) this.blur();" title="set R1">R1</a></td>
+                        <td><a onclick="setWatchByte('R2'); return false;" onfocus="if(this.blur) this.blur();" title="set R2">R2</a></td>
+                        <td><a onclick="setWatchByte('R3'); return false;" onfocus="if(this.blur) this.blur();" title="set R3">R3</a></td>
+                        <td><a onclick="setWatchByte('R4'); return false;" onfocus="if(this.blur) this.blur();" title="set R4">R4</a></td>
+                        <td><a onclick="setWatchByte('R5'); return false;" onfocus="if(this.blur) this.blur();" title="set R5">R5</a></td>
+                        <td><a onclick="setWatchByte('R6'); return false;" onfocus="if(this.blur) this.blur();" title="set R6">R6</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="dispAD" class="displayLr" onclick="setWatch('AD'); return false;" style="cursor: pointer;">0000</div></td>
+                        <td>&nbsp;</td>
+                        <td><div id="dispR1" class="displayLr">00</div></td>
+                        <td><div id="dispR2" class="displayLr">00</div></td>
+                        <td><div id="dispR3" class="displayLr">00</div></td>
+                        <td><div id="dispR4" class="displayLr">00</div></td>
+                        <td><div id="dispR5" class="displayLr">00</div></td>
+                        <td><div id="dispR6" class="displayLr">00</div></td>
+                      </tr>
+                    </table>
+
+                    <table class=dtable>
+                      <tr>
+                        <td><a onclick="setwatchBit(7); return false;" onfocus="if(this.blur) this.blur();" title="bit7">7</a></td>
+                        <td><a onclick="setwatchBit(6); return false;" onfocus="if(this.blur) this.blur();" title="bit6">6</a></td>
+                        <td><a onclick="setwatchBit(5); return false;" onfocus="if(this.blur) this.blur();" title="bit5">5</a></td>
+                        <td><a onclick="setwatchBit(4); return false;" onfocus="if(this.blur) this.blur();" title="bit4">4</a></td>
+                        <td><a onclick="setwatchBit(3); return false;" onfocus="if(this.blur) this.blur();" title="bit3">3</a></td>
+                        <td><a onclick="setwatchBit(2); return false;" onfocus="if(this.blur) this.blur();" title="bit2">2</a></td>
+                        <td><a onclick="setwatchBit(1); return false;" onfocus="if(this.blur) this.blur();" title="bit1">1</a></td>
+                        <td><a onclick="setwatchBit(0); return false;" onfocus="if(this.blur) this.blur();" title="bit0">0</a></td>
+                      </tr>
+                      <tr>
+                        <td><div id="disp7" class="displayLr">0</div></td>
+                        <td><div id="disp6" class="displayLr">0</div></td>
+                        <td><div id="disp5" class="displayLr">0</div></td>
+                        <td><div id="disp4" class="displayLr">0</div></td>
+                        <td><div id="disp3" class="displayLr">0</div></td>
+                        <td><div id="disp2" class="displayLr">0</div></td>
+                        <td><div id="disp1" class="displayLr">0</div></td>
+                        <td><div id="disp0" class="displayLr">0</div></td>
+                      </tr>
+                    </table>
+                    <!-- END DASHBOARD -->
+
+                  </div>
+                  <!-- END RIGHT PANE -->
+
+                  <div style="float:left" id="DBG_mem_map"></div>
+
+                  <script>
+                    oCOM.addToEventStack("onload",DBG_mem_map)
+                  function DBG_mem_map()
+                  {
+                      if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
+                      var linestep = 4096;
+                      var cnf = {id_prefix:"d",digits:4}
+                      document.getElementById("DBG_mem_map").innerHTML = 
+                        oMEMGRID.build_grid(7*linestep,8,-linestep,cnf) 
+                      + oMEMGRID.build_grid(15*linestep,8,-linestep,cnf);
+                      oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
+                  }
+                  </script>
+                 
+
+                </td>
+              </tr>
+
+              <!-- BUTTON BAR 1-->
+              <tr>
+                <td>
+                  <input type="text" id="memAddr" name="memAddr" size="4" value="6000" hidden="" style="float:left;">
+                  <button onclick="debugReset();load_adr(this)" style="float:left">
+                    <i class="fa fa-truck"></i> load at addr</button>
+                  <button onclick="singleStep()" style="float:left;">
+                    <i class="fa fa-paw"></i> step
+                  </button>
+                </td>
+              </tr>
+
+              <!-- BUTTON BAR 2-->
+              <tr>
+                <td>
+                  <button onclick="javascript:onToolBox('DbgTools')">
+                    <i class="fa fa-wrench"></i> tools & config
+                  </button>
+                  <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
+                    <i class="fa fa-book"></i> help
+                  </button>
+
+                  <div id="DbgTools" hidden="">
+                    <input type="button" value="continous run" class="isButton" onclick="run()">
+                    <input type="button" value="reset debugger" class="isButton" onclick="debugReset()">
+                    <input type="button" value="look up mem #" class="isButton" onclick="memLookup()">
+                    <input type="button" value="reset CPU" class="isButton" onclick="masterReset()">
+                    show ASCII <input type="checkbox" id="showASCII" value="1" class="formField"><br>
+                    <input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
+                    <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
+                    <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
+                    <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS'],document.getElementById('debugfield'))">
+                    <input type="button" value="memory MAP" class="isButton" onclick="RAM_checksum()">
+                    <iframe name="c64loader" border="0" framespacing="0" marginwidth="0" marginheight="0" width="0" height="0" frameborder="0"></iframe>
+                    <input type="button" value="&nbsp;show memory&nbsp;" class="isButton" onclick="showMem()">
+                    <div id="dispCycles" class="displayLr">total cycles: 0</div>
+                    <input id="watchparam" value="" style="width:300px">
+                    <input id="watchparam2" value="" style="width:300px">
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                  <div style="height:90px"></div>
+                  <div id="debugfield" contenteditable="true" class="markdown_mon"
+                      style="width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
+                  </div>
+                  <!--textarea name="debugfield" hidden=""></!--textarea-->
+                  <div style="height:180px"></div>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <!--
+            ███    ███  █████  ███    ██ ██    ██  █████  ██
+            ████  ████ ██   ██ ████   ██ ██    ██ ██   ██ ██
+            ██ ████ ██ ███████ ██ ██  ██ ██    ██ ███████ ██
+            ██  ██  ██ ██   ██ ██  ██ ██ ██    ██ ██   ██ ██
+            ██      ██ ██   ██ ██   ████  ██████  ██   ██ ███████ 
+          --> 
+
+          <div id="tab4" style="height:1000px;width:700px">
+            <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
+              <tr>
+                <td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">
+                  <div style="height:90px"></div>
+                  <div id=manual contenteditable="true" class="markdown_mon"><script>document.write(_DOCS['6502'].replace(/https\:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g,""))</script></div>
+                  <div style="height:180px"></div>
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+        </div>
+      </td>
+  </tr>
+</table>
+
+</body>
+<footer><small><a target=_blank href=https://github.com/RetroAppleJS/RetroAppleJS.github.io>GitHub</a>&nbsp;&nbsp;<a target=_blank href="tools/TOOLS_CATALOG.html">Tools</a>&nbsp;&nbsp;<a target=_blank href=https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md>Copyright (c) 2022, Freddy Vandriessche</a></small> <div id="footer" style="display: inline"></div></footer>
+</html>
