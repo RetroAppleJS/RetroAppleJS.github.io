@@ -36,7 +36,7 @@ div.explanation p, p.explanation { font-size: 12px; }
 @page { size:landscape; }
 
 .dotmatrix_bck {
-    background-image: url("matrixpaper.png");
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAA0AgMAAAABJyIZAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAAPFJREFUeJzt2EEKwjAQBdDg7O11ioo5hZcRwR5Hggs3btw04G1UsMtAS8ca0qa9wPxCM6vZPZoy0/wq1RUZ8bqooagsWba+LuorWyjZ2uVJTzpSp1Ja16OJIyOtb0bbBnnyBNIr39U3iL5++44dRNet7RriGqNz4XWG6Mx2Djpk3rXXFTfyu27rel1XkJPPOPRL/sYlHaWD08RDOk28JreL+0G2TnnSk47U6QnVjbR+nPy7kNbPbh7vfV9BdLp6nT8QXbf+pf+zDEKP93mAzjHLQPTw7JCJ6/UGsm2GLAM5+ZAmMouZ92YGuy7pS9VhWeYH0lzcIc+fj5AAAAAASUVORK5CYII=");
     /*background-size: auto;*/
     /* 52 * 400/500 */
     background-size: 400px 42px;
