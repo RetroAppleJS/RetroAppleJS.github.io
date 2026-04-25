@@ -1,0 +1,1198 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+//   ______     _          __          _____   ______   
+//  |_   _ `.  (_)        [  |  _     |_   _|.' ____ \  
+//    | | `. \ __   .--.   | | / ]      | |  | (___ \_| 
+//    | |  | |[  | ( (`\]  | '' <   _   | |   _.____`.  
+//   _| |_.' / | |  `'.'.  | |`\ \ | |__' |  | \____) | 
+//  |______.' [___][\__) )[__|  \_]`.____.'   \______.'  
+-->
+
+<html style="background-color:#B0B0B0"><head>
+  <title>APPLE II DISK TOOL - convert .dsk to .nib</title>
+  <meta name="description" content="">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8"> 
+  <link rel="stylesheet"        href="../res/COM_MAIN.css">
+</head>
+
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/EMU_appledisk2.js"></script>
+
+<script>
+var CONF_version="1.1.6"
+var CONF_builddate="20231231-180000" 
+
+var dsk_bytes = new Array();
+var nib_dsk_bytes = new Array();
+var HEX_PCT = Array(101);
+
+var log = new Array();
+var log_d = new Array();
+
+function init_gui(_o)
+{ 
+  document.getElementById('slider_title').outerHTML = _TITLE();
+
+  // initialise heat map colors
+  //var col_arr = ["#430054","#403F87","#2D788E","#2CA984","#7DD552","#FDEA27"];
+  var col_arr = ["#2D788E","#2CA984","#7DD552","#FDEA27"];
+  //var col_arr = ["#0000FF","#44984C","#B6C41F","#FF9400","#FF0000","#FB94F8"];
+  //var col_arr = ["#64D4FF","#8BDEDF","#8EDAA6","#BFD080","#F2C98F","#FEAC86"];
+
+  for(var i=0;i<100;i++)
+  {
+      var rng = 100/(col_arr.length-1);
+      var sec_idx = Math.floor(i/rng);                      // color range section index
+      var sec_pct = Math.round(Math.floor(i%rng)*100/rng);  // interpolation percentage
+      var rgb_rng = [ oCOM.HEX2RGB(col_arr[sec_idx]) , oCOM.HEX2RGB(col_arr[sec_idx+1]) ];
+      HEX_PCT[i] = "#"+oCOM.RGB2HEX( interpolate_arr( rgb_rng[0] , rgb_rng[1] , sec_pct) ).join("");
+      //document.write(i+" "+sec_idx+" "+sec_pct+" #"+HEX_PCT[i]+" <div style=height:20px;width:20px;background-color:"+HEX_PCT[i]+"></div><br>");
+  }
+  HEX_PCT[0] = "#000000"
+  HEX_PCT[100] = col_arr[col_arr.length-1];
+}
+
+
+
+
+
+
+
+//  ███    ███  █████  ██ ███    ██      ██████ ██       █████  ███████ ███████ 
+//  ████  ████ ██   ██ ██ ████   ██     ██      ██      ██   ██ ██      ██      
+//  ██ ████ ██ ███████ ██ ██ ██  ██     ██      ██      ███████ ███████ ███████ 
+//  ██  ██  ██ ██   ██ ██ ██  ██ ██     ██      ██      ██   ██      ██      ██ 
+//  ██      ██ ██   ██ ██ ██   ████      ██████ ███████ ██   ██ ███████ ███████    
+
+
+var oDISK = new function()
+{
+//  ██████  ██ ███████ ██   ██     ██████   █████  ██████  ███████ ███████ ██████  
+//  ██   ██ ██ ██      ██  ██      ██   ██ ██   ██ ██   ██ ██      ██      ██   ██ 
+//  ██   ██ ██ ███████ █████       ██████  ███████ ██████  ███████ █████   ██████  
+//  ██   ██ ██      ██ ██  ██      ██      ██   ██ ██   ██      ██ ██      ██   ██ 
+//  ██████  ██ ███████ ██   ██     ██      ██   ██ ██   ██ ███████ ███████ ██   ██ 
+
+  this.DOS3_parse = function(dsk_data)
+  {
+    var geo = this.DOS3_m.DISK_GEO;
+    var toc = this.DOS3_m.VTOC;
+    var log_arr = new Array();
+
+    var TRACK_SIZE =  geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK;
+    var disk_address_bits = Math.ceil(Math.log10(TRACK_SIZE*geo.TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+    
+    ////////////////////////////////////////
+    // HIGHLITE VTOC SECTOR ON MEMORY MAP //
+    ////////////////////////////////////////
+ 
+    var track = sector = 0;
+    var s = "";
+    var table = document.getElementById("gtable_"+oMEMGRID.conf_grid.id_prefix);
+    var addr_track = oCOM.getHexMulti(this.byte_offset(geo.VTOC_TRACK,0,geo),disk_address_digits); // find row position of VTOC
+    for (var i = 0, row; row = table.rows[i]; i++)
+    {
+      var firstcol = row.cells[0].innerHTML;
+      if(firstcol==addr_track)
+          row.cells[0].innerHTML = "<font color='maroon'>"+firstcol+"<font>"; // colouring grid label
+    }
+    var el = document.getElementById(oMEMGRID.conf_grid.id_prefix + addr_track);
+    if(el!=null) el.style.backgroundColor = "#FF8080";  // colouring grid cell
+    
+    //////////////////////////////
+    // COLLECT VTOC INFORMATION //
+    //////////////////////////////
+
+    var track = geo.VTOC_TRACK;
+    var sector = geo.VTOC_SECTOR;
+
+    log_arr[log_arr.length] = "<font color='maroon'>";
+    log_arr[log_arr.length] = "<b>VTOC PARSING RESULTS</b>"
+    for(var r in toc)
+    {
+      // POPULATE VTOC DATA
+      var rng_arr = this.HEXRange2Array(toc[r][0]);
+      var _offset =  this.byte_offset(track,sector,geo);
+      this.DOS3_m.VTOC[r][3] = dsk_data.slice( _offset+rng_arr[0] , _offset+rng_arr[rng_arr.length-1]+1 ); // take slice between first and last from range 
+
+      // LOGGING
+      var str = "";
+      for(var _i=0 ; _i<rng_arr.length ; _i++)
+      {
+        if(toc[r][1]=="LEN" || toc[r][1]=="BEN") { n = toc[r][2][_i]*256 + toc[r][2][_i+1]; _i++ } // grab 2 values if big-endian or little-endian
+        str += oFMT.fmtNumber( toc[r][3][_i] ,toc[r][1] ).str + " ";
+      }
+      log_arr[log_arr.length] = str + " = " + "<b>" + toc[r][2] + "</b>";
+    }
+    log_arr[log_arr.length] = "</font>";
+    
+    return {"data":this.DOS3_m,"logs":log_arr} 
+  }
+
+//  ██████  ██ ███████ ██   ██     ██ ██████  ███████ ███    ██ ████████ ██ ███████ ██ ███████ ██████  
+//  ██   ██ ██ ██      ██  ██      ██ ██   ██ ██      ████   ██    ██    ██ ██      ██ ██      ██   ██ 
+//  ██   ██ ██ ███████ █████       ██ ██   ██ █████   ██ ██  ██    ██    ██ █████   ██ █████   ██████  
+//  ██   ██ ██      ██ ██  ██      ██ ██   ██ ██      ██  ██ ██    ██    ██ ██      ██ ██      ██   ██ 
+//  ██████  ██ ███████ ██   ██     ██ ██████  ███████ ██   ████    ██    ██ ██      ██ ███████ ██   ██ 
+
+  this.detect = function(dsk_data)
+  {
+    var result_arr = {};
+
+    // check if DOS 3.3
+    var pct = 0;
+    var geo = this.DOS3_m.DISK_GEO;
+    var offset_arr = this.HEXRange2Array( this.DOS3_m.VTOC.DOS_VER[0] );  // e.g. transforms "$04-$05" into [4,5]
+    var DOS_VER = dsk_data[ this.byte_offset(geo.VTOC_TRACK,geo.VTOC_SECTOR,geo) + offset_arr[0] ];
+    if(DOS_VER==3) pct += Math.round((1 - 1/255)*10000)/100;
+    result_arr["DOS 3.3"] = pct;
+
+    return result_arr;
+  }
+
+//  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
+//  ██   ██ ██      ██  ██           ██     ████   ██ ██ ██   ██ 
+//  ██   ██ ███████ █████        █████      ██ ██  ██ ██ ██████  
+//  ██   ██      ██ ██  ██      ██          ██  ██ ██ ██ ██   ██ 
+//  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
+
+oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
+  {
+      //alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
+      //CRC32: E766F072
+      
+
+      // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
+      var sixTwo = [  
+          0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
+          0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
+          0xb4, 0xb5, 0xb6, 0xb7, 0xb9, 0xba, 0xbb, 0xbc,
+          0xbd, 0xbe, 0xbf, 0xcb, 0xcd, 0xce, 0xcf, 0xd3,
+          0xd6, 0xd7, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde,
+          0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
+          0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
+          0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff ];
+      
+      var bytes = new Array(232960);
+      var offs;
+
+      // odd-even encoding for sector headers.
+      function split_OddEven(b) { return [0b10101010 | (b >> 1),0b10101010 | b] }    // odd bits to nibble0, even bits to nibble1
+      function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
+
+      for (var track = 0; track < 35; track++)
+      {
+          offs = track * 6656;
+          for (var sec = 0; sec < 16; sec++)
+          {
+
+              // Gap 1 (which serve as buffer to avoid overlap with the end of the previous sector)
+              addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
+
+              // Addr field prologue (uniquely marks the beginning of a sector & address field)
+              addBytes([0xd5,0xaa,0x96]);   // 0xd5 and 0xaa are not in the GRC lookup table
+
+                // ADDRESS FIELD
+                addBytes(split_OddEven(0xFE));                // Volume
+                addBytes(split_OddEven(track));               // Track
+                addBytes(split_OddEven(sec));                 // Sector
+                addBytes(split_OddEven(0xFE ^ track ^ sec));  // Checksum
+
+              // Addr field epilogue (uniquely marks the end of the address field)
+              addBytes([0xde,0xaa,0xeb]);  // 0xaa is not in the GRC lookup table
+
+              //prenib Gap 2 (provides time to DOS routine to decode the address field)
+              addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
+
+              // Data field prologue (uniquely marks the beginning of a data field))
+              addBytes([0xd5,0xaa,0xad]);  // 0xd5 and 0xaa are not in the GRC lookup table
+
+              // 1 - Start by prenibbilizing (256 DSK bytes >> create NIB of 342 bytes)
+              var o = prenibble(track,sec,dskBytes);
+              prenib = o.data;
+
+
+              if(o.log!=null && track==0) log[log.length] = o.log;
+
+              // 2 - Encode 342 nibbilized bytes of data.
+              
+              var prev = 0;   // reset data-field checksum chain for each sector
+              //var log2 = new Array();
+              for (var ni = -86; ni < 256; ni++)
+              {
+                  var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
+                  var b = sixTwo[prev ^ prenib[i]];
+
+/*
+                  if(track==0 && sec==0) 
+                  {
+                    if(prev===undefined) var prev = 0;
+                    log[log.length] = (
+                        "prenib["+i+"]="+oCOM.getHexByte(prenib[i])
+                        +" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
+                        +" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
+                        +" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
+                        )
+                    log_d[ni+86] =  oCOM.getHexByte(b);
+                  }
+*/
+                  addBytes([ b ]);
+                  prev = prenib[i];
+              }
+              
+
+              addBytes([ sixTwo[prev] ]); // add the last remaining byte
+
+
+              // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***
+
+              // Data field epilogue
+              addBytes([0xde,0xaa,0xeb]);
+          }
+
+          // Gap 3 (fill out with sync bytes until end of track, minimum 14 bytes, allowing enough time for DOS to process the data
+          var bytes2EOT = (track+1) * 26 * 256 - offs;
+          addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) );
+      }
+
+      //alert("CRC32: "+oCOM.crc32(bytes).toString(16).toUpperCase());
+
+      if(log.length>0)
+      {
+        document.getElementById("output").innerHTML = 
+        "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"
+        +log.join("<br>");
+        +"</div>"
+      }
+
+      //CRC32: 435A9A45
+      return bytes;
+  }    
+
+//  ███    ██ ██ ██████      ██████      ██████  ███████ ██   ██ 
+//  ████   ██ ██ ██   ██          ██     ██   ██ ██      ██  ██  
+//  ██ ██  ██ ██ ██████       █████      ██   ██ ███████ █████   
+//  ██  ██ ██ ██ ██   ██     ██          ██   ██      ██ ██  ██  
+//  ██   ████ ██ ██████      ███████     ██████  ███████ ██   ██ 
+
+  var prev = "";
+  oEMU.component.IO.AppleDisk.convertNib2Dsk = function(nibBytes)
+  {
+    var bytes = new Array(143360);  // 35 * 16 * 256
+    var offs;
+    var prenib = new Array(256 + 86);
+
+    function join_OddEven(b1,b2) { return ((b1<<1)+1) & b2 }
+    function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
+    function mb(val,src_bit,dst_bit) { return (val&(1<<src_bit))<<dst_bit>>src_bit }
+
+    var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
+    var secSkew_lookup = new Array(16)
+    for(var i=0;i<secSkew.length;i++) secSkew_lookup [ secSkew[i] ] = i;
+
+    // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
+    var sixTwo = [  
+    0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
+    0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
+    0xb4, 0xb5, 0xb6, 0xb7, 0xb9, 0xba, 0xbb, 0xbc,
+    0xbd, 0xbe, 0xbf, 0xcb, 0xcd, 0xce, 0xcf, 0xd3,
+    0xd6, 0xd7, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde,
+    0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
+    0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
+    0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff ];
+    var sixTwo_lookup = new Array(256)
+    for(var i=0;i<sixTwo.length;i++) sixTwo_lookup[ sixTwo[i] ] = i;
+
+    function logstate(o,d8,state)
+    {
+      var act = o.ADR.sec+" "+o.ADR.trk
+      //if(prev!=act && o.ADR.sec>0 && o.ADR.trk>0) console.log(act);
+
+      //console.log(oCOM.getHexByte(d8) + JSON.stringify(o))
+      //return oCOM.getHexByte(d8) + JSON.stringify(o)
+      prev = act;
+    }
+
+    var states = {}
+    var state = 0;
+    var loc_n = 232960;
+    for(var loc=0;loc<loc_n;loc++)
+    {
+      var d8 = nibBytes[loc];
+      var d8_ahead = loc<(loc_n-2)?[d8,nibBytes[loc+1],nibBytes[loc+2]]:[null,null,null];
+      switch(state)
+      {
+        case 0:
+            if(states["GAP1"]===undefined)
+              states = {
+             "GAP1":{"cy":0}
+            ,"APRO":{"cy":0 ,"d":[0xd5,0xaa,0x96]}
+            ,"ADR": {"cy":0}
+            ,"AEPI": {"cy":0 ,"d":[0xde,0xaa,0xeb]}
+            ,"GAP2":{"cy":0}
+            ,"DPRO" :{"cy":0,"d":[0xd5,0xaa,0xad]}
+            ,"DATA":{"cy":-256,"prev":0,"d":[]}
+            ,"DEPI":{"cy":0 ,"d":[0xde,0xaa,0xeb]}
+            ,"ERROR":{}};
+
+            
+            if(d8==0xff)  
+            {
+              states.GAP1.cy++;
+              //log[log.length] = logstate(states,d8,state);
+              break;
+            }
+            state++;
+
+        case 1:
+        if(d8_ahead[0]==states.APRO.d[0] && d8_ahead[1]==states.APRO.d[1] && d8_ahead[2]==states.APRO.d[2])
+            { states.APRO.cy=3; state++; loc+=2 }
+        else
+            console.error("ERROR MISSED ADDRESS PROLOGUE:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
+
+          //log[log.length] = logstate(states,d8,state);
+        break;
+        case 2:
+          switch(states.ADR.cy)
+          {
+            case 0: states.ADR["vol"] = join_OddEven(d8_ahead[0],d8_ahead[1]); break;
+            case 1: break;
+            case 2: states.ADR["trk"] = join_OddEven(d8_ahead[0],d8_ahead[1]); 
+                    offs = states.ADR["trk"] * 16 * 256; break;
+            case 3: break;
+            case 4: states.ADR["sec"] = join_OddEven(d8_ahead[0],d8_ahead[1]);
+                    offs += states.ADR["sec"] * 256; break;
+            case 5: break;
+            case 6: states.ADR["chk"] = join_OddEven(d8_ahead[0],d8_ahead[1]); break;
+            case 7: state++; break;
+          }
+          states.ADR.cy++;
+
+          //log[log.length] = logstate(states,d8,state);
+        break;
+        case 3:
+          if(d8_ahead[0]==states.AEPI.d[0] && d8_ahead[1]==states.AEPI.d[1] && d8_ahead[2]==states.AEPI.d[2])
+            { states.AEPI.cy=3; state++; loc+=2 }
+          else
+            console.error("ERROR MISSED ADDRESS EPILOGUE:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
+
+          //log[log.length] = logstate(states,d8,state);
+        break;
+        case 4:
+          if(d8==0xff)  
+          {
+            states.GAP2.cy++;
+            //log[log.length] = logstate(states,d8,state);
+            break;
+          }
+          state++;
+        case 5:
+        if(d8_ahead[0]==states.DPRO.d[0] && d8_ahead[1]==states.DPRO.d[1] && d8_ahead[2]==states.DPRO.d[2])
+            { states.DPRO.cy=3; state++; loc+=2 }
+          else
+            console.error("ERROR MISSED DATA PROLOGUE:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
+          //log[log.length] = logstate(states,d8,state);
+        break;
+        case 6:
+          if(d8_ahead[0]==states.DEPI.d[0] && d8_ahead[1]==states.DEPI.d[1] && d8_ahead[2]==states.DEPI.d[2])
+          {
+              states.DPRO.cy=3; loc+=2
+
+              var z = 0;
+              var doffs = (secSkew_lookup[states.ADR.sec] << 8) + (states.ADR.track << 12);
+              
+              // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***  (maybe check if need to add following statement)
+              // states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
+              // WHY IS states.DATA.d 343 bytes long ?????
+
+              // REVERSE CALCULATE v3
+              var prenib = new Array(342)
+              var postnib = new Array(256);
+              for(var i=0;i<342;i++) prenib[i] = states.DATA.d[i];    // TODO: MAKE MORE EFFICIENT
+
+              for (var i = 0; i < 342; i++) // write one entire block
+              { 
+                if(i<256) postnib[i] |= prenib[i] << 2
+                else
+                {
+                  // prenib is 342 long
+                  var p = prenib[597-i]  // 341->256
+
+                  if((i+172-256)<256)   // mind the tail end!
+                  {
+                    postnib[i+172-256]   // 172-257
+                          |=  mb(p,5,0)
+                          |   mb(p,4,1);
+                  }
+                  postnib[i+86-256]    // 86-171  - 86
+                        |=  mb(p,3,0)
+                        |   mb(p,2,1);
+                  postnib[i-256]       // 0-85
+                      |=  mb(p,1,0)
+                      |   mb(p,0,1)    
+
+/*
+                  if(states.ADR.trk==0 && states.ADR.sec==0) 
+                  {
+                      if(prev===undefined)  var prev = 0;
+                      log[log.length] = 
+                          "prenib["+i+"]="+oCOM.getHexByte(prenib[i])
+                          +" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
+                          +" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
+                          +" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
+                    
+                      prev = prenib[i]
+                  }
+*/
+
+              }
+            }
+
+            //  >> ADD POSTNIB to .DSK FILE
+            addBytes( postnib );
+
+            state=0;          // BACK TO SQUARE 0
+            delete states["GAP1"];
+            //log[log.length] = logstate(states,d8,state);
+          }
+          else
+          {
+              // READ DATA UNTIL DEPI
+              var i = states.DATA.cy<0 ? 255-states.DATA.cy : states.DATA.cy;
+              if(sixTwo_lookup[d8]===undefined)
+              {
+                console.error("DATA ERROR:"
+                  +" $T"+oCOM.getHexByte(states.ADR.trk)
+                  +" $S"+oCOM.getHexByte(states.ADR.sec)
+                  +" record "+loc);
+              }
+              else
+              {
+
+                if(states.ADR.trk==0 && states.ADR.sec==0) 
+                {
+                    var ni = states.DATA.cy
+                    //var i = ni <0 ? (256+ni): ni+86;
+                    var i = ni + 256;
+
+                    var color = log_d[i] == oCOM.getHexByte(d8) ? "green":"black"
+
+                    /*
+                    log[log.length] = 
+                        "getBytes["+(i)+"]=<b style=color:"+color+">"+oCOM.getHexByte(d8)+"</b>"
+                        //+" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
+                        //+" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
+                        //+" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
+                    */
+                        
+                }
+
+                states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
+                states.DATA.prev = states.DATA.d[states.DATA.d.length-1];
+                states.DATA.cy++;
+              }
+          }
+        break;
+      }
+      
+    }
+
+    return bytes;
+  }
+
+
+
+  function prenibble(track,sec,dskBytes)
+  {
+    var bDebug = false;
+
+    if(prenib===undefined)
+      var prenib = new Array(256 + 86);
+
+    var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
+    var doffs = (secSkew[sec] << 8) + (track << 12);
+
+    var prenib_fml = new Array();
+
+    var z = 0;
+
+    // CALCULATE v1
+    var prenib0 = new Array(342)
+    for(var i = 0; i < 256; i++)
+    {
+      var d8 = dskBytes[doffs + i];
+      prenib0[i] = (d8 >> 2);
+      if      (i < 86)    prenib0[256 + 85  - i] =     ((d8 & 0x02) >> 1) | ((d8 & 0x01) << 1);
+      else if (i < 172)   prenib0[256 + 171 - i] |=    ((d8 & 0x02) << 1) | ((d8 & 0x01) << 3);
+      else                prenib0[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
+      if      (i < 2)     prenib0[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
+    }
+
+    /*
+    // CALCULATE v2
+    for (var i = 0; i < (256+86+z); i++) // write one entire block
+    {
+      var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib}
+
+      var d = db.dskBytes[db.doffs+db.ii];
+      if(db.i<256) prenib[db.i] = d>>2
+      else         prenib[db.i] = mbit(db,(86+db.z)*2,0,5)          // SERPENTINE residual 2-bit compounds
+                      | mbit(db,(86+db.z)*2,1,4)
+                      | mbit(db,86+db.z,0,3) 
+                      | mbit(db,(86+db.z),1,2) 
+                      | mbit(db,0,0,1) 
+                      | mbit(db,0,1,0);
+    }
+
+    function mbit(db,idx,src_bit,dst_bit)
+    {
+      var v = db.ii + idx;
+      var val = db.dskBytes[db.doffs + v];
+      if(v<256) var d = (val&(1<<src_bit))<<dst_bit>>src_bit;
+      else var d = 0;
+
+      return  d;
+    }
+    */
+    
+    if(track==0 && sec==0)
+    {
+      for(var i=0;i<256;i+=16)
+        console.log("dskBytes["+i+"] = "
+             +oCOM.getHexByte(dskBytes[i])    + " " +oCOM.getHexByte(dskBytes[i+1])+" "  +oCOM.getHexByte(dskBytes[i+2]) + " "  +oCOM.getHexByte(dskBytes[i+3])
+        + " "+oCOM.getHexByte(dskBytes[i+4])  + " " +oCOM.getHexByte(dskBytes[i+5])+" "  +oCOM.getHexByte(dskBytes[i+6]) + " "  +oCOM.getHexByte(dskBytes[i+7])
+        + " "+oCOM.getHexByte(dskBytes[i+8])  + " " +oCOM.getHexByte(dskBytes[i+9])+" " +oCOM.getHexByte(dskBytes[i+10]) + " " +oCOM.getHexByte(dskBytes[i+11])
+        + " "+oCOM.getHexByte(dskBytes[i+12]) + " " +oCOM.getHexByte(dskBytes[i+13])+" "+oCOM.getHexByte(dskBytes[i+14]) + " " +oCOM.getHexByte(dskBytes[i+15])
+      );
+    }
+
+    var postnib = new Array(256)
+
+    // CALCULATE v3
+    for (var i = 0; i < (256+86); i++) // write one entire block
+    {
+      var ii = i<256 ? i : 256+85-i
+      var d = dskBytes[doffs+ii];
+      if(i<256) prenib[i] = d>>2
+      else      prenib[i] = 
+          (ii<84?mb(dskBytes[doffs+ii+172],0,5):0)  // 84 = 256-172
+        | (ii<84?mb(dskBytes[doffs+ii+172],1,4):0)  // Zero-out serpentine tail 
+        | mb(dskBytes[doffs+ii+86],0,3)
+        | mb(dskBytes[doffs+ii+86],1,2)
+        | mb(dskBytes[doffs+ii],0,1)
+        | mb(dskBytes[doffs+ii],1,0)
+    }
+
+    // REVERSE CALCULATE v3
+    for (var i = 0; i < (256+86); i++) // write one entire block
+    { 
+      if(i<256) postnib[i] |= prenib[i] << 2
+      else
+      {
+        // prenib is 342 long
+        var p = prenib[597-i]  // 341->256
+
+        postnib[i+172-256]   // 170-255
+              |=  mb(p,5,0)
+              |   mb(p,4,1);
+        postnib[i+86-256]    // 86-171  
+              |=  mb(p,3,0)
+              |   mb(p,2,1);
+        postnib[i-256]       // 0-85
+            |=  mb(p,1,0)
+            |   mb(p,0,1)    
+      }
+    }
+
+    if(track==0 && sec==0)
+    {
+      for(var i=0;i<256;i+=16)
+      {
+        console.log("postnib["+i+"] = "
+             +oCOM.getHexByte(postnib[i])    + " " +oCOM.getHexByte(postnib[i+1])+" "  +oCOM.getHexByte(postnib[i+2]) + " "  +oCOM.getHexByte(postnib[i+3])
+        + " "+oCOM.getHexByte(postnib[i+4])  + " " +oCOM.getHexByte(postnib[i+5])+" "  +oCOM.getHexByte(postnib[i+6]) + " "  +oCOM.getHexByte(postnib[i+7])
+        + " "+oCOM.getHexByte(postnib[i+8])  + " " +oCOM.getHexByte(postnib[i+9])+" " +oCOM.getHexByte(postnib[i+10]) + " " +oCOM.getHexByte(postnib[i+11])
+        + " "+oCOM.getHexByte(postnib[i+12]) + " " +oCOM.getHexByte(postnib[i+13])+" "+oCOM.getHexByte(postnib[i+14]) + " " +oCOM.getHexByte(postnib[i+15])
+        );
+      }
+    }
+
+    /*
+    if(track==0 && sec==0)
+    {
+      for(var i=0;i<16;i++)
+        console.log("dskBytes["+i+"] = "+oCOM.getHexByte(dskBytes[i]));
+    }
+    */
+
+    function mb(val,src_bit,dst_bit)
+    {
+      return (val&(1<<src_bit))<<dst_bit>>src_bit;
+    }
+
+    function mbit2(db,idx,src_bit,dst_bit)
+    {
+      var v = db.ii + idx
+      var val = db.prenib[v];
+      if(v<256) var d = (val&(1<<src_bit))<<dst_bit>>src_bit;
+      else var d = 0;
+
+      return  d;
+    }
+
+    if(bDebug)
+    {
+      // DISPLAY
+      var s = new Array();
+      for (var i = 0; i < (256+86+z); i++) // read one entire block
+      {
+        var db = {"dskBytes":dskBytes,"doffs":doffs,"ii":(i<256 ? i : 256+85+z-i),"i":i,"z":z,"prenib":prenib,"prenib0":prenib0,"postnib":postnib}
+        prenib_fml[db.i] = dsp_fml(db);
+      }
+  
+      s[s.length] = "<big>TRACK $"+oCOM.getHexByte(track)+" SECTOR $"+oCOM.getHexByte(sec)+"</big><br>";
+      for (var i = 0; i < prenib_fml.length; i++)
+      {
+        s[s.length] = prenib_fml[i]+"<br>"
+      }
+    }
+
+    return {"data":prenib,"log":s===undefined?null:s.join("")};
+  }
+
+  function do_fml(db)
+  {
+    //  https://archive.org/details/Beneath_Apple_DOS_alt/page/n11/mode/2up?view=theater
+    var d = db.dskBytes[db.doffs+db.ii];
+    var t = db.i<256 ?
+      d>>2                              // SERIALISE 6 high-bits
+      : 
+      mbit(db,(86+db.z)*2,0,5)          // SERPENTINE residual 2-bit compounds
+      | mbit(db,(86+db.z)*2,1,4)
+      | mbit(db,86+db.z,0,3) 
+      | mbit(db,(86+db.z),1,2) 
+      | mbit(db,0,0,1) 
+      | mbit(db,0,1,0); 
+
+    return t;
+  }
+
+  function dsp_fml(db)
+  {
+    var d = db.dskBytes[db.doffs+db.ii];
+    var t = db.prenib[db.i];
+    var t0 = db.prenib0[db.i];
+    var t1 = db.postnib[db.i];
+
+    if(db.i<256)
+    {
+      var dest = 
+         sub(0)     +(sup2(t,7)==sup2(t0,7)?sup2(t,7,"green"):sup2(t,7,"red"))
+        +sub(0)     +(sup2(t,6)==sup2(t0,6)?sup2(t,6,"green"):sup2(t,6,"red"))
+        +sub(db,0,7)+(sup2(t,5)==sup2(t0,5)?sup2(t,5,"green"):sup2(t,5,"red"))
+        +sub(db,0,6)+(sup2(t,4)==sup2(t0,4)?sup2(t,4,"green"):sup2(t,4,"red"))
+        +sub(db,0,5)+(sup2(t,3)==sup2(t0,3)?sup2(t,3,"green"):sup2(t,3,"red"))
+        +sub(db,0,4)+(sup2(t,2)==sup2(t0,2)?sup2(t,2,"green"):sup2(t,2,"red"))
+        +sub(db,0,3)+(sup2(t,1)==sup2(t0,1)?sup2(t,1,"green"):sup2(t,1,"red"))
+        +sub(db,0,2)+(sup2(t,0)==sup2(t0,0)?sup2(t,0,"green"):sup2(t,0,"red"))
+        //+oCOM.getBinMulti(t,8)+"<"+oCOM.getBinMulti(t0,8)
+      var src = " <= "
+        +oCOM.getHexByte(db.i)+"<sub>7</sub>"+(sup2(d,7)==sup2(t1,7)?sup2(t1,7,"green"):sup2(t1,7,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>6</sub>"+(sup2(d,6)==sup2(t1,6)?sup2(t1,6,"green"):sup2(t1,6,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>5</sub>"+(sup2(d,5)==sup2(t1,5)?sup2(t1,5,"green"):sup2(t1,5,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>4</sub>"+(sup2(d,4)==sup2(t1,4)?sup2(t1,4,"green"):sup2(t1,4,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>3</sub>"+(sup2(d,3)==sup2(t1,3)?sup2(t1,3,"green"):sup2(t1,3,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>2</sub>"+(sup2(d,2)==sup2(t1,2)?sup2(t1,2,"green"):sup2(t1,2,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>1</sub>"+(sup2(d,1)==sup2(t1,1)?sup2(t1,1,"green"):sup2(t1,1,"red"))
+        +oCOM.getHexByte(db.i)+"<sub>0</sub>"+(sup2(d,0)==sup2(t1,0)?sup2(t1,0,"green"):sup2(t1,0,"red"))+" "
+        //+oCOM.getBinMulti(d,8)
+    }
+    else
+    {
+      var dest = 
+         sub(0)               +(sup2(t,7)==sup2(t0,7)?sup2(t,7,"green"):sup2(t,7,"red"))
+        +sub(0)               +(sup2(t,6)==sup2(t0,6)?sup2(t,6,"green"):sup2(t,6,"red"))
+        +sub(db,(86+db.z)*2,0)+(sup2(t,5)==sup2(t0,5)?sup2(t,5,"green"):sup2(t,5,"red"))
+        +sub(db,(86+db.z)*2,1)+(sup2(t,4)==sup2(t0,4)?sup2(t,4,"green"):sup2(t,4,"red"))
+        +sub(db,(86+db.z),0)  +(sup2(t,3)==sup2(t0,3)?sup2(t,3,"green"):sup2(t,3,"red"))
+        +sub(db,86+db.z,1)    +(sup2(t,2)==sup2(t0,2)?sup2(t,2,"green"):sup2(t,2,"red"))
+        +sub(db,0,0)          +(sup2(t,1)==sup2(t0,1)?sup2(t,1,"green"):sup2(t,1,"red"))
+        +sub(db,0,1)          +(sup2(t,0)==sup2(t0,0)?sup2(t,0,"green"):sup2(t,0,"red"))
+        //+oCOM.getBinMulti(t,8)+"<"+oCOM.getBinMulti(t0,8)
+      var src = ""
+    }
+
+    return oCOM.getHexMulti(db.i,3)+": "+dest+src+"&nbsp;&nbsp;";
+  }
+
+  function sub(db,idx,src_bit)
+  {
+    if(db==0) return oCOM.getHexMulti(0,2)+"<sub>&nbsp;</sub>";  // OMMITTED BIT
+    var v = db.ii + idx;
+
+    //var t = sup(db.dskBytes[db.doffs + db.ii + idx],src_bit);
+
+    if(v < 256) 
+      return oCOM.getHexMulti(v,2) + (src_bit===undefined?("<sub>&nbsp;</sub>"):("<sub>"+src_bit+"</sub>"))
+    else 
+      return oCOM.getHexMulti(0,2)+"<sub>&nbsp;</sub>" //+sup(0,"&nbsp;")
+  }
+
+  function sup(db,idx,src_bit)
+  {
+    var val = db.dskBytes[db.doffs+db.ii+idx]; // disk sector offset + destination offset + row index
+    return "<sup style=color:red>("+(db.ii+idx)+"/"+((val>>(1<<src_bit))&1)+")</sup>";
+    // +(db.ii+idx)+"/"+
+  }
+
+  function sup2(val,src_bit,color)
+  {
+    return "<sup style=color:"+color+">("+((val>>src_bit)&1)+")</sup>";
+  }
+
+  // MOVE BIT
+  function mbit(db,idx,src_bit,dst_bit)
+  {
+    var v = db.ii + idx
+    var val = db.dskBytes[db.doffs + v];
+    if(v<256) var d = (val&(1<<src_bit))<<dst_bit>>src_bit;
+    else var d = 0;
+
+    return  d;
+  }
+
+  // borrow from EMU_appledisk2.js
+  //this.convertDsk2Nib = oEMU.component.IO.AppleDisk.convertDsk2Nib;
+
+//  ███    ███ ███████ ████████  █████      ██████   █████  ████████  █████  
+//  ████  ████ ██         ██    ██   ██     ██   ██ ██   ██    ██    ██   ██ 
+//  ██ ████ ██ █████      ██    ███████     ██   ██ ███████    ██    ███████ 
+//  ██  ██  ██ ██         ██    ██   ██     ██   ██ ██   ██    ██    ██   ██ 
+//  ██      ██ ███████    ██    ██   ██     ██████  ██   ██    ██    ██   ██ 
+
+  this.DOS3_m =
+  {
+    // GEOMETRY
+    "DISK_GEO":
+    {
+       "SECTOR_SIZE":256
+      ,"SECTORS_PER_TRACK":16
+      ,"TRACKS_PER_DISK":35
+      ,"VTOC_TRACK":17
+      ,"VTOC_SECTOR":0
+    }
+
+    // LABELS
+   ,"VTOC":
+    {"U1":        ["$00"    ,"HEX","not used - usually $04"]
+    ,"1CAT_T":    ["$01"    ,"DEC","track number of first catalog entry"]
+    ,"1CAT_S":    ["$02"    ,"DEC","sector number of first catalog entry"]
+    ,"DOS_VER":   ["$03"    ,"DEC","DOS release, as written by INIT (3 for DOS3.3)"]
+    ,"U2":        ["$04-$05","HEX","not used"]
+    ,"VOL":       ["$06"    ,"DEC","Disk volume number (1-254)"]
+    ,"U3":        ["$07-$26","HEX","not used"]
+    ,"TS_PAIRS":  ["$27"    ,"DEC","maximum number of track/sector pairs which will fit in one file track/sector list sector (122 for 256 byte sectors)"]
+    ,"U4":        ["$28-$2F","HEX","not used"]
+    ,"LCAT_T":    ["$30"    ,"DEC","last track where sectors were allocated"]
+    ,"DIR_T":     ["$31"    ,"SIG","direction of track allocation (-1 inward, +1 outward)"]
+    ,"U5":        ["$32-$33","HEX","not used"]
+    ,"T":         ["$34"    ,"DEC","number of tracks per diskette (normally 35)"]
+    ,"SIG":       ["$35"    ,"DEC","number of sectors per track (13 or 16)"]
+    ,"BYTES_S":   ["$36-$37","LEN","number of bytes per sector (LO/HI format - normally $100)"]
+    ,"BM0":       ["$38-$3B","BIN","bit map of free sectors in track 0"]
+    ,"BM1":       ["$3C-$3F","BIN","bit map of free sectors in track 1"]
+    ,"BM2":       ["$40-$43","BIN","bit map of free sectors in track 2"]
+    ,"BM3":       ["$44-$47","BIN","bit map of free sectors in track 3"]
+    ,"BM4":       ["$48-$4B","BIN","bit map of free sectors in track 4"]
+    ,"BM5":       ["$4C-$4F","BIN","bit map of free sectors in track 5"]
+    ,"BM6":       ["$50-$53","BIN","bit map of free sectors in track 6"]
+    ,"BM7":       ["$54-$57","BIN","bit map of free sectors in track 7"]
+    ,"BM8":       ["$58-$5B","BIN","bit map of free sectors in track 8"]
+    ,"BM9":       ["$5C-$5F","BIN","bit map of free sectors in track 9"]
+    ,"BM10":      ["$60-$63","BIN","bit map of free sectors in track 10"]
+    ,"BM11":      ["$64-$67","BIN","bit map of free sectors in track 11"]
+    ,"BM12":      ["$68-$6B","BIN","bit map of free sectors in track 12"]
+    ,"BM13":      ["$6C-$6F","BIN","bit map of free sectors in track 13"]
+    ,"BM14":      ["$70-$73","BIN","bit map of free sectors in track 14"]
+    ,"BM15":      ["$74-$77","BIN","bit map of free sectors in track 15"]
+    ,"BM16":      ["$78-$7B","BIN","bit map of free sectors in track 16"]
+    ,"BM17":      ["$7C-$7F","BIN","bit map of free sectors in track 17"]
+    ,"BM18":      ["$80-$83","BIN","bit map of free sectors in track 18"]
+    ,"BM19":      ["$84-$87","BIN","bit map of free sectors in track 19"]
+    ,"BM20":      ["$88-$8B","BIN","bit map of free sectors in track 20"]
+    ,"BM21":      ["$8C-$8F","BIN","bit map of free sectors in track 21"]
+    ,"BM22":      ["$90-$93","BIN","bit map of free sectors in track 22"]
+    ,"BM23":      ["$94-$97","BIN","bit map of free sectors in track 23"]
+    ,"BM24":      ["$98-$9B","BIN","bit map of free sectors in track 24"]
+    ,"BM25":      ["$9C-$9F","BIN","bit map of free sectors in track 25"]
+    ,"BM26":      ["$A0-$A3","BIN","bit map of free sectors in track 26"]
+    ,"BM27":      ["$A4-$A7","BIN","bit map of free sectors in track 27"]
+    ,"BM28":      ["$A8-$AB","BIN","bit map of free sectors in track 28"]
+    ,"BM29":      ["$AC-$AF","BIN","bit map of free sectors in track 29"]
+    ,"BM30":      ["$B0-$B3","BIN","bit map of free sectors in track 30"]
+    ,"BM31":      ["$B4-$B7","BIN","bit map of free sectors in track 31"]
+    ,"BM32":      ["$B8-$BB","BIN","bit map of free sectors in track 32"]
+    ,"BM33":      ["$BC-$BF","BIN","bit map of free sectors in track 33"]
+    ,"BM34":      ["$C0-$C3","BIN","bit map of free sectors in track 34"]
+    ,"BM35N":     ["$C4-$FF","BIN","bit maps for additional tracks if there are more than 35 tracks per disk"]
+    } 
+  }
+
+  this.byte_offset = function(track,sector,geo) { return track * geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK + sector * geo.SECTOR_SIZE }
+
+  this.HEXRange2Array = function(rng)
+  {
+    var txt = rng.replace(/\$/g,"");
+    var lim = txt.split("-").length==2 ? [parseInt(txt.split("-")[0],16),parseInt(txt.split("-")[1],16)] : [parseInt(txt,16),parseInt(txt,16)];
+    return Array.from({length:lim[1]-lim[0]+1}, (e, i)=>i+lim[0]);
+  }
+}
+
+
+
+
+
+//  ███████ ███████ ███████ ███████ ███████ ███████ ███████ ███████ ███████ ███████ ███████ ███████ ███████  
+
+
+ 
+//  ██████  ██ ███████ ██   ██     ██████  ██    ██ ███    ███ ██████  
+//  ██   ██ ██ ██      ██  ██      ██   ██ ██    ██ ████  ████ ██   ██ 
+//  ██   ██ ██ ███████ █████       ██   ██ ██    ██ ██ ████ ██ ██████  
+//  ██   ██ ██      ██ ██  ██      ██   ██ ██    ██ ██  ██  ██ ██      
+//  ██████  ██ ███████ ██   ██     ██████   ██████  ██      ██ ██      
+
+
+function dumpdisk(bytes)
+{
+   /////////////
+   // HEATMAP //
+   /////////////
+
+    var geo = oDISK.DOS3_m.DISK_GEO;
+    var nulls = {"start":"","end":"","count":0,"max":256};
+    var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+    var disk_layout = { };
+
+    // PREPARE HEATMAP DATA (in disk_layout)
+    for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
+    {   
+        for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)
+        {
+            // ITERATE THROUGH SECTORS
+            var _offset = oDISK.byte_offset(_t,_s,geo)
+            for(var _i=0;_i<geo.SECTOR_SIZE;_i++)
+            {
+                var idx = _offset + _i;
+                var n = bytes[idx];
+                if(n==0) nulls.count++; // count the nulls in one sector
+            }
+            nulls.start = oCOM.getHexMulti(_offset , disk_address_digits);
+            nulls.end   = oCOM.getHexMulti(_offset + geo.SECTOR_SIZE , disk_address_digits);
+            var pct = 100-Math.round((nulls.count/nulls.max)*100);
+            var color = HEX_PCT[pct];
+            disk_layout[nulls.start+"-"+nulls.end] = [color,"T$"+oCOM.getHexByte(_t)+" S$"+oCOM.getHexByte(_s)+" %"+Math.round(100*(1-nulls.count/256)),"DSK"];
+            nulls.count = 0;
+        }
+    }
+    // DISPLAY HEATMAP
+    var linestep = 4096;  // 18 bits = 256 bytes per sector * 16 sectors per track * 35 tracks per side
+    oMEMGRID.conf_grid.digits = disk_address_digits;
+    el = document.getElementById("output");
+    el.innerHTML = oMEMGRID.build_grid(34*linestep,35,-linestep);  // start, len, step, bits
+    oMEMGRID.paint_grid(disk_layout);
+
+
+
+   /////////////
+   // LOGGING //
+   /////////////
+
+    var log_arr = [];
+    var geo = oDISK.DOS3_m.DISK_GEO;
+    var disk_address_bits = Math.ceil(Math.log10(geo.SECTOR_SIZE * geo.SECTORS_PER_TRACK * geo.TRACKS_PER_DISK) / Math.log10(2));
+    var disk_address_digits = Math.ceil(disk_address_bits/4);
+
+    // LOGGING ONLY
+    for(var _t=0;_t<geo.TRACKS_PER_DISK;_t++)  // ITERATE THROUGH TRACKS
+    {
+        log_arr[log_arr.length] = "track $"+oCOM.getHexByte(_t);
+        for(var _s=0;_s<geo.SECTORS_PER_TRACK;_s++)  // ITERATE THROUGH SECTORS
+        {
+            log_arr[log_arr.length] = "sector $"+oCOM.getHexByte(_s);
+            var _offset = oDISK.byte_offset(_t,_s,geo), s="";
+            for(var idx=_offset; idx<_offset+geo.SECTOR_SIZE ; idx++)  // READ ENTIRE SECTOR
+            {
+                var n = bytes[idx];
+                s += oCOM.getHexByte(n);  // dump 1 byte from disk
+                if((idx%4)==3) s+= " ";   // add space each 4 bytes for readability
+            }
+            log_arr[log_arr.length] = "RAW SECTOR DATA ("+geo.SECTOR_SIZE+"bytes)";
+            log_arr[log_arr.length] = s;
+        }
+    }
+    document.getElementById('dump').innerHTML = log_arr.join("<br>")
+}
+
+
+//  ██████   █████  ██████  ███████ ███████     ██████  ██    ██ ████████ ████████  ██████  ███    ██ 
+//  ██   ██ ██   ██ ██   ██ ██      ██          ██   ██ ██    ██    ██       ██    ██    ██ ████   ██ 
+//  ██████  ███████ ██████  ███████ █████       ██████  ██    ██    ██       ██    ██    ██ ██ ██  ██ 
+//  ██      ██   ██ ██   ██      ██ ██          ██   ██ ██    ██    ██       ██    ██    ██ ██  ██ ██ 
+//  ██      ██   ██ ██   ██ ███████ ███████     ██████   ██████     ██       ██     ██████  ██   ████ 
+
+function parser_dump()
+{
+  var p = parsedisk(oCOM.UploadData);
+  document.getElementById('dump').innerHTML = p.join('<br>');
+}
+
+function parsedisk(bytes)
+{
+  var log_arr = [];
+  var detected = oDISK.detect(bytes);
+  log_arr[log_arr.length] = detected["DOS 3.3"]+"% likely DOS 3.3";
+
+  if(detected["DOS 3.3"]>99)
+  {
+    var _o = oDISK.DOS3_parse(bytes);    // PARSE DISK DATA
+    log_arr.push(_o.logs.join("<br>"));
+  }
+  //else if(_s==0) log_arr[log_arr.length] = "<br>PARSER SKIPPED - POOR MATCH<br>";
+  return log_arr;
+  //document.getElementById('dump').innerHTML = log_arr.join("<br>");
+}
+
+
+//  ██████   ██████  ██     ██ ███    ██ ██       ██████   █████  ██████         ███    ██ ██ ██████  
+//  ██   ██ ██    ██ ██     ██ ████   ██ ██      ██    ██ ██   ██ ██   ██        ████   ██ ██ ██   ██ 
+//  ██   ██ ██    ██ ██  █  ██ ██ ██  ██ ██      ██    ██ ███████ ██   ██        ██ ██  ██ ██ ██████  
+//  ██   ██ ██    ██ ██ ███ ██ ██  ██ ██ ██      ██    ██ ██   ██ ██   ██        ██  ██ ██ ██ ██   ██ 
+//  ██████   ██████   ███ ███  ██   ████ ███████  ██████  ██   ██ ██████      ██ ██   ████ ██ ██████  
+
+
+
+function download_nib()
+{
+  alert(".DSK LEN:"+oCOM.UploadData.length+" CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
+  var nib_bytes = oEMU.component.IO["AppleDisk"].convertDsk2Nib(oCOM.UploadData);
+  alert(".NIB LEN:"+nib_bytes.length+" CRC32: "+oCOM.crc32(nib_bytes).toString(16).toUpperCase());
+  var dsk_bytes = oEMU.component.IO["AppleDisk"].convertNib2Dsk(nib_bytes);
+  alert(".DSK LEN:"+dsk_bytes.length+" CRC32: "+oCOM.crc32(dsk_bytes).toString(16).toUpperCase());
+
+  if(log.length>0)
+  {
+    document.getElementById("output").innerHTML = 
+    "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"
+    +log.join("<br>");
+    +"</div>"
+  }
+
+  var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
+  oCOM.Download(fileName,nib_bytes);
+}
+
+//   ██████   ██████ ██████      ██       ██████   ██████  ██   ██ ██    ██ ██████  
+//  ██       ██      ██   ██     ██      ██    ██ ██    ██ ██  ██  ██    ██ ██   ██ 
+//  ██   ███ ██      ██████      ██      ██    ██ ██    ██ █████   ██    ██ ██████  
+//  ██    ██ ██      ██   ██     ██      ██    ██ ██    ██ ██  ██  ██    ██ ██      
+//   ██████   ██████ ██   ██     ███████  ██████   ██████  ██   ██  ██████  ██      
+
+function GCR_lookup(fmt)
+{
+  //var s = new Array();
+  var tbl1 = [];
+  var tbl2 = [];
+  var idx  = {};
+  switch(fmt)
+  {
+    case "16-sector":
+      var j = 0; 
+      for(var i=128;i<256;i++)
+      {
+        var str = oCOM.getBinMulti(i,8);
+        if(str.indexOf("000")<0) 
+        {
+          var v = "$"+oCOM.getHexByte(i);
+          tbl1[tbl1.length] = [j++,str,v];
+        }
+
+      }
+
+      var str = "00>036C 01>036D 02>0370 03>0371 04>0373 " 
+      +"05>0374 06>0375 07>037C 08>037D 09>0381 "
+      +"0A>0382 0B>0383 0C>0384 0D>0385 0E>0388 "
+      +"0F>0389 10>038A 11>038B 12>038C 13>038D "
+      +"14>038F 15>0390 16>0391 17>0392 18>0393 "
+      +"19>0394 1A>0395 1B>03A1 1C>03A3 1D>03A4 "
+      +"1E>03A5 1F>03A9 20>03AC 21>03AD 22>03AF "
+      +"23>03B0 24>03B1 25>03B2 26>03B3 27>03B4 "
+      +"28>03B5 29>03BB 2A>03BC 2B>03BD 2C>03BF "
+      +"2D>03C0 2E>03C1 2F>03C2 30>03C3 31>03C4 "
+      +"32>03C5 33>03C8 34>03C9 35>03CA 36>03CB "
+      +"37>03CC 38>03CD 39>03CF 3A>03D0 3B>03D1 "
+      +"3C>03D2 3D>03D3 3E>03D4 3F>03D5"
+
+      var j = 0;
+      var sa = str.split(" ");
+      for(var i=0;i<sa.length;i++)
+      {
+        var d =  oCOM.base_convert(sa[i].split(">")[1],["0123456789ABCDEF"],["0123456789"]);
+        var e = (d-876)+0x96;
+        var v = "$"+oCOM.getHexByte(e);
+        tbl2[tbl2.length] = [j++,oCOM.getBinMulti(e,8),v];
+        idx[v] = true;
+      }
+
+      //var s = "";
+      //for(var i in idx) s+= i+" ";
+      //alert(s);
+
+
+      var ss1 = ""; var j = 0;
+      for(var i=0;i<tbl1.length;i++)
+      {
+        if(idx[ tbl1[i][2] ])
+        {
+          tbl1[i][0] = j++;
+          ss1 += "<tr><td>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+        }
+        else
+        {
+          tbl1[i][0] = "";
+          //ss1 += "<tr><td style='background-color:red'>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+          ss1 += "<tr><td style=background-color:rgba(255,0,0,0.1)>"+tbl1[i].join("</td><td>")+"</td></tr>\n";
+        } 
+      }
+    
+      var ss2 = "";
+      for(var i=0;i<tbl2.length;i++)
+      {
+          ss2 += "<tr><td>"+tbl2[i].join("</td><td>")+"</td></tr>\n";
+      }
+
+      var s = "<style>" 
+      s +=    ".tbl tr td {padding:0px 5px 0px 5px; font-family:'Courier New'; font-size:13px; text-align:right;}"
+      s +=    ".tbl {margin:0px 10px 0px 0px;}"
+      s +=    "</style>"
+      s +=    "<div style='overflow:scroll; height:600px;float:left;'>";
+      s +=    "&nbsp;&nbsp;COMPUTED";
+      s +=    "<table class=tbl border=0>\n"+ss1+"</table>";
+      s +=    "</div>";
+ 
+      s +=    "<div style='overflow:scroll; height:600px;padding-left:20px'>";
+      s +=    "&nbsp;&nbsp;ROM EXTRACT"; 
+      s +=    "<table class=tbl border=0>\n"+ss2+"</table>";
+      s +=    "</div>";
+
+      
+    break;
+  }
+
+  return s;
+}
+
+// ████████  █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
+//    ██    ██   ██ ██ ██          ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
+//    ██    ███████ ██ ██          █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
+//    ██    ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
+//    ██    ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
+
+var oFMT = new function()
+{
+  this.fmtNumber = function(num,fmt)
+  {
+    var r = {"val":num,"str":"","bytes":Math.floor(num/256)+1,"fmt":fmt}
+    switch(r.fmt)
+    {
+      case "HEX": r.str = "$"+oCOM.getHexMulti(r.val,r.bytes*2); return r; // hex
+      case "DEC": r.str = r.val+""; return r;                              // unsigned decimal
+      case "SIG": r.str = (~r.val)+1; return r;                            // inverse 2's complement !!
+      case "LEN": r.str = ((r.val>>8)&0xFF) + (r.val&0xFF)*256; return r;  // Little-endian unsigned decimal
+      case "BEN": r.str = ((r.val>>8)&0xFF)*256 + (r.val&0xFF); return r;  // Big-endian unsigned decimal
+      case "BIN": r.str = "%"+oCOM.getBinMulti(r.val,r.bytes*8); return r; // binary
+      default: 
+        return this.fmtExtension(r,fmt);
+    }
+  }
+  this.fmtExtension = function(r,fmt) { return r }
+}
+
+function interpolate_arr(arr1,arr2,pct)
+{
+  var arr = Array(arr1.length);
+  for(var i=0;i<arr.length;i++)
+    arr[i] = Math.round(arr1[i] + (arr2[i]-arr1[i])*pct/100);
+  return arr;
+}
+
+
+
+</script>
+
+
+<!--
+   ____    ____          _            
+  |_   \  /   _|        (_)           
+    |   \/   |   ,--.   __   _ .--.   
+    | |\  /| |  `'_\ : [  | [ `.-. |  
+   _| |_\/_| |_ // | |, | |  | | | |  
+  |_____||_____|\'-;__/[___][___||__]
+  ██   ██ ████████ ███    ███ ██      
+  ██   ██    ██    ████  ████ ██      
+  ███████    ██    ██ ████ ██ ██      
+  ██   ██    ██    ██  ██  ██ ██      
+  ██   ██    ██    ██      ██ ███████ 
+-->  
+
+<body class="slider_main" onload="init_gui();">
+
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+    <div id="topmenu">
+      <ul id="minitabs">
+        <li>
+          <li>
+            <input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk);" accept=".dsk">
+          </li>
+        </li>
+        <li><img onMouseOver="this.style.cursor='pointer'" onclick="parser_dump()" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
+        <li><button onclick="download_nib()">Download .NIB</button></li>
+        <li>&nbsp;&nbsp;
+          <a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a>
+          <a target=_blank href="http://mirrors.apple2.org.za/apple.cabi.net/FAQs.and.INFO/A2.CSA2.FAQS.IN.HTML/apple.II.dos.and.prodos.mi.html">[more]</a></li>
+          <li><button onclick="document.getElementById('output').innerHTML=GCR_lookup('16-sector')">GCR table</button></li>
+      </ul>
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+      <table>
+      <tr>
+        <td><img style="margin:20px;width:256px;float:left;image-rendering:pixelated;" src="../res/apple-disk-ii_256.png"></td>
+        <td rowspan="2" valign="top"><div id="output"></div></td>
+      </tr>
+      <tr>
+          <td><div id="dump" style="font-size:x-small;width:296px;height:120px;float:left;overflow-x:hidden;overflow-y:auto;"></div></td>
+      </tr>
+      </table>
+    </div>
+  </div>
+
+  <pre id="fileContent"></pre>
+</body>
+</html>
