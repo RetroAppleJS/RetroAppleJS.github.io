@@ -86,7 +86,7 @@ function A2Pkeys()
                     case "Dead":            return 0x5E | 0x80;
                     case "Escape":          return 0x1B | 0x80;
                     case "Reset":           apple2plus.reset(); return null;
-                    case "POWER":           apple2plus.restart(); return null;
+                    case "POWER":           EMU_audio_event_unlock();apple2plus.restart(); return null;
                     default: return null;     
                 }
             }
