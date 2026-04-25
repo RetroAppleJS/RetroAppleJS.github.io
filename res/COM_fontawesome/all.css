@@ -1600,6 +1600,9 @@ readers do not read off random characters that represent icons */.fa-500px:befor
   overflow: visible;
   position: static;
   width: auto; }
+
+/*  not necessary in RetroAppleJS  */
+
 /*
 @font-face { font-family: 'Font Awesome 5 Brands'; font-style: normal; font-weight: 400; font-display: block;
   src: url("../webfonts/fa-brands-400.eot");
