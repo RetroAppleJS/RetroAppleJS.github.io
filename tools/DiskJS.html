@@ -24,7 +24,7 @@
 <script type="text/javascript" src="../res/EMU_appledisk2.js"></script>
 
 <script>
-var CONF_version="1.1.5"
+var CONF_version="1.1.6"
 var CONF_builddate="20231231-180000" 
 
 var dsk_bytes = new Array();
@@ -222,6 +222,7 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 
               // 2 - Encode 342 nibbilized bytes of data.
               
+              var prev = 0;   // reset data-field checksum chain for each sector
               //var log2 = new Array();
               for (var ni = -86; ni < 256; ni++)
               {
@@ -280,239 +281,236 @@ oEMU.component.IO.AppleDisk.convertDsk2Nib = function(dskBytes)
 //  ██  ██ ██ ██ ██   ██     ██          ██   ██      ██ ██  ██  
 //  ██   ████ ██ ██████      ███████     ██████  ███████ ██   ██ 
 
-  var prev = "";
-  oEMU.component.IO.AppleDisk.convertNib2Dsk = function(nibBytes)
-  {
-    var bytes = new Array(143360);  // 35 * 16 * 256
-    var offs;
-    var prenib = new Array(256 + 86);
+oEMU.component.IO.AppleDisk.convertNib2Dsk = function(nibBytes)
+{
+    var TRACKS = 35;
+    var SECTORS = 16;
+    var SECTOR_SIZE = 256;
+    var DSK_TRACK_SIZE = SECTORS * SECTOR_SIZE;   // 4096
+    var NIB_TRACK_SIZE = 6656;
+    var DSK_SIZE = TRACKS * DSK_TRACK_SIZE;       // 143360
+    var NIB_SIZE = TRACKS * NIB_TRACK_SIZE;       // 232960
 
-    function join_OddEven(b1,b2) { return ((b1<<1)+1) & b2 }
-    function addBytes(b_arr) { for(var i=0;i<b_arr.length;i++) bytes[offs++] = b_arr[i] }
-    function mb(val,src_bit,dst_bit) { return (val&(1<<src_bit))<<dst_bit>>src_bit }
+    if (!nibBytes || nibBytes.length < NIB_SIZE)
+        throw new Error("Invalid .nib image: expected at least " + NIB_SIZE + " bytes");
 
-    var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
-    var secSkew_lookup = new Array(16)
-    for(var i=0;i<secSkew.length;i++) secSkew_lookup [ secSkew[i] ] = i;
+    var dskBytes = new Array(DSK_SIZE);
+    for (var i = 0; i < DSK_SIZE; i++) dskBytes[i] = 0;
 
-    // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
-    var sixTwo = [  
-    0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
-    0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
-    0xb4, 0xb5, 0xb6, 0xb7, 0xb9, 0xba, 0xbb, 0xbc,
-    0xbd, 0xbe, 0xbf, 0xcb, 0xcd, 0xce, 0xcf, 0xd3,
-    0xd6, 0xd7, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde,
-    0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
-    0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
-    0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff ];
-    var sixTwo_lookup = new Array(256)
-    for(var i=0;i<sixTwo.length;i++) sixTwo_lookup[ sixTwo[i] ] = i;
+    // DOS 3.3 physical-sector -> DOS .dsk sector order.
+    // This must match convertDsk2Nib/prenibble().
+    var secSkew = [
+        0x0, 0x7, 0xE, 0x6,
+        0xD, 0x5, 0xC, 0x4,
+        0xB, 0x3, 0xA, 0x2,
+        0x9, 0x1, 0x8, 0xF
+    ];
 
-    function logstate(o,d8,state)
+    var sixTwo = [
+        0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
+        0xa7, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb2, 0xb3,
+        0xb4, 0xb5, 0xb6, 0xb7, 0xb9, 0xba, 0xbb, 0xbc,
+        0xbd, 0xbe, 0xbf, 0xcb, 0xcd, 0xce, 0xcf, 0xd3,
+        0xd6, 0xd7, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde,
+        0xdf, 0xe5, 0xe6, 0xe7, 0xe9, 0xea, 0xeb, 0xec,
+        0xed, 0xee, 0xef, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6,
+        0xf7, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+    ];
+
+    var sixTwoLookup = new Array(256);
+    for (var i = 0; i < 256; i++) sixTwoLookup[i] = -1;
+    for (var i = 0; i < sixTwo.length; i++) sixTwoLookup[sixTwo[i]] = i;
+
+    function joinOddEven(b1, b2)
     {
-      var act = o.ADR.sec+" "+o.ADR.trk
-      //if(prev!=act && o.ADR.sec>0 && o.ADR.trk>0) console.log(act);
-
-      //console.log(oCOM.getHexByte(d8) + JSON.stringify(o))
-      //return oCOM.getHexByte(d8) + JSON.stringify(o)
-      prev = act;
+        return (((b1 << 1) | 1) & b2) & 0xff;
     }
 
-    var states = {}
-    var state = 0;
-    var loc_n = 232960;
-    for(var loc=0;loc<loc_n;loc++)
+    function match3(trackBase, pos, b0, b1, b2)
     {
-      var d8 = nibBytes[loc];
-      var d8_ahead = loc<(loc_n-2)?[d8,nibBytes[loc+1],nibBytes[loc+2]]:[null,null,null];
-      switch(state)
-      {
-        case 0:
-            if(states["GAP1"]===undefined)
-              states = {
-             "GAP1":{"cy":0}
-            ,"APRO":{"cy":0 ,"d":[0xd5,0xaa,0x96]}
-            ,"ADR": {"cy":0}
-            ,"AEPI": {"cy":0 ,"d":[0xde,0xaa,0xeb]}
-            ,"GAP2":{"cy":0}
-            ,"DPRO" :{"cy":0,"d":[0xd5,0xaa,0xad]}
-            ,"DATA":{"cy":-256,"prev":0,"d":[]}
-            ,"DEPI":{"cy":0 ,"d":[0xde,0xaa,0xeb]}
-            ,"ERROR":{}};
+        return ((nibBytes[trackBase + ((pos + 0) % NIB_TRACK_SIZE)] & 0xff) == b0
+             && (nibBytes[trackBase + ((pos + 1) % NIB_TRACK_SIZE)] & 0xff) == b1
+             && (nibBytes[trackBase + ((pos + 2) % NIB_TRACK_SIZE)] & 0xff) == b2);
+    }
 
-            
-            if(d8==0xff)  
+    function find3(trackBase, startPos, maxDistance, b0, b1, b2)
+    {
+        for (var n = 0; n < maxDistance; n++)
+        {
+            var pos = startPos + n;
+            if (match3(trackBase, pos, b0, b1, b2)) return pos;
+        }
+        return -1;
+    }
+
+    function trackByte(trackBase, pos)
+    {
+        return nibBytes[trackBase + (pos % NIB_TRACK_SIZE)] & 0xff;
+    }
+
+    function decodeSectorData(trackBase, dataStart, trk, sec)
+    {
+        var prenib = new Array(342);
+        var prev = 0;
+
+        // 342 data nibbles + 1 checksum nibble.
+        for (var j = 0; j < 343; j++)
+        {
+            var gcrByte = trackByte(trackBase, dataStart + j);
+            var val = sixTwoLookup[gcrByte];
+
+            if (val < 0)
             {
-              states.GAP1.cy++;
-              //log[log.length] = logstate(states,d8,state);
-              break;
-            }
-            state++;
-
-        case 1:
-        if(d8_ahead[0]==states.APRO.d[0] && d8_ahead[1]==states.APRO.d[1] && d8_ahead[2]==states.APRO.d[2])
-            { states.APRO.cy=3; state++; loc+=2 }
-        else
-            console.error("ERROR MISSED ADDRESS PROLOGUE:"
-                  +" $T"+oCOM.getHexByte(states.ADR.trk)
-                  +" $S"+oCOM.getHexByte(states.ADR.sec)
-                  +" record "+loc);
-
-          //log[log.length] = logstate(states,d8,state);
-        break;
-        case 2:
-          switch(states.ADR.cy)
-          {
-            case 0: states.ADR["vol"] = join_OddEven(d8_ahead[0],d8_ahead[1]); break;
-            case 1: break;
-            case 2: states.ADR["trk"] = join_OddEven(d8_ahead[0],d8_ahead[1]); 
-                    offs = states.ADR["trk"] * 16 * 256; break;
-            case 3: break;
-            case 4: states.ADR["sec"] = join_OddEven(d8_ahead[0],d8_ahead[1]);
-                    offs += states.ADR["sec"] * 256; break;
-            case 5: break;
-            case 6: states.ADR["chk"] = join_OddEven(d8_ahead[0],d8_ahead[1]); break;
-            case 7: state++; break;
-          }
-          states.ADR.cy++;
-
-          //log[log.length] = logstate(states,d8,state);
-        break;
-        case 3:
-          if(d8_ahead[0]==states.AEPI.d[0] && d8_ahead[1]==states.AEPI.d[1] && d8_ahead[2]==states.AEPI.d[2])
-            { states.AEPI.cy=3; state++; loc+=2 }
-          else
-            console.error("ERROR MISSED ADDRESS EPILOGUE:"
-                  +" $T"+oCOM.getHexByte(states.ADR.trk)
-                  +" $S"+oCOM.getHexByte(states.ADR.sec)
-                  +" record "+loc);
-
-          //log[log.length] = logstate(states,d8,state);
-        break;
-        case 4:
-          if(d8==0xff)  
-          {
-            states.GAP2.cy++;
-            //log[log.length] = logstate(states,d8,state);
-            break;
-          }
-          state++;
-        case 5:
-        if(d8_ahead[0]==states.DPRO.d[0] && d8_ahead[1]==states.DPRO.d[1] && d8_ahead[2]==states.DPRO.d[2])
-            { states.DPRO.cy=3; state++; loc+=2 }
-          else
-            console.error("ERROR MISSED DATA PROLOGUE:"
-                  +" $T"+oCOM.getHexByte(states.ADR.trk)
-                  +" $S"+oCOM.getHexByte(states.ADR.sec)
-                  +" record "+loc);
-          //log[log.length] = logstate(states,d8,state);
-        break;
-        case 6:
-          if(d8_ahead[0]==states.DEPI.d[0] && d8_ahead[1]==states.DEPI.d[1] && d8_ahead[2]==states.DEPI.d[2])
-          {
-              states.DPRO.cy=3; loc+=2
-
-              var z = 0;
-              var doffs = (secSkew_lookup[states.ADR.sec] << 8) + (states.ADR.track << 12);
-              
-              // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***  (maybe check if need to add following statement)
-              // states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
-              // WHY IS states.DATA.d 343 bytes long ?????
-
-              // REVERSE CALCULATE v3
-              var prenib = new Array(342)
-              var postnib = new Array(256);
-              for(var i=0;i<342;i++) prenib[i] = states.DATA.d[i];    // TODO: MAKE MORE EFFICIENT
-
-              for (var i = 0; i < 342; i++) // write one entire block
-              { 
-                if(i<256) postnib[i] |= prenib[i] << 2
-                else
-                {
-                  // prenib is 342 long
-                  var p = prenib[597-i]  // 341->256
-
-                  if((i+172-256)<256)   // mind the tail end!
-                  {
-                    postnib[i+172-256]   // 172-257
-                          |=  mb(p,5,0)
-                          |   mb(p,4,1);
-                  }
-                  postnib[i+86-256]    // 86-171  - 86
-                        |=  mb(p,3,0)
-                        |   mb(p,2,1);
-                  postnib[i-256]       // 0-85
-                      |=  mb(p,1,0)
-                      |   mb(p,0,1)    
-
-/*
-                  if(states.ADR.trk==0 && states.ADR.sec==0) 
-                  {
-                      if(prev===undefined)  var prev = 0;
-                      log[log.length] = 
-                          "prenib["+i+"]="+oCOM.getHexByte(prenib[i])
-                          +" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
-                          +" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
-                          +" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
-                    
-                      prev = prenib[i]
-                  }
-*/
-
-              }
+                console.error(
+                    "NIB2DSK DATA ERROR:"
+                    + " $T" + oCOM.getHexByte(trk)
+                    + " $S" + oCOM.getHexByte(sec)
+                    + " invalid GCR byte " + oCOM.getHexByte(gcrByte)
+                    + " at data offset " + j
+                );
+                return null;
             }
 
-            //  >> ADD POSTNIB to .DSK FILE
-            addBytes( postnib );
+            var decoded = val ^ prev;
 
-            state=0;          // BACK TO SQUARE 0
-            delete states["GAP1"];
-            //log[log.length] = logstate(states,d8,state);
-          }
-          else
-          {
-              // READ DATA UNTIL DEPI
-              var i = states.DATA.cy<0 ? 255-states.DATA.cy : states.DATA.cy;
-              if(sixTwo_lookup[d8]===undefined)
-              {
-                console.error("DATA ERROR:"
-                  +" $T"+oCOM.getHexByte(states.ADR.trk)
-                  +" $S"+oCOM.getHexByte(states.ADR.sec)
-                  +" record "+loc);
-              }
-              else
-              {
-
-                if(states.ADR.trk==0 && states.ADR.sec==0) 
+            if (j < 86)
+            {
+                // First 86 encoded bytes are prenib[341] down to prenib[256].
+                prenib[341 - j] = decoded;
+                prev = decoded;
+            }
+            else if (j < 342)
+            {
+                // Remaining 256 encoded bytes are prenib[0] through prenib[255].
+                prenib[j - 86] = decoded;
+                prev = decoded;
+            }
+            else
+            {
+                // Final byte is checksum. It should decode to zero.
+                if (decoded != 0)
                 {
-                    var ni = states.DATA.cy
-                    //var i = ni <0 ? (256+ni): ni+86;
-                    var i = ni + 256;
-
-                    var color = log_d[i] == oCOM.getHexByte(d8) ? "green":"black"
-
-                    /*
-                    log[log.length] = 
-                        "getBytes["+(i)+"]=<b style=color:"+color+">"+oCOM.getHexByte(d8)+"</b>"
-                        //+" >> XOR("+oCOM.getHexByte(prev)+","+oCOM.getHexByte(prenib[i])+")="+oCOM.getHexByte(prev ^ prenib[i])
-                        //+" >> sixTwo("+oCOM.getHexByte(prev ^ prenib[i])+")="+oCOM.getHexByte(b)
-                        //+" >> addBytes("+oCOM.getHexByte(b)+") at "+(ni+86)+"&nbsp;&nbsp;&nbsp;"
-                    */
-                        
+                    console.warn(
+                        "NIB2DSK CHECKSUM WARNING:"
+                        + " $T" + oCOM.getHexByte(trk)
+                        + " $S" + oCOM.getHexByte(sec)
+                        + " checksum decoded as " + oCOM.getHexByte(decoded)
+                    );
                 }
+            }
+        }
 
-                states.DATA.d[states.DATA.d.length] = sixTwo_lookup[ d8 ] ^ states.DATA.prev;
-                states.DATA.prev = states.DATA.d[states.DATA.d.length-1];
-                states.DATA.cy++;
-              }
-          }
-        break;
-      }
-      
+        var sectorBytes = new Array(256);
+        for (var i = 0; i < 256; i++)
+            sectorBytes[i] = (prenib[i] << 2) & 0xfc;
+
+        // Rebuild the low 2 bits from prenib[256..341].
+        for (var j = 0; j < 86; j++)
+        {
+            var p = prenib[341 - j];
+
+            // bytes 172..255
+            if (j + 172 < 256)
+            {
+                sectorBytes[j + 172] |=
+                    ((p & 0x20) >> 5) |   // p bit 5 -> data bit 0
+                    ((p & 0x10) >> 3);    // p bit 4 -> data bit 1
+            }
+
+            // bytes 86..171
+            sectorBytes[j + 86] |=
+                ((p & 0x08) >> 3) |       // p bit 3 -> data bit 0
+                ((p & 0x04) >> 1);        // p bit 2 -> data bit 1
+
+            // bytes 0..85
+            sectorBytes[j] |=
+                ((p & 0x02) >> 1) |       // p bit 1 -> data bit 0
+                ((p & 0x01) << 1);        // p bit 0 -> data bit 1
+        }
+
+        return sectorBytes;
     }
 
-    return bytes;
-  }
+    var seen = {};
+    var sectorsFound = 0;
+
+    for (var fileTrack = 0; fileTrack < TRACKS; fileTrack++)
+    {
+        var trackBase = fileTrack * NIB_TRACK_SIZE;
+
+        for (var pos = 0; pos < NIB_TRACK_SIZE - 16; pos++)
+        {
+            // Address field prologue: D5 AA 96
+            if (!match3(trackBase, pos, 0xd5, 0xaa, 0x96))
+                continue;
+
+            var p = pos + 3;
+
+            var vol = joinOddEven(trackByte(trackBase, p + 0), trackByte(trackBase, p + 1));
+            var trk = joinOddEven(trackByte(trackBase, p + 2), trackByte(trackBase, p + 3));
+            var sec = joinOddEven(trackByte(trackBase, p + 4), trackByte(trackBase, p + 5));
+            var chk = joinOddEven(trackByte(trackBase, p + 6), trackByte(trackBase, p + 7));
+
+            if (trk < 0 || trk >= TRACKS || sec < 0 || sec >= SECTORS)
+                continue;
+
+            if (((vol ^ trk ^ sec) & 0xff) != chk)
+            {
+                console.warn(
+                    "NIB2DSK ADDRESS CHECKSUM WARNING:"
+                    + " file track " + fileTrack
+                    + " header T" + trk
+                    + " S" + sec
+                );
+            }
+
+            // Data field prologue: D5 AA AD
+            // Search ahead far enough to skip address epilogue and gap 2.
+            var dataPrologue = find3(trackBase, p + 8, 256, 0xd5, 0xaa, 0xad);
+            if (dataPrologue < 0)
+            {
+                console.error(
+                    "NIB2DSK ERROR: missing data prologue for"
+                    + " $T" + oCOM.getHexByte(trk)
+                    + " $S" + oCOM.getHexByte(sec)
+                );
+                continue;
+            }
+
+            var key = trk + ":" + sec;
+            if (seen[key])
+                continue;
+
+            var sectorBytes = decodeSectorData(trackBase, dataPrologue + 3, trk, sec);
+            if (sectorBytes == null)
+                continue;
+
+            seen[key] = true;
+            sectorsFound++;
+
+            // Write to DOS .dsk order, not physical-sector order.
+            var dskSector = secSkew[sec];
+            var dskOffset = (trk * DSK_TRACK_SIZE) + (dskSector * SECTOR_SIZE);
+
+            for (var i = 0; i < SECTOR_SIZE; i++)
+                dskBytes[dskOffset + i] = sectorBytes[i];
+
+            // Skip past this data field.
+            pos = dataPrologue + 3 + 343;
+        }
+    }
+
+    if (sectorsFound != TRACKS * SECTORS)
+    {
+        console.warn(
+            "NIB2DSK WARNING: decoded "
+            + sectorsFound + " of " + (TRACKS * SECTORS)
+            + " sectors"
+        );
+    }
+
+    return dskBytes;
+};
 
 
 
