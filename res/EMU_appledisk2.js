@@ -7,6 +7,7 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
+oEMU.component.IO.AppleDisk.traceEnable(true, true);
 
 // TODO: ADD A LOGGING FUNCTION THAT ONLY TRACKS INFORMATIONS THAT CHANGE!
 
