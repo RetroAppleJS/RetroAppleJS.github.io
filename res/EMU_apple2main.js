@@ -655,14 +655,14 @@ function EMUI()
                     + "        <input type=button method=get class=appbut value=\"Drive1\" onclick=\"ejectDisk(this,'D1')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive1'\">"
                     + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
                     + "      </form>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[0])\" id=\"dump_D1\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(1))\" id=\"dump_D1\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
                     + "    <div class=appbut style=\"padding:0px 0px 0px 0px;text-align:center\">"
                     + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
                     + "        <input type=button method=get class=appbut value=\"Drive2\" onclick=\"ejectDisk(this,'D2')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive2'\">"
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
                     + "      </form>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.nib',apple2plus.DiskObj().diskBytes[1])\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(2))\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
                     + "  </div>"
                     + "</div>";
@@ -1212,9 +1212,12 @@ function loadDisk_fromFile(file_obj,drv)
                 for (var i = 0; i < size; i++)
                     bytes[i] = data.getUint8(i);
         
-                //dumpdisk(bytes);
-                if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
-                apple2plus.loadDisk(bytes,"D1");
+                if (size == 143360) disk2.setDiskData(bytes,1);  
+
+                //dumpdisk(bytes);                
+                //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
+                //if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
+                //apple2plus.loadDisk(bytes,"D1");
             }            
         break;
         case "D2":
@@ -1228,9 +1231,12 @@ function loadDisk_fromFile(file_obj,drv)
                 for (var i = 0; i < size; i++)
                     bytes[i] = data.getUint8(i);
         
+                if (size == 143360) disk2.setDiskData(bytes,2);  
+
                 //dumpdisk(bytes);
-                if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
-                apple2plus.loadDisk(bytes,"D2");
+                //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
+                //if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
+                //apple2plus.loadDisk(bytes,"D2");
             }            
         break; 
     }
