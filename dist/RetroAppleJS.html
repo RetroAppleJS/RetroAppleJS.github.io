@@ -16784,7 +16784,7 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 function AppleDisk2()
 {
     var bDebug   = true;
-    var bDebug_N = true;   // debug disk noise only 
+    var bDebug_N = false;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     this.state = 
@@ -16917,11 +16917,11 @@ function AppleDisk2()
     }
     
 
-//  ██████  ███████  █████  ██████  
-//  ██   ██ ██      ██   ██ ██   ██ 
-//  ██████  █████   ███████ ██   ██ 
-//  ██   ██ ██      ██   ██ ██   ██ 
-//  ██   ██ ███████ ██   ██ ██████  
+    //  ██████  ███████  █████  ██████  
+    //  ██   ██ ██      ██   ██ ██   ██ 
+    //  ██████  █████   ███████ ██   ██ 
+    //  ██   ██ ██      ██   ██ ██   ██ 
+    //  ██   ██ ███████ ██   ██ ██████  
 
     this.readROM = function(addr)
     {
@@ -16934,7 +16934,8 @@ function AppleDisk2()
     {
         //console.log("AppleDisk2: read %s", addr.toString(16));
         var drv = this.state.drv
-        if (addr < 0x08) {
+        if (addr < 0x08) 
+        {
             // Stepper motor on.
             if ((addr & 1) != 0) {
                 var p = ((addr >> 1) & 3); // phase we're turning on.
@@ -16943,102 +16944,172 @@ function AppleDisk2()
                     // Ascending order, track arm moves inward.
                     this.state.hw[drv].phase = p;
                     this.update_logs("phase");
-                    if ((this.state.hw[drv].phase & 1) == 0) {
+                    if ((this.state.hw[drv].phase & 1) == 0)
+                    {
+                        var oldTrack = this.state.hw[drv].track;
                         if (++this.state.hw[drv].track >= 35)
                         {
                             this.state.hw[drv].track = 35; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_OUT");
+                            this.traceArmStep(drv, "CLICK_OUT", oldTrack, this.state.hw[drv].track);
                         }
-                        else this.dN_update("ARM_OUT");
+                        else
+                        {
+                            this.dN_update("ARM_OUT");
+                            this.traceArmStep(drv, "ARM_OUT", oldTrack, this.state.hw[drv].track);
+                        }
 
-                        if(bDebug) console.log("disk2.read() ARM OUT state.hw="+JSON.stringify(this.state.hw));
+                        //if(bDebug) console.log("disk2.read() ARM OUT state.hw="+JSON.stringify(this.state.hw));
                     }
                 }
-                else if (((this.state.hw[drv].phase - 1) & 3) == p) {
+                else if (((this.state.hw[drv].phase - 1) & 3) == p) 
+                {
                     // Descending order, track arm moves outward.
                     this.state.hw[drv].phase = p;
-                    if ((this.state.hw[drv].phase & 1) == 0) {
+                    if ((this.state.hw[drv].phase & 1) == 0)
+                    {
+                        var oldTrack = this.state.hw[drv].track;
                         if (--this.state.hw[drv].track < 0)
                         {
                             this.state.hw[drv].track = 0; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_IN");
+                            this.traceArmStep(drv, "CLICK_IN", oldTrack, this.state.hw[drv].track);
                         }
-                        else this.dN_update("ARM_IN");
+                        else
+                        {
+                            this.dN_update("ARM_IN");
+                            this.traceArmStep(drv, "ARM_IN", oldTrack, this.state.hw[drv].track);
+                        }
 
-                        if(bDebug) console.log("disk2.read() ARM IN state.hw="+JSON.stringify(this.state.hw));
+                        //if(bDebug) console.log("disk2.read() ARM IN state.hw="+JSON.stringify(this.state.hw));
                     }
                 }
             }
+            
         }
         else {
             switch (addr) {
             case MOTOR_ON:
+                var oldMotor = this.state.hw[drv].motor;
                 this.state.hw[drv].motor = 1;
+                this.traceChange("MOTOR_ON", drv, "motor", oldMotor, 1);
                 this.dN_update("MOTOR_ON");
-                if(bDebug) console.log("disk2.read() MOTOR_ON");
+                //if(bDebug) console.log("disk2.read() MOTOR_ON");
                 break;
             case MOTOR_OFF:
+                var oldMotor = this.state.hw[drv].motor;
                 this.state.hw[drv].motor = 0;
+                this.traceChange("MOTOR_OFF", drv, "motor", oldMotor, 0);
                 this.dN_update("MOTOR_OFF");
-                if(bDebug) console.log("disk2.read() MOTOR_OFF");
-                break;                
+                //if(bDebug) console.log("disk2.read() MOTOR_OFF");
+                break;               
             case DRV0EN:
+                var oldDrv = this.state.drv;
+                this.traceFlush("DRV0EN");
                 this.state.drv = 0;
+                this.traceChange("DRV0EN", 0, "drv", oldDrv, 0);
                 this.update_logs("D1");
-                if(bDebug) console.log("disk2.read() DRV0EN (D1 enable) state.hw="+JSON.stringify(this.state.hw));
+                //if(bDebug) console.log("disk2.read() DRV0EN (D1 enable) state.hw="+JSON.stringify(this.state.hw));
                 break;
             case DRV1EN:
+                var oldDrv = this.state.drv;
+                this.traceFlush("DRV1EN");
                 this.state.drv = 1;
+                this.traceChange("DRV1EN", 1, "drv", oldDrv, 1);
                 this.update_logs("D2");
-                if(bDebug) console.log("disk2.read() DRV1EN (D2 enable) state.hw="+JSON.stringify(this.state.hw));
+                //if(bDebug) console.log("disk2.read() DRV1EN (D2 enable) state.hw="+JSON.stringify(this.state.hw));
                 break;
             case Q6L:
+                var oldQ6 = this.state.hw[drv].q6;
                 this.state.hw[drv].q6 = 0;
-                this.update_logs("q6");
+
+                if (oldQ6 != 0)
+                    this.traceChange("Q6L_STROBE_DATA_LATCH", drv, "q6", oldQ6, 0);
+
                 // Strobe Data Latch for I/O
-                if (!this.state.diskData[drv] || !this.state.hw[drv].motor)
+                if (!this.state.diskData[drv])
+                {
+                    this.traceUnavailable(drv, "diskData=null");
                     return 0xff;
+                }
+
+                if (!this.state.hw[drv].motor)
+                {
+                    this.traceUnavailable(drv, "motor=0");
+                    return 0xff;
+                }
+
+                this.trace.lastUnavailable = "";
+
+                if (++this.state.hw[drv].offset == TRACK_SIZE)
+                    this.state.hw[drv].offset = 0;
+
+                var loc = this.state.hw[drv].track * TRACK_SIZE + this.state.hw[drv].offset;
+
+                if (this.state.hw[drv].q7)
+                {
+                    // Write to disk.
+                    this.state.diskData[drv][loc] = this.state.hw[drv].data_latch;
+                    this.traceDataByte("WRITE", drv, loc, this.state.hw[drv].data_latch);
+
+                    /*
+                    if(bDebug) console.log(
+                        "disk2.read() Q6L write "
+                        + this.state.hw[drv].data_latch
+                        + " to [D"+drv+"][loc:"+loc+"]  state.hw="
+                        + JSON.stringify(this.state.hw)
+                    );
+                    */
+
+                    return this.state.hw[drv].data_latch;
+                }
                 else
                 {
-                    if (++this.state.hw[drv].offset == TRACK_SIZE) this.state.hw[drv].offset = 0;                   
+                    // Read from disk.
+                    var d8 = this.state.diskData[drv][loc];
+                    this.traceDataByte("READ", drv, loc, d8);
+                    /*
+                    if(bDebug) console.log(
+                        "disk2.read() Q6L read "
+                        + d8
+                        + " from [D"+drv+"][loc:"+loc+"]  state.hw="
+                        + JSON.stringify(this.state.hw)
+                    );
+                    */
 
-                    var loc = this.state.hw[drv].track * TRACK_SIZE + this.state.hw[drv].offset;
-                    if (this.state.hw[drv].q7)
-                    {
-                        // Write to disk.
-                        this.state.diskData[drv][loc] = this.state.hw[drv].data_latch;
-                        if(bDebug) console.log("disk2.read() Q6L write "+this.state.hw[drv].data_latch+" to [D"+drv+"][loc:"+loc+"]  state.hw="+JSON.stringify(this.state.hw));
-                        return this.state.hw[drv].data_latch;
-                    }
-                    else
-                    {
-                        // Read from disk.
-                        if(bDebug) console.log("disk2.read() Q6L read "+this.state.diskData[drv][loc]+" from [D"+drv+"][loc:"+loc+"]  state.hw="+JSON.stringify(this.state.hw));
-                        return this.state.diskData[drv][loc];
-                    }
+                    return d8;
                 }
                 // NOTREACHED
             case Q6H:
-                // Load data latch.  Also sense write-protect
-                // but defaults to zero below anyway.
+                // Load data latch. Also sense write-protect.
+                var oldQ6 = this.state.hw[drv].q6;
                 this.state.hw[drv].q6 = 1;
-                this.update_logs("q6");
-                if(bDebug) console.log("disk2.read() Q6H");
+
+                if (oldQ6 != 1)
+                    this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", drv, "q6", oldQ6, 1);
+
+                //if(bDebug) console.log("disk2.read() Q6H");
                 break;
             case Q7L:
                 // Prepare latch for input.
+                var oldQ7 = this.state.hw[drv].q7;
                 this.state.hw[drv].q7 = 0;
+                this.traceChange("Q7L_PREPARE_LATCH_INPUT", drv, "q7", oldQ7, 0);
+
                 this.update_logs("q7");
-                if(bDebug) console.log("disk2.read() Q7L");
+                //if(bDebug) console.log("disk2.read() Q7L");
                 break;
             case Q7H:
                 // Prepare latch for output.
+                var oldQ7 = this.state.hw[drv].q7;
                 this.state.hw[drv].q7 = 1;
+                this.traceChange("Q7H_PREPARE_LATCH_OUTPUT", drv, "q7", oldQ7, 1);
+
                 this.update_logs("q7");
-                if(bDebug) console.log("disk2.read() Q7H");
+                //if(bDebug) console.log("disk2.read() Q7H");
                 break;
             default:
-                if(bDebug) console.log("unknown "+oCOM.getHexByte(addr))
+                //if(bDebug) console.log("unknown "+oCOM.getHexByte(addr))
             }
         }
 
@@ -17046,19 +17117,22 @@ function AppleDisk2()
     } // read
 
 
-//  ██     ██ ██████  ██ ████████ ███████ 
-//  ██     ██ ██   ██ ██    ██    ██      
-//  ██  █  ██ ██████  ██    ██    █████   
-//  ██ ███ ██ ██   ██ ██    ██    ██      
-//   ███ ███  ██   ██ ██    ██    ███████ 
+    //  ██     ██ ██████  ██ ████████ ███████ 
+    //  ██     ██ ██   ██ ██    ██    ██      
+    //  ██  █  ██ ██████  ██    ██    █████   
+    //  ██ ███ ██ ██   ██ ██    ██    ██      
+    //   ███ ███  ██   ██ ██    ██    ███████ 
 
 
     this.write = function(addr, d8)
     {
         if (addr == Q6H) 
         {
+            // Do not trace every data_latch mutation here.
+            // Actual disk writes are summarized by WRITE_DATA_BLOCK in Q6L.
             this.state.hw[this.state.drv].data_latch = d8;
-            if(bDebug) console.log("disk2.write() WRITE");
+
+            //if(bDebug) console.log("disk2.write() WRITE");
         }
     }
 
@@ -17070,28 +17144,45 @@ function AppleDisk2()
     this.setDiskData = function(dskBytes,drv)
     {
         if(dskBytes===undefined || drv===undefined) return;
-        if(bDebug) console.log("setDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
+        //if(bDebug) console.log("setDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
         var nibBytes = this.convertDsk2Nib(dskBytes);
-        if(bDebug) console.log("setDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
+        //if(bDebug) console.log("setDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
         this.state.diskData[drv-1] = nibBytes;
+        this.traceLog("setDiskData", 
+        {
+            drv: drv - 1,
+            dsk_len: dskBytes.length,
+            dsk_crc32: oCOM.crc32(dskBytes).toString(16).toUpperCase(),
+            nib_len: nibBytes.length,
+            nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase()
+        });
     }
 
     this.getDiskData = function(drv)
     {
         if(drv===undefined) return;
+        this.traceFlush("getDiskData");
         var nibBytes = this.state.diskData[drv-1];
-        if(bDebug) console.log("getDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
+        //if(bDebug) console.log("getDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
         var dskBytes = this.convertNib2Dsk(nibBytes);
-        if(bDebug) console.log("getDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
+        //if(bDebug) console.log("getDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
+        this.traceLog("getDiskData", {
+            drv: drv - 1,
+            nib_len: nibBytes.length,
+            nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase(),
+            dsk_len: dskBytes.length,
+            dsk_crc32: oCOM.crc32(dskBytes).toString(16).toUpperCase()
+        });
+
         return dskBytes;
     }
 
 
-//  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
-//  ██   ██ ██      ██  ██           ██     ████   ██ ██ ██   ██ 
-//  ██   ██ ███████ █████        █████      ██ ██  ██ ██ ██████  
-//  ██   ██      ██ ██  ██      ██          ██  ██ ██ ██ ██   ██ 
-//  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
+    //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
+    //  ██   ██ ██      ██  ██           ██     ████   ██ ██ ██   ██ 
+    //  ██   ██ ███████ █████        █████      ██ ██  ██ ██ ██████  
+    //  ██   ██      ██ ██  ██      ██          ██  ██ ██ ██ ██   ██ 
+    //  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
 
     var log = new Array();
 
@@ -17221,7 +17312,7 @@ function AppleDisk2()
             else                prenib0[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
             if      (i < 2)     prenib0[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
         }
-
+/*
         if(track==0 && sec==0)
         {
             for(var i=0;i<256;i+=16)
@@ -17235,6 +17326,7 @@ function AppleDisk2()
             }
 
         }
+*/
 
         var postnib = new Array(256)
 
@@ -17274,6 +17366,7 @@ function AppleDisk2()
             }
         }
 
+
         if(track==0 && sec==0)
         {
             for(var i=0;i<256;i+=16)
@@ -17286,6 +17379,7 @@ function AppleDisk2()
                 );
             }
         }
+
 
         function mb(val,src_bit,dst_bit)
         {
@@ -17319,16 +17413,17 @@ function AppleDisk2()
             }
         }
 
+
         return {"data":prenib,"log":s===undefined?null:s.join("")};
     }
 
 
 
-//  ███    ██ ██ ██████      ██████      ██████  ███████ ██   ██ 
-//  ████   ██ ██ ██   ██          ██     ██   ██ ██      ██  ██  
-//  ██ ██  ██ ██ ██████       █████      ██   ██ ███████ █████   
-//  ██  ██ ██ ██ ██   ██     ██          ██   ██      ██ ██  ██  
-//  ██   ████ ██ ██████      ███████     ██████  ███████ ██   ██ 
+    //  ███    ██ ██ ██████      ██████      ██████  ███████ ██   ██ 
+    //  ████   ██ ██ ██   ██          ██     ██   ██ ██      ██  ██  
+    //  ██ ██  ██ ██ ██████       █████      ██   ██ ███████ █████   
+    //  ██  ██ ██ ██ ██   ██     ██          ██   ██      ██ ██  ██  
+    //  ██   ████ ██ ██████      ███████     ██████  ███████ ██   ██ 
 
     this.convertNib2Dsk = function(nibBytes)
     {
@@ -17564,11 +17659,11 @@ function AppleDisk2()
 
  
 
-//  ██████  ██ ███████ ██   ██     ███    ██  ██████  ██ ███████ ███████ 
-//  ██   ██ ██ ██      ██  ██      ████   ██ ██    ██ ██ ██      ██      
-//  ██   ██ ██ ███████ █████       ██ ██  ██ ██    ██ ██ ███████ █████   
-//  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
-//  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
+    //  ██████  ██ ███████ ██   ██     ███    ██  ██████  ██ ███████ ███████ 
+    //  ██   ██ ██ ██      ██  ██      ████   ██ ██    ██ ██ ██      ██      
+    //  ██   ██ ██ ███████ █████       ██ ██  ██ ██    ██ ██ ███████ █████   
+    //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
+    //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
     this.dNd = {enable:false,motor:"OFF",status:"",detune:0,rept:0,last:{}};  // disk Noise data
     this.AUD_buffer={};
@@ -17744,6 +17839,326 @@ function AppleDisk2()
     0x3D, 0xCD, 0x00, 0x08, 0xA6, 0x2B, 0x90, 0xDB,
     0x4C, 0x01, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00
     ]);
+
+
+
+
+    // -----------------------------------------------------------------------------
+    // DISKII TRACE
+    // Minimal semantic trace: log only meaningful state changes and aggregated data.
+    // -----------------------------------------------------------------------------
+
+    this.trace = {
+        enabled: false,
+        echo: true,
+        maxEvents: 1000,
+        maxBytes: 24,
+        seq: 0,
+        events: [],
+        pendingArm: null,
+        pendingData: null,
+        lastUnavailable: ""
+    };
+
+    this.traceEnable = function(enabled, clear)
+    {
+        this.trace.enabled = !!enabled;
+        if (clear) this.traceClear();
+    };
+
+    this.traceClear = function()
+    {
+        this.trace.seq = 0;
+        this.trace.events = [];
+        this.trace.pendingArm = null;
+        this.trace.pendingData = null;
+        this.trace.lastUnavailable = "";
+    };
+
+    this.traceFlush = function(reason)
+    {
+        this.traceFlushData(reason);
+        this.traceFlushArm(reason);
+    };
+
+    this.traceHexByte = function(v)
+    {
+        if (typeof oCOM != "undefined" && oCOM.getHexByte)
+            return oCOM.getHexByte(v & 0xff);
+
+        var s = (v & 0xff).toString(16).toUpperCase();
+        return "$" + ("00" + s).slice(-2);
+    };
+
+    this.traceHexWord = function(v)
+    {
+        var s = (v & 0xffff).toString(16).toUpperCase();
+        return "$" + ("0000" + s).slice(-4);
+    };
+
+    this.traceBytes = function(bytes)
+    {
+        var s = [];
+        for (var i = 0; i < bytes.length; i++)
+            s[s.length] = this.traceHexByte(bytes[i]);
+
+        return s.join(" ");
+    };
+
+    this.traceNibKind = function(bytes)
+    {
+        if (bytes.length >= 3)
+        {
+            if (bytes[0] == 0xd5 && bytes[1] == 0xaa && bytes[2] == 0x96)
+                return "ADDR_FIELD_PROLOGUE";
+
+            if (bytes[0] == 0xd5 && bytes[1] == 0xaa && bytes[2] == 0xad)
+                return "DATA_FIELD_PROLOGUE";
+
+            if (bytes[0] == 0xde && bytes[1] == 0xaa)
+                return "FIELD_EPILOGUE";
+        }
+
+        var sync = bytes.length > 0;
+        for (var i = 0; i < bytes.length; i++)
+            if (bytes[i] != 0xff) sync = false;
+
+        return sync ? "GAP_SYNC" : "NIB_STREAM";
+    };
+
+    this.traceLog = function(eventName, data)
+    {
+        if (!this.trace.enabled) return;
+
+        data = data || {};
+
+        var drv = data.drv;
+        if (drv === undefined) drv = this.state.drv;
+
+        var hw = this.state.hw[drv] || {};
+
+        var e = {
+            seq: ++this.trace.seq,
+            event: eventName,
+            time: (typeof performance != "undefined") ? Math.round(performance.now() * 1000) / 1000 : Date.now(),
+            drv: drv,
+            track: hw.track,
+            phase: hw.phase,
+            offset: hw.offset,
+            motor: hw.motor,
+            q6: hw.q6,
+            q7: hw.q7
+        };
+
+        for (var k in data) e[k] = data[k];
+
+        this.trace.events[this.trace.events.length] = e;
+        if (this.trace.events.length > this.trace.maxEvents)
+            this.trace.events.shift();
+
+        if (this.trace.echo && typeof console != "undefined")
+            console.log(this.traceFormat(e));
+    };
+
+    this.traceFormat = function(e)
+    {
+        var d = "D" + (e.drv + 1);
+
+        if (e.event == "READ_DATA_BLOCK" || e.event == "WRITE_DATA_BLOCK")
+        {
+            return "DISKII " + e.event
+                + " " + d
+                + " T" + this.traceHexByte(e.blockTrack)
+                + " pos " + this.traceHexWord(e.startOffset)
+                + "-" + this.traceHexWord(e.endOffset)
+                + " len " + e.count
+                + " " + e.kind
+                + " bytes [" + e.bytesHex + (e.truncated ? " ..." : "") + "]";
+        }
+
+        if (e.event == "ARM_IN" || e.event == "ARM_OUT" || e.event == "CLICK_IN" || e.event == "CLICK_OUT")
+        {
+            return "DISKII " + e.event
+                + " " + d
+                + " track " + e.fromTrack + "->" + e.toTrack
+                + " steps " + e.steps
+                + (e.clicks ? " clicks " + e.clicks : "");
+        }
+
+        if (e.field !== undefined)
+        {
+            return "DISKII " + e.event
+                + " " + d
+                + " " + e.field + " " + e.from + "->" + e.to;
+        }
+
+        return "DISKII " + e.event + " " + d;
+    };
+
+    this.traceChange = function(eventName, drv, field, from, to, extra)
+    {
+        if (!this.trace.enabled) return;
+        if (from === to) return;
+
+        if (field == "motor" || field == "drv" || field == "q7")
+            this.traceFlush(field);
+
+        var data = extra || {};
+        data.drv = drv;
+        data.field = field;
+        data.from = from;
+        data.to = to;
+
+        this.traceLog(eventName, data);
+    };
+
+    this.traceArmStep = function(drv, eventName, fromTrack, toTrack)
+    {
+        if (!this.trace.enabled) return;
+
+        this.traceFlushData("arm");
+
+        var dir =
+            eventName == "ARM_OUT" || eventName == "CLICK_OUT"
+            ? "OUT"
+            : "IN";
+
+        var click = eventName == "CLICK_OUT" || eventName == "CLICK_IN";
+
+        var p = this.trace.pendingArm;
+
+        if (!p || p.drv != drv || p.dir != dir)
+        {
+            this.traceFlushArm("arm-direction");
+
+            p = {
+                drv: drv,
+                dir: dir,
+                event: click ? eventName : "ARM_" + dir,
+                fromTrack: fromTrack,
+                toTrack: fromTrack,
+                steps: 0,
+                clicks: 0
+            };
+
+            this.trace.pendingArm = p;
+        }
+
+        p.toTrack = toTrack;
+        p.steps++;
+
+        if (click)
+        {
+            p.event = eventName;
+            p.clicks++;
+        }
+    };
+
+    this.traceFlushArm = function(reason)
+    {
+        if (!this.trace.enabled) return;
+
+        var p = this.trace.pendingArm;
+        if (!p) return;
+
+        this.trace.pendingArm = null;
+
+        this.traceLog(p.event, {
+            drv: p.drv,
+            fromTrack: p.fromTrack,
+            toTrack: p.toTrack,
+            steps: p.steps,
+            clicks: p.clicks,
+            reason: reason
+        });
+    };
+
+    this.traceDataByte = function(mode, drv, loc, d8)
+    {
+        if (!this.trace.enabled) return;
+
+        var blockTrack = Math.floor(loc / TRACK_SIZE);
+        var offset = loc % TRACK_SIZE;
+
+        var p = this.trace.pendingData;
+
+        var contiguous =
+            p
+            && p.mode == mode
+            && p.drv == drv
+            && p.blockTrack == blockTrack
+            && ((p.endOffset + 1) % TRACK_SIZE) == offset;
+
+        if (!contiguous)
+        {
+            this.traceFlushData("data-boundary");
+
+            p = {
+                mode: mode,
+                drv: drv,
+                blockTrack: blockTrack,
+                startLoc: loc,
+                endLoc: loc,
+                startOffset: offset,
+                endOffset: offset,
+                count: 0,
+                bytes: []
+            };
+
+            this.trace.pendingData = p;
+        }
+
+        p.endLoc = loc;
+        p.endOffset = offset;
+        p.count++;
+
+        if (p.bytes.length < this.trace.maxBytes)
+            p.bytes[p.bytes.length] = d8 & 0xff;
+    };
+
+    this.traceFlushData = function(reason)
+    {
+        if (!this.trace.enabled) return;
+
+        var p = this.trace.pendingData;
+        if (!p) return;
+
+        this.trace.pendingData = null;
+
+        this.traceLog(p.mode == "WRITE" ? "WRITE_DATA_BLOCK" : "READ_DATA_BLOCK", {
+            drv: p.drv,
+            blockTrack: p.blockTrack,
+            startLoc: p.startLoc,
+            endLoc: p.endLoc,
+            startOffset: p.startOffset,
+            endOffset: p.endOffset,
+            count: p.count,
+            bytes: p.bytes,
+            bytesHex: this.traceBytes(p.bytes),
+            truncated: p.count > p.bytes.length,
+            kind: this.traceNibKind(p.bytes),
+            reason: reason
+        });
+    };
+
+    this.traceUnavailable = function(drv, reason)
+    {
+        if (!this.trace.enabled) return;
+
+        var key = drv + ":" + reason;
+        if (this.trace.lastUnavailable == key) return;
+
+        this.trace.lastUnavailable = key;
+        this.traceFlush("unavailable");
+
+        this.traceLog("Q6L_NO_DATA", {
+            drv: drv,
+            reason: reason,
+            returned: this.traceHexByte(0xff)
+        });
+    };
+
+
 }
 
 
@@ -17798,8 +18213,8 @@ function RamCard()
         }
     };
 
-    var bDebug   = true;   // debug all RAM R/W operations
-    var bDebug_S = true; // debug soft switch updates
+    var bDebug   = false;   // debug all RAM R/W operations
+    var bDebug_S = false; // debug soft switch updates
  
     var softswitch = {
         0x0: {"RAMCARD":true                       }
