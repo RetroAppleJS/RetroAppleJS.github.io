@@ -16806,7 +16806,7 @@ function AppleDisk2()
             ,"stats":{"motor":0}
             ,"LED":false
         },{
-             "track":20
+             "track":0
             ,"phase":0
             ,"data_latch":0
             ,"motor":0
@@ -17172,15 +17172,28 @@ function AppleDisk2()
         //if(bDebug) console.log("setDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
         var nibBytes = this.convertDsk2Nib(dskBytes);
         //if(bDebug) console.log("setDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
-        this.state.diskData[drv-1] = nibBytes;
-        this.traceLog("setDiskData", 
+
+        var idx = drv - 1;
+        var firstLoad = !this.state.diskData[idx];
+
+        this.state.diskData[idx] = nibBytes;
+
+        if (firstLoad)
         {
-            drv: drv - 1,
-            dsk_len: dskBytes.length,
-            dsk_crc32: oCOM.crc32(dskBytes).toString(16).toUpperCase(),
-            nib_len: nibBytes.length,
-            nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase()
-        });
+            this.state.hw[idx].track = 0;
+            this.state.hw[idx].phase = 0;
+            this.state.hw[idx].offset = 0;
+            this.state.hw[idx].q6 = 0;
+            this.state.hw[idx].q7 = 0;
+            this.state.hw[idx].data_latch = 0;
+
+            this.traceLog("DRIVE_INITIALIZED", {
+                drv: idx,
+                track: this.state.hw[idx].track,
+                phase: this.state.hw[idx].phase,
+                offset: this.state.hw[idx].offset
+            });
+        }
     }
 
     this.getDiskData = function(drv)
@@ -18115,8 +18128,11 @@ function AppleDisk2()
 
         var p = this.trace.pendingData;
 
+        var wrappedTrack = p && p.endOffset == TRACK_SIZE - 1 && offset == 0;
+
         var contiguous =
             p
+            && !wrappedTrack
             && p.mode == mode
             && p.drv == drv
             && p.blockTrack == blockTrack
