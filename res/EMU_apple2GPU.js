@@ -66,7 +66,7 @@ function Apple2Video(ctx)
             ,"GFX_FLG":[video.register_mode()]
             ,"FLASH":[false]
             ,"PALETTE":[video.INTCols]});
-            console.log( video.ser8_map() )
+            //console.log( video.ser8_map() )
     }
 
     this.register_mode = function()
