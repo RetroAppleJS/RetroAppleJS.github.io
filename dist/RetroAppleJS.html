@@ -16791,7 +16791,9 @@ function AppleDisk2()
     this.state = 
     {
         "active":true
+        ,"drive_enable":0
         ,"drv":0
+        ,"DSK_led" :[]
         ,"diskData":[null,null]
         ,"hw":[{
              "track":20
@@ -16814,7 +16816,6 @@ function AppleDisk2()
             ,"stats":{"motor":0}
             ,"LED":false
         }]
-        ,"DSK_led" :[]
     };
 
     // relative peripheral addresses
@@ -16828,6 +16829,32 @@ function AppleDisk2()
         Q7H =           0x0f;
     const TRACK_SIZE =  6656;
 
+
+    this.applyDriveEnable = function(reason)
+    {
+        var selectedDrv = this.state.drv;
+        var enabled = this.state.drive_enable ? 1 : 0;
+
+        for (var i = 0; i < this.state.hw.length; i++)
+        {
+            var oldMotor = this.state.hw[i].motor;
+            var newMotor = (enabled && i == selectedDrv) ? 1 : 0;
+
+            this.state.hw[i].motor = newMotor;
+
+            if (oldMotor != newMotor)
+            {
+                this.traceChange(
+                    newMotor ? "MOTOR_ON" : "MOTOR_OFF",
+                    i,
+                    "motor",
+                    oldMotor,
+                    newMotor,
+                    {"reason":reason}
+                );
+            }
+        }
+    };
 
     this.init = async function(action)
     {
@@ -16870,8 +16897,9 @@ function AppleDisk2()
         }
     }
 
-    this.reset = function() {
-
+    this.reset = function() 
+    {
+        this.state.drive_enable = 0;
         this.state.hw[0].phase = 0;
         this.state.hw[0].motor = 0;
         this.state.hw[0].q6 = 0;
@@ -16991,34 +17019,30 @@ function AppleDisk2()
         else {
             switch (addr) {
             case MOTOR_ON:
-                var oldMotor = this.state.hw[drv].motor;
-                this.state.hw[drv].motor = 1;
-                this.traceChange("MOTOR_ON", drv, "motor", oldMotor, 1);
+                this.state.drive_enable = 1;
+                this.applyDriveEnable("MOTOR_ON");
                 this.dN_update("MOTOR_ON");
-                //if(bDebug) console.log("disk2.read() MOTOR_ON");
                 break;
             case MOTOR_OFF:
-                var oldMotor = this.state.hw[drv].motor;
-                this.state.hw[drv].motor = 0;
-                this.traceChange("MOTOR_OFF", drv, "motor", oldMotor, 0);
+                this.state.drive_enable = 0;
+                this.applyDriveEnable("MOTOR_OFF");
                 this.dN_update("MOTOR_OFF");
-                //if(bDebug) console.log("disk2.read() MOTOR_OFF");
-                break;               
+                break;              
             case DRV0EN:
                 var oldDrv = this.state.drv;
                 this.traceFlush("DRV0EN");
                 this.state.drv = 0;
                 this.traceChange("DRV0EN", 0, "drv", oldDrv, 0);
+                this.applyDriveEnable("DRV0EN");
                 this.update_logs("D1");
-                //if(bDebug) console.log("disk2.read() DRV0EN (D1 enable) state.hw="+JSON.stringify(this.state.hw));
                 break;
             case DRV1EN:
                 var oldDrv = this.state.drv;
                 this.traceFlush("DRV1EN");
                 this.state.drv = 1;
                 this.traceChange("DRV1EN", 1, "drv", oldDrv, 1);
+                this.applyDriveEnable("DRV1EN");
                 this.update_logs("D2");
-                //if(bDebug) console.log("disk2.read() DRV1EN (D2 enable) state.hw="+JSON.stringify(this.state.hw));
                 break;
             case Q6L:
                 var oldQ6 = this.state.hw[drv].q6;
@@ -17964,6 +17988,14 @@ function AppleDisk2()
     this.traceFormat = function(e)
     {
         var d = "D" + (e.drv + 1);
+
+        if (e.event == "Q6L_NO_DATA")
+        {
+            return "DISKII " + e.event
+                + " D" + (e.drv + 1)
+                + " reason " + e.reason
+                + " returned " + e.returned;
+        }
 
         if (e.event == "READ_DATA_BLOCK" || e.event == "WRITE_DATA_BLOCK")
         {
