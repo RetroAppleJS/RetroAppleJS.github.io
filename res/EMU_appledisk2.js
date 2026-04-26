@@ -25,7 +25,7 @@ function AppleDisk2()
         ,"DSK_led" :[]
         ,"diskData":[null,null]
         ,"hw":[{
-             "track":20
+             "track":0
             ,"phase":0
             ,"data_latch":0
             ,"motor":0
@@ -126,6 +126,8 @@ function AppleDisk2()
         }
     }
 
+    // Do not reset hw[n].track here.
+    // A CPU reset does not mechanically move the Disk II head.
     this.reset = function() 
     {
         this.state.drive_enable = 0;
@@ -403,26 +405,16 @@ function AppleDisk2()
         //if(bDebug) console.log("setDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
 
         var idx = drv - 1;
-        var firstLoad = !this.state.diskData[idx];
-
         this.state.diskData[idx] = nibBytes;
 
-        if (firstLoad)
+        this.traceLog("setDiskData", 
         {
-            this.state.hw[idx].track = 0;
-            this.state.hw[idx].phase = 0;
-            this.state.hw[idx].offset = 0;
-            this.state.hw[idx].q6 = 0;
-            this.state.hw[idx].q7 = 0;
-            this.state.hw[idx].data_latch = 0;
-
-            this.traceLog("DRIVE_INITIALIZED", {
-                drv: idx,
-                track: this.state.hw[idx].track,
-                phase: this.state.hw[idx].phase,
-                offset: this.state.hw[idx].offset
-            });
-        }
+            drv: idx,
+            dsk_len: dskBytes.length,
+            dsk_crc32: oCOM.crc32(dskBytes).toString(16).toUpperCase(),
+            nib_len: nibBytes.length,
+            nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase()
+        });
     }
 
     this.getDiskData = function(drv)
