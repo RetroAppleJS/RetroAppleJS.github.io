@@ -47,8 +47,8 @@ function RamCard()
         }
     };
 
-    var bDebug   = true;   // debug all RAM R/W operations
-    var bDebug_S = true; // debug soft switch updates
+    var bDebug   = false;   // debug all RAM R/W operations
+    var bDebug_S = false; // debug soft switch updates
  
     var softswitch = {
         0x0: {"RAMCARD":true                       }
