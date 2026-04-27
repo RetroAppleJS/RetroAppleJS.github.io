@@ -276,7 +276,7 @@
                 <div id="device_toolbox_body"></div>
 
                 <div class="toolbox">
-                  <div id=LEDS class=appbox style="text-align:left;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
+                  <div id=LEDS class=appbox style="text-align:left;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px; z-index:0">
                   </div>
                 </div>
 
@@ -541,13 +541,13 @@
             <div class="appdskLED" id="dskLED_D2" style="left:750px;top:666px"></div>
 -->
 
-            <div class="appdskLED" id="dskLED_D1" style="left:178px;top:778px"></div>
-            <div class="appdskLED" id="dskLED_D2" style="left:612px;top:778px"></div>
+            <div class="appdskLED" id="dskLED_D1" style="left:178px;top:778px;z-index:0"></div>
+            <div class="appdskLED" id="dskLED_D2" style="left:612px;top:778px;z-index:0"></div>
 
-            <div class="appdskLID" id="dskLID_D1" style="left:256px;top:652px"></div>
-            <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px"></div>
+            <div class="appdskLID" id="dskLID_D1" style="left:256px;top:652px;z-index:0"></div>
+            <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
-            <div id="kbd"></div>
+            <div id="kbd" style="z-index:1"></div>
             <script>
             var keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
             var keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload

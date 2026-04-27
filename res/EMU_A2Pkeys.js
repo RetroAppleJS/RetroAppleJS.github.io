@@ -98,6 +98,11 @@ function A2Pkeys()
         console.warn("KbdCodeHandler() w/o implementation");
     }
 
+    // overridable
+    this.onHover_in = function(event)
+    {
+    }
+
     this.KbdHover = function(event)
     {
         //var loc = this.KbdButtonLocator(event);
@@ -119,6 +124,13 @@ function A2Pkeys()
             default:
                 console.log("uncaptured event",event);
         }
+        this.onHover_in(event);
+    }
+
+    // overridable
+    this.onHover_out = function(event)
+    {
+
     }
 
     this.KbdHover_out = function(t)
@@ -127,6 +139,7 @@ function A2Pkeys()
         t.o.EMU_keyb_el.style.opacity=0;
         t.o.EMU_keyb_active = false;
         t.o.EMU_keyb_timer  = false;
+        t.onHover_out();
     }
 
     this.KbdHTML = function(args)
@@ -137,15 +150,22 @@ function A2Pkeys()
         code += "<style>"
         code += "@import url(https://fonts.googleapis.com/css?family=Fragment+Mono);"
         code += "#glyphScroller { opacity:1 }"
-        code += "#keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400; }"
-        code += "#keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px; }"
-        code += "#keyboard .keycap .altfont, #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -3px; }"
+        code += "#keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400;}"
+        code += "#keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px;}"
+        code += "#keyboard .keycap .altfont,  #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -3px;}"
         code += this.KbdCSS()
         code += "</style>"
         //code += "<link rel='stylesheet' href='res/kb_new.css'>"
 
+
+
         code += "<div id=\"glyphScroller\" style=\"margin-left:88px;float:left;border:0px solid\" "
-        +"onmousemove=oEMU.component.Keyboard.KbdHover(event) onmouseout=oEMU.component.Keyboard.KbdHover(event)>"
+        
+            //+"onmousemove=oEMU.component.Keyboard.KbdHover(event) onmouseout=oEMU.component.Keyboard.KbdHover(event)>"
+//,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
+
+        +args.kbd_events+">"
+
         code +="<div id=\"keyboard\" tabindex=\"0\" ui-keydown=\"{ left:'moveKeys(-moveStep,0,$event)',\n";
         code += "\t right:'moveKeys(moveStep,0,$event)',\n";
         code += "\t up:'moveKeys(0,-moveStep,$event)',\n";
@@ -176,7 +196,8 @@ function A2Pkeys()
         code += "\t 'ctrl-shift-90' : 'redo()',\n";
         code += "\t 'ctrl-89' : 'redo()' }\"  class=\"ng-binding\">\n";
         code += "\n";
-        code += " <div id=\"keyboard-bg\" style=\"height:270px; width:729px; background-color:#F7EBD1;border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
+        //#F7EBD1
+        code += " <div id=\"keyboard-bg\" style=\"z-index:1; height:270px; width:729px; background-color:#F7EBD1; border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
         code += "  \n";
         
         code +="<!-- ngRepeat: key in keys() --><div class=\"key SA R1\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:27px;top:0px;width:54px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"34D8\">   <div class=\"keylabel keylabel1 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">!</div> </div>     <div class=\"keylabel keylabel7 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">1</div> </div> </div> </div></div>"

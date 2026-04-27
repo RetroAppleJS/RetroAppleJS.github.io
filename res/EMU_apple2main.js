@@ -267,9 +267,23 @@ function EMU_init()
     
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
 
-    var s = disk2.state.active ? "apple2plus.DiskObj().GUI_update(apple2plus.DiskObj());":"" 
+    // override keyboard hover callbacks
+    keys.onHover_in = function()
+    {
+        //console.log("keys.onHover_in");
+        apple2plus.DiskObj().GUI_update('kbd');
+    }
+
+    keys.onHover_out = function()
+    {
+        //console.log("keys.onHover_out");
+        apple2plus.DiskObj().GUI_update('kbd');
+    }
+
+
+    //var s = disk2.state.active ? "apple2plus.DiskObj().GUI_update('kbd');":"" 
     keys.KbdHTML({id:"kbd",path:"res/"
-                ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
+                ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event);"
                 ,key_events:"onclick=keys.keystroke(event)"});
 
     // OVERRIDE SEVERAL OBJECTS TO INTERACT WITH SPECIFIC GUI OBJECTS
@@ -305,23 +319,32 @@ function EMU_init()
     }
 */
 
-    disk2.GUI_update = function()  // override
+    disk2.GUI_update = function(cmd)  // override
     {
         if(this.Pstate 
             && this.Pstate[0].motor == this.state.hw[0].motor
             && this.Pstate[1].motor == this.state.hw[1].motor
             && this.Pstate[0].b_diskData == (this.state.diskData[0]!=null)
-            && this.Pstate[1].b_diskData == (this.state.diskData[1]!=null)
+            && this.Pstate[1].b_diskData == (this.state.diskData[1]!=null
+            || cmd == "kbd"
+            )
         ) 
         return;
+
+
+        if(cmd=="kbd")
+        {
+            console.log("disk2.GUI_update() = "+_o.EMU_keyb_active);
+        }
 
         //if(this.state===undefined) return;
         // LED
 
         if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
-        if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
         if(this.state.hw[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
         else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
+        if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
+
 
         // LID
         if(this.state.diskData[0]==null) 
@@ -334,8 +357,10 @@ function EMU_init()
         else 
             this.state.DSK_lid[1].style.visibility="visible";
 
+
         this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
-                      ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}] 
+                      ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}
+                      ,{"keyb_active":_o.EMU_keyb_active} ] 
         
 
     }
@@ -1420,7 +1445,7 @@ function ejectDisk(el,drive)
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
   var o = apple2plus.DiskObj()
   o.state.diskData[drv] = null;
-  o.GUI_update(o);
+  o.GUI_update();
 
   var d = oCOM.URL.uri[drive];
   if(d)
