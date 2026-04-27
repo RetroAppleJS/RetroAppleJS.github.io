@@ -308,35 +308,19 @@ function EMU_init()
             && this.Pstate[0].b_diskData == (this.state.diskData[0]!=null)
             && this.Pstate[1].b_diskData == (this.state.diskData[1]!=null
             || cmd == "kbd"
-            )
-        ) 
-        return;
-
-
-        if(cmd=="kbd")
-        {
-            console.log("disk2.GUI_update() = "+_o.EMU_keyb_active);
-        }
-
-        //if(this.state===undefined) return;
-        // LED
+            )) return;
 
         if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
         if(this.state.hw[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
         else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
-        //if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
+        //if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard (fixed by z-index)
 
         // LID
-        if(this.state.diskData[0]==null) 
-            this.state.DSK_lid[0].style.visibility="hidden";
-        else 
-            this.state.DSK_lid[0].style.visibility="visible";
+        if(this.state.diskData[0]==null) this.state.DSK_lid[0].style.visibility="hidden";
+        else this.state.DSK_lid[0].style.visibility="visible";
 
-        if(this.state.diskData[1]==null) 
-            this.state.DSK_lid[1].style.visibility="hidden";
-        else 
-            this.state.DSK_lid[1].style.visibility="visible";
-
+        if(this.state.diskData[1]==null) this.state.DSK_lid[1].style.visibility="hidden";
+        else this.state.DSK_lid[1].style.visibility="visible";
 
         this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
                       ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}
