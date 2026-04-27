@@ -21,6 +21,7 @@ function AppleDisk2()
         ,"drive_enable":0
         ,"drv":0
         ,"DSK_led" :[]
+        ,"DSK_lid":[]
         ,"diskData":[null,null]
         ,"hw":[{
              "track":0

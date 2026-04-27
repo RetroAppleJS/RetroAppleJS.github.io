@@ -288,10 +288,18 @@ function EMU_init()
 
     disk2.GUI_update = function(o)  // override
     {
+        // LED
         if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
         if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
         if(o[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
         else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
+
+        // LID
+        if(this.state.diskData[0]==null) this.state.DSK_lid[0].style.visibility="hidden";
+        else this.state.DSK_lid[0].style.visibility="visible";
+
+        if(this.state.diskData[1]==null) this.state.DSK_lid[1].style.visibility="hidden";
+        else this.state.DSK_lid[1].style.visibility="visible";
     }
     
     // overrides function that defines conditions for having an active emulator keyboard
@@ -305,6 +313,9 @@ function EMU_init()
 
     disk2.state.DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
     disk2.state.DSK_led[1] = document.getElementById("dskLED_D2");
+
+    disk2.state.DSK_lid[0] = document.getElementById("dskLID_D1");        // required for GUI_update
+    disk2.state.DSK_lid[1] = document.getElementById("dskLEID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
@@ -1366,6 +1377,8 @@ function ejectDisk(el,dsk)
   var fe = document.getElementById("file_"+dsk);
   fe.value = "";
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+  apple2plus.DiskObj().state.diskData[dsk] = null;
+  apple2plus.DiskObj().GUI_update();
 
   var d = oCOM.URL.uri[dsk];
   if(d)
