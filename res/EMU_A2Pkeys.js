@@ -144,7 +144,7 @@ function A2Pkeys()
         code += "</style>"
         //code += "<link rel='stylesheet' href='res/kb_new.css'>"
 
-        code += "<div id=\"glyphScroller\" style=\"margin-left:50px;float:left;border:0px solid\" "
+        code += "<div id=\"glyphScroller\" style=\"margin-left:88px;float:left;border:0px solid\" "
         +"onmousemove=oEMU.component.Keyboard.KbdHover(event) onmouseout=oEMU.component.Keyboard.KbdHover(event)>"
         code +="<div id=\"keyboard\" tabindex=\"0\" ui-keydown=\"{ left:'moveKeys(-moveStep,0,$event)',\n";
         code += "\t right:'moveKeys(moveStep,0,$event)',\n";

@@ -7,8 +7,6 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
-oEMU.component.IO.AppleDisk.traceEnable(true, true);
-
 // TODO: ADD A LOGGING FUNCTION THAT ONLY TRACKS INFORMATIONS THAT CHANGE!
 
 function AppleDisk2()
@@ -153,6 +151,29 @@ function AppleDisk2()
     {
     }
     
+    this.update_logs = function(name)    // overridable function
+    {
+        /*
+        name += " track"+this.state.hw[this.state.drv].track;
+
+        if(prev_name != name)
+        {
+            var n = prev_name.split(" ")[0];
+            if(prev_name != "") 
+            {
+                if(this.state.hw[this.state.drv][n]===undefined)
+                console.log(prev_name+" ["+prev_name_cnt+"]");
+                else
+                    console.log(prev_name+" "+(this.state.hw[this.state.drv][n])+" ["+prev_name_cnt+"]");
+            }
+            prev_name_cnt = 1;
+        }
+        else prev_name_cnt++
+
+        prev_name = name;
+        */
+    }
+    
 
     //  ██████  ███████  █████  ██████  
     //  ██   ██ ██      ██   ██ ██   ██ 
@@ -195,8 +216,6 @@ function AppleDisk2()
                             this.dN_update("ARM_OUT");
                             this.traceArmStep(drv, "ARM_OUT", oldTrack, this.state.hw[drv].track);
                         }
-
-                        //if(bDebug) console.log("disk2.read() ARM OUT state.hw="+JSON.stringify(this.state.hw));
                     }
                 }
                 else if (((this.state.hw[drv].phase - 1) & 3) == p) 
@@ -217,8 +236,6 @@ function AppleDisk2()
                             this.dN_update("ARM_IN");
                             this.traceArmStep(drv, "ARM_IN", oldTrack, this.state.hw[drv].track);
                         }
-
-                        //if(bDebug) console.log("disk2.read() ARM IN state.hw="+JSON.stringify(this.state.hw));
                     }
                 }
             }
@@ -284,16 +301,6 @@ function AppleDisk2()
                     // Write to disk.
                     this.state.diskData[drv][loc] = this.state.hw[drv].data_latch;
                     this.traceDataByte("WRITE", drv, loc, this.state.hw[drv].data_latch);
-
-                    /*
-                    if(bDebug) console.log(
-                        "disk2.read() Q6L write "
-                        + this.state.hw[drv].data_latch
-                        + " to [D"+drv+"][loc:"+loc+"]  state.hw="
-                        + JSON.stringify(this.state.hw)
-                    );
-                    */
-
                     return this.state.hw[drv].data_latch;
                 }
                 else
@@ -301,15 +308,6 @@ function AppleDisk2()
                     // Read from disk.
                     var d8 = this.state.diskData[drv][loc];
                     this.traceDataByte("READ", drv, loc, d8);
-                    /*
-                    if(bDebug) console.log(
-                        "disk2.read() Q6L read "
-                        + d8
-                        + " from [D"+drv+"][loc:"+loc+"]  state.hw="
-                        + JSON.stringify(this.state.hw)
-                    );
-                    */
-
                     return d8;
                 }
                 // NOTREACHED
@@ -317,29 +315,21 @@ function AppleDisk2()
                 // Load data latch. Also sense write-protect.
                 var oldQ6 = this.state.hw[drv].q6;
                 this.state.hw[drv].q6 = 1;
-
-                if (oldQ6 != 1)
-                    this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", drv, "q6", oldQ6, 1);
-
-                //if(bDebug) console.log("disk2.read() Q6H");
+                if (oldQ6 != 1) this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", drv, "q6", oldQ6, 1);
                 break;
             case Q7L:
                 // Prepare latch for input.
                 var oldQ7 = this.state.hw[drv].q7;
                 this.state.hw[drv].q7 = 0;
                 this.traceChange("Q7L_PREPARE_LATCH_INPUT", drv, "q7", oldQ7, 0);
-
                 this.update_logs("q7");
-                //if(bDebug) console.log("disk2.read() Q7L");
                 break;
             case Q7H:
                 // Prepare latch for output.
                 var oldQ7 = this.state.hw[drv].q7;
                 this.state.hw[drv].q7 = 1;
                 this.traceChange("Q7H_PREPARE_LATCH_OUTPUT", drv, "q7", oldQ7, 1);
-
                 this.update_logs("q7");
-                //if(bDebug) console.log("disk2.read() Q7H");
                 break;
             default:
                 //if(bDebug) console.log("unknown "+oCOM.getHexByte(addr))
@@ -364,8 +354,6 @@ function AppleDisk2()
             // Do not trace every data_latch mutation here.
             // Actual disk writes are summarized by WRITE_DATA_BLOCK in Q6L.
             this.state.hw[this.state.drv].data_latch = d8;
-
-            //if(bDebug) console.log("disk2.write() WRITE");
         }
     }
 
@@ -377,9 +365,7 @@ function AppleDisk2()
     this.setDiskData = function(dskBytes,drv)
     {
         if(dskBytes===undefined || drv===undefined) return;
-        //if(bDebug) console.log("setDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
         var nibBytes = this.convertDsk2Nib(dskBytes);
-        //if(bDebug) console.log("setDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
 
         var idx = drv - 1;
         this.state.diskData[idx] = nibBytes;
@@ -399,9 +385,7 @@ function AppleDisk2()
         if(drv===undefined) return;
         this.traceFlush("getDiskData");
         var nibBytes = this.state.diskData[drv-1];
-        //if(bDebug) console.log("getDiskData: .NIB LEN:"+nibBytes.length+" CRC32: "+oCOM.crc32(nibBytes).toString(16).toUpperCase());
         var dskBytes = this.convertNib2Dsk(nibBytes);
-        //if(bDebug) console.log("getDiskData: .DSK LEN:"+dskBytes.length+" CRC32: "+oCOM.crc32(dskBytes).toString(16).toUpperCase());
         this.traceLog("getDiskData", {
             drv: drv - 1,
             nib_len: nibBytes.length,
