@@ -267,7 +267,7 @@ function EMU_init()
     
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
 
-    var s = disk2.state.active ? "apple2plus.DiskObj().GUI_update();":"" 
+    var s = disk2.state.active ? "apple2plus.DiskObj().GUI_update(apple2plus.DiskObj());":"" 
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
                 ,key_events:"onclick=keys.keystroke(event)"});
@@ -285,9 +285,11 @@ function EMU_init()
         this.dNd.detune = cent;
         //console.log("pct="+pct+" cent="+cent);
     }
-
+/*
     disk2.GUI_update = function(o)  // override
     {
+        if(o.state===undefined) return;
+
         // LED
         if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
         if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
@@ -301,6 +303,43 @@ function EMU_init()
         if(this.state.diskData[1]==null) this.state.DSK_lid[1].style.visibility="hidden";
         else this.state.DSK_lid[1].style.visibility="visible";
     }
+*/
+
+    disk2.GUI_update = function()  // override
+    {
+        if(this.Pstate 
+            && this.Pstate[0].motor == this.state.hw[0].motor
+            && this.Pstate[1].motor == this.state.hw[1].motor
+            && this.Pstate[0].b_diskData == (this.state.diskData[0]!=null)
+            && this.Pstate[1].b_diskData == (this.state.diskData[1]!=null)
+        ) 
+        return;
+
+        //if(this.state===undefined) return;
+        // LED
+
+        if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
+        if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
+        if(this.state.hw[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
+        else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
+
+        // LID
+        if(this.state.diskData[0]==null) 
+            this.state.DSK_lid[0].style.visibility="hidden";
+        else 
+            this.state.DSK_lid[0].style.visibility="visible";
+
+        if(this.state.diskData[1]==null) 
+            this.state.DSK_lid[1].style.visibility="hidden";
+        else 
+            this.state.DSK_lid[1].style.visibility="visible";
+
+        this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
+                      ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}] 
+        
+
+    }
+
     
     // overrides function that defines conditions for having an active emulator keyboard
     // (should stop capture emulator keyboard events when focused on tabs other than the emulator)
@@ -315,7 +354,7 @@ function EMU_init()
     disk2.state.DSK_led[1] = document.getElementById("dskLED_D2");
 
     disk2.state.DSK_lid[0] = document.getElementById("dskLID_D1");        // required for GUI_update
-    disk2.state.DSK_lid[1] = document.getElementById("dskLEID_D2");
+    disk2.state.DSK_lid[1] = document.getElementById("dskLID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
@@ -1372,15 +1411,18 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
     }
 }
 
-function ejectDisk(el,dsk)
+function ejectDisk(el,drive)
 {
-  var fe = document.getElementById("file_"+dsk);
+  var drv = Number(drive.slice(1))-1;
+
+  var fe = document.getElementById("file_"+drive);
   fe.value = "";
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-  apple2plus.DiskObj().state.diskData[dsk] = null;
-  apple2plus.DiskObj().GUI_update();
+  var o = apple2plus.DiskObj()
+  o.state.diskData[drv] = null;
+  o.GUI_update(o);
 
-  var d = oCOM.URL.uri[dsk];
+  var d = oCOM.URL.uri[drive];
   if(d)
   {
     // URI is filled
