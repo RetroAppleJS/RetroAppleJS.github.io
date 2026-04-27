@@ -99,9 +99,8 @@ function A2Pkeys()
     }
 
     // overridable
-    this.onHover_in = function(event)
-    {
-    }
+    this.onHover_in = function(event) { }
+    this.onHover_out = function(event){ }
 
     this.KbdHover = function(event)
     {
@@ -127,12 +126,6 @@ function A2Pkeys()
         this.onHover_in(event);
     }
 
-    // overridable
-    this.onHover_out = function(event)
-    {
-
-    }
-
     this.KbdHover_out = function(t)
     {
         if(t.o.EMU_keyb_timer == true) return;
@@ -155,17 +148,8 @@ function A2Pkeys()
         code += "#keyboard .keycap .altfont,  #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -3px;}"
         code += this.KbdCSS()
         code += "</style>"
-        //code += "<link rel='stylesheet' href='res/kb_new.css'>"
-
-
-
         code += "<div id=\"glyphScroller\" style=\"margin-left:88px;float:left;border:0px solid\" "
-        
-            //+"onmousemove=oEMU.component.Keyboard.KbdHover(event) onmouseout=oEMU.component.Keyboard.KbdHover(event)>"
-//,kbd_events:"onmousemove=keys.KbdHover(event);"+s+" onmouseout=keys.KbdHover(event)"
-
         +args.kbd_events+">"
-
         code +="<div id=\"keyboard\" tabindex=\"0\" ui-keydown=\"{ left:'moveKeys(-moveStep,0,$event)',\n";
         code += "\t right:'moveKeys(moveStep,0,$event)',\n";
         code += "\t up:'moveKeys(0,-moveStep,$event)',\n";
@@ -196,10 +180,8 @@ function A2Pkeys()
         code += "\t 'ctrl-shift-90' : 'redo()',\n";
         code += "\t 'ctrl-89' : 'redo()' }\"  class=\"ng-binding\">\n";
         code += "\n";
-        //#F7EBD1
         code += " <div id=\"keyboard-bg\" style=\"height:270px; width:729px; background-color:#F7EBD1; border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
         code += "  \n";
-        
         code +="<!-- ngRepeat: key in keys() --><div class=\"key SA R1\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:27px;top:0px;width:54px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"34D8\">   <div class=\"keylabel keylabel1 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">!</div> </div>     <div class=\"keylabel keylabel7 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">1</div> </div> </div> </div></div>"
         code +="<!-- end ngRepeat: key in keys() --><div class=\"key SA R1\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:81px;top:0px;width:54px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:87px;top:4px;width:42px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:87px;top:4px;width:42px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"C598\">   <div class=\"keylabel keylabel1 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">\"</div> </div>     <div class=\"keylabel keylabel7 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">2</div> </div> </div> </div></div>"
         code +="<!-- end ngRepeat: key in keys() --><div class=\"key SA R1\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:135px;top:0px;width:54px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:141px;top:4px;width:42px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:141px;top:4px;width:42px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"9558\">   <div class=\"keylabel keylabel1 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">#</div> </div>     <div class=\"keylabel keylabel7 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">3</div> </div> </div> </div></div>"
@@ -254,7 +236,6 @@ function A2Pkeys()
         code +="<!-- end ngRepeat: key in keys() --><div class=\"key CHICKLET\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:16.5px;top:219px;width:48px;height:48px;border-width:1px;border-radius:4px;background-color:#ffffff;\" class=\"keyborder\"></div> <div style=\"left:17.5px;top:220px;width:46px;height:44px;border:solid 1px rgba(0,0,0,0.1);background-color:#fffffe;border-radius:4px;\" class=\"keytop\"></div> <div style=\"left:17.5px;top:220px;width:46px;height:44px; padding: 4px;\" class=\"keylabels\" id=\"65F0\">    <div class=\"keylabel keylabel4 textsize2\" style=\"color:#080808; width:38px; height:36px;\"> <div style=\"width:38px; max-width:38px; height:36px;\">POWER</div> </div> </div> </div></div>"
         code +="<!-- end ngRepeat: key in keys() --><div class=\"key SA SPACE\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:148.5px;top:216px;width:432px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:154.5px;top:220px;width:420px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:154.5px;top:220px;width:420px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"FFFF\">   </div> </div></div>"
         code +="<!-- end ngRepeat: key in keys() -->"
-        
         code += " </div>\n";
         code += " </div>\n";
         code += "</div>\n";
@@ -561,7 +542,6 @@ padding: 0;
 .glyph.selected {
     background-color: #eef !important;
 }`
-
     }
 
     this.metaConvert = function(arg,idx)
@@ -569,14 +549,14 @@ padding: 0;
         var En = arg.repeat ? "Repeat" : arg.key, ed = this.events_data;
         if(this.events_data.metabitsEn[En]===undefined) return ed.metabits[idx]  // didn't hit a meta key
         if(arg.getModifierState===undefined) return ed.metabits[idx] ^ ed.metabitsEn[En];
-        return arg.getModifierState(arg.key) ? ed.metabits[idx] | ed.metabitsEn[En] : ed.metabits[idx] & (~ed.metabitsEn[En])
+        return arg.getModifierState(arg.key) ? ed.metabits[idx] | ed.metabitsEn[En] : ed.metabits[idx] & (~ed.metabitsEn[En]);
     }
 
     this.getKeyContent = function(el)
     {
         var s = new Array(); if(el === undefined) { console.warn("this.getKeyContent did not receive element") }
-        for(const match of el.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm))                     // loop through all 'keylabel' (class names) in HTML
-            s.push( oCOM.stripHTML(el.getElementsByClassName(match[1])[0].firstElementChild.innerHTML) ) // add enclosed HTML tag content
+        for(const match of el.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm))                      // loop through all 'keylabel' (class names) in HTML
+            s.push( oCOM.stripHTML(el.getElementsByClassName(match[1])[0].firstElementChild.innerHTML) ); // add enclosed HTML tag content
         return s.join("")  
     }
 
@@ -607,13 +587,13 @@ padding: 0;
             case "applescreen_keydown":
                 var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.KeyCodeHandler(arg,"A2_US")}
                 this.setKey(d.code,d.meta,0);
-                if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))
+                if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}));
                 arg.preventDefault();   // prevent browser side-effects while typing in window
                 break;
             case "applescreen_keyup":
                 var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.KeyCodeHandler(arg,"A2_US")}
                 this.setKey(null,d.meta,0);
-                if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))
+                if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}));
                 break;
             case "keycap_over":
                 return function(t){ t.classList.replace("keycap","selected")  };
@@ -625,7 +605,7 @@ padding: 0;
                     var _this  = oEMU.component.Keyboard;
                     var Hash16 = _this.getKeyHash16(_this.getKeyContent(t));
                     var lookup = _this.events_data.HTMLmap_A2_US[Hash16];
-                    if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")")
+                    if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")");
                     var d = {'code':_this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup===undefined?"":lookup.val},"A2_US"),'meta':_this.metaConvert({"key":lookup.val},1),'Hash16':Hash16,'lookup':lookup}
 
                     // Shift-Control modifier
@@ -674,7 +654,7 @@ padding: 0;
                         _this.events_data.postEvent.push(t);        // push in postevent queue for popping the radio button at next action
                     }
                     _this.setKey(d.code,d.meta,1);
-                    if(_this.bDebug) console.log("event('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}))              
+                    if(_this.bDebug) console.log("event('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}));    
                 }
         }
     }
