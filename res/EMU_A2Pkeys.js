@@ -197,7 +197,7 @@ function A2Pkeys()
         code += "\t 'ctrl-89' : 'redo()' }\"  class=\"ng-binding\">\n";
         code += "\n";
         //#F7EBD1
-        code += " <div id=\"keyboard-bg\" style=\"z-index:1; height:270px; width:729px; background-color:#F7EBD1; border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
+        code += " <div id=\"keyboard-bg\" style=\"position:relative; z-index:1; height:270px; width:729px; background-color:#F7EBD1; border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
         code += "  \n";
         
         code +="<!-- ngRepeat: key in keys() --><div class=\"key SA R1\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:27px;top:0px;width:54px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"34D8\">   <div class=\"keylabel keylabel1 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">!</div> </div>     <div class=\"keylabel keylabel7 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">1</div> </div> </div> </div></div>"
