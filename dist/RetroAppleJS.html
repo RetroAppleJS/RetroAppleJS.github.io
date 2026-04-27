@@ -12043,25 +12043,6 @@ function EMU_init()
         this.dNd.detune = cent;
         //console.log("pct="+pct+" cent="+cent);
     }
-/*
-    disk2.GUI_update = function(o)  // override
-    {
-        if(o.state===undefined) return;
-
-        // LED
-        if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
-        if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
-        if(o[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
-        else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
-
-        // LID
-        if(this.state.diskData[0]==null) this.state.DSK_lid[0].style.visibility="hidden";
-        else this.state.DSK_lid[0].style.visibility="visible";
-
-        if(this.state.diskData[1]==null) this.state.DSK_lid[1].style.visibility="hidden";
-        else this.state.DSK_lid[1].style.visibility="visible";
-    }
-*/
 
     disk2.GUI_update = function(cmd)  // override
     {
@@ -12087,8 +12068,7 @@ function EMU_init()
         if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
         if(this.state.hw[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
         else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
-        if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
-
+        //if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard
 
         // LID
         if(this.state.diskData[0]==null) 
@@ -19724,7 +19704,7 @@ function A2Pkeys()
         code += "\t 'ctrl-89' : 'redo()' }\"  class=\"ng-binding\">\n";
         code += "\n";
         //#F7EBD1
-        code += " <div id=\"keyboard-bg\" style=\"position:relative; z-index:1; height:270px; width:729px; background-color:#F7EBD1; border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
+        code += " <div id=\"keyboard-bg\" style=\"height:270px; width:729px; background-color:#F7EBD1; border-radius:6px 6px 12px 12px / 18px 18px 12px 12px; \">\n";
         code += "  \n";
         
         code +="<!-- ngRepeat: key in keys() --><div class=\"key SA R1\"> <div class=\"keycap\" onmouseover=\"keycap_over(this)\" onmouseout=\"keycap_out(this)\" onclick=\"keycap_click(this)\"> <div style=\"left:27px;top:0px;width:54px;height:54px;border-width:1px;border-radius:5px;background-color:#8B7B65;\" class=\"keyborder\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px;border:solid 1px rgba(0,0,0,0.1);background-color:#a89780;border-radius:5px;\" class=\"keytop\"></div> <div style=\"left:33px;top:4px;width:42px;height:42px; padding: 3px;\" class=\"keylabels\" id=\"34D8\">   <div class=\"keylabel keylabel1 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">!</div> </div>     <div class=\"keylabel keylabel7 textsize6\" style=\"color:#fffffe; width:36px; height:36px;\"> <div style=\"width:36px; max-width:36px; height:36px;\">1</div> </div> </div> </div></div>"
@@ -20938,7 +20918,7 @@ E003
             <div class="appdskLID" id="dskLID_D1" style="left:256px;top:652px;z-index:0"></div>
             <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
-            <div id="kbd" style="z-index:1"></div>
+            <div id="kbd" style="position:relative; z-index:1;"></div>
             <script>
             var keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
             var keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
