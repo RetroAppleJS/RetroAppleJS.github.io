@@ -438,48 +438,56 @@ table { border-collapse: collapse; position: relative;}
 
 
 
+.diskcat {
+    height: min(70vh, 680px);   /* this is essential */
+    max-height: 680px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+/* The vertical scrollable part */
+.diskcat_body {
+    flex: 1 1 auto;
+    min-height: 0;              /* essential in flex layouts */
+    overflow-y: auto;
+    overflow-x: hidden;         /* horizontal UI is handled below */
+    scrollbar-gutter: stable;
+    box-sizing: border-box;
+}
+
+/* The horizontally scrollable content */
+.diskcat_wide {
+    display: inline-block;
+    min-width: 100%;
+    white-space: nowrap;
+}
+
+/* If s contains a table */
+.diskcat_wide table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+}
+
+/* Always-visible horizontal scrollbar */
+.diskcat_hscroll {
+    flex: 0 0 18px;
+    height: 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-sizing: border-box;
+}
+
+.diskcat_hscroll > div {
+    height: 1px;
+}
 
 
-
-  .diskcat_box {
-      width: 100%;
-      box-sizing: border-box;
-  }
-
-  /* Always visible horizontal scrollbar */
-  .diskcat_hscroll {
-      overflow-x: scroll;
-      overflow-y: hidden;
-      height: 18px;
-      margin-right: 0;
-      box-sizing: border-box;
-  }
-
-  /* Dummy content used only to give the top scrollbar the same width as the table */
-  .diskcat_hscroll > div {
-      height: 1px;
-  }
-
-  /* Main visible list */
-  .diskcat_vscroll {
-      max-height: 360px;          /* adjust to popup height */
-      overflow-y: auto;
-      overflow-x: hidden;         /* horizontal scrolling is handled above */
-      box-sizing: border-box;
-      scrollbar-gutter: stable;
-  }
-
-  /* Important: the inner content must keep its real width */
-  .diskcat_vscroll table,
-  .diskcat_vscroll .diskcat_table {
-      width: max-content;
-      min-width: 100%;
-      border-collapse: collapse;
-      white-space: nowrap;
-  }
-
-
-  
         /*
             visibility:hidden;
     background-image:url('../res/apple-disk-ii_LID_110x150.png');
