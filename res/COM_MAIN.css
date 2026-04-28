@@ -435,6 +435,51 @@ table { border-collapse: collapse; position: relative;}
     padding:150px 110px 0px 0px;
   }
 
+
+
+
+
+
+
+  .diskcat_box {
+      width: 100%;
+      box-sizing: border-box;
+  }
+
+  /* Always visible horizontal scrollbar */
+  .diskcat_hscroll {
+      overflow-x: scroll;
+      overflow-y: hidden;
+      height: 18px;
+      margin-right: 0;
+      box-sizing: border-box;
+  }
+
+  /* Dummy content used only to give the top scrollbar the same width as the table */
+  .diskcat_hscroll > div {
+      height: 1px;
+  }
+
+  /* Main visible list */
+  .diskcat_vscroll {
+      max-height: 360px;          /* adjust to popup height */
+      overflow-y: auto;
+      overflow-x: hidden;         /* horizontal scrolling is handled above */
+      box-sizing: border-box;
+      scrollbar-gutter: stable;
+  }
+
+  /* Important: the inner content must keep its real width */
+  .diskcat_vscroll table,
+  .diskcat_vscroll .diskcat_table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
+      white-space: nowrap;
+  }
+
+
+  
         /*
             visibility:hidden;
     background-image:url('../res/apple-disk-ii_LID_110x150.png');
