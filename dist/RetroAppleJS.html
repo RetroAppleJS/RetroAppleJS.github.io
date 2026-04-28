@@ -12202,7 +12202,8 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
-
+    oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update() },"surfaceMap_monitoring",false);
+    
     var bBOOTmon = false;
     if(bBOOTmon)
     {
@@ -12239,8 +12240,8 @@ function EMU_init()
 
     // PREP FEATURE POPUP HTML CONTENT
     document.getElementById("feature_box").innerHTML += 
-        "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
-        +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
+        "<div class=appbox  id=\"cpuDbg_popup\"     hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
+        +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n"
 
     //oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});        // replaced by oEMUI.
     //oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});     // replaced by oEMUI.
@@ -12557,10 +12558,12 @@ function EMUI()
                     + "  </div>"
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
                     + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
-                    + "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
+                    //+ "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
+                    + "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
                     + "  </div>"
                     + "</div>"
-                    + "    <div class=toolbox id=softwareCat></div>";
+                    + "    <div class=toolbox id=softwareCat></div>"
+                    +"     <div class=toolbox id=surfaceMap></div>";
         }
 
         return ""
@@ -18373,9 +18376,29 @@ function AppleDisk2()
                     document.getElementById(arg.id).innerHTML =
                         "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
                         +"</div>";
+
                 }
                 oCOM.POPUP.toggle(popup_id);
                 this.getSoftwareCatRows(arg);
+            break;
+
+            case "surfaceMap":
+            {
+//id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'
+
+                var popup_id = arg.id + "_popup";
+                //if(document.getElementById(arg.id).innerHTML=="")
+                {
+                    // first time. (class='appbox com_popup_frame' is the bug)
+                    document.getElementById(arg.id).innerHTML =
+                        "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
+                        + this.surfaceMap_html(popup_id);
+                        +"</div>";
+                }
+
+                oCOM.POPUP.toggle(popup_id);                         // Open/close through the requested popup mechanism.
+                //this.surfaceMap_update();                            // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.
+            }
             break;
         }
         //document.getElementById(arg.id).innerHTML = arg.id + close;
@@ -18430,36 +18453,36 @@ function AppleDisk2()
             });
         }
 
-function diskcat_bindScroll(elid)
-{
-    var body = document.getElementById(elid + "_list");
-    var wide = document.getElementById(elid + "_wide");
-    var hbar = document.getElementById(elid + "_hscroll");
+        function diskcat_bindScroll(elid)
+        {
+            var body = document.getElementById(elid + "_list");
+            var wide = document.getElementById(elid + "_wide");
+            var hbar = document.getElementById(elid + "_hscroll");
 
-    if (!body || !wide || !hbar) return;
+            if (!body || !wide || !hbar) return;
 
-    var spacer = hbar.firstElementChild;
+            var spacer = hbar.firstElementChild;
 
-    function updateWidth()
-    {
-        spacer.style.width = wide.scrollWidth + "px";
-        hbar.scrollLeft = body.scrollLeft;
-    }
+            function updateWidth()
+            {
+                spacer.style.width = wide.scrollWidth + "px";
+                hbar.scrollLeft = body.scrollLeft;
+            }
 
-    hbar.onscroll = function()
-    {
-        body.scrollLeft = hbar.scrollLeft;
-    };
+            hbar.onscroll = function()
+            {
+                body.scrollLeft = hbar.scrollLeft;
+            };
 
-    body.onscroll = function()
-    {
-        hbar.scrollLeft = body.scrollLeft;
-    };
+            body.onscroll = function()
+            {
+                hbar.scrollLeft = body.scrollLeft;
+            };
 
-    updateWidth();
+            updateWidth();
 
-    setTimeout(updateWidth, 0);
-}
+            setTimeout(updateWidth, 0);
+        }
 
 
 
@@ -18555,6 +18578,225 @@ function diskcat_bindScroll(elid)
     }
 
 
+
+
+
+
+
+
+    // SURFACE MAP
+    this.surfaceMap_palette = null;
+    this.surfaceMap_headCell = [null,null];
+
+    this.surfaceMap_build_palette = function()
+    {
+        if(this.surfaceMap_palette != null) return this.surfaceMap_palette;
+
+        var col_arr = ["#2D788E","#2CA984","#7DD552","#FDEA27"];
+        var pal = Array(101);
+
+        for(var i=0;i<100;i++)
+        {
+            var rng = 100/(col_arr.length-1);
+            var sec_idx = Math.floor(i/rng);
+            var sec_pct = Math.round(Math.floor(i%rng)*100/rng);
+            var rgb_rng = [ oCOM.HEX2RGB(col_arr[sec_idx]) , oCOM.HEX2RGB(col_arr[sec_idx+1]) ];
+            pal[i] = "#"+oCOM.RGB2HEX(interpolate_arr(rgb_rng[0],rgb_rng[1],sec_pct)).join("");
+        }
+
+        pal[0] = "#000000";
+        pal[100] = col_arr[col_arr.length-1];
+
+        this.surfaceMap_palette = pal;
+        return pal;
+
+        function interpolate_arr(a,b,pct)
+        {
+            var out = [];
+            for(var i=0;i<a.length;i++)
+                out[i] = Math.round(a[i] + (b[i]-a[i]) * pct / 100);
+            return out;
+        }
+    };
+
+    this.surfaceMap_grid_html = function(drv)
+    {
+        var d = drv + 1;
+        var s = [];
+
+        s.push("<div style=\"display:inline-block;vertical-align:top;margin-right:14px\">");
+        s.push("<div style=\"font-weight:bold;text-align:center;margin-bottom:4px\">D"+d+"</div>");
+        s.push("<table id=\"surfaceMap_table_D"+d+"\" style=\"border-collapse:collapse;font-family:Courier;font-size:9px\">");
+
+        for(var track=0; track<35; track++)
+        {
+            s.push("<tr>");
+            s.push("<td style=\"padding-right:4px;color:#aaa;text-align:right\">T"+track+"</td>");
+
+            for(var sector=0; sector<16; sector++)
+            {
+                s.push(
+                    "<td id=\"surfaceMap_D"+d+"_"+track+"_"+sector+"\""
+                    +" style=\"width:10px;height:10px;border:1px solid #333;background-color:#111\""
+                    +" title=\"D"+d+" T"+track+" S"+sector+"\"></td>"
+                );
+            }
+
+            s.push("</tr>");
+        }
+
+        s.push("</table>");
+        s.push("<div id=\"surfaceMap_status_D"+d+"\" style=\"text-align:center;color:#aaa;margin-top:4px\">no disk</div>");
+        s.push("</div>");
+
+        return s.join("");
+    };
+
+    this.surfaceMap_html = function(popup_id)
+    {
+        var close =
+            "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
+            +"style=\"text-align:center;float:right;\">x</div>";
+
+        return ""
+            + "<div style=\"min-width:450px\">"
+            + "  <b>Disk surface map</b>"
+            
+            + "    <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" "
+            + "       onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
+            + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'));\">"
+            + "    </i>"
+            
+            + close
+            + "  <div style=\"clear:both;height:6px\"></div>"
+            + "  <div style=\"float:left;width:42px;text-align:center\">MAP<br>"
+
+
+            + "  </div>"
+            + "  <div id=\"surfaceMap_body\" style=\"margin-left:48px;white-space:nowrap\">"
+            +      this.surfaceMap_grid_html(0)
+            +      this.surfaceMap_grid_html(1)
+            + "  </div>"
+            + "</div>";
+    };
+
+    this.enable_surfaceMap_monitoring = function(b)
+    {
+        if(b) this.surfaceMap_update();
+        return b;
+    };
+
+    this.surfaceMap_update = function()
+    {
+        var pal = this.surfaceMap_build_palette();
+
+        for(var drv=0; drv<2; drv++)
+        {
+            var d = drv + 1;
+            var status = document.getElementById("surfaceMap_status_D"+d);
+
+            if(this.state.diskData[drv] == null)
+            {
+                if(status) status.innerHTML = "no disk";
+                this.surfaceMap_clear_drive(drv);
+                continue;
+            }
+
+            var dskBytes = null;
+
+            try
+            {
+                dskBytes = this.convertNib2Dsk(this.state.diskData[drv]);
+            }
+            catch(e)
+            {
+                if(status) status.innerHTML = "decode error";
+                continue;
+            }
+
+            if(status)
+                status.innerHTML = dskBytes.length+" bytes";
+
+            for(var track=0; track<35; track++)
+            {
+                for(var sector=0; sector<16; sector++)
+                {
+                    var offs = (track << 12) + (sector << 8);
+                    var nz = 0;
+                    var sum = 0;
+
+                    for(var i=0; i<256; i++)
+                    {
+                        var b = dskBytes[offs+i] & 0xff;
+                        sum += b;
+                        if(b != 0) nz++;
+                    }
+
+                    // Sector “density”: black for empty/zero-like sectors,
+                    // bright for sectors with many non-zero bytes.
+                    var pct = Math.round(nz * 100 / 256);
+                    var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
+
+                    if(el)
+                    {
+                        el.style.backgroundColor = pal[pct];
+                        el.title =
+                            "D"+d
+                            +" T"+track
+                            +" S"+sector
+                            +" $"+oCOM.getHexMulti(offs,5)
+                            +" nonzero="+nz+"/256"
+                            +" avg="+Math.round(sum/256);
+                        el.style.outline = "";
+                    }
+                }
+            }
+
+            this.surfaceMap_mark_head(drv);
+        }
+    };
+
+    this.surfaceMap_clear_drive = function(drv)
+    {
+        var d = drv + 1;
+
+        for(var track=0; track<35; track++)
+        {
+            for(var sector=0; sector<16; sector++)
+            {
+                var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
+                if(el)
+                {
+                    el.style.backgroundColor = "#111";
+                    el.style.outline = "";
+                    el.title = "D"+d+" T"+track+" S"+sector+" - no disk";
+                }
+            }
+        }
+    };
+
+    this.surfaceMap_mark_head = function(drv)
+    {
+        var d = drv + 1;
+
+        if(this.surfaceMap_headCell[drv] != null)
+        {
+            var old = document.getElementById(this.surfaceMap_headCell[drv]);
+            if(old) old.style.outline = "";
+        }
+
+        var hw = this.state.hw[drv];
+        if(!hw) return;
+
+        var track = Math.max(0,Math.min(34,hw.track));
+        var sector = Math.max(0,Math.min(15,Math.floor(hw.offset / (6656/16))));
+        var id = "surfaceMap_D"+d+"_"+track+"_"+sector;
+
+        var el = document.getElementById(id);
+        if(el) el.style.outline = "2px solid #fff";
+
+        this.surfaceMap_headCell[drv] = id;
+    };
 
 }
 
