@@ -2085,6 +2085,51 @@ table { border-collapse: collapse; position: relative;}
     padding:150px 110px 0px 0px;
   }
 
+
+
+
+
+
+
+  .diskcat_box {
+      width: 100%;
+      box-sizing: border-box;
+  }
+
+  /* Always visible horizontal scrollbar */
+  .diskcat_hscroll {
+      overflow-x: scroll;
+      overflow-y: hidden;
+      height: 18px;
+      margin-right: 0;
+      box-sizing: border-box;
+  }
+
+  /* Dummy content used only to give the top scrollbar the same width as the table */
+  .diskcat_hscroll > div {
+      height: 1px;
+  }
+
+  /* Main visible list */
+  .diskcat_vscroll {
+      max-height: 360px;          /* adjust to popup height */
+      overflow-y: auto;
+      overflow-x: hidden;         /* horizontal scrolling is handled above */
+      box-sizing: border-box;
+      scrollbar-gutter: stable;
+  }
+
+  /* Important: the inner content must keep its real width */
+  .diskcat_vscroll table,
+  .diskcat_vscroll .diskcat_table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
+      white-space: nowrap;
+  }
+
+
+  
         /*
             visibility:hidden;
     background-image:url('../res/apple-disk-ii_LID_110x150.png');
@@ -18315,6 +18360,38 @@ function AppleDisk2()
             });
         }
 
+        function diskcat_bindScroll(elid)
+        {
+            var h = document.getElementById(elid + "_hscroll");
+            var v = document.getElementById(elid + "_list");
+
+            if (!h || !v) return;
+
+            var inner = v.querySelector("table") || v.firstElementChild || v;
+            var spacer = h.firstElementChild;
+
+            function updateWidth()
+            {
+                spacer.style.width = inner.scrollWidth + "px";
+                h.scrollLeft = v.scrollLeft;
+            }
+
+            h.onscroll = function()
+            {
+                v.scrollLeft = h.scrollLeft;
+            };
+
+            v.onscroll = function()
+            {
+                h.scrollLeft = v.scrollLeft;
+            };
+
+            updateWidth();
+
+            if (window.ResizeObserver)
+                new ResizeObserver(updateWidth).observe(inner);
+        }
+
 
         // MAIN DATA CALL
         GH_listDir(
@@ -18355,6 +18432,13 @@ function AppleDisk2()
                         size: files[i].size,
                         type: files[i].type
                     });
+
+                    rows.push({
+                        name: files[i].name,
+                        path: files[i].path,
+                        size: files[i].size,
+                        type: files[i].type
+                    });
                 }
 
 
@@ -18388,13 +18472,13 @@ function AppleDisk2()
                 document.getElementById(elid).innerHTML =
                     "<div class=appbox style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
                         +"SOFTWARE CATALOG "+close+"<br>"
-                        +"<div id='"+elid+"_list' style='max-height:220px;max-width:100%;overflow-x:scroll;overflow-y:scroll;white-space:nowrap;scrollbar-gutter:stable;'>"+s+"</div>"
+                        +"  <div id='"+elid+"_box' class='diskcat_box'>"
+                        +"      <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
+                        +"      <div id='"+elid+"_list' class='diskcat_vscroll'>"+s+"</div>"
+                        +"  </div>"
                         +"</div>"
                     +"</div>"                
-
-
-
-
+                diskcat_bindScroll(elid);
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
