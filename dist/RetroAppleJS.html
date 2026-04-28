@@ -3567,9 +3567,9 @@ function(csv)
     set_state: function(id,val){ this.states[id] = val },
     get_state: function(id){ return this.states[id]===undefined?this.el(id).classList.item(1):this.states[id]},
     update_state: function(id,el){ this.states[id] = el.hidden },
-    on: function(id) { this.states[id] = this.el(id).hidden = false },
-    off: function(id) { this.states[id] = this.el(id).hidden = true },
-    toggle: function(id) { var el=this.el(id); if(el===undefined && el.hidden==null) return null; this.states[id] = el.hidden = !el.hidden ;return el },
+    on: function(id) { var el = this.el(id); this.states[id] = false; el.hidden = false; return el; },
+    off: function(id) { var el = this.el(id); this.states[id] = true; el.hidden = true; return el; },
+    toggle: function(id) { var el = this.el(id); this.states[id] = el.hidden = !el.hidden; return el; },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
     _el: function(ref) { return typeof ref == "string" ? document.getElementById(ref) : ref; },
     class_add: function(ref, cls)
@@ -18558,17 +18558,27 @@ function diskcat_bindScroll(elid)
                 }
                 s += '</table></div>';
 
-                var popup_id = elid     + "_popup";
+                var popup_id = elid + "_popup";
+                if (document.getElementById(popup_id)) { oCOM.POPUP.toggle(popup_id); return }
                 var body_id  = popup_id + "_body";
 
-                var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+arg.id+"');\" style=\"text-align:center;float:right;\">x</div>";
+                var close =
+                    "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
+                    +"style=\"text-align:center;float:right;\">x</div>";
+
                 document.getElementById(elid).innerHTML =
-                    "<div id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
-                        +oCOM.POPUP.title_html("<div class='com_popup_title_text'>SOFTWARE CATALOG</div>"+close)
-                        +"<div id='"+body_id+"' class='com_popup_body com_scroll_y'>"+s+"</div>"
+                    "<div id='"+popup_id+"' hidden class='appbox com_popup_frame' "
+                        +"style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
+                        +oCOM.POPUP.title_html(
+                            "<div class='com_popup_title_text'>SOFTWARE CATALOG</div>" + close
+                        )
+                        +"<div id='"+body_id+"' class='com_popup_body com_scroll_y'>"
+                            +s
+                        +"</div>"
                     +"</div>";
 
-                oCOM.POPUP.toggle(popup_id);
+                oCOM.POPUP.on(popup_id);                    
+
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
