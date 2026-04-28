@@ -1535,13 +1535,6 @@ function diskcat_bindScroll(elid)
                         size: files[i].size,
                         type: files[i].type
                     });
-
-                    rows.push({
-                        name: files[i].name,
-                        path: files[i].path,
-                        size: files[i].size,
-                        type: files[i].type
-                    });
                 }
 
 
@@ -1579,7 +1572,7 @@ function diskcat_bindScroll(elid)
                         "<span>SOFTWARE CATALOG</span>" + close,
                         s,
                         body_id,
-                        "com_popup_body com_scroll_y"
+                        "com_popup_body com_scroll_xy"
                     );
 
                 console.log("elid", elid);
