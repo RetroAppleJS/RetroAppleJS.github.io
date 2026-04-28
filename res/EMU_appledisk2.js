@@ -1556,10 +1556,10 @@ function diskcat_bindScroll(elid)
                 }
                 s += '</table></div>';
 
-                var popup_id = elid + "_popup";
+                var popup_id = elid;                 // IMPORTANT: use the existing POPUP container
                 var body_id  = popup_id + "_body";
 
-                if (document.getElementById(popup_id))
+                if (document.getElementById(body_id))
                 {
                     oCOM.POPUP.toggle(popup_id);
                     return;
@@ -1569,8 +1569,8 @@ function diskcat_bindScroll(elid)
                     "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
                     +"style=\"text-align:center;float:right;\">x</div>";
 
-                document.getElementById(elid).innerHTML =
-                    "<div id='"+popup_id+"' hidden class='appbox com_popup_frame' "
+                document.getElementById(popup_id).innerHTML =
+                    "<div class='appbox com_popup_frame' "
                         +"style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
                         +oCOM.POPUP.title_html(
                             "<div class='com_popup_title_text'>SOFTWARE CATALOG</div>" + close
@@ -1580,7 +1580,7 @@ function diskcat_bindScroll(elid)
                         +"</div>"
                     +"</div>";
 
-                oCOM.POPUP.toggle(popup_id);                   
+                oCOM.POPUP.toggle(arg.id);                  
 
 
                 console.log("elid", elid);
