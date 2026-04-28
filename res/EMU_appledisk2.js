@@ -1453,6 +1453,38 @@ function AppleDisk2()
             });
         }
 
+        function diskcat_bindScroll(elid)
+        {
+            var h = document.getElementById(elid + "_hscroll");
+            var v = document.getElementById(elid + "_list");
+
+            if (!h || !v) return;
+
+            var inner = v.querySelector("table") || v.firstElementChild || v;
+            var spacer = h.firstElementChild;
+
+            function updateWidth()
+            {
+                spacer.style.width = inner.scrollWidth + "px";
+                h.scrollLeft = v.scrollLeft;
+            }
+
+            h.onscroll = function()
+            {
+                v.scrollLeft = h.scrollLeft;
+            };
+
+            v.onscroll = function()
+            {
+                h.scrollLeft = v.scrollLeft;
+            };
+
+            updateWidth();
+
+            if (window.ResizeObserver)
+                new ResizeObserver(updateWidth).observe(inner);
+        }
+
 
         // MAIN DATA CALL
         GH_listDir(
@@ -1493,6 +1525,13 @@ function AppleDisk2()
                         size: files[i].size,
                         type: files[i].type
                     });
+
+                    rows.push({
+                        name: files[i].name,
+                        path: files[i].path,
+                        size: files[i].size,
+                        type: files[i].type
+                    });
                 }
 
 
@@ -1526,13 +1565,13 @@ function AppleDisk2()
                 document.getElementById(elid).innerHTML =
                     "<div class=appbox style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
                         +"SOFTWARE CATALOG "+close+"<br>"
-                        +"<div id='"+elid+"_list' style='max-height:220px;max-width:100%;overflow-x:scroll;overflow-y:scroll;white-space:nowrap;scrollbar-gutter:stable;'>"+s+"</div>"
+                        +"  <div id='"+elid+"_box' class='diskcat_box'>"
+                        +"      <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
+                        +"      <div id='"+elid+"_list' class='diskcat_vscroll'>"+s+"</div>"
+                        +"  </div>"
                         +"</div>"
                     +"</div>"                
-
-
-
-
+                diskcat_bindScroll(elid);
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
