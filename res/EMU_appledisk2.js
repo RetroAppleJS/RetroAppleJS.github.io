@@ -1402,7 +1402,7 @@ function AppleDisk2()
                 {
                     // first time. (class='appbox com_popup_frame' is the bug)
                     document.getElementById(arg.id).innerHTML =
-                        "<div  id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
+                        "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
                         +"</div>";
                 }
                 oCOM.POPUP.toggle(popup_id);
