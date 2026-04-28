@@ -1392,18 +1392,17 @@ function AppleDisk2()
 
     this.diskMenu_detail = function(arg)
     {
-        oCOM.POPUP.on(arg.id);
 
         // TODO extend here to all popup customisations?
         switch(arg.id)
         {
-            case "softwareCat": 
+            case "softwareCat":
                 this.getSoftwareCatRows(arg);
             break;
         }
         //document.getElementById(arg.id).innerHTML = arg.id + close;
 
-        oCOM.POPUP.on(arg.id);
+
     }
 
     this.getSoftwareCatRows = function(arg)
@@ -1556,32 +1555,44 @@ function diskcat_bindScroll(elid)
                 }
                 s += '</table></div>';
 
-                var popup_id = elid;                 // IMPORTANT: use the existing POPUP container
-                var body_id  = popup_id + "_body";
+                var popup_id = elid + "_popup";
+                var body_id  = elid + "_body";
 
-                if (document.getElementById(body_id))
+                var close = "<div class=\"appbut\" "
+                        +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
+                        +"style=\"text-align:center;float:right;\">x</div>";
+
+                if(document.getElementById(elid).innerHTML=="")
                 {
-                    oCOM.POPUP.toggle(popup_id);
-                    return;
+                    // first time
+                    document.getElementById(elid).innerHTML =
+                        "<div  id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
+                        +"</div>";
+                    oCOM.POPUP.set_state(popup_id,true)
                 }
 
-                var close =
-                    "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
-                    +"style=\"text-align:center;float:right;\">x</div>";
+                /*
+                if(oCOM.POPUP.get_state(popup_id)==true) 
+                {
+                    oCOM.POPUP.on(popup_id); 
+                    //document.getElementById(popup_id).hidden = false;
+                }
+                else
+                {
+                    oCOM.POPUP.off(popup_id);
+                    //document.getElementById(popup_id).hidden = true;
+                }
+                    */
+
 
                 document.getElementById(popup_id).innerHTML =
-                    "<div class='appbox com_popup_frame' "
-                        +"style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
-                        +oCOM.POPUP.title_html(
-                            "<div class='com_popup_title_text'>SOFTWARE CATALOG</div>" + close
-                        )
-                        +"<div id='"+body_id+"' class='com_popup_body com_scroll_y'>"
-                            +s
-                        +"</div>"
-                    +"</div>";
-
-                oCOM.POPUP.toggle(arg.id);                  
-
+                    oCOM.POPUP.title_body_html(
+                    "<span>SOFTWARE CATALOG</span>" + close,
+                    s,
+                    body_id,
+                    "com_popup_body com_scroll_xy"
+                );
+                oCOM.POPUP.toggle(popup_id);
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
