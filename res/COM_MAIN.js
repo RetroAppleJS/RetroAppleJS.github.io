@@ -965,7 +965,14 @@ function(csv)
     update_state: function(id,el){ this.states[id] = el.hidden },
     on: function(id) { var el = this.el(id); this.states[id] = false; el.hidden = false; return el; },
     off: function(id) { var el = this.el(id); this.states[id] = true; el.hidden = true; return el; },
-    toggle: function(id) { var el = this.el(id); this.states[id] = el.hidden = !el.hidden; return el; },
+    toggle: function(id)
+    {
+        var el = this.el(id);
+        if (!el) return null;
+
+        this.states[id] = el.hidden = !el.hidden;
+        return el;
+    },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
     _el: function(ref) { return typeof ref == "string" ? document.getElementById(ref) : ref; },
     class_add: function(ref, cls)
