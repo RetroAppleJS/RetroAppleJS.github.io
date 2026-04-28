@@ -349,7 +349,8 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
-
+    oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update() },"surfaceMap_monitoring",false);
+    
     var bBOOTmon = false;
     if(bBOOTmon)
     {
@@ -386,8 +387,8 @@ function EMU_init()
 
     // PREP FEATURE POPUP HTML CONTENT
     document.getElementById("feature_box").innerHTML += 
-        "<div class=appbox id=\"cpuDbg_popup\" hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
-        +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n";
+        "<div class=appbox  id=\"cpuDbg_popup\"     hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
+        +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n"
 
     //oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});        // replaced by oEMUI.
     //oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});     // replaced by oEMUI.
@@ -704,10 +705,12 @@ function EMUI()
                     + "  </div>"
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
                     + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
-                    + "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
+                    //+ "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
+                    + "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
                     + "  </div>"
                     + "</div>"
-                    + "    <div class=toolbox id=softwareCat></div>";
+                    + "    <div class=toolbox id=softwareCat></div>"
+                    +"     <div class=toolbox id=surfaceMap></div>";
         }
 
         return ""
