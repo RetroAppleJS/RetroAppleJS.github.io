@@ -1415,17 +1415,16 @@ function AppleDisk2()
 //id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'
 
                 var popup_id = arg.id + "_popup";
-                //if(document.getElementById(arg.id).innerHTML=="")
+                if(document.getElementById(arg.id).innerHTML=="")
                 {
                     // first time. (class='appbox com_popup_frame' is the bug)
                     document.getElementById(arg.id).innerHTML =
                         "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
-                        + this.surfaceMap_html(popup_id);
                         +"</div>";
                 }
 
                 oCOM.POPUP.toggle(popup_id);                         // Open/close through the requested popup mechanism.
-                //this.surfaceMap_update();                            // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.
+                this.surfaceMap_update(popup_id);                    // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.
             }
             break;
         }
@@ -1692,7 +1691,7 @@ function AppleDisk2()
             
             + "    <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" "
             + "       onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
-            + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'));\">"
+            + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'),'"+popup_id+"');\">"
             + "    </i>"
             
             + close
@@ -1708,14 +1707,20 @@ function AppleDisk2()
             + "</div>";
     };
 
-    this.enable_surfaceMap_monitoring = function(b)
+    this.enable_surfaceMap_monitoring = function(b,popup_id)
     {
-        if(b) this.surfaceMap_update();
+        if(b) this.surfaceMap_update(popup_id);
         return b;
     };
 
-    this.surfaceMap_update = function()
+    this.surfaceMap_update = function(popup_id)
     {
+        // find from whick call the argument popup_id is null
+        //if(!popup_id) alert("surfaceMap_update");
+        popup_id = "surfaceMap_popup";
+
+        document.getElementById(popup_id).innerHTML = this.surfaceMap_html(popup_id);
+
         var pal = this.surfaceMap_build_palette();
 
         for(var drv=0; drv<2; drv++)
