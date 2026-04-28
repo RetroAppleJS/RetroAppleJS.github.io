@@ -1547,7 +1547,7 @@ function diskcat_bindScroll(elid)
 
 
                 // TODO: write list
-                var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
+                var s = '<div style="margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
                     + '<tr>'
                     + '<th style="text-align:left;padding:2px 4px;">Name</th>'
@@ -1576,11 +1576,11 @@ function diskcat_bindScroll(elid)
 
                 document.getElementById(popup_id).innerHTML =
                     oCOM.POPUP.title_body_html(
-                    "<span>SOFTWARE CATALOG</span>" + close,
-                    s,
-                    body_id,
-                    "com_popup_body com_scroll_xy"
-                );
+                        "<span>SOFTWARE CATALOG</span>" + close,
+                        s,
+                        body_id,
+                        "com_popup_body com_scroll_y"
+                    );
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
