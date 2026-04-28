@@ -963,9 +963,9 @@ function(csv)
     set_state: function(id,val){ this.states[id] = val },
     get_state: function(id){ return this.states[id]===undefined?this.el(id).classList.item(1):this.states[id]},
     update_state: function(id,el){ this.states[id] = el.hidden },
-    on: function(id) { this.states[id] = this.el(id).hidden = false },
-    off: function(id) { this.states[id] = this.el(id).hidden = true },
-    toggle: function(id) { var el=this.el(id); if(el===undefined && el.hidden==null) return null; this.states[id] = el.hidden = !el.hidden ;return el },
+    on: function(id) { var el = this.el(id); this.states[id] = false; el.hidden = false; return el; },
+    off: function(id) { var el = this.el(id); this.states[id] = true; el.hidden = true; return el; },
+    toggle: function(id) { var el = this.el(id); this.states[id] = el.hidden = !el.hidden; return el; },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
     _el: function(ref) { return typeof ref == "string" ? document.getElementById(ref) : ref; },
     class_add: function(ref, cls)
