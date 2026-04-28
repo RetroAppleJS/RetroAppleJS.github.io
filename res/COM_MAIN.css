@@ -540,32 +540,6 @@ table { border-collapse: collapse; position: relative;}
     overflow: auto;
 }
 
-.com_popup_title {
-    flex: 0 0 auto;
-    box-sizing: border-box;
-    min-height: 28px;
-    line-height: 28px;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.com_popup_body {
-    flex: 1 1 auto;
-    min-height: 0;
-    box-sizing: border-box;
-    user-select: text;
-    -webkit-user-select: text;
-}
-
-.com_scroll_y {
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-.com_scroll_xy {
-    overflow: auto;
-}
-
 
 /*
 
