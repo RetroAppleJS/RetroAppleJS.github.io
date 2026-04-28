@@ -2086,7 +2086,7 @@ table { border-collapse: collapse; position: relative;}
   }
 
 
-
+/*
 .diskcat_popup {
     overflow: hidden;
     box-sizing: border-box;
@@ -2147,6 +2147,61 @@ table { border-collapse: collapse; position: relative;}
 
 .diskcat_hscroll > div {
     height: 1px;
+}
+*/
+
+
+.com_popup_frame {
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.com_popup_title {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    min-height: 28px;
+    line-height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.com_popup_title_text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.com_popup_close {
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+.com_popup_body {
+    flex: 1 1 auto;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.com_scroll_y {
+    overflow-y: auto;
+}
+
+.com_scroll_x {
+    overflow-x: auto;
+}
+
+.com_scroll_xy {
+    overflow: auto;
 }
 
 
@@ -3516,6 +3571,26 @@ function(csv)
     off: function(id) { this.states[id] = this.el(id).hidden = true },
     toggle: function(id) { var el=this.el(id); if(el===undefined && el.hidden==null) return null; this.states[id] = el.hidden = !el.hidden ;return el },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
+    _el: function(ref) { return typeof ref == "string" ? document.getElementById(ref) : ref; },
+    class_add: function(ref, cls)
+    {
+        var el = this._el(ref); if (!el || !cls) return el;
+        cls.split(/\s+/).forEach(function(c) { if (c) el.classList.add(c) });
+        return el;
+    },
+    class_remove: function(ref, cls)
+    {
+        var el = this._el(ref); if (!el || !cls) return el;
+        cls.split(/\s+/).forEach(function(c) { if (c) el.classList.remove(c) });
+        return el;
+    },
+    class_set: function(ref, cls, state) { return state ? this.class_add(ref, cls) : this.class_remove(ref, cls) },
+    class_swap: function(ref, removeCls, addCls)
+    {
+        var el = this._el(ref); if (!el) return el;
+        this.class_remove(el, removeCls); this.class_add(el, addCls); return el;
+    },
+    title_html: function(title) { return "<div class='com_popup_title'>" + title +"</div>" },
     set_class: function(el,class1,class2,bool)
     {
       el.hidden = bool;
@@ -18463,11 +18538,6 @@ function diskcat_bindScroll(elid)
 
 
                 // TODO: write list
-
-                var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+arg.id+"');\" style=\"text-align:center;float:right;\">x</div>";
-
-
-
                 var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
                     + '<tr>'
@@ -18488,18 +18558,17 @@ function diskcat_bindScroll(elid)
                 }
                 s += '</table></div>';
 
+                var popup_id = elid     + "_popup";
+                var body_id  = popup_id + "_body";
+
+                var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+arg.id+"');\" style=\"text-align:center;float:right;\">x</div>";
                 document.getElementById(elid).innerHTML =
-                    "<div class='appbox diskcat_popup' style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
-                        +"<div class='diskcat_title'>SOFTWARE CATALOG "+close+"</div>"
-                        +"<div id='"+elid+"_cat' class='diskcat'>"
-                        +"  <div id='"+elid+"_list' class='diskcat_body'>"
-                        +"    <div id='"+elid+"_wide' class='diskcat_wide'>"+s+"</div>"
-                        +"  </div>"
-                        +"  <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
-                        +"</div>"
+                    "<div id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
+                        +oCOM.POPUP.title_html("<div class='com_popup_title_text'>SOFTWARE CATALOG</div>"+close)
+                        +"<div id='"+body_id+"' class='com_popup_body com_scroll_y'>"+s+"</div>"
                     +"</div>";
 
-                diskcat_bindScroll(elid);
+                oCOM.POPUP.toggle(popup_id);
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
