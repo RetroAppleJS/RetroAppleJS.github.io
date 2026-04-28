@@ -704,7 +704,12 @@ function EMUI()
                     + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(2))\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
                     + "  </div>"
-                    + "</div>";
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
+                    + "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
+                    + "  </div>"
+                    + "</div>"
+                    + "    <div class=toolbox id=softwareCat></div>";
         }
 
         return ""
