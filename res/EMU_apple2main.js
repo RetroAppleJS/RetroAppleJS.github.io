@@ -444,7 +444,7 @@ function EMUI()
 
     this.slotConfig_detail = function(id)
     {
-        oCOM.POPUP.on("slotConfig_popup");
+        //oCOM.POPUP.on("slotConfig_popup");
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
         // TODO extend here to all popup customisations?
         if(id=="board")
@@ -452,13 +452,11 @@ function EMUI()
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             document.getElementById("slotConfig_popup").innerHTML =
                 "board I/O ["+model+"]" + close + apple2plus.hwObj().io.boardIO_html(model);
+            oCOM.POPUP.toggle("slotConfig_popup");
             return;
         }
         document.getElementById("slotConfig_popup").innerHTML = id + close;
         console.log("oEMUI.slotConfig_detail('"+id+"')");
-
-
-        oCOM.POPUP.on("slotConfig_popup");
     }
 
     this.muteBtn = function(arg)
