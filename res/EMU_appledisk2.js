@@ -1536,11 +1536,6 @@ function diskcat_bindScroll(elid)
 
 
                 // TODO: write list
-
-                var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+arg.id+"');\" style=\"text-align:center;float:right;\">x</div>";
-
-
-
                 var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
                     + '<tr>'
@@ -1561,18 +1556,17 @@ function diskcat_bindScroll(elid)
                 }
                 s += '</table></div>';
 
+                var popup_id = elid     + "_popup";
+                var body_id  = popup_id + "_body";
+
+                var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+arg.id+"');\" style=\"text-align:center;float:right;\">x</div>";
                 document.getElementById(elid).innerHTML =
-                    "<div class='appbox diskcat_popup' style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
-                        +"<div class='diskcat_title'>SOFTWARE CATALOG "+close+"</div>"
-                        +"<div id='"+elid+"_cat' class='diskcat'>"
-                        +"  <div id='"+elid+"_list' class='diskcat_body'>"
-                        +"    <div id='"+elid+"_wide' class='diskcat_wide'>"+s+"</div>"
-                        +"  </div>"
-                        +"  <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
-                        +"</div>"
+                    "<div id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
+                        +oCOM.POPUP.title_html("<div class='com_popup_title_text'>SOFTWARE CATALOG</div>"+close)
+                        +"<div id='"+body_id+"' class='com_popup_body com_scroll_y'>"+s+"</div>"
                     +"</div>";
 
-                diskcat_bindScroll(elid);
+                oCOM.POPUP.toggle(popup_id);
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
