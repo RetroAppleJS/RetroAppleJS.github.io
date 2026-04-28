@@ -968,31 +968,10 @@ function(csv)
     toggle: function(id)
     {
         var el = this.el(id);
-        if (!el) return null;
-
         this.states[id] = el.hidden = !el.hidden;
         return el;
     },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
-    _el: function(ref) { return typeof ref == "string" ? document.getElementById(ref) : ref; },
-    class_add: function(ref, cls)
-    {
-        var el = this._el(ref); if (!el || !cls) return el;
-        cls.split(/\s+/).forEach(function(c) { if (c) el.classList.add(c) });
-        return el;
-    },
-    class_remove: function(ref, cls)
-    {
-        var el = this._el(ref); if (!el || !cls) return el;
-        cls.split(/\s+/).forEach(function(c) { if (c) el.classList.remove(c) });
-        return el;
-    },
-    class_set: function(ref, cls, state) { return state ? this.class_add(ref, cls) : this.class_remove(ref, cls) },
-    class_swap: function(ref, removeCls, addCls)
-    {
-        var el = this._el(ref); if (!el) return el;
-        this.class_remove(el, removeCls); this.class_add(el, addCls); return el;
-    },
     title_html: function(title) { return "<div class='com_popup_title'>" + title +"</div>" },
     set_class: function(el,class1,class2,bool)
     {
