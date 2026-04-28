@@ -1397,6 +1397,15 @@ function AppleDisk2()
         switch(arg.id)
         {
             case "softwareCat":
+                var popup_id = arg.id + "_popup";
+                if(document.getElementById(arg.id).innerHTML=="")
+                {
+                    // first time. (class='appbox com_popup_frame' is the bug)
+                    document.getElementById(arg.id).innerHTML =
+                        "<div  id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
+                        +"</div>";
+                }
+                oCOM.POPUP.toggle(popup_id);
                 this.getSoftwareCatRows(arg);
             break;
         }
@@ -1484,6 +1493,9 @@ function diskcat_bindScroll(elid)
 }
 
 
+
+
+
         // MAIN DATA CALL
         GH_listDir(
             arg.id,
@@ -1562,29 +1574,6 @@ function diskcat_bindScroll(elid)
                         +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
                         +"style=\"text-align:center;float:right;\">x</div>";
 
-                if(document.getElementById(elid).innerHTML=="")
-                {
-                    // first time
-                    document.getElementById(elid).innerHTML =
-                        "<div  id='"+popup_id+"' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
-                        +"</div>";
-                    oCOM.POPUP.set_state(popup_id,true)
-                }
-
-                /*
-                if(oCOM.POPUP.get_state(popup_id)==true) 
-                {
-                    oCOM.POPUP.on(popup_id); 
-                    //document.getElementById(popup_id).hidden = false;
-                }
-                else
-                {
-                    oCOM.POPUP.off(popup_id);
-                    //document.getElementById(popup_id).hidden = true;
-                }
-                    */
-
-
                 document.getElementById(popup_id).innerHTML =
                     oCOM.POPUP.title_body_html(
                     "<span>SOFTWARE CATALOG</span>" + close,
@@ -1592,7 +1581,6 @@ function diskcat_bindScroll(elid)
                     body_id,
                     "com_popup_body com_scroll_xy"
                 );
-                oCOM.POPUP.toggle(popup_id);
 
                 console.log("elid", elid);
                 console.log("directories", dirs);
