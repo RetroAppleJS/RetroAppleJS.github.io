@@ -1526,7 +1526,7 @@ function AppleDisk2()
                 document.getElementById(elid).innerHTML =
                     "<div class=appbox style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
                         +"SOFTWARE CATALOG "+close+"<br>"
-                        +"<div>"+s+"</div>"
+                        +"<div id='"+elid+"_list' style='max-height:220px;max-width:100%;overflow-x:scroll;overflow-y:scroll;white-space:nowrap;scrollbar-gutter:stable;'>"+s+"</div>"
                         +"</div>"
                     +"</div>"                
 
