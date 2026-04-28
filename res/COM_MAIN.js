@@ -968,11 +968,25 @@ function(csv)
     toggle: function(id)
     {
         var el = this.el(id);
-        this.states[id] = el.hidden = !el.hidden;
+        if (!el) return null;
+        el.hidden = !el.hidden;
+        this.states[id] = el.hidden;
         return el;
     },
     //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
-    title_html: function(title) { return "<div class='com_popup_title'>" + title +"</div>" },
+    title_body_html: function(title_html, body_html, body_id, body_class)
+    {
+        return ""
+            +"<div class='com_popup_title'>"
+                +title_html
+            +"</div>"
+            +"<div"
+                +(body_id ? " id='"+body_id+"'" : "")
+                +" class='"+(body_class || "com_popup_body com_scroll_xy")+"'"
+            +">"
+                +body_html
+            +"</div>";
+    },
     set_class: function(el,class1,class2,bool)
     {
       el.hidden = bool;
