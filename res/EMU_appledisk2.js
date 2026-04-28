@@ -1455,9 +1455,9 @@ function AppleDisk2()
 
 function diskcat_bindScroll(elid)
 {
-    var body   = document.getElementById(elid + "_list");
-    var wide   = document.getElementById(elid + "_wide");
-    var hbar   = document.getElementById(elid + "_hscroll");
+    var body = document.getElementById(elid + "_list");
+    var wide = document.getElementById(elid + "_wide");
+    var hbar = document.getElementById(elid + "_hscroll");
 
     if (!body || !wide || !hbar) return;
 
@@ -1469,23 +1469,19 @@ function diskcat_bindScroll(elid)
         hbar.scrollLeft = body.scrollLeft;
     }
 
-    hbar.addEventListener("scroll", function()
+    hbar.onscroll = function()
     {
         body.scrollLeft = hbar.scrollLeft;
-    });
+    };
 
-    body.addEventListener("scroll", function()
+    body.onscroll = function()
     {
         hbar.scrollLeft = body.scrollLeft;
-    });
+    };
 
     updateWidth();
 
-    if (window.ResizeObserver)
-    {
-        new ResizeObserver(updateWidth).observe(wide);
-        new ResizeObserver(updateWidth).observe(body);
-    }
+    setTimeout(updateWidth, 0);
 }
 
 
@@ -1566,15 +1562,16 @@ function diskcat_bindScroll(elid)
                 s += '</table></div>';
 
                 document.getElementById(elid).innerHTML =
-                    "<div class=appbox style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
-                        +"SOFTWARE CATALOG "+close+"<br>"
+                    "<div class='appbox diskcat_popup' style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
+                        +"<div class='diskcat_title'>SOFTWARE CATALOG "+close+"</div>"
                         +"<div id='"+elid+"_cat' class='diskcat'>"
                         +"  <div id='"+elid+"_list' class='diskcat_body'>"
                         +"    <div id='"+elid+"_wide' class='diskcat_wide'>"+s+"</div>"
                         +"  </div>"
                         +"  <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
                         +"</div>"
-                    +"</div>"                
+                    +"</div>";
+
                 diskcat_bindScroll(elid);
 
                 console.log("elid", elid);
