@@ -436,7 +436,7 @@ table { border-collapse: collapse; position: relative;}
   }
 
 
-
+/*
 .diskcat_popup {
     overflow: hidden;
     box-sizing: border-box;
@@ -497,6 +497,61 @@ table { border-collapse: collapse; position: relative;}
 
 .diskcat_hscroll > div {
     height: 1px;
+}
+*/
+
+
+.com_popup_frame {
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.com_popup_title {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    min-height: 28px;
+    line-height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.com_popup_title_text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.com_popup_close {
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+.com_popup_body {
+    flex: 1 1 auto;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.com_scroll_y {
+    overflow-y: auto;
+}
+
+.com_scroll_x {
+    overflow-x: auto;
+}
+
+.com_scroll_xy {
+    overflow: auto;
 }
 
 
