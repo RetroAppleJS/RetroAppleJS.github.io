@@ -1453,37 +1453,40 @@ function AppleDisk2()
             });
         }
 
-        function diskcat_bindScroll(elid)
-        {
-            var h = document.getElementById(elid + "_hscroll");
-            var v = document.getElementById(elid + "_list");
+function diskcat_bindScroll(elid)
+{
+    var body   = document.getElementById(elid + "_list");
+    var wide   = document.getElementById(elid + "_wide");
+    var hbar   = document.getElementById(elid + "_hscroll");
 
-            if (!h || !v) return;
+    if (!body || !wide || !hbar) return;
 
-            var inner = v.querySelector("table") || v.firstElementChild || v;
-            var spacer = h.firstElementChild;
+    var spacer = hbar.firstElementChild;
 
-            function updateWidth()
-            {
-                spacer.style.width = inner.scrollWidth + "px";
-                h.scrollLeft = v.scrollLeft;
-            }
+    function updateWidth()
+    {
+        spacer.style.width = wide.scrollWidth + "px";
+        hbar.scrollLeft = body.scrollLeft;
+    }
 
-            h.onscroll = function()
-            {
-                v.scrollLeft = h.scrollLeft;
-            };
+    hbar.addEventListener("scroll", function()
+    {
+        body.scrollLeft = hbar.scrollLeft;
+    });
 
-            v.onscroll = function()
-            {
-                h.scrollLeft = v.scrollLeft;
-            };
+    body.addEventListener("scroll", function()
+    {
+        hbar.scrollLeft = body.scrollLeft;
+    });
 
-            updateWidth();
+    updateWidth();
 
-            if (window.ResizeObserver)
-                new ResizeObserver(updateWidth).observe(inner);
-        }
+    if (window.ResizeObserver)
+    {
+        new ResizeObserver(updateWidth).observe(wide);
+        new ResizeObserver(updateWidth).observe(body);
+    }
+}
 
 
         // MAIN DATA CALL
@@ -1565,10 +1568,11 @@ function AppleDisk2()
                 document.getElementById(elid).innerHTML =
                     "<div class=appbox style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
                         +"SOFTWARE CATALOG "+close+"<br>"
-                        +"  <div id='"+elid+"_box' class='diskcat_box'>"
-                        +"      <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
-                        +"      <div id='"+elid+"_list' class='diskcat_vscroll'>"+s+"</div>"
+                        +"<div id='"+elid+"_cat' class='diskcat'>"
+                        +"  <div id='"+elid+"_list' class='diskcat_body'>"
+                        +"    <div id='"+elid+"_wide' class='diskcat_wide'>"+s+"</div>"
                         +"  </div>"
+                        +"  <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
                         +"</div>"
                     +"</div>"                
                 diskcat_bindScroll(elid);
