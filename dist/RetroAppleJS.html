@@ -2087,36 +2087,49 @@ table { border-collapse: collapse; position: relative;}
 
 
 
+.diskcat_popup {
+    overflow: hidden;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    user-select: text;
+}
+
+.diskcat_title {
+    flex: 0 0 auto;
+    height: 28px;
+    line-height: 28px;
+    box-sizing: border-box;
+    user-select: text;
+}
 
 .diskcat {
-    height: min(70vh, 680px);   /* this is essential */
-    max-height: 680px;
+    flex: 1 1 auto;
+    min-height: 0;
     width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-height: 0;
     box-sizing: border-box;
+    user-select: text;
 }
 
-/* The vertical scrollable part */
 .diskcat_body {
     flex: 1 1 auto;
-    min-height: 0;              /* essential in flex layouts */
+    min-height: 0;
     overflow-y: auto;
-    overflow-x: hidden;         /* horizontal UI is handled below */
-    scrollbar-gutter: stable;
+    overflow-x: hidden;
     box-sizing: border-box;
+    user-select: text;
 }
 
-/* The horizontally scrollable content */
 .diskcat_wide {
     display: inline-block;
     min-width: 100%;
     white-space: nowrap;
+    user-select: text;
 }
 
-/* If s contains a table */
 .diskcat_wide table {
     width: max-content;
     min-width: 100%;
@@ -2124,11 +2137,10 @@ table { border-collapse: collapse; position: relative;}
     white-space: nowrap;
 }
 
-/* Always-visible horizontal scrollbar */
 .diskcat_hscroll {
     flex: 0 0 18px;
     height: 18px;
-    overflow-x: auto;
+    overflow-x: scroll;
     overflow-y: hidden;
     box-sizing: border-box;
 }
@@ -18370,9 +18382,9 @@ function AppleDisk2()
 
 function diskcat_bindScroll(elid)
 {
-    var body   = document.getElementById(elid + "_list");
-    var wide   = document.getElementById(elid + "_wide");
-    var hbar   = document.getElementById(elid + "_hscroll");
+    var body = document.getElementById(elid + "_list");
+    var wide = document.getElementById(elid + "_wide");
+    var hbar = document.getElementById(elid + "_hscroll");
 
     if (!body || !wide || !hbar) return;
 
@@ -18384,23 +18396,19 @@ function diskcat_bindScroll(elid)
         hbar.scrollLeft = body.scrollLeft;
     }
 
-    hbar.addEventListener("scroll", function()
+    hbar.onscroll = function()
     {
         body.scrollLeft = hbar.scrollLeft;
-    });
+    };
 
-    body.addEventListener("scroll", function()
+    body.onscroll = function()
     {
         hbar.scrollLeft = body.scrollLeft;
-    });
+    };
 
     updateWidth();
 
-    if (window.ResizeObserver)
-    {
-        new ResizeObserver(updateWidth).observe(wide);
-        new ResizeObserver(updateWidth).observe(body);
-    }
+    setTimeout(updateWidth, 0);
 }
 
 
@@ -18481,15 +18489,16 @@ function diskcat_bindScroll(elid)
                 s += '</table></div>';
 
                 document.getElementById(elid).innerHTML =
-                    "<div class=appbox style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
-                        +"SOFTWARE CATALOG "+close+"<br>"
+                    "<div class='appbox diskcat_popup' style='position:absolute;left:850px;text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 1px'>"
+                        +"<div class='diskcat_title'>SOFTWARE CATALOG "+close+"</div>"
                         +"<div id='"+elid+"_cat' class='diskcat'>"
                         +"  <div id='"+elid+"_list' class='diskcat_body'>"
                         +"    <div id='"+elid+"_wide' class='diskcat_wide'>"+s+"</div>"
                         +"  </div>"
                         +"  <div id='"+elid+"_hscroll' class='diskcat_hscroll'><div></div></div>"
                         +"</div>"
-                    +"</div>"                
+                    +"</div>";
+
                 diskcat_bindScroll(elid);
 
                 console.log("elid", elid);
