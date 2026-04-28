@@ -1557,8 +1557,13 @@ function diskcat_bindScroll(elid)
                 s += '</table></div>';
 
                 var popup_id = elid + "_popup";
-                if (document.getElementById(popup_id)) { oCOM.POPUP.toggle(popup_id); return }
                 var body_id  = popup_id + "_body";
+
+                if (document.getElementById(popup_id))
+                {
+                    oCOM.POPUP.toggle(popup_id);
+                    return;
+                }
 
                 var close =
                     "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
@@ -1575,7 +1580,7 @@ function diskcat_bindScroll(elid)
                         +"</div>"
                     +"</div>";
 
-                oCOM.POPUP.on(popup_id);                    
+                oCOM.POPUP.toggle(popup_id);                   
 
 
                 console.log("elid", elid);
