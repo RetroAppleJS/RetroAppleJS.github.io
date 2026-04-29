@@ -302,9 +302,12 @@ function EMU_init()
     {
         // CONTINUOUS UPDATES
         el = document.getElementById("surfaceMap_monitoring");
-        var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
-        var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
-        if(b1 && b2) apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
+        if(el!=null)
+        {
+            var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
+            var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
+            if(b1 && b2) apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
+        }
 
         // CATCH CHANGES ONLY
         if(this.Pstate 
