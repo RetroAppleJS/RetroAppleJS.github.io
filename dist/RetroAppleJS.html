@@ -19317,6 +19317,7 @@ function Apple2IO(vid)
         // READ SYSTEM-SPECIFIC I/O RANGES and update oEMU
         function update_IORANGES(sys_model)
         {
+            if(oEMU.system===undefined) return;
             for(var o in _CFG_IORANGES)
             {
                 if(o.indexOf(model) >= 0)
@@ -19779,6 +19780,8 @@ function Apple2IO(vid)
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
     for(var slotIdx=0;slotIdx<slot_count;slotIdx++)
     {
+        if(oEMU.system===undefined) continue;
+
         if(slotR.slotMap[slotIdx])
         {
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
