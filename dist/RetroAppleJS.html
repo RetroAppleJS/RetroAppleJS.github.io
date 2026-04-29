@@ -12153,14 +12153,14 @@ function EMU_init()
         //console.log("pct="+pct+" cent="+cent);
     }
 
-    disk2.GUI_update = function(cmd)  // override
+    disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
     {
         if(this.Pstate 
             && this.Pstate[0].motor == this.state.hw[0].motor
             && this.Pstate[1].motor == this.state.hw[1].motor
             && this.Pstate[0].b_diskData == (this.state.diskData[0]!=null)
             && this.Pstate[1].b_diskData == (this.state.diskData[1]!=null
-            || cmd == "kbd"
+            //|| cmd == "kbd"
             )) return;
 
         if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
@@ -12177,8 +12177,13 @@ function EMU_init()
 
         this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
                       ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}
-                      ,{"keyb_active":_o.EMU_keyb_active} ] 
+                      ,{"keyb_active":_o.EMU_keyb_active}
+                      ,{"surfaceMap_popup":oCOM.POPUP.getState("surfaceMap_popup") } ] 
         
+console.log("surfaceMap_popup = "+this.Pstate["surfaceMap_popup"]);
+
+                      //  oCOM.POPUP.
+                      //apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup")
 
     }
 
@@ -12205,7 +12210,7 @@ function EMU_init()
 
     // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier
     // TODO: also consider building in this event as a branch within DSK_monitoring
-    oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup") },"surfaceMap_monitoring",false);
+    //oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup") },"surfaceMap_monitoring",false);
     
     var bBOOTmon = false;
     if(bBOOTmon)
