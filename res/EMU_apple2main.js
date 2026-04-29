@@ -280,8 +280,6 @@ function EMU_init()
         apple2plus.DiskObj().GUI_update('kbd');
     }
 
-
-    //var s = disk2.state.active ? "apple2plus.DiskObj().GUI_update('kbd');":"" 
     keys.KbdHTML({id:"kbd",path:"res/"
                 ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event);"
                 ,key_events:"onclick=keys.keystroke(event)"});
@@ -302,23 +300,13 @@ function EMU_init()
 
     disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
     {
+        // CONTINUOUS UPDATES
+        el = document.getElementById("surfaceMap_monitoring");
+        var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
+        var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
+        if(b1 && b2) apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
 
-        try
-        {  
-            el = document.getElementById("surfaceMap_monitoring");
-
-            var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
-            var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
-
-            //console.log("surfaceMap_popup = "+b1);
-            //console.log("surfaceMap_monitoring = "+b2);
-
-            if(b1 && b2) 
-                apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
-        }
-        catch(e){}
-
-
+        // CATCH CHANGES ONLY
         if(this.Pstate 
             && this.Pstate[0].motor == this.state.hw[0].motor
             && this.Pstate[1].motor == this.state.hw[1].motor
@@ -342,11 +330,7 @@ function EMU_init()
         this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
                       ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}
                       ,{"keyb_active":_o.EMU_keyb_active}
-                      //,{"surfaceMap_popup":oCOM.POPUP.get_state("surfaceMap_popup") } 
-                    ] 
-                      //  oCOM.POPUP.
-                      //apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup")
-
+                    ];
     }
 
     
