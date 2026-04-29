@@ -1420,6 +1420,7 @@ function AppleDisk2()
                     // first time. (class='appbox com_popup_frame' is the bug)
                     document.getElementById(arg.id).innerHTML =
                         "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
+                        +this.surfaceMap_html(popup_id)
                         +"</div>";
                 }
 
@@ -1681,6 +1682,19 @@ function AppleDisk2()
         return s.join("");
     };
 
+    this.tempSW = function(self)
+    {
+        //oCOM.POPUP.toggle_class(self,'fa-stop-circle','fa-sync-alt');
+        var b = oCOM.POPUP.get_class(self,1)=='fa-stop-circle';
+        oCOM.POPUP.set_class(self,'fa-stop-circle','fa-sync-alt',!b);
+
+
+
+        //var b = oCOM.toggleRefreshEvent(self.id);
+        //if(b) apple2plus.DiskObj().surfaceMap_update(popup_id);
+    }
+
+
     this.surfaceMap_html = function(popup_id)
     {
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
@@ -1689,9 +1703,7 @@ function AppleDisk2()
         var ret = "<div>"
         + "  <div style=\"display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0px;\">"
         + "      <button class=\"appbut\" style=\"text-align:center;\" title=\"sync\">"
-        + "          <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" onclick=\""
-                        + "oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
-                        + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'),'"+popup_id+"');"        
+        + "          <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" onclick=\"apple2plus.DiskObj().tempSW(this)\""       
         +           "\">"
         + "         </i>"
         + "      </button>"
@@ -1708,20 +1720,19 @@ function AppleDisk2()
         return ret;
     }
 
+    /*
     this.enable_surfaceMap_monitoring = function(b,popup_id)
     {
         if(b) this.surfaceMap_update(popup_id);
         return b;
     };
+    */
 
     this.surfaceMap_update = function(popup_id)
     {
         // find from whick call the argument popup_id is null
         //if(!popup_id) alert("surfaceMap_update");
         //popup_id = "surfaceMap_popup";
-
-
-        document.getElementById(popup_id).innerHTML = this.surfaceMap_html(popup_id);
 
         var pal = this.surfaceMap_build_palette();
 
