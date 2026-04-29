@@ -1425,6 +1425,8 @@ function AppleDisk2()
 
                 oCOM.POPUP.toggle(popup_id);                         // Open/close through the requested popup mechanism.
                 this.surfaceMap_update(popup_id);                    // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.
+                //oCOM.POPUP.toggle_class(document.getElementById(arg.id+"_monitoring"),'fa-stop-circle','fa-sync-alt');
+                //oCOM.POPUP.toggle_class(document.getElementById(arg.id+"_monitoring"),'fa-stop-circle','fa-sync-alt');
             }
             break;
         }
@@ -1681,31 +1683,30 @@ function AppleDisk2()
 
     this.surfaceMap_html = function(popup_id)
     {
-        var close =
-            "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
-            +"style=\"text-align:center;float:right;\">x</div>";
+        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
+        +"style=\"width:25px;text-align:center;\">x</div>";
 
-        return ""
-            + "<div style=\"min-width:450px\">"
-            + "  <b>Disk surface map</b>"
-            
-            + "    <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" "
-            + "       onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
-            + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'),'"+popup_id+"');\">"
-            + "    </i>"
-            
-            + close
-            + "  <div style=\"clear:both;height:6px\"></div>"
-            + "  <div style=\"float:left;width:42px;text-align:center\">MAP<br>"
+        var ret = "<div>"
+        + "  <div style=\"display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0px;\">"
+        + "      <button class=\"appbut\" style=\"text-align:center;\" title=\"sync\">"
+        + "          <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" onclick=\""
+                        + "oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
+                        + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'),'"+popup_id+"');"        
+        +           "\">"
+        + "         </i>"
+        + "      </button>"
+        + "      <div style=\"padding:5px 5px;flex:1;\"><b>Disk surface map</b></div>"
+        +        close
+        + "  </div>"
+        
+        + "  <div id=\"surfaceMap_body\" style=\"margin-left:48px;white-space:nowrap\">"
+        +      this.surfaceMap_grid_html(0)
+        +      this.surfaceMap_grid_html(1)
+        + "  </div>"
+        + "</div>";
 
-
-            + "  </div>"
-            + "  <div id=\"surfaceMap_body\" style=\"margin-left:48px;white-space:nowrap\">"
-            +      this.surfaceMap_grid_html(0)
-            +      this.surfaceMap_grid_html(1)
-            + "  </div>"
-            + "</div>";
-    };
+        return ret;
+    }
 
     this.enable_surfaceMap_monitoring = function(b,popup_id)
     {
@@ -1717,7 +1718,8 @@ function AppleDisk2()
     {
         // find from whick call the argument popup_id is null
         //if(!popup_id) alert("surfaceMap_update");
-        popup_id = "surfaceMap_popup";
+        //popup_id = "surfaceMap_popup";
+
 
         document.getElementById(popup_id).innerHTML = this.surfaceMap_html(popup_id);
 
