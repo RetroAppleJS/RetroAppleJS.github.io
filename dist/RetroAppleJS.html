@@ -12076,7 +12076,7 @@ function EMU_init()
         }
     }
         
-    console.log(JSON.stringify(oEMU,null,"  "));
+    //console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE APPLE II+ EMULATOR
     var vidContext = document.getElementById('applescreen');
@@ -12163,8 +12163,8 @@ function EMU_init()
             var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
             var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
 
-            console.log("surfaceMap_popup = "+b1);
-            console.log("surfaceMap_monitoring = "+b2);
+            //console.log("surfaceMap_popup = "+b1);
+            //console.log("surfaceMap_monitoring = "+b2);
 
             if(b1 && b2) 
                 apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
@@ -14757,12 +14757,13 @@ function AppleSpeaker()
     {
         if(!this.enabled || !this.audio || !this.gain) return;
 
+        
         if(bDebug && cnt == 1)
         {
             var s = "";
             for(var i in data_i)
                 s += i + " x" + data_i[i] + "  ";
-            console.log(s);
+            //console.log(s);
             data_i = {};
         }
 
@@ -17117,7 +17118,7 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 function AppleDisk2()
 {
     var bDebug   = true;
-    var bDebug_N = false;   // debug disk noise only 
+    var bDebug_N = true;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     this.state = 
@@ -18084,7 +18085,11 @@ function AppleDisk2()
     {
       if(this.audio===undefined || name==null) return;
 
-      if(bDebug_N) { console.log("play('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
+    if(bDebug_N) 
+    { 
+      console.log("play('"+name+"')"); 
+      //console.log(JSON.stringify(this.dNd));
+    }
 
       this.AUD_buffer[name]        = this.audio.createBufferSource();  // create buffers
       this.AUD_buffer[name].buffer = dN_samples[name].audio;           // fill buffers
@@ -18098,7 +18103,10 @@ function AppleDisk2()
     {
       if(name==null) return;
 
-      if(bDebug_N) { console.log("stop('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
+      if(bDebug_N)
+      { console.log("stop('"+name+"')"); 
+        //console.log(JSON.stringify(this.dNd)) 
+      }
       this.AUD_buffer[name].loop = false;
       this.AUD_buffer[name].stop();
     }
@@ -18702,9 +18710,9 @@ function AppleDisk2()
                         "com_popup_body com_scroll_xy"
                     );
 
-                console.log("elid", elid);
-                console.log("directories", dirs);
-                console.log("files", files);
+                //console.log("elid", elid);
+                //console.log("directories", dirs);
+                //console.log("files", files);
             }
         );
         
@@ -19671,6 +19679,7 @@ function Apple2IO(vid)
             
         }
 
+        /*
         console.log(JSON.stringify(IOMAP_TBL));
 
         var s = ""
@@ -19679,6 +19688,7 @@ function Apple2IO(vid)
             s += "| "+IOMAP_TBL[i].join(" | ")+" |\n"
         }
         console.log(s);
+        */
         
         this.IOMAP_ROWS = iomap_rows;
         return output;
