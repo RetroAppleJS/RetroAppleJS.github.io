@@ -18392,9 +18392,16 @@ function AppleDisk2()
                 if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
                 {
                     document.getElementById(arg.id).innerHTML =
-                    "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'></div>";
+                    "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'></div>";
                 }
                 oCOM.POPUP.toggle(popup_id);
+
+                arg.owner = "RetroAppleJS";
+                arg.repo  = "RetroAppleJS.github.io";
+                arg.basepath = "disks";
+                arg.path  = "disks";
+                arg.ref   = "main";
+
                 this.getSoftwareCatRows(arg);
             break;
 
@@ -18403,7 +18410,7 @@ function AppleDisk2()
                 if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
                 {
                     document.getElementById(arg.id).innerHTML =
-                        "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
+                        "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
                         +this.surfaceMap_html(popup_id)
                         +"</div>";
                 }
@@ -18415,12 +18422,15 @@ function AppleDisk2()
 
     this.getSoftwareCatRows = function(arg)
     {
-        function GH_listDir(elid, owner, repo, path, ref, callback)
+        function GH_listDir(arg, callback)
         {
-            ref = ref || "main";
-            path = path || "";
-            var url = "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + path + "?ref=" + encodeURIComponent(ref);
+            // owner, repo, path, ref
 
+            arg.ref = arg.ref || "main";
+            arg.path = arg.path || "";
+            var url = "https://api.github.com/repos/" + arg.owner + "/" + arg.repo + "/contents/" + arg.path + "?ref=" + encodeURIComponent(arg.ref);
+
+            // READ GITHUB REPO
             oCOM.GetHTTP(url, "text", function()
             {
                 if(this.status != 200)
@@ -18446,29 +18456,20 @@ function AppleDisk2()
                     };
                 });
 
-                callback(null, list, elid);
+                callback(null, list, arg);
             });
         }
 
         // MAIN DATA CALL
         GH_listDir(
-            arg.id,
-            "RetroAppleJS",
-            "RetroAppleJS.github.io",
-            "disks",
-            "main",
-            function(err, list, elid)             // CALLBACK FUNCTION
+            arg,
+            function(err, list, arg)             // CALLBACK FUNCTION
             {
-                if(err)
-                {
-                    console.warn("GitHub directory listing failed", err);
-                    return;
-                }
-
+                if(err) { console.warn("GitHub directory listing failed", err); return; }
                 var dirs  = list.filter(function(e) { return e.type == "dir";  });
                 var files = list.filter(function(e) { return e.type == "file"; });
+                var rows = [];
 
-                var rows = []
                 for(var i=0;i<dirs.length;i++)
                 {
                     rows.push({
@@ -18489,7 +18490,32 @@ function AppleDisk2()
                     });
                 }
 
-                var head = '<div style="margin-top:6px;">'
+                function clone(obj) {
+                    if (null == obj || "object" != typeof obj) return obj;
+                    var copy = obj.constructor();
+                    for (var attr in obj) {
+                        if (obj.hasOwnProperty(attr)) copy[attr] = clone(obj[attr]);
+                    }
+                    return copy;
+                }
+
+                var arg_cpy = clone(arg);
+
+                var bParentDir = arg.path != arg.basepath;
+
+                var parentpath = arg.path.split("/");
+                delete parentpath[parentpath.length-1];
+                arg_cpy.path = parentpath.join("/");
+                arg_cpy.path = arg_cpy.path.substring(0,arg_cpy.path.length-1);
+
+                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>","</div>"];
+                    
+
+                var head = "" 
+                    //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
+                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"
+                    +"<i class=\"fa fa-arrow-alt-circle-up\"></i></div>":"")
+                    +'<div style="margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
                     + '<tr>'
                     + '<th style="text-align:left;padding:2px 4px;">Name</th>'
@@ -18498,10 +18524,26 @@ function AppleDisk2()
                     + '<th style="text-align:left;padding:2px 4px;">Path</th>'
                     + '</tr>';
 
+
                 for(var i=0;i<rows.length;i++)
                 {
+
+                    //<div style=cursor:pointer onclick=apple2plus.DiskObj().getSoftwareCatRows({"owner":"RetroAppleJS","repo":"RetroAppleJS.github.io","path":"disks","ref":"main"})>
+
+//<i class="fa fa-arrow-alt-circle-up"></i>
+//<i class="fa fa-level-up-alt"></i>
+
+                    var bDir = rows[i].type=="dir";
+                    var arg_cpy = clone(arg);
+                    arg_cpy.path = arg_cpy.path+"/"+rows[i].name;
+
+                    // LINK TO A SUBDIREcTORY
+                    var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"+(bDir?"<i class=\"fa fa-folder\"></i> ":""),"</div>"];
+                    
+                    console.log("subDir="+subDir[0]);
+                    
                     head += '<tr>'
-                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
+                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+subDir[0]+oCOM.escapeHTML(rows[i].name)+subDir[1]+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].size)+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].type)+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].path)+'</td>'
@@ -18509,15 +18551,15 @@ function AppleDisk2()
                 }
                 head += '</table></div>';
 
-                var popup_id = elid + "_popup";
-                var body_id  = elid + "_body";
+                var popup_id = arg.id + "_popup";
+                var body_id  = arg.id + "_body";
 
                 var closeBtn = "<div class=\"appbut\" "
                         +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
                         +"style=\"text-align:center;float:right;\">x</div>";
 
                 document.getElementById(popup_id).innerHTML =
-                    oCOM.POPUP.title_body_html("<span>SOFTWARE CATALOG</span>" + closeBtn, head, body_id,"com_popup_body com_scroll_xy");
+                    oCOM.POPUP.title_body_html("<span>SOFTWARE CATALOG</span>" + closeBtn, head, body_id, "com_popup_body com_scroll_xy");
             }
         );
     }
