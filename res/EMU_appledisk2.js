@@ -1464,9 +1464,7 @@ function AppleDisk2()
 
         function interpolate_arr(a,b,pct)
         {
-            var out = [];
-            for(var i=0;i<a.length;i++)
-                out[i] = Math.round(a[i] + (b[i]-a[i]) * pct / 100);
+            for(var i=0,out = [];i<a.length;i++)  out[i] = Math.round(a[i] + (b[i]-a[i]) * pct / 100);
             return out;
         }
     };
@@ -1556,8 +1554,7 @@ function AppleDisk2()
                         if(b != 0) nz++;
                     }
 
-                    // Sector “density”: black for empty/zero-like sectors,
-                    // bright for sectors with many non-zero bytes.
+                    // Sector “density”: black for empty/zero-like sectors, bright for sectors with many non-zero bytes.
                     var pct = Math.round(nz * 100 / 256);
                     var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
 
