@@ -349,7 +349,10 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
-    oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update() },"surfaceMap_monitoring",false);
+
+    // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier
+    // TODO: also consider building in this event as a branch within DSK_monitoring
+    oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup") },"surfaceMap_monitoring",false);
     
     var bBOOTmon = false;
     if(bBOOTmon)
@@ -672,7 +675,7 @@ function EMUI()
                 return ""
                 + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
                 + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></div>"
+                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
                 + "</div>";
