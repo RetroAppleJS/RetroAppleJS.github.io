@@ -3546,7 +3546,6 @@ function(csv)
     on: function(id) { var el = this.el(id); this.states[id] = false; el.hidden = false; return el; },
     off: function(id) { var el = this.el(id); this.states[id] = true; el.hidden = true; return el; },
     toggle: function(id) { var el = this.el(id); el.hidden = !el.hidden; this.states[id] = el.hidden; return el; },
-    //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
     title_body_html: function(title_html, body_html, body_id, body_class)
     {
         return ""
@@ -3560,6 +3559,7 @@ function(csv)
                 +body_html
             +"</div>";
     },
+    get_class: function(el,idx) { return el.classList.item(idx===undefined?0:idx) },
     set_class: function(el,class1,class2,bool)
     {
       el.hidden = bool;
@@ -12155,6 +12155,23 @@ function EMU_init()
 
     disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
     {
+
+        try
+        {  
+            el = document.getElementById("surfaceMap_monitoring");
+
+            var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
+            var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
+
+            console.log("surfaceMap_popup = "+b1);
+            console.log("surfaceMap_monitoring = "+b2);
+
+            if(b1 && b2) 
+                apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
+        }
+        catch(e){}
+
+
         if(this.Pstate 
             && this.Pstate[0].motor == this.state.hw[0].motor
             && this.Pstate[1].motor == this.state.hw[1].motor
@@ -12178,10 +12195,8 @@ function EMU_init()
         this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
                       ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}
                       ,{"keyb_active":_o.EMU_keyb_active}
-                      ,{"surfaceMap_popup":oCOM.POPUP.getState("surfaceMap_popup") } ] 
-        
-console.log("surfaceMap_popup = "+this.Pstate["surfaceMap_popup"]);
-
+                      //,{"surfaceMap_popup":oCOM.POPUP.get_state("surfaceMap_popup") } 
+                    ] 
                       //  oCOM.POPUP.
                       //apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup")
 
@@ -18402,6 +18417,7 @@ function AppleDisk2()
                     // first time. (class='appbox com_popup_frame' is the bug)
                     document.getElementById(arg.id).innerHTML =
                         "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
+                        +this.surfaceMap_html(popup_id)
                         +"</div>";
                 }
 
@@ -18663,6 +18679,19 @@ function AppleDisk2()
         return s.join("");
     };
 
+    this.tempSW = function(self)
+    {
+        //oCOM.POPUP.toggle_class(self,'fa-stop-circle','fa-sync-alt');
+        var b = oCOM.POPUP.get_class(self,1)=='fa-stop-circle';
+        oCOM.POPUP.set_class(self,'fa-stop-circle','fa-sync-alt',!b);
+
+
+
+        //var b = oCOM.toggleRefreshEvent(self.id);
+        //if(b) apple2plus.DiskObj().surfaceMap_update(popup_id);
+    }
+
+
     this.surfaceMap_html = function(popup_id)
     {
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
@@ -18671,9 +18700,7 @@ function AppleDisk2()
         var ret = "<div>"
         + "  <div style=\"display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0px;\">"
         + "      <button class=\"appbut\" style=\"text-align:center;\" title=\"sync\">"
-        + "          <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" onclick=\""
-                        + "oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
-                        + "apple2plus.DiskObj().enable_surfaceMap_monitoring(oCOM.toggleRefreshEvent('surfaceMap_monitoring'),'"+popup_id+"');"        
+        + "          <i class=\"fa fa-sync-alt\" id=\"surfaceMap_monitoring\" onclick=\"apple2plus.DiskObj().tempSW(this)\""       
         +           "\">"
         + "         </i>"
         + "      </button>"
@@ -18690,20 +18717,19 @@ function AppleDisk2()
         return ret;
     }
 
+    /*
     this.enable_surfaceMap_monitoring = function(b,popup_id)
     {
         if(b) this.surfaceMap_update(popup_id);
         return b;
     };
+    */
 
     this.surfaceMap_update = function(popup_id)
     {
         // find from whick call the argument popup_id is null
         //if(!popup_id) alert("surfaceMap_update");
         //popup_id = "surfaceMap_popup";
-
-
-        document.getElementById(popup_id).innerHTML = this.surfaceMap_html(popup_id);
 
         var pal = this.surfaceMap_build_palette();
 
