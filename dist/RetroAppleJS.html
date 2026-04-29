@@ -17117,8 +17117,8 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
 function AppleDisk2()
 {
-    var bDebug   = true;
-    var bDebug_N = true;   // debug disk noise only 
+    var bDebug   = false;
+    var bDebug_N = false;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     this.state = 
@@ -17251,35 +17251,11 @@ function AppleDisk2()
         this.state.drv = 0;
     }
 
-
     this.getDataObj = function() { return this.state.hw }
 
-    this.GUI_update = function()    // overridable function to update drive status (LED)
-    {
-    }
+    this.GUI_update = function() {}   // overridable function to update drive status (LED)
     
-    this.update_logs = function(name)    // overridable function
-    {
-        /*
-        name += " track"+this.state.hw[this.state.drv].track;
-
-        if(prev_name != name)
-        {
-            var n = prev_name.split(" ")[0];
-            if(prev_name != "") 
-            {
-                if(this.state.hw[this.state.drv][n]===undefined)
-                console.log(prev_name+" ["+prev_name_cnt+"]");
-                else
-                    console.log(prev_name+" "+(this.state.hw[this.state.drv][n])+" ["+prev_name_cnt+"]");
-            }
-            prev_name_cnt = 1;
-        }
-        else prev_name_cnt++
-
-        prev_name = name;
-        */
-    }
+    this.update_logs = function(name) {}   // overridable function
     
 
     //  ██████  ███████  █████  ██████  
@@ -17693,7 +17669,6 @@ function AppleDisk2()
             }
         }
 
-
         if(track==0 && sec==0)
         {
             for(var i=0;i<256;i+=16)
@@ -17707,11 +17682,7 @@ function AppleDisk2()
             }
         }
 
-
-        function mb(val,src_bit,dst_bit)
-        {
-            return (val&(1<<src_bit))<<dst_bit>>src_bit;
-        }
+        function mb(val,src_bit,dst_bit) { return (val&(1<<src_bit))<<dst_bit>>src_bit; }
 
         function mbit2(db,idx,src_bit,dst_bit)
         {
@@ -17981,7 +17952,7 @@ function AppleDisk2()
         }
 
         return dskBytes;
-    };
+    }
 
 
  
@@ -18016,8 +17987,6 @@ function AppleDisk2()
 
     this.dN_update = function(status)
     {
-        if(bDebug_N) console.log("dN_update(" + status + ") hw.motor=" + this.state.hw[this.state.drv].motor);
-
         this.dNd.state = status;
         this.dNd.bRep   = this.dNd.last.state==status;
 
@@ -18028,34 +17997,34 @@ function AppleDisk2()
         this.dNd.last = {}; this.dNd.last = {...this.dNd};
     }
 
-        this.dN_launcher = function(active)
+    this.dN_launcher = function(active)
+    {
+        var o = this.dNd;
+        var l = o.last;
+
+        if(o.enable==true)
         {
-            var o = this.dNd;
-            var l = o.last;
-
-            if(o.enable==true)
+            // Schedule spindown for every MOTOR_OFF while spin noise is logically ON.
+            // This must happen before shortswipe/click/longswipe branches can return.
+            if(o.state=="MOTOR_OFF" && o.motor=="ON")
             {
-                // Schedule spindown for every MOTOR_OFF while spin noise is logically ON.
-                // This must happen before shortswipe/click/longswipe branches can return.
-                if(o.state=="MOTOR_OFF" && o.motor=="ON")
-                {
-                    if(o.motorOffTimer) clearTimeout(o.motorOffTimer);
-                    o.motorOffTimer = setTimeout(this.dN_spindown, 1000, this);
-                }
-
-                // Cancel pending spindown when motor is turned back on.
-                if(o.state=="MOTOR_ON" && o.motorOffTimer) { clearTimeout(o.motorOffTimer); o.motorOffTimer = null; }
-                if(l.state=="MOTOR_ON" && o.motor=="OFF") { o.motor="ON"; return this.dN_play("DiskII_spin"); }
-                if(o.state=="CLICK_IN" || o.state=="CLICK_OUT") return this.dN_play("DiskII_click");
-                if((l.state=="ARM_OUT" || l.state=="ARM_IN")==true && o.bRep==false && l.bRep==true && l.rept<10) return this.dN_play("DiskII_shortswipe");
-                if((o.state=="ARM_OUT" || o.state=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
-                if(l.state=="MOTOR_OFF" && o.state=="SPINDOWN") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown"); }
-                if((o.motor=="OFF" && (o.state=="MOTOR_ON" || l.state===undefined)) || (l.state=="SPINDOWN" && o.state=="MOTOR_ON") || (o.motor=="OFF" && l.enable==false && o.enable==true))
-                    { o.motor="ON"; return this.dN_play("DiskII_spin");}
-
-                return null;
+                if(o.motorOffTimer) clearTimeout(o.motorOffTimer);
+                o.motorOffTimer = setTimeout(this.dN_spindown, 1000, this);
             }
+
+            // Cancel pending spindown when motor is turned back on.
+            if(o.state=="MOTOR_ON" && o.motorOffTimer) { clearTimeout(o.motorOffTimer); o.motorOffTimer = null; }
+            if(l.state=="MOTOR_ON" && o.motor=="OFF") { o.motor="ON"; return this.dN_play("DiskII_spin"); }
+            if(o.state=="CLICK_IN" || o.state=="CLICK_OUT") return this.dN_play("DiskII_click");
+            if((l.state=="ARM_OUT" || l.state=="ARM_IN")==true && o.bRep==false && l.bRep==true && l.rept<10) return this.dN_play("DiskII_shortswipe");
+            if((o.state=="ARM_OUT" || o.state=="ARM_IN")==true && o.rept==10) return this.dN_play("DiskII_longswipe");
+            if(l.state=="MOTOR_OFF" && o.state=="SPINDOWN") { this.dN_stop("DiskII_spin"); return this.dN_play("DiskII_spindown"); }
+            if((o.motor=="OFF" && (o.state=="MOTOR_ON" || l.state===undefined)) || (l.state=="SPINDOWN" && o.state=="MOTOR_ON") || (o.motor=="OFF" && l.enable==false && o.enable==true))
+                { o.motor="ON"; return this.dN_play("DiskII_spin");}
+
+            return null;
         }
+    }
 
     var set_action = function(o)
     {
@@ -18079,34 +18048,24 @@ function AppleDisk2()
         }
     }
 
-    this.dN_speed_update = function(pct){}      // overridable function - tune disk noise to CPU clock 
+    this.dN_speed_update = function(pct) {}      // overridable function - tune disk noise to CPU clock 
 
     this.dN_play = function(name)
     {
-      if(this.audio===undefined || name==null) return;
-
-    if(bDebug_N) 
-    { 
-      console.log("play('"+name+"')"); 
-      //console.log(JSON.stringify(this.dNd));
-    }
-
-      this.AUD_buffer[name]        = this.audio.createBufferSource();  // create buffers
-      this.AUD_buffer[name].buffer = dN_samples[name].audio;           // fill buffers
-      this.AUD_buffer[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
-      this.AUD_buffer[name].loop           = dN_samples[name].loop;    // configure loop parameter
-      this.AUD_buffer[name].detune.value   = this.dNd.detune;          // tune according to CPU clock
-      this.AUD_buffer[name].start(this.audio.currentTime);
+        if(this.audio===undefined || name==null) return;
+        if(bDebug_N) { console.log("play('"+name+"')") }
+        this.AUD_buffer[name]               = this.audio.createBufferSource();  // create buffers
+        this.AUD_buffer[name].buffer        = dN_samples[name].audio;           // fill buffers
+        this.AUD_buffer[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
+        this.AUD_buffer[name].loop          = dN_samples[name].loop;    // configure loop parameter
+        this.AUD_buffer[name].detune.value  = this.dNd.detune;          // tune according to CPU clock
+        this.AUD_buffer[name].start(this.audio.currentTime);
     }
 
     this.dN_stop = function(name)
     {
       if(name==null) return;
-
-      if(bDebug_N)
-      { console.log("stop('"+name+"')"); 
-        //console.log(JSON.stringify(this.dNd)) 
-      }
+      if(bDebug_N) { console.log("stop('"+name+"')") }
       this.AUD_buffer[name].loop = false;
       this.AUD_buffer[name].stop();
     }
@@ -18175,14 +18134,19 @@ function AppleDisk2()
     ]);
 
 
-
+    //    ██████  ██ ███████ ██   ██ ██ ██     ████████ ██████   █████   ██████ ███████ 
+    //    ██   ██ ██ ██      ██  ██  ██ ██        ██    ██   ██ ██   ██ ██      ██      
+    //    ██   ██ ██ ███████ █████   ██ ██        ██    ██████  ███████ ██      █████   
+    //    ██   ██ ██      ██ ██  ██  ██ ██        ██    ██   ██ ██   ██ ██      ██      
+    //    ██████  ██ ███████ ██   ██ ██ ██        ██    ██   ██ ██   ██  ██████ ███████ 
 
     // -----------------------------------------------------------------------------
     // DISKII TRACE
     // Minimal semantic trace: log only meaningful state changes and aggregated data.
     // -----------------------------------------------------------------------------
 
-    this.trace = {
+    this.trace = 
+    {
         enabled: false,
         echo: true,
         maxEvents: 1000,
@@ -18207,13 +18171,13 @@ function AppleDisk2()
         this.trace.pendingArm = null;
         this.trace.pendingData = null;
         this.trace.lastUnavailable = "";
-    };
+    }
 
     this.traceFlush = function(reason)
     {
         this.traceFlushData(reason);
         this.traceFlushArm(reason);
-    };
+    }
 
     this.traceHexByte = function(v)
     {
@@ -18222,13 +18186,13 @@ function AppleDisk2()
 
         var s = (v & 0xff).toString(16).toUpperCase();
         return "$" + ("00" + s).slice(-2);
-    };
+    }
 
     this.traceHexWord = function(v)
     {
         var s = (v & 0xffff).toString(16).toUpperCase();
         return "$" + ("0000" + s).slice(-4);
-    };
+    }
 
     this.traceBytes = function(bytes)
     {
@@ -18237,20 +18201,15 @@ function AppleDisk2()
             s[s.length] = this.traceHexByte(bytes[i]);
 
         return s.join(" ");
-    };
+    }
 
     this.traceNibKind = function(bytes)
     {
         if (bytes.length >= 3)
         {
-            if (bytes[0] == 0xd5 && bytes[1] == 0xaa && bytes[2] == 0x96)
-                return "ADDR_FIELD_PROLOGUE";
-
-            if (bytes[0] == 0xd5 && bytes[1] == 0xaa && bytes[2] == 0xad)
-                return "DATA_FIELD_PROLOGUE";
-
-            if (bytes[0] == 0xde && bytes[1] == 0xaa)
-                return "FIELD_EPILOGUE";
+            if (bytes[0] == 0xd5 && bytes[1] == 0xaa && bytes[2] == 0x96) return "ADDR_FIELD_PROLOGUE";
+            if (bytes[0] == 0xd5 && bytes[1] == 0xaa && bytes[2] == 0xad) return "DATA_FIELD_PROLOGUE";
+            if (bytes[0] == 0xde && bytes[1] == 0xaa) return "FIELD_EPILOGUE";
         }
 
         var sync = bytes.length > 0;
@@ -18265,10 +18224,8 @@ function AppleDisk2()
         if (!this.trace.enabled) return;
 
         data = data || {};
-
         var drv = data.drv;
         if (drv === undefined) drv = this.state.drv;
-
         var hw = this.state.hw[drv] || {};
 
         var e = {
@@ -18287,12 +18244,9 @@ function AppleDisk2()
         for (var k in data) e[k] = data[k];
 
         this.trace.events[this.trace.events.length] = e;
-        if (this.trace.events.length > this.trace.maxEvents)
-            this.trace.events.shift();
-
-        if (this.trace.echo && typeof console != "undefined")
-            console.log(this.traceFormat(e));
-    };
+        if (this.trace.events.length > this.trace.maxEvents) this.trace.events.shift();
+        if (this.trace.echo && typeof console != "undefined") console.log(this.traceFormat(e));
+    }
 
     this.traceFormat = function(e)
     {
@@ -18394,7 +18348,7 @@ function AppleDisk2()
             p.event = eventName;
             p.clicks++;
         }
-    };
+    }
 
     this.traceFlushArm = function(reason)
     {
@@ -18413,7 +18367,7 @@ function AppleDisk2()
             clicks: p.clicks,
             reason: reason
         });
-    };
+    }
 
     this.traceDataByte = function(mode, drv, loc, d8)
     {
@@ -18459,7 +18413,7 @@ function AppleDisk2()
 
         if (p.bytes.length < this.trace.maxBytes)
             p.bytes[p.bytes.length] = d8 & 0xff;
-    };
+    }
 
     this.traceFlushData = function(reason)
     {
@@ -18469,7 +18423,6 @@ function AppleDisk2()
         if (!p) return;
 
         this.trace.pendingData = null;
-
         this.traceLog(p.mode == "WRITE" ? "WRITE_DATA_BLOCK" : "READ_DATA_BLOCK", {
             drv: p.drv,
             blockTrack: p.blockTrack,
@@ -18484,7 +18437,7 @@ function AppleDisk2()
             kind: this.traceNibKind(p.bytes),
             reason: reason
         });
-    };
+    }
 
     this.traceUnavailable = function(drv, reason)
     {
@@ -18501,71 +18454,45 @@ function AppleDisk2()
             reason: reason,
             returned: this.traceHexByte(0xff)
         });
-    };
+    }
 
     this.diskMenu_detail = function(arg)
     {
-
-        // TODO extend here to all popup customisations?
         switch(arg.id)
         {
             case "softwareCat":
                 var popup_id = arg.id + "_popup";
-                if(document.getElementById(arg.id).innerHTML=="")
+                if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
                 {
-                    // first time. (class='appbox com_popup_frame' is the bug)
                     document.getElementById(arg.id).innerHTML =
-                        "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'>"
-                        +"</div>";
-
+                    "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'></div>";
                 }
                 oCOM.POPUP.toggle(popup_id);
                 this.getSoftwareCatRows(arg);
             break;
 
             case "surfaceMap":
-            {
-//id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:300px;height:250px;text-align:left;padding:0px;margin:0px'
-
                 var popup_id = arg.id + "_popup";
-                if(document.getElementById(arg.id).innerHTML=="")
+                if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
                 {
-                    // first time. (class='appbox com_popup_frame' is the bug)
                     document.getElementById(arg.id).innerHTML =
                         "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:850px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
                         +this.surfaceMap_html(popup_id)
                         +"</div>";
                 }
-
                 oCOM.POPUP.toggle(popup_id);                         // Open/close through the requested popup mechanism.
-                this.surfaceMap_update(popup_id);                    // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.
-                //oCOM.POPUP.toggle_class(document.getElementById(arg.id+"_monitoring"),'fa-stop-circle','fa-sync-alt');
-                //oCOM.POPUP.toggle_class(document.getElementById(arg.id+"_monitoring"),'fa-stop-circle','fa-sync-alt');
-            }
+                this.surfaceMap_update(popup_id);                    // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.            }
             break;
         }
-        //document.getElementById(arg.id).innerHTML = arg.id + close;
-
-
     }
 
     this.getSoftwareCatRows = function(arg)
     {
-       
-        
         function GH_listDir(elid, owner, repo, path, ref, callback)
         {
             ref = ref || "main";
             path = path || "";
-
-            var url =
-                "https://api.github.com/repos/"
-                + owner + "/"
-                + repo
-                + "/contents/"
-                + path
-                + "?ref="
-                + encodeURIComponent(ref);
+            var url = "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + path + "?ref=" + encodeURIComponent(ref);
 
             oCOM.GetHTTP(url, "text", function()
             {
@@ -18596,41 +18523,6 @@ function AppleDisk2()
             });
         }
 
-        function diskcat_bindScroll(elid)
-        {
-            var body = document.getElementById(elid + "_list");
-            var wide = document.getElementById(elid + "_wide");
-            var hbar = document.getElementById(elid + "_hscroll");
-
-            if (!body || !wide || !hbar) return;
-
-            var spacer = hbar.firstElementChild;
-
-            function updateWidth()
-            {
-                spacer.style.width = wide.scrollWidth + "px";
-                hbar.scrollLeft = body.scrollLeft;
-            }
-
-            hbar.onscroll = function()
-            {
-                body.scrollLeft = hbar.scrollLeft;
-            };
-
-            body.onscroll = function()
-            {
-                hbar.scrollLeft = body.scrollLeft;
-            };
-
-            updateWidth();
-
-            setTimeout(updateWidth, 0);
-        }
-
-
-
-
-
         // MAIN DATA CALL
         GH_listDir(
             arg.id,
@@ -18649,11 +18541,9 @@ function AppleDisk2()
                 var dirs  = list.filter(function(e) { return e.type == "dir";  });
                 var files = list.filter(function(e) { return e.type == "file"; });
 
-
                 var rows = []
                 for(var i=0;i<dirs.length;i++)
                 {
-                    
                     rows.push({
                         name: dirs[i].name,
                         path: dirs[i].path,
@@ -18672,10 +18562,7 @@ function AppleDisk2()
                     });
                 }
 
-
-
-                // TODO: write list
-                var s = '<div style="margin-top:6px;">'
+                var head = '<div style="margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
                     + '<tr>'
                     + '<th style="text-align:left;padding:2px 4px;">Name</th>'
@@ -18686,58 +18573,46 @@ function AppleDisk2()
 
                 for(var i=0;i<rows.length;i++)
                 {
-                    s += '<tr>'
+                    head += '<tr>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].size)+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].type)+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].path)+'</td>'
                     + '</tr>';
                 }
-                s += '</table></div>';
+                head += '</table></div>';
 
                 var popup_id = elid + "_popup";
                 var body_id  = elid + "_body";
 
-                var close = "<div class=\"appbut\" "
+                var closeBtn = "<div class=\"appbut\" "
                         +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
                         +"style=\"text-align:center;float:right;\">x</div>";
 
                 document.getElementById(popup_id).innerHTML =
-                    oCOM.POPUP.title_body_html(
-                        "<span>SOFTWARE CATALOG</span>" + close,
-                        s,
-                        body_id,
-                        "com_popup_body com_scroll_xy"
-                    );
-
-                //console.log("elid", elid);
-                //console.log("directories", dirs);
-                //console.log("files", files);
+                    oCOM.POPUP.title_body_html("<span>SOFTWARE CATALOG</span>" + closeBtn, head, body_id,"com_popup_body com_scroll_xy");
             }
         );
-        
-
-
     }
 
 
 
 
-
-
-
-
+    //    ███████ ██    ██ ██████  ███████  █████   ██████ ███████     ███    ███  █████  ██████  
+    //    ██      ██    ██ ██   ██ ██      ██   ██ ██      ██          ████  ████ ██   ██ ██   ██ 
+    //    ███████ ██    ██ ██████  █████   ███████ ██      █████       ██ ████ ██ ███████ ██████  
+    //         ██ ██    ██ ██   ██ ██      ██   ██ ██      ██          ██  ██  ██ ██   ██ ██      
+    //    ███████  ██████  ██   ██ ██      ██   ██  ██████ ███████     ██      ██ ██   ██ ██    
     // SURFACE MAP
+    
     this.surfaceMap_palette = null;
     this.surfaceMap_headCell = [null,null];
 
     this.surfaceMap_build_palette = function()
     {
         if(this.surfaceMap_palette != null) return this.surfaceMap_palette;
-
         var col_arr = ["#2D788E","#2CA984","#7DD552","#FDEA27"];
         var pal = Array(101);
-
         for(var i=0;i<100;i++)
         {
             var rng = 100/(col_arr.length-1);
@@ -18764,9 +18639,7 @@ function AppleDisk2()
 
     this.surfaceMap_grid_html = function(drv)
     {
-        var d = drv + 1;
-        var s = [];
-
+        var d = drv + 1, s = [];
         s.push("<div style=\"display:inline-block;vertical-align:top;margin-right:14px\">");
         s.push("<div style=\"font-weight:bold;text-align:center;margin-bottom:4px\">D"+d+"</div>");
         s.push("<table id=\"surfaceMap_table_D"+d+"\" style=\"border-collapse:collapse;font-family:Courier;font-size:9px\">");
@@ -18775,29 +18648,23 @@ function AppleDisk2()
         {
             s.push("<tr>");
             s.push("<td style=\"padding-right:4px;color:#aaa;text-align:right\">T"+track+"</td>");
-
             for(var sector=0; sector<16; sector++)
             {
-                s.push(
-                    "<td id=\"surfaceMap_D"+d+"_"+track+"_"+sector+"\""
+                s.push("<td id=\"surfaceMap_D"+d+"_"+track+"_"+sector+"\""
                     +" style=\"width:10px;height:10px;border:1px solid #333;background-color:#111\""
-                    +" title=\"D"+d+" T"+track+" S"+sector+"\"></td>"
-                );
+                    +" title=\"D"+d+" T"+track+" S"+sector+"\"></td>");
             }
-
             s.push("</tr>");
         }
-
         s.push("</table>");
         s.push("<div id=\"surfaceMap_status_D"+d+"\" style=\"text-align:center;color:#aaa;margin-top:4px\">no disk</div>");
         s.push("</div>");
-
         return s.join("");
     }
 
     this.surfaceMap_html = function(popup_id)
     {
-        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
+        var closeBtn = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
         +"style=\"width:25px;text-align:center;\">x</div>";
 
         var ret = "<div>"
@@ -18809,9 +18676,8 @@ function AppleDisk2()
         + "         </i>"
         + "      </button>"
         + "      <div style=\"padding:5px 5px;flex:1;\"><b>Disk surface map</b></div>"
-        +        close
+        +        closeBtn
         + "  </div>"
-        
         + "  <div id=\"surfaceMap_body\" style=\"margin-left:48px;white-space:nowrap\">"
         +      this.surfaceMap_grid_html(0)
         +      this.surfaceMap_grid_html(1)
@@ -18829,7 +18695,6 @@ function AppleDisk2()
         {
             var d = drv + 1;
             var status = document.getElementById("surfaceMap_status_D"+d);
-
             if(this.state.diskData[drv] == null)
             {
                 if(status) status.innerHTML = "no disk";
@@ -18846,19 +18711,14 @@ function AppleDisk2()
             }
 
             if(status) status.innerHTML = dskBytes.length+" bytes";
-
             for(var track=0; track<35; track++)
             {
                 for(var sector=0; sector<16; sector++)
                 {
-                    var offs = (track << 12) + (sector << 8);
-                    var nz = 0;
-                    var sum = 0;
-
+                    var offs = (track << 12) + (sector << 8), nz = 0, sum = 0;
                     for(var i=0; i<256; i++)
                     {
-                        var b = dskBytes[offs+i] & 0xff;
-                        sum += b;
+                        var b = dskBytes[offs+i] & 0xff; sum += b;
                         if(b != 0) nz++;
                     }
 
@@ -18908,23 +18768,17 @@ function AppleDisk2()
     this.surfaceMap_mark_head = function(drv)
     {
         var d = drv + 1;
-
         if(this.surfaceMap_headCell[drv] != null)
         {
             var old = document.getElementById(this.surfaceMap_headCell[drv]);
             if(old) old.style.outline = "";
         }
-
-        var hw = this.state.hw[drv];
-        if(!hw) return;
-
+        var hw = this.state.hw[drv]; if(!hw) return;
         var track = Math.max(0,Math.min(34,hw.track));
         var sector = Math.max(0,Math.min(15,Math.floor(hw.offset / (6656/16))));
         var id = "surfaceMap_D"+d+"_"+track+"_"+sector;
-
         var el = document.getElementById(id);
         if(el) el.style.outline = "2px solid #fff";
-
         this.surfaceMap_headCell[drv] = id;
     };
 
