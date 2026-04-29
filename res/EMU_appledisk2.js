@@ -412,18 +412,17 @@ function AppleDisk2()
             offs = track * 6656;
             for (var sec = 0; sec < 16; sec++)
             {
-
                 // Gap 1 (which serve as buffer to avoid overlap with the end of the previous sector)
                 addBytes([0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff]);
 
                 // Addr field prologue (uniquely marks the beginning of a sector & address field)
                 addBytes([0xd5,0xaa,0x96]);   // 0xd5 and 0xaa are not in the GRC lookup table
 
-                    // ADDRESS FIELD
-                    addBytes(split_OddEven(0xFE));                // Volume
-                    addBytes(split_OddEven(track));               // Track
-                    addBytes(split_OddEven(sec));                 // Sector
-                    addBytes(split_OddEven(0xFE ^ track ^ sec));  // Checksum
+                // ADDRESS FIELD
+                addBytes(split_OddEven(0xFE));                // Volume
+                addBytes(split_OddEven(track));               // Track
+                addBytes(split_OddEven(sec));                 // Sector
+                addBytes(split_OddEven(0xFE ^ track ^ sec));  // Checksum
 
                 // Addr field epilogue (uniquely marks the end of the address field)
                 addBytes([0xde,0xaa,0xeb]);  // 0xaa is not in the GRC lookup table
@@ -438,30 +437,21 @@ function AppleDisk2()
                 var o = prenibble(track,sec,dskBytes);
                 prenib = o.data;
 
-
                 if(o.log!=null && track==0) log[log.length] = o.log;
 
                 // 2 - Encode 342 nibbilized bytes of data.
-                
                 var prev = 0;   // reset data-field checksum chain for each sector
-                //var log2 = new Array();
                 for (var ni = -86; ni < 256; ni++)
                 {
                     var i = ni <0 ? 255-ni : ni;  // i:  341-256 & 0-255
                     var b = sixTwo[prev ^ prenib[i]];
-
                     addBytes([ b ]);
                     prev = prenib[i];
                 }
-                
-
                 addBytes([ sixTwo[prev] ]); // add the last remaining byte
 
-
-                // 3 - ENTIRE BYTE NIBBLE - TODO: CHECK WITH ***
-
-                // Data field epilogue
-                addBytes([0xde,0xaa,0xeb]);
+                // 3 - ENTIRE BYTE NIBBLE
+                addBytes([0xde,0xaa,0xeb]);                  // Data field epilogue
             }
 
             // Gap 3 (fill out with sync bytes until end of track, minimum 14 bytes, allowing enough time for DOS to process the data
@@ -469,14 +459,9 @@ function AppleDisk2()
             addBytes( [...new Array(bytes2EOT)].map(()=> 0xff) );
         }
 
-        //alert("CRC32: "+oCOM.crc32(bytes).toString(16).toUpperCase());
-
         if(log.length>0)
         {
-            document.getElementById("output").innerHTML = 
-            "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"
-            +log.join("<br>");
-            +"</div>"
+            document.getElementById("output").innerHTML = "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"+log.join("<br>")+"</div>"
         }
 
         //CRC32: 435A9A45
@@ -488,14 +473,10 @@ function AppleDisk2()
     {
         var bDebug = false;
 
-        if(prenib===undefined)
-            var prenib = new Array(256 + 86);
-
+        if(prenib===undefined) var prenib = new Array(256 + 86);
         var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
         var doffs = (secSkew[sec] << 8) + (track << 12);
-
         var prenib_fml = new Array();
-
         var z = 0;
 
         // CALCULATE v1
@@ -563,6 +544,7 @@ function AppleDisk2()
             }
         }
 
+        /*
         if(track==0 && sec==0)
         {
             for(var i=0;i<256;i+=16)
@@ -575,6 +557,7 @@ function AppleDisk2()
                 );
             }
         }
+        */
 
         function mb(val,src_bit,dst_bit) { return (val&(1<<src_bit))<<dst_bit>>src_bit; }
 
@@ -604,7 +587,6 @@ function AppleDisk2()
                 s[s.length] = prenib_fml[i]+"<br>"
             }
         }
-
 
         return {"data":prenib,"log":s===undefined?null:s.join("")};
     }
@@ -657,10 +639,7 @@ function AppleDisk2()
         for (var i = 0; i < 256; i++) sixTwoLookup[i] = -1;
         for (var i = 0; i < sixTwo.length; i++) sixTwoLookup[sixTwo[i]] = i;
 
-        function joinOddEven(b1, b2)
-        {
-            return (((b1 << 1) | 1) & b2) & 0xff;
-        }
+        function joinOddEven(b1, b2) { return (((b1 << 1) | 1) & b2) & 0xff; }
 
         function match3(trackBase, pos, b0, b1, b2)
         {
@@ -679,10 +658,7 @@ function AppleDisk2()
             return -1;
         }
 
-        function trackByte(trackBase, pos)
-        {
-            return nibBytes[trackBase + (pos % NIB_TRACK_SIZE)] & 0xff;
-        }
+        function trackByte(trackBase, pos) { return nibBytes[trackBase + (pos % NIB_TRACK_SIZE)] & 0xff; }
 
         function decodeSectorData(trackBase, dataStart, trk, sec)
         {
@@ -777,50 +753,30 @@ function AppleDisk2()
             for (var pos = 0; pos < NIB_TRACK_SIZE - 16; pos++)
             {
                 // Address field prologue: D5 AA 96
-                if (!match3(trackBase, pos, 0xd5, 0xaa, 0x96))
-                    continue;
-
+                if (!match3(trackBase, pos, 0xd5, 0xaa, 0x96)) continue;
                 var p = pos + 3;
-
                 var vol = joinOddEven(trackByte(trackBase, p + 0), trackByte(trackBase, p + 1));
                 var trk = joinOddEven(trackByte(trackBase, p + 2), trackByte(trackBase, p + 3));
                 var sec = joinOddEven(trackByte(trackBase, p + 4), trackByte(trackBase, p + 5));
                 var chk = joinOddEven(trackByte(trackBase, p + 6), trackByte(trackBase, p + 7));
-
-                if (trk < 0 || trk >= TRACKS || sec < 0 || sec >= SECTORS)
-                    continue;
+                if (trk < 0 || trk >= TRACKS || sec < 0 || sec >= SECTORS) continue;
 
                 if (((vol ^ trk ^ sec) & 0xff) != chk)
-                {
-                    console.warn(
-                        "NIB2DSK ADDRESS CHECKSUM WARNING:"
-                        + " file track " + fileTrack
-                        + " header T" + trk
-                        + " S" + sec
-                    );
-                }
+                    console.warn("NIB2DSK ADDRESS CHECKSUM WARNING: file track " + fileTrack + " header T" + trk + " S" + sec);
 
                 // Data field prologue: D5 AA AD
                 // Search ahead far enough to skip address epilogue and gap 2.
                 var dataPrologue = find3(trackBase, p + 8, 256, 0xd5, 0xaa, 0xad);
                 if (dataPrologue < 0)
                 {
-                    console.error(
-                        "NIB2DSK ERROR: missing data prologue for"
-                        + " $T" + oCOM.getHexByte(trk)
-                        + " $S" + oCOM.getHexByte(sec)
-                    );
+                    console.error("NIB2DSK ERROR: missing data prologue for $T" + oCOM.getHexByte(trk) + " $S" + oCOM.getHexByte(sec));
                     continue;
                 }
 
                 var key = trk + ":" + sec;
-                if (seen[key])
-                    continue;
-
+                if (seen[key]) continue;
                 var sectorBytes = decodeSectorData(trackBase, dataPrologue + 3, trk, sec);
-                if (sectorBytes == null)
-                    continue;
-
+                if (sectorBytes == null) continue;
                 seen[key] = true;
                 sectorsFound++;
 
@@ -837,13 +793,7 @@ function AppleDisk2()
         }
 
         if (sectorsFound != TRACKS * SECTORS)
-        {
-            console.warn(
-                "NIB2DSK WARNING: decoded "
-                + sectorsFound + " of " + (TRACKS * SECTORS)
-                + " sectors"
-            );
-        }
+            console.warn("NIB2DSK WARNING: decoded " + sectorsFound + " of " + (TRACKS * SECTORS) + " sectors");
 
         return dskBytes;
     }
@@ -905,7 +855,6 @@ function AppleDisk2()
                 if(o.motorOffTimer) clearTimeout(o.motorOffTimer);
                 o.motorOffTimer = setTimeout(this.dN_spindown, 1000, this);
             }
-
             // Cancel pending spindown when motor is turned back on.
             if(o.state=="MOTOR_ON" && o.motorOffTimer) { clearTimeout(o.motorOffTimer); o.motorOffTimer = null; }
             if(l.state=="MOTOR_ON" && o.motor=="OFF") { o.motor="ON"; return this.dN_play("DiskII_spin"); }
@@ -920,16 +869,7 @@ function AppleDisk2()
         }
     }
 
-    var set_action = function(o)
-    {
-        if(o.bRep) o.rept++; else o.rept = 0;
-        //o.motor = o.state=="MOTOR_OFF" ? "OFF" : "ON";
-        if(o.state=="MOTOR_ON" && o.motor != "ON") 
-        {
-            //o.motor = "ON";
-            //console.log("ON");
-        }
-    }
+    var set_action = function(o) { if(o.bRep) o.rept++; else o.rept = 0; }
 
     this.dN_spindown = function(t)
     {
@@ -1050,13 +990,13 @@ function AppleDisk2()
         pendingArm: null,
         pendingData: null,
         lastUnavailable: ""
-    };
+    }
 
     this.traceEnable = function(enabled, clear)
     {
         this.trace.enabled = !!enabled;
         if (clear) this.traceClear();
-    };
+    }
 
     this.traceClear = function()
     {
@@ -1111,7 +1051,7 @@ function AppleDisk2()
             if (bytes[i] != 0xff) sync = false;
 
         return sync ? "GAP_SYNC" : "NIB_STREAM";
-    };
+    }
 
     this.traceLog = function(eventName, data)
     {
@@ -1183,7 +1123,7 @@ function AppleDisk2()
         }
 
         return "DISKII " + e.event + " " + d;
-    };
+    }
 
     this.traceChange = function(eventName, drv, field, from, to, extra)
     {
@@ -1200,7 +1140,7 @@ function AppleDisk2()
         data.to = to;
 
         this.traceLog(eventName, data);
-    };
+    }
 
     this.traceArmStep = function(drv, eventName, fromTrack, toTrack)
     {
@@ -1498,7 +1438,7 @@ function AppleDisk2()
     //         ██ ██    ██ ██   ██ ██      ██   ██ ██      ██          ██  ██  ██ ██   ██ ██      
     //    ███████  ██████  ██   ██ ██      ██   ██  ██████ ███████     ██      ██ ██   ██ ██    
     // SURFACE MAP
-    
+
     this.surfaceMap_palette = null;
     this.surfaceMap_headCell = [null,null];
 
