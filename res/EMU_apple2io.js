@@ -729,7 +729,10 @@ function Apple2IO(vid)
 
 
     var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-    var slot_count = Number(_CFG_SYSCODE[model]?.Slots);    // HOW MANY SLOTS CAN WE FILL?
+
+    var slot_count = 0;
+    if(typeof(_CFG_SYSCODE)!="undefined") slot_count = Number(_CFG_SYSCODE[model]?.Slots);    // HOW MANY SLOTS CAN WE FILL?
+
 
     var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};      
     
@@ -777,9 +780,11 @@ function Apple2IO(vid)
     }
     console.log("slotCfg = "+JSON.stringify(slotCfg));;
 
-    oEMUI.slotsRender("peripheral_slots",slotCfg);                      // sets oEMUI.slot_cfg = slotCfg
-
-    oEMUI.deviceBtn({"id":"devices","init":true,"default_slot":6});    
+    if(slot_count>0)
+    {
+        oEMUI.slotsRender("peripheral_slots",slotCfg);                      // sets oEMUI.slot_cfg = slotCfg
+        oEMUI.deviceBtn({"id":"devices","init":true,"default_slot":6});    
+    }
 
 /*
 slotCfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
