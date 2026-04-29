@@ -10,7 +10,7 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":{}},"system":{"A2P":{"active":true}}}
 //else oEMU.component.IO = new Apple2IO();
 
-if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){}} // allow tools to include apple2io.js without apple2main.js
+if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
 
 
 function Apple2IO(vid)
