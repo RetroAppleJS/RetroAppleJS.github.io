@@ -223,7 +223,7 @@ function EMU_init()
         }
     }
         
-    console.log(JSON.stringify(oEMU,null,"  "));
+    //console.log(JSON.stringify(oEMU,null,"  "));
 
     // INITIALISE APPLE II+ EMULATOR
     var vidContext = document.getElementById('applescreen');
@@ -310,8 +310,8 @@ function EMU_init()
             var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
             var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
 
-            console.log("surfaceMap_popup = "+b1);
-            console.log("surfaceMap_monitoring = "+b2);
+            //console.log("surfaceMap_popup = "+b1);
+            //console.log("surfaceMap_monitoring = "+b2);
 
             if(b1 && b2) 
                 apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");

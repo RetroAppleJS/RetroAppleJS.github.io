@@ -12,7 +12,7 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 function AppleDisk2()
 {
     var bDebug   = true;
-    var bDebug_N = false;   // debug disk noise only 
+    var bDebug_N = true;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     this.state = 
@@ -979,7 +979,11 @@ function AppleDisk2()
     {
       if(this.audio===undefined || name==null) return;
 
-      if(bDebug_N) { console.log("play('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
+    if(bDebug_N) 
+    { 
+      console.log("play('"+name+"')"); 
+      //console.log(JSON.stringify(this.dNd));
+    }
 
       this.AUD_buffer[name]        = this.audio.createBufferSource();  // create buffers
       this.AUD_buffer[name].buffer = dN_samples[name].audio;           // fill buffers
@@ -993,7 +997,10 @@ function AppleDisk2()
     {
       if(name==null) return;
 
-      if(bDebug_N) { console.log("stop('"+name+"')"); console.log(JSON.stringify(this.dNd)) }
+      if(bDebug_N)
+      { console.log("stop('"+name+"')"); 
+        //console.log(JSON.stringify(this.dNd)) 
+      }
       this.AUD_buffer[name].loop = false;
       this.AUD_buffer[name].stop();
     }
@@ -1597,9 +1604,9 @@ function AppleDisk2()
                         "com_popup_body com_scroll_xy"
                     );
 
-                console.log("elid", elid);
-                console.log("directories", dirs);
-                console.log("files", files);
+                //console.log("elid", elid);
+                //console.log("directories", dirs);
+                //console.log("files", files);
             }
         );
         

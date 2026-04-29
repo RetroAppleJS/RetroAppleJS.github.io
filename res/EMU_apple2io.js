@@ -408,6 +408,7 @@ function Apple2IO(vid)
             
         }
 
+        /*
         console.log(JSON.stringify(IOMAP_TBL));
 
         var s = ""
@@ -416,6 +417,7 @@ function Apple2IO(vid)
             s += "| "+IOMAP_TBL[i].join(" | ")+" |\n"
         }
         console.log(s);
+        */
         
         this.IOMAP_ROWS = iomap_rows;
         return output;

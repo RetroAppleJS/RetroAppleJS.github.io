@@ -194,12 +194,13 @@ function AppleSpeaker()
     {
         if(!this.enabled || !this.audio || !this.gain) return;
 
+        
         if(bDebug && cnt == 1)
         {
             var s = "";
             for(var i in data_i)
                 s += i + " x" + data_i[i] + "  ";
-            console.log(s);
+            //console.log(s);
             data_i = {};
         }
 
