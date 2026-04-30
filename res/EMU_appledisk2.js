@@ -1334,7 +1334,6 @@ function AppleDisk2()
         function GH_listDir(arg, callback)
         {
             // owner, repo, path, ref
-
             arg.ref = arg.ref || "main";
             arg.path = arg.path || "";
             var url = "https://api.github.com/repos/" + arg.owner + "/" + arg.repo + "/contents/" + arg.path + "?ref=" + encodeURIComponent(arg.ref);
@@ -1430,7 +1429,6 @@ function AppleDisk2()
 
                 var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>","</div>"];
                     
-
                 var head = "" 
                     //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
                     +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"
@@ -1440,33 +1438,30 @@ function AppleDisk2()
                     + '<tr>'
                     + '<th style="text-align:left;padding:2px 4px;">Name</th>'
                     + '<th style="text-align:left;padding:2px 4px;">Size</th>'
-                    + '<th style="text-align:left;padding:2px 4px;">Type</th>'
-                    + '<th style="text-align:left;padding:2px 4px;">Path</th>'
+                    //+ '<th style="text-align:left;padding:2px 4px;">Type</th>'
+                    //+ '<th style="text-align:left;padding:2px 4px;">Path</th>'
                     + '</tr>';
 
 
                 for(var i=0;i<rows.length;i++)
                 {
-
                     //<div style=cursor:pointer onclick=apple2plus.DiskObj().getSoftwareCatRows({"owner":"RetroAppleJS","repo":"RetroAppleJS.github.io","path":"disks","ref":"main"})>
-
-//<i class="fa fa-arrow-alt-circle-up"></i>
-//<i class="fa fa-level-up-alt"></i>
-
                     var bDir = rows[i].type=="dir";
                     var arg_cpy = clone(arg);
                     arg_cpy.path = arg_cpy.path+"/"+rows[i].name;
 
                     // LINK TO A SUBDIREcTORY
-                    var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"+(bDir?"<i class=\"fa fa-folder\"></i> ":""),"</div>"];
+                    var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
+                    var cmd  = bDir?"apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")":"apple2plus.DiskObj().getFile("+JSON.stringify(arg_cpy)+")";
+                    var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
-                    console.log("subDir="+subDir[0]);
+                    //console.log("subDir="+subDir[0]);
                     
                     head += '<tr>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+subDir[0]+oCOM.escapeHTML(rows[i].name)+subDir[1]+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].size)+'</td>'
-                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].type)+'</td>'
-                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].path)+'</td>'
+                    //+ '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].type)+'</td>'
+                    //+ '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].path)+'</td>'
                     + '</tr>';
                 }
                 head += '</table></div>';
@@ -1484,6 +1479,16 @@ function AppleDisk2()
         );
     }
 
+
+    this.getFile = function(arg)
+    {
+        alert(JSON.stringify(arg));
+        //{"id":"softwareCat"
+        // ,"owner":"RetroAppleJS"
+        // ,"repo":"RetroAppleJS.github.io"
+        // ,"basepath":"disks"
+        // ,"path":"disks/Conan 1984-Disk1-1-Side B.dsk","ref":"main"}
+    }
 
 
 
