@@ -213,11 +213,13 @@ function Apple2Plus(context)
         return video;
     }
 
+    // TODO: move this to EMU_appledisk2.js
     this.loadDisk = function(bytes,drive) {
         var drv = Number(drive.slice(1))-1;
         hw.io.disk2.state.diskData[ drv ] = bytes;
     }  
 
+    // TODO: move this to EMU_appledisk2.js
     this.dumpDisk = function(drive) {
         var drv = Number(drive.slice(1))-1;
         hw.io.disk2.dump(drv);

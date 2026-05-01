@@ -440,70 +440,10 @@ table { border-collapse: collapse; position: relative;}
     outline:1px solid #8ee68e;
 }
 
-
-/*
-.diskcat_popup {
-    overflow: hidden;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    user-select: text;
+.fileBox {
+  float:none;display:inline-block;font-size:90%;text-align:left;padding-left:2px;white-space:nowrap;max-width:157px;overflow:hidden;text-overflow:ellipsis;
 }
 
-.diskcat_title {
-    flex: 0 0 auto;
-    height: 28px;
-    line-height: 28px;
-    box-sizing: border-box;
-    user-select: text;
-}
-
-.diskcat {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-sizing: border-box;
-    user-select: text;
-}
-
-.diskcat_body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    box-sizing: border-box;
-    user-select: text;
-}
-
-.diskcat_wide {
-    display: inline-block;
-    min-width: 100%;
-    white-space: nowrap;
-    user-select: text;
-}
-
-.diskcat_wide table {
-    width: max-content;
-    min-width: 100%;
-    border-collapse: collapse;
-    white-space: nowrap;
-}
-
-.diskcat_hscroll {
-    flex: 0 0 18px;
-    height: 18px;
-    overflow-x: scroll;
-    overflow-y: hidden;
-    box-sizing: border-box;
-}
-
-.diskcat_hscroll > div {
-    height: 1px;
-}
-*/
 .com_popup_frame {
     box-sizing: border-box;
     overflow: hidden;

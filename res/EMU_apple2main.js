@@ -709,6 +709,7 @@ function EMUI()
                     + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
 
                     + "      <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
+                    // TODO: this HTML is duplicated in apple2plus.DiskObj().diskFileInputHTML(), but cannot be called since apple2plus object does not exist at this time
                     + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
                     + "      </form>"
                     
@@ -723,7 +724,7 @@ function EMUI()
                     + " onclick=\"ejectDisk(this,'D2')\""
                     + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
                     + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
-
+                    // TODO: this HTML is duplicated in apple2plus.DiskObj().diskFileInputHTML(), but cannot be called since apple2plus object does not exist at this time
                     + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
                     + "      </form>"
@@ -1423,18 +1424,11 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
     try
     {
         var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
-        if(disk2.state.active==false)
-        { 
-            //oCOM.POPUP.html("disk2.state.active==false");
-            return;
-        }
-        //oCOM.POPUP.html("disk2.state.active==true");
-
+        if(disk2.state.active==false) return;
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
         apple2plus.loadDisk(bytes,"D1");
         highlight_appbut(document.getElementById("file_"+dsk),true);
-        //oCOM.POPUP.html("loadDisk_fromBuffer 1.0 success");
     }
     catch({ name, message })
     {
@@ -1453,8 +1447,7 @@ function ejectDisk(el,drive)
   o.state.diskData[drv] = null;
   o.GUI_update();
 
-  //apple2plus.DiskObj().setDriveUiEmpty(drv);
-  apple2plus.DiskObj().restoreDriveFileInput(drv);
+  apple2plus.DiskObj().restoreDriveFileInput(drive);
 
   var d = oCOM.URL.uri[drive];
   if(d)

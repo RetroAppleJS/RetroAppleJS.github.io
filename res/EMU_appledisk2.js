@@ -374,6 +374,14 @@ function AppleDisk2()
         return dskBytes;
     }
 
+    this.isDiskData = function(drv)
+    {
+        if(drv===undefined) return;
+        if(drv=="D1") drv = 1;
+        if(drv=="D2") drv = 2;
+        return this.state.diskData[drv-1]!=null;
+    }
+
 
     //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
     //  ██   ██ ██      ██  ██           ██     ████   ██ ██ ██   ██ 
@@ -1429,6 +1437,7 @@ function AppleDisk2()
 
                 var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>","</div>"];
                     
+                // TABLE HEAD
                 var head = "" 
                     //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
                     +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"
@@ -1442,17 +1451,18 @@ function AppleDisk2()
                     //+ '<th style="text-align:left;padding:2px 4px;">Path</th>'
                     + '</tr>';
 
-
+                // TABLE BODY
                 for(var i=0;i<rows.length;i++)
                 {
-                    //<div style=cursor:pointer onclick=apple2plus.DiskObj().getSoftwareCatRows({"owner":"RetroAppleJS","repo":"RetroAppleJS.github.io","path":"disks","ref":"main"})>
                     var bDir = rows[i].type=="dir";
                     var arg_cpy = clone(arg);
                     arg_cpy.path = arg_cpy.path+"/"+rows[i].name;
 
                     // LINK TO A SUBDIREcTORY
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
-                    var cmd  = bDir?"apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")":"apple2plus.DiskObj().getFile("+JSON.stringify(arg_cpy)+")";
+                    var cmd  = bDir
+                        ?"apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")"     // FOLDER CLICK
+                        :"apple2plus.DiskObj().getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
                     //console.log("subDir="+subDir[0]);
@@ -1495,8 +1505,18 @@ function AppleDisk2()
 
             arg.ref = arg.ref || "main";
 
+            // D1  D1OCC D2 D2OCC
+            // 1   0      x   x     D1
+            // 1   1      x   0     D2
+            // 1   1      x   1     D1
+            // x   x      1   1     D1
+
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
-            var drv = arg.drv || "D1";
+            // if D1 is occupied, switch to D2, if D2 is occupied, switch to D1
+            var drv = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
+
+
+            // TODO: CONVERT SLT,DRV string to SLOT_I,DRV_I and backwards
             if(typeof drv == "number") drv = "D" + drv;
 
             // Only disk images should be mounted here.
@@ -1634,17 +1654,13 @@ function AppleDisk2()
     this.diskMiddleEl = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
-        return document.getElementById("file_" + drv);
+        return document.getElementById("f_" + drv);
     }
 
     this.diskFileInputHTML = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
-
-        return "<input type=\"file\""
-            + " name=\"" + drv + "\""
-            + " id=\"file_" + drv + "\""
-            + " onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'" + drv + "')\">";
+        return "        <input type=\"file\" name=\"" + drv + "\" id=\"file_" + drv + "\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'" + drv + "')\">"
     }
 
     this.diskCatalogLabelHTML = function(drv, fileName)
@@ -1654,7 +1670,7 @@ function AppleDisk2()
         var safeName = oCOM.escapeHTML(fileName || "disk image");
 
         return "<button disabled style=\"padding:1px 5px 1px 5px;opacity:0.5\">Choose File</button>"
-            +"<div style=\"float:none;display:inline-block;font-size:90%;width:157px;text-align:left;padding-left:2px\" "
+            +"<div class=\"fileBox\" "
             + " id=\"file_" + drv + "\""
             + " title=\"" + safeName + "\">"
             +safeName
@@ -1670,7 +1686,7 @@ function AppleDisk2()
             var el = this.diskMiddleEl(drv);
             if(el == null) return;
 
-            el.outerHTML = this.diskCatalogLabelHTML(drv, fileName);
+            el.innerHTML = this.diskCatalogLabelHTML(drv, fileName);
 
             var btn = document.getElementById("but_" + drv);
             if(btn != null)
@@ -1684,6 +1700,7 @@ function AppleDisk2()
             console.warn("setDriveCatalogFile failed: " + name + " " + message);
         }
     }
+    
 
     this.restoreDriveFileInput = function(drv)
     {
@@ -1694,7 +1711,7 @@ function AppleDisk2()
             var el = this.diskMiddleEl(drv);
             if(el == null) return;
 
-            el.outerHTML = this.diskFileInputHTML(drv);
+            el.innerHTML = this.diskFileInputHTML(drv);
 
             var btn = document.getElementById("but_" + drv);
             if(btn != null)
