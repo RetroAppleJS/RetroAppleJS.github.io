@@ -12511,7 +12511,7 @@ function EMUI()
                     + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
                     + "      </form>"
                     
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(1))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(\"D1\"))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     // FILE BOX D2
@@ -12527,7 +12527,7 @@ function EMUI()
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
                     + "      </form>"
 
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(2))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(\"D2\"))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     + "  </div>"
@@ -13234,20 +13234,22 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
     }
 }
 
-function ejectDisk(el,drive)
-{
-  var drv = Number(drive.slice(1))-1;
 
-  var fe = document.getElementById("file_"+drive);
+
+function ejectDisk(el,deviceID)
+{
+  const oDevice = apple2plus.hwObj().io.deviceID2obj(deviceID);
+
+  var fe = document.getElementById("file_"+oDevice.deviceID);
   fe.value = "";
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
   var o = apple2plus.DiskObj()
-  o.state.diskData[drv] = null;
+  o.state.diskData[oDevice.deviceN] = null;
   o.GUI_update();
 
-  apple2plus.DiskObj().restoreDriveFileInput(drive);
+  apple2plus.DiskObj().restoreDriveFileInput(oDevice.deviceID);
 
-  var d = oCOM.URL.uri[drive];
+  var d = oCOM.URL.uri[oDevice.deviceID];
   if(d)
   {
     // URI is filled
@@ -13261,6 +13263,7 @@ function ejectDisk(el,drive)
   }
 
 }
+
 
 function highlight_appbut(el,bool)
 {
@@ -17416,14 +17419,15 @@ function AppleDisk2()
         });
     }
 
-    this.getDiskData = function(drv)
+    this.getDiskData = function(deviceID)
     {
-        if(drv===undefined) return;
+        if(deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
         this.traceFlush("getDiskData");
-        var nibBytes = this.state.diskData[drv-1];
+        var nibBytes = this.state.diskData[deviceN];
         var dskBytes = this.convertNib2Dsk(nibBytes);
         this.traceLog("getDiskData", {
-            drv: drv - 1,
+            drv: deviceN,
             nib_len: nibBytes.length,
             nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase(),
             dsk_len: dskBytes.length,
@@ -17433,12 +17437,11 @@ function AppleDisk2()
         return dskBytes;
     }
 
-    this.isDiskData = function(drv)
+    this.isDiskData = function(deviceID)
     {
-        if(drv===undefined) return;
-        if(drv=="D1") drv = 1;
-        if(drv=="D2") drv = 2;
-        return this.state.diskData[drv-1]!=null;
+        if(deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
+        return this.state.diskData[deviceN]!=null;
     }
 
 
@@ -18564,19 +18567,13 @@ function AppleDisk2()
 
             arg.ref = arg.ref || "main";
 
-            // D1  D1OCC D2 D2OCC
-            // 1   0      x   x     D1
-            // 1   1      x   0     D2
-            // 1   1      x   1     D1
-            // x   x      1   1     D1
-
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
             // if D1 is occupied, switch to D2, if D2 is occupied, switch to D1
             var drv = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
 
 
             // TODO: CONVERT SLT,DRV string to SLOT_I,DRV_I and backwards
-            if(typeof drv == "number") drv = "D" + drv;
+            //if(typeof drv == "number") drv = "D" + drv;
 
             // Only disk images should be mounted here.
             var ext = (arg.path || "").split(".").pop().toLowerCase();
@@ -18877,19 +18874,20 @@ function AppleDisk2()
     {
         var pal = this.surfaceMap_build_palette();
 
-        for(var drv=0; drv<2; drv++)
+        for(var deviceN=0; deviceN<2; deviceN++)
         {
-            var d = drv + 1;
-            var status = document.getElementById("surfaceMap_status_D"+d);
-            if(this.state.diskData[drv] == null)
+            var deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
+
+            var status = document.getElementById("surfaceMap_status_"+deviceID);
+            if(this.state.diskData[deviceN] == null)
             {
                 if(status) status.innerHTML = "no disk";
-                this.surfaceMap_clear_drive(drv);
+                this.surfaceMap_clear_drive(deviceN);
                 continue;
             }
 
             var dskBytes = null;
-            try { dskBytes = this.convertNib2Dsk(this.state.diskData[drv]); }
+            try { dskBytes = this.convertNib2Dsk(this.state.diskData[deviceN]); }
             catch(e)
             {
                 if(status) status.innerHTML = "decode error";
@@ -18910,13 +18908,13 @@ function AppleDisk2()
 
                     // Sector “density”: black for empty/zero-like sectors, bright for sectors with many non-zero bytes.
                     var pct = Math.round(nz * 100 / 256);
-                    var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
+                    var el = document.getElementById("surfaceMap_"+deviceID+"_"+track+"_"+sector);
 
                     if(el)
                     {
                         el.style.backgroundColor = pal[pct];
                         el.title =
-                            "D"+d
+                            deviceID
                             +" T"+track
                             +" S"+sector
                             +" $"+oCOM.getHexMulti(offs,5)
@@ -18927,24 +18925,24 @@ function AppleDisk2()
                 }
             }
 
-            this.surfaceMap_mark_head(drv);
+            this.surfaceMap_mark_head(deviceN);
         }
     };
 
-    this.surfaceMap_clear_drive = function(drv)
+    this.surfaceMap_clear_drive = function(deviceN)
     {
-        var d = drv + 1;
+        const deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
 
         for(var track=0; track<35; track++)
         {
             for(var sector=0; sector<16; sector++)
             {
-                var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
+                var el = document.getElementById("surfaceMap_"+deviceID+"_"+track+"_"+sector);
                 if(el)
                 {
                     el.style.backgroundColor = "#111";
                     el.style.outline = "";
-                    el.title = "D"+d+" T"+track+" S"+sector+" - no disk";
+                    el.title = deviceID+" T"+track+" S"+sector+" - no disk";
                 }
             }
         }
@@ -19820,6 +19818,11 @@ function Apple2IO(vid)
         return names;
     }
 
+    this.DeviceName2obj = function(str)
+    {
+
+    }
+
 
     // SLOT MAPPING
     /*
@@ -19955,7 +19958,7 @@ function Apple2IO(vid)
         return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
     }
 
-    function extract_slotrange(str,PCODE)
+    function extract_slotrange(str)
     {
         var  slotPut = [], slotFit = [];
         var arr = str.split(",");
@@ -19993,6 +19996,175 @@ function Apple2IO(vid)
         } 
         return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
     }     
+
+
+
+
+    this.deviceID2obj = function(str)
+    {
+        if(typeof str !== "string") return null;
+
+        var raw = str.trim().toUpperCase();
+
+        var table = [
+            {
+                rx: /^D([12])$/,
+                periID: "DISKII",
+                deviceID: "D$1",
+                script: function(arg)
+                {
+                    var deviceN = Number(arg.deviceID.slice(1)) - 1;
+
+                    var slotN = null;
+                    if(typeof _CFG_PSLOT !== "undefined" &&
+                    _CFG_PSLOT[arg.periID] &&
+                    _CFG_PSLOT[arg.periID].SLOTrange)
+                    {
+                        var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
+                        slotN = slotRange.slotPut[0];   // starred/default slot, e.g. 6*
+                    }
+
+                    return {
+                        "deviceN": deviceN,
+                        "slotN": slotN
+                    };
+                }
+            }
+        ];
+
+        function applyTemplate(tpl, match)
+        {
+            return tpl.replace(/\$(\d+)/g, function(_, n)
+            {
+                return match[Number(n)] || "";
+            });
+        }
+
+        function orderedDeviceObj(obj)
+        {
+            return {
+                "slotN": obj.slotN,
+                "slotID": obj.slotID,
+                "periID": obj.periID,
+                "deviceID": obj.deviceID,
+                "deviceN": obj.deviceN
+            };
+        }
+
+        for(var i = 0; i < table.length; i++)
+        {
+            var rule = table[i];
+            var match = raw.match(rule.rx);
+
+            if(match)
+            {
+                var obj = {
+                    "periID": rule.periID,
+                    "deviceID": applyTemplate(rule.deviceID, match)
+                };
+
+                var extra = {};
+                if(typeof rule.script === "function")
+                {
+                    extra = rule.script({
+                        "raw": raw,
+                        "match": match,
+                        "periID": obj.periID,
+                        "deviceID": obj.deviceID
+                    }) || {};
+                }
+
+                for(var k in extra)
+                {
+                    if(extra.hasOwnProperty(k)) obj[k] = extra[k];
+                }
+
+                if(typeof obj.slotN === "number")
+                {
+                    obj.slotID = "PR#" + obj.slotN;
+                }
+
+                return orderedDeviceObj(obj);
+            }
+        }
+
+        return null;
+    };
+
+    this.obj2deviceID = function(obj)
+    {
+        if(obj == null) return null;
+
+        /*
+            Allow strings to be normalized through deviceID2obj().
+            Example:
+            obj2deviceID("d1") -> "D1"
+        */
+        if(typeof obj === "string")
+        {
+            var parsed = this.deviceID2obj(obj);
+            return parsed ? parsed.deviceID : null;
+        }
+
+        /*
+            Canonical Disk II reverse mapping.
+            deviceN 0 -> D1
+            deviceN 1 -> D2
+        */
+        if(obj.periID === "DISKII")
+        {
+            if(typeof obj.deviceN === "number")
+            {
+                return "D" + (obj.deviceN + 1);
+            }
+
+            if(typeof obj.deviceID === "string")
+            {
+                var id = obj.deviceID.trim().toUpperCase();
+                if(/^D[12]$/.test(id)) return id;
+            }
+        }
+
+        /*
+            Generic fallback.
+            Useful when later devices define their own canonical IDs.
+        */
+        if(typeof obj.deviceID === "string")
+        {
+            return obj.deviceID.trim().toUpperCase();
+        }
+
+        return null;
+    };
+
+    this.deviceN2ID = function(n,PCODE)
+    {
+        switch(PCODE)
+        {
+            case "DISKII": return "D"+(Number(n)+1);
+        }
+    }
+    this.deviceID2N = function(str,PCODE) 
+    {
+        switch(PCODE)
+        {
+            case "DISKII": return Number(str.slice(1))-1;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // SLOT MAPPING
     var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
