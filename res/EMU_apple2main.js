@@ -697,22 +697,47 @@ function EMUI()
             case "DISKII":
                 return ""
                     + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
-                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:center\">"
+                    + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
+
+                    // FILE BOX D1
+                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
+                    
+                    + "        <input type=button method=get class=appbut id=\"but_D1\" value=\"Drive1\""
+                    + " data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\"  "
+                    + " onclick=\"ejectDisk(this,'D1')\""
+                    + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
+                    + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
+
+
                     + "      <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
-                    + "        <input type=button method=get class=appbut value=\"Drive1\" onclick=\"ejectDisk(this,'D1')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive1'\">"
-                    + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
+                    + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
                     + "      </form>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(1))\" id=\"dump_D1\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    
+                    //+"         <button disabled style=\"padding:1px 5px 1px 5px;opacity:0.5\">Choose File</button>"
+                    //+"         <div style=\"float:none;display:inline-block;font-size:90%;width:157px;text-align:left;padding-left:2px\">no file selected</div>"
+
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(1))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    
                     + "    </div>"
+
+                    // FILE BOX D2
                     + "    <div class=appbut style=\"padding:0px 0px 0px 0px;text-align:center\">"
+
+                    + "        <input type=button method=get class=appbut id=\"but_D2\" value=\"Drive2\""
+                    + " data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\" "
+                    + " onclick=\"ejectDisk(this,'D2')\""
+                    + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
+                    + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
+
                     + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
-                    + "        <input type=button method=get class=appbut value=\"Drive2\" onclick=\"ejectDisk(this,'D2')\" onmouseover=\"this.value='&nbsp;Eject&nbsp;'\" onmouseout=\"this.value='Drive2'\">"
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
                     + "      </form>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(2))\" id=\"dump_D2\" title=\"Dump\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(2))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
+
                     + "  </div>"
+
+                    // BUTTON BOX
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
                     + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
                     + "      <br>"
@@ -721,8 +746,10 @@ function EMUI()
                     //+ "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
                     + "  </div>"
                     + "</div>"
-                    + "    <div class=toolbox id=softwareCat></div>"
-                    +"     <div class=toolbox id=surfaceMap></div>";
+
+                    // LIST BOXES
+                    + "<div class=toolbox id=softwareCat></div>"
+                    + "<div class=toolbox id=surfaceMap></div>";
         }
 
         return ""
@@ -1249,7 +1276,8 @@ function EMUI()
 function loadDisk_fromFile(file_obj,drv)
 {
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
-    if(file_obj==null || disk2.state.active==false) {apple2plus.loadDisk([],drv); return}
+    if(file_obj==null || disk2.state.active==false) { apple2plus.loadDisk([],drv); return }
+
     var file = file_obj.files[0];
     if (!file) return;
 
@@ -1429,6 +1457,9 @@ function ejectDisk(el,drive)
   o.state.diskData[drv] = null;
   o.GUI_update();
 
+  apple2plus.DiskObj().setDriveUiEmpty(drv);
+  apple2plus.DiskObj().restoreDriveFileInput(drv);
+
   var d = oCOM.URL.uri[drive];
   if(d)
   {
@@ -1441,6 +1472,7 @@ function ejectDisk(el,drive)
     highlight_appbut(el,false);
     el.type='button';
   }
+
 }
 
 function highlight_appbut(el,bool)

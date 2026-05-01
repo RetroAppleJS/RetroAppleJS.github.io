@@ -1482,15 +1482,233 @@ function AppleDisk2()
 
     this.getFile = function(arg)
     {
-        alert(JSON.stringify(arg));
-        //{"id":"softwareCat"
-        // ,"owner":"RetroAppleJS"
-        // ,"repo":"RetroAppleJS.github.io"
-        // ,"basepath":"disks"
-        // ,"path":"disks/Conan 1984-Disk1-1-Side B.dsk","ref":"main"}
+        try
+        {
+            var disk2 = oCOM.default(
+                oEMU.component.IO.AppleDisk,
+                {state:{active:false}},
+                "AppleDisk"
+            );
+
+            if(disk2.state.active == false)
+                return;
+
+            arg.ref = arg.ref || "main";
+
+            // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
+            var drv = arg.drv || "D1";
+            if(typeof drv == "number") drv = "D" + drv;
+
+            // Only disk images should be mounted here.
+            var ext = (arg.path || "").split(".").pop().toLowerCase();
+            if(ext != "dsk" && ext != "do" && ext != "po" && ext != "nib")
+            {
+                console.warn("Not a disk image: " + arg.path);
+                return;
+            }
+
+            // Build raw GitHub URL.
+            // Important: encode each path segment separately so spaces become %20,
+            // but slashes remain real path separators.
+            var raw_path = arg.path
+                .split("/")
+                .map(function(p) { return encodeURIComponent(p); })
+                .join("/");
+
+            var full_path =
+                "https://raw.githubusercontent.com/"
+                + arg.owner + "/"
+                + arg.repo + "/"
+                + encodeURIComponent(arg.ref) + "/"
+                + raw_path;
+
+            oCOM.GetHTTP(full_path, "arraybuffer",
+                function()
+                {
+                    try
+                    {
+                        if(this.status && this.status != 200)
+                        {
+                            console.warn(
+                                "ERROR LOADING DISK: HTTP "
+                                + this.status + " " + full_path
+                            );
+                            return;
+                        }
+
+                        var arraybuffer = this.response;
+                        var ui8 = new Uint8Array(arraybuffer);
+
+                        if(arraybuffer.byteLength < 100)
+                        {
+                            var enc = new TextDecoder("utf-8");
+                            console.warn("ERROR LOADING DISK: " + enc.decode(ui8));
+                            return;
+                        }
+
+                        var bytes = Array.from(ui8);
+
+                        // .dsk/.do/.po are 143360-byte logical disk images.
+                        // Convert to Disk II nibble stream before mounting.
+                        if(bytes.length == 143360)
+                            bytes = disk2.convertDsk2Nib(bytes);
+
+                        // .nib images should already be 232960 bytes.
+                        if(bytes.length != 232960)
+                        {
+                            console.warn(
+                                "ERROR LOADING DISK: unsupported image size "
+                                + bytes.length
+                                + " bytes for " + arg.path
+                            );
+                            return;
+                        }
+
+                        apple2plus.loadDisk(bytes, drv);
+
+                        var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
+                        disk2.setDriveCatalogFile(drv, fileName);
+
+                        if(typeof highlight_appbut == "function")
+                        {
+                            var file_id = "file_" + arg.path
+                                .replace(/[^A-Za-z0-9_\-]/g, "_");
+
+                            var el = document.getElementById(file_id);
+                            if(el) highlight_appbut(el, true);
+                        }
+
+                        console.log(
+                            "Loaded disk "
+                            + arg.path
+                            + " into " + drv
+                            + " (" + bytes.length + " bytes)"
+                        );
+                    }
+                    catch({ name, message })
+                    {
+                        oCOM.POPUP.html(
+                            "getFile load failed: "
+                            + name + " " + message
+                        );
+                    }
+                }
+            );
+        }
+        catch({ name, message })
+        {
+            oCOM.POPUP.html("getFile 1.0 failed: " + name + " " + message);
+        }
+    }
+
+    this.diskInputEl = function(drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+        return document.getElementById("file_" + drv);
+    }
+
+    this.diskButtonEl = function(drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+
+        var btn = document.getElementById("but_" + drv);
+        if(btn != null) return btn;
+
+        var form = document.getElementById("f_" + drv);
+        if(form == null) return null;
+
+        return form.querySelector("input[type=button]");
+    }
+
+    
+
+    
+
+    this.driveButtonHover = function(btn, hover)
+    {
+        if(btn == null) return;
+        btn.value = hover ? " Eject " : (btn.dataset.empty || btn.value || "Drive");
     }
 
 
+    this.diskMiddleEl = function(drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+        return document.getElementById("file_" + drv);
+    }
+
+    this.diskFileInputHTML = function(drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+
+        return "<input type=\"file\""
+            + " name=\"" + drv + "\""
+            + " id=\"file_" + drv + "\""
+            + " onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'" + drv + "')\">";
+    }
+
+    this.diskCatalogLabelHTML = function(drv, fileName)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+
+        var safeName = oCOM.escapeHTML(fileName || "disk image");
+
+        return "<button disabled style=\"padding:1px 5px 1px 5px;opacity:0.5\">Choose File</button>"
+            +"<div style=\"float:none;display:inline-block;font-size:90%;width:157px;text-align:left;padding-left:2px\" "
+            + " id=\"file_" + drv + "\""
+            + " title=\"" + safeName + "\">"
+            +safeName
+            +"</div>"
+    }
+
+    this.setDriveCatalogFile = function(drv, fileName)
+    {
+        try
+        {
+            if(typeof drv == "number") drv = "D" + drv;
+
+            var el = this.diskMiddleEl(drv);
+            if(el == null) return;
+
+            el.outerHTML = this.diskCatalogLabelHTML(drv, fileName);
+
+            var btn = document.getElementById("but_" + drv);
+            if(btn != null)
+            {
+                btn.value = btn.dataset.empty || drv;
+                btn.title = drv + " loaded: " + (fileName || "disk image");
+            }
+        }
+        catch({ name, message })
+        {
+            console.warn("setDriveCatalogFile failed: " + name + " " + message);
+        }
+    }
+
+    this.restoreDriveFileInput = function(drv)
+    {
+        try
+        {
+            if(typeof drv == "number") drv = "D" + drv;
+
+            var el = this.diskMiddleEl(drv);
+            if(el == null) return;
+
+            el.outerHTML = this.diskFileInputHTML(drv);
+
+            var btn = document.getElementById("but_" + drv);
+            if(btn != null)
+            {
+                btn.value = btn.dataset.empty || drv;
+                btn.title = drv + ": no disk";
+            }
+        }
+        catch({ name, message })
+        {
+            console.warn("restoreDriveFileInput failed: " + name + " " + message);
+        }
+    }
+    
 
     //    ███████ ██    ██ ██████  ███████  █████   ██████ ███████     ███    ███  █████  ██████  
     //    ██      ██    ██ ██   ██ ██      ██   ██ ██      ██          ████  ████ ██   ██ ██   ██ 

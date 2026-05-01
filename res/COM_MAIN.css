@@ -435,6 +435,11 @@ table { border-collapse: collapse; position: relative;}
     padding:150px 110px 0px 0px;
   }
 
+.diskLoaded {
+    font-weight:bold;
+    outline:1px solid #8ee68e;
+}
+
 
 /*
 .diskcat_popup {
