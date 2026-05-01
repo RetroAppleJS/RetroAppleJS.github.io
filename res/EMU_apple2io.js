@@ -519,7 +519,6 @@ function Apple2IO(vid)
 
     this.loadDisk = function(bytes,drv)
     {
-        //this.disk2.loadDisk(bytes,drv);
         alert("AppleDisk2() does not have a method called loadDisk")
     }
      
