@@ -247,7 +247,7 @@ function AppleDisk2()
                 this.update_logs("D2");
                 break;
             case Q6L:
-                var oldQ6 = this.state.hw[drv].q6;
+                var oldQ6 = this.state.hw[deviceN].q6;
                 this.state.hw[deviceN].q6 = 0;
 
                 if (oldQ6 != 0)
@@ -292,7 +292,7 @@ function AppleDisk2()
                 // Load data latch. Also sense write-protect.
                 var oldQ6 = this.state.hw[deviceN].q6;
                 this.state.hw[deviceN].q6 = 1;
-                if (oldQ6 != 1) this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", drv, "q6", oldQ6, 1);
+                if (oldQ6 != 1) this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", deviceN, "q6", oldQ6, 1);
                 break;
             case Q7L:
                 // Prepare latch for input.
