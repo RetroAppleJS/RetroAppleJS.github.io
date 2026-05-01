@@ -13092,7 +13092,7 @@ function loadDisk_fromFile(file_obj,drv)
                 for (var i = 0; i < size; i++)
                     bytes[i] = data.getUint8(i);
         
-                if (size == 143360) disk2.setDiskData(bytes,1);  
+                if (size == 143360) disk2.setDiskData(bytes,"D1");  
 
                 //dumpdisk(bytes);                
                 //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
@@ -13111,7 +13111,7 @@ function loadDisk_fromFile(file_obj,drv)
                 for (var i = 0; i < size; i++)
                     bytes[i] = data.getUint8(i);
         
-                if (size == 143360) disk2.setDiskData(bytes,2);  
+                if (size == 143360) disk2.setDiskData(bytes,"D2");  
 
                 //dumpdisk(bytes);
                 //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
@@ -17122,13 +17122,13 @@ function AppleDisk2()
 
     this.applyDriveEnable = function(reason)
     {
-        var selectedDrv = this.state.drv;
+        var deviceN = this.state.drv;
         var enabled = this.state.drive_enable ? 1 : 0;
 
         for (var i = 0; i < this.state.hw.length; i++)
         {
             var oldMotor = this.state.hw[i].motor;
-            var newMotor = (enabled && i == selectedDrv) ? 1 : 0;
+            var newMotor = (enabled && i == deviceN) ? 1 : 0;
 
             this.state.hw[i].motor = newMotor;
 
@@ -17230,50 +17230,50 @@ function AppleDisk2()
     this.read = function(addr) 
     {
         //console.log("AppleDisk2: read %s", addr.toString(16));
-        var drv = this.state.drv
+        const deviceN = this.state.drv
         if (addr < 0x08) 
         {
             // Stepper motor on.
             if ((addr & 1) != 0) {
                 var p = ((addr >> 1) & 3); // phase we're turning on.
 
-                if (((this.state.hw[drv].phase + 1) & 3) == p) {
+                if (((this.state.hw[deviceN].phase + 1) & 3) == p) {
                     // Ascending order, track arm moves inward.
-                    this.state.hw[drv].phase = p;
+                    this.state.hw[deviceN].phase = p;
                     this.update_logs("phase");
-                    if ((this.state.hw[drv].phase & 1) == 0)
+                    if ((this.state.hw[deviceN].phase & 1) == 0)
                     {
-                        var oldTrack = this.state.hw[drv].track;
-                        if (++this.state.hw[drv].track >= 35)
+                        var oldTrack = this.state.hw[deviceN].track;
+                        if (++this.state.hw[deviceN].track >= 35)
                         {
-                            this.state.hw[drv].track = 35; // CLICK! CLICK! CLICK!
+                            this.state.hw[deviceN].track = 35; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_OUT");
-                            this.traceArmStep(drv, "CLICK_OUT", oldTrack, this.state.hw[drv].track);
+                            this.traceArmStep(deviceN, "CLICK_OUT", oldTrack, this.state.hw[deviceN].track);
                         }
                         else
                         {
                             this.dN_update("ARM_OUT");
-                            this.traceArmStep(drv, "ARM_OUT", oldTrack, this.state.hw[drv].track);
+                            this.traceArmStep(deviceN, "ARM_OUT", oldTrack, this.state.hw[deviceN].track);
                         }
                     }
                 }
-                else if (((this.state.hw[drv].phase - 1) & 3) == p) 
+                else if (((this.state.hw[deviceN].phase - 1) & 3) == p) 
                 {
                     // Descending order, track arm moves outward.
-                    this.state.hw[drv].phase = p;
-                    if ((this.state.hw[drv].phase & 1) == 0)
+                    this.state.hw[deviceN].phase = p;
+                    if ((this.state.hw[deviceN].phase & 1) == 0)
                     {
-                        var oldTrack = this.state.hw[drv].track;
-                        if (--this.state.hw[drv].track < 0)
+                        var oldTrack = this.state.hw[deviceN].track;
+                        if (--this.state.hw[deviceN].track < 0)
                         {
-                            this.state.hw[drv].track = 0; // CLICK! CLICK! CLICK!
+                            this.state.hw[deviceN].track = 0; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_IN");
-                            this.traceArmStep(drv, "CLICK_IN", oldTrack, this.state.hw[drv].track);
+                            this.traceArmStep(deviceN, "CLICK_IN", oldTrack, this.state.hw[deviceN].track);
                         }
                         else
                         {
                             this.dN_update("ARM_IN");
-                            this.traceArmStep(drv, "ARM_IN", oldTrack, this.state.hw[drv].track);
+                            this.traceArmStep(deviceN, "ARM_IN", oldTrack, this.state.hw[deviceN].track);
                         }
                     }
                 }
@@ -17310,64 +17310,64 @@ function AppleDisk2()
                 break;
             case Q6L:
                 var oldQ6 = this.state.hw[drv].q6;
-                this.state.hw[drv].q6 = 0;
+                this.state.hw[deviceN].q6 = 0;
 
                 if (oldQ6 != 0)
-                    this.traceChange("Q6L_STROBE_DATA_LATCH", drv, "q6", oldQ6, 0);
+                    this.traceChange("Q6L_STROBE_DATA_LATCH", deviceN, "q6", oldQ6, 0);
 
                 // Strobe Data Latch for I/O
-                if (!this.state.diskData[drv])
+                if (!this.state.diskData[deviceN])
                 {
-                    this.traceUnavailable(drv, "diskData=null");
+                    this.traceUnavailable(deviceN, "diskData=null");
                     return 0xff;
                 }
 
-                if (!this.state.hw[drv].motor)
+                if (!this.state.hw[deviceN].motor)
                 {
-                    this.traceUnavailable(drv, "motor=0");
+                    this.traceUnavailable(deviceN, "motor=0");
                     return 0xff;
                 }
 
                 this.trace.lastUnavailable = "";
 
-                if (++this.state.hw[drv].offset == TRACK_SIZE)
-                    this.state.hw[drv].offset = 0;
+                if (++this.state.hw[deviceN].offset == TRACK_SIZE)
+                    this.state.hw[deviceN].offset = 0;
 
-                var loc = this.state.hw[drv].track * TRACK_SIZE + this.state.hw[drv].offset;
+                var loc = this.state.hw[deviceN].track * TRACK_SIZE + this.state.hw[deviceN].offset;
 
-                if (this.state.hw[drv].q7)
+                if (this.state.hw[deviceN].q7)
                 {
                     // Write to disk.
-                    this.state.diskData[drv][loc] = this.state.hw[drv].data_latch;
-                    this.traceDataByte("WRITE", drv, loc, this.state.hw[drv].data_latch);
-                    return this.state.hw[drv].data_latch;
+                    this.state.diskData[deviceN][loc] = this.state.hw[deviceN].data_latch;
+                    this.traceDataByte("WRITE", deviceN, loc, this.state.hw[deviceN].data_latch);
+                    return this.state.hw[deviceN].data_latch;
                 }
                 else
                 {
                     // Read from disk.
-                    var d8 = this.state.diskData[drv][loc];
-                    this.traceDataByte("READ", drv, loc, d8);
+                    var d8 = this.state.diskData[deviceN][loc];
+                    this.traceDataByte("READ", deviceN, loc, d8);
                     return d8;
                 }
                 // NOTREACHED
             case Q6H:
                 // Load data latch. Also sense write-protect.
-                var oldQ6 = this.state.hw[drv].q6;
-                this.state.hw[drv].q6 = 1;
+                var oldQ6 = this.state.hw[deviceN].q6;
+                this.state.hw[deviceN].q6 = 1;
                 if (oldQ6 != 1) this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", drv, "q6", oldQ6, 1);
                 break;
             case Q7L:
                 // Prepare latch for input.
-                var oldQ7 = this.state.hw[drv].q7;
-                this.state.hw[drv].q7 = 0;
-                this.traceChange("Q7L_PREPARE_LATCH_INPUT", drv, "q7", oldQ7, 0);
+                var oldQ7 = this.state.hw[deviceN].q7;
+                this.state.hw[deviceN].q7 = 0;
+                this.traceChange("Q7L_PREPARE_LATCH_INPUT", deviceN, "q7", oldQ7, 0);
                 this.update_logs("q7");
                 break;
             case Q7H:
                 // Prepare latch for output.
-                var oldQ7 = this.state.hw[drv].q7;
-                this.state.hw[drv].q7 = 1;
-                this.traceChange("Q7H_PREPARE_LATCH_OUTPUT", drv, "q7", oldQ7, 1);
+                var oldQ7 = this.state.hw[deviceN].q7;
+                this.state.hw[deviceN].q7 = 1;
+                this.traceChange("Q7H_PREPARE_LATCH_OUTPUT", deviceN, "q7", oldQ7, 1);
                 this.update_logs("q7");
                 break;
             default:
@@ -17401,17 +17401,17 @@ function AppleDisk2()
 //setDiskData: .DSK LEN:143360 CRC32: E766F072
 //setDiskData: .NIB LEN:232960 CRC32: 435A9A45
 
-    this.setDiskData = function(dskBytes,drv)
+    this.setDiskData = function(dskBytes,deviceID)
     {
-        if(dskBytes===undefined || drv===undefined) return;
-        var nibBytes = this.convertDsk2Nib(dskBytes);
+        if(dskBytes===undefined || deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
 
-        var idx = drv - 1;
-        this.state.diskData[idx] = nibBytes;
+        var nibBytes = this.convertDsk2Nib(dskBytes);
+        this.state.diskData[deviceN] = nibBytes;
 
         this.traceLog("setDiskData", 
         {
-            drv: idx,
+            drv: deviceN,
             dsk_len: dskBytes.length,
             dsk_crc32: oCOM.crc32(dskBytes).toString(16).toUpperCase(),
             nib_len: nibBytes.length,
@@ -18948,21 +18948,21 @@ function AppleDisk2()
         }
     };
 
-    this.surfaceMap_mark_head = function(drv)
+    this.surfaceMap_mark_head = function(deviceN)
     {
-        var d = drv + 1;
-        if(this.surfaceMap_headCell[drv] != null)
+        const deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
+        if(this.surfaceMap_headCell[deviceN] != null)
         {
-            var old = document.getElementById(this.surfaceMap_headCell[drv]);
+            var old = document.getElementById(this.surfaceMap_headCell[deviceN]);
             if(old) old.style.outline = "";
         }
-        var hw = this.state.hw[drv]; if(!hw) return;
+        var hw = this.state.hw[deviceN]; if(!hw) return;
         var track = Math.max(0,Math.min(34,hw.track));
         var sector = Math.max(0,Math.min(15,Math.floor(hw.offset / (6656/16))));
-        var id = "surfaceMap_D"+d+"_"+track+"_"+sector;
+        var id = "surfaceMap_"+deviceID+"_"+track+"_"+sector;
         var el = document.getElementById(id);
         if(el) el.style.outline = "2px solid #fff";
-        this.surfaceMap_headCell[drv] = id;
+        this.surfaceMap_headCell[deviceN] = id;
     };
 
 }
