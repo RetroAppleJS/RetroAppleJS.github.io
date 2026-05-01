@@ -4,6 +4,8 @@
 //
 // EMU_A2Pkeys.js
 
+// TODO: CAPTURE PHYSICAL ESCAPE KEY
+
 if(oEMU===undefined) var oEMU =
     {"component":{"Keyboard":
         { keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
