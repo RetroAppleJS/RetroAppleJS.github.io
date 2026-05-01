@@ -18128,15 +18128,15 @@ function AppleDisk2()
         if (!this.trace.enabled) return;
 
         data = data || {};
-        var drv = data.drv;
-        if (drv === undefined) drv = this.state.drv;
-        var hw = this.state.hw[drv] || {};
+        var deviceN = data.drv;
+        if (deviceN === undefined) deviceN = this.state.drv;
+        var hw = this.state.hw[deviceN] || {};
 
         var e = {
             seq: ++this.trace.seq,
             event: eventName,
             time: (typeof performance != "undefined") ? Math.round(performance.now() * 1000) / 1000 : Date.now(),
-            drv: drv,
+            drv: deviceN,
             track: hw.track,
             phase: hw.phase,
             offset: hw.offset,
