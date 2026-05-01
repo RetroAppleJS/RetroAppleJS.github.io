@@ -1294,7 +1294,7 @@ function loadDisk_fromFile(file_obj,drv)
                 for (var i = 0; i < size; i++)
                     bytes[i] = data.getUint8(i);
         
-                if (size == 143360) disk2.setDiskData(bytes,1);  
+                if (size == 143360) disk2.setDiskData(bytes,"D1");  
 
                 //dumpdisk(bytes);                
                 //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
@@ -1313,7 +1313,7 @@ function loadDisk_fromFile(file_obj,drv)
                 for (var i = 0; i < size; i++)
                     bytes[i] = data.getUint8(i);
         
-                if (size == 143360) disk2.setDiskData(bytes,2);  
+                if (size == 143360) disk2.setDiskData(bytes,"D2");  
 
                 //dumpdisk(bytes);
                 //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
