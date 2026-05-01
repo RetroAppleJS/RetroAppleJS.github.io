@@ -1417,9 +1417,9 @@ function EMU_audio_event_unlock()
     EMU_audio_try_unlock(true);
 }
 
-function loadDisk_fromBuffer(arr_buffer,dsk)
+function loadDisk_fromBuffer(arr_buffer,deviceID)
 {
-    oCOM.POPUP.html("disk2.state.active==true");
+    //oCOM.POPUP.html("disk2.state.active==true");
 
     try
     {
@@ -1427,8 +1427,8 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
         if(disk2.state.active==false) return;
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
-        apple2plus.loadDisk(bytes,"D1");
-        highlight_appbut(document.getElementById("file_"+dsk),true);
+        apple2plus.loadDisk(bytes,deviceID);
+        highlight_appbut(document.getElementById("file_"+deviceID),true);
     }
     catch({ name, message })
     {
