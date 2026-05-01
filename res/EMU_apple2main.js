@@ -713,7 +713,7 @@ function EMUI()
                     + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
                     + "      </form>"
                     
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(1))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(\"D1\"))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     // FILE BOX D2
@@ -729,7 +729,7 @@ function EMUI()
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
                     + "      </form>"
 
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(2))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData(\"D2\"))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     + "  </div>"
@@ -1436,20 +1436,22 @@ function loadDisk_fromBuffer(arr_buffer,dsk)
     }
 }
 
-function ejectDisk(el,drive)
-{
-  var drv = Number(drive.slice(1))-1;
 
-  var fe = document.getElementById("file_"+drive);
+
+function ejectDisk(el,deviceID)
+{
+  const oDevice = apple2plus.hwObj().io.deviceID2obj(deviceID);
+
+  var fe = document.getElementById("file_"+oDevice.deviceID);
   fe.value = "";
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
   var o = apple2plus.DiskObj()
-  o.state.diskData[drv] = null;
+  o.state.diskData[oDevice.deviceN] = null;
   o.GUI_update();
 
-  apple2plus.DiskObj().restoreDriveFileInput(drive);
+  apple2plus.DiskObj().restoreDriveFileInput(oDevice.deviceID);
 
-  var d = oCOM.URL.uri[drive];
+  var d = oCOM.URL.uri[oDevice.deviceID];
   if(d)
   {
     // URI is filled
@@ -1463,6 +1465,7 @@ function ejectDisk(el,drive)
   }
 
 }
+
 
 function highlight_appbut(el,bool)
 {

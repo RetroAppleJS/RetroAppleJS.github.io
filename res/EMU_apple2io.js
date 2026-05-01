@@ -539,6 +539,11 @@ function Apple2IO(vid)
         return names;
     }
 
+    this.DeviceName2obj = function(str)
+    {
+
+    }
+
 
     // SLOT MAPPING
     /*
@@ -674,7 +679,7 @@ function Apple2IO(vid)
         return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
     }
 
-    function extract_slotrange(str,PCODE)
+    function extract_slotrange(str)
     {
         var  slotPut = [], slotFit = [];
         var arr = str.split(",");
@@ -712,6 +717,175 @@ function Apple2IO(vid)
         } 
         return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
     }     
+
+
+
+
+    this.deviceID2obj = function(str)
+    {
+        if(typeof str !== "string") return null;
+
+        var raw = str.trim().toUpperCase();
+
+        var table = [
+            {
+                rx: /^D([12])$/,
+                periID: "DISKII",
+                deviceID: "D$1",
+                script: function(arg)
+                {
+                    var deviceN = Number(arg.deviceID.slice(1)) - 1;
+
+                    var slotN = null;
+                    if(typeof _CFG_PSLOT !== "undefined" &&
+                    _CFG_PSLOT[arg.periID] &&
+                    _CFG_PSLOT[arg.periID].SLOTrange)
+                    {
+                        var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
+                        slotN = slotRange.slotPut[0];   // starred/default slot, e.g. 6*
+                    }
+
+                    return {
+                        "deviceN": deviceN,
+                        "slotN": slotN
+                    };
+                }
+            }
+        ];
+
+        function applyTemplate(tpl, match)
+        {
+            return tpl.replace(/\$(\d+)/g, function(_, n)
+            {
+                return match[Number(n)] || "";
+            });
+        }
+
+        function orderedDeviceObj(obj)
+        {
+            return {
+                "slotN": obj.slotN,
+                "slotID": obj.slotID,
+                "periID": obj.periID,
+                "deviceID": obj.deviceID,
+                "deviceN": obj.deviceN
+            };
+        }
+
+        for(var i = 0; i < table.length; i++)
+        {
+            var rule = table[i];
+            var match = raw.match(rule.rx);
+
+            if(match)
+            {
+                var obj = {
+                    "periID": rule.periID,
+                    "deviceID": applyTemplate(rule.deviceID, match)
+                };
+
+                var extra = {};
+                if(typeof rule.script === "function")
+                {
+                    extra = rule.script({
+                        "raw": raw,
+                        "match": match,
+                        "periID": obj.periID,
+                        "deviceID": obj.deviceID
+                    }) || {};
+                }
+
+                for(var k in extra)
+                {
+                    if(extra.hasOwnProperty(k)) obj[k] = extra[k];
+                }
+
+                if(typeof obj.slotN === "number")
+                {
+                    obj.slotID = "PR#" + obj.slotN;
+                }
+
+                return orderedDeviceObj(obj);
+            }
+        }
+
+        return null;
+    };
+
+    this.obj2deviceID = function(obj)
+    {
+        if(obj == null) return null;
+
+        /*
+            Allow strings to be normalized through deviceID2obj().
+            Example:
+            obj2deviceID("d1") -> "D1"
+        */
+        if(typeof obj === "string")
+        {
+            var parsed = this.deviceID2obj(obj);
+            return parsed ? parsed.deviceID : null;
+        }
+
+        /*
+            Canonical Disk II reverse mapping.
+            deviceN 0 -> D1
+            deviceN 1 -> D2
+        */
+        if(obj.periID === "DISKII")
+        {
+            if(typeof obj.deviceN === "number")
+            {
+                return "D" + (obj.deviceN + 1);
+            }
+
+            if(typeof obj.deviceID === "string")
+            {
+                var id = obj.deviceID.trim().toUpperCase();
+                if(/^D[12]$/.test(id)) return id;
+            }
+        }
+
+        /*
+            Generic fallback.
+            Useful when later devices define their own canonical IDs.
+        */
+        if(typeof obj.deviceID === "string")
+        {
+            return obj.deviceID.trim().toUpperCase();
+        }
+
+        return null;
+    };
+
+    this.deviceN2ID = function(n,PCODE)
+    {
+        switch(PCODE)
+        {
+            case "DISKII": return "D"+(Number(n)+1);
+        }
+    }
+    this.deviceID2N = function(str,PCODE) 
+    {
+        switch(PCODE)
+        {
+            case "DISKII": return Number(str.slice(1))-1;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // SLOT MAPPING
     var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING

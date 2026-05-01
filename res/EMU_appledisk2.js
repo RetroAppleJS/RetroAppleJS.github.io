@@ -357,14 +357,15 @@ function AppleDisk2()
         });
     }
 
-    this.getDiskData = function(drv)
+    this.getDiskData = function(deviceID)
     {
-        if(drv===undefined) return;
+        if(deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
         this.traceFlush("getDiskData");
-        var nibBytes = this.state.diskData[drv-1];
+        var nibBytes = this.state.diskData[deviceN];
         var dskBytes = this.convertNib2Dsk(nibBytes);
         this.traceLog("getDiskData", {
-            drv: drv - 1,
+            drv: deviceN,
             nib_len: nibBytes.length,
             nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase(),
             dsk_len: dskBytes.length,
@@ -374,12 +375,11 @@ function AppleDisk2()
         return dskBytes;
     }
 
-    this.isDiskData = function(drv)
+    this.isDiskData = function(deviceID)
     {
-        if(drv===undefined) return;
-        if(drv=="D1") drv = 1;
-        if(drv=="D2") drv = 2;
-        return this.state.diskData[drv-1]!=null;
+        if(deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
+        return this.state.diskData[deviceN]!=null;
     }
 
 
@@ -1505,19 +1505,13 @@ function AppleDisk2()
 
             arg.ref = arg.ref || "main";
 
-            // D1  D1OCC D2 D2OCC
-            // 1   0      x   x     D1
-            // 1   1      x   0     D2
-            // 1   1      x   1     D1
-            // x   x      1   1     D1
-
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
             // if D1 is occupied, switch to D2, if D2 is occupied, switch to D1
             var drv = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
 
 
             // TODO: CONVERT SLT,DRV string to SLOT_I,DRV_I and backwards
-            if(typeof drv == "number") drv = "D" + drv;
+            //if(typeof drv == "number") drv = "D" + drv;
 
             // Only disk images should be mounted here.
             var ext = (arg.path || "").split(".").pop().toLowerCase();
@@ -1818,19 +1812,20 @@ function AppleDisk2()
     {
         var pal = this.surfaceMap_build_palette();
 
-        for(var drv=0; drv<2; drv++)
+        for(var deviceN=0; deviceN<2; deviceN++)
         {
-            var d = drv + 1;
-            var status = document.getElementById("surfaceMap_status_D"+d);
-            if(this.state.diskData[drv] == null)
+            var deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
+
+            var status = document.getElementById("surfaceMap_status_"+deviceID);
+            if(this.state.diskData[deviceN] == null)
             {
                 if(status) status.innerHTML = "no disk";
-                this.surfaceMap_clear_drive(drv);
+                this.surfaceMap_clear_drive(deviceN);
                 continue;
             }
 
             var dskBytes = null;
-            try { dskBytes = this.convertNib2Dsk(this.state.diskData[drv]); }
+            try { dskBytes = this.convertNib2Dsk(this.state.diskData[deviceN]); }
             catch(e)
             {
                 if(status) status.innerHTML = "decode error";
@@ -1851,13 +1846,13 @@ function AppleDisk2()
 
                     // Sector “density”: black for empty/zero-like sectors, bright for sectors with many non-zero bytes.
                     var pct = Math.round(nz * 100 / 256);
-                    var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
+                    var el = document.getElementById("surfaceMap_"+deviceID+"_"+track+"_"+sector);
 
                     if(el)
                     {
                         el.style.backgroundColor = pal[pct];
                         el.title =
-                            "D"+d
+                            deviceID
                             +" T"+track
                             +" S"+sector
                             +" $"+oCOM.getHexMulti(offs,5)
@@ -1868,24 +1863,24 @@ function AppleDisk2()
                 }
             }
 
-            this.surfaceMap_mark_head(drv);
+            this.surfaceMap_mark_head(deviceN);
         }
     };
 
-    this.surfaceMap_clear_drive = function(drv)
+    this.surfaceMap_clear_drive = function(deviceN)
     {
-        var d = drv + 1;
+        const deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
 
         for(var track=0; track<35; track++)
         {
             for(var sector=0; sector<16; sector++)
             {
-                var el = document.getElementById("surfaceMap_D"+d+"_"+track+"_"+sector);
+                var el = document.getElementById("surfaceMap_"+deviceID+"_"+track+"_"+sector);
                 if(el)
                 {
                     el.style.backgroundColor = "#111";
                     el.style.outline = "";
-                    el.title = "D"+d+" T"+track+" S"+sector+" - no disk";
+                    el.title = deviceID+" T"+track+" S"+sector+" - no disk";
                 }
             }
         }
