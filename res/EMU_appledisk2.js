@@ -1133,7 +1133,7 @@ function AppleDisk2()
         return "DISKII " + e.event + " " + d;
     }
 
-    this.traceChange = function(eventName, drv, field, from, to, extra)
+    this.traceChange = function(eventName, deviceN, field, from, to, extra)
     {
         if (!this.trace.enabled) return;
         if (from === to) return;
@@ -1142,7 +1142,7 @@ function AppleDisk2()
             this.traceFlush(field);
 
         var data = extra || {};
-        data.drv = drv;
+        data.drv = deviceN;
         data.field = field;
         data.from = from;
         data.to = to;
@@ -1150,7 +1150,7 @@ function AppleDisk2()
         this.traceLog(eventName, data);
     }
 
-    this.traceArmStep = function(drv, eventName, fromTrack, toTrack)
+    this.traceArmStep = function(deviceN, eventName, fromTrack, toTrack)
     {
         if (!this.trace.enabled) return;
 
@@ -1165,12 +1165,12 @@ function AppleDisk2()
 
         var p = this.trace.pendingArm;
 
-        if (!p || p.drv != drv || p.dir != dir)
+        if (!p || p.drv != deviceN || p.dir != dir)
         {
             this.traceFlushArm("arm-direction");
 
             p = {
-                drv: drv,
+                drv: deviceN,
                 dir: dir,
                 event: click ? eventName : "ARM_" + dir,
                 fromTrack: fromTrack,
@@ -1211,7 +1211,7 @@ function AppleDisk2()
         });
     }
 
-    this.traceDataByte = function(mode, drv, loc, d8)
+    this.traceDataByte = function(mode, deviceN, loc, d8)
     {
         if (!this.trace.enabled) return;
 
@@ -1226,7 +1226,7 @@ function AppleDisk2()
             p
             && !wrappedTrack
             && p.mode == mode
-            && p.drv == drv
+            && p.drv == deviceN
             && p.blockTrack == blockTrack
             && ((p.endOffset + 1) % TRACK_SIZE) == offset;
 
@@ -1236,7 +1236,7 @@ function AppleDisk2()
 
             p = {
                 mode: mode,
-                drv: drv,
+                drv: deviceN,
                 blockTrack: blockTrack,
                 startLoc: loc,
                 endLoc: loc,
@@ -1281,18 +1281,18 @@ function AppleDisk2()
         });
     }
 
-    this.traceUnavailable = function(drv, reason)
+    this.traceUnavailable = function(deviceN, reason)
     {
         if (!this.trace.enabled) return;
 
-        var key = drv + ":" + reason;
+        var key = deviceN + ":" + reason;
         if (this.trace.lastUnavailable == key) return;
 
         this.trace.lastUnavailable = key;
         this.traceFlush("unavailable");
 
         this.traceLog("Q6L_NO_DATA", {
-            drv: drv,
+            drv: deviceN,
             reason: reason,
             returned: this.traceHexByte(0xff)
         });
