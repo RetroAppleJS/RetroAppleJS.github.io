@@ -1,0 +1,494 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+// ScreenGPU_DITHER_v2.html
+// GPU.js blue-noise ordered dithering pipeline:
+//   1. Load source image into the photo canvas.
+//   2. Run a GPU.js blue-noise ordered dithering kernel at 280 x 192.
+//   3. Pack the resulting 1-bit bitmap into Apple II HGR RAM.
+//   4. Render the HGR memory map through the existing GPU.js HGR kernel.
+//
+-->
+<html style="background-color:#B0B0B0">
+<head>
+  <title>APPLE HIRES SCREEN BY GPU + BLUE-NOISE DITHER</title>
+  <meta charset="utf-8">
+  <style>
+    html { height:100%; font-family: Arial, sans-serif; }
+    body { background-color:#808080; height:100%; margin:0; padding:0; }
+    #topmenu { padding:8px; background:#606060; color:#fff; }
+    #topmenu label { margin-right:12px; }
+    #status { margin-left:12px; font-size:12px; color:#e8e8e8; }
+    #main { padding:10px; }
+    canvas.appvid { image-rendering:pixelated; background:#000; margin-right:10px; }
+  </style>
+</head>
+<body>
+  <div id="topmenu">
+    <label>
+      HGR page
+      <select id="pageSwitch">
+        <option value="1" selected>PAGE1 ($2000)</option>
+        <option value="2">PAGE2 ($4000)</option>
+      </select>
+    </label>
+    <span id="status">loading...</span>
+  </div>
+
+  <div id="main">
+    <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+    <canvas class="appvid" id="photo" width="560" height="384"></canvas>
+  </div>
+
+  <script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+  <script>
+
+const INTCols = new Uint8Array([
+    0X00,0X00,0X00,0X0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0,0x00,0x00,0x00,0x0  // Black
+    ,0X90,0X17,0X40,0X0,0x4D,0x4D,0x4D,0x0,0x30,0x4D,0x48,0x0,0x4C,0x46,0x31,0x0  // Magenta
+    ,0X40,0X2C,0XA5,0X0,0x5B,0x5B,0x5B,0x0,0x39,0x5B,0x56,0x0,0x5A,0x52,0x39,0x0  // Dark Blue
+    ,0XD0,0X43,0XE5,0X0,0xA8,0xA8,0xA8,0x0,0x69,0xA8,0x9E,0x0,0xA6,0x98,0x6A,0x0  // Purple
+    ,0X00,0X69,0X40,0X0,0x38,0x38,0x38,0x0,0x23,0x38,0x35,0x0,0x38,0x33,0x24,0x0  // Dark Green
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 1
+    ,0X2F,0X95,0XE5,0X0,0x8E,0x8E,0x8E,0x0,0x59,0x8E,0x85,0x0,0x8C,0x80,0x59,0x0  // Medium Blue
+    ,0XBF,0XAB,0XFF,0X0,0xCE,0xCE,0xCE,0x0,0x81,0xCE,0xC2,0x0,0xCB,0xBA,0x82,0x0  // Light Blue
+    ,0X40,0X54,0X00,0X0,0x31,0x31,0x31,0x0,0x1F,0x31,0x2E,0x0,0x31,0x2D,0x1F,0x0  // Brown
+    ,0XD0,0X6A,0X1A,0X0,0x71,0x71,0x71,0x0,0x47,0x71,0x6B,0x0,0x70,0x67,0x48,0x0  // Orange
+    ,0X80,0X80,0X80,0X0,0x80,0x80,0x80,0x0,0x50,0x80,0x78,0x0,0x7E,0x74,0x51,0x0  // Grey 2
+    ,0XFF,0X96,0XBF,0X0,0xC7,0xC7,0xC7,0x0,0x7D,0xC7,0xBB,0x0,0xC4,0xB4,0x7D,0x0  // Pink
+    ,0X2F,0XBC,0X1A,0X0,0x57,0x57,0x57,0x0,0x37,0x57,0x52,0x0,0x56,0x4F,0x37,0x0  // Light Green
+    ,0XBF,0XD3,0X5A,0X0,0xA4,0xA4,0xA4,0x0,0x67,0xA4,0x9A,0x0,0xA2,0x95,0x68,0x0  // Yellow  
+    ,0X6F,0XE8,0XBF,0X0,0xB2,0xB2,0xB2,0x0,0x70,0xB2,0xA8,0x0,0xB0,0xA1,0x70,0x0  // Aquamarine
+    ,0XFF,0XFF,0XFF,0X0,0xFF,0xFF,0xFF,0x0,0xA0,0xFF,0xF0,0x0,0xFC,0xE7,0xA1,0x0  // White
+    ]);
+
+    var apple2plus;
+    var ditherGPU = null;
+    var ditherKernel = null;
+    var blueNoiseMask = null;
+
+    const DEFAULT_PHOTO_SRC = "../res/Lena_Soderberg_280x192.png";
+    const HGR_W = 280;
+    const HGR_H = 192;
+    const HGR_PAGE1 = 0x2000;
+    const HGR_PAGE2 = 0x4000;
+    const BLUE_NOISE_SIZE = 64;
+
+    window.addEventListener('load', EMU_init);
+
+    function EMU_init()
+    {
+      const vidContext = document.getElementById('applescreen');
+      apple2plus = new Apple2Plus(vidContext);
+      apple2plus.restart();
+
+      const video = apple2plus.vidObj();
+      const pageSwitch = document.getElementById('pageSwitch');
+
+      video.initGPU(
+        { canvas: vidContext, mode: 'gpu' },
+        { kernel: video.kProcessHiRes, output: [vidContext.width, vidContext.height], graphical: true },
+        {
+          "CHROME_MODE": [0, "cfg[", "]<<2"],       // default color monitor
+          "DIM_H":       [vidContext.height >> 1],
+          "PAGE_SW":     [0x10],                    // PAGE1 soft-switch state; PAGE2 uses 0x20
+          "PALETTE":     [INTCols]
+        }
+      );
+
+      pageSwitch.addEventListener('change', function() { video.setPage2(this.value === '2'); });
+
+      function drawLoop()
+      {
+        video.redrawIfNeeded();
+        window.requestAnimationFrame(drawLoop);
+      }
+      drawLoop();
+
+      // Stage 1-4: load image, GPU-dither it, pack into HGR RAM, render with existing HGR GPU kernel.
+      runBlueNoiseDitherPipeline(DEFAULT_PHOTO_SRC, HGR_PAGE1);
+    }
+
+    function setStatus(msg)
+    {
+      const el = document.getElementById('status');
+      if (el) el.textContent = msg;
+    }
+
+    function createGPUInstance(options)
+    {
+      try { return new window.GPU.GPU(options || {}); }
+      catch (e) { return new GPU(options || {}); }
+    }
+
+    async function runBlueNoiseDitherPipeline(imageSrc, pageBase)
+    {
+      try
+      {
+        setStatus('stage 1/4: loading source image...');
+        const imageData = await loadImageToCanvas('photo', imageSrc);
+
+        setStatus('stage 2/4: GPU blue-noise ordered dithering...');
+        initDitherGPU();
+
+        let monoBitmap;
+        try
+        {
+          monoBitmap = ditherKernel(new Uint8Array(imageData.data), blueNoiseMask);
+        }
+        catch (gpuError)
+        {
+          console.warn('GPU dither failed; using CPU fallback with the same blue-noise mask.', gpuError);
+          setStatus('GPU dither failed; using CPU fallback...');
+          monoBitmap = blueNoiseDitherCPU(new Uint8Array(imageData.data), blueNoiseMask);
+        }
+
+        setStatus('stage 3/4: packing dithered bitmap into Apple II HGR RAM...');
+        const writeRam = function(adr, byte) { apple2plus.hwObj().write(adr, byte); };
+        clearHgrPage(writeRam, pageBase);
+        packMonoBitmapToHgrPage(monoBitmap, writeRam, pageBase);
+
+        setStatus('stage 4/4: rendered HGR page from dithered image.');
+        apple2plus.vidObj().setPage2(pageBase === HGR_PAGE2);
+      }
+      catch (e)
+      {
+        console.error(e);
+        setStatus('dither pipeline failed; see console.');
+      }
+    }
+
+    function loadImageToCanvas(canvasId, imageSrc)
+    {
+      return new Promise(function(resolve, reject)
+      {
+        const displayCanvas = document.getElementById(canvasId);
+        if (!displayCanvas) { reject(new Error('Canvas not found: ' + canvasId)); return; }
+
+        const displayCtx = displayCanvas.getContext('2d');
+        const sourceCanvas = document.createElement('canvas');
+        sourceCanvas.width = HGR_W;
+        sourceCanvas.height = HGR_H;
+        const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+        const img = new Image();
+
+        img.onload = function()
+        {
+          // Keep a visible 2x source preview in the photo canvas.
+          displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+          displayCtx.imageSmoothingEnabled = false;
+          displayCtx.drawImage(img, 0, 0, displayCanvas.width, displayCanvas.height);
+
+          // Stage-1 source for the dither kernel: exact Apple II HGR resolution.
+          sourceCtx.clearRect(0, 0, HGR_W, HGR_H);
+          sourceCtx.imageSmoothingEnabled = false;
+          sourceCtx.drawImage(img, 0, 0, HGR_W, HGR_H);
+          resolve(sourceCtx.getImageData(0, 0, HGR_W, HGR_H));
+        };
+
+        img.onerror = function() { reject(new Error('Could not load image: ' + imageSrc)); };
+        img.src = imageSrc;
+      });
+    }
+
+    function initDitherGPU()
+    {
+      if (ditherKernel) return;
+
+      blueNoiseMask = makeProgressiveBlueNoiseMask(BLUE_NOISE_SIZE, 0xA2C2A2);
+      ditherGPU = createGPUInstance({ mode: 'gpu' });
+
+      // One thread = one Apple II HGR dot. The kernel emits a 1-bit mono bitmap.
+      ditherKernel = ditherGPU.createKernel(function(rgba, noise)
+      {
+        const x = this.thread.x;
+        const y = this.thread.y;
+        const p = ((y * 280 + x) * 4);
+
+        const r = rgba[p];
+        const g = rgba[p + 1];
+        const b = rgba[p + 2];
+
+        // Integer approximation of Rec.601 luminance: 0.299R + 0.587G + 0.114B.
+        const lum = ((r * 77) + (g * 150) + (b * 29)) >> 8;
+        const threshold = noise[((y & 63) << 6) + (x & 63)];
+
+        return lum > threshold ? 1 : 0;
+      }, {
+        output: [HGR_W, HGR_H]
+      });
+    }
+
+    // Build a deterministic progressive blue-noise-like ordered threshold mask.
+    // The early ranks are repeatedly placed at the farthest sampled location from existing ranks.
+    function makeProgressiveBlueNoiseMask(size, seed)
+    {
+      const n = size * size;
+      const rank = new Int32Array(n);
+      const minD2 = new Float32Array(n);
+      const mask = new Uint8Array(n);
+
+      for (let i = 0; i < n; i++) { rank[i] = -1; minD2[i] = 1e9; }
+
+      let rnd = seed >>> 0;
+      function randomUnit()
+      {
+        rnd ^= rnd << 13;
+        rnd ^= rnd >>> 17;
+        rnd ^= rnd << 5;
+        return (rnd >>> 0) / 4294967296;
+      }
+
+      function torusD2(x1, y1, x2, y2)
+      {
+        let dx = Math.abs(x1 - x2);
+        let dy = Math.abs(y1 - y2);
+        if (dx > size / 2) dx = size - dx;
+        if (dy > size / 2) dy = size - dy;
+        return dx * dx + dy * dy;
+      }
+
+      for (let k = 0; k < n; k++)
+      {
+        let bestIdx = -1;
+        let bestScore = -1;
+        const tries = k === 0 ? 1 : 48;
+
+        for (let t = 0; t < tries; t++)
+        {
+          let idx = (randomUnit() * n) | 0;
+          let guard = 0;
+          while (rank[idx] !== -1 && guard++ < n) idx = (idx + 1) % n;
+
+          const score = k === 0 ? 1e9 : minD2[idx];
+          if (score > bestScore) { bestScore = score; bestIdx = idx; }
+        }
+
+        if (bestIdx < 0)
+        {
+          for (let i = 0; i < n; i++) if (rank[i] === -1) { bestIdx = i; break; }
+        }
+
+        rank[bestIdx] = k;
+        const bx = bestIdx % size;
+        const by = (bestIdx / size) | 0;
+
+        for (let i = 0; i < n; i++)
+        {
+          if (rank[i] !== -1) continue;
+          const x = i % size;
+          const y = (i / size) | 0;
+          const d2 = torusD2(x, y, bx, by);
+          if (d2 < minD2[i]) minD2[i] = d2;
+        }
+      }
+
+      for (let i = 0; i < n; i++) mask[i] = (rank[i] * 255 / (n - 1)) | 0;
+      return mask;
+    }
+
+    function blueNoiseDitherCPU(rgba, noise)
+    {
+      const out = new Array(HGR_H);
+      for (let y = 0; y < HGR_H; y++)
+      {
+        const row = new Float32Array(HGR_W);
+        for (let x = 0; x < HGR_W; x++)
+        {
+          const p = (y * HGR_W + x) * 4;
+          const lum = ((rgba[p] * 77) + (rgba[p + 1] * 150) + (rgba[p + 2] * 29)) >> 8;
+          const threshold = noise[((y & 63) << 6) + (x & 63)];
+          row[x] = lum > threshold ? 1 : 0;
+        }
+        out[y] = row;
+      }
+      return out;
+    }
+
+    function clearHgrPage(writeByte, pageBase)
+    {
+      for (let i = 0; i < 0x2000; i++) writeByte(pageBase + i, 0x00);
+    }
+
+    function hgrAddress(pageBase, xByte, y)
+    {
+      return pageBase
+        + ((y << 10) & 0x1C00)
+        + ((y << 4) & 0x0380)
+        + ((y >> 3) & 0x0018)
+        + ((y >> 1) & 0x0060)
+        + xByte;
+    }
+
+    function getMonoBit(bitmap, x, y)
+    {
+      const row = bitmap[y];
+      return row[x] >= 0.5;
+    }
+
+    function packMonoBitmapToHgrPage(bitmap, writeByte, pageBase)
+    {
+      for (let y = 0; y < HGR_H; y++)
+      {
+        for (let xByte = 0; xByte < 40; xByte++)
+        {
+          let byte = 0;
+          const x0 = xByte * 7;
+
+          for (let bit = 0; bit < 7; bit++)
+          {
+            if (getMonoBit(bitmap, x0 + bit, y)) byte |= 1 << bit;
+          }
+
+          // High bit is left at 0 for this first monochrome ordered-dither pass.
+          writeByte(hgrAddress(pageBase, xByte, y), byte);
+        }
+      }
+    }
+
+    // Optional capture-loader kept for backwards compatibility. The callback has the desired signature: (adr, byte).
+    function fill_ram(byte_capture, writeByte, offset)
+    {
+      offset = offset || 0;
+      if (!byte_capture) return 0;
+
+      let writes = 0;
+      const line_arr = byte_capture.split("\n");
+      for (let i = 0; i < line_arr.length; i++)
+      {
+        const line = line_arr[i].trim();
+        if (line.length === 0 || line[0] === '#') continue;
+
+        const parts = line.split(':');
+        if (parts.length < 2) continue;
+
+        const adr = parseInt(parts[0], 16);
+        if (Number.isNaN(adr)) continue;
+
+        const hexarr = parts[1].trim().split(/\s+/);
+        for (let j = 0; j < hexarr.length; j++)
+        {
+          const byte = parseInt(hexarr[j], 16);
+          if (!Number.isNaN(byte))
+          {
+            writeByte((offset + adr + j) & 0xFFFF, byte & 0xFF);
+            writes++;
+          }
+        }
+      }
+      return writes;
+    }
+
+    function Apple2Plus(context)
+    {
+      const video = new Apple2Video(context);
+      const ram = new Uint8Array(0x10000);
+
+      const hw = {
+        write: function(addr, d8) { ram[addr & 0xFFFF] = d8 & 0xFF; video.write(addr, d8); },
+        safe_flashdump: function() { return ram; },
+        restart: function() { ram.fill(0); },
+        reset: function() {}
+      };
+
+      this.hwObj = function() { return hw; };
+      this.vidObj = function() { return video; };
+      this.restart = function() { hw.restart(); video.reset(); };
+    }
+
+    var Apple2Video = function(ctx)
+    {
+      this.dim = [ctx.width, ctx.height];
+
+      let page2_mode = false;
+      let chrome_mode = 0;
+      let frame_redraw = true;
+
+      // BYTE ARRAY SERIALISATION
+      this.serial8 = new Uint8Array();
+      this.config8_map = {};
+      this.config8_idx = {};
+      this.ser8_ref = function(name, arr) { this.setlen(name, null); this.serial8 = new Uint8Array([...this.serial8, ...arr]); };
+      this.ser8_val = function(name, val, modifier) { this.setlen(name, modifier); this.serial8 = new Uint8Array([...this.serial8, val & 255]); };
+      this.idx8 = function(name) { return this.config8_idx[name]; };
+
+      this.setlen = function(name, modifier)
+      {
+        if (modifier === undefined) modifier = ["cfg[", "]"];
+        else if (modifier == null) modifier = ["", ""];
+
+        if (this.config8_map[name] === undefined)
+        {
+          this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
+          this.config8_idx[name] = this.serial8.length;
+        }
+      };
+
+      this.reset = function() { page2_mode = false; chrome_mode = 0; frame_redraw = true; };
+      this.write = function(addr, d8) { if (addr >= 0x2000 && addr < 0x6000) frame_redraw = true; };
+      this.setPage2 = function(flag) { if (page2_mode !== flag) { page2_mode = flag; frame_redraw = true; } };
+      this.pageSoftSwitch = function() { return page2_mode ? 0x20 : 0x10; };
+      this.redrawIfNeeded = function() { if (frame_redraw) this.redraw(); };
+
+      this.redraw = function()
+      {
+        if (!this.kernel) return;
+        this.serial8[this.idx8("CHROME_MODE")] = chrome_mode;
+        this.serial8[this.idx8("PAGE_SW")] = this.pageSoftSwitch();
+        this.kernel(apple2plus.hwObj().safe_flashdump(), this.serial8);
+        frame_redraw = false;
+      };
+
+      this.initGPU = function(GPUarg, KERNELarg, config)
+      {
+        // CONFIGURE DATA SERIALISATION
+        for (const i in config)
+        {
+          if (config[i][0].constructor === Uint8Array) this.ser8_ref(i, config[i][0]);
+          else this.ser8_val(i, config[i][0], config[i][1] === undefined ? undefined : [config[i][1], config[i][2]]);
+        }
+
+        // INSTANTIATE GPU CLASS
+        const gpu = createGPUInstance(GPUarg);
+
+        // TRANSPILE KERNEL SCRIPT
+        this.kernel = gpu.createKernel(KERNELarg.kernel, KERNELarg);
+      };
+
+      this.kernel = null;
+
+      // Reduced KERNEL v6: fixed HIRES rendering path only.
+      this.kProcessHiRes = function(mem, cfg)
+      {
+        const CHROME_MODE = cfg[0] << 2;
+        const DIM_H = cfg[1];
+        const PAGE_SW = cfg[2];
+        const PALETTE = 3;
+
+        const xp = this.thread.x >> 1;
+        const yp = DIM_H - (this.thread.y >> 1) - 1;
+        const adr_ofs = (yp << 4) & 0x380 | (yp >> 3) & 0x18 | (yp >> 1) & 0x60;
+        const PAGE = (PAGE_SW & 48) << 9;
+
+        let cp = PALETTE + CHROME_MODE;
+
+        const x7 = xp + 1 + (xp + 1 + ((xp + 1) >> 3) >> 3) >> 3;          // Math.floor(xp / 7)
+        const m7 = xp - (x7 << 3) + x7;                                     // xp % 7
+        const adr = PAGE + ((yp << 10) & 0x1C00) + adr_ofs + x7;            // locate HGR hardware address
+        const b171 = ((0x7F & mem[adr + 1]) << 8) | ((0x7F & mem[adr]) << 1) | ((mem[adr - 1] >> 6) & 1);
+        const b3 = (b171 >> m7) & 7;
+        const d1 = (0b100100 >> b3) & 1;
+        const d2 = (0b11001000 >> b3) & 1;
+        const dl = (1 + ((((xp ^ b3) << 1) & 2) | ((xp ^ b3) & 1) ^ (mem[adr] >> 7))) & ((d1 << 4) - d1);
+
+        cp += (dl + (dl << 1) | ((d2 << 4) - d2)) << 4;
+
+        this.color(cfg[cp] / 256, cfg[cp + 1] / 256, cfg[cp + 2] / 256);
+      };
+    };
+
+  </script>
+</body>
+</html>
