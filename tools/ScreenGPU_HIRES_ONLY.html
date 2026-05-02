@@ -31,7 +31,6 @@
         <option value="2">PAGE2 ($4000)</option>
       </select>
     </label>
-    <button id="sourceButton" type="button">SOURCE CODE</button>
   </div>
 
   <div id="main">
@@ -92,23 +91,8 @@
         }
       );
 
-      pageSwitch.addEventListener('change', function()
-      {
-        video.setPage2(this.value === '2');
-      });
-
-      document.getElementById('sourceButton').addEventListener('click', function()
-      {
-        const source = document.getElementById('source');
-        source.textContent = apple2plus.vidObj().kProcessHiRes.toString();
-        source.style.display = source.style.display === 'none' ? 'block' : 'none';
-      });
-
-      function drawLoop()
-      {
-        video.redrawIfNeeded();
-        window.requestAnimationFrame(drawLoop);
-      }
+      pageSwitch.addEventListener('change', function() { video.setPage2(this.value === '2') });
+      function drawLoop() { video.redrawIfNeeded(); window.requestAnimationFrame(drawLoop); }
       drawLoop();
     }
 
@@ -138,10 +122,7 @@
       }
     }
 
-    function set_ram(byte, adr, a2p)
-    {
-      a2p.hwObj().write(adr, byte);
-    }
+    function set_ram(byte, adr, a2p) { a2p.hwObj().write(adr, byte) }
 
     function Apple2Plus(context)
     {
@@ -149,29 +130,15 @@
       const ram = new Uint8Array(0x10000);
 
       const hw = {
-        write: function(addr, d8)
-        {
-          ram[addr & 0xFFFF] = d8 & 0xFF;
-          video.write(addr, d8);
-        },
-        safe_flashdump: function()
-        {
-          return ram;
-        },
-        restart: function()
-        {
-          ram.fill(0);
-        },
+        write: function(addr, d8) { ram[addr & 0xFFFF] = d8 & 0xFF; video.write(addr, d8); },
+        safe_flashdump: function() { return ram; },
+        restart: function() { ram.fill(0); },
         reset: function() {}
       };
 
       this.hwObj = function() { return hw; };
       this.vidObj = function() { return video; };
-      this.restart = function()
-      {
-        hw.restart();
-        video.reset();
-      };
+      this.restart = function() { hw.restart(); video.reset(); }
     }
 
     var Apple2Video = function(ctx)
@@ -186,23 +153,9 @@
       this.serial8 = new Uint8Array();
       this.config8_map = {};
       this.config8_idx = {};
-
-      this.ser8_ref = function(name, arr)
-      {
-        this.setlen(name, null);
-        this.serial8 = new Uint8Array([...this.serial8, ...arr]);
-      };
-
-      this.ser8_val = function(name, val, modifier)
-      {
-        this.setlen(name, modifier);
-        this.serial8 = new Uint8Array([...this.serial8, val & 255]);
-      };
-
-      this.idx8 = function(name)
-      {
-        return this.config8_idx[name];
-      };
+      this.ser8_ref = function(name, arr) { this.setlen(name, null); this.serial8 = new Uint8Array([...this.serial8, ...arr]); }
+      this.ser8_val = function(name, val, modifier) { this.setlen(name, modifier); this.serial8 = new Uint8Array([...this.serial8, val & 255]); }
+      this.idx8 = function(name) { return this.config8_idx[name]; }
 
       this.setlen = function(name, modifier)
       {
@@ -216,49 +169,18 @@
         }
       };
 
-      this.reset = function()
-      {
-        page2_mode = false;
-        chrome_mode = 0;
-        frame_redraw = true;
-      };
-
-      this.write = function(addr, d8)
-      {
-        if (addr >= 0x2000 && addr < 0x6000) frame_redraw = true;
-      };
-
-      this.setPage2 = function(flag)
-      {
-        if (page2_mode !== flag)
-        {
-          page2_mode = flag;
-          frame_redraw = true;
-        }
-      };
-
-      this.pageSoftSwitch = function()
-      {
-        return page2_mode ? 0x20 : 0x10;
-      };
-
-      this.redrawIfNeeded = function()
-      {
-        if (frame_redraw) this.redraw();
-      };
+      this.reset = function() { page2_mode = false; chrome_mode = 0; frame_redraw = true; };
+      this.write = function(addr, d8) { if (addr >= 0x2000 && addr < 0x6000) frame_redraw = true; }
+      this.setPage2 = function(flag) { if (page2_mode !== flag) { page2_mode = flag; frame_redraw = true; }}
+      this.pageSoftSwitch = function() { return page2_mode ? 0x20 : 0x10; };
+      this.redrawIfNeeded = function() { if (frame_redraw) this.redraw(); }
 
       this.redraw = function()
       {
         if (!this.kernel) return;
-
         this.serial8[this.idx8("CHROME_MODE")] = chrome_mode;
         this.serial8[this.idx8("PAGE_SW")] = this.pageSoftSwitch();
-
-        this.kernel(
-          apple2plus.hwObj().safe_flashdump(),
-          this.serial8
-        );
-
+        this.kernel( apple2plus.hwObj().safe_flashdump(),this.serial8);
         frame_redraw = false;
       };
 
