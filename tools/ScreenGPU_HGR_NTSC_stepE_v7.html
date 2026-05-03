@@ -586,33 +586,54 @@ var Apple2Video = function(ctx)
 
       const dxp = dsx >> 2;
 
-      function getPix(rb, pix)
-      {
-        if (pix < 0) pix = 0;
-        if (pix > 279) pix = 279;
-        const bx = (pix / 7) | 0;
-        const bt = pix - bx * 7;
-        return (hgr[rb + bx] >> bt) & 1;
-      }
+      // cur
+      let p = dxp;
+      if (p < 0) p = 0;
+      if (p > 279) p = 279;
+      let bx = (p / 7) | 0;
+      let bt = p - bx * 7;
+      const cur = (hgr[rowBase + bx] >> bt) & 1;
 
-      const cur = getPix(rowBase, dxp);
-      const prev = getPix(rowBase, dxp - 1);
-      const next = getPix(rowBase, dxp + 1);
+      // prev
+      p = dxp - 1;
+      if (p < 0) p = 0;
+      if (p > 279) p = 279;
+      bx = (p / 7) | 0;
+      bt = p - bx * 7;
+      const prev = (hgr[rowBase + bx] >> bt) & 1;
+
+      // next
+      p = dxp + 1;
+      if (p < 0) p = 0;
+      if (p > 279) p = 279;
+      bx = (p / 7) | 0;
+      bt = p - bx * 7;
+      const next = (hgr[rowBase + bx] >> bt) & 1;
 
       const video = cur > 0 ? 1.0 : 0.0;
 
       // Chroma goes to zero on constant runs, and becomes strong on alternating patterns.
       let chroma = video - 0.5 * (prev + next);
-      if (chroma < 0.0001 && chroma > -0.0001) chroma = 0.0;
+      if (chroma < 0.0001) 
+      {
+        if (chroma > -0.0001) chroma = 0.0;
+      }
 
       const xByte = (dxp / 7) | 0;
       const b = hgr[rowBase + xByte];
       const hi = (b >> 7) & 1;
-      const sign = (dxp & 1) ? -1.0 : 1.0;
+      const sign = ((dxp & 1) === 1) ? -1.0 : 1.0;
+
+      const hiF = hi === 1 ? 1.0 : 0.0;
 
       if (ch === 0) return video;
-      if (ch === 1) return hi ? chroma * sign : 0.0;
-      return hi ? 0.0 : chroma * sign;
+
+      if (ch === 1) {
+        return chroma * sign * hiF;
+      }
+
+      return chroma * sign * (1.0 - hiF);
+
     }, {
       output: [WAVE_W, WAVE_H],
       pipeline: true,
