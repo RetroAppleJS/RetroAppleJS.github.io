@@ -8,6 +8,12 @@
 // - graph: CPU-drawn, one selected line only, scrollable horizontally
 // - I′/Q′ proxy improved: constant runs suppress chroma, alternating runs generate chroma
 //
+
+// TODO: show even an uneven columns on graph
+// TODO: luminance reaches Y=0.5 on one isolated visible bit = high
+// TODO: lumunance grows to Y=0.1 with two or more consecutive bits = high
+
+
 -->
 <html style="background-color:#B0B0B0">
 <head>
@@ -622,7 +628,7 @@ var Apple2Video = function(ctx)
       const xByte = (dxp / 7) | 0;
       const b = hgr[rowBase + xByte];
       const hi = (b >> 7) & 1;
-      const sign = ((dxp & 1) === 1) ? -1.0 : 1.0;
+      const sign = 1.0 - 2.0 * (dxp & 1);
 
       const hiF = hi === 1 ? 1.0 : 0.0;
 
