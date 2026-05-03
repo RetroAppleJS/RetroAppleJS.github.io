@@ -1,0 +1,157 @@
+<!--
+//
+// Copyright (c) 2024 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+// ScreenGPU_HGR_NTSC_stepA.html
+//
+// Step A refactor for the Apple II HGR → waveform → RGB experiment.
+// This version intentionally removes:
+//   - blue-noise dithering
+//   - the old kProcessHiRes graphical kernel
+//   - the dither GPU instance and fallback dither code
+//
+// It keeps:
+//   - the same camera/image input UI
+//   - the same 280×192 source capture size
+//   - a minimal Apple2Plus/Apple2Video/RAM shell
+//   - the HGR address helpers for the next steps
+//
+// The camera/image input code is separated into camera_image_input.js.
+//
+-->
+<html style="background-color:#B0B0B0">
+<head>
+  <title>APPLE II HGR NTSC WAVEFORM TEST - STEP A</title>
+  <meta charset="utf-8">
+  <style>
+    html { height:100%; font-family: Arial, sans-serif; }
+    body { background-color:#808080; height:100%; margin:0; padding:0; }
+    #topmenu { padding:8px; background:#606060; color:#fff; }
+    #topmenu label { margin-right:12px; }
+    #status { margin-left:12px; font-size:12px; color:#e8e8e8; }
+    #main { padding:10px; }
+    canvas.appvid { image-rendering:pixelated; background:#000; margin-right:10px; }
+    #cameraVideo { display:none; }
+  </style>
+</head>
+<body>
+  <div id="topmenu">
+    <label>
+      HGR page
+      <select id="pageSwitch">
+        <option value="1" selected>PAGE1 ($2000)</option>
+        <option value="2">PAGE2 ($4000)</option>
+      </select>
+    </label>
+    <label>
+      Image file
+      <input type="file" id="imageUpload" accept="image/*">
+    </label>
+    <button id="cameraToggle" type="button">Start camera 280×192 @ 10 fps</button>
+    <span id="status">Select an image file or start the camera. Step A captures input only.</span>
+  </div>
+
+  <div id="main">
+    <canvas class="appvid" id="photo" width="560" height="384"></canvas>
+    <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
+    <video id="cameraVideo" autoplay playsinline muted></video>
+  </div>
+
+  <script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+  <script type="text/javascript" src="camera_image_input.js"></script>
+
+  <script>
+var apple2plus;
+
+const HGR_W = 280;
+const HGR_H = 192;
+const HGR_BYTES_PER_LINE = 40;
+const HGR_PAGE1 = 0x2000;
+const HGR_PAGE2 = 0x4000;
+const CAMERA_FPS = 10;
+
+window.addEventListener("load", EMU_init);
+
+function EMU_init()
+{
+  const vidContext = document.getElementById("applescreen");
+
+  apple2plus = new Apple2Plus(vidContext);
+  apple2plus.restart();
+
+  const video = apple2plus.vidObj();
+  const pageSwitch = document.getElementById("pageSwitch");
+
+  pageSwitch.addEventListener("change", function()
+  {
+    video.setPage2(this.value === "2");
+  });
+
+  CameraImageInput.init({
+    hgrWidth: HGR_W,
+    hgrHeight: HGR_H,
+    cameraFps: CAMERA_FPS,
+    photoCanvasId: "photo",
+    imageUploadId: "imageUpload",
+    cameraToggleId: "cameraToggle",
+    cameraVideoId: "cameraVideo",
+    setStatus: setStatus,
+    onFrame: processInputImageData
+  });
+
+  clearDisplayCanvas(vidContext);
+  drawLoop();
+
+  setStatus("Step A ready: image/camera input is separated; dithering and old HGR kernel are removed.");
+}
+
+
+var Apple2Video = function(ctx)
+{
+  this.dim = [ctx.width, ctx.height];
+  let page2_mode = false;
+  let frame_redraw = true;
+  this.reset = function() { page2_mode = false; frame_redraw = true; };
+  this.write = function(addr, d8) { if (addr >= 0x2000 && addr < 0x6000) frame_redraw = true; };
+  this.setPage2 = function(flag) { if (page2_mode !== flag) { page2_mode = flag; frame_redraw = true; } };
+  this.pageSoftSwitch = function() { return page2_mode ? 0x20 : 0x10; };
+  this.markDirty = function() { frame_redraw = true; };
+  this.redrawIfNeeded = function() { if (frame_redraw) this.redraw(); };
+
+  this.redraw = function()
+  {
+    // Step A intentionally has no rendering kernel.
+    // The next step will replace this placeholder with:
+    //   const wave = this.waveKernel(mem, cfg);
+    //   this.renderKernel(wave, cfg);
+    frame_redraw = false;
+  };
+};
+
+
+function drawLoop() { apple2plus.vidObj().redrawIfNeeded(); window.requestAnimationFrame(drawLoop); }
+function setStatus(msg) { const el = document.getElementById("status"); if (el) el.textContent = msg; }
+function clearDisplayCanvas(canvas) { const ctx = canvas.getContext("2d"); ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+function createGPUInstance(options) { try { return new window.GPU.GPU(options || {}); } catch (e) { return new GPU(options || {}); }}
+
+function clearHgrPage(writeByte, pageBase) { for (let i = 0; i < 0x2000; i++) writeByte(pageBase + i, 0x00); }
+function hgrAddress(pageBase, xByte, y) { return pageBase + ((y << 10) & 0x1C00) + ((y << 4) & 0x0380) + ((y >> 3) & 0x0018) + ((y >> 1) & 0x0060) + xByte; }
+function Apple2Plus(context)
+{
+  const video = new Apple2Video(context);
+  const ram = new Uint8Array(0x10000);
+  const hw = {
+    write: function(addr, d8) { ram[addr & 0xFFFF] = d8 & 0xFF; video.write(addr, d8); },
+    safe_flashdump: function() { return ram; },
+    restart: function() { ram.fill(0); },
+    reset: function() {}
+  };
+
+  this.hwObj = function() { return hw; };
+  this.vidObj = function() { return video; };
+  this.restart = function() { hw.restart(); video.reset(); };
+}    
+  </script>
+</body>
+</html>

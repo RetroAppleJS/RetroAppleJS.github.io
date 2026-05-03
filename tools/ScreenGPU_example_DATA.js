@@ -32,6 +32,7 @@ function fill_ram(byte_capture, writeByte, offset)
     return writes;
 }
 
+
 const txt_stream = 
  "0400: B1 DF DF DF 35 DF DF DF\n"
 +"0408: 31 30 DF DF DF 31 35 DF\n"

@@ -35,7 +35,6 @@
 
   <div id="main">
     <canvas class="appvid" id="applescreen" width="560" height="384"></canvas>
-    <canvas class="appvid" id="photo" width="560" height="384"></canvas>
   </div>
 
   <script type="text/javascript" src="../res/gpu-browser.min.js"></script>
@@ -128,7 +127,6 @@
     {
       const video = new Apple2Video(context);
       const ram = new Uint8Array(0x10000);
-
       const hw = {
         write: function(addr, d8) { ram[addr & 0xFFFF] = d8 & 0xFF; video.write(addr, d8); },
         safe_flashdump: function() { return ram; },
@@ -138,7 +136,7 @@
 
       this.hwObj = function() { return hw; };
       this.vidObj = function() { return video; };
-      this.restart = function() { hw.restart(); video.reset(); }
+      this.restart = function() { hw.restart(); video.reset(); };
     }
 
     var Apple2Video = function(ctx)
