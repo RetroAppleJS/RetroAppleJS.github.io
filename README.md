@@ -72,7 +72,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [ ] EMULATOR: popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
 - [ ] EMULATOR: slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
-- [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
+- [x] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
 - [ ] EMULATOR: paddle/mouse capture
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
 - [ ] ASSEMBLER: Disassembler to standard assembly listings
@@ -80,7 +80,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
 - [ ] ASSEMBLER: complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
 - [ ] ASSEMBLER: better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
-- [ ] RETRO LAB: realtime dithering in CameraJS
+- [x] RETRO LAB: realtime dithering in CameraJS
 - [ ] RETRO LAB: GPT completion
 - [ ] RETRO LAB: real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
