@@ -4,13 +4,13 @@
 
 Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. Yes indeed, this project **runs as-is, locally on any browser, no server required**.
 
-Back in 1980, a few young curious minds like me were passionate about coding on the Apple II+.  Machine coding was likey the only way to get something done gracefully on its CPU called **6502**, a low-cost & spec CPU originally designed for calculators.  Several [sources](/docs/CREDITS.md) made this project possible, serving as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still today a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  Enjoy the elegance of 8-bit computing, clever math tricks, and one of the few machine codes instruction sets simple enough to code by hand.
+Back in 1980, a few young curious minds like me were passionate about coding on the Apple II+.  Machine coding was likey the only way to get something done gracefully on its CPU called **6502**, a low-cost & spec chip originally designed for calculators.  Several [sources](/docs/CREDITS.md) made this project possible, serving as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still today a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  Enjoy the elegance of 8-bit computing, clever math tricks, and one of the few machine code instruction sets simple enough to code by hand.
 
 ## Install & Run
   
 - **install:** No install required.  Just __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser, or run directly in github.io just here below:
 - **w/o install:**  ==> [Run last version directly](https://retroapplejs.github.io)
-- **w/o dependencies:** [Run one file](https://retroapplejs.github.io/dist/RetroAppleJS.html)
+- **portable:**  ==> [Run as one file](https://retroapplejs.github.io/dist/RetroAppleJS.html)
 - **bootable** ==> [Run last version (incl. DOS3.3 bootdisk) directly](https://retroapplejs.github.io/index.html?D1_DIR=Apple%20DOS%203.3.dsk&boot=true)  (booting takes avg. ~90s)
 
 ## Getting started
