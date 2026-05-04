@@ -1,16 +1,16 @@
 # Apple II+ emulator, assembler & debugger in JavaScript 
 
-<a href="https://retroapplejs.github.io"><img src="/res/appleIIplus_bck_650.png?raw=true" width=30% align="left" href="https://retroapplejs.github.io" /></a>
+<a href="https://retroapplejs.github.io"><img src="/res/appleIIplus_bck_650_v3.png?raw=true" width=30% align="left" href="https://retroapplejs.github.io" /></a>
 
 Unlike other emulation engines, **RetroAppleJS** wraps a complete AppleII+ IDE toolchain featuring an emulator, assembler, debugger, and reference manual bundled in one client-side JavaScript web application. Yes indeed, this project **runs as-is, locally on any browser, no server required**.
 
-Back in 1980, a few young chaps like me were passionate about coding on the Apple II+.  Machine coding was the way to get something done gracefully on the 6502, a low-cost & spec CPU originally designed for calculators.  Several [sources](/docs/CREDITS.md) made this project possible, serving as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still today a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  Enjoy the elegance of 8-bit computing, clever math tricks, and one of the few machine codes instruction sets simple enough to code by hand.
+Back in 1980, a few young curious minds like me were passionate about coding on the Apple II+.  Machine coding was likey the only way to get something done gracefully on its CPU called **6502**, a low-cost & spec chip originally designed for calculators.  Several [sources](/docs/CREDITS.md) made this project possible, serving as a tribute to the pioneers of home computing.  Even for those unfamiliar with the Apple II, it is still today a great platform to understand the foundations of computer hardware, operating systems, firmware, expansion architecture, and low-level software development.  Enjoy the elegance of 8-bit computing, clever math tricks, and one of the few machine code instruction sets simple enough to code by hand.
 
 ## Install & Run
   
 - **install:** No install required.  Just __download__ the entire repo (unzipping the .zip file) locally and __run__ index.html on any JavaScript capable browser, or run directly in github.io just here below:
 - **w/o install:**  ==> [Run last version directly](https://retroapplejs.github.io)
-- **w/o dependencies:** [Run one file](https://retroapplejs.github.io/dist/RetroAppleJS.html)
+- **portable:**  ==> [Run as one file](https://retroapplejs.github.io/dist/RetroAppleJS.html)
 - **bootable** ==> [Run last version (incl. DOS3.3 bootdisk) directly](https://retroapplejs.github.io/index.html?D1_DIR=Apple%20DOS%203.3.dsk&boot=true)  (booting takes avg. ~90s)
 
 ## Getting started
@@ -72,7 +72,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [ ] EMULATOR: popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
 - [ ] EMULATOR: slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
-- [ ] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
+- [x] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
 - [ ] EMULATOR: paddle/mouse capture
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
 - [ ] ASSEMBLER: Disassembler to standard assembly listings
@@ -80,7 +80,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
 - [ ] ASSEMBLER: complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
 - [ ] ASSEMBLER: better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
-- [ ] RETRO LAB: realtime dithering in CameraJS
+- [x] RETRO LAB: realtime dithering in CameraJS
 - [ ] RETRO LAB: GPT completion
 - [ ] RETRO LAB: real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
