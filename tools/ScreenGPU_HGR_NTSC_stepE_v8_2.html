@@ -1,0 +1,970 @@
+<!--
+//
+// ScreenGPU_HGR_NTSC_stepE_v8_2.html
+//
+// Step E v8
+// - performance-aware Apple II HGR artifact-color approximation
+// - luma slope / finite-rise approximation for Y
+// - parameter panel for Y slope, Y gain, chroma gain, I gain, Q gain
+// - v8.1 applies GPU.js-safe kernel style from the corrected v7 source
+// - v8.2 normalizes the YIQ plane display range so the overlay dot stays within the plane for I′/Q′ in [-1,+1]
+// - GPU.js main render + GPU.js YIQ plane
+// - CPU graph for one selected scanline only
+//
+-->
+<html style="background-color:#B0B0B0">
+<head>
+  <title>APPLE II HGR NTSC WAVEFORM TEST - STEP E v8.2</title>
+  <meta charset="utf-8">
+  <style>
+    html { height:100%; font-family: Arial, sans-serif; }
+    body { background-color:#808080; height:100%; margin:0; padding:0; }
+    #topmenu { padding:8px; background:#606060; color:#fff; line-height:1.9; }
+    #topmenu label { margin-right:12px; white-space:nowrap; }
+    #status { margin-left:12px; font-size:12px; color:#e8e8e8; }
+    #main { padding:10px; }
+    #displayRow { display:flex; align-items:flex-start; gap:16px; margin-bottom:12px; }
+    #applescreen { image-rendering:pixelated; background:#000; width:560px; height:384px; border:1px solid #202020; display:block; }
+    #yiqWrap { position:relative; width:256px; height:256px; border:1px solid #202020; background:#000; }
+    #yiqplane, #yiqoverlay { position:absolute; left:0; top:0; width:256px; height:256px; display:block; }
+    #yiqoverlay { pointer-events:none; }
+    #graphScroller {
+      width:1120px;
+      height:360px;
+      overflow-x:auto;
+      overflow-y:hidden;
+      border:1px solid #202020;
+      background:#000;
+    }
+    #signalgraph {
+      width:4480px;
+      height:360px;
+      display:block;
+      background:#000;
+      cursor:crosshair;
+      image-rendering:pixelated;
+    }
+    .smallLabel { display:inline-block; min-width:2.5em; text-align:right; color:#fff; }
+    input[type=range] { width:95px; vertical-align:middle; }
+  </style>
+</head>
+<body>
+  <div id="topmenu">
+    <label>
+      HGR page
+      <select id="pageSwitch">
+        <option value="1" selected>PAGE1 ($2000)</option>
+        <option value="2">PAGE2 ($4000)</option>
+      </select>
+    </label>
+    <button id="sampleHgr" type="button">Sample HGR data</button>
+    <button id="testPattern" type="button">Cycle test pattern</button>
+    <label>
+      Graph line
+      <input id="graphLine" type="range" min="0" max="191" value="96">
+      <span id="graphLineLabel" class="smallLabel">96</span>
+    </label>
+    <br>
+    <label title="Blend raw on/off luma with the finite-rise/slope model. 0 = hard square, 100 = sloped Y.">
+      Y slope
+      <input id="paramYSlope" type="range" min="0" max="100" value="100">
+      <span id="paramYSlopeLabel" class="smallLabel">1.00</span>
+    </label>
+    <label>
+      Y gain
+      <input id="paramYGain" type="range" min="50" max="150" value="100">
+      <span id="paramYGainLabel" class="smallLabel">1.00</span>
+    </label>
+    <label>
+      Chroma
+      <input id="paramChroma" type="range" min="0" max="200" value="110">
+      <span id="paramChromaLabel" class="smallLabel">1.10</span>
+    </label>
+    <label>
+      I′ gain
+      <input id="paramIGain" type="range" min="0" max="200" value="100">
+      <span id="paramIGainLabel" class="smallLabel">1.00</span>
+    </label>
+    <label>
+      Q′ gain
+      <input id="paramQGain" type="range" min="0" max="200" value="100">
+      <span id="paramQGainLabel" class="smallLabel">1.00</span>
+    </label>
+    <span id="status">Step E v8.2: luma slope + artifact-color controls.</span>
+  </div>
+
+  <div id="main">
+    <div id="displayRow">
+      <canvas id="applescreen" width="560" height="384"></canvas>
+      <div id="yiqWrap">
+        <canvas id="yiqplane" width="256" height="256"></canvas>
+        <canvas id="yiqoverlay" width="256" height="256"></canvas>
+      </div>
+    </div>
+
+    <div id="graphScroller">
+      <canvas id="signalgraph" width="4480" height="360"></canvas>
+    </div>
+  </div>
+
+  <script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+  <script type="text/javascript" src="ScreenGPU_example_DATA.js"></script>
+
+  <script>
+var apple2plus;
+
+const HGR_W = 280;
+const HGR_H = 192;
+const HGR_BYTES_PER_LINE = 40;
+const HGR_PAGE1 = 0x2000;
+const HGR_PAGE2 = 0x4000;
+
+const HGR_OS = 4;
+const WAVE_W = HGR_W * HGR_OS;
+const WAVE_CHANNELS = 3;
+const WAVE_H = HGR_H * WAVE_CHANNELS;
+
+const GRAPH_XSCALE = 4;
+const GRAPH_W = WAVE_W * GRAPH_XSCALE;
+const GRAPH_H = 360;
+
+const YIQ_W = 256;
+const YIQ_H = 256;
+const YIQ_IMAX = 1.0;
+const YIQ_QMAX = 1.0;
+
+let testPatternN = 0;
+let graphLine = 96;
+
+const renderParams = {
+  ySlope: 1.00,
+  yGain: 1.00,
+  chromaGain: 1.10,
+  iGain: 1.00,
+  qGain: 1.00
+};
+
+window.addEventListener("load", EMU_init);
+
+function EMU_init()
+{
+  const vidContext = document.getElementById("applescreen");
+
+  apple2plus = new Apple2Plus(vidContext);
+  apple2plus.restart();
+
+  const video = apple2plus.vidObj();
+  video.initGPU(vidContext);
+
+  document.getElementById("pageSwitch").addEventListener("change", function()
+  {
+    video.setPage2(this.value === "2");
+  });
+
+  document.getElementById("sampleHgr").addEventListener("click", function()
+  {
+    loadSampleHgrData();
+    video.markDirty();
+    setStatus("Reloaded sample HGR data into PAGE1/PAGE2.");
+  });
+
+  document.getElementById("testPattern").addEventListener("click", function()
+  {
+    testPatternN = (testPatternN + 1) % 4;
+    seedHgrTestPattern(apple2plus.hwObj().write, HGR_PAGE1, testPatternN);
+    video.setPage2(false);
+    video.markDirty();
+    setStatus("Loaded PAGE1 test pattern " + testPatternN + ". Use 'Sample HGR data' to restore the captured examples.");
+  });
+
+  const graphLineEl = document.getElementById("graphLine");
+  const graphLineLabel = document.getElementById("graphLineLabel");
+  graphLineEl.addEventListener("input", function()
+  {
+    graphLine = this.value | 0;
+    graphLineLabel.textContent = String(graphLine);
+    video.invalidateGraphCache();
+    video.drawSignalGraph();
+    video.drawYiqPlane();
+  });
+
+  bindParamSlider("paramYSlope", "paramYSlopeLabel", "ySlope", 100.0);
+  bindParamSlider("paramYGain", "paramYGainLabel", "yGain", 100.0);
+  bindParamSlider("paramChroma", "paramChromaLabel", "chromaGain", 100.0);
+  bindParamSlider("paramIGain", "paramIGainLabel", "iGain", 100.0);
+  bindParamSlider("paramQGain", "paramQGainLabel", "qGain", 100.0);
+
+  const graphCanvas = document.getElementById("signalgraph");
+  graphCanvas.addEventListener("mousemove", function(ev)
+  {
+    const sx = Math.max(0, Math.min(WAVE_W - 1, (ev.offsetX / GRAPH_XSCALE) | 0));
+    video.setHoverSample(sx);
+  });
+  graphCanvas.addEventListener("mouseleave", function()
+  {
+    video.setHoverSample(-1);
+  });
+
+  loadSampleHgrData();
+  video.markDirty();
+  drawLoop();
+
+  setStatus("Step E v8.2 ready: Y slope and chroma controls are active.");
+}
+
+function bindParamSlider(id, labelId, key, scale)
+{
+  const el = document.getElementById(id);
+  const label = document.getElementById(labelId);
+
+  function update()
+  {
+    renderParams[key] = (el.value | 0) / scale;
+    label.textContent = renderParams[key].toFixed(2);
+
+    if (apple2plus)
+    {
+      const video = apple2plus.vidObj();
+      video.invalidateGraphCache();
+      video.markDirty();
+    }
+  }
+
+  el.addEventListener("input", update);
+  update();
+}
+
+var Apple2Video = function(ctx)
+{
+  this.dim = [ctx.width, ctx.height];
+
+  this.gpu = null;
+  this.waveKernel = null;
+  this.renderKernel = null;
+
+  this.yiqGpu = null;
+  this.yiqKernel = null;
+
+  this.cfg = new Float32Array(8);
+  this.hgrLinear = new Uint8Array(HGR_H * HGR_BYTES_PER_LINE);
+
+  this.graphCanvas = document.getElementById("signalgraph");
+  this.graphCtx = this.graphCanvas.getContext("2d");
+  this.yiqCanvas = document.getElementById("yiqplane");
+  this.yiqOverlay = document.getElementById("yiqoverlay");
+  this.yiqOverlayCtx = this.yiqOverlay.getContext("2d");
+
+  this.hoverSample = -1;
+  this.graphCacheLine = -1;
+  this.graphCacheParamKey = "";
+  this.graphCacheData = null;
+
+  let page2_mode = false;
+  let frame_redraw = true;
+  let hgr_linear_dirty = true;
+
+  this.reset = function()
+  {
+    page2_mode = false;
+    frame_redraw = true;
+    hgr_linear_dirty = true;
+    this.invalidateGraphCache();
+  };
+
+  this.write = function(addr, d8)
+  {
+    if (addr >= 0x2000 && addr < 0x6000)
+    {
+      frame_redraw = true;
+      hgr_linear_dirty = true;
+      this.invalidateGraphCache();
+    }
+  };
+
+  this.setPage2 = function(flag)
+  {
+    if (page2_mode !== flag)
+    {
+      page2_mode = flag;
+      frame_redraw = true;
+      hgr_linear_dirty = true;
+      this.invalidateGraphCache();
+    }
+  };
+
+  this.pageSoftSwitch = function() { return page2_mode ? 0x20 : 0x10; };
+  this.markDirty = function() { frame_redraw = true; };
+  this.redrawIfNeeded = function() { if (frame_redraw) this.redraw(); };
+
+  this.updateCfg = function()
+  {
+    this.cfg[0] = renderParams.ySlope;
+    this.cfg[1] = renderParams.yGain;
+    this.cfg[2] = renderParams.chromaGain;
+    this.cfg[3] = renderParams.iGain;
+    this.cfg[4] = renderParams.qGain;
+  };
+
+  this.invalidateGraphCache = function()
+  {
+    this.graphCacheLine = -1;
+    this.graphCacheParamKey = "";
+    this.graphCacheData = null;
+  };
+
+  this.currentParamKey = function()
+  {
+    return [
+      renderParams.ySlope.toFixed(3),
+      renderParams.yGain.toFixed(3),
+      renderParams.chromaGain.toFixed(3),
+      renderParams.iGain.toFixed(3),
+      renderParams.qGain.toFixed(3)
+    ].join("/");
+  };
+
+  this.setHoverSample = function(sx)
+  {
+    if (this.hoverSample !== sx)
+    {
+      this.hoverSample = sx;
+      this.drawSignalGraph();
+      this.drawYiqPlane();
+    }
+  };
+
+  this.ensureLinearHgr = function()
+  {
+    if (hgr_linear_dirty)
+    {
+      const mem = apple2plus.hwObj().safe_flashdump();
+      linearizeHgrPage(mem, this.hgrLinear, this.pageSoftSwitch());
+      hgr_linear_dirty = false;
+      this.invalidateGraphCache();
+    }
+  };
+
+  this.getGraphSignal = function(line)
+  {
+    const paramKey = this.currentParamKey();
+    if (this.graphCacheData && this.graphCacheLine === line && this.graphCacheParamKey === paramKey)
+      return this.graphCacheData;
+
+    this.ensureLinearHgr();
+
+    const y = line < 0 ? 0 : (line > 191 ? 191 : line);
+    const rowBase = y * HGR_BYTES_PER_LINE;
+
+    const bits = new Uint8Array(HGR_W);
+    const bit7span = new Uint8Array(HGR_W);
+    const waveY = new Float32Array(WAVE_W);
+    const waveI = new Float32Array(WAVE_W);
+    const waveQ = new Float32Array(WAVE_W);
+
+    for (let xb = 0; xb < HGR_BYTES_PER_LINE; xb++)
+    {
+      const b = this.hgrLinear[rowBase + xb];
+      const ctrl = (b >> 7) & 1;
+      const x0 = xb * 7;
+      for (let bit = 0; bit < 7; bit++)
+      {
+        bits[x0 + bit] = (b >> bit) & 1;
+        bit7span[x0 + bit] = ctrl;
+      }
+    }
+
+    const getPix = (pix) =>
+    {
+      if (pix < 0) pix = 0;
+      if (pix >= HGR_W) pix = HGR_W - 1;
+      const bx = (pix / 7) | 0;
+      const bt = pix - bx * 7;
+      return (this.hgrLinear[rowBase + bx] >> bt) & 1;
+    };
+
+    for (let sx = 0; sx < WAVE_W; sx++)
+    {
+      const xp0 = sx >> 2;
+      const xByte0 = (xp0 / 7) | 0;
+      const b0 = this.hgrLinear[rowBase + xByte0];
+
+      const delay = (b0 >> 7) & 1;
+      let dsx = sx - delay;
+      if (dsx < 0) dsx = 0;
+      if (dsx > (WAVE_W - 1)) dsx = WAVE_W - 1;
+
+      const dxp = dsx >> 2;
+      const sub = dsx & 3;
+      const f = (sub + 0.5) * 0.25;
+
+      const cur = getPix(dxp);
+      const prev = getPix(dxp - 1);
+      const next = getPix(dxp + 1);
+
+      // Finite-rise luma approximation:
+      // - raw cur is a hard square wave
+      // - ySlope is a small triangular low-pass across neighbouring visible bits
+      // - isolated high pixels peak at about 0.5
+      // - 2+ consecutive highs rise toward 1.0
+      const yRaw = cur ? 1.0 : 0.0;
+      const ySlope = 0.5 * yRaw + 0.5 * ((1.0 - f) * prev + f * next);
+      let yOut = yRaw * (1.0 - renderParams.ySlope) + ySlope * renderParams.ySlope;
+      yOut *= renderParams.yGain;
+      if (yOut < 0.0) yOut = 0.0;
+      if (yOut > 1.0) yOut = 1.0;
+
+      let chroma = yRaw - 0.5 * (prev + next);
+      if (chroma < 0.0001 && chroma > -0.0001) chroma = 0.0;
+
+      const xByte = (dxp / 7) | 0;
+      const b = this.hgrLinear[rowBase + xByte];
+      const hi = (b >> 7) & 1;
+      const sign = (dxp & 1) ? -1.0 : 1.0;
+
+      waveY[sx] = yOut;
+
+      if (hi)
+      {
+        waveI[sx] = chroma * sign * renderParams.chromaGain * renderParams.iGain;
+        waveQ[sx] = 0.0;
+      }
+      else
+      {
+        waveI[sx] = 0.0;
+        waveQ[sx] = chroma * sign * renderParams.chromaGain * renderParams.qGain;
+      }
+    }
+
+    this.graphCacheLine = y;
+    this.graphCacheParamKey = paramKey;
+    this.graphCacheData = { line:y, bits:bits, bit7span:bit7span, waveY:waveY, waveI:waveI, waveQ:waveQ };
+    return this.graphCacheData;
+  };
+
+  this.drawSignalGraph = function()
+  {
+    const ctx2 = this.graphCtx;
+    const W = this.graphCanvas.width;
+    const H = this.graphCanvas.height;
+    const data = this.getGraphSignal(graphLine);
+
+    ctx2.clearRect(0, 0, W, H);
+    ctx2.fillStyle = "#000";
+    ctx2.fillRect(0, 0, W, H);
+
+    const bitsTop = 8;
+    const bitsHeight = 26;
+    const bit7Top = 42;
+    const bit7Height = 26;
+
+    const plotHeight = 66;
+    const yTop = 102;
+    const iTop = yTop + plotHeight + 10;
+    const qTop = iTop + plotHeight + 10;
+
+    const drawSectionTitle = (text, x, y, color) =>
+    {
+      ctx2.fillStyle = color;
+      ctx2.font = "13px Arial";
+      ctx2.fillText(text, x, y);
+    };
+
+    ctx2.strokeStyle = "#202020";
+    ctx2.lineWidth = 1;
+    ctx2.beginPath();
+    ctx2.moveTo(0, 36.5); ctx2.lineTo(W, 36.5);
+    ctx2.moveTo(0, 70.5); ctx2.lineTo(W, 70.5);
+    ctx2.moveTo(0, yTop - 6.5); ctx2.lineTo(W, yTop - 6.5);
+    ctx2.moveTo(0, iTop - 6.5); ctx2.lineTo(W, iTop - 6.5);
+    ctx2.moveTo(0, qTop - 6.5); ctx2.lineTo(W, qTop - 6.5);
+    ctx2.stroke();
+
+    ctx2.strokeStyle = "#282828";
+    ctx2.beginPath();
+    ctx2.moveTo(0, iTop + plotHeight * 0.5 + 0.5); ctx2.lineTo(W, iTop + plotHeight * 0.5 + 0.5);
+    ctx2.moveTo(0, qTop + plotHeight * 0.5 + 0.5); ctx2.lineTo(W, qTop + plotHeight * 0.5 + 0.5);
+    ctx2.stroke();
+
+    drawSectionTitle("visible bits", 8, 16, "#ffffff");
+    drawSectionTitle("bit7 span", 8, 50, "#ffffff");
+    drawSectionTitle("Y", 8, yTop + 12, "#ffffff");
+    drawSectionTitle("I′", 8, iTop + 12, "#ff9800");
+    drawSectionTitle("Q′", 8, qTop + 12, "#c060ff");
+    drawSectionTitle("line " + data.line, W - 68, 16, "#a0a0a0");
+
+    const map01 = (v, top, h) => top + (1 - v) * h;
+    const map11 = (v, top, h) => top + (0.5 - v * 0.5) * h;
+
+    ctx2.strokeStyle = "#ffffff";
+    ctx2.lineWidth = 1;
+    ctx2.beginPath();
+    let prevY = map01(data.bits[0], bitsTop, bitsHeight);
+    ctx2.moveTo(0, prevY);
+    for (let xp = 0; xp < HGR_W; xp++)
+    {
+      const level = map01(data.bits[xp], bitsTop, bitsHeight);
+      const x0 = xp * HGR_OS * GRAPH_XSCALE;
+      if (xp > 0 && level !== prevY)
+      {
+        ctx2.lineTo(x0, prevY);
+        ctx2.lineTo(x0, level);
+      }
+      ctx2.lineTo(x0 + HGR_OS * GRAPH_XSCALE, level);
+      prevY = level;
+    }
+    ctx2.stroke();
+
+    ctx2.beginPath();
+    prevY = map01(data.bit7span[0], bit7Top, bit7Height);
+    ctx2.moveTo(0, prevY);
+    for (let xp = 0; xp < HGR_W; xp++)
+    {
+      const level = map01(data.bit7span[xp], bit7Top, bit7Height);
+      const x0 = xp * HGR_OS * GRAPH_XSCALE;
+      if (xp > 0 && level !== prevY)
+      {
+        ctx2.lineTo(x0, prevY);
+        ctx2.lineTo(x0, level);
+      }
+      ctx2.lineTo(x0 + HGR_OS * GRAPH_XSCALE, level);
+      prevY = level;
+    }
+    ctx2.stroke();
+
+    ctx2.strokeStyle = "#ffffff";
+    ctx2.beginPath();
+    ctx2.moveTo(0, map01(data.waveY[0], yTop, plotHeight));
+    for (let sx = 1; sx < WAVE_W; sx++)
+      ctx2.lineTo(sx * GRAPH_XSCALE, map01(data.waveY[sx], yTop, plotHeight));
+    ctx2.stroke();
+
+    ctx2.strokeStyle = "#ff9800";
+    ctx2.beginPath();
+    ctx2.moveTo(0, map11(data.waveI[0], iTop, plotHeight));
+    for (let sx = 1; sx < WAVE_W; sx++)
+      ctx2.lineTo(sx * GRAPH_XSCALE, map11(data.waveI[sx], iTop, plotHeight));
+    ctx2.stroke();
+
+    ctx2.strokeStyle = "#c060ff";
+    ctx2.beginPath();
+    ctx2.moveTo(0, map11(data.waveQ[0], qTop, plotHeight));
+    for (let sx = 1; sx < WAVE_W; sx++)
+      ctx2.lineTo(sx * GRAPH_XSCALE, map11(data.waveQ[sx], qTop, plotHeight));
+    ctx2.stroke();
+
+    if (this.hoverSample >= 0)
+    {
+      const hx = this.hoverSample * GRAPH_XSCALE + 0.5;
+      ctx2.strokeStyle = "#ffffff";
+      ctx2.lineWidth = 1;
+      ctx2.beginPath();
+      ctx2.moveTo(hx, 0);
+      ctx2.lineTo(hx, H);
+      ctx2.stroke();
+
+      const yv = data.waveY[this.hoverSample];
+      const iv = data.waveI[this.hoverSample];
+      const qv = data.waveQ[this.hoverSample];
+      ctx2.fillStyle = "#ffffff";
+      ctx2.fillText("Y=" + yv.toFixed(2), hx + 8, yTop + 20);
+      ctx2.fillStyle = "#ff9800";
+      ctx2.fillText("I′=" + iv.toFixed(2), hx + 8, iTop + 20);
+      ctx2.fillStyle = "#c060ff";
+      ctx2.fillText("Q′=" + qv.toFixed(2), hx + 8, qTop + 20);
+    }
+  };
+
+  this.drawYiqPlane = function()
+  {
+    const data = this.getGraphSignal(graphLine);
+    let sx = this.hoverSample;
+    if (sx < 0) sx = 0;
+
+    const yVal = data.waveY[sx];
+    const iVal = data.waveI[sx];
+    const qVal = data.waveQ[sx];
+
+    this.yiqKernel([yVal]);
+
+    const c = this.yiqOverlayCtx;
+    const W = this.yiqOverlay.width;
+    const H = this.yiqOverlay.height;
+    const cx = W * 0.5;
+    const cy = H * 0.5;
+
+    c.clearRect(0, 0, W, H);
+
+    c.strokeStyle = "rgba(255,255,255,0.55)";
+    c.lineWidth = 1;
+    c.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+    c.strokeStyle = "rgba(255,255,255,0.45)";
+    c.beginPath();
+    c.moveTo(0, cy + 0.5); c.lineTo(W, cy + 0.5);
+    c.moveTo(cx + 0.5, 0); c.lineTo(cx + 0.5, H);
+    c.stroke();
+
+    c.strokeStyle = "rgba(255,255,255,0.25)";
+    c.beginPath();
+    drawInfiniteAxis(c, cx, cy, -0.5451, 0.8392, W, H); // U
+    drawInfiniteAxis(c, cx, cy,  0.8385, 0.5446, W, H); // V
+    c.stroke();
+
+    c.font = "12px Arial";
+    c.fillStyle = "rgba(255,255,255,0.72)";
+    c.fillText("-I", 6, cy - 6);
+    c.fillText("I", W - 16, cy - 6);
+    c.fillText("Q", cx + 6, 14);
+    c.fillText("-Q", cx - 16, H - 8);
+
+    c.fillStyle = "rgba(255,255,255,0.35)";
+    c.fillText("U", 12, 24);
+    c.fillText("-U", W - 28, H - 10);
+    c.fillText("V", W - 18, 20);
+    c.fillText("-V", 6, H - 10);
+
+    c.fillStyle = "rgba(255,255,255,0.82)";
+    c.fillText("Y = " + yVal.toFixed(2) + "   I/Q display range: [-1,+1]", 8, H - 12);
+
+    let nx = (iVal / YIQ_IMAX) * 0.5 + 0.5;
+    let ny = (-qVal / YIQ_QMAX) * 0.5 + 0.5;
+
+    if (nx < 0.0) nx = 0.0;
+    if (nx > 1.0) nx = 1.0;
+    if (ny < 0.0) ny = 0.0;
+    if (ny > 1.0) ny = 1.0;
+
+    const px = nx * (W - 1);
+    const py = ny * (H - 1);
+
+    c.fillStyle = "#000000";
+    c.beginPath();
+    c.arc(px, py, 3, 0, Math.PI * 2);
+    c.fill();
+  };
+
+  this.initGPU = function(canvas)
+  {
+    this.gpu = createGPUInstance({ canvas: canvas, mode: "gpu" });
+
+    this.waveKernel = this.gpu.createKernel(function(hgr, cfg)
+    {
+      const sx = this.thread.x;
+      const wy = this.thread.y;
+      const ch = (wy / 192) | 0;
+      const y = wy - ch * 192;
+      const rowBase = y * 40;
+
+      const xp0 = sx >> 2;
+      const xByte0 = (xp0 / 7) | 0;
+      const b0 = hgr[rowBase + xByte0];
+
+      // One-sample delay from bit 7.
+      const delay = (b0 >> 7) & 1;
+      let dsx = sx - delay;
+      if (dsx < 0) dsx = 0;
+      if (dsx > 1119) dsx = 1119;
+
+      const dxp = dsx >> 2;
+      const sub = dsx & 3;
+      const f = (sub + 0.5) * 0.25;
+
+      // cur
+      let p = dxp;
+      if (p < 0) p = 0;
+      if (p > 279) p = 279;
+      let bx = (p / 7) | 0;
+      let bt = p - bx * 7;
+      const cur = (hgr[rowBase + bx] >> bt) & 1;
+
+      // prev
+      p = dxp - 1;
+      if (p < 0) p = 0;
+      if (p > 279) p = 279;
+      bx = (p / 7) | 0;
+      bt = p - bx * 7;
+      const prev = (hgr[rowBase + bx] >> bt) & 1;
+
+      // next
+      p = dxp + 1;
+      if (p < 0) p = 0;
+      if (p > 279) p = 279;
+      bx = (p / 7) | 0;
+      bt = p - bx * 7;
+      const next = (hgr[rowBase + bx] >> bt) & 1;
+
+      const yRaw = cur > 0 ? 1.0 : 0.0;
+
+      // Finite-rise luma approximation:
+      // isolated high -> about 0.5, sustained high -> toward 1.0.
+      const ySlope = 0.5 * yRaw + 0.5 * ((1.0 - f) * prev + f * next);
+      let yOut = yRaw * (1.0 - cfg[0]) + ySlope * cfg[0];
+
+      // Keep the waveform Y plane bounded before render gain is applied.
+      if (yOut < 0.0) yOut = 0.0;
+      if (yOut > 1.0) yOut = 1.0;
+
+      // Chroma goes to zero on constant runs, and becomes strong on alternating patterns.
+      let chroma = yRaw - 0.5 * (prev + next);
+      if (chroma < 0.0001)
+      {
+        if (chroma > -0.0001) chroma = 0.0;
+      }
+
+      const xByte = (dxp / 7) | 0;
+      const b = hgr[rowBase + xByte];
+      const hi = (b >> 7) & 1;
+
+      // GPU.js-safe numeric selectors for pixel-parity sign and bit-7 family routing.
+      const sign = 1.0 - 2.0 * (dxp & 1);
+      const hiF = hi === 1 ? 1.0 : 0.0;
+
+      if (ch === 0) return yOut;
+
+      if (ch === 1)
+      {
+        return chroma * sign * hiF;
+      }
+
+      return chroma * sign * (1.0 - hiF);
+    }, {
+      output: [WAVE_W, WAVE_H],
+      pipeline: true,
+      immutable: true
+    });
+
+    this.renderKernel = this.gpu.createKernel(function(wave, cfg)
+    {
+      const x = this.thread.x;
+      const y = this.thread.y;
+
+      const srcY = 191 - (y >> 1);
+      const sx = x << 1;
+
+      let pxm1 = sx - 1; if (pxm1 < 0) pxm1 = 0;
+      let pxp1 = sx + 1; if (pxp1 > 1119) pxp1 = 1119;
+
+      let yy = wave[srcY][pxm1] * 0.25 + wave[srcY][sx] * 0.50 + wave[srcY][pxp1] * 0.25;
+      yy = yy * cfg[1];
+
+      let ii = 0.0;
+      let qq = 0.0;
+      for (let k = -2; k <= 1; k++)
+      {
+        let px = sx + k;
+        if (px < 0) px = 0;
+        if (px > 1119) px = 1119;
+
+        ii += wave[192 + srcY][px];
+        qq += wave[384 + srcY][px];
+      }
+
+      ii = ii * 0.25 * cfg[2] * cfg[3];
+      qq = qq * 0.25 * cfg[2] * cfg[4];
+
+      let r = yy + 0.956 * ii + 0.621 * qq;
+      let g = yy - 0.272 * ii - 0.647 * qq;
+      let b = yy - 1.106 * ii + 1.703 * qq;
+
+      if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
+      if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
+      if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
+
+      this.color(r, g, b, 1.0);
+    }, {
+      output: [ctx.width, ctx.height],
+      graphical: true
+    });
+
+    this.yiqGpu = createGPUInstance({ canvas: this.yiqCanvas, mode: "gpu" });
+    this.yiqKernel = this.yiqGpu.createKernel(function(yArr)
+    {
+      const Y = yArr[0];
+
+      const i = ((this.thread.x / (this.output.x - 1.0)) * 2.0 - 1.0) * this.constants.IMAX;
+      const q = (((this.output.y - 1.0 - this.thread.y) / (this.output.y - 1.0)) * 2.0 - 1.0) * this.constants.QMAX;
+
+      let r = Y + 0.956 * i + 0.621 * q;
+      let g = Y - 0.272 * i - 0.647 * q;
+      let b = Y - 1.106 * i + 1.703 * q;
+
+      if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
+      if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
+      if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
+
+      this.color(r, g, b, 1.0);
+    }, {
+      output: [YIQ_W, YIQ_H],
+      graphical: true,
+      constants: { IMAX: YIQ_IMAX, QMAX: YIQ_QMAX }
+    });
+  };
+
+  this.redraw = function()
+  {
+    if (!this.waveKernel || !this.renderKernel) return;
+
+    this.ensureLinearHgr();
+    this.updateCfg();
+
+    const wave = this.waveKernel(this.hgrLinear, this.cfg);
+    this.renderKernel(wave, this.cfg);
+
+    this.drawSignalGraph();
+    this.drawYiqPlane();
+
+    frame_redraw = false;
+  };
+};
+
+function drawInfiniteAxis(c, cx, cy, vx, vy, W, H)
+{
+  const len = Math.max(W, H) * 1.2;
+  c.moveTo(cx - vx * len, cy + vy * len);
+  c.lineTo(cx + vx * len, cy - vy * len);
+}
+
+function drawLoop()
+{
+  apple2plus.vidObj().redrawIfNeeded();
+  window.requestAnimationFrame(drawLoop);
+}
+
+function setStatus(msg)
+{
+  const el = document.getElementById("status");
+  if (el) el.textContent = msg;
+}
+
+function createGPUInstance(options)
+{
+  try { return new window.GPU.GPU(options || {}); }
+  catch (e) { return new GPU(options || {}); }
+}
+
+function clearHgrPage(writeByte, pageBase)
+{
+  for (let i = 0; i < 0x2000; i++) writeByte(pageBase + i, 0x00);
+}
+
+function hgrAddress(pageBase, xByte, y)
+{
+  return pageBase + ((y << 10) & 0x1C00) + ((y << 4) & 0x0380) + ((y >> 3) & 0x18) + ((y >> 1) & 0x60) + xByte;
+}
+
+function loadSampleHgrData()
+{
+  clearHgrPage(apple2plus.hwObj().write, HGR_PAGE1);
+  clearHgrPage(apple2plus.hwObj().write, HGR_PAGE2);
+
+  if (typeof gfx_stream !== "undefined")
+    fill_ram(gfx_stream, apple2plus.hwObj().write);
+
+  if (typeof gfx_stream2 !== "undefined")
+    fill_ram(gfx_stream2, apple2plus.hwObj().write, 0x2000);
+}
+
+function fill_ram(byte_capture, writeByte, offset)
+{
+  offset = offset || 0;
+  if (!byte_capture) return 0;
+
+  let writes = 0;
+  const line_arr = byte_capture.split("\n");
+
+  for (let i = 0; i < line_arr.length; i++)
+  {
+    const line = line_arr[i].trim();
+    if (line.length === 0 || line[0] === "#") continue;
+
+    const parts = line.split(":");
+    if (parts.length < 2) continue;
+
+    const adr = parseInt(parts[0], 16);
+    if (Number.isNaN(adr)) continue;
+
+    const hexarr = parts[1].trim().split(/\s+/);
+    for (let j = 0; j < hexarr.length; j++)
+    {
+      const byte = parseInt(hexarr[j], 16);
+      if (!Number.isNaN(byte))
+      {
+        writeByte((offset + adr + j) & 0xFFFF, byte & 0xFF);
+        writes++;
+      }
+    }
+  }
+
+  return writes;
+}
+
+function linearizeHgrPage(mem, out, pageSoftSwitch)
+{
+  const PAGE = (pageSoftSwitch & 48) << 9;
+
+  for (let y = 0; y < HGR_H; y++)
+  {
+    const adr_ofs = ((y << 4) & 0x380) | ((y >> 3) & 0x18) | ((y >> 1) & 0x60);
+    const rowBase = PAGE + ((y << 10) & 0x1C00) + adr_ofs;
+    const dstBase = y * HGR_BYTES_PER_LINE;
+
+    for (let xb = 0; xb < HGR_BYTES_PER_LINE; xb++)
+      out[dstBase + xb] = mem[rowBase + xb];
+  }
+}
+
+function seedHgrTestPattern(writeByte, pageBase, pattern)
+{
+  clearHgrPage(writeByte, pageBase);
+
+  for (let y = 0; y < HGR_H; y++)
+  {
+    for (let xb = 0; xb < HGR_BYTES_PER_LINE; xb++)
+    {
+      let v = 0;
+
+      if (pattern === 0)
+      {
+        v = ((xb + ((y / 16) | 0)) & 1) ? 0x55 : 0x2A;
+        if (((y / 24) | 0) & 1) v |= 0x80;
+      }
+      else if (pattern === 1)
+      {
+        const band = ((xb / 5) | 0) & 7;
+        v = (band & 1) ? 0x55 : 0x2A;
+        if (band & 2) v |= 0x80;
+      }
+      else if (pattern === 2)
+      {
+        v = ((((xb >> 1) + (y >> 4)) & 1) ? 0x7F : 0x00);
+        if ((xb >> 2) & 1) v |= 0x80;
+      }
+      else
+      {
+        v = (((xb + (y >> 3)) & 1) ? 0x49 : 0x24);
+        if (((xb + (y >> 4)) & 2) !== 0) v |= 0x80;
+      }
+
+      writeByte(hgrAddress(pageBase, xb, y), v);
+    }
+  }
+}
+
+function Apple2Plus(context)
+{
+  const video = new Apple2Video(context);
+  const ram = new Uint8Array(0x10000);
+  const hw = {
+    write: function(addr, d8) { ram[addr & 0xFFFF] = d8 & 0xFF; video.write(addr, d8); },
+    safe_flashdump: function() { return ram; },
+    restart: function() { ram.fill(0); },
+    reset: function() {}
+  };
+
+  this.hwObj = function() { return hw; };
+  this.vidObj = function() { return video; };
+  this.restart = function() { hw.restart(); video.reset(); };
+}
+  </script>
+</body>
+</html>
