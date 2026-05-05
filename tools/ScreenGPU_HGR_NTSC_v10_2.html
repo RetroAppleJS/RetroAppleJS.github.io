@@ -81,8 +81,8 @@
     </label>
     <label>
       Chroma
-      <input id="paramChroma" type="range" min="0" max="200" value="110">
-      <span id="paramChromaLabel" class="smallLabel">1.10</span>
+      <input id="paramChroma" type="range" min="0" max="200" value="100">
+      <span id="paramChromaLabel" class="smallLabel">1.00</span>
     </label>
     <label>
       I′ gain
@@ -146,7 +146,7 @@ let graphLine = HGR_H >> 1; // put default line to sample halfway the screen
 const renderParams = {
   ySlope: 1.00,
   yGain: 1.00,
-  chromaGain: 1.10,
+  chromaGain: 1.00,
   iGain: 1.00,
   qGain: 1.00
 };
@@ -211,10 +211,10 @@ function EMU_init()
   });
 
   bindParamSlider("paramYSlope", "paramYSlopeLabel", "ySlope", 100.0);
-  bindParamSlider("paramYGain", "paramYGainLabel", "yGain", 100.0);
+  bindParamSlider("paramYGain", "paramYGainLabel"  , "yGain", 100.0);
   bindParamSlider("paramChroma", "paramChromaLabel", "chromaGain", 100.0);
-  bindParamSlider("paramIGain", "paramIGainLabel", "iGain", 100.0);
-  bindParamSlider("paramQGain", "paramQGainLabel", "qGain", 100.0);
+  bindParamSlider("paramIGain", "paramIGainLabel"  , "iGain", 100.0);
+  bindParamSlider("paramQGain", "paramQGainLabel"  , "qGain", 100.0);
 
   const graphCanvas = document.getElementById("signalgraph");
   graphCanvas.addEventListener("mousemove", function(ev)
