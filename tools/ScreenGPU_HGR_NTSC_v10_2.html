@@ -179,11 +179,21 @@ function EMU_init()
 
   document.getElementById("testPattern").addEventListener("click", function()
   {
-    testPatternN = (testPatternN + 1) % 4;
-    seedHgrTestPattern(apple2plus.hwObj().write, HGR_PAGE1, testPatternN);
-    video.setPage2(false);
-    video.markDirty();
-    setStatus("Loaded PAGE1 test pattern " + testPatternN + ". Use 'Sample HGR data' to restore the captured examples.");
+    testPatternN = (testPatternN + 1) % 5;
+    if(testPatternN<4) 
+    {
+      seedHgrTestPattern(apple2plus.hwObj().write, HGR_PAGE1, testPatternN);
+      video.setPage2(false);
+      video.markDirty();
+      setStatus("Loaded PAGE1 test pattern " + testPatternN + ". Use 'Sample HGR data' to restore the captured examples.");
+    }
+    else 
+    { 
+      loadSampleHgrData();
+      video.markDirty();
+      setStatus("Reloaded sample HGR data into PAGE1/PAGE2.");
+    }
+
   });
 
   const graphLineEl = document.getElementById("graphLine");
