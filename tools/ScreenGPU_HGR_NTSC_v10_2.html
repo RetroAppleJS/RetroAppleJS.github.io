@@ -670,7 +670,7 @@ var Apple2Video = function(ctx)
     c.stroke();
 
     // DRAW AXIS LEGEND
-    c.font = "12px Arial";
+    c.font = "12px Monospace";
     c.fillStyle = "rgba(255,255,255,0.72)";
     c.fillText("-I", 5, cy - 5);
     c.fillText("I", W - 16, cy - 5);
@@ -684,9 +684,9 @@ var Apple2Video = function(ctx)
     c.fillText("-V", 5, H - 10);
 
     c.fillStyle = "rgba(255,255,255,0.82)";
-    c.fillText("Y  = "  + yVal.toFixed(2), 5, H - 35);
-    c.fillText("I   = " + iVal.toFixed(2), 5, H - 20);
-    c.fillText("Q = " + qVal.toFixed(2), 5, H - 5);
+    c.fillText("Y=" + (yVal>=0?" ":"") + yVal.toFixed(2), 30+5, H - 35);
+    c.fillText("I=" + (iVal>=0?" ":"") + iVal.toFixed(2), 30+5, H - 20);
+    c.fillText("Q=" + (qVal>=0?" ":"") + qVal.toFixed(2), 30+5, H - 5);
 
     // DRAW DOT
     const px = ((iVal / YIQ_IMAX) * 0.25 + 0.5) * (W - 1);
