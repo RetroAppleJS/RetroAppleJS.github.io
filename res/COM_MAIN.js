@@ -1,10 +1,12 @@
 function COM()
 {
+  /*
   this.debugMe = function()
   {
     var o = apple2plus.DiskObj();
     oCOM.Download('dump.nib',o.diskBytes[0])
   }
+    */
 
 
   const hexLookupTable = new Array(256);
