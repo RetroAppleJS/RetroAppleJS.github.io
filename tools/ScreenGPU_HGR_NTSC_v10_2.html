@@ -1,20 +1,21 @@
 <!--
 //
-// ScreenGPU_HGR_NTSC_stepE_v8_2.html
+// ScreenGPU_HGR_NTSC_stepE_v10_2.html
 //
-// Step E v8
+// Step E v10
 // - performance-aware Apple II HGR artifact-color approximation
 // - luma slope / finite-rise approximation for Y
 // - parameter panel for Y slope, Y gain, chroma gain, I gain, Q gain
-// - v8.1 applies GPU.js-safe kernel style from the corrected v7 source
-// - v8.2 normalizes the YIQ plane display range so the overlay dot stays within the plane for I′/Q′ in [-1,+1]
-// - GPU.js main render + GPU.js YIQ plane
+// - GPU.js main render directly targets the visible applescreen canvas
+// - transparent 2D overlay canvas shows the selected graph scanline
+// - GPU.js YIQ plane + 2D YIQ overlay
 // - CPU graph for one selected scanline only
+// - v10.2 flips the I′ chroma sign while keeping Q′ unchanged
 //
 -->
 <html style="background-color:#B0B0B0">
 <head>
-  <title>APPLE II HGR NTSC WAVEFORM TEST - STEP E v8.2</title>
+  <title>APPLE II HGR NTSC WAVEFORM TEST - STEP E v10.2</title>
   <meta charset="utf-8">
   <style>
     html { height:100%; font-family: Arial, sans-serif; }
@@ -24,13 +25,16 @@
     #status { margin-left:12px; font-size:12px; color:#e8e8e8; }
     #main { padding:10px; }
     #displayRow { display:flex; align-items:flex-start; gap:16px; margin-bottom:12px; }
-    #applescreen { image-rendering:pixelated; background:#000; width:560px; height:384px; border:1px solid #202020; display:block; }
+    #screenWrap { position:relative; width:560px; height:384px; border:1px solid #202020; background:#000; }
+    #applescreen, #screenoverlay { position:absolute; left:0; top:0; width:560px; height:384px; display:block; }
+    #applescreen { image-rendering:pixelated; background:#000; }
+    #screenoverlay { pointer-events:none; }
     #yiqWrap { position:relative; width:256px; height:256px; border:1px solid #202020; background:#000; }
     #yiqplane, #yiqoverlay { position:absolute; left:0; top:0; width:256px; height:256px; display:block; }
     #yiqoverlay { pointer-events:none; }
     #graphScroller {
       width:1120px;
-      height:360px;
+      height:384px;
       overflow-x:auto;
       overflow-y:hidden;
       border:1px solid #202020;
@@ -38,7 +42,7 @@
     }
     #signalgraph {
       width:4480px;
-      height:360px;
+      height:384px;
       display:block;
       background:#000;
       cursor:crosshair;
@@ -46,6 +50,7 @@
     }
     .smallLabel { display:inline-block; min-width:2.5em; text-align:right; color:#fff; }
     input[type=range] { width:95px; vertical-align:middle; }
+    #graphLine { width:380px; }
   </style>
 </head>
 <body>
@@ -90,12 +95,15 @@
       <input id="paramQGain" type="range" min="0" max="200" value="100">
       <span id="paramQGainLabel" class="smallLabel">1.00</span>
     </label>
-    <span id="status">Step E v8.2: luma slope + artifact-color controls.</span>
+    <span id="status">Step E v10.2: direct on-canvas GPU render with controls.</span>
   </div>
 
   <div id="main">
     <div id="displayRow">
-      <canvas id="applescreen" width="560" height="384"></canvas>
+      <div id="screenWrap">
+        <canvas id="applescreen" width="560" height="384"></canvas>
+        <canvas id="screenoverlay" width="560" height="384"></canvas>
+      </div>
       <div id="yiqWrap">
         <canvas id="yiqplane" width="256" height="256"></canvas>
         <canvas id="yiqoverlay" width="256" height="256"></canvas>
@@ -103,7 +111,7 @@
     </div>
 
     <div id="graphScroller">
-      <canvas id="signalgraph" width="4480" height="360"></canvas>
+      <canvas id="signalgraph" width="4480" height="384"></canvas>
     </div>
   </div>
 
@@ -130,8 +138,8 @@ const GRAPH_H = 360;
 
 const YIQ_W = 256;
 const YIQ_H = 256;
-const YIQ_IMAX = 1.0;
-const YIQ_QMAX = 1.0;
+const YIQ_IMAX = 0.5957;
+const YIQ_QMAX = 0.5226;
 
 let testPatternN = 0;
 let graphLine = 96;
@@ -186,6 +194,9 @@ function EMU_init()
     video.invalidateGraphCache();
     video.drawSignalGraph();
     video.drawYiqPlane();
+    video.drawScreenOverlay();
+    video.markDirty();
+    setStatus("Graph line set to " + graphLine + ".");
   });
 
   bindParamSlider("paramYSlope", "paramYSlopeLabel", "ySlope", 100.0);
@@ -209,7 +220,7 @@ function EMU_init()
   video.markDirty();
   drawLoop();
 
-  setStatus("Step E v8.2 ready: Y slope and chroma controls are active.");
+  setStatus("Step E v10.2 ready: direct GPU render targets applescreen; controls and overlays remain active.");
 }
 
 function bindParamSlider(id, labelId, key, scale)
@@ -250,6 +261,8 @@ var Apple2Video = function(ctx)
 
   this.graphCanvas = document.getElementById("signalgraph");
   this.graphCtx = this.graphCanvas.getContext("2d");
+  this.screenOverlay = document.getElementById("screenoverlay");
+  this.screenOverlayCtx = this.screenOverlay.getContext("2d");
   this.yiqCanvas = document.getElementById("yiqplane");
   this.yiqOverlay = document.getElementById("yiqoverlay");
   this.yiqOverlayCtx = this.yiqOverlay.getContext("2d");
@@ -425,11 +438,14 @@ var Apple2Video = function(ctx)
 
       if (hi)
       {
-        waveI[sx] = chroma * sign * renderParams.chromaGain * renderParams.iGain;
+        // I′ family: sign is intentionally flipped relative to the old parity rule.
+        // Odd visible-bit positions now push I′ positive; even positions push I′ negative.
+        waveI[sx] = -chroma * sign * renderParams.chromaGain * renderParams.iGain;
         waveQ[sx] = 0.0;
       }
       else
       {
+        // Q′ family is left unchanged.
         waveI[sx] = 0.0;
         waveQ[sx] = chroma * sign * renderParams.chromaGain * renderParams.qGain;
       }
@@ -457,10 +473,13 @@ var Apple2Video = function(ctx)
     const bit7Top = 42;
     const bit7Height = 26;
 
-    const plotHeight = 66;
+    const colorBandH = 40;
+    const colorBandTop = H - colorBandH;
+
+    const plotHeight = 60;
     const yTop = 102;
-    const iTop = yTop + plotHeight + 10;
-    const qTop = iTop + plotHeight + 10;
+    const iTop = yTop + plotHeight + 8;
+    const qTop = iTop + plotHeight + 8;
 
     const drawSectionTitle = (text, x, y, color) =>
     {
@@ -477,6 +496,7 @@ var Apple2Video = function(ctx)
     ctx2.moveTo(0, yTop - 6.5); ctx2.lineTo(W, yTop - 6.5);
     ctx2.moveTo(0, iTop - 6.5); ctx2.lineTo(W, iTop - 6.5);
     ctx2.moveTo(0, qTop - 6.5); ctx2.lineTo(W, qTop - 6.5);
+    ctx2.moveTo(0, colorBandTop - 4.5); ctx2.lineTo(W, colorBandTop - 4.5);
     ctx2.stroke();
 
     ctx2.strokeStyle = "#282828";
@@ -490,6 +510,7 @@ var Apple2Video = function(ctx)
     drawSectionTitle("Y", 8, yTop + 12, "#ffffff");
     drawSectionTitle("I′", 8, iTop + 12, "#ff9800");
     drawSectionTitle("Q′", 8, qTop + 12, "#c060ff");
+    drawSectionTitle("output color", 8, colorBandTop - 8, "#d0d0d0");
     drawSectionTitle("line " + data.line, W - 68, 16, "#a0a0a0");
 
     const map01 = (v, top, h) => top + (1 - v) * h;
@@ -552,26 +573,64 @@ var Apple2Video = function(ctx)
       ctx2.lineTo(sx * GRAPH_XSCALE, map11(data.waveQ[sx], qTop, plotHeight));
     ctx2.stroke();
 
+    // Bottom output-color band from the local Y / I' / Q' values.
+    for (let sx = 0; sx < WAVE_W; sx++)
+    {
+      let yy = data.waveY[sx];
+      let ii = data.waveI[sx];
+      let qq = data.waveQ[sx];
+
+      // YIQ -> RGB
+      let r = yy + 0.956 * ii + 0.621 * qq;
+      let g = yy - 0.272 * ii - 0.647 * qq;
+      let b = yy - 1.106 * ii + 1.703 * qq;
+
+      ctx2.fillStyle = "rgb(" +
+        ((r * 255) | 0) + "," +
+        ((g * 255) | 0) + "," +
+        ((b * 255) | 0) + ")";
+      ctx2.fillRect(sx * GRAPH_XSCALE, colorBandTop, GRAPH_XSCALE, colorBandH);
+    }
+
     if (this.hoverSample >= 0)
     {
       const hx = this.hoverSample * GRAPH_XSCALE + 0.5;
+      const sxb = this.hoverSample >> 2;   // slider X-position showing the visible bit index (0-279)
+
       ctx2.strokeStyle = "#ffffff";
       ctx2.lineWidth = 1;
       ctx2.beginPath();
       ctx2.moveTo(hx, 0);
       ctx2.lineTo(hx, H);
       ctx2.stroke();
-
       const yv = data.waveY[this.hoverSample];
       const iv = data.waveI[this.hoverSample];
       const qv = data.waveQ[this.hoverSample];
       ctx2.fillStyle = "#ffffff";
+      ctx2.fillText("X ="+sxb, hx + 8, yTop - 5);
       ctx2.fillText("Y=" + yv.toFixed(2), hx + 8, yTop + 20);
       ctx2.fillStyle = "#ff9800";
       ctx2.fillText("I′=" + iv.toFixed(2), hx + 8, iTop + 20);
       ctx2.fillStyle = "#c060ff";
       ctx2.fillText("Q′=" + qv.toFixed(2), hx + 8, qTop + 20);
     }
+  };
+  this.drawScreenOverlay = function()
+  {
+    const c = this.screenOverlayCtx;
+    const W = this.screenOverlay.width;
+    const H = this.screenOverlay.height;
+
+    c.clearRect(0, 0, W, H);
+
+    const yScreen = graphLine * 2 + 0.5;
+
+    c.strokeStyle = "rgba(160,160,160,0.5)";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(0, yScreen);
+    c.lineTo(W, yScreen);
+    c.stroke();
   };
 
   this.drawYiqPlane = function()
@@ -595,7 +654,7 @@ var Apple2Video = function(ctx)
     c.clearRect(0, 0, W, H);
 
     c.strokeStyle = "rgba(255,255,255,0.55)";
-    c.lineWidth = 1;
+    c.lineWidth = 2;
     c.strokeRect(0.5, 0.5, W - 1, H - 1);
 
     c.strokeStyle = "rgba(255,255,255,0.45)";
@@ -624,18 +683,10 @@ var Apple2Video = function(ctx)
     c.fillText("-V", 6, H - 10);
 
     c.fillStyle = "rgba(255,255,255,0.82)";
-    c.fillText("Y = " + yVal.toFixed(2) + "   I/Q display range: [-1,+1]", 8, H - 12);
+    c.fillText("Y = " + yVal.toFixed(2), 8, H - 12);
 
-    let nx = (iVal / YIQ_IMAX) * 0.5 + 0.5;
-    let ny = (-qVal / YIQ_QMAX) * 0.5 + 0.5;
-
-    if (nx < 0.0) nx = 0.0;
-    if (nx > 1.0) nx = 1.0;
-    if (ny < 0.0) ny = 0.0;
-    if (ny > 1.0) ny = 1.0;
-
-    const px = nx * (W - 1);
-    const py = ny * (H - 1);
+    const px = ((iVal / YIQ_IMAX) * 0.5 + 0.5) * (W - 1);
+    const py = ((-qVal / YIQ_QMAX) * 0.5 + 0.5) * (H - 1);
 
     c.fillStyle = "#000000";
     c.beginPath();
@@ -649,83 +700,108 @@ var Apple2Video = function(ctx)
 
     this.waveKernel = this.gpu.createKernel(function(hgr, cfg)
     {
+      // ------------------------------------------------------------
+      // THREAD LAYOUT
+      // ------------------------------------------------------------
+      // x = 0..1119: four 14M-ish waveform samples per visible HGR pixel.
+      // y = stacked plane index:
+      //     0..191   -> Y plane
+      //     192..383 -> I′ plane
+      //     384..575 -> Q′ plane
       const sx = this.thread.x;
       const wy = this.thread.y;
       const ch = (wy / 192) | 0;
       const y = wy - ch * 192;
       const rowBase = y * 40;
 
+      // ------------------------------------------------------------
+      // MAP 14M SAMPLE TO HGR PIXEL
+      // ------------------------------------------------------------
+      // sx >> 2 converts the 4x waveform coordinate back to 0..279.
       const xp0 = sx >> 2;
       const xByte0 = (xp0 / 7) | 0;
       const b0 = hgr[rowBase + xByte0];
 
-      // One-sample delay from bit 7.
+      // ------------------------------------------------------------
+      // BIT-7 DELAY APPROXIMATION
+      // ------------------------------------------------------------
+      // Apple II HGR bit 7 shifts this 7-pixel group by one 14M sample.
+      // Since delay only subtracts 0/1, only the left edge can underflow.
       const delay = (b0 >> 7) & 1;
       let dsx = sx - delay;
       if (dsx < 0) dsx = 0;
-      if (dsx > 1119) dsx = 1119;
 
       const dxp = dsx >> 2;
       const sub = dsx & 3;
       const f = (sub + 0.5) * 0.25;
 
-      // cur
+      // ------------------------------------------------------------
+      // FETCH CURRENT / PREVIOUS / NEXT VISIBLE PIXELS
+      // ------------------------------------------------------------
+      // These three taps drive both finite-rise luma and chroma suppression.
       let p = dxp;
-      if (p < 0) p = 0;
-      if (p > 279) p = 279;
       let bx = (p / 7) | 0;
       let bt = p - bx * 7;
       const cur = (hgr[rowBase + bx] >> bt) & 1;
 
-      // prev
       p = dxp - 1;
       if (p < 0) p = 0;
-      if (p > 279) p = 279;
       bx = (p / 7) | 0;
       bt = p - bx * 7;
       const prev = (hgr[rowBase + bx] >> bt) & 1;
 
-      // next
       p = dxp + 1;
-      if (p < 0) p = 0;
       if (p > 279) p = 279;
       bx = (p / 7) | 0;
       bt = p - bx * 7;
       const next = (hgr[rowBase + bx] >> bt) & 1;
 
+      // ------------------------------------------------------------
+      // LUMA MODEL
+      // ------------------------------------------------------------
+      // yRaw is the hard digital video bit.
+      // ySlope is a cheap finite-rise approximation:
+      //   isolated high pixels tend toward Y≈0.5
+      //   sustained high pixels rise toward Y≈1.0
       const yRaw = cur > 0 ? 1.0 : 0.0;
-
-      // Finite-rise luma approximation:
-      // isolated high -> about 0.5, sustained high -> toward 1.0.
       const ySlope = 0.5 * yRaw + 0.5 * ((1.0 - f) * prev + f * next);
       let yOut = yRaw * (1.0 - cfg[0]) + ySlope * cfg[0];
 
-      // Keep the waveform Y plane bounded before render gain is applied.
       if (yOut < 0.0) yOut = 0.0;
       if (yOut > 1.0) yOut = 1.0;
 
-      // Chroma goes to zero on constant runs, and becomes strong on alternating patterns.
+      // ------------------------------------------------------------
+      // CHROMA MODEL
+      // ------------------------------------------------------------
+      // Constant runs -> low chroma. Alternating runs -> strong chroma.
       let chroma = yRaw - 0.5 * (prev + next);
       if (chroma < 0.0001)
       {
         if (chroma > -0.0001) chroma = 0.0;
       }
 
+      // ------------------------------------------------------------
+      // ROUTE CHROMA TO I′ OR Q′ FAMILY
+      // ------------------------------------------------------------
+      // bit7 selects I′ versus Q′ family.
+      // visible-pixel parity selects the sign.
       const xByte = (dxp / 7) | 0;
       const b = hgr[rowBase + xByte];
       const hi = (b >> 7) & 1;
-
-      // GPU.js-safe numeric selectors for pixel-parity sign and bit-7 family routing.
-      const sign = 1.0 - 2.0 * (dxp & 1);
       const hiF = hi === 1 ? 1.0 : 0.0;
+      const sign = 1.0 - 2.0 * (dxp & 1);
 
       if (ch === 0) return yOut;
 
       if (ch === 1)
       {
-        return chroma * sign * hiF;
+        // I′ family: sign is intentionally flipped.
+        // With bit7 high, odd visible-bit positions push I′ positive;
+        // even visible-bit positions push I′ negative.
+        return -chroma * sign * hiF;
       }
 
+      // Q′ family is left unchanged.
       return chroma * sign * (1.0 - hiF);
     }, {
       output: [WAVE_W, WAVE_H],
@@ -735,44 +811,70 @@ var Apple2Video = function(ctx)
 
     this.renderKernel = this.gpu.createKernel(function(wave, cfg)
     {
-      const x = this.thread.x;
-      const y = this.thread.y;
+      // ------------------------------------------------------------
+      // DISPLAY COORDINATES
+      // ------------------------------------------------------------
+      // Direct visible-canvas render, matching the original kProcessHiRes path:
+      //   GPU output: 560×384
+      //   native HGR: 280×192
+      //
+      // Therefore each HGR pixel becomes a 2×2 block:
+      //   xp = displayX / 2
+      //   yp = displayY / 2, vertically inverted to match current orientation.
+      const xp = this.thread.x >> 2;
+      const yp = 191 - (this.thread.y >> 2);
 
-      const srcY = 191 - (y >> 1);
-      const sx = x << 1;
+      // ------------------------------------------------------------
+      // MAP NATIVE PIXEL TO WAVEFORM SAMPLE
+      // ------------------------------------------------------------
+      // Each native HGR pixel owns 4 waveform samples.
+      const sx = xp << 2;
 
-      let pxm1 = sx - 1; if (pxm1 < 0) pxm1 = 0;
-      let pxp1 = sx + 1; if (pxp1 > 1119) pxp1 = 1119;
+      // ------------------------------------------------------------
+      // LUMA FILTER
+      // ------------------------------------------------------------
+      // Small 3-tap filter around the first sample of the HGR pixel.
+      // Only the left edge can underflow.
+      let pxm1 = sx - 1;
+      if (pxm1 < 0) pxm1 = 0;
+      const pxp1 = sx + 1;
 
-      let yy = wave[srcY][pxm1] * 0.25 + wave[srcY][sx] * 0.50 + wave[srcY][pxp1] * 0.25;
+      let yy = wave[yp][pxm1] * 0.25 + wave[yp][sx] * 0.50 + wave[yp][pxp1] * 0.25;
       yy = yy * cfg[1];
 
+      // ------------------------------------------------------------
+      // CHROMA FILTER
+      // ------------------------------------------------------------
+      // Four samples span one carrier cycle in this simplified model.
+      // For xp<=279, sx max is 1116, and k max is +1, so no right clamp is needed.
       let ii = 0.0;
       let qq = 0.0;
+
       for (let k = -2; k <= 1; k++)
       {
         let px = sx + k;
         if (px < 0) px = 0;
-        if (px > 1119) px = 1119;
 
-        ii += wave[192 + srcY][px];
-        qq += wave[384 + srcY][px];
+        ii += wave[192 + yp][px];
+        qq += wave[384 + yp][px];
       }
 
       ii = ii * 0.25 * cfg[2] * cfg[3];
       qq = qq * 0.25 * cfg[2] * cfg[4];
 
+      // YIQ -> RGB
       let r = yy + 0.956 * ii + 0.621 * qq;
       let g = yy - 0.272 * ii - 0.647 * qq;
       let b = yy - 1.106 * ii + 1.703 * qq;
 
+      // Final RGB clipping is required because YIQ conversion can overshoot.
       if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
       if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
       if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
 
       this.color(r, g, b, 1.0);
     }, {
-      output: [ctx.width, ctx.height],
+      output: [560*2, 384*2],
       graphical: true
     });
 
@@ -784,13 +886,14 @@ var Apple2Video = function(ctx)
       const i = ((this.thread.x / (this.output.x - 1.0)) * 2.0 - 1.0) * this.constants.IMAX;
       const q = (((this.output.y - 1.0 - this.thread.y) / (this.output.y - 1.0)) * 2.0 - 1.0) * this.constants.QMAX;
 
+      // YIQ -> RGB
       let r = Y + 0.956 * i + 0.621 * q;
       let g = Y - 0.272 * i - 0.647 * q;
       let b = Y - 1.106 * i + 1.703 * q;
 
-      if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
-      if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
-      if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
+      //if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
+      //if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
+      //if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
 
       this.color(r, g, b, 1.0);
     }, {
@@ -812,6 +915,7 @@ var Apple2Video = function(ctx)
 
     this.drawSignalGraph();
     this.drawYiqPlane();
+    this.drawScreenOverlay();
 
     frame_redraw = false;
   };
