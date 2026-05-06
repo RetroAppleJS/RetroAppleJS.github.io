@@ -950,7 +950,7 @@ function(csv)
       obj.id="";
       obj.states={};
       obj.rules={};
-      this.el(obj.target_id.dest).innerHTML += obj.target_html();
+      this.el(obj.target_id.dest).innerHTML = obj.target_html();
       return obj 
     },
     id:"",
@@ -994,6 +994,10 @@ function(csv)
     {
       this.toggle(el.id);
       this.set_class(el,class1,class2,el.hidden);
+    },
+    wipe: function()
+    {
+       document.getElementById(this.target_id.html_txt).innerHTML = "";
     },
     html: function(html,ttl)
     {
