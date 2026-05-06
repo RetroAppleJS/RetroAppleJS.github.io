@@ -960,14 +960,13 @@ function EMUI()
     this.slot_cfg = {};
 
 
-    this.onSlotAdd = function(ctx, ev)
+    this.onSlotAdd = function(ctx, ev) 
     {
-      var anchor = ev.target.closest(".slot-anchor.empty");
-      if (!anchor || !ctx.host.contains(anchor)) return;
+        var anchor = ev.target.closest(".slot-anchor.empty");
+        if (!anchor || !ctx.host.contains(anchor)) return;
 
-      var slotTitle = anchor.dataset.slotId;
-      alert("Plug " + ctx.hostId + " new peripheral in slot " + slotTitle);
-      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
+        var slotTitle = anchor.dataset.slotId;
+        this.slotPicker_popup(ctx, slotTitle);
     };
 
     this.onSlotMove = function(ctx, ev, fromSlotId, toSlotId)
@@ -1248,7 +1247,110 @@ function EMUI()
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
     };
 
+
+    /////////////////////////////////////////////////////////////////
+
+
+
+    this.slotPicker_popup = function(ctx, slotTitle) 
+    {
+        var popupId = "slotConfig_popup";
+        var anchorId = "d_slot_" + ctx.hostId + "_" + slotTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
+        document.getElementById(anchorId).style = "background:rgba(255, 255, 0, 0.5); border-radius:10px"
+        
+        var close   = "<button class='appbut' style='float:right' onclick=\"oCOM.POPUP.toggle('" + popupId + "');document.getElementById('"+anchorId+"').style=''\">x</button>";
+        var html = "";
+        
+        html += "<div style=\"float:left\">ADD / REMOVE PERIPHERAL</div>" //+" FROM " + slotTitle;
+        html += close;
+        html += "<br><br>";
+
+        var io = oEMU.component.IO.self;
+        var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        for (var pcode in names) 
+        {
+            var id = names[pcode];
+            html +=
+                 "<button class='appbut' onclick=\"oEMUI.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
+                +"<div class='slot-add' style='float:left'>"
+                +"<i class='fa fa-plus dots dots1'></i>&nbsp;"
+                +"</div>"
+                +"<i class='" + (id.icon || "fa fa-cube") + "'></i> "
+                + id.PCODE
+                + "</button>"
+        }
+
+        html +=
+                "<button class='appbut' onclick=\"oEMUI.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
+            +"<div class='slot-add' style='float:left'>"
+            +"<i class='fa fa-minus dots dots1'></i>&nbsp;"
+            +"</div>"
+            +"<i class='" + (id.icon || "fa fa-cube") + "'></i> "
+            + id.PCODE
+            + "</button>"
+        
+
+        /*
+        // TODO: LOOKUP WHICH PERIPHERAL IS IN CURRENTLY IN 'slotTitle'
+
+        html += "<button class=appbut>"
+            +"<a href=\"https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/CONFIG.md#peripherals-list\" target=_blank> "
+            +"<i class='fa fa-info-circle'></i>"
+            +"</a>"
+            +"</button> ";
+        */
+
+
+        document.getElementById(popupId).innerHTML = html;
+
+        if(oCOM.POPUP.get_state(popupId)==false) document.getElementById(anchorId).style = "";
+        oCOM.POPUP.toggle(popupId);
+    };
+
+    this.slotPicker_select = function(hostId, slotTitle, pcode) {
+        var cfg = this.slot_cfg[hostId] || [];
+        var slot = cfg.find(function(s) {
+            return s.slotTitle === slotTitle;
+        });
+
+        if (!slot || slot.lock || slot.peripheral) return;
+
+        var io = oEMU.component.IO.self;
+        var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        var id = names[pcode];
+
+        if (!id) return;
+
+        slot.peripheral = {
+            PCODE: id.PCODE,
+            icon: id.icon || "fa fa-cube",
+            objID: id.objID,
+            active: true
+        };
+
+        oCOM.POPUP.toggle("slotConfig_popup");
+        this.slotsRender(hostId);
+    };
+
+    this.slotPicker_info = function() {
+        oCOM.POPUP.wipe();
+        oCOM.POPUP.html(
+            "<b>Peripheral configuration</b><br><br>" +
+            "To make a peripheral appear in this picker, add or modify its " +
+            "entry in <code>CONFIG.md</code>.<br><br>" +
+            "After editing <code>CONFIG.md</code>, compile it into " +
+            "<code>COM_CONFIG.js</code> with:<br><br>" +
+            "<code>tools/ConfigFile_updater.html</code><br><br>" +
+            "Do not edit <code>COM_CONFIG.js</code> manually."
+        );
+    };
+
 }
+
+
+
+
+
 
 
 
