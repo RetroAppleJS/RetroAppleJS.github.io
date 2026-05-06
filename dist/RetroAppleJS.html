@@ -12758,18 +12758,7 @@ function EMUI()
 
     this.slot_ctx = {};
     this.slot_cfg = {};
-    /*
-    this.onSlotClick = function(ctx, ev)
-    {
-      var parent  = ev.currentTarget.closest(".slot");
-      var periID = ev.currentTarget.id;
-      var slotID  = parent ? parent.dataset.slotId : "";
-      var hostId  = ctx.hostId;
 
-      alert("Configure " + hostId + " peripheral " + periID + " in slot " + slotID);
-      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
-    };
-    */
 
     this.onSlotAdd = function(ctx, ev)
     {
