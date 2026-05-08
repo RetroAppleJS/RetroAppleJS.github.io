@@ -1267,6 +1267,7 @@ function EMUI()
 
         var io = oEMU.component.IO.self;
         var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        console.log(names);
         for (var pcode in names) 
         {
             var id = names[pcode];
@@ -1280,8 +1281,7 @@ function EMUI()
                 + "</button>"
         }
 
-        html +=
-                "<button class='appbut' onclick=\"oEMUI.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
+        html += "<button class='appbut' onclick=\"oEMUI.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
             +"<div class='slot-add' style='float:left'>"
             +"<i class='fa fa-minus dots dots1'></i>&nbsp;"
             +"</div>"

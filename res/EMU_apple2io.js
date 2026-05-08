@@ -912,9 +912,7 @@ function Apple2IO(vid)
     
     if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
     {
-        // LOAD ALL PERIPHERALS
-        
-        
+        // LOAD ALL PERIPHERALS FROM CONFIGURATION
         for(var PCODE in _CFG_PSLOT)
         {
             var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
@@ -934,11 +932,10 @@ function Apple2IO(vid)
 
     var peripheral_names = this.listPeripheralNames();
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
-    for(var slotIdx=0;slotIdx<slot_count;slotIdx++)
+    for(var slotIdx=0;slotIdx<slot_count;slotIdx++) // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
     {
         if(oEMU.system===undefined) continue;
-
-        if(slotR.slotMap[slotIdx])
+        if(slotR.slotMap[slotIdx])  // mount peripheral in this slot ? e.g. (config file) "1,2,3*,4*,5,6,7"  --> config file says we have to mount this peripheral in slot 3 and slot 4 automatically (user doesn't have to mount manually)
         {
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
             if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
