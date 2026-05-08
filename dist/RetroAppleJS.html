@@ -13785,6 +13785,7 @@ function EMUI()
 
         var io = oEMU.component.IO.self;
         var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        console.log(names);
         for (var pcode in names) 
         {
             var id = names[pcode];
@@ -13798,8 +13799,7 @@ function EMUI()
                 + "</button>"
         }
 
-        html +=
-                "<button class='appbut' onclick=\"oEMUI.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
+        html += "<button class='appbut' onclick=\"oEMUI.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
             +"<div class='slot-add' style='float:left'>"
             +"<i class='fa fa-minus dots dots1'></i>&nbsp;"
             +"</div>"
@@ -20092,7 +20092,37 @@ function col80card()
 }
 </script>
             <script type="text/javascript">
-/* mockingboard device driver */
+//
+// Copyright (c) 2026 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
+//
+// EMU_mockingboard.js
+
+
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"mockingboard":new mockingboard()}}}
+else oEMU.component.IO.mockingboard= new mockingboard();
+
+function mockingboard()
+{
+    //console.log("oEMU="+typeof(oEMU))
+    this.id     = {"PCODE":"MOCK", "icon":"fa fa-assistive-listening-systems"}
+    this.state = {"active":true};
+        
+    this.init = function()
+    {
+        //oEMU.component.IO.DRIVER.mount("MOCK",3,this.mockingboard,false);
+    }
+
+    this.read = function(addr)
+    {
+
+    }
+
+    this.write = function(addr)
+    {
+
+    }
+}
 </script>
             <script type="text/javascript">
 //
@@ -21009,9 +21039,7 @@ function Apple2IO(vid)
     
     if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
     {
-        // LOAD ALL PERIPHERALS
-        
-        
+        // LOAD ALL PERIPHERALS FROM CONFIGURATION
         for(var PCODE in _CFG_PSLOT)
         {
             var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
@@ -21031,11 +21059,10 @@ function Apple2IO(vid)
 
     var peripheral_names = this.listPeripheralNames();
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
-    for(var slotIdx=0;slotIdx<slot_count;slotIdx++)
+    for(var slotIdx=0;slotIdx<slot_count;slotIdx++) // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
     {
         if(oEMU.system===undefined) continue;
-
-        if(slotR.slotMap[slotIdx])
+        if(slotR.slotMap[slotIdx])  // mount peripheral in this slot ? e.g. (config file) "1,2,3*,4*,5,6,7"  --> config file says we have to mount this peripheral in slot 3 and slot 4 automatically (user doesn't have to mount manually)
         {
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
             if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
