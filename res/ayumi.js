@@ -1,11 +1,93 @@
-/* Author: Peter Sovietov */
-/* Javascript version: Alexander Kovalenko */
+/* Original authors: Peter Sovietov & Alexander Kovalenko */
 //  AY-3-8910 and YM2149 Emulator
 
+/*
+ * Ayumi emulates one General Instrument AY-3-8910 / Yamaha YM2149
+ * Programmable Sound Generator (PSG).
+ *
+ * Mockingboard orientation
+ * ------------------------
+ * A Mockingboard Sound II-style Apple II card contains two AY-3-8910 PSGs,
+ * each driven through a 6522 VIA.  In other words, one Ayumi instance maps
+ * to one AY chip, not to the whole Mockingboard.  A complete Mockingboard
+ * emulator should normally own two Ayumi instances and route Apple II slot
+ * I/O writes to the selected VIA/PSG pair.
+ *
+ * This file currently models the already-decoded PSG state: tone periods,
+ * noise period, mixer enable bits, channel volumes, envelope period and
+ * envelope shape.  It does not emulate the Apple II slot address space, the
+ * 6522 VIA registers, or the AY bus-control handshake.  Those layers should
+ * sit above this class.
+ *
+ * AY register map used by the public setters below
+ * ------------------------------------------------
+ * Register numbers here follow the common emulator / YM-file convention:
+ * decimal array indices 0..13, written as R0..R13.  Original GI datasheets
+ * sometimes label the same registers in octal-like notation: their R10/R11/R12
+ * are this file's R8/R9/R10 amplitude registers, and their R13/R14/R15 are
+ * this file's R11/R12/R13 envelope registers.
+ *
+ *   R0  channel A tone period, fine 8 bits
+ *   R1  channel A tone period, coarse low 4 bits
+ *   R2  channel B tone period, fine 8 bits
+ *   R3  channel B tone period, coarse low 4 bits
+ *   R4  channel C tone period, fine 8 bits
+ *   R5  channel C tone period, coarse low 4 bits
+ *   R6  noise period, low 5 bits
+ *   R7  mixer / I/O enable
+ *       bit 0: tone A disable, bit 1: tone B disable, bit 2: tone C disable
+ *       bit 3: noise A disable, bit 4: noise B disable, bit 5: noise C disable
+ *       bit 6/7: AY I/O port direction bits.  These are intentionally not
+ *                modelled here because Mockingboard audio playback normally
+ *                uses only the sound-generator part of the AY.
+ *   R8  channel A amplitude: low 4 bits=fixed level, bit 4=use envelope
+ *   R9  channel B amplitude: low 4 bits=fixed level, bit 4=use envelope
+ *   R10 channel C amplitude: low 4 bits=fixed level, bit 4=use envelope
+ *   R11 envelope period, fine 8 bits
+ *   R12 envelope period, coarse 8 bits
+ *   R13 envelope shape, low 4 bits: Continue, Attack, Alternate, Hold
+ *   R14/R15 AY I/O port data.  Not emulated by Ayumi.
+ *
+ * Typical register-write decoding, as used by MockingboardJS.html:
+ *
+ *   setTone(0, (R1 << 8) | R0);
+ *   setTone(1, (R3 << 8) | R2);
+ *   setTone(2, (R5 << 8) | R4);
+ *   setNoise(R6);
+ *   setMixer(0, R7 & 1,       (R7 >> 3) & 1, R8  >> 4);
+ *   setMixer(1, (R7 >> 1)&1,  (R7 >> 4) & 1, R9  >> 4);
+ *   setMixer(2, (R7 >> 2)&1,  (R7 >> 5) & 1, R10 >> 4);
+ *   setVolume(0, R8  & 0x0f);
+ *   setVolume(1, R9  & 0x0f);
+ *   setVolume(2, R10 & 0x0f);
+ *   setEnvelope((R12 << 8) | R11);
+ *   setEnvelopeShape(R13);
+ *
+ * Audio-generation pipeline
+ * -------------------------
+ * process() advances the chip model and produces one stereo output sample in
+ * this.left / this.right.  The caller should usually call process(), then
+ * removeDC(), then copy the two output values into the Web Audio buffer.
+ */
+
+// Ayumi oversamples the internal PSG state and then decimates it to the
+// requested Web Audio sample rate.  DECIMATE_FACTOR controls that final
+// downsampling stage.
 const DECIMATE_FACTOR = 8;
+
+// Number of taps in the finite impulse response low-pass filter used by
+// decimate().  The large coefficient table in decimate() is the filter body.
 const FIR_SIZE = 192;
+
+// Moving-average window used to remove DC offset from the generated audio.
+// Must remain a power of two because removeDC() advances dcIndex with a bitmask.
 const DC_FILTER_SIZE = 1024;
 
+// Normalized DAC output table for the original AY-3-8910 amplitude ladder.
+// There are 32 entries because fixed volumes use odd entries (level*2+1),
+// while the envelope generator can address the whole 0..31 range.
+// Consecutive AY entries are duplicated because the original AY has 16
+// effective amplitude levels.
 const AY_DAC_TABLE = [
   0.0, 0.0,
   0.00999465934234, 0.00999465934234,
@@ -25,6 +107,8 @@ const AY_DAC_TABLE = [
   1.0, 1.0
 ]
 
+// Normalized DAC output table for the Yamaha YM2149.  The YM envelope has
+// finer amplitude resolution than the AY, so the 32 entries are not duplicated.
 const YM_DAC_TABLE = [
   0.0, 0.0,
   0.00465400167849, 0.00772106507973,
@@ -44,13 +128,25 @@ const YM_DAC_TABLE = [
   0.879926756695, 1.0
 ]
 
-Ayumi = function() {
+
+/*
+ * Constructor for one PSG.  For a Mockingboard with two sound chips, create
+ * two instances, e.g. leftChip = new Ayumi(); rightChip = new Ayumi();
+ */
+Ayumi = function() 
+{
+
+  // Three tone channels, conventionally called A, B and C in AY literature.
   this.channels = this.getChannels();
 
+  // Shared pseudo-random noise generator.  R6 controls noisePeriod.
   this.noisePeriod = 0;
   this.noiseCounter = 0;
   this.noise = 0;
 
+  // Shared envelope generator.  R11/R12 control envelopePeriod; R13
+  // controls envelopeShape.  Channels opt into this generator through bit 4
+  // of their amplitude register (R8/R9/R10).
   this.envelopes = this.getEnvelopeShapes();
   this.envelopeCounter = 0;
   this.envelopePeriod = 0;
@@ -58,15 +154,20 @@ Ayumi = function() {
   this.envelopeSegment = 0;
   this.envelope = 0;
 
+  // Selected analog amplitude curve.  configure(isYM, ...) chooses AY or YM.
   this.dacTable = YM_DAC_TABLE;
 
+  // Fractional advancement of the PSG clock per oversampled output point.
+  // configure() computes step from the chip clock and requested sample rate.
   this.step = 0.0;
   this.x = 0.0;
 
+  // Last generated stereo sample, after panning and master volume scaling.
   this.left = 0.0;
   this.right = 0.0;
   this.mastervolume = 1.0;
 
+  // Quadratic interpolation history used between discrete PSG state updates.
   this.interpolatorLeft = {
    c: new Float64Array(4),
    y: new Float64Array(4)
@@ -76,6 +177,7 @@ Ayumi = function() {
    y: new Float64Array(4)
   }
 
+  // DC-removal state for the left and right channels.
   this.dcFilterLeft = {
    sum: 0.0,
    delay: new Float64Array(DC_FILTER_SIZE)
@@ -86,11 +188,26 @@ Ayumi = function() {
   }
   this.dcIndex = 0;
 
+  // FIR ring buffers used by decimate().
   this.firLeft = new Float64Array(FIR_SIZE * 2);
   this.firRight = new Float64Array(FIR_SIZE * 2);
   this.firIndex = 0;
 }
 
+/*
+ * Per-channel state for one AY tone channel.
+ *
+ * tonePeriod is the 12-bit value from R0/R1, R2/R3 or R4/R5.
+ * toneCounter advances until tonePeriod is reached, then tone toggles.
+ *
+ * tOff and nOff mirror the inverted enable bits in R7:
+ *   0 = source is enabled and participates in the AND mixer
+ *   1 = source is forced on, effectively disabling that source's gating
+ *
+ * eOn mirrors bit 4 of R8/R9/R10:
+ *   0 = use fixed 4-bit volume
+ *   1 = use the shared envelope output instead of fixed volume
+ */
 Ayumi.prototype.Channel = function() {
   return {
       toneCounter: 0, tonePeriod: 0, tone: 0,
@@ -100,6 +217,7 @@ Ayumi.prototype.Channel = function() {
   };
 }
 
+// Allocate the three AY tone channels A, B and C.
 Ayumi.prototype.getChannels = function() {
   return [
     new this.Channel,
@@ -108,6 +226,27 @@ Ayumi.prototype.getChannels = function() {
   ];
 }
 
+/*
+ * Convert the 4-bit envelope shape register (R13) into two segment functions.
+ *
+ * R13 bit layout is: bit 3 Continue, bit 2 Attack, bit 1 Alternate, bit 0 Hold.
+ * The array index is the raw shape nibble 0..15.  Each entry contains the
+ * operation for segment 0 and segment 1.  slideDown/slideUp move the 5-bit
+ * internal envelope value through 31..0 or 0..31; holdBottom/holdTop leave it
+ * fixed after a terminal segment.
+ *
+ * Useful shapes:
+ *   0..3  one descending ramp, then hold at 0
+ *   4..7  one ascending ramp, then hold at 0
+ *   8     repeating descending sawtooth
+ *   9     descending ramp, then hold at 0
+ *   10    repeating triangle: down, up, down, up ...
+ *   11    descending ramp, then hold at 31
+ *   12    repeating ascending sawtooth
+ *   13    ascending ramp, then hold at 31
+ *   14    repeating triangle: up, down, up, down ...
+ *   15    ascending ramp, then hold at 0
+ */
 Ayumi.prototype.getEnvelopeShapes = function() {
   return [
     [ this.slideDown, this.holdBottom ],
@@ -132,6 +271,13 @@ Ayumi.prototype.getEnvelopeShapes = function() {
   ]
 };
 
+/*
+ * Advance one tone generator by one internal PSG tick.
+ *
+ * The AY tone generator is a divider.  When the counter reaches the programmed
+ * period, the square-wave output toggles.  setTone() normalizes period 0 to 1
+ * so the counter always has a usable divisor.
+ */
 Ayumi.prototype.updateTone = function(index) {
   var ch = this.channels[index];
   if(++ch.toneCounter >= ch.tonePeriod) {
@@ -141,6 +287,13 @@ Ayumi.prototype.updateTone = function(index) {
   return ch.tone;
 }
 
+/*
+ * Advance the shared noise generator.
+ *
+ * The AY has one pseudo-random noise source shared by all three channels.
+ * R7 decides which channels receive the noise gate.  This implementation uses
+ * a 17-bit linear feedback shift register and advances it according to R6.
+ */
 Ayumi.prototype.updateNoise = function() {
   if(++this.noiseCounter >= (this.noisePeriod << 1)) {
     this.noiseCounter = 0;
@@ -150,6 +303,7 @@ Ayumi.prototype.updateNoise = function() {
   return this.noise & 1;
 }
 
+// Envelope segment: increase the internal envelope level until it overflows.
 Ayumi.prototype.slideUp = function(e) {
   if(++e.envelope > 31) {
     e.envelopeSegment ^= 1;
@@ -157,6 +311,7 @@ Ayumi.prototype.slideUp = function(e) {
   }
 }
 
+// Envelope segment: decrease the internal envelope level until it underflows.
 Ayumi.prototype.slideDown = function(e) {
   if(--e.envelope < 0) {
     e.envelopeSegment ^= 1;
@@ -164,15 +319,27 @@ Ayumi.prototype.slideDown = function(e) {
   }
 }
 
+// Envelope segment: keep the output at the maximum envelope level.
 Ayumi.prototype.holdTop = function(e) {};
 
+// Envelope segment: keep the output at the minimum envelope level.
 Ayumi.prototype.holdBottom = function(e) {};
 
+/*
+ * Start the currently selected envelope segment at the correct endpoint.
+ * A downward slide or a top hold starts at 31; an upward slide or bottom hold
+ * starts at 0.
+ */
 Ayumi.prototype.resetSegment = function() {
   var env = this.envelopes[this.envelopeShape][this.envelopeSegment];
   this.envelope = (env == this.slideDown || env == this.holdTop) ? 31 : 0;
 }
 
+/*
+ * Advance the shared envelope generator by one internal PSG tick.
+ * The envelope output is a 5-bit value 0..31, which indexes the DAC table
+ * directly when a channel's eOn flag is set.
+ */
 Ayumi.prototype.updateEnvelope = function() {
   if(++this.envelopeCounter >= this.envelopePeriod) {
     this.envelopeCounter = 0;
@@ -181,6 +348,20 @@ Ayumi.prototype.updateEnvelope = function() {
   return this.envelope;
 }
 
+/*
+ * Combine the three tone channels, the shared noise source and the shared
+ * envelope generator into a raw stereo sample.
+ *
+ * The AY mixer is easiest to read if you remember that the mixer register bits
+ * are disable bits, not enable bits.  A disabled tone/noise source is treated
+ * as a constant 1 in the boolean mixer; an enabled source contributes its
+ * actual square/noise output.  Tone and noise are then ANDed together.
+ *
+ * For each channel:
+ *   gate = (tone | toneDisable) & (noise | noiseDisable)
+ *   levelIndex = envelope if envelope mode is on, else fixedVolume*2+1
+ *   output = DAC[gate * levelIndex]
+ */
 Ayumi.prototype.updateMixer = function() {
   var out;
   var noise = this.updateNoise();
@@ -197,11 +378,25 @@ Ayumi.prototype.updateMixer = function() {
 }
 
 // FVD 14-01-2024
+// Convenience function used by the demo page.  This is not a hardware AY
+// operation.  A future Mockingboard wrapper will probably want to stop the
+// Web Audio node, mute both chips, or reset the emulated 6522/PSG state
+// explicitly rather than configuring with zero clock/sample rate.
 Ayumi.prototype.stop = function()
 {
   this.configure(true,0,0);
 }
 
+/*
+ * Configure the chip model before rendering audio.
+ *
+ * isYM      true  => use the YM2149 DAC table
+ *           false => use the AY-3-8910 DAC table
+ * clockRate PSG master clock in Hz.  The player reads this from the YM/FYM
+ *           file header; a Mockingboard wrapper should use the Apple II card's
+ *           PSG clock value.
+ * sr        output sample rate in Hz, normally audioContext.sampleRate.
+ */
 Ayumi.prototype.configure = function(isYM, clockRate, sr) {
   this.step = clockRate / (sr * 8 * DECIMATE_FACTOR);
   this.dacTable = isYM ? YM_DAC_TABLE : AY_DAC_TABLE;
@@ -212,6 +407,17 @@ Ayumi.prototype.configure = function(isYM, clockRate, sr) {
   }
 }
 
+/*
+ * Set stereo panning for one channel.
+ *
+ * index  0=A, 1=B, 2=C
+ * pan    0.0=left, 0.5=center, 1.0=right
+ * isEqp  non-zero => equal-power panning; zero => linear panning
+ *
+ * The physical AY has separate analog outputs for A/B/C; panning here is a
+ * renderer convenience.  A Mockingboard wrapper can choose channel panning to
+ * approximate the board's two output channels.
+ */
 Ayumi.prototype.setPan = function(index, pan, isEqp) {
   if(isEqp) {
     this.channels[index].panLeft = Math.sqrt(1 - pan);
@@ -222,43 +428,115 @@ Ayumi.prototype.setPan = function(index, pan, isEqp) {
   }
 }
 
+/*
+ * Program one channel's 12-bit tone period from the AY tone registers.
+ *
+ * index  0=A from R0/R1, 1=B from R2/R3, 2=C from R4/R5
+ * period 12-bit divider value: ((coarse & 0x0f) << 8) | fine
+ *
+ * Register write mapping:
+ *   A: setTone(0, (R1 << 8) | R0)
+ *   B: setTone(1, (R3 << 8) | R2)
+ *   C: setTone(2, (R5 << 8) | R4)
+ *
+ * Hardware treats a period of 0 as the smallest divider; this code stores 1
+ * for that case.
+ */
 Ayumi.prototype.setTone = function(index, period) {
   period &= 0xfff;
   this.channels[index].tonePeriod = (period == 0) | period;
 }
 
+/*
+ * Program the shared 5-bit noise period from R6.
+ * Only the low five bits are meaningful on the AY.
+ */
 Ayumi.prototype.setNoise = function(period) {
   this.noisePeriod = period & 0x1f;
 }
 
+/*
+ * Program per-channel mixer flags decoded from R7 and R8/R9/R10.
+ *
+ * index 0=A, 1=B, 2=C
+ * tOff tone disable bit for this channel from R7 bit 0/1/2
+ * nOff noise disable bit for this channel from R7 bit 3/4/5
+ * eOn  envelope-mode bit from this channel's amplitude register bit 4
+ *
+ * Note the naming: tOff/nOff are inverted hardware bits.  0 means the source
+ * is enabled; 1 means the source is disabled.
+ */
 Ayumi.prototype.setMixer = function(index, tOff, nOff, eOn) {
   this.channels[index].tOff = tOff & 1;
   this.channels[index].nOff = nOff & 1;
   this.channels[index].eOn = eOn & 1;
 }
 
+/*
+ * Renderer-level master volume.
+ *
+ * The demo passes a value in the range 0..255.  Values below 0 and above 255
+ * are clamped; internally the gain is normalized to 0.0..1.0.  This is not an
+ * AY register.
+ */
 Ayumi.prototype.setMasterVolume = function(volume)
 {
     this.mastervolume = volume>1?1:(volume<0)?0:volume/0xff;
 }
 
+/*
+ * Program the fixed amplitude nibble for one channel.
+ *
+ * index  0=A from R8, 1=B from R9, 2=C from R10
+ * volume low 4 bits of the corresponding amplitude register.
+ *
+ * The envelope-enable bit is not handled here; it is decoded in setMixer()
+ * as eOn because updateMixer() needs both fixed volume and envelope mode.
+ */
 Ayumi.prototype.setVolume = function(index, volume) {
   this.channels[index].volume = volume & 0x0f;
 }
 
-Ayumi.prototype.setEnvelope = function(period) {
+/*
+ * Program the 16-bit shared envelope period from R11/R12.
+ *
+ * Register write mapping:
+ *   setEnvelope((R12 << 8) | R11)
+ *
+ * Hardware treats period 0 as the smallest divider; this code stores 1 for
+ * that case.
+ */
+Ayumi.prototype.setEnvelope = function(period) 
+{
   period &= 0xffff;
   this.envelopePeriod = (period == 0) | period;
 }
 
-Ayumi.prototype.setEnvelopeShape = function(shape) {
+/*
+ * Program the 4-bit envelope shape from R13.
+ *
+ * Shape bits: bit 3 Continue, bit 2 Attack, bit 1 Alternate, bit 0 Hold.
+ * Writing R13 restarts the envelope cycle, so this method clears the counter
+ * and starts from segment 0.
+ */
+Ayumi.prototype.setEnvelopeShape = function(shape) 
+{
   this.envelopeShape = shape & 0x0f;
   this.envelopeCounter = 0;
   this.envelopeSegment = 0;
   this.resetSegment();
 }
 
-Ayumi.prototype.decimate = function(x) {
+/*
+ * FIR low-pass decimator.
+ *
+ * process() writes DECIMATE_FACTOR interpolated samples into a FIR ring buffer.
+ * This function convolves that buffer with the precomputed 192-tap low-pass
+ * filter and returns one output-rate sample.  The large coefficient list below
+ * is intentionally kept inline for speed and to match the original Ayumi code.
+ */
+Ayumi.prototype.decimate = function(x) 
+{
   var y = -0.0000046183113992051936 * (x[1] + x[191]) +
     -0.00001117761640887225 * (x[2] + x[190]) +
     -0.000018610264502005432 * (x[3] + x[189]) +
@@ -350,6 +628,19 @@ Ayumi.prototype.decimate = function(x) {
   return y * this.mastervolume;
 }
 
+/*
+ * Render one stereo sample.
+ *
+ * Public rendering contract:
+ *   ayumi.process();
+ *   ayumi.removeDC();
+ *   leftBuffer[i] = ayumi.left;
+ *   rightBuffer[i] = ayumi.right;
+ *
+ * Internally, this function advances the PSG at the configured chip clock,
+ * interpolates between raw mixer states, and decimates the oversampled signal
+ * to the requested audio sample rate.
+ */
 Ayumi.prototype.process = function() {
   var y1;
 
@@ -400,12 +691,18 @@ Ayumi.prototype.process = function() {
   this.right = this.decimate(firRight);
 }
 
+// One step of the moving-average DC-removal filter.
 Ayumi.prototype.dcFilter = function(dc, index, x) {
   dc.sum += -dc.delay[index] + x;
   dc.delay[index] = x;
   return x - dc.sum / DC_FILTER_SIZE;
 }
 
+/*
+ * Remove DC offset from the last generated stereo sample.
+ * Call this after process() and before writing this.left/this.right to the
+ * Web Audio output buffers.
+ */
 Ayumi.prototype.removeDC = function() {
   this.left = this.dcFilter(this.dcFilterLeft, this.dcIndex, this.left);
   this.right = this.dcFilter(this.dcFilterRight, this.dcIndex, this.right);
