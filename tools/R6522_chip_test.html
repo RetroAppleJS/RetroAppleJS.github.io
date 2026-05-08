@@ -1,0 +1,1223 @@
+<script type="text/javascript" src="../res/ayumi.js"></script>
+<script>
+/*
+ * r6522-mockingboard-logged.js
+ *
+ * Vanilla JavaScript model of the Rockwell/MOS/Synertek 6522 VIA, plus a
+ * Mockingboard-oriented AY-3-8910/YM2149 bus adapter and two-chip card wrapper.
+ *
+ * This version adds structured tracing/logging around the places that matter
+ * when debugging Mockingboard software:
+ *   - Apple II slot I/O reads/writes
+ *   - VIA register reads/writes
+ *   - ORA/ORB/DDRA/DDRB port-pin changes
+ *   - AY bus-control transitions: inactive, latch address, write data, read
+ *   - PSG register writes and derived Ayumi method calls
+ *   - Timer 1 / Timer 2 loads, underflows, reloads, and interrupt flags
+ *   - IFR/IER changes and IRQ line assertion/deassertion
+ *
+ * Design goal
+ * -----------
+ * Keep the VIA generic. The R6522 object knows about VIA registers, ports,
+ * timers, flags, and IRQs. It does not know about the AY chip. The AY adapter
+ * watches the VIA pins and translates Mockingboard wiring into PSG register
+ * writes. The MockingboardCard wrapper owns two VIAs and two PSG renderers.
+ *
+ * Typical Mockingboard sound mapping:
+ *   Apple II slot I/O page + $00..$0F  -> VIA #1 -> AY/YM chip #1
+ *   Apple II slot I/O page + $80..$8F  -> VIA #2 -> AY/YM chip #2
+ *
+ * Common Mockingboard Port B control values:
+ *   $07 = PB0=BC1=1, PB1=BDIR=1, PB2=/RESET=1 -> latch AY register address
+ *   $06 = PB0=BC1=0, PB1=BDIR=1, PB2=/RESET=1 -> write AY register data
+ *   $04 = PB0=BC1=0, PB1=BDIR=0, PB2=/RESET=1 -> inactive
+ *
+ * This is intentionally ES5-compatible style: no imports, no build step.
+ */
+(function(global) {
+  'use strict';
+
+  function u8(value)  { return value & 0xff; }
+  function u16(value) { return value & 0xffff; }
+  function hex2(value) { return ('0' + (value & 0xff).toString(16).toUpperCase()).slice(-2); }
+  function hex4(value) { return ('000' + (value & 0xffff).toString(16).toUpperCase()).slice(-4); }
+  function bool01(value) { return value ? 1 : 0; }
+
+  function clonePlain(obj) {
+    var out = {};
+    for(var k in obj) if(Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k];
+    return out;
+  }
+
+  var DEFAULT_TRACE_CATEGORIES = {
+    reset: true,
+    bus: true,
+    read: true,
+    write: true,
+    port: true,
+    control: true,
+    ay: true,
+    timer: true,
+    irq: true,
+    ifr: true,
+    ier: true,
+    mock: true
+  };
+
+  /**
+   * Small structured trace logger.
+   *
+   * Options:
+   *   enabled: boolean, default false
+   *   categories: { name: boolean }, default all common categories enabled
+   *   maxEntries: ring-buffer size, default 2000; 0 disables buffering
+   *   sink(entry): optional callback for every accepted entry
+   *   console: true to also console.debug/log every entry
+   *   formatter(entry): optional custom console string formatter
+   *
+   * Entry shape:
+   *   {
+   *     seq: 1,
+   *     time: 1710000000000,
+   *     cycle: 1234,
+   *     source: 'VIA0',
+   *     category: 'timer',
+   *     event: 't1-underflow',
+   *     details: { ... }
+   *   }
+   */
+  function TraceLogger(options) {
+    options = options || {};
+    this.enabled = options.enabled === undefined ? false : !!options.enabled;
+    this.categories = clonePlain(DEFAULT_TRACE_CATEGORIES);
+    if(options.categories) {
+      for(var k in options.categories) {
+        if(Object.prototype.hasOwnProperty.call(options.categories, k)) {
+          this.categories[k] = !!options.categories[k];
+        }
+      }
+    }
+    this.maxEntries = options.maxEntries === undefined ? 2000 : options.maxEntries | 0;
+    if(this.maxEntries < 0) this.maxEntries = 0;
+    this.entries = [];
+    this.seq = 0;
+    this.sink = options.sink || null;
+    this.toConsole = !!options.console;
+    this.formatter = options.formatter || defaultTraceFormatter;
+  }
+
+  TraceLogger.prototype.setEnabled = function(enabled) {
+    this.enabled = !!enabled;
+  };
+
+  TraceLogger.prototype.enableCategory = function(category, enabled) {
+    this.categories[category] = enabled === undefined ? true : !!enabled;
+  };
+
+  TraceLogger.prototype.setCategories = function(categories) {
+    for(var k in categories) {
+      if(Object.prototype.hasOwnProperty.call(categories, k)) this.categories[k] = !!categories[k];
+    }
+  };
+
+  TraceLogger.prototype.clear = function() {
+    this.entries.length = 0;
+  };
+
+  TraceLogger.prototype.getEntries = function() {
+    return this.entries.slice(0);
+  };
+
+  TraceLogger.prototype.log = function(source, category, event, details, cycle) {
+    if(!this.enabled) return null;
+    if(this.categories[category] === false) return null;
+
+    var entry = {
+      seq: ++this.seq,
+      time: Date.now ? Date.now() : +(new Date()),
+      cycle: cycle === undefined ? null : cycle,
+      source: source || '',
+      category: category || 'log',
+      event: event || '',
+      details: details || {}
+    };
+
+    if(this.maxEntries > 0) {
+      this.entries.push(entry);
+      if(this.entries.length > this.maxEntries) this.entries.shift();
+    }
+
+    if(this.sink) this.sink(entry);
+    if(this.toConsole && global.console) {
+      var line = this.formatter ? this.formatter(entry) : defaultTraceFormatter(entry);
+      if(global.console.debug) global.console.debug(line, entry.details);
+      else global.console.log(line, entry.details);
+    }
+    return entry;
+  };
+
+  TraceLogger.prototype.dumpText = function() {
+    var lines = [];
+    for(var i = 0; i < this.entries.length; i++) lines.push(defaultTraceFormatter(this.entries[i]));
+    return lines.join('\n');
+  };
+
+  function defaultTraceFormatter(e) {
+    var cyc = e.cycle === null || e.cycle === undefined ? '-' : e.cycle;
+    var detail = '';
+    if(e.details) {
+      if(e.details.regName) detail += ' ' + e.details.regName;
+      if(e.details.reg !== undefined) detail += ' r=$' + hex2(e.details.reg);
+      if(e.details.value !== undefined) detail += ' v=$' + hex2(e.details.value);
+      if(e.details.oldValue !== undefined) detail += ' old=$' + hex2(e.details.oldValue);
+      if(e.details.newValue !== undefined) detail += ' new=$' + hex2(e.details.newValue);
+      if(e.details.ifr !== undefined) detail += ' IFR=$' + hex2(e.details.ifr);
+      if(e.details.ier !== undefined) detail += ' IER=$' + hex2(e.details.ier);
+      if(e.details.irq !== undefined) detail += ' IRQ=' + bool01(e.details.irq);
+      if(e.details.selectedRegister !== undefined) detail += ' AYR=' + e.details.selectedRegister;
+    }
+    return '[' + e.seq + ' c=' + cyc + '] ' + e.source + ' ' + e.category + ':' + e.event + detail;
+  }
+
+  var VIA_REG = {
+    ORB_IRB: 0x0,
+    ORA_IRA: 0x1,
+    DDRB:    0x2,
+    DDRA:    0x3,
+    T1CL:    0x4,
+    T1CH:    0x5,
+    T1LL:    0x6,
+    T1LH:    0x7,
+    T2CL:    0x8,
+    T2CH:    0x9,
+    SR:      0xa,
+    ACR:     0xb,
+    PCR:     0xc,
+    IFR:     0xd,
+    IER:     0xe,
+    ORA_NH:  0xf
+  };
+
+  var VIA_REG_NAMES = [
+    'ORB/IRB', 'ORA/IRA', 'DDRB', 'DDRA', 'T1CL', 'T1CH', 'T1LL', 'T1LH',
+    'T2CL', 'T2CH', 'SR', 'ACR', 'PCR', 'IFR', 'IER', 'ORA/IRA no handshake'
+  ];
+
+  var IFR = {
+    CA2: 0x01,
+    CA1: 0x02,
+    SR:  0x04,
+    CB2: 0x08,
+    CB1: 0x10,
+    T2:  0x20,
+    T1:  0x40,
+    IRQ: 0x80
+  };
+
+  var IFR_NAMES = {
+    0x01: 'CA2',
+    0x02: 'CA1',
+    0x04: 'SR',
+    0x08: 'CB2',
+    0x10: 'CB1',
+    0x20: 'T2',
+    0x40: 'T1'
+  };
+
+  function interruptMaskToNames(mask) {
+    var parts = [];
+    for(var bit = 1; bit <= 0x40; bit <<= 1) {
+      if(mask & bit) parts.push(IFR_NAMES[bit] || ('$' + hex2(bit)));
+    }
+    return parts.join('|') || 'none';
+  }
+
+  /**
+   * R6522 Versatile Interface Adapter.
+   *
+   * Constructor options:
+   *   name: display name in trace logs
+   *   logger: TraceLogger instance or compatible { log(...) } object
+   *   trace: shorthand boolean; creates an internal TraceLogger if logger omitted
+   *   logOptions: options passed to internal TraceLogger
+   *   onPortAChange(pins, via)
+   *   onPortBChange(pins, via)
+   *   onIrqChange(level, via)       // true means IRQ asserted from VIA logic
+   *
+   * Public methods:
+   *   reset()
+   *   readRegister(reg)
+   *   writeRegister(reg, value)
+   *   setPortAInput(value, mask)
+   *   setPortBInput(value, mask)
+   *   setCA1(level), setCB1(level), setCA2(level), setCB2(level)
+   *   tick(cycles)
+   *   getState()
+   */
+  function R6522(options) {
+    options = options || {};
+    this.name = options.name || 'R6522';
+    this.onPortAChange = options.onPortAChange || null;
+    this.onPortBChange = options.onPortBChange || null;
+    this.onIrqChange = options.onIrqChange || null;
+
+    if(options.logger) this.logger = options.logger;
+    else if(options.trace || options.logOptions) {
+      var logOptions = options.logOptions || {};
+      if(options.trace !== undefined && logOptions.enabled === undefined) logOptions.enabled = !!options.trace;
+      this.logger = new TraceLogger(logOptions);
+    } else this.logger = null;
+
+    this.reset();
+  }
+
+  R6522.REG = VIA_REG;
+  R6522.REG_NAMES = VIA_REG_NAMES;
+  R6522.IFR = IFR;
+  R6522.TraceLogger = TraceLogger;
+
+  R6522.prototype._trace = function(category, event, details) {
+    if(this.logger && this.logger.log) return this.logger.log(this.name, category, event, details || {}, this.cycles);
+    return null;
+  };
+
+  R6522.regName = function(reg) {
+    return VIA_REG_NAMES[reg & 0x0f] || ('R' + (reg & 0x0f));
+  };
+
+  R6522.prototype.reset = function() {
+    this.cycles = 0;
+
+    this.ora = 0;     // Output Register A latch
+    this.orb = 0;     // Output Register B latch
+    this.ddra = 0;    // 1 = output, 0 = input
+    this.ddrb = 0;
+
+    this.iraExternal = 0xff; // external input levels for input pins
+    this.irbExternal = 0xff;
+    this.paPins = 0xff;
+    this.pbPins = 0xff;
+
+    this.ca1 = 1;
+    this.ca2 = 1;
+    this.cb1 = 1;
+    this.cb2 = 1;
+
+    this.t1Counter = 0xffff;
+    this.t1Latch = 0xffff;
+    this.t1Running = false;
+    this.t1HasInterrupted = false;
+
+    this.t2Counter = 0xffff;
+    this.t2LatchLow = 0xff;
+    this.t2Running = false;
+    this.t2HasInterrupted = false;
+
+    this.sr = 0;
+    this.acr = 0;
+    this.pcr = 0;
+    this.ifr = 0;
+    this.ier = 0;     // lower 7 bits are enables; bit 7 is not stored
+    this.irqLevel = false;
+
+    this._updatePortPins('reset');
+    this._updateIrq();
+    this._trace('reset', 'reset', { message: 'VIA reset: ports input, timers disabled, interrupts disabled' });
+  };
+
+  /**
+   * Sets external levels visible on Port A input bits.
+   * mask=1 means update that external input bit. Output pins are still driven
+   * by ORA/DDRA and are unaffected by this method.
+   */
+  R6522.prototype.setPortAInput = function(value, mask) {
+    if(mask === undefined) mask = 0xff;
+    value = u8(value);
+    mask = u8(mask);
+    var old = this.iraExternal;
+    this.iraExternal = u8((this.iraExternal & ~mask) | (value & mask));
+    this._trace('port', 'set-port-a-input', { oldValue: old, newValue: this.iraExternal, mask: mask });
+    this._updatePortPins('external-input');
+  };
+
+  R6522.prototype.setPortBInput = function(value, mask) {
+    if(mask === undefined) mask = 0xff;
+    value = u8(value);
+    mask = u8(mask);
+    var old = this.irbExternal;
+    this.irbExternal = u8((this.irbExternal & ~mask) | (value & mask));
+    this._trace('port', 'set-port-b-input', { oldValue: old, newValue: this.irbExternal, mask: mask });
+    this._updatePortPins('external-input');
+  };
+
+  R6522.prototype.setCA1 = function(level) { this._setControlInput('CA1', !!level); };
+  R6522.prototype.setCA2 = function(level) { this._setControlInput('CA2', !!level); };
+  R6522.prototype.setCB1 = function(level) { this._setControlInput('CB1', !!level); };
+  R6522.prototype.setCB2 = function(level) { this._setControlInput('CB2', !!level); };
+
+  R6522.prototype._setControlInput = function(line, level) {
+    var prop = line.toLowerCase();
+    var old = this[prop] ? 1 : 0;
+    var neu = level ? 1 : 0;
+    if(old === neu) return;
+    this[prop] = neu;
+
+    var mask = 0;
+    var wantedPositiveEdge = false;
+    if(line === 'CA1') { mask = IFR.CA1; wantedPositiveEdge = (this.pcr & 0x01) !== 0; }
+    else if(line === 'CB1') { mask = IFR.CB1; wantedPositiveEdge = (this.pcr & 0x10) !== 0; }
+    else if(line === 'CA2') {
+      // Simplified: only input interrupt modes are treated as edge-sensitive.
+      var ca2Mode = (this.pcr >> 1) & 0x07;
+      if(ca2Mode >= 0x04) mask = 0;
+      else { mask = IFR.CA2; wantedPositiveEdge = (ca2Mode & 0x01) !== 0; }
+    }
+    else if(line === 'CB2') {
+      var cb2Mode = (this.pcr >> 5) & 0x07;
+      if(cb2Mode >= 0x04) mask = 0;
+      else { mask = IFR.CB2; wantedPositiveEdge = (cb2Mode & 0x01) !== 0; }
+    }
+
+    var positive = old === 0 && neu === 1;
+    var negative = old === 1 && neu === 0;
+    var triggered = mask && ((wantedPositiveEdge && positive) || (!wantedPositiveEdge && negative));
+
+    this._trace('control', 'control-line-change', {
+      line: line,
+      oldValue: old,
+      newValue: neu,
+      edge: positive ? 'rising' : 'falling',
+      triggersInterrupt: !!triggered
+    });
+    if(triggered) this._setInterrupts(mask, line + ' edge');
+  };
+
+  R6522.prototype.readRegister = function(reg) {
+    reg &= 0x0f;
+    var value;
+    switch(reg) {
+      case VIA_REG.ORB_IRB:
+        this._clearInterrupts(IFR.CB1 | IFR.CB2, 'read ORB/IRB');
+        value = this.pbPins;
+        break;
+
+      case VIA_REG.ORA_IRA:
+      case VIA_REG.ORA_NH:
+        if(reg === VIA_REG.ORA_IRA) this._clearInterrupts(IFR.CA1 | IFR.CA2, 'read ORA/IRA');
+        value = this.paPins;
+        break;
+
+      case VIA_REG.DDRB: value = this.ddrb; break;
+      case VIA_REG.DDRA: value = this.ddra; break;
+
+      case VIA_REG.T1CL:
+        this._clearInterrupts(IFR.T1, 'read T1 low counter');
+        value = this.t1Counter & 0xff;
+        break;
+      case VIA_REG.T1CH:
+        value = (this.t1Counter >> 8) & 0xff;
+        break;
+      case VIA_REG.T1LL:
+        value = this.t1Latch & 0xff;
+        break;
+      case VIA_REG.T1LH:
+        value = (this.t1Latch >> 8) & 0xff;
+        break;
+
+      case VIA_REG.T2CL:
+        this._clearInterrupts(IFR.T2, 'read T2 low counter');
+        value = this.t2Counter & 0xff;
+        break;
+      case VIA_REG.T2CH:
+        value = (this.t2Counter >> 8) & 0xff;
+        break;
+
+      case VIA_REG.SR:  value = this.sr; break;
+      case VIA_REG.ACR: value = this.acr; break;
+      case VIA_REG.PCR: value = this.pcr; break;
+
+      case VIA_REG.IFR:
+        value = this.ifr | (this._hasEnabledInterrupt() ? IFR.IRQ : 0);
+        break;
+
+      case VIA_REG.IER:
+        // Real 6522 reads bit 7 as 1 plus the enabled interrupt bits.
+        value = this.ier | 0x80;
+        break;
+
+      default:
+        value = 0xff;
+        break;
+    }
+
+    this._trace('read', 'read-register', { reg: reg, regName: R6522.regName(reg), value: value });
+    return value;
+  };
+
+  R6522.prototype.writeRegister = function(reg, value) {
+    reg &= 0x0f;
+    value = u8(value);
+    var old;
+
+    this._trace('write', 'write-register', { reg: reg, regName: R6522.regName(reg), value: value });
+
+    switch(reg) {
+      case VIA_REG.ORB_IRB:
+        old = this.orb;
+        this.orb = value;
+        this._clearInterrupts(IFR.CB1 | IFR.CB2, 'write ORB');
+        this._trace('port', 'orb-latch', { oldValue: old, newValue: this.orb, ddr: this.ddrb });
+        this._updatePortPins('write ORB');
+        return;
+
+      case VIA_REG.ORA_IRA:
+      case VIA_REG.ORA_NH:
+        old = this.ora;
+        this.ora = value;
+        if(reg === VIA_REG.ORA_IRA) this._clearInterrupts(IFR.CA1 | IFR.CA2, 'write ORA');
+        this._trace('port', 'ora-latch', { oldValue: old, newValue: this.ora, ddr: this.ddra, noHandshake: reg === VIA_REG.ORA_NH });
+        this._updatePortPins('write ORA');
+        return;
+
+      case VIA_REG.DDRB:
+        old = this.ddrb;
+        this.ddrb = value;
+        this._trace('port', 'ddrb', { oldValue: old, newValue: this.ddrb });
+        this._updatePortPins('write DDRB');
+        return;
+
+      case VIA_REG.DDRA:
+        old = this.ddra;
+        this.ddra = value;
+        this._trace('port', 'ddra', { oldValue: old, newValue: this.ddra });
+        this._updatePortPins('write DDRA');
+        return;
+
+      case VIA_REG.T1CL:
+        // Write low byte into T1 latch only.
+        old = this.t1Latch;
+        this.t1Latch = (this.t1Latch & 0xff00) | value;
+        this._trace('timer', 't1-latch-low', { oldValue16: old, newValue16: this.t1Latch, low: value });
+        return;
+
+      case VIA_REG.T1CH:
+        // Write high byte into latch, then load counter from latch and clear T1 flag.
+        old = this.t1Latch;
+        this.t1Latch = (value << 8) | (this.t1Latch & 0x00ff);
+        this.t1Counter = this.t1Latch;
+        this.t1Running = true;
+        this.t1HasInterrupted = false;
+        this._clearInterrupts(IFR.T1, 'write T1 high counter');
+        this._trace('timer', 't1-load-counter', {
+          oldValue16: old,
+          latch: this.t1Latch,
+          counter: this.t1Counter,
+          continuous: !!(this.acr & 0x40),
+          pb7Output: !!(this.acr & 0x80)
+        });
+        return;
+
+      case VIA_REG.T1LL:
+        old = this.t1Latch;
+        this.t1Latch = (this.t1Latch & 0xff00) | value;
+        this._trace('timer', 't1-latch-low-only', { oldValue16: old, newValue16: this.t1Latch, low: value });
+        return;
+
+      case VIA_REG.T1LH:
+        old = this.t1Latch;
+        this.t1Latch = (value << 8) | (this.t1Latch & 0x00ff);
+        this._trace('timer', 't1-latch-high-only', { oldValue16: old, newValue16: this.t1Latch, high: value });
+        return;
+
+      case VIA_REG.T2CL:
+        old = this.t2LatchLow;
+        this.t2LatchLow = value;
+        this._trace('timer', 't2-latch-low', { oldValue: old, newValue: this.t2LatchLow });
+        return;
+
+      case VIA_REG.T2CH:
+        this.t2Counter = (value << 8) | this.t2LatchLow;
+        this.t2Running = true;
+        this.t2HasInterrupted = false;
+        this._clearInterrupts(IFR.T2, 'write T2 high counter');
+        this._trace('timer', 't2-load-counter', {
+          latchLow: this.t2LatchLow,
+          high: value,
+          counter: this.t2Counter,
+          pulseCountMode: !!(this.acr & 0x20)
+        });
+        return;
+
+      case VIA_REG.SR:
+        old = this.sr;
+        this.sr = value;
+        this._clearInterrupts(IFR.SR, 'write SR');
+        this._trace('control', 'shift-register-write', { oldValue: old, newValue: this.sr });
+        return;
+
+      case VIA_REG.ACR:
+        old = this.acr;
+        this.acr = value;
+        this._trace('control', 'acr', {
+          oldValue: old,
+          newValue: this.acr,
+          paLatch: !!(this.acr & 0x01),
+          pbLatch: !!(this.acr & 0x02),
+          shiftMode: (this.acr >> 2) & 0x07,
+          t2PulseCount: !!(this.acr & 0x20),
+          t1Continuous: !!(this.acr & 0x40),
+          t1Pb7Output: !!(this.acr & 0x80)
+        });
+        return;
+
+      case VIA_REG.PCR:
+        old = this.pcr;
+        this.pcr = value;
+        this._trace('control', 'pcr', { oldValue: old, newValue: this.pcr });
+        return;
+
+      case VIA_REG.IFR:
+        // Writing 1s clears selected flags. Bit 7 is ignored.
+        this._clearInterrupts(value & 0x7f, 'write IFR');
+        return;
+
+      case VIA_REG.IER:
+        old = this.ier;
+        if(value & 0x80) this.ier |= (value & 0x7f);
+        else this.ier &= ~(value & 0x7f);
+        this.ier &= 0x7f;
+        this._trace('ier', 'ier-write', {
+          oldValue: old,
+          newValue: this.ier,
+          value: value,
+          operation: (value & 0x80) ? 'set-enabled-bits' : 'clear-enabled-bits',
+          bits: interruptMaskToNames(value & 0x7f)
+        });
+        this._updateIrq();
+        return;
+    }
+  };
+
+  /**
+   * Advance VIA timers by a number of PHI2 cycles.
+   *
+   * This is the part that lets the VIA schedule events/interrupts. In a full
+   * Apple II emulator you would call tick() with the number of 6502/VIA PHI2
+   * cycles that elapsed since the last I/O access. If you only want to decode
+   * Mockingboard AY register writes from already-timed events, tick() can be
+   * skipped.
+   */
+  R6522.prototype.tick = function(cycles) {
+    cycles = cycles | 0;
+    if(cycles <= 0) return;
+    var startCycle = this.cycles;
+    this.cycles += cycles;
+    this._trace('timer', 'tick', { cycles: cycles, startCycle: startCycle, endCycle: this.cycles, t1: this.t1Counter, t2: this.t2Counter });
+    this._tickT1(cycles);
+    this._tickT2(cycles);
+  };
+
+  R6522.prototype.getState = function() {
+    return {
+      name: this.name,
+      cycles: this.cycles,
+      ora: this.ora, orb: this.orb, ddra: this.ddra, ddrb: this.ddrb,
+      paPins: this.paPins, pbPins: this.pbPins,
+      ca1: this.ca1, ca2: this.ca2, cb1: this.cb1, cb2: this.cb2,
+      t1Counter: this.t1Counter, t1Latch: this.t1Latch, t1Running: this.t1Running,
+      t2Counter: this.t2Counter, t2Running: this.t2Running,
+      sr: this.sr, acr: this.acr, pcr: this.pcr,
+      ifr: this.readRegister(VIA_REG.IFR), ier: this.readRegister(VIA_REG.IER),
+      irq: this.irqLevel
+    };
+  };
+
+  R6522.prototype._updatePortPins = function(reason) {
+    var oldA = this.paPins;
+    var oldB = this.pbPins;
+
+    // Output bits drive ORA/ORB. Input bits reflect external inputs.
+    this.paPins = u8((this.ora & this.ddra) | (this.iraExternal & ~this.ddra));
+    this.pbPins = u8((this.orb & this.ddrb) | (this.irbExternal & ~this.ddrb));
+
+    if(oldA !== this.paPins) {
+      this._trace('port', 'port-a-pins', { oldValue: oldA, newValue: this.paPins, ora: this.ora, ddra: this.ddra, reason: reason });
+      if(this.onPortAChange) this.onPortAChange(this.paPins, this);
+    }
+    if(oldB !== this.pbPins) {
+      this._trace('port', 'port-b-pins', { oldValue: oldB, newValue: this.pbPins, orb: this.orb, ddrb: this.ddrb, reason: reason });
+      if(this.onPortBChange) this.onPortBChange(this.pbPins, this);
+    }
+  };
+
+  R6522.prototype._setInterrupts = function(mask, reason) {
+    mask &= 0x7f;
+    if(!mask) return;
+    var old = this.ifr;
+    this.ifr |= mask;
+    if(old !== this.ifr) {
+      this._trace('ifr', 'set-ifr', { oldValue: old, newValue: this.ifr, mask: mask, bits: interruptMaskToNames(mask), reason: reason });
+    }
+    this._updateIrq();
+  };
+
+  R6522.prototype._clearInterrupts = function(mask, reason) {
+    mask &= 0x7f;
+    if(!mask) return;
+    var old = this.ifr;
+    this.ifr &= ~mask;
+    if(old !== this.ifr) {
+      this._trace('ifr', 'clear-ifr', { oldValue: old, newValue: this.ifr, mask: mask, bits: interruptMaskToNames(mask), reason: reason });
+    }
+    this._updateIrq();
+  };
+
+  R6522.prototype._hasEnabledInterrupt = function() {
+    return (this.ifr & this.ier & 0x7f) !== 0;
+  };
+
+  R6522.prototype._updateIrq = function() {
+    var newLevel = this._hasEnabledInterrupt();
+    if(newLevel !== this.irqLevel) {
+      this.irqLevel = newLevel;
+      this._trace('irq', newLevel ? 'assert' : 'deassert', { irq: newLevel, ifr: this.ifr, ier: this.ier });
+      if(this.onIrqChange) this.onIrqChange(newLevel, this);
+    }
+  };
+
+  R6522.prototype._tickT1 = function(cycles) {
+    if(!this.t1Running) return;
+
+    var continuous = (this.acr & 0x40) !== 0; // ACR bit 6: T1 free-run mode
+    while(cycles > 0 && this.t1Running) {
+      if(cycles <= this.t1Counter) {
+        this.t1Counter = u16(this.t1Counter - cycles);
+        return;
+      }
+
+      cycles -= (this.t1Counter + 1);
+      this.t1Counter = 0xffff;
+
+      if(continuous || !this.t1HasInterrupted) {
+        this._trace('timer', 't1-underflow', { latch: this.t1Latch, continuous: continuous, remainingCycles: cycles });
+        this._setInterrupts(IFR.T1, 'T1 underflow');
+        this.t1HasInterrupted = true;
+      } else {
+        this._trace('timer', 't1-wrap-no-new-irq', { remainingCycles: cycles });
+      }
+
+      if(continuous) {
+        this.t1Counter = this.t1Latch;
+        this._trace('timer', 't1-reload', { counter: this.t1Counter, latch: this.t1Latch });
+      } else {
+        // One-shot mode: the counter keeps counting after the first underflow,
+        // but it does not request another interrupt until software reloads T1.
+        this.t1Counter = 0xffff;
+      }
+    }
+  };
+
+  R6522.prototype._tickT2 = function(cycles) {
+    if(!this.t2Running) return;
+
+    // ACR bit 5 selects T2 pulse-count mode. Interval timing is driven by PHI2.
+    // Pulse-count mode is exposed but not fully modelled; external PB6 pulses
+    // would need a separate method if Mockingboard software depends on it.
+    if(this.acr & 0x20) {
+      this._trace('timer', 't2-pulse-count-mode-not-ticked', { cycles: cycles });
+      return;
+    }
+
+    while(cycles > 0 && this.t2Running) {
+      if(cycles <= this.t2Counter) {
+        this.t2Counter = u16(this.t2Counter - cycles);
+        return;
+      }
+
+      cycles -= (this.t2Counter + 1);
+      this.t2Counter = 0xffff;
+
+      if(!this.t2HasInterrupted) {
+        this._trace('timer', 't2-underflow', { remainingCycles: cycles });
+        this._setInterrupts(IFR.T2, 'T2 underflow');
+        this.t2HasInterrupted = true;
+      } else {
+        this._trace('timer', 't2-wrap-no-new-irq', { remainingCycles: cycles });
+      }
+
+      // Like T1 one-shot, keep counting after first underflow but do not raise
+      // a second interrupt until software reloads T2.
+      this.t2Counter = 0xffff;
+    }
+  };
+
+  /**
+   * AY/YM register-bus adapter.
+   *
+   * The adapter watches the already-resolved VIA pins:
+   *   Port A pins = AY DA0..DA7
+   *   Port B bit 0 = BC1
+   *   Port B bit 1 = BDIR
+   *   Port B bit 2 = /RESET
+   *
+   * It stores the PSG register image and applies writes to an Ayumi-compatible
+   * renderer object exposing setTone/setNoise/setMixer/setVolume/setEnvelope and
+   * setEnvelopeShape.
+   */
+  function AyumiPsgBus(renderer, options) {
+    options = options || {};
+    this.renderer = renderer || null;
+    this.name = options.name || 'AY';
+    this.logger = options.logger || null;
+    this.regs = new Uint8Array(16);
+    this.selectedRegister = 0;
+    this.lastPortA = 0;
+    this.lastPortB = 0;
+    this.lastControl = -1;
+    this.resetWasHigh = true;
+    this.edgeTriggered = options.edgeTriggered === undefined ? true : !!options.edgeTriggered;
+    this.onRegisterWrite = options.onRegisterWrite || null;
+  }
+
+  AyumiPsgBus.REG_MASK = [
+    0xff, 0x0f, // channel A tone period low/high nibble
+    0xff, 0x0f, // channel B tone period low/high nibble
+    0xff, 0x0f, // channel C tone period low/high nibble
+    0x1f,       // noise period
+    0xff,       // mixer enables; upper bits unused but often preserved in software
+    0x1f, 0x1f, 0x1f, // volume/envelope enable
+    0xff, 0xff, // envelope period low/high
+    0x0f,       // envelope shape
+    0xff, 0xff  // AY I/O ports; not audio on Mockingboard
+  ];
+
+  AyumiPsgBus.REG_NAMES = [
+    'Tone A fine', 'Tone A coarse', 'Tone B fine', 'Tone B coarse',
+    'Tone C fine', 'Tone C coarse', 'Noise period', 'Mixer enable',
+    'Amplitude A', 'Amplitude B', 'Amplitude C',
+    'Envelope fine', 'Envelope coarse', 'Envelope shape',
+    'I/O port A', 'I/O port B'
+  ];
+
+  AyumiPsgBus.prototype._trace = function(category, event, details, cycle) {
+    if(this.logger && this.logger.log) return this.logger.log(this.name, category, event, details || {}, cycle);
+    return null;
+  };
+
+  AyumiPsgBus.prototype.reset = function(cycle) {
+    for(var i = 0; i < this.regs.length; i++) this.regs[i] = 0;
+    this.selectedRegister = 0;
+    this.lastControl = -1;
+    this._trace('ay', 'reset', { message: 'PSG register image cleared' }, cycle);
+    if(this.renderer) {
+      this._applyTone(0, cycle);
+      this._applyTone(1, cycle);
+      this._applyTone(2, cycle);
+      this.renderer.setNoise(0);
+      this._trace('ay', 'apply-setNoise', { value: 0 }, cycle);
+      this._applyMixerVolume(0, cycle);
+      this._applyMixerVolume(1, cycle);
+      this._applyMixerVolume(2, cycle);
+      this.renderer.setEnvelope(0);
+      this.renderer.setEnvelopeShape(0);
+      this._trace('ay', 'apply-envelope', { period: 0, shape: 0 }, cycle);
+    }
+  };
+
+  AyumiPsgBus.prototype.observeViaPins = function(portA, portB, cycle) {
+    portA = u8(portA);
+    portB = u8(portB);
+    this.lastPortA = portA;
+
+    var bc1 = portB & 0x01;
+    var bdir = (portB >> 1) & 0x01;
+    var resetHigh = (portB & 0x04) !== 0;
+    var control = (bdir << 1) | bc1;
+    var controlName = control === 3 ? 'latch-address' :
+                      control === 2 ? 'write-data' :
+                      control === 1 ? 'read-data' : 'inactive';
+
+    this._trace('control', 'ay-bus-observe', {
+      portA: portA,
+      portB: portB,
+      bc1: bc1,
+      bdir: bdir,
+      resetHigh: resetHigh,
+      control: controlName,
+      selectedRegister: this.selectedRegister
+    }, cycle);
+
+    if(!resetHigh) {
+      if(this.resetWasHigh) this._trace('control', 'ay-reset-low', { portB: portB }, cycle);
+      this.resetWasHigh = false;
+      this.reset(cycle);
+      this.lastPortB = portB;
+      return;
+    }
+    if(!this.resetWasHigh) this._trace('control', 'ay-reset-high', { portB: portB }, cycle);
+    this.resetWasHigh = true;
+
+    var shouldAct = this.edgeTriggered ? (control !== this.lastControl) : true;
+    this.lastControl = control;
+    this.lastPortB = portB;
+    if(!shouldAct) return;
+
+    if(control === 3) {
+      this.selectedRegister = portA & 0x0f;
+      this._trace('ay', 'latch-address', {
+        selectedRegister: this.selectedRegister,
+        registerName: AyumiPsgBus.REG_NAMES[this.selectedRegister],
+        value: portA
+      }, cycle);
+    } else if(control === 2) {
+      this._trace('ay', 'write-strobe', {
+        selectedRegister: this.selectedRegister,
+        registerName: AyumiPsgBus.REG_NAMES[this.selectedRegister],
+        value: portA
+      }, cycle);
+      this.writeRegister(this.selectedRegister, portA, cycle);
+    } else if(control === 1) {
+      this._trace('ay', 'read-mode', {
+        selectedRegister: this.selectedRegister,
+        registerName: AyumiPsgBus.REG_NAMES[this.selectedRegister],
+        value: this.readRegister(this.selectedRegister)
+      }, cycle);
+    }
+  };
+
+  AyumiPsgBus.prototype.writeRegister = function(index, value, cycle) {
+    index &= 0x0f;
+    var rawValue = u8(value);
+    value = rawValue & AyumiPsgBus.REG_MASK[index];
+    var old = this.regs[index];
+    this.regs[index] = value;
+
+    this._trace('ay', 'register-write', {
+      selectedRegister: index,
+      registerName: AyumiPsgBus.REG_NAMES[index],
+      oldValue: old,
+      value: value,
+      rawValue: rawValue,
+      mask: AyumiPsgBus.REG_MASK[index]
+    }, cycle);
+
+    if(this.renderer) this._applyRegister(index, cycle);
+    if(this.onRegisterWrite) this.onRegisterWrite(index, value, this);
+  };
+
+  AyumiPsgBus.prototype.readRegister = function(index) {
+    return this.regs[index & 0x0f];
+  };
+
+  AyumiPsgBus.prototype.getRegisters = function() {
+    return Array.prototype.slice.call(this.regs);
+  };
+
+  AyumiPsgBus.prototype._applyRegister = function(index, cycle) {
+    switch(index) {
+      case 0: case 1: this._applyTone(0, cycle); return;
+      case 2: case 3: this._applyTone(1, cycle); return;
+      case 4: case 5: this._applyTone(2, cycle); return;
+      case 6:
+        this.renderer.setNoise(this.regs[6]);
+        this._trace('ay', 'apply-setNoise', { value: this.regs[6] }, cycle);
+        return;
+      case 7:
+        this._applyMixerVolume(0, cycle);
+        this._applyMixerVolume(1, cycle);
+        this._applyMixerVolume(2, cycle);
+        return;
+      case 8: this._applyMixerVolume(0, cycle); return;
+      case 9: this._applyMixerVolume(1, cycle); return;
+      case 10: this._applyMixerVolume(2, cycle); return;
+      case 11: case 12:
+        var period = (this.regs[12] << 8) | this.regs[11];
+        this.renderer.setEnvelope(period);
+        this._trace('ay', 'apply-setEnvelope', { period: period }, cycle);
+        return;
+      case 13:
+        this.renderer.setEnvelopeShape(this.regs[13]);
+        this._trace('ay', 'apply-setEnvelopeShape', { shape: this.regs[13] }, cycle);
+        return;
+    }
+  };
+
+  AyumiPsgBus.prototype._applyTone = function(channel, cycle) {
+    var lo = this.regs[channel * 2];
+    var hi = this.regs[channel * 2 + 1];
+    var period = (hi << 8) | lo;
+    this.renderer.setTone(channel, period);
+    this._trace('ay', 'apply-setTone', { channel: channel, period: period, low: lo, high: hi }, cycle);
+  };
+
+  AyumiPsgBus.prototype._applyMixerVolume = function(channel, cycle) {
+    var mixer = this.regs[7];
+    var amp = this.regs[8 + channel];
+    var toneOff = (mixer >> channel) & 1;
+    var noiseOff = (mixer >> (3 + channel)) & 1;
+    var envelopeOn = (amp >> 4) & 1;
+    var volume = amp & 0x0f;
+    this.renderer.setMixer(channel, toneOff, noiseOff, envelopeOn);
+    this.renderer.setVolume(channel, volume);
+    this._trace('ay', 'apply-mixer-volume', {
+      channel: channel,
+      toneOff: toneOff,
+      noiseOff: noiseOff,
+      envelopeOn: envelopeOn,
+      volume: volume,
+      mixer: mixer,
+      amplitudeRegister: amp
+    }, cycle);
+  };
+
+  /**
+   * Convenience wrapper for a two-chip Mockingboard sound card.
+   *
+   * It does Apple II slot-area dispatch:
+   *   offset bit 7 = 0 -> VIA/AY #0
+   *   offset bit 7 = 1 -> VIA/AY #1
+   *   offset low nibble selects the R6522 register.
+   */
+  function MockingboardCard(options) {
+    options = options || {};
+    this.slot = options.slot || 4;
+    this.sampleRate = options.sampleRate || 44100;
+    this.clockRate = options.clockRate || 1000000;
+    this.cycles = 0;
+
+    if(options.logger) this.logger = options.logger;
+    else {
+      var logOptions = options.logOptions || {};
+      if(options.trace !== undefined && logOptions.enabled === undefined) logOptions.enabled = !!options.trace;
+      this.logger = new TraceLogger(logOptions);
+    }
+
+    this.onIrqChange = options.onIrqChange || null;
+    this.irqLevel = false;
+
+    var AyumiClass = options.AyumiClass || global.Ayumi;
+    var renderers = options.renderers || null;
+
+    this.chips = [
+      renderers ? renderers[0] : (AyumiClass ? new AyumiClass() : null),
+      renderers ? renderers[1] : (AyumiClass ? new AyumiClass() : null)
+    ];
+
+    for(var c = 0; c < this.chips.length; c++) {
+      if(this.chips[c] && this.chips[c].configure) {
+        this.chips[c].configure(true, this.clockRate, this.sampleRate);
+      }
+    }
+
+    this.psgBuses = [
+      new AyumiPsgBus(this.chips[0], { name: 'AY0', logger: this.logger }),
+      new AyumiPsgBus(this.chips[1], { name: 'AY1', logger: this.logger })
+    ];
+
+    var self = this;
+    this.vias = [
+      new R6522({
+        name: 'VIA0',
+        logger: this.logger,
+        onPortAChange: function(pins, via) { self._viaChanged(0); },
+        onPortBChange: function(pins, via) { self._viaChanged(0); },
+        onIrqChange: function(level, via) { self._updateIrq(); }
+      }),
+      new R6522({
+        name: 'VIA1',
+        logger: this.logger,
+        onPortAChange: function(pins, via) { self._viaChanged(1); },
+        onPortBChange: function(pins, via) { self._viaChanged(1); },
+        onIrqChange: function(level, via) { self._updateIrq(); }
+      })
+    ];
+  }
+
+  MockingboardCard.prototype._trace = function(category, event, details) {
+    if(this.logger && this.logger.log) return this.logger.log('Mockingboard', category, event, details || {}, this.cycles);
+    return null;
+  };
+
+  MockingboardCard.prototype._viaChanged = function(index) {
+    var via = this.vias[index];
+    this.psgBuses[index].observeViaPins(via.paPins, via.pbPins, via.cycles);
+  };
+
+  MockingboardCard.prototype._updateIrq = function() {
+    var newLevel = !!(this.vias[0].irqLevel || this.vias[1].irqLevel);
+    if(newLevel !== this.irqLevel) {
+      this.irqLevel = newLevel;
+      this._trace('irq', newLevel ? 'card-irq-assert' : 'card-irq-deassert', {
+        irq: newLevel,
+        via0: this.vias[0].irqLevel,
+        via1: this.vias[1].irqLevel
+      });
+      if(this.onIrqChange) this.onIrqChange(newLevel, this);
+    }
+  };
+
+  MockingboardCard.prototype.reset = function() {
+    this.cycles = 0;
+    this._trace('reset', 'card-reset', { slot: this.slot });
+    this.vias[0].reset();
+    this.vias[1].reset();
+    this.psgBuses[0].reset(0);
+    this.psgBuses[1].reset(0);
+    this._updateIrq();
+  };
+
+  MockingboardCard.prototype.write = function(addressOrOffset, value) {
+    var offset = addressOrOffset & 0xff;
+    var viaIndex = (offset & 0x80) ? 1 : 0;
+    var viaReg = offset & 0x0f;
+    this._trace('bus', 'slot-write', {
+      addressOrOffset: addressOrOffset,
+      offset: offset,
+      viaIndex: viaIndex,
+      reg: viaReg,
+      regName: R6522.regName(viaReg),
+      value: u8(value)
+    });
+    this.vias[viaIndex].writeRegister(viaReg, value);
+  };
+
+  MockingboardCard.prototype.read = function(addressOrOffset) {
+    var offset = addressOrOffset & 0xff;
+    var viaIndex = (offset & 0x80) ? 1 : 0;
+    var viaReg = offset & 0x0f;
+    var value = this.vias[viaIndex].readRegister(viaReg);
+    this._trace('bus', 'slot-read', {
+      addressOrOffset: addressOrOffset,
+      offset: offset,
+      viaIndex: viaIndex,
+      reg: viaReg,
+      regName: R6522.regName(viaReg),
+      value: value
+    });
+    return value;
+  };
+
+  MockingboardCard.prototype.tick = function(cycles) {
+    cycles = cycles | 0;
+    if(cycles <= 0) return;
+    var startCycle = this.cycles;
+    this.cycles += cycles;
+    this._trace('timer', 'card-tick', { cycles: cycles, startCycle: startCycle, endCycle: this.cycles });
+    this.vias[0].tick(cycles);
+    this.vias[1].tick(cycles);
+  };
+
+  MockingboardCard.prototype.setPan = function(chipIndex, channelIndex, pan, isEqualPower) {
+    var chip = this.chips[chipIndex];
+    if(chip && chip.setPan) chip.setPan(channelIndex, pan, isEqualPower ? 1 : 0);
+  };
+
+  MockingboardCard.prototype.process = function() {
+    var left = 0;
+    var right = 0;
+    for(var i = 0; i < this.chips.length; i++) {
+      var chip = this.chips[i];
+      if(!chip || !chip.process) continue;
+      chip.process();
+      if(chip.removeDC) chip.removeDC();
+      left += chip.left || 0;
+      right += chip.right || 0;
+    }
+    // Average the two chips so adding a second chip does not double peak level.
+    this.left = left * 0.5;
+    this.right = right * 0.5;
+    return { left: this.left, right: this.right };
+  };
+
+  MockingboardCard.prototype.getRegisters = function(chipIndex) {
+    return this.psgBuses[chipIndex ? 1 : 0].getRegisters();
+  };
+
+  MockingboardCard.prototype.getTrace = function() {
+    return this.logger && this.logger.getEntries ? this.logger.getEntries() : [];
+  };
+
+  MockingboardCard.prototype.clearTrace = function() {
+    if(this.logger && this.logger.clear) this.logger.clear();
+  };
+
+  MockingboardCard.prototype.dumpTrace = function() {
+    return this.logger && this.logger.dumpText ? this.logger.dumpText() : '';
+  };
+
+  // Exports for browser globals and CommonJS-style test runners.
+  global.TraceLogger = TraceLogger;
+  global.R6522 = R6522;
+  global.AyumiPsgBus = AyumiPsgBus;
+  global.MockingboardCard = MockingboardCard;
+
+  if(typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      TraceLogger: TraceLogger,
+      R6522: R6522,
+      AyumiPsgBus: AyumiPsgBus,
+      MockingboardCard: MockingboardCard
+    };
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
+
+
+
+
+
+
+
+
+const mb = new MockingboardCard({
+  slot: 4,
+  AyumiClass: Ayumi,
+  clockRate: 1022727,
+  sampleRate: 44100,
+  trace: true,
+  logOptions: {
+    enabled: true,
+    console: true,
+    maxEntries: 10000
+  },
+  onIrqChange(level, card) {
+    // level === true means the Mockingboard IRQ line is asserted.
+    // In hardware IRQB is active-low; the API exposes it as a boolean.
+    console.log("Mockingboard IRQ:", level);
+  }
+});
+
+const entries = mb.getTrace();
+console.table(entries);
+
+const text = mb.dumpTrace();
+console.log(text);
+
+mb.clearTrace();
+
+
+
+// Usual VIA setup for one Mockingboard AY side:
+mb.write(0x03, 0xff); // DDRA: Port A all output
+mb.write(0x02, 0x07); // DDRB: PB0=BC1, PB1=BDIR, PB2=/RESET output
+
+function writeAy(viaOffset, reg, value) {
+  mb.write(viaOffset | 0x01, reg);   // ORA = AY register number
+  mb.write(viaOffset | 0x00, 0x07);  // ORB = latch address
+  mb.write(viaOffset | 0x00, 0x04);  // ORB = inactive
+
+  mb.write(viaOffset | 0x01, value); // ORA = AY register value
+  mb.write(viaOffset | 0x00, 0x06);  // ORB = write data
+  mb.write(viaOffset | 0x00, 0x04);  // ORB = inactive
+}
+
+// Write volume register 8 on AY chip 0:
+writeAy(0x00, 0x08, 0x0f);
+
+// Write volume register 8 on AY chip 1:
+mb.write(0x83, 0xff); // DDRA for VIA 1
+mb.write(0x82, 0x07); // DDRB for VIA 1
+writeAy(0x80, 0x08, 0x0f);
+
+
+
+</script>
