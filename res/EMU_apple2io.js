@@ -930,28 +930,87 @@ function Apple2IO(vid)
     // TODO: sanitize, make sure all PCODEs in one slot are unique
     // TODO peripheral:[... {array of peripherals} ...]
 
-    var peripheral_names = this.listPeripheralNames();
-    var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
-    for(var slotIdx=0;slotIdx<slot_count;slotIdx++) // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
+    this.mount = function(cinfo,pinfo,slotIdx)
     {
-        if(oEMU.system===undefined) continue;
+        if(oEMU.system===undefined) return;
+        if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
+        {
+            const bHostROM = typeof(oEMU.system.IORANGES.HostROM)!="undefined" && cinfo.HostROM == "X";
+            const bSlotIO  = typeof(oEMU.system.IORANGES.SlotIO) !="undefined" && cinfo.SlotIO  == "X";
+            const bSlotROM = typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && cinfo.SlotROM == "X";
+            // TODO: check if range is applicable or not
+            if(bHostROM) pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
+            if(bSlotIO)  pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO, {n:slotIdx});     // _CFG_PSLOT -> IOrange
+            if(bSlotROM) pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     // _CFG_PSLOT -> SlotROM
+
+            // ASK THE PERIPHERAL TO PROVIDE AN ACTION_MAP
+            if(oEMU.component.IO[pinfo.objID] && oEMU.component.IO[pinfo.objID].io)
+            {
+                var io = oEMU.component.IO[pinfo.objID].io;
+                const _bHostROM  = !(io.HostROM === undefined);
+                const _bSlotIO   = !(io.SlotIO  === undefined);
+                const _bSlotROM  = !(io.SlotROM === undefined);
+                if(_bSlotROM)
+                {
+                    if(io.SlotROM.RD)
+                    {
+                        for(var i=0;i<256;i++)
+                        {
+                            ACTION_MAP.RD[0x100 + slotIdx*256 + i] = io.SlotROM.RD.callback;
+                             //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",io.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of io.SlotROM ?
+                        }
+                           
+                    }
+                }
+            }
+        }
+        pinfo["description"] = cinfo.NAME;
+        return pinfo;
+    }
+
+    // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
+    var peripheral_names = this.listPeripheralNames();
+    console.log(peripheral_names);
+    var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
+    for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
+    {
+        // TODO!!!!!! CHECK IF MOUNT WORKS EXACTLY LIKE THE BLOCK BELOW
+        if(slotR.slotMap[slotIdx])
+        {
+            var peripheral_names = this.listPeripheralNames();
+            var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
+            var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
+            pinfo = this.mount(cinfo,pinfo,slotIdx);
+
+            slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
+        }
+        else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
+        
+        console.log(ACTION_MAP);
+        console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(ACTION_MAP)+"bytes");
+
+        /*
         if(slotR.slotMap[slotIdx])  // mount peripheral in this slot ? e.g. (config file) "1,2,3*,4*,5,6,7"  --> config file says we have to mount this peripheral in slot 3 and slot 4 automatically (user doesn't have to mount manually)
         {
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
+            var cinfo = _CFG_PSLOT[pinfo.PCODE];
             if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
             {
-                pinfo["description"] = _CFG_PSLOT[pinfo.PCODE].NAME;
+                pinfo["description"] = cinfo.NAME;
 
                 // TODO: check if range is applicable or not
-                if(typeof(oEMU.system.IORANGES.HostROM)!="undefined" && _CFG_PSLOT[pinfo.PCODE].HostROM == "X") pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
-                if(typeof(oEMU.system.IORANGES.SlotIO)!="undefined"  && _CFG_PSLOT[pinfo.PCODE].SlotIO  == "X") pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:slotIdx});      // _CFG_PSLOT -> IOrange
-                if(typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && _CFG_PSLOT[pinfo.PCODE].SlotROM == "X") pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     
+                if(typeof(oEMU.system.IORANGES.HostROM)!="undefined" && cinfo.HostROM == "X") pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
+                if(typeof(oEMU.system.IORANGES.SlotIO) !="undefined" && cinfo.SlotIO  == "X") pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:slotIdx});      // _CFG_PSLOT -> IOrange
+                if(typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && cinfo.SlotROM == "X") pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     // _CFG_PSLOT -> SlotROM     
+
             }
-            slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
+            slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
         }
         else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
+        */
+        
     }
-    console.log("slotCfg = "+JSON.stringify(slotCfg));;
+    console.log("slotCfg = "+JSON.stringify(slotCfg));
 
     if(slot_count>0)
     {

@@ -1078,6 +1078,47 @@ function(csv)
       this.fread.addEventListener('load',handleEvent(this));
 
   }
+  
+
+
+  this.roughSizeOfObject = function(object) 
+  {
+    const stack = [object];
+    const seen  = new WeakSet();
+    let bytes = 0;
+
+    while (stack.length) 
+    {
+      const value = stack.pop();
+      switch (typeof value) 
+      {
+        case 'boolean': bytes += 4; break;
+        case 'string':  bytes += value.length * 2; break; // UTF-16 assumption
+        case 'number':  bytes += 8; break;   // IEEE-754 double
+        case 'bigint':  bytes += 8; break;   // very rough
+        case 'symbol':
+        case 'function':
+        case 'undefined': break;
+        case 'object':
+            if (value === null) break;
+            if (seen.has(value)) break;
+            seen.add(value);
+            bytes += 16;              // Count object overhead – completely engine-dependent
+
+            // Handle Maps, Sets, etc.
+            if (value instanceof Map)         { stack.push(...value.keys(), ...value.values()); break; }
+            if (value instanceof Set)         { stack.push(...value.values()); break; }
+            if (ArrayBuffer.isView(value))    { bytes += value.byteLength; break; }
+            if (value instanceof ArrayBuffer) { bytes += value.byteLength; break; }
+
+            // Walk own keys (including non-enumerable & symbols)
+            for (const key of Reflect.ownKeys(value)) { bytes += key.toString().length * 2;  stack.push(value[key]);}
+            break;
+      }
+    }
+    return bytes;
+  }
+
 
   this.SystemSelect = function(id,tab)
   {

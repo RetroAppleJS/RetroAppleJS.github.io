@@ -335,23 +335,53 @@ function AppleDisk2()
     }
 
 
-//Apple DOS 3.3.dsk
-//setDiskData: .DSK LEN:143360 CRC32: E766F072
-//setDiskData: .NIB LEN:232960 CRC32: 435A9A45
+    //Apple DOS 3.3.dsk
+    //setDiskData: .DSK LEN:143360 CRC32: E766F072
+    //setDiskData: .NIB LEN:232960 CRC32: 435A9A45
 
-    this.setDiskData = function(dskBytes,deviceID)
+    this.setDiskData = function(imageBytes, deviceID)
     {
-        if(dskBytes===undefined || deviceID===undefined) return;
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
+        if (imageBytes === undefined || deviceID === undefined) return;
 
-        var nibBytes = this.convertDsk2Nib(dskBytes);
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        var info = this.detectDiskImageType(imageBytes);
+        console.log("DISK info = "+JSON.stringify(info));
+        var nibBytes;
+
+        switch (info.type)
+        {
+            case "nib":
+                nibBytes = imageBytes;
+                break;
+
+            case "po":
+                nibBytes = this.convertPo2Nib(imageBytes);
+                break;
+
+            case "dsk":
+                nibBytes = this.convertDsk2Nib(imageBytes);
+                break;
+
+            case "woz":
+                // Detection is possible here, but actual WOZ loading needs a parser.
+                // For simple, unprotected 5.25" disks this could later become:
+                // nibBytes = this.convertWoz2Nib(imageBytes);
+                throw new Error("WOZ detected, but convertWoz2Nib() is not implemented yet");
+
+            default:
+                throw new Error("Unsupported or unknown disk image type: " + info.reason);
+        }
+
         this.state.diskData[deviceN] = nibBytes;
 
-        this.traceLog("setDiskData", 
+        this.traceLog("setDiskData",
         {
             drv: deviceN,
-            dsk_len: dskBytes.length,
-            dsk_crc32: oCOM.crc32(dskBytes).toString(16).toUpperCase(),
+            img_type: info.type,
+            img_confidence: info.confidence,
+            img_reason: info.reason,
+            img_len: imageBytes.length,
+            img_crc32: oCOM.crc32(imageBytes).toString(16).toUpperCase(),
             nib_len: nibBytes.length,
             nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase()
         });
@@ -600,6 +630,58 @@ function AppleDisk2()
     }
 
 
+    //    ██████   ██████      ██████      ███    ██ ██ ██████  
+    //    ██   ██ ██    ██          ██     ████   ██ ██ ██   ██ 
+    //    ██████  ██    ██      █████      ██ ██  ██ ██ ██████  
+    //    ██      ██    ██     ██          ██  ██ ██ ██ ██   ██ 
+    //    ██       ██████      ███████     ██   ████ ██ ██████  
+
+    this.convertPo2Nib = function(poBytes)
+    {
+        const TRACKS = 35;
+        const SECTORS = 16;
+        const SECTOR_SIZE = 256;
+        const DSK_SIZE = TRACKS * SECTORS * SECTOR_SIZE; // 143360
+
+        if (!poBytes || poBytes.length < DSK_SIZE)
+            throw new Error("Invalid .po image: expected at least " + DSK_SIZE + " bytes");
+
+        // physical/raw sector -> sector position in file
+        const raw2dos = [
+            0x0, 0x7, 0xE, 0x6,
+            0xD, 0x5, 0xC, 0x4,
+            0xB, 0x3, 0xA, 0x2,
+            0x9, 0x1, 0x8, 0xF
+        ];
+
+        const raw2prodos = [
+            0x0, 0x8, 0x1, 0x9,
+            0x2, 0xA, 0x3, 0xB,
+            0x4, 0xC, 0x5, 0xD,
+            0x6, 0xE, 0x7, 0xF
+        ];
+
+        // Reorder ProDOS-order sector image into DOS-order sector image,
+        // then let the existing DOS-order nibblizer do the rest.
+        var dskBytes = new Array(DSK_SIZE);
+
+        for (var track = 0; track < TRACKS; track++)
+        {
+            var trackBase = track * SECTORS * SECTOR_SIZE;
+
+            for (var rawSec = 0; rawSec < SECTORS; rawSec++)
+            {
+                var poOff  = trackBase + raw2prodos[rawSec] * SECTOR_SIZE;
+                var dskOff = trackBase + raw2dos[rawSec]    * SECTOR_SIZE;
+
+                for (var i = 0; i < SECTOR_SIZE; i++)
+                    dskBytes[dskOff + i] = poBytes[poOff + i] & 0xff;
+            }
+        }
+
+        return this.convertDsk2Nib(dskBytes);
+    }
+
 
     //  ███    ██ ██ ██████      ██████      ██████  ███████ ██   ██ 
     //  ████   ██ ██ ██   ██          ██     ██   ██ ██      ██  ██  
@@ -806,8 +888,303 @@ function AppleDisk2()
         return dskBytes;
     }
 
+    //    ███    ██ ██ ██████      ██████      ██████   ██████  
+    //    ████   ██ ██ ██   ██          ██     ██   ██ ██    ██ 
+    //    ██ ██  ██ ██ ██████       █████      ██████  ██    ██ 
+    //    ██  ██ ██ ██ ██   ██     ██          ██      ██    ██ 
+    //    ██   ████ ██ ██████      ███████     ██       ██████ 
 
- 
+    this.convertNib2Po = function(nibBytes)
+    {
+        const TRACKS = 35;
+        const SECTORS = 16;
+        const SECTOR_SIZE = 256;
+        const TRACK_SIZE = SECTORS * SECTOR_SIZE; // 4096
+        const PO_SIZE = TRACKS * TRACK_SIZE;      // 143360
+
+        // First decode to DOS-order .dsk using existing, tested logic.
+        var dskBytes = this.convertNib2Dsk(nibBytes);
+
+        var poBytes = new Array(PO_SIZE);
+        for (var i = 0; i < PO_SIZE; i++) poBytes[i] = 0;
+
+        // physical/raw sector -> sector position in DOS .dsk file
+        var raw2dos = [
+            0x0, 0x7, 0xE, 0x6,
+            0xD, 0x5, 0xC, 0x4,
+            0xB, 0x3, 0xA, 0x2,
+            0x9, 0x1, 0x8, 0xF
+        ];
+
+        // physical/raw sector -> sector position in ProDOS .po file
+        var raw2prodos = [
+            0x0, 0x8, 0x1, 0x9,
+            0x2, 0xA, 0x3, 0xB,
+            0x4, 0xC, 0x5, 0xD,
+            0x6, 0xE, 0x7, 0xF
+        ];
+
+        for (var track = 0; track < TRACKS; track++)
+        {
+            var trackBase = track * TRACK_SIZE;
+
+            for (var rawSec = 0; rawSec < SECTORS; rawSec++)
+            {
+                var dskOff = trackBase + raw2dos[rawSec]    * SECTOR_SIZE;
+                var poOff  = trackBase + raw2prodos[rawSec] * SECTOR_SIZE;
+
+                for (var i = 0; i < SECTOR_SIZE; i++)
+                    poBytes[poOff + i] = dskBytes[dskOff + i] & 0xff;
+            }
+        }
+
+        return poBytes;
+    }
+
+    //    ██████  ██ ███████ ██   ██     ████████ ██    ██ ██████  ███████ 
+    //    ██   ██ ██ ██      ██  ██         ██     ██  ██  ██   ██ ██      
+    //    ██   ██ ██ ███████ █████          ██      ████   ██████  █████   
+    //    ██   ██ ██      ██ ██  ██         ██       ██    ██      ██      
+    //    ██████  ██ ███████ ██   ██        ██       ██    ██      ███████ 
+
+
+    this.detectDiskImageType = function(imageBytes)
+    {
+        if (!imageBytes) return { type:"unknown", confidence:0, reason:"no data" };
+
+        const DSK_SIZE = 143360;   // 35 * 16 * 256
+        const NIB_SIZE = 232960;   // 35 * 6656
+        const TRACKS = 35;
+        const SECTORS = 16;
+        const SECTOR_SIZE = 256;
+        const TRACK_SIZE_DSK = SECTORS * SECTOR_SIZE;
+        const TRACK_SIZE_NIB = 6656;
+
+        function b(off)
+        {
+            return imageBytes[off] & 0xff;
+        }
+
+        function validTrack(t)
+        {
+            return t >= 0 && t < TRACKS;
+        }
+
+        function validSector(s)
+        {
+            return s >= 0 && s < SECTORS;
+        }
+
+        function isWoz()
+        {
+            if (imageBytes.length < 12) return false;
+
+            // "WOZ1" or "WOZ2", followed by FF 0A 0D 0A.
+            return imageBytes[0] == 0x57 && // W
+                imageBytes[1] == 0x4f && // O
+                imageBytes[2] == 0x5a && // Z
+                (imageBytes[3] == 0x31 || imageBytes[3] == 0x32) &&
+                imageBytes[4] == 0xff &&
+                imageBytes[5] == 0x0a &&
+                imageBytes[6] == 0x0d &&
+                imageBytes[7] == 0x0a;
+        }
+
+        function findSeq(start, end, b0, b1, b2)
+        {
+            for (var i = start; i <= end - 3; i++)
+                if (b(i) == b0 && b(i + 1) == b1 && b(i + 2) == b2)
+                    return true;
+
+            return false;
+        }
+
+        function looksLikeNib()
+        {
+            if (imageBytes.length != NIB_SIZE) return false;
+
+            var goodTracks = 0;
+
+            for (var track = 0; track < TRACKS; track++)
+            {
+                var base = track * TRACK_SIZE_NIB;
+                var end = base + TRACK_SIZE_NIB;
+
+                var hasAddressPrologue = findSeq(base, end, 0xd5, 0xaa, 0x96);
+                var hasDataPrologue    = findSeq(base, end, 0xd5, 0xaa, 0xad);
+
+                if (hasAddressPrologue && hasDataPrologue)
+                    goodTracks++;
+            }
+
+            // Be tolerant: some tracks may be damaged, oddly aligned, or non-standard.
+            return goodTracks >= 20;
+        }
+
+        const raw2dos = [
+            0x0, 0x7, 0xE, 0x6,
+            0xD, 0x5, 0xC, 0x4,
+            0xB, 0x3, 0xA, 0x2,
+            0x9, 0x1, 0x8, 0xF
+        ];
+
+        const raw2prodos = [
+            0x0, 0x8, 0x1, 0x9,
+            0x2, 0xA, 0x3, 0xB,
+            0x4, 0xC, 0x5, 0xD,
+            0x6, 0xE, 0x7, 0xF
+        ];
+
+        function invertMap(raw2file)
+        {
+            var out = new Array(16);
+            for (var raw = 0; raw < 16; raw++)
+                out[raw2file[raw]] = raw;
+            return out;
+        }
+
+        const prodosPos2Raw = invertMap(raw2prodos);
+
+        function byteAtPhysicalSector(track, rawSector, index, raw2file)
+        {
+            var fileSector = raw2file[rawSector];
+            return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + index);
+        }
+
+        function byteAtProDOSBlock(block, index, raw2file)
+        {
+            var logicalSector = block * 2 + Math.floor(index / SECTOR_SIZE);
+            var track = Math.floor(logicalSector / SECTORS);
+            var prodosSectorPosition = logicalSector & 0x0f;
+
+            var rawSector = prodosPos2Raw[prodosSectorPosition];
+            var fileSector = raw2file[rawSector];
+
+            return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + (index & 0xff));
+        }
+
+        function scoreDOS33(raw2file)
+        {
+            var score = 0;
+
+            // DOS 3.3 VTOC is physical track 17, sector 0.
+            var catTrack  = byteAtPhysicalSector(17, 0, 1, raw2file);
+            var catSector = byteAtPhysicalSector(17, 0, 2, raw2file);
+            var dosRel    = byteAtPhysicalSector(17, 0, 3, raw2file);
+
+            if (!validTrack(catTrack) || !validSector(catSector))
+                return 0;
+
+            if (catTrack == 17) score += 2;
+            else score += 1;
+
+            if (dosRel >= 1 && dosRel <= 3)
+                score += 1;
+
+            // Follow a few catalog sectors. This helps distinguish DOS-order
+            // from ProDOS-order because sectors after 15 are not at the same offsets.
+            var t = catTrack;
+            var s = catSector;
+            var seen = {};
+
+            for (var i = 0; i < 16; i++)
+            {
+                if (!validTrack(t) || !validSector(s)) break;
+
+                var key = t + ":" + s;
+                if (seen[key]) break;
+                seen[key] = true;
+
+                var nextTrack  = byteAtPhysicalSector(t, s, 1, raw2file);
+                var nextSector = byteAtPhysicalSector(t, s, 2, raw2file);
+
+                if (nextTrack == 0 && nextSector == 0)
+                {
+                    score += 2;
+                    break;
+                }
+
+                if (validTrack(nextTrack) && validSector(nextSector))
+                    score += 2;
+                else
+                {
+                    score -= 2;
+                    break;
+                }
+
+                t = nextTrack;
+                s = nextSector;
+            }
+
+            return score;
+        }
+
+        function scoreProDOS(raw2file)
+        {
+            var score = 0;
+
+            // ProDOS volume directory normally starts at block 2.
+            // First directory entry starts at byte 4 of the block.
+            var storageAndNameLen = byteAtProDOSBlock(2, 4, raw2file);
+            var storageType = storageAndNameLen >> 4;
+            var nameLen = storageAndNameLen & 0x0f;
+
+            if (storageType == 0x0f && nameLen >= 1 && nameLen <= 15)
+                score += 4;
+            else
+                return 0;
+
+            // Volume name should be mostly printable Apple II / ProDOS filename chars.
+            var printable = 0;
+            for (var i = 0; i < nameLen; i++)
+            {
+                var c = byteAtProDOSBlock(2, 5 + i, raw2file);
+                if ((c >= 0x41 && c <= 0x5a) || // A-Z
+                    (c >= 0x30 && c <= 0x39) || // 0-9
+                    c == 0x2e)                 // .
+                    printable++;
+            }
+
+            if (printable == nameLen)
+                score += 2;
+
+            // Directory header values commonly found in ProDOS volume directory.
+            var entryLength = byteAtProDOSBlock(2, 0x23, raw2file);
+            var entriesPerBlock = byteAtProDOSBlock(2, 0x24, raw2file);
+
+            if (entryLength >= 0x27 && entryLength <= 0x40)
+                score += 1;
+
+            if (entriesPerBlock >= 10 && entriesPerBlock <= 13)
+                score += 1;
+
+            return score;
+        }
+
+        if (isWoz())
+            return { type:"woz", confidence:1.0, reason:"WOZ magic header" };
+
+        if (looksLikeNib())
+            return { type:"nib", confidence:0.95, reason:"NIB size and sector prologues" };
+
+        if (imageBytes.length == DSK_SIZE)
+        {
+            var dskScore = scoreDOS33(raw2dos) + scoreProDOS(raw2dos);
+            var poScore  = scoreDOS33(raw2prodos) + scoreProDOS(raw2prodos);
+
+            if (poScore >= dskScore + 3)
+                return { type:"po", confidence:0.85, reason:"ProDOS-order structures score higher", dskScore:dskScore, poScore:poScore };
+
+            if (dskScore >= poScore + 3)
+                return { type:"dsk", confidence:0.85, reason:"DOS-order structures score higher", dskScore:dskScore, poScore:poScore };
+
+            // 140 KB flat images have no magic header, so this can happen.
+            return { type:"dsk", confidence:0.50, ambiguous:true, reason:"140 KB flat image; sector order not proven", dskScore:dskScore, poScore:poScore };
+        }
+
+        return { type:"unknown", confidence:0, reason:"unknown size or unsupported format" };
+    }
+
 
     //  ██████  ██ ███████ ██   ██     ███    ██  ██████  ██ ███████ ███████ 
     //  ██   ██ ██ ██      ██  ██      ████   ██ ██    ██ ██ ██      ██      

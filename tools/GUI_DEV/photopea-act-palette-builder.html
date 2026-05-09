@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photopea ACT Palette Builder</title>
+  <style>
+    :root { color-scheme: light dark; --gap: 1rem; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+      background: Canvas;
+      color: CanvasText;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 { margin: 0 0 .25rem; font-size: clamp(1.6rem, 3vw, 2.25rem); }
+    .muted { opacity: .72; }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: var(--gap);
+      align-items: start;
+    }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    textarea {
+      width: 100%;
+      min-height: 340px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95rem;
+      padding: .85rem;
+      border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+      border-radius: .75rem;
+      background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
+      color: CanvasText;
+    }
+    label { display: block; margin: .6rem 0 .25rem; font-weight: 650; }
+    input[type="text"], select {
+      width: 100%;
+      padding: .55rem .65rem;
+      border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+      border-radius: .55rem;
+      background: Canvas;
+      color: CanvasText;
+    }
+    input[type="file"] { width: 100%; margin-top: .35rem; }
+    .panel {
+      border: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+      border-radius: 1rem;
+      padding: 1rem;
+      background: color-mix(in srgb, Canvas 96%, CanvasText 4%);
+    }
+    .row { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+    button {
+      cursor: pointer;
+      border: 0;
+      border-radius: .7rem;
+      padding: .65rem .85rem;
+      font-weight: 700;
+      background: ButtonFace;
+      color: ButtonText;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, ButtonText 18%, transparent);
+    }
+    button.primary {
+      background: Highlight;
+      color: HighlightText;
+      box-shadow: none;
+    }
+    .small { font-size: .875rem; }
+    .checks label { font-weight: 500; margin: .45rem 0; }
+    #status {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      min-height: 4.5rem;
+      padding: .75rem;
+      border-radius: .75rem;
+      background: color-mix(in srgb, CanvasText 8%, transparent);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .86rem;
+    }
+    #swatches {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+      gap: .55rem;
+      margin-top: .75rem;
+      max-height: 360px;
+      overflow: auto;
+      padding-right: .25rem;
+    }
+    .swatch {
+      min-height: 72px;
+      border-radius: .8rem;
+      border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      background: var(--c);
+    }
+    .swatch div {
+      padding: .35rem .45rem;
+      background: color-mix(in srgb, Canvas 82%, transparent);
+      font-size: .72rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Photopea ACT Palette Builder</h1>
+    <p class="muted">Paste RGB colors, preview them, and download a Photopea / Photoshop <code>.act</code> color table.</p>
+
+    <div class="grid">
+      <section>
+        <label for="paletteText">Palette input</label>
+        <textarea id="paletteText" spellcheck="false">rgb(237, 214, 179)
+rgb(27, 21, 11)
+rgb(88, 72, 48)
+rgb(213, 188, 149)
+rgb(76, 61, 39)</textarea>
+        <p class="small muted">Accepted per line: <code>rgb(r,g,b)</code>, <code>rgba(r,g,b,a)</code>, <code>#RRGGBB</code>, <code>#RRGGBBAA</code>, <code>#RGB</code>, <code>r,g,b</code>, <code>r,g,b,a</code>, or <code>r g b</code>. Alpha values are accepted but ignored by ACT export. Blank lines and <code>// comments</code> are ignored.</p>
+      </section>
+
+      <aside class="panel">
+        <label for="fileName">Download filename</label>
+        <input id="fileName" type="text" value="photopea-palette.act">
+
+        <label for="fillMode">Unused palette slots</label>
+        <select id="fillMode">
+          <option value="black" selected>Fill remaining slots with black</option>
+          <option value="last">Repeat last color</option>
+          <option value="white">Fill remaining slots with white</option>
+        </select>
+
+        <div class="checks">
+          <label><input id="withFooter" type="checkbox" checked> Write 772-byte ACT with count footer</label>
+          <label><input id="useComDownload" type="checkbox" checked> Use <code>oCOM.Download()</code> when available</label>
+        </div>
+
+        <div class="row" style="margin: 1rem 0;">
+          <button class="primary" id="downloadBtn" type="button">Build &amp; download .ACT</button>
+          <button id="sampleBtn" type="button">Reload sample</button>
+        </div>
+
+        <label for="actFile">Optional: load existing .ACT</label>
+        <input id="actFile" type="file" accept=".act,application/octet-stream">
+        <p class="small muted">This can read a 768- or 772-byte ACT file and put the used colors back into the textarea.</p>
+
+        <label>Status</label>
+        <div id="status"></div>
+      </aside>
+    </div>
+
+    <section class="panel" style="margin-top: var(--gap);">
+      <div class="row" style="justify-content: space-between;">
+        <strong>Preview</strong>
+        <span id="count" class="muted small">0 colors</span>
+      </div>
+      <div id="swatches"></div>
+    </section>
+  </main>
+
+  <!-- Keep COM_MAIN.js next to this HTML file. It defines global oCOM = new COM(). -->
+  <script src="../../res/COM_MAIN.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    var MAX_ACT_COLORS = 256;
+    var FALLBACK_TRANSPARENT_INDEX = 0xFFFF;
+
+    var elText = document.getElementById("paletteText");
+    var elFileName = document.getElementById("fileName");
+    var elFillMode = document.getElementById("fillMode");
+    var elWithFooter = document.getElementById("withFooter");
+    var elUseComDownload = document.getElementById("useComDownload");
+    var elStatus = document.getElementById("status");
+    var elSwatches = document.getElementById("swatches");
+    var elCount = document.getElementById("count");
+    var elActFile = document.getElementById("actFile");
+
+    function hasCOM() {
+      return !!(window.oCOM && typeof window.oCOM === "object");
+    }
+
+    function byteToHex(n) {
+      if (hasCOM() && typeof oCOM.getHexByte === "function") return oCOM.getHexByte(n);
+      return ("0" + (n & 255).toString(16)).slice(-2).toUpperCase();
+    }
+
+    function rgbToHex(rgb) {
+      if (hasCOM() && typeof oCOM.RGB2HEX === "function") return "#" + oCOM.RGB2HEX(rgb).join("");
+      return "#" + byteToHex(rgb[0]) + byteToHex(rgb[1]) + byteToHex(rgb[2]);
+    }
+
+    function stripInlineComment(line) {
+      var idx = line.indexOf("//");
+      return idx < 0 ? line : line.slice(0, idx);
+    }
+
+    function parseColorLine(line, lineNo) {
+      var s = stripInlineComment(line).trim();
+      var m, r, g, b;
+      if (!s) return null;
+
+      // rgb(r,g,b) and rgba(r,g,b,a). Alpha is accepted but not written to ACT.
+      m = s.match(/^rgba?\s*\(\s*([+-]?\d{1,3})\s*,\s*([+-]?\d{1,3})\s*,\s*([+-]?\d{1,3})(?:\s*,\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)%?))?\s*\)$/i);
+      if (m) {
+        validateAlpha(m[4], lineNo, s);
+        return validateRgb([+m[1], +m[2], +m[3]], lineNo, s);
+      }
+
+      // #RRGGBB and #RRGGBBAA. The final AA byte is accepted but ignored.
+      m = s.match(/^#?([0-9a-f]{6})([0-9a-f]{2})?$/i);
+      if (m) {
+        r = parseInt(m[1].slice(0, 2), 16);
+        g = parseInt(m[1].slice(2, 4), 16);
+        b = parseInt(m[1].slice(4, 6), 16);
+        return [r, g, b];
+      }
+
+      m = s.match(/^#?([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+      if (m) {
+        r = parseInt(m[1] + m[1], 16);
+        g = parseInt(m[2] + m[2], 16);
+        b = parseInt(m[3] + m[3], 16);
+        return [r, g, b];
+      }
+
+      // r,g,b and r,g,b,a. Alpha is accepted but not written to ACT.
+      m = s.match(/^([+-]?\d{1,3})\s*,\s*([+-]?\d{1,3})\s*,\s*([+-]?\d{1,3})(?:\s*,\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)%?))?$/);
+      if (m) {
+        validateAlpha(m[4], lineNo, s);
+        return validateRgb([+m[1], +m[2], +m[3]], lineNo, s);
+      }
+
+      // r g b, separated by one or more spaces.
+      m = s.match(/^([+-]?\d{1,3})\s+([+-]?\d{1,3})\s+([+-]?\d{1,3})$/);
+      if (m) return validateRgb([+m[1], +m[2], +m[3]], lineNo, s);
+
+      throw new Error("Line " + lineNo + ": cannot parse color: " + s);
+    }
+
+    function validateRgb(rgb, lineNo, original) {
+      for (var i = 0; i < 3; i++) {
+        if (!Number.isInteger(rgb[i]) || rgb[i] < 0 || rgb[i] > 255) {
+          throw new Error("Line " + lineNo + ": RGB values must be integers from 0 to 255: " + original);
+        }
+      }
+      return rgb;
+    }
+
+    function validateAlpha(alpha, lineNo, original) {
+      if (alpha === undefined || alpha === null || alpha === "") return;
+      var raw = String(alpha).trim();
+      var isPercent = raw.endsWith("%");
+      var value = Number(isPercent ? raw.slice(0, -1) : raw);
+      if (!Number.isFinite(value)) {
+        throw new Error("Line " + lineNo + ": alpha value is not numeric: " + original);
+      }
+      if (isPercent) {
+        if (value < 0 || value > 100) {
+          throw new Error("Line " + lineNo + ": alpha percentage must be from 0% to 100%: " + original);
+        }
+        return;
+      }
+      // Accept both CSS-style 0..1 alpha and byte-style 0..255 alpha; ACT ignores it either way.
+      if (value < 0 || value > 255) {
+        throw new Error("Line " + lineNo + ": alpha value must be from 0 to 255, or 0% to 100%: " + original);
+      }
+    }
+
+    function parsePaletteText(text) {
+      var colors = [];
+      var errors = [];
+      var lines = text.split(/\r?\n/);
+
+      for (var i = 0; i < lines.length; i++) {
+        try {
+          var color = parseColorLine(lines[i], i + 1);
+          if (color) colors.push(color);
+        } catch (err) {
+          errors.push(err.message);
+        }
+      }
+
+      if (colors.length > MAX_ACT_COLORS) {
+        errors.push("ACT supports at most 256 colors. Found " + colors.length + "; only the first 256 can be written.");
+        colors = colors.slice(0, MAX_ACT_COLORS);
+      }
+
+      return { colors: colors, errors: errors };
+    }
+
+    function fillColorFor(colors) {
+      switch (elFillMode.value) {
+        case "white": return [255, 255, 255];
+        case "last": return colors.length ? colors[colors.length - 1] : [0, 0, 0];
+        case "black":
+        default: return [0, 0, 0];
+      }
+    }
+
+    function buildActBytes(colors) {
+      var includeFooter = elWithFooter.checked;
+      var bytes = new Uint8Array(768 + (includeFooter ? 4 : 0));
+      var fill = fillColorFor(colors);
+      var count = Math.min(colors.length, MAX_ACT_COLORS);
+      var c, i;
+
+      for (i = 0; i < MAX_ACT_COLORS; i++) {
+        c = i < count ? colors[i] : fill;
+        bytes[i * 3 + 0] = c[0];
+        bytes[i * 3 + 1] = c[1];
+        bytes[i * 3 + 2] = c[2];
+      }
+
+      if (includeFooter) {
+        // Adobe ACT footer, big-endian: 2 bytes color count, 2 bytes transparent-color index.
+        bytes[768] = (count >> 8) & 255;
+        bytes[769] = count & 255;
+        bytes[770] = (FALLBACK_TRANSPARENT_INDEX >> 8) & 255;
+        bytes[771] = FALLBACK_TRANSPARENT_INDEX & 255;
+      }
+
+      return bytes;
+    }
+
+    function downloadBytes(fileName, bytes) {
+      if (elUseComDownload.checked && hasCOM() && typeof oCOM.Download === "function") {
+        oCOM.Download(fileName, Array.from(bytes));
+        return "Downloaded via oCOM.Download().";
+      }
+
+      var blob = new Blob([bytes], { type: "application/octet-stream" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      return "Downloaded via local fallback downloader.";
+    }
+
+    function updatePreview() {
+      var parsed = parsePaletteText(elText.value);
+      var colors = parsed.colors;
+      var errors = parsed.errors;
+      var html = "";
+
+      for (var i = 0; i < colors.length; i++) {
+        var hex = rgbToHex(colors[i]);
+        html += '<div class="swatch" title="' + escapeHtml("Index " + i + " " + hex + " rgb(" + colors[i].join(", ") + ")") + '" style="--c:' + hex + '"><div>' +
+          i + '<br>' + hex + '<br>rgb(' + colors[i].join(",") + ')</div></div>';
+      }
+
+      elSwatches.innerHTML = html || '<p class="muted">No valid colors yet.</p>';
+      elCount.textContent = colors.length + (colors.length === 1 ? " color" : " colors");
+
+      var footer = elWithFooter.checked
+        ? "Footer: " + byteToHex((colors.length >> 8) & 255) + " " + byteToHex(colors.length & 255) + " FF FF"
+        : "Footer: none (768-byte ACT)";
+
+      elStatus.textContent = (hasCOM() ? "COM_MAIN.js detected: oCOM is available.\n" : "COM_MAIN.js not detected; fallback helpers will be used.\n") +
+        "Parsed colors: " + colors.length + "\n" +
+        "Output size: " + (768 + (elWithFooter.checked ? 4 : 0)) + " bytes\n" +
+        footer +
+        (errors.length ? "\n\nErrors:\n- " + errors.join("\n- ") : "");
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function onDownload() {
+      var parsed = parsePaletteText(elText.value);
+      if (parsed.errors.length) {
+        updatePreview();
+        alert("Please fix the parsing errors before downloading.");
+        return;
+      }
+      if (!parsed.colors.length) {
+        alert("Add at least one color first.");
+        return;
+      }
+
+      var fileName = (elFileName.value || "photopea-palette.act").trim();
+      if (!/\.act$/i.test(fileName)) fileName += ".act";
+
+      var bytes = buildActBytes(parsed.colors);
+      var result = downloadBytes(fileName, bytes);
+      updatePreview();
+      elStatus.textContent += "\n" + result;
+    }
+
+    function actBytesToColors(bytes) {
+      if (bytes.length !== 768 && bytes.length !== 772) {
+        throw new Error("Expected a 768- or 772-byte ACT file; got " + bytes.length + " bytes.");
+      }
+      var count = 256;
+      if (bytes.length === 772) {
+        count = (bytes[768] << 8) | bytes[769];
+        if (count < 1 || count > 256) count = 256;
+      }
+
+      var colors = [];
+      for (var i = 0; i < count; i++) {
+        colors.push([bytes[i * 3], bytes[i * 3 + 1], bytes[i * 3 + 2]]);
+      }
+      return colors;
+    }
+
+    function setTextFromColors(colors) {
+      elText.value = colors.map(function (c) {
+        return "rgb(" + c[0] + ", " + c[1] + ", " + c[2] + ")";
+      }).join("\n");
+      updatePreview();
+    }
+
+    function onActFileChange() {
+      if (!elActFile.files || !elActFile.files[0]) return;
+
+      if (hasCOM() && typeof oCOM.Upload === "function") {
+        oCOM.Upload("actFile", function (arr) {
+          try {
+            setTextFromColors(actBytesToColors(arr));
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function (evt) {
+        try {
+          setTextFromColors(actBytesToColors(new Uint8Array(evt.target.result)));
+        } catch (err) {
+          alert(err.message);
+        }
+      };
+      reader.readAsArrayBuffer(elActFile.files[0]);
+    }
+
+    document.getElementById("downloadBtn").addEventListener("click", onDownload);
+    document.getElementById("sampleBtn").addEventListener("click", function () {
+      elText.value = "rgb(237, 214, 179)\nrgb(27, 21, 11)\nrgb(88, 72, 48)\nrgb(213, 188, 149)\nrgb(76, 61, 39)";
+      updatePreview();
+    });
+    elActFile.addEventListener("change", onActFileChange);
+    elText.addEventListener("input", updatePreview);
+    elFillMode.addEventListener("change", updatePreview);
+    elWithFooter.addEventListener("change", updatePreview);
+    elUseComDownload.addEventListener("change", updatePreview);
+
+    updatePreview();
+  }());
+  </script>
+</body>
+</html>

@@ -1350,17 +1350,6 @@ function EMUI()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 function loadDisk_fromFile(file_obj,drv)
 {
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
@@ -1372,47 +1361,25 @@ function loadDisk_fromFile(file_obj,drv)
     oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
     highlight_appbut(file_obj,true);
 
-    switch(drv)
+
+    var fread1 = new FileReader();
+    fread1.readAsArrayBuffer(file);
+    fread1.onload = function(levent)
     {
-        case "D1":
-            var fread1 = new FileReader();
-            fread1.readAsArrayBuffer(file);
-            fread1.onload = function(levent)
-            {
-                var data = new DataView(levent.target.result);
-                var size = levent.target.result.byteLength;
-                var bytes = Array(size);
-                for (var i = 0; i < size; i++)
-                    bytes[i] = data.getUint8(i);
-        
-                if (size == 143360) disk2.setDiskData(bytes,"D1");  
+        var data = new DataView(levent.target.result);
+        var size = levent.target.result.byteLength;
+        var bytes = Array(size);
+        for (var i = 0; i < size; i++)
+            bytes[i] = data.getUint8(i);
 
-                //dumpdisk(bytes);                
-                //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
-                //if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
-                //apple2plus.loadDisk(bytes,"D1");
-            }            
-        break;
-        case "D2":
-            var fread2 = new FileReader();
-            fread2.readAsArrayBuffer(file);
-            fread2.onload = function(levent)
-            {
-                var data = new DataView(levent.target.result);
-                var size = levent.target.result.byteLength;
-                var bytes = Array(size);
-                for (var i = 0; i < size; i++)
-                    bytes[i] = data.getUint8(i);
-        
-                if (size == 143360) disk2.setDiskData(bytes,"D2");  
+        if (size == 143360) disk2.setDiskData(bytes,drv);
 
-                //dumpdisk(bytes);
-                //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
-                //if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
-                //apple2plus.loadDisk(bytes,"D2");
-            }            
-        break; 
+        //dumpdisk(bytes);                
+        //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
+        //if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
+        //apple2plus.loadDisk(bytes,"D1");
     }
+
 }
 
 async function EMU_audio_prepare()
