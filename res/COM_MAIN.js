@@ -61,15 +61,16 @@ function COM()
 
     const [rangePart, stepPart] = splitOutsideTags(spec, "/", locate);
     const [fromPart, toPart]    = splitOutsideTags(rangePart, "-", locate);
+    const base = vars.base || 0;
 
-    const from = parseRngToken(fromPart.trim(), vars, locate);
-    var ret = {"from":from};
+    var ret = {};
+    ret.from = parseRngToken(fromPart.trim(), vars, locate) - base;
     if (toPart == null) return ret;       // single value expression
-    ret.to = parseRngToken(toPart.trim(), vars, locate);
+    ret.to = parseRngToken(toPart.trim(), vars, locate) - base;
     if(stepPart != null) ret.step = parseRngToken(stepPart.trim(), vars, locate);
     return ret;
   };
-
+                        
   this.expandRng = function(a, b, c)
   {
     let from, to, step;
@@ -99,6 +100,8 @@ function COM()
     }
     return out;
   };
+
+  this.arrayRng = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
   this.asHex = function(arr)
   {

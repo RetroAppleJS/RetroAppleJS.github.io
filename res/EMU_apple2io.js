@@ -7,7 +7,7 @@
 //
 // apple2io.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{}},"system":{"A2P":{"active":true}}}
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{"A2P":{"active":true}}}
 //else oEMU.component.IO = new Apple2IO();
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
@@ -122,8 +122,10 @@ function Apple2IO(vid)
 
     if(typeof(EMU_system_get)!="undefined")
     {
-        var ACTION_MAP = IO_map(EMU_system_get());
-        //console.log("ACTION_MAP="+JSON.stringify(ACTION_MAP));
+        //var ACTION_MAP = oEMU.component.IO.ACTION_MAP;
+        var CIO = oEMU.component.IO;
+        CIO.ACTION_MAP = IO_map(EMU_system_get());
+        //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
 
     function IO_map(model)
@@ -478,10 +480,10 @@ function Apple2IO(vid)
                 }
 
                 // I/O ACTION MAP FOR READ OPERATIONS
-                if(ACTION_MAP.RD[addr]!==undefined)
+                if(CIO.ACTION_MAP.RD[addr]!==undefined)
                 {
-                    //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-                    return ACTION_MAP.RD[addr]();   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
+                    //if(addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[addr]);
+                    return CIO.ACTION_MAP.RD[addr](addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
                 }
 
             break;
@@ -499,10 +501,10 @@ function Apple2IO(vid)
             return this.ramcard.write(addr - ROM_ADDR,d8)
         
         // I/O ACTION MAP FOR WRITE OPERATIONS
-        if(ACTION_MAP.WR[addr]!==undefined)
+        if(CIO.ACTION_MAP.WR[addr]!==undefined)
         {
             //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-            return ACTION_MAP.WR[addr]();   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+            return CIO.ACTION_MAP.WR[addr](addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
         }
 
         // Implement same side-effects as read.
@@ -939,29 +941,38 @@ function Apple2IO(vid)
             const bSlotIO  = typeof(oEMU.system.IORANGES.SlotIO) !="undefined" && cinfo.SlotIO  == "X";
             const bSlotROM = typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && cinfo.SlotROM == "X";
             // TODO: check if range is applicable or not
-            if(bHostROM) pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
-            if(bSlotIO)  pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO, {n:slotIdx});     // _CFG_PSLOT -> IOrange
-            if(bSlotROM) pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     // _CFG_PSLOT -> SlotROM
+
+            var ioBase = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO).from; // usually $C000 = base reference for the I/O address space
+            if(bHostROM) pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx,base:ioBase});     // _CFG_PSLOT -> LROMrange
+            if(bSlotIO)  pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO, {n:slotIdx,base:ioBase});     // _CFG_PSLOT -> IOrange
+            if(bSlotROM) pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx,base:ioBase});     // _CFG_PSLOT -> SlotROM
 
             // ASK THE PERIPHERAL TO PROVIDE AN ACTION_MAP
-            if(oEMU.component.IO[pinfo.objID] && oEMU.component.IO[pinfo.objID].io)
+            const oPeripheral = oEMU.component.IO[pinfo.objID]; // TODO: WE MUST INSTANTIATE COMPONENTS INSEAD OF DEFINING THEM ONCE, otherwise we will have peripheral conflicts!!!!
+
+            if(oPeripheral && oPeripheral.action)
             {
-                var io = oEMU.component.IO[pinfo.objID].io;
-                const _bHostROM  = !(io.HostROM === undefined);
-                const _bSlotIO   = !(io.SlotIO  === undefined);
-                const _bSlotROM  = !(io.SlotROM === undefined);
-                if(_bSlotROM)
-                {
-                    if(io.SlotROM.RD)
-                    {
-                        for(var i=0;i<256;i++)
-                        {
-                            ACTION_MAP.RD[0x100 + slotIdx*256 + i] = io.SlotROM.RD.callback;
-                             //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",io.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of io.SlotROM ?
-                        }
-                           
-                    }
-                }
+                const _act = oPeripheral.action;     // ACTION_MAP
+                const _bHostROM  = !(_act.HostROM === undefined);
+                const _bSlotIO   = !(_act.SlotIO  === undefined);
+                const _bSlotROM  = !(_act.SlotROM === undefined);
+
+                // PROVIDE SLOT NUMBER TO THE PERIPHERAL INSTANCE
+                oPeripheral.state.slot = slotIdx;
+
+                // PROVIDE PERIPHERAL INFO TO THE PERIPHERAL
+                oPeripheral.state.pinfo = pinfo;
+
+                // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
+                if(_bHostROM) _act.HostROM.base  = pinfo.HostROM.from;
+                if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from;
+                if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from;
+
+                if(_bHostROM && _act.HostROM.RD) { for(var i=pinfo.HostROM.from;i<=pinfo.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
+                if(_bSlotROM && _act.SlotROM.RD) { for(var i=pinfo.SlotROM.from;i<=pinfo.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
+                    //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",_act.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of _act.SlotROM ?
+                if(_bSlotIO && _act.SlotIO.RD) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
+                if(_bSlotIO && _act.SlotIO.WR) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
             }
         }
         pinfo["description"] = cinfo.NAME;
@@ -986,8 +997,7 @@ function Apple2IO(vid)
         }
         else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
         
-        console.log(ACTION_MAP);
-        console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(ACTION_MAP)+"bytes");
+
 
         /*
         if(slotR.slotMap[slotIdx])  // mount peripheral in this slot ? e.g. (config file) "1,2,3*,4*,5,6,7"  --> config file says we have to mount this peripheral in slot 3 and slot 4 automatically (user doesn't have to mount manually)
@@ -1010,6 +1020,8 @@ function Apple2IO(vid)
         */
         
     }
+    console.log(CIO.ACTION_MAP);
+    console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
     console.log("slotCfg = "+JSON.stringify(slotCfg));
 
     if(slot_count>0)
