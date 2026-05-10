@@ -575,8 +575,8 @@ function Apple2IO()
     for(var PCODE in cfg)
     {
         var slot_lbl = extract_slotrange(cfg[PCODE].SLOTrange);
-        var slotPut = this.config_slotName(slot_lbl.slotPut,"lbl","name");
-        //var slotFit = config_slotName(slot_lbl.slotFit,"lbl");
+        var slotPut = this.config_slotName(slot_lbl.slotPut,"lbl","name");    // example: slotPut=["PR#0"]
+        var slotFit = this.config_slotName(slot_lbl.slotFit,"lbl","name");    // example: slotFit=["PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"]
 
         for(var i=0;i<slotPut.length;i++)
         {
@@ -593,12 +593,11 @@ function Apple2IO()
     for(var i=0;i<slotAvail.logSlots.length;i++)
     {
       var slotName = slotAvail.logSlots[i];
-      var lock = slotAvail.lockSlots[slotName];
+      var lock     = slotAvail.lockSlots[slotName];
 
       // find in config which peripheral should be provisioned by default in this very slot
       //_CFG_PSLOT
-
-      var PCODE = SLOT_PCODE[slotName];
+      var PCODE      = SLOT_PCODE[slotName];
       var peripheral = periAvail[PCODE];
       if(peripheral) peripheral.PCODE = PCODE;
 
@@ -630,6 +629,26 @@ function Apple2IO()
     
     return avail;
   }
+
+  this.config_mountAllPeripherals = function(cfg,slotCfg)
+  {
+    for(var idx=0;idx<slotCfg.length;idx++)
+    {
+      if(slotCfg[idx].peripheral)
+      {
+        var pinfo = slotCfg[idx].peripheral;  // peripheral data
+        var cinfo = cfg[pinfo.PCODE];         // configuration data
+        this.mount(cinfo,pinfo,idx);
+      }
+    }
+  }
+
+  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
+  this.mount = function(cinfo,pinfo,slotIdx)
+  {
+
+  }
+  
 
   this.config_slotName = function(arr,fmt1,fmt2)
   {
@@ -717,7 +736,6 @@ var slotCfg = oEMU.component.IO.obj.config_slotBuilder(_CFG_PSLOT,slotAvail,peri
 console.log("slotCfg="+JSON.stringify(slotCfg).replace(/,\{/g,"\n,{"));
 // slotCfg=[{"slotTitle":"board"},{"slotTitle":"PR#0"},{"slotTitle":"PR#1"},{"slotTitle":"PR#2"},{"slotTitle":"PR#3"},{"slotTitle":"PR#4"},{"slotTitle":"PR#5"},{"slotTitle":"PR#6"},{"slotTitle":"PR#7"}]
 
-// slot data
 /*
 example output:
 slotCfg=[{"slotTitle":"board","lock":true,"peripheral":{"icon":"fa fa-cube","coID":"hostio","PCODE":"BOARD"}}
@@ -730,8 +748,10 @@ slotCfg=[{"slotTitle":"board","lock":true,"peripheral":{"icon":"fa fa-cube","coI
 ,{"slotTitle":"PR#6","peripheral":{"icon":"fa fa-save","coID":"AppleDisk2","PCODE":"DISKII"}}
 ,{"slotTitle":"PR#7"}]
 */
+
+// 4. MOUNT EVERY PERIPHERAL THAT IS NOT MOUNTED YET, in practice, this function is enriching elements in slotCfg object
+oEMU.component.IO.obj.config_mountAllPeripherals(_CFG_PSLOT,slotCfg);
+
+// 5. RENDER SLOT MANAGER GUI
 oEMUI.slotsRender("device_slots1",slotCfg);
-
-
-
 </script>
