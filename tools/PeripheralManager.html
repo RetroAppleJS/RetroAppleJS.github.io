@@ -212,6 +212,40 @@ function mockingboard() { this.id = {"PCODE":"MOCK",   "icon":"fa fa-assistive-l
 function RamCard()      { this.id = {"PCODE":"MS16K",  "icon":"fa fa-microchip"} }
 function AppleDisk2()   { this.id = {"PCODE":"DISKII", "icon":"fa fa-save"} }
 
+/*
+example inputs:
+
+
+const _CFG_SYSCODE = {
+ "A1":{"Model":"Apple I" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A1_txt" ,"Slotslogphy":"" ,"ROM":"" ,"KeyFont":"A1_US"}
+,"A2":{"Model":"Apple II" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [0-7]" ,"ROM":"" ,"KeyFont":"A2_US"}
+,"A2P":{"Model":"Apple II Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [0-7]" ,"ROM":"A2P_R" ,"KeyFont":"A2_US"}
+,"A2PE":{"Model":"Apple II EuroPlus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [0-7]" ,"ROM":"" ,"KeyFont":"A2_US"}
+,"A2JP":{"Model":"Apple II J-Plus" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [0-7]" ,"ROM":"" ,"KeyFont":"A2_JP"}
+,"A2B":{"Model":"Bell & Howell" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [0-7]" ,"ROM":"" ,"KeyFont":"A1_US_blk"}
+,"A3":{"Model":"Apple III" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"Slotslogphy":"[0-7] [1-4]" ,"ROM":"" ,"KeyFont":"A3_US"}
+,"A3R":{"Model":"Apple III Revised" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [1-4]" ,"ROM":"" ,"KeyFont":"A3_US"}
+,"A2e":{"Model":"Apple IIe RevA/B" ,"CPU":"6502" ,"Speeds":"1.023" ,"Display":"A2_hgr" ,"Slotslogphy":"[0-7] [1-7]" ,"ROM":"" ,"KeyFont":"A2e_US,A2e_UK,A2e_CA,A2e_FR"}
+,"A2c":{"Model":"Apple IIc" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slotslogphy":"[0-7] []" ,"ROM":"" ,"KeyFont":""}
+,"A3P":{"Model":"Apple III Plus" ,"CPU":"6502B" ,"Speeds":"1.8" ,"Display":"A3_dhgr" ,"Slotslogphy":"[0-7] [1-4]" ,"ROM":"" ,"KeyFont":""}
+,"A2eE":{"Model":"Apple IIe Enhanced" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slotslogphy":"[0-7] [0-7]" ,"ROM":"" ,"KeyFont":""}
+,"A2GS":{"Model":"Apple IIGS" ,"CPU":"65C816" ,"Speeds":"2.8" ,"Display":"AGS" ,"Slotslogphy":"[0-7] [1-7]" ,"ROM":"" ,"KeyFont":""}
+,"A2cM":{"Model":"Apple IIc MemoryExp" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slotslogphy":"[0-7] []" ,"ROM":"" ,"KeyFont":""}
+,"A2G3":{"Model":"Apple IIGS ROM3" ,"CPU":"65C816" ,"Speeds":"2.8" ,"Display":"AGS" ,"Slotslogphy":"[0-7] [1-7]" ,"ROM":"" ,"KeyFont":""}
+,"A2eP":{"Model":"Apple IIe Platinum" ,"CPU":"65C02" ,"Speeds":"1.023" ,"Display":"A2_dhgr" ,"Slotslogphy":"[0-7] [1-7]" ,"ROM":"" ,"KeyFont":""}
+}
+
+const _CFG_PSLOT = {
+ "BOARD":{"NAME":"Motherboard peripheral" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"B*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":""}
+,"MS16K":{"NAME":"Microsoft 16K Language card" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6*,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"3*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
+,"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
+}
+
+*/
+
+
 function EMU_system_get()
 {
     for(var o in oEMU.system)
@@ -534,14 +568,6 @@ function Apple2IO()
     return a;
   }
 
-  this.config_slotFit = function(cfg,PCODE)          // IN WHICH SLOTS IS A PERIPHERAL ALLOWED?
-  {
-    var srange = cfg[PCODE].SLOTrange.split(",");
-
-    
-    return extract_slotRef(cfg[PCODE].SLOTrange,PCODE);
-  }
-
   this.config_slotBuilder = function(cfg,slotAvail,periAvail)
   {
 
@@ -561,7 +587,7 @@ function Apple2IO()
                 
     }
     console.log("SLOT_PCODE = "+JSON.stringify(SLOT_PCODE));
-
+    //example: SLOT_PCODE = {"board":"BOARD","PR#0":"MS16K","PR#6":"DISKII","PR#3":"VIDEX","PR#4":"MOCK"}
 
     res = [];
     for(var i=0;i<slotAvail.logSlots.length;i++)
@@ -639,7 +665,6 @@ function Apple2IO()
 
 
   // SLOT CONFIGURATION HELPERS
-
   function parseSlotAvail(s)
   {
     if(s===undefined) return {};
@@ -694,17 +719,16 @@ console.log("slotCfg="+JSON.stringify(slotCfg).replace(/,\{/g,"\n,{"));
 
 // slot data
 /*
-var slotCfg = [
-  { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"} },
-  { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
-  { slotTitle: "PR#1" },
-  { slotTitle: "PR#2" },
-  { slotTitle: "PR#3",             peripheral: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
-  { slotTitle: "PR#4" },
-  { slotTitle: "PR#5" },
-  { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save"  } },
-  { slotTitle: "PR#7" }
-];
+example output:
+slotCfg=[{"slotTitle":"board","lock":true,"peripheral":{"icon":"fa fa-cube","coID":"hostio","PCODE":"BOARD"}}
+,{"slotTitle":"PR#0","peripheral":{"icon":"fa fa-microchip","coID":"RamCard","PCODE":"MS16K"}}
+,{"slotTitle":"PR#1"}
+,{"slotTitle":"PR#2"}
+,{"slotTitle":"PR#3","peripheral":{"icon":"fa fa-tv","coID":"col80card","PCODE":"VIDEX"}}
+,{"slotTitle":"PR#4","peripheral":{"icon":"fa fa-assistive-listening-systems","coID":"mockingboard","PCODE":"MOCK"}}
+,{"slotTitle":"PR#5"}
+,{"slotTitle":"PR#6","peripheral":{"icon":"fa fa-save","coID":"AppleDisk2","PCODE":"DISKII"}}
+,{"slotTitle":"PR#7"}]
 */
 oEMUI.slotsRender("device_slots1",slotCfg);
 
