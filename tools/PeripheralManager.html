@@ -575,16 +575,15 @@ function Apple2IO()
     for(var PCODE in cfg)
     {
         var slot_lbl = extract_slotrange(cfg[PCODE].SLOTrange);
-        var slotPut = this.config_slotName(slot_lbl.slotPut,"lbl","name");    // example: slotPut=["PR#0"]
-        var slotFit = this.config_slotName(slot_lbl.slotFit,"lbl","name");    // example: slotFit=["PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"]
+        var slotPut = this.config_slotName(slot_lbl.slotPut,"lbl","name");    // all slots assigned to one peripheral code (PCODE) - example: slotPut=["PR#0"]
+        var slotFit = this.config_slotName(slot_lbl.slotFit,"lbl","name");    // all fitting slots for this peripheral (PCODE) - example: slotFit=["PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"]
 
         for(var i=0;i<slotPut.length;i++)
         {
           var slotName = slotPut[i];
           if(SLOT_PCODE[slotName]===undefined) SLOT_PCODE[slotName] = PCODE;
           else console.warn("config_slotBuilder() overlapping peripheral '"+PCODE+"'' assigned in "+slotName+" while '"+SLOT_PCODE[slotName]+"' was already plugged in");
-        }        
-                
+        }
     }
     console.log("SLOT_PCODE = "+JSON.stringify(SLOT_PCODE));
     //example: SLOT_PCODE = {"board":"BOARD","PR#0":"MS16K","PR#6":"DISKII","PR#3":"VIDEX","PR#4":"MOCK"}
