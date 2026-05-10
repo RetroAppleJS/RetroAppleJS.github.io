@@ -1,3 +1,5 @@
+<!--  SLOT CONFIGURATION FRAMEWORK -->
+
 <link rel="stylesheet" href="../res/COM_fontawesome/all.css">
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
@@ -187,6 +189,35 @@
 <div class=toolbox id="device_slots2"></div>
 
 <script>
+
+var oEMU =
+{
+     "system":{"A2P":{"active":true}}
+    ,"component":
+    {
+         "CPU":{}
+        ,"Hardware":{}
+        ,"Video":{}
+        ,"Keyboard":{}
+        ,"RAM":{}
+        ,"ROM":{}
+        ,"IO":{obj:new Apple2IO()}
+    }
+    ,"stats":{}
+}
+
+function hostio()       { this.id = {"PCODE":"BOARD",  "icon":"fa fa-cube"} }
+function col80card()    { this.id = {"PCODE":"VIDEX",  "icon":"fa fa-tv"} }
+function mockingboard() { this.id = {"PCODE":"MOCK",   "icon":"fa fa-assistive-listening-systems"} }
+function RamCard()      { this.id = {"PCODE":"MS16K",  "icon":"fa fa-microchip"} }
+function AppleDisk2()   { this.id = {"PCODE":"DISKII", "icon":"fa fa-save"} }
+
+function EMU_system_get()
+{
+    for(var o in oEMU.system)
+        if(oEMU.system[o].active==true) return o;
+}
+
 function EMUI()
 {
 
@@ -488,77 +519,204 @@ var oEMUI = new EMUI();
 function Apple2IO()
 {
 
-  this.config_slotCount = function()        // HOW MANY SLOTS CAN WE FILL?
+  this.config_slotAvail = function(cfg)        // HOW MANY SLOTS CAN WE FILL?
   {
-    if(typeof(_CFG_SYSCODE)!="undefined") 
-      return Number(_CFG_SYSCODE[model]?.Slots);
-    return 0;
+    var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+    if(cfg===undefined) { var cfg = "[0-7] [0-7]"; console.warn("CONFIG file is not available (missing _CFG_SYSCODE)"); }
+    var str = cfg[model]?.Slotslogphy;
+    var a = parseSlotAvail(str);
+
+    // dataset completions
+    for(var i=0;i<a.logSlots.length;i++)  a.logSlots[i]  = "PR#" + a.logSlots[i];
+    for(var i in a.lockSlots)             a.lockSlots[i] = "PR#" + a.lockSlots[i];
+    
+    a.logSlots.unshift("board"); a.lockSlots["board"] = true;
+    return a;
   }
 
-  this.config_slotFit = function(PCODE)          // IN WHICH SLOTS IS A PERIPHERAL ALLOWED?
+  this.config_slotFit = function(cfg,PCODE)          // IN WHICH SLOTS IS A PERIPHERAL ALLOWED?
   {
-    var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
-    return extract_slotRef(_CFG_PSLOT[PCODE].SLOTrange,PCODE,slotR);
+    var srange = cfg[PCODE].SLOTrange.split(",");
+
+    
+    return extract_slotRef(cfg[PCODE].SLOTrange,PCODE);
   }
 
+/*
+  const _CFG_PSLOT = {
+ "BOARD":{"NAME":"Motherboard peripheral" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"B*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":""}
+,"MS16K":{"NAME":"Microsoft 16K Language card" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6*,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"3*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
+,"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
+}
+*/
 
-  
+  this.config_slotBuilder = function(cfg,slotAvail,periAvail)
+  {
+
+    var SLOT_PCODE = {}; 
+    for(var PCODE in cfg)
+    {
+        var slot_lbl = extract_slotrange(cfg[PCODE].SLOTrange);
+        var slotPut = this.config_slotName(slot_lbl.slotPut,"lbl","name");
+        //var slotFit = config_slotName(slot_lbl.slotFit,"lbl");
+
+        for(var i=0;i<slotPut.length;i++)
+        {
+          var slotName = slotPut[i];
+          if(SLOT_PCODE[slotName]===undefined) SLOT_PCODE[slotName] = PCODE;
+          else console.warn("config_slotBuilder() overlapping peripheral '"+PCODE+"'' assigned in "+slotName+" while '"+SLOT_PCODE[slotName]+"' was already plugged in");
+        }        
+                
+    }
+    console.log("SLOT_PCODE = "+JSON.stringify(SLOT_PCODE));
+
+
+    res = [];
+    for(var i=0;i<slotAvail.logSlots.length;i++)
+    {
+      var slotName = slotAvail.logSlots[i];
+      var lock = slotAvail.lockSlots[slotName];
+
+      // find in config which peripheral should be provisioned by default in this very slot
+      //_CFG_PSLOT
+
+      var PCODE = SLOT_PCODE[slotName];
+      var peripheral = periAvail[PCODE];
+      if(peripheral) peripheral.PCODE = PCODE;
+
+      res.push({"slotTitle": slotName, "lock": lock, "peripheral": peripheral});
+    }
+    return res;
+  }
+
+  this.config_periAvail = function(cfg)
+  {
+    // 1. list all PCODEs from cfg (example: PCODE_arr=["BOARD", "MS16K", "DISKII", "VIDEX", "MOCK"])
+    var PCODE_arr = Object.keys(_CFG_PSLOT);
+
+    // 2. list all object containers that have a corresponding id.PCODE property
+
+      var avail = {};
+      for(var i in globalThis)
+      {
+        var o,PCODE;
+        try
+        {
+          o = new globalThis[i]();
+          PCODE = o?.id?.PCODE;
+        }
+        catch(e){ continue; }
+        if(PCODE_arr.indexOf(PCODE)<0) continue;
+        
+        avail[PCODE] = {"icon":o.id.icon, "coID":o.constructor.name}  
+      }
+    
+    return avail;
+  }
+
+  this.config_slotName = function(arr,fmt1,fmt2)
+  {
+    var ret = []
+    if(typeof(arr)!="object") arr = [arr];
+    
+    const lbl_ref = {"B":{name:"board","idx":0}
+                    ,"0":{name:"PR#0","idx":1}
+                    ,"1":{name:"PR#1","idx":2}
+                    ,"2":{name:"PR#2","idx":3}
+                    ,"3":{name:"PR#3","idx":4}
+                    ,"4":{name:"PR#4","idx":5}
+                    ,"5":{name:"PR#5","idx":6}
+                    ,"6":{name:"PR#6","idx":7}
+                    ,"7":{name:"PR#7","idx":8}};
+
+    for(var i=0;i<arr.length;i++)
+    {
+      var str = arr[i]; if(str.length==0) continue;
+      switch(fmt1)
+      {
+        case "lbl": 
+          if(fmt2) 
+            ret.push(lbl_ref[str][fmt2] || ""); 
+          else 
+            ret.push(lbl_ref[str] || ""); 
+          break;
+        default: console.warn("config_slotName('"+fmt1+"') unknown format");
+      }
+    }
+    return ret;
+  }
+
 
   // SLOT CONFIGURATION HELPERS
-  function extract_slotRef(str,PCODE,ref)
+
+  function parseSlotAvail(s)
   {
+    if(s===undefined) return {};
+    let a=[...s.matchAll(/\[(\d+)-(\d+)\]/g)].map(m=>
+      Array.from({length:m[2]-m[1]+1},(_,i)=>+m[1]+i)
+    );
+    return {
+      logSlots:a[0],
+      phySlots:a[1],
+      lockSlots:Object.fromEntries(a[0].filter(n=>!a[1].includes(n)).map(n=>[n,true])),
+      logSlots_n:a[0].length,
+      phySlots_n:a[1].length
+    };
+  }
+  
+  function extract_slotrange(str)
+  {
+      var  slotPut = [], slotFit = [];
       var arr = str.split(",");
       for(var i=0;i<arr.length;i++)
       {
-          var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
-          if(isNaN(n)==false)
+          var lbl =  arr[i].replace(RegExp("\\*","g"),"");
+          if(lbl.length==1)
           {
-              if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
-              ref.slotFit[n].push(PCODE);
+              slotFit.push( lbl );
           }
           if(arr[i].indexOf("*")>=0)  
-          {       
-              if(ref.slotMap[n]===undefined) { ref.slotMap[n] = [] };
-              ref.slotMap[n].push(PCODE);
+          { 
+              slotPut.push( lbl );
           }
       } 
-      return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
-  }
-  
+      return {"slotPut":slotPut, "slotFit":slotFit}
+  }  
 
 }
 
 
-    var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};
-    if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
-    {
-        // LOAD ALL PERIPHERALS FROM CONFIGURATION
-        for(var PCODE in _CFG_PSLOT)
-        {
-            var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
-            //var slotrange_mask = extract_slotrange_mask(_CFG_PSLOT[PCODE].SLOTrange);  // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
-            slotR = extract_slotRef(_CFG_PSLOT[PCODE].SLOTrange,PCODE,slotR);
-        }
-        /*
-       slotR =  {
-                     "slotMap":{"B":["BOARD"],"0":["MS16K"],"3":["VIDEX"],"6":["DISKII"]}
-                    ,"slotFit":{"B":["BOARD"],"0":["MS16K"],"1":["DISKII","VIDEX"],"2":["DISKII","VIDEX"],"3":["DISKII","VIDEX"],"4":["DISKII","VIDEX"],"5":["DISKII","VIDEX"],"6":["DISKII","VIDEX"],"7":["DISKII","VIDEX"]}
-                }
-        */
-    }
+// 1. WHICH SLOTS CAN WE USE ?
+var slotAvail = oEMU.component.IO.obj.config_slotAvail(_CFG_SYSCODE);
+console.log("slotAvail="+JSON.stringify(slotAvail));
+// example: slotAvail={"logSlots":["board","PR#0","PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"],"phySlots":[0,1,2,3,4,5,6,7],"lockSlots":{"board":true},"logSlots_n":8,"phySlots_n":8}
+
+// 2. BUILD PERIPHERAL INFORMATION
+var periAvail = oEMU.component.IO.obj.config_periAvail(_CFG_PSLOT);
+console.log("periAvail="+JSON.stringify(periAvail).replace(/,\{/g,"\n,{"));
+// example: periAvail={"BOARD":{"icon":"fa fa-cube","coID":"hostio"},"MS16K":{"icon":"fa fa-microchip","coID":"RamCard"},"VIDEX":{"icon":"fa fa-tv","coID":"col80card"},"DISKII":{"icon":"fa fa-save","coID":"AppleDisk2"},"MOCK":{"icon":"fa fa-assistive-listening-systems","coID":"mockingboard"}}
+
+// 3. BUILD SLOT CONFIGURATION DATA AND TENTATIVELY ASSIGN TO SLOTS (as flagged in configuration file)
+var slotCfg = oEMU.component.IO.obj.config_slotBuilder(_CFG_PSLOT,slotAvail,periAvail);
+console.log("slotCfg="+JSON.stringify(slotCfg).replace(/,\{/g,"\n,{"));
+// slotCfg=[{"slotTitle":"board"},{"slotTitle":"PR#0"},{"slotTitle":"PR#1"},{"slotTitle":"PR#2"},{"slotTitle":"PR#3"},{"slotTitle":"PR#4"},{"slotTitle":"PR#5"},{"slotTitle":"PR#6"},{"slotTitle":"PR#7"}]
 
 // slot data
+/*
 var slotCfg = [
-  { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
+  { slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"} },
   { slotTitle: "PR#0",             peripheral: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
   { slotTitle: "PR#1" },
   { slotTitle: "PR#2" },
   { slotTitle: "PR#3",             peripheral: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
   { slotTitle: "PR#4" },
   { slotTitle: "PR#5" },
-  { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
+  { slotTitle: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save"  } },
   { slotTitle: "PR#7" }
 ];
+*/
 oEMUI.slotsRender("device_slots1",slotCfg);
 
 
