@@ -959,7 +959,6 @@ function EMUI()
     this.slot_ctx = {};
     this.slot_cfg = {};
 
-
     this.onSlotAdd = function(ctx, ev) 
     {
         var anchor = ev.target.closest(".slot-anchor.empty");

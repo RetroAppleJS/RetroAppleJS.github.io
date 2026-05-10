@@ -535,7 +535,8 @@ function Apple2IO(vid)
             var PCODE = oEMU.component.IO[o]?.id?.PCODE;
             if(PCODE===undefined) continue;
             names[PCODE] = oEMU.component.IO[o].id;
-            names[PCODE]["objID"] = oEMU.component.IO[o].constructor.name;
+            names[PCODE]["objID"] = oEMU.component.IO[o].constructor.name; // TODO: deprecate
+            names[PCODE]["coID"]  = oEMU.component.IO[o].constructor.name; // new: coID = container ID
         }
         return names;
     }
@@ -874,8 +875,35 @@ function Apple2IO(vid)
         }
     }
 
+    this.config_slotAvail = function(cfg)        // HOW MANY SLOTS CAN WE FILL?
+    {
+        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+        if(cfg===undefined) { var cfg = "[0-7] [0-7]"; console.warn("CONFIG file is not available (missing _CFG_SYSCODE)"); }
+        var str = cfg[model]?.Slotslogphy;
+        var a = parseSlotAvail(str);
 
-
+        // dataset completions
+        for(var i=0;i<a.logSlots.length;i++)  a.logSlots[i]  = "PR#" + a.logSlots[i];
+        for(var i in a.lockSlots)             a.lockSlots[i] = "PR#" + a.lockSlots[i];
+        
+        a.logSlots.unshift("board"); a.lockSlots["board"] = true;
+        return a;
+    }
+    
+    function parseSlotAvail(s)
+    {
+        if(s===undefined) return {};
+        let a=[...s.matchAll(/\[(\d+)-(\d+)\]/g)].map(m=>
+        Array.from({length:m[2]-m[1]+1},(_,i)=>+m[1]+i)
+        );
+        return {
+        logSlots:a[0],
+        phySlots:a[1],
+        lockSlots:Object.fromEntries(a[0].filter(n=>!a[1].includes(n)).map(n=>[n,true])),
+        logSlots_n:a[0].length,
+        phySlots_n:a[1].length
+        };
+    }
 
 
 
@@ -906,11 +934,14 @@ function Apple2IO(vid)
 
     var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
 
-    var slot_count = 0;
-    if(typeof(_CFG_SYSCODE)!="undefined") slot_count = Number(_CFG_SYSCODE[model]?.Slots);    // HOW MANY SLOTS CAN WE FILL?
+    //var slot_count = 0;
+    //if(typeof(_CFG_SYSCODE)!="undefined") slot_count = Number(_CFG_SYSCODE[model]?.Slots);    // HOW MANY SLOTS CAN WE FILL?
 
+    var slotAvail = this.config_slotAvail(_CFG_SYSCODE);
+    // example: slotAvail={"logSlots":["board","PR#0","PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"],"phySlots":[0,1,2,3,4,5,6,7],"lockSlots":{"board":true},"logSlots_n":8,"phySlots_n":8}
+    var slot_count = slotAvail.logSlots_n;
 
-    var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};      
+    var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};  // TODO: remove as this is now in CONFIG     
     
     if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
     {
@@ -929,9 +960,8 @@ function Apple2IO(vid)
         */
     }
 
-    // TODO: sanitize, make sure all PCODEs in one slot are unique
-    // TODO peripheral:[... {array of peripherals} ...]
 
+    // TODO: refactor mount => must instantiate the object container, create the peripheral object and manage it, giving every object a unique ID!!!!
     this.mount = function(cinfo,pinfo,slotIdx)
     {
         if(oEMU.system===undefined) return;
@@ -948,20 +978,27 @@ function Apple2IO(vid)
             if(bSlotROM) pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx,base:ioBase});     // _CFG_PSLOT -> SlotROM
 
             // ASK THE PERIPHERAL TO PROVIDE AN ACTION_MAP
-            const oPeripheral = oEMU.component.IO[pinfo.objID]; // TODO: WE MUST INSTANTIATE COMPONENTS INSEAD OF DEFINING THEM ONCE, otherwise we will have peripheral conflicts!!!!
+            //const oPeripheral = oEMU.component.IO[pinfo.objID]; // TODO: (deprecated) WE MUST INSTANTIATE COMPONENTS PER SLOT INSEAD OF DEFINING THEM ONCE, otherwise we will have peripheral conflicts!!!!
+            
 
-            if(oPeripheral && oPeripheral.action)
+            const hashKey = slotIdx +  pinfo.PCODE;   // constituted of initial slot and PCODE, but is meaningless since this object can move from one slot to another, while keeping the hashKey 
+            let oPeri = new globalThis[pinfo.coID](); // this is our freshly made object instance from the object container
+            oPeri.hash =  oCOM.crc16(new TextEncoder("utf-8").encode(hashKey)); // DETERMINE DEVICE ID (CRC16 hash)
+  
+
+            if(oPeri && oPeri.action)
             {
-                const _act = oPeripheral.action;     // ACTION_MAP
+                const _act = oPeri.action;     // ACTION_MAP
+                var CIO = oEMU.component.IO;
                 const _bHostROM  = !(_act.HostROM === undefined);
                 const _bSlotIO   = !(_act.SlotIO  === undefined);
                 const _bSlotROM  = !(_act.SlotROM === undefined);
 
                 // PROVIDE SLOT NUMBER TO THE PERIPHERAL INSTANCE
-                oPeripheral.state.slot = slotIdx;
+                oPeri.state.slot = slotIdx;
 
                 // PROVIDE PERIPHERAL INFO TO THE PERIPHERAL
-                oPeripheral.state.pinfo = pinfo;
+                oPeri.state.pinfo = pinfo;
 
                 // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
                 if(_bHostROM) _act.HostROM.base  = pinfo.HostROM.from;
@@ -980,8 +1017,26 @@ function Apple2IO(vid)
     }
 
     // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
-    var peripheral_names = this.listPeripheralNames();
+    //var peripheral_names = this.listPeripheralNames();
     console.log(peripheral_names);
+    
+    
+    // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
+    // MAKE SURE slot_cfg is declared and provisioned at this moment!!! (currently it is declared later)
+    oEMU.component.MIO = oEMUI.slot_cfg;
+
+/*
+oEMUI.slot_cfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
+        ,{"slotTitle":"PR#0"}
+        ,{"slotTitle":"PR#1","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","coID":"RamCard","SlotIO":{"from":128,"to":143},"description":"Microsoft 16K Language card"}}
+        ,{"slotTitle":"PR#2"}
+        ,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","coID":"col80card","HostROM":{"from":2048,"to":4095},"SlotIO":{"from":176,"to":191},"SlotROM":{"from":768,"to":1023},"description":"Videx Videoterm 80 Column Display"}}
+        ,{"slotTitle":"PR#4","peripheral":{"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems","objID":"mockingboard","coID":"mockingboard","SlotIO":{"from":192,"to":207},"description":"Mockingboard C"}}
+        ,{"slotTitle":"PR#5"}
+        ,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","coID":"AppleDisk2","SlotIO":{"from":224,"to":239},"SlotROM":{"from":1536,"to":1791},"description":"Apple Disk II Floppy Disk Subsystem"}},{"slotTitle":"PR#7"}]
+*/
+    
+    
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
     for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
     {
@@ -991,6 +1046,11 @@ function Apple2IO(vid)
             var peripheral_names = this.listPeripheralNames();
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
             var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
+
+
+
+
+
             pinfo = this.mount(cinfo,pinfo,slotIdx);
 
             slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
