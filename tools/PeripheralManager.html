@@ -542,16 +542,6 @@ function Apple2IO()
     return extract_slotRef(cfg[PCODE].SLOTrange,PCODE);
   }
 
-/*
-  const _CFG_PSLOT = {
- "BOARD":{"NAME":"Motherboard peripheral" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"B*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":""}
-,"MS16K":{"NAME":"Microsoft 16K Language card" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6*,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"3*" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
-,"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
-}
-*/
-
   this.config_slotBuilder = function(cfg,slotAvail,periAvail)
   {
 
@@ -597,21 +587,20 @@ function Apple2IO()
     var PCODE_arr = Object.keys(_CFG_PSLOT);
 
     // 2. list all object containers that have a corresponding id.PCODE property
-
-      var avail = {};
-      for(var i in globalThis)
+    var avail = {};
+    for(var i in globalThis)
+    {
+      var o,PCODE;
+      try
       {
-        var o,PCODE;
-        try
-        {
-          o = new globalThis[i]();
-          PCODE = o?.id?.PCODE;
-        }
-        catch(e){ continue; }
-        if(PCODE_arr.indexOf(PCODE)<0) continue;
-        
-        avail[PCODE] = {"icon":o.id.icon, "coID":o.constructor.name}  
+        o = new globalThis[i]();
+        PCODE = o?.id?.PCODE;
       }
+      catch(e){ continue; }
+      if(PCODE_arr.indexOf(PCODE)<0) continue;
+      
+      avail[PCODE] = {"icon":o.id.icon, "coID":o.constructor.name}  
+    }
     
     return avail;
   }
