@@ -21464,7 +21464,7 @@ function Apple2IO(vid)
         a.logSlots.unshift("board"); a.lockSlots["board"] = true;
         return a;
     }
-    
+
     function parseSlotAvail(s)
     {
         if(s===undefined) return {};
@@ -21593,7 +21593,7 @@ function Apple2IO(vid)
 
     // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
     //var peripheral_names = this.listPeripheralNames();
-    console.log(peripheral_names);
+    //console.log("peripheral_names="+JSON.stringify(peripheral_names));
     
     
     // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
@@ -21615,7 +21615,6 @@ oEMUI.slot_cfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainbo
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
     for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
     {
-        // TODO!!!!!! CHECK IF MOUNT WORKS EXACTLY LIKE THE BLOCK BELOW
         if(slotR.slotMap[slotIdx])
         {
             var peripheral_names = this.listPeripheralNames();
