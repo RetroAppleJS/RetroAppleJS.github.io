@@ -54,7 +54,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2B     | Bell & Howell      | O   |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A1_US_blk     |
 | A3      | Apple III          | T   |6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       | A3_US         |
 | A3R     | Apple III Revised  | T   |6502B      | 1.8       | A2_hgr   | [0-7] [1-4] |       | A3_US         |
-| A2e     | Apple IIe RevA/B   | E   |6502       | 1.023     | A2_hgr   | [0-7] [1-7] |       | A2e_US,A2e_UK,A2e_CA,A2e_FR |
+| A2e     | Apple IIe RevA/B   | E   |6502       | 1.023     | A2_hgr   | [0-7] [1-7] |       | A2e_US, A2e_UK, A2e_CA, A2e_FR |
 | A2c     | Apple IIc          | C   |65C02      | 1.023     | A2_dhgr  | [0-7] []    |       |               |
 | A3P     | Apple III Plus     | T   |6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       |               |
 | A2eE    | Apple IIe Enhanced | E   |65C02      | 1.023     | A2_dhgr  | [0-7] [0-7] |       |               |
