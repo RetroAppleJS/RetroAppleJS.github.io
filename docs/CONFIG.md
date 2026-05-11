@@ -79,7 +79,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 ## I/O ADDRESS MAP
 
 |[IOADDR]| Name | SYScode | Range\* | Behaviors\* | Description |
-| :----: | :--: | :------: | :---: | :--------: | :---------: |
+| :----: | :--: | :------: | :---: | :--------: | :---------- |
 | $C000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
 | $C000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use $C002-$C005 for Aux Memory |
 | $C000 | KBDBUSA | | HI | | V Keyboard 'A' busdata |
