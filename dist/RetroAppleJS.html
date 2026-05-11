@@ -20902,30 +20902,6 @@ function Apple2IO(vid)
                         0x700];
     const SLT_ROM_SIZE = 0x100;     
 
-    /*
-    const KEY_DATA =    0x00,
-        KEY_STROBE =    0x10,
-        CASS_TOGGLE =   0x20,
-        SPKR_TOGGLE =   0x30,
-        UTIL_STROBE =   0x40,
-        GFX_ON =        0x50,
-        GFX_OFF =       0x51,
-        GFX_MIX_OFF =   0x52,
-        GFX_MIX_ON =    0x53,
-        GFX_PAGE1 =     0x54,
-        GFX_PAGE2 =     0x55,
-        GFX_LORES =     0x56,
-        GFX_HIRES =     0x57,
-        CASS_IN =       0x60,
-        FLAG_IN0 =      0x61,
-        FLAG_IN1 =      0x62,
-        FLAG_IN2 =      0x63,
-        ANALOG_IN0 =    0x64,
-        ANALOG_IN1 =    0x65,
-        ANALOG_IN2 =    0x66,
-        ANALOG_IN3 =    0x67,
-        ANALOG_CLR =    0x70;
-    */
 
     // MAP DISK I/O TO SLOT#6 MEMORY
     var DISK_IO =       SLOT_IO[6],
@@ -21388,16 +21364,6 @@ function Apple2IO(vid)
     var SLOT_IDX  = new Array(8);
     var SLOT_REG  = [];
 
-    // SLOT MAPPING - TODO: take it from _CFG_PSLOT
-    //this.mount({"name":"BOARD" ,"slot":0xB,"driver":this.ramcard  ,"active":true});
-    //this.mount({"name":"MS16K" ,"slot":0x0,"driver":this.ramcard  ,"active":true});
-    //this.mount({"name":"VIDEX" ,"slot":0x3,"driver":this.col80card,"active":true});
-    //this.mount({"name":"DISKII","slot":0x6,"driver":this.disk2    ,"active":true});
-    //this["MS16K"]  = this.ramcard;
-    //this["VIDEX"]  = this.col80card;
-    //this["DISKII"] = this.disk2;
-
-
     var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
 
     //var slot_count = 0;
@@ -21491,17 +21457,6 @@ function Apple2IO(vid)
     // MAKE SURE slot_cfg is declared and provisioned at this moment!!! (currently it is declared later)
     oEMU.component.MIO = oEMUI.slot_cfg;
 
-/*
-oEMUI.slot_cfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
-        ,{"slotTitle":"PR#0"}
-        ,{"slotTitle":"PR#1","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","coID":"RamCard","SlotIO":{"from":128,"to":143},"description":"Microsoft 16K Language card"}}
-        ,{"slotTitle":"PR#2"}
-        ,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","coID":"col80card","HostROM":{"from":2048,"to":4095},"SlotIO":{"from":176,"to":191},"SlotROM":{"from":768,"to":1023},"description":"Videx Videoterm 80 Column Display"}}
-        ,{"slotTitle":"PR#4","peripheral":{"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems","objID":"mockingboard","coID":"mockingboard","SlotIO":{"from":192,"to":207},"description":"Mockingboard C"}}
-        ,{"slotTitle":"PR#5"}
-        ,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","coID":"AppleDisk2","SlotIO":{"from":224,"to":239},"SlotROM":{"from":1536,"to":1791},"description":"Apple Disk II Floppy Disk Subsystem"}},{"slotTitle":"PR#7"}]
-*/
-    
     
     var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
     for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
@@ -21523,26 +21478,6 @@ oEMUI.slot_cfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainbo
         else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
         
 
-
-        /*
-        if(slotR.slotMap[slotIdx])  // mount peripheral in this slot ? e.g. (config file) "1,2,3*,4*,5,6,7"  --> config file says we have to mount this peripheral in slot 3 and slot 4 automatically (user doesn't have to mount manually)
-        {
-            var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
-            var cinfo = _CFG_PSLOT[pinfo.PCODE];
-            if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
-            {
-                pinfo["description"] = cinfo.NAME;
-
-                // TODO: check if range is applicable or not
-                if(typeof(oEMU.system.IORANGES.HostROM)!="undefined" && cinfo.HostROM == "X") pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx});     // _CFG_PSLOT -> LROMrange
-                if(typeof(oEMU.system.IORANGES.SlotIO) !="undefined" && cinfo.SlotIO  == "X") pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO,{n:slotIdx});      // _CFG_PSLOT -> IOrange
-                if(typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && cinfo.SlotROM == "X") pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx});     // _CFG_PSLOT -> SlotROM     
-
-            }
-            slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
-        }
-        else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
-        */
         
     }
     console.log(CIO.ACTION_MAP);
