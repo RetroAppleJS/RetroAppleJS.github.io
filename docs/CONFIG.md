@@ -90,8 +90,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 | $C005 | WRCARDRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | If 80STORE Off: Write Aux Mem $0200-$BFFF |
 | $C006 | SETSLOTCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | Peripheral ROM ($C100-$CFFF) |
 | $C007 | SETINTCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | Internal ROM ($C100-$CFFF) |
-| $C008 | SETSTDZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Main Stack and Zero Page |
-| $C008 | KBDBUSB | | HI |  | V Keyboard 'B' busdata |
+| $C008a | SETSTDZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Main Stack and Zero Page |
+| $C008b | KBDBUSB | | HI |  | V Keyboard 'B' busdata |
 | $C009 | SETALTZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Aux Stack and Zero Page |
 | $C00A | SETINTC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | ROM in Slot 3 |
 | $C00B | SETSLOTC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | WR | ROM in Aux Slot |
@@ -104,8 +104,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 | $C012 | RDLCRAM | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of $Dx ROM / $Dx RAM |
 | $C013 | RDRAMRD | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux RAM Reading |
 | $C014 | RDRAMWRT | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux RAM Writing |
-| $C015 | RDCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Periph/ROM Access |
-| $C015 | RSTXINT | A2c,A2cM | HI | RD | Reset Mouse X0 Interrupt |
+| $C015a | RDCXROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Periph/ROM Access |
+| $C015b | RSTXINT | A2c,A2cM | HI | RD | Reset Mouse X0 Interrupt |
 | $C016 | RDALTZP | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | RD,BI | Status of Main/Aux Stack and Zero Page |
 | $C017a | RDC3ROM | A2E,A2Ee,A2eP,A2G3<br>,A2GS | HI | RD,BI | Status of Slot 3/Aux Slot ROM |
 | $C017b | RSTYINT | A2c,A2cM | HI | RD | Reset Mouse Y0 Interrupt |
