@@ -2027,50 +2027,95 @@ function AppleDisk2()
 
     this.getSoftwareCatRows = function(arg)
     {
+
         function GH_listDir(arg, callback)
         {
-            // owner, repo, path, ref
             arg.ref = arg.ref || "main";
             arg.path = arg.path || "";
-            var url = "https://api.github.com/repos/" + arg.owner + "/" + arg.repo + "/contents/" + arg.path + "?ref=" + encodeURIComponent(arg.ref);
 
-            if(apple2plus.DiskObj().GitHubDirCache[url]===undefined)
+            var disk2 = apple2plus.DiskObj();
+            var url = disk2.githubContentsURL(arg);
+
+            function useOfflineDir(reason)
             {
-                // READ GITHUB REPO
+                // Important: do not let offline data masquerade as GitHub cache.
+                // Keep this empty so a later online attempt really performs HTTP again.
+                disk2.GitHubDirCache = {};
+
+                var offline = disk2.getOfflineDir(url);
+
+                if(offline != null)
+                {
+                    console.warn("Using offline GitHub directory fallback: " + reason);
+                    callback(null, offline.list, offline.arg);
+                    return true;
+                }
+
+                return false;
+            }
+
+            // If the browser already knows we are offline, do not use stale cache.
+            if(disk2.isLikelyOffline())
+            {
+                if(useOfflineDir("navigator.onLine=false"))
+                    return;
+            }
+
+            if(disk2.GitHubDirCache[url] === undefined)
+            {
                 oCOM.GetHTTP(url, "text", function()
                 {
                     if(this.status != 200)
                     {
+                        if(useOfflineDir("HTTP " + this.status))
+                            return;
+
                         callback({
-                            status: this.status,
-                            message: this.responseText || this.response
+                            status:this.status,
+                            message:this.responseText || this.response
                         });
                         return;
                     }
 
-                    var json = JSON.parse(this.responseText || this.response);
-
-                    var list = json.map(function(e)
+                    try
                     {
-                        return {
-                            name: e.name,
-                            path: e.path,
-                            type: e.type,              // "file" or "dir"
-                            size: e.size,
-                            download_url: e.download_url,
-                            html_url: e.html_url
-                        };
-                    });
+                        var json = JSON.parse(this.responseText || this.response);
 
-                    // add response to cache
-                    apple2plus.DiskObj().GitHubDirCache[url] = {"list":list,"arg":arg};
-                    callback(null, list, arg);
+                        var list = json.map(function(e)
+                        {
+                            return {
+                                name:e.name,
+                                path:e.path,
+                                type:e.type,
+                                size:e.size,
+                                download_url:e.download_url,
+                                html_url:e.html_url
+                            };
+                        });
+
+                        // Only real online GitHub data goes into the cache.
+                        disk2.GitHubDirCache[url] = {
+                            list:list,
+                            arg:disk2.cloneJSON(arg)
+                        };
+
+                        callback(null, list, arg);
+                    }
+                    catch(e)
+                    {
+                        if(useOfflineDir("JSON parse failed: " + e.message))
+                            return;
+
+                        callback({
+                            status:this.status,
+                            message:e.message
+                        });
+                    }
                 });
             }
             else
             {
-                // use cached responses
-                var cache = apple2plus.DiskObj().GitHubDirCache[url]
+                var cache = disk2.GitHubDirCache[url];
                 callback(null, cache.list, cache.arg);
             }
         }
@@ -2224,6 +2269,96 @@ function AppleDisk2()
                 + encodeURIComponent(arg.ref) + "/"
                 + raw_path;
 
+
+            function mountDiskBytes(bytes, source)
+            {
+                // Let the image detector decide dsk/po/nib instead of relying on extension.
+                var info = disk2.detectDiskImageType(bytes);
+                var nibBytes;
+
+                switch(info.type)
+                {
+                    case "nib":
+                        nibBytes = bytes;
+                        break;
+
+                    case "po":
+                        nibBytes = disk2.convertPo2Nib(bytes);
+                        break;
+
+                    case "dsk":
+                        nibBytes = disk2.convertDsk2Nib(bytes);
+                        break;
+
+                    case "woz":
+                        throw new Error("WOZ detected, but convertWoz2Nib() is not implemented yet");
+
+                    default:
+                        throw new Error("Unsupported or unknown disk image type: " + info.reason);
+                }
+
+                if(nibBytes.length != 232960)
+                {
+                    throw new Error(
+                        "unsupported mounted image size "
+                        + nibBytes.length
+                        + " bytes for " + arg.path
+                    );
+                }
+
+                apple2plus.loadDisk(nibBytes, drv);
+
+                var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
+                disk2.setDriveCatalogFile(drv, fileName);
+
+                if(typeof highlight_appbut == "function")
+                {
+                    var file_id = "file_" + arg.path.replace(/[^A-Za-z0-9_\-]/g, "_");
+                    var el = document.getElementById(file_id);
+                    if(el) highlight_appbut(el, true);
+                }
+
+                console.log(
+                    "Loaded disk "
+                    + arg.path
+                    + " into " + drv
+                    + " (" + nibBytes.length + " bytes, source=" + source + ", type=" + info.type + ")"
+                );
+            }
+
+            function loadOfflineDisk(reason)
+            {
+                try
+                {
+                    // Again: do not cache offline fallback as GitHub data.
+                    disk2.GitHubDirCache = {};
+
+                    var bytes = disk2.getOfflineDiskBytes(arg, full_path);
+
+                    if(bytes == null)
+                    {
+                        console.warn("No offline disk available for " + arg.path + " after " + reason);
+                        return false;
+                    }
+
+                    console.warn("Using offline disk fallback for " + arg.path + ": " + reason);
+                    mountDiskBytes(bytes, "offline");
+                    return true;
+                }
+                catch(e)
+                {
+                    oCOM.POPUP.html("offline getFile failed: " + e.name + " " + e.message);
+                    return true;
+                }
+            }
+
+            // Fast path when the browser knows it is offline.
+            if(disk2.isLikelyOffline())
+            {
+                if(loadOfflineDisk("navigator.onLine=false"))
+                    return;
+            }
+
             oCOM.GetHTTP(full_path, "arraybuffer",
                 function()
                 {
@@ -2231,6 +2366,9 @@ function AppleDisk2()
                     {
                         if(this.status && this.status != 200)
                         {
+                            if(loadOfflineDisk("HTTP " + this.status))
+                                return;
+
                             console.warn(
                                 "ERROR LOADING DISK: HTTP "
                                 + this.status + " " + full_path
@@ -2239,53 +2377,31 @@ function AppleDisk2()
                         }
 
                         var arraybuffer = this.response;
+
+                        if(!arraybuffer || arraybuffer.byteLength === undefined)
+                        {
+                            if(loadOfflineDisk("empty HTTP response"))
+                                return;
+
+                            console.warn("ERROR LOADING DISK: empty response " + full_path);
+                            return;
+                        }
+
                         var ui8 = new Uint8Array(arraybuffer);
 
                         if(arraybuffer.byteLength < 100)
                         {
                             var enc = new TextDecoder("utf-8");
-                            console.warn("ERROR LOADING DISK: " + enc.decode(ui8));
+                            var msg = enc.decode(ui8);
+
+                            if(loadOfflineDisk("short HTTP response: " + msg))
+                                return;
+
+                            console.warn("ERROR LOADING DISK: " + msg);
                             return;
                         }
 
-                        var bytes = Array.from(ui8);
-
-                        // .dsk/.do/.po are 143360-byte logical disk images.
-                        // Convert to Disk II nibble stream before mounting.
-                        if(bytes.length == 143360)
-                            bytes = disk2.convertDsk2Nib(bytes);
-
-                        // .nib images should already be 232960 bytes.
-                        if(bytes.length != 232960)
-                        {
-                            console.warn(
-                                "ERROR LOADING DISK: unsupported image size "
-                                + bytes.length
-                                + " bytes for " + arg.path
-                            );
-                            return;
-                        }
-
-                        apple2plus.loadDisk(bytes, drv);
-
-                        var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
-                        disk2.setDriveCatalogFile(drv, fileName);
-
-                        if(typeof highlight_appbut == "function")
-                        {
-                            var file_id = "file_" + arg.path
-                                .replace(/[^A-Za-z0-9_\-]/g, "_");
-
-                            var el = document.getElementById(file_id);
-                            if(el) highlight_appbut(el, true);
-                        }
-
-                        console.log(
-                            "Loaded disk "
-                            + arg.path
-                            + " into " + drv
-                            + " (" + bytes.length + " bytes)"
-                        );
+                        mountDiskBytes(Array.from(ui8), "github");
                     }
                     catch({ name, message })
                     {
@@ -2296,12 +2412,179 @@ function AppleDisk2()
                     }
                 }
             );
+
+
         }
         catch({ name, message })
         {
             oCOM.POPUP.html("getFile 1.0 failed: " + name + " " + message);
         }
     }
+
+
+
+    this.cloneJSON = function(obj)
+    {
+        return JSON.parse(JSON.stringify(obj));
+    }
+
+    this.githubContentsURL = function(arg)
+    {
+        arg.ref = arg.ref || "main";
+        arg.path = arg.path || "";
+
+        return "https://api.github.com/repos/"
+            + arg.owner + "/"
+            + arg.repo + "/contents/"
+            + arg.path
+            + "?ref=" + encodeURIComponent(arg.ref);
+    }
+
+    this.githubRawURL = function(arg)
+    {
+        arg.ref = arg.ref || "main";
+
+        var raw_path = arg.path
+            .split("/")
+            .map(function(p) { return encodeURIComponent(p); })
+            .join("/");
+
+        return "https://raw.githubusercontent.com/"
+            + arg.owner + "/"
+            + arg.repo + "/"
+            + encodeURIComponent(arg.ref) + "/"
+            + raw_path;
+    }
+
+    this.isLikelyOffline = function()
+    {
+        return (typeof navigator != "undefined" && navigator.onLine === false);
+    }
+
+    this.getOfflineDir = function(url)
+    {
+        var disk2 = apple2plus.DiskObj();
+        var entry = disk2.GitHubDirOffline[url];
+
+        if(entry === undefined)
+            return null;
+
+        return {
+            list: disk2.cloneJSON(entry.list),
+            arg:  disk2.cloneJSON(entry.arg)
+        };
+    }
+
+
+
+    this.base64ToUint8Array = function(b64)
+    {
+        var bin = atob(b64);
+        var out = new Uint8Array(bin.length);
+
+        for(var i = 0; i < bin.length; i++)
+            out[i] = bin.charCodeAt(i) & 0xff;
+
+        return out;
+    }
+
+    this.getOfflineDiskBytes = function(arg, full_path)
+    {
+        var disk2 = apple2plus.DiskObj();
+
+        var rec =
+            disk2.OfflineDisks[arg.path] ||
+            disk2.OfflineDisks[arg.name] ||
+            disk2.OfflineDisks[full_path];
+
+        if(rec === undefined)
+            return null;
+
+        if(typeof rec == "string")
+        {
+            rec = {
+                encoding:"zlib-base64",
+                data:rec
+            };
+        }
+
+        var bytes = disk2.base64ToUint8Array(rec.data);
+
+        if(rec.encoding == "zlib-base64")
+        {
+            if(typeof pako == "undefined" || typeof pako.inflate != "function")
+                throw new Error("Offline disk is zlib-base64, but pako.inflate is not available");
+
+            bytes = pako.inflate(bytes);
+        }
+        else if(rec.encoding == "base64")
+        {
+            // already decoded above
+        }
+        else
+        {
+            throw new Error("Unsupported offline disk encoding: " + rec.encoding);
+        }
+
+        return Array.from(bytes);
+    }
+
+
+
+    this.base64ToUint8Array = function(b64)
+    {
+        var bin = atob(b64);
+        var out = new Uint8Array(bin.length);
+
+        for(var i = 0; i < bin.length; i++)
+            out[i] = bin.charCodeAt(i) & 0xff;
+
+        return out;
+    }
+
+    this.getOfflineDiskBytes = function(arg, full_path)
+    {
+        var disk2 = apple2plus.DiskObj();
+
+        var rec =
+            disk2.OfflineDisks[arg.path] ||
+            disk2.OfflineDisks[arg.name] ||
+            disk2.OfflineDisks[full_path];
+
+        if(rec === undefined)
+            return null;
+
+        if(typeof rec == "string")
+        {
+            rec = {
+                encoding:"zlib-base64",
+                data:rec
+            };
+        }
+
+        var bytes = disk2.base64ToUint8Array(rec.data);
+
+        if(rec.encoding == "zlib-base64")
+        {
+            if(typeof pako == "undefined" || typeof pako.inflate != "function")
+                throw new Error("Offline disk is zlib-base64, but pako.inflate is not available");
+
+            bytes = pako.inflate(bytes);
+        }
+        else if(rec.encoding == "base64")
+        {
+            // already decoded above
+        }
+        else
+        {
+            throw new Error("Unsupported offline disk encoding: " + rec.encoding);
+        }
+
+        return Array.from(bytes);
+    }
+
+
+
 
     this.diskInputEl = function(drv)
     {
