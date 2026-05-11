@@ -310,7 +310,8 @@ function AppleBoard()
         }
 
        //console.table(IOMAP_TBL);
-        
+       //console.log(JSON.stringify(iomap_rows)) 
+
         this.IOMAP_ROWS = iomap_rows;
         return output;
         
