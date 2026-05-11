@@ -119,8 +119,6 @@ function EMU_init()
                             var arr = s.split("\n").map(function (str,idx){return oCOM.getHexWord(Number(oCOM.URL.addr) + idx*8)+": "+ str})
 
                             EMUboard.boardText.value = "CALL-151\n"+arr.join("\n")+"\n";
-
-
                         }
                     }   
                 }
