@@ -188,7 +188,7 @@ function AppleBoard()
     this.IO_map = function(model,IOMAP_CALLS)
     {
 
-    // Comp:  O = Apple II+  E = Apple IIe  C = Apple IIc  G = Apple IIgs
+    // Comp:  O = Apple II+  E = Apple IIe  C = Apple IIc  T = Apple III G = Apple IIgs
     // Act:   R = Read       W = Write      7 = Bit        V = Byte
 
         const IOMAP = oEMU.component.IO.board.IOMAP;

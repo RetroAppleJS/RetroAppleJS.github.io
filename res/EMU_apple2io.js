@@ -576,11 +576,35 @@ function Apple2IO(vid)
                 if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from;
                 if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from;
 
+                // Add non-functional metadata to callbacks so diagnostics can show
+                // the actual mounted owner behind each ACTION_MAP span.
+                tagActionCallback(_act.HostROM && _act.HostROM.RD, "HostROM", "RD");
+                tagActionCallback(_act.SlotROM && _act.SlotROM.RD, "SlotROM", "RD");
+                tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
+                tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
+
+
                 if(_bHostROM && _act.HostROM.RD) { for(var i=pinfo.HostROM.from;i<=pinfo.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
                 if(_bSlotROM && _act.SlotROM.RD) { for(var i=pinfo.SlotROM.from;i<=pinfo.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
                     //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",_act.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of _act.SlotROM ?
                 if(_bSlotIO && _act.SlotIO.RD) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
                 if(_bSlotIO && _act.SlotIO.WR) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
+
+
+                function tagActionCallback(action,rangeName,op)
+                {
+                    if(!action || typeof action.callback !== "function") return;
+
+                    action.callback._ioReport =
+                    {
+                         "PCODE": pinfo.PCODE
+                        ,"slotTitle": "PR#" + slotIdx
+                        ,"range": rangeName
+                        ,"op": op
+                        ,"hash": oPeri.hash
+                    };
+                }
+
             }
         }
         pinfo["description"] = cinfo.NAME;
@@ -619,9 +643,226 @@ function Apple2IO(vid)
 
         
     }
+
+    
     console.log(CIO.ACTION_MAP);
+    console.group("ACTION_MAP overview");
     console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
+    console.table(actionMapEntryCount(CIO.ACTION_MAP));
+    console.table(actionMapSpanReport(CIO.ACTION_MAP));
+    console.groupEnd();
+
+    console.group("slot configuration overview");
+    console.table(slotConfigReport(slotCfg));
     console.log("slotCfg = "+JSON.stringify(slotCfg));
+
+
+
+    console.groupEnd();
+
+    function actionMapEntryCount(map)
+    {
+        var rows = [];
+        var ops = orderedActionOps(map);
+
+        for(var oi=0;oi<ops.length;oi++)
+        {
+            var op = ops[oi];
+            var opMap = map[op];
+            var addrs = numericActionAddrs(opMap);
+            var spans = buildActionMapSpans(op,opMap);
+            var callbacks = [];
+
+            for(var ai=0;ai<addrs.length;ai++)
+                if(callbacks.indexOf(opMap[addrs[ai]]) < 0) callbacks.push(opMap[addrs[ai]]);
+
+            rows.push({
+                 "op": op
+                ,"entries": addrs.length
+                ,"spans": spans.length
+                ,"callbacks": callbacks.length
+                ,"relative": addrs.length ? fmtRange(addrs[0],addrs[addrs.length-1],0) : ""
+                ,"absolute": addrs.length ? fmtRange(addrs[0],addrs[addrs.length-1],ioBase()) : ""
+            });
+        }
+        return rows;
+    }
+
+    function actionMapSpanReport(map)
+    {
+        var rows = [];
+        var ops = orderedActionOps(map);
+
+        for(var oi=0;oi<ops.length;oi++)
+        {
+            var spans = buildActionMapSpans(ops[oi],map[ops[oi]]);
+            for(var si=0;si<spans.length;si++)
+            {
+                var span = spans[si];
+                var space = ioSpaceLabel(span.from,span.to);
+                var meta = callbackMeta(span.callback);
+                if(!meta.PCODE && space === "HostIO")
+                    meta = {"slotTitle":"board","PCODE":"BOARD","range":"HostIO"};
+
+                rows.push({
+                     "op": span.op
+                    ,"relative": fmtRange(span.from,span.to,0)
+                    ,"absolute": fmtRange(span.from,span.to,ioBase())
+                    ,"bytes": span.to-span.from+1
+                    ,"space": space
+                    ,"slot": meta.slotTitle
+                    ,"PCODE": meta.PCODE
+                    ,"range": meta.range
+                    ,"callback": callbackLabel(span.callback)
+                });
+            }
+        }
+        return rows;
+    }
+
+    function slotConfigReport(cfg)
+    {
+        var rows = [];
+        for(var i=0;i<cfg.length;i++)
+        {
+            var slot = cfg[i] || {};
+            var p = slot.peripheral || {};
+            rows.push({
+                 "slot": slot.slotTitle || ""
+                ,"lock": slot.lock ? "yes" : ""
+                ,"PCODE": p.PCODE || ""
+                ,"container": p.coID || p.objID || ""
+                ,"HostROM": reportRange(p.HostROM)
+                ,"SlotIO": reportRange(p.SlotIO)
+                ,"SlotROM": reportRange(p.SlotROM)
+                ,"description": p.description || ""
+            });
+        }
+        return rows;
+    }
+
+    function buildActionMapSpans(op,opMap)
+    {
+        var addrs = numericActionAddrs(opMap);
+        var rows = [];
+        if(addrs.length==0) return rows;
+
+        var from = addrs[0];
+        var prev = addrs[0];
+        var callback = opMap[from];
+
+        for(var i=1;i<addrs.length;i++)
+        {
+            var addr = addrs[i];
+            var nextCallback = opMap[addr];
+
+            if(addr == prev+1 && nextCallback === callback)
+            {
+                prev = addr;
+                continue;
+            }
+
+            rows.push({"op":op,"from":from,"to":prev,"callback":callback});
+            from = prev = addr;
+            callback = nextCallback;
+        }
+        rows.push({"op":op,"from":from,"to":prev,"callback":callback});
+        return rows;
+    }
+
+    function numericActionAddrs(opMap)
+    {
+        if(!opMap || typeof opMap !== "object") return [];
+        return Object.keys(opMap)
+            .map(function(k){ return Number(k) })
+            .filter(function(n){ return Number.isFinite(n) })
+            .sort(function(a,b){ return a-b });
+    }
+
+    function orderedActionOps(map)
+    {
+        if(!map || typeof map !== "object") return [];
+        var order = ["RD","WR","RR","BT","RG","SV","VA"];
+        return Object.keys(map)
+            .filter(function(op){ return map[op] && typeof map[op] === "object" })
+            .sort(function(a,b)
+            {
+                var ai = order.indexOf(a); if(ai<0) ai = order.length;
+                var bi = order.indexOf(b); if(bi<0) bi = order.length;
+                return ai == bi ? a.localeCompare(b) : ai-bi;
+            });
+    }
+
+    function callbackMeta(callback)
+    {
+        var m = callback && callback._ioReport;
+        if(m) return m;
+
+        return {
+             "slotTitle": ""
+            ,"PCODE": ""
+            ,"range": ""
+        };
+    }
+
+    function callbackLabel(callback)
+    {
+        if(typeof callback !== "function") return String(callback);
+        return callback.name || "(anonymous)";
+    }
+
+    function ioBase()
+    {
+        if(oEMU.system && oEMU.system.IORANGES && oEMU.system.IORANGES.HostIO)
+            return oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO).from;
+        return 0xC000;
+    }
+
+    function reportRange(range)
+    {
+        if(!range) return "";
+        return fmtRange(range.from,range.to,0)+" ("+fmtRange(range.from,range.to,ioBase())+")";
+    }
+
+    function fmtRange(from,to,base)
+    {
+        return fmtAddr(from+base)+"-"+fmtAddr(to+base);
+    }
+
+    function fmtAddr(addr)
+    {
+        return "$"+("0000"+Number(addr).toString(16).toUpperCase()).slice(-4);
+    }
+
+    function ioSpaceLabel(from,to)
+    {
+        var hostIO = parseNamedRange("HostIO");
+        var hostROM = parseNamedRange("HostROM");
+
+        if(within(from,to,hostIO)) return "HostIO";
+        if(within(from,to,hostROM)) return "HostROM";
+
+        for(var n=0;n<8;n++)
+        {
+            var slotIO = parseNamedRange("SlotIO",n);
+            var slotROM = parseNamedRange("SlotROM",n);
+            if(within(from,to,slotIO)) return "SlotIO PR#"+n;
+            if(within(from,to,slotROM)) return "SlotROM PR#"+n;
+        }
+        return "";
+    }
+
+    function parseNamedRange(name,n)
+    {
+        if(!oEMU.system || !oEMU.system.IORANGES || !oEMU.system.IORANGES[name]) return null;
+        return oCOM.parseRngExpr(oEMU.system.IORANGES[name],{"n":n || 0,"base":ioBase()});
+    }
+
+    function within(from,to,range)
+    {
+        return range && from >= range.from && to <= range.to;
+    }
+
 
     if(slot_count>0)
     {
