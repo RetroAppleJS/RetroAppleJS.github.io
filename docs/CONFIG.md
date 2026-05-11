@@ -133,7 +133,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | $C02D | SLTROMSEL | A2G3,A2GS | HI |  | Slot Register; Bits 1-7=use slot card |
 | $C02E | VERTCNT | | HI |  | Addr for read of video cntr bits V5-VB |
 | $C02F | HORIZCNT | | HI |  | Addr for read of video cntr bits VA-H0 |
-| $C030 | 48200 SPKR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | RD | Toggle Speaker |
+| $C030 | SPKR | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A3,A3P<br>,A3R,A2G3,A2GS | HI | RD | Toggle Speaker |
 | $C031 | DISKREG | A2G3,A2GS | HI |  | Disk Interface: Bit 6=3.5 Bit 7=RWHead 1 |
 | $C032 | SCANINT | A2G3,A2GS | HI | RG | VGC Interrupt-Clear |
 | $C033 | CLOCKDATA | A2G3,A2GS | HI |  | Interface to Battery RAM (undocumented) |
