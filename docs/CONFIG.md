@@ -44,24 +44,24 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              | CPU        | Speeds    | Display  | Slots log/phy | ROM   | KeyFont      |
-| :---:   | :----------------- | :--------- | :-------- | :------- | :---------: | :---- | :------------ |
-| A1      | Apple I            | 6502       | 1.023     | A1_txt   |             |       | A1_US         |
-| A2      | Apple II           | 6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
-| A2P     | Apple II Plus      | 6502       | 1.023     | A2_hgr   | [0-7] [0-7] | A2P_R | A2_US         |
-| A2PE    | Apple II EuroPlus  | 6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
-| A2JP    | Apple II J-Plus    | 6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_JP         |
-| A2B     | Bell & Howell      | 6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A1_US_blk     |
-| A3      | Apple III          | 6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       | A3_US         |
-| A3R     | Apple III Revised  | 6502B      | 1.8       | A2_hgr   | [0-7] [1-4] |       | A3_US         |
-| A2e     | Apple IIe RevA/B   | 6502       | 1.023     | A2_hgr   | [0-7] [1-7] |       | A2e_US,A2e_UK,A2e_CA,A2e_FR |
-| A2c     | Apple IIc          | 65C02      | 1.023     | A2_dhgr  | [0-7] []    |       |               |
-| A3P     | Apple III Plus     | 6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       |               |
-| A2eE    | Apple IIe Enhanced | 65C02      | 1.023     | A2_dhgr  | [0-7] [0-7] |       |               |
-| A2GS    | Apple IIGS         | 65C816     | 2.8       | AGS      | [0-7] [1-7] |       |               |
-| A2cM    | Apple IIc MemoryExp| 65C02      | 1.023     | A2_dhgr  | [0-7] []    |       |               |
-| A2G3    | Apple IIGS ROM3    | 65C816     | 2.8       | AGS      | [0-7] [1-7] |       |               |
-| A2eP    | Apple IIe Platinum | 65C02      | 1.023     | A2_dhgr  | [0-7] [1-7] |       |               |
+|[SYSCODE]| Model              |CPU     | Speeds    | Display  | Slots log/phy | ROM   | KeyFont     |
+| :---:   | :----------------- | :-------- | :-------- | :------- | :---------: | :---- | :------------ |
+| A1      | Apple I            |6502       | 1.023     | A1_txt   |             |       | A1_US         |
+| A2      | Apple II           |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
+| A2P     | Apple II Plus      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] | A2P_R | A2_US         |
+| A2PE    | Apple II EuroPlus  |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
+| A2JP    | Apple II J-Plus    |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_JP         |
+| A2B     | Bell & Howell      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A1_US_blk     |
+| A3      | Apple III          |6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       | A3_US         |
+| A3R     | Apple III Revised  |6502B      | 1.8       | A2_hgr   | [0-7] [1-4] |       | A3_US         |
+| A2e     | Apple IIe RevA/B   |6502       | 1.023     | A2_hgr   | [0-7] [1-7] |       | A2e_US, A2e_UK, A2e_CA, A2e_FR |
+| A2c     | Apple IIc          |65C02      | 1.023     | A2_dhgr  | [0-7] []    |       |               |
+| A3P     | Apple III Plus     |6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       |               |
+| A2eE    | Apple IIe Enhanced |65C02      | 1.023     | A2_dhgr  | [0-7] [0-7] |       |               |
+| A2GS    | Apple IIGS         |65C816     | 2.8       | AGS      | [0-7] [1-7] |       |               |
+| A2cM    | Apple IIc MemoryExp|65C02      | 1.023     | A2_dhgr  | [0-7] []    |       |               |
+| A2G3    | Apple IIGS ROM3    |65C816     | 2.8       | AGS      | [0-7] [1-7] |       |               |
+| A2eP    | Apple IIe Platinum |65C02      | 1.023     | A2_dhgr  | [0-7] [1-7] |       |               |
 
 ## I/O RANGES
 
@@ -79,7 +79,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 ## I/O ADDRESS MAP
 
 |[IOADDR]| Name | SYScode | Range\* | Behaviors\* | Description |
-| :----: | :--: | :------: | :---: | :--------: | :---------: |
+| :----: | :--: | :------: | :---: | :--------: | :---------- |
 | $C000 | KBD | A2,A2P,A2PE,A2JP<br>,A2B,A2E,A2Ee,A2eP<br>,A2c,A2cM,A2G3,A2GS | HI | RD | Last Key Pressed + 128 | (EMU_apple2io.js, line 384)
 | $C000 | 80STOREOFF | A2E,A2Ee,A2eP,A2c<br>,A2cM,A2G3,A2GS | HI | WR | Use $C002-$C005 for Aux Memory |
 | $C000 | KBDBUSA | | HI | | V Keyboard 'A' busdata |
@@ -247,13 +247,13 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## PERIPHERALS & SLOT ASSIGNMENTS
 
-|[PSLOT]  | NAME                                 | SlotIO | SlotROM | HostROM | SLOTrange        | SYScode     | Manuals       |
-| :-----: | :----------------------------------- | :------ | :------- | :-------- | :----------- |:----------- |:------------- |
-| BOARD   | Motherboard peripheral               |         |          |           | B*           | A2,A2P,A2E  |               | 
-| MS16K   | Microsoft 16K Language card          | X       |          |           | 0*           | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
-| DISKII  | Apple Disk II Floppy Disk Subsystem  | X       | X        |           | 1,2,3,4,5,6*,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
-| VIDEX  | Videx Videoterm 80 Column Display     | X       | X        | X         | 3*           | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
-| MOCK  | Mockingboard C                         | X       |          |           | 1,2,3,4*,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
+|[PSLOT]  | NAME                                 | HostIO | SlotIO | SlotROM | HostROM      | SLOTrange     | SYScode     | Manuals       |
+| :-----: | :----------------------------------- | :----- | :----- | :------ | :----------- |:------------- |:----------- | :------------ |
+| BOARD   | Motherboard peripheral               | X      |        |         |              | B*            | A2,A2P,A2E  |               | 
+| MS16K   | Microsoft 16K Language card          |        | X      |         |              | 0*            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
+| DISKII  | Apple Disk II Floppy Disk Subsystem  |        | X      | X       |              | 1,2,3,4,5,6*,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
+| VIDEX  | Videx Videoterm 80 Column Display     |        | X      | X        | X           | 3*           | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
+| MOCK  | Mockingboard C                         |        | X      |          |             | 1,2,3,4*,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
 
 \* = pre-assigned slot
 
