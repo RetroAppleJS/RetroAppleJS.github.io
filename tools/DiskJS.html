@@ -12,7 +12,7 @@
 -->
 
 <html style="background-color:#B0B0B0"><head>
-  <title>APPLE II DISK TOOL - convert .dsk to .nib</title>
+  <title>APPLE II DISK TOOL - convert .po/.dsk/.nib</title>
   <meta name="description" content="">
   <meta name="author" content="Freddy Vandriessche">
   <meta charset="utf-8"> 
@@ -25,15 +25,248 @@
 <script type="text/javascript" src="../res/pako.min.js"></script>
 
 <script>
-var CONF_version="1.1.6"
-var CONF_builddate="20231231-180000" 
+var CONF_version="1.1.7"
+var CONF_builddate="20260511-000000" 
 
 var dsk_bytes = new Array();
 var nib_dsk_bytes = new Array();
 var HEX_PCT = Array(101);
+var line_length = 1024;
 
 var log = new Array();
 var log_d = new Array();
+var DISK_FORMATS = {"po":true,"dsk":true,"nib":true};
+var DISK_image = {
+  "name":"",
+  "inputType":"",
+  "info":null,
+  "originalBytes":null,
+  "dskBytes":null,
+  "poBytes":null,
+  "nibBytes":null
+};
+
+function selectElementText(el, win)
+{
+  win = win || window;
+  var doc = win.document, sel, range;
+  if (win.getSelection && doc.createRange) {
+    sel = win.getSelection();
+    range = doc.createRange();
+    range.selectNodeContents(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else if (doc.body.createTextRange) {
+    range = doc.body.createTextRange();
+    range.moveToElementText(el);
+    range.select();
+  }
+}
+
+function disk_bytes_to_array(bytes)
+{
+  if(bytes == null) return [];
+  if(Array.isArray(bytes)) return bytes.map(function(v){ return v & 0xff; });
+  return Array.from(bytes, function(v){ return v & 0xff; });
+}
+
+function disk_bytes_to_ui8(bytes)
+{
+  return new Uint8Array(disk_bytes_to_array(bytes));
+}
+
+function disk_ext_from_name(name)
+{
+  var m = (name || "").match(/\.([^.]+)$/);
+  return m ? m[1].toLowerCase() : "";
+}
+
+function disk_basename(name)
+{
+  return (name || "disk").replace(/\.[^.]*$/, "");
+}
+
+function disk_out_name(fmt)
+{
+  return disk_basename(DISK_image.name || oCOM.UploadName || "disk") + "." + fmt.toLowerCase();
+}
+
+function disk_crc32(bytes)
+{
+  if(!bytes) return "--------";
+  return oCOM.crc32(disk_bytes_to_array(bytes)).toString(16).toUpperCase();
+}
+
+function disk_array_to_base64(bytes)
+{
+  var ui8 = disk_bytes_to_ui8(bytes);
+  var bin = "";
+  var chunk = 0x8000;
+  for(var i=0; i<ui8.length; i+=chunk)
+    bin += String.fromCharCode.apply(null, ui8.subarray(i, i+chunk));
+  return btoa(bin);
+}
+
+function disk_zlib_base64(bytes)
+{
+  if(typeof pako == "undefined") throw new Error("pako.js is not loaded");
+  var ui8 = disk_bytes_to_ui8(bytes);
+  var deflator = new pako.Deflate( { level: 9 } );
+  deflator.push(ui8, true);
+  if(deflator.err) throw new Error(deflator.msg || "pako deflate failed");
+  return disk_array_to_base64(deflator.result);
+}
+
+function disk_js_string_literal(txt, width)
+{
+  width = width || 96;
+  var arr = [];
+  for(var i=0; i<txt.length; i+=width)
+    arr[arr.length] = '"' + txt.substr(i,width) + '"';
+  return arr.join("+<br>");
+}
+
+function disk_popup_html(txt)
+{
+  if(oCOM.POPUP && oCOM.POPUP.html) oCOM.POPUP.html(txt);
+  else document.getElementById('COM_popup_text').innerHTML = txt;
+}
+
+function disk_set_status(msg)
+{
+  var el = document.getElementById('disk_status');
+  if(el != null) el.innerHTML = msg;
+}
+
+function disk_appledisk()
+{
+  return oEMU.component.IO["AppleDisk"];
+}
+
+function disk_normalize(bytes)
+{
+  var disk2 = disk_appledisk();
+  var original = disk_bytes_to_array(bytes);
+  var info = disk2.detectDiskImageType(original);
+  var ext = disk_ext_from_name(oCOM.UploadName || "");
+
+  // 140 KB flat images can be ambiguous.  If the filename is .po, respect it.
+  if(info.ambiguous && ext == "po") info.type = "po";
+  if(info.ambiguous && ext == "dsk") info.type = "dsk";
+
+  var nibBytes;
+  switch(info.type)
+  {
+    case "nib": nibBytes = original; break;
+    case "po":  nibBytes = disk2.convertPo2Nib(original); break;
+    case "dsk": nibBytes = disk2.convertDsk2Nib(original); break;
+    default:
+      throw new Error("Unsupported or unknown disk image type: " + info.reason);
+  }
+
+  DISK_image.name = oCOM.UploadName || "disk." + (info.type || ext || "dsk");
+  DISK_image.inputType = info.type;
+  DISK_image.info = info;
+  DISK_image.originalBytes = original;
+  DISK_image.nibBytes = disk_bytes_to_array(nibBytes);
+  DISK_image.dskBytes = (info.type == "dsk" ? original : disk_bytes_to_array(disk2.convertNib2Dsk(DISK_image.nibBytes)));
+  DISK_image.poBytes = null;
+
+  // Keep parser/legacy actions working on the normalized DOS-order image.
+  oCOM.UploadData = DISK_image.dskBytes;
+
+  return DISK_image;
+}
+
+function disk_bytes_for_format(fmt)
+{
+  fmt = (fmt || "").toLowerCase();
+  if(!DISK_image.nibBytes) throw new Error("Load a .po, .dsk, or .nib disk image first");
+
+  switch(fmt)
+  {
+    case "nib": return DISK_image.nibBytes;
+    case "dsk": return DISK_image.dskBytes;
+    case "po":
+      if(DISK_image.poBytes == null)
+        DISK_image.poBytes = disk_bytes_to_array(disk_appledisk().convertNib2Po(DISK_image.nibBytes));
+      return DISK_image.poBytes;
+    default:
+      throw new Error("Unsupported download format: " + fmt);
+  }
+}
+
+function disk_build_action_panel()
+{
+  var formats = ["po","dsk","nib"];
+  var s = "<div style='font-family:Courier;font-size:12px;margin:0px 0px 8px 0px;'>";
+  s += "<b>Loaded:</b> " + (DISK_image.name || "")
+     + " &nbsp; <b>detected:</b> " + (DISK_image.inputType || "?")
+     + " &nbsp; <b>source CRC32:</b> " + disk_crc32(DISK_image.originalBytes)
+     + "<br>";
+  if(DISK_image.info && DISK_image.info.reason) s += "<span title='"+JSON.stringify(DISK_image.info).replace(/'/g,"&#39;")+"'>" + DISK_image.info.reason + "</span><br>";
+  for(var i=0;i<formats.length;i++)
+  {
+    var fmt = formats[i];
+    var b = disk_bytes_for_format(fmt);
+    s += "<button onclick=\"download_disk('"+fmt+"')\">Download ."+fmt.toUpperCase()+"</button> "
+       + "<button onclick=\"show_zlib_base64('"+fmt+"')\">ZLIB_BASE64 ."+fmt.toUpperCase()+"</button> "
+       + "<span>."+fmt+" bytes:"+b.length+" CRC32:"+disk_crc32(b)+"</span><br>";
+  }
+  s += "</div>";
+  return s;
+}
+
+function load_disk_file(bytes)
+{
+  try
+  {
+    disk_normalize(bytes);
+    dumpdisk(DISK_image.dskBytes);
+    disk_set_status(disk_build_action_panel());
+  }
+  catch(e)
+  {
+    alert(e.message || e);
+    disk_set_status("<font color=red>" + (e.message || e) + "</font>");
+  }
+}
+
+function download_disk(fmt)
+{
+  try
+  {
+    var bytes = disk_bytes_for_format(fmt);
+    oCOM.Download(disk_out_name(fmt), bytes);
+  }
+  catch(e) { alert(e.message || e); }
+}
+
+function show_zlib_base64(fmt)
+{
+  try
+  {
+    var bytes = disk_bytes_for_format(fmt);
+    var z64 = disk_zlib_base64(bytes);
+    var raw = disk_array_to_base64(bytes);
+    var varName = "DISK_" + fmt.toUpperCase() + "_ZLIB_BASE64";
+    var html = 
+    
+       "<div style='font-family:Courier;font-size:11px;white-space:normal;'>"
+      //+ "// " + disk_out_name(fmt) + "<br>"
+      //+ "// encoding: zlib-base64, bytes: " + bytes.length + ", crc32: " + disk_crc32(bytes) + ", zlib-base64 chars: " + z64.length + "<br>"
+      //+ "var " + varName + " = <br>" + disk_js_string_literal(z64,line_length) + ";<br><br>"
+      //+ "// Object form used by OfflineDisks:<br>"
+      + "{ <br>encoding:&quot;zlib-base64&quot;,<br>"
+      +"data:" + disk_js_string_literal(z64,line_length) + "<br>}<br>"
+      //+ "// Raw base64 length before zlib: " + raw.length
+      + "</div>";
+    disk_popup_html(html);
+    var el = document.getElementById('COM_popup_text');
+    if(el) selectElementText(el);
+  }
+  catch(e) { alert(e.message || e); }
+}
 
 function init_gui(_o)
 { 
@@ -467,22 +700,8 @@ function parsedisk(bytes)
 
 function download_nib()
 {
-  alert(".DSK LEN:"+oCOM.UploadData.length+" CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
-  var nib_bytes = oEMU.component.IO["AppleDisk"].convertDsk2Nib(oCOM.UploadData);
-  alert(".NIB LEN:"+nib_bytes.length+" CRC32: "+oCOM.crc32(nib_bytes).toString(16).toUpperCase());
-  var dsk_bytes = oEMU.component.IO["AppleDisk"].convertNib2Dsk(nib_bytes);
-  alert(".DSK LEN:"+dsk_bytes.length+" CRC32: "+oCOM.crc32(dsk_bytes).toString(16).toUpperCase());
-
-  if(log.length>0)
-  {
-    document.getElementById("output").innerHTML = 
-    "<div style='font-family:Courier;font-size:8px;overflow:scroll;height:600px;float:left;'>"
-    +log.join("<br>");
-    +"</div>"
-  }
-
-  var fileName = oCOM.UploadName.replace(".DSK",".NIB").replace(".dsk",".nib"); 
-  oCOM.Download(fileName,nib_bytes);
+  // Backwards compatible name for old button/bookmark use.
+  download_disk("nib");
 }
 
 //   ██████   ██████ ██████      ██       ██████   ██████  ██   ██ ██    ██ ██████  
@@ -640,17 +859,27 @@ function interpolate_arr(arr1,arr2,pct)
 
 <body class="slider_main" onload="init_gui();">
 
+  <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; max-width: 95%;" hidden="">
+    <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+    <div id=COM_popup_text onclick="selectElementText(this)"></div>
+  </div>
+
   <div id="slider_title"></div>
   <div class="slider_overlay">
     <div id="topmenu">
       <ul id="minitabs">
         <li>
           <li>
-            <input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',dumpdisk);" accept=".dsk">
+            <input type="file" id="loadfile" value="Disk" onchange="oCOM.Upload('loadfile',load_disk_file);" accept=".po,.dsk,.nib">
           </li>
         </li>
         <li><img onMouseOver="this.style.cursor='pointer'" onclick="parser_dump()" src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'></li>
-        <li><button onclick="download_nib()">Download .NIB</button></li>
+        <li><button onclick="download_disk('po')">Download .PO</button></li>
+        <li><button onclick="download_disk('dsk')">Download .DSK</button></li>
+        <li><button onclick="download_disk('nib')">Download .NIB</button></li>
+        <li><button onclick="show_zlib_base64('po')">ZLIB_BASE64 .PO</button></li>
+        <li><button onclick="show_zlib_base64('dsk')">ZLIB_BASE64 .DSK</button></li>
+        <li><button onclick="show_zlib_base64('nib')">ZLIB_BASE64 .NIB</button></li>
         <li>&nbsp;&nbsp;
           <a target=_blank href="http://fileformats.archiveteam.org/wiki/Apple_DOS_file_system">[docs]</a>
           <a target=_blank href="http://mirrors.apple2.org.za/apple.cabi.net/FAQs.and.INFO/A2.CSA2.FAQS.IN.HTML/apple.II.dos.and.prodos.mi.html">[more]</a></li>
@@ -661,7 +890,7 @@ function interpolate_arr(arr1,arr2,pct)
       <table>
       <tr>
         <td><img style="margin:20px;width:256px;float:left;image-rendering:pixelated;" src="../res/apple-disk-ii_256.png"></td>
-        <td rowspan="2" valign="top"><div id="output"></div></td>
+        <td rowspan="2" valign="top"><div id="disk_status" style="margin:8px 0px 8px 0px;"></div><div id="output"></div></td>
       </tr>
       <tr>
           <td><div id="dump" style="font-size:x-small;width:296px;height:120px;float:left;overflow-x:hidden;overflow-y:auto;"></div></td>
