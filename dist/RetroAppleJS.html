@@ -3059,87 +3059,44 @@ function COM()
   this.CSVParser =
   {
     parse:
-
-function(csv)
-{
-  var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
-    function (csv)
-    {
-      let m;
-      if (m = csv.match(/^\s*,?$/)) return null; // null value
-      if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
-      if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
-      if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
-      if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
-      if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
-      if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
-    }
-  )
-  if(arr[arr.length-1]==null) arr.pop();
-  return arr;
-}
-
-/*
-    function(csv, reviver)
-    {
-      reviver = reviver || function(r, c, v) { return v };
-      var chars = csv.split(''), c = 0, cc = chars.length, start, end, table = [], row;
-      while (c < cc)
+      function(csv)
       {
-        table.push(row = []);
-        while (c < cc && '\r' !== chars[c] && '\n' !== chars[c])
-        {
-          start = end = c;
-          if ('"' === chars[c])
+        var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
+          function (csv)
           {
-            start = end = ++c;
-            while (c < cc)
-            {
-              if ('"' === chars[c])
-              {
-                if ('"' !== chars[c+1]) break;
-                else chars[++c] = ''; // unescape ""
-              }
-              end = ++c;
-            }
-            if ('"' === chars[c]) ++c;
-            while (c < cc && '\r' !== chars[c] && '\n' !== chars[c] && ',' !== chars[c])
-              ++c;
+            let m;
+            if (m = csv.match(/^\s*,?$/)) return null; // null value
+            if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
+            if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
+            if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
+            if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
+            if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
+            if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
           }
-          else
-          {
-              while (c < cc && '\r' !== chars[c] && '\n' !== chars[c] && ',' !== chars[c])
-                end = ++c;
-          }
-          row.push(reviver(table.length-1, row.length, chars.slice(start, end).join('')));
-          if (',' === chars[c]) ++c;
-        }
-        if ('\r' === chars[c]) ++c;
-        if ('\n' === chars[c]) ++c;
+        )
+        if(arr[arr.length-1]==null) arr.pop();
+        return arr;
       }
-      return table;
-    }
-    */  
     ,
     stringify:
-    function(table, replacer)
-    {
-        replacer = replacer || function(r, c, v) { return v; };
-        var csv = '', c, cc, r, rr = table.length, cell;
-        for (r = 0; r < rr; ++r)
-        {
-            if (r) csv += '\r\n';
-            for (c = 0, cc = table[r].length; c < cc; ++c)
-            {
-              if (c) csv += ',';
-              cell = replacer(r, c, table[r][c]);
-              if (/[,\r\n"]/.test(cell))
-                cell = '"' + cell.replace(/"/g, '""') + '"';
-              csv += (cell || 0 === cell) ? cell : '';
-            }
-        }
-        return csv;
-    }
+      function(table, replacer)
+      {
+          replacer = replacer || function(r, c, v) { return v; };
+          var csv = '', c, cc, r, rr = table.length, cell;
+          for (r = 0; r < rr; ++r)
+          {
+              if (r) csv += '\r\n';
+              for (c = 0, cc = table[r].length; c < cc; ++c)
+              {
+                if (c) csv += ',';
+                cell = replacer(r, c, table[r][c]);
+                if (/[,\r\n"]/.test(cell))
+                  cell = '"' + cell.replace(/"/g, '""') + '"';
+                csv += (cell || 0 === cell) ? cell : '';
+              }
+          }
+          return csv;
+      }
   }
 
   this.escapeHTML = function(str) 
@@ -3935,39 +3892,6 @@ var oMEMGRID = new function()
 
 }(COM)
 
-function GRID()
-{
-  this.build_grid = function(start,len,step)
-  {
-    var output = "<table class=gtable>\n";
-    var end = start+len*step;
-    output+="<tr><td></td>"
-    for(var i=start,s="";i!=end;i+=step)
-    {
-      output+=this.col_label(i,len,step)
-      s += "<tr>"+this.row_label(i,len,step)+"<td id='m"+this.line(i,len,1).join("'></td><td id='m")+"'></td></tr>\n";
-    }
-    output+="</tr>\n"
-    return output+s+"</table>";
-  }
-
-  this.col_label = function(i,len,step)
-  {
-    return "<td>"+(i/step)+"</td>";
-  }
-
-  this.row_label = function(i,len,step)
-  {
-    return "<td>"+(i/step)+"</td>";
-  }
-
-  this.line = function(start,len,step)
-  {
-    var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = j;
-    return a;
-  }
-}
 </script>
     <script type="text/javascript">
 const _CFG_SYSCODE = {
@@ -13025,7 +12949,8 @@ function EMUI()
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             document.getElementById("slotConfig_popup").innerHTML =
-                "board I/O ["+model+"]" + close + apple2plus.hwObj().io.boardIO_html(model);
+                "board I/O ["+model+"]" + close + oEMU.component.IO.board.boardIO_html(model);
+                
             oCOM.POPUP.toggle("slotConfig_popup");
             return;
         }
@@ -20574,142 +20499,31 @@ function mockingboard()
 </script>
             <script type="text/javascript">
 //
-// Copyright (c) 2014 Thomas Skibo.
+// Copyright (c) 2026 Freddy Vandriessche.
 // All rights reserved.
 //
-// Adapted in 2022 by Freddy Vandriessche.
-// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
-//
-// apple2io.js
+// EMU_hostio.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{"A2P":{"active":true}}}
-//else oEMU.component.IO = new Apple2IO();
-
-if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":new AppleBoard()}}}
+else oEMU.component.IO.board= new AppleBoard();
 
 
-function Apple2IO(vid)
+function AppleBoard()
 {
-
-    const ROM_ADDR =    0xD000;
-    const ROM_SIZE =    0x4000;
-
-    // Slot I/O addresses
-    const SLOT_IO =    [0x80,
-                        0x90,
-                        0xA0,
-                        0xB0,
-                        0xC0,
-                        0xD0, 
-                        0xE0,
-                        0xF0];
-    const SLT_IO_SIZE = 0x10;
-
-    // Slot RAM/ROM spaces
-    const SLOT_ROM =  [0,   // SLOT0_PROM does not exist
-                        0x100,
-                        0x200,
-                        0x300,
-                        0x400,
-                        0x500,
-                        0x600,
-                        0x700];
-    const SLT_ROM_SIZE = 0x100;     
-
-    /*
-    const KEY_DATA =    0x00,
-        KEY_STROBE =    0x10,
-        CASS_TOGGLE =   0x20,
-        SPKR_TOGGLE =   0x30,
-        UTIL_STROBE =   0x40,
-        GFX_ON =        0x50,
-        GFX_OFF =       0x51,
-        GFX_MIX_OFF =   0x52,
-        GFX_MIX_ON =    0x53,
-        GFX_PAGE1 =     0x54,
-        GFX_PAGE2 =     0x55,
-        GFX_LORES =     0x56,
-        GFX_HIRES =     0x57,
-        CASS_IN =       0x60,
-        FLAG_IN0 =      0x61,
-        FLAG_IN1 =      0x62,
-        FLAG_IN2 =      0x63,
-        ANALOG_IN0 =    0x64,
-        ANALOG_IN1 =    0x65,
-        ANALOG_IN2 =    0x66,
-        ANALOG_IN3 =    0x67,
-        ANALOG_CLR =    0x70;
-    */
-
-    // MAP DISK I/O TO SLOT#6 MEMORY
-    var DISK_IO =       SLOT_IO[6],
-        DISK_IO_SIZE =  SLT_IO_SIZE,
-        DISK_PROM =     SLOT_ROM[6],
-        DISK_PROM_SIZE = SLT_ROM_SIZE;
- 
-    // MAP RAMCARD I/O TO SLOT#0 MEMORY
-    var MEM_RAMCARD_IO =  SLOT_IO[0], MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
-
-    // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
-    var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
-    
-    if(typeof(oEMU.component.IO)!="undefined")
-    {
-        // TODO: autosearch for self-declared oEMU.component.IO objects ?
-
-        //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
-        var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
-        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
-        this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
-        this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
-        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{"reset":function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
-        oEMU.component.IO.self = this;
+    this.id    = {"PCODE":"BOARD", "icon":"fa fa-tv"};
+    this.state = {"active":true,"slot":null};
+    this.action = 
+    { 
+         "HostIO" :{ "RD":{"callback":read.bind(this)}
+                    ,"WR":{"callback":write.bind(this)}}                                      // by default always 16 bytes
     }
 
-    this.reset = function()
-    {
-        keys.reset();
-        this.disk2.reset();
-    }
-
-    function line_decode(adr)
-    {
-        return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
-    }
+    function read() {alert("test")}
+    function write() {}
 
 
-    const IOMAP_CALLS = 
-    {1: // _CFG_IOMAP index
-        {
-            "KBD":         function(){ return keys.polling(keys.lastkey)   }
-            ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
-            ,"SPKR":        function(){ snd.toggle();       return 0x00 }
-            ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
-            ,"TXTSET":      function(){ vid.setGfx(false);  return 0x00 }
-            ,"MIXCLR":      function(){ vid.setMix(false);  return 0x00 }
-            ,"MIXSET":      function(){ vid.setMix(true);   return 0x00 }
-            ,"TXTPAGE1":    function(){ vid.setPage2(false);return 0x00 }
-            ,"TXTPAGE2":    function(){ vid.setPage2(true); return 0x00 }
-            ,"LORES":       function(){ vid.setHires(false);return 0x00 }
-            ,"HIRES":       function(){ vid.setHires(true); return 0x00 }
-        }
-    }
 
-    if(typeof(EMU_system_get)!="undefined")
-    {
-        //var ACTION_MAP = oEMU.component.IO.ACTION_MAP;
-        var CIO = oEMU.component.IO;
-        CIO.ACTION_MAP = IO_map(EMU_system_get());
-        //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
-    }
-
-    function IO_map(model)
-    {
-
-    // Comp:  O = Apple II+  E = Apple IIe  C = Apple IIc  G = Apple IIgs
-    // Act:   R = Read       W = Write      7 = Bit        V = Byte
-
-    const IOMAP = // https://www.kreativekorp.com/miscpages/a2info/iomemory.shtml http://apple2.guidero.us/doku.php/mg_notes/general/io_page
+   this.IOMAP = // https://www.kreativekorp.com/miscpages/a2info/iomemory.shtml http://apple2.guidero.us/doku.php/mg_notes/general/io_page
          "C000 KBD          OEC G  R   Last Key Pressed + 128\n"
         +"     80STOREOFF    EC G W    Use $C002-$C005 for Aux Memory\n"
         +"     KBDBUSA           T     V Keyboard 'A' busdata\n"
@@ -20868,7 +20682,16 @@ function Apple2IO(vid)
         +"C08E              OEC G  R   Read ROM; no write\n"
         +"C08F              OEC G  RR  Read/write RAM bank\n"
 
-*/
+*/ 
+
+
+    this.IO_map = function(model,IOMAP_CALLS)
+    {
+
+    // Comp:  O = Apple II+  E = Apple IIe  C = Apple IIc  G = Apple IIgs
+    // Act:   R = Read       W = Write      7 = Bit        V = Byte
+
+        const IOMAP = oEMU.component.IO.board.IOMAP;
 
 
         var IOMAP_ID = null;
@@ -20986,20 +20809,187 @@ function Apple2IO(vid)
             
         }
 
-        /*
-        console.log(JSON.stringify(IOMAP_TBL));
-
-        var s = ""
-        for(var i=0;i<IOMAP_TBL.length;i++)
-        {
-            s += "| "+IOMAP_TBL[i].join(" | ")+" |\n"
-        }
-        console.log(s);
-        */
+       //console.table(IOMAP_TBL);
         
         this.IOMAP_ROWS = iomap_rows;
         return output;
         
+    }
+
+
+    this.getBoardIORows = function(model)
+    {
+        model = model || (typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P");
+
+        apple2plus.hwObj().io.IO_map(model);   // refresh parsed rows for this model
+
+        return (apple2plus.hwObj().io.IOMAP_ROWS || []).filter(function(r){
+            return r.model_match
+                && r.addr_n < 0x80
+                && (r.act.indexOf("RD") >= 0 || r.act.indexOf("RR") >= 0);
+        });
+    }
+
+    this.boardIO_html = function(model)
+    {
+        var rows = this.getBoardIORows(model);
+
+        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
+            + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+            + '<tr>'
+            + '<th style="text-align:left;padding:2px 4px;">Addr</th>'
+            + '<th style="text-align:left;padding:2px 4px;">Name</th>'
+            + '<th style="text-align:left;padding:2px 4px;">Act</th>'
+            + '<th style="text-align:left;padding:2px 4px;">Description</th>'
+            + '</tr>';
+
+        for(var i=0;i<rows.length;i++)
+        {
+            s += '<tr>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].addr)+'</td>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].act)+'</td>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].desc)+'</td>'
+            + '</tr>';
+        }
+
+        s += '</table></div>';
+        return s;
+    }
+}
+</script>
+            <script type="text/javascript">
+//
+// Copyright (c) 2014 Thomas Skibo.
+// All rights reserved.
+//
+// Adapted in 2022 by Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
+//
+// apple2io.js
+
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{"A2P":{"active":true}}}
+//else oEMU.component.IO = new Apple2IO();
+
+if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
+
+
+function Apple2IO(vid)
+{
+
+    const ROM_ADDR =    0xD000;
+    const ROM_SIZE =    0x4000;
+
+    // Slot I/O addresses
+    const SLOT_IO =    [0x80,
+                        0x90,
+                        0xA0,
+                        0xB0,
+                        0xC0,
+                        0xD0, 
+                        0xE0,
+                        0xF0];
+    const SLT_IO_SIZE = 0x10;
+
+    // Slot RAM/ROM spaces
+    const SLOT_ROM =  [0,   // SLOT0_PROM does not exist
+                        0x100,
+                        0x200,
+                        0x300,
+                        0x400,
+                        0x500,
+                        0x600,
+                        0x700];
+    const SLT_ROM_SIZE = 0x100;     
+
+    /*
+    const KEY_DATA =    0x00,
+        KEY_STROBE =    0x10,
+        CASS_TOGGLE =   0x20,
+        SPKR_TOGGLE =   0x30,
+        UTIL_STROBE =   0x40,
+        GFX_ON =        0x50,
+        GFX_OFF =       0x51,
+        GFX_MIX_OFF =   0x52,
+        GFX_MIX_ON =    0x53,
+        GFX_PAGE1 =     0x54,
+        GFX_PAGE2 =     0x55,
+        GFX_LORES =     0x56,
+        GFX_HIRES =     0x57,
+        CASS_IN =       0x60,
+        FLAG_IN0 =      0x61,
+        FLAG_IN1 =      0x62,
+        FLAG_IN2 =      0x63,
+        ANALOG_IN0 =    0x64,
+        ANALOG_IN1 =    0x65,
+        ANALOG_IN2 =    0x66,
+        ANALOG_IN3 =    0x67,
+        ANALOG_CLR =    0x70;
+    */
+
+    // MAP DISK I/O TO SLOT#6 MEMORY
+    var DISK_IO =       SLOT_IO[6],
+        DISK_IO_SIZE =  SLT_IO_SIZE,
+        DISK_PROM =     SLOT_ROM[6],
+        DISK_PROM_SIZE = SLT_ROM_SIZE;
+ 
+    // MAP RAMCARD I/O TO SLOT#0 MEMORY
+    var MEM_RAMCARD_IO =  SLOT_IO[0], MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
+
+    // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
+    var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
+    
+    if(typeof(oEMU.component.IO)!="undefined")
+    {
+        // TODO: autosearch for self-declared oEMU.component.IO objects ?
+
+        //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
+        var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
+        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
+        this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
+        this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
+        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{"reset":function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
+        oEMU.component.IO.self = this;
+    }
+
+    this.reset = function()
+    {
+        keys.reset();
+        this.disk2.reset();
+    }
+
+    function line_decode(adr)
+    {
+        return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
+    }
+
+
+    // HOST_IO callbacks (keyboard, speaker, gfx) 
+
+    const IOMAP_CALLS = 
+    {1: // _CFG_IOMAP index
+        {
+            "KBD":         function(){ return keys.polling(keys.lastkey)   }
+            ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
+            ,"SPKR":        function(){ snd.toggle();       return 0x00 }
+            ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
+            ,"TXTSET":      function(){ vid.setGfx(false);  return 0x00 }
+            ,"MIXCLR":      function(){ vid.setMix(false);  return 0x00 }
+            ,"MIXSET":      function(){ vid.setMix(true);   return 0x00 }
+            ,"TXTPAGE1":    function(){ vid.setPage2(false);return 0x00 }
+            ,"TXTPAGE2":    function(){ vid.setPage2(true); return 0x00 }
+            ,"LORES":       function(){ vid.setHires(false);return 0x00 }
+            ,"HIRES":       function(){ vid.setHires(true); return 0x00 }
+        }
+    }
+
+
+    if(typeof(EMU_system_get)!="undefined")
+    {
+        //var ACTION_MAP = oEMU.component.IO.ACTION_MAP;
+        var CIO = oEMU.component.IO;
+        CIO.ACTION_MAP = oEMU.component.IO.board.IO_map(EMU_system_get(),IOMAP_CALLS);
+        //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
 
     this.read = function(addr)
@@ -21122,64 +21112,6 @@ function Apple2IO(vid)
     }
 
 
-    // SLOT MAPPING
-    /*
-    this.mount = function(cfg,slot_num)
-    {
-        const idx = slot_num<<3;
-        SLOT_IDX[slot_num] = cfg[slot_num].PCODE.substring(0,6);
-
-        // TODO: SLOT_MAP is unused at the moment: start using it !?
-        SLOT_MAP[idx+0] = cfg[slot_num].PCODE ? 1 : 0;      // 1=device  0=no device
-        SLOT_MAP[idx+1] = oCOM.crc16(new TextEncoder("utf-8").encode(cfg[slot_num].PCODE)); // DETERMINE DEVICE ID (CRC16 hash)
-        SLOT_MAP[idx+2] = cfg[slot_num].IOrange===undefined?null:cfg[slot_num].IOrange[0];       // SLOT I/O   range origin
-        SLOT_MAP[idx+3] = cfg[slot_num].IOrange===undefined?null:cfg[slot_num].IOrange[1];       //            range end
-        SLOT_MAP[idx+4] = cfg[slot_num].ROMrange===undefined?null:cfg[slot_num].ROMrange[0];     // SLOT ROM   range origin
-        SLOT_MAP[idx+5] = cfg[slot_num].ROMrange===undefined?null:cfg[slot_num].ROMrange[1];     //            range end
-        SLOT_MAP[idx+6] = cfg[slot_num].LROMrange===undefined?null:cfg[slot_num].LROMrange[0];   // SLOT LROM  range origin
-        SLOT_MAP[idx+7] = cfg[slot_num].LROMrange===undefined?null:cfg[slot_num].LROMrange[1];   //            range end
-
-        // transform range as RNG12 into Uint16Array(4096) - containing CRC16 device IDs by index
-        // transform range as RNG8  into Uint16Array(256)  - containing CRC16 device IDs by index
-
-        var map = {slotId:"PR#"+slot_num}
-        if(cfg[slot_num].PCODE)
-        {
-            var obj_names = new Array();
-            var pcode = cfg[slot_num].PCODE;
-            var obj = this[pcode];           // find peripheral object from PCODE
-            for(var o in obj) obj_names.push(o);
-    
-            console.log("mounted "+cfg[slot_num].PCODE+" [active:"+(SLOT_MAP[idx]!=null?true:false)+" deviceID:"+oCOM.getHexWord(SLOT_MAP[idx+1])+"] into SLOT #"+idx+" ("
-            +"I/O range: "+oCOM.getHexWord(SLOT_MAP[idx+2])+"-"+oCOM.getHexWord(SLOT_MAP[idx+3])+" "
-            +"ROM range: "+(SLOT_MAP[idx+4]==SLOT_MAP[idx+5]?null:oCOM.getHexWord(SLOT_MAP[idx+4])+"-"+oCOM.getHexWord(SLOT_MAP[idx+5]))+" "
-            +"LROM range: "+(SLOT_MAP[idx+6]==SLOT_MAP[idx+7]?null:oCOM.getHexWord(SLOT_MAP[idx+6])+"-"+oCOM.getHexWord(SLOT_MAP[idx+7]))+" "
-            +"METHODS: "+obj_names.join(",")   
-            +")");
-    
- //"0":{"PCODE":"MS16K","IOrange":[49280,49295],"ROMrange":[],"LROMrange":[],"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
-            //SLOT_REG[slot_num] = cfg[slot_num];
-            
-            SLOT_REG[slot_num] = {};
-            SLOT_REG[slot_num].slotTitle = "PR#"+slot_num;
-            SLOT_REG[slot_num].peripheral = cfg[slot_num];
-            SLOT_REG[slot_num].peripheral.icon = obj.id.icon;
-            
-
-            if(obj.id===undefined) { obj_names.icon = ""; obj.id = {"icon":"fa fa-cube"}}
-            oEMUI.slotConfig({"id":"slot"+slot_num ,"icon":obj.id.icon===undefined?"fa fa-cube":obj.id.icon   ,"active":SLOT_MAP[idx+0]});
-            //oEMUI.slotConfig({"id":"d_slot"+slot_num   ,"icon":"fa fa-cog"                                        ,"active":SLOT_MAP[idx+0]});
-        
-    
-        }
-
-        if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
-            oEMUI.refreshDeviceToolboxes({"id":"devices"});
-
-        var n = this.listPeripheralNames();
-    }
-    */
-
     this.unmount = function(name,slot_num)
     {
         SLOT_NAME[slot_num] = null;
@@ -21198,47 +21130,6 @@ function Apple2IO(vid)
 
         if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
             oEMUI.refreshDeviceToolboxes({"id":"devices"});
-    }
-
-
-    this.getBoardIORows = function(model)
-    {
-        model = model || (typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P");
-
-        IO_map(model);   // refresh parsed rows for this model
-
-        return (self.IOMAP_ROWS || []).filter(function(r){
-            return r.model_match
-                && r.addr_n < 0x80
-                && (r.act.indexOf("RD") >= 0 || r.act.indexOf("RR") >= 0);
-        });
-    }
-
-    this.boardIO_html = function(model)
-    {
-        var rows = this.getBoardIORows(model);
-
-        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
-              + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-              + '<tr>'
-              + '<th style="text-align:left;padding:2px 4px;">Addr</th>'
-              + '<th style="text-align:left;padding:2px 4px;">Name</th>'
-              + '<th style="text-align:left;padding:2px 4px;">Act</th>'
-              + '<th style="text-align:left;padding:2px 4px;">Description</th>'
-              + '</tr>';
-
-        for(var i=0;i<rows.length;i++)
-        {
-            s += '<tr>'
-               + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].addr)+'</td>'
-               + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
-               + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].act)+'</td>'
-               + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].desc)+'</td>'
-               + '</tr>';
-        }
-
-        s += '</table></div>';
-        return s;
     }
 
     function extract_slotrange_mask(str)
