@@ -534,87 +534,44 @@ function COM()
   this.CSVParser =
   {
     parse:
-
-function(csv)
-{
-  var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
-    function (csv)
-    {
-      let m;
-      if (m = csv.match(/^\s*,?$/)) return null; // null value
-      if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
-      if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
-      if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
-      if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
-      if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
-      if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
-    }
-  )
-  if(arr[arr.length-1]==null) arr.pop();
-  return arr;
-}
-
-/*
-    function(csv, reviver)
-    {
-      reviver = reviver || function(r, c, v) { return v };
-      var chars = csv.split(''), c = 0, cc = chars.length, start, end, table = [], row;
-      while (c < cc)
+      function(csv)
       {
-        table.push(row = []);
-        while (c < cc && '\r' !== chars[c] && '\n' !== chars[c])
-        {
-          start = end = c;
-          if ('"' === chars[c])
+        var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
+          function (csv)
           {
-            start = end = ++c;
-            while (c < cc)
-            {
-              if ('"' === chars[c])
-              {
-                if ('"' !== chars[c+1]) break;
-                else chars[++c] = ''; // unescape ""
-              }
-              end = ++c;
-            }
-            if ('"' === chars[c]) ++c;
-            while (c < cc && '\r' !== chars[c] && '\n' !== chars[c] && ',' !== chars[c])
-              ++c;
+            let m;
+            if (m = csv.match(/^\s*,?$/)) return null; // null value
+            if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
+            if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
+            if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
+            if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
+            if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
+            if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
           }
-          else
-          {
-              while (c < cc && '\r' !== chars[c] && '\n' !== chars[c] && ',' !== chars[c])
-                end = ++c;
-          }
-          row.push(reviver(table.length-1, row.length, chars.slice(start, end).join('')));
-          if (',' === chars[c]) ++c;
-        }
-        if ('\r' === chars[c]) ++c;
-        if ('\n' === chars[c]) ++c;
+        )
+        if(arr[arr.length-1]==null) arr.pop();
+        return arr;
       }
-      return table;
-    }
-    */  
     ,
     stringify:
-    function(table, replacer)
-    {
-        replacer = replacer || function(r, c, v) { return v; };
-        var csv = '', c, cc, r, rr = table.length, cell;
-        for (r = 0; r < rr; ++r)
-        {
-            if (r) csv += '\r\n';
-            for (c = 0, cc = table[r].length; c < cc; ++c)
-            {
-              if (c) csv += ',';
-              cell = replacer(r, c, table[r][c]);
-              if (/[,\r\n"]/.test(cell))
-                cell = '"' + cell.replace(/"/g, '""') + '"';
-              csv += (cell || 0 === cell) ? cell : '';
-            }
-        }
-        return csv;
-    }
+      function(table, replacer)
+      {
+          replacer = replacer || function(r, c, v) { return v; };
+          var csv = '', c, cc, r, rr = table.length, cell;
+          for (r = 0; r < rr; ++r)
+          {
+              if (r) csv += '\r\n';
+              for (c = 0, cc = table[r].length; c < cc; ++c)
+              {
+                if (c) csv += ',';
+                cell = replacer(r, c, table[r][c]);
+                if (/[,\r\n"]/.test(cell))
+                  cell = '"' + cell.replace(/"/g, '""') + '"';
+                csv += (cell || 0 === cell) ? cell : '';
+              }
+          }
+          return csv;
+      }
   }
 
   this.escapeHTML = function(str) 
@@ -1409,37 +1366,3 @@ var oMEMGRID = new function()
   }
 
 }(COM)
-
-function GRID()
-{
-  this.build_grid = function(start,len,step)
-  {
-    var output = "<table class=gtable>\n";
-    var end = start+len*step;
-    output+="<tr><td></td>"
-    for(var i=start,s="";i!=end;i+=step)
-    {
-      output+=this.col_label(i,len,step)
-      s += "<tr>"+this.row_label(i,len,step)+"<td id='m"+this.line(i,len,1).join("'></td><td id='m")+"'></td></tr>\n";
-    }
-    output+="</tr>\n"
-    return output+s+"</table>";
-  }
-
-  this.col_label = function(i,len,step)
-  {
-    return "<td>"+(i/step)+"</td>";
-  }
-
-  this.row_label = function(i,len,step)
-  {
-    return "<td>"+(i/step)+"</td>";
-  }
-
-  this.line = function(start,len,step)
-  {
-    var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = j;
-    return a;
-  }
-}

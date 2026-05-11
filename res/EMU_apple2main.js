@@ -462,7 +462,8 @@ function EMUI()
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             document.getElementById("slotConfig_popup").innerHTML =
-                "board I/O ["+model+"]" + close + apple2plus.hwObj().io.boardIO_html(model);
+                "board I/O ["+model+"]" + close + oEMU.component.IO.board.boardIO_html(model);
+                
             oCOM.POPUP.toggle("slotConfig_popup");
             return;
         }
