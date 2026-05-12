@@ -9,12 +9,25 @@ else oEMU.component.IO.RamCard = new RamCard();
 
 function RamCard()
 {
+    this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
+    this.state = {"active":true,"slot":null};
+    
+    this.action = 
+    { 
+        "SlotIO" :{ "RD":{ "callback":_read.bind(this) }
+                    ,"WR":{ "callback":_write.bind(this)} }                                     // by default always 16 bytes
+    }
+
+    function _readSlotROM(){};
+    function _read(){};
+    function _write(){};
+    
+
+
     const BANK_SIZE     =  4096
          ,RAMCARD       =  4096
          ,RAMCARD_SIZE  =  8192
 
-    this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
-    this.state = {"active":true};
     this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
