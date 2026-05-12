@@ -123,28 +123,13 @@ function Apple2IO(vid)
 
             default:
 
-                /*
-                else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
-                {
-                    console.log(oCOM.getHexWord(line))
-                    var o = this.disk2.read(addr - DISK_IO);
-                    return o;
-                }
-                else if (this.disk2.diskBytes[this.disk2.drv] && addr >= DISK_PROM &&
-                        addr < DISK_PROM + DISK_PROM_SIZE)
-                {
-                    //59 & 5A
-                    console.log(oCOM.getHexWord(line))
-                    return this.disk2.ROM[addr - DISK_PROM];
-                }
-                */
-                // TODO: decode soft switches based on registry (auto declared mask)
-                // ACTION_MAP = global registry ??
 
 
                 if(this.ramcard.state.active  && // RAMCARD SOFT SWITCHES
                     addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
                 {// 0080
+
+                    
                     return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
                 }
                 else if(this.ramcard.state.active &&
@@ -152,6 +137,8 @@ function Apple2IO(vid)
                 {// FD00
                     return this.ramcard.read(addr - ROM_ADDR);
                 }
+
+
                 else if(this.col80card.state.active &&
                     addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
                 {
@@ -572,9 +559,9 @@ function Apple2IO(vid)
                 oPeri.state.pinfo = pinfo;
 
                 // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
-                if(_bHostROM) _act.HostROM.base  = pinfo.HostROM.from;
-                if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from;
-                if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from;
+                if(_bHostROM && _act.HostROM) _act.HostROM.base  = pinfo.HostROM.from; else console.error("mounting HostROM of "+pinfo.PCODE+" failed");
+                if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from; else console.error("mounting SlotROM of "+pinfo.PCODE+" failed");
+                if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from; else console.error("mounting SlotIO of "+pinfo.PCODE+" failed");
 
                 // Add non-functional metadata to callbacks so diagnostics can show
                 // the actual mounted owner behind each ACTION_MAP span.
