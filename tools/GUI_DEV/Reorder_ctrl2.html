@@ -103,7 +103,7 @@
   z-index:1;
 }
 
-.peripheral-name { display:block; min-height:24px; font-size:11px; word-break:break-word; }
+.equipment-name { display:block; min-height:24px; font-size:11px; word-break:break-word; }
 .drag-handle { width:var(--slot-touch-hit); height:30px; cursor:grab; user-select:none; }
 .drag-handle:active { cursor:grabbing; }
 .drag-handle .fa:first-child { bottom:5px;}
@@ -204,7 +204,7 @@ function EMUI()
       var slotID  = parent ? parent.dataset.slotId : "";
       var hostId  = ctx.hostId;
 
-      alert("Configure " + hostId + " peripheral " + periID + " in slot " + slotID);
+      alert("Configure " + hostId + " equipment " + periID + " in slot " + slotID);
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
     };
 
@@ -214,7 +214,7 @@ function EMUI()
       if (!anchor || !ctx.host.contains(anchor)) return;
 
       var title = anchor.dataset.slotId;
-      alert("Plug " + ctx.hostId + " new peripheral in slot " + title);
+      alert("Plug " + ctx.hostId + " new equipment in slot " + title);
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
     };
 
@@ -224,7 +224,7 @@ function EMUI()
       var periID = parent.children[0].id;
 
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
-      alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
+      alert("Move " + ctx.hostId + " equipment "+periID+" slot " + fromSlotId + "->" + toSlotId);
     };
 
     this.slotsRender = function(elid, cfg)
@@ -253,7 +253,7 @@ function EMUI()
 
       function renderGhost(slot)
       {
-        var iconClass = (slot && slot.peripheral && slot.peripheral.icon) ? slot.peripheral.icon : "fa fa-circle";
+        var iconClass = (slot && slot.equipment && slot.equipment.icon) ? slot.equipment.icon : "fa fa-circle";
 
         return `
           <button class="appbut ghost-cog" type="button" tabindex="-1" aria-hidden="true">
@@ -270,16 +270,16 @@ function EMUI()
       {
         var anchorId = "d_slot_" + ctx.hostId + "_" + slot.title.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-        if (slot.peripheral)
+        if (slot.equipment)
         {
           return `
             <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}"
                   id="${anchorId}"
                   data-slot-id="${slot.title}"
                   data-host-id="${ctx.hostId}">
-              <div class="peripheral-card">
+              <div class="equipment-card">
                 ${slot.lock ? "" : `
-                  <span class="drag-handle" title="Move ${slot.peripheral.PCODE}">
+                  <span class="drag-handle" title="Move ${slot.equipment.PCODE}">
                     <i class="fa fa-ellipsis-h dots dots1"></i>
                     <i class="fa fa-ellipsis-h dots"></i>
                   </span>
@@ -294,7 +294,7 @@ function EMUI()
                 id="${anchorId}"
                 data-slot-id="${slot.title}"
                 data-host-id="${ctx.hostId}">
-            <button class="slot-add" type="button" title="Add peripheral to ${slot.title}">
+            <button class="slot-add" type="button" title="Add equipment to ${slot.title}">
               <i class="fa fa-plus dots dots1"></i>
             </button>
           </div>
@@ -309,8 +309,8 @@ function EMUI()
                 data-host-id="${ctx.hostId}">
             <div class="slot-label">${slot.title}</div>
             <div class="sloticons">
-              ${slot.peripheral
-                ? `<button id="${slot.peripheral.PCODE}" class="appbut cogbtn" type="button" title="configure ${slot.peripheral.PCODE} / ${slot.peripheral.objID}()"><i class="${slot.peripheral.icon || ""}"></i></button>`
+              ${slot.equipment
+                ? `<button id="${slot.equipment.PCODE}" class="appbut cogbtn" type="button" title="configure ${slot.equipment.PCODE} / ${slot.equipment.objID}()"><i class="${slot.equipment.icon || ""}"></i></button>`
                 : ""}
               ${renderAnchor(slot)}
             </div>
@@ -383,7 +383,7 @@ function EMUI()
 
         var fromSlotId = slotEl.dataset.slotId;
         var fromSlot = getSlotById(emui.slot_cfg[ctx.hostId], fromSlotId);
-        if (!fromSlot || !fromSlot.peripheral) return;
+        if (!fromSlot || !fromSlot.equipment) return;
 
         ctx.pointerDrag = {
           emui: emui,
@@ -428,7 +428,7 @@ function EMUI()
         {
           slotMove(emui.slot_cfg, ctx, ev, fromSlotId, toSlotId);
           emui.slotsRender(ctx.hostId);
-          console.log("Move peripheral from->to", ctx.hostId, fromSlotId, toSlotId);
+          console.log("Move equipment from->to", ctx.hostId, fromSlotId, toSlotId);
           emui.onSlotMove(ctx, ev, fromSlotId, toSlotId);
         }
 
@@ -438,12 +438,12 @@ function EMUI()
 
           var from = getSlotById(cfg[ctx.hostId], fromSlotId);
           var to   = getSlotById(cfg[ctx.hostId], toSlotId);
-          if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
+          if (!from || !to || from.lock || !from.equipment || to.equipment) return;
 
-          to.peripheral = from.peripheral;
+          to.equipment = from.equipment;
           //to.icon = from.icon;
 
-          from.peripheral = null;
+          from.equipment = null;
           //delete from.icon;
         };
       }
@@ -485,97 +485,78 @@ var oEMUI = new EMUI();
 
 // 000 C (ganularity 4Kb, 12)
 var slotCfg0 = [
-  { title: "$0000", lock:true,  peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$1000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$2000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$3000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$4000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$5000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$6000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$7000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$8000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$9000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$A000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$B000", lock:true,  peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$C000", lock:true,  peripheral: { objID: "apple2io",     PCODE: "I/O", icon: "fa fa-plug" } },
-  { title: "$D000", lock:true,  peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }},
-  { title: "$E000", lock:true,  peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }},
-  { title: "$F000", lock:true,  peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }}
+  { title: "$0000", lock:true,  equipment: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$1000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$2000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$3000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$4000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$5000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$6000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$7000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$8000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$9000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$A000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$B000", lock:true,  equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$C000", lock:true,  equipment: { objID: "apple2io",     PCODE: "I/O", icon: "fa fa-plug" } },
+  { title: "$D000", lock:true,  equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }},
+  { title: "$E000", lock:true,  equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }},
+  { title: "$F000", lock:true,  equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }}
 ];
 oEMUI.slotsRender("device_slots0",slotCfg0);
 
 var slotCfg1 = [
-  { title: "$0000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$0400",             peripheral: { objID: "apple2Ram",    PCODE: "TX1", icon: "fa fa-scroll" } },
-  { title: "$0800",             peripheral: { objID: "apple2Vid",    PCODE: "TX2", icon: "fa fa-scroll" } },
-  { title: "$0C00",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$1000",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$1400",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$1800",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$1C00",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$2000",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
-  { title: "$2400",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
-  { title: "$2800",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
-  { title: "$2C00",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
-  { title: "$3000",             peripheral: { objID: "apple2Vid",     PCODE: "HGR1", icon: "fa fa-photo-video" } },
-  { title: "$3400",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" }},
-  { title: "$3800",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" }},
-  { title: "$3C00",             peripheral: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" }},
-  { title: "$4000",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$4400",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$4800",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$4C00",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$5000",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$5400",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$5800",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
-  { title: "$5C00",             peripheral: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$0000",             equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$0400",             equipment: { objID: "apple2Ram",    PCODE: "TX1", icon: "fa fa-scroll" } },
+  { title: "$0800",             equipment: { objID: "apple2Vid",    PCODE: "TX2", icon: "fa fa-scroll" } },
+  { title: "$0C00",             equipment: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$1000",             equipment: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$1400",             equipment: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$1800",             equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$1C00",             equipment: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
+  { title: "$2000",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
+  { title: "$2400",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
+  { title: "$2800",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
+  { title: "$2C00",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" } },
+  { title: "$3000",             equipment: { objID: "apple2Vid",     PCODE: "HGR1", icon: "fa fa-photo-video" } },
+  { title: "$3400",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" }},
+  { title: "$3800",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" }},
+  { title: "$3C00",             equipment: { objID: "apple2Vid",    PCODE: "HGR1", icon: "fa fa-photo-video" }},
+  { title: "$4000",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$4400",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$4800",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$4C00",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$5000",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$5400",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$5800",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
+  { title: "$5C00",             equipment: { objID: "apple2Vid",    PCODE: "HGR2", icon: "fa fa-photo-video" }},
 ];
 oEMUI.slotsRender("device_slots1",slotCfg1);
 
 
 // slot data
 var slotCfg2 = [
-  { title: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
-  { title: "PR#0",             peripheral: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
+  { title: "board", lock:true, equipment: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube",} },
+  { title: "PR#0",             equipment: { objID: "ramcard",   PCODE: "MS16K", icon: "fa fa-microchip" } },
   { title: "PR#1" },
   { title: "PR#2" },
-  { title: "PR#3",             peripheral: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
+  { title: "PR#3",             equipment: { objID: "col80card", PCODE: "VIDEX", icon: "fa fa-tv" } },
   { title: "PR#4" },
   { title: "PR#5" },
-  { title: "PR#6",             peripheral: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
+  { title: "PR#6",             equipment: { objID: "disk2",     PCODE: "DISKII",icon: "fa fa-save",  } },
   { title: "PR#7" }
 ];
 oEMUI.slotsRender("device_slots2",slotCfg2);
 
 var slotCfg3 = [
-  { title: "$D000",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
-  { title: "$D800",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
-  { title: "$E000",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
-  { title: "$E800",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },  
-  { title: "$F000",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
-  { title: "$F800",             peripheral: { objID: "apple2Rom",    PCODE: "MON", icon: "fa fa-power-off" } }, 
+  { title: "$D000",             equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
+  { title: "$D800",             equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
+  { title: "$E000",             equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
+  { title: "$E800",             equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },  
+  { title: "$F000",             equipment: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-apple-alt" } },
+  { title: "$F800",             equipment: { objID: "apple2Rom",    PCODE: "MON", icon: "fa fa-power-off" } }, 
 ];
 oEMUI.slotsRender("device_slots3",slotCfg3);
 
-/*
-var slotCfg1 = [
-  { title: "$0<small>000</small>",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-photo-video" } },
-  { title: "$1<small>000</small>",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$2000",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-photo-video" } },
-  { title: "$3000",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-photo-video" } },
-  { title: "$4000",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-photo-video" } },
-  { title: "$5000",             peripheral: { objID: "apple2Vid",    PCODE: "RAM", icon: "fa fa-photo-video" } },
-  { title: "$6000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$7000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$8000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$9000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$A000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$B000",             peripheral: { objID: "apple2Ram",    PCODE: "RAM", icon: "fa fa-microchip" } },
-  { title: "$C000",             peripheral: { objID: "apple2io",     PCODE: "I/O", icon: "fa fa-plug" } },
-  { title: "$D000",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }},
-  { title: "$E000",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }},
-  { title: "$F000",             peripheral: { objID: "apple2Rom",    PCODE: "ROM", icon: "fa fa-lock" }}
-  */
 
 
 </script>
