@@ -22929,7 +22929,7 @@ function Apple2Plus(context)
     {
         var args = {"cpu_chrono":performance.now()};
         while (n-- > 0) {
-            hw.cycle(n);
+            hw.cycle();
             video.cycle();
             cpu.cycle();
             snd.cycle(n);
@@ -24877,8 +24877,6 @@ function DASM()
 			{"PC":oCOM.getHexWord(this.getReg("PC")),"AC":this.getHexByte(this.getReg("AC")),"XR":this.getHexByte(this.getReg("XR")),"YR":this.getHexByte(this.getReg("YR")),"SR":this.getHexByte(this.getReg("SR")),"SP":this.getHexByte(this.getReg("SP"))},
 			this.nameBit(this.getReg("SR"),["neg","over","&nbsp;","break","deci","interr","zero","carry"]),
 			{"ops":ops});
-
-	// https://www.key-shortcut.com/en/writing-systems/35-symbols/arrows
 
 		switch(instr)
 		{
