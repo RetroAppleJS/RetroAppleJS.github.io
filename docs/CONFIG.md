@@ -44,7 +44,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              |CPU     | Speeds    | Display  | Slots log/phy | ROM   | KeyFont     |
+|[SYSCODE]| Model              |CPU     | Speeds    | Display  | Slots log/phy* | ROM   | KeyFont     |
 | :---:   | :----------------- | :-------- | :-------- | :------- | :---------: | :---- | :------------ |
 | A1      | Apple I            |6502       | 1.023     | A1_txt   |             |       | A1_US         |
 | A2      | Apple II           |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
@@ -62,6 +62,9 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2cM    | Apple IIc MemoryExp|65C02      | 1.023     | A2_dhgr  | [0-7] []    |       |               |
 | A2G3    | Apple IIGS ROM3    |65C816     | 2.8       | AGS      | [0-7] [1-7] |       |               |
 | A2eP    | Apple IIe Platinum |65C02      | 1.023     | A2_dhgr  | [0-7] [1-7] |       |               |
+
+* log / phy: logical slots = accessible via software (e.g. PR#n), physcial slot = real plug-in card slot
+
 
 ## I/O RANGES
 
