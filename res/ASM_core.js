@@ -1436,8 +1436,6 @@ function DASM()
 			this.nameBit(this.getReg("SR"),["neg","over","&nbsp;","break","deci","interr","zero","carry"]),
 			{"ops":ops});
 
-	// https://www.key-shortcut.com/en/writing-systems/35-symbols/arrows
-
 		switch(instr)
 		{
 			case "ADC":
