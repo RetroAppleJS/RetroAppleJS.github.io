@@ -173,7 +173,7 @@ function Apple2Plus(context)
     {
         var args = {"cpu_chrono":performance.now()};
         while (n-- > 0) {
-            hw.cycle(n);
+            hw.cycle();
             video.cycle();
             cpu.cycle();
             snd.cycle(n);
