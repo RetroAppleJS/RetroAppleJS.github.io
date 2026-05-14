@@ -234,8 +234,10 @@ function Cpu6502(hwobj)
         switch (opcode) {
         case 0x00:   push(pc >> 8);  push(pc & 0xff);  push(p | P_B);  p |= P_I;  pc = readWord(IRQ_VECTOR);  break; // BRK
         case 0x01:   addr = ind_x(operand);  operand = readByte(addr);  or_instr(operand);  break; // ORA (ind,X)
+        //case 0x04:   break; // NOP zeropage / DOP / SKB (illegal opcode, but 100% harmless)
         case 0x05:   operand = readByte(operand);  or_instr(operand);  break; // ORA zero page
         case 0x06:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL zero page
+        //case 0x07:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  break; // SLO zero page (illegal opcode)
         case 0x08:   push(p | P_B);  break; // PHP
         case 0x09:   or_instr(operand);  break; // ORA imm
         case 0x0a:   a = asl_instr(a);  break; // ASL A
