@@ -5,7 +5,7 @@
 // EMU_ramcard.js
 
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":new RamCard()}}}
-else oEMU.component.IO.RamCard = new RamCard();
+else oEMU.component.IO["RamCard"] = new RamCard();
 
 function RamCard()
 {
@@ -13,18 +13,19 @@ function RamCard()
     this.state = {"active":true,"slot":null};
     this.action = 
     { 
-        "SlotIO" :{ "RD":{ "callback":_readSlotIO(this) } } 
+        "SlotIO": { "RD":{ "callback":_readSlotIO.bind(this) } }
     }
+    
 
-    function _readSlotIO(){
-
+    function _readSlotIO(addr)
+    {
         //oEMU.component.IO.RamCard.soft_switch
         var MEM_RAMCARD_IO =  0x80;
         return oEMU.component.IO.RamCard.soft_switch(addr - MEM_RAMCARD_IO);
+    }
 
-    };
     function _read(addr) {};
-    function _write(){};
+    function _write(addr,d8){};
     
 
     const BANK_SIZE     =  4096
