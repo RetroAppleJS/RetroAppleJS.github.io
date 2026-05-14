@@ -107,6 +107,12 @@ function Apple2IO(vid)
         //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
 
+    //    ██     ██  ██████      ██████  ███████  █████  ██████  
+    //    ██    ██  ██    ██     ██   ██ ██      ██   ██ ██   ██ 
+    //    ██   ██   ██    ██     ██████  █████   ███████ ██   ██ 
+    //    ██  ██    ██    ██     ██   ██ ██      ██   ██ ██   ██ 
+    //    ██ ██      ██████      ██   ██ ███████ ██   ██ ██████ 
+
     this.read = function(addr)
     {
         var line = line_decode(addr);
@@ -124,32 +130,28 @@ function Apple2IO(vid)
             default:
 
 
-
-                if(this.ramcard.state.active  && // RAMCARD SOFT SWITCHES
-                    addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
-                {// 0080
-
-                    
-                    return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
+                
+                if(this.ramcard.state.active      && addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
+                {// 0080. = RAMCARD SOFT SWITCHES
+                    //return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
                 }
-                else if(this.ramcard.state.active &&
-                    addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+                else if(this.ramcard.state.active && addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
                 {// FD00
                     return this.ramcard.read(addr - ROM_ADDR);
                 }
 
-
-                else if(this.col80card.state.active &&
-                    addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
+                else if(this.col80card.state.active && addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
                 {
                     // TODO: read ROM from 80-column card !!
                     //alert("80_COL $"+oCOM.getHexWord(addr));
                 }
 
+
+                const ioLine = addr
+
                 // I/O ACTION MAP FOR READ OPERATIONS
                 if(CIO.ACTION_MAP.RD[addr]!==undefined)
                 {
-                    //if(addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[addr]);
                     return CIO.ACTION_MAP.RD[addr](addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
                 }
 
@@ -159,6 +161,12 @@ function Apple2IO(vid)
 
         return 0x00;
     }
+
+    //    ██     ██  ██████      ██     ██ ██████  ██ ████████ ███████ 
+    //    ██    ██  ██    ██     ██     ██ ██   ██ ██    ██    ██      
+    //    ██   ██   ██    ██     ██  █  ██ ██████  ██    ██    █████   
+    //    ██  ██    ██    ██     ██ ███ ██ ██   ██ ██    ██    ██      
+    //    ██ ██      ██████       ███ ███  ██   ██ ██    ██    ███████ 
 
     this.write = function(addr, d8)
     {
@@ -171,14 +179,19 @@ function Apple2IO(vid)
         if(CIO.ACTION_MAP.WR[addr]!==undefined)
         {
             //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-            return CIO.ACTION_MAP.WR[addr](addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+            return CIO.ACTION_MAP.WR[addr](addr,d8);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
         }
 
         // Implement same side-effects as read.
         this.read(addr);
     }
 
-    this.cycle = function() {}
+    this.cycle = function() 
+    {
+        // lookup if any active peripheral needs access to addresses space outside I/O range
+
+
+    }
 
     this.keypress = function(code)
     {
@@ -559,9 +572,9 @@ function Apple2IO(vid)
                 oPeri.state.pinfo = pinfo;
 
                 // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
-                if(_bHostROM && _act.HostROM) _act.HostROM.base  = pinfo.HostROM.from; else console.error("mounting HostROM of "+pinfo.PCODE+" failed");
-                if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from; else console.error("mounting SlotROM of "+pinfo.PCODE+" failed");
-                if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from; else console.error("mounting SlotIO of "+pinfo.PCODE+" failed");
+                if(_bHostROM) _act.HostROM.base  = pinfo.HostROM.from;
+                if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from;
+                if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from;
 
                 // Add non-functional metadata to callbacks so diagnostics can show
                 // the actual mounted owner behind each ACTION_MAP span.
@@ -570,13 +583,28 @@ function Apple2IO(vid)
                 tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
                 tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
 
+                // TODO: i has configurable granularities in ACTION MAP index e.g. ACTION_MAP.RD[i]
+                // suggestion: RD[0] contains granularity mask 1=(1<<0)=bit index + offset, 8=(1<<3)8=byte index + offset, 64=(1<<6)=8byte index,  512=(1<<9)=64byte index, 4096=(1<<12)=512byte index
+
+                // suggestion: RD[0] contains granularity mask 1=(1<<0)=bit index(0) + offset, 8=(1<<3)8=byte index(1) + offset, 64=(1<<6)=8byte index(2),  512=(1<<9)=64byte index(3), 4096=(1<<12)=512byte index(4), 32768=(1<<15)=4K index(5)
+                // (1<<0)=1 byte(1,65536), (1<<4)=16 bytes(2,4096), (1<<8)=256 bytes(3), (1<<12)=4K bytes(4)
+
+                // 4096 offsets of 16 bytes
+                // 16 granularities 
+
+                // I/O     C00 4 = Offset $C00<<8=$C000 and 1<<8=256 bytes granularity (8 entries)
+                    // Hostio  C00 0 = Offset $C00<<8=$C000 and 1<<0=1   byte  granularity (128 entries) 1<<7(3bits)
+                    // SlotIO  C08 4 = Offset $C08<<8=$C080 and 1<<4=16  bytes granularity (8 entries)   1<<3
+                    // SlotROM C10 8 = Offset $C08<<8=$C080 and 1<<8=256 bytes granularity (7 entries)
+
+                // HostROM C10 8 = Offset $C08<<8=$C800 and 1<<8=256 bytes granularity (8 entries)
+                // RAMCARD D00 C = Offset $D00<<8=$D000 and 1<<12=4K bytes granularity (4 entries)
 
                 if(_bHostROM && _act.HostROM.RD) { for(var i=pinfo.HostROM.from;i<=pinfo.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
                 if(_bSlotROM && _act.SlotROM.RD) { for(var i=pinfo.SlotROM.from;i<=pinfo.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
                     //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",_act.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of _act.SlotROM ?
                 if(_bSlotIO && _act.SlotIO.RD) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
                 if(_bSlotIO && _act.SlotIO.WR) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
-
 
                 function tagActionCallback(action,rangeName,op)
                 {

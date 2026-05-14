@@ -110,38 +110,37 @@ function AppleBoard()
                 model_match: model_match
             });
 
-            var cm = IOMAP_CALLS[IOMAP_ID]===undefined || IOMAP_CALLS[IOMAP_ID][name]===undefined
-                ? null
-                : IOMAP_CALLS[IOMAP_ID][name];
+            if(IOMAP_CALLS)
+            {
+                var cm = IOMAP_CALLS[IOMAP_ID]===undefined || IOMAP_CALLS[IOMAP_ID][name]===undefined ? null : IOMAP_CALLS[IOMAP_ID][name];
 
-            if(model_match && cm!=null && (cm.ST!=null || cm!=null))
-             {
-                var acts = behavior_list(act_name_str);
-                if(acts.indexOf("WR")>=0) output.WR[addr_n] = cm; // WRITE
-                if(acts.indexOf("RR")>=0) output.RR[addr_n] = cm; // DOUBLE READ
-                else if(acts.indexOf("RD")>=0) output.RD[addr_n] = cm; // READ
-                if(acts.indexOf("BI")>=0) output.BT[addr_n] = cm; // BIT
-                if(acts.indexOf("RG")>=0) output.RG[addr_n] = cm; // REGISTER
-                console.log(addr,addr_n,name,act_name_str,desc,cm);
+                if(model_match && cm!=null && (cm.ST!=null || cm!=null))
+                {
+                    var acts = behavior_list(act_name_str);
+                    if(acts.indexOf("WR")>=0) output.WR[addr_n] = cm; // WRITE
+                    if(acts.indexOf("RR")>=0) output.RR[addr_n] = cm; // DOUBLE READ
+                    else if(acts.indexOf("RD")>=0) output.RD[addr_n] = cm; // READ
+                    if(acts.indexOf("BI")>=0) output.BT[addr_n] = cm; // BIT
+                    if(acts.indexOf("RG")>=0) output.RG[addr_n] = cm; // REGISTER
+                    console.log(addr,addr_n,name,act_name_str,desc,cm);
+                }
             }
-
-            
+            else console.warn("IO_map() without IOMAP_CALLS")
         }
 
-       //console.table(IOMAP_TBL);
-       //console.log(JSON.stringify(iomap_rows)) 
+        console.table(IOMAP_TBL);
+        console.log(JSON.stringify(iomap_rows)); 
 
         this.IOMAP_ROWS = iomap_rows;
         return output;
-        
     }
-
 
     this.getBoardIORows = function(model)
     {
         model = model || (typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P");
 
-        apple2plus.hwObj().io.IO_map(model);   // refresh parsed rows for this model
+        
+        this.IO_map(model);   // refresh parsed rows for this model
 
         return (apple2plus.hwObj().io.IOMAP_ROWS || []).filter(function(r){
             return r.model_match
