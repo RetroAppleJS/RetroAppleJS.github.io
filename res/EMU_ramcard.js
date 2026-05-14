@@ -14,22 +14,27 @@ function RamCard()
     this.action = 
     { 
         "SlotIO" :{ 
-                    "RD":{ "callback":_read.bind(this) } 
-                   //,"WR":{ "callback":_write.bind(this)} 
-                }                                     // by default always 16 bytes
+                    "RD":{ "callback":_readSlotIO.bind(this) } 
+                  }                                     // by default always 16 bytes
     }
 
-    function _readSlotROM(){};
-    function _read(addr)
+    function _readSlotIO(addr)
     {
-        //oEMU.component.IO.RamCard.soft_switch
         var MEM_RAMCARD_IO =  0x80;
         return oEMU.component.IO.RamCard.soft_switch(addr - MEM_RAMCARD_IO);
     };
-    function _write(){
 
-
-
+    // TODO: these targets must be made by reconfiguring callbacks from memory D000->FFFF in EMU_apple2hw.js to this part
+    // these targets cannot be handled by this.action because D000->FFFF addresses are outside I/O range altogether
+    function _read(addr)
+    {
+        //const ROM_ADDR =    0xD000;
+        //return oEMU.component.IO.ramcard.read(addr - ROM_ADDR);
+    };
+    function _write(addr,d8)
+    {
+        //const ROM_ADDR =    0xD000;
+        //return oEMU.component.IO.ramcard.write(addr - ROM_ADDR,d8)
     };
     
 
