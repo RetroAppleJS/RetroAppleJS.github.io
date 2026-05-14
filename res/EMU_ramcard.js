@@ -11,16 +11,26 @@ function RamCard()
 {
     this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
     this.state = {"active":true,"slot":null};
-    
     this.action = 
     { 
-        "SlotIO" :{ "RD":{ "callback":_read.bind(this) }
-                    ,"WR":{ "callback":_write.bind(this)} }                                     // by default always 16 bytes
+        "SlotIO" :{ 
+                    "RD":{ "callback":_read.bind(this) } 
+                   //,"WR":{ "callback":_write.bind(this)} 
+                }                                     // by default always 16 bytes
     }
 
     function _readSlotROM(){};
-    function _read(){};
-    function _write(){};
+    function _read(addr)
+    {
+        //oEMU.component.IO.RamCard.soft_switch
+        var MEM_RAMCARD_IO =  0x80;
+        return oEMU.component.IO.RamCard.soft_switch(addr - MEM_RAMCARD_IO);
+    };
+    function _write(){
+
+
+
+    };
     
 
 
