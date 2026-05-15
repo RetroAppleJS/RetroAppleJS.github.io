@@ -17697,21 +17697,6 @@ function AppleDisk2()
             else                prenib0[256 + 257 - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
             if      (i < 2)     prenib0[256 + 1   - i] |=    ((d8 & 0x02) << 3) | ((d8 & 0x01) << 5);
         }
-/*
-        if(track==0 && sec==0)
-        {
-            for(var i=0;i<256;i+=16)
-            {
-                if (bDebug) console.log("dskBytes["+i+"] = "
-                     +oCOM.getHexByte(dskBytes[i])    + " " +oCOM.getHexByte(dskBytes[i+1])+" "  +oCOM.getHexByte(dskBytes[i+2]) + " "  +oCOM.getHexByte(dskBytes[i+3])
-                + " "+oCOM.getHexByte(dskBytes[i+4])  + " " +oCOM.getHexByte(dskBytes[i+5])+" "  +oCOM.getHexByte(dskBytes[i+6]) + " "  +oCOM.getHexByte(dskBytes[i+7])
-                + " "+oCOM.getHexByte(dskBytes[i+8])  + " " +oCOM.getHexByte(dskBytes[i+9])+" " +oCOM.getHexByte(dskBytes[i+10]) + " " +oCOM.getHexByte(dskBytes[i+11])
-                + " "+oCOM.getHexByte(dskBytes[i+12]) + " " +oCOM.getHexByte(dskBytes[i+13])+" "+oCOM.getHexByte(dskBytes[i+14]) + " " +oCOM.getHexByte(dskBytes[i+15])
-                );
-            }
-
-        }
-*/
 
         var postnib = new Array(256)
 
@@ -17750,21 +17735,6 @@ function AppleDisk2()
                 |   mb(p,0,1)    
             }
         }
-
-        /*
-        if(track==0 && sec==0)
-        {
-            for(var i=0;i<256;i+=16)
-            {
-                if(bDebug) console.log("postnib["+i+"] = "
-                    +oCOM.getHexByte(postnib[i])    + " " +oCOM.getHexByte(postnib[i+1])+" "  +oCOM.getHexByte(postnib[i+2]) + " "  +oCOM.getHexByte(postnib[i+3])
-                + " "+oCOM.getHexByte(postnib[i+4])  + " " +oCOM.getHexByte(postnib[i+5])+" "  +oCOM.getHexByte(postnib[i+6]) + " "  +oCOM.getHexByte(postnib[i+7])
-                + " "+oCOM.getHexByte(postnib[i+8])  + " " +oCOM.getHexByte(postnib[i+9])+" " +oCOM.getHexByte(postnib[i+10]) + " " +oCOM.getHexByte(postnib[i+11])
-                + " "+oCOM.getHexByte(postnib[i+12]) + " " +oCOM.getHexByte(postnib[i+13])+" "+oCOM.getHexByte(postnib[i+14]) + " " +oCOM.getHexByte(postnib[i+15])
-                );
-            }
-        }
-        */
 
         function mb(val,src_bit,dst_bit) { return (val&(1<<src_bit))<<dst_bit>>src_bit; }
 
@@ -17929,59 +17899,22 @@ function AppleDisk2()
             {
                 var gcrByte = trackByte(trackBase, dataStart + j);
                 var val = sixTwoLookup[gcrByte];
-
-                if (val < 0)
-                {
-                    console.error(
-                        "NIB2DSK DATA ERROR:"
-                        + " $T" + oCOM.getHexByte(trk)
-                        + " $S" + oCOM.getHexByte(sec)
-                        + " invalid GCR byte " + oCOM.getHexByte(gcrByte)
-                        + " at data offset " + j
-                    );
-                    return null;
-                }
-
+                if (val < 0) console.error("NIB2DSK DATA ERROR:" + " $T" + oCOM.getHexByte(trk) + " $S" + oCOM.getHexByte(sec) + " invalid GCR byte " + oCOM.getHexByte(gcrByte) + " at data offset " + j); return null;
                 var decoded = val ^ prev;
-
-                if (j < 86)
-                {
-                    // First 86 encoded bytes are prenib[341] down to prenib[256].
-                    prenib[341 - j] = decoded;
-                    prev = decoded;
-                }
-                else if (j < 342)
-                {
-                    // Remaining 256 encoded bytes are prenib[0] through prenib[255].
-                    prenib[j - 86] = decoded;
-                    prev = decoded;
-                }
-                else
-                {
-                    // Final byte is checksum. It should decode to zero.
-                    if (decoded != 0)
-                    {
-                        console.warn(
-                            "NIB2DSK CHECKSUM WARNING:"
-                            + " $T" + oCOM.getHexByte(trk)
-                            + " $S" + oCOM.getHexByte(sec)
-                            + " checksum decoded as " + oCOM.getHexByte(decoded)
-                        );
-                    }
-                }
+                if (j < 86) { prenib[341 - j] = decoded; prev = decoded; }                   // First 86 encoded bytes are prenib[341] down to prenib[256].
+                else if (j < 342) { prenib[j - 86] = decoded; prev = decoded; }              // Remaining 256 encoded bytes are prenib[0] through prenib[255].
+                else if (decoded != 0) { console.warn("NIB2DSK CHECKSUM WARNING:" + " $T" + oCOM.getHexByte(trk) + " $S" + oCOM.getHexByte(sec) + " checksum decoded as " + oCOM.getHexByte(decoded));}                     // Final byte is checksum. It should decode to zero.
             }
 
             var sectorBytes = new Array(256);
-            for (var i = 0; i < 256; i++)
-                sectorBytes[i] = (prenib[i] << 2) & 0xfc;
+            for (var i = 0; i < 256; i++) sectorBytes[i] = (prenib[i] << 2) & 0xfc;
 
             // Rebuild the low 2 bits from prenib[256..341].
             for (var j = 0; j < 86; j++)
             {
                 var p = prenib[341 - j];
 
-                // bytes 172..255
-                if (j + 172 < 256)
+                if (j + 172 < 256)            // bytes 172..255
                 {
                     sectorBytes[j + 172] |=
                         ((p & 0x20) >> 5) |   // p bit 5 -> data bit 0
