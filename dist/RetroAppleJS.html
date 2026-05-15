@@ -14252,10 +14252,10 @@ function Cpu6502(hwobj)
         switch (opcode) {
         case 0x00:   push(pc >> 8);  push(pc & 0xff);  push(p | P_B);  p |= P_I;  pc = readWord(IRQ_VECTOR);  break; // BRK
         case 0x01:   addr = ind_x(operand);  operand = readByte(addr);  or_instr(operand);  break; // ORA (ind,X)
-        case 0x04:   break; // NOP zeropage / DOP / SKB (illegal opcode, but 100% harmless)
+        case 0x04:   unofficial(opcode,pc); break; // NOP zeropage / DOP / SKB (unofficial opcode, but 100% harmless)
         case 0x05:   operand = readByte(operand);  or_instr(operand);  break; // ORA zero page
         case 0x06:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL zero page
-        case 0x07:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  break; // SLO zero page (illegal opcode)
+        case 0x07:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  unofficial(opcode,pc); break; // SLO zero page (unofficial opcode)
         case 0x08:   push(p | P_B);  break; // PHP
         case 0x09:   or_instr(operand);  break; // ORA imm
         case 0x0a:   a = asl_instr(a);  break; // ASL A
@@ -14391,6 +14391,7 @@ function Cpu6502(hwobj)
         case 0xbe:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  x = readByte(addr);  set_nz(x);  break; // LDX absolute, Y
         case 0xc0:   cmp_instr(y, operand);  break; // CPY imm
         case 0xc1:   addr = ind_x(operand);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP (ind, X)
+        case 0xc2:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
         case 0xc4:   operand = readByte(operand);  cmp_instr(y, operand);  break; // CPY zero
         case 0xc5:   operand = readByte(operand);  cmp_instr(a, operand);  break; // CMP zero
         case 0xc6:   d8 = (readByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC zero
@@ -14439,8 +14440,11 @@ function Cpu6502(hwobj)
             set_nz(d8);
             cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
-        default:  console.warn("Cpu6502:cycle: undefined opcode: %s pc=%s",opcode.toString(16), pc.toString(16));
+        default:  console.warn("Cpu6502:cycle: undefined opcode: 0x%s pc=$%s",opcode.toString(16), pc.toString(16).toUpperCase());
         }
+
+        //https://www.nesdev.org/wiki/CPU_unofficial_opcodes
+        function unofficial(opcode,pc) { console.warn("Cpu6502:cycle: unofficial opcode: 0x%s pc=$%s",opcode.toString(16), pc.toString(16).toUpperCase()); }
 
     }
 
