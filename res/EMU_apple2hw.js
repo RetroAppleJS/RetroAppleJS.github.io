@@ -10,6 +10,11 @@
 //if(oEMU===undefined) var oEMU = {"component":{"Hardware":new Apple2Hw()}}
 //else oEMU.component.Hardware = new Apple2Hw();
 
+// HARDWARE IS ACCESSING:
+// 1) RAM & VIDEO RAM
+// 2) I/O (--> relative address starting from $D000)
+// 3) ROM (--> relative address starting from $D000)
+
 function Apple2Hw(vid,keys)
 {
     var RAM_SIZE =      0xc000,
@@ -25,7 +30,6 @@ function Apple2Hw(vid,keys)
     var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
     var video = vid;                        
     this.io = new Apple2IO(video);
-    this.keys = keys;
 
     this.irq_signal = 0;        // unused
     this.nmi_signal = 0;
