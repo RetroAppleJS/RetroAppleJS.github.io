@@ -2548,7 +2548,6 @@ this.detectDiskImageType = function(imageBytes, filepath)
     }
 
 
-
     this.base64ToUint8Array = function(b64)
     {
         var bin = atob(b64);
@@ -2563,100 +2562,20 @@ this.detectDiskImageType = function(imageBytes, filepath)
     this.getOfflineDiskBytes = function(arg, full_path)
     {
         var disk2 = apple2plus.DiskObj();
-
-        var rec =
-            disk2.OfflineDisks[arg.path] ||
-            disk2.OfflineDisks[arg.name] ||
-            disk2.OfflineDisks[full_path];
-
-        if(rec === undefined)
-            return null;
-
-        if(typeof rec == "string")
-        {
-            rec = {
-                encoding:"zlib-base64",
-                data:rec
-            };
-        }
-
+        var rec = disk2.OfflineDisks[arg.path] || disk2.OfflineDisks[arg.name] || disk2.OfflineDisks[full_path];
+        if(rec === undefined) return null;
+        if(typeof rec == "string") { rec = { encoding:"zlib-base64", data:rec }; }
         var bytes = disk2.base64ToUint8Array(rec.data);
-
         if(rec.encoding == "zlib-base64")
         {
             if(typeof pako == "undefined" || typeof pako.inflate != "function")
                 throw new Error("Offline disk is zlib-base64, but pako.inflate is not available");
-
             bytes = pako.inflate(bytes);
         }
-        else if(rec.encoding == "base64")
-        {
-            // already decoded above
-        }
-        else
-        {
-            throw new Error("Unsupported offline disk encoding: " + rec.encoding);
-        }
-
+        else if(rec.encoding == "base64") { }  // already decoded above
+        else { throw new Error("Unsupported offline disk encoding: " + rec.encoding); }
         return Array.from(bytes);
     }
-
-
-
-    this.base64ToUint8Array = function(b64)
-    {
-        var bin = atob(b64);
-        var out = new Uint8Array(bin.length);
-
-        for(var i = 0; i < bin.length; i++)
-            out[i] = bin.charCodeAt(i) & 0xff;
-
-        return out;
-    }
-
-    this.getOfflineDiskBytes = function(arg, full_path)
-    {
-        var disk2 = apple2plus.DiskObj();
-
-        var rec =
-            disk2.OfflineDisks[arg.path] ||
-            disk2.OfflineDisks[arg.name] ||
-            disk2.OfflineDisks[full_path];
-
-        if(rec === undefined)
-            return null;
-
-        if(typeof rec == "string")
-        {
-            rec = {
-                encoding:"zlib-base64",
-                data:rec
-            };
-        }
-
-        var bytes = disk2.base64ToUint8Array(rec.data);
-
-        if(rec.encoding == "zlib-base64")
-        {
-            if(typeof pako == "undefined" || typeof pako.inflate != "function")
-                throw new Error("Offline disk is zlib-base64, but pako.inflate is not available");
-
-            bytes = pako.inflate(bytes);
-        }
-        else if(rec.encoding == "base64")
-        {
-            // already decoded above
-        }
-        else
-        {
-            throw new Error("Unsupported offline disk encoding: " + rec.encoding);
-        }
-
-        return Array.from(bytes);
-    }
-
-
-
 
     this.diskInputEl = function(drv)
     {
@@ -2676,10 +2595,6 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
         return form.querySelector("input[type=button]");
     }
-
-    
-
-    
 
     this.driveButtonHover = function(btn, hover)
     {
@@ -2722,9 +2637,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
             var el = this.diskMiddleEl(drv);
             if(el == null) return;
-
             el.innerHTML = this.diskCatalogLabelHTML(drv, fileName);
-
             var btn = document.getElementById("but_" + drv);
             if(btn != null)
             {
