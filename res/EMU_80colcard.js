@@ -98,3 +98,4 @@ function col80card()
         console.log("col80card","read(0x"+oCOM.getHexMulti(addr+0xC000,4)+" -> "+idxAddr+")");
         // TODO: THE VIDEX HAS TO DO SOMETHING WITH WHAT THE PERIPHERAL RECEIVES FROM THE BUS
     }
+}
