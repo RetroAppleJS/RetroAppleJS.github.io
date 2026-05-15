@@ -330,11 +330,14 @@ function Cpu6502(hwobj)
             writeByte(addr, d8);
             cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
+        case 0x80:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
         case 0x81:   addr = ind_x(operand);  writeByte(addr, a);  break; // STA (ind, X)
+        case 0x82:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
         case 0x84:   writeByte(operand, y);  break; // STY zero page
         case 0x85:   writeByte(operand, a);  break; // STA zero page
         case 0x86:   writeByte(operand, x);  break; // STX zero page
         case 0x88:   y = --y & 0xff;  set_nz(y);  break; // DEY
+        case 0x89:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP on NMOS 6502
         case 0x8a:   a = x;  set_nz(a);  break; // TXA
         case 0x8c:   writeByte(operand, y);  break; // STY absolute
         case 0x8d:   writeByte(operand, a);  break; // STA absolute
@@ -399,6 +402,7 @@ function Cpu6502(hwobj)
             break;
         case 0xe0:   cmp_instr(x, operand);  break; // CPX imm
         case 0xe1:   addr = ind_x(operand);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC (ind,X)
+        case 0xe2:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
         case 0xe4:   operand = readByte(operand);  cmp_instr(x, operand);  break; // CPX zero
         case 0xe5:   operand = readByte(operand);  sbc_instr(operand);  break; // SBC zero
         case 0xe6:   d8 = (readByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC zero
