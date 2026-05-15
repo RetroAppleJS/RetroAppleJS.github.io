@@ -20,10 +20,12 @@ function col80card()
     this.state = {"active":true,"slot":null};
     this.action = 
     { 
+        /*
          "HostROM":{ "RD":{"callback":readHostROM.bind(this)}} 
         ,"SlotROM":{ "RD":{"callback":readSlotROM.bind(this)}}                                // by default always 256 bytes
         ,"SlotIO" :{ "RD":{"callback":read.bind(this)}
                     ,"WR":{"callback":write.bind(this)}}                                      // by default always 16 bytes
+        */
     }
 
     this.init = function()
@@ -96,6 +98,3 @@ function col80card()
         console.log("col80card","read(0x"+oCOM.getHexMulti(addr+0xC000,4)+" -> "+idxAddr+")");
         // TODO: THE VIDEX HAS TO DO SOMETHING WITH WHAT THE PERIPHERAL RECEIVES FROM THE BUS
     }
-
-
-}
