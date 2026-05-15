@@ -27,6 +27,7 @@ function Apple2Plus(context)
 
     var hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");
     this.hw = hw;
+    oEMU.component.Hardware = hw;
     
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
