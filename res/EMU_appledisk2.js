@@ -11,8 +11,8 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
 function AppleDisk2()
 {
-    var bDebug   = false;
-    var bDebug_N = false;   // debug disk noise only 
+    var bDebug   = true;
+    var bDebug_N = true;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     this.state = 
@@ -31,7 +31,13 @@ function AppleDisk2()
             ,"q6":0
             ,"q7":0
             ,"offset":0
-            ,"stats":{"motor":0}
+            ,"stats":{
+                "motor":0
+                ,"track":0
+                ,"read":0
+                ,"write":0
+                ,"motorOffTimer":null
+            }
             ,"LED":false
         },{
              "track":0
@@ -41,7 +47,13 @@ function AppleDisk2()
             ,"q6":0
             ,"q7":0
             ,"offset":0
-            ,"stats":{"motor":0}
+            ,"stats":{
+                "motor":0
+                ,"track":0
+                ,"read":0
+                ,"write":0
+                ,"motorOffTimer":null
+            }
             ,"LED":false
         }]
     };
@@ -67,9 +79,7 @@ function AppleDisk2()
         {
             var oldMotor = this.state.hw[i].motor;
             var newMotor = (enabled && i == deviceN) ? 1 : 0;
-
             this.state.hw[i].motor = newMotor;
-
             if (oldMotor != newMotor)
             {
                 this.traceChange(
@@ -80,6 +90,9 @@ function AppleDisk2()
                     newMotor,
                     {"reason":reason}
                 );
+
+                if (newMotor) this.cancelTrackStatsFlush(i);
+                else this.scheduleTrackStatsFlush(i, "SPINDOWN", 1000);
             }
         }
     };
@@ -143,6 +156,8 @@ function AppleDisk2()
         this.state.hw[1].offset = 0;
 
         this.state.drv = 0;
+        this.cancelTrackStatsFlush(0);
+        this.cancelTrackStatsFlush(1);
     }
 
     this.getDataObj = function() { return this.state.hw }
@@ -151,6 +166,76 @@ function AppleDisk2()
     
     this.update_logs = function(name) {}   // overridable function
     
+    this.flushTrackStats = function(deviceN, reason)
+    {
+        if (!bDebug) return;
+        if (deviceN === undefined) deviceN = this.state.drv;
+
+        var hw = this.state.hw[deviceN];
+        if (!hw || !hw.stats) return;
+
+        var stats = hw.stats;
+        var track = stats.track;
+
+        // Avoid noisy empty messages.
+        if ((stats.read || 0) == 0 && (stats.write || 0) == 0)
+            return;
+
+        console.log(
+            "AppleDisk2: D%d track %d - bytes R/W %d / %d %s",
+            deviceN + 1,
+            track,
+            stats.read || 0,
+            stats.write || 0,
+            reason ? "("+reason+")":""
+        );
+
+        stats.read = 0;
+        stats.write = 0;
+        stats.track = hw.track;
+    };
+
+
+    this.scheduleTrackStatsFlush = function(deviceN, reason, delay)
+    {
+        if (deviceN === undefined) deviceN = this.state.drv;
+        if (delay === undefined) delay = 1000;
+
+        var hw = this.state.hw[deviceN];
+        if (!hw || !hw.stats) return;
+
+        var stats = hw.stats;
+        var disk2 = this;
+
+        if (stats.motorOffTimer)
+            clearTimeout(stats.motorOffTimer);
+
+        stats.motorOffTimer = setTimeout(function()
+        {
+            stats.motorOffTimer = null;
+
+            // Only flush if this drive is still spun down.
+            // If motor came back on, MOTOR_ON should already have cancelled this timer,
+            // but this extra guard makes it robust.
+            if (disk2.state.hw[deviceN].motor == 0)
+                disk2.flushTrackStats(deviceN);
+
+        }, delay);
+    };
+
+    this.cancelTrackStatsFlush = function(deviceN)
+    {
+        if (deviceN === undefined) deviceN = this.state.drv;
+
+        var hw = this.state.hw[deviceN];
+        if (!hw || !hw.stats) return;
+
+        if (hw.stats.motorOffTimer)
+        {
+            clearTimeout(hw.stats.motorOffTimer);
+            hw.stats.motorOffTimer = null;
+        }
+    };
 
     //  ██████  ███████  █████  ██████  
     //  ██   ██ ██      ██   ██ ██   ██ 
@@ -171,17 +256,18 @@ function AppleDisk2()
         const deviceN = this.state.drv
         if (addr < 0x08) 
         {
-            // Stepper motor on.
-            if ((addr & 1) != 0) {
+            if ((addr & 1) != 0)           // Stepper motor on
+            {
                 var p = ((addr >> 1) & 3); // phase we're turning on.
 
-                if (((this.state.hw[deviceN].phase + 1) & 3) == p) {
-                    // Ascending order, track arm moves inward.
-                    this.state.hw[deviceN].phase = p;
+                if (((this.state.hw[deviceN].phase + 1) & 3) == p) 
+                {
+                    this.state.hw[deviceN].phase = p;     // Ascending order, track arm moves inward.
                     this.update_logs("phase");
                     if ((this.state.hw[deviceN].phase & 1) == 0)
                     {
                         var oldTrack = this.state.hw[deviceN].track;
+                        this.flushTrackStats(deviceN);
                         if (++this.state.hw[deviceN].track >= 35)
                         {
                             this.state.hw[deviceN].track = 35; // CLICK! CLICK! CLICK!
@@ -190,6 +276,7 @@ function AppleDisk2()
                         }
                         else
                         {
+                            this.state.hw[deviceN].stats.track = this.state.hw[deviceN].track;
                             this.dN_update("ARM_OUT");
                             this.traceArmStep(deviceN, "ARM_OUT", oldTrack, this.state.hw[deviceN].track);
                         }
@@ -202,21 +289,23 @@ function AppleDisk2()
                     if ((this.state.hw[deviceN].phase & 1) == 0)
                     {
                         var oldTrack = this.state.hw[deviceN].track;
+                        this.flushTrackStats(deviceN);
                         if (--this.state.hw[deviceN].track < 0)
                         {
                             this.state.hw[deviceN].track = 0; // CLICK! CLICK! CLICK!
+                            this.state.hw[deviceN].stats.track = this.state.hw[deviceN].track;
                             this.dN_update("CLICK_IN");
                             this.traceArmStep(deviceN, "CLICK_IN", oldTrack, this.state.hw[deviceN].track);
                         }
                         else
                         {
+                            this.state.hw[deviceN].stats.track = this.state.hw[deviceN].track;
                             this.dN_update("ARM_IN");
                             this.traceArmStep(deviceN, "ARM_IN", oldTrack, this.state.hw[deviceN].track);
                         }
                     }
                 }
             }
-            
         }
         else {
             switch (addr) {
@@ -273,10 +362,14 @@ function AppleDisk2()
 
                 var loc = this.state.hw[deviceN].track * TRACK_SIZE + this.state.hw[deviceN].offset;
 
+                var stats = this.state.hw[deviceN].stats;
+                if (stats) stats.track = this.state.hw[deviceN].track;
+
                 if (this.state.hw[deviceN].q7)
                 {
                     // Write to disk.
                     this.state.diskData[deviceN][loc] = this.state.hw[deviceN].data_latch;
+                    if (this.state.hw[deviceN].stats) this.state.hw[deviceN].stats.write++;
                     this.traceDataByte("WRITE", deviceN, loc, this.state.hw[deviceN].data_latch);
                     return this.state.hw[deviceN].data_latch;
                 }
@@ -284,6 +377,7 @@ function AppleDisk2()
                 {
                     // Read from disk.
                     var d8 = this.state.diskData[deviceN][loc];
+                    if (this.state.hw[deviceN].stats) this.state.hw[deviceN].stats.read++;
                     this.traceDataByte("READ", deviceN, loc, d8);
                     return d8;
                 }
@@ -339,13 +433,15 @@ function AppleDisk2()
     //setDiskData: .DSK LEN:143360 CRC32: E766F072
     //setDiskData: .NIB LEN:232960 CRC32: 435A9A45
 
-    this.setDiskData = function(imageBytes, deviceID)
+    this.setDiskData = function(imageBytes, deviceID, filepath)
     {
         if (imageBytes === undefined || deviceID === undefined) return;
 
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
-        var info = this.detectDiskImageType(imageBytes);
-        console.log("DISK info = "+JSON.stringify(info));
+        var info = this.detectDiskImageType(imageBytes, filepath);
+
+        console.log("DISK info = " + JSON.stringify(info));
+
         var nibBytes;
 
         switch (info.type)
@@ -363,9 +459,6 @@ function AppleDisk2()
                 break;
 
             case "woz":
-                // Detection is possible here, but actual WOZ loading needs a parser.
-                // For simple, unprotected 5.25" disks this could later become:
-                // nibBytes = this.convertWoz2Nib(imageBytes);
                 throw new Error("WOZ detected, but convertWoz2Nib() is not implemented yet");
 
             default:
@@ -390,7 +483,7 @@ function AppleDisk2()
     this.getDiskData = function(deviceID)
     {
         if(deviceID===undefined) return;
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         this.traceFlush("getDiskData");
         var nibBytes = this.state.diskData[deviceN];
         var dskBytes = this.convertNib2Dsk(nibBytes);
@@ -408,7 +501,7 @@ function AppleDisk2()
     this.isDiskData = function(deviceID)
     {
         if(deviceID===undefined) return;
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID,"DISKII");
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         return this.state.diskData[deviceN]!=null;
     }
 
@@ -948,242 +1041,503 @@ function AppleDisk2()
     //    ██████  ██ ███████ ██   ██        ██       ██    ██      ███████ 
 
 
-    this.detectDiskImageType = function(imageBytes)
+this.detectDiskImageType = function(imageBytes, filepath)
+{
+    if (!imageBytes)
+        return { type:"unknown", confidence:0, reason:"no data" };
+
+    const DSK_SIZE = 143360;   // 35 * 16 * 256
+    const NIB_SIZE = 232960;   // 35 * 6656
+    const TRACKS = 35;
+    const SECTORS = 16;
+    const SECTOR_SIZE = 256;
+    const TRACK_SIZE_DSK = SECTORS * SECTOR_SIZE;
+    const TRACK_SIZE_NIB = 6656;
+    const PRODOS_TOTAL_BLOCKS_525 = 280;
+
+    filepath = filepath || "";
+    var ext = "";
+    var m = filepath.toLowerCase().match(/\.([a-z0-9]+)$/);
+    if (m) ext = m[1];
+
+    function b(off)
     {
-        if (!imageBytes) return { type:"unknown", confidence:0, reason:"no data" };
-
-        const DSK_SIZE = 143360;   // 35 * 16 * 256
-        const NIB_SIZE = 232960;   // 35 * 6656
-        const TRACKS = 35;
-        const SECTORS = 16;
-        const SECTOR_SIZE = 256;
-        const TRACK_SIZE_DSK = SECTORS * SECTOR_SIZE;
-        const TRACK_SIZE_NIB = 6656;
-
-        function b(off)
-        {
-            return imageBytes[off] & 0xff;
-        }
-
-        function validTrack(t)
-        {
-            return t >= 0 && t < TRACKS;
-        }
-
-        function validSector(s)
-        {
-            return s >= 0 && s < SECTORS;
-        }
-
-        function isWoz()
-        {
-            if (imageBytes.length < 12) return false;
-
-            // "WOZ1" or "WOZ2", followed by FF 0A 0D 0A.
-            return imageBytes[0] == 0x57 && // W
-                imageBytes[1] == 0x4f && // O
-                imageBytes[2] == 0x5a && // Z
-                (imageBytes[3] == 0x31 || imageBytes[3] == 0x32) &&
-                imageBytes[4] == 0xff &&
-                imageBytes[5] == 0x0a &&
-                imageBytes[6] == 0x0d &&
-                imageBytes[7] == 0x0a;
-        }
-
-        function findSeq(start, end, b0, b1, b2)
-        {
-            for (var i = start; i <= end - 3; i++)
-                if (b(i) == b0 && b(i + 1) == b1 && b(i + 2) == b2)
-                    return true;
-
-            return false;
-        }
-
-        function looksLikeNib()
-        {
-            if (imageBytes.length != NIB_SIZE) return false;
-
-            var goodTracks = 0;
-
-            for (var track = 0; track < TRACKS; track++)
-            {
-                var base = track * TRACK_SIZE_NIB;
-                var end = base + TRACK_SIZE_NIB;
-
-                var hasAddressPrologue = findSeq(base, end, 0xd5, 0xaa, 0x96);
-                var hasDataPrologue    = findSeq(base, end, 0xd5, 0xaa, 0xad);
-
-                if (hasAddressPrologue && hasDataPrologue)
-                    goodTracks++;
-            }
-
-            // Be tolerant: some tracks may be damaged, oddly aligned, or non-standard.
-            return goodTracks >= 20;
-        }
-
-        const raw2dos = [
-            0x0, 0x7, 0xE, 0x6,
-            0xD, 0x5, 0xC, 0x4,
-            0xB, 0x3, 0xA, 0x2,
-            0x9, 0x1, 0x8, 0xF
-        ];
-
-        const raw2prodos = [
-            0x0, 0x8, 0x1, 0x9,
-            0x2, 0xA, 0x3, 0xB,
-            0x4, 0xC, 0x5, 0xD,
-            0x6, 0xE, 0x7, 0xF
-        ];
-
-        function invertMap(raw2file)
-        {
-            var out = new Array(16);
-            for (var raw = 0; raw < 16; raw++)
-                out[raw2file[raw]] = raw;
-            return out;
-        }
-
-        const prodosPos2Raw = invertMap(raw2prodos);
-
-        function byteAtPhysicalSector(track, rawSector, index, raw2file)
-        {
-            var fileSector = raw2file[rawSector];
-            return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + index);
-        }
-
-        function byteAtProDOSBlock(block, index, raw2file)
-        {
-            var logicalSector = block * 2 + Math.floor(index / SECTOR_SIZE);
-            var track = Math.floor(logicalSector / SECTORS);
-            var prodosSectorPosition = logicalSector & 0x0f;
-
-            var rawSector = prodosPos2Raw[prodosSectorPosition];
-            var fileSector = raw2file[rawSector];
-
-            return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + (index & 0xff));
-        }
-
-        function scoreDOS33(raw2file)
-        {
-            var score = 0;
-
-            // DOS 3.3 VTOC is physical track 17, sector 0.
-            var catTrack  = byteAtPhysicalSector(17, 0, 1, raw2file);
-            var catSector = byteAtPhysicalSector(17, 0, 2, raw2file);
-            var dosRel    = byteAtPhysicalSector(17, 0, 3, raw2file);
-
-            if (!validTrack(catTrack) || !validSector(catSector))
-                return 0;
-
-            if (catTrack == 17) score += 2;
-            else score += 1;
-
-            if (dosRel >= 1 && dosRel <= 3)
-                score += 1;
-
-            // Follow a few catalog sectors. This helps distinguish DOS-order
-            // from ProDOS-order because sectors after 15 are not at the same offsets.
-            var t = catTrack;
-            var s = catSector;
-            var seen = {};
-
-            for (var i = 0; i < 16; i++)
-            {
-                if (!validTrack(t) || !validSector(s)) break;
-
-                var key = t + ":" + s;
-                if (seen[key]) break;
-                seen[key] = true;
-
-                var nextTrack  = byteAtPhysicalSector(t, s, 1, raw2file);
-                var nextSector = byteAtPhysicalSector(t, s, 2, raw2file);
-
-                if (nextTrack == 0 && nextSector == 0)
-                {
-                    score += 2;
-                    break;
-                }
-
-                if (validTrack(nextTrack) && validSector(nextSector))
-                    score += 2;
-                else
-                {
-                    score -= 2;
-                    break;
-                }
-
-                t = nextTrack;
-                s = nextSector;
-            }
-
-            return score;
-        }
-
-        function scoreProDOS(raw2file)
-        {
-            var score = 0;
-
-            // ProDOS volume directory normally starts at block 2.
-            // First directory entry starts at byte 4 of the block.
-            var storageAndNameLen = byteAtProDOSBlock(2, 4, raw2file);
-            var storageType = storageAndNameLen >> 4;
-            var nameLen = storageAndNameLen & 0x0f;
-
-            if (storageType == 0x0f && nameLen >= 1 && nameLen <= 15)
-                score += 4;
-            else
-                return 0;
-
-            // Volume name should be mostly printable Apple II / ProDOS filename chars.
-            var printable = 0;
-            for (var i = 0; i < nameLen; i++)
-            {
-                var c = byteAtProDOSBlock(2, 5 + i, raw2file);
-                if ((c >= 0x41 && c <= 0x5a) || // A-Z
-                    (c >= 0x30 && c <= 0x39) || // 0-9
-                    c == 0x2e)                 // .
-                    printable++;
-            }
-
-            if (printable == nameLen)
-                score += 2;
-
-            // Directory header values commonly found in ProDOS volume directory.
-            var entryLength = byteAtProDOSBlock(2, 0x23, raw2file);
-            var entriesPerBlock = byteAtProDOSBlock(2, 0x24, raw2file);
-
-            if (entryLength >= 0x27 && entryLength <= 0x40)
-                score += 1;
-
-            if (entriesPerBlock >= 10 && entriesPerBlock <= 13)
-                score += 1;
-
-            return score;
-        }
-
-        if (isWoz())
-            return { type:"woz", confidence:1.0, reason:"WOZ magic header" };
-
-        if (looksLikeNib())
-            return { type:"nib", confidence:0.95, reason:"NIB size and sector prologues" };
-
-        if (imageBytes.length == DSK_SIZE)
-        {
-            var dskScore = scoreDOS33(raw2dos) + scoreProDOS(raw2dos);
-            var poScore  = scoreDOS33(raw2prodos) + scoreProDOS(raw2prodos);
-
-            if (poScore >= dskScore + 3)
-                return { type:"po", confidence:0.85, reason:"ProDOS-order structures score higher", dskScore:dskScore, poScore:poScore };
-
-            if (dskScore >= poScore + 3)
-                return { type:"dsk", confidence:0.85, reason:"DOS-order structures score higher", dskScore:dskScore, poScore:poScore };
-
-            // 140 KB flat images have no magic header, so this can happen.
-            return { type:"dsk", confidence:0.50, ambiguous:true, reason:"140 KB flat image; sector order not proven", dskScore:dskScore, poScore:poScore };
-        }
-
-        return { type:"unknown", confidence:0, reason:"unknown size or unsupported format" };
+        return imageBytes[off] & 0xff;
     }
+
+    function validTrack(t)
+    {
+        return t >= 0 && t < TRACKS;
+    }
+
+    function validSector(s)
+    {
+        return s >= 0 && s < SECTORS;
+    }
+
+    function isWoz()
+    {
+        if (imageBytes.length < 12) return false;
+
+        return imageBytes[0] == 0x57 && // W
+               imageBytes[1] == 0x4f && // O
+               imageBytes[2] == 0x5a && // Z
+              (imageBytes[3] == 0x31 || imageBytes[3] == 0x32) &&
+               imageBytes[4] == 0xff &&
+               imageBytes[5] == 0x0a &&
+               imageBytes[6] == 0x0d &&
+               imageBytes[7] == 0x0a;
+    }
+
+    function findSeq(start, end, b0, b1, b2)
+    {
+        for (var i = start; i <= end - 3; i++)
+            if (b(i) == b0 && b(i + 1) == b1 && b(i + 2) == b2)
+                return true;
+
+        return false;
+    }
+
+    function looksLikeNib()
+    {
+        if (imageBytes.length != NIB_SIZE) return false;
+
+        var goodTracks = 0;
+
+        for (var track = 0; track < TRACKS; track++)
+        {
+            var base = track * TRACK_SIZE_NIB;
+            var end = base + TRACK_SIZE_NIB;
+
+            var hasAddressPrologue = findSeq(base, end, 0xd5, 0xaa, 0x96);
+            var hasDataPrologue    = findSeq(base, end, 0xd5, 0xaa, 0xad);
+
+            if (hasAddressPrologue && hasDataPrologue)
+                goodTracks++;
+        }
+
+        return goodTracks >= 20;
+    }
+
+    const raw2dos = [
+        0x0, 0x7, 0xE, 0x6,
+        0xD, 0x5, 0xC, 0x4,
+        0xB, 0x3, 0xA, 0x2,
+        0x9, 0x1, 0x8, 0xF
+    ];
+
+    const raw2prodos = [
+        0x0, 0x8, 0x1, 0x9,
+        0x2, 0xA, 0x3, 0xB,
+        0x4, 0xC, 0x5, 0xD,
+        0x6, 0xE, 0x7, 0xF
+    ];
+
+    function invertMap(raw2file)
+    {
+        var out = new Array(16);
+        for (var raw = 0; raw < 16; raw++)
+            out[raw2file[raw]] = raw;
+        return out;
+    }
+
+    const prodosPos2Raw = invertMap(raw2prodos);
+
+    function byteAtPhysicalSector(track, rawSector, index, raw2file)
+    {
+        var fileSector = raw2file[rawSector];
+        return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + index);
+    }
+
+    function byteAtProDOSBlock(block, index, raw2file)
+    {
+        var logicalSector = block * 2 + Math.floor(index / SECTOR_SIZE);
+        var track = Math.floor(logicalSector / SECTORS);
+        var prodosSectorPosition = logicalSector & 0x0f;
+
+        var rawSector = prodosPos2Raw[prodosSectorPosition];
+        var fileSector = raw2file[rawSector];
+
+        return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + (index & 0xff));
+    }
+
+    function wordAtProDOSBlock(block, index, raw2file)
+    {
+        return byteAtProDOSBlock(block, index, raw2file)
+             | (byteAtProDOSBlock(block, index + 1, raw2file) << 8);
+    }
+
+    function scoreDOS33(raw2file)
+    {
+        var score = 0;
+
+        // DOS 3.3 VTOC is normally physical track 17, sector 0.
+        var catTrack  = byteAtPhysicalSector(17, 0, 1, raw2file);
+        var catSector = byteAtPhysicalSector(17, 0, 2, raw2file);
+        var dosRel    = byteAtPhysicalSector(17, 0, 3, raw2file);
+
+        if (!validTrack(catTrack) || !validSector(catSector))
+            return 0;
+
+        if (catTrack == 17) score += 3;
+        else score += 1;
+
+        if (dosRel >= 1 && dosRel <= 3)
+            score += 1;
+
+        var t = catTrack;
+        var s = catSector;
+        var seen = {};
+
+        for (var i = 0; i < 16; i++)
+        {
+            if (!validTrack(t) || !validSector(s)) break;
+
+            var key = t + ":" + s;
+            if (seen[key]) break;
+            seen[key] = true;
+
+            var nextTrack  = byteAtPhysicalSector(t, s, 1, raw2file);
+            var nextSector = byteAtPhysicalSector(t, s, 2, raw2file);
+
+            if (nextTrack == 0 && nextSector == 0)
+            {
+                score += 2;
+                break;
+            }
+
+            if (validTrack(nextTrack) && validSector(nextSector))
+                score += 2;
+            else
+            {
+                score -= 2;
+                break;
+            }
+
+            t = nextTrack;
+            s = nextSector;
+        }
+
+        return score;
+    }
+
+    function validProDOSNameChar(c, first)
+    {
+        if (first)
+            return c >= 0x41 && c <= 0x5a;          // A-Z
+
+        return (c >= 0x41 && c <= 0x5a) ||          // A-Z
+               (c >= 0x30 && c <= 0x39) ||          // 0-9
+                c == 0x2e;                          // .
+    }
+
+    function scoreProDOS(raw2file)
+    {
+        var score = 0;
+        var reasons = [];
+        var criticalFail = false;
+
+        // ProDOS volume directory normally starts at block 2.
+        // A real volume directory block has:
+        //   +0: previous block pointer, usually 0
+        //   +2: next block pointer, often 3 for an empty 140 KB volume
+        //   +4: volume directory header entry, storage type F
+        var prevBlock = wordAtProDOSBlock(2, 0x00, raw2file);
+        var nextBlock = wordAtProDOSBlock(2, 0x02, raw2file);
+
+        if (prevBlock == 0)
+        {
+            score += 4;
+            reasons.push("prevBlock=0");
+        }
+        else
+        {
+            score -= 4;
+            criticalFail = true;
+            reasons.push("bad prevBlock=" + prevBlock);
+        }
+
+        if (nextBlock == 0 || (nextBlock >= 3 && nextBlock < PRODOS_TOTAL_BLOCKS_525))
+        {
+            score += 2;
+            reasons.push("nextBlock plausible=" + nextBlock);
+        }
+        else
+        {
+            score -= 4;
+            criticalFail = true;
+            reasons.push("bad nextBlock=" + nextBlock);
+        }
+
+        var storageAndNameLen = byteAtProDOSBlock(2, 0x04, raw2file);
+        var storageType = storageAndNameLen >> 4;
+        var nameLen = storageAndNameLen & 0x0f;
+
+        if (storageType == 0x0f && nameLen >= 1 && nameLen <= 15)
+        {
+            score += 4;
+            reasons.push("volume header storage=F nameLen=" + nameLen);
+        }
+        else
+        {
+            return {
+                score:score - 8,
+                strong:false,
+                reasons:reasons.concat(["bad volume header byte=" + storageAndNameLen])
+            };
+        }
+
+        var validName = true;
+        var name = "";
+
+        for (var i = 0; i < nameLen; i++)
+        {
+            var c = byteAtProDOSBlock(2, 0x05 + i, raw2file);
+            name += String.fromCharCode(c);
+
+            if (!validProDOSNameChar(c, i == 0))
+                validName = false;
+        }
+
+        if (validName)
+        {
+            score += 5;
+            reasons.push("valid volume name=" + name);
+        }
+        else
+        {
+            score -= 5;
+            criticalFail = true;
+            reasons.push("invalid volume name");
+        }
+
+        // Unused filename bytes in a ProDOS volume directory header are normally zero.
+        var zeroNamePadding = true;
+        for (var p = 0x05 + nameLen; p < 0x14; p++)
+        {
+            if (byteAtProDOSBlock(2, p, raw2file) != 0)
+            {
+                zeroNamePadding = false;
+                break;
+            }
+        }
+
+        if (zeroNamePadding)
+        {
+            score += 3;
+            reasons.push("name padding zero");
+        }
+        else
+        {
+            score -= 2;
+            criticalFail = true;
+            reasons.push("name padding nonzero");
+        }
+
+        // These are strong ProDOS volume-directory-header fields.
+        // For a normal 5.25" ProDOS volume:
+        //   entry length      = $27
+        //   entries per block = 13
+        //   total blocks      = 280
+        var entryLength = byteAtProDOSBlock(2, 0x23, raw2file);
+        var entriesPerBlock = byteAtProDOSBlock(2, 0x24, raw2file);
+        var fileCount = wordAtProDOSBlock(2, 0x25, raw2file);
+        var bitmapBlock = wordAtProDOSBlock(2, 0x27, raw2file);
+        var totalBlocks = wordAtProDOSBlock(2, 0x29, raw2file);
+
+        if (entryLength == 0x27)
+        {
+            score += 4;
+            reasons.push("entryLength=0x27");
+        }
+        else
+        {
+            score -= 3;
+            criticalFail = true;
+            reasons.push("bad entryLength=" + entryLength);
+        }
+
+        if (entriesPerBlock == 0x0d)
+        {
+            score += 4;
+            reasons.push("entriesPerBlock=13");
+        }
+        else
+        {
+            score -= 3;
+            criticalFail = true;
+            reasons.push("bad entriesPerBlock=" + entriesPerBlock);
+        }
+
+        if (fileCount <= entriesPerBlock * PRODOS_TOTAL_BLOCKS_525)
+        {
+            score += 1;
+            reasons.push("fileCount plausible=" + fileCount);
+        }
+        else
+        {
+            score -= 1;
+            criticalFail = true;
+            reasons.push("bad fileCount=" + fileCount);
+        }
+
+        if (bitmapBlock >= 3 && bitmapBlock < PRODOS_TOTAL_BLOCKS_525)
+        {
+            score += 3;
+            reasons.push("bitmapBlock plausible=" + bitmapBlock);
+        }
+        else
+        {
+            score -= 3;
+            criticalFail = true;
+            reasons.push("bad bitmapBlock=" + bitmapBlock);
+        }
+
+        if (totalBlocks == PRODOS_TOTAL_BLOCKS_525)
+        {
+            score += 5;
+            reasons.push("totalBlocks=280");
+        }
+        else if (totalBlocks > 0 && totalBlocks <= PRODOS_TOTAL_BLOCKS_525)
+        {
+            score += 1;
+            reasons.push("totalBlocks plausible=" + totalBlocks);
+        }
+        else
+        {
+            score -= 5;
+            criticalFail = true;
+            reasons.push("bad totalBlocks=" + totalBlocks);
+        }
+
+        // Optional but helpful: the bitmap block should not be all zero.
+        if (bitmapBlock >= 0 && bitmapBlock < PRODOS_TOTAL_BLOCKS_525)
+        {
+            var nonzero = 0;
+            var ff = 0;
+
+            for (var bi = 0; bi < 40; bi++)
+            {
+                var bv = byteAtProDOSBlock(bitmapBlock, bi, raw2file);
+                if (bv != 0) nonzero++;
+                if (bv == 0xff) ff++;
+            }
+
+            if (nonzero > 0 && ff > 0)
+            {
+                score += 2;
+                reasons.push("bitmap block plausible");
+            }
+            else if (nonzero > 0)
+            {
+                score += 1;
+                reasons.push("bitmap block nonzero");
+            }
+            else
+            {
+                score -= 2;
+                criticalFail = true;
+                reasons.push("bitmap block empty");
+            }
+        }
+
+        return {
+            score:score,
+            strong:(!criticalFail && score >= 20),
+            reasons:reasons
+        };
+    }
+
+    if (isWoz())
+        return { type:"woz", confidence:1.0, reason:"WOZ magic header" };
+
+    if (looksLikeNib())
+        return { type:"nib", confidence:0.95, reason:"NIB size and sector prologues" };
+
+    if (imageBytes.length == DSK_SIZE)
+    {
+        var dosAsDos = scoreDOS33(raw2dos);
+        var dosAsPo  = scoreDOS33(raw2prodos);
+
+        var prodosAsDos = scoreProDOS(raw2dos);
+        var prodosAsPo  = scoreProDOS(raw2prodos);
+
+        var dskScore = dosAsDos + prodosAsDos.score;
+        var poScore  = dosAsPo  + prodosAsPo.score;
+
+        // Strong ProDOS-order detection.
+        // Do not let a weak accidental F? byte classify a protected game as .po.
+        if (prodosAsPo.strong && poScore >= dskScore + 8)
+        {
+            return {
+                type:"po",
+                confidence:0.97,
+                reason:"strong ProDOS-order volume directory",
+                dskScore:dskScore,
+                poScore:poScore,
+                prodosAsPo:prodosAsPo
+            };
+        }
+
+        // Strong DOS-order filesystem detection.
+        if (dosAsDos >= 5 && dskScore >= poScore + 4)
+        {
+            return {
+                type:"dsk",
+                confidence:0.90,
+                reason:"DOS-order VTOC/catalog structures score higher",
+                dskScore:dskScore,
+                poScore:poScore,
+                dosAsDos:dosAsDos,
+                prodosAsDos:prodosAsDos
+            };
+        }
+
+        // Extension is now only a tie-breaker for weak/ambiguous flat images.
+        // It must not override a strong ProDOS result above.
+        if (ext == "po" && prodosAsPo.score >= 12)
+        {
+            return {
+                type:"po",
+                confidence:0.75,
+                reason:"weak ProDOS evidence plus .po filename hint",
+                dskScore:dskScore,
+                poScore:poScore,
+                prodosAsPo:prodosAsPo
+            };
+        }
+
+        var extBias = 0;
+
+        if (ext == "po")
+            extBias = 4;
+        else if (ext == "dsk" || ext == "do")
+            extBias = -2;
+
+        var poScoreFinal = poScore + Math.max(0, extBias);
+        var dskScoreFinal = dskScore + Math.max(0, -extBias);
+
+
+        // Safe default for 143360-byte flat images:
+        // most protected/game .dsk images do not have a normal DOS catalog,
+        // and accidental ProDOS-looking bytes should not trigger .po conversion.
+        return {
+            type:"dsk",
+            confidence:0.60,
+            ambiguous:true,
+            reason:"140 KB flat image; no strong ProDOS volume header found; defaulting to DOS-order .dsk",
+            dskScore:dskScore,
+            poScore:poScore,
+            dskScoreFinal:dskScoreFinal,
+            poScoreFinal:poScoreFinal,
+            ext:ext,
+            extBias:extBias,
+            prodosAsPo:prodosAsPo
+        };
+    }
+
+    return { type:"unknown", confidence:0, reason:"unknown size or unsupported format" };
+}
 
 
     //  ██████  ██ ███████ ██   ██     ███    ██  ██████  ██ ███████ ███████ 

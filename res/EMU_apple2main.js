@@ -1348,10 +1348,10 @@ function EMUI()
 
 
 
-function loadDisk_fromFile(file_obj,drv)
+function loadDisk_fromFile(file_obj,deviceID)
 {
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
-    if(file_obj==null || disk2.state.active==false) { apple2plus.loadDisk([],drv); return }
+    if(file_obj==null || disk2.state.active==false) { apple2plus.loadDisk([],deviceID); return }
 
     var file = file_obj.files[0];
     if (!file) return;
@@ -1359,24 +1359,26 @@ function loadDisk_fromFile(file_obj,drv)
     oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
     highlight_appbut(file_obj,true);
 
-
     var fread1 = new FileReader();
     fread1.readAsArrayBuffer(file);
-    fread1.onload = function(levent)
+    const filepath = file_obj.value;
+
+    function onloadHandler(filepath, deviceID)
     {
-        var data = new DataView(levent.target.result);
-        var size = levent.target.result.byteLength;
-        var bytes = Array(size);
-        for (var i = 0; i < size; i++)
-            bytes[i] = data.getUint8(i);
+        return function(levent)
+        {
+            const data = new DataView(levent.target.result);
+            const size = levent.target.result.byteLength;
 
-        if (size == 143360) disk2.setDiskData(bytes,drv);
+            const bytes = Array(size);
+            for (let i = 0; i < size; i++)
+                bytes[i] = data.getUint8(i);
 
-        //dumpdisk(bytes);                
-        //console.log("loadDisk_fromFile() CRC32:"+oCOM.crc32(bytes).toString(16).toUpperCase());
-        //if (size == 143360) bytes = disk2.convertDsk2Nib(bytes);
-        //apple2plus.loadDisk(bytes,"D1");
+            if (size == 143360)
+                disk2.setDiskData(bytes, deviceID, filepath);
+        };
     }
+    fread1.onload = onloadHandler(filepath, deviceID);
 
 }
 
