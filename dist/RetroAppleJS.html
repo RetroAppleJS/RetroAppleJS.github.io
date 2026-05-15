@@ -18136,20 +18136,9 @@ this.detectDiskImageType = function(imageBytes, filepath)
     var m = filepath.toLowerCase().match(/\.([a-z0-9]+)$/);
     if (m) ext = m[1];
 
-    function b(off)
-    {
-        return imageBytes[off] & 0xff;
-    }
-
-    function validTrack(t)
-    {
-        return t >= 0 && t < TRACKS;
-    }
-
-    function validSector(s)
-    {
-        return s >= 0 && s < SECTORS;
-    }
+    function b(off) { return imageBytes[off] & 0xff; }
+    function validTrack(t) { return t >= 0 && t < TRACKS; }
+    function validSector(s) { return s >= 0 && s < SECTORS;}
 
     function isWoz()
     {
@@ -18168,28 +18157,21 @@ this.detectDiskImageType = function(imageBytes, filepath)
     function findSeq(start, end, b0, b1, b2)
     {
         for (var i = start; i <= end - 3; i++)
-            if (b(i) == b0 && b(i + 1) == b1 && b(i + 2) == b2)
-                return true;
-
+            if (b(i) == b0 && b(i + 1) == b1 && b(i + 2) == b2) return true;
         return false;
     }
 
     function looksLikeNib()
     {
         if (imageBytes.length != NIB_SIZE) return false;
-
         var goodTracks = 0;
-
         for (var track = 0; track < TRACKS; track++)
         {
             var base = track * TRACK_SIZE_NIB;
             var end = base + TRACK_SIZE_NIB;
-
             var hasAddressPrologue = findSeq(base, end, 0xd5, 0xaa, 0x96);
             var hasDataPrologue    = findSeq(base, end, 0xd5, 0xaa, 0xad);
-
-            if (hasAddressPrologue && hasDataPrologue)
-                goodTracks++;
+            if (hasAddressPrologue && hasDataPrologue) goodTracks++;
         }
 
         return goodTracks >= 20;
@@ -18212,8 +18194,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
     function invertMap(raw2file)
     {
         var out = new Array(16);
-        for (var raw = 0; raw < 16; raw++)
-            out[raw2file[raw]] = raw;
+        for (var raw = 0; raw < 16; raw++) out[raw2file[raw]] = raw;
         return out;
     }
 
@@ -18230,10 +18211,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
         var logicalSector = block * 2 + Math.floor(index / SECTOR_SIZE);
         var track = Math.floor(logicalSector / SECTORS);
         var prodosSectorPosition = logicalSector & 0x0f;
-
         var rawSector = prodosPos2Raw[prodosSectorPosition];
         var fileSector = raw2file[rawSector];
-
         return b(track * TRACK_SIZE_DSK + fileSector * SECTOR_SIZE + (index & 0xff));
     }
 
@@ -18245,22 +18224,13 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     function scoreDOS33(raw2file)
     {
-        var score = 0;
-
-        // DOS 3.3 VTOC is normally physical track 17, sector 0.
+        var score = 0;   // DOS 3.3 VTOC is normally physical track 17, sector 0.
         var catTrack  = byteAtPhysicalSector(17, 0, 1, raw2file);
         var catSector = byteAtPhysicalSector(17, 0, 2, raw2file);
         var dosRel    = byteAtPhysicalSector(17, 0, 3, raw2file);
-
-        if (!validTrack(catTrack) || !validSector(catSector))
-            return 0;
-
-        if (catTrack == 17) score += 3;
-        else score += 1;
-
-        if (dosRel >= 1 && dosRel <= 3)
-            score += 1;
-
+        if (!validTrack(catTrack) || !validSector(catSector)) return 0;
+        if (catTrack == 17) score += 3; else score += 1;
+        if (dosRel >= 1 && dosRel <= 3) score += 1;
         var t = catTrack;
         var s = catSector;
         var seen = {};
@@ -18268,28 +18238,13 @@ this.detectDiskImageType = function(imageBytes, filepath)
         for (var i = 0; i < 16; i++)
         {
             if (!validTrack(t) || !validSector(s)) break;
-
             var key = t + ":" + s;
             if (seen[key]) break;
             seen[key] = true;
-
             var nextTrack  = byteAtPhysicalSector(t, s, 1, raw2file);
             var nextSector = byteAtPhysicalSector(t, s, 2, raw2file);
-
-            if (nextTrack == 0 && nextSector == 0)
-            {
-                score += 2;
-                break;
-            }
-
-            if (validTrack(nextTrack) && validSector(nextSector))
-                score += 2;
-            else
-            {
-                score -= 2;
-                break;
-            }
-
+            if (nextTrack == 0 && nextSector == 0) { score += 2; break; }
+            if (validTrack(nextTrack) && validSector(nextSector)) score += 2; else { score -= 2; break; }
             t = nextTrack;
             s = nextSector;
         }
@@ -18299,9 +18254,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     function validProDOSNameChar(c, first)
     {
-        if (first)
-            return c >= 0x41 && c <= 0x5a;          // A-Z
-
+        if (first) return c >= 0x41 && c <= 0x5a;   // A-Z
         return (c >= 0x41 && c <= 0x5a) ||          // A-Z
                (c >= 0x30 && c <= 0x39) ||          // 0-9
                 c == 0x2e;                          // .
@@ -18321,47 +18274,20 @@ this.detectDiskImageType = function(imageBytes, filepath)
         var prevBlock = wordAtProDOSBlock(2, 0x00, raw2file);
         var nextBlock = wordAtProDOSBlock(2, 0x02, raw2file);
 
-        if (prevBlock == 0)
-        {
-            score += 4;
-            reasons.push("prevBlock=0");
-        }
-        else
-        {
-            score -= 4;
-            criticalFail = true;
-            reasons.push("bad prevBlock=" + prevBlock);
-        }
+        if (prevBlock == 0) { score += 4; reasons.push("prevBlock=0"); }
+        else { score -= 4; criticalFail = true; reasons.push("bad prevBlock=" + prevBlock); }
 
         if (nextBlock == 0 || (nextBlock >= 3 && nextBlock < PRODOS_TOTAL_BLOCKS_525))
-        {
-            score += 2;
-            reasons.push("nextBlock plausible=" + nextBlock);
-        }
-        else
-        {
-            score -= 4;
-            criticalFail = true;
-            reasons.push("bad nextBlock=" + nextBlock);
-        }
+             { score += 2; reasons.push("nextBlock plausible=" + nextBlock); }
+        else { score -= 4; criticalFail = true; reasons.push("bad nextBlock=" + nextBlock); }
 
         var storageAndNameLen = byteAtProDOSBlock(2, 0x04, raw2file);
         var storageType = storageAndNameLen >> 4;
         var nameLen = storageAndNameLen & 0x0f;
 
         if (storageType == 0x0f && nameLen >= 1 && nameLen <= 15)
-        {
-            score += 4;
-            reasons.push("volume header storage=F nameLen=" + nameLen);
-        }
-        else
-        {
-            return {
-                score:score - 8,
-                strong:false,
-                reasons:reasons.concat(["bad volume header byte=" + storageAndNameLen])
-            };
-        }
+            { score += 4; reasons.push("volume header storage=F nameLen=" + nameLen);}
+        else { return { score:score - 8, strong:false, reasons:reasons.concat(["bad volume header byte=" + storageAndNameLen])}; }
 
         var validName = true;
         var name = "";
@@ -18370,45 +18296,19 @@ this.detectDiskImageType = function(imageBytes, filepath)
         {
             var c = byteAtProDOSBlock(2, 0x05 + i, raw2file);
             name += String.fromCharCode(c);
-
-            if (!validProDOSNameChar(c, i == 0))
-                validName = false;
+            if (!validProDOSNameChar(c, i == 0)) validName = false;
         }
 
-        if (validName)
-        {
-            score += 5;
-            reasons.push("valid volume name=" + name);
-        }
-        else
-        {
-            score -= 5;
-            criticalFail = true;
-            reasons.push("invalid volume name");
-        }
+        if (validName) { score += 5; reasons.push("valid volume name=" + name); }
+        else { score -= 5; criticalFail = true; reasons.push("invalid volume name"); }
 
         // Unused filename bytes in a ProDOS volume directory header are normally zero.
         var zeroNamePadding = true;
         for (var p = 0x05 + nameLen; p < 0x14; p++)
-        {
-            if (byteAtProDOSBlock(2, p, raw2file) != 0)
-            {
-                zeroNamePadding = false;
-                break;
-            }
-        }
+            if (byteAtProDOSBlock(2, p, raw2file) != 0) { zeroNamePadding = false; break; };
 
-        if (zeroNamePadding)
-        {
-            score += 3;
-            reasons.push("name padding zero");
-        }
-        else
-        {
-            score -= 2;
-            criticalFail = true;
-            reasons.push("name padding nonzero");
-        }
+        if (zeroNamePadding) { score += 3; reasons.push("name padding zero"); }
+        else { score -= 2; criticalFail = true; reasons.push("name padding nonzero"); }
 
         // These are strong ProDOS volume-directory-header fields.
         // For a normal 5.25" ProDOS volume:
@@ -18421,77 +18321,24 @@ this.detectDiskImageType = function(imageBytes, filepath)
         var bitmapBlock = wordAtProDOSBlock(2, 0x27, raw2file);
         var totalBlocks = wordAtProDOSBlock(2, 0x29, raw2file);
 
-        if (entryLength == 0x27)
-        {
-            score += 4;
-            reasons.push("entryLength=0x27");
-        }
-        else
-        {
-            score -= 3;
-            criticalFail = true;
-            reasons.push("bad entryLength=" + entryLength);
-        }
-
-        if (entriesPerBlock == 0x0d)
-        {
-            score += 4;
-            reasons.push("entriesPerBlock=13");
-        }
-        else
-        {
-            score -= 3;
-            criticalFail = true;
-            reasons.push("bad entriesPerBlock=" + entriesPerBlock);
-        }
-
+        if (entryLength == 0x27) { score += 4; reasons.push("entryLength=0x27"); }
+        else { score -= 3; criticalFail = true; reasons.push("bad entryLength=" + entryLength); }
+        if (entriesPerBlock == 0x0d) { score += 4; reasons.push("entriesPerBlock=13"); }
+        else { score -= 3; criticalFail = true; reasons.push("bad entriesPerBlock=" + entriesPerBlock); }
         if (fileCount <= entriesPerBlock * PRODOS_TOTAL_BLOCKS_525)
-        {
-            score += 1;
-            reasons.push("fileCount plausible=" + fileCount);
-        }
-        else
-        {
-            score -= 1;
-            criticalFail = true;
-            reasons.push("bad fileCount=" + fileCount);
-        }
-
+            { score += 1; reasons.push("fileCount plausible=" + fileCount); }
+        else { score -= 1; criticalFail = true; reasons.push("bad fileCount=" + fileCount); }
         if (bitmapBlock >= 3 && bitmapBlock < PRODOS_TOTAL_BLOCKS_525)
-        {
-            score += 3;
-            reasons.push("bitmapBlock plausible=" + bitmapBlock);
-        }
-        else
-        {
-            score -= 3;
-            criticalFail = true;
-            reasons.push("bad bitmapBlock=" + bitmapBlock);
-        }
-
-        if (totalBlocks == PRODOS_TOTAL_BLOCKS_525)
-        {
-            score += 5;
-            reasons.push("totalBlocks=280");
-        }
-        else if (totalBlocks > 0 && totalBlocks <= PRODOS_TOTAL_BLOCKS_525)
-        {
-            score += 1;
-            reasons.push("totalBlocks plausible=" + totalBlocks);
-        }
-        else
-        {
-            score -= 5;
-            criticalFail = true;
-            reasons.push("bad totalBlocks=" + totalBlocks);
-        }
+            { score += 3; reasons.push("bitmapBlock plausible=" + bitmapBlock); }
+        else { score -= 3; criticalFail = true; reasons.push("bad bitmapBlock=" + bitmapBlock); }
+        if (totalBlocks == PRODOS_TOTAL_BLOCKS_525) { score += 5; reasons.push("totalBlocks=280"); }
+        else if (totalBlocks > 0 && totalBlocks <= PRODOS_TOTAL_BLOCKS_525) { score += 1; reasons.push("totalBlocks plausible=" + totalBlocks); }
+        else { score -= 5; criticalFail = true; reasons.push("bad totalBlocks=" + totalBlocks); }
 
         // Optional but helpful: the bitmap block should not be all zero.
         if (bitmapBlock >= 0 && bitmapBlock < PRODOS_TOTAL_BLOCKS_525)
         {
-            var nonzero = 0;
-            var ff = 0;
-
+            var nonzero = 0, ff = 0;
             for (var bi = 0; bi < 40; bi++)
             {
                 var bv = byteAtProDOSBlock(bitmapBlock, bi, raw2file);
@@ -18499,45 +18346,23 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 if (bv == 0xff) ff++;
             }
 
-            if (nonzero > 0 && ff > 0)
-            {
-                score += 2;
-                reasons.push("bitmap block plausible");
-            }
-            else if (nonzero > 0)
-            {
-                score += 1;
-                reasons.push("bitmap block nonzero");
-            }
-            else
-            {
-                score -= 2;
-                criticalFail = true;
-                reasons.push("bitmap block empty");
-            }
+            if (nonzero > 0 && ff > 0) { score += 2; reasons.push("bitmap block plausible"); }
+            else if (nonzero > 0) { score += 1; reasons.push("bitmap block nonzero"); }
+            else { score -= 2; criticalFail = true; reasons.push("bitmap block empty"); }
         }
-
-        return {
-            score:score,
-            strong:(!criticalFail && score >= 20),
-            reasons:reasons
-        };
+        return { score:score, strong:(!criticalFail && score >= 20), reasons:reasons };
     }
 
-    if (isWoz())
-        return { type:"woz", confidence:1.0, reason:"WOZ magic header" };
+    if (isWoz()) return { type:"woz", confidence:1.0, reason:"WOZ magic header" };
 
-    if (looksLikeNib())
-        return { type:"nib", confidence:0.95, reason:"NIB size and sector prologues" };
+    if (looksLikeNib()) return { type:"nib", confidence:0.95, reason:"NIB size and sector prologues" };
 
     if (imageBytes.length == DSK_SIZE)
     {
         var dosAsDos = scoreDOS33(raw2dos);
         var dosAsPo  = scoreDOS33(raw2prodos);
-
         var prodosAsDos = scoreProDOS(raw2dos);
         var prodosAsPo  = scoreProDOS(raw2prodos);
-
         var dskScore = dosAsDos + prodosAsDos.score;
         var poScore  = dosAsPo  + prodosAsPo.score;
 
@@ -18584,12 +18409,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
         }
 
         var extBias = 0;
-
-        if (ext == "po")
-            extBias = 4;
-        else if (ext == "dsk" || ext == "do")
-            extBias = -2;
-
+        if (ext == "po") extBias = 4;
+        else if (ext == "dsk" || ext == "do") extBias = -2;
         var poScoreFinal = poScore + Math.max(0, extBias);
         var dskScoreFinal = dskScore + Math.max(0, -extBias);
 
