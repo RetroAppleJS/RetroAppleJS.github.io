@@ -197,9 +197,7 @@ function COM()
     return [str, null];
   }
 
-
-
-  this.base64ToArrayBuffer = function(base64)
+  this.base64ToArray = function(base64)
   {
       try{ var binary_string = window.atob(base64); } catch(e) { return null }
       var len = binary_string.length;
@@ -868,6 +866,11 @@ function COM()
       }
     };
   };
+
+  this.cloneJSON = function(obj)
+  {
+      return JSON.parse(JSON.stringify(obj));
+  }
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 

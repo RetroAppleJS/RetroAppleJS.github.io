@@ -106,7 +106,7 @@ function EMU_init()
             case "paste":
                 if(typeof(oCOM.URL.addr)!="undefined" && oCOM.URL.uri[uri].length>0)
                 {
-                    var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
+                    var db = oCOM.base64ToArray(oCOM.URL.uri[uri]);
                     if(db!=null)
                     {
                         const inflator = new pako.Inflate();
@@ -134,7 +134,7 @@ function EMU_init()
                     //oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:oEMU.system[uri]==false}).muteAct();
                     //oCOM.POPUP.html("boot+mute OK");
     
-                    var db = oCOM.base64ToArrayBuffer(disk2DOS);
+                    var db = oCOM.base64ToArray(disk2DOS);
                     const infla = new pako.Inflate();
                     infla.push(db);            
                     var dd = infla.result;
@@ -154,7 +154,7 @@ function EMU_init()
                 var dsk = oCOM.URL.uri["D1"];
                 if(typeof(dsk)!="undefined" && dsk.length!=0)
                 {
-                    var db = oCOM.base64ToArrayBuffer(dsk);
+                    var db = oCOM.base64ToArray(dsk);
                     if(db!=null)
                     {
                         const inflator = new pako.Inflate();

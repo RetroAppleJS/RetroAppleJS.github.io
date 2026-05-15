@@ -487,7 +487,8 @@ function AppleDisk2()
         this.traceFlush("getDiskData");
         var nibBytes = this.state.diskData[deviceN];
         var dskBytes = this.convertNib2Dsk(nibBytes);
-        this.traceLog("getDiskData", {
+        this.traceLog("getDiskData", 
+        {
             drv: deviceN,
             nib_len: nibBytes.length,
             nib_crc32: oCOM.crc32(nibBytes).toString(16).toUpperCase(),
@@ -505,6 +506,24 @@ function AppleDisk2()
         return this.state.diskData[deviceN]!=null;
     }
 
+    // DOS 3.3 Disk sector skew constants for disk format conversions
+    const SECTOR_ORDER_DOS33 = 
+    [
+        0x0, 0x7, 0xE, 0x6,
+        0xD, 0x5, 0xC, 0x4,
+        0xB, 0x3, 0xA, 0x2,
+        0x9, 0x1, 0x8, 0xF
+    ];
+
+    // ProDOS 3.3 Disk sector skew constants for disk format conversions
+    const SECTOR_ORDER_PRODOS = 
+    [
+        0x0, 0x8, 0x1, 0x9,
+        0x2, 0xA, 0x3, 0xB,
+        0x4, 0xC, 0x5, 0xD,
+        0x6, 0xE, 0x7, 0xF
+    ];
+
 
     //  ██████  ███████ ██   ██     ██████      ███    ██ ██ ██████  
     //  ██   ██ ██      ██  ██           ██     ████   ██ ██ ██   ██ 
@@ -513,13 +532,11 @@ function AppleDisk2()
     //  ██████  ███████ ██   ██     ███████     ██   ████ ██ ██████  
 
     var log = new Array();
-
     this.convertDsk2Nib = function(dskBytes)
     {
         //alert("CRC32: "+oCOM.crc32(oCOM.UploadData).toString(16).toUpperCase());
         //CRC32: E766F072
         
-
         // GCR LOOKUP TABLE (Group Code Recording) - 64 bitcodes starting with bit1 = 1 and 7 other bits never counting > 2 subsequent zeroes
         var sixTwo = [  
             0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
@@ -605,8 +622,7 @@ function AppleDisk2()
         var bDebug = false;
 
         if(prenib===undefined) var prenib = new Array(256 + 86);
-        var secSkew = [ 0x0, 0x7, 0xE, 0x6, 0xD, 0x5, 0xC, 0x4, 0xB, 0x3, 0xA, 0x2, 0x9, 0x1, 0x8, 0xF ];
-        var doffs = (secSkew[sec] << 8) + (track << 12);
+        var doffs = (SECTOR_ORDER_DOS33[sec] << 8) + (track << 12);
         var prenib_fml = new Array();
         var z = 0;
 
@@ -709,21 +725,6 @@ function AppleDisk2()
         if (!poBytes || poBytes.length < DSK_SIZE)
             throw new Error("Invalid .po image: expected at least " + DSK_SIZE + " bytes");
 
-        // physical/raw sector -> sector position in file
-        const raw2dos = [
-            0x0, 0x7, 0xE, 0x6,
-            0xD, 0x5, 0xC, 0x4,
-            0xB, 0x3, 0xA, 0x2,
-            0x9, 0x1, 0x8, 0xF
-        ];
-
-        const raw2prodos = [
-            0x0, 0x8, 0x1, 0x9,
-            0x2, 0xA, 0x3, 0xB,
-            0x4, 0xC, 0x5, 0xD,
-            0x6, 0xE, 0x7, 0xF
-        ];
-
         // Reorder ProDOS-order sector image into DOS-order sector image,
         // then let the existing DOS-order nibblizer do the rest.
         var dskBytes = new Array(DSK_SIZE);
@@ -734,8 +735,8 @@ function AppleDisk2()
 
             for (var rawSec = 0; rawSec < SECTORS; rawSec++)
             {
-                var poOff  = trackBase + raw2prodos[rawSec] * SECTOR_SIZE;
-                var dskOff = trackBase + raw2dos[rawSec]    * SECTOR_SIZE;
+                var poOff  = trackBase + SECTOR_ORDER_PRODOS[rawSec] * SECTOR_SIZE;
+                var dskOff = trackBase + SECTOR_ORDER_DOS33[rawSec]  * SECTOR_SIZE;
 
                 for (var i = 0; i < SECTOR_SIZE; i++)
                     dskBytes[dskOff + i] = poBytes[poOff + i] & 0xff;
@@ -767,15 +768,6 @@ function AppleDisk2()
 
         var dskBytes = new Array(DSK_SIZE);
         for (var i = 0; i < DSK_SIZE; i++) dskBytes[i] = 0;
-
-        // DOS 3.3 physical-sector -> DOS .dsk sector order.
-        // This must match convertDsk2Nib/prenibble().
-        var secSkew = [
-            0x0, 0x7, 0xE, 0x6,
-            0xD, 0x5, 0xC, 0x4,
-            0xB, 0x3, 0xA, 0x2,
-            0x9, 0x1, 0x8, 0xF
-        ];
 
         var sixTwo = [
             0x96, 0x97, 0x9a, 0x9b, 0x9d, 0x9e, 0x9f, 0xa6,
@@ -823,7 +815,12 @@ function AppleDisk2()
             {
                 var gcrByte = trackByte(trackBase, dataStart + j);
                 var val = sixTwoLookup[gcrByte];
-                if (val < 0) console.error("NIB2DSK DATA ERROR:" + " $T" + oCOM.getHexByte(trk) + " $S" + oCOM.getHexByte(sec) + " invalid GCR byte " + oCOM.getHexByte(gcrByte) + " at data offset " + j); return null;
+                if (val < 0) 
+                { 
+                    console.error("NIB2DSK DATA ERROR:" + " $T" + oCOM.getHexByte(trk) + " $S" + oCOM.getHexByte(sec) 
+                        + " invalid GCR byte " + oCOM.getHexByte(gcrByte) + " at data offset " + j); 
+                    return null;
+                }
                 var decoded = val ^ prev;
                 if (j < 86) { prenib[341 - j] = decoded; prev = decoded; }                   // First 86 encoded bytes are prenib[341] down to prenib[256].
                 else if (j < 342) { prenib[j - 86] = decoded; prev = decoded; }              // Remaining 256 encoded bytes are prenib[0] through prenib[255].
@@ -897,7 +894,7 @@ function AppleDisk2()
                 sectorsFound++;
 
                 // Write to DOS .dsk order, not physical-sector order.
-                var dskSector = secSkew[sec];
+                var dskSector = SECTOR_ORDER_DOS33[sec];
                 var dskOffset = (trk * DSK_TRACK_SIZE) + (dskSector * SECTOR_SIZE);
 
                 for (var i = 0; i < SECTOR_SIZE; i++)
@@ -934,30 +931,15 @@ function AppleDisk2()
         var poBytes = new Array(PO_SIZE);
         for (var i = 0; i < PO_SIZE; i++) poBytes[i] = 0;
 
-        // physical/raw sector -> sector position in DOS .dsk file
-        var raw2dos = [
-            0x0, 0x7, 0xE, 0x6,
-            0xD, 0x5, 0xC, 0x4,
-            0xB, 0x3, 0xA, 0x2,
-            0x9, 0x1, 0x8, 0xF
-        ];
-
         // physical/raw sector -> sector position in ProDOS .po file
-        var raw2prodos = [
-            0x0, 0x8, 0x1, 0x9,
-            0x2, 0xA, 0x3, 0xB,
-            0x4, 0xC, 0x5, 0xD,
-            0x6, 0xE, 0x7, 0xF
-        ];
-
         for (var track = 0; track < TRACKS; track++)
         {
             var trackBase = track * TRACK_SIZE;
 
             for (var rawSec = 0; rawSec < SECTORS; rawSec++)
             {
-                var dskOff = trackBase + raw2dos[rawSec]    * SECTOR_SIZE;
-                var poOff  = trackBase + raw2prodos[rawSec] * SECTOR_SIZE;
+                var dskOff = trackBase + SECTOR_ORDER_DOS33[rawSec]  * SECTOR_SIZE;
+                var poOff  = trackBase + SECTOR_ORDER_PRODOS[rawSec] * SECTOR_SIZE;
 
                 for (var i = 0; i < SECTOR_SIZE; i++)
                     poBytes[poOff + i] = dskBytes[dskOff + i] & 0xff;
@@ -1034,20 +1016,6 @@ this.detectDiskImageType = function(imageBytes, filepath)
         return goodTracks >= 20;
     }
 
-    const raw2dos = [
-        0x0, 0x7, 0xE, 0x6,
-        0xD, 0x5, 0xC, 0x4,
-        0xB, 0x3, 0xA, 0x2,
-        0x9, 0x1, 0x8, 0xF
-    ];
-
-    const raw2prodos = [
-        0x0, 0x8, 0x1, 0x9,
-        0x2, 0xA, 0x3, 0xB,
-        0x4, 0xC, 0x5, 0xD,
-        0x6, 0xE, 0x7, 0xF
-    ];
-
     function invertMap(raw2file)
     {
         var out = new Array(16);
@@ -1055,7 +1023,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
         return out;
     }
 
-    const prodosPos2Raw = invertMap(raw2prodos);
+    const prodosPos2Raw = invertMap(SECTOR_ORDER_PRODOS);
 
     function byteAtPhysicalSector(track, rawSector, index, raw2file)
     {
@@ -1216,12 +1184,12 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     if (imageBytes.length == DSK_SIZE)
     {
-        var dosAsDos = scoreDOS33(raw2dos);
-        var dosAsPo  = scoreDOS33(raw2prodos);
-        var prodosAsDos = scoreProDOS(raw2dos);
-        var prodosAsPo  = scoreProDOS(raw2prodos);
-        var dskScore = dosAsDos + prodosAsDos.score;
-        var poScore  = dosAsPo  + prodosAsPo.score;
+        var dosAsDos    = scoreDOS33(SECTOR_ORDER_DOS33);
+        var dosAsPo     = scoreDOS33(SECTOR_ORDER_PRODOS);
+        var prodosAsDos = scoreProDOS(SECTOR_ORDER_DOS33);
+        var prodosAsPo  = scoreProDOS(SECTOR_ORDER_PRODOS);
+        var dskScore    = dosAsDos + prodosAsDos.score;
+        var poScore     = dosAsPo  + prodosAsPo.score;
 
         // Strong ProDOS-order detection.
         // Do not let a weak accidental F? byte classify a protected game as .po.
@@ -2168,7 +2136,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
                         // Only real online GitHub data goes into the cache.
                         disk2.GitHubDirCache[url] = {
                             list:list,
-                            arg:disk2.cloneJSON(arg)
+                            arg:oCOM.cloneJSON(arg)
                         };
 
                         callback(null, list, arg);
@@ -2299,32 +2267,21 @@ this.detectDiskImageType = function(imageBytes, filepath)
     {
         try
         {
-            var disk2 = oCOM.default(
-                oEMU.component.IO.AppleDisk,
-                {state:{active:false}},
-                "AppleDisk"
-            );
-
-            if(disk2.state.active == false)
-                return;
-
+            var disk2 = oCOM.default( oEMU.component.IO.AppleDisk, {state:{active:false}}, "AppleDisk");
+            if(disk2.state.active == false) return;
             arg.ref = arg.ref || "main";
 
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
             // if D1 is occupied, switch to D2, if D2 is occupied, switch to D1
             var drv = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
 
-
             // TODO: CONVERT SLT,DRV string to SLOT_I,DRV_I and backwards
             //if(typeof drv == "number") drv = "D" + drv;
 
             // Only disk images should be mounted here.
             var ext = (arg.path || "").split(".").pop().toLowerCase();
-            if(ext != "dsk" && ext != "do" && ext != "po" && ext != "nib")
-            {
-                console.warn("Not a disk image: " + arg.path);
-                return;
-            }
+            if(ext != "dsk" && ext != "do" && ext != "po" && ext != "nib") 
+                { console.warn("Not a disk image: " + arg.path); return; }
 
             // Build raw GitHub URL.
             // Important: encode each path segment separately so spaces become %20,
@@ -2334,13 +2291,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 .map(function(p) { return encodeURIComponent(p); })
                 .join("/");
 
-            var full_path =
-                "https://raw.githubusercontent.com/"
-                + arg.owner + "/"
-                + arg.repo + "/"
-                + encodeURIComponent(arg.ref) + "/"
-                + raw_path;
-
+            var full_path = disk2.githubRawURL(arg);
 
             function mountDiskBytes(bytes, source)
             {
@@ -2350,33 +2301,14 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
                 switch(info.type)
                 {
-                    case "nib":
-                        nibBytes = bytes;
-                        break;
-
-                    case "po":
-                        nibBytes = disk2.convertPo2Nib(bytes);
-                        break;
-
-                    case "dsk":
-                        nibBytes = disk2.convertDsk2Nib(bytes);
-                        break;
-
-                    case "woz":
-                        throw new Error("WOZ detected, but convertWoz2Nib() is not implemented yet");
-
-                    default:
-                        throw new Error("Unsupported or unknown disk image type: " + info.reason);
+                    case "nib": nibBytes = bytes; break;
+                    case "po":  nibBytes = disk2.convertPo2Nib(bytes); break;
+                    case "dsk": nibBytes = disk2.convertDsk2Nib(bytes); break;
+                    case "woz": throw new Error("WOZ detected, but convertWoz2Nib() is not implemented yet");
+                    default: throw new Error("Unsupported or unknown disk image type: " + info.reason);
                 }
 
-                if(nibBytes.length != 232960)
-                {
-                    throw new Error(
-                        "unsupported mounted image size "
-                        + nibBytes.length
-                        + " bytes for " + arg.path
-                    );
-                }
+                if(nibBytes.length != 232960) throw new Error( "unsupported mounted image size " + nibBytes.length + " bytes for " + arg.path );
 
                 apple2plus.loadDisk(nibBytes, drv);
 
@@ -2389,13 +2321,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     var el = document.getElementById(file_id);
                     if(el) highlight_appbut(el, true);
                 }
-
-                console.log(
-                    "Loaded disk "
-                    + arg.path
-                    + " into " + drv
-                    + " (" + nibBytes.length + " bytes, source=" + source + ", type=" + info.type + ")"
-                );
+                console.log("Loaded disk " + arg.path + " into " + drv + " (" + nibBytes.length + " bytes, source=" + source + ", type=" + info.type + ")");
             }
 
             function loadOfflineDisk(reason)
@@ -2404,15 +2330,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 {
                     // Again: do not cache offline fallback as GitHub data.
                     disk2.GitHubDirCache = {};
-
                     var bytes = disk2.getOfflineDiskBytes(arg, full_path);
-
-                    if(bytes == null)
-                    {
-                        console.warn("No offline disk available for " + arg.path + " after " + reason);
-                        return false;
-                    }
-
+                    if(bytes == null) { console.warn("No offline disk available for " + arg.path + " after " + reason); return false; }
                     console.warn("Using offline disk fallback for " + arg.path + ": " + reason);
                     mountDiskBytes(bytes, "offline");
                     return true;
@@ -2425,11 +2344,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
             }
 
             // Fast path when the browser knows it is offline.
-            if(disk2.isLikelyOffline())
-            {
-                if(loadOfflineDisk("navigator.onLine=false"))
-                    return;
-            }
+            if(disk2.isLikelyOffline()) { if(loadOfflineDisk("navigator.onLine=false")) return; }
 
             oCOM.GetHTTP(full_path, "arraybuffer",
                 function()
@@ -2493,13 +2408,6 @@ this.detectDiskImageType = function(imageBytes, filepath)
         }
     }
 
-
-
-    this.cloneJSON = function(obj)
-    {
-        return JSON.parse(JSON.stringify(obj));
-    }
-
     this.githubContentsURL = function(arg)
     {
         arg.ref = arg.ref || "main";
@@ -2542,21 +2450,9 @@ this.detectDiskImageType = function(imageBytes, filepath)
             return null;
 
         return {
-            list: disk2.cloneJSON(entry.list),
-            arg:  disk2.cloneJSON(entry.arg)
+            list: oCOM.cloneJSON(entry.list),
+            arg:  oCOM.cloneJSON(entry.arg)
         };
-    }
-
-
-    this.base64ToUint8Array = function(b64)
-    {
-        var bin = atob(b64);
-        var out = new Uint8Array(bin.length);
-
-        for(var i = 0; i < bin.length; i++)
-            out[i] = bin.charCodeAt(i) & 0xff;
-
-        return out;
     }
 
     this.getOfflineDiskBytes = function(arg, full_path)
@@ -2565,7 +2461,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
         var rec = disk2.OfflineDisks[arg.path] || disk2.OfflineDisks[arg.name] || disk2.OfflineDisks[full_path];
         if(rec === undefined) return null;
         if(typeof rec == "string") { rec = { encoding:"zlib-base64", data:rec }; }
-        var bytes = disk2.base64ToUint8Array(rec.data);
+        var bytes = oCOM.base64ToArray(rec.data);
         if(rec.encoding == "zlib-base64")
         {
             if(typeof pako == "undefined" || typeof pako.inflate != "function")
