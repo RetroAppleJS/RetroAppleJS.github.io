@@ -7,8 +7,6 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
 else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
-// TODO: ADD A LOGGING FUNCTION THAT ONLY TRACKS INFORMATIONS THAT CHANGE!
-
 function AppleDisk2()
 {
     var bDebug   = true;
@@ -181,15 +179,7 @@ function AppleDisk2()
         if ((stats.read || 0) == 0 && (stats.write || 0) == 0)
             return;
 
-        console.log(
-            "AppleDisk2: D%d track %d - bytes R/W %d / %d %s",
-            deviceN + 1,
-            track,
-            stats.read || 0,
-            stats.write || 0,
-            reason ? "("+reason+")":""
-        );
-
+        console.log("AppleDisk2: D%d track %d - bytes R/W %d / %d %s",deviceN + 1,track,stats.read || 0,stats.write || 0,reason ? "("+reason+")":"");
         stats.read = 0;
         stats.write = 0;
         stats.track = hw.track;
@@ -2238,8 +2228,6 @@ this.detectDiskImageType = function(imageBytes, filepath)
                         :"apple2plus.DiskObj().getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
-                    //console.log("subDir="+subDir[0]);
-                    
                     head += '<tr>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+subDir[0]+oCOM.escapeHTML(rows[i].name)+subDir[1]+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].size)+'</td>'
@@ -2273,10 +2261,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
             // if D1 is occupied, switch to D2, if D2 is occupied, switch to D1
-            var drv = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
-
-            // TODO: CONVERT SLT,DRV string to SLOT_I,DRV_I and backwards
-            //if(typeof drv == "number") drv = "D" + drv;
+            var deviceID = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
 
             // Only disk images should be mounted here.
             var ext = (arg.path || "").split(".").pop().toLowerCase();
@@ -2310,10 +2295,10 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
                 if(nibBytes.length != 232960) throw new Error( "unsupported mounted image size " + nibBytes.length + " bytes for " + arg.path );
 
-                apple2plus.loadDisk(nibBytes, drv);
+                apple2plus.loadDisk(nibBytes, deviceID);
 
                 var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
-                disk2.setDriveCatalogFile(drv, fileName);
+                disk2.setDriveCatalogFile(deviceID, fileName);
 
                 if(typeof highlight_appbut == "function")
                 {
@@ -2321,7 +2306,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     var el = document.getElementById(file_id);
                     if(el) highlight_appbut(el, true);
                 }
-                console.log("Loaded disk " + arg.path + " into " + drv + " (" + nibBytes.length + " bytes, source=" + source + ", type=" + info.type + ")");
+                console.log("Loaded disk " + arg.path + " into " + deviceID + " (" + nibBytes.length + " bytes, source=" + source + ", type=" + info.type + ")");
             }
 
             function loadOfflineDisk(reason)
