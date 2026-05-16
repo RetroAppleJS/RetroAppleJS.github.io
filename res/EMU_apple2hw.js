@@ -98,7 +98,7 @@ function Apple2Hw(vid,keys)
             function(addr,d8) { ram[addr] = d8; },              // $9000 - $9FFF
             function(addr,d8) { ram[addr] = d8; },              // $A000 - $AFFF
             function(addr,d8) { ram[addr] = d8; },              // $B000 - $BFFF
-            function(addr,d8) { hw.io.write(addr - IO_ADDR); }, // $C000 - $CFFF
+            function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); }, // $C000 - $CFFF
             function(addr,d8) { hw.write(addr,d8); },           // $D000 - $DFFF
             function(addr,d8) { hw.write(addr,d8); },           // $E000 - $EFFF
             function(addr,d8) { hw.write(addr,d8); }            // $F000 - $FFFF
