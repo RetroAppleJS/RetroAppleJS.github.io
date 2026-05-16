@@ -12,11 +12,7 @@
 
 // HARDWARE IS ACCESSING:
 // 1) RAM & VIDEO RAM
-<<<<<<< HEAD
 // 2) I/O (--> relative address starting from $C000)
-=======
-// 2) I/O (--> relative address starting from $D000)
->>>>>>> 4b780537ea44c2bfb36a93cde6dc8a3625552b77
 // 3) ROM (--> relative address starting from $D000)
 
 function Apple2Hw(vid,keys)
@@ -29,9 +25,9 @@ function Apple2Hw(vid,keys)
 
     var video = vid;                        
     this.io = new Apple2IO(video);
-<<<<<<< HEAD
-    this.children   = {}
 
+
+    this.children   = {}
 
     var RAM_SIZE =      0xc000,
     LORES_ADDR =    0x0400,
@@ -44,8 +40,7 @@ function Apple2Hw(vid,keys)
     ROM_SIZE =      0x4000;
     var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
 
-=======
->>>>>>> 4b780537ea44c2bfb36a93cde6dc8a3625552b77
+
 
     this.irq_signal = 0;        // unused
     this.nmi_signal = 0;
