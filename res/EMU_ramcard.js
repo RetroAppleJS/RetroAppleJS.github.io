@@ -24,16 +24,12 @@ function RamCard()
         return oEMU.component.IO.RamCard.soft_switch(addr - MEM_RAMCARD_IO);
     }
 
-    function _read(addr) {};
-    function _write(addr,d8){};
     
 
     const BANK_SIZE     =  4096
          ,RAMCARD       =  4096
          ,RAMCARD_SIZE  =  8192
 
-    this.id    = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
-    this.state = {"active":true};
     this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
@@ -67,18 +63,18 @@ function RamCard()
     };
 
     var bDebug   = false;   // debug all RAM R/W operations
-    var bDebug_S = false; // debug soft switch updates
+    var bDebug_S = true; // debug soft switch updates
  
     var softswitch = {
-        0x0: {"RAMCARD":true                       }
-       ,0x1: {               "WE":true             }
-       ,0x2: {                                     }
-       ,0x3: {"RAMCARD":true,"WE":true,            }
+        0x0: {"RAMCARD":true                         }
+       ,0x1: {                "WE":true              }
+       ,0x2: {                                       }
+       ,0x3: {"RAMCARD":true, "WE":true,             }
 
-       ,0x8: {"RAMCARD":true          ,"BANK1":true}
-       ,0x9: {               "WE":true,"BANK1":true}
-       ,0xA:{                         "BANK1":true}
-       ,0xB:{"RAMCARD":true,"WE":true,"BANK1":true}
+       ,0x8: {"RAMCARD":true,            "BANK1":true}
+       ,0x9: {                "WE":true, "BANK1":true}
+       ,0xA: {                           "BANK1":true}
+       ,0xB: {"RAMCARD":true, "WE":true, "BANK1":true}
     }
 
     // TODO FVD - emulate status leds !
@@ -104,6 +100,10 @@ function RamCard()
         if(b) this.reset_MEM_monitoring();
     }
 
+    this.reset = function()
+    {
+
+    }
 
     this.soft_switch = function(addr)
     {
@@ -118,8 +118,8 @@ function RamCard()
         }
 
         // only flip switch after double trigger
-        if(softswitch[addr].WE) NEXT = NEXT==false?true:NEXT;
-        else NEXT= false;
+        NEXT = softswitch[addr].WE ? (NEXT==false?true:NEXT) : false;
+        //if(softswitch[addr].WE) NEXT = NEXT==false?true:NEXT; else NEXT= false;
 
         softswitch_pos = addr;
         return 0;
@@ -147,7 +147,6 @@ function RamCard()
             }
             else d8 = apple2Rom[addr];
         }
-
         return d8;
     }
 
@@ -175,7 +174,6 @@ function RamCard()
             }
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
         }
-
         return 0;
     }
 
@@ -202,10 +200,10 @@ function RamCard()
 
 /*  EXAMPLE CODE
 
-M.PRNTYX  = $F940   ; print hex word (Y=hi X=lo)
-M.OUTSP   = $DB57   ; space
+M.PRNTYX  EQU $F940   ; print hex word (Y=hi X=lo)
+M.OUTSP   EQU $DB57   ; space
 
-*=$6000
+ORG $6000
 
 ; WRITE BANK2 and RAMCARD in mode 3 :o)
 LDA $C083   ; 3: {"RAMCARD":true,"WE":true,"BANK":2}

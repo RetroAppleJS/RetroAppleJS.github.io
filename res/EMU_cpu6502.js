@@ -173,8 +173,16 @@ function Cpu6502(hwobj)
     // Keep the bus helpers very small: they are used in the hot path and
     // modern JS engines can inline them.  All direct hw.read()/hw.write()
     // calls in the CPU core should go through these wrappers.
-    function readByte(addr)         { return hw.read(addr & 0xffff) & 0xff }
-    function writeByte(addr, d8)    { hw.write(addr & 0xffff, d8 & 0xff) }
+    //function readByte(addr)         { return hw.read(addr & 0xffff) & 0xff }
+    //function writeByte(addr, d8)    { hw.write(addr & 0xffff, d8 & 0xff) }
+
+    function readByte(addr)         
+    { 
+        // TODO: check how addr can get out of bound here
+        return hw.RD[hw.lineDecode(addr & 0xffff)](addr) & 0xff;
+    }
+    function writeByte(addr, d8)    { hw.WR[hw.lineDecode(addr)](addr & 0xffff,d8 & 0xff) }
+
     function readWord(addr)         { return readByte(addr) | (readByte(addr + 1) << 8) }
     function readWordZp(addr)       { addr &= 0xff; return readByte(addr) | (readByte((addr + 1) & 0xff) << 8) }
 
