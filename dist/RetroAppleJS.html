@@ -21362,6 +21362,7 @@ function Apple2Hw(vid,keys)
     this.lineEncode = function(idx) {return (idx & 0xF) << 12; };
     this.RD = [];
     this.WR = [];
+    this.default_map = null;
 
     var video = vid;                        
     this.io = new Apple2IO(video);
@@ -21392,58 +21393,69 @@ function Apple2Hw(vid,keys)
 
     this.restart = function()
     {
-        // Randomize memory.  Don't do on reset!
-        for (var i = 0; i < RAM_SIZE; i++) ram[i] = Math.floor(Math.random() * 256.0);
-        this.RD = this.mount().RD;
-        this.WR = this.mount().WR;
+        for (var i = 0; i < RAM_SIZE; i++)
+            ram[i] = Math.floor(Math.random() * 256.0);
 
-        // build memory map
-        //this.build_mem_map();
-        //this.memscan();
-    }
+        this.mount();
+    };
+
+    this.build_mount = function()
+    {
+        return {
+            "RD":
+            [
+                function(addr) { return ram[addr]; },                  // $0000 - $0FFF
+                function(addr) { return hw.read(addr); },              // $1000 - $1FFF
+                function(addr) { return hw.read(addr); },              // $2000 - $2FFF
+                function(addr) { return hw.read(addr); },              // $3000 - $3FFF
+                function(addr) { return hw.read(addr); },              // $4000 - $4FFF
+                function(addr) { return hw.read(addr); },              // $5000 - $5FFF
+                function(addr) { return ram[addr]; },                  // $6000 - $6FFF
+                function(addr) { return ram[addr]; },                  // $7000 - $7FFF
+                function(addr) { return ram[addr]; },                  // $8000 - $8FFF
+                function(addr) { return ram[addr]; },                  // $9000 - $9FFF
+                function(addr) { return ram[addr]; },                  // $A000 - $AFFF
+                function(addr) { return ram[addr]; },                  // $B000 - $BFFF
+                function(addr) { return hw.io.read(addr - IO_ADDR); }, // $C000 - $CFFF
+
+                // Default ROM, not RAMCARD.
+                function(addr) { return apple2Rom[addr - ROM_ADDR]; }, // $D000 - $DFFF
+                function(addr) { return apple2Rom[addr - ROM_ADDR]; }, // $E000 - $EFFF
+                function(addr) { return apple2Rom[addr - ROM_ADDR]; }  // $F000 - $FFFF
+            ],
+
+            "WR":
+            [
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $0000 - $0FFF
+                function(addr,d8) { hw.write(addr,d8); },              // $1000 - $1FFF
+                function(addr,d8) { hw.write(addr,d8); },              // $2000 - $2FFF
+                function(addr,d8) { hw.write(addr,d8); },              // $3000 - $3FFF
+                function(addr,d8) { hw.write(addr,d8); },              // $4000 - $4FFF
+                function(addr,d8) { hw.write(addr,d8); },              // $5000 - $5FFF
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $6000 - $6FFF
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $7000 - $7FFF
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $8000 - $8FFF
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $9000 - $9FFF
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $A000 - $AFFF
+                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $B000 - $BFFF
+                function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); }, // $C000 - $CFFF
+
+                // Default ROM write: no-op.
+                function(addr,d8) {},                                 // $D000 - $DFFF
+                function(addr,d8) {},                                 // $E000 - $EFFF
+                function(addr,d8) {}                                  // $F000 - $FFFF
+            ]
+        };
+    };
 
     this.mount = function()
     {
-        return {
-        "RD":
-        [
-            function(addr) { return ram[addr]; },                  // $0000 - $0FFF
-            function(addr) { return hw.read(addr); },              // $1000 - $1FFF
-            function(addr) { return hw.read(addr); },              // $2000 - $2FFF
-            function(addr) { return hw.read(addr); },              // $3000 - $3FFF
-            function(addr) { return hw.read(addr); },              // $4000 - $4FFF
-            function(addr) { return hw.read(addr); },              // $5000 - $5FFF
-            function(addr) { return ram[addr]; },                  // $6000 - $6FFF
-            function(addr) { return ram[addr]; },                  // $7000 - $7FFF
-            function(addr) { return ram[addr]; },                  // $8000 - $8FFF
-            function(addr) { return ram[addr]; },                  // $9000 - $9FFF
-            function(addr) { return ram[addr]; },                  // $A000 - $AFFF
-            function(addr) { return ram[addr]; },                  // $B000 - $BFFF
-            function(addr) { return hw.io.read(addr - IO_ADDR); }, // $C000 - $CFFF
-            function(addr) { return hw.read(addr); },              // $D000 - $DFFF
-            function(addr) { return hw.read(addr); },              // $E000 - $EFFF
-            function(addr) { return hw.read(addr); }               // $F000 - $FFFF
-        ]
-        ,"WR":
-        [
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr); },              // $0000 - $0FFF
-            function(addr,d8) { hw.write(addr,d8); },           // $1000 - $1FFF
-            function(addr,d8) { hw.write(addr,d8); },           // $2000 - $2FFF
-            function(addr,d8) { hw.write(addr,d8); },           // $3000 - $3FFF
-            function(addr,d8) { hw.write(addr,d8); },           // $4000 - $4FFF
-            function(addr,d8) { hw.write(addr,d8); },           // $5000 - $5FFF
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr);},              // $6000 - $6FFF
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr);},              // $7000 - $7FFF
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr);},              // $8000 - $8FFF
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr);},              // $9000 - $9FFF
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr);},              // $A000 - $AFFF
-            function(addr,d8) { ram[addr] = d8; hw.mon(addr);},              // $B000 - $BFFF
-            function(addr,d8) { hw.io.write(addr - IO_ADDR); }, // $C000 - $CFFF
-            function(addr,d8) { hw.write(addr,d8); },           // $D000 - $DFFF
-            function(addr,d8) { hw.write(addr,d8); },           // $E000 - $EFFF
-            function(addr,d8) { hw.write(addr,d8); }            // $F000 - $FFFF
-        ]};
-    }
+        this.default_map = this.build_mount();
+
+        // Working copies. Do not assign the same array object.
+        this.RD = this.default_map.RD.slice(0);
+        this.WR = this.default_map.WR.slice(0);
+    };
 
     this.cycle = function()
     {
