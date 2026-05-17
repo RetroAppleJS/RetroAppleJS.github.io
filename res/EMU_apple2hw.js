@@ -27,7 +27,6 @@ function Apple2Hw(vid,keys)
     var video = vid;                        
     this.io = new Apple2IO(video);
 
-
     this.children   = {}
 
     var RAM_SIZE =      0xc000,
@@ -56,7 +55,6 @@ function Apple2Hw(vid,keys)
     {
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
-
         this.mount();
     };
 
