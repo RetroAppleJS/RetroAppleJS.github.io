@@ -19866,10 +19866,10 @@ function RamCard()
     var card     = this;
     var hw       = null;
     var bDebug   = false;      // debug all RAM R/W operations
-    var bDebug_S = true;      // debug soft switch updates     
+    var bDebug_S = false;      // debug soft switch updates     
 
-    var BANK_MEM    = [ new Uint8Array(4096), new Uint8Array(4096) ];   // BANK 1 & 2 RAMCARD RAM =  2 * 4 Kbytes
-    var RAMCARD_MEM = new Uint8Array(8192);                             // CONTIGIOUS RAMCARD RAM = 8 Kbytes  
+    var BANK_MEM    = [ new Uint8Array(BANK_SIZE), new Uint8Array(BANK_SIZE) ];   // BANK 1 & 2 RAMCARD RAM = 2 * 4 Kbytes
+    var RAMCARD_MEM = new Uint8Array(RAMCARD_SIZE);                               // CONTIGIOUS RAMCARD RAM = 8 Kbytes  
     var logStep = 0
 
     var DBG_READ_BANK      = "READ BANK RAM";
@@ -19955,16 +19955,20 @@ function RamCard()
         return this.soft_switch(addr - MEM_RAMCARD_IO);
     }
  
-    var softswitch = {
-        0x0: {"RAMCARD":true                         }
-       ,0x1: {                "WE":true              }
-       ,0x2: {                                       }
-       ,0x3: {"RAMCARD":true, "WE":true,             }
 
-       ,0x8: {"RAMCARD":true,            "BANK1":true}
-       ,0x9: {                "WE":true, "BANK1":true}
-       ,0xA: {                           "BANK1":true}
-       ,0xB: {"RAMCARD":true, "WE":true, "BANK1":true}
+    // RAMCARD = true : READ -> RAMCARD, WRITE -> n/a
+    // 
+
+    var softswitch = {
+        0x0: {"RAMCARD":true                         }  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x1: {                "WE":true              }  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x2: {                                       }  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
+       ,0x3: {"RAMCARD":true, "WE":true,             }  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+
+       ,0x8: {"RAMCARD":true,            "BANK1":true}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x9: {                "WE":true, "BANK1":true}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0xA: {                           "BANK1":true}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
+       ,0xB: {"RAMCARD":true, "WE":true, "BANK1":true}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
     }
 
     // TODO FVD - emulate status leds !
@@ -19985,15 +19989,10 @@ function RamCard()
 
         bRamcardActive = !!bRamcardActive;
 
-        if (oEMU && oEMU.component && oEMU.component.Hardware)
-            hw = oEMU.component.Hardware;
+        if (oEMU && oEMU.component && oEMU.component.Hardware) hw = oEMU.component.Hardware;
+        if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
 
-        if (!hw || !hw.RD || !hw.WR || !hw.default_map)
-            return false;
-
-        const iD = hw.lineDecode(0xD000),
-            iE = hw.lineDecode(0xE000),
-            iF = hw.lineDecode(0xF000);
+        const iD = hw.lineDecode(0xD000), iE = hw.lineDecode(0xE000), iF = hw.lineDecode(0xF000);
 
         /*
             READ mapping:
@@ -20050,7 +20049,7 @@ function RamCard()
                 if(this.state.RR)
                     console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
                 else
-                    console.log("waiting for NEXT to write-enable ($"+oCOM.getHexByte(addr)+")");
+                    console.log("waiting for RR to write-enable ($"+oCOM.getHexByte(addr)+")");
             }
             else
                 console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
