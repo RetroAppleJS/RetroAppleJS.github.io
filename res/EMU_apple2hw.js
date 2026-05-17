@@ -41,10 +41,11 @@ function Apple2Hw(vid,keys)
     ROM_SIZE =      0x4000;
     var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
 
-
-
     this.irq_signal = 0;        // unused
     this.nmi_signal = 0;
+
+    this.mem_mon = {};
+    this.bMEM_monitoring = false;
 
     this.reset = function()
     {
