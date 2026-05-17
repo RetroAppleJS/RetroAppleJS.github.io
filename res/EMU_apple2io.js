@@ -71,6 +71,7 @@ function Apple2IO(vid)
     {
         keys.reset();
         this.disk2.reset();
+        this.ramcard.reset();
     }
 
     function line_decode(adr)
