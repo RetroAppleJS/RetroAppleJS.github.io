@@ -555,6 +555,13 @@ function Apple2IO(vid)
 
             const hashKey = slotIdx +  pinfo.PCODE;   // constituted of initial slot and PCODE, but is meaningless since this object can move from one slot to another, while keeping the hashKey 
             let oPeri = new globalThis[pinfo.coID](); // this is our freshly made object instance from the object container
+            if (oPeri.id && oPeri.id.PCODE == "MS16K")  // temporary patch!!!  making sure oEMU.component.IO.RamCard (old) remains in sync with oPeri, so that mem monitoring uses the same object between apple ram updates in EMU_apple2hw.js and ramcard ram updates in EMU_ramcard.js 
+            {
+                this.ramcard = oPeri;
+                oEMU.component.IO.RamCard = oPeri;
+            }
+
+
             oPeri.hash =  oCOM.crc16(new TextEncoder("utf-8").encode(hashKey)); // DETERMINE DEVICE ID (CRC16 hash)
   
 

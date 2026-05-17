@@ -76,6 +76,7 @@ function RamCard()
             hw.WR[iF] = hw.default_map.WR[iF];
             this.state.bMapped = false;
         }
+        return true;
     };
 
     this.reset = function()
@@ -106,8 +107,13 @@ function RamCard()
         var new_ramcard = !!new_sw.RAMCARD;
         if (old_ramcard !== new_ramcard) 
         {
-            this.updateMemoryMap();
-            if(bDebug_S) console.log("SOFTSWITCH initiated updateMemoryMap()");
+            var ok = this.updateMemoryMap();
+
+            if(bDebug_S)
+            {
+                if(ok) console.log("SOFTSWITCH updated RAMCARD memory map");
+                else   console.warn("SOFTSWITCH could not update RAMCARD memory map");
+            }
         }
 
         return 0;

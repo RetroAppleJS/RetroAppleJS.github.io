@@ -123,9 +123,6 @@ function Apple2Hw(vid,keys)
         //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
 
-    this.mem_mon = {};
-    this.bMEM_monitoring = false;
-
     this.read = function(addr)
     {
         var d8;
