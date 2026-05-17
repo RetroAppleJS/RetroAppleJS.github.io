@@ -132,11 +132,13 @@ function RamCard()
         if(bDebug_S)
         {
             console.log("updateMemoryMap() -> RAMCARD "+(bRamcardActive?"ON":"OFF"));
+
             if(bRamcardActive == false)
             {
                 console.log("BANK1: 0x"+oCOM.crc16(BANK_MEM[0]).toString(16).toUpperCase()
                             +" BANK2: 0x"+oCOM.crc16(BANK_MEM[1]).toString(16).toUpperCase()
-                            +" RCARD: 0x"+oCOM.crc16(RAMCARD_MEM).toString(16).toUpperCase() + " STEP "+(logStep++) );
+                            +" RCARD: 0x"+oCOM.crc16(RAMCARD_MEM).toString(16).toUpperCase()
+                            +" STEP "+(logStep++));
             }
         }
 
@@ -152,26 +154,35 @@ function RamCard()
             iE = hw.lineDecode(0xE000),
             iF = hw.lineDecode(0xF000);
 
+        /*
+            READ mapping:
+            - RAMCARD ON  => read language-card RAM
+            - RAMCARD OFF => read ROM
+        */
         if (bRamcardActive)
         {
-            hw.RD[iD] = function(addr)    { return card.read(addr - 0xD000); };
-            hw.RD[iE] = function(addr)    { return card.read(addr - 0xD000); };
-            hw.RD[iF] = function(addr)    { return card.read(addr - 0xD000); };
-
-            hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
-            hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
-            hw.WR[iF] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
+            hw.RD[iD] = function(addr) { return card.read(addr - 0xD000); };
+            hw.RD[iE] = function(addr) { return card.read(addr - 0xD000); };
+            hw.RD[iF] = function(addr) { return card.read(addr - 0xD000); };
         }
         else
         {
             hw.RD[iD] = hw.default_map.RD[iD];
             hw.RD[iE] = hw.default_map.RD[iE];
             hw.RD[iF] = hw.default_map.RD[iF];
-
-            hw.WR[iD] = hw.default_map.WR[iD];
-            hw.WR[iE] = hw.default_map.WR[iE];
-            hw.WR[iF] = hw.default_map.WR[iF];
         }
+
+        /*
+            WRITE mapping:
+            Always keep writes routed to the language card once the
+            RAMCARD softswitch system has woken up.
+
+            Whether the write actually succeeds is decided inside
+            card.write() by sw.WE && this.state.RR.
+        */
+        hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
+        hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
+        hw.WR[iF] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
 
         this.state.bMapped = bRamcardActive;
         return true;
