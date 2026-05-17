@@ -19917,6 +19917,7 @@ function RamCard()
             hw.WR[iF] = hw.default_map.WR[iF];
             this.state.bMapped = false;
         }
+        return true;
     };
 
     this.reset = function()
@@ -19947,8 +19948,13 @@ function RamCard()
         var new_ramcard = !!new_sw.RAMCARD;
         if (old_ramcard !== new_ramcard) 
         {
-            this.updateMemoryMap();
-            if(bDebug_S) console.log("SOFTSWITCH initiated updateMemoryMap()");
+            var ok = this.updateMemoryMap();
+
+            if(bDebug_S)
+            {
+                if(ok) console.log("SOFTSWITCH updated RAMCARD memory map");
+                else   console.warn("SOFTSWITCH could not update RAMCARD memory map");
+            }
         }
 
         return 0;
@@ -21006,6 +21012,13 @@ function Apple2IO(vid)
 
             const hashKey = slotIdx +  pinfo.PCODE;   // constituted of initial slot and PCODE, but is meaningless since this object can move from one slot to another, while keeping the hashKey 
             let oPeri = new globalThis[pinfo.coID](); // this is our freshly made object instance from the object container
+            if (oPeri.id && oPeri.id.PCODE == "MS16K")  // temporary patch!!!  making sure oEMU.component.IO.RamCard (old) remains in sync with oPeri, so that mem monitoring uses the same object between apple ram updates in EMU_apple2hw.js and ramcard ram updates in EMU_ramcard.js 
+            {
+                this.ramcard = oPeri;
+                oEMU.component.IO.RamCard = oPeri;
+            }
+
+
             oPeri.hash =  oCOM.crc16(new TextEncoder("utf-8").encode(hashKey)); // DETERMINE DEVICE ID (CRC16 hash)
   
 
@@ -21462,9 +21475,6 @@ function Apple2Hw(vid,keys)
         this.io.cycle();
         //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
-
-    this.mem_mon = {};
-    this.bMEM_monitoring = false;
 
     this.read = function(addr)
     {
