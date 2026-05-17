@@ -24,8 +24,8 @@ function RamCard()
 
     var card     = this;
     var hw       = null;
-    var bDebug   = false;      // debug all RAM R/W operations
-    var bDebug_S = true;       // debug soft switch updates     
+    var bDebug   = true;      // debug all RAM R/W operations
+    var bDebug_S = true;      // debug soft switch updates     
 
     var BANK_MEM    = [ new Uint8Array(4096), new Uint8Array(4096) ];   // BANK 1 & 2 RAMCARD RAM =  2 * 4 Kbytes
     var RAMCARD_MEM = new Uint8Array(8192);                             // CONTIGIOUS RAMCARD RAM = 8 Kbytes  
@@ -101,9 +101,14 @@ function RamCard()
 
         this.state.RR = softswitch[addr].WE ? (this.state.RR == false ? true : this.state.RR) : false;
         this.state.softswitch_pos = addr;
+
         var new_sw = softswitch[this.state.softswitch_pos] || {};
         var new_ramcard = !!new_sw.RAMCARD;
-        if (old_ramcard !== new_ramcard) this.updateMemoryMap();
+        if (old_ramcard !== new_ramcard) 
+        {
+            this.updateMemoryMap();
+            if(bDebug_S) console.log("SOFTSWITCH initiated updateMemoryMap()");
+        }
 
         return 0;
     };
@@ -116,7 +121,8 @@ function RamCard()
             if(sw.RAMCARD)
             {
                 d8 = BANK_MEM[sw.BANK1?0:1][addr];  
-                if(bDebug) console.log("BANK"+(sw.BANK1?1:2)+" read $#"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
+                //if(bDebug) console.log("BANK"+(sw.BANK1?1:2)+" read $#"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
+                if(bDebug) console.log("READ BANK RAM"+(sw.BANK1?1:2));
             }
             else d8 = apple2Rom[addr];  
         }
@@ -126,7 +132,8 @@ function RamCard()
             if(sw.RAMCARD)
             {
                 d8 = RAMCARD_MEM[addr-BANK_SIZE];   
-                if(bDebug) console.log("RAMCARD read #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-BANK_SIZE));
+                //if(bDebug) console.log("RAMCARD read #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-BANK_SIZE));
+                if(bDebug) console.log("READ RAMCARD RAM");
             }
             else d8 = apple2Rom[addr];
         }
@@ -142,7 +149,7 @@ function RamCard()
             {
                 BANK_MEM[sw.BANK1?0:1][addr] = d8;
                 this.mark_MEM_monitoring(sw.BANK1 ? "bankA" : "bankB", addr + 0xD000);
-                if(bDebug) console.log("BANK="+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
+                if(bDebug) console.log("WRITE BANK RAM"+(sw.BANK1?1:2));
             } 
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));       
         }
@@ -153,7 +160,7 @@ function RamCard()
             {
                 RAMCARD_MEM[addr-BANK_SIZE] = d8;
                 this.mark_MEM_monitoring("ramcard", addr + 0xD000);
-                if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-BANK_SIZE));
+                if(bDebug) console.log("WRITE RAMCARD RAM");
             }
             else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr-RAMCARD));
         }
