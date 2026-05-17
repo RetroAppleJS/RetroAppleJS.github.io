@@ -9,8 +9,8 @@ else oEMU.component.IO.AppleDisk = new AppleDisk2();
 
 function AppleDisk2()
 {
-    var bDebug   = true;
-    var bDebug_N = true;   // debug disk noise only 
+    var bDebug   = false;
+    var bDebug_N = false;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     this.state = 
