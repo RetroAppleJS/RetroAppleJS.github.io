@@ -25,10 +25,10 @@ function RamCard()
     var card     = this;
     var hw       = null;
     var bDebug   = false;      // debug all RAM R/W operations
-    var bDebug_S = true;      // debug soft switch updates     
+    var bDebug_S = false;      // debug soft switch updates     
 
-    var BANK_MEM    = [ new Uint8Array(4096), new Uint8Array(4096) ];   // BANK 1 & 2 RAMCARD RAM =  2 * 4 Kbytes
-    var RAMCARD_MEM = new Uint8Array(8192);                             // CONTIGIOUS RAMCARD RAM = 8 Kbytes  
+    var BANK_MEM    = [ new Uint8Array(BANK_SIZE), new Uint8Array(BANK_SIZE) ];   // BANK 1 & 2 RAMCARD RAM = 2 * 4 Kbytes
+    var RAMCARD_MEM = new Uint8Array(RAMCARD_SIZE);                               // CONTIGIOUS RAMCARD RAM = 8 Kbytes  
     var logStep = 0
 
     var DBG_READ_BANK      = "READ BANK RAM";
@@ -114,16 +114,30 @@ function RamCard()
         return this.soft_switch(addr - MEM_RAMCARD_IO);
     }
  
-    var softswitch = {
-        0x0: {"RAMCARD":true                         }
-       ,0x1: {                "WE":true              }
-       ,0x2: {                                       }
-       ,0x3: {"RAMCARD":true, "WE":true,             }
 
-       ,0x8: {"RAMCARD":true,            "BANK1":true}
-       ,0x9: {                "WE":true, "BANK1":true}
-       ,0xA: {                           "BANK1":true}
-       ,0xB: {"RAMCARD":true, "WE":true, "BANK1":true}
+    // RAMCARD = true : READ -> RAMCARD, WRITE -> n/a
+    // 
+
+    const SS_READ = [1, 0, 0, 1];   // mode 0,1,2,3
+                                    // 0: RAM read,  write protect
+                                    // 1: ROM read,  write enable
+                                    // 2: ROM read,  write protect
+                                    // 3: RAM read,  write enable
+
+    function decodeSoftSwitch(addr)
+    {
+        var ss   = addr & 0x0F;
+        var mode = ss & 0x03;
+
+        return {
+            "read": SS_READ[mode],
+            "we":   mode & 0x01,
+
+            // Manual/Saturn naming:
+            // 0 = 4K bank A, selected by $C0N0-$C0N3
+            // 1 = 4K bank B, selected by $C0N8-$C0NB
+            "bank4": (ss >> 3) & 0x01
+        };
     }
 
     // TODO FVD - emulate status leds !
@@ -144,15 +158,10 @@ function RamCard()
 
         bRamcardActive = !!bRamcardActive;
 
-        if (oEMU && oEMU.component && oEMU.component.Hardware)
-            hw = oEMU.component.Hardware;
+        if (oEMU && oEMU.component && oEMU.component.Hardware) hw = oEMU.component.Hardware;
+        if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
 
-        if (!hw || !hw.RD || !hw.WR || !hw.default_map)
-            return false;
-
-        const iD = hw.lineDecode(0xD000),
-            iE = hw.lineDecode(0xE000),
-            iF = hw.lineDecode(0xF000);
+        const iD = hw.lineDecode(0xD000), iE = hw.lineDecode(0xE000), iF = hw.lineDecode(0xF000);
 
         /*
             READ mapping:
@@ -209,7 +218,7 @@ function RamCard()
                 if(this.state.RR)
                     console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
                 else
-                    console.log("waiting for NEXT to write-enable ($"+oCOM.getHexByte(addr)+")");
+                    console.log("waiting for RR to write-enable ($"+oCOM.getHexByte(addr)+")");
             }
             else
                 console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
