@@ -118,26 +118,16 @@ function RamCard()
     // RAMCARD = true : READ -> RAMCARD, WRITE -> n/a
     // 
 
-    const SS_READ = [1, 0, 0, 1];   // mode 0,1,2,3
-                                    // 0: RAM read,  write protect
-                                    // 1: ROM read,  write enable
-                                    // 2: ROM read,  write protect
-                                    // 3: RAM read,  write enable
+    var softswitch = {
+        0x0: {"RAMCARD":true                         }  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x1: {                "WE":true              }  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x2: {                                       }  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
+       ,0x3: {"RAMCARD":true, "WE":true,             }  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
 
-    function decodeSoftSwitch(addr)
-    {
-        var ss   = addr & 0x0F;
-        var mode = ss & 0x03;
-
-        return {
-            "read": SS_READ[mode],
-            "we":   mode & 0x01,
-
-            // Manual/Saturn naming:
-            // 0 = 4K bank A, selected by $C0N0-$C0N3
-            // 1 = 4K bank B, selected by $C0N8-$C0NB
-            "bank4": (ss >> 3) & 0x01
-        };
+       ,0x8: {"RAMCARD":true,            "BANK1":true}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x9: {                "WE":true, "BANK1":true}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0xA: {                           "BANK1":true}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
+       ,0xB: {"RAMCARD":true, "WE":true, "BANK1":true}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
     }
 
     // TODO FVD - emulate status leds !
