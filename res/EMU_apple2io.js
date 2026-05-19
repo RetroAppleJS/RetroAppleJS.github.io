@@ -7,11 +7,10 @@
 //
 // apple2io.js
 
+// oEMU.component.IO is only a dataset referencing to the peripherals, but it should not contain the Apple2IO ojbject, instead hw.io owns the instance of Apple2IO like hw.io.<method> !!!
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{"A2P":{"active":true}}}
-//else oEMU.component.IO = new Apple2IO();
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
-
 
 function Apple2IO(vid)
 {

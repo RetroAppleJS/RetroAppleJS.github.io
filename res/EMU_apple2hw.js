@@ -18,13 +18,14 @@
 function Apple2Hw(vid,keys)
 {
     var hw = this;
+    
     this.lineDecode = function(addr) {return addr >> 12; };
     this.RD = [];
     this.WR = [];
     this.default_map = null;
 
     var video = vid;                        
-    this.io = new Apple2IO(video);
+    this.io = new Apple2IO(video);      // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
 
     this.children   = {}
 
@@ -47,7 +48,7 @@ function Apple2Hw(vid,keys)
 
     this.reset = function()
     {
-        this.io.reset();
+        hw.io.reset();
     }
 
     this.restart = function()
@@ -84,18 +85,18 @@ function Apple2Hw(vid,keys)
 
             "WR":
             [
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $0000 - $0FFF
+                function(addr,d8) { ram[addr] = d8; },   // $0000 - $0FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $1000 - $1FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $2000 - $2FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $3000 - $3FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $4000 - $4FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $5000 - $5FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $6000 - $6FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $7000 - $7FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $8000 - $8FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $9000 - $9FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $A000 - $AFFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $B000 - $BFFF
+                function(addr,d8) { ram[addr] = d8; },   // $6000 - $6FFF
+                function(addr,d8) { ram[addr] = d8; },   // $7000 - $7FFF
+                function(addr,d8) { ram[addr] = d8; },   // $8000 - $8FFF
+                function(addr,d8) { ram[addr] = d8; },   // $9000 - $9FFF
+                function(addr,d8) { ram[addr] = d8; },   // $A000 - $AFFF
+                function(addr,d8) { ram[addr] = d8; },   // $B000 - $BFFF
                 function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); }, // $C000 - $CFFF
 
                 // Default ROM write: no-op.
@@ -117,7 +118,7 @@ function Apple2Hw(vid,keys)
 
     this.cycle = function()
     {
-        this.io.cycle();
+        hw.io.cycle();
         //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
 
@@ -126,14 +127,14 @@ function Apple2Hw(vid,keys)
         var d8;
         addr = addr & 0xFFFF;
 
-        if(this.io.ramcard && this.io.ramcard.state.active == true && addr >= ROM_ADDR)
-            d8 = this.io.read(addr);
+        if(oEMU.component.IO.RamCard && oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
+            d8 = hw.io.read(addr);
         else if (addr < RAM_SIZE) // RAM_SIZE
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             d8 = apple2Rom[addr - ROM_ADDR];
         else if (addr & 0xF000 ^ 0xC000 == 0) //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            d8 = this.io.read(addr - IO_ADDR);
+            d8 = hw.io.read(addr - IO_ADDR);
         else
             d8 = 0x55;
      
@@ -145,14 +146,14 @@ function Apple2Hw(vid,keys)
         var d8;
         addr = addr & 0xFFFF;
 
-        if(this.io.ramcard && this.io.ramcard.state.active == true && addr >= ROM_ADDR)
-            d8 = this.io.read(addr);
+        if(oEMU.component.IO.RamCard && oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
+            d8 = hw.io.read(addr);
         else if (addr < RAM_SIZE)
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             d8 = apple2Rom[addr - ROM_ADDR];
         //else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-        //    d8 = this.io.read(addr - IO_ADDR);
+        //    d8 = hw.io.read(addr - IO_ADDR);
         else
             d8 = 0xFF;
      
@@ -168,8 +169,8 @@ function Apple2Hw(vid,keys)
     {
         if (d8 < 0 || d8 > 0xff) console.error("apple2hw.write(%s %s) d8 too big!",addr.toString(16), d8.toString(16));
 
-        if(this.io.ramcard &&  this.io.ramcard.state.active == true && addr >= ROM_ADDR)
-            d8 = this.io.write(addr,d8);
+        if(oEMU.component.IO.RamCard &&  oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
+            d8 = hw.io.write(addr,d8);
         else if (addr < RAM_SIZE)
         {
             ram[addr] = d8;
@@ -181,16 +182,15 @@ function Apple2Hw(vid,keys)
                 video.write(addr, d8);
         }
         else if (addr & 0xF000 ^ 0xC000 == 0)  //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            this.io.write(addr - IO_ADDR, d8);
+            hw.io.write(addr - IO_ADDR, d8);
 
-        if( this.bMEM_monitoring && addr < RAM_SIZE )
-            this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
+        
+        //if(this.bMEM_monitoring) this.mon(addr);
     }
 
     this.mon = function(addr)
     {
-        if( this.bMEM_monitoring && addr < RAM_SIZE )
-            this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
+        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
     }
 
     this.mem_layout = {
@@ -215,6 +215,29 @@ function Apple2Hw(vid,keys)
        ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
        ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
        ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
+    }
+
+    this.reset_MEM_monitoring = function()
+    {
+        this.mem_mon = {};
+        //if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.reset_MEM_monitoring();
+        oMEMGRID.paint_grid(this.mem_layout);
+    }
+
+    this.enable_MEM_monitoring = function(b)
+    {
+        this.bMEM_monitoring = b;
+        if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.enable_MEM_monitoring(b);
+        if(b) this.reset_MEM_monitoring();
+    }
+
+    this.MEM_monitoring = function()
+    {
+        if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.MEM_monitoring();
+
+        oMEMGRID.paint_grid(hw.mem_layout);
+        oMEMGRID.update_grid(hw.mem_mon);
+        this.mem_mon = {};     
     }
 
     // Link memory to Video

@@ -178,10 +178,18 @@ function Cpu6502(hwobj)
 
     function readByte(addr)         
     { 
-        // TODO: check how addr can get out of bound here
-        return hw.RD[hw.lineDecode(addr & 0xffff)](addr) & 0xff;
+        const adr = addr & 0xffff;
+        const line = hw.lineDecode(adr);
+        return hw.RD[line](adr) & 0xff;
     }
-    function writeByte(addr, d8)    { hw.WR[hw.lineDecode(addr)](addr & 0xffff,d8 & 0xff) }
+
+    function writeByte(addr, d8)
+    {
+        const adr = addr & 0xffff;
+        const line = hw.lineDecode(adr);
+        const d = d8 & 0xff;
+        hw.WR[line](adr,d);
+    }
 
     function readWord(addr)         { return readByte(addr) | (readByte(addr + 1) << 8) }
     function readWordZp(addr)       { addr &= 0xff; return readByte(addr) | (readByte((addr + 1) & 0xff) << 8) }

@@ -25,9 +25,8 @@ function Apple2Plus(context)
         var video = new Apple2Video(vidContext);
     }
 
-    var hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");
-    this.hw = hw;
-    oEMU.component.Hardware = hw;
+    this.hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");       // Apple2plus owns Apple2Hw object instance
+    const hw = this.hw
     
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
@@ -79,7 +78,7 @@ function Apple2Plus(context)
 
     if(typeof(Cpu6502)=="undefined")
           { console.log("running Apple2Plus without CPU") }
-    else var cpu  = new Cpu6502(hw);
+    else var cpu  = new Cpu6502(this.hw);
 
     /*
     keys.KbdHTML({id:"kbd",path:"res/"
@@ -89,7 +88,7 @@ function Apple2Plus(context)
 
     this.reset = function()
     {
-        hw.reset();
+        this.hw.reset();
         cpu.reset();
         video.reset();
         system_tab_update();
@@ -98,7 +97,7 @@ function Apple2Plus(context)
     this.restart = function()
     {
         this.onrestart();
-        hw.restart();
+        this.hw.restart();
         this.reset();
         system_tab_update();
     }
@@ -106,47 +105,6 @@ function Apple2Plus(context)
     this.onrestart = function() {} // overridable
 
     this.CPU_monitoring = function() {}  // overridable by GUI update function
-
-    this.MEM_monitoring = function()
-    {
-        
-        oMEMGRID.paint_grid(hw.mem_layout);
-        oMEMGRID.update_grid(hw.mem_mon);
-
-        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.MEM_grid)
-        {
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon.ramcard, hw.io.ramcard.MEM_grid.ramcard.cnf);
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon.bankB,   hw.io.ramcard.MEM_grid.bankB.cnf);
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon.bankA,   hw.io.ramcard.MEM_grid.bankA.cnf);
-        }
-
-        hw.mem_mon = {};     
-    }
-
-    this.reset_MEM_monitoring = function()
-    {
-        hw.mem_mon = {};
-
-        if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
-            hw.io.ramcard.reset_MEM_monitoring();
-
-        oMEMGRID.paint_grid(hw.mem_layout);
-        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.MEM_grid)
-        {
-            oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.ramcard.layout, hw.io.ramcard.MEM_grid.ramcard.cnf);
-            oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.bankB.layout,   hw.io.ramcard.MEM_grid.bankB.cnf);
-            oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.bankA.layout,   hw.io.ramcard.MEM_grid.bankA.cnf);
-        }
-    }
-
-    this.enable_MEM_monitoring = function(b)
-    {
-        hw.bMEM_monitoring = b;
-        if(hw.io.ramcard && hw.io.ramcard.enable_MEM_monitoring)
-            hw.io.ramcard.enable_MEM_monitoring(b);
-
-        if(b) this.reset_MEM_monitoring();
-    }
 
     this.DSK_monitoring = function()
     {
@@ -200,7 +158,7 @@ function Apple2Plus(context)
     */
 
     this.DiskObj = function() {
-        return hw.io.disk2;
+        return this.hw.io.disk2;
     }
 
     this.keysObj = function() {
@@ -208,7 +166,7 @@ function Apple2Plus(context)
     }
 
     this.hwObj = function() {
-        return hw;
+        return this.hw;
     }
 
     this.vidObj = function() {
@@ -218,13 +176,13 @@ function Apple2Plus(context)
     // TODO: move this to EMU_appledisk2.js
     this.loadDisk = function(bytes,drive) {
         var drv = Number(drive.slice(1))-1;
-        hw.io.disk2.state.diskData[ drv ] = bytes;
+        this.hw.io.disk2.state.diskData[ drv ] = bytes;
     }  
 
     // TODO: move this to EMU_appledisk2.js
     this.dumpDisk = function(drive) {
         var drv = Number(drive.slice(1))-1;
-        hw.io.disk2.dump(drv);
+        this.hw.io.disk2.dump(drv);
     }
 
     this.monitor = function(type) {

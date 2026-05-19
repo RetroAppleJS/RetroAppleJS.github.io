@@ -34,7 +34,6 @@ function RamCard()
     var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);   // PERIPHERAL RAM
 
     var card      = this;
-    var hw        = null;
     var bDebug_sw = true;      // debug soft switch updates (light)
     var bDebug    = false;     // debug all RAM R/W operations   
     
@@ -66,8 +65,8 @@ function RamCard()
     // TODO FVD - emulate status leds !
     this.updateMemoryMap = function(bRamcardActive)
     {
+        var hw = apple2plus.hwObj();
         if(bDebug_sw) { debug_updateMemoryMap(bRamcardActive,this) }
-        if (oEMU && oEMU.component && oEMU.component.Hardware) hw = oEMU.component.Hardware;
         if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
 
         const iD = hw.lineDecode(0xD000), iE = hw.lineDecode(0xE000), iF = hw.lineDecode(0xF000);
@@ -88,6 +87,7 @@ function RamCard()
             hw.RD[iF] = hw.default_map.RD[iF];
         }
         // WRITE MAPPING
+
         hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
         hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
         hw.WR[iF] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
@@ -101,7 +101,7 @@ function RamCard()
         debug_flush();
         this.state.bMapped = false;
         this.state.RR = false;
-    };
+    }
 
     function soft_switch(addr) { return this.soft_switch(addr); }
     this.soft_switch = function(addr)
@@ -150,6 +150,7 @@ function RamCard()
                 , addr
                 , d8
                 , addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null);
+            if(this.bMEM_monitoring) this.MEM_monitoring()
         }
         else {  debug_flush(); console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr)) }
 
@@ -191,6 +192,17 @@ function RamCard()
     {
         this.bMEM_monitoring = !!b; 
         if(b) this.reset_MEM_monitoring(); 
+    }
+
+    this.MEM_monitoring = function()
+    {
+        // TODO: let EMU_ramcard do this when it is plugged in
+        if(this && this.state.active && this.MEM_grid)
+        {
+            oMEMGRID.paint_grid(this.MEM_grid.ramcard.layout, this.MEM_grid.ramcard.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
+        }
     }
 
     //      _____       ___      ______     __             __                                 

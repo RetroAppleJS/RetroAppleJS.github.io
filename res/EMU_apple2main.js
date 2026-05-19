@@ -351,7 +351,7 @@ function EMU_init()
     disk2.state.DSK_lid[1] = document.getElementById("dskLID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
@@ -681,7 +681,7 @@ function EMUI()
                 return ""
                 + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
                 + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></button></div>"
+                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.hwObj().enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
                 + "</div>";
@@ -1263,7 +1263,7 @@ function EMUI()
         html += close;
         html += "<br><br>";
 
-        var io = oEMU.component.IO.self;
+        var io = apple2plus.hwObj().io;
         var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
         console.log(names);
         for (var pcode in names) 
