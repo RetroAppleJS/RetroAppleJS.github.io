@@ -71,7 +71,7 @@ function Apple2IO(vid)
     {
         keys.reset();
         this.disk2.reset();
-        this.ramcard.reset();
+        if(this.ramcard && this.ramcard.reset) this.ramcard.reset();
     }
 
     function line_decode(adr)
@@ -636,12 +636,8 @@ function Apple2IO(vid)
         {
             var peripheral_names = this.listPeripheralNames();
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
+            if(pinfo===undefined) continue;
             var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
-
-
-
-
-
             pinfo = this.mount(cinfo,pinfo,slotIdx);
 
             slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}

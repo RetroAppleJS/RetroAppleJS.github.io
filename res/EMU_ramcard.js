@@ -87,7 +87,6 @@ function RamCard()
             hw.RD[iE] = hw.default_map.RD[iE];
             hw.RD[iF] = hw.default_map.RD[iF];
         }
-
         // WRITE MAPPING
         hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
         hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
@@ -170,14 +169,14 @@ function RamCard()
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
     this.mem_layout = {
-        "3F000-40000":["#D06060",this.id.PCODE,"RF"]
-       ,"3E000-3F000":["#D06060",this.id.PCODE,"RE"]
+        "3F000-40000":["#D06060",this.id.PCODE+" CONT","RF"]
+       ,"3E000-3F000":["#D06060",this.id.PCODE+" CONT","RE"]
        ,"2D000-2E000":["#B05050",this.id.PCODE+" BANK B","DB"]
        ,"1D000-1E000":["#A04040",this.id.PCODE+" BANK A","DA"]
     };    
     this.MEM_grid = 
     {
-        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-10000":["#D06060",this.id.PCODE,"RF"],"E000-F000":["#D06060",this.id.PCODE,"RE"]}},
+        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-10000":["#D06060",this.id.PCODE+ "CONT","RF"],"E000-F000":["#D06060",this.id.PCODE+" CONT","RE"]}},
         "bankB":{"cnf":{"id_prefix":"z","digits":4},"layout":{"D000-E000":["#B05050",this.id.PCODE+" BANK B","DB"]}},
         "bankA":{"cnf":{"id_prefix":"y","digits":4},"layout":{"D000-E000":["#A04040",this.id.PCODE+" BANK A","DA"]}}
     };
