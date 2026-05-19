@@ -19,7 +19,6 @@ function Apple2Hw(vid,keys)
 {
     var hw = this;
     this.lineDecode = function(addr) {return addr >> 12; };
-    this.lineEncode = function(idx) {return (idx & 0xF) << 12; };
     this.RD = [];
     this.WR = [];
     this.default_map = null;
