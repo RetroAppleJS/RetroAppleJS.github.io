@@ -19928,7 +19928,6 @@ function RamCard()
             hw.RD[iE] = hw.default_map.RD[iE];
             hw.RD[iF] = hw.default_map.RD[iF];
         }
-
         // WRITE MAPPING
         hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
         hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
@@ -20011,14 +20010,14 @@ function RamCard()
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
     this.mem_layout = {
-        "3F000-40000":["#D06060",this.id.PCODE,"RF"]
-       ,"3E000-3F000":["#D06060",this.id.PCODE,"RE"]
+        "3F000-40000":["#D06060",this.id.PCODE+" CONT","RF"]
+       ,"3E000-3F000":["#D06060",this.id.PCODE+" CONT","RE"]
        ,"2D000-2E000":["#B05050",this.id.PCODE+" BANK B","DB"]
        ,"1D000-1E000":["#A04040",this.id.PCODE+" BANK A","DA"]
     };    
     this.MEM_grid = 
     {
-        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-10000":["#D06060",this.id.PCODE,"RF"],"E000-F000":["#D06060",this.id.PCODE,"RE"]}},
+        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-10000":["#D06060",this.id.PCODE+ "CONT","RF"],"E000-F000":["#D06060",this.id.PCODE+" CONT","RE"]}},
         "bankB":{"cnf":{"id_prefix":"z","digits":4},"layout":{"D000-E000":["#B05050",this.id.PCODE+" BANK B","DB"]}},
         "bankA":{"cnf":{"id_prefix":"y","digits":4},"layout":{"D000-E000":["#A04040",this.id.PCODE+" BANK A","DA"]}}
     };
@@ -20604,7 +20603,7 @@ function Apple2IO(vid)
     {
         keys.reset();
         this.disk2.reset();
-        this.ramcard.reset();
+        if(this.ramcard && this.ramcard.reset) this.ramcard.reset();
     }
 
     function line_decode(adr)
@@ -21169,12 +21168,8 @@ function Apple2IO(vid)
         {
             var peripheral_names = this.listPeripheralNames();
             var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
+            if(pinfo===undefined) continue;
             var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
-
-
-
-
-
             pinfo = this.mount(cinfo,pinfo,slotIdx);
 
             slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
@@ -28262,7 +28257,7 @@ oCOM.addToEventStack("onload",DBG_init);
                   <div style="float:left" id="DBG_mem_map"></div>
 
                   <script>
-                    oCOM.addToEventStack("onload",DBG_mem_map)
+                  oCOM.addToEventStack("onload",DBG_mem_map)
                   function DBG_mem_map()
                   {
                       if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
