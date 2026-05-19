@@ -109,7 +109,8 @@ function Apple2Plus(context)
 
     this.MEM_monitoring = function()
     {
-        oMEMGRID.paint_grid(this.mem_layout);
+        
+        oMEMGRID.paint_grid(hw.mem_layout);
         oMEMGRID.update_grid(hw.mem_mon);
 
         if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.MEM_grid)
@@ -129,7 +130,7 @@ function Apple2Plus(context)
         if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
             hw.io.ramcard.reset_MEM_monitoring();
 
-        oMEMGRID.paint_grid(this.mem_layout);
+        oMEMGRID.paint_grid(hw.mem_layout);
         if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.MEM_grid)
         {
             oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.ramcard.layout, hw.io.ramcard.MEM_grid.ramcard.cnf);
@@ -230,29 +231,7 @@ function Apple2Plus(context)
         return video.setMonitor(type);
     }
 
-    this.mem_layout = {
-        "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
-       ,"0100-01FF":["#D0D0D0","STACK","ST"]
-       ,"0200-02FF":["#00D000","GETLN buffer","BU"]
-       ,"0300-03FF":["#00D000","VECTORS","VC"]
-       ,"0400-07FF":["#D000D0","TXT1/LORES1","T1"]
-       ,"0800-0BFF":["#D000D0","TXT2/LORES2","T2"]
-       ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
-       ,"2000-3FFF":["#0000D0","HIRES1","H1"]
-       ,"4000-5FFF":["#0000D0","HIRES2","H2"]
-       ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
-       ,"C000-C07F":["#D0D000","I/O","IB"]
-       ,"C080-C0FF":["#D0D000","SLOT I/O","IO"]
-       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
-       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
-       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
-       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
-       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
-       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
-       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
-       ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
-       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
-    }
+
 
     // type 0=ref  1=jump 2=sub 3=soft/sw
     this.mem_sym = {

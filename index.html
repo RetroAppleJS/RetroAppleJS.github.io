@@ -382,7 +382,7 @@
             {
               var el = document.getElementById("EMU_mem_map");
               if(!el) return;
-              if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
+              if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.hwObj().mem_layout) return;
  
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
@@ -400,7 +400,7 @@
                     + "</div>"
                     : "")
               + "</div>";
-              oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
+              oMEMGRID.paint_grid(apple2plus.hwObj().mem_layout,cnf);
               if(bLC)
               {
                 oMEMGRID.relabel_grid_rows("xEF",["F000\u00a0\u00a0\u00a0\u00a0","E000\u00a0\u00a0\u00a0\u00a0"]);
@@ -844,13 +844,13 @@ function rrr()
                   oCOM.addToEventStack("onload",DBG_mem_map)
                   function DBG_mem_map()
                   {
-                      if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.mem_layout) return;
+                      if(typeof(apple2plus)!="object" || apple2plus==null || !apple2plus.hwObj().mem_layout) return;
                       var linestep = 4096;
                       var cnf = {id_prefix:"d",digits:4}
                       document.getElementById("DBG_mem_map").innerHTML = 
                         oMEMGRID.build_grid(7*linestep,8,-linestep,cnf) 
                       + oMEMGRID.build_grid(15*linestep,8,-linestep,cnf);
-                      oMEMGRID.paint_grid(apple2plus.mem_layout,cnf);
+                      oMEMGRID.paint_grid(apple2plus.hwObj().mem_layout,cnf);
                   }
                   </script>
                  
