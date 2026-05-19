@@ -12841,7 +12841,7 @@ function EMU_init()
     disk2.state.DSK_lid[1] = document.getElementById("dskLID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
-    oCOM.addRefreshEvent(apple2plus.MEM_monitoring,"MEM_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
@@ -13171,7 +13171,7 @@ function EMUI()
                 return ""
                 + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
                 + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></button></div>"
+                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.hwObj().enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
                 + "</div>";
@@ -13753,7 +13753,7 @@ function EMUI()
         html += close;
         html += "<br><br>";
 
-        var io = oEMU.component.IO.self;
+        var io = apple2plus.hwObj().io;
         var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
         console.log(names);
         for (var pcode in names) 
@@ -14201,10 +14201,18 @@ function Cpu6502(hwobj)
 
     function readByte(addr)         
     { 
-        // TODO: check how addr can get out of bound here
-        return hw.RD[hw.lineDecode(addr & 0xffff)](addr) & 0xff;
+        const adr = addr & 0xffff;
+        const line = hw.lineDecode(adr);
+        return hw.RD[line](adr) & 0xff;
     }
-    function writeByte(addr, d8)    { hw.WR[hw.lineDecode(addr)](addr & 0xffff,d8 & 0xff) }
+
+    function writeByte(addr, d8)
+    {
+        const adr = addr & 0xffff;
+        const line = hw.lineDecode(adr);
+        const d = d8 & 0xff;
+        hw.WR[line](adr,d);
+    }
 
     function readWord(addr)         { return readByte(addr) | (readByte(addr + 1) << 8) }
     function readWordZp(addr)       { addr &= 0xff; return readByte(addr) | (readByte((addr + 1) & 0xff) << 8) }
@@ -19875,7 +19883,6 @@ function RamCard()
     var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);   // PERIPHERAL RAM
 
     var card      = this;
-    var hw        = null;
     var bDebug_sw = true;      // debug soft switch updates (light)
     var bDebug    = false;     // debug all RAM R/W operations   
     
@@ -19907,8 +19914,8 @@ function RamCard()
     // TODO FVD - emulate status leds !
     this.updateMemoryMap = function(bRamcardActive)
     {
+        var hw = apple2plus.hwObj();
         if(bDebug_sw) { debug_updateMemoryMap(bRamcardActive,this) }
-        if (oEMU && oEMU.component && oEMU.component.Hardware) hw = oEMU.component.Hardware;
         if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
 
         const iD = hw.lineDecode(0xD000), iE = hw.lineDecode(0xE000), iF = hw.lineDecode(0xF000);
@@ -19929,6 +19936,7 @@ function RamCard()
             hw.RD[iF] = hw.default_map.RD[iF];
         }
         // WRITE MAPPING
+
         hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
         hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
         hw.WR[iF] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
@@ -19942,7 +19950,7 @@ function RamCard()
         debug_flush();
         this.state.bMapped = false;
         this.state.RR = false;
-    };
+    }
 
     function soft_switch(addr) { return this.soft_switch(addr); }
     this.soft_switch = function(addr)
@@ -19991,6 +19999,7 @@ function RamCard()
                 , addr
                 , d8
                 , addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null);
+            if(this.bMEM_monitoring) this.MEM_monitoring()
         }
         else {  debug_flush(); console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr)) }
 
@@ -20032,6 +20041,17 @@ function RamCard()
     {
         this.bMEM_monitoring = !!b; 
         if(b) this.reset_MEM_monitoring(); 
+    }
+
+    this.MEM_monitoring = function()
+    {
+        // TODO: let EMU_ramcard do this when it is plugged in
+        if(this && this.state.active && this.MEM_grid)
+        {
+            oMEMGRID.paint_grid(this.MEM_grid.ramcard.layout, this.MEM_grid.ramcard.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
+        }
     }
 
     //      _____       ___      ______     __             __                                 
@@ -20539,11 +20559,10 @@ function AppleBoard()
 //
 // apple2io.js
 
+// oEMU.component.IO is only a dataset referencing to the peripherals, but it should not contain the Apple2IO ojbject, instead hw.io owns the instance of Apple2IO like hw.io.<method> !!!
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{"A2P":{"active":true}}}
-//else oEMU.component.IO = new Apple2IO();
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
-
 
 function Apple2IO(vid)
 {
@@ -21442,13 +21461,14 @@ slotCfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","P
 function Apple2Hw(vid,keys)
 {
     var hw = this;
+    
     this.lineDecode = function(addr) {return addr >> 12; };
     this.RD = [];
     this.WR = [];
     this.default_map = null;
 
     var video = vid;                        
-    this.io = new Apple2IO(video);
+    this.io = new Apple2IO(video);      // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
 
     this.children   = {}
 
@@ -21471,7 +21491,7 @@ function Apple2Hw(vid,keys)
 
     this.reset = function()
     {
-        this.io.reset();
+        hw.io.reset();
     }
 
     this.restart = function()
@@ -21508,18 +21528,18 @@ function Apple2Hw(vid,keys)
 
             "WR":
             [
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $0000 - $0FFF
+                function(addr,d8) { ram[addr] = d8; },   // $0000 - $0FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $1000 - $1FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $2000 - $2FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $3000 - $3FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $4000 - $4FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $5000 - $5FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $6000 - $6FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $7000 - $7FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $8000 - $8FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $9000 - $9FFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $A000 - $AFFF
-                function(addr,d8) { ram[addr] = d8; hw.mon(addr); },   // $B000 - $BFFF
+                function(addr,d8) { ram[addr] = d8; },   // $6000 - $6FFF
+                function(addr,d8) { ram[addr] = d8; },   // $7000 - $7FFF
+                function(addr,d8) { ram[addr] = d8; },   // $8000 - $8FFF
+                function(addr,d8) { ram[addr] = d8; },   // $9000 - $9FFF
+                function(addr,d8) { ram[addr] = d8; },   // $A000 - $AFFF
+                function(addr,d8) { ram[addr] = d8; },   // $B000 - $BFFF
                 function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); }, // $C000 - $CFFF
 
                 // Default ROM write: no-op.
@@ -21541,7 +21561,7 @@ function Apple2Hw(vid,keys)
 
     this.cycle = function()
     {
-        this.io.cycle();
+        hw.io.cycle();
         //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
     }
 
@@ -21550,14 +21570,14 @@ function Apple2Hw(vid,keys)
         var d8;
         addr = addr & 0xFFFF;
 
-        if(this.io.ramcard && this.io.ramcard.state.active == true && addr >= ROM_ADDR)
-            d8 = this.io.read(addr);
+        if(oEMU.component.IO.RamCard && oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
+            d8 = hw.io.read(addr);
         else if (addr < RAM_SIZE) // RAM_SIZE
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             d8 = apple2Rom[addr - ROM_ADDR];
         else if (addr & 0xF000 ^ 0xC000 == 0) //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            d8 = this.io.read(addr - IO_ADDR);
+            d8 = hw.io.read(addr - IO_ADDR);
         else
             d8 = 0x55;
      
@@ -21569,14 +21589,14 @@ function Apple2Hw(vid,keys)
         var d8;
         addr = addr & 0xFFFF;
 
-        if(this.io.ramcard && this.io.ramcard.state.active == true && addr >= ROM_ADDR)
-            d8 = this.io.read(addr);
+        if(oEMU.component.IO.RamCard && oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
+            d8 = hw.io.read(addr);
         else if (addr < RAM_SIZE)
             d8 = ram[addr];
         else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
             d8 = apple2Rom[addr - ROM_ADDR];
         //else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-        //    d8 = this.io.read(addr - IO_ADDR);
+        //    d8 = hw.io.read(addr - IO_ADDR);
         else
             d8 = 0xFF;
      
@@ -21592,8 +21612,8 @@ function Apple2Hw(vid,keys)
     {
         if (d8 < 0 || d8 > 0xff) console.error("apple2hw.write(%s %s) d8 too big!",addr.toString(16), d8.toString(16));
 
-        if(this.io.ramcard &&  this.io.ramcard.state.active == true && addr >= ROM_ADDR)
-            d8 = this.io.write(addr,d8);
+        if(oEMU.component.IO.RamCard &&  oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
+            d8 = hw.io.write(addr,d8);
         else if (addr < RAM_SIZE)
         {
             ram[addr] = d8;
@@ -21605,16 +21625,15 @@ function Apple2Hw(vid,keys)
                 video.write(addr, d8);
         }
         else if (addr & 0xF000 ^ 0xC000 == 0)  //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            this.io.write(addr - IO_ADDR, d8);
+            hw.io.write(addr - IO_ADDR, d8);
 
-        if( this.bMEM_monitoring && addr < RAM_SIZE )
-            this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid  
+        
+        //if(this.bMEM_monitoring) this.mon(addr);
     }
 
     this.mon = function(addr)
     {
-        if( this.bMEM_monitoring && addr < RAM_SIZE )
-            this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
+        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
     }
 
     this.mem_layout = {
@@ -21639,6 +21658,29 @@ function Apple2Hw(vid,keys)
        ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
        ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
        ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
+    }
+
+    this.reset_MEM_monitoring = function()
+    {
+        this.mem_mon = {};
+        //if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.reset_MEM_monitoring();
+        oMEMGRID.paint_grid(this.mem_layout);
+    }
+
+    this.enable_MEM_monitoring = function(b)
+    {
+        this.bMEM_monitoring = b;
+        if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.enable_MEM_monitoring(b);
+        if(b) this.reset_MEM_monitoring();
+    }
+
+    this.MEM_monitoring = function()
+    {
+        if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.MEM_monitoring();
+
+        oMEMGRID.paint_grid(hw.mem_layout);
+        oMEMGRID.update_grid(hw.mem_mon);
+        this.mem_mon = {};     
     }
 
     // Link memory to Video
@@ -22406,9 +22448,8 @@ function Apple2Plus(context)
         var video = new Apple2Video(vidContext);
     }
 
-    var hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");
-    this.hw = hw;
-    oEMU.component.Hardware = hw;
+    this.hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");       // Apple2plus owns Apple2Hw object instance
+    const hw = this.hw
     
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
@@ -22460,7 +22501,7 @@ function Apple2Plus(context)
 
     if(typeof(Cpu6502)=="undefined")
           { console.log("running Apple2Plus without CPU") }
-    else var cpu  = new Cpu6502(hw);
+    else var cpu  = new Cpu6502(this.hw);
 
     /*
     keys.KbdHTML({id:"kbd",path:"res/"
@@ -22470,7 +22511,7 @@ function Apple2Plus(context)
 
     this.reset = function()
     {
-        hw.reset();
+        this.hw.reset();
         cpu.reset();
         video.reset();
         system_tab_update();
@@ -22479,7 +22520,7 @@ function Apple2Plus(context)
     this.restart = function()
     {
         this.onrestart();
-        hw.restart();
+        this.hw.restart();
         this.reset();
         system_tab_update();
     }
@@ -22487,47 +22528,6 @@ function Apple2Plus(context)
     this.onrestart = function() {} // overridable
 
     this.CPU_monitoring = function() {}  // overridable by GUI update function
-
-    this.MEM_monitoring = function()
-    {
-        
-        oMEMGRID.paint_grid(hw.mem_layout);
-        oMEMGRID.update_grid(hw.mem_mon);
-
-        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.MEM_grid)
-        {
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon.ramcard, hw.io.ramcard.MEM_grid.ramcard.cnf);
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon.bankB,   hw.io.ramcard.MEM_grid.bankB.cnf);
-            oMEMGRID.update_grid(hw.io.ramcard.mem_mon.bankA,   hw.io.ramcard.MEM_grid.bankA.cnf);
-        }
-
-        hw.mem_mon = {};     
-    }
-
-    this.reset_MEM_monitoring = function()
-    {
-        hw.mem_mon = {};
-
-        if(hw.io.ramcard && hw.io.ramcard.reset_MEM_monitoring)
-            hw.io.ramcard.reset_MEM_monitoring();
-
-        oMEMGRID.paint_grid(hw.mem_layout);
-        if(hw.io.ramcard && hw.io.ramcard.state.active && hw.io.ramcard.MEM_grid)
-        {
-            oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.ramcard.layout, hw.io.ramcard.MEM_grid.ramcard.cnf);
-            oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.bankB.layout,   hw.io.ramcard.MEM_grid.bankB.cnf);
-            oMEMGRID.paint_grid(hw.io.ramcard.MEM_grid.bankA.layout,   hw.io.ramcard.MEM_grid.bankA.cnf);
-        }
-    }
-
-    this.enable_MEM_monitoring = function(b)
-    {
-        hw.bMEM_monitoring = b;
-        if(hw.io.ramcard && hw.io.ramcard.enable_MEM_monitoring)
-            hw.io.ramcard.enable_MEM_monitoring(b);
-
-        if(b) this.reset_MEM_monitoring();
-    }
 
     this.DSK_monitoring = function()
     {
@@ -22581,7 +22581,7 @@ function Apple2Plus(context)
     */
 
     this.DiskObj = function() {
-        return hw.io.disk2;
+        return this.hw.io.disk2;
     }
 
     this.keysObj = function() {
@@ -22589,7 +22589,7 @@ function Apple2Plus(context)
     }
 
     this.hwObj = function() {
-        return hw;
+        return this.hw;
     }
 
     this.vidObj = function() {
@@ -22599,13 +22599,13 @@ function Apple2Plus(context)
     // TODO: move this to EMU_appledisk2.js
     this.loadDisk = function(bytes,drive) {
         var drv = Number(drive.slice(1))-1;
-        hw.io.disk2.state.diskData[ drv ] = bytes;
+        this.hw.io.disk2.state.diskData[ drv ] = bytes;
     }  
 
     // TODO: move this to EMU_appledisk2.js
     this.dumpDisk = function(drive) {
         var drv = Number(drive.slice(1))-1;
-        hw.io.disk2.dump(drv);
+        this.hw.io.disk2.dump(drv);
     }
 
     this.monitor = function(type) {
