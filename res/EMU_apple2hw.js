@@ -185,12 +185,7 @@ function Apple2Hw(vid,keys)
             hw.io.write(addr - IO_ADDR, d8);
 
         
-        //if(this.bMEM_monitoring) this.mon(addr);
-    }
-
-    this.mon = function(addr)
-    {
-        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
+        if(this.bMEM_monitoring) this.mark_MEM_monitoring(addr);
     }
 
     this.mem_layout = {
@@ -217,6 +212,11 @@ function Apple2Hw(vid,keys)
        ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
     }
 
+    this.mark_MEM_monitoring = function(addr)
+    {
+        this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
+    }
+
     this.reset_MEM_monitoring = function()
     {
         this.mem_mon = {};
@@ -234,7 +234,6 @@ function Apple2Hw(vid,keys)
     this.MEM_monitoring = function()
     {
         if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.MEM_monitoring();
-
         oMEMGRID.paint_grid(hw.mem_layout);
         oMEMGRID.update_grid(hw.mem_mon);
         this.mem_mon = {};     
