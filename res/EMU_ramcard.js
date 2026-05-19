@@ -19,13 +19,37 @@ function RamCard()
     };
     this.action = {"SlotIO": { "RD":{ "callback":_readSlotIO.bind(this) } } }
 
+    this.lineDecode = function(addr) 
+    {
+        return addr >> 12; 
+    };
+
+    this._read = function(addr)
+    {
+        if(!this.state.ramRead)
+            return apple2Rom[addr];
+
+        return this.readMem(decodeLocal(addr));
+    };
+
+    this._write = function(addr, d8)
+    {
+        return this.writeMem(decodeLocal(addr), d8);
+    };    
+
     const BANK_SIZE     =  0x1000    // size of one memory bank = contiguous ram offset  = 4Kbytes  
          ,RAMCARD_SIZE  =  0x2000    // size of contiguous bank = 8Kbytes
 
+    const COMMON_SIZE   = 0x2000;              // 8K
+    const COMMON_BASE   = BANK_SIZE * 2;       // $2000 inside RAMCARD_MEM
+    const LC_UNIT_SIZE  = COMMON_BASE + COMMON_SIZE; // 16K
+
+    var RAMCARD_CMEM = new Uint8Array(LC_UNIT_SIZE);
+
     var card     = this;
     var hw       = null;
-    var bDebug   = false;      // debug all RAM R/W operations
-    var bDebug_S = false;      // debug soft switch updates     
+    var bDebug   = true;      // debug all RAM R/W operations
+    var bDebug_S = true;      // debug soft switch updates     
 
     var BANK_MEM    = [ new Uint8Array(BANK_SIZE), new Uint8Array(BANK_SIZE) ];   // BANK 1 & 2 RAMCARD RAM = 2 * 4 Kbytes
     var RAMCARD_MEM = new Uint8Array(RAMCARD_SIZE);                               // CONTIGIOUS RAMCARD RAM = 8 Kbytes  
@@ -136,12 +160,11 @@ function RamCard()
         if(bDebug_S)
         {
             console.log("updateMemoryMap() -> RAMCARD "+(bRamcardActive?"ON":"OFF"));
-
             if(bRamcardActive == false)
             {
-                console.log("BANK1: 0x"+oCOM.crc16(BANK_MEM[0]).toString(16).toUpperCase()
-                            +" BANK2: 0x"+oCOM.crc16(BANK_MEM[1]).toString(16).toUpperCase()
-                            +" RCARD: 0x"+oCOM.crc16(RAMCARD_MEM).toString(16).toUpperCase()
+                console.log(  "BANK1: 0x"+oCOM.crc16(RAMCARD_CMEM.slice(0, BANK_SIZE)).toString(16).toUpperCase()
+                            +" BANK2: 0x"+oCOM.crc16(RAMCARD_CMEM.slice(BANK_SIZE, COMMON_BASE)).toString(16).toUpperCase()
+                            +" RCARD: 0x"+oCOM.crc16(RAMCARD_CMEM.slice(COMMON_BASE, LC_UNIT_SIZE)).toString(16).toUpperCase()
                             +" STEP "+(logStep++));
             }
         }
@@ -160,9 +183,9 @@ function RamCard()
         */
         if (bRamcardActive)
         {
-            hw.RD[iD] = function(addr) { return card.read(addr - 0xD000); };
-            hw.RD[iE] = function(addr) { return card.read(addr - 0xD000); };
-            hw.RD[iF] = function(addr) { return card.read(addr - 0xD000); };
+            hw.RD[iD] = function(addr,iD) { return card.read(addr - 0xD000); };
+            hw.RD[iE] = function(addr,iE) { return card.read(addr - 0xD000); };
+            hw.RD[iF] = function(addr,iF) { return card.read(addr - 0xD000); };
         }
         else
         {
@@ -229,74 +252,43 @@ function RamCard()
 
     this.read = function(addr)
     {
-        var d8;
-        var sw = softswitch[this.state.softswitch_pos] || {};
-
-        if(addr < BANK_SIZE)
-        {
-            if(sw.RAMCARD)
-            {
-                d8 = BANK_MEM[sw.BANK1 ? 0 : 1][addr];
-                debug_record(DBG_READ_BANK, addr, d8, sw.BANK1 ? "1" : "2");
-            }
-            else d8 = apple2Rom[addr];
+        var sw = softswitch[this.state.softswitch_pos] || {}, d8;
+        var bank_bit = sw.BANK1 ? 0 : 1;
+        if(sw.RAMCARD)
+        { 
+            d8 = RAMCARD_CMEM[ encoder(addr,bank_bit) ]; 
+            debug_record(
+                  addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD
+                , addr
+                , d8
+                , addr < BANK_SIZE ? (sw.BANK1 ? "1" : "2") : null);
         }
-        else if(addr < BANK_SIZE + RAMCARD_SIZE)
-        {
-            if(sw.RAMCARD)
-            {
-                d8 = RAMCARD_MEM[addr - BANK_SIZE];
-                debug_record(DBG_READ_RAMCARD, addr, d8);
-            }
-            else d8 = apple2Rom[addr];
-        }
+        else d8 = apple2Rom[addr];
 
         return d8;
-    };
+    }
 
     this.write = function(addr,d8)
     {
         var sw = softswitch[this.state.softswitch_pos] || {};
+        var bank_bit = sw.BANK1 ? 0 : 1;
+        if(sw.WE && this.state.RR) 
+        {
+            RAMCARD_CMEM[ encoder(addr,bank_bit) ] = d8;
+            this.mark_MEM_monitoring(addr < BANK_SIZE ? (sw.BANK1 ? "bankA" : "bankB") : "ramcard", addr + 0xD000);
 
-        if(addr < BANK_SIZE)
-        {
-            if(sw.WE && this.state.RR)
-            {
-                BANK_MEM[sw.BANK1 ? 0 : 1][addr] = d8;
-                this.mark_MEM_monitoring(sw.BANK1 ? "bankA" : "bankB", addr + 0xD000);
-                debug_record(DBG_WRITE_BANK, addr, d8, sw.BANK1 ? "1" : "2");
-            }
-            else if(bDebug)
-            {
-                debug_flush();
-                console.log(
-                    "FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+
-                    " write #$"+oCOM.getHexByte(d8)+
-                    " at addr $"+oCOM.getHexWord(addr)
-                );
-            }
+            debug_record( addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD
+                , addr
+                , d8
+                ,addr < BANK_SIZE ? (sw.BANK1 ? "1" : "2") : null);
         }
-        else if(addr < BANK_SIZE + RAMCARD_SIZE)
-        {
-            if(sw.WE && this.state.RR)
-            {
-                RAMCARD_MEM[addr - BANK_SIZE] = d8;
-                this.mark_MEM_monitoring("ramcard", addr + 0xD000);
-                debug_record(DBG_WRITE_RAMCARD, addr, d8);
-            }
-            else if(bDebug)
-            {
-                debug_flush();
-                console.log(
-                    "FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+
-                    oCOM.getHexByte(d8)+
-                    " at addr $"+oCOM.getHexWord(addr - BANK_SIZE)
-                );
-            }
-        }
+        else {  debug_flush(); console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(sw.BANK1?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr)) }
 
         return 0;
     };
+
+    function encoder(addr,bank_bit) { return addr + ((bank_bit | !!(addr >> 12)) << 12) }
+
 
     //       ______  _____  _____  _____    __             __                                 
     //     .' ___  ||_   _||_   _||_   _|  [  |           [  |                                
