@@ -171,9 +171,12 @@ function Apple2Hw()
 
   this.MEM_monitoring = function()
   {
+    if(Object.keys(hw.mem_mon).length>0)
+    {
       oMEMGRID.paint_grid(hw.mem_layout);
       oMEMGRID.update_grid(hw.mem_mon);
-      this.mem_mon = {};     
+      hw.mem_mon = {};
+    }
   }
 
 }
