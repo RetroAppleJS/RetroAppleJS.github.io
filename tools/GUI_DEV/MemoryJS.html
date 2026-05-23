@@ -97,13 +97,28 @@ var oEMU =
   "stats":{}
 }
 
-var CPU_monitoring = function()
+var oEMU =
 {
-    document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+    "component":
+    {
+         "CPU":{}
+    }
+    ,"stats":{}
 }
+
 
 function Apple2Hw()
 {
+    this.cycle = function(n)
+    {
+        var args = {"cpu_chrono":performance.now()};
+
+        // display dashboard parameters
+        if(oCOM.bRefreshEvent) dashboard_refresh(args);
+    }
+
+
+
   this.mem_mon = {};
   this.bMEM_monitoring = false;
 
@@ -136,6 +151,11 @@ function Apple2Hw()
       this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
   }
 
+  this.unmark_MEM_monitoring = function(addr)
+  {
+      this.mem_mon[ addr>>oMEMGRID.mem_gran ] = false;     // update memory monitoring grid 
+  }
+
   this.reset_MEM_monitoring = function()
   {
       this.mem_mon = {};
@@ -159,9 +179,22 @@ function Apple2Hw()
 }
 var hw = new Apple2Hw();
 
-oEMU.stats.EMU_DashboardRefresh_cy = Math.round(_o.EMU_Updates_s / _o.EMU_DashboardRefresh_s) // Dashboard refreshes per Cycle
-oCOM.addRefreshEvent(hw.MEM_monitoring,"MEM_monitoring",false);
+var dashboard_refresh = function(args)
+{
+    oEMU.component.CPU.dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
+    oEMU.component.CPU.dutycycle_idx++;
+    if(oCOM.bRefreshEvent && oEMU.component.CPU.dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
+    {
+        for(var _o in oCOM.RefreshEvent_arr)
+            if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
+        oEMU.component.CPU.dutycycle_time = oEMU.component.CPU.dutycycle_idx = 0;
+    }
+}
 
+
+
+
+var appleIntervalHandle;
 
 // build grid
 function init()
@@ -175,9 +208,23 @@ function init()
   // TODO: test update_grid
 
   oMEMGRID.relabel_grid_rows("m",["mod1","mod2"]);
+
+  var pct = 100;
+  _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
+  window.clearInterval(appleIntervalHandle);
+  appleIntervalHandle = window.setInterval(hw.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+
+  oEMU.stats.EMU_DashboardRefresh_cy = Math.round(_o.EMU_Updates_s / _o.EMU_DashboardRefresh_s) // Dashboard refreshes per Cycle
+  oCOM.addRefreshEvent(hw.MEM_monitoring,"MEM_monitoring",true);
+  oEMU.component.CPU["dutycycle_time"] = 0;
+  oEMU.component.CPU["dutycycle_idx"] = 0;
+
 }
 
   </script>
+
+<button onclick="hw.mark_MEM_monitoring(0xE000)">mark</button>
+<button onclick="hw.unmark_MEM_monitoring(0xE000)">unmark</button>
 
   <div id="output"></div>
   <textarea id="debug" style="width:1024px;height:200px" hidden></textarea>
