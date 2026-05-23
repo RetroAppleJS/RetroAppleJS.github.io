@@ -4,7 +4,6 @@
     <title>Apple II+ memory map</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">  
     <link rel="stylesheet"        href="../../res/COM_MAIN.css">
-    <script type="text/javascript" src="../../res/EMU_apple2plus.js"></script>
     <script type="text/javascript" src="../../res/COM_MAIN.js"></script>
 
 </head>
@@ -22,9 +21,13 @@
   ██   ██    ██    ██      ██ ███████ 
 -->  
 <body onload="init()">
-    <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;">
-      <input type=button onclick="memscan(document.getElementById('address_decode'))"  style="font-family:Arial;font-size:11px;float:left;padding-top:3px" value="address decoder"></input>&nbsp;
-      <input type=text id="address_decode" style="width:205px" value="(adr & 0xF000)">
+
+    <div style="float:left;background-color:#76B9CE;border-radius:10px;padding:30px 30px 30px 30px;margin:10px;width:370px">
+      <!--input type=button onclick="memscan(document.getElementById('address_decode'))"  style="font-family:Arial;font-size:11px;float:left;padding-top:3px" value="address decoder"></input>&nbsp;
+      <input type=text id="address_decode" style="width:205px" value="(adr & 0xF000)"-->
+      <div style="background-color:#FFFFFF">
+        <div id="grid"></div>
+      </div>
     </div>
     
       <!--
@@ -51,26 +54,7 @@
     </table>
     -->
 
-    <script>
-
-var oEMU =
-{
-     "system":{}
-    ,"component":
-    {
-         "CPU":{}
-        ,"Hardware":{}
-        ,"Video":{}
-        ,"Keyboard":{}
-        ,"RAM":{}
-        ,"ROM":{}
-        ,"IO":{}
-    }
-    ,"stats":{}
-}
-if(Apple2Hw===undefined) var Apple2Hw = function(){};
-
-var apple2plus = new Apple2Plus(); // allow instantiating other systems
+<script>
 
 var last = "";
 function memscan()
@@ -103,47 +87,46 @@ function memscan()
 }
 
 
+
+var mem_layout = {
+        "0000-00FF":["#D0D0D0","ZERO-PAGE","ZP"]
+       ,"0100-01FF":["#D0D0D0","STACK","ST"]
+       ,"0200-02FF":["#00D000","GETLN buffer","BU"]
+       ,"0300-03FF":["#00D000","VECTORS","VC"]
+       ,"0400-07FF":["#D000D0","TXT1/LORES1","T1"]
+       ,"0800-0BFF":["#D000D0","TXT2/LORES2","T2"]
+       ,"0C00-1FFF":["#00D000","APPLESOFT PRG","AP"]
+       ,"2000-3FFF":["#0000D0","HIRES1","H1"]
+       ,"4000-5FFF":["#0000D0","HIRES2","H2"]
+       ,"6000-BFFF":["rgba(0,0,0,0.1)","FREE","F"]
+       ,"C000-C07F":["#D0D000","I/O","IB"]
+       ,"C080-C0FF":["#D0D000","SLOT I/O","IO"]
+       ,"C100-C1FF":["#D0D000","SLOT 1 ROM","S1"]
+       ,"C200-C2FF":["#D0D000","SLOT 2 ROM","S2"]
+       ,"C300-C3FF":["#D0D000","SLOT 3 ROM","S3"]
+       ,"C400-C4FF":["#D0D000","SLOT 4 ROM","S4"]
+       ,"C500-C5FF":["#D0D000","SLOT 5 ROM","S5"]
+       ,"C600-C6FF":["#D0D000","SLOT 6 ROM","S6"]
+       ,"C700-C7FF":["#D0D000","SLOT 7 ROM","S7"]
+       ,"C800-CFFF":["#D0D000","SLOT ROM ext","SR"]
+       ,"D000-FFFF":["#D00000","MONITOR ROM","AR"]       
+    }
+
+
 // build grid
 function init()
 {
   var linestep = 4096;
-  document.getElementById("debug2").innerHTML = 
+  document.getElementById("grid").innerHTML = 
     oMEMGRID.build_grid(7*linestep,8,-linestep) 
   + oMEMGRID.build_grid(15*linestep,8,-linestep);
-  oMEMGRID.paint_grid(apple2plus.mem_layout);
+  oMEMGRID.paint_grid(mem_layout);
 }
-
-   /*
-    function resize()
-    {
-      //const table_tag = document.querySelector('table');
-      //table_tag.classList.replace('gtable', 'htable');
-
-      var el = document.querySelectorAll(".gtable");
-      for(var i=0;i<el.length;i++)
-      {
-        //el[i].style.height = "80px";
-        document.getElementById("debug").innerHTML = "height="+el[i].clientHeight
-      }
-
-      var el = document.querySelectorAll(".gtable tr td");
-      for(var i=0;i<el.length;i++)
-      {
-        //el[i].style.width = "8px";
-        //el[i].style.height = "8px";
-      }     
-    }  
-     */
-   
 
   </script>
 
-  <div id="debug2"></div>
   <div id="output"></div>
-
-
   <textarea id="debug" style="width:1024px;height:200px" hidden></textarea>
-  
 
 </body>
 </html>
