@@ -3751,22 +3751,31 @@ function COM()
   {
     console.log("addRefreshEvent("+name+")");
     this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
-    this.checkActiveEvents();
+    this.checkActiveRefreshEvents();
   }
 
   this.toggleRefreshEvent = function(name)
   {
+    if(!this.RefreshEvent_arr[name]) return false;
     this.RefreshEvent_arr[ name ].active = !this.RefreshEvent_arr[ name ].active;
-    this.checkActiveEvents();
+    this.checkActiveRefreshEvents();
     return this.RefreshEvent_arr[ name ].active;
   }
 
-  this.checkActiveEvents = function()
+  this.checkActiveRefreshEvents = function()
   {
-    var bActive = false;
+    var bActive = false;      // if any of the events is active, keep bRefreshEvent = true 
     for(var _o in this.RefreshEvent_arr)
       if(this.RefreshEvent_arr[_o].active) bActive = true;
     this.bRefreshEvent = bActive;
+  }
+
+  this.enableRefreshEvent = function(name, active)
+  {
+    if(!this.RefreshEvent_arr[name]) return false;
+    this.RefreshEvent_arr[name].active = !!active;
+    this.checkActiveRefreshEvents();
+    return this.RefreshEvent_arr[name].active;
   }
 }
 
