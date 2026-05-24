@@ -63,7 +63,8 @@ function memscan()
   var dv = ["<div style='font-size:10px;font-family:Arial;color:white'>","</div>"];
   for(var adr=0xBFFF;adr<0xC200;adr+=1)
   {
-    try{
+    try
+    {
       var f = document.getElementById("address_decode").value;
       var o = eval(f);
       //if(oMEMGRID.mem_map[adr>>oMEMGRID.mem_gran] != last)
@@ -109,15 +110,12 @@ var oEMU =
 
 function Apple2Hw()
 {
-    this.cycle = function(n)
-    {
-        var args = {"cpu_chrono":performance.now()};
-
-        // display dashboard parameters
-        if(oCOM.bRefreshEvent) dashboard_refresh(args);
-    }
-
-
+  this.cycle = function(n)
+  {
+      var args = {"cpu_chrono":performance.now()};
+      // display dashboard parameters
+      if(oCOM.bRefreshEvent) dashboard_refresh(args);
+  }
 
   this.mem_mon = {};
   this.bMEM_monitoring = false;
@@ -148,25 +146,18 @@ function Apple2Hw()
 
   this.mark_MEM_monitoring = function(addr)
   {
-      this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
+    this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
   }
 
   this.unmark_MEM_monitoring = function(addr)
   {
-      this.mem_mon[ addr>>oMEMGRID.mem_gran ] = false;     // update memory monitoring grid 
+    this.mem_mon[ addr>>oMEMGRID.mem_gran ] = false;     // update memory monitoring grid 
   }
 
   this.reset_MEM_monitoring = function()
   {
-      this.mem_mon = {};
-      oMEMGRID.paint_grid(this.mem_layout);
-  }
-
-  this.enable_MEM_monitoring = function(b)
-  {
-      this.bMEM_monitoring = b;
-      if(b) this.reset_MEM_monitoring();
-      // EMU_ramcard.js has its own lazy method to detect if hw.bMEM_monitoring has changed
+    this.mem_mon = {};
+    oMEMGRID.paint_grid(this.mem_layout);
   }
 
   this.MEM_monitoring = function()
@@ -184,18 +175,15 @@ var hw = new Apple2Hw();
 
 var dashboard_refresh = function(args)
 {
-    oEMU.component.CPU.dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
-    oEMU.component.CPU.dutycycle_idx++;
-    if(oCOM.bRefreshEvent && oEMU.component.CPU.dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
-    {
-        for(var _o in oCOM.RefreshEvent_arr)
-            if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
-        oEMU.component.CPU.dutycycle_time = oEMU.component.CPU.dutycycle_idx = 0;
-    }
+  oEMU.component.CPU.dutycycle_time += Math.round(performance.now()-args.cpu_chrono);
+  oEMU.component.CPU.dutycycle_idx++;
+  if(oCOM.bRefreshEvent && oEMU.component.CPU.dutycycle_idx > oEMU.stats.EMU_DashboardRefresh_cy)
+  {
+      for(var _o in oCOM.RefreshEvent_arr)
+          if(oCOM.RefreshEvent_arr[_o].active) oCOM.RefreshEvent_arr[_o].func();
+      oEMU.component.CPU.dutycycle_time = oEMU.component.CPU.dutycycle_idx = 0;
+  }
 }
-
-
-
 
 var appleIntervalHandle;
 
@@ -224,10 +212,16 @@ function init()
 
 }
 
-  </script>
+var bOn = true;
+</script>
 
-<button onclick="hw.mark_MEM_monitoring(0xE000)">mark</button>
-<button onclick="hw.unmark_MEM_monitoring(0xE000)">unmark</button>
+<button onclick="hw.mark_MEM_monitoring(0xE000)">mark E000</button>
+<button onclick="hw.unmark_MEM_monitoring(0xE000)">unmark E000</button>
+
+<button onclick="hw.mark_MEM_monitoring(0xE100)">mark E100</button>
+<button onclick="hw.unmark_MEM_monitoring(0xE100)">unmark E100</button>
+
+<button onclick="bOn=!bOn;oCOM.enableRefreshEvent('MEM_monitoring',bOn);document.getElementById('sync').innerHTML=bOn;hw.reset_MEM_monitoring();" id="sync">true</button>
 
   <div id="output"></div>
   <textarea id="debug" style="width:1024px;height:200px" hidden></textarea>
