@@ -18,18 +18,20 @@
 function Apple2Hw(vid,keys)
 {
     var hw = this;
+
+    var bDebug_mon = false;      // debug RAM Write monitor
     
     this.lineDecode = function(addr) {return addr >> 12; };
     this.RD = [];
     this.WR = [];
     this.default_map = null;
+    
 
     var video = vid;                        
     this.io = new Apple2IO(video);      // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
-
     this.children   = {}
 
-    var RAM_SIZE =      0xc000,
+    var RAM_SIZE =  0xc000,
     LORES_ADDR =    0x0400,
     LORES_SIZE =    0x0800, // both pages
     HIRES_ADDR =    0x2000,
@@ -38,13 +40,18 @@ function Apple2Hw(vid,keys)
     IO_SIZE =       0x0800,
     ROM_ADDR =      0xd000,
     ROM_SIZE =      0x4000;
-    var ram = new Uint8Array(RAM_SIZE);      // DECLARE RAM SPACE
 
-    this.irq_signal = 0;        // unused
+    /////////////////////////////////////////////////////////////////
+    var ram = new Uint8Array(RAM_SIZE);      // HARDWARE RAM SPACE //
+    /////////////////////////////////////////////////////////////////
+
+    this.irq_signal = 0;        // can be used in the future (currently unused)
     this.nmi_signal = 0;
 
     this.mem_mon = {};
+    this.mem_mon_trigger = {};
     this.bMEM_monitoring = false;
+    
 
     this.reset = function()
     {
@@ -56,6 +63,7 @@ function Apple2Hw(vid,keys)
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
         this.mount();
+        hw.io.restart();
     };
 
     this.build_mount = function()
@@ -85,18 +93,18 @@ function Apple2Hw(vid,keys)
 
             "WR":
             [
-                function(addr,d8) { ram[addr] = d8; },   // $0000 - $0FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $0000 - $0FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $1000 - $1FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $2000 - $2FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $3000 - $3FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $4000 - $4FFF
                 function(addr,d8) { hw.write(addr,d8); },              // $5000 - $5FFF
-                function(addr,d8) { ram[addr] = d8; },   // $6000 - $6FFF
-                function(addr,d8) { ram[addr] = d8; },   // $7000 - $7FFF
-                function(addr,d8) { ram[addr] = d8; },   // $8000 - $8FFF
-                function(addr,d8) { ram[addr] = d8; },   // $9000 - $9FFF
-                function(addr,d8) { ram[addr] = d8; },   // $A000 - $AFFF
-                function(addr,d8) { ram[addr] = d8; },   // $B000 - $BFFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $6000 - $6FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $7000 - $7FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $8000 - $8FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $9000 - $9FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $A000 - $AFFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $B000 - $BFFF
                 function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); }, // $C000 - $CFFF
 
                 // Default ROM write: no-op.
@@ -220,23 +228,33 @@ function Apple2Hw(vid,keys)
     this.reset_MEM_monitoring = function()
     {
         this.mem_mon = {};
-        //if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.reset_MEM_monitoring();
+        //this.mem_mon_trigger = {"RESET":true};
+        this.mem_mon_trigger = {};
         oMEMGRID.paint_grid(this.mem_layout);
     }
 
     this.enable_MEM_monitoring = function(b)
     {
         this.bMEM_monitoring = b;
-        if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.enable_MEM_monitoring(b);
         if(b) this.reset_MEM_monitoring();
+        // EMU_ramcard.js has its own lazy method to detect if hw.bMEM_monitoring has changed
     }
 
     this.MEM_monitoring = function()
     {
-        if(oEMU.component.IO.RamCard) oEMU.component.IO.RamCard.MEM_monitoring();
-        oMEMGRID.paint_grid(hw.mem_layout);
-        oMEMGRID.update_grid(hw.mem_mon);
-        this.mem_mon = {};     
+        if(Object.keys(hw.mem_mon).length>0)    // is there anything to display?
+        {
+            if(bDebug_mon) console.log("MEM_monitoring -> mem_layout:"+JSON.stringify(hw.mem_mon));
+            oMEMGRID.paint_grid(hw.mem_layout);
+            oMEMGRID.update_grid(hw.mem_mon);
+            //hw.mem_mon = {};
+        }
+
+        // TODO call ramcard?
+        // TODO: DEBUG check if RamCard.MEM_monitoring() is called!!!!
+        //oEMU.component.IO.RamCard.MEM_monitoring();
+
+        hw.mem_mon_trigger = {};    // reset monitoring triggers
     }
 
     // Link memory to Video
