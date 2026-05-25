@@ -33,9 +33,10 @@ function RamCard()
 
     var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);   // PERIPHERAL RAM
 
-    var card      = this;
-    var bDebug_sw = true;      // debug soft switch updates (light)
-    var bDebug    = false;     // debug all RAM R/W operations   
+    var card       = this;
+    var bDebug_sw  = false;      // debug soft switch updates (light)
+    var bDebug_mon = false;      // debug RAM Write monitor
+    var bDebug     = false;     // debug all RAM R/W operations   
     
     function dbg_op(label)
     {
@@ -66,6 +67,8 @@ function RamCard()
     this.updateMemoryMap = function(bRamcardActive)
     {
         var hw = apple2plus.hwObj();
+        if(this.bMEM_monitoring != hw.bMEM_monitoring) this.enable_MEM_monitoring(hw.bMEM_monitoring);  // check if hw has memory monitoring enabled or disabled 
+
         if(bDebug_sw) { debug_updateMemoryMap(bRamcardActive,this) }
         if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
 
@@ -88,19 +91,37 @@ function RamCard()
         }
         // WRITE MAPPING
 
-        hw.WR[iD] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
-        hw.WR[iE] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
-        hw.WR[iF] = function(addr,d8) { return card.write(addr - 0xD000, d8); };
+        hw.WR[iD] = function(addr,d8) 
+        { 
+            card.write(addr - 0xD000, d8);
+            var sw = softswitch[card.state.softswitch_pos];
+            card.mark_MEM_monitoring(sw.BANK==0?"bankA":"bankB",addr - 0xD000,hw); 
+        };
+        hw.WR[iE] = function(addr,d8)
+        { 
+            card.write(addr - 0xD000, d8); 
+            card.mark_MEM_monitoring("ramcard",addr - 0xD000,hw); 
+        };
+        hw.WR[iF] = function(addr,d8) 
+        { 
+            card.write(addr - 0xD000, d8);
+            card.mark_MEM_monitoring("ramcard",addr - 0xD000,hw); 
+        };
 
         this.state.bMapped = bRamcardActive;
         return true;
     };
 
-    this.reset = function()
+    this.reset = function() { }
+
+    this.restart = function()
     {
         debug_flush();
         this.state.bMapped = false;
         this.state.RR = false;
+
+        oCOM.addRefreshEvent(oEMU.component.IO.RamCard.MEM_monitoring,"MEM_monitoring_MS16K",false);
+        oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 
     function soft_switch(addr) { return this.soft_switch(addr); }
@@ -141,18 +162,30 @@ function RamCard()
     this.write = function(addr,d8)
     {
         var sw = softswitch[this.state.softswitch_pos] || {};
-        if(sw.WE==1 && this.state.RR) 
+
+        if(sw.WE==1 && this.state.RR)
         {
             RAMCARD_MEM[ address_encoder(addr,sw.BANK) ] = d8;
-            this.mark_MEM_monitoring(addr < BANK_SIZE ? (sw.BANK==0 ? "bankA" : "bankB") : "ramcard", addr + 0xD000);
 
-            if(bDebug) debug_record( addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD
-                , addr
-                , d8
-                , addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null);
-            if(this.bMEM_monitoring) this.MEM_monitoring()
+            /*
+            this.mark_MEM_monitoring(
+                addr < BANK_SIZE ? (sw.BANK==0 ? "bankA" : "bankB") : "ramcard",
+                addr + 0xD000
+            );
+            */
+
+            if(bDebug) debug_record(
+                addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD,
+                addr,
+                d8,
+                addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null
+            );
         }
-        else {  debug_flush(); console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr)) }
+        else
+        {
+            debug_flush();
+            console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
+        }
 
         return 0;
     };
@@ -174,35 +207,72 @@ function RamCard()
        ,"3E000-3F000":["#D06060",this.id.PCODE+" CONT","RE"]
        ,"2D000-2E000":["#B05050",this.id.PCODE+" BANK B","DB"]
        ,"1D000-1E000":["#A04040",this.id.PCODE+" BANK A","DA"]
-    };    
+    };
     this.MEM_grid = 
     {
-        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-10000":["#D06060",this.id.PCODE+ "CONT","RF"],"E000-F000":["#D06060",this.id.PCODE+" CONT","RE"]}},
-        "bankB":{"cnf":{"id_prefix":"z","digits":4},"layout":{"D000-E000":["#B05050",this.id.PCODE+" BANK B","DB"]}},
-        "bankA":{"cnf":{"id_prefix":"y","digits":4},"layout":{"D000-E000":["#A04040",this.id.PCODE+" BANK A","DA"]}}
+        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-FFFF":["#D06060",this.id.PCODE+ "CONT","RF"],"E000-F000":["#D06060",this.id.PCODE+" CONT","RE"]}},
+        "bankB":  {"cnf":{"id_prefix":"z","digits":4},"layout":{"D000-E000":["#B05050",this.id.PCODE+" BANK B","DB"]}},
+        "bankA":  {"cnf":{"id_prefix":"y","digits":4},"layout":{"D000-E000":["#A04040",this.id.PCODE+" BANK A","DA"]}}
     };
-    this.mark_MEM_monitoring = function(bucket, addr)
+    this.mark_MEM_monitoring = function(bucket, addr, hw)
     {
         if(!this.bMEM_monitoring) return;
-        if(!this.mem_mon[bucket]) this.mem_mon[bucket] = {};
-        this.mem_mon[bucket][addr >> oMEMGRID.mem_gran] = true;
-    };
-    this.reset_MEM_monitoring = function() { this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}}; }
-    this.enable_MEM_monitoring = function(b) 
-    {
-        this.bMEM_monitoring = !!b; 
-        if(b) this.reset_MEM_monitoring(); 
-    }
 
-    this.MEM_monitoring = function()
+        if(!this.mem_mon[bucket])
+            this.mem_mon[bucket] = {};
+
+        var display_addr = (addr + 0xD000) & 0xFFFF;
+        this.mem_mon[bucket][display_addr >> oMEMGRID.mem_gran] = true;
+
+        if(hw && !hw.mem_mon_trigger[this.id.PCODE])
+        {
+            this.MEM_monitoring();
+            hw.mem_mon_trigger[this.id.PCODE] = true;
+        }
+    };
+    this.reset_MEM_monitoring = function()
     {
-        // TODO: let EMU_ramcard do this when it is plugged in
-        if(this && this.state.active && this.MEM_grid)
+        if(bDebug_mon) console.log("MEM_monitoring_MS16K -> reset_MEM_monitoring()");
+        this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
+        if(this.MEM_grid)
         {
             oMEMGRID.paint_grid(this.MEM_grid.ramcard.layout, this.MEM_grid.ramcard.cnf);
             oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
             oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
         }
+    }
+
+    this.enable_MEM_monitoring = function(b)
+    {
+        if(bDebug_mon) console.log("MEM_monitoring_MS16K -> enable_MEM_monitoring("+b+")");
+        this.bMEM_monitoring = !!b;
+        if(b) this.reset_MEM_monitoring();  // clear data
+    }
+
+    this.MEM_monitoring = function()
+    {
+        if(!(this && this.state && this.MEM_grid)) return;
+
+        if(bDebug_mon) console.log(JSON.stringify( "MEM_monitoring_MS16K -> bankA:"+JSON.stringify(this.mem_mon.bankA)+" bankB:"+JSON.stringify(this.mem_mon.bankB)+" ramcard:"+JSON.stringify(this.mem_mon.ramcard)) );
+
+        if(Object.keys(this.mem_mon.ramcard).length>0)    // is there anything to display?
+        {
+            oMEMGRID.paint_grid(this.MEM_grid.ramcard.layout, this.MEM_grid.ramcard.cnf);
+            oMEMGRID.update_grid(this.mem_mon.ramcard, this.MEM_grid.ramcard.cnf);
+        }
+        if(Object.keys(this.mem_mon.bankB).length>0)    // is there anything to display?
+        {
+            oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
+            oMEMGRID.update_grid(this.mem_mon.bankA,   this.MEM_grid.bankA.cnf);
+        }
+
+        if(Object.keys(this.mem_mon.bankA).length>0)    // is there anything to display?
+        {
+            oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
+            oMEMGRID.update_grid(this.mem_mon.bankB,   this.MEM_grid.bankB.cnf);
+        }
+        
+        //this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
     }
 
     //      _____       ___      ______     __             __                                 

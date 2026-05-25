@@ -1224,7 +1224,8 @@ function COM()
 
   this.addRefreshEvent = function(func,name,active)
   {
-    console.log("addRefreshEvent("+name+")");
+    if(!this.RefreshEvent_arr[ name ]) console.log("addRefreshEvent("+name+")");
+    else console.log("addRefreshEvent("+name+") -> already exists (no problem)");
     this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
     this.checkActiveRefreshEvents();
   }

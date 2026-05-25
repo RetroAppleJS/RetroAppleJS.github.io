@@ -682,7 +682,7 @@ function EMUI()
                 return ""
                 + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
                 + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.hwObj().enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));\"></i></button></div>"
+                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');apple2plus.hwObj().enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));oEMU.component.IO.RamCard.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring_MS16K'));\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
                 + "</div>";

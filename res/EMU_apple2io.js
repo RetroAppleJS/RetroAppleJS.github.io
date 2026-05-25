@@ -73,6 +73,12 @@ function Apple2IO(vid)
         if(this.ramcard && this.ramcard.reset) this.ramcard.reset();
     }
 
+    this.restart = function()
+    {
+        if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
+    }
+
+
     function line_decode(adr)
     {
         return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
