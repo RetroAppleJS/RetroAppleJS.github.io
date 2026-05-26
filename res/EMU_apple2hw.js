@@ -93,24 +93,24 @@ function Apple2Hw(vid,keys)
 
             "WR":
             [
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $0000 - $0FFF
-                function(addr,d8) { hw.write(addr,d8); },              // $1000 - $1FFF
-                function(addr,d8) { hw.write(addr,d8); },              // $2000 - $2FFF
-                function(addr,d8) { hw.write(addr,d8); },              // $3000 - $3FFF
-                function(addr,d8) { hw.write(addr,d8); },              // $4000 - $4FFF
-                function(addr,d8) { hw.write(addr,d8); },              // $5000 - $5FFF
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $6000 - $6FFF
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $7000 - $7FFF
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $8000 - $8FFF
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $9000 - $9FFF
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $A000 - $AFFF
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);},   // $B000 - $BFFF
-                function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); }, // $C000 - $CFFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $0000 - $0FFF
+                function(addr,d8) { hw.write(addr,d8); },                           // $1000 - $1FFF
+                function(addr,d8) { hw.write(addr,d8); },                           // $2000 - $2FFF
+                function(addr,d8) { hw.write(addr,d8); },                           // $3000 - $3FFF
+                function(addr,d8) { hw.write(addr,d8); },                           // $4000 - $4FFF
+                function(addr,d8) { hw.write(addr,d8); },                           // $5000 - $5FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $6000 - $6FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $7000 - $7FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $8000 - $8FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $9000 - $9FFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $A000 - $AFFF
+                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $B000 - $BFFF
+                function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); },              // $C000 - $CFFF
 
                 // Default ROM write: no-op.
-                function(addr,d8) {},                                 // $D000 - $DFFF
-                function(addr,d8) {},                                 // $E000 - $EFFF
-                function(addr,d8) {}                                  // $F000 - $FFFF
+                function(addr,d8) {},                                               // $D000 - $DFFF
+                function(addr,d8) {},                                               // $E000 - $EFFF
+                function(addr,d8) {}                                                // $F000 - $FFFF
             ]
         };
     };
@@ -183,8 +183,7 @@ function Apple2Hw(vid,keys)
         {
             ram[addr] = d8;
 
-            // If it falls within the video regions, let the
-            // video object know.
+            // If it falls within the video regions, let the video object know.
             if ((addr >= LORES_ADDR && addr < LORES_ADDR + LORES_SIZE) ||
                 (addr >= HIRES_ADDR && addr < HIRES_ADDR + HIRES_SIZE))
                 video.write(addr, d8);
@@ -228,7 +227,6 @@ function Apple2Hw(vid,keys)
     this.reset_MEM_monitoring = function()
     {
         this.mem_mon = {};
-        //this.mem_mon_trigger = {"RESET":true};
         this.mem_mon_trigger = {};
         oMEMGRID.paint_grid(this.mem_layout);
     }
@@ -237,7 +235,6 @@ function Apple2Hw(vid,keys)
     {
         this.bMEM_monitoring = b;
         if(b) this.reset_MEM_monitoring();
-        // EMU_ramcard.js has its own lazy method to detect if hw.bMEM_monitoring has changed
     }
 
     this.MEM_monitoring = function()
@@ -249,11 +246,6 @@ function Apple2Hw(vid,keys)
             oMEMGRID.update_grid(hw.mem_mon);
             //hw.mem_mon = {};
         }
-
-        // TODO call ramcard?
-        // TODO: DEBUG check if RamCard.MEM_monitoring() is called!!!!
-        //oEMU.component.IO.RamCard.MEM_monitoring();
-
         hw.mem_mon_trigger = {};    // reset monitoring triggers
     }
 

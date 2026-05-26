@@ -24,8 +24,8 @@ function RamCard()
     };
     this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };
 
-    const BANK_SIZE   = 0x1000                        // 4K bank memory size = contiguous bank offset  = 4Kbytes  
-    const CONT_SIZE   = 0x2000;                       // 8K contiguous memory size
+    const BANK_SIZE     = 0x1000                      // 4K bank memory size = contiguous bank offset  = 4Kbytes  
+    const CONT_SIZE     = 0x2000;                     // 8K contiguous memory size
     const BANK_TOT_SIZE = BANK_SIZE * 2;              // 2*4K linearised bank size
     const TOTAL_SIZE    = BANK_TOT_SIZE + CONT_SIZE;  // 16K
 
@@ -60,6 +60,7 @@ function RamCard()
        ,0xA: {                "BANK":1}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
        ,0xB: {"ON":1, "WE":1, "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
     }
+    var softswitch_diff = {ON:0,WE:0,BANK:0};
 
     this.updateMemoryMap = function(bRamcardActive)
     {
@@ -131,11 +132,12 @@ function RamCard()
         var MEM_RAMCARD_IO =  0x80;
         var loc_addr = addr - MEM_RAMCARD_IO;       // SlotIO offset
         var sw = softswitch[loc_addr] || {};
+        mon_soft_switch(sw);
         debug_flush(); if(bDebug_sw) debug_soft_switch(loc_addr,sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
         this.state.softswitch_pos = loc_addr;
 
-        if((sw.WE==1 && this.state.RR==false) == false) // Do not update memory map when WRITE ENABLE is triggered for the first time
+        if((sw.WE==1 && this.state.RR==false) == false) // update memory map only after WRITE ENABLE was triggered twice
         {
             var ok = this.updateMemoryMap(!!sw.ON);
             if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
@@ -147,6 +149,7 @@ function RamCard()
     this.read = function(addr)
     {
         var sw = softswitch[this.state.softswitch_pos] || {};
+        mon_soft_switch(sw);
         const d8 = RAMCARD_MEM[ address_encoder(addr,sw.BANK) ]; 
         if(bDebug) debug_record( addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, addr, d8, addr < BANK_SIZE ? (sw.BANK ? "A" : "B") : null);
         return d8;
@@ -155,6 +158,7 @@ function RamCard()
     this.write = function(addr,d8)
     {
         var sw = softswitch[this.state.softswitch_pos] || {};
+        mon_soft_switch(sw);
         if(sw.WE==1 && this.state.RR)
         {
             RAMCARD_MEM[ address_encoder(addr,sw.BANK) ] = d8;
@@ -195,12 +199,19 @@ function RamCard()
         "bankB":  {"cnf":{"id_prefix":"z","digits":4},"layout":{"D000-E000":["#B05050",this.id.PCODE+" BANK B","DB"]}},
         "bankA":  {"cnf":{"id_prefix":"y","digits":4},"layout":{"D000-E000":["#A04040",this.id.PCODE+" BANK A","DA"]}}
     };
+    var tm = Number(new Date());
     this.MEM_status_text = function()
     {
-        var sw = softswitch[this.state.softswitch_pos] || {};
-        var on_icon = (sw.ON==1) ? '<i class="fa fa-play-circle" title="'+this.id.PCODE+' ON"></i>'         : '<i class="fa fa-pause-circle" title="'+this.id.PCODE+' OFF"></i>';
-        var we_icon = (sw.WE==1) ? '<i class="fa fa-lock-open" title="'+this.id.PCODE+' WRITE ENABLE"></i>' : '<i class="fa fa-lock" title="'+this.id.PCODE+' WRITE PROTECTED"></i>';
-        var bank = (sw.BANK==1)  ? '<span title="'+this.id.PCODE+' RAM BANK B">B</span>'                    : '<span title="'+this.id.PCODE+' RAM BANK A">A</span>';
+        var on_icon = (softswitch_diff.ON>0) ? '<i class="fa fa-microchip" title="'+this.id.PCODE+' RAM"></i>'          : '<i class="fa fa-apple-alt" title="'+this.id.PCODE+' ROM"></i>';
+        var we_icon = (softswitch_diff.WE>0) ? '<i class="fa fa-lock-open" title="'+this.id.PCODE+' WRITE ENABLE"></i>' : '<i class="fa fa-lock" title="'+this.id.PCODE+' WRITE PROTECTED"></i>';
+        var bank    = (softswitch_diff.BANK>0)  ? '<span title="'+this.id.PCODE+' RAM BANK B">B</span>'                    : '<span title="'+this.id.PCODE+' RAM BANK A">A</span>'; 
+
+        // debug
+        //on_icon += " "+softswitch_diff.ON;
+        //we_icon += " "+softswitch_diff.WE;
+        //bank    += " "+softswitch_diff.BANK;
+
+        softswitch_diff = {ON:0,WE:0,BANK:0};
         return this.id.PCODE+' ' + on_icon + ' ' + we_icon + ' ' + bank;
     };
     this.update_MEM_status = function()
@@ -273,6 +284,7 @@ function RamCard()
         if(b) this.reset_MEM_monitoring();  // clear data
     }
 
+    // called by 
     this.MEM_monitoring = function()
     {
         var rc = (this && this.state && this.MEM_grid) ? this : card;
@@ -301,6 +313,15 @@ function RamCard()
         
         //this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
     }
+
+    // voting on ramcard status 
+    function mon_soft_switch(sw)
+    {
+        if(sw.ON==1) softswitch_diff.ON++; else softswitch_diff.ON--;
+        if(sw.WE==1) softswitch_diff.WE++; else softswitch_diff.WE--;
+        if(sw.BANK==1) softswitch_diff.BANK++; else softswitch_diff.BANK--;
+    }
+
 
     //      _____       ___      ______     __             __                                 
     //     |_   _|    .'   `.  .' ___  |   [  |           [  |                                
