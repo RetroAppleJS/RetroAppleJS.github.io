@@ -141,9 +141,9 @@ function AppleBoard()
     {
         model = model || (typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P");
 
-        apple2plus.hwObj().io.IO_map(model);   // refresh parsed rows for this model
+        this.IO_map(model,{});   // refresh parsed rows for this model
 
-        return (apple2plus.hwObj().io.IOMAP_ROWS || []).filter(function(r){
+        return (this.IOMAP_ROWS || []).filter(function(r){
             return r.model_match
                 && r.addr_n < 0x80
                 && (r.act.indexOf("RD") >= 0 || r.act.indexOf("RR") >= 0);
