@@ -389,34 +389,16 @@
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
               var lc = apple2plus.hwObj().io.ramcard;
-              var bLC = lc && lc.state && lc.state.active && lc.MEM_grid;
+              var bLC = lc && lc.state && lc.state.active && lc.MEM_grid && typeof(lc.build_MEM_map)=="function";
               el.innerHTML =
-                "<div style='display:flex;flex-wrap:nowrap;gap:6px;align-items:flex-start'>"
+                "<div style='display:flex;'>"
               +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
               +   oMEMGRID.build_grid(15*linestep,8,-linestep,cnf)
-              +   (bLC
-                    ? "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
-                    +   oMEMGRID.build_grid(0xF000,2,-linestep,{id_prefix:"x",digits:4,table_id:"xEF"})
-                    +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"z",digits:4,table_id:"zD"})
-                    +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"y",digits:4,table_id:"yD"})
-                    + "</div>"
-                    : "")
+              +   (bLC ? lc.build_MEM_map(linestep) : "")
               + "</div>";
               oMEMGRID.paint_grid(apple2plus.hwObj().mem_layout,cnf);
-              if(bLC)
-              {
-                oMEMGRID.relabel_grid_rows("xEF",["F000\u00a0\u00a0\u00a0\u00a0","E000\u00a0\u00a0\u00a0\u00a0"]);
-                oMEMGRID.relabel_grid_rows("zD",["D000-B"]);
-                oMEMGRID.relabel_grid_rows("yD",["D000-A"]);
-                oMEMGRID.paint_grid(lc.MEM_grid.ramcard.layout, lc.MEM_grid.ramcard.cnf);
-                oMEMGRID.paint_grid(lc.MEM_grid.bankB.layout,   lc.MEM_grid.bankB.cnf);
-                oMEMGRID.paint_grid(lc.MEM_grid.bankA.layout,   lc.MEM_grid.bankA.cnf);
-              }              
-            }
+              if(bLC && typeof(lc.paint_MEM_map)=="function") lc.paint_MEM_map();
 
-            function EMU_update_mem_map()
-            {
-              // TODO refresh memory map (efficiently please !!)
             }
 
             function isHidden(el)
@@ -843,6 +825,7 @@ function rrr()
                   <div style="float:left" id="DBG_mem_map"></div>
 
                   <script>
+
                   oCOM.addToEventStack("onload",DBG_mem_map)
                   function DBG_mem_map()
                   {
