@@ -16,140 +16,140 @@ function RamCard()
 {
     this.id     = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
     this.state  = {
-        "active":true
-        ,"slot":null
-        ,"softswitch_pos":1
-        ,"bMapped":false
-        ,"RR":false         // flag to remember double-triggered Write-Enables (by double read)
+         "active":true          // flag to remember if peripheral is altogether operational or not 
+        ,"slot":null            // slot number where the current card is plugged-in (always 0 for the language card)
+        ,"softswitch_pos":0x1   // default soft switch state (documented by microsoft)
+        ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
+        ,"RR":false             // flag to remember double-triggered Write-Enables (by double read)
     };
-    this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };
+    this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // callback for softswitches
 
-    const BANK_SIZE     = 0x1000                      // 4K bank memory size = contiguous bank offset  = 4Kbytes  
+    const MEM_MAP_ORG   = 0xD000;                     // the address space origin this ramcard typically overrides
+    const MEM_MAP_STEP  = 0x1000;                     // address space is divided in chunks of 0x1000 bytes (according to address_encoder() logic)
+
+    const BANK_SIZE     = 0x1000;                     // 4K bank memory size = contiguous bank offset  = 4Kbytes  
     const CONT_SIZE     = 0x2000;                     // 8K contiguous memory size
     const BANK_TOT_SIZE = BANK_SIZE * 2;              // 2*4K linearised bank size
     const TOTAL_SIZE    = BANK_TOT_SIZE + CONT_SIZE;  // 16K
 
-    var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);   // PERIPHERAL RAM
+    var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);     // PERIPHERAL RAM
 
-    var card       = this;
+    var hw;                      // purposed for late-binding (at restart) 
+    var card       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
+
     var bDebug_sw  = false;      // debug soft switch updates (light)
     var bDebug_mon = false;      // debug RAM Write monitor
-    var bDebug     = false;     // debug all RAM R/W operations   
-    
-    function dbg_op(label)
-    {
-        return {
-            "label": label,
-            "bytes": 0,
-            "checksum": new Uint16Array(1),
-            "firstAddr": null,
-            "lastAddr": null,
-            "suffix": ""
-        };
-    }
+    var bDebug     = false;      // debug all RAM R/W operations   
 
-    // ON: 0="SWITCH OFF" 1="SWITCH ON" | WE: 0:"WRITE-PROTECT" 1:"WRITE-ENABLE"  | BANK: 0="BANK A", 1="BANK B"
+    // RE: 0="READ-ENABLE" 1="READ-ENABLE" | WE: 0:"WRITE-PROTECT" 1:"WRITE-ENABLE"  | BANK: 0="BANK A", 1="BANK B"
     var softswitch = {
-        0x0: {"ON":1,         "BANK":0}  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+        0x0: {"RE":1,         "BANK":0}  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
        ,0x1: {        "WE":1, "BANK":0}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
        ,0x2: {                "BANK":0}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
-       ,0x3: {"ON":1, "WE":1, "BANK":0}  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x3: {"RE":1, "WE":1, "BANK":0}  // READ: $D000-$DFFF -> BANK_MEM[1]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[1]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
 
-       ,0x8: {"ON":1,         "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0x8: {"RE":1,         "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
        ,0x9: {        "WE":1, "BANK":1}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
        ,0xA: {                "BANK":1}  // READ: $D000-$DFFF & $E000-$EFFF & $F000-$FFFF -> apple2Rom  
-       ,0xB: {"ON":1, "WE":1, "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
+       ,0xB: {"RE":1, "WE":1, "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
     }
-    var softswitch_diff = {ON:0,WE:0,BANK:0};
+    var softswitch_diff = {RE:0,WE:0,BANK:0};
+
+    function abs2rel(addr) { return addr - MEM_MAP_ORG }
 
     this.updateMemoryMap = function(bRamcardActive)
     {
-        var hw = apple2plus.hwObj();
-        if(this.bMEM_monitoring != hw.bMEM_monitoring) this.enable_MEM_monitoring(hw.bMEM_monitoring);  // check if hw has memory monitoring enabled or disabled 
-
-        if(bDebug_sw) { debug_updateMemoryMap(bRamcardActive,this) }
+        if(this.bMEM_monitoring != hw.bMEM_monitoring) 
+            this.enable_MEM_monitoring(hw.bMEM_monitoring);  // follow mem monitoring flag from hardware 
+        if(bDebug_sw) 
+            debug_updateMemoryMap(bRamcardActive,this);      // log memory map updates
         if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
 
-        const iD = hw.lineDecode(0xD000), iE = hw.lineDecode(0xE000), iF = hw.lineDecode(0xF000);
+        const xD = hw.lineDecode(MEM_MAP_ORG), xE = hw.lineDecode(MEM_MAP_ORG+MEM_MAP_STEP), xF = hw.lineDecode(MEM_MAP_ORG+MEM_MAP_STEP+MEM_MAP_STEP);
 
         // READ MAPPING
         if (bRamcardActive)
         {   
             // PERIPHERAL RAM IS SELECTED FOR READ
-            hw.RD[iD] = function(addr,iD) { return card.read(addr - 0xD000); };
-            hw.RD[iE] = function(addr,iE) { return card.read(addr - 0xD000); };
-            hw.RD[iF] = function(addr,iF) { return card.read(addr - 0xD000); };
+            hw.RD[xD] = function(addr) { return card.read(abs2rel(addr)); };
+            hw.RD[xE] = function(addr) { return card.read(abs2rel(addr)); };
+            hw.RD[xF] = function(addr) { return card.read(abs2rel(addr)); };
         }
         else
         {  
             // HARDWARE ROM IS SELECTED FOR READ
-            hw.RD[iD] = hw.default_map.RD[iD];
-            hw.RD[iE] = hw.default_map.RD[iE];
-            hw.RD[iF] = hw.default_map.RD[iF];
+            hw.RD[xD] = hw.default_map.RD[xD];
+            hw.RD[xE] = hw.default_map.RD[xE];
+            hw.RD[xF] = hw.default_map.RD[xF];
         }
 
         // WRITE MAPPING
-        hw.WR[iD] = function(addr,d8) 
+        hw.WR[xD] = function(addr,d8) 
         { 
-            card.write(addr - 0xD000, d8);
-            var sw = softswitch[card.state.softswitch_pos];
-            card.mark_MEM_monitoring(sw.BANK==0?"bankA":"bankB",addr - 0xD000,hw); 
+            const rel_addr = abs2rel(addr);
+            const sw = softswitch[card.state.softswitch_pos];
+            card.write(rel_addr, d8);
+            card.mark_MEM_monitoring(sw.BANK==0?"bankA":"bankB",rel_addr); 
         };
-        hw.WR[iE] = function(addr,d8)
+        hw.WR[xE] = function(addr,d8)
         { 
-            card.write(addr - 0xD000, d8); 
-            card.mark_MEM_monitoring("ramcard",addr - 0xD000,hw); 
+            const rel_addr = abs2rel(addr);
+            card.write(rel_addr, d8); 
+            card.mark_MEM_monitoring("cont",rel_addr); 
         };
-        hw.WR[iF] = function(addr,d8) 
+        hw.WR[xF] = function(addr,d8) 
         { 
-            card.write(addr - 0xD000, d8);
-            card.mark_MEM_monitoring("ramcard",addr - 0xD000,hw); 
+            const rel_addr = abs2rel(addr);
+            card.write(rel_addr, d8);
+            card.mark_MEM_monitoring("cont",rel_addr); 
         };
 
         this.state.bMapped = bRamcardActive;
         return true;
     };
 
-    this.reset = function() { }
+    this.reset = function() { }   // language card settings remain unchanged at warm boot
 
     this.restart = function()
     {
+        hw = apple2plus.hwObj();
         debug_flush();
         this.state.bMapped = false;
-        this.state.RR = false;
+        this.state.RR      = false;
 
         oCOM.addRefreshEvent(oEMU.component.IO.RamCard.MEM_monitoring,"MEM_monitoring_MS16K",false);
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 
+    // translate addresses from the bus to ramcard addresses 
     function address_encoder(addr,bank_bit) 
     { 
-        return addr + ((bank_bit | !!(addr >> 12)) << 12) 
+        return addr + ((bank_bit | !!(addr >> 12)) << 12);
     }
 
     this.soft_switch = function(addr)
     {
         var MEM_RAMCARD_IO =  0x80;
-        var loc_addr = addr - MEM_RAMCARD_IO;       // SlotIO offset
-        var sw = softswitch[loc_addr] || {};
-        mon_soft_switch(sw);
+        var loc_addr = addr - MEM_RAMCARD_IO;                   // SlotIO offset - TODO: take this from IO object
+        const pre_sw = softswitch[this.state.softswitch_pos];   // previous switch state
+
+        var sw = softswitch[loc_addr] || {}; mon_soft_switch(sw);
         debug_flush(); if(bDebug_sw) debug_soft_switch(loc_addr,sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
+        
         this.state.softswitch_pos = loc_addr;
 
-        if((sw.WE==1 && this.state.RR==false) == false) // update memory map only after WRITE ENABLE was triggered twice
+        if((sw.WE==1 && this.state.RR==false) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
         {
-            var ok = this.updateMemoryMap(!!sw.ON);
+            var ok = this.updateMemoryMap(!!sw.RE);
             if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
         }
         this.update_MEM_status();
-        return 0;
     };
 
     this.read = function(addr)
     {
-        var sw = softswitch[this.state.softswitch_pos] || {};
-        mon_soft_switch(sw);
+        var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
         const d8 = RAMCARD_MEM[ address_encoder(addr,sw.BANK) ]; 
         if(bDebug) debug_record( addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, addr, d8, addr < BANK_SIZE ? (sw.BANK ? "A" : "B") : null);
         return d8;
@@ -157,8 +157,7 @@ function RamCard()
 
     this.write = function(addr,d8)
     {
-        var sw = softswitch[this.state.softswitch_pos] || {};
-        mon_soft_switch(sw);
+        var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
         if(sw.WE==1 && this.state.RR)
         {
             RAMCARD_MEM[ address_encoder(addr,sw.BANK) ] = d8;
@@ -169,8 +168,6 @@ function RamCard()
             debug_flush();
             console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
         }
-
-        return 0;
     };
 
 
@@ -183,35 +180,36 @@ function RamCard()
     //                                                        [__|                            
 
     this.MEM_status_id = this.id.PCODE+"_softswitch_status";
-    this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
+    this.mem_mon = {"cont":{}, "bankA":{}, "bankB":{}};
     this.bMEM_monitoring = false;
     this.MEM_grid_cnf = {"id_prefix":"x","digits":5};
     this.mem_layout = 
     {
-        "3F000-40000":["#D06060",this.id.PCODE+" CONT","RF"]
-       ,"3E000-3F000":["#D06060",this.id.PCODE+" CONT","RE"]
+        "3F000-40000":["#D06060",this.id.PCODE+" CONT"  ,"RF"]
+       ,"3E000-3F000":["#D06060",this.id.PCODE+" CONT"  ,"RE"]
        ,"2D000-2E000":["#B05050",this.id.PCODE+" BANK B","DB"]
        ,"1D000-1E000":["#A04040",this.id.PCODE+" BANK A","DA"]
     };
     this.MEM_grid = 
     {
-        "ramcard":{"cnf":{"id_prefix":"x","digits":4},"layout":{"F000-FFFF":["#D06060",this.id.PCODE+ "CONT","RF"],"E000-F000":["#D06060",this.id.PCODE+" CONT","RE"]}},
-        "bankB":  {"cnf":{"id_prefix":"z","digits":4},"layout":{"D000-E000":["#B05050",this.id.PCODE+" BANK B","DB"]}},
-        "bankA":  {"cnf":{"id_prefix":"y","digits":4},"layout":{"D000-E000":["#A04040",this.id.PCODE+" BANK A","DA"]}}
+        "cont":   {"cnf":{"id_prefix":"x","digits":4},"layout":{ "F000-FFFF":["#D06060",this.id.PCODE+ "CONT"  ,"RF"]
+                                                                ,"E000-FFFF":["#D06060",this.id.PCODE+" CONT"  ,"RE"] }},
+        "bankB":  {"cnf":{"id_prefix":"z","digits":4},"layout":{ "D000-DFFF":["#B05050",this.id.PCODE+" BANK B","DB"] }},
+        "bankA":  {"cnf":{"id_prefix":"y","digits":4},"layout":{ "D000-DFFF":["#A04040",this.id.PCODE+" BANK A","DA"] }}
     };
     var tm = Number(new Date());
     this.MEM_status_text = function()
     {
-        var on_icon = (softswitch_diff.ON>0) ? '<i class="fa fa-microchip" title="'+this.id.PCODE+' RAM"></i>'          : '<i class="fa fa-apple-alt" title="'+this.id.PCODE+' ROM"></i>';
-        var we_icon = (softswitch_diff.WE>0) ? '<i class="fa fa-lock-open" title="'+this.id.PCODE+' WRITE ENABLE"></i>' : '<i class="fa fa-lock" title="'+this.id.PCODE+' WRITE PROTECTED"></i>';
-        var bank    = (softswitch_diff.BANK>0)  ? '<span title="'+this.id.PCODE+' RAM BANK B">B</span>'                    : '<span title="'+this.id.PCODE+' RAM BANK A">A</span>'; 
+        var on_icon = (softswitch_diff.RE>0)   ? '<i class="fa fa-microchip" title="'+this.id.PCODE+' RAM"></i>'         : '<i class="fa fa-apple-alt" title="'+this.id.PCODE+' ROM"></i>';
+        var we_icon = (softswitch_diff.WE>0)   ? '<i class="fa fa-lock-open" title="'+this.id.PCODE+' WRITE ENABLE"></i>': '<i class="fa fa-lock" title="'+this.id.PCODE+' WRITE PROTECTED"></i>';
+        var bank    = (softswitch_diff.BANK>0) ? '<span title="'+this.id.PCODE+' BANK B">B</span>'                       : '<span title="'+this.id.PCODE+' BANK A">A</span>'; 
 
         // debug
-        //on_icon += " "+softswitch_diff.ON;
+        //on_icon += " "+softswitch_diff.RE;
         //we_icon += " "+softswitch_diff.WE;
         //bank    += " "+softswitch_diff.BANK;
 
-        softswitch_diff = {ON:0,WE:0,BANK:0};
+        softswitch_diff = {RE:0,WE:0,BANK:0};
         return this.id.PCODE+' ' + on_icon + ' ' + we_icon + ' ' + bank;
     };
     this.update_MEM_status = function()
@@ -223,7 +221,7 @@ function RamCard()
     };
     this.build_MEM_map = function(linestep)
     {
-        linestep = linestep || 4096;
+        linestep = linestep || 0x1000;
         return "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
              +   oMEMGRID.build_grid(0xF000,2,-linestep,{id_prefix:"x",digits:4,table_id:"xEF"})
              +   oMEMGRID.build_grid(0xD000,1,-linestep,{id_prefix:"z",digits:4,table_id:"zD"})
@@ -240,7 +238,7 @@ function RamCard()
         oMEMGRID.relabel_grid_rows("xEF",["F000    ","E000    "]);
         oMEMGRID.relabel_grid_rows("zD",["D000-B"]);
         oMEMGRID.relabel_grid_rows("yD",["D000-A"]);
-        oMEMGRID.paint_grid(this.MEM_grid.ramcard.layout, this.MEM_grid.ramcard.cnf);
+        oMEMGRID.paint_grid(this.MEM_grid.cont.layout, this.MEM_grid.cont.cnf);
         oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
         oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
         this.update_MEM_status();
@@ -248,14 +246,15 @@ function RamCard()
         return true;
     };
 
-    this.mark_MEM_monitoring = function(bucket, addr, hw)
+    // mark one block in the memory grid
+    this.mark_MEM_monitoring = function(bucket, addr)
     {
         if(!this.bMEM_monitoring) return;
 
         if(!this.mem_mon[bucket])
             this.mem_mon[bucket] = {};
 
-        var display_addr = (addr + 0xD000) & 0xFFFF;
+        var display_addr = (addr + 0xD000) & 0xFFFF;    // relative to absolute address
         this.mem_mon[bucket][display_addr >> oMEMGRID.mem_gran] = true;
 
         if(hw && !hw.mem_mon_trigger[this.id.PCODE])
@@ -264,19 +263,22 @@ function RamCard()
             hw.mem_mon_trigger[this.id.PCODE] = true;
         }
     };
+
+    // clear all blocks in the memory grid
     this.reset_MEM_monitoring = function()
     {
         if(bDebug_mon) console.log('MEM_monitoring_'+this.id.PCODE+' -> reset_MEM_monitoring()');
-        this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
+        this.mem_mon = {"cont":{}, "bankA":{}, "bankB":{}};
         if(this.MEM_grid)
         {
-            oMEMGRID.paint_grid(this.MEM_grid.ramcard.layout, this.MEM_grid.ramcard.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.cont.layout, this.MEM_grid.cont.cnf);
             oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
             oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
         }
         this.update_MEM_status();
     }
 
+    // enable/disable monitoring - actioned by a UI button
     this.enable_MEM_monitoring = function(b)
     {
         if(bDebug_mon) console.log('MEM_monitoring_'+this.id.PCODE+' -> enable_MEM_monitoring('+b+')');
@@ -284,42 +286,41 @@ function RamCard()
         if(b) this.reset_MEM_monitoring();  // clear data
     }
 
-    // called by 
+    // light up the blocks in the memory grid
+    // called regularly as the result of oCOM.addRefreshEvent  (e.g. 2 times per second)
     this.MEM_monitoring = function()
     {
-        var rc = (this && this.state && this.MEM_grid) ? this : card;
-        if(!(rc && rc.state && rc.MEM_grid)) return;
+        if(!(this.state && this.MEM_grid)) return;
+        this.update_MEM_status();        
+        if(bDebug_mon) console.log(JSON.stringify( 'MEM_monitoring_'+this.id.PCODE+' -> bankA:'+JSON.stringify(this.mem_mon.bankA)+' bankB:'+JSON.stringify(this.mem_mon.bankB)+' cont:'+JSON.stringify(this.mem_mon.cont)) );
 
-        rc.update_MEM_status();        
-
-        if(bDebug_mon) console.log(JSON.stringify( 'MEM_monitoring_'+this.id.PCODE+' -> bankA:'+JSON.stringify(rc.mem_mon.bankA)+' bankB:'+JSON.stringify(rc.mem_mon.bankB)+' ramcard:'+JSON.stringify(rc.mem_mon.ramcard)) );
-
-        if(Object.keys(rc.mem_mon.ramcard).length>0)    // is there anything to display?
+        if(Object.keys(this.mem_mon.cont).length>0)    // is there anything to display?
         {
-            oMEMGRID.paint_grid(rc.MEM_grid.ramcard.layout, rc.MEM_grid.ramcard.cnf);
-            oMEMGRID.update_grid(rc.mem_mon.ramcard, rc.MEM_grid.ramcard.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.cont.layout, this.MEM_grid.cont.cnf);
+            oMEMGRID.update_grid(this.mem_mon.cont, this.MEM_grid.cont.cnf);
         }
-        if(Object.keys(rc.mem_mon.bankB).length>0)    // is there anything to display?
+        if(Object.keys(this.mem_mon.bankB).length>0)    // is there anything to display?
         {
-            oMEMGRID.paint_grid(rc.MEM_grid.bankB.layout,   rc.MEM_grid.bankB.cnf);
-            oMEMGRID.update_grid(rc.mem_mon.bankB,   rc.MEM_grid.bankB.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
+            oMEMGRID.update_grid(this.mem_mon.bankB,   this.MEM_grid.bankB.cnf);
         }
 
-        if(Object.keys(rc.mem_mon.bankA).length>0)    // is there anything to display?
+        if(Object.keys(this.mem_mon.bankA).length>0)    // is there anything to display?
         {
-            oMEMGRID.paint_grid(rc.MEM_grid.bankA.layout,   rc.MEM_grid.bankA.cnf);
-            oMEMGRID.update_grid(rc.mem_mon.bankA,   rc.MEM_grid.bankA.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
+            oMEMGRID.update_grid(this.mem_mon.bankA,   this.MEM_grid.bankA.cnf);
         }
         
-        //this.mem_mon = {"ramcard":{}, "bankA":{}, "bankB":{}};
+        if(hw.bClear_mon) this.mem_mon = {"cont":{}, "bankA":{}, "bankB":{}};  // CLEAR THE GRID AFTER EACH DISPLAY
+
+
     }
 
-    // voting on ramcard status 
+    // Vote on ramcard status (since softswitches change more rapidly than visual updates, we want to show the most prevalent state) 
     function mon_soft_switch(sw)
     {
-        if(sw.ON==1) softswitch_diff.ON++; else softswitch_diff.ON--;
-        if(sw.WE==1) softswitch_diff.WE++; else softswitch_diff.WE--;
-        if(sw.BANK==1) softswitch_diff.BANK++; else softswitch_diff.BANK--;
+        for(var k of ["RE","WE","BANK"])
+            softswitch_diff[k] += sw[k] == 1 ? 1 : -1;
     }
 
 
@@ -345,6 +346,18 @@ function RamCard()
     dbgOps[DBG_WRITE_BANK]    = dbg_op(DBG_WRITE_BANK);
     dbgOps[DBG_WRITE_RAMCARD] = dbg_op(DBG_WRITE_RAMCARD);
     const PCODE = this.id.PCODE;
+
+    function dbg_op(label)
+    {
+        return {
+            "label": label,
+            "bytes": 0,
+            "checksum": new Uint16Array(1),
+            "firstAddr": null,
+            "lastAddr": null,
+            "suffix": ""
+        };
+    }
 
     function debug_record(op, addr, d8, suffix)
     {
@@ -426,8 +439,8 @@ M.OUTSP   EQU $DB57   ; space
 ORG $6000
 
 ; WRITE BANK2 and RAMCARD in mode 3 :o)
-LDA $C083   ; 3: {"ON":true,"WE":true,"BANK":2}
-LDA $C083   ; 3: {"ON":true,"WE":true,"BANK":2}
+LDA $C083   ; 3: {"RE":true,"WE":true,"BANK":2}
+LDA $C083   ; 3: {"RE":true,"WE":true,"BANK":2}
 LDA #$12
 STA $E000   ; WRITE IN RAMCARD
 LDA #$34
@@ -465,7 +478,7 @@ JSR M.PRNTYX
 JSR M.OUTSP
 
 ; WRITE BANK2 and RAMCARD in mode 0 :o(
-LDA $C080   ; 0: {"ON":true,"BANK":2}
+LDA $C080   ; 0: {"RE":true,"BANK":2}
 LDA #$45
 STA $D000   ; WRITE IN BANK 2
 LDA #$67

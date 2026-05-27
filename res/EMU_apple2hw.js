@@ -19,13 +19,13 @@ function Apple2Hw(vid,keys)
 {
     var hw = this;
 
-    var bDebug_mon = false;      // debug RAM Write monitor
+    const bDebug_mon = false;      // debug RAM Write monitor
+    this.bClear_mon  = true;        // clear the grid after each display cycle
     
     this.lineDecode = function(addr) {return addr >> 12; };
     this.RD = [];
     this.WR = [];
     this.default_map = null;
-    
 
     var video = vid;                        
     this.io = new Apple2IO(video);      // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
@@ -244,7 +244,7 @@ function Apple2Hw(vid,keys)
             if(bDebug_mon) console.log("MEM_monitoring -> mem_layout:"+JSON.stringify(hw.mem_mon));
             oMEMGRID.paint_grid(hw.mem_layout);
             oMEMGRID.update_grid(hw.mem_mon);
-            //hw.mem_mon = {};
+            if(hw.bClear_mon) hw.mem_mon = {};    // CLEAR THE GRID AFTER EACH DISPLAY
         }
         hw.mem_mon_trigger = {};    // reset monitoring triggers
     }
