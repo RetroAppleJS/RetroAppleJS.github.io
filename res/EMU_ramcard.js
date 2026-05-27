@@ -34,11 +34,12 @@ function RamCard()
 
     var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);     // PERIPHERAL RAM
 
-    var hw;                      // purposed for late-binding (at restart) 
+    var hw;                      // purposed for late-binding (at restart)
+    var io;                      // purposed for late-binding (at restart)
     var card       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
 
-    var bDebug_sw  = true;      // debug soft switch updates (light)
-    var bDebug_mon = true;      // debug RAM Write monitor
+    var bDebug_sw  = false;      // debug soft switch updates (light)
+    var bDebug_mon = false;      // debug RAM Write monitor
     var bDebug     = false;      // debug all RAM R/W operations   
 
     // RE: 0="READ-ENABLE" 1="READ-ENABLE" | WE: 0:"WRITE-PROTECT" 1:"WRITE-ENABLE"  | BANK: 0="BANK A", 1="BANK B"
@@ -54,9 +55,6 @@ function RamCard()
        ,0xB: {"RE":1, "WE":1, "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
     }
     var softswitch_diff = {RE:0,WE:0,BANK:0};
-
-    function abs2rel(addr) { return (addr - MEM_MAP_ORG) & 0xFFFF; }
-    function rel2abs(addr) { return (addr + MEM_MAP_ORG) & 0xFFFF; }
 
     this.updateMemoryMap = function(bRamcardActive)
     {
@@ -114,6 +112,7 @@ function RamCard()
     this.restart = function()
     {
         hw = apple2plus.hwObj();
+        io = apple2plus.hwObj().io;
         debug_flush();
         this.state.bMapped = false;
         this.state.RR      = false;
@@ -122,23 +121,27 @@ function RamCard()
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 
+    function abs2rel(addr) { return ((addr & 0xFFFF) - MEM_MAP_ORG); }
+    function rel2abs(rel_addr) { return (rel_addr + MEM_MAP_ORG) & 0xFFFF; }
+
     // translate addresses from the bus to ramcard addresses 
     function address_encoder(addr,bank_bit) 
     { 
         return addr + ((bank_bit | !!(addr >> 12)) << 12);
     }
 
-    this.soft_switch = function(addr)
+    this.soft_switch = function(rel_io_addr)
     {
-        var MEM_RAMCARD_IO =  0x80;
-        var rel_io_addr = addr - MEM_RAMCARD_IO;                   // SlotIO offset - TODO: take this from IO object (abs2rel method in IO?)
+        var MEM_RAMCARD_IO =  0x80; // deduce from this.state.slot
+
+        var sw_idx = rel_io_addr - MEM_RAMCARD_IO;                     // SlotIO index - TODO: take this from IO object (abs2rel method with 'SLOTIO' reference?)
         const pre_sw = softswitch[this.state.softswitch_pos];   // previous switch state
 
-        var sw = softswitch[rel_io_addr] || {}; mon_soft_switch(sw);
-        debug_flush(); if(bDebug_sw) debug_soft_switch(rel_io_addr,sw,this.state);
+        var sw = softswitch[sw_idx] || {}; mon_soft_switch(sw);
+        debug_flush(); if(bDebug_sw) debug_soft_switch(sw_idx,sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
         
-        this.state.softswitch_pos = rel_io_addr;
+        this.state.softswitch_pos = sw_idx;
 
         if((sw.WE==1 && this.state.RR==false) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
         {
@@ -252,7 +255,7 @@ function RamCard()
     {
         if(!this.bMEM_monitoring) return;
         if(!this.mem_mon[bucket]) this.mem_mon[bucket] = {};
-        
+
         this.mem_mon[bucket][rel2abs(rel_addr) >> oMEMGRID.mem_gran] = true;
 
         if(hw && !hw.mem_mon_trigger[this.id.PCODE])

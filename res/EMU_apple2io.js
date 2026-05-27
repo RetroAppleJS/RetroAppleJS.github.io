@@ -78,12 +78,21 @@ function Apple2IO(vid)
         if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
     }
 
-
     function line_decode(adr)
     {
         return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
     }
 
+    function address_encoder(rel_addr,bucket)
+    {
+        switch(bucket)
+        {
+            case "HostIO":  return rel_addr;
+            case "SlotIO":  return rel_addr - 0x80  - (slot<<4);
+            case "SlotROM": return rel_addr - 0x100 - (slot-1<<8);
+            case "HostROM": return rel_addr - 0x800;
+        } 
+    }
 
     // HOST_IO callbacks (keyboard, speaker, gfx) 
 
@@ -113,9 +122,9 @@ function Apple2IO(vid)
         //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
 
-    this.read = function(addr)
+    this.read = function(rel_addr)
     {
-        var line = line_decode(addr);
+        var line = line_decode(rel_addr);
 
         switch(line)
         {
@@ -124,52 +133,36 @@ function Apple2IO(vid)
             // TODO: ACTION MAP SHOULD LOOKUP IN WHICH SLOT IS EACH DEVICE, AND ASSIGN READ ADDRESSES
             // LIKELY THIS INFORMATION CAN BE LOOKED-UP IN BIND.. we also need to solve slot re-assignment
 
-            case 0xE0:   return this.disk2.read(addr - DISK_IO);
-            case 0x0600: return this.disk2.readROM(addr - DISK_PROM);
+            case 0xE0:   return this.disk2.read(rel_addr - DISK_IO);
+            case 0x600:  return this.disk2.readROM(rel_addr - DISK_PROM);
 
             default:
 
-                /*
-                else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
-                {
-                    console.log(oCOM.getHexWord(line))
-                    var o = this.disk2.read(addr - DISK_IO);
-                    return o;
-                }
-                else if (this.disk2.diskBytes[this.disk2.drv] && addr >= DISK_PROM &&
-                        addr < DISK_PROM + DISK_PROM_SIZE)
-                {
-                    //59 & 5A
-                    console.log(oCOM.getHexWord(line))
-                    return this.disk2.ROM[addr - DISK_PROM];
-                }
-                */
-                // TODO: decode soft switches based on registry (auto declared mask)
-                // ACTION_MAP = global registry ??
-
-
                 if(this.ramcard.state.active  && // RAMCARD SOFT SWITCHES
-                    addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
+                    rel_addr >= MEM_RAMCARD_IO && rel_addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
                 {// 0080
-                    //return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
+                    //return this.ramcard.soft_switch(rel_addr - MEM_RAMCARD_IO); // REPLACED BY I/O ACTION MAP (below)
                 }
                 else if(this.ramcard.state.active &&
-                    addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+                    rel_addr >= ROM_ADDR && rel_addr < ROM_ADDR + ROM_SIZE)
                 {// FD00
-                    return this.ramcard.read(addr - ROM_ADDR);
+                    //return this.ramcard.read(rel_addr - ROM_ADDR);
                 }
                 else if(this.col80card.state.active &&
-                    addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
+                    rel_addr >= MEM_COL80CARD_IO && rel_addr < MEM_COL80CARD_IO + ROM_SIZE)
                 {
                     // TODO: read ROM from 80-column card !!
-                    //alert("80_COL $"+oCOM.getHexWord(addr));
+                    //alert("80_COL $"+oCOM.getHexWord(rel_addr));
                 }
 
-                // I/O ACTION MAP FOR READ OPERATIONS
-                if(CIO.ACTION_MAP.RD[addr]!==undefined)
+                ////////////////////////////////////////////////////////////
+                // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
+                ////////////////////////////////////////////////////////////
+
+                if(CIO.ACTION_MAP.RD[rel_addr]!==undefined)
                 {
-                    //if(addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[addr]);
-                    return CIO.ACTION_MAP.RD[addr](addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
+                    //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
+                    return CIO.ACTION_MAP.RD[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
                 }
 
             break;
@@ -179,22 +172,22 @@ function Apple2IO(vid)
         return 0x00;
     }
 
-    this.write = function(addr, d8)
+    this.write = function(rel_addr, d8)
     {
-        if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
-            this.disk2.write(addr - DISK_IO, d8);
-        else if(this.ramcard.state.active && addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-            return this.ramcard.write(addr - ROM_ADDR,d8)
+        if (rel_addr >= DISK_IO && rel_addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
+            this.disk2.write(rel_addr - DISK_IO, d8);
+        else if(this.ramcard.state.active && rel_addr >= ROM_ADDR && rel_addr < ROM_ADDR + ROM_SIZE)
+            return this.ramcard.write(rel_addr - ROM_ADDR,d8)
         
         // I/O ACTION MAP FOR WRITE OPERATIONS
-        if(CIO.ACTION_MAP.WR[addr]!==undefined)
+        if(CIO.ACTION_MAP.WR[rel_addr]!==undefined)
         {
-            //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-            return CIO.ACTION_MAP.WR[addr](addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+            //if(rel_addr > 16) console.log("ACTION: "+ACTION_MAP.RD[rel_addr]);
+            return CIO.ACTION_MAP.WR[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
         }
 
         // Implement same side-effects as read.
-        this.read(addr);
+        this.read(rel_addr);
     }
 
     this.cycle = function() {}

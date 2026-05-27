@@ -66,6 +66,8 @@ function Apple2Hw(vid,keys)
         hw.io.restart();
     };
 
+    function abs2IO(addr) { return addr - 0xC000 };
+
     this.build_mount = function()
     {
         return {
@@ -83,7 +85,7 @@ function Apple2Hw(vid,keys)
                 function(addr) { return ram[addr]; },                  // $9000 - $9FFF
                 function(addr) { return ram[addr]; },                  // $A000 - $AFFF
                 function(addr) { return ram[addr]; },                  // $B000 - $BFFF
-                function(addr) { return hw.io.read(addr - IO_ADDR); }, // $C000 - $CFFF
+                function(addr) { return hw.io.read(abs2IO(addr)); }, // $C000 - $CFFF
 
                 // Default ROM, not RAMCARD.
                 function(addr) { return apple2Rom[addr - ROM_ADDR]; }, // $D000 - $DFFF
@@ -105,7 +107,7 @@ function Apple2Hw(vid,keys)
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $9000 - $9FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $A000 - $AFFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $B000 - $BFFF
-                function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); },              // $C000 - $CFFF
+                function(addr,d8) { hw.io.write(abs2IO(addr),d8); },    // $C000 - $CFFF
 
                 // Default ROM write: no-op.
                 function(addr,d8) {},                                               // $D000 - $DFFF
