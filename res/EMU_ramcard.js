@@ -37,8 +37,8 @@ function RamCard()
     var hw;                      // purposed for late-binding (at restart) 
     var card       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
 
-    var bDebug_sw  = false;      // debug soft switch updates (light)
-    var bDebug_mon = false;      // debug RAM Write monitor
+    var bDebug_sw  = true;      // debug soft switch updates (light)
+    var bDebug_mon = true;      // debug RAM Write monitor
     var bDebug     = false;      // debug all RAM R/W operations   
 
     // RE: 0="READ-ENABLE" 1="READ-ENABLE" | WE: 0:"WRITE-PROTECT" 1:"WRITE-ENABLE"  | BANK: 0="BANK A", 1="BANK B"
@@ -55,7 +55,8 @@ function RamCard()
     }
     var softswitch_diff = {RE:0,WE:0,BANK:0};
 
-    function abs2rel(addr) { return addr - MEM_MAP_ORG }
+    function abs2rel(addr) { return (addr - MEM_MAP_ORG) & 0xFFFF; }
+    function rel2abs(addr) { return (addr + MEM_MAP_ORG) & 0xFFFF; }
 
     this.updateMemoryMap = function(bRamcardActive)
     {
@@ -130,14 +131,14 @@ function RamCard()
     this.soft_switch = function(addr)
     {
         var MEM_RAMCARD_IO =  0x80;
-        var loc_addr = addr - MEM_RAMCARD_IO;                   // SlotIO offset - TODO: take this from IO object
+        var rel_io_addr = addr - MEM_RAMCARD_IO;                   // SlotIO offset - TODO: take this from IO object (abs2rel method in IO?)
         const pre_sw = softswitch[this.state.softswitch_pos];   // previous switch state
 
-        var sw = softswitch[loc_addr] || {}; mon_soft_switch(sw);
-        debug_flush(); if(bDebug_sw) debug_soft_switch(loc_addr,sw,this.state);
+        var sw = softswitch[rel_io_addr] || {}; mon_soft_switch(sw);
+        debug_flush(); if(bDebug_sw) debug_soft_switch(rel_io_addr,sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
         
-        this.state.softswitch_pos = loc_addr;
+        this.state.softswitch_pos = rel_io_addr;
 
         if((sw.WE==1 && this.state.RR==false) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
         {
@@ -147,26 +148,26 @@ function RamCard()
         this.update_MEM_status();
     };
 
-    this.read = function(addr)
+    this.read = function(rel_addr)
     {
         var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
-        const d8 = RAMCARD_MEM[ address_encoder(addr,sw.BANK) ]; 
-        if(bDebug) debug_record( addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, addr, d8, addr < BANK_SIZE ? (sw.BANK ? "A" : "B") : null);
+        const d8 = RAMCARD_MEM[ address_encoder(rel_addr,sw.BANK) ]; 
+        if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK ? "A" : "B") : null);
         return d8;
     }
 
-    this.write = function(addr,d8)
+    this.write = function(rel_addr,d8)
     {
         var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
         if(sw.WE==1 && this.state.RR)
         {
-            RAMCARD_MEM[ address_encoder(addr,sw.BANK) ] = d8;
-            if(bDebug) debug_record( addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD, addr, d8, addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null );
+            RAMCARD_MEM[ address_encoder(rel_addr,sw.BANK) ] = d8;
+            if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null );
         }
         else
         {
             debug_flush();
-            console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(addr));
+            console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(rel2abs(rel_addr)));
         }
     };
 
@@ -247,15 +248,12 @@ function RamCard()
     };
 
     // mark one block in the memory grid
-    this.mark_MEM_monitoring = function(bucket, addr)
+    this.mark_MEM_monitoring = function(bucket, rel_addr)
     {
         if(!this.bMEM_monitoring) return;
-
-        if(!this.mem_mon[bucket])
-            this.mem_mon[bucket] = {};
-
-        var display_addr = (addr + 0xD000) & 0xFFFF;    // relative to absolute address
-        this.mem_mon[bucket][display_addr >> oMEMGRID.mem_gran] = true;
+        if(!this.mem_mon[bucket]) this.mem_mon[bucket] = {};
+        
+        this.mem_mon[bucket][rel2abs(rel_addr) >> oMEMGRID.mem_gran] = true;
 
         if(hw && !hw.mem_mon_trigger[this.id.PCODE])
         {
@@ -272,8 +270,8 @@ function RamCard()
         if(this.MEM_grid)
         {
             oMEMGRID.paint_grid(this.MEM_grid.cont.layout, this.MEM_grid.cont.cnf);
-            oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,   this.MEM_grid.bankB.cnf);
-            oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,   this.MEM_grid.bankA.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankB.layout,this.MEM_grid.bankB.cnf);
+            oMEMGRID.paint_grid(this.MEM_grid.bankA.layout,this.MEM_grid.bankA.cnf);
         }
         this.update_MEM_status();
     }
@@ -286,7 +284,7 @@ function RamCard()
         if(b) this.reset_MEM_monitoring();  // clear data
     }
 
-    // light up the blocks in the memory grid
+    // lights up memory blocks in the grid
     // called regularly as the result of oCOM.addRefreshEvent  (e.g. 2 times per second)
     this.MEM_monitoring = function()
     {
@@ -312,8 +310,6 @@ function RamCard()
         }
         
         if(hw.bClear_mon) this.mem_mon = {"cont":{}, "bankA":{}, "bankB":{}};  // CLEAR THE GRID AFTER EACH DISPLAY
-
-
     }
 
     // Vote on ramcard status (since softswitches change more rapidly than visual updates, we want to show the most prevalent state) 
@@ -363,30 +359,23 @@ function RamCard()
     {
         suffix = suffix || "";
         if(dbgCurrent && (dbgCurrent != op || dbgOps[dbgCurrent].suffix != suffix)) debug_flush();
-
         var o = dbgOps[op];
         if(!o) return;
-
         if(!dbgCurrent)
         {
             dbgCurrent = op;
             o.firstAddr = addr;
             o.suffix = suffix;
         }
-
         o.bytes++;
         o.lastAddr = addr;
-
-        // Simple 16-bit rolling checksum over address and data.
-        o.checksum[0] = (o.checksum[0] + ((addr & 0xFFFF) ^ (d8 & 0xFF))) & 0xFFFF;
+        o.checksum[0] = (o.checksum[0] + ((addr & 0xFFFF) ^ (d8 & 0xFF))) & 0xFFFF;          // Simple 16-bit rolling checksum over address and data.
     }
 
     function debug_flush()
     {
         if(!bDebug || !dbgCurrent) return;
-
         var o = dbgOps[dbgCurrent];
-
         if(o && o.bytes)
         {
             console.log(
@@ -396,7 +385,6 @@ function RamCard()
                 " checksum=$" + oCOM.getHexWord(o.checksum[0])
             );
         }
-
         o.bytes = 0;
         o.checksum[0] = 0;
         o.firstAddr = null;
