@@ -14104,6 +14104,8 @@ function Apple2Hw(vid,keys)
         hw.io.restart();
     };
 
+    function abs2IO(addr) { return addr - 0xC000 };
+
     this.build_mount = function()
     {
         return {
@@ -14121,7 +14123,7 @@ function Apple2Hw(vid,keys)
                 function(addr) { return ram[addr]; },                  // $9000 - $9FFF
                 function(addr) { return ram[addr]; },                  // $A000 - $AFFF
                 function(addr) { return ram[addr]; },                  // $B000 - $BFFF
-                function(addr) { return hw.io.read(addr - IO_ADDR); }, // $C000 - $CFFF
+                function(addr) { return hw.io.read(abs2IO(addr)); }, // $C000 - $CFFF
 
                 // Default ROM, not RAMCARD.
                 function(addr) { return apple2Rom[addr - ROM_ADDR]; }, // $D000 - $DFFF
@@ -14143,7 +14145,7 @@ function Apple2Hw(vid,keys)
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $9000 - $9FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $A000 - $AFFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $B000 - $BFFF
-                function(addr,d8) { hw.io.write(addr - IO_ADDR,d8); },              // $C000 - $CFFF
+                function(addr,d8) { hw.io.write(abs2IO(addr),d8); },    // $C000 - $CFFF
 
                 // Default ROM write: no-op.
                 function(addr,d8) {},                                               // $D000 - $DFFF
@@ -20154,11 +20156,12 @@ function RamCard()
 
     var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);     // PERIPHERAL RAM
 
-    var hw;                      // purposed for late-binding (at restart) 
+    var hw;                      // purposed for late-binding (at restart)
+    var io;                      // purposed for late-binding (at restart)
     var card       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
 
-    var bDebug_sw  = true;      // debug soft switch updates (light)
-    var bDebug_mon = true;      // debug RAM Write monitor
+    var bDebug_sw  = false;      // debug soft switch updates (light)
+    var bDebug_mon = false;      // debug RAM Write monitor
     var bDebug     = false;      // debug all RAM R/W operations   
 
     // RE: 0="READ-ENABLE" 1="READ-ENABLE" | WE: 0:"WRITE-PROTECT" 1:"WRITE-ENABLE"  | BANK: 0="BANK A", 1="BANK B"
@@ -20174,9 +20177,6 @@ function RamCard()
        ,0xB: {"RE":1, "WE":1, "BANK":1}  // READ: $D000-$DFFF -> BANK_MEM[0]  | READ: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM | WRITE $D000-$DFFF -> BANK_MEM[0]  | WRITE: $E000-$EFFF & $F000-$FFFF -> RAMCARD_MEM
     }
     var softswitch_diff = {RE:0,WE:0,BANK:0};
-
-    function abs2rel(addr) { return (addr - MEM_MAP_ORG) & 0xFFFF; }
-    function rel2abs(addr) { return (addr + MEM_MAP_ORG) & 0xFFFF; }
 
     this.updateMemoryMap = function(bRamcardActive)
     {
@@ -20234,6 +20234,7 @@ function RamCard()
     this.restart = function()
     {
         hw = apple2plus.hwObj();
+        io = apple2plus.hwObj().io;
         debug_flush();
         this.state.bMapped = false;
         this.state.RR      = false;
@@ -20242,23 +20243,27 @@ function RamCard()
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 
+    function abs2rel(addr) { return ((addr & 0xFFFF) - MEM_MAP_ORG); }
+    function rel2abs(rel_addr) { return (rel_addr + MEM_MAP_ORG) & 0xFFFF; }
+
     // translate addresses from the bus to ramcard addresses 
     function address_encoder(addr,bank_bit) 
     { 
         return addr + ((bank_bit | !!(addr >> 12)) << 12);
     }
 
-    this.soft_switch = function(addr)
+    this.soft_switch = function(rel_io_addr)
     {
-        var MEM_RAMCARD_IO =  0x80;
-        var rel_io_addr = addr - MEM_RAMCARD_IO;                   // SlotIO offset - TODO: take this from IO object (abs2rel method in IO?)
+        var MEM_RAMCARD_IO =  0x80; // deduce from this.state.slot
+
+        var sw_idx = rel_io_addr - MEM_RAMCARD_IO;                     // SlotIO index - TODO: take this from IO object (abs2rel method with 'SLOTIO' reference?)
         const pre_sw = softswitch[this.state.softswitch_pos];   // previous switch state
 
-        var sw = softswitch[rel_io_addr] || {}; mon_soft_switch(sw);
-        debug_flush(); if(bDebug_sw) debug_soft_switch(rel_io_addr,sw,this.state);
+        var sw = softswitch[sw_idx] || {}; mon_soft_switch(sw);
+        debug_flush(); if(bDebug_sw) debug_soft_switch(sw_idx,sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
         
-        this.state.softswitch_pos = rel_io_addr;
+        this.state.softswitch_pos = sw_idx;
 
         if((sw.WE==1 && this.state.RR==false) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
         {
@@ -20372,7 +20377,7 @@ function RamCard()
     {
         if(!this.bMEM_monitoring) return;
         if(!this.mem_mon[bucket]) this.mem_mon[bucket] = {};
-        
+
         this.mem_mon[bucket][rel2abs(rel_addr) >> oMEMGRID.mem_gran] = true;
 
         if(hw && !hw.mem_mon_trigger[this.id.PCODE])
@@ -21020,12 +21025,21 @@ function Apple2IO(vid)
         if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
     }
 
-
     function line_decode(adr)
     {
         return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
     }
 
+    function address_encoder(rel_addr,bucket)
+    {
+        switch(bucket)
+        {
+            case "HostIO":  return rel_addr;
+            case "SlotIO":  return rel_addr - 0x80  - (slot<<4);
+            case "SlotROM": return rel_addr - 0x100 - (slot-1<<8);
+            case "HostROM": return rel_addr - 0x800;
+        } 
+    }
 
     // HOST_IO callbacks (keyboard, speaker, gfx) 
 
@@ -21055,9 +21069,9 @@ function Apple2IO(vid)
         //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
 
-    this.read = function(addr)
+    this.read = function(rel_addr)
     {
-        var line = line_decode(addr);
+        var line = line_decode(rel_addr);
 
         switch(line)
         {
@@ -21066,52 +21080,36 @@ function Apple2IO(vid)
             // TODO: ACTION MAP SHOULD LOOKUP IN WHICH SLOT IS EACH DEVICE, AND ASSIGN READ ADDRESSES
             // LIKELY THIS INFORMATION CAN BE LOOKED-UP IN BIND.. we also need to solve slot re-assignment
 
-            case 0xE0:   return this.disk2.read(addr - DISK_IO);
-            case 0x0600: return this.disk2.readROM(addr - DISK_PROM);
+            case 0xE0:   return this.disk2.read(rel_addr - DISK_IO);
+            case 0x600:  return this.disk2.readROM(rel_addr - DISK_PROM);
 
             default:
 
-                /*
-                else if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)
-                {
-                    console.log(oCOM.getHexWord(line))
-                    var o = this.disk2.read(addr - DISK_IO);
-                    return o;
-                }
-                else if (this.disk2.diskBytes[this.disk2.drv] && addr >= DISK_PROM &&
-                        addr < DISK_PROM + DISK_PROM_SIZE)
-                {
-                    //59 & 5A
-                    console.log(oCOM.getHexWord(line))
-                    return this.disk2.ROM[addr - DISK_PROM];
-                }
-                */
-                // TODO: decode soft switches based on registry (auto declared mask)
-                // ACTION_MAP = global registry ??
-
-
                 if(this.ramcard.state.active  && // RAMCARD SOFT SWITCHES
-                    addr >= MEM_RAMCARD_IO && addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
+                    rel_addr >= MEM_RAMCARD_IO && rel_addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
                 {// 0080
-                    //return this.ramcard.soft_switch(addr - MEM_RAMCARD_IO);
+                    //return this.ramcard.soft_switch(rel_addr - MEM_RAMCARD_IO); // REPLACED BY I/O ACTION MAP (below)
                 }
                 else if(this.ramcard.state.active &&
-                    addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
+                    rel_addr >= ROM_ADDR && rel_addr < ROM_ADDR + ROM_SIZE)
                 {// FD00
-                    return this.ramcard.read(addr - ROM_ADDR);
+                    //return this.ramcard.read(rel_addr - ROM_ADDR);
                 }
                 else if(this.col80card.state.active &&
-                    addr >= MEM_COL80CARD_IO && addr < MEM_COL80CARD_IO + ROM_SIZE)
+                    rel_addr >= MEM_COL80CARD_IO && rel_addr < MEM_COL80CARD_IO + ROM_SIZE)
                 {
                     // TODO: read ROM from 80-column card !!
-                    //alert("80_COL $"+oCOM.getHexWord(addr));
+                    //alert("80_COL $"+oCOM.getHexWord(rel_addr));
                 }
 
-                // I/O ACTION MAP FOR READ OPERATIONS
-                if(CIO.ACTION_MAP.RD[addr]!==undefined)
+                ////////////////////////////////////////////////////////////
+                // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
+                ////////////////////////////////////////////////////////////
+
+                if(CIO.ACTION_MAP.RD[rel_addr]!==undefined)
                 {
-                    //if(addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[addr]);
-                    return CIO.ACTION_MAP.RD[addr](addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
+                    //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
+                    return CIO.ACTION_MAP.RD[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
                 }
 
             break;
@@ -21121,22 +21119,22 @@ function Apple2IO(vid)
         return 0x00;
     }
 
-    this.write = function(addr, d8)
+    this.write = function(rel_addr, d8)
     {
-        if (addr >= DISK_IO && addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
-            this.disk2.write(addr - DISK_IO, d8);
-        else if(this.ramcard.state.active && addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-            return this.ramcard.write(addr - ROM_ADDR,d8)
+        if (rel_addr >= DISK_IO && rel_addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
+            this.disk2.write(rel_addr - DISK_IO, d8);
+        else if(this.ramcard.state.active && rel_addr >= ROM_ADDR && rel_addr < ROM_ADDR + ROM_SIZE)
+            return this.ramcard.write(rel_addr - ROM_ADDR,d8)
         
         // I/O ACTION MAP FOR WRITE OPERATIONS
-        if(CIO.ACTION_MAP.WR[addr]!==undefined)
+        if(CIO.ACTION_MAP.WR[rel_addr]!==undefined)
         {
-            //if(addr > 16) console.log("ACTION: "+ACTION_MAP.RD[addr]);
-            return CIO.ACTION_MAP.WR[addr](addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+            //if(rel_addr > 16) console.log("ACTION: "+ACTION_MAP.RD[rel_addr]);
+            return CIO.ACTION_MAP.WR[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
         }
 
         // Implement same side-effects as read.
-        this.read(addr);
+        this.read(rel_addr);
     }
 
     this.cycle = function() {}
