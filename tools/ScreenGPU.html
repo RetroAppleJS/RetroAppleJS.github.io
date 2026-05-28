@@ -174,7 +174,9 @@ function EMU_init()
     {
       var badr = x<40 ? 0x400 : 0x800 - 40;
       var adr = badr + x + ((y & 7) << 7) + ((y >> 3) << 5) + ((y >> 3) << 3);
-      a2p.hwObj().write(adr, byte);
+      //a2p.hwObj().write(adr, byte);
+      const line = a2p.hwObj().lineDecode(adr);
+      a2p.hwObj().WR[ line ](adr,byte);               // write byte
     }
 
     for(var x=0;x<80;x++) placeText(x,x,0,apple2plus);
@@ -241,7 +243,9 @@ function fill_ram(byte_capture,a2p,offset)
 
 function set_ram(byte,adr,a2p)
 {
-  a2p.hwObj().write(adr, byte);
+  //a2p.hwObj().write(adr, byte);
+  const line = a2p.hwObj().lineDecode(adr);
+  a2p.hwObj().WR[ line ](adr,byte);               // write byte
 }
 
 //   █████  ██████  ██████  ██      ███████     ██ ██       
