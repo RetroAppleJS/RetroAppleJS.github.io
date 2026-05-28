@@ -406,12 +406,15 @@ function Apple2Video(ctx)
         this.register_mode();
 
         // No TEXT, LORES, or MIXED-mode rendering in this first phase.
+        
+        /*
         if (!(gfx_mode && hires_mode))
         {
             this.blackKernel();
             frame_redraw = false;
             return;
         }
+        */
 
         this.ensureLinearHgr();
 
