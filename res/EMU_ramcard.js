@@ -132,15 +132,13 @@ function RamCard()
 
     this.soft_switch = function(rel_io_addr)
     {
-        var MEM_RAMCARD_IO =  0x80; // deduce from this.state.slot
-
-        var sw_idx = rel_io_addr - MEM_RAMCARD_IO;                     // SlotIO index - TODO: take this from IO object (abs2rel method with 'SLOTIO' reference?)
-        const pre_sw = softswitch[this.state.softswitch_pos];   // previous switch state
+        const slot = 0;                                                 // TODO: take fromthis.state.slot
+        var sw_idx = io.address_encoder(rel_io_addr,"SlotIO",slot);     // index of the io address
+        const pre_sw = softswitch[this.state.softswitch_pos];           // previous switch state
 
         var sw = softswitch[sw_idx] || {}; mon_soft_switch(sw);
         debug_flush(); if(bDebug_sw) debug_soft_switch(sw_idx,sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
-        
         this.state.softswitch_pos = sw_idx;
 
         if((sw.WE==1 && this.state.RR==false) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice

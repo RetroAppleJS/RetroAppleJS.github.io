@@ -137,9 +137,10 @@ function Apple2Debug()
         var hw = apple2plus.hwObj();
         var adr = curPos;
 
+        const c_ram = hw.safe_flashdump();
         for(var i=0;i<linLen;i++)           //  inverse loop for performance 
         {
-            var b8 = hw.safe_read(adr);
+            var b8 = c_ram[adr];
             var ret = oDASM_debug.disassemble({"code_arr":[b8,hw.safe_read(adr+1),hw.safe_read(adr+2)],"pc":adr,"opctab":cpu_config.opctab});
             adr += cpu_config.instrlen[b8];                  // advance to the next instruction
             if(adr < cfg.min)  adr += cfg.max - cfg.min + 1;   // fix underflow

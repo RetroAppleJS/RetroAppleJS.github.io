@@ -1,14 +1,8 @@
 //
-// Copyright (c) 2014 Thomas Skibo.
-// All rights reserved.
-//
-// Adapted in 2022 by Freddy Vandriessche.
+// Copyright (c) 2024 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// apple2hw.js   (Apple II Hardware)
-
-//if(oEMU===undefined) var oEMU = {"component":{"Hardware":new Apple2Hw()}}
-//else oEMU.component.Hardware = new Apple2Hw();
+// EMU_apple2hw.js   (Apple II Hardware)
 
 // HARDWARE IS ACCESSING:
 // 1) RAM & VIDEO RAM
@@ -23,6 +17,7 @@ function Apple2Hw(vid,keys)
     this.bClear_mon  = true;        // clear the grid after each display cycle
     
     this.lineDecode = function(addr) {return addr >> 12; };
+    
     this.RD = [];
     this.WR = [];
     this.default_map = null;
@@ -67,47 +62,48 @@ function Apple2Hw(vid,keys)
     };
 
     function abs2IO(addr) { return addr - 0xC000 };
+    this.IO2abs = function(io_addr) { return addr + 0xC000 };
 
     this.build_mount = function()
     {
         return {
             "RD":
             [
-                function(addr) { return ram[addr]; },                  // $0000 - $0FFF
-                function(addr) { return hw.read(addr); },              // $1000 - $1FFF
-                function(addr) { return hw.read(addr); },              // $2000 - $2FFF
-                function(addr) { return hw.read(addr); },              // $3000 - $3FFF
-                function(addr) { return hw.read(addr); },              // $4000 - $4FFF
-                function(addr) { return hw.read(addr); },              // $5000 - $5FFF
-                function(addr) { return ram[addr]; },                  // $6000 - $6FFF
-                function(addr) { return ram[addr]; },                  // $7000 - $7FFF
-                function(addr) { return ram[addr]; },                  // $8000 - $8FFF
-                function(addr) { return ram[addr]; },                  // $9000 - $9FFF
-                function(addr) { return ram[addr]; },                  // $A000 - $AFFF
-                function(addr) { return ram[addr]; },                  // $B000 - $BFFF
-                function(addr) { return hw.io.read(abs2IO(addr)); }, // $C000 - $CFFF
+                function(addr) { return ram[addr]; },                   // $0000 - $0FFF
+                function(addr) { return ram[addr]; },                   // $1000 - $1FFF
+                function(addr) { return ram[addr]; },                   // $2000 - $2FFF
+                function(addr) { return ram[addr]; },                   // $3000 - $3FFF
+                function(addr) { return ram[addr]; },                   // $4000 - $4FFF
+                function(addr) { return ram[addr]; },                   // $5000 - $5FFF
+                function(addr) { return ram[addr]; },                   // $6000 - $6FFF
+                function(addr) { return ram[addr]; },                   // $7000 - $7FFF
+                function(addr) { return ram[addr]; },                   // $8000 - $8FFF
+                function(addr) { return ram[addr]; },                   // $9000 - $9FFF
+                function(addr) { return ram[addr]; },                   // $A000 - $AFFF
+                function(addr) { return ram[addr]; },                   // $B000 - $BFFF
+                function(addr) { return hw.io.read(abs2IO(addr)); },    // $C000 - $CFFF
 
                 // Default ROM, not RAMCARD.
-                function(addr) { return apple2Rom[addr - ROM_ADDR]; }, // $D000 - $DFFF
-                function(addr) { return apple2Rom[addr - ROM_ADDR]; }, // $E000 - $EFFF
-                function(addr) { return apple2Rom[addr - ROM_ADDR]; }  // $F000 - $FFFF
+                function(addr) { return apple2Rom[addr - ROM_ADDR]; },  // $D000 - $DFFF
+                function(addr) { return apple2Rom[addr - ROM_ADDR]; },  // $E000 - $EFFF
+                function(addr) { return apple2Rom[addr - ROM_ADDR]; }   // $F000 - $FFFF
             ],
 
             "WR":
             [
-                function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $0000 - $0FFF
-                function(addr,d8) { hw.write(addr,d8); },                           // $1000 - $1FFF
-                function(addr,d8) { hw.write(addr,d8); },                           // $2000 - $2FFF
-                function(addr,d8) { hw.write(addr,d8); },                           // $3000 - $3FFF
-                function(addr,d8) { hw.write(addr,d8); },                           // $4000 - $4FFF
-                function(addr,d8) { hw.write(addr,d8); },                           // $5000 - $5FFF
+                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);}, // $0000 - $0FFF
+                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $1000 - $1FFF
+                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $2000 - $2FFF
+                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $3000 - $3FFF
+                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $4000 - $4FFF
+                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $5000 - $5FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $6000 - $6FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $7000 - $7FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $8000 - $8FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $9000 - $9FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $A000 - $AFFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $B000 - $BFFF
-                function(addr,d8) { hw.io.write(abs2IO(addr),d8); },    // $C000 - $CFFF
+                function(addr,d8) { hw.io.write(abs2IO(addr),d8); },                // $C000 - $CFFF
 
                 // Default ROM write: no-op.
                 function(addr,d8) {},                                               // $D000 - $DFFF
@@ -117,84 +113,21 @@ function Apple2Hw(vid,keys)
         };
     };
 
-    this.mount = function()
-    {
-        this.default_map = this.build_mount();
-
-        // Working copies. Do not assign the same array object.
-        this.RD = this.default_map.RD.slice(0);
-        this.WR = this.default_map.WR.slice(0);
-    };
-
-    this.cycle = function()
-    {
-        hw.io.cycle();
-        //this.bMEM_monitoring = oCOM.RefreshEvent_arr.MEM_monitoring.active;
-    }
-
-    this.read = function(addr)
-    {
-        var d8;
-        addr = addr & 0xFFFF;
-
-        if(oEMU.component.IO.RamCard && oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
-            d8 = hw.io.read(addr);
-        else if (addr < RAM_SIZE) // RAM_SIZE
-            d8 = ram[addr];
-        else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-            d8 = apple2Rom[addr - ROM_ADDR];
-        else if (addr & 0xF000 ^ 0xC000 == 0) //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            d8 = hw.io.read(addr - IO_ADDR);
-        else
-            d8 = 0x55;
-     
-        return d8;
-    }
-
-    this.safe_read = function(addr)
-    {
-        var d8;
-        addr = addr & 0xFFFF;
-
-        if(oEMU.component.IO.RamCard && oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
-            d8 = hw.io.read(addr);
-        else if (addr < RAM_SIZE)
-            d8 = ram[addr];
-        else if (addr >= ROM_ADDR && addr < ROM_ADDR + ROM_SIZE)
-            d8 = apple2Rom[addr - ROM_ADDR];
-        //else if (addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-        //    d8 = hw.io.read(addr - IO_ADDR);
-        else
-            d8 = 0xFF;
-     
-        return d8;
-    }
-
     this.safe_flashdump = function()
     {
         return new Uint8Array(ram);
     }
 
-    this.write = function(addr, d8)
+    this.mount = function()
     {
-        if (d8 < 0 || d8 > 0xff) console.error("apple2hw.write(%s %s) d8 too big!",addr.toString(16), d8.toString(16));
+        this.default_map = this.build_mount();  // initialise the default memory mapping
+        this.RD = this.default_map.RD.slice(0); // slice(0) creates working copies
+        this.WR = this.default_map.WR.slice(0); // Do not assign the same array object!
+    };
 
-        if(oEMU.component.IO.RamCard &&  oEMU.component.IO.RamCard.state.active == true && addr >= ROM_ADDR)
-            d8 = hw.io.write(addr,d8);
-        else if (addr < RAM_SIZE)
-        {
-            ram[addr] = d8;
-
-            // If it falls within the video regions, let the video object know.
-            if ((addr >= LORES_ADDR && addr < LORES_ADDR + LORES_SIZE) ||
-                (addr >= HIRES_ADDR && addr < HIRES_ADDR + HIRES_SIZE))
-                video.write(addr, d8);
-        }
-        else if (addr & 0xF000 ^ 0xC000 == 0)  //(addr >= IO_ADDR && addr < IO_ADDR + IO_SIZE)
-            hw.io.write(addr - IO_ADDR, d8);
-
-        
-        if(this.bMEM_monitoring) this.mark_MEM_monitoring(addr);
+    this.cycle = function()
+    {
+        hw.io.cycle();
     }
 
     this.mem_layout = {

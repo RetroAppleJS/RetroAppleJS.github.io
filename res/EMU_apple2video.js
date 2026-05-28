@@ -10,6 +10,7 @@ else oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
+    const bDebug_snd = false;
 
     var LORES1_ADDR =   0x0400,
         LORES2_ADDR =   0x0800,
@@ -192,26 +193,13 @@ function Apple2Video(ctx)
 
         ctx.fillStyle = lores_PixelColor(d8>>4);
         ctx.fillRect(col * 14, 8 + row * 16, 14, 8);
+        if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
 
     // Draw a hires memory location, ends up redrawing pixels
     // to the left and right of the byte.
     //
-    // col is [0..39], y is [0..191].
-    //
-    // Needs byte left and right of the location to handle
-    // weird color algorithm (see hgr_drawPixel()).  If column is
-    // leftmost or rightmost, use zero for non-existant adjacent bytes.
-    
-    // Convoluted way of plotting hires colors.
-    // coordinates: x is [0..279], y is [0..191]
-    //
-    // The rest are integers treated as booleans:
-    // left != 0, pixel to the left is set
-    // me != 0, this pixel is set
-    // right != 0, pixel to the right is set
-    // b7 != 0, the relevant byte in hires memory has bit 7 set
-    //
+    // col is [0..39], y is [0..191]
 
     function text_PixelColor(me)
     {
@@ -220,7 +208,8 @@ function Apple2Video(ctx)
         else return loresCols[0][0];    // Black
     }
 
-    function lores_PixelColor(d8) {
+    function lores_PixelColor(d8) 
+    {
         var m = chrome_mode?chrome_mode:0;
         return loresCols[d8 & 0x0f][m];
     }
@@ -229,7 +218,7 @@ function Apple2Video(ctx)
     {
         const chr = 0;
         const b   = x<<4 | l<<3 | (m<<2 | m<<1)&4 | (r<<1 | r>>1)&2 | b7>>7;
-        const col =  0xF4E0F8D0>>>b &1 | 0x08200820>>>b-1 &2 | 0xF0D0F4C0>>>b-2 &4;
+        const col = 0xF4E0F8D0>>>b &1 | 0x08200820>>>b-1 &2 | 0xF0D0F4C0>>>b-2 &4;
         const ofs = (col<<4)+(col<<5) | chr<<2;
         const a   = INTCols.slice(ofs,ofs+3);
         return "#"+RGB2HEX(a).join("");
@@ -263,6 +252,7 @@ function Apple2Video(ctx)
             if (col < 39) d8_r = this.vidram[addr + 1];
 
             this.hgr_Draw(col, y, d8_l, d8, d8_r, this.modes);
+            if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
         }
         else if (addr >= (page2_mode ? LORES2_ADDR : LORES1_ADDR) &&
                 addr < (page2_mode ? LORES2_ADDR : LORES1_ADDR) + LPAGE_SIZE) {
@@ -281,12 +271,14 @@ function Apple2Video(ctx)
             {
                 // LO-RES Graphics.
                 if (!hires_mode) lores_Draw(col, row, d8);
+                if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
             }
             else
             {
                 // Text mode
                 text_Draw(col, row, d8);
-                charFlow.prev = {"col":col,"row":row,"d8":d8}
+                charFlow.prev = {"col":col,"row":row,"d8":d8};
+                if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
             }
         }
     } // write()
@@ -308,22 +300,19 @@ function Apple2Video(ctx)
                     if ((d8 & 0xc0) == 0x40) text_Draw(col, row, d8);
                 }
         }
-        //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+        if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
 
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
         if(this.ctx === undefined) return;
-        
+
         this.register_mode();
         for (var row = 0; row < 24; row++)
             for (var col = 0; col < 40; col++)
             {
-                var addr = (((row & 0x07) << 7) |
-                            (row & 0x18) |
-                            ((row & 0x18) << 2)) + col;
-
+                var addr = (((row & 0x07) << 7) | (row & 0x18) | ((row & 0x18) << 2)) + col;
                 if (gfx_mode && (!mix_mode || row < 20))
                 {
                     if (hires_mode)
@@ -354,7 +343,7 @@ function Apple2Video(ctx)
                     text_Draw(col, row, this.vidram[addr]);
                 }
             }
-            //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+        if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
 
     this.rept = function() {
@@ -363,23 +352,33 @@ function Apple2Video(ctx)
 
     this.hgr_Draw = function(col, y, d8_l, d8, d8_r, modes)
     {
-        // Concatenate 11 bits of pixels.  LSB is the leftmost pixel.
-        // { d8_r[0:1], d8[0:6], d8_l[5:6] }
-        var b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
-        var chr = _CFG_CHROMA[modes.chrome].COL_num;
+        const yLimit = modes.mix ? 160 : 192;
+        if (y >= yLimit) return;
+        let b = ((d8_r & 0x03) << 9) | ((d8 & 0x7f) << 2) | ((d8_l & 0x60) >> 5);
 
-        // Draw pixels including one pixel to the left and to the right of hires byte.
-        for (var x = col * 7 - 1; x < col * 7 + 8; x++) {
-            if (x >= 0 && x < 280 && y < (modes.mix?160:192))
+        const chr = _CFG_CHROMA[modes.chrome].COL_num;
+        const bit7 = d8 & 0x80;
+        const x0 = col < 0 ? 0 : col * 7 - 1;
+        const x1 = col > 39 ? 39 : col * 7 + 8;
+        const yy = y * 2;
+
+        if (chr)
+        {
+            const bg = loresCols[0][0];
+            for (let x = x0; x < x1; x++) 
             {
-                if(chr) ctx.fillStyle = b & 0x02 != 0 ? chr : loresCols[0][0];
-                else ctx.fillStyle = this.hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
-                //                                   x  y  left pix  this pix  right pix bit7
-                ctx.fillRect(x * 2, y * 2, 2, 2);    // Draw the pixel.
+                ctx.fillStyle = (b & 0x02) ? chr : bg;
+                ctx.fillRect(x * 2, yy, 2, 2); b >>= 1;
             }
-            //hgr_drawPixel(x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
-            b >>= 1;
         }
-    }
+        else 
+        {
+            for (let x = x0; x < x1; x++) 
+            {   //                                   x  y  left pix  this pix  right pix bit7
+                ctx.fillStyle = this.hgr_PixelColor( x, y, b & 0x01, b & 0x02, b & 0x04, d8 & 0x80);
+                ctx.fillRect(x * 2, yy, 2, 2); b >>= 1;
+            }
+        }
+    };
 
 }

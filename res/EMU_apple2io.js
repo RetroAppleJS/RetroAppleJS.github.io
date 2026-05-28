@@ -83,7 +83,7 @@ function Apple2IO(vid)
         return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
     }
 
-    function address_encoder(rel_addr,bucket)
+    this.address_encoder = function(rel_addr,bucket,slot)
     {
         switch(bucket)
         {
@@ -504,12 +504,13 @@ function Apple2IO(vid)
 
     var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
 
-    //var slot_count = 0;
-    //if(typeof(_CFG_SYSCODE)!="undefined") slot_count = Number(_CFG_SYSCODE[model]?.Slots);    // HOW MANY SLOTS CAN WE FILL?
-
-    var slotAvail = this.config_slotAvail(_CFG_SYSCODE);
-    // example: slotAvail={"logSlots":["board","PR#0","PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"],"phySlots":[0,1,2,3,4,5,6,7],"lockSlots":{"board":true},"logSlots_n":8,"phySlots_n":8}
-    var slot_count = slotAvail.logSlots_n;
+    var slot_count = 0;
+    if(typeof(_CFG_SYSCODE)!="undefined")
+    {
+        var slotAvail = this.config_slotAvail(_CFG_SYSCODE);
+        // example: slotAvail={"logSlots":["board","PR#0","PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"],"phySlots":[0,1,2,3,4,5,6,7],"lockSlots":{"board":true},"logSlots_n":8,"phySlots_n":8}
+        var slot_count = slotAvail.logSlots_n;
+    }
 
     var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};  // TODO: remove as this is now in CONFIG     
     
@@ -646,7 +647,7 @@ function Apple2IO(vid)
         
     }
 
-    
+    if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
     console.log(CIO.ACTION_MAP);
     console.group("ACTION_MAP overview");
     console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");

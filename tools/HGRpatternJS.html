@@ -569,34 +569,45 @@ function patPixel_HGR(x,y,patternID)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
-    var rbyt = apple2plus.hw.read(adr);               // read byte
+    //var rbyt = apple2plus.hw.read(adr);             // read byte
+    const line = apple2plus.hw.lineDecode(adr);
+    var rbyt = apple2plus.hw.RD[ line ](adr);         // read byte
     var wbyt = oPATTERN.pixel(x,y,patternID,rbyt)
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
+    //apple2plus.hw.write(adr,wbyt);                  // write byte 
+    apple2plus.hw.WR[ line ](adr,wbyt);               // write byte
 }
 
 function setPixel_HGR(x,y,h)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
-    var rbyt = apple2plus.hw.read(adr);
+    //var rbyt = apple2plus.hw.read(adr);
+    const line = apple2plus.hw.lineDecode(adr);
+    var rbyt = apple2plus.hw.RD[ line ](adr);         // read byte
     var wbyt = rbyt | (1 << x%7) | (h?h:0);
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
+    //apple2plus.hw.write(adr,wbyt);                  // write byte 
+    apple2plus.hw.WR[ line ](adr,wbyt);               // write byte
 }
 
 function clearPixel_HGR(x,y,h)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
-    var rbyt = apple2plus.hw.read(adr);
+    const line = apple2plus.hw.lineDecode(adr);
+    //var rbyt = apple2plus.hw.read(adr);
+    var rbyt = apple2plus.hw.RD[ line ](adr);         // read byte
     var wbyt = rbyt & ~(1 << x%7) & 127 | (h?h:0);              // AND current bit with pixel bit
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
+    //apple2plus.hw.write(adr,wbyt);                    // write byte
+    apple2plus.hw.WR[ line ](adr,wbyt);               // write byte
 }
 
 function getPixel_HGR(x,y)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
-    var rbyt = apple2plus.hw.read(adr);
+    const line = apple2plus.hw.lineDecode(adr);
+    //var rbyt = apple2plus.hw.read(adr);
+    var rbyt = apple2plus.hw.RD[ line ](adr);         // read byte
     var bit = (rbyt >> (x%7)) & 1 == 1;
     bit = x<0 || x>279 ? 0 : bit;                     
     var b7  = rbyt & 128;
@@ -605,8 +616,13 @@ function getPixel_HGR(x,y)
 
 function wipe_HGR(byte)
 {
+  apple2plus.hw.restart();
     for(var adr=8192;adr<16384;adr++)
-    apple2plus.hw.write(adr,byte);                      // write byte 
+    {
+      const line = apple2plus.hw.lineDecode(adr);
+      apple2plus.hw.WR[ line ](adr, byte);   //apple2plus.hw.write(adr,byte);
+    }
+
 }
 
 //  ██    ██  ██████  ██████   ██████  ███    ██  ██████  ██ 
