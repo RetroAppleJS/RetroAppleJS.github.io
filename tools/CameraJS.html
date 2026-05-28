@@ -126,8 +126,15 @@ function init_gui(_o)
   my_camera.style.height = _D.cam_y+"px";
   my_camera.style.backgroundSize = (_D.cam_x*0.8)+"px "+(_D.cam_y*0.8)+"px"
   
-  for(var i=8192;i<16384;i++)      // clear video RAM
-    apple2plus.hw.write(i,0);
+  //for(var i=8192;i<16384;i++)      // clear video RAM
+  //{
+    //const line = apple2plus.hw.lineDecode(i);
+    //apple2plus.hw.WR[ line ](i,0);               // write byte
+    //apple2plus.hw.write(i,0);
+  //}
+
+  apple2plus.hw.restart();
+  wipe_HGR(0);
 
   // Monochrome colors (index 0 = full color)
   var monoChromes = ["","#FFFFFF","#A0FFF0","#FCE7A1"];
@@ -189,8 +196,6 @@ function init_gui(_o)
   }
 
   // draw dithering patterns 
-  // apple2plus.hw.write(8192,5);
-  // apple2plus.hw.write(8194,1);
 
   oPALETTE.dec_pal      = [];
   
@@ -228,8 +233,13 @@ function setPixel_HGR(x,y,patternID)
 {
     // find address and bit location
     var adr = yref[y] + Math.floor(x/7);              // find address 
-    var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
-    apple2plus.hw.write(adr,wbyt);                    // write byte 
+    const line = apple2plus.hw.lineDecode(adr);
+
+    //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
+    var wbyt = apple2plus.hw.RD[ line ](adr)| 1 << x%7;    // OR current bit with pixel bit
+
+    //apple2plus.hw.write(adr,wbyt);                    // write byte 
+    apple2plus.hw.WR[ line ](adr,wbyt);               // write byte
 }
 
 function wipe_HGR(byte)
@@ -238,7 +248,11 @@ function wipe_HGR(byte)
     //var adr = yref[y] + Math.floor(x/7);              // find address 
     //var wbyt = apple2plus.hw.read(adr) | 1 << x%7;    // OR current bit with pixel bit
     for(var adr=8192;adr<16384;adr++)
-      apple2plus.hw.write(adr,byte);                    // write byte 
+    {
+      //apple2plus.hw.write(adr,byte);                    // write byte 
+      const line = apple2plus.hw.lineDecode(adr);
+      apple2plus.hw.WR[ line ](adr,byte);               // write byte
+    }
 }
 
 

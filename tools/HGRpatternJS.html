@@ -446,6 +446,7 @@ function copyTextToClipboard(text)
 
 function generate_HGR()
 { 
+  apple2plus.hw.restart();
   wipe_HGR(0);
   var spc = [11,11];
   var ofs = [-5,-4];
@@ -616,7 +617,6 @@ function getPixel_HGR(x,y)
 
 function wipe_HGR(byte)
 {
-  apple2plus.hw.restart();
     for(var adr=8192;adr<16384;adr++)
     {
       const line = apple2plus.hw.lineDecode(adr);
