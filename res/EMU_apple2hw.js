@@ -17,7 +17,7 @@ function Apple2Hw(vid,keys)
     this.bClear_mon  = true;        // clear the grid after each display cycle
     
     this.lineDecode = function(addr) {return addr >> 12; };
-    
+
     this.RD = [];
     this.WR = [];
     this.default_map = null;
@@ -91,12 +91,12 @@ function Apple2Hw(vid,keys)
 
             "WR":
             [
-                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);}, // $0000 - $0FFF
-                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $1000 - $1FFF
-                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $2000 - $2FFF
-                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $3000 - $3FFF
-                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $4000 - $4FFF
-                function(addr,d8) { ram[addr] = d8; video.write(addr, d8); hw.mark_MEM_monitoring(addr);},  // $5000 - $5FFF
+                function(addr,d8) { video.write(addr, d8); ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $0000 - $0FFF
+                function(addr,d8) { video.write(addr, d8); ram[addr] = d8; hw.mark_MEM_monitoring(addr);},  // $1000 - $1FFF
+                function(addr,d8) { video.write(addr, d8); ram[addr] = d8; hw.mark_MEM_monitoring(addr);},  // $2000 - $2FFF
+                function(addr,d8) { video.write(addr, d8); ram[addr] = d8; hw.mark_MEM_monitoring(addr);},  // $3000 - $3FFF
+                function(addr,d8) { video.write(addr, d8); ram[addr] = d8; hw.mark_MEM_monitoring(addr);},  // $4000 - $4FFF
+                function(addr,d8) { video.write(addr, d8); ram[addr] = d8; hw.mark_MEM_monitoring(addr);},  // $5000 - $5FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $6000 - $6FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $7000 - $7FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $8000 - $8FFF
@@ -113,10 +113,8 @@ function Apple2Hw(vid,keys)
         };
     };
 
-    this.safe_flashdump = function()
-    {
-        return new Uint8Array(ram);
-    }
+    this.safe_flashdump = function() { return new Uint8Array(ram); }
+    this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
     this.mount = function()
     {
@@ -185,5 +183,5 @@ function Apple2Hw(vid,keys)
     }
 
     // Link memory to Video
-    video.vidram = ram;
+    video.vidram = ram.slice(0,0x6000);
 }

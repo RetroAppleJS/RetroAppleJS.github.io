@@ -9,6 +9,8 @@ else oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
+    const bDebug_snd = false;
+
     var gfx_mode;
     var mix_mode;
     var page2_mode;
@@ -78,28 +80,29 @@ function Apple2Video(ctx)
 
     this.cycle = function()
     {
-
-      if (++flash_count > 250000) // 4 fps
-      {
-        flash_on = ! flash_on;
-        flash_count = 0;
-        this.reflash();   // non-maskable interrupt at flashing cursor
-      }
-
-      //if(frame_count%17030 == 0)  // ~50 fps
-      //if (++frame_count > 34060)  // ~25 fps
-      if (++frame_count > 68120)  // ~12.5 fps
+      frame_count++;
+      if(frame_count > 20000)  // 68120~12.5fps 34060~25fps 28383~30fps 17030~50 fps
       {
         if(frame_redraw==true)
         {
           frame_count = 0;
           this.redraw();  // redraw only if flag is set
+          if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+        }
+        else if(frame_count > 200000) // reflash (250000~4fps)
+        {
+          flash_on = ! flash_on;
+          frame_count = 0;
+          frame_redraw = true;
+          this.redraw();
+          if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
         }
       }
+
     }
 
     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
-    this.reflash = function() { frame_redraw = true; this.redraw() }
+    //this.reflash = function() { frame_redraw = true; this.redraw() }
 
     this.redraw = function()
     {
@@ -108,17 +111,53 @@ function Apple2Video(ctx)
       this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
   
       // RUN THE KERNEL !
-      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel( apple2plus.hwObj().safe_flashdump(),apple2CharRom,apple2plus.vidObj().serial8 )} );
+      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel( apple2plus.hwObj().safe_videodump(),apple2CharRom,apple2plus.vidObj().serial8 )} );
       frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
-
-      //oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
     }
 
-    this.write    = function(addr, d8) { this.vidram[addr] = d8; frame_redraw = true; }   // FLOATING BUS behavior ?
+    this.write = function(addr, d8) // FLOATING BUS behavior ?
+    {
+        if (this.vidram[addr] == d8) return;   // biggest cheap win
+        this.vidram[addr] == d8;
+        frame_redraw = frame_redraw || this.addrVisible(addr);
+        //if(bDebug_snd && frame_redraw) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+    }
+
     this.setGfx   = function(flag) { if (gfx_mode != flag)   { gfx_mode = flag; frame_redraw = true } }
     this.setMix   = function(flag) { if (mix_mode != flag)   { mix_mode = flag; frame_redraw = true } }
     this.setPage2 = function(flag) { if (page2_mode != flag) { page2_mode = flag; frame_redraw = true } }
     this.setHires = function(flag) { if (hires_mode != flag) { hires_mode = flag; frame_redraw = true } }
+
+    this.addrVisible = function(addr)
+    {
+        const a = addr & 0xFFFF;
+        const lo7 = a & 0x7F;
+
+        // Apple II screen holes: last 8 bytes of each 128-byte block.
+        const scrByte = lo7 < 0x78;
+
+        // Current HGR kernel also reads adr-1 / adr+1, so edge-adjacent holes may affect pixels.
+        const hgrByte = scrByte | (lo7 == 0x78) | (lo7 == 0x7F);
+
+        // row >= 20 test for mixed-mode text bottom / hidden HGR bottom.
+        const mixBottom = ((lo7 >= 0x50) & ((a >> 7) & 4));
+
+        const txtBase = page2_mode ? 0x0800 : 0x0400;
+        const hgrBase = page2_mode ? 0x4000 : 0x2000;
+
+        const inTxt = ((a - txtBase) >>> 0) < 0x0400;
+        const inHgr = ((a - hgrBase) >>> 0) < 0x2000;
+
+        if (!gfx_mode)                // TEXT
+            return inTxt & scrByte;
+
+        if (!hires_mode)              // LORES / mixed LORES
+            return inTxt & scrByte;
+
+        // HIRES / mixed HIRES
+        return (inHgr & hgrByte & (!mix_mode | !mixBottom)) |
+              (mix_mode & inTxt & scrByte & mixBottom);
+    }
 
     this.setMonitor = function(mode)
     {
