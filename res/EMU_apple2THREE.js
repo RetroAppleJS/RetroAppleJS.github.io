@@ -8,58 +8,58 @@
 //
 // Principle:
 // - keep an existing compatible Apple2Video renderer as the 2D producer;
-// - render that producer into a hidden 560x384 canvas;
-// - expose that canvas as a THREE.CanvasTexture;
+// - render that producer into a hidden 560x384 source canvas;
+// - copy/fit that source canvas into a second hidden 560x384 texture canvas;
+// - expose the texture canvas as a THREE.CanvasTexture;
 // - assign the texture to the 3D monitor screen material's map + emissiveMap;
 // - update the texture at a throttled rate, initially 10fps.
 //
-// Recommended index.html include order:
+// v5 changes:
+// - keeps the v4 OrbitControls camera binding fix;
+// - keeps the separate THREE_scene include model;
+// - splits the Apple II source canvas from the Three texture canvas;
+// - adds configurable texture padding/fit compensation for screen-mesh UV overscan.
 //
-//   <script src="res/gpu-browser.min.js"></script>
-//   <script src="res/EMU_apple2GPU.js"></script>
+// Recommended index3.html include order:
+//
 //   <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
 //   <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+//   <script src="res/THREEJS_scene.js"></script>
+//   ...
+//   <script src="res/gpu-browser.min.js"></script>
+//   <script src="res/EMU_apple2GPU.js"></script>
 //   <script src="res/EMU_apple2THREE.js"></script>
-//
-// Scene input for this v4:
-//
-//   Define THREE_scene before loading this file.  Example:
-//
-//     <script src="res/A2_Screen_beautified_smaller_v3.js"></script>
-//     <script src="res/EMU_apple2THREE.js"></script>
-//
-//   where A2_Screen_beautified_smaller_v3.js contains:
-//
-//     const THREE_scene = { ... entire Three.js editor JSON object ... };
 //
 // Optional configuration before loading this file:
 //
 //   window.Apple2VideoTHREE_CONFIG = {
 //       textureFPS: 10,
+//       renderFPS: 30,
 //       orbitControls: true,
-//       emissiveColor: 0x00b36a,
-//       emissiveIntensity: 2.5,
-//       // Current A2 screen mesh needs this default correction:
-//       // v1 looked upside down and horizontally mirrored; v2 over-corrected X.
+//       emissiveColor: 0xFFFFFF,
+//       emissiveIntensity: 1,
+//
 //       textureFlipY: false,
 //       textureMirrorX: false,
 //       textureMirrorY: false,
+//
+//       // v5 default compensation, based on the observed truncation:
+//       // ~14 canvas px left/right and ~16 canvas px top/bottom.
+//       texturePadLeft: 14,
+//       texturePadTop: 16,
+//       texturePadRight: 14,
+//       texturePadBottom: 16,
+//       texturePadColor: "#000000",
+//       textureSmoothing: false,
+//
 //       eventShield: false,
 //       eventShieldPreventDefault: false,
 //       showGrid: false,
-//       showAxes: false
+//       showAxes: false,
+//       background: 0x202020,
+//       cameraAspectMul: 1
 //   };
 //
-// Notes:
-// - The previous Apple2Video constructor is captured before this driver replaces
-//   window.Apple2Video.  That previous constructor should normally be the one from
-//   EMU_apple2GPU.js.
-// - This file does not dynamically load Three.js.  Include Three.js externally.
-// - This v4 does not fetch JSON, so it works when opened from file://.
-// - v4 keeps the final texture orientation: flipY=false, mirrorX=false, mirrorY=false.
-// - v4 fixes OrbitControls binding after replacing the fallback camera with the project camera.
-//
-
 (function(global)
 {
     "use strict";
@@ -76,35 +76,35 @@
     var Apple2Video2D = global.Apple2Video;
 
     var THREE_CFG_DEFAULT = {
-        // v4 uses the global/lexical constant THREE_scene instead of fetch().
-        // sceneURL intentionally removed to avoid browser CORS/file:// issues.
         textureFPS: 10,
         renderFPS: 30,
         orbitControls: true,
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
-        // Orientation correction for A2_Screen_beautified_smaller_v3:
-        // v1 was upside down+mirrored; v2 still mirrored horizontally.
+
+        // Final orientation from v3/v4.
         textureFlipY: false,
         textureMirrorX: false,
         textureMirrorY: false,
 
-        // Optional: stop canvas events from bubbling into parent/page handlers.
-        // Keep false by default while debugging OrbitControls.
+        // v5 overscan/UV compensation.  These are canvas pixels, not Apple II pixels.
+        // The defaults correspond to roughly 7 Apple II pixels horizontally and
+        // 8 Apple II pixels vertically on the doubled 560x384 canvas.
+        texturePadLeft: 14,
+        texturePadTop: 64,
+        texturePadRight: 14,
+        texturePadBottom: 64,
+        texturePadColor: "#000000",
+        textureSmoothing: false,
+
         eventShield: false,
         eventShieldPreventDefault: false,
 
         showGrid: false,
         showAxes: false,
-        background: 0x202020,
+        background: 0x000000, // frame background
         cameraAspectMul: 1
     };
-
-    function cfgValue(name)
-    {
-        var cfg = global.Apple2VideoTHREE_CONFIG || {};
-        return cfg[name] !== undefined ? cfg[name] : THREE_CFG_DEFAULT[name];
-    }
 
     function copyConfig()
     {
@@ -112,6 +112,16 @@
         for (var k in THREE_CFG_DEFAULT) cfg[k] = THREE_CFG_DEFAULT[k];
         for (var u in user) cfg[u] = user[u];
         return cfg;
+    }
+
+    function clampInt(v, lo, hi)
+    {
+        v = Number(v);
+        if (!isFinite(v)) v = 0;
+        v = Math.round(v);
+        if (v < lo) return lo;
+        if (v > hi) return hi;
+        return v;
     }
 
     function getEmbeddedProjectScene()
@@ -166,12 +176,23 @@
         this.ready = false;
         this._eventShieldInstalled = false;
 
+        // v5: source canvas receives the Apple II GPU.js output.
+        this.videoCanvas = document.createElement("canvas");
+        this.videoCanvas.width = DISPLAY_W;
+        this.videoCanvas.height = DISPLAY_H;
+        this.videoCanvas.style.width = DISPLAY_W + "px";
+        this.videoCanvas.style.height = DISPLAY_H + "px";
+        this.videoCanvas.style.display = "none";
+
+        // v5: texture canvas is what Three.js uploads.  We copy the source canvas
+        // into this canvas with optional padding/fit compensation.
         this.textureCanvas = document.createElement("canvas");
         this.textureCanvas.width = DISPLAY_W;
         this.textureCanvas.height = DISPLAY_H;
         this.textureCanvas.style.width = DISPLAY_W + "px";
         this.textureCanvas.style.height = DISPLAY_H + "px";
         this.textureCanvas.style.display = "none";
+        this.textureCtx = this.textureCanvas.getContext("2d", {alpha:false});
 
         // Apple2Plus uses this test:
         //   new Apple2Video().initGPU === undefined ? pass 2D context : pass canvas
@@ -192,7 +213,7 @@
                 return false;
             }
 
-            this.video2D = new Apple2Video2D(this.textureCanvas);
+            this.video2D = new Apple2Video2D(this.videoCanvas);
             this.video2D.vidram = this.vidram;
             this.video2D.hw = this.hw;
 
@@ -371,6 +392,7 @@
 
             this.screenTexture = new THREE.CanvasTexture(this.textureCanvas);
             this.configureScreenTexture();
+            this.updateTextureCanvas();
 
             this.buildFallbackScene();
             this.loadProjectScene();
@@ -474,11 +496,7 @@
             cfg.textureMirrorY = !!mirrorY;
             this.configureScreenTexture();
             this.textureDirty = true;
-            return {
-                textureFlipY: cfg.textureFlipY,
-                textureMirrorX: cfg.textureMirrorX,
-                textureMirrorY: cfg.textureMirrorY
-            };
+            return this.getTextureOrientation();
         };
 
         this.getTextureOrientation = function()
@@ -488,6 +506,61 @@
                 textureMirrorX: cfg.textureMirrorX,
                 textureMirrorY: cfg.textureMirrorY
             };
+        };
+
+        this.setTexturePadding = function(left, top, right, bottom)
+        {
+            if (typeof(left) === "object" && left !== null)
+            {
+                var p = left;
+                left = p.left;
+                top = p.top;
+                right = p.right;
+                bottom = p.bottom;
+            }
+
+            cfg.texturePadLeft   = clampInt(left,   0, DISPLAY_W - 1);
+            cfg.texturePadTop    = clampInt(top,    0, DISPLAY_H - 1);
+            cfg.texturePadRight  = clampInt(right,  0, DISPLAY_W - 1);
+            cfg.texturePadBottom = clampInt(bottom, 0, DISPLAY_H - 1);
+
+            this.textureDirty = true;
+            return this.getTexturePadding();
+        };
+
+        this.getTexturePadding = function()
+        {
+            return {
+                left: cfg.texturePadLeft | 0,
+                top: cfg.texturePadTop | 0,
+                right: cfg.texturePadRight | 0,
+                bottom: cfg.texturePadBottom | 0,
+                color: cfg.texturePadColor,
+                smoothing: !!cfg.textureSmoothing
+            };
+        };
+
+        this.updateTextureCanvas = function()
+        {
+            if (!this.textureCtx || !this.videoCanvas) return;
+
+            var l = clampInt(cfg.texturePadLeft,   0, DISPLAY_W - 1);
+            var t = clampInt(cfg.texturePadTop,    0, DISPLAY_H - 1);
+            var r = clampInt(cfg.texturePadRight,  0, DISPLAY_W - 1);
+            var b = clampInt(cfg.texturePadBottom, 0, DISPLAY_H - 1);
+            var dw = DISPLAY_W - l - r;
+            var dh = DISPLAY_H - t - b;
+
+            if (dw < 1) dw = 1;
+            if (dh < 1) dh = 1;
+
+            var ctx = this.textureCtx;
+            ctx.save();
+            ctx.imageSmoothingEnabled = !!cfg.textureSmoothing;
+            ctx.fillStyle = cfg.texturePadColor || "#000000";
+            ctx.fillRect(0, 0, DISPLAY_W, DISPLAY_H);
+            ctx.drawImage(this.videoCanvas, 0, 0, DISPLAY_W, DISPLAY_H, l, t, dw, dh);
+            ctx.restore();
         };
 
         this.loadProjectScene = function()
@@ -680,12 +753,10 @@
             if (typeof(THREE.OrbitControls) !== "function")
                 return;
 
-            // v4 fix:
+            // v4 fix retained:
             // ensureTHREE() first builds a fallback scene/camera, then replaces it
-            // with the editor/project scene/camera.  Earlier versions installed
-            // OrbitControls on the fallback camera and then kept using that stale
-            // controls object after this.camera was replaced, so mouse events were
-            // received but they moved a camera that was no longer rendered.
+            // with the editor/project scene/camera.  Recreate controls if the
+            // active rendered camera changed.
             if (this.controls)
             {
                 var sameCamera = (this.controlsCamera === this.camera) ||
@@ -799,6 +870,7 @@
             if (now - lastTextureUpdate < textureInterval)
                 return;
 
+            this.updateTextureCanvas();
             this.screenTexture.needsUpdate = true;
             this.textureDirty = false;
             lastTextureUpdate = now;
@@ -807,6 +879,11 @@
         this.getTextureCanvas = function()
         {
             return this.textureCanvas;
+        };
+
+        this.getSourceCanvas = function()
+        {
+            return this.videoCanvas;
         };
 
         this.get2DRenderer = function()
