@@ -77,7 +77,7 @@
 
     var THREE_CFG_DEFAULT = {
         textureFPS: 10,
-        renderFPS: 30,
+        renderFPS: 50,
         orbitControls: true,
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
@@ -204,9 +204,7 @@
 
         this.ensure2DRenderer = function()
         {
-            if (this.video2D)
-                return true;
-
+            if (this.video2D) return true;
             if (typeof(Apple2Video2D) !== "function" || Apple2Video2D === Apple2VideoTHREE)
             {
                 console.warn("Apple2VideoTHREE: no previous Apple2Video renderer found. Load EMU_apple2GPU.js before EMU_apple2THREE.js.");
@@ -251,13 +249,11 @@
         this.reset = function()
         {
             this.textureDirty = true;
-
             if (this.ensure2DRenderer())
             {
                 this.video2D.reset();
                 this.sync2DLinks();
             }
-
             this.ensureTHREE();
         };
 
