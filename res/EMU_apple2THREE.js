@@ -79,7 +79,7 @@
         // v4 uses the global/lexical constant THREE_scene instead of fetch().
         // sceneURL intentionally removed to avoid browser CORS/file:// issues.
         textureFPS: 10,
-        renderFPS: 60,
+        renderFPS: 30,
         orbitControls: true,
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
