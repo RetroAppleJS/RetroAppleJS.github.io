@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JSON Base64 Image Extractor / Replacer</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2937; background: #f8fafc; }
+    body { margin: 0; padding: 2rem; }
+    main { max-width: 980px; margin: 0 auto; }
+    h1 { margin-top: 0; font-size: 1.75rem; }
+    h2 { margin-top: 0; font-size: 1.2rem; }
+    section { background: white; border: 1px solid #dbe3ef; border-radius: 12px; padding: 1.25rem; margin: 1rem 0; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    label { display: block; font-weight: 600; margin-top: 1rem; }
+    input[type="file"], input[type="text"] { display: block; margin-top: .35rem; width: 100%; box-sizing: border-box; }
+    input[type="text"] { padding: .5rem .6rem; border: 1px solid #cbd5e1; border-radius: 8px; }
+    button { margin-top: 1rem; margin-right: .5rem; border: 0; border-radius: 8px; background: #2563eb; color: white; padding: .65rem 1rem; font-weight: 700; cursor: pointer; }
+    button.secondary { background: #475569; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    progress { width: 100%; height: 1.1rem; margin-top: .75rem; }
+    .muted { color: #64748b; font-size: .95rem; }
+    .ok { color: #047857; font-weight: 700; }
+    .warn { color: #b45309; font-weight: 700; }
+    .error { color: #b91c1c; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } body { padding: 1rem; } }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 1rem; max-height: 320px; overflow: auto; }
+    code { background: #e2e8f0; padding: .1rem .25rem; border-radius: 4px; }
+    .pill { display: inline-block; border-radius: 999px; padding: .15rem .55rem; background: #e0f2fe; color: #075985; font-size: .85rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>JSON Base64 Image Extractor / Replacer</h1>
+  <p class="muted">
+    Standalone local browser tool. It scans a large JSON file without <code>JSON.parse()</code> and looks for objects containing
+    <code>"uuid"</code> followed by <code>"url": "data:image/...;base64,..."</code>.
+  </p>
+
+  <section>
+    <h2>1. Extract embedded images from JSON</h2>
+    <p class="muted">Optional helper mode. Images are saved as <code>&lt;uuid&gt;.&lt;extension&gt;</code>.</p>
+
+    <label for="extractJsonFile">Large JSON file</label>
+    <input id="extractJsonFile" type="file" accept=".json,application/json,text/plain" />
+
+    <button id="chooseExtractFolder" class="secondary">Choose output folder</button>
+    <span id="extractFolderStatus" class="muted">No folder selected. If unsupported, browser downloads will be used.</span>
+    <br />
+    <button id="startExtract">Extract images</button>
+    <progress id="extractProgress" max="100" value="0"></progress>
+    <div id="extractStatus" class="muted"></div>
+  </section>
+
+  <section>
+    <h2>2. Rebuild JSON with edited/compressed images</h2>
+    <p>
+      Select the original JSON and the edited image files. Each edited image must keep the UUID as filename stem, for example
+      <code>c22f5acf-8e3a-40ce-a194-c16f7a0dd275.png</code>, <code>.jpg</code>, or <code>.webp</code>.
+    </p>
+
+    <div class="grid">
+      <div>
+        <label for="replaceJsonFile">Original large JSON file</label>
+        <input id="replaceJsonFile" type="file" accept=".json,application/json,text/plain" />
+      </div>
+      <div>
+        <label for="replacementFiles">Edited images / folder</label>
+        <input id="replacementFiles" type="file" accept="image/*" multiple webkitdirectory />
+        <p class="muted">In Chrome/Edge this can select a folder. In other browsers, use a normal multi-file selection if available.</p>
+      </div>
+    </div>
+
+    <label for="outputName">Output JSON filename</label>
+    <input id="outputName" type="text" value="recompressed-output.json" />
+
+    <button id="startReplace">Create smaller JSON</button>
+    <progress id="replaceProgress" max="100" value="0"></progress>
+    <div id="replaceStatus" class="muted"></div>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <button id="clearLog" class="secondary">Clear log</button>
+    <pre id="log"></pre>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const CHUNK_SIZE = 1024 * 1024;      // 1 MiB input slices
+  const KEEP_TAIL = 2048;              // keeps enough text for tokens split across chunks
+  const UUID_RE = /^"uuid"\s*:\s*"((?:[^"\\]|\\.)*)"/;
+  const URL_PREFIX_RE = /^"url"\s*:\s*"/;
+  const logEl = document.getElementById('log');
+
+  const els = {
+    extractJsonFile: document.getElementById('extractJsonFile'),
+    chooseExtractFolder: document.getElementById('chooseExtractFolder'),
+    extractFolderStatus: document.getElementById('extractFolderStatus'),
+    startExtract: document.getElementById('startExtract'),
+    extractProgress: document.getElementById('extractProgress'),
+    extractStatus: document.getElementById('extractStatus'),
+    replaceJsonFile: document.getElementById('replaceJsonFile'),
+    replacementFiles: document.getElementById('replacementFiles'),
+    outputName: document.getElementById('outputName'),
+    startReplace: document.getElementById('startReplace'),
+    replaceProgress: document.getElementById('replaceProgress'),
+    replaceStatus: document.getElementById('replaceStatus'),
+    clearLog: document.getElementById('clearLog')
+  };
+
+  let extractDirHandle = null;
+
+  function log(message, level = 'info') {
+    const now = new Date().toLocaleTimeString();
+    logEl.textContent += `[${now}] ${message}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+    if (level === 'error') console.error(message);
+    else console.log(message);
+  }
+
+  function setStatus(el, message, cls = '') {
+    el.className = cls || 'muted';
+    el.textContent = message;
+  }
+
+  function disableDuring(buttons, disabled) {
+    for (const b of buttons) b.disabled = disabled;
+  }
+
+  function jsonUnescape(raw) {
+    try { return JSON.parse('"' + raw + '"'); }
+    catch { return raw; }
+  }
+
+  function filenameStem(name) {
+    const base = name.split('/').pop().split('\\').pop();
+    const dot = base.lastIndexOf('.');
+    return dot > 0 ? base.slice(0, dot) : base;
+  }
+
+  function extensionFromMime(mime) {
+    const m = (mime || '').toLowerCase();
+    if (m.includes('png')) return 'png';
+    if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';
+    if (m.includes('webp')) return 'webp';
+    if (m.includes('gif')) return 'gif';
+    if (m.includes('svg')) return 'svg';
+    if (m.includes('bmp')) return 'bmp';
+    if (m.includes('tiff')) return 'tif';
+    return 'bin';
+  }
+
+  function mimeFromFilename(name) {
+    const lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    if (lower.endsWith('.bmp')) return 'image/bmp';
+    if (lower.endsWith('.tif') || lower.endsWith('.tiff')) return 'image/tiff';
+    return 'application/octet-stream';
+  }
+
+  function downloadBlob(blob, filename) {
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
+
+  async function writeBlobToDirectory(dirHandle, filename, blob) {
+    const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  }
+
+  function findNextInterestingToken(buffer) {
+    const u = buffer.indexOf('"uuid"');
+    const r = buffer.indexOf('"url"');
+    if (u === -1) return r;
+    if (r === -1) return u;
+    return Math.min(u, r);
+  }
+
+  function findJsonStringEnd(buffer, start, escapedState = false) {
+    let escaped = escapedState;
+    for (let i = start; i < buffer.length; i++) {
+      const ch = buffer[i];
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        return { found: true, end: i, escaped: false };
+      }
+    }
+    return { found: false, end: buffer.length, escaped };
+  }
+
+  function parseDataUrl(dataUrl) {
+    const comma = dataUrl.indexOf(',');
+    if (comma < 0) return null;
+    const header = dataUrl.slice(0, comma);
+    if (!/^data:image\//i.test(header) || !/;base64/i.test(header)) return null;
+    const mime = header.slice(5).split(';')[0] || 'application/octet-stream';
+    return { mime, base64: dataUrl.slice(comma + 1) };
+  }
+
+  async function fileToDataUrl(file) {
+    const mime = file.type || mimeFromFilename(file.name);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const step = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += step) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
+    }
+    return {
+      dataUrl: `data:${mime};base64,${btoa(binary)}`,
+      mime,
+      byteSize: bytes.byteLength
+    };
+  }
+
+  async function forEachTextChunk(file, onChunk, onProgress) {
+    const decoder = new TextDecoder('utf-8');
+    let offset = 0;
+    while (offset < file.size) {
+      const slice = file.slice(offset, offset + CHUNK_SIZE);
+      const bytes = await slice.arrayBuffer();
+      const text = decoder.decode(bytes, { stream: offset + CHUNK_SIZE < file.size });
+      offset += slice.size;
+      await onChunk(text, offset, file.size);
+      if (onProgress) onProgress(offset, file.size);
+      await new Promise(requestAnimationFrame);
+    }
+    const tail = decoder.decode();
+    if (tail) await onChunk(tail, offset, file.size);
+  }
+
+  class LargeTextOutput {
+    constructor(filename) {
+      this.filename = filename || 'output.json';
+      this.kind = 'download';
+      this.writable = null;
+      this.parts = [];
+      this.bytesWritten = 0;
+      this.encoder = new TextEncoder();
+    }
+
+    async open() {
+      if ('showSaveFilePicker' in window) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: this.filename,
+          types: [{
+            description: 'JSON file',
+            accept: { 'application/json': ['.json'], 'text/plain': ['.txt'] }
+          }]
+        });
+        this.writable = await handle.createWritable();
+        this.kind = 'file';
+      } else {
+        this.kind = 'download';
+        log('Browser does not support direct save-file streaming. Fallback will build a Blob in memory, then download it.', 'warn');
+      }
+    }
+
+    async write(text) {
+      if (!text) return;
+      this.bytesWritten += this.encoder.encode(text).byteLength;
+      if (this.writable) {
+        await this.writable.write(text);
+      } else {
+        this.parts.push(text);
+      }
+    }
+
+    async close() {
+      if (this.writable) {
+        await this.writable.close();
+      } else {
+        downloadBlob(new Blob(this.parts, { type: 'application/json;charset=utf-8' }), this.filename);
+      }
+    }
+  }
+
+  function replacementMapFromFiles(fileList) {
+    const map = new Map();
+    const duplicates = [];
+    for (const file of fileList || []) {
+      if (!file || !file.name) continue;
+      const uuid = filenameStem(file.name);
+      if (!uuid) continue;
+      if (map.has(uuid)) duplicates.push(uuid);
+      map.set(uuid, file);
+    }
+    return { map, duplicates };
+  }
+
+  async function replaceJsonUrls({ jsonFile, replacementFiles, outputFilename, progressEl, statusEl }) {
+    const { map: replacements, duplicates } = replacementMapFromFiles(replacementFiles);
+    if (!jsonFile) throw new Error('Select the original JSON file first.');
+    if (!replacements.size) throw new Error('Select the edited/compressed image files first.');
+
+    setStatus(statusEl, `Loaded ${replacements.size} replacement image filename(s).`, 'muted');
+    if (duplicates.length) log(`Warning: duplicate UUID filenames found; last one wins: ${duplicates.slice(0, 10).join(', ')}${duplicates.length > 10 ? ' ...' : ''}`, 'warn');
+
+    const output = new LargeTextOutput(outputFilename || 'recompressed-output.json');
+    await output.open();
+
+    let buffer = '';
+    let lastUuid = null;
+    let scannedUrls = 0;
+    let replacedUrls = 0;
+    let skippedUrls = 0;
+    let missingUuidMatches = 0;
+    let inputOffset = 0;
+    let skipMode = false;
+    let skipEscaped = false;
+
+    async function processBuffer(final = false) {
+      while (buffer.length) {
+        if (skipMode) {
+          const end = findJsonStringEnd(buffer, 0, skipEscaped);
+          skipEscaped = end.escaped;
+          if (!end.found) {
+            buffer = '';
+            return;
+          }
+          buffer = buffer.slice(end.end + 1); // discard old value and its closing quote
+          skipMode = false;
+          skipEscaped = false;
+          continue;
+        }
+
+        const idx = findNextInterestingToken(buffer);
+        if (idx < 0) {
+          if (final) {
+            await output.write(buffer);
+            buffer = '';
+          } else if (buffer.length > KEEP_TAIL) {
+            const cut = buffer.length - KEEP_TAIL;
+            await output.write(buffer.slice(0, cut));
+            buffer = buffer.slice(cut);
+          }
+          return;
+        }
+
+        if (idx > 0) {
+          await output.write(buffer.slice(0, idx));
+          buffer = buffer.slice(idx);
+          continue;
+        }
+
+        const uuidMatch = buffer.match(UUID_RE);
+        if (uuidMatch) {
+          lastUuid = jsonUnescape(uuidMatch[1]);
+          await output.write(uuidMatch[0]);
+          buffer = buffer.slice(uuidMatch[0].length);
+          continue;
+        }
+
+        const urlPrefixMatch = buffer.match(URL_PREFIX_RE);
+        if (urlPrefixMatch) {
+          const valueStart = urlPrefixMatch[0].length;
+          if (!final && buffer.length < valueStart + 64) return;
+
+          const replacement = lastUuid ? replacements.get(lastUuid) : null;
+          const looksLikeDataImage = buffer.slice(valueStart, valueStart + 32).toLowerCase().startsWith('data:image/');
+
+          scannedUrls++;
+          if (replacement && looksLikeDataImage) {
+            await output.write(buffer.slice(0, valueStart)); // includes property name, colon, and opening quote
+            const encoded = await fileToDataUrl(replacement);
+            await output.write(encoded.dataUrl);
+            await output.write('\"'); // replacement closing quote; the original closing quote is discarded below
+            replacedUrls++;
+            log(`Replaced ${lastUuid} using ${replacement.name} (${encoded.mime}, ${encoded.byteSize.toLocaleString()} bytes).`);
+            buffer = buffer.slice(valueStart); // now discard old string value in skip mode
+            skipMode = true;
+            skipEscaped = false;
+            lastUuid = null;
+            continue;
+          }
+
+          if (looksLikeDataImage && lastUuid && !replacement) {
+            missingUuidMatches++;
+          }
+          skippedUrls++;
+          // Not replacing: emit only the first character so normal streaming continues.
+          await output.write(buffer[0]);
+          buffer = buffer.slice(1);
+          continue;
+        }
+
+        // Token-looking text that was not a matching property. Emit one char and continue.
+        if (!final && buffer.length < KEEP_TAIL) return;
+        await output.write(buffer[0]);
+        buffer = buffer.slice(1);
+      }
+    }
+
+    await forEachTextChunk(jsonFile, async (text, offset, total) => {
+      buffer += text;
+      inputOffset = offset;
+      await processBuffer(false);
+      const pct = total ? Math.min(100, Math.round((offset / total) * 100)) : 0;
+      progressEl.value = pct;
+      setStatus(statusEl, `Scanning ${(offset / (1024 * 1024)).toFixed(1)} / ${(total / (1024 * 1024)).toFixed(1)} MiB. Replaced ${replacedUrls} image(s).`, 'muted');
+    });
+    await processBuffer(true);
+    await output.close();
+
+    progressEl.value = 100;
+    setStatus(statusEl, `Done. Replaced ${replacedUrls} image(s); scanned ${scannedUrls} url field(s); output size written about ${(output.bytesWritten / (1024 * 1024)).toFixed(1)} MiB.`, 'ok');
+    log(`JSON rebuild complete. Replaced ${replacedUrls}; skipped ${skippedUrls}; matching UUIDs without selected replacement: ${missingUuidMatches}; direct output mode: ${output.kind}.`);
+  }
+
+  async function extractImages({ jsonFile, dirHandle, progressEl, statusEl }) {
+    if (!jsonFile) throw new Error('Select a JSON file first.');
+    let buffer = '';
+    let lastUuid = null;
+    let inCapture = false;
+    let captureEscaped = false;
+    let capturedValue = '';
+    let extracted = 0;
+    let skippedNoUuid = 0;
+
+    async function saveDataUrl(uuid, dataUrl) {
+      const parsed = parseDataUrl(dataUrl);
+      if (!parsed) return false;
+      const ext = extensionFromMime(parsed.mime);
+      const filename = `${uuid || 'image-' + String(extracted + 1).padStart(5, '0')}.${ext}`;
+      const byteChars = atob(parsed.base64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([bytes], { type: parsed.mime });
+      if (dirHandle) {
+        await writeBlobToDirectory(dirHandle, filename, blob);
+      } else {
+        downloadBlob(blob, filename);
+      }
+      extracted++;
+      log(`Extracted ${filename} (${parsed.mime}, ${bytes.byteLength.toLocaleString()} bytes).`);
+      return true;
+    }
+
+    async function processBuffer(final = false) {
+      while (buffer.length) {
+        if (inCapture) {
+          const end = findJsonStringEnd(buffer, 0, captureEscaped);
+          if (end.found) {
+            capturedValue += buffer.slice(0, end.end);
+            const uuid = lastUuid;
+            if (!uuid) skippedNoUuid++;
+            if (uuid && capturedValue.toLowerCase().startsWith('data:image/')) {
+              await saveDataUrl(uuid, capturedValue);
+            }
+            buffer = buffer.slice(end.end + 1);
+            capturedValue = '';
+            captureEscaped = false;
+            inCapture = false;
+            lastUuid = null;
+            continue;
+          }
+          capturedValue += buffer;
+          captureEscaped = end.escaped;
+          buffer = '';
+          return;
+        }
+
+        const idx = findNextInterestingToken(buffer);
+        if (idx < 0) {
+          if (!final && buffer.length > KEEP_TAIL) buffer = buffer.slice(buffer.length - KEEP_TAIL);
+          else if (final) buffer = '';
+          return;
+        }
+        if (idx > 0) {
+          buffer = buffer.slice(idx);
+          continue;
+        }
+
+        const uuidMatch = buffer.match(UUID_RE);
+        if (uuidMatch) {
+          lastUuid = jsonUnescape(uuidMatch[1]);
+          buffer = buffer.slice(uuidMatch[0].length);
+          continue;
+        }
+
+        const urlPrefixMatch = buffer.match(URL_PREFIX_RE);
+        if (urlPrefixMatch) {
+          const valueStart = urlPrefixMatch[0].length;
+          if (!final && buffer.length < valueStart + 64) return;
+          const looksLikeDataImage = buffer.slice(valueStart, valueStart + 32).toLowerCase().startsWith('data:image/');
+          if (looksLikeDataImage) {
+            buffer = buffer.slice(valueStart);
+            inCapture = true;
+            captureEscaped = false;
+            capturedValue = '';
+            continue;
+          }
+          buffer = buffer.slice(1);
+          continue;
+        }
+
+        if (!final && buffer.length < KEEP_TAIL) return;
+        buffer = buffer.slice(1);
+      }
+    }
+
+    await forEachTextChunk(jsonFile, async (text, offset, total) => {
+      buffer += text;
+      await processBuffer(false);
+      const pct = total ? Math.min(100, Math.round((offset / total) * 100)) : 0;
+      progressEl.value = pct;
+      setStatus(statusEl, `Scanning ${(offset / (1024 * 1024)).toFixed(1)} / ${(total / (1024 * 1024)).toFixed(1)} MiB. Extracted ${extracted} image(s).`, 'muted');
+    });
+    await processBuffer(true);
+    progressEl.value = 100;
+    setStatus(statusEl, `Done. Extracted ${extracted} image(s).`, 'ok');
+    log(`Extraction complete. Extracted ${extracted}; skipped because UUID was missing: ${skippedNoUuid}.`);
+  }
+
+  els.chooseExtractFolder.addEventListener('click', async () => {
+    try {
+      if (!('showDirectoryPicker' in window)) {
+        setStatus(els.extractFolderStatus, 'This browser does not support folder picking. Downloads will be used.', 'warn');
+        return;
+      }
+      extractDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      setStatus(els.extractFolderStatus, 'Output folder selected.', 'ok');
+    } catch (err) {
+      setStatus(els.extractFolderStatus, `Folder not selected: ${err.message}`, 'warn');
+    }
+  });
+
+  els.startExtract.addEventListener('click', async () => {
+    disableDuring([els.startExtract, els.startReplace, els.chooseExtractFolder], true);
+    els.extractProgress.value = 0;
+    try {
+      await extractImages({
+        jsonFile: els.extractJsonFile.files[0],
+        dirHandle: extractDirHandle,
+        progressEl: els.extractProgress,
+        statusEl: els.extractStatus
+      });
+    } catch (err) {
+      setStatus(els.extractStatus, err.message, 'error');
+      log(err.stack || err.message, 'error');
+    } finally {
+      disableDuring([els.startExtract, els.startReplace, els.chooseExtractFolder], false);
+    }
+  });
+
+  els.startReplace.addEventListener('click', async () => {
+    disableDuring([els.startExtract, els.startReplace, els.chooseExtractFolder], true);
+    els.replaceProgress.value = 0;
+    try {
+      await replaceJsonUrls({
+        jsonFile: els.replaceJsonFile.files[0],
+        replacementFiles: els.replacementFiles.files,
+        outputFilename: els.outputName.value.trim() || 'recompressed-output.json',
+        progressEl: els.replaceProgress,
+        statusEl: els.replaceStatus
+      });
+    } catch (err) {
+      setStatus(els.replaceStatus, err.message, 'error');
+      log(err.stack || err.message, 'error');
+    } finally {
+      disableDuring([els.startExtract, els.startReplace, els.chooseExtractFolder], false);
+    }
+  });
+
+  els.replacementFiles.addEventListener('change', () => {
+    const { map } = replacementMapFromFiles(els.replacementFiles.files);
+    log(`Selected ${map.size} replacement image UUID filename(s).`);
+  });
+
+  els.clearLog.addEventListener('click', () => { logEl.textContent = ''; });
+
+  log('Ready. For best results use Chrome or Edge, because they support direct file/folder saving for large outputs.');
+})();
+</script>
+</body>
+</html>
