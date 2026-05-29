@@ -21,7 +21,7 @@
 //   <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 //   <script src="res/EMU_apple2THREE.js"></script>
 //
-// Scene input for this v2:
+// Scene input for this v4:
 //
 //   Define THREE_scene before loading this file.  Example:
 //
@@ -44,7 +44,7 @@
 //       textureFlipY: false,
 //       textureMirrorX: false,
 //       textureMirrorY: false,
-//       eventShield: true,
+//       eventShield: false,
 //       eventShieldPreventDefault: false,
 //       showGrid: false,
 //       showAxes: false
@@ -55,9 +55,9 @@
 //   window.Apple2Video.  That previous constructor should normally be the one from
 //   EMU_apple2GPU.js.
 // - This file does not dynamically load Three.js.  Include Three.js externally.
-// - This v3 does not fetch JSON, so it works when opened from file://.
-// - v3 corrects the final horizontal mirror: flipY=false, mirrorX=false, mirrorY=false.
-// - v3 keeps the optional canvas event shield to improve OrbitControls integration.
+// - This v4 does not fetch JSON, so it works when opened from file://.
+// - v4 keeps the final texture orientation: flipY=false, mirrorX=false, mirrorY=false.
+// - v4 fixes OrbitControls binding after replacing the fallback camera with the project camera.
 //
 
 (function(global)
@@ -76,29 +76,28 @@
     var Apple2Video2D = global.Apple2Video;
 
     var THREE_CFG_DEFAULT = {
-        // v3 uses the global/lexical constant THREE_scene instead of fetch().
+        // v4 uses the global/lexical constant THREE_scene instead of fetch().
         // sceneURL intentionally removed to avoid browser CORS/file:// issues.
         textureFPS: 10,
         renderFPS: 60,
         orbitControls: true,
-        emissiveColor: 0x00b36a,
-        emissiveIntensity: 2.5,
+        emissiveColor: 0xFFFFFF,
+        emissiveIntensity: 1,
         // Orientation correction for A2_Screen_beautified_smaller_v3:
         // v1 was upside down+mirrored; v2 still mirrored horizontally.
         textureFlipY: false,
         textureMirrorX: false,
         textureMirrorY: false,
 
-        // Helps OrbitControls when parent/page code listens to canvas mouse events.
-        // This stops pointer/mouse/wheel/touch events from bubbling beyond the canvas,
-        // while still allowing OrbitControls' own listeners on the same canvas to run.
-        eventShield: true,
+        // Optional: stop canvas events from bubbling into parent/page handlers.
+        // Keep false by default while debugging OrbitControls.
+        eventShield: false,
         eventShieldPreventDefault: false,
 
         showGrid: false,
         showAxes: false,
-        background: 0xf0f0f0,
-        cameraAspectMul: 1.1
+        background: 0x202020,
+        cameraAspectMul: 1
     };
 
     function cfgValue(name)
@@ -160,6 +159,7 @@
         this.scene = null;
         this.camera = null;
         this.controls = null;
+        this.controlsCamera = null;
         this.screenMesh = null;
         this.screenTexture = null;
         this.textureDirty = true;
@@ -680,14 +680,43 @@
             if (typeof(THREE.OrbitControls) !== "function")
                 return;
 
+            // v4 fix:
+            // ensureTHREE() first builds a fallback scene/camera, then replaces it
+            // with the editor/project scene/camera.  Earlier versions installed
+            // OrbitControls on the fallback camera and then kept using that stale
+            // controls object after this.camera was replaced, so mouse events were
+            // received but they moved a camera that was no longer rendered.
             if (this.controls)
-                return;
+            {
+                var sameCamera = (this.controlsCamera === this.camera) ||
+                                 (this.controls.object === this.camera);
+                if (sameCamera)
+                    return;
+
+                if (typeof(this.controls.dispose) === "function")
+                    this.controls.dispose();
+
+                this.controls = null;
+                this.controlsCamera = null;
+            }
 
             this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+            this.controlsCamera = this.camera;
             this.controls.enableDamping = true;
             this.controls.dampingFactor = 0.08;
 
             this.installCanvasEventShield();
+        };
+
+        this.getOrbitControlsInfo = function()
+        {
+            return {
+                hasControls: !!this.controls,
+                controlsCameraIsRenderedCamera: !!this.controls &&
+                    ((this.controlsCamera === this.camera) || (this.controls.object === this.camera)),
+                eventShield: !!cfg.eventShield,
+                eventShieldInstalled: !!this._eventShieldInstalled
+            };
         };
 
         this.installCanvasEventShield = function()
