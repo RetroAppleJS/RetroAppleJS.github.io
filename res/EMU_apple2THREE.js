@@ -40,9 +40,9 @@
 //       emissiveColor: 0x00b36a,
 //       emissiveIntensity: 2.5,
 //       // Current A2 screen mesh needs this default correction:
-//       // v1 looked upside down and horizontally mirrored.
+//       // v1 looked upside down and horizontally mirrored; v2 over-corrected X.
 //       textureFlipY: false,
-//       textureMirrorX: true,
+//       textureMirrorX: false,
 //       textureMirrorY: false,
 //       eventShield: true,
 //       eventShieldPreventDefault: false,
@@ -55,9 +55,9 @@
 //   window.Apple2Video.  That previous constructor should normally be the one from
 //   EMU_apple2GPU.js.
 // - This file does not dynamically load Three.js.  Include Three.js externally.
-// - This v2 does not fetch JSON, so it works when opened from file://.
-// - v2 corrects the default Apple II overlay orientation for the current screen mesh.
-// - v2 adds an optional canvas event shield to improve OrbitControls integration.
+// - This v3 does not fetch JSON, so it works when opened from file://.
+// - v3 corrects the final horizontal mirror: flipY=false, mirrorX=false, mirrorY=false.
+// - v3 keeps the optional canvas event shield to improve OrbitControls integration.
 //
 
 (function(global)
@@ -76,7 +76,7 @@
     var Apple2Video2D = global.Apple2Video;
 
     var THREE_CFG_DEFAULT = {
-        // v2 uses the global/lexical constant THREE_scene instead of fetch().
+        // v3 uses the global/lexical constant THREE_scene instead of fetch().
         // sceneURL intentionally removed to avoid browser CORS/file:// issues.
         textureFPS: 10,
         renderFPS: 60,
@@ -84,9 +84,9 @@
         emissiveColor: 0x00b36a,
         emissiveIntensity: 2.5,
         // Orientation correction for A2_Screen_beautified_smaller_v3:
-        // v1 showed the Apple II output upside down and mirrored horizontally.
+        // v1 was upside down+mirrored; v2 still mirrored horizontally.
         textureFlipY: false,
-        textureMirrorX: true,
+        textureMirrorX: false,
         textureMirrorY: false,
 
         // Helps OrbitControls when parent/page code listens to canvas mouse events.
@@ -800,5 +800,3 @@
     global.oEMU.component.Video.Apple2Video = new Apple2VideoTHREE();
 
 })(typeof(window) !== "undefined" ? window : this);
-
-
