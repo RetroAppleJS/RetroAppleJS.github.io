@@ -1,3 +1,11 @@
+## Sources involved with PERIPHERAL management
+
+- <pre>EMU_apple2main.js</pre> - keeping UI data
+- <pre>EMU_apple2hw.js</pre> - CPU address bus -> line decoder -> I/O range? -> (fixed mapping) call io.read(abs2IO(addr)) & io.write(abs2IO(addr))
+- <pre>EMU_apple2io.js</pre> - I/O bus -> line decoder -> (configurable I/O mapping) -> CIO.ACTION_MAP.RD[rel_addr] & CIO.ACTION_MAP.WR[rel_addr]
+- Perepheral drivers - SLOT bus -> address encoder -> soft switches/ROM/custom memory mappings -> peripheral logic
+- Device drivers - Driver addresses -> (bit/byte) symbol mapper -> soft switches -> device logic
+
 ## PERIPHERAL developers instructions
 
 Apple II machines all rely on the principle of **memory-mapped I/O**, and this mapping job is done by address line decoders.  A decoder wired to the address bus allows targeting RAM and ROM **chip-select** pins; this is how the CPU prepares its usual access to memory, but also I/O.  On technical level, address decoder logic for I/O senses specific bit combinations on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch these pins to one of the tri-state options** (OUTPUT 1 = switching pin to power, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts. 
