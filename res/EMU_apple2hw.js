@@ -125,7 +125,7 @@ function Apple2Hw(vid,keys)
 
     this.cycle = function()
     {
-        hw.io.cycle();
+        //hw.io.cycle();
     }
 
     this.mem_layout = {

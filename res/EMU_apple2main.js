@@ -263,7 +263,9 @@ function EMU_init()
 
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,state:{active:false}},"AppleDisk");
     
+
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
+    keys.init();
 
     // override keyboard hover callbacks
     keys.onHover_in = function()
@@ -353,7 +355,12 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
     //oCOM.addRefreshEvent(oEMUI.MEM_monitoring,"MEM_monitoring",false);
+    
+    // TODO: move to DISK2 peripheral driver (but make sure we can handle multiple slots with a disk object)
     oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
+   
+
+    
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
     // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier

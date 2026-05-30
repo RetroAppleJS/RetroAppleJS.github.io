@@ -136,6 +136,12 @@ function AppleDisk2()
         }
     }
 
+    this.restart = function()
+    {
+        // TODO: -> in future, handle DSK_monitoring, but first have a DSK object per slot where it is installed
+         //oCOM.addRefreshEvent(apple2plus.hwObj().io.disk2.DSK_monitoring,"DSK_monitoring",true);
+    }
+
     // Do not reset hw[n].track here.
     // A CPU reset does not mechanically move the Disk II head.
     this.reset = function() 
@@ -2563,7 +2569,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
     //    ███████ ██    ██ ██████  █████   ███████ ██      █████       ██ ████ ██ ███████ ██████  
     //         ██ ██    ██ ██   ██ ██      ██   ██ ██      ██          ██  ██  ██ ██   ██ ██      
     //    ███████  ██████  ██   ██ ██      ██   ██  ██████ ███████     ██      ██ ██   ██ ██    
-    // SURFACE MAP
+    // SURFACE MAP (UI)
 
     this.surfaceMap_palette = null;
     this.surfaceMap_headCell = [null,null];
@@ -2739,6 +2745,5 @@ this.detectDiskImageType = function(imageBytes, filepath)
         if(el) el.style.outline = "2px solid #fff";
         this.surfaceMap_headCell[deviceN] = id;
     };
-
 }
 

@@ -15,6 +15,8 @@ if(oEMU===undefined) var oEMU =
     }}
 else oEMU.component.Keyboard = new A2Pkeys();
 
+var keycap_over,keycap_out,keycap_click;
+
 function A2Pkeys()
 {
     //this.hw = hw;
@@ -35,6 +37,13 @@ function A2Pkeys()
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
 
+    this.init = function(arg)
+    {
+        keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
+        keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
+        keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
+    }
+
     this.isActive = function(bool) { return bool } // always active by default
 
     this.cycle = function(systemObj,bEnable)
@@ -47,6 +56,10 @@ function A2Pkeys()
     {
         this.lastkey = 0x00;
         this.events_data.metabits = [0,0];  // trigger init of keyboard modifier states (capslock, shift, control...)
+
+        //window.keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
+        //window.keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
+        //window.keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
     }
 
     this.keystroke = function(data)

@@ -224,7 +224,6 @@
             <script type="text/javascript" src="res/EMU_mockingboard.js"></script>
             <script type="text/javascript" src="res/EMU_hostio.js"></script>
             <script type="text/javascript" src="res/EMU_apple2io.js"></script>
-            <!--script type="text/javascript" src="res/EMU_A2Pkeys_v0.js"></script-->
             <script type="text/javascript" src="res/EMU_A2Pkeys.js"></script>
             <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
 
@@ -528,11 +527,8 @@
             <div class="appdskLID" id="dskLID_D1" style="left:250px;top:652px;z-index:0"></div>
             <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
-            <div id="kbd" style="position:relative; z-index:1;"></div>
-            <script>
-            var keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
-            var keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
-            var keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
+            <div id="kbd" style="position:relative; z-index:1;" onload="oEMU.component?.Keyboard.init({elid:'kbd'})"></div>
+
             </script>
 
 

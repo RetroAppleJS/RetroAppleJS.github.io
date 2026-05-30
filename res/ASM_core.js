@@ -1935,4 +1935,57 @@ function DASM()
     {
         console.log("sym_search("+op+","+adm+") requires an inheritant")
     }
+
+
+	// type 0=ref  1=jump 2=sub 3=soft/sw 
+	// TODO: check if we can use these symbols in DASM
+    this.mem_sym = {
+        0xC000:[0,"IOADR"],
+        0x00:[0,"LOC0"],
+        0x01:[0,"LOC1"],
+        0x20:[0,"WNDLFT"],
+        0x21:[0,"WNDWDTH"],
+        0x22:[0,"WNDTOP"],
+        0x23:[0,"WNDBTM"],
+        0x24:[0,"CH"],
+        0x25:[0,"CV"],
+        0x26:[0,"GBASL"],
+        0x27:[0,"GBASH"],
+        0x28:[0,"BASL"],
+        0x29:[0,"BASH"],
+        0x2A:[0,"BAS2L"],
+        0x2B:[0,"BAS2H"],
+        0x30:[0,"COLOR"],
+        0x31:[0,"MODE"],
+        0x32:[0,"INVFLG"],
+        0x33:[0,"PROMPT"],
+        0x34:[0,"YSAV"],
+        0x35:[0,"YSAV1"],
+        0x36:[0,"CSWL"],
+        0x38:[0,"KSWL"],
+        0x3A:[0,"PCL"],
+        0x3B:[0,"PCH"],
+        0x3C:[0,"A1L"],
+        0x3D:[0,"A1H"],
+        0x3E:[0,"A2L"],
+        0x3F:[0,"A2H"],
+        0x40:[0,"A3L"],
+        0x41:[0,"A3H"],
+        0x42:[0,"A4L"],
+        0x43:[0,"A4H"],
+        0x44:[0,"A5L"],
+        0x45:[0,"A5H"],
+        0x45:[0,"ACC"],
+        0x46:[0,"XREG"],
+        0x47:[0,"YREG"],
+        0x48:[0,"STATUS"],
+        0x49:[0,"SPNT"],
+        0x4E:[0,"RNDL"],
+        0x4F:[0,"RNDH"],
+        0x200:[0,"IN"],
+        0x3F0:[0,"BRKV","nEw vECtor For BRK"],
+        0x3F2:[0,"SOFTEV","vECtor For wArm stArt"],
+        0x3F4:[0,"PWREDUP","this must = EOR #A5 oF SOFTEV+1"],
+        0x3F8:[0,"USRADR"]
+    }
 }

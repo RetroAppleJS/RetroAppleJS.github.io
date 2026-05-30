@@ -76,6 +76,7 @@ function Apple2IO(vid)
     this.restart = function()
     {
         if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
+        if(this.disk2 && this.disk2.restart) this.disk2.restart();
     }
 
     function line_decode(adr)
@@ -642,9 +643,6 @@ function Apple2IO(vid)
             slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
         }
         else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
-        
-
-        
     }
 
     if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
