@@ -1,8 +1,8 @@
 ## Sources involved with PERIPHERAL management
 
-- EMU_apple2main.js - keeping UI data
-- EMU_apple2hw.js - CPU address bus -> line decoder -> I/O range? -> (fixed mapping) call io.read(abs2IO(addr)) & io.write(abs2IO(addr))
-- EMU_apple2io.js - I/O bus -> line decoder -> (configurable I/O mapping) -> CIO.ACTION_MAP.RD[rel_addr] & CIO.ACTION_MAP.WR[rel_addr]
+- <pre>EMU_apple2main.js</pre> - keeping UI data
+- <pre>EMU_apple2hw.js</pre> - CPU address bus -> line decoder -> I/O range? -> (fixed mapping) call io.read(abs2IO(addr)) & io.write(abs2IO(addr))
+- <pre>EMU_apple2io.js</pre> - I/O bus -> line decoder -> (configurable I/O mapping) -> CIO.ACTION_MAP.RD[rel_addr] & CIO.ACTION_MAP.WR[rel_addr]
 - Perepheral drivers - SLOT bus -> address encoder -> soft switches/ROM/custom memory mappings -> peripheral logic
 - Device drivers - Driver addresses -> (bit/byte) symbol mapper -> soft switches -> device logic
 
