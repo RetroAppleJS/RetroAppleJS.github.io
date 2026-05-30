@@ -2,6 +2,11 @@
 
 Apple II machines all rely on the principle of **memory-mapped I/O**, and this mapping job is done by address line decoders.  A decoder wired to the address bus allows targeting RAM and ROM **chip-select** pins; this is how the CPU prepares its usual access to memory, but also I/O.  On technical level, address decoder logic for I/O senses specific bit combinations on the databus (on most Apple IIs ranging between C000-$CFFF) reserved for **selecting I/O pins, and switch these pins to one of the tri-state options** (OUTPUT 1 = switching pin to power, OUTPUT 0 = switching pin to ground, INPUT HiZ = switching pin to High Impedance, turning I/O pin electrically into a sensor) .  This is where our code journey starts. 
 
+## SLOT management
+
+EMU_apple2main.js contains a slot manager that handles the UI part.
+TODO: document SLOT->PERIPHERAL->device hierarchy
+
 ## EMU_apple2hw.js - address decoder
 
 Although we could get away with multiple hard-coded if-then or switch-case statements for address decoding, emulators can’t afford decision logic overhead and hard coding for dispatching RAM, ROM, VIDEO, TEXT, and I/O ranges for the entire Apple II family. A **granular lookup table** method is configurable and more efficient, handling coarse-grain routing for memory and video while fine-grain I/O pin logic remains separate.
