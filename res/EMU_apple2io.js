@@ -12,6 +12,11 @@ if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
 
+
+var slotObj = [];
+var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "Mboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
+  
+
 function Apple2IO(vid)
 {
 
@@ -77,6 +82,59 @@ function Apple2IO(vid)
     {
         if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
         if(this.disk2 && this.disk2.restart) this.disk2.restart();
+
+
+        // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
+        // MAKE SURE slot_cfg is declared and provisioned at this moment!!! (currently it is declared later)
+        oEMU.component.MIO = apple2plus.hwObj().io.slot_cfg;
+        console.log("oEMU.component.MIO = "+JSON.stringify(oEMU.component.MIO));
+
+        for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
+        {
+            if(slotR.slotMap[slotIdx])
+            {
+                var peripheral_names = this.listPeripheralNames();
+                var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
+                if(pinfo===undefined) continue;
+                var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
+                var o = this.mount(cinfo,pinfo,slotIdx);
+
+                slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":o.pInfo}
+                slotObj[slotIdx+1]  = o.pObj;
+
+            }
+            else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
+        }
+
+        //slotCfg = [
+        //  {"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
+        // ,{"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","coID":"RamCard","SlotIO":{"from":128,"to":143},"description":"Microsoft 16K Language card"}}
+        // ,{"slotTitle":"PR#1"}
+        // ,{"slotTitle":"PR#2"}
+        // ,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","coID":"col80card","HostROM":{"from":2048,"to":4095},"SlotIO":{"from":176,"to":191},"SlotROM":{"from":768,"to":1023},"description":"Videx Videoterm 80 Column Display"}}
+        // ,{"slotTitle":"PR#4","peripheral":{"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems","objID":"mockingboard","coID":"mockingboard","SlotIO":{"from":192,"to":207},"description":"Mockingboard C"}}
+        // ,{"slotTitle":"PR#5"}
+        // ,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","coID":"AppleDisk2","SlotIO":{"from":224,"to":239},"SlotROM":{"from":1536,"to":1791},"description":"Apple Disk II Floppy Disk Subsystem"}}
+        // ,{"slotTitle":"PR#7"}]
+
+        if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
+        console.log(CIO.ACTION_MAP);
+        console.group("ACTION_MAP overview");
+        console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
+        console.table(actionMapEntryCount(CIO.ACTION_MAP));
+        console.table(actionMapSpanReport(CIO.ACTION_MAP));
+        console.groupEnd();
+
+        console.group("slot configuration overview");
+        console.table(slotConfigReport(slotCfg));
+        console.log("slotCfg = "+JSON.stringify(slotCfg));
+
+
+
+        console.groupEnd();
+
+
+
     }
 
     function line_decode(adr)
@@ -229,8 +287,10 @@ function Apple2IO(vid)
 
     this.unmount = function(name,slot_num)
     {
+        /*
         SLOT_NAME[slot_num] = null;
         const idx = slot_num<<3;
+
         SLOT_MAP[idx]   = 0;
         SLOT_MAP[idx+1] = 0;
         SLOT_MAP[idx+2] = 0;
@@ -239,6 +299,7 @@ function Apple2IO(vid)
         SLOT_MAP[idx+5] = 0;
         SLOT_MAP[idx+6] = 0;
         SLOT_MAP[idx+7] = 0;
+        */
 
         if(typeof(oEMUI.slotConfig)=="function")
             oEMUI.slotConfig({"id":"slot"+slot_num,"icon":"fa fa-cube","active":false});
@@ -498,7 +559,7 @@ function Apple2IO(vid)
 
 
     // SLOT MAPPING
-    var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
+    //var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
     //var SLOT_NAME = new Array(8);           // 8 SLOTS, 6 CHARACTERS PER SLOT NAME
     var SLOT_IDX  = new Array(8);
     var SLOT_REG  = [];
@@ -537,6 +598,7 @@ function Apple2IO(vid)
     this.mount = function(cinfo,pinfo,slotIdx)
     {
         if(oEMU.system===undefined) return;
+        oPeri = null;
         if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
         {
             const bHostROM = typeof(oEMU.system.IORANGES.HostROM)!="undefined" && cinfo.HostROM == "X";
@@ -616,50 +678,714 @@ function Apple2IO(vid)
             }
         }
         pinfo["description"] = cinfo.NAME;
-        return pinfo;
+        return {"pInfo":pinfo,"pObj":oPeri};
     }
 
     // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
     //var peripheral_names = this.listPeripheralNames();
     //console.log("peripheral_names="+JSON.stringify(peripheral_names));
     
-    
-    // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
-    // MAKE SURE slot_cfg is declared and provisioned at this moment!!! (currently it is declared later)
-    oEMU.component.MIO = oEMUI.slot_cfg;
 
-    
-    var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "mainboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
-    for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
+    this.PCODEobj = function(PCODE)
     {
-        if(slotR.slotMap[slotIdx])
+        // TODO search across slotCfg for occurences of PCODE
+        for(var slotIdx = 0; slotIdx < slotCfg.length; slotIdx++)
         {
-            var peripheral_names = this.listPeripheralNames();
-            var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
-            if(pinfo===undefined) continue;
-            var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
-            pinfo = this.mount(cinfo,pinfo,slotIdx);
-
-            slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":pinfo}
+            //var isPCODE =  slotCfg 
         }
-        else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
     }
 
-    if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
-    console.log(CIO.ACTION_MAP);
-    console.group("ACTION_MAP overview");
-    console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
-    console.table(actionMapEntryCount(CIO.ACTION_MAP));
-    console.table(actionMapSpanReport(CIO.ACTION_MAP));
-    console.groupEnd();
-
-    console.group("slot configuration overview");
-    console.table(slotConfigReport(slotCfg));
-    console.log("slotCfg = "+JSON.stringify(slotCfg));
 
 
 
-    console.groupEnd();
+
+
+
+
+
+
+
+
+
+
+
+//      ______   __          _                               ___  _          
+//    .' ____ \ [  |        / |_                           .' ..](_)         
+//    | (___ \_| | |  .--. `| |-'  .---.   .--.   _ .--.  _| |_  __   .--./) 
+//     _.____`.  | |/ .'`\ \| |   / /'`\]/ .'`\ \[ `.-. |'-| |-'[  | / /'`\; 
+//    | \____) | | || \__. || |,  | \__. | \__. | | | | |  | |   | | \ \._// 
+//     \______.'[___]'.__.' \__/  '.___.' '.__.' [___||__][___] [___].',__`  
+//                                                                  ( ( __)) 
+
+    this.slot_ctx = {};
+    this.slot_cfg = {};
+
+    this.onSlotAdd = function(ctx, ev) 
+    {
+        var anchor = ev.target.closest(".slot-anchor.empty");
+        if (!anchor || !ctx.host.contains(anchor)) return;
+
+        var slotTitle = anchor.dataset.slotId;
+        this.slotPicker_popup(ctx, slotTitle);
+    };
+
+    this.onSlotMove = function(ctx, ev, fromSlotId, toSlotId)
+    {
+      var parent = ev.currentTarget.parentElement.parentElement.parentElement;
+      var periID = parent.children[0].id;
+
+      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
+      alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
+      alert(JSON.stringify(this.slot_cfg[ctx.hostId]));
+    };
+
+    this.slotsRender = function(elid, cfg)
+    {
+      if (!elid) return;
+
+      if (!this.slot_ctx[elid])
+      {
+        this.slot_ctx[elid] = {
+          hostId: elid,
+          host: null,
+          clickBound: false,
+          pointerDrag: null
+        };
+      }
+
+      var ctx = this.slot_ctx[elid];
+
+      if (cfg !== undefined) this.slot_cfg[elid] = cfg;
+      if (!this.slot_cfg[elid]) this.slot_cfg[elid] = [];
+
+      ctx.host = document.getElementById(elid);
+      if (!ctx.host) return;
+
+      function getSlotById(slotCfg, slotTitle) { return slotCfg.find(function(slot) { return slot.slotTitle === slotTitle; }) }
+
+      function renderGhost(slot)
+      {
+        var iconClass = (slot && slot.peripheral && slot.peripheral.icon) ? slot.peripheral.icon : "fa fa-circle";
+
+        return `
+          <button class="appbut ghost-cog" type="button" tabindex="-1" aria-hidden="true">
+            <i class="${iconClass}"></i>
+          </button>
+          <span class="ghost-handle" aria-hidden="true">
+            <i class="fa fa-ellipsis-h"></i>
+            <i class="fa fa-ellipsis-h"></i>
+          </span>
+        `;
+      }
+
+      function renderAnchor(slot)
+      {
+        var anchorId = "d_slot_" + ctx.hostId + "_" + slot.slotTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+        if (slot.peripheral)
+        {
+          return `
+            <div class="slot-anchor occupied ${slot.lock ? "locked" : "movable"}"
+                  id="${anchorId}"
+                  data-slot-id="${slot.slotTitle}"
+                  data-host-id="${ctx.hostId}">
+              <div class="peripheral-card">
+                ${slot.lock ? "" : `
+                  <span class="drag-handle" title="Move ${slot.peripheral.PCODE}">
+                    <i class="fa fa-ellipsis-h dots dots1"></i>
+                    <i class="fa fa-ellipsis-h dots"></i>
+                  </span>
+                `}
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="slot-anchor empty"
+                id="${anchorId}"
+                data-slot-id="${slot.slotTitle}"
+                data-host-id="${ctx.hostId}">
+            <button class="slot-add" type="button" title="Add peripheral to ${slot.slotTitle}">
+              <i class="fa fa-plus dots dots1"></i>
+            </button>
+          </div>
+        `;
+      }
+
+      function renderSlot(slot)
+      {
+        return `
+          <div class="appbox slotbox slot"
+                data-slot-id="${slot.slotTitle}"
+                data-host-id="${ctx.hostId}">
+            <div class="slot-label">${slot.slotTitle}</div>
+            <div class="sloticons">
+              ${slot.peripheral
+                ? `<button id="${slot.peripheral.PCODE}" class="appbut cogbtn" type="button" title="configure ${slot.peripheral.PCODE} / ${slot.peripheral.objID}()"><i class="${slot.peripheral.icon || ""}"></i></button>`
+                : ""}
+              ${renderAnchor(slot)}
+            </div>
+          </div>
+        `;
+      }
+
+      function buildDragGhost(slot)
+      {
+        var ghost = document.createElement("div");
+        ghost.className = "drag-ghost";
+        ghost.innerHTML = renderGhost(slot);
+        document.body.appendChild(ghost);
+        return ghost;
+      }
+
+      function positionDragGhost(x, y)
+      {
+        if (!ctx.pointerDrag || !ctx.pointerDrag.ghostEl) return;
+        ctx.pointerDrag.ghostEl.style.left = x + "px";
+        ctx.pointerDrag.ghostEl.style.top  = y + "px";
+      }
+
+      function updatePointerHotTarget(x, y)
+      {
+        if (!ctx.pointerDrag) return;
+        var el = document.elementFromPoint(x, y);
+        var nextHot = el ? el.closest('[data-host-id="' + ctx.hostId + '"].slot-anchor.empty') : null;
+        if (ctx.pointerDrag.hotTarget === nextHot) return;
+        if (ctx.pointerDrag.hotTarget) ctx.pointerDrag.hotTarget.classList.remove("drop-ok");
+        ctx.pointerDrag.hotTarget = nextHot;
+        if (ctx.pointerDrag.hotTarget) ctx.pointerDrag.hotTarget.classList.add("drop-ok");     
+      }
+
+      function cleanupPointerDrag()
+      {
+        if (!ctx.pointerDrag) return;
+        var handleEl = ctx.pointerDrag.handleEl;
+        var pointerId = ctx.pointerDrag.pointerId;
+        if (ctx.pointerDrag.hotTarget) ctx.pointerDrag.hotTarget.classList.remove("drop-ok");
+        if (ctx.pointerDrag.ghostEl) ctx.pointerDrag.ghostEl.remove();
+        if (handleEl)
+        {
+          try { if (handleEl.hasPointerCapture(pointerId)) handleEl.releasePointerCapture(pointerId) }
+          catch (e) {}
+
+          handleEl.removeEventListener("pointermove", onPointerDragMove);
+          handleEl.removeEventListener("pointerup", onPointerDragEnd);
+          handleEl.removeEventListener("pointercancel", onPointerDragCancel);
+        }
+
+        document.body.classList.remove("dragging");
+        ctx.host.querySelectorAll(".slot.drag-source").forEach(function(el)
+          {
+            el.classList.remove("drag-source");
+          });
+
+          ctx.pointerDrag = null;
+      }
+
+      function onPointerDragStart(emui, host, ev)
+      {
+        if (ev.button != null && ev.button !== 0) return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        var slotEl = ev.currentTarget.closest(".slot");
+        if (!slotEl) return;
+
+        var fromSlotId = slotEl.dataset.slotId;
+        var fromSlot = getSlotById(emui.slot_cfg[ctx.hostId], fromSlotId);
+        if (!fromSlot || !fromSlot.peripheral) return;
+
+        ctx.pointerDrag = {
+          emui: emui,
+          host: host,
+          pointerId: ev.pointerId,
+          fromSlotId: fromSlotId,
+          handleEl: ev.currentTarget,
+          hotTarget: null,
+          ghostEl: buildDragGhost(fromSlot)
+        };
+
+        document.body.classList.add("dragging");
+        slotEl.classList.add("drag-source");
+
+        ev.currentTarget.setPointerCapture(ev.pointerId);
+        ev.currentTarget.addEventListener("pointermove", onPointerDragMove);
+        ev.currentTarget.addEventListener("pointerup", onPointerDragEnd);
+        ev.currentTarget.addEventListener("pointercancel", onPointerDragCancel);
+
+        positionDragGhost(ev.clientX, ev.clientY);
+        updatePointerHotTarget(ev.clientX, ev.clientY);
+      }
+
+      function onPointerDragMove(ev)
+      {
+        if (!ctx.pointerDrag || ev.pointerId !== ctx.pointerDrag.pointerId) return;
+
+        ev.preventDefault();
+        positionDragGhost(ev.clientX, ev.clientY);
+        updatePointerHotTarget(ev.clientX, ev.clientY);
+      }
+
+      function onPointerDragEnd(ev)
+      {
+        if (!ctx.pointerDrag || ev.pointerId !== ctx.pointerDrag.pointerId) return;
+        ev.preventDefault();
+        var fromSlotId = ctx.pointerDrag.fromSlotId;
+        var toSlotId = ctx.pointerDrag.hotTarget ? ctx.pointerDrag.hotTarget.dataset.slotId : null;
+        var emui = ctx.pointerDrag.emui;
+        cleanupPointerDrag();
+        if (toSlotId)
+        {
+          slotMove(emui.slot_cfg, ctx, ev, fromSlotId, toSlotId);
+          emui.slotsRender(ctx.hostId);
+          console.log("Move peripheral from->to", ctx.hostId, fromSlotId, toSlotId);
+          emui.onSlotMove(ctx, ev, fromSlotId, toSlotId);
+        }
+
+        function slotMove(cfg, ctx, ev, fromSlotId, toSlotId)
+        {
+          if (!ctx || !fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
+
+          var from = getSlotById(cfg[ctx.hostId], fromSlotId);
+          var to   = getSlotById(cfg[ctx.hostId], toSlotId);
+          if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
+
+          to.peripheral = from.peripheral;
+          //to.icon = from.icon;
+
+          //from.peripheral = null;
+          delete from.peripheral;
+          //delete from.icon;
+        };
+      }
+
+      function onPointerDragCancel(ev) { if (ctx.pointerDrag && ev.pointerId == ctx.pointerDrag.pointerId) cleanupPointerDrag() }
+      function onClick(emui, ctx, ev) { emui.onSlotClick(ctx, ev) }
+      function onHostClick(emui, ctx, ev) 
+      { 
+        var addBtn = ev.target.closest(".slot-add");
+        if (addBtn && ctx.host.contains(addBtn)) emui.onSlotAdd(ctx, ev); 
+      }
+
+      function wireEvents(emui, ctx)
+      {
+        ctx.host.querySelectorAll(".drag-handle").forEach(function(el)
+        {
+          el.addEventListener("pointerdown", function(ev) { onPointerDragStart(emui, ctx, ev) });
+        });
+
+        ctx.host.querySelectorAll(".appbut").forEach(function(el)
+        {
+          el.addEventListener("click", function(ev) { onClick(emui, ctx, ev) });
+        });
+
+        if (!ctx.clickBound)
+        {
+          ctx.host.addEventListener("click", function(ev) { onHostClick(emui, ctx, ev) });
+          ctx.clickBound = true;
+        }
+      }
+
+      ctx.host.innerHTML = (this.slot_cfg[ctx.hostId] || []).map(renderSlot).join("");
+      wireEvents(this, ctx);
+    };
+
+
+
+    this.onSlotClick = function(ctx, ev)
+    {
+      var parent  = ev.currentTarget.closest(".slot");
+      var periID = ev.currentTarget.id;
+      var slotID  = parent ? parent.dataset.slotId : "";
+      var hostId  = ctx.hostId;
+
+      this.slotConfig_detail(slotID);
+      //oCOM.POPUP.toggle("slotConfig_popup");
+
+      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
+    };
+
+
+    /////////////////////////////////////////////////////////////////
+
+
+
+    this.slotPicker_popup = function(ctx, slotTitle) 
+    {
+        var popupId = "slotConfig_popup";
+        var anchorId = "d_slot_" + ctx.hostId + "_" + slotTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
+        document.getElementById(anchorId).style = "background:rgba(255, 255, 0, 0.5); border-radius:10px"
+        
+        var close   = "<button class='appbut' style='float:right' onclick=\"oCOM.POPUP.toggle('" + popupId + "');document.getElementById('"+anchorId+"').style=''\">x</button>";
+        var html = "";
+        
+        html += "<div style=\"float:left\">ADD / REMOVE PERIPHERAL</div>" //+" FROM " + slotTitle;
+        html += close;
+        html += "<br><br>";
+
+        var io = apple2plus.hwObj().io;
+        var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        console.log(names);
+        for (var pcode in names) 
+        {
+            var id = names[pcode];
+            html +=
+                 "<button class='appbut' onclick=\"apple2plus.hwObj().io.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
+                +"<div class='slot-add' style='float:left'>"
+                +"<i class='fa fa-plus dots dots1'></i>&nbsp;"
+                +"</div>"
+                +"<i class='" + (id.icon || "fa fa-cube") + "'></i> "
+                + id.PCODE
+                + "</button>"
+        }
+
+        html += "<button class='appbut' onclick=\"apple2plus.hwObj().io.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
+            +"<div class='slot-add' style='float:left'>"
+            +"<i class='fa fa-minus dots dots1'></i>&nbsp;"
+            +"</div>"
+            +"<i class='" + (id.icon || "fa fa-cube") + "'></i> "
+            + id.PCODE
+            + "</button>"
+        
+
+        /*
+        // TODO: LOOKUP WHICH PERIPHERAL IS IN CURRENTLY IN 'slotTitle'
+
+        html += "<button class=appbut>"
+            +"<a href=\"https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/CONFIG.md#peripherals-list\" target=_blank> "
+            +"<i class='fa fa-info-circle'></i>"
+            +"</a>"
+            +"</button> ";
+        */
+
+
+        document.getElementById(popupId).innerHTML = html;
+
+        if(oCOM.POPUP.get_state(popupId)==false) document.getElementById(anchorId).style = "";
+        oCOM.POPUP.toggle(popupId);
+    };
+
+    this.slotPicker_select = function(hostId, slotTitle, pcode) {
+        var cfg = this.slot_cfg[hostId] || [];
+        var slot = cfg.find(function(s) {
+            return s.slotTitle === slotTitle;
+        });
+
+        if (!slot || slot.lock || slot.peripheral) return;
+
+        var io = oEMU.component.IO.self;
+        var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        var id = names[pcode];
+
+        if (!id) return;
+
+        slot.peripheral = {
+            PCODE: id.PCODE,
+            icon: id.icon || "fa fa-cube",
+            objID: id.objID,
+            active: true
+        };
+
+        oCOM.POPUP.toggle("slotConfig_popup");
+        this.slotsRender(hostId);
+    };
+
+    this.slotPicker_info = function() {
+        oCOM.POPUP.wipe();
+        oCOM.POPUP.html(
+            "<b>Peripheral configuration</b><br><br>" +
+            "To make a peripheral appear in this picker, add or modify its " +
+            "entry in <code>CONFIG.md</code>.<br><br>" +
+            "After editing <code>CONFIG.md</code>, compile it into " +
+            "<code>COM_CONFIG.js</code> with:<br><br>" +
+            "<code>tools/ConfigFile_updater.html</code><br><br>" +
+            "Do not edit <code>COM_CONFIG.js</code> manually."
+        );
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+    this.deviceBtn = function(arg)
+    {
+        var btn = document.getElementById(arg.id);
+        if(btn == null) return;
+
+        // First reconcile the UI with the currently mounted topology.
+        var slot = this.refreshDeviceToolboxes(arg);
+        var slots = this.deviceSlots();
+
+        if(slots.length == 0) return;
+        if(arg.init === true) return;
+
+        if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
+        else slot = slots[(slots.indexOf(slot)+1)%slots.length];
+
+        this.refreshDeviceToolboxes({"id":arg.id,"default_slot":slot});       
+     }
+
+    this.deviceSlots = function()
+    {
+        var slots = ["H"];
+        if(typeof(_CFG_SLOT) == "object")
+        {
+            for(var i=0;i<8;i++)
+                if(_CFG_SLOT[i] && _CFG_SLOT[i].PCODE)
+                    slots.push(i);
+        }
+        return slots;
+    }
+
+    this.deviceLabel = function(slot)
+    {
+        return slot==="H" ? "H▹" : slot + "▹";
+    }
+
+    this.deviceTopologySig = function()
+    {
+        var slots = this.deviceSlots();
+        var sig = [];
+
+        for(var i=0;i<slots.length;i++)
+        {
+            var s = slots[i];
+            var pcode = s==="H"
+                ? "HostIO"
+                : (_CFG_SLOT[s] && _CFG_SLOT[s].PCODE ? _CFG_SLOT[s].PCODE : "");
+            sig.push(String(s)+":"+pcode);
+        }
+
+        return sig.join("|");
+    }
+
+    this.refreshDeviceToolboxes = function(arg)
+    {
+        arg = arg || {};
+
+        var box = document.getElementById("device_toolbox_body");
+        var btn = document.getElementById(arg.id || "devices");
+        if(box == null || btn == null) return null;
+
+        var slots = this.deviceSlots();
+        var sig = this.deviceTopologySig();
+        var oldSig = box.getAttribute("data-topology");
+
+        // Rebuild only when mounted devices changed.
+        if(oldSig !== sig)
+        {
+            box.innerHTML = this.deviceToolHTML();
+            box.setAttribute("data-topology",sig);
+            if(typeof(EMU_mem_map)=="function" && typeof(apple2plus)=="object" && apple2plus!=null)
+                EMU_mem_map();
+        }
+
+        if(slots.length == 0)
+        {
+            btn.innerHTML = "∅";
+            btn.setAttribute("data-slot","");
+            this.showDeviceTool(null);
+            return null;
+        }
+
+        var cur = btn.getAttribute("data-slot");
+        var slot = cur==="H" ? "H"
+                 : (cur==null || cur==="" ? null : Number(cur));
+
+        // default_slot explicitly requested slot if still mounted
+        if(arg.default_slot === "H" && slots.indexOf("H") >= 0) slot = "H";
+        else if(typeof(arg.default_slot)=="number" && slots.indexOf(arg.default_slot) >= 0) slot = arg.default_slot;
+        else if(slot == null || slots.indexOf(slot) < 0) slot = slots[0];
+
+        btn.setAttribute("data-slot", slot==="H" ? "H" : String(slot));
+        btn.innerHTML = this.deviceLabel(slot);
+        this.showDeviceTool(slot);
+        return slot;
+    }
+
+
+    this.renderDeviceTool = function(slot)
+    {
+      this.refreshDeviceToolboxes({"id":"devices","default_slot":slot});
+    }
+
+    this.showDeviceTool = function(slot)
+    {
+        var all = document.querySelectorAll("[id^='device_tool_']");
+        for(var i=0;i<all.length;i++)
+            all[i].hidden = true;
+
+        if(slot == null) return;
+
+        var el = document.getElementById("device_tool_" + (slot==="H" ? "H" : slot));
+        if(el) el.hidden = false;
+    }
+
+    this.deviceToolHTML = function()
+    {
+        var slots = this.deviceSlots();
+        var out = [];
+
+        for(var i=0;i<slots.length;i++)
+            out.push(this.deviceToolSlotHTML(slots[i]));
+
+        return out.join("");
+    }
+
+    this.deviceToolSlotHTML = function(slot)
+    {
+        var pcode = slot==="H"
+            ? "HostIO"
+            : (_CFG_SLOT[slot] && _CFG_SLOT[slot].PCODE ? _CFG_SLOT[slot].PCODE : "");
+ 
+
+        switch(pcode)
+        {
+            case "HostIO":
+                var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+                return ""
+                    + "<div class=toolbox id=\"device_tool_H\" hidden>"
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "    <div><b>HostIO ["+model+"]</b>"
+                    + "    <button class=appbut style=\"float:right;margin-top:0px\" onclick=\"apple2plus.hwObj().io.slotConfig_detail('BOARD')\">details</button></div>"
+                    + "    <div style=\"padding-top:4px\">"
+                    + "    <img src=res/cassette_50.png style=\"height:40px\">"
+                    //+ "keyboard, speaker, cassette, paddles<br>and other soft-switches."
+                    + "    </div>"
+                    + "  </div>"
+                    + "</div>";
+            case "MS16K":
+                return ""
+                + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
+                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\""
+                        +"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
+                        +"apple2plus.hwObj().enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));"
+                        +"oEMU.component.IO.RamCard?.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring_MS16K'));"
+                        +"\"></i></button></div>"
+                + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
+                + "  </div>"
+                + "</div>";
+
+            case "VIDEX":
+                return ""
+                    + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "    <b>#"+slot+" VIDEX</b><br>80-column toolbox is under construction."
+                    + "  </div>"
+                    + "</div>";
+            case "DISKII":
+                return ""
+                    + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                    + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
+
+                    // FILE BOX D1
+                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
+                    
+                    + "        <input type=button method=get class=appbut id=\"but_D1\" value=\"Drive1\""
+                    + " data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\"  "
+                    + " onclick=\"ejectDisk(this,'D1')\""
+                    + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
+                    + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
+
+                    + "      <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
+                    // TODO: this HTML is duplicated in apple2plus.DiskObj().diskFileInputHTML(), but cannot be called since apple2plus object does not exist at this time
+                    + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
+                    + "      </form>"
+                    
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D1'))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "    </div>"
+
+                    // FILE BOX D2
+                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left\">"
+
+                    + "        <input type=button method=get class=appbut id=\"but_D2\" value=\"Drive2\""
+                    + " data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\"  "
+                    + " onclick=\"ejectDisk(this,'D2')\""
+                    + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
+                    + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
+                    // TODO: this HTML is duplicated in apple2plus.DiskObj().diskFileInputHTML(), but cannot be called since apple2plus object does not exist at this time
+                    + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
+                    + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
+                    + "      </form>"
+
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D2'))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "    </div>"
+
+                    + "  </div>"
+
+                    // BUTTON BOX
+                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+                    + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
+                    + "      <br>"
+                    + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+                    //+ "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
+                    //+ "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
+                    + "  </div>"
+                    + "</div>"
+
+                    // LIST BOXES
+                    + "<div class=toolbox id=softwareCat></div>"
+                    + "<div class=toolbox id=surfaceMap></div>";
+        }
+
+        return ""
+            + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <b>#"+slot+" "+pcode+"</b><br>No toolbox is available yet."
+            + "  </div>"
+            + "</div>";
+    }
+
+
+
+
+    this.slotConfig = function(arg)
+    {
+        if(arg.active==false) document.getElementById(arg.id).innerHTML = "";
+
+        //var ss = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
+        var s = "document.getElementById('"+arg.id+"').innerHTML='"+arg.id+"';"
+        if(document.getElementById(arg.id)!=null)
+            document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"apple2plus.hwObj().io.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\""+arg.icon+"\"></i></button>"
+    }
+
+    this.slotConfig_detail = function(id)
+    {
+        //oCOM.POPUP.on("slotConfig_popup");
+        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
+        // TODO extend here to all popup customisations?
+        if(id=="board")
+        {
+            var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+            document.getElementById("slotConfig_popup").innerHTML =
+                "board I/O ["+model+"]" + close + oEMU.component.IO.board.boardIO_html(model);
+                
+            oCOM.POPUP.toggle("slotConfig_popup");
+            return;
+        }
+        document.getElementById("slotConfig_popup").innerHTML = id + close;
+        console.log("apple2plus.hwObj().io.slotConfig_detail('"+id+"')");
+    }
+
+
+
+
+
+
+
+
+
 
     function actionMapEntryCount(map)
     {
@@ -865,22 +1591,5 @@ function Apple2IO(vid)
     }
 
 
-    if(slot_count>0)
-    {
-        oEMUI.slotsRender("peripheral_slots",slotCfg);                      // sets oEMUI.slot_cfg = slotCfg
-        oEMUI.deviceBtn({"id":"devices","init":true,"default_slot":6});    
-    }
-
-/*
-slotCfg = [{"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
-,{"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","description":"Microsoft 16K Language card","SlotIO":{"from":49280,"to":49295}}}
-,{"slotTitle":"PR#1"}
-,{"slotTitle":"PR#2"}
-,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","description":"Videx Videoterm 80 Column Display","HostROM":{"from":51200,"to":53247},"SlotIO":{"from":49328,"to":49343},"SlotROM":{"from":49920,"to":50175}}}
-,{"slotTitle":"PR#4"}
-,{"slotTitle":"PR#5"}
-,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","description":"Apple Disk II Floppy Disk Subsystem","SlotIO":{"from":49376,"to":49391},"SlotROM":{"from":50688,"to":50943}}}
-,{"slotTitle":"PR#7"}]
-*/
 
 }

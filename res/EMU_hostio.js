@@ -5,7 +5,10 @@
 // EMU_hostio.js
 
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":new AppleBoard()}}}
-else oEMU.component.IO.board= new AppleBoard();
+else 
+{
+    oEMU.component.IO.board= new AppleBoard();
+}
 
 
 function AppleBoard()
