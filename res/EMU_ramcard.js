@@ -22,10 +22,14 @@ function RamCard()
         ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
         ,"RR":false             // flag to remember double-triggered Write-Enables (by double read)
     };
-    this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // callback for softswitches
+    this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // generic callback for softswitches
+
+    var bDebug_sw  = false;      // debug soft switch updates (light)
+    var bDebug_mon = false;      // debug RAM Write monitor
+    var bDebug     = false;      // debug all RAM R/W operations   
 
     const MEM_MAP_ORG   = 0xD000;                     // the address space origin this ramcard typically overrides
-    const MEM_MAP_STEP  = 0x1000;                     // address space is divided in chunks of 0x1000 bytes (according to address_encoder() logic)
+    const MEM_MAP_STEP  = 0x1000;                     // address space is divided in chunks of 0x1000 bytes (according to ramcard_address_encoder() logic)
 
     const BANK_SIZE     = 0x1000;                     // 4K bank memory size = contiguous bank offset  = 4Kbytes  
     const CONT_SIZE     = 0x2000;                     // 8K contiguous memory size
@@ -37,10 +41,6 @@ function RamCard()
     var hw;                      // purposed for late-binding (at restart)
     var io;                      // purposed for late-binding (at restart)
     var card       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
-
-    var bDebug_sw  = false;      // debug soft switch updates (light)
-    var bDebug_mon = false;      // debug RAM Write monitor
-    var bDebug     = false;      // debug all RAM R/W operations   
 
     // RE: 0="READ-ENABLE" 1="READ-ENABLE" | WE: 0:"WRITE-PROTECT" 1:"WRITE-ENABLE"  | BANK: 0="BANK A", 1="BANK B"
     var softswitch = {
@@ -58,6 +58,8 @@ function RamCard()
 
     this.updateMemoryMap = function(bRamcardActive)
     {
+        if(hw===undefined) { hw = apple2plus.hwObj(); console.warn("EMU_ramcard.js lost hw from scope") }
+
         if(this.bMEM_monitoring != hw.bMEM_monitoring) 
             this.enable_MEM_monitoring(hw.bMEM_monitoring);  // follow mem monitoring flag from hardware 
         if(bDebug_sw) 
@@ -121,17 +123,19 @@ function RamCard()
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 
-    function abs2rel(addr) { return ((addr & 0xFFFF) - MEM_MAP_ORG); }
+    function abs2rel(addr)     { return ((addr & 0xFFFF) - MEM_MAP_ORG); }
     function rel2abs(rel_addr) { return (rel_addr + MEM_MAP_ORG) & 0xFFFF; }
 
     // translate addresses from the bus to ramcard addresses 
-    function address_encoder(addr,bank_bit) 
+    function ramcard_address_encoder(addr,bank_bit) 
     { 
         return addr + ((bank_bit | !!(addr >> 12)) << 12);
     }
 
     this.soft_switch = function(rel_io_addr)
     {
+        if(io===undefined) { io = apple2plus.hwObj().io;  console.warn("EMU_ramcard.js lost io from scope") }
+
         const slot = 0;                                                 // TODO: take fromthis.state.slot
         var sw_idx = io.address_encoder(rel_io_addr,"SlotIO",slot);     // index of the io address
         const pre_sw = softswitch[this.state.softswitch_pos];           // previous switch state
@@ -152,7 +156,7 @@ function RamCard()
     this.read = function(rel_addr)
     {
         var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
-        const d8 = RAMCARD_MEM[ address_encoder(rel_addr,sw.BANK) ]; 
+        const d8 = RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ]; 
         if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK ? "A" : "B") : null);
         return d8;
     }
@@ -162,7 +166,7 @@ function RamCard()
         var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
         if(sw.WE==1 && this.state.RR)
         {
-            RAMCARD_MEM[ address_encoder(rel_addr,sw.BANK) ] = d8;
+            RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ] = d8;
             if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null );
         }
         else

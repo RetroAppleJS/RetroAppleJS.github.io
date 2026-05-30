@@ -58,6 +58,8 @@ function Apple2IO(vid)
     // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
     
+    // HOST_IO callbacks (keyboard, speaker, gfx) 
+
     if(typeof(oEMU.component.IO)!="undefined")
     {
         // TODO: autosearch for self-declared oEMU.component.IO objects ?
@@ -71,6 +73,31 @@ function Apple2IO(vid)
         oEMU.component.IO.self = this;
     }
 
+    const IOMAP_CALLS = 
+    {1: // _CFG_IOMAP index
+        {
+            "KBD":         function(){ return keys.polling(keys.lastkey)   }
+            ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
+            ,"SPKR":        function(){ snd.toggle();       return 0x00 }
+            ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
+            ,"TXTSET":      function(){ vid.setGfx(false);  return 0x00 }
+            ,"MIXCLR":      function(){ vid.setMix(false);  return 0x00 }
+            ,"MIXSET":      function(){ vid.setMix(true);   return 0x00 }
+            ,"TXTPAGE1":    function(){ vid.setPage2(false);return 0x00 }
+            ,"TXTPAGE2":    function(){ vid.setPage2(true); return 0x00 }
+            ,"LORES":       function(){ vid.setHires(false);return 0x00 }
+            ,"HIRES":       function(){ vid.setHires(true); return 0x00 }
+        }
+    }
+
+
+//     _____      __  ___          _       _______  _____  
+//    |_   _|    / /.'   `.       / \     |_   __ \|_   _| 
+//      | |     / //  .-.  \     / _ \      | |__) | | |   
+//      | |    / / | |   | |    / ___ \     |  ___/  | |   
+//     _| |_  / /  \  `-'  /  _/ /   \ \_  _| |_    _| |_  
+//    |_____|/_/    `.___.'  |____| |____||_____|  |_____| 
+    
     this.reset = function()
     {
         keys.reset();
@@ -137,11 +164,6 @@ function Apple2IO(vid)
 
     }
 
-    function line_decode(adr)
-    {
-        return adr<256 ? adr & 0xF0 : (adr & 0xFF00); // line decoder on IO & PROM addressing
-    }
-
     this.address_encoder = function(rel_addr,bucket,slot)
     {
         switch(bucket)
@@ -153,26 +175,6 @@ function Apple2IO(vid)
         } 
     }
 
-    // HOST_IO callbacks (keyboard, speaker, gfx) 
-
-    const IOMAP_CALLS = 
-    {1: // _CFG_IOMAP index
-        {
-            "KBD":         function(){ return keys.polling(keys.lastkey)   }
-            ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
-            ,"SPKR":        function(){ snd.toggle();       return 0x00 }
-            ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
-            ,"TXTSET":      function(){ vid.setGfx(false);  return 0x00 }
-            ,"MIXCLR":      function(){ vid.setMix(false);  return 0x00 }
-            ,"MIXSET":      function(){ vid.setMix(true);   return 0x00 }
-            ,"TXTPAGE1":    function(){ vid.setPage2(false);return 0x00 }
-            ,"TXTPAGE2":    function(){ vid.setPage2(true); return 0x00 }
-            ,"LORES":       function(){ vid.setHires(false);return 0x00 }
-            ,"HIRES":       function(){ vid.setHires(true); return 0x00 }
-        }
-    }
-
-
     if(typeof(EMU_system_get)!="undefined")
     {
         //var ACTION_MAP = oEMU.component.IO.ACTION_MAP;
@@ -180,6 +182,8 @@ function Apple2IO(vid)
         CIO.ACTION_MAP = oEMU.component.IO.board.IO_map(EMU_system_get(),IOMAP_CALLS);
         //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
+
+    function line_decode(adr) { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
 
     this.read = function(rel_addr)
     {
@@ -226,8 +230,6 @@ function Apple2IO(vid)
 
             break;
         }
-
-
         return 0x00;
     }
 
@@ -246,356 +248,14 @@ function Apple2IO(vid)
         }
 
         // Implement same side-effects as read.
+        // TODO: double check if we want writes to SLOTIO etc.. to have the same effect as reads
         this.read(rel_addr);
     }
 
     this.cycle = function() {}
 
-    this.keypress = function(code)
-    {
-        keys.lastkey = code;
-    }
 
-
-    this.loadDisk = function(bytes,drv)
-    {
-        alert("AppleDisk2() does not have a method called loadDisk")
-    }
-     
-
-    // SLOT MAPPING
-    this.listPeripheralNames = function()
-    {
-        var names = {};
-        for(var o in oEMU.component.IO)
-        {
-            var objID = oEMU.component.IO[o].constructor.name;
-            var PCODE = oEMU.component.IO[o]?.id?.PCODE;
-            if(PCODE===undefined) continue;
-            names[PCODE] = oEMU.component.IO[o].id;
-            names[PCODE]["objID"] = oEMU.component.IO[o].constructor.name; // TODO: deprecate
-            names[PCODE]["coID"]  = oEMU.component.IO[o].constructor.name; // new: coID = container ID
-        }
-        return names;
-    }
-
-    this.DeviceName2obj = function(str)
-    {
-
-    }
-
-
-    this.unmount = function(name,slot_num)
-    {
-        /*
-        SLOT_NAME[slot_num] = null;
-        const idx = slot_num<<3;
-
-        SLOT_MAP[idx]   = 0;
-        SLOT_MAP[idx+1] = 0;
-        SLOT_MAP[idx+2] = 0;
-        SLOT_MAP[idx+3] = 0;
-        SLOT_MAP[idx+4] = 0;
-        SLOT_MAP[idx+5] = 0;
-        SLOT_MAP[idx+6] = 0;
-        SLOT_MAP[idx+7] = 0;
-        */
-
-        if(typeof(oEMUI.slotConfig)=="function")
-            oEMUI.slotConfig({"id":"slot"+slot_num,"icon":"fa fa-cube","active":false});
-
-        if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
-            oEMUI.refreshDeviceToolboxes({"id":"devices"});
-    }
-
-    function extract_slotrange_mask(str)
-    {
-        var mask = new Uint16Array(2);
-        mask[0] = 0; mask[1] = 0;
-
-        var arr = str.split(",");
-        for(var i=0;i<arr.length;i++)
-        {
-            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
-            if(isNaN(n)==false)         mask[0] |= 1<<n
-            if(arr[i].indexOf("*")>=0)  mask[1] |= 1<<n
-        } 
-        return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
-    }
-
-    function extract_slotrange(str)
-    {
-        var  slotPut = [], slotFit = [];
-        var arr = str.split(",");
-        for(var i=0;i<arr.length;i++)
-        {
-            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
-            if(isNaN(n)==false)
-            {
-                slotFit.push( n );
-            }
-            if(arr[i].indexOf("*")>=0)  
-            { 
-                slotPut.push( n );
-            }
-        } 
-        return {"slotPut":slotPut, "slotFit":slotFit}
-    }    
-
-    function extract_slotRef(str,PCODE,ref)
-    {
-        var arr = str.split(",");
-        for(var i=0;i<arr.length;i++)
-        {
-            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
-            if(isNaN(n)==false)
-            {
-                if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
-                ref.slotFit[n].push(PCODE);
-            }
-            if(arr[i].indexOf("*")>=0)  
-            {       
-                if(ref.slotMap[n]===undefined) { ref.slotMap[n] = [] };
-                ref.slotMap[n].push(PCODE);
-            }
-        } 
-        return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
-    }     
-
-
-
-
-    this.deviceID2obj = function(str)
-    {
-        if(typeof str !== "string") return null;
-
-        var raw = str.trim().toUpperCase();
-
-        var table = [
-            {
-                rx: /^D([12])$/,
-                periID: "DISKII",
-                deviceID: "D$1",
-                script: function(arg)
-                {
-                    var deviceN = Number(arg.deviceID.slice(1)) - 1;
-
-                    var slotN = null;
-                    if(typeof _CFG_PSLOT !== "undefined" &&
-                    _CFG_PSLOT[arg.periID] &&
-                    _CFG_PSLOT[arg.periID].SLOTrange)
-                    {
-                        var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
-                        slotN = slotRange.slotPut[0];   // starred/default slot, e.g. 6*
-                    }
-
-                    return {
-                        "deviceN": deviceN,
-                        "slotN": slotN
-                    };
-                }
-            }
-        ];
-
-        function applyTemplate(tpl, match)
-        {
-            return tpl.replace(/\$(\d+)/g, function(_, n)
-            {
-                return match[Number(n)] || "";
-            });
-        }
-
-        function orderedDeviceObj(obj)
-        {
-            return {
-                "slotN": obj.slotN,
-                "slotID": obj.slotID,
-                "periID": obj.periID,
-                "deviceID": obj.deviceID,
-                "deviceN": obj.deviceN
-            };
-        }
-
-        for(var i = 0; i < table.length; i++)
-        {
-            var rule = table[i];
-            var match = raw.match(rule.rx);
-
-            if(match)
-            {
-                var obj = {
-                    "periID": rule.periID,
-                    "deviceID": applyTemplate(rule.deviceID, match)
-                };
-
-                var extra = {};
-                if(typeof rule.script === "function")
-                {
-                    extra = rule.script({
-                        "raw": raw,
-                        "match": match,
-                        "periID": obj.periID,
-                        "deviceID": obj.deviceID
-                    }) || {};
-                }
-
-                for(var k in extra)
-                {
-                    if(extra.hasOwnProperty(k)) obj[k] = extra[k];
-                }
-
-                if(typeof obj.slotN === "number")
-                {
-                    obj.slotID = "PR#" + obj.slotN;
-                }
-
-                return orderedDeviceObj(obj);
-            }
-        }
-
-        return null;
-    };
-
-    this.obj2deviceID = function(obj)
-    {
-        if(obj == null) return null;
-
-        /*
-            Allow strings to be normalized through deviceID2obj().
-            Example:
-            obj2deviceID("d1") -> "D1"
-        */
-        if(typeof obj === "string")
-        {
-            var parsed = this.deviceID2obj(obj);
-            return parsed ? parsed.deviceID : null;
-        }
-
-        /*
-            Canonical Disk II reverse mapping.
-            deviceN 0 -> D1
-            deviceN 1 -> D2
-        */
-        if(obj.periID === "DISKII")
-        {
-            if(typeof obj.deviceN === "number")
-            {
-                return "D" + (obj.deviceN + 1);
-            }
-
-            if(typeof obj.deviceID === "string")
-            {
-                var id = obj.deviceID.trim().toUpperCase();
-                if(/^D[12]$/.test(id)) return id;
-            }
-        }
-
-        /*
-            Generic fallback.
-            Useful when later devices define their own canonical IDs.
-        */
-        if(typeof obj.deviceID === "string")
-        {
-            return obj.deviceID.trim().toUpperCase();
-        }
-
-        return null;
-    };
-
-    this.deviceN2ID = function(n,PCODE)
-    {
-        switch(PCODE)
-        {
-            case "DISKII": return "D"+(Number(n)+1);
-        }
-    }
-    this.deviceID2N = function(str,PCODE) 
-    {
-        switch(PCODE)
-        {
-            case "DISKII": return Number(str.slice(1))-1;
-        }
-    }
-
-    this.config_slotAvail = function(cfg)        // HOW MANY SLOTS CAN WE FILL?
-    {
-        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-        if(cfg===undefined) { var cfg = "[0-7] [0-7]"; console.warn("CONFIG file is not available (missing _CFG_SYSCODE)"); }
-        var str = cfg[model]?.Slotslogphy;
-        var a = parseSlotAvail(str);
-
-        // dataset completions
-        for(var i=0;i<a.logSlots.length;i++)  a.logSlots[i]  = "PR#" + a.logSlots[i];
-        for(var i in a.lockSlots)             a.lockSlots[i] = "PR#" + a.lockSlots[i];
-        
-        a.logSlots.unshift("board"); a.lockSlots["board"] = true;
-        return a;
-    }
-
-    function parseSlotAvail(s)
-    {
-        if(s===undefined) return {};
-        let a=[...s.matchAll(/\[(\d+)-(\d+)\]/g)].map(m=>
-        Array.from({length:m[2]-m[1]+1},(_,i)=>+m[1]+i)
-        );
-        return {
-        logSlots:a[0],
-        phySlots:a[1],
-        lockSlots:Object.fromEntries(a[0].filter(n=>!a[1].includes(n)).map(n=>[n,true])),
-        logSlots_n:a[0].length,
-        phySlots_n:a[1].length
-        };
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-    // SLOT MAPPING
-    //var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
-    //var SLOT_NAME = new Array(8);           // 8 SLOTS, 6 CHARACTERS PER SLOT NAME
-    var SLOT_IDX  = new Array(8);
-    var SLOT_REG  = [];
-
-    var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-
-    var slot_count = 0;
-    if(typeof(_CFG_SYSCODE)!="undefined")
-    {
-        var slotAvail = this.config_slotAvail(_CFG_SYSCODE);
-        // example: slotAvail={"logSlots":["board","PR#0","PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"],"phySlots":[0,1,2,3,4,5,6,7],"lockSlots":{"board":true},"logSlots_n":8,"phySlots_n":8}
-        var slot_count = slotAvail.logSlots_n;
-    }
-
-    var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};  // TODO: remove as this is now in CONFIG     
-    
-    if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
-    {
-        // LOAD ALL PERIPHERALS FROM CONFIGURATION
-        for(var PCODE in _CFG_PSLOT)
-        {
-            var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
-            //var slotrange_mask = extract_slotrange_mask(_CFG_PSLOT[PCODE].SLOTrange);  // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
-            slotR = extract_slotRef(_CFG_PSLOT[PCODE].SLOTrange,PCODE,slotR);
-        }
-        /*
-       slotR =  {
-                     "slotMap":{"B":["BOARD"],"0":["MS16K"],"3":["VIDEX"],"6":["DISKII"]}
-                    ,"slotFit":{"B":["BOARD"],"0":["MS16K"],"1":["DISKII","VIDEX"],"2":["DISKII","VIDEX"],"3":["DISKII","VIDEX"],"4":["DISKII","VIDEX"],"5":["DISKII","VIDEX"],"6":["DISKII","VIDEX"],"7":["DISKII","VIDEX"]}
-                }
-        */
-    }
-
-
-    // TODO: refactor mount => must instantiate the object container, create the peripheral object and manage it, giving every object a unique ID!!!!
-    this.mount = function(cinfo,pinfo,slotIdx)
+this.mount = function(cinfo,pinfo,slotIdx)
     {
         if(oEMU.system===undefined) return;
         oPeri = null;
@@ -685,8 +345,104 @@ function Apple2IO(vid)
     //var peripheral_names = this.listPeripheralNames();
     //console.log("peripheral_names="+JSON.stringify(peripheral_names));
     
+    this.unmount = function(name,slot_num)
+    {
+        if(typeof(oEMUI.slotConfig)=="function")
+            oEMUI.slotConfig({"id":"slot"+slot_num,"icon":"fa fa-cube","active":false});
 
-    this.PCODEobj = function(PCODE)
+        if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
+            oEMUI.refreshDeviceToolboxes({"id":"devices"});
+    }
+
+
+    // TODO: let apple2keys.js itself intercept keypress events   or eventually make a generic event dispatcher in io
+    this.keypress = function(code)
+    {
+        keys.lastkey = code;
+    }
+
+    // TODO: belongs in oEMUI -> stand-in for peripheral operations triggered by UI elements
+    this.loadDisk = function(bytes,drv)
+    {
+        alert("AppleDisk2() does not have a method called loadDisk")
+    }
+     
+
+
+
+
+    // SLOT MAPPING
+    this.listPeripheralNames = function()
+    {
+        var names = {};
+        for(var o in oEMU.component.IO)
+        {
+            var objID = oEMU.component.IO[o].constructor.name;
+            var PCODE = oEMU.component.IO[o]?.id?.PCODE;
+            if(PCODE===undefined) continue;
+            names[PCODE] = oEMU.component.IO[o].id;
+            names[PCODE]["objID"] = oEMU.component.IO[o].constructor.name; // TODO: deprecate
+            names[PCODE]["coID"]  = oEMU.component.IO[o].constructor.name; // new: coID = container ID
+        }
+        return names;
+    }
+
+    function extract_slotrange_mask(str)
+    {
+        var mask = new Uint16Array(2);
+        mask[0] = 0; mask[1] = 0;
+
+        var arr = str.split(",");
+        for(var i=0;i<arr.length;i++)
+        {
+            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
+            if(isNaN(n)==false)         mask[0] |= 1<<n
+            if(arr[i].indexOf("*")>=0)  mask[1] |= 1<<n
+        } 
+        return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
+    }
+
+    function extract_slotrange(str)
+    {
+        var  slotPut = [], slotFit = [];
+        var arr = str.split(",");
+        for(var i=0;i<arr.length;i++)
+        {
+            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
+            if(isNaN(n)==false)
+            {
+                slotFit.push( n );
+            }
+            if(arr[i].indexOf("*")>=0)  
+            { 
+                slotPut.push( n );
+            }
+        } 
+        return {"slotPut":slotPut, "slotFit":slotFit}
+    }    
+
+    function extract_slotRef(str,PCODE,ref)
+    {
+        var arr = str.split(",");
+        for(var i=0;i<arr.length;i++)
+        {
+            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
+            if(isNaN(n)==false)
+            {
+                if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
+                ref.slotFit[n].push(PCODE);
+            }
+            if(arr[i].indexOf("*")>=0)  
+            {       
+                if(ref.slotMap[n]===undefined) { ref.slotMap[n] = [] };
+                ref.slotMap[n].push(PCODE);
+            }
+        } 
+        return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
+    }     
+
+
+    this.PCODE2obj = function(PCODE)
     {
         // TODO search across slotCfg for occurences of PCODE
         for(var slotIdx = 0; slotIdx < slotCfg.length; slotIdx++)
@@ -694,6 +450,238 @@ function Apple2IO(vid)
             //var isPCODE =  slotCfg 
         }
     }
+
+    this.DeviceName2obj = function(str)
+    {
+
+    }
+
+    this.deviceID2obj = function(str)
+    {
+        if(typeof str !== "string") return null;
+
+        var raw = str.trim().toUpperCase();
+
+        var table = [
+            {
+                rx: /^D([12])$/,
+                periID: "DISKII",
+                deviceID: "D$1",
+                script: function(arg)
+                {
+                    var deviceN = Number(arg.deviceID.slice(1)) - 1;
+
+                    var slotN = null;
+                    if(typeof _CFG_PSLOT !== "undefined" &&
+                    _CFG_PSLOT[arg.periID] &&
+                    _CFG_PSLOT[arg.periID].SLOTrange)
+                    {
+                        var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
+                        slotN = slotRange.slotPut[0];   // starred/default slot, e.g. 6*
+                    }
+
+                    return {
+                        "deviceN": deviceN,
+                        "slotN": slotN
+                    };
+                }
+            }
+        ];
+
+        function applyTemplate(tpl, match)
+        {
+            return tpl.replace(/\$(\d+)/g, function(_, n)
+            {
+                return match[Number(n)] || "";
+            });
+        }
+
+        function orderedDeviceObj(obj)
+        {
+            return {
+                "slotN": obj.slotN,
+                "slotID": obj.slotID,
+                "periID": obj.periID,
+                "deviceID": obj.deviceID,
+                "deviceN": obj.deviceN
+            };
+        }
+
+        for(var i = 0; i < table.length; i++)
+        {
+            var rule = table[i];
+            var match = raw.match(rule.rx);
+
+            if(match)
+            {
+                var obj = {
+                    "periID": rule.periID,
+                    "deviceID": applyTemplate(rule.deviceID, match)
+                };
+
+                var extra = {};
+                if(typeof rule.script === "function")
+                {
+                    extra = rule.script({
+                        "raw": raw,
+                        "match": match,
+                        "periID": obj.periID,
+                        "deviceID": obj.deviceID
+                    }) || {};
+                }
+
+                for(var k in extra)
+                    if(extra.hasOwnProperty(k)) obj[k] = extra[k];
+
+                if(typeof obj.slotN === "number") { obj.slotID = "PR#" + obj.slotN; }
+
+                return orderedDeviceObj(obj);
+            }
+        }
+
+        return null;
+    };
+
+    this.obj2deviceID = function(obj)
+    {
+        if(obj == null) return null;
+
+        /*
+            Allow strings to be normalized through deviceID2obj().
+            Example:
+            obj2deviceID("d1") -> "D1"
+        */
+        if(typeof obj === "string")
+        {
+            var parsed = this.deviceID2obj(obj);
+            return parsed ? parsed.deviceID : null;
+        }
+
+        /*
+            Canonical Disk II reverse mapping.
+            deviceN 0 -> D1
+            deviceN 1 -> D2
+        */
+        if(obj.periID === "DISKII")
+        {
+            if(typeof obj.deviceN === "number")
+            {
+                return "D" + (obj.deviceN + 1);
+            }
+
+            if(typeof obj.deviceID === "string")
+            {
+                var id = obj.deviceID.trim().toUpperCase();
+                if(/^D[12]$/.test(id)) return id;
+            }
+        }
+
+        /*
+            Generic fallback.
+            Useful when later devices define their own canonical IDs.
+        */
+        if(typeof obj.deviceID === "string")
+        {
+            return obj.deviceID.trim().toUpperCase();
+        }
+
+        return null;
+    };
+
+    this.deviceN2ID = function(n,PCODE)
+    {
+        switch(PCODE)
+        {
+            case "DISKII": return "D"+(Number(n)+1);
+        }
+    }
+
+    this.deviceID2N = function(str,PCODE) 
+    {
+        switch(PCODE)
+        {
+            case "DISKII": return Number(str.slice(1))-1;
+        }
+    }
+
+    this.config_slotAvail = function(cfg)        // HOW MANY SLOTS CAN WE FILL?
+    {
+        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+        if(cfg===undefined) { var cfg = "[0-7] [0-7]"; console.warn("CONFIG file is not available (missing _CFG_SYSCODE)"); }
+        var str = cfg[model]?.Slotslogphy;
+        var a = parseSlotAvail(str);
+
+        // dataset completions
+        for(var i=0;i<a.logSlots.length;i++)  a.logSlots[i]  = "PR#" + a.logSlots[i];
+        for(var i in a.lockSlots)             a.lockSlots[i] = "PR#" + a.lockSlots[i];
+        
+        a.logSlots.unshift("board"); a.lockSlots["board"] = true;
+        return a;
+    }
+
+    function parseSlotAvail(s)
+    {
+        if(s===undefined) return {};
+        let a=[...s.matchAll(/\[(\d+)-(\d+)\]/g)].map(m=>
+        Array.from({length:m[2]-m[1]+1},(_,i)=>+m[1]+i)
+        );
+        return {
+        logSlots:a[0],
+        phySlots:a[1],
+        lockSlots:Object.fromEntries(a[0].filter(n=>!a[1].includes(n)).map(n=>[n,true])),
+        logSlots_n:a[0].length,
+        phySlots_n:a[1].length
+        };
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    // SLOT MAPPING
+    //var SLOT_MAP  = new Uint16Array(8<<3);   // SLOT ADDRESS MAPPING
+    //var SLOT_NAME = new Array(8);           // 8 SLOTS, 6 CHARACTERS PER SLOT NAME
+    var SLOT_IDX  = new Array(8);
+    var SLOT_REG  = [];
+
+    var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+
+    var slot_count = 0;
+    if(typeof(_CFG_SYSCODE)!="undefined")
+    {
+        var slotAvail = this.config_slotAvail(_CFG_SYSCODE);
+        // example: slotAvail={"logSlots":["board","PR#0","PR#1","PR#2","PR#3","PR#4","PR#5","PR#6","PR#7"],"phySlots":[0,1,2,3,4,5,6,7],"lockSlots":{"board":true},"logSlots_n":8,"phySlots_n":8}
+        var slot_count = slotAvail.logSlots_n;
+    }
+
+    var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};  // TODO: remove as this is now in CONFIG     
+    
+    if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
+    {
+        // LOAD ALL PERIPHERALS FROM CONFIGURATION
+        for(var PCODE in _CFG_PSLOT)
+        {
+            var srange = _CFG_PSLOT[PCODE].SLOTrange.split(",");
+            //var slotrange_mask = extract_slotrange_mask(_CFG_PSLOT[PCODE].SLOTrange);  // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
+            slotR = extract_slotRef(_CFG_PSLOT[PCODE].SLOTrange,PCODE,slotR);
+        }
+        /*
+       slotR =  {
+                     "slotMap":{"B":["BOARD"],"0":["MS16K"],"3":["VIDEX"],"6":["DISKII"]}
+                    ,"slotFit":{"B":["BOARD"],"0":["MS16K"],"1":["DISKII","VIDEX"],"2":["DISKII","VIDEX"],"3":["DISKII","VIDEX"],"4":["DISKII","VIDEX"],"5":["DISKII","VIDEX"],"6":["DISKII","VIDEX"],"7":["DISKII","VIDEX"]}
+                }
+        */
+    }
+
+
+
 
 
 
