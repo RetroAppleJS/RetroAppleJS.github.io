@@ -20357,7 +20357,6 @@ function Apple2IO(vid)
     if(typeof(oEMU.component.IO)!="undefined")
     {
         // TODO: autosearch for self-declared oEMU.component.IO objects ?
-
         //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
         var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
@@ -20370,7 +20369,7 @@ function Apple2IO(vid)
     const IOMAP_CALLS = 
     {1: // _CFG_IOMAP index
         {
-            "KBD":         function(){ return keys.polling(keys.lastkey)   }
+            "KBD":         function(){ return keys.polling(keys.lastkey)}
             ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
             ,"SPKR":        function(){ snd.toggle();       return 0x00 }
             ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
@@ -20521,7 +20520,6 @@ function Apple2IO(vid)
                     //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
                     return CIO.ACTION_MAP.RD[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
                 }
-
             break;
         }
         return 0x00;
@@ -20548,8 +20546,7 @@ function Apple2IO(vid)
 
     this.cycle = function() {}
 
-
-this.mount = function(cinfo,pinfo,slotIdx)
+    this.mount = function(cinfo,pinfo,slotIdx)
     {
         if(oEMU.system===undefined) return;
         oPeri = null;
@@ -20567,7 +20564,6 @@ this.mount = function(cinfo,pinfo,slotIdx)
 
             // ASK THE PERIPHERAL TO PROVIDE AN ACTION_MAP
             //const oPeripheral = oEMU.component.IO[pinfo.objID]; // TODO: (deprecated) WE MUST INSTANTIATE COMPONENTS PER SLOT INSEAD OF DEFINING THEM ONCE, otherwise we will have peripheral conflicts!!!!
-            
 
             const hashKey = slotIdx +  pinfo.PCODE;   // constituted of initial slot and PCODE, but is meaningless since this object can move from one slot to another, while keeping the hashKey 
             let oPeri = new globalThis[pinfo.coID](); // this is our freshly made object instance from the object container
@@ -20607,13 +20603,11 @@ this.mount = function(cinfo,pinfo,slotIdx)
                 tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
                 tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
 
-
                 if(_bHostROM && _act.HostROM.RD) { for(var i=pinfo.HostROM.from;i<=pinfo.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
                 if(_bSlotROM && _act.SlotROM.RD) { for(var i=pinfo.SlotROM.from;i<=pinfo.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
                     //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",_act.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of _act.SlotROM ?
                 if(_bSlotIO && _act.SlotIO.RD) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
                 if(_bSlotIO && _act.SlotIO.WR) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
-
 
                 function tagActionCallback(action,rangeName,op)
                 {
@@ -20648,7 +20642,6 @@ this.mount = function(cinfo,pinfo,slotIdx)
             oEMUI.refreshDeviceToolboxes({"id":"devices"});
     }
 
-
     // TODO: let apple2keys.js itself intercept keypress events   or eventually make a generic event dispatcher in io
     this.keypress = function(code)
     {
@@ -20660,10 +20653,6 @@ this.mount = function(cinfo,pinfo,slotIdx)
     {
         alert("AppleDisk2() does not have a method called loadDisk")
     }
-     
-
-
-
 
     // SLOT MAPPING
     this.listPeripheralNames = function()
