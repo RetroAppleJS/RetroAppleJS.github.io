@@ -13612,6 +13612,14 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 
 function Cpu6502(hwobj)
 {
+    const bDebug_boot = true;        // debug CPU boot
+    const BOOTsiz = 1024;
+
+    var BOOTlog_adr = new Uint16Array(BOOTsiz);  // starting PC of each executed instruction
+    var BOOTlog_opc = new Uint32Array(BOOTsiz);  // opcode | op1<<8 | op2<<16
+    var BOOTcnt = 0;
+
+
     // 6502 reserved addresses.
     var STACK_ADDR =    0x0100
        ,NMI_VECTOR =    0xfffa
@@ -13801,6 +13809,8 @@ function Cpu6502(hwobj)
         p = P_I | P_1;
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
+
+        if (bDebug_boot) BOOTcnt = 0;
     }
 
     this.cycle = function()
@@ -13823,6 +13833,9 @@ function Cpu6502(hwobj)
         }
 
         // Fetch opcode and increment program counter
+        var instr_pc = pc;          // PC of the opcode byte
+        operand = 0;                // important for 1-byte opcodes
+
         opcode = readByte(pc);
         pc = (pc + 1) & 0xffff;
 
@@ -13834,9 +13847,26 @@ function Cpu6502(hwobj)
         // Fetch operand
         switch (instrlen[opcode])
         {
-            case 2: operand = readByte(pc); pc = (pc + 1) & 0xffff; break;
-            case 3: operand = readWord(pc); pc = (pc + 2) & 0xffff; break;
+            case 2:
+                operand = readByte(pc);
+                pc = (pc + 1) & 0xffff;
+                break;
+
+            case 3:
+                operand = readWord(pc);
+                pc = (pc + 2) & 0xffff;
+                break;
         }
+
+        if (bDebug_boot && BOOTcnt < BOOTsiz)
+        {
+            BOOTlog_adr[BOOTcnt] = instr_pc;
+            BOOTlog_opc[BOOTcnt] = (opcode & 0xff) | ((operand & 0xffff) << 8);
+            BOOTcnt++;
+
+            if(BOOTcnt == BOOTsiz) console.log("BOOTlog = "+this.getBootLogBase64());
+        }
+
 
         // Execute!
         switch (opcode) {
@@ -14193,6 +14223,67 @@ function Cpu6502(hwobj)
 
     this.watch = function()     {  return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay} }
     this.getConfig = function() { return { "instrlen":instrlen,"cycle_count":cycle_count,"opctab":opctab } }
+
+    /*
+    this.getBootLog = function()
+    {
+        var rows = [];
+
+        for (var i = 0; i < BOOTcnt; i++)
+        {
+            var packed = BOOTlog_opc[i] >>> 0;
+            var opc = packed & 0xff;
+            var len = instrlen[opc] || 1;
+
+            var bytes = [opc];
+            if (len > 1) bytes[1] = (packed >>> 8) & 0xff;
+            if (len > 2) bytes[2] = (packed >>> 16) & 0xff;
+
+            rows[i] = {
+                "idx": i,
+                "adr": BOOTlog_adr[i],
+                "opc": opc,
+                "len": len,
+                "bytes": bytes
+            };
+        }
+
+        return rows;
+    }
+    */
+
+    this.getBootLogBase64 = function()
+    {
+        var bytes = new Uint8Array(BOOTcnt * 5);
+
+        for (var i = 0, o = 0; i < BOOTcnt; i++, o += 5)
+        {
+            var adr = BOOTlog_adr[i] & 0xffff;
+            var opc = BOOTlog_opc[i] >>> 0;
+
+            bytes[o    ] = adr & 0xff;
+            bytes[o + 1] = adr >> 8;
+            bytes[o + 2] = opc & 0xff;
+            bytes[o + 3] = (opc >> 8) & 0xff;
+            bytes[o + 4] = (opc >> 16) & 0xff;
+        }
+
+        return u8ToBase64(bytes);
+    };
+
+    function u8ToBase64(bytes)
+    {
+        var s = "";
+        for (var i = 0; i < bytes.length; i++)
+            s += String.fromCharCode(bytes[i]);
+        return btoa(s);
+    }
+
+    this.clearBootLog = function()
+    {
+        BOOTcnt = 0;
+    }
+
 }
 </script>
             <script type="text/javascript">
@@ -23176,6 +23267,31 @@ function ASM()
 				return {"val":true}
 			}
 		}
+		,"EQU":
+		{
+			"asm":["ca65"]
+			,"description":"define symbol representing a address label or implicit value"
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+				var arr = sym.slice(ofs + 1, sym.length);
+				var err = null;
+				if(this.validate(arr[0],"[A-Za-z0-9_.-]+")) // IDENTIFIER
+				{
+					r = this.getIdentifier(arr[0]);	// TODO: find more elegant to figure out if identifier exists or not
+					err = r.err;
+					if(err)
+					{
+						var v = this.getExpression(arr[1]);
+						oASM.symtab[arr[0]] = v.val;
+						listing.value += arr[0] + " " + "$"+oCOM.getHexMulti(v.val,v.bytes)
+						return {"val":true}
+					}
+					else return {"val":false,"err":"can't override: identifier already existed"}
+				}
+				return {"val":false}
+			}
+		}
 		,"=":{"ref":"EQU"}   // sym[0] (ignore) & sym[1] = '='
 		,".EQ":{"ref":"EQU","asm":["S-C"]}   // sym[0] (ignore) & sym[1] = '='
 		,".RES":
@@ -23456,7 +23572,6 @@ function ASM()
 		,".IFNDEF":true
 		,".ENDIF":true
 		,".SYMBOLS":true
-		,".EQ":true
 		,".TF":
 		{
 			 "asm":["S-C"]
@@ -23910,7 +24025,7 @@ function ASM()
 		}	
 	}
 
-	this.getID = function(n) // get rid of this function
+	this.getID = function(n) // TODO: get rid of this function
 	{
 		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
 		if(this.validate(n,"[A-Za-z0-9_.]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
@@ -25413,6 +25528,21 @@ function doPass(pass)
 
 		var bEncode = oASM.pragma_sym.DO.STACK===undefined ? true :  (oASM.pragma_sym.DO.STACK[0] == true || oASM.pragma_sym.DO.STACK.length == 0);
 
+		if(mactab==null)
+		{
+			opc = sym[ofs+1];					// macro's that occur in the second operand
+			mactab = oASM.pragma_sym[opc];
+
+			// TODO: check here if macro is allowed as second operand !
+			if(mactab!=null)					// put the macro command in front
+			{
+				var swap   = sym[ofs];
+				sym[ofs]   = sym[ofs+1];
+				sym[ofs+1] = swap;
+			}
+
+		}
+
 		// LABEL
 		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{
@@ -26437,9 +26567,81 @@ Label1 TXA
                     <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                     <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
       
-                    <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));rrr()"><i class="fa fa-road"></i> trace</button>
+                    <button type="button"
+                            onmousedown="return ASM_traceDown(event)"
+                            onmouseup="return ASM_traceUp(event)"
+                            onmouseleave="return ASM_traceCancel(event)"
+                            ontouchstart="return ASM_traceDown(event)"
+                            ontouchend="return ASM_traceUp(event)"
+                            ontouchcancel="return ASM_traceCancel(event)">
+                      <i class="fa fa-road"></i> trace</button>
       
 <script>
+
+var ASM_trace_holdTimer = null;
+var ASM_trace_repeatTimer = null;
+var ASM_trace_isDown = false;
+var ASM_trace_isRepeating = false;
+
+function ASM_traceStep()
+{
+  oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));
+  rrr();
+}
+
+function ASM_traceDown(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Ignore repeated down-events while the button is already held.
+  if(ASM_trace_isDown) return false;
+
+  ASM_trace_isDown = true;
+  ASM_trace_isRepeating = false;
+
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+
+  ASM_trace_holdTimer = setTimeout(function()
+  {
+    if(!ASM_trace_isDown) return;
+
+    ASM_trace_isRepeating = true;
+    ASM_traceStep();                         // first repeated step after 0.5s
+
+    ASM_trace_repeatTimer = setInterval(function()
+    {
+      if(ASM_trace_isDown) ASM_traceStep();  // then every 0.1s
+    },25);
+  },500);
+
+  return false;
+}
+
+function ASM_traceUp(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Short click: still perform exactly one trace step.
+  if(ASM_trace_isDown && !ASM_trace_isRepeating) ASM_traceStep();
+
+  ASM_traceCancel(ev);
+  return false;
+}
+
+function ASM_traceCancel(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  ASM_trace_isDown = false;
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+  ASM_trace_holdTimer = null;
+  ASM_trace_repeatTimer = null;
+  ASM_trace_isRepeating = false;
+
+  return false;
+}
 
 function rrr()
 {
