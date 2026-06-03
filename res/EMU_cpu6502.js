@@ -15,6 +15,14 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 
 function Cpu6502(hwobj)
 {
+    const bDebug_boot = true;        // debug CPU boot
+    const BOOTsiz = 1024;
+
+    var BOOTlog_adr = new Uint16Array(BOOTsiz);  // starting PC of each executed instruction
+    var BOOTlog_opc = new Uint32Array(BOOTsiz);  // opcode | op1<<8 | op2<<16
+    var BOOTcnt = 0;
+
+
     // 6502 reserved addresses.
     var STACK_ADDR =    0x0100
        ,NMI_VECTOR =    0xfffa
@@ -204,6 +212,8 @@ function Cpu6502(hwobj)
         p = P_I | P_1;
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
+
+        if (bDebug_boot) BOOTcnt = 0;
     }
 
     this.cycle = function()
@@ -226,6 +236,9 @@ function Cpu6502(hwobj)
         }
 
         // Fetch opcode and increment program counter
+        var instr_pc = pc;          // PC of the opcode byte
+        operand = 0;                // important for 1-byte opcodes
+
         opcode = readByte(pc);
         pc = (pc + 1) & 0xffff;
 
@@ -237,9 +250,26 @@ function Cpu6502(hwobj)
         // Fetch operand
         switch (instrlen[opcode])
         {
-            case 2: operand = readByte(pc); pc = (pc + 1) & 0xffff; break;
-            case 3: operand = readWord(pc); pc = (pc + 2) & 0xffff; break;
+            case 2:
+                operand = readByte(pc);
+                pc = (pc + 1) & 0xffff;
+                break;
+
+            case 3:
+                operand = readWord(pc);
+                pc = (pc + 2) & 0xffff;
+                break;
         }
+
+        if (bDebug_boot && BOOTcnt < BOOTsiz)
+        {
+            BOOTlog_adr[BOOTcnt] = instr_pc;
+            BOOTlog_opc[BOOTcnt] = (opcode & 0xff) | ((operand & 0xffff) << 8);
+            BOOTcnt++;
+
+            if(BOOTcnt == BOOTsiz) console.log("BOOTlog = "+this.getBootLogBase64());
+        }
+
 
         // Execute!
         switch (opcode) {
@@ -596,4 +626,65 @@ function Cpu6502(hwobj)
 
     this.watch = function()     {  return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay} }
     this.getConfig = function() { return { "instrlen":instrlen,"cycle_count":cycle_count,"opctab":opctab } }
+
+    /*
+    this.getBootLog = function()
+    {
+        var rows = [];
+
+        for (var i = 0; i < BOOTcnt; i++)
+        {
+            var packed = BOOTlog_opc[i] >>> 0;
+            var opc = packed & 0xff;
+            var len = instrlen[opc] || 1;
+
+            var bytes = [opc];
+            if (len > 1) bytes[1] = (packed >>> 8) & 0xff;
+            if (len > 2) bytes[2] = (packed >>> 16) & 0xff;
+
+            rows[i] = {
+                "idx": i,
+                "adr": BOOTlog_adr[i],
+                "opc": opc,
+                "len": len,
+                "bytes": bytes
+            };
+        }
+
+        return rows;
+    }
+    */
+
+    this.getBootLogBase64 = function()
+    {
+        var bytes = new Uint8Array(BOOTcnt * 5);
+
+        for (var i = 0, o = 0; i < BOOTcnt; i++, o += 5)
+        {
+            var adr = BOOTlog_adr[i] & 0xffff;
+            var opc = BOOTlog_opc[i] >>> 0;
+
+            bytes[o    ] = adr & 0xff;
+            bytes[o + 1] = adr >> 8;
+            bytes[o + 2] = opc & 0xff;
+            bytes[o + 3] = (opc >> 8) & 0xff;
+            bytes[o + 4] = (opc >> 16) & 0xff;
+        }
+
+        return u8ToBase64(bytes);
+    };
+
+    function u8ToBase64(bytes)
+    {
+        var s = "";
+        for (var i = 0; i < bytes.length; i++)
+            s += String.fromCharCode(bytes[i]);
+        return btoa(s);
+    }
+
+    this.clearBootLog = function()
+    {
+        BOOTcnt = 0;
+    }
+
 }

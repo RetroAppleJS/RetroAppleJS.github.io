@@ -96,6 +96,31 @@ function ASM()
 				return {"val":true}
 			}
 		}
+		,"EQU":
+		{
+			"asm":["ca65"]
+			,"description":"define symbol representing a address label or implicit value"
+			,"parser":function(arg)
+			{
+				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
+				var arr = sym.slice(ofs + 1, sym.length);
+				var err = null;
+				if(this.validate(arr[0],"[A-Za-z0-9_.-]+")) // IDENTIFIER
+				{
+					r = this.getIdentifier(arr[0]);	// TODO: find more elegant to figure out if identifier exists or not
+					err = r.err;
+					if(err)
+					{
+						var v = this.getExpression(arr[1]);
+						oASM.symtab[arr[0]] = v.val;
+						listing.value += arr[0] + " " + "$"+oCOM.getHexMulti(v.val,v.bytes)
+						return {"val":true}
+					}
+					else return {"val":false,"err":"can't override: identifier already existed"}
+				}
+				return {"val":false}
+			}
+		}
 		,"=":{"ref":"EQU"}   // sym[0] (ignore) & sym[1] = '='
 		,".EQ":{"ref":"EQU","asm":["S-C"]}   // sym[0] (ignore) & sym[1] = '='
 		,".RES":
@@ -376,7 +401,6 @@ function ASM()
 		,".IFNDEF":true
 		,".ENDIF":true
 		,".SYMBOLS":true
-		,".EQ":true
 		,".TF":
 		{
 			 "asm":["S-C"]
@@ -830,7 +854,7 @@ function ASM()
 		}	
 	}
 
-	this.getID = function(n) // get rid of this function
+	this.getID = function(n) // TODO: get rid of this function
 	{
 		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
 		if(this.validate(n,"[A-Za-z0-9_.]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}

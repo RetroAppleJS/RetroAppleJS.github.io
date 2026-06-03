@@ -340,6 +340,21 @@ function doPass(pass)
 
 		var bEncode = oASM.pragma_sym.DO.STACK===undefined ? true :  (oASM.pragma_sym.DO.STACK[0] == true || oASM.pragma_sym.DO.STACK.length == 0);
 
+		if(mactab==null)
+		{
+			opc = sym[ofs+1];					// macro's that occur in the second operand
+			mactab = oASM.pragma_sym[opc];
+
+			// TODO: check here if macro is allowed as second operand !
+			if(mactab!=null)					// put the macro command in front
+			{
+				var swap   = sym[ofs];
+				sym[ofs]   = sym[ofs+1];
+				sym[ofs+1] = swap;
+			}
+
+		}
+
 		// LABEL
 		if (((c1 < 'A') || (c1 > 'Z')) && (c1 != '.') && (c1 != '*'))					
 		{

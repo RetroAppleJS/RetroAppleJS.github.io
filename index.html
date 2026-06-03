@@ -645,9 +645,81 @@ Label1 TXA
                     <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                     <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
       
-                    <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));rrr()"><i class="fa fa-road"></i> trace</button>
+                    <button type="button"
+                            onmousedown="return ASM_traceDown(event)"
+                            onmouseup="return ASM_traceUp(event)"
+                            onmouseleave="return ASM_traceCancel(event)"
+                            ontouchstart="return ASM_traceDown(event)"
+                            ontouchend="return ASM_traceUp(event)"
+                            ontouchcancel="return ASM_traceCancel(event)">
+                      <i class="fa fa-road"></i> trace</button>
       
 <script>
+
+var ASM_trace_holdTimer = null;
+var ASM_trace_repeatTimer = null;
+var ASM_trace_isDown = false;
+var ASM_trace_isRepeating = false;
+
+function ASM_traceStep()
+{
+  oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));
+  rrr();
+}
+
+function ASM_traceDown(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Ignore repeated down-events while the button is already held.
+  if(ASM_trace_isDown) return false;
+
+  ASM_trace_isDown = true;
+  ASM_trace_isRepeating = false;
+
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+
+  ASM_trace_holdTimer = setTimeout(function()
+  {
+    if(!ASM_trace_isDown) return;
+
+    ASM_trace_isRepeating = true;
+    ASM_traceStep();                         // first repeated step after 0.5s
+
+    ASM_trace_repeatTimer = setInterval(function()
+    {
+      if(ASM_trace_isDown) ASM_traceStep();  // then every 0.1s
+    },25);
+  },500);
+
+  return false;
+}
+
+function ASM_traceUp(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Short click: still perform exactly one trace step.
+  if(ASM_trace_isDown && !ASM_trace_isRepeating) ASM_traceStep();
+
+  ASM_traceCancel(ev);
+  return false;
+}
+
+function ASM_traceCancel(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  ASM_trace_isDown = false;
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+  ASM_trace_holdTimer = null;
+  ASM_trace_repeatTimer = null;
+  ASM_trace_isRepeating = false;
+
+  return false;
+}
 
 function rrr()
 {

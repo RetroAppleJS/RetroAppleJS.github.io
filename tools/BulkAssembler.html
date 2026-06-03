@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Local Source File Scanner</title>
+<style>
+    :root {
+        --bg: #101418;
+        --panel: #171d23;
+        --panel2: #202832;
+        --text: #e8edf2;
+        --muted: #9aa7b3;
+        --accent: #79b8ff;
+        --border: #303a46;
+        --ok: #8bd17c;
+        --warn: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        padding: 24px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+    }
+
+    h1 {
+        margin: 0 0 8px 0;
+        font-size: 24px;
+        font-weight: 650;
+    }
+
+    p {
+        color: var(--muted);
+        margin: 0 0 16px 0;
+        line-height: 1.45;
+    }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .controls {
+        display: grid;
+        grid-template-columns: auto minmax(180px, 260px) auto auto 1fr;
+        gap: 10px;
+        align-items: center;
+    }
+
+    label {
+        color: var(--muted);
+        font-size: 14px;
+    }
+
+    input[type="text"] {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel2);
+        color: var(--text);
+        font: inherit;
+    }
+
+    input[type="checkbox"] { transform: translateY(1px); }
+
+    button {
+        padding: 9px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel2);
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+        border-color: var(--accent);
+    }
+
+    button.primary {
+        background: #1d4f7a;
+        border-color: #2c6ca3;
+    }
+
+    button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .status {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 14px;
+        min-height: 22px;
+    }
+
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+
+    .list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .list-header strong {
+        font-size: 15px;
+    }
+
+    textarea {
+        width: 100%;
+        height: 52vh;
+        min-height: 280px;
+        resize: vertical;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: #0b0f13;
+        color: var(--text);
+        font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        white-space: pre;
+    }
+
+    code {
+        color: var(--accent);
+    }
+
+    @media (max-width: 780px) {
+        .controls {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+    }
+</style>
+</head>
+<body>
+<h1>Local Source File Scanner</h1>
+<p>
+    Pick a local directory, filter files with a glob such as <code>*.s</code>, then list all matching relative path/filenames.
+    The <strong>ASSEMBLE</strong> button currently only reads each matching file into one string, overwriting it every time.
+</p>
+
+<div class="panel">
+    <div class="controls">
+        <button id="pickFolderButton">Pick directory</button>
+
+        <label for="filterInput">Filter</label>
+        <input id="filterInput" type="text" value="*.s" spellcheck="false" />
+
+        <label title="When checked, *.s also matches .S">
+            <input id="caseInsensitiveInput" type="checkbox" checked /> case-insensitive
+        </label>
+
+        <button id="assembleButton" class="primary" disabled>ASSEMBLE</button>
+    </div>
+
+    <input id="folderInput" type="file" webkitdirectory directory multiple hidden />
+    <div id="status" class="status">No directory selected.</div>
+</div>
+
+<div class="panel">
+    <div class="list-header">
+        <strong>Matching files</strong>
+        <span id="countLabel" class="status">0 files</span>
+    </div>
+    <textarea id="fileList" readonly placeholder="Matching relative path/filenames will appear here..."></textarea>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    var folderInput = document.getElementById("folderInput");
+    var pickFolderButton = document.getElementById("pickFolderButton");
+    var assembleButton = document.getElementById("assembleButton");
+    var filterInput = document.getElementById("filterInput");
+    var caseInsensitiveInput = document.getElementById("caseInsensitiveInput");
+    var statusBox = document.getElementById("status");
+    var fileListBox = document.getElementById("fileList");
+    var countLabel = document.getElementById("countLabel");
+
+    var allFiles = [];
+    var matchedFiles = [];
+
+    // Expose some state for debugging from the browser console.
+    window.localSourceScanner = {
+        allFiles: allFiles,
+        matchedFiles: matchedFiles,
+        lastSource: "",
+        lastPath: ""
+    };
+
+    function setStatus(message, className) {
+        statusBox.className = "status" + (className ? " " + className : "");
+        statusBox.textContent = message;
+    }
+
+    function escapeRegex(text) {
+        return text.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function globToRegex(glob, flags) {
+        // Supports ordinary glob syntax: * and ?.
+        // Example: *.s -> /^.*\.s$/i
+        var regexText = "^";
+        for (var i = 0; i < glob.length; i++) {
+            var ch = glob[i];
+            if (ch === "*") regexText += ".*";
+            else if (ch === "?") regexText += ".";
+            else regexText += escapeRegex(ch);
+        }
+        regexText += "$";
+        return new RegExp(regexText, flags);
+    }
+
+    function getFilterRegexes() {
+        var raw = filterInput.value.trim();
+        var flags = caseInsensitiveInput.checked ? "i" : "";
+
+        if (!raw) raw = "*";
+
+        // Allow one or more filters: *.s, *.asm; *.inc
+        return raw
+            .split(/[;,]/)
+            .map(function (item) { return item.trim(); })
+            .filter(Boolean)
+            .map(function (glob) { return globToRegex(glob, flags); });
+    }
+
+    function filePathOf(file) {
+        // Browsers do not expose absolute local paths for security reasons.
+        // webkitRelativePath gives the selected-folder-relative path.
+        return file.webkitRelativePath || file.name;
+    }
+
+    function applyFilterAndRender() {
+        var regexes = getFilterRegexes();
+
+        matchedFiles = allFiles.filter(function (file) {
+            var path = filePathOf(file);
+            var name = file.name;
+
+            return regexes.some(function (re) {
+                // Match both the full relative path and the plain filename.
+                return re.test(path) || re.test(name);
+            });
+        });
+
+        matchedFiles.sort(function (a, b) {
+            return filePathOf(a).localeCompare(filePathOf(b));
+        });
+
+        window.localSourceScanner.matchedFiles = matchedFiles;
+
+        var lines = matchedFiles.map(filePathOf);
+        fileListBox.value = lines.join("\n");
+        countLabel.textContent = matchedFiles.length + (matchedFiles.length === 1 ? " file" : " files");
+        assembleButton.disabled = matchedFiles.length === 0;
+
+        if (allFiles.length === 0) {
+            setStatus("No directory selected.");
+        } else if (matchedFiles.length === 0) {
+            setStatus("Scan complete: no files matched filter \"" + filterInput.value + "\".", "warn");
+        } else {
+            setStatus(
+                "Scan complete: " + matchedFiles.length + " of " + allFiles.length + " files matched filter \"" + filterInput.value + "\".",
+                "ok"
+            );
+        }
+    }
+
+    pickFolderButton.addEventListener("click", function () {
+        folderInput.click();
+    });
+
+    folderInput.addEventListener("change", function () {
+        allFiles = Array.prototype.slice.call(folderInput.files || []);
+        window.localSourceScanner.allFiles = allFiles;
+        applyFilterAndRender();
+    });
+
+    filterInput.addEventListener("input", applyFilterAndRender);
+    caseInsensitiveInput.addEventListener("change", applyFilterAndRender);
+
+    assembleButton.addEventListener("click", async function () {
+        assembleButton.disabled = true;
+        pickFolderButton.disabled = true;
+
+        var source = "";   // This string is intentionally overwritten for each file.
+        var path = "";
+        var loaded = 0;
+
+        try {
+            for (var i = 0; i < matchedFiles.length; i++) {
+                var file = matchedFiles[i];
+                path = filePathOf(file);
+
+                // At this point this is the only "ASSEMBLE" action:
+                // load file content into source, overwriting the previous file content.
+                source = await file.text();
+                loaded++;
+
+                window.localSourceScanner.lastSource = source;
+                window.localSourceScanner.lastPath = path;
+
+                console.log("ASSEMBLE placeholder: loaded", loaded + "/" + matchedFiles.length, path, source.length + " chars");
+            }
+
+            setStatus(
+                "ASSEMBLE placeholder complete: loaded " + loaded + " files. Last loaded file: " + (path || "none") + ".",
+                "ok"
+            );
+        } catch (err) {
+            console.error(err);
+            setStatus("Error while reading files: " + err.message, "warn");
+        } finally {
+            pickFolderButton.disabled = false;
+            assembleButton.disabled = matchedFiles.length === 0;
+        }
+    });
+})();
+</script>
+</body>
+</html>
