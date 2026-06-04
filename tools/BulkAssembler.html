@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Local Source File Scanner</title>
+<title>BulkAssembler5 / Pass 1 Markdown Object Generator</title>
 <style>
     :root {
         --bg: #101418;
@@ -15,6 +15,7 @@
         --border: #303a46;
         --ok: #8bd17c;
         --warn: #ffd166;
+        --bad: #ff8a8a;
     }
 
     * { box-sizing: border-box; }
@@ -81,9 +82,7 @@
         cursor: pointer;
     }
 
-    button:hover:not(:disabled) {
-        border-color: var(--accent);
-    }
+    button:hover:not(:disabled) { border-color: var(--accent); }
 
     button.primary {
         background: #1d4f7a;
@@ -104,6 +103,7 @@
 
     .ok { color: var(--ok); }
     .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
 
     .list-header {
         display: flex;
@@ -113,9 +113,7 @@
         margin-bottom: 10px;
     }
 
-    .list-header strong {
-        font-size: 15px;
-    }
+    .list-header strong { font-size: 15px; }
 
     textarea {
         width: 100%;
@@ -131,9 +129,7 @@
         white-space: pre;
     }
 
-    code {
-        color: var(--accent);
-    }
+    code { color: var(--accent); }
 
     @media (max-width: 780px) {
         .controls {
@@ -142,12 +138,75 @@
         }
     }
 </style>
+
+<!-- Minimal oCOM fallback so ASM_core.js / ASM_6502.js can load in this standalone page. -->
+<script>
+window.oCOM = window.oCOM || {
+    hextab: ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"],
+    getHexByte: function (v) {
+        v = Number(v) & 0xFF;
+        return ("0" + v.toString(16).toUpperCase()).slice(-2);
+    },
+    getHexWord: function (v) {
+        v = Number(v) & 0xFFFF;
+        return ("000" + v.toString(16).toUpperCase()).slice(-4);
+    },
+    getHexMulti: function (v, bytes) {
+        var width = Math.max(2, (bytes || 1) * 2);
+        return ("0".repeat(width) + (Number(v) >>> 0).toString(16).toUpperCase()).slice(-width);
+    },
+    getNumByteArr: function (v) {
+        var arr = [];
+        v = Number(v) >>> 0;
+        do {
+            arr.push(v & 0xFF);
+            v >>>= 8;
+        } while (v > 0);
+        return arr;
+    },
+    rtrim: function (s) { return String(s).replace(/\s+$/, ""); },
+    escapeREGEXP: function (s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); },
+    writeDisplay: function () {},
+    base_convert: function () { return ""; },
+    CSVParser: {
+        parse: function (text) {
+            var out = [], cur = "", quote = "", escaped = false;
+            text = String(text || "");
+            for (var i = 0; i < text.length; i++) {
+                var ch = text.charAt(i);
+                if (escaped) { cur += ch; escaped = false; continue; }
+                if (ch === "\\") { cur += ch; escaped = true; continue; }
+                if (quote) {
+                    cur += ch;
+                    if (ch === quote) quote = "";
+                    continue;
+                }
+                if (ch === "'" || ch === '"') { quote = ch; cur += ch; continue; }
+                if (ch === ",") { out.push(cur.trim()); cur = ""; continue; }
+                cur += ch;
+            }
+            out.push(cur.trim());
+            return out;
+        }
+    },
+    MathParser: function () {
+        this.parse = function (expr) {
+            if (!/^[0-9+\-*/%&|^~() \t]+$/.test(String(expr))) return NaN;
+            /* This fallback is only for simple local numeric expressions. */
+            return Function("return (" + expr + ")")();
+        };
+    }
+};
+</script>
+
+<script type="text/javascript" src="res/ASM_core.js"></script>
+<script type="text/javascript" src="res/ASM_6502.js"></script>
 </head>
 <body>
-<h1>Local Source File Scanner</h1>
+<h1>BulkAssembler5 / Pass 1 Markdown Object Generator</h1>
 <p>
     Pick a local directory, filter files with a glob such as <code>*.s</code>, then list all matching relative path/filenames.
-    The <strong>ASSEMBLE</strong> button currently only reads each matching file into one string, overwriting it every time.
+    <strong>ASSEMBLE</strong> performs a pass-1 scan and writes a same-name <code>.md</code> table next to each source file.
 </p>
 
 <div class="panel">
@@ -189,15 +248,37 @@
     var fileListBox = document.getElementById("fileList");
     var countLabel = document.getElementById("countLabel");
 
-    var allFiles = [];
-    var matchedFiles = [];
+    var allEntries = [];
+    var matchedEntries = [];
+    var rootDirectoryHandle = null;
+    var hasWriteAccess = false;
 
-    // Expose some state for debugging from the browser console.
+    var addrModeName = ["imp", "acc", "imm", "abs", "abx", "aby", "zpg", "zpx", "zpy", "ind", "inx", "iny", "rel"];
+    var pass1StepTab = [1, 1, 2, 3, 3, 3, 2, 2, 2, 3, 2, 2, 2];
+
+    var fallbackInstrtab = {
+        ADC:[-1,-1,0x69,0x6d,0x7d,0x79,0x65,0x75,-1,-1,0x61,0x71,-1], AND:[-1,-1,0x29,0x2d,0x3d,0x39,0x25,0x35,-1,-1,0x21,0x31,-1], ASL:[-1,0x0a,-1,0x0e,0x1e,-1,0x06,0x16,-1,-1,-1,-1,-1],
+        BCC:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x90], BCS:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0xb0], BEQ:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0xf0], BIT:[-1,-1,-1,0x2c,-1,-1,0x24,-1,-1,-1,-1,-1,-1],
+        BMI:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x30], BNE:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0xd0], BPL:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x10], BRK:[0x00,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], BVC:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x50], BVS:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x70],
+        CLC:[0x18,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], CLD:[0xd8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], CLI:[0x58,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], CLV:[0xb8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+        CMP:[-1,-1,0xc9,0xcd,0xdd,0xd9,0xc5,0xd5,-1,-1,0xc1,0xd1,-1], CPX:[-1,-1,0xe0,0xec,-1,-1,0xe4,-1,-1,-1,-1,-1,-1], CPY:[-1,-1,0xc0,0xcc,-1,-1,0xc4,-1,-1,-1,-1,-1,-1], DEC:[-1,-1,-1,0xce,0xde,-1,0xc6,0xd6,-1,-1,-1,-1,-1], DEX:[0xca,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], DEY:[0x88,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+        EOR:[-1,-1,0x49,0x4d,0x5d,0x59,0x45,0x55,-1,-1,0x41,0x51,-1], INC:[-1,-1,-1,0xee,0xfe,-1,0xe6,0xf6,-1,-1,-1,-1,-1], INX:[0xe8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], INY:[0xc8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], JMP:[-1,-1,-1,0x4c,-1,-1,-1,-1,-1,0x6c,-1,-1,-1], JSR:[-1,-1,-1,0x20,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+        LDA:[-1,-1,0xa9,0xad,0xbd,0xb9,0xa5,0xb5,-1,-1,0xa1,0xb1,-1], LDX:[-1,-1,0xa2,0xae,-1,0xbe,0xa6,-1,0xb6,-1,-1,-1,-1], LDY:[-1,-1,0xa0,0xac,0xbc,-1,0xa4,0xb4,-1,-1,-1,-1,-1], LSR:[-1,0x4a,-1,0x4e,0x5e,-1,0x46,0x56,-1,-1,-1,-1,-1], NOP:[0xea,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+        ORA:[-1,-1,0x09,0x0d,0x1d,0x19,0x05,0x15,-1,-1,0x01,0x11,-1], PHA:[0x48,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], PHP:[0x08,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], PLA:[0x68,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], PLP:[0x28,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+        ROL:[-1,0x2a,-1,0x2e,0x3e,-1,0x26,0x36,-1,-1,-1,-1,-1], ROR:[-1,0x6a,-1,0x6e,0x7e,-1,0x66,0x76,-1,-1,-1,-1,-1], RTI:[0x40,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], RTS:[0x60,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], SBC:[-1,-1,0xe9,0xed,0xfd,0xf9,0xe5,0xf5,-1,-1,0xe1,0xf1,-1],
+        SEC:[0x38,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], SED:[0xf8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], SEI:[0x78,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], STA:[-1,-1,-1,0x8d,0x9d,0x99,0x85,0x95,-1,-1,0x81,0x91,-1], STX:[-1,-1,-1,0x8e,-1,-1,0x86,-1,0x96,-1,-1,-1,-1], STY:[-1,-1,-1,0x8c,-1,-1,0x84,0x94,-1,-1,-1,-1,-1],
+        TAX:[0xaa,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], TAY:[0xa8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], TSX:[0xba,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], TXA:[0x8a,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], TXS:[0x9a,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], TYA:[0x98,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]
+    };
+
     window.localSourceScanner = {
-        allFiles: allFiles,
-        matchedFiles: matchedFiles,
+        allEntries: allEntries,
+        matchedEntries: matchedEntries,
         lastSource: "",
-        lastPath: ""
+        lastPath: "",
+        lastRows: [],
+        lastMarkdown: "",
+        symtab: {},
+        code_pc: []
     };
 
     function setStatus(message, className) {
@@ -206,12 +287,10 @@
     }
 
     function escapeRegex(text) {
-        return text.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+        return String(text).replace(/[.+^${}()|[\]\\]/g, "\\$&");
     }
 
     function globToRegex(glob, flags) {
-        // Supports ordinary glob syntax: * and ?.
-        // Example: *.s -> /^.*\.s$/i
         var regexText = "^";
         for (var i = 0; i < glob.length; i++) {
             var ch = glob[i];
@@ -226,106 +305,541 @@
     function getFilterRegexes() {
         var raw = filterInput.value.trim();
         var flags = caseInsensitiveInput.checked ? "i" : "";
-
         if (!raw) raw = "*";
-
-        // Allow one or more filters: *.s, *.asm; *.inc
-        return raw
-            .split(/[;,]/)
+        return raw.split(/[;,]/)
             .map(function (item) { return item.trim(); })
             .filter(Boolean)
             .map(function (glob) { return globToRegex(glob, flags); });
     }
 
-    function filePathOf(file) {
-        // Browsers do not expose absolute local paths for security reasons.
-        // webkitRelativePath gives the selected-folder-relative path.
-        return file.webkitRelativePath || file.name;
-    }
-
     function applyFilterAndRender() {
         var regexes = getFilterRegexes();
-
-        matchedFiles = allFiles.filter(function (file) {
-            var path = filePathOf(file);
-            var name = file.name;
-
+        matchedEntries = allEntries.filter(function (entry) {
             return regexes.some(function (re) {
-                // Match both the full relative path and the plain filename.
-                return re.test(path) || re.test(name);
+                return re.test(entry.path) || re.test(entry.name);
             });
         });
+        matchedEntries.sort(function (a, b) { return a.path.localeCompare(b.path); });
+        window.localSourceScanner.matchedEntries = matchedEntries;
+        fileListBox.value = matchedEntries.map(function (entry) { return entry.path; }).join("\n");
+        countLabel.textContent = matchedEntries.length + (matchedEntries.length === 1 ? " file" : " files");
+        assembleButton.disabled = matchedEntries.length === 0;
 
-        matchedFiles.sort(function (a, b) {
-            return filePathOf(a).localeCompare(filePathOf(b));
-        });
+        if (allEntries.length === 0) setStatus("No directory selected.");
+        else if (matchedEntries.length === 0) setStatus("Scan complete: no files matched filter \"" + filterInput.value + "\".", "warn");
+        else setStatus("Scan complete: " + matchedEntries.length + " of " + allEntries.length + " files matched filter \"" + filterInput.value + "\"." + (hasWriteAccess ? " Writable directory mode." : " Read-only fallback mode."), "ok");
+    }
 
-        window.localSourceScanner.matchedFiles = matchedFiles;
+    async function verifyPermission(directoryHandle) {
+        if (!directoryHandle || !directoryHandle.queryPermission || !directoryHandle.requestPermission) return false;
+        var options = { mode: "readwrite" };
+        if (await directoryHandle.queryPermission(options) === "granted") return true;
+        return await directoryHandle.requestPermission(options) === "granted";
+    }
 
-        var lines = matchedFiles.map(filePathOf);
-        fileListBox.value = lines.join("\n");
-        countLabel.textContent = matchedFiles.length + (matchedFiles.length === 1 ? " file" : " files");
-        assembleButton.disabled = matchedFiles.length === 0;
-
-        if (allFiles.length === 0) {
-            setStatus("No directory selected.");
-        } else if (matchedFiles.length === 0) {
-            setStatus("Scan complete: no files matched filter \"" + filterInput.value + "\".", "warn");
-        } else {
-            setStatus(
-                "Scan complete: " + matchedFiles.length + " of " + allFiles.length + " files matched filter \"" + filterInput.value + "\".",
-                "ok"
-            );
+    async function walkDirectory(directoryHandle, prefix, out) {
+        for await (var pair of directoryHandle.entries()) {
+            var name = pair[0];
+            var handle = pair[1];
+            var path = prefix ? prefix + "/" + name : name;
+            if (handle.kind === "file") {
+                out.push({
+                    kind: "handle",
+                    path: path,
+                    name: name,
+                    fileHandle: handle,
+                    parentDirectoryHandle: directoryHandle
+                });
+            } else if (handle.kind === "directory") {
+                await walkDirectory(handle, path, out);
+            }
         }
     }
 
-    pickFolderButton.addEventListener("click", function () {
+    pickFolderButton.addEventListener("click", async function () {
+        if (window.showDirectoryPicker) {
+            try {
+                rootDirectoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+                hasWriteAccess = await verifyPermission(rootDirectoryHandle);
+                allEntries = [];
+                await walkDirectory(rootDirectoryHandle, "", allEntries);
+                window.localSourceScanner.allEntries = allEntries;
+                applyFilterAndRender();
+                return;
+            } catch (err) {
+                if (err && err.name === "AbortError") return;
+                console.warn("showDirectoryPicker failed; falling back to webkitdirectory input.", err);
+                setStatus("Writable picker failed; using read-only fallback.", "warn");
+            }
+        }
+        rootDirectoryHandle = null;
+        hasWriteAccess = false;
         folderInput.click();
     });
 
     folderInput.addEventListener("change", function () {
-        allFiles = Array.prototype.slice.call(folderInput.files || []);
-        window.localSourceScanner.allFiles = allFiles;
+        var files = Array.prototype.slice.call(folderInput.files || []);
+        allEntries = files.map(function (file) {
+            return {
+                kind: "file",
+                path: file.webkitRelativePath || file.name,
+                name: file.name,
+                file: file,
+                fileHandle: null,
+                parentDirectoryHandle: null
+            };
+        });
+        rootDirectoryHandle = null;
+        hasWriteAccess = false;
+        window.localSourceScanner.allEntries = allEntries;
         applyFilterAndRender();
     });
 
     filterInput.addEventListener("input", applyFilterAndRender);
     caseInsensitiveInput.addEventListener("change", applyFilterAndRender);
 
+    function getInstrtab() {
+        return window.instrtab || (window.oASM && window.oASM.mnemonics) || fallbackInstrtab;
+    }
+
+    function getPragmaSym(asm) {
+        return (asm && asm.pragma_sym) || (window.oASM && window.oASM.pragma_sym) || {};
+    }
+
+    function makeAsmContext() {
+        var asm = window.oASM || null;
+
+        if (!asm && typeof window.ASM === "function") {
+            try { asm = new window.ASM(); }
+            catch (err) { console.warn("ASM() construction failed; using local fallback context.", err); }
+        }
+
+        if (!asm) asm = {};
+
+        if (typeof asm.init === "function") {
+            try { asm.init({ maxNumBytes: 2 }); }
+            catch (err) { console.warn("ASM.init() failed; resetting pass-1 fields manually.", err); }
+        }
+
+        asm.mnemonics = getInstrtab();
+        asm.pragma_sym = asm.pragma_sym || getPragmaSym(window.oASM);
+        asm.pass = 0;
+        asm.step = 0;
+        if (typeof asm.set_pc === "function") asm.set_pc(0);
+        else asm.pc = 0;
+        asm.sym = [];
+        asm.symtab = {};
+        asm.symlink = {};
+        asm.code_pc = [];
+        asm.codedst_len = 0;
+
+        if (typeof asm.statement_tagger !== "function") asm.statement_tagger = fallbackStatementTagger;
+        if (typeof asm.getID !== "function") {
+            asm.getID = function (name) { return { val: String(name || "").split(/[+\-]/)[0].substring(0, 6) }; };
+        }
+        if (typeof asm.get_code_len !== "function") {
+            asm.get_code_len = function () { return this.codedst_len || 0; };
+        }
+
+        return asm;
+    }
+
+    function fallbackStatementTagger(sym) {
+        var arr = [];
+        var mnemonics = this.mnemonics || getInstrtab();
+        var pragmaSym = this.pragma_sym || {};
+        if (mnemonics[sym[0]] != null) {
+            arr[0] = "MNE";
+            if (sym[1] != null) arr[1] = "OPR";
+        } else if (mnemonics[sym[1]] != null) {
+            arr[0] = "LBL";
+            arr[1] = "MNE";
+            if (sym[2] != null) arr[2] = "OPR";
+        } else if (pragmaSym[sym[0]] != null) {
+            arr[0] = "PGM";
+            if (sym[1] != null) arr[1] = "OPR";
+        } else if (pragmaSym[" " + sym[1]] != null) {
+            arr[0] = "LBL";
+            arr[1] = "PGM";
+            arr[2] = "OPR";
+        } else if (pragmaSym[sym[1]] != null) {
+            arr[0] = "LBL";
+            arr[1] = "PGM";
+            if (sym[2] != null) arr[2] = "OPR";
+        } else {
+            arr[0] = "---";
+        }
+        return arr;
+    }
+
+    function stripRightComment(line) {
+        var out = "";
+        var quote = "";
+        var escaped = false;
+        for (var i = 0; i < line.length; i++) {
+            var ch = line.charAt(i);
+            if (escaped) { out += ch; escaped = false; continue; }
+            if (ch === "\\") { out += ch; escaped = true; continue; }
+            if (quote) {
+                out += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === '"') { quote = ch; out += ch; continue; }
+            if (ch === ";") break;
+            out += ch;
+        }
+        return out;
+    }
+
+    function tokenizeLine(line) {
+        var text = stripRightComment(line).replace(/[“”]/g, '"');
+        var sym = [];
+        var token = "";
+        var quote = "";
+        var escaped = false;
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (escaped) { token += ch; escaped = false; continue; }
+            if (ch === "\\") { token += ch; escaped = true; continue; }
+            if (quote) {
+                token += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === '"') { quote = ch; token += ch; continue; }
+            if (ch === " " || ch === "\t") {
+                if (token.length) { sym.push(token); token = ""; }
+                continue;
+            }
+            token += ch;
+        }
+        if (token.length) sym.push(token);
+        return sym;
+    }
+
+    function parseNumberMaybe(text, asm) {
+        text = String(text || "").trim();
+        if (!text) return NaN;
+        if (asm && typeof asm.getExpression === "function") {
+            try {
+                var e = asm.getExpression(text);
+                if (e && typeof e.val === "number" && !isNaN(e.val)) return e.val;
+            } catch (err) {}
+        }
+        if (/^\$[0-9a-f]+$/i.test(text)) return parseInt(text.slice(1), 16);
+        if (/^%[01]+$/.test(text)) return parseInt(text.slice(1), 2);
+        if (/^[0-9]+$/.test(text)) return parseInt(text, 10);
+        return NaN;
+    }
+
+    function csvSplit(text) {
+        return window.oCOM && window.oCOM.CSVParser && window.oCOM.CSVParser.parse
+            ? window.oCOM.CSVParser.parse(text)
+            : String(text || "").split(",").map(function (s) { return s.trim(); });
+    }
+
+    function stringByteLength(token) {
+        token = String(token || "").trim();
+        if ((token.charAt(0) === '"' || token.charAt(0) === "'") && token.charAt(token.length - 1) === token.charAt(0)) {
+            return Math.max(0, token.length - 2);
+        }
+        return 1;
+    }
+
+    function getAsmCodeLen(asm) {
+        if (asm && typeof asm.get_code_len === "function") {
+            try { return asm.get_code_len() | 0; } catch (err) {}
+        }
+        return (asm && typeof asm.codedst_len === "number") ? (asm.codedst_len | 0) : 0;
+    }
+
+    function registerProgramCounterChange(asm, value) {
+        if (!asm) return;
+        value = Number(value) & 0xFFFF;
+        if (!asm.code_pc) asm.code_pc = [];
+        asm.code_pc[getAsmCodeLen(asm)] = value;
+        if (typeof asm.set_pc === "function") asm.set_pc(value);
+        else asm.pc = value;
+    }
+
+    function syncProgramCounterFromCodePc(asm) {
+        if (!asm || !asm.code_pc) return false;
+        var idx = getAsmCodeLen(asm);
+        var value = asm.code_pc[idx];
+        if (value === undefined || value === null || isNaN(Number(value))) return false;
+        value = Number(value) & 0xFFFF;
+        if (typeof asm.set_pc === "function") asm.set_pc(value);
+        else asm.pc = value;
+        return true;
+    }
+
+    function advanceAsmCodeLen(asm, bytes) {
+        bytes = Number(bytes) | 0;
+        if (!asm || bytes <= 0) return;
+        if (typeof asm.codedst_len !== "number") asm.codedst_len = getAsmCodeLen(asm);
+        asm.codedst_len += bytes;
+    }
+
+    function pragmaByteCount(asm, sym, tag) {
+        var ofs = tag[0] === "LBL" ? 1 : 0;
+        var op = sym[ofs];
+        if (!op) return 0;
+        var upper = op.toUpperCase();
+        var operands = sym.slice(ofs + 1).join(" ");
+        var arr = csvSplit(operands);
+
+        if (op === "*=" || upper === "ORG" || upper === "OBJ" || upper === ".ORG" || upper === ".OR") {
+            var orgExpr = op === "*=" ? sym.slice(ofs + 1).join(" ") : operands;
+            var newPc = parseNumberMaybe(orgExpr, asm);
+            if (!isNaN(newPc)) registerProgramCounterChange(asm, newPc);
+            return 0;
+        }
+        if (upper === "EQU" || op === "=" || upper === ".EQ") return 0;
+        if (upper === "HEX") return operands.replace(/[^A-Fa-f0-9]/g, "").length >> 1;
+        if (upper === "BIN") return operands.replace(/[^01]/g, "").length >> 3;
+        if (upper === "ASC" || upper === ".AT") return stringByteLength(operands);
+        if (upper === ".BYTE" || upper === "DFB") {
+            var n = 0;
+            arr.forEach(function (item) { n += stringByteLength(item); });
+            return n;
+        }
+        if (upper === ".WORD" || upper === "DA" || upper === "DDB") return arr.filter(Boolean).length * 2;
+        if (upper === ".RES" || upper === ".DS") {
+            var v = parseNumberMaybe(arr[0], asm);
+            return isNaN(v) ? 0 : Math.max(0, v | 0);
+        }
+        return 0;
+    }
+
+    function findMnemonicAndOperand(sym, tag) {
+        var ofs = -1;
+        if (tag[0] === "MNE") ofs = 0;
+        else if (tag[0] === "LBL" && tag[1] === "MNE") ofs = 1;
+        if (ofs < 0) return null;
+        return { mnemonic: sym[ofs], operand: sym[ofs + 1], ofs: ofs };
+    }
+
+    function isValidMode(opctab, mode) {
+        return opctab && opctab[mode] != null && opctab[mode] >= 0;
+    }
+
+    function inferAddressMode(asm, mnemonic, operand) {
+        var instr = getInstrtab();
+        var mne = String(mnemonic || "").toUpperCase();
+        var opctab = instr[mne];
+        if (!opctab) return { mode: null, modeName: "", bytes: 0 };
+
+        if (operand === undefined || operand === null || operand === "") {
+            if (isValidMode(opctab, 0)) return { mode: 0, modeName: addrModeName[0], bytes: pass1StepTab[0] };
+            if (isValidMode(opctab, 1)) return { mode: 1, modeName: addrModeName[1], bytes: pass1StepTab[1] };
+            return { mode: null, modeName: "", bytes: 0 };
+        }
+
+        var addr = String(operand).trim();
+        var upperAddr = addr.toUpperCase();
+        var mode = null;
+
+        if (upperAddr === "A" && isValidMode(opctab, 1)) mode = 1;
+        else if (addr.charAt(0) === "#") mode = 2;
+        else if (addr.charAt(0) === "*") {
+            if (upperAddr.indexOf(",X") > 0) mode = 7;
+            else if (upperAddr.indexOf(",Y") > 0) mode = 8;
+            else mode = 6;
+        } else if (addr.charAt(0) === "(") {
+            if (upperAddr.indexOf(",X)") > 0 && upperAddr.indexOf(",X)") === upperAddr.length - 3) mode = 10;
+            else if (upperAddr.indexOf("),Y") > 0 && upperAddr.indexOf("),Y") === upperAddr.length - 3) mode = 11;
+            else if (upperAddr.indexOf(")") > 0) mode = 9;
+        } else {
+            if (upperAddr.indexOf(",X") > 0) mode = 4;
+            else if (upperAddr.indexOf(",Y") > 0) mode = 5;
+            else if (isValidMode(opctab, 12)) mode = 12;
+            else mode = 3;
+        }
+
+        if (mode == null || !isValidMode(opctab, mode)) {
+            if (mode === 4 && isValidMode(opctab, 7)) mode = 7;
+            else if (mode === 5 && isValidMode(opctab, 8)) mode = 8;
+            else if (mode === 3 && isValidMode(opctab, 6)) mode = 6;
+            else return { mode: null, modeName: "", bytes: 0 };
+        }
+
+        return { mode: mode, modeName: addrModeName[mode], bytes: pass1StepTab[mode] };
+    }
+
+    function hexWord(v) {
+        return "$" + (window.oCOM && window.oCOM.getHexWord ? window.oCOM.getHexWord(v) : ("000" + (v & 0xFFFF).toString(16).toUpperCase()).slice(-4));
+    }
+
+    function escapeHtml(text) {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function markdownCell(text) {
+        return escapeHtml(String(text || "")).replace(/\|/g, "&#124;").replace(/\r?\n/g, " ");
+    }
+
+    function makeMarkdownTable(rows, sourcePath) {
+        var md = [];
+        md.push("# " + markdownCell(sourcePath));
+        md.push("");
+        md.push("| lineNumber | ProgramCounter | source code line | AddressModeName |");
+        md.push("|---:|---:|---|---|");
+        rows.forEach(function (row) {
+            md.push("| " + row.lineNumber + " | " + row.ProgramCounter + " | <code>" + markdownCell(row.sourceCodeLine) + "</code> | " + markdownCell(row.AddressModeName) + " |");
+        });
+        md.push("");
+        return md.join("\n");
+    }
+
+    function analyzeSourceToMarkdown(source, sourcePath) {
+        var asm = makeAsmContext();
+        var lines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+        var rows = [];
+
+        for (var i = 0; i < lines.length; i++) {
+            var rawLine = lines[i];
+
+            // Pick up an ORG/.ORG/*= value registered at the current object-code length.
+            // This mirrors the ASM_core.js pattern: oASM.code_pc[oASM.get_code_len()].
+            syncProgramCounterFromCodePc(asm);
+
+            var rowPc = asm.pc & 0xFFFF;
+            var sym = tokenizeLine(rawLine);
+            asm.sym = sym;
+            asm.step++;
+
+            var tag = sym.length ? asm.statement_tagger.call(asm, sym) : ["---"];
+            var modeInfo = { mode: null, modeName: "", bytes: 0 };
+            var pcChangedByDirective = false;
+
+            if (sym.length) {
+                if (tag[0] === "LBL") {
+                    var labelName = asm.getID && asm.getID(sym[0]).val ? asm.getID(sym[0]).val : sym[0];
+                    asm.symtab[labelName] = asm.pc & 0xFFFF;
+                }
+
+                var m = findMnemonicAndOperand(sym, tag);
+                if (m) {
+                    modeInfo = inferAddressMode(asm, m.mnemonic, m.operand);
+                } else if (tag[0] === "PGM" || (tag[0] === "LBL" && tag[1] === "PGM")) {
+                    modeInfo.bytes = pragmaByteCount(asm, sym, tag);
+                    pcChangedByDirective = syncProgramCounterFromCodePc(asm);
+                    if (pcChangedByDirective) {
+                        rowPc = asm.pc & 0xFFFF;
+                        modeInfo.bytes = 0;
+                    }
+                }
+            }
+
+            rows.push({
+                lineNumber: i + 1,
+                ProgramCounter: hexWord(rowPc),
+                sourceCodeLine: rawLine,
+                AddressModeName: modeInfo.modeName || ""
+            });
+
+            advanceAsmCodeLen(asm, modeInfo.bytes || 0);
+            if (!pcChangedByDirective) {
+                if (typeof asm.add_pc === "function") asm.add_pc(modeInfo.bytes || 0);
+                else asm.pc = (asm.pc + (modeInfo.bytes || 0)) & 0xFFFF;
+            }
+        }
+
+        var markdown = makeMarkdownTable(rows, sourcePath);
+        return { rows: rows, markdown: markdown, symtab: asm.symtab };
+    }
+
+    function objectPathFromSourcePath(path) {
+        var slash = path.lastIndexOf("/");
+        var dir = slash >= 0 ? path.substring(0, slash + 1) : "";
+        var name = slash >= 0 ? path.substring(slash + 1) : path;
+        var dot = name.lastIndexOf(".");
+        var base = dot >= 0 ? name.substring(0, dot) : name;
+        return dir + base + ".md";
+    }
+
+    async function getFileFromEntry(entry) {
+        if (entry.kind === "handle") return await entry.fileHandle.getFile();
+        return entry.file;
+    }
+
+    async function writeMarkdownForEntry(entry, markdown) {
+        if (!hasWriteAccess || !entry.parentDirectoryHandle) {
+            return { written: false, reason: "no writable directory handle" };
+        }
+        var outPath = objectPathFromSourcePath(entry.path);
+        var slash = outPath.lastIndexOf("/");
+        var outName = slash >= 0 ? outPath.substring(slash + 1) : outPath;
+        var outHandle = await entry.parentDirectoryHandle.getFileHandle(outName, { create: true });
+        var writable = await outHandle.createWritable();
+        await writable.write(markdown);
+        await writable.close();
+        return { written: true, path: outPath };
+    }
+
+    function downloadMarkdown(path, markdown) {
+        var blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = objectPathFromSourcePath(path).split("/").pop();
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
     assembleButton.addEventListener("click", async function () {
         assembleButton.disabled = true;
         pickFolderButton.disabled = true;
 
-        var source = "";   // This string is intentionally overwritten for each file.
-        var path = "";
         var loaded = 0;
+        var written = 0;
+        var downloaded = 0;
+        var lastPath = "";
 
         try {
-            for (var i = 0; i < matchedFiles.length; i++) {
-                var file = matchedFiles[i];
-                path = filePathOf(file);
-
-                // At this point this is the only "ASSEMBLE" action:
-                // load file content into source, overwriting the previous file content.
-                source = await file.text();
+            for (var i = 0; i < matchedEntries.length; i++) {
+                var entry = matchedEntries[i];
+                var file = await getFileFromEntry(entry);
+                var source = await file.text();
+                lastPath = entry.path;
                 loaded++;
 
+                var result = analyzeSourceToMarkdown(source, entry.path);
                 window.localSourceScanner.lastSource = source;
-                window.localSourceScanner.lastPath = path;
+                window.localSourceScanner.lastPath = entry.path;
+                window.localSourceScanner.lastRows = result.rows;
+                window.localSourceScanner.lastMarkdown = result.markdown;
+                window.localSourceScanner.symtab = result.symtab;
+                window.localSourceScanner.code_pc = (window.oASM && window.oASM.code_pc) ? window.oASM.code_pc : [];
 
-                console.log("ASSEMBLE placeholder: loaded", loaded + "/" + matchedFiles.length, path, source.length + " chars");
+                console.table(result.rows);
+
+                var saveResult = await writeMarkdownForEntry(entry, result.markdown);
+                if (saveResult.written) {
+                    written++;
+                    console.log("Wrote", saveResult.path);
+                } else {
+                    downloadMarkdown(entry.path, result.markdown);
+                    downloaded++;
+                    console.warn("Could not write beside source; downloaded", objectPathFromSourcePath(entry.path));
+                }
             }
 
             setStatus(
-                "ASSEMBLE placeholder complete: loaded " + loaded + " files. Last loaded file: " + (path || "none") + ".",
+                "ASSEMBLE complete: scanned " + loaded + " files, wrote " + written + " .md files" +
+                (downloaded ? ", downloaded " + downloaded + " fallback .md files" : "") +
+                ". Last file: " + (lastPath || "none") + ".",
                 "ok"
             );
         } catch (err) {
             console.error(err);
-            setStatus("Error while reading files: " + err.message, "warn");
+            setStatus("Error during ASSEMBLE: " + err.message, "bad");
         } finally {
             pickFolderButton.disabled = false;
-            assembleButton.disabled = matchedFiles.length === 0;
+            assembleButton.disabled = matchedEntries.length === 0;
         }
     });
 })();
