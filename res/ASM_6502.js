@@ -125,6 +125,32 @@ oASM.pragma_sym = oASM.concat_json(oASM.pragma_sym,
 var srcl, srcc, pc, listing;
 var codesrc_buf = new Array();  // TODO move codesrc_buf to oASM
 
+function setAsmPc(v)
+{
+	v = Number(v);
+	if(isNaN(v)) v = 0;
+	if(oASM && typeof oASM.set_pc == "function") pc = oASM.set_pc(v);
+	else
+	{
+		pc = v & 0xFFFF;
+		if(oASM) oASM.pc = pc;
+	}
+	return pc;
+}
+
+function addAsmPc(v)
+{
+	v = Number(v);
+	if(isNaN(v)) v = 0;
+	if(oASM && typeof oASM.add_pc == "function") pc = oASM.add_pc(v);
+	else
+	{
+		pc = ((pc || 0) + v) & 0xFFFF;
+		if(oASM) oASM.pc = pc;
+	}
+	return pc;
+}
+
 
 // functions
 
@@ -141,6 +167,7 @@ function assemble()
 	oASM.symtab = {};
 	oASM.symlink = {};
 	oASM.code_pc[0] = 0;	// default ORG
+	setAsmPc(0);
 	var crlf = "<br>"
 
 	listing = document.forms.ass.listing;
@@ -177,7 +204,7 @@ function assemble()
 			for (var i = 0; i < l; i++)
 			{
 				var new_pc = oASM.code_pc[i];				    // Get ORG value at this byte index
-				if (new_pc >= 0) pc = new_pc + l - i - 1		// If ORG value exists, go to new program counter location if applicable 
+				if (new_pc >= 0) setAsmPc(new_pc + l - i - 1)		// If ORG value exists, go to new program counter location if applicable 
 				if (((n > 0) && (n % 8 == 0)) || new_pc >= 0)
 				{
 					c += (i == 0 ? '' : crlf)
@@ -312,7 +339,8 @@ function doPass(pass)
 {
 	var opspace = 13;
 
-	srcl = srcc = pc = 0;
+	srcl = srcc = 0;
+	setAsmPc(0);
 	var sym = getSym();
 	listing.value = "";
 	while (sym)
@@ -325,7 +353,7 @@ function doPass(pass)
 			continue;
 		}
 
-		pc &= 0xffff;
+		setAsmPc(pc & 0xffff);
 		var ofs = 0;
 		var c1 = sym[0].charAt(0);
 		var padd = 0;
@@ -427,7 +455,7 @@ function doPass(pass)
 					oASM.write_code( opctab[0] );
 				}
 				else listing.value += listing_gen(mode,{"opcode":opc});
-				pc++;
+				addAsmPc(1);
 			}
 			else if(opctab != null && sym.length > ofs + 2)
 			{
@@ -567,7 +595,7 @@ function doPass(pass)
 					}
 					if (e && e.warn) { listing.value += '\n' + e.warn  }
 				}
-				pc += steptab[mode];
+				addAsmPc(steptab[mode]);
 			}
 		}
 		sym = getSym();
