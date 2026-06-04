@@ -63,6 +63,7 @@ STATUS      EQU     $48
 SPNT        EQU     $49
 RNDL        EQU     $4E
 RNDH        EQU     $4F
+PICK        EQU     $95
 IN          EQU     $0200  
 BRKV        EQU     $03f0   ;new vector for BRK
 SOFTEV      EQU     $03f2   ;vector for warm start
@@ -98,54 +99,54 @@ MASK        EQU     $2E
             ORG    $F800
    
 
-PLOT        LSR     A
-            PHP
-            JSR     GBASCALC
-            PLP
-            LDA     #$0F
+PLOT        LSR     A               ;Y-coord/2
+            PHP                     ;save LSB in carry
+            JSR     GBASCALC        ;calc base adr in GBASL,H
+            PLP                     ;restore LSB from carry
+            LDA     #$0F            ;mask $0F if even
             BCC     RTMASK
-            ADC     #$E0
+            ADC     #$E0            ;mask $F0 if odd
 RTMASK      STA     *MASK
-PLOT1       LDA     (GBASL),Y
-            EOR     *COLOR
-            AND     *MASK
-            EOR     (GBASL),Y
-            STA     (GBASL),Y
+PLOT1       LDA     (GBASL),Y       ;data
+            EOR     *COLOR          ; xor color
+            AND     *MASK           ;  and mask
+            EOR     (GBASL),Y       ;   xor data
+            STA     (GBASL),Y       ;    to data
             RTS
 ;OK
-HLINE       JSR     PLOT
-HLINE1      CPY     *H2
-            BCS     RTS1
-            INY
-            JSR     PLOT1
-            BCC     HLINE1
-VLINEZ      ADC     #$01
-VLINE       PHA
-            JSR     PLOT
+HLINE       JSR     PLOT            ;plot square
+HLINE1      CPY     *H2             ;done?
+            BCS     RTS1            ; yes, return
+            INY                     ; no, incr index (X-coord)
+            JSR     PLOT1           ;plot next square
+            BCC     HLINE1          ;always taken
+VLINEZ      ADC     #$01            ;next Y-coord
+VLINE       PHA                     ; save on stack
+            JSR     PLOT            ; plot square
             PLA
-            CMP     *V2
-            BCC     VLINEZ
+            CMP     *V2             ;done?
+            BCC     VLINEZ          ; no, loop
 RTS1        RTS
 ;OK
-CLRSCR      LDY     #$2F
-            BNE     CLRSC2
+CLRSCR      LDY     #$2F            ;max Y, full scrn clr
+            BNE     CLRSC2          ;always taken
 
-CLRTOP      LDY     #$27
-CLRSC2      STY     *V2
-            LDY     #$27
-CLRSC3      LDA     #$00
-            STA     *COLOR
-            JSR     VLINE
-            DEY
-            BPL     CLRSC3
+CLRTOP      LDY     #$27            ;max Y, top scrn clr
+CLRSC2      STY     *V2             ;store as bottom coord for VLINE calls
+            LDY     #$27            ;rightmost X-coord (column)
+CLRSC3      LDA     #$00            ;top coord for VLINE calls
+            STA     *COLOR          ;clear color (black)
+            JSR     VLINE           ;draw vline
+            DEY                     ;next leftmost X-coord
+            BPL     CLRSC3          ;loop until done.
             RTS
 ;OK
-GBASCALC    PHA
+GBASCALC    PHA                     ; calculating base address of a lores pixel(?) for input 000DEFGH
             LSR     A
             AND     #$03
             ORA     #$04
-            STA     *GBASH
-            PLA
+            STA     *GBASH          ;generate GBASH=000001FG
+            PLA                     ;and GBASL=HDEDE000
             AND     #$18
             BCC     GBCALC
             ADC     #$7F
@@ -156,12 +157,12 @@ GBCALC      STA     *GBASL
             STA     *GBASL
             RTS
 ;OK F85E
-NEXTCOL     LDA     *COLOR
+NEXTCOL     LDA     *COLOR          ;increment color by 3
             CLC
             ADC     #$03
-SETCOL      AND     #$0F
+SETCOL      AND     #$0F            ;sets COLOR=17*A mod 16
             STA     *COLOR
-            ASL     A
+            ASL     A               ;both half bytes of COLOR equal
             ASL     A
             ASL     A
             ASL     A
@@ -169,105 +170,105 @@ SETCOL      AND     #$0F
             STA     *COLOR
             RTS
 ;OK F871
-SCRN        LSR     A
-            PHP
-            JSR     GBASCALC
-            LDA     (GBASL),Y
-            PLP
-SCRN2       BCC     RTMSKZ
+SCRN        LSR     A               ;read screen Y-coord/2
+            PHP                     ;save LSB (carry)
+            JSR     GBASCALC        ;calc base address
+            LDA     (GBASL),Y       ;get byte
+            PLP                     ;restore LSB from carry
+SCRN2       BCC     RTMSKZ          ;if even, use lo H
             LSR     A
             LSR     A
+            LSR     A               ;shift high half byte down
             LSR     A
-            LSR     A
-RTMSKZ      AND     #$0F
+RTMSKZ      AND     #$0F            ;mask 4-bits
             RTS
 ;OK F882
 ;• Clear variables
-LMNEM       EQU    $2C    
+LMNEM       EQU    $2C                  
 RMNEM       EQU    $2D    
 FORMAT      EQU    $2E    
 LENGTH      EQU    $2F    
 
-INSDS1      LDX     *PCL
+INSDS1      LDX     *PCL            ;print PCL,H
             LDY     *PCH
             JSR     PRYX2
-            JSR     PRBLNK
-            LDA     (PCL,X)
+            JSR     PRBLNK          ;followed by a blank
+            LDA     (PCL,X)         ;get op code
             TAY
-            LSR     A
+            LSR     A               ;even/odd test
             BCC     IEVEN
-            ROR     A
-            BCS     ERR
-            CMP     #$A2
-            BEQ     ERR
-            AND     #$87
-IEVEN       LSR     A
+            ROR     A               ;bit 1 test
+            BCS     ERR             ;XXXXXX11 invalid op
+            CMP     #$A2            
+            BEQ     ERR             ;opcode $89 invalid
+            AND     #$87            ;mask bits
+IEVEN       LSR     A               ;LSB into carry for L/R test
             TAX
-            LDA     FMT1,X
-            JSR     SCRN2
+            LDA     FMT1,X          ;get format index byte
+            JSR     SCRN2           ;R/L H-byte on carry
             BNE     GETFMT
-ERR         LDY     #$80
-            LDA     #$00
+ERR         LDY     #$80            ;substitute $80 for invalid ops
+            LDA     #$00            ;set print format index to 0
 GETFMT      TAX
-            LDA     FMT2,X
-            STA     *FORMAT
-            AND     #$03
+            LDA     FMT2,X          ;index into print format table
+            STA     *FORMAT         ;save for adr field formatting
+            AND     #$03            ;mask for 2-bit length (P=1 byte, 1=2 byte, 2=3 byte)
             STA     *LENGTH
-            TYA
-            AND     #$8F
-            TAX
-            TYA
+            TYA                     ;opcode
+            AND     #$8F            ;mask for 1XXX1010 test
+            TAX                     ; save it
+            TYA                     ;opcode to A again
             LDY     #$03
             CPX     #$8A
             BEQ     MNNDX3
 MNNDX1      LSR     A
-            BCC     MNNDX3
-            LSR     A
-MNNDX2      LSR     A
-            ORA     #$20
-            DEY
-            BNE     MNNDX2
-            INY
+            BCC     MNNDX3          ;form index into mnemonic table
+            LSR     A               
+MNNDX2      LSR     A               ;1) 1XXX1010=>00101XXX
+            ORA     #$20            ;2) XXXYYY01=>00111XXX
+            DEY                     ;3) XXXYYY10=>00110XXX
+            BNE     MNNDX2          ;4) XXXYY100=>00100XXX
+            INY                     ;5) XXXXX000=>000XXXXX
 MNNDX3      DEY
             BNE     MNNDX1
             RTS
 ;OK F8CD
             HEX   FFFFFF
 
-INSTDSP     JSR     INSDS1
-            PHA
+INSTDSP     JSR     INSDS1          ;gen fmt, len bytes
+            PHA                     ;save mnemonic table index
 PRNTOP      LDA     (PCL),Y
             JSR     PRBYTE
-            LDX     #$01
+            LDX     #$01            ;print 2 blanks
 PRNTBL      JSR     PRBL2
-            CPY     *LENGTH
-            INY
+            CPY     *LENGTH         ;print inst (1-3 bytes)
+            INY                     ;in a 12 chr field
             BCC     PRNTOP
-            LDX     #$03
+            LDX     #$03            ;char count for mnemonic print
             CPY     #$04
             BCC     PRNTBL
-            PLA
+            PLA                     ;recover mnemonic index
             TAY
             LDA     MNEML,Y
-            STA     *LMNEM
-            LDA     MNEMR,Y
+            STA     *LMNEM          ;fech 3-char mnemonic
+            LDA     MNEMR,Y         ;  (packed in 2-bytes)
             STA     *RMNEM
 NXTCOL      LDA     #$00
             LDY     #$05
-PRMN2       ASL     *RMNEM
-            ROL     *LMNEM
-            ROL     A
+PRMN2       ASL     *RMNEM          ;shift 5 bits of
+            ROL     *LMNEM          ;  character into A
+            ROL     A               ;    (clear carry)
             DEY
             BNE     PRMN2
-            ADC     #$BF
-            JSR     COUT
+            ADC     #$BF            ;add "?" offset
+            JSR     COUT            ;output a char of mnem
             DEX
             BNE     NXTCOL
-            JSR     PRBLNK
+            JSR     PRBLNK          ;output 3 blanks
             LDY     *LENGTH
-            LDX     #$06
+            LDX     #$06            ;cnt for 6 format bits
 PRADR1      CPX     #$03
-            BEQ     PRADR5
+            BEQ     PRADR5          ;if X=3 then addr
 PRADR2      ASL     *FORMAT
             BCC     PRADR3
             LDA     CHAR1-1,X
@@ -283,36 +284,42 @@ PRADR4      DEY
             BMI     PRADR2
             JSR     PRBYTE
 PRADR5      LDA     *FORMAT
-            CMP     #$E8
-            LDA     (PCL),Y
-            BCC     PRADR4
+            CMP     #$E8            ;handle rel adr mode
+            LDA     (PCL),Y         ;special (print target,
+            BCC     PRADR4          ;  not offset)
 RELADR      JSR     PCADJ3
-            TAX
+            TAX                     ;PCL,PCH+OFFSET+1 to A,Y
             INX
-            BNE     PRNTYX
+            BNE     PRNTYX          ;+1 to Y,X
             INY
 PRNTYX      TYA
-PRNTAX      JSR     PRBYTE
-PRNTX       TXA
+PRNTAX      JSR     PRBYTE          ;output target adr
+PRNTX       TXA                     ;  of branch and return
             JMP     PRBYTE
 
-PRBLNK      LDX     #$03
-PRBL2       LDA     #$A0
+PRBLNK      LDX     #$03            ;blank count
+PRBL2       LDA     #$A0            ;load a space
             JSR     COUT
             DEX
-            BNE     PRBL2
+            BNE     PRBL2           ;loop until count=0
             RTS
 ;OK F953
-PCADJ       SEC
-PCADJ2      LDA     *LENGTH
+PCADJ       SEC                     ;0=1-byte,1=2-byte,
+PCADJ2      LDA     *LENGTH         ;  2=3-byte
 PCADJ3      LDY     *PCH
-            TAX
-            BPL     PCADJ4
-            DEY
+            TAX                     ;test displacement sign
+            BPL     PCADJ4          ;  (for rel branch)
+            DEY                     ;extend neg by decr PCH
 PCADJ4      ADC     *PCL
-            BCC     RTS2
-            INY
+            BCC     RTS2            ;PCL+LENGTH(or DISPL)+1 to A
+            INY                     ;  carry into Y (PCH)
 RTS2        RTS
+
+                                    ; FMT1 bytes:  XXXXXXY0 instrs
+                                    ; if Y=0       then left half byte
+                                    ; if Y=1       then right half byte
+                                    ;                   (x=index)
+
 ;OK F962
 FMT1       HEX  042054300D800490
            HEX  032254330D800490
@@ -323,47 +330,63 @@ FMT1       HEX  042054300D800490
            HEX  012244330D800490
            HEX  012244330D800490
            HEX  2631879A
-FMT2       HEX  002181820000594D
-           HEX  9192864A859D
-CHAR1      HEX  ACA9ACA3A8A4
-CHAR2      HEX  D900D8A4A400
+FMT2       HEX  002181820000594D    ; err    | imm   | z-page | abs   | implied | acc | (zpag,x) | (zpag),y
+           HEX  9192864A859D        ; zpag,x | abs,x | abs,y  | (abs) | zpag,y  | relative
+CHAR1      HEX  ACA9ACA3A8A4        ; “,),#($”
+CHAR2      HEX  D900D8A4A400        ; "Y" | $00 | "X" | "$" | "$" | $00
+
+                                    ; MNEML is of form:
+                                    ; (A) XXXXX000
+                                    ; (B) XXXYY100
+                                    ; (C) 1XXX1010
+                                    ; (D) XXXYYY10
+                                    ; (E) XXXYYY01
+                                    ;     (X=index)
+
 MNEML      HEX  1C8A1C235D8B1BA1
            HEX  9D8A1D239D8B1DA1
+
            HEX  002919AE69A81923
            HEX  24531B23245319A1
+
            HEX  001A5B5BA5692424
            HEX  AEAEA8AD29007C00
+
            HEX  159C6D9CA5692953
            HEX  84133411A56923A0
+
 MNEMR      HEX  D8625A4826629488
            HEX  5444C8546844E894
+
            HEX  00B4088474B4286E
            HEX  74F4CC4A72F2A48A
+
            HEX  00AAA2A274747472
            HEX  4468B232B2002200
+
            HEX  1A1A2626727288C8
            HEX  C4CA26484444A2C8
 
 IRQ         STA     *ACC
             PLA
-            PHA
+            PHA                     ;**IRQ handler
             ASL     A
             ASL     A
             ASL     A
-            BMI     BREAK
-            JMP     (IRQLOC)
+            BMI     BREAK           ;test for break
+            JMP     (IRQLOC)        ;user routine vector in RAM
 
 BREAK       PLP
-            JSR     SAV1
-            PLA
+            JSR     SAV1            ;ave reg's on break
+            PLA                     ;  including PC
             STA     *PCL
             PLA
             STA     *PCH
             JMP     (BRKV)          ;BRKV written over by disk boot
 
-OLDBRK      JSR     INSDS1
-            JSR     RGDSP1
-            JMP     MON
+OLDBRK      JSR     INSDS1          ;print user PC.
+            JSR     RGDSP1          ;  and reg's
+            JMP     MON             ;go to monitor
 
 RESET       CLD                     ;do this first this time
             JSR     SETNORM
@@ -409,20 +432,20 @@ SLOOP       LDY     #$07            ;Y is byte PTR
             CMP     #$C0            ;at last slot yet?
             BEQ     FIXSEV          ;yes AND it cant be a disk
             STA     MSLOT
-NXTBYT      LDA     (*LOC0),Y        ;fetch a slot byte
+NXTBYT      LDA     (LOC0),Y        ;fetch a slot byte
             CMP     DISKID-1,Y      ;is it a disk ??
             BNE     SLOOP           ;no so next slot down
             DEY
             DEY                     ;yes so check next byte
             BPL     NXTBYT          ;until 4 checked
-            JMP     (*LOC0)
+            JMP     (LOC0)
 
             NOP
             NOP
 ; REGDSP must ORG $FAD7
-REGDSP      JSR     CROUT
-RGDSP1      LDA     #$45
-            STA     *A3L
+REGDSP      JSR     CROUT           ;display user reg
+RGDSP1      LDA     #$45            ;  contents with
+            STA     *A3L            ;  labels
             LDA     #$00
             STA     *A3H
             LDX     #$FB
@@ -446,36 +469,36 @@ XLTBL       HEX  C4C2C1FFC3FFFFFF
 ; must ORG $FB19
 RTBL        ASC   “AXYPS”
 
-PREAD       LDA     PTRIG
-            LDY     #$00
+PREAD       LDA     PTRIG           ;trigger paddles
+            LDY     #$00            ;init count
+            NOP                     ;compensate for 1st count
             NOP
-            NOP
-PREAD2      LDA     PADDL0,X
-            BPL     RTS2D
+PREAD2      LDA     PADDL0,X        ;count Y-reg every
+            BPL     RTS2D           ;  12 usec [actually 11]
             INY
-            BNE     PREAD2
+            BNE     PREAD2          ;  exit at 255 max
             DEY
 RTS2D       RTS
 ;OK FB2F
-INIT        LDA     #$00
-            STA     *STATUS
+INIT        LDA     #$00            ;clr status for debug
+            STA     *STATUS         ;  software
             LDA     LORES
-            LDA     TXTPAGE1
-SETTXT      LDA     TXTSET
-            LDA     #$00
+            LDA     TXTPAGE1        ;init video mode
+SETTXT      LDA     TXTSET          ;set for text mode
+            LDA     #$00            ;  full screen window
             BEQ     SETWND
 
-SETGR       LDA     TXTCLR
-            LDA     MIXSET
-            JSR     CLRTOP
+SETGR       LDA     TXTCLR          ;set for graphics mode
+            LDA     MIXSET          ;  lower 4 lines as
+            JSR     CLRTOP          ;  text window
             LDA     #$14
-SETWND      STA     *WNDTOP
-            LDA     #$00
-            STA     *WNDLFT
+SETWND      STA     *WNDTOP         ; Text widow top in mixed mode = 20 ($14)
+            LDA     #$00            ;  top in A-reg
+            STA     *WNDLFT         ;  bttm at line 24
             LDA     #$28
-            STA     *WNDWDTH
+            STA     *WNDWDTH        ; Text window width = 40 ($28)
             LDA     #$18
-            STA     *WNDBTM
+            STA     *WNDBTM         ; Text window bottom margin line = 24 ($18)
             LDA     #$17
 TABV        STA     *CV
             JMP     VTAB
@@ -483,7 +506,7 @@ TABV        STA     *CV
 APPLEII     JSR     HOME            ;clear THE scrn
             LDY     #$08
 STITLE      LDA     TITLE-1,Y       ;get a char
-            STA     LINE1+14,Y
+            STA     LINE1+14,Y      ;print TITLE ( "APPLE ][" )
             DEY
             BNE     STITLE
             RTS
@@ -525,13 +548,13 @@ ESCNEW      CMP     #$CE            ;is this an N ?
            HEX  EAEAEAEAEAEAEAEAEAEAEAEAEAEA ;padding
 
 ; must ORG $FBC1
-BASCALC     PHA
-            LSR     A
-            AND     #$03
-            ORA     #$04
-            STA     *BASH
-            PLA
-            AND     #$18
+BASCALC     PHA                     ;calc base adr in BASL,H
+            LSR     A               ;  for given line no.
+            AND     #$03            ;  0<=line no.<=$17
+            ORA     #$04            ;ARG=000ABCDE, generate
+            STA     *BASH           ;  BASH=000001CD
+            PLA                     ;  and
+            AND     #$18            ;  BASL=EABAB000
             BCC     BASCLC2
             ADC     #$7F
 BASCLC2     STA     *BASL
@@ -541,49 +564,49 @@ BASCLC2     STA     *BASL
             STA     *BASL
             RTS
 
-BELL1       CMP     #$87
-            BNE     RTS2B
-            LDA     #$40
+BELL1       CMP     #$87            ;bell char? (cntrl-G)
+            BNE     RTS2B           ;  no, return
+            LDA     #$40            ;delay .01 seconds
             JSR     WAIT
             LDY     #$C0
-BELL2       LDA     #$0C
-            JSR     WAIT
+BELL2       LDA     #$0C            ;toggle speaker at
+            JSR     WAIT            ;  1 KHz for .1 sec.
             LDA     SPKR
             DEY
             BNE     BELL2
 RTS2B       RTS
 
-STORADV     LDY     *CH
-            STA     (BASL),Y
-ADVANCE     INC     *CH
-            LDA     *CH
-            CMP     *WNDWDTH
-            BCS     CR
-RTS3        RTS
+STORADV     LDY     *CH             ;curser H index to Y-reg
+            STA     (BASL),Y        ;stor char in line
+ADVANCE     INC     *CH             ;increment curser H index
+            LDA     *CH             ;  (move right)
+            CMP     *WNDWDTH        ;beyond window width?
+            BCS     CR              ;  yes CR to next line
+RTS3        RTS                     ;  no,return
 ;OK FBFD
-VIDOUT      CMP     #$A0
-            BCS     STORADV
-            TAY
-            BPL     STORADV
-            CMP     #$8D
-            BEQ     CR
-            CMP     #$8A
-            BEQ     LF
-            CMP     #$88
-            BNE     BELL1
-BS          DEC     *CH
-            BPL     RTS3
-            LDA     *WNDWDTH
+VIDOUT      CMP     #$A0            ;control char?
+            BCS     STORADV         ;  no,output it
+            TAY                     ;inverse video?
+            BPL     STORADV         ;  yes, output it.
+            CMP     #$8D            ;CR?
+            BEQ     CR              ;  yes.
+            CMP     #$8A            ;line feed?
+            BEQ     LF              ;  if so, do it.
+            CMP     #$88            ;back space? (cntrl-H)
+            BNE     BELL1           ;  no, check for bell.
+BS          DEC     *CH             ;decrement curser H index
+            BPL     RTS3            ;if pos, ok. Else move up
+            LDA     *WNDWDTH        ;set CH to WNDWDTH-1
             STA     *CH
-            DEC     *CH
-UP          LDA     *WNDTOP
+            DEC     *CH             ;(rightmost screen pos)
+UP          LDA     *WNDTOP         ;curser V index
             CMP     *CV
-            BCS     RTS4
-            DEC     *CV
-VTAB        LDA     *CV
-VTABZ       JSR     BASCALC
-            ADC     *WNDLFT
-            STA     *BASL
+            BCS     RTS4            ;if top line then return
+            DEC     *CV             ;decr curser V-index
+VTAB        LDA     *CV             ;get curser V-index
+VTABZ       JSR     BASCALC         ;generate base addr
+            ADC     *WNDLFT         ;and window left index
+            STA     *BASL           ;to BASL
 RTS4        RTS
 ;OK FC2C
 ESC1        EOR     #$C0            ;esc @ ?
@@ -597,7 +620,7 @@ ESC1        EOR     #$C0            ;esc @ ?
             ADC     #$FD            ;esc-E or F check
             BCC     CLREOL          ;E, clear to END of line
             BNE     RTS4            ;else NOT F, return
-CLREOP      LDY     *CH              ;esc F is CLR to END of page
+CLREOP      LDY     *CH             ;esc F is CLR to END of page
             LDA     *CV
 CLEOP1      PHA
             JSR     VTABZ
@@ -622,72 +645,72 @@ LF          INC     *CV
             CMP     *WNDBTM
             BCC     VTABZ
             DEC     *CV
-SCROLL      LDA     *WNDTOP
+SCROLL      LDA     *WNDTOP         ;start at top of scrl wndw
             PHA
-            JSR     VTABZ
-SCRL1       LDA     *BASL
-            STA     *BAS2L
+            JSR     VTABZ           ;generate base address
+SCRL1       LDA     *BASL           ;copy BASL,H
+            STA     *BAS2L          ;  to BAS2L,H
             LDA     *BASH
             STA     *BAS2H
-            LDY     *WNDWDTH
-            DEY
+            LDY     *WNDWDTH        ;init Y to rightmost index
+            DEY                     ;  of scrolling window
             PLA
-            ADC     #$01
-            CMP     *WNDBTM
-            BCS     SCRL3
+            ADC     #$01            ;incr line number
+            CMP     *WNDBTM         ;done?
+            BCS     SCRL3           ;  yes, finish
             PHA
-            JSR     VTABZ
-SCRL2       LDA     (BASL),Y
+            JSR     VTABZ           ;form BASL,H (base addr)
+SCRL2       LDA     (BASL),Y        ;move a chr up on line
             STA     (BAS2L),Y
-            DEY
+            DEY                     ;next char of line
             BPL     SCRL2
-            BMI     SCRL1
+            BMI     SCRL1           ;next line
 
-SCRL3       LDY     #$00
-            JSR     CLEOLZ
-            BCS     VTAB
-CLREOL      LDY     *CH
+SCRL3       LDY     #$00            ;clear bottom line
+            JSR     CLEOLZ          ;get base addr for bottom line
+            BCS     VTAB            ;carry is set
+CLREOL      LDY     *CH             ;cursor H index
 CLEOLZ      LDA     #$A0
-CLREO2     STA     (BASL),Y
-            INY
+CLREO2     STA     (BASL),Y         ;store blanks from 'here'
+            INY                     ;  to end of lines (WNDWDTH)
             CPY     *WNDWDTH
             BCC     CLREO2
             RTS
 
 WAIT        SEC
 WAIT2       PHA
-WAIT3       SBC     #$01
-            BNE     WAIT3
+WAIT3       SBC     #$01            ;1.0204 usec [wrong]
+            BNE     WAIT3           ;(13+2712*A+512*A*A) [wrong]
             PLA
             SBC     #$01
             BNE     WAIT2
             RTS
 ;OK FCB4
-NXTA4       INC     *A4L
-            BNE     NXTA1
+NXTA4       INC     *A4L            ;incr 2-byte A4
+            BNE     NXTA1           ;  and A1
             INC     *A4H
-NXTA1       LDA     *A1L
+NXTA1       LDA     *A1L            ;incr 2-byte A1.
             CMP     *A2L
-            LDA     *A1H
+            LDA     *A1H            ;  and compare to A2
             SBC     *A2H
-            INC     *A1L
+            INC     *A1L            ;  (carry set if >=)
             BNE     RTS4B
             INC     *A1H
 RTS4B       RTS
 
-HEADR       LDY     #$4B
-            JSR     ZERDLY
-            BNE     HEADR
+HEADR       LDY     #$4B            ;write A*256 'long 1'
+            JSR     ZERDLY          ;  half cycles
+            BNE     HEADR           ;  (650 usec each)
             ADC     #$FE
-            BCS     HEADR
-            LDY     #$21
-WRBIT       JSR     ZERDLY
-            INY
-            INY
+            BCS     HEADR           ;then a 'short 0'
+            LDY     #$21            ;  (400 usec)
+WRBIT       JSR     ZERDLY          ;write two half cycles
+            INY                     ;  of 250 usec ('0')
+            INY                     ;  or 500 usec ('0')
 ZERDLY      DEY
             BNE     ZERDLY
-            BCC     WRTAPE
-            LDY     #$32
+            BCC     WRTAPE          ;Y is count for
+            LDY     #$32            ;  timing loop
 ONEDLY      DEY
             BNE     ONEDLY
 WRTAPE      LDY     TAPEOUT
@@ -695,12 +718,12 @@ WRTAPE      LDY     TAPEOUT
             DEX
             RTS
 ;OK FCEC
-RDBYTE      LDX     #$08
-RDBYT2      PHA
-            JSR     RD2BIT
+RDBYTE      LDX     #$08            ;8 bits to read
+RDBYT2      PHA                     ;read two transitions
+            JSR     RD2BIT          ;  (find edge)
             PLA
-            ROL     A
-            LDY     #$3A
+            ROL     A               ;next bit
+            LDY     #$3A            ;count for samples
             DEX
             BNE     RDBYT2
             RTS
@@ -709,93 +732,93 @@ RDBYT2      PHA
 LASTIN      EQU   $2F    
 
 RD2BIT      JSR     RDBIT
-RDBIT       DEY
-            LDA     TAPEIN
+RDBIT       DEY                     ;decr Y until
+            LDA     TAPEIN          ;  tape transition
             EOR     *LASTIN
             BPL     RDBIT
             EOR     *LASTIN
             STA     *LASTIN
-            CPY     #$80
+            CPY     #$80            ;set carry on Y-reg.
             RTS
 
 RDKEY       LDY     *CH
-            LDA     (BASL),Y
+            LDA     (BASL),Y        ;set screen to flash
             PHA
             AND     #$3F
             ORA     #$40
             STA     (BASL),Y
             PLA
-            JMP     (KSWL)
+            JMP     (KSWL)          ;go to user key-in
 
 KEYIN       INC     *RNDL
-            BNE     KEYIN2
+            BNE     KEYIN2          ;incr rnd number
             INC     *RNDH
-KEYIN2      BIT     KBD             ;read keyboard
-            BPL     KEYIN
-            STA     (BASL),Y
-            LDA     KBD
-            BIT     KBDSTRB
+KEYIN2      BIT     KBD             ;read keyboard - key down?
+            BPL     KEYIN           ;  loop
+            STA     (BASL),Y        ;replace flashing screen
+            LDA     KBD             ;get keycode
+            BIT     KBDSTRB         ;clr key strobe
             RTS
 
-ESC         JSR     RDKEY
-            JSR     ESCNEW
-RDCHAR      JSR     RDKEY
-            CMP     #$9B
-            BEQ     ESC
+ESC         JSR     RDKEY           ;get keycode
+            JSR     ESCNEW          ;  handle esc func.
+RDCHAR      JSR     RDKEY           ;read key
+            CMP     #$9B            ;esc?
+            BEQ     ESC             ;  yes, don't return
             RTS
 
 NOTCR       LDA     *INVFLG
             PHA
             LDA     #$FF
-            STA     *INVFLG
-            LDA     IN,X
+            STA     *INVFLG         ;echo user line
+            LDA     IN,X            ;  non inverse
             JSR     COUT
             PLA
             STA     *INVFLG
             LDA     IN,X
-            CMP     #$88
-            BEQ     BCKSPC
+            CMP     #$88            ;check for edit keys
+            BEQ     BCKSPC          ;  BS, ctrl-X
             CMP     #$98
             BEQ     CANCEL
-            CPX     #$F8
+            CPX     #$F8            ;margin?
             BCC     NOTCR1
-            JSR     BELL
-NOTCR1      INX
+            JSR     BELL            ;yes, sound bell
+NOTCR1      INX                     ;advance input index
             BNE     NXTCHAR
-CANCEL      LDA     #$DC
+CANCEL      LDA     #$DC            ;backslash after cancelled lin
             JSR     COUT
-GETLNZ      JSR     CROUT
+GETLNZ      JSR     CROUT           ;output CR
 GETLN       LDA     *PROMPT
-            JSR     COUT
-GETLN1      LDX     #$01
-BCKSPC      TXA
+            JSR     COUT            ;output prompt char
+GETLN1      LDX     #$01            ;init input index
+BCKSPC      TXA                     ;  will backspace to 0
             BEQ     GETLNZ
             DEX
 NXTCHAR     JSR     RDCHAR
-            CMP     #$95
-            BNE     CAPTST
+            CMP     #PICK           ;use screen char
+            BNE     CAPTST          ;  for ctrl-U
             LDA     (BASL),Y
 CAPTST      CMP     #$E0
-            BCC     ADDINP
+            BCC     ADDINP          ;convert to caps
             AND     #$DF            ;shift to upper case
-ADDINP      STA     IN,X
+ADDINP      STA     IN,X            ;add to input buf
             CMP     #$8D
             BNE     NOTCR
-CROUT1      JSR     CLREOL
+CROUT1      JSR     CLREOL          ;clr to EOL if CR
 CROUT       LDA     #$8D
             BNE     COUT
 
-PRA1        LDY     *A1H
+PRA1        LDY     *A1H            ;print CR,A1 in hex
             LDX     *A1L
 PRYX2       JSR     CROUT
             JSR     PRNTYX
             LDY     #$00
-            LDA     #$AD
+            LDA     #$AD            ;print '-'
             JMP     COUT
 
 XAMB        LDA     *A1L
-            ORA     #$07
-            STA     *A2L
+            ORA     #$07            ;set to finish at
+            STA     *A2L            ;  mod 8=7
             LDA     *A1H
             STA     *A2H
 MOD8CHK     LDA     *A1L
@@ -803,85 +826,85 @@ MOD8CHK     LDA     *A1L
             BNE     DATAOUT
 XAM         JSR     PRA1
 DATAOUT     LDA     #$A0
-            JSR     COUT
+            JSR     COUT            ;output blank
             LDA     (A1L),Y
-            JSR     PRBYTE
+            JSR     PRBYTE          ;output byte in hex
             JSR     NXTA1
-            BCC     MOD8CHK
-RTS4C       RTS
+            BCC     MOD8CHK         ;check if time to,
+RTS4C       RTS                     ;  print addr
 
-XAMPM       LSR     A
-            BCC     XAM
-            LSR     A
+XAMPM       LSR     A               ;determine if mon
+            BCC     XAM             ;  mode is xam
+            LSR     A               ;  add, or sub
             LSR     A
             LDA     *A2L
             BCC     ADD
-            EOR     #$FF
+            EOR     #$FF            ;sub: form 2's complement
 ADD         ADC     *A1L
             PHA
             LDA     #$BD
-            JSR     COUT
+            JSR     COUT            ;print '=', then result
             PLA
-PRBYTE      PHA
-            LSR     A
+PRBYTE      PHA                     ;print byte as 2 hex
+            LSR     A               ;  digits, destroys A-reg
             LSR     A
             LSR     A
             LSR     A
             JSR     PRHEXZ
             PLA
-PRHEX       AND     #$0F
-PRHEXZ      ORA     #$B0
+PRHEX       AND     #$0F            ;print hex dig in A-reg
+PRHEXZ      ORA     #$B0            ;  LSB's
             CMP     #$BA
             BCC     COUT
             ADC     #$06
-COUT        JMP     (CSWL)
+COUT        JMP     (CSWL)          ;vector to user output routine
 
 COUT1       CMP     #$A0
-            BCC     COUTZ
-            AND     *INVFLG
-COUTZ       STY     *YSAV1
-            PHA
-            JSR     VIDWAIT         ;go check for pause
-            PLA
-            LDY     *YSAV1
-            RTS
+            BCC     COUTZ           ;don't output ctrl's inverse
+            AND     *INVFLG         ;mask with inverse flag
+COUTZ       STY     *YSAV1          ;sav Y-reg
+            PHA                     ;sav A-reg
+            JSR     VIDWAIT         ;output A-reg as ASCII - go check for pause
+            PLA                     ;restore A-reg
+            LDY     *YSAV1          ;  and Y-reg
+            RTS                     ;  then return
 
 BL1         DEC     *YSAV
             BEQ     XAMB
-BLANK       DEX
-            BNE     SETMDZ
-            CMP     #$BA
-            BNE     XAMPM
-            STA     *MODE
+BLANK       DEX                     ;blank to mon
+            BNE     SETMDZ          ;after blank
+            CMP     #$BA            ;data store mode?
+            BNE     XAMPM           ;  no, xam, add or sub
+            STA     *MODE           ;keep in store mode
             LDA     *A2L
-            STA     (A3L),Y
+            STA     (A3L),Y         ;store as lwo byte as (A3)
             INC     *A3L
-            BNE     RTS5
+            BNE     RTS5            ;incr A3, return
             INC     *A3H
 RTS5        RTS
 
 ; check me
-SETMODE     LDY     *YSAV
-            LDA     IN-1,Y
+SETMODE     LDY     *YSAV           ;save converted ':', '+',
+            LDA     IN-1,Y          ;  '-', '.' as mode.
 SETMDZ      STA     *MODE
             RTS
 
 LT          LDX     #$01
-LT2         LDA     *A2L,X
-            STA     *A4L,X
+LT2         LDA     *A2L,X          ;copy A2 (2 bytes) to
+            STA     *A4L,X          ;  A4 and A5
             STA     *A5L,X
             DEX
             BPL     LT2
             RTS
 
-MOVE        LDA     (A1L),Y
-            STA     (A4L),Y
+MOVE        LDA     (A1L),Y         ;move (A1 to A2) to
+            STA     (A4L),Y         ;  (A4)
             JSR     NXTA4
             BCC     MOVE
             RTS
 
-VFY         LDA     (A1L),Y
-            CMP     (A4L),Y
+VFY         LDA     (A1L),Y         ;verify (A1 to A2) with
+            CMP     (A4L),Y         ;  (A4)
             BEQ     VFYOK
             JSR     PRA1
             LDA     (A1L),Y
@@ -898,45 +921,45 @@ VFYOK       JSR     NXTA4
             BCC     VFY
             RTS
 
-LIST        JSR     A1PC
-            LDA     #$14
-LIST2       PHA
+LIST        JSR     A1PC            ;move A1 (2 bytes) to
+            LDA     #$14            ;  PC if spec'd and
+LIST2       PHA                     ;  dissemble 20 instrs
             JSR     INSTDSP
-            JSR     PCADJ
+            JSR     PCADJ           ;adjust PC each instr
             STA     *PCL
             STY     *PCH
             PLA
             SEC
-            SBC     #$01
+            SBC     #$01            ;next of 20 instrs
             BNE     LIST2
             RTS
 
-A1PC        TXA
-            BEQ     A1PCRTS
+A1PC        TXA                     ;if user spec'd adr
+            BEQ     A1PCRTS         ;  copy from A1 to PC
 A1PCLP      LDA     *A1L,X
             STA     *PCL,X
             DEX
             BPL     A1PCLP
 A1PCRTS     RTS
 
-SETINV      LDY     #$3F
-            BNE     SETIFLG
+SETINV      LDY     #$3F            ;set for inverse vid
+            BNE     SETIFLG         ;  via COUT1
 
-SETNORM     LDY     #$FF
+SETNORM     LDY     #$FF            ;set for normal vid
 SETIFLG     STY     *INVFLG
             RTS
 
-SETKBD      LDA     #$00
-INPORT      STA     *A2L
+SETKBD      LDA     #$00            ;simulate port #0 input
+INPORT      STA     *A2L            ;  specified (KEYIN routine)
 INPRT       LDX     #KSWL
             LDY     #<KEYIN
             BNE     IOPRT
 
-SETVID      LDA     #$00
-OUTPORT     STA     *A2L
+SETVID      LDA     #$00            ;simulate port #0 output
+OUTPORT     STA     *A2L            ;  specified (COUT1 routine)
 OUTPRT      LDX     #CSWL
             LDY     #<COUT1
-IOPRT       LDA     *A2L
+IOPRT       LDA     *A2L            ;set RAM in/out vectors
             AND     #$0F
             BEQ     IOPRT1
             ORA     #>IOADR
@@ -950,30 +973,30 @@ IOPRT2      STY     *LOC0,X          ;94 00
 
             NOP
             NOP
-XBASIC      JMP     BASIC
+XBASIC      JMP     BASIC           ;to BASIC with scratch
 
-BASCONT     JMP     BASIC2
+BASCONT     JMP     BASIC2          ;continue BASIC
 
-GO          JSR     A1PC
-            JSR     RESTORE
-            JMP     (PCL)
+GO          JSR     A1PC            ;adr to PC if spec'd
+            JSR     RESTORE         ;restore meta regs
+            JMP     (PCL)           ;go to user subr
 
-REGZ        JMP     REGDSP
+REGZ        JMP     REGDSP          ;to reg display
 
 TRACE       RTS                     ;TRACE is gone
 
             NOP
-STEPZ       RTS                     ;STEP is gone
+STEPZ       RTS                     ;adr to PC if specified
 
 REMOVED     NOP
             NOP
             NOP
             NOP
             NOP
-USR         JMP     USRADR
+USR         JMP     USRADR          ;to usr subr at USRADR
 
 WRITE       LDA     #$40
-            JSR     HEADR
+            JSR     HEADR           ;write 10-sec header
             LDY     #$27
 WR1         LDX     #$00
             EOR     (A1L,X)
@@ -996,47 +1019,47 @@ WRBYT2      ASL     A
 ;* Clear variables
 CHKSUM      EQU   $2E    
 
-CRMON       JSR     BL1
-            PLA
-            PLA
+CRMON       JSR     BL1             ;handle CR as blank
+            PLA                     ;  then pop stack
+            PLA                     ;  and rtn to mon
             BNE     MONZ
-READ        JSR     RD2BIT
+READ        JSR     RD2BIT          ;find tapein edge
             LDA     #$16
-            JSR     HEADR
-            STA     *CHKSUM
-            JSR     RD2BIT
-RD2         LDY     #$24
-            JSR     RDBIT
-            BCS     RD2
-            JSR     RDBIT
-            LDY     #$3B
-RD3         JSR     RDBYTE
-            STA     (A1L,X)
+            JSR     HEADR           ;delay 3.5 seconds
+            STA     *CHKSUM         ;init CHKSUM=$ff
+            JSR     RD2BIT          ;find tapein edge
+RD2         LDY     #$24            ;look for sync bit
+            JSR     RDBIT           ;  (short 0)
+            BCS     RD2             ;  loop until found
+            JSR     RDBIT           ;skip second sync H-cycle
+            LDY     #$3B            ;index for 0/1 test
+RD3         JSR     RDBYTE          ;read a byte
+            STA     (A1L,X)         ;store at (A1)
             EOR     *CHKSUM
-            STA     *CHKSUM
-            JSR     NXTA1
-            LDY     #$35
-            BCC     RD3
-            JSR     RDBYTE
+            STA     *CHKSUM         ;update running chksum
+            JSR     NXTA1           ;incr A1, compare to A2
+            LDY     #$35            ;compenstate 0/1 index
+            BCC     RD3             ;loop until done
+            JSR     RDBYTE          ;read chksum byte
             CMP     *CHKSUM
-            BEQ     BELL
+            BEQ     BELL            ;good, sound bell and return
 PRERR       LDA     #$C5
-            JSR     COUT
+            JSR     COUT            ;print "ERR", then bell
             LDA     #$D2
             JSR     COUT
             JSR     COUT
-BELL        LDA     #$87
+BELL        LDA     #$87            ;output bell and return
             JMP     COUT
 
-RESTORE     LDA     *STATUS
-            PHA
+RESTORE     LDA     *STATUS         ;restore 6502 reg contents
+            PHA                     ;  used by debug software
             LDA     *A5H
 RESTR1      LDX     *XREG
             LDY     *YREG
             PLP
             RTS
 ;OK FF4A
-SAVE        STA     *A5H
+SAVE        STA     *A5H            ;save 6502 reg contents
 SAV1        STX     *XREG
             STY     *YREG
             PHP
@@ -1047,91 +1070,91 @@ SAV1        STX     *XREG
             CLD
             RTS
 
-OLDRST      JSR     SETNORM
-            JSR     INIT
-            JSR     SETVID
+OLDRST      JSR     SETNORM         ;set screen mode
+            JSR     INIT            ;  and init kbd/screen
+            JSR     SETVID          ;  as I/O dev's
             JSR     SETKBD
-MON         CLD
+MON         CLD                     ;must set hex mode!
             JSR     BELL
-MONZ        LDA     #$AA            ;CALL -151
+MONZ        LDA     #$AA            ;CALL -151 - '*' prompt for mon
             STA     *PROMPT
-            JSR     GETLNZ
-            JSR     ZMODE
-NXTITM      JSR     GETNUM
-            STY     *YSAV
-            LDY     #$17
+            JSR     GETLNZ          ;read a line
+            JSR     ZMODE           ;clear mon mode, scan idx
+NXTITM      JSR     GETNUM          ;get item, non-hex
+            STY     *YSAV           ;char in A-reg
+            LDY     #$17            ;  X-reg=0 if no hex input
 CHRSRCH     DEY
-            BMI     MON
-            CMP     CHRTBL,Y
+            BMI     MON             ;not found, go to mon
+            CMP     CHRTBL,Y        ;find cmnd char in tbl
             BNE     CHRSRCH
-            JSR     TOSUB
-            LDY     *YSAV
+            JSR     TOSUB           ;found, call corresponding
+            LDY     *YSAV           ;  subroutine
             JMP     NXTITM
 
 DIG         LDX     #$03
             ASL     A
-            ASL     A
-            ASL     A
+            ASL     A               ;got hex dig,
+            ASL     A               ;  shift into A2
             ASL     A
 NXTBIT      ASL     A
             ROL     *A2L
             ROL     *A2H
-            DEX
+            DEX                     ;leave X=$ff if dig
             BPL     NXTBIT
 NXTBAS      LDA     *MODE
-            BNE     NXTBS2
-            LDA     *A2H,X
-            STA     *A1H,X
+            BNE     NXTBS2          ;if mode is zero
+            LDA     *A2H,X          ;  then copy A2 to
+            STA     *A1H,X          ;  A1 and A3
             STA     *A3H,X
 NXTBS2      INX
             BEQ     NXTBAS
             BNE     NXTCHR
 
-GETNUM      LDX     #$00
+GETNUM      LDX     #$00            ;clear A2
             STX     *A2L
             STX     *A2H
-NXTCHR      LDA     IN,Y
+NXTCHR      LDA     IN,Y            ;get char
             INY
             EOR     #$B0
             CMP     #$0A
-            BCC     DIG
+            BCC     DIG             ;if hex dig, then
             ADC     #$88
             CMP     #$FA
             BCS     DIG
             RTS
 
-TOSUB       LDA     #>GO
-            PHA
-            LDA     SUBTBL,Y
-            PHA
+TOSUB       LDA     #>GO            ;push high-order
+            PHA                     ;  subr adr on stk
+            LDA     SUBTBL,Y        ;push low order
+            PHA                     ;  subr adr on stk
             LDA     *MODE
-ZMODE       LDY     #$00
-            STY     *MODE
-            RTS
+ZMODE       LDY     #$00            ;clr mode, old mode
+            STY     *MODE           ;  to A-reg
+            RTS                     ;go to subr via RTS
 
-CHRTBL      .BYTE    $BC
-            .BYTE    $B2
-            .BYTE    $BE
-            .BYTE    $B2             ;T CMD now like USR
-            .BYTE    $EF
-            .BYTE    $C4
-            .BYTE    $B2             ;S CMD now like USR
-            .BYTE    $A9
-            .BYTE    $BB
-            .BYTE    $A6
-            .BYTE    $A4
-            .BYTE    $06
-            .BYTE    $95
-            .BYTE    $07
-            .BYTE    $02
-            .BYTE    $05
-            .BYTE    $F0
-            .BYTE    $00
-            .BYTE    $EB
-            .BYTE    $93
-            .BYTE    $A7
-            .BYTE    $C6
-            .BYTE    $99
+CHRTBL      .BYTE    $BC            ;F("Ctrl+C")
+            .BYTE    $B2            ;F("Ctrl+Y")
+            .BYTE    $BE            ;F("Ctrl+E")
+            .BYTE    $B2            ;F("T") -  T CMD now like USR
+            .BYTE    $EF            ;F("V")
+            .BYTE    $C4            ;F("Ctrl+K")
+            .BYTE    $B2            ;F("S") - S CMD now like USR
+            .BYTE    $A9            ;F("Ctrl+P")
+            .BYTE    $BB            ;F("Ctrl+B")
+            .BYTE    $A6            ;F("-")
+            .BYTE    $A4            ;F("+")
+            .BYTE    $06            ;F("M")  (F=EX-OR $B0+$89)
+            .BYTE    $95            ;F("<")
+            .BYTE    $07            ;F("N")
+            .BYTE    $02            ;F("I")
+            .BYTE    $05            ;F("L")
+            .BYTE    $F0            ;F("W")
+            .BYTE    $00            ;F("G")
+            .BYTE    $EB            ;G("R")
+            .BYTE    $93            ;F(":")
+            .BYTE    $A7            ;F(".")
+            .BYTE    $C6            ;F("CR")
+            .BYTE    $99            ;F(BLANK)
 SUBTBL      .BYTE    <BASCONT-1
             .BYTE    <USR-1
             .BYTE    <REGZ-1
@@ -1155,6 +1178,6 @@ SUBTBL      .BYTE    <BASCONT-1
             .BYTE    <SETMODE-1
             .BYTE    <CRMON-1
             .BYTE    <BLANK-1
-            .WORD    NMI
-            .WORD    RESET
-            .WORD    OLDRST
+            .WORD    NMI                ;NMI vector
+            .WORD    RESET              ;reset vector
+            .WORD    OLDRST             ;IRQ vector
