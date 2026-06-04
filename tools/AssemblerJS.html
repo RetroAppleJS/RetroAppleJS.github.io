@@ -201,172 +201,6 @@
     }
 </style>
 
-<script>
-// Interactive JSON pretty printer, adapted from the JSON.prettify pattern used in AsciiCAD_CMD.js.
-JSON.prettify = function makeInteractiveJson(mountEl, boundaryStyles, indent) {
-    if (!mountEl) throw new Error("mountEl is required");
-    indent = indent || 2;
-    var jsonStr = mountEl.textContent;
-
-    var styleMap = Array.isArray(boundaryStyles)
-        ? Object.fromEntries(boundaryStyles)
-        : (boundaryStyles || {});
-
-    var openToKey = {};
-    var closeToKey = {};
-    Object.keys(styleMap).forEach(function (pairKey) {
-        if (typeof pairKey !== "string" || pairKey.length !== 2) return;
-        openToKey[pairKey.charAt(0)] = pairKey;
-        closeToKey[pairKey.charAt(1)] = pairKey;
-    });
-
-    var pretty;
-    try {
-        pretty = prettyJsonAllman(JSON.parse(jsonStr), indent);
-    } catch (e) {
-        var fallback = document.createElement("pre");
-        fallback.className = "json-view";
-        fallback.textContent = jsonStr;
-        mountEl.replaceChildren(fallback);
-        return fallback;
-    }
-
-    var root = document.createElement("pre");
-    root.className = "json-view";
-    var stacks = {};
-    var nextPairId = 1;
-    var frag = document.createDocumentFragment();
-
-    function appendText(text) {
-        if (text) frag.appendChild(document.createTextNode(text));
-    }
-
-    function appendBoundarySpan(ch, pairKey, pairId) {
-        var sp = document.createElement("span");
-        sp.className = "json-boundary";
-        sp.textContent = ch;
-        sp.dataset.pair = String(pairId);
-        if (styleMap[pairKey]) sp.setAttribute("style", styleMap[pairKey]);
-        frag.appendChild(sp);
-        return sp;
-    }
-
-    var i = 0;
-    while (i < pretty.length) {
-        var ch = pretty.charAt(i);
-
-        if (openToKey[ch]) {
-            var openPairKey = openToKey[ch];
-            var pairId = nextPairId++;
-            appendBoundarySpan(ch, openPairKey, pairId);
-            if (!stacks[openPairKey]) stacks[openPairKey] = [];
-            stacks[openPairKey].push(pairId);
-            i++;
-            continue;
-        }
-
-        if (closeToKey[ch]) {
-            var closePairKey = closeToKey[ch];
-            var stack = stacks[closePairKey];
-            if (stack && stack.length) appendBoundarySpan(ch, closePairKey, stack.pop());
-            else appendText(ch);
-            i++;
-            continue;
-        }
-
-        // Light token coloring on top of the boundary-pair highlighting.
-        var rest = pretty.substring(i);
-        var m;
-        if ((m = rest.match(/^\s+|^[:,]/))) {
-            appendText(m[0]);
-            i += m[0].length;
-            continue;
-        }
-        if ((m = rest.match(/^"(?:\\.|[^"\\])*"(?=\s*:)/))) {
-            appendClassed(m[0], "json-key");
-            i += m[0].length;
-            continue;
-        }
-        if ((m = rest.match(/^"(?:\\.|[^"\\])*"/))) {
-            appendClassed(m[0], "json-string");
-            i += m[0].length;
-            continue;
-        }
-        if ((m = rest.match(/^-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?/))) {
-            appendClassed(m[0], "json-number");
-            i += m[0].length;
-            continue;
-        }
-        if ((m = rest.match(/^(true|false)\b/))) {
-            appendClassed(m[0], "json-boolean");
-            i += m[0].length;
-            continue;
-        }
-        if ((m = rest.match(/^null\b/))) {
-            appendClassed(m[0], "json-null");
-            i += m[0].length;
-            continue;
-        }
-
-        appendText(ch);
-        i++;
-    }
-
-    function appendClassed(text, className) {
-        var sp = document.createElement("span");
-        sp.className = className;
-        sp.textContent = text;
-        frag.appendChild(sp);
-    }
-
-    root.appendChild(frag);
-    mountEl.replaceChildren(root);
-
-    var activePair = null;
-    function cssEscape(s) {
-        if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(String(s));
-        return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
-    }
-    function setActive(pairId) {
-        if (activePair === pairId) return;
-        clearActive();
-        activePair = pairId;
-        root.querySelectorAll('.json-boundary[data-pair="' + cssEscape(pairId) + '"]').forEach(function (el) {
-            el.classList.add("active");
-        });
-    }
-    function clearActive() {
-        if (activePair == null) return;
-        root.querySelectorAll('.json-boundary[data-pair="' + cssEscape(activePair) + '"]').forEach(function (el) {
-            el.classList.remove("active");
-        });
-        activePair = null;
-    }
-
-    root.addEventListener("mousemove", function (e) {
-        var b = e.target.closest(".json-boundary");
-        if (!b || !root.contains(b)) { clearActive(); return; }
-        setActive(b.dataset.pair);
-    });
-    root.addEventListener("mouseleave", clearActive);
-    return root;
-};
-
-function prettyJsonAllman(value, indent) {
-    indent = indent || 2;
-    var obj = (typeof value === "string") ? JSON.parse(value) : value;
-    var s = JSON.stringify(obj, null, indent);
-    s = s.replace(/^(\s*)"([^"]+)"\s*:\s*([{\[])([}\]])?\s*(,?)\s*$/gm,
-        function (_m, ws, key, open, maybeClose, comma) {
-            if (maybeClose) {
-                return ws + '"' + key + '":\n' + ws + open + '\n' + ws + ' '.repeat(indent) + '\n' + ws + maybeClose + comma;
-            }
-            return ws + '"' + key + '":\n' + ws + open;
-        }
-    );
-    return s;
-}
-</script>
 </head>
 <body>
 <header>
@@ -411,149 +245,150 @@ NOTCR LDA INVFLG
 </main>
 
 <script>
-(function () {
-    "use strict";
+var oASM = new ASM();
 
-    var fileInput = document.getElementById("fileInput");
-    var parseButton = document.getElementById("parseButton");
-    var copyJsonButton = document.getElementById("copyJsonButton");
-    var downloadJsonButton = document.getElementById("downloadJsonButton");
-    var statusEl = document.getElementById("status");
-    var sourcePane = document.getElementById("sourcePane");
-    var jsonMount = document.getElementById("jsonMount");
-    var sourceInfo = document.getElementById("sourceInfo");
-    var jsonInfo = document.getElementById("jsonInfo");
+var fileInput = document.getElementById("fileInput");
+var parseButton = document.getElementById("parseButton");
+var copyJsonButton = document.getElementById("copyJsonButton");
+var downloadJsonButton = document.getElementById("downloadJsonButton");
+var statusEl = document.getElementById("status");
+var sourcePane = document.getElementById("sourcePane");
+var jsonMount = document.getElementById("jsonMount");
+var sourceInfo = document.getElementById("sourceInfo");
+var jsonInfo = document.getElementById("jsonInfo");
 
-    var currentFileName = "sample.S";
-    var currentJsonText = "";
-    window.oASM = null;
-    window.asmTokeniseJSON = null;
+var currentFileName = "sample.S";
+var currentJsonText = "";
+window.oASM = null;
+window.asmTokeniseJSON = null;
 
-    function setStatus(text, kind) {
-        statusEl.className = "status" + (kind ? " " + kind : "");
-        statusEl.textContent = text;
+function setStatus(text, kind) {
+    statusEl.className = "status" + (kind ? " " + kind : "");
+    statusEl.textContent = text;
+}
+
+function tokeniseCurrentSource() {
+    if (typeof window.ASM !== "function") {
+        var msg = "ASM() was not found. Check the ASM_core_v4.js <script src> path.";
+        setStatus(msg, "bad");
+        renderRawError(msg);
+        return;
     }
 
-    function tokeniseCurrentSource() {
-        if (typeof window.ASM !== "function") {
-            var msg = "ASM() was not found. Check the ASM_core_v4.js <script src> path.";
-            setStatus(msg, "bad");
-            renderRawError(msg);
-            return;
-        }
+    try {
+        window.oASM = new ASM();
+        var rows = window.oASM.tokenise(sourcePane.value);
+        window.asmTokeniseJSON = rows;
 
-        try {
-            window.oASM = new ASM();
-            var rows = window.oASM.tokenise(sourcePane.value);
-            window.asmTokeniseJSON = rows;
+        console.table( consoleTable(rows) );
 
-            console.table( consoleTable(rows) );
-
-            currentJsonText = JSON.stringify(rows, null, 2);
-            jsonMount.textContent = currentJsonText;
-            JSON.prettify(jsonMount, {
-                "{}": "color:#79b8ff;font-weight:800",
-                "[]": "color:#d2a8ff;font-weight:800"
-            }, 2);
-
-            var count = Array.isArray(rows) ? rows.length : 0;
-            jsonInfo.textContent = count + (count === 1 ? " statement" : " statements");
-            setStatus("Tokenised " + count + " statements from " + currentFileName + ".", "ok");
-        } catch (err) {
-            console.error(err);
-            renderRawError(err && err.stack ? err.stack : String(err));
-            setStatus("Error: " + (err && err.message ? err.message : String(err)), "bad");
-        }
-    }
-
-    function renderRawError(message) {
-        currentJsonText = JSON.stringify({ error: String(message) }, null, 2);
+        currentJsonText = JSON.stringify(rows, null, 2);
         jsonMount.textContent = currentJsonText;
-        JSON.prettify(jsonMount, { "{}": "color:#ff8a8a;font-weight:800", "[]": "color:#d2a8ff;font-weight:800" }, 2);
-    }
-
-    async function loadFile(file) {
-        if (!file) return;
-        currentFileName = file.name || "source.S";
-        sourcePane.value = await file.text();
-        sourceInfo.textContent = currentFileName + " — " + sourcePane.value.split(/\r\n|\r|\n/).length + " lines";
-        tokeniseCurrentSource();
-    }
-
-    function jsonDownloadName() {
-        var name = currentFileName || "source.S";
-        var dot = name.lastIndexOf(".");
-        if (dot > 0) name = name.substring(0, dot);
-        return name + ".tokenise.json";
-    }
-
-    function consoleTable(r)
-    {
-        var newrows = JSON.parse( JSON.stringify(r) );
-        for(var i=0;i<r.length;i++) 
+        oCOM.JSONprettify(jsonMount, 
         {
-            //newrows[i] = r[i];
-            for(var j in r[i])
-            {
-                if(j=="pc") newrows[i]["pc"] = oASM.pcHex(newrows[i]["pc"]);
-                if(j=="opc") newrows[i]["opc"] = oASM.opcHex(newrows[i]["opc"]);
-                if(j=="val") newrows[i]["val"] = oASM.valHex(newrows[i]["val"],newrows[i]["oby"]);
-                if(typeof(newrows[i][j])=="object") newrows[i][j] = newrows[i][j].join("|");
-            }
-        }
-        return newrows
+            "{}": "color:#79b8ff;font-weight:800",
+            "[]": "color:#d2a8ff;font-weight:800"
+        }, 2);
+
+        var count = Array.isArray(rows) ? rows.length : 0;
+        jsonInfo.textContent = count + (count === 1 ? " statement" : " statements");
+        setStatus("Tokenised " + count + " statements from " + currentFileName + ".", "ok");
+    } catch (err) {
+        console.error(err);
+        renderRawError(err && err.stack ? err.stack : String(err));
+        setStatus("Error: " + (err && err.message ? err.message : String(err)), "bad");
     }
+}
 
-    fileInput.addEventListener("change", function () {
-        loadFile(fileInput.files && fileInput.files[0]);
-    });
+function renderRawError(message) 
+{
+    currentJsonText = JSON.stringify({ error: String(message) }, null, 2);
+    jsonMount.textContent = currentJsonText;
+    oCOM.JSONprettify(jsonMount, { "{}": "color:#ff8a8a;font-weight:800", "[]": "color:#d2a8ff;font-weight:800" }, 2);
+}
 
-    parseButton.addEventListener("click", tokeniseCurrentSource);
-
-    copyJsonButton.addEventListener("click", async function () {
-        try {
-            await navigator.clipboard.writeText(currentJsonText || "");
-            setStatus("JSON copied to clipboard.", "ok");
-        } catch (err) {
-            setStatus("Clipboard copy failed; select the JSON text manually.", "warn");
-        }
-    });
-
-    downloadJsonButton.addEventListener("click", function () {
-        var blob = new Blob([currentJsonText || "[]"], { type: "application/json;charset=utf-8" });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = jsonDownloadName();
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    });
-
-    ["dragenter", "dragover"].forEach(function (name) {
-        document.addEventListener(name, function (ev) {
-            ev.preventDefault();
-            document.body.classList.add("dragover");
-        });
-    });
-    ["dragleave", "drop"].forEach(function (name) {
-        document.addEventListener(name, function (ev) {
-            ev.preventDefault();
-            document.body.classList.remove("dragover");
-        });
-    });
-    document.addEventListener("drop", function (ev) {
-        var file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
-        loadFile(file);
-    });
-
-    sourcePane.addEventListener("keydown", function (ev) {
-        if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") tokeniseCurrentSource();
-    });
-
+async function loadFile(file) {
+    if (!file) return;
+    currentFileName = file.name || "source.S";
+    sourcePane.value = await file.text();
+    sourceInfo.textContent = currentFileName + " — " + sourcePane.value.split(/\r\n|\r|\n/).length + " lines";
     tokeniseCurrentSource();
-})();
+}
+
+function jsonDownloadName() {
+    var name = currentFileName || "source.S";
+    var dot = name.lastIndexOf(".");
+    if (dot > 0) name = name.substring(0, dot);
+    return name + ".tokenise.json";
+}
+
+function consoleTable(r)
+{
+    var newrows = JSON.parse( JSON.stringify(r) );
+    for(var i=0;i<r.length;i++) 
+    {
+        //newrows[i] = r[i];
+        for(var j in r[i])
+        {
+            if(j=="pc") newrows[i]["pc"] = oASM.pcHex(newrows[i]["pc"]);
+            if(j=="opc") newrows[i]["opc"] = oASM.opcHex(newrows[i]["opc"]);
+            if(j=="val") newrows[i]["val"] = oASM.valHex(newrows[i]["val"],newrows[i]["oby"]);
+            if(typeof(newrows[i][j])=="object") newrows[i][j] = newrows[i][j].join("|");
+        }
+    }
+    return newrows
+}
+
+fileInput.addEventListener("change", function () {
+    loadFile(fileInput.files && fileInput.files[0]);
+});
+
+parseButton.addEventListener("click", tokeniseCurrentSource);
+
+copyJsonButton.addEventListener("click", async function () {
+    try {
+        await navigator.clipboard.writeText(currentJsonText || "");
+        setStatus("JSON copied to clipboard.", "ok");
+    } catch (err) {
+        setStatus("Clipboard copy failed; select the JSON text manually.", "warn");
+    }
+});
+
+downloadJsonButton.addEventListener("click", function () {
+    var blob = new Blob([currentJsonText || "[]"], { type: "application/json;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = jsonDownloadName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+});
+
+["dragenter", "dragover"].forEach(function (name) {
+    document.addEventListener(name, function (ev) {
+        ev.preventDefault();
+        document.body.classList.add("dragover");
+    });
+});
+["dragleave", "drop"].forEach(function (name) {
+    document.addEventListener(name, function (ev) {
+        ev.preventDefault();
+        document.body.classList.remove("dragover");
+    });
+});
+document.addEventListener("drop", function (ev) {
+    var file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    loadFile(file);
+});
+
+sourcePane.addEventListener("keydown", function (ev) {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") tokeniseCurrentSource();
+});
+
+tokeniseCurrentSource();
+
 </script>
 </body>
 </html>
