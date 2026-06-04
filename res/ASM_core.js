@@ -66,6 +66,32 @@ function ASM()
 		this.bDebug 	= false;
 	}
 
+
+	// Keep the assembler instance program counter and the legacy global pc in sync.
+	// The global pc is still used by older tools, but this.pc is the preferred source.
+	this.set_pc = function(v)
+	{
+		v = Number(v);
+		if(isNaN(v)) v = 0;
+		this.pc = v & 0xFFFF;
+		if(typeof globalThis != "undefined") globalThis.pc = this.pc;
+		return this.pc;
+	}
+
+	this.add_pc = function(v)
+	{
+		v = Number(v);
+		if(isNaN(v)) v = 0;
+		return this.set_pc((this.pc + v) & 0xFFFF);
+	}
+
+	this.sync_pc_from_global = function()
+	{
+		if(typeof globalThis != "undefined" && typeof globalThis.pc == "number")
+			this.pc = globalThis.pc & 0xFFFF;
+		return this.pc;
+	}
+
 	this.ext = "";  //" [A]";		// TODO: tag compiler compatibility
 
 	this.pragma_sym = 
@@ -91,8 +117,8 @@ function ASM()
 
 				oASM.code_pc[oASM.get_code_len()] = e.val & 0xFFFF;		//  register ORG as program counter change at byte index (for byte stream listing) 
 
-				pc = e.val & 0xFFFF;
-				listing.value += "$"+this.getHexWord(pc)+this.ext;
+				this.set_pc(e.val);
+				listing.value += "$"+this.getHexWord(this.pc)+this.ext;
 				return {"val":true}
 			}
 		}
@@ -148,12 +174,12 @@ function ASM()
 					oASM.sym_link(				// STORE SYMBOL
 					{
 						 "type": "def"
-						,"PC": pc
+						,"PC": this.pc
 						,"val": 0
 						,"sym": lbl
 						,"sym0": sym[0]
 					})
-					oASM.symtab[lbl] = pc;		// LINK ADDRESS TO SYMBOL
+					oASM.symtab[lbl] = this.pc;		// LINK ADDRESS TO SYMBOL
 
 					listing.value += len+",$"+oCOM.getHexByte(val)+" "+this.ext;
 				}
@@ -166,7 +192,7 @@ function ASM()
 					listing.value += arr.join(" ");
 				}
 
-				pc += len;
+				this.add_pc(len);
 				return {"val":true}
 			}
 			
@@ -188,7 +214,7 @@ function ASM()
 					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
 				}
 				listing.value += this.ext;
-				pc += dat.length;
+				this.add_pc(dat.length);
 				return {"val":true};
 			}
 		}
@@ -209,7 +235,7 @@ function ASM()
 					listing.value += this.getHexByte(e.val[i]);
 				if (pass == 2) oASM.concat_code(e.val);
 				listing.value += this.ext;
-				pc += e.val.length;
+				this.add_pc(e.val.length);
 				return {"val":true}
 			}
 		}
@@ -247,7 +273,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arr.join(" ")+this.ext;
 				}
-				pc += arr.length;
+				this.add_pc(arr.length);
 				return {"val":true}
 			}
 		}
@@ -296,7 +322,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arr.join(" ")+this.ext;
 				}
-				pc += arr.length << 1;
+				this.add_pc(arr.length << 1);
 				return {"val":true}
 			}
 		}
@@ -337,7 +363,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arr.join(" ")+this.ext;
 				}
-				pc += arr.length << 1;
+				this.add_pc(arr.length << 1);
 				return {"val":true}				
 			}
 		}
@@ -982,8 +1008,8 @@ function ASM()
 
 				oASM.code_pc[oASM.get_code_len()] = e.val & 0xFFFF;		//  register ORG as program counter change at byte index (for byte stream listing) 
 
-				pc = e.val & 0xFFFF;
-				listing.value += "$"+this.getHexWord(pc);
+				this.set_pc(e.val);
+				listing.value += "$"+this.getHexWord(this.pc);
 				return {"val":true}
 
 			case "EQU":
@@ -1001,7 +1027,7 @@ function ASM()
 					oASM.sym_link(
 					{
 						 "type": "def"
-						,"PC": pc
+						,"PC": this.pc
 						,"val": e.val
 						,"sym": lbl
 						,"sym0": sym[0]
@@ -1019,7 +1045,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
 				}
-				pc += dat.length;
+				this.add_pc(dat.length);
 				return {"val":true};
 
 			case "BIN":
@@ -1031,7 +1057,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arg;
 				}
-				pc += dat.length;
+				this.add_pc(dat.length);
 				return {"val":true};
 */
 			case "ASC":
@@ -1049,7 +1075,7 @@ function ASM()
 					for (var i = 0; i < arg.length; i++)
 						listing.value += this.getHexByte(dat[i]);
 				}
-				pc += dat.length;
+				this.add_pc(dat.length);
 				return {"val":true};			
 
 			case ".ASCIIZ":
@@ -1088,7 +1114,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arr.join(",");
 				}
-				pc += arr.length*2;
+				this.add_pc(arr.length*2);
 
 				return {"val":true}
 
@@ -1122,7 +1148,7 @@ function ASM()
 					oASM.concat_code(dat);
 					listing.value += arr.join(" ");
 				}
-				pc += arr.length;
+				this.add_pc(arr.length);
 				return {"val":true}
 
 			case ".DS":
@@ -1155,7 +1181,7 @@ function ASM()
 					//alert(pass+".DS "+arr.join(","));
 				}
 
-				pc += arr.length;
+				this.add_pc(arr.length);
 				listing.value += arr.join(",");
 
 				//oASM.getExpression(addr);
@@ -1182,7 +1208,7 @@ function ASM()
 					for (var i = 0; i < arg.length; i++)
 						listing.value += this.getHexByte(dat[i]);
 				}
-				pc += dat.length;
+				this.add_pc(dat.length);
 				return {"val":true};
 
 			case ".DEFINE":
