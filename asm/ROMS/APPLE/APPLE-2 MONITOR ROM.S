@@ -33,14 +33,14 @@ BAS2L       EQU     $2A
 BAS2H       EQU     $2B
 COLOR       EQU     $30
 MODE        EQU     $31
-INVFLG      EQU     $32
-PROMPT      EQU     $33
-YSAV        EQU     $34
-YSAV1       EQU     $35
-CSWL        EQU     $36
-KSWL        EQU     $38
-PCL         EQU     $3A
-PCH         EQU     $3B
+INVFLG      EQU     $32             ; inverse flag zero-page address
+PROMPT      EQU     $33             ; prompt character zero-page address
+YSAV        EQU     $34             ; Y-register backup in zero-page
+YSAV1       EQU     $35             ; additional Y-register backup in zero-page
+CSWL        EQU     $36             ; pointing to a jump vector for character user output (configurable output pipeline)
+KSWL        EQU     $38             ; pointing to a jump vector for keyboard user input  (configurable input pipeline)
+PCL         EQU     $3A             ; low-byte for printing addresses
+PCH         EQU     $3B             ; high-byte for printing addresses
 A1L         EQU     $3C
 A1H         EQU     $3D
 A2L         EQU     $3E
@@ -51,40 +51,40 @@ A4L         EQU     $42
 A4H         EQU     $43
 A5L         EQU     $44
 A5H         EQU     $45
-ACC         EQU     $45     ;note overlap with A5H!
-XREG        EQU     $46
-YREG        EQU     $47
-STATUS      EQU     $48
+ACC         EQU     $45             ; note overlap with A5H!
+XREG        EQU     $46             ; X-register backup in zero-page
+YREG        EQU     $47             ; Y-register backup in zero-page
+STATUS      EQU     $48             ; used by debug software
 SPNT        EQU     $49
 RNDL        EQU     $4E
 RNDH        EQU     $4F
 PICK        EQU     $95
 IN          EQU     $0200  
-BRKV        EQU     $03f0   ;new vector for BRK
-SOFTEV      EQU     $03f2   ;vector for warm start
-PWREDUP     EQU     $03f4   ;this must = EOR #$A5 of SOFTEV+1
-USRADR      EQU     $03f8  
+BRKV        EQU     $03f0           ; new vector for BRK
+SOFTEV      EQU     $03f2           ; vector for warm start
+PWREDUP     EQU     $03f4           ; this must = EOR #$A5 of SOFTEV+1
+USRADR      EQU     $03f8           ; usr subroutine address at USRADR
 NMI         EQU     $03fb  
-IRQLOC      EQU     $03fe  
+IRQLOC      EQU     $03fe           ; user routine (soft) vector
 LINE1       EQU     $0400  
-MSLOT       EQU     $07f8
-KBD         EQU     $c000           ;R last key pressed + 128
-KBDSTRB     EQU     $c010           ;RW keyboard strobe
-TAPEOUT     EQU     $c020           ;RW toggle caseette tape output
-SPKR        EQU     $c030           ;RW toggle speaker
-TXTCLR      EQU     $c050           ;RW display graphics
-TXTSET      EQU     $c051           ;RW display text
-MIXSET      EQU     $c053           ;RW display split screen
-TXTPAGE1    EQU     $c054           ;RW display page 1
-LORES       EQU     $c056           ;RW display lo-res graphics
-SETAN0      EQU     $c058           ;RW annunciator 0 off
-SETAN1      EQU     $c05a           ;RW annunciator 1 off
-CLRAN2      EQU     $c05d           ;RW annunciator 2 on
-CLRAN3      EQU     $c05f           ;RW annunciator 3 on
+MSLOT       EQU     $07f8           ; slot Mode byte
+KBD         EQU     $c000           ; R last key pressed + 128
+KBDSTRB     EQU     $c010           ; RW keyboard strobe
+TAPEOUT     EQU     $c020           ; RW toggle caseette tape output
+SPKR        EQU     $c030           ; RW toggle speaker
+TXTCLR      EQU     $c050           ; RW display graphics
+TXTSET      EQU     $c051           ; RW display text
+MIXSET      EQU     $c053           ; RW display split screen
+TXTPAGE1    EQU     $c054           ; RW display page 1
+LORES       EQU     $c056           ; RW display lo-res graphics
+SETAN0      EQU     $c058           ; RW annunciator 0 off
+SETAN1      EQU     $c05a           ; RW annunciator 1 off
+CLRAN2      EQU     $c05d           ; RW annunciator 2 on
+CLRAN3      EQU     $c05f           ; RW annunciator 3 on
 TAPEIN      EQU     $c060
-PADDL0      EQU     $c064           ;R analog input 0
-PTRIG       EQU     $c070           ;RW analog input reset
-CLRROM      EQU     $cfff           ;disable slot C8 ROM
+PADDL0      EQU     $c064           ; R analog input 0
+PTRIG       EQU     $c070           ; RW analog input reset
+CLRROM      EQU     $cfff           ; disable slot C8 ROM
 BASIC       EQU     $e000
 BASIC2      EQU     $e003
 H2          EQU     $2C    
@@ -627,7 +627,7 @@ CLEOP1      PHA
             BCC     CLEOP1
             BCS     VTAB
 
-HOME        LDA     *WNDTOP
+HOME        LDA     *WNDTOP         ;curser V index
             STA     *CV
             LDY     #$00
             STY     *CH
@@ -790,7 +790,7 @@ BCKSPC      TXA                     ;  will backspace to 0
             BEQ     GETLNZ
             DEX
 NXTCHAR     JSR     RDCHAR
-            CMP     #PICK           ;use screen char
+            CMP     #PICK           ;user screen char
             BNE     CAPTST          ;  for ctrl-U
             LDA     (BASL),Y
 CAPTST      CMP     #$E0
