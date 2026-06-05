@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apple II 6502 Boot Log DASM v1</title>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/ASM_core.js"></script>
+<style>
+    :root {
+        --bg:#0f1115;
+        --panel:#171b22;
+        --text:#e8eef7;
+        --muted:#a8b3c4;
+        --border:#2b3442;
+        --accent:#7aa2f7;
+        --bad:#ff8a8a;
+        --good:#9ece6a;
+    }
+    * { box-sizing:border-box; }
+    body {
+        margin:0;
+        padding:20px;
+        background:var(--bg);
+        color:var(--text);
+        font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    }
+    h1 { margin:0 0 8px; font-size:22px; }
+    p { color:var(--muted); margin:0 0 16px; }
+    code { color:var(--text); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    label { display:block; font-weight:600; margin:0 0 6px; }
+    textarea {
+        width:100%;
+        min-height:180px;
+        resize:vertical;
+        background:#0b0e14;
+        color:var(--text);
+        border:1px solid var(--border);
+        border-radius:8px;
+        padding:10px;
+        font:13px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    #symbols { min-height:120px; }
+    .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; }
+    button, select {
+        background:#202736;
+        color:var(--text);
+        border:1px solid var(--border);
+        border-radius:8px;
+        padding:8px 10px;
+        font:inherit;
+    }
+    button { cursor:pointer; }
+    button.primary { background:#263b68; border-color:#385eaa; }
+    button:hover { border-color:var(--accent); }
+    .check { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-weight:500; }
+    pre {
+        margin:0;
+        white-space:pre;
+        overflow:auto;
+        background:#0b0e14;
+        color:var(--text);
+        border:1px solid var(--border);
+        border-radius:8px;
+        padding:12px;
+        min-height:380px;
+        font:13px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    .status { color:var(--muted); min-height:20px; }
+    .error { color:var(--bad); }
+    .ok { color:var(--good); }
+    @media (max-width:900px) { .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<h1>Apple II 6502 Boot Log DASM v1</h1>
+<p>
+    Input format: one fixed 5-byte record per executed CPU operation:
+    <code>adrLo adrHi opcode op1 op2</code>. This is the same as
+    <code>16 address bits + 24 operation bits</code>. The viewer uses
+    <code>../res/ASM_core.js</code> for <code>DASM</code> and overrides symbols only on its own local instance.
+</p>
+
+<div class="grid">
+    <div class="panel">
+        <label for="input">Boot log base64</label>
+        <textarea id="input" spellcheck="false" placeholder="Paste base64 here..."></textarea>
+
+        <div class="row">
+            <button class="primary" id="decodeBtn" type="button">Disassemble</button>
+            <button id="sampleBtn" type="button">Load sample</button>
+            <button id="clearBtn" type="button">Clear</button>
+            <button id="copyBtn" type="button">Copy output</button>
+            <button id="downloadBtn" type="button">Download .asm</button>
+        </div>
+
+        <div class="row">
+            <label class="check"><input type="checkbox" id="useDefaultSymbols" checked> ASM_core.js mem_sym</label>
+            <label class="check"><input type="checkbox" id="patchUnofficial" checked> friendly unofficial opcode names</label>
+            <label class="check"><input type="checkbox" id="showIdx" checked> index column</label>
+        </div>
+
+        <label for="symbols">Extra symbols</label>
+        <textarea id="symbols" spellcheck="false">; accepted formats:
+; COUT       EQU     $FDED   ;print ASCII character from accumulator
+; IOADR      EQU     $C000   ;I/O address base
+; $FDED=COUT;print ASCII character from accumulator
+; COUT=$FDED;print ASCII character from accumulator
+; 0xC000 IOADR;keyboard data/strobe
+
+IOADR       EQU     $c000  
+LOC0        EQU     $00
+LOC1        EQU     $01
+WNDLFT      EQU     $20
+WNDWDTH     EQU     $21
+WNDTOP      EQU     $22
+WNDBTM      EQU     $23
+CH          EQU     $24
+CV          EQU     $25
+GBASL       EQU     $26
+GBASH       EQU     $27
+BASL        EQU     $28
+BASH        EQU     $29
+BAS2L       EQU     $2A
+BAS2H       EQU     $2B
+COLOR       EQU     $30
+MODE        EQU     $31
+INVFLG      EQU     $32
+PROMPT      EQU     $33
+YSAV        EQU     $34
+YSAV1       EQU     $35
+CSWL        EQU     $36
+KSWL        EQU     $38
+PCL         EQU     $3A
+PCH         EQU     $3B
+A1L         EQU     $3C
+A1H         EQU     $3D
+A2L         EQU     $3E
+A2H         EQU     $3F
+A3L         EQU     $40
+A3H         EQU     $41
+A4L         EQU     $42
+A4H         EQU     $43
+A5L         EQU     $44
+A5H         EQU     $45
+ACC         EQU     $45     ;note overlap with A5H!
+XREG        EQU     $46
+YREG        EQU     $47
+STATUS      EQU     $48
+SPNT        EQU     $49
+RNDL        EQU     $4E
+RNDH        EQU     $4F
+IN          EQU     $0200  
+BRKV        EQU     $03f0   ;new vector for BRK
+SOFTEV      EQU     $03f2   ;vector for warm start
+PWREDUP     EQU     $03f4   ;this must = EOR #$A5 of SOFTEV+1
+USRADR      EQU     $03f8  
+NMI         EQU     $03fb  
+IRQLOC      EQU     $03fe  
+LINE1       EQU     $0400  
+MSLOT       EQU     $07f8
+KBD         EQU     $c000           ;R last key pressed + 128
+KBDSTRB     EQU     $c010           ;RW keyboard strobe
+TAPEOUT     EQU     $c020           ;RW toggle caseette tape output
+SPKR        EQU     $c030           ;RW toggle speaker
+TXTCLR      EQU     $c050           ;RW display graphics
+TXTSET      EQU     $c051           ;RW display text
+MIXSET      EQU     $c053           ;RW display split screen
+TXTPAGE1    EQU     $c054           ;RW display page 1
+LORES       EQU     $c056           ;RW display lo-res graphics
+SETAN0      EQU     $c058           ;RW annunciator 0 off
+SETAN1      EQU     $c05a           ;RW annunciator 1 off
+CLRAN2      EQU     $c05d           ;RW annunciator 2 on
+CLRAN3      EQU     $c05f           ;RW annunciator 3 on
+TAPEIN      EQU     $c060
+PADDL0      EQU     $c064           ;R analog input 0
+PTRIG       EQU     $c070           ;RW analog input reset
+CLRROM      EQU     $cfff           ;disable slot C8 ROM
+BASIC       EQU     $e000
+BASIC2      EQU     $e003
+H2          EQU     $2C    
+V2          EQU     $2D    
+MASK        EQU     $2E 
+
+
+PLOT   EQU $F800
+RTMASK EQU $F80C
+PLOT1  EQU $F80E
+HLINE  EQU $F819
+HLINE1 EQU $F81C
+VLINEZ EQU $F826
+VLINE  EQU $F828
+RTS1   EQU $F831
+CLRSCR EQU $F832
+CLRTOP EQU $F836
+CLRSC2 EQU $F838
+CLRSC3 EQU $F83C
+GBASCA EQU $F847
+GBCALC EQU $F856
+NEXTCO EQU $F85F
+SETCOL EQU $F864
+SCRN   EQU $F871
+SCRN2  EQU $F879
+RTMSKZ EQU $F87F
+LMNEM  EQU $F882
+RMNEM  EQU $F882
+FORMAT EQU $F882
+LENGTH EQU $F882
+INSDS1 EQU $F882
+IEVEN  EQU $F89B
+ERR    EQU $F8A5
+GETFMT EQU $F8A9
+MNNDX1 EQU $F8BE
+MNNDX2 EQU $F8C2
+MNNDX3 EQU $F8C9
+INSTDS EQU $F8D0
+PRNTOP EQU $F8D4
+PRNTBL EQU $F8DB
+NXTCOL EQU $F8F5
+PRMN2  EQU $F8F9
+PRADR1 EQU $F910
+PRADR2 EQU $F914
+PRADR3 EQU $F926
+PRADR4 EQU $F92A
+PRADR5 EQU $F930
+RELADR EQU $F938
+PRNTYX EQU $F940
+PRNTAX EQU $F941
+PRNTX  EQU $F944
+PRBLNK EQU $F948
+PRBL2  EQU $F94A
+PCADJ  EQU $F953
+PCADJ2 EQU $F954
+PCADJ3 EQU $F956
+PCADJ4 EQU $F95C
+RTS2   EQU $F961
+FMT1   EQU $F962
+FMT2   EQU $F9A6
+CHAR1  EQU $F9B4
+CHAR2  EQU $F9BA
+MNEML  EQU $F9C0
+MNEMR  EQU $FA00
+IRQ    EQU $FA40
+BREAK  EQU $FA4C
+OLDBRK EQU $FA59
+RESET  EQU $FA62
+FIXSEV EQU $FA9B
+NOFIX  EQU $FAA3
+PWRUP  EQU $FAA6
+SETPG3 EQU $FAA9
+LFAAB  EQU $FAAB
+SLOOP  EQU $FABA
+NXTBYT EQU $FAC7
+REGDSP EQU $FAD7
+RGDSP1 EQU $FADA
+RDSP1  EQU $FAE4
+PWRCON EQU $FAFD
+DISKID EQU $FB02
+TITLE  EQU $FB09
+XLTBL  EQU $FB11
+RTBL   EQU $FB19
+PREAD  EQU $FB1E
+PREAD2 EQU $FB25
+RTS2D  EQU $FB2E
+INIT   EQU $FB2F
+SETTXT EQU $FB39
+SETGR  EQU $FB40
+SETWND EQU $FB4B
+TABV   EQU $FB5B
+APPLEI EQU $FB60
+STITLE EQU $FB65
+SETPWR EQU $FB6F
+VIDWAI EQU $FB78
+KBDWAI EQU $FB88
+NOWAIT EQU $FB94
+ESCOLD EQU $FB97
+ESCNOW EQU $FB9B
+ESCNEW EQU $FBA5
+BASCAL EQU $FBC1
+BASCLC EQU $FBD0
+BELL1  EQU $FBD9
+BELL2  EQU $FBE4
+RTS2B  EQU $FBEF
+STORAD EQU $FBF0
+ADVANC EQU $FBF4
+RTS3   EQU $FBFC
+VIDOUT EQU $FBFD
+BS     EQU $FC10
+UP     EQU $FC1A
+VTAB   EQU $FC22
+VTABZ  EQU $FC24
+RTS4   EQU $FC2B
+ESC1   EQU $FC2C
+CLREOP EQU $FC42
+CLEOP1 EQU $FC46
+HOME   EQU $FC58
+CR     EQU $FC62
+LF     EQU $FC66
+SCROLL EQU $FC70
+SCRL1  EQU $FC76
+SCRL2  EQU $FC8C
+SCRL3  EQU $FC95
+CLREOL EQU $FC9C
+CLEOLZ EQU $FC9E
+CLREO2 EQU $FCA0
+WAIT   EQU $FCA8
+WAIT2  EQU $FCA9
+WAIT3  EQU $FCAA
+NXTA4  EQU $FCB4
+NXTA1  EQU $FCBA
+RTS4B  EQU $FCC8
+HEADR  EQU $FCC9
+WRBIT  EQU $FCD6
+ZERDLY EQU $FCDB
+ONEDLY EQU $FCE2
+WRTAPE EQU $FCE5
+RDBYTE EQU $FCEC
+RDBYT2 EQU $FCEE
+LASTIN EQU $FCFA
+RD2BIT EQU $FCFA
+RDBIT  EQU $FCFD
+RDKEY  EQU $FD0C
+KEYIN  EQU $FD1B
+KEYIN2 EQU $FD21
+ESC    EQU $FD2F
+RDCHAR EQU $FD35
+NOTCR  EQU $FD3D
+NOTCR1 EQU $FD5F
+CANCEL EQU $FD62
+GETLNZ EQU $FD67
+GETLN  EQU $FD6A
+GETLN1 EQU $FD6F
+BCKSPC EQU $FD71
+NXTCHA EQU $FD75
+CAPTST EQU $FD7E
+ADDINP EQU $FD84
+CROUT1 EQU $FD8B
+CROUT  EQU $FD8E
+PRA1   EQU $FD92
+PRYX2  EQU $FD96
+XAMB   EQU $FDA3
+MOD8CH EQU $FDAD
+XAM    EQU $FDB3
+DATAOU EQU $FDB6
+RTS4C  EQU $FDC5
+XAMPM  EQU $FDC6
+ADD    EQU $FDD1
+PRBYTE EQU $FDDA
+PRHEX  EQU $FDE3
+PRHEXZ EQU $FDE5
+COUT   EQU $FDED
+COUT1  EQU $FDF0
+COUTZ  EQU $FDF6
+BL1    EQU $FE00
+BLANK  EQU $FE04
+RTS5   EQU $FE17
+SETMOD EQU $FE18
+SETMDZ EQU $FE1D
+LT     EQU $FE20
+LT2    EQU $FE22
+MOVE   EQU $FE2C
+VFY    EQU $FE36
+VFYOK  EQU $FE58
+LIST   EQU $FE5E
+LIST2  EQU $FE63
+A1PC   EQU $FE75
+A1PCLP EQU $FE78
+A1PCRT EQU $FE7F
+SETINV EQU $FE80
+SETNOR EQU $FE84
+SETIFL EQU $FE86
+SETKBD EQU $FE89
+INPORT EQU $FE8B
+INPRT  EQU $FE8D
+SETVID EQU $FE93
+OUTPOR EQU $FE95
+OUTPRT EQU $FE97
+IOPRT  EQU $FE9B
+IOPRT1 EQU $FEA7
+IOPRT2 EQU $FEA9
+XBASIC EQU $FEB0
+BASCON EQU $FEB3
+GO     EQU $FEB6
+REGZ   EQU $FEBF
+TRACE  EQU $FEC2
+STEPZ  EQU $FEC4
+REMOVE EQU $FEC5
+USR    EQU $FECA
+WRITE  EQU $FECD
+WR1    EQU $FED4
+WRBYTE EQU $FEED
+WRBYT2 EQU $FEEF
+CHKSUM EQU $FEF6
+CRMON  EQU $FEF6
+READ   EQU $FEFD
+RD2    EQU $FF0A
+RD3    EQU $FF16
+PRERR  EQU $FF2D
+BELL   EQU $FF3A
+RESTOR EQU $FF3F
+RESTR1 EQU $FF44
+SAVE   EQU $FF4A
+SAV1   EQU $FF4C
+OLDRST EQU $FF59
+MON    EQU $FF65
+MONZ   EQU $FF69
+NXTITM EQU $FF73
+CHRSRC EQU $FF7A
+DIG    EQU $FF8A
+NXTBIT EQU $FF90
+NXTBAS EQU $FF98
+NXTBS2 EQU $FFA2
+GETNUM EQU $FFA7
+NXTCHR EQU $FFAD
+TOSUB  EQU $FFBE
+ZMODE  EQU $FFC7
+CHRTBL EQU $FFCC
+SUBTBL EQU $FFE3
+
+</textarea>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <div class="panel">
+        <label for="output">Disassembly</label>
+        <pre id="output"></pre>
+    </div>
+</div>
+
+<script type="text/javascript">
+(function () {
+    'use strict';
+
+    /*
+        This tool intentionally does NOT embed or modify DASM.
+        Required external order:
+            1. ../res/COM_MAIN.js  -> oCOM
+            2. ../res/ASM_core.js  -> DASM
+    */
+
+    var instrlen = new Uint8Array([
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+        3, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+
+        1, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+        1, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 2, 1, 1, 3, 3, 3, 3,
+        2, 2, 2, 1, 2, 2, 2, 2,  1, 3, 1, 1, 3, 3, 3, 3
+    ]);
+
+    var opctab = [
+        ['BRK','imp'], ['ORA','inx'], ['???','imp'], ['???','imp'], ['???','imp'], ['ORA','zpg'], ['ASL','zpg'], ['???','imp'], ['PHP','imp'], ['ORA','imm'], ['ASL','acc'], ['???','imp'], ['???','imp'], ['ORA','abs'], ['ASL','abs'], ['???','imp'],
+        ['BPL','rel'], ['ORA','iny'], ['???','imp'], ['???','imp'], ['???','imp'], ['ORA','zpx'], ['ASL','zpx'], ['???','imp'], ['CLC','imp'], ['ORA','aby'], ['???','imp'], ['???','imp'], ['???','imp'], ['ORA','abx'], ['ASL','abx'], ['???','imp'],
+        ['JSR','abs'], ['AND','inx'], ['???','imp'], ['???','imp'], ['BIT','zpg'], ['AND','zpg'], ['ROL','zpg'], ['???','imp'], ['PLP','imp'], ['AND','imm'], ['ROL','acc'], ['???','imp'], ['BIT','abs'], ['AND','abs'], ['ROL','abs'], ['???','imp'],
+        ['BMI','rel'], ['AND','iny'], ['???','imp'], ['???','imp'], ['???','imp'], ['AND','zpx'], ['ROL','zpx'], ['???','imp'], ['SEC','imp'], ['AND','aby'], ['???','imp'], ['???','imp'], ['???','imp'], ['AND','abx'], ['ROL','abx'], ['???','imp'],
+        ['RTI','imp'], ['EOR','inx'], ['???','imp'], ['???','imp'], ['???','imp'], ['EOR','zpg'], ['LSR','zpg'], ['???','imp'], ['PHA','imp'], ['EOR','imm'], ['LSR','acc'], ['???','imp'], ['JMP','abs'], ['EOR','abs'], ['LSR','abs'], ['???','imp'],
+        ['BVC','rel'], ['EOR','iny'], ['???','imp'], ['???','imp'], ['???','imp'], ['EOR','zpx'], ['LSR','zpx'], ['???','imp'], ['CLI','imp'], ['EOR','aby'], ['???','imp'], ['???','imp'], ['???','imp'], ['EOR','abx'], ['LSR','abx'], ['???','imp'],
+        ['RTS','imp'], ['ADC','inx'], ['???','imp'], ['???','imp'], ['???','imp'], ['ADC','zpg'], ['ROR','zpg'], ['???','imp'], ['PLA','imp'], ['ADC','imm'], ['ROR','acc'], ['???','imp'], ['JMP','ind'], ['ADC','abs'], ['ROR','abs'], ['???','imp'],
+        ['BVS','rel'], ['ADC','iny'], ['???','imp'], ['???','imp'], ['???','imp'], ['ADC','zpx'], ['ROR','zpx'], ['???','imp'], ['SEI','imp'], ['ADC','aby'], ['???','imp'], ['???','imp'], ['???','imp'], ['ADC','abx'], ['ROR','abx'], ['???','imp'],
+        ['???','imp'], ['STA','inx'], ['???','imp'], ['???','imp'], ['STY','zpg'], ['STA','zpg'], ['STX','zpg'], ['???','imp'], ['DEY','imp'], ['???','imp'], ['TXA','imp'], ['???','imp'], ['STY','abs'], ['STA','abs'], ['STX','abs'], ['???','imp'],
+        ['BCC','rel'], ['STA','iny'], ['???','imp'], ['???','imp'], ['STY','zpx'], ['STA','zpx'], ['STX','zpy'], ['???','imp'], ['TYA','imp'], ['STA','aby'], ['TXS','imp'], ['???','imp'], ['???','imp'], ['STA','abx'], ['???','imp'], ['???','imp'],
+        ['LDY','imm'], ['LDA','inx'], ['LDX','imm'], ['???','imp'], ['LDY','zpg'], ['LDA','zpg'], ['LDX','zpg'], ['???','imp'], ['TAY','imp'], ['LDA','imm'], ['TAX','imp'], ['???','imp'], ['LDY','abs'], ['LDA','abs'], ['LDX','abs'], ['???','imp'],
+        ['BCS','rel'], ['LDA','iny'], ['???','imp'], ['???','imp'], ['LDY','zpx'], ['LDA','zpx'], ['LDX','zpy'], ['???','imp'], ['CLV','imp'], ['LDA','aby'], ['TSX','imp'], ['???','imp'], ['LDY','abx'], ['LDA','abx'], ['LDX','aby'], ['???','imp'],
+        ['CPY','imm'], ['CMP','inx'], ['???','imp'], ['???','imp'], ['CPY','zpg'], ['CMP','zpg'], ['DEC','zpg'], ['???','imp'], ['INY','imp'], ['CMP','imm'], ['DEX','imp'], ['???','imp'], ['CPY','abs'], ['CMP','abs'], ['DEC','abs'], ['???','imp'],
+        ['BNE','rel'], ['CMP','iny'], ['???','imp'], ['???','imp'], ['???','imp'], ['CMP','zpx'], ['DEC','zpx'], ['???','imp'], ['CLD','imp'], ['CMP','aby'], ['???','imp'], ['???','imp'], ['???','imp'], ['CMP','abx'], ['DEC','abx'], ['???','imp'],
+        ['CPX','imm'], ['SBC','inx'], ['???','imp'], ['???','imp'], ['CPX','zpg'], ['SBC','zpg'], ['INC','zpg'], ['???','imp'], ['INX','imp'], ['SBC','imm'], ['NOP','imp'], ['???','imp'], ['CPX','abs'], ['SBC','abs'], ['INC','abs'], ['???','imp'],
+        ['BEQ','rel'], ['SBC','iny'], ['???','imp'], ['???','imp'], ['???','imp'], ['SBC','zpx'], ['INC','zpx'], ['???','imp'], ['SED','imp'], ['SBC','aby'], ['???','imp'], ['???','imp'], ['???','imp'], ['SBC','abx'], ['INC','abx'], ['???','imp']
+    ];
+
+    function fallbackHexByte(v) {
+        v = (Number(v) || 0) & 0xff;
+        return (v < 0x10 ? '0' : '') + v.toString(16).toUpperCase();
+    }
+
+    function fallbackHexWord(v) {
+        v = (Number(v) || 0) & 0xffff;
+        return ('000' + v.toString(16).toUpperCase()).slice(-4);
+    }
+
+    function getHexByte(v) {
+        return (window.oCOM && oCOM.getHexByte) ? oCOM.getHexByte(v) : fallbackHexByte(v);
+    }
+
+    function getHexWord(v) {
+        return (window.oCOM && oCOM.getHexWord) ? oCOM.getHexWord(v) : fallbackHexWord(v);
+    }
+
+    function cloneOpctab() {
+        return opctab.map(function (row) { return [row[0], row[1]]; });
+    }
+
+    function applyUnofficialOpcodeNames(tbl) {
+        tbl[0x04] = ['NOP','zpg']; // unofficial DOP/SKB
+        tbl[0x07] = ['SLO','zpg']; // unofficial ASL then ORA
+        tbl[0x80] = ['NOP','imm']; // unofficial DOP/SKB
+        tbl[0x82] = ['NOP','imm'];
+        tbl[0x89] = ['NOP','imm'];
+        tbl[0xC2] = ['NOP','imm'];
+        tbl[0xE2] = ['NOP','imm'];
+        return tbl;
+    }
+
+    function bytesToBase64(bytes) {
+        var s = '';
+        for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+        return btoa(s);
+    }
+
+    function decodeBase64ToBytes(text) {
+        var clean = String(text || '').replace(/\s+/g, '');
+        if (!clean) throw new Error('Paste a base64 boot log first.');
+
+        var bin;
+        try {
+            bin = atob(clean);
+        } catch (e) {
+            throw new Error('Invalid base64 input.');
+        }
+
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+        return bytes;
+    }
+
+    function parseBootRecords(bytes) {
+        if (bytes.length % 5 !== 0) {
+            throw new Error('Input byte length is ' + bytes.length + ', but BOOTlog records must be 5 bytes each.');
+        }
+
+        var rows = [];
+        for (var i = 0, r = 0; i < bytes.length; i += 5, r++) {
+            var adr = bytes[i] | (bytes[i + 1] << 8);
+            var opcode = bytes[i + 2];
+            var op1 = bytes[i + 3];
+            var op2 = bytes[i + 4];
+            var len = instrlen[opcode] || 1;
+            var code = [opcode, op1, op2];
+
+            rows.push({
+                idx: r,
+                adr: adr,
+                opcode: opcode,
+                op1: op1,
+                op2: op2,
+                len: len,
+                code_arr: code
+            });
+        }
+        return rows;
+    }
+
+    function parseAddr(s) {
+        s = String(s || '').trim();
+        if (/^\$[0-9a-f]+$/i.test(s)) return parseInt(s.substring(1), 16) & 0xffff;
+        if (/^0x[0-9a-f]+$/i.test(s)) return parseInt(s.substring(2), 16) & 0xffff;
+        if (/^[0-9a-f]{2,4}$/i.test(s)) return parseInt(s, 16) & 0xffff;
+        return null;
+    }
+
+    function parseSymbols(text) {
+        var map = {};
+
+        function addSymbol(name, addrText, comment) {
+            var addr = parseAddr(addrText);
+            name = String(name || '').trim();
+
+            if (addr === null || !name) return;
+
+            // Allow assembler-style labels such as A5H or MASK, but reject
+            // accidental operators/expressions in the symbol name field.
+            if (!/^[A-Za-z_.$][A-Za-z0-9_.$]*$/.test(name)) return;
+
+            map[addr] = { name:name, comment:String(comment || '').trim() };
+        }
+
+        String(text || '').split(/\r?\n/).forEach(function (line) {
+            var raw = String(line || '');
+            var semi = raw.indexOf(';');
+            var comment = '';
+
+            if (semi >= 0) {
+                comment = raw.substring(semi + 1).trim();
+                raw = raw.substring(0, semi);
+            }
+
+            raw = raw.trim();
+            if (!raw) return;
+
+            var parts = raw.split(/\s+/);
+
+            // Preferred assembler-style form:
+            //     LABEL   EQU   $ADDR    ; optional comment
+            // Also accept .EQ and = as the directive token.
+            if (parts.length >= 3 && /^(EQU|\.EQ|=)$/i.test(parts[1])) {
+                addSymbol(parts[0], parts[2], comment);
+                return;
+            }
+
+            // Compact forms:
+            //     $ADDR=LABEL;comment
+            //     LABEL=$ADDR;comment
+            var eq = raw.indexOf('=');
+            if (eq >= 0) {
+                var left = raw.substring(0, eq).trim();
+                var right = raw.substring(eq + 1).trim();
+                var aLeft = parseAddr(left);
+                var aRight = parseAddr(right);
+
+                if (aLeft !== null && aRight === null) addSymbol(right, left, comment);
+                else if (aRight !== null && aLeft === null) addSymbol(left, right, comment);
+                return;
+            }
+
+            // Legacy two-column forms:
+            //     $ADDR LABEL;comment
+            //     0xADDR LABEL;comment
+            //     LABEL $ADDR;comment
+            if (parts.length >= 2) {
+                var p0 = parseAddr(parts[0]);
+                var p1 = parseAddr(parts[1]);
+
+                if (p0 !== null && p1 === null) addSymbol(parts[1], parts[0], comment);
+                else if (p1 !== null && p0 === null) addSymbol(parts[0], parts[1], comment);
+            }
+        });
+
+        return map;
+    }
+
+    function makeDasm(symbolMap, useDefaultSymbols) {
+        if (typeof window.DASM !== 'function') {
+            throw new Error('DASM is not loaded. Check that ../res/ASM_core.js is reachable from this HTML file.');
+        }
+
+        var dasm = new DASM();
+
+        dasm.getHexByte = getHexByte;
+        dasm.getHexWord = getHexWord;
+        dasm.ByteAt = function () { return 0; };
+
+        dasm.sym_search = function (op, adm) {
+            if (typeof op !== 'string' || op.charAt(0) !== '$') return op;
+
+            var adr = parseInt(op.substring(1), 16);
+            if (isNaN(adr)) return op;
+            adr &= 0xffff;
+
+            if (Object.prototype.hasOwnProperty.call(symbolMap, adr)) {
+                this.last_symbol_comment = symbolMap[adr].comment || '';
+                return symbolMap[adr].name;
+            }
+
+            if (useDefaultSymbols && this.mem_sym && this.mem_sym[adr] != null) {
+                return this.mem_sym[adr][1];
+            }
+
+            return op;
+        };
+
+        return dasm;
+    }
+
+    function normalizeHtmlSpaces(s) {
+        return String(s || '').replace(/&nbsp;/g, ' ').replace(/\s+$/g, '');
+    }
+
+    function renderBytes(row) {
+        var parts = [getHexByte(row.opcode)];
+        if (row.len > 1) parts.push(getHexByte(row.op1));
+        if (row.len > 2) parts.push(getHexByte(row.op2));
+        while (parts.length < 3) parts.push('  ');
+        return parts.join(' ');
+    }
+
+    function disassembleRows(rows) {
+        var symbolMap = parseSymbols(document.getElementById('symbols').value);
+        var useDefaultSymbols = document.getElementById('useDefaultSymbols').checked;
+        var patchUnofficial = document.getElementById('patchUnofficial').checked;
+        var showIdx = document.getElementById('showIdx').checked;
+        var localOpctab = patchUnofficial ? applyUnofficialOpcodeNames(cloneOpctab()) : cloneOpctab();
+        var dasm = makeDasm(symbolMap, useDefaultSymbols);
+        var lines = [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+
+            // Compatibility with older ASM_core.js versions whose rel branch formatter still reads global pc.
+            window.pc = row.adr;
+
+            dasm.last_symbol_comment = '';
+            var ret = dasm.disassemble({
+                code_arr: row.code_arr,
+                pc: row.adr,
+                opctab: localOpctab
+            });
+
+            var idx = showIdx ? (String(row.idx).padStart(4, '0') + '  ') : '';
+            var addr = normalizeHtmlSpaces(ret.adr_lst || getHexWord(row.adr));
+            var bytes = renderBytes(row).padEnd(8, ' ');
+            var asm = normalizeHtmlSpaces(ret.mnemonic);
+            if (dasm.last_symbol_comment) asm += '   ; ' + dasm.last_symbol_comment;
+            lines.push(idx + addr + '  ' + bytes + '  ' + asm);
+        }
+
+        return lines.join('\n');
+    }
+
+    function run() {
+        var output = document.getElementById('output');
+        var status = document.getElementById('status');
+        status.className = 'status';
+
+        try {
+            if (typeof window.oCOM === 'undefined') {
+                status.className = 'status error';
+                status.textContent = 'oCOM is not loaded. Check that ../res/COM_MAIN.js is reachable.';
+                return;
+            }
+            if (typeof window.DASM !== 'function') {
+                status.className = 'status error';
+                status.textContent = 'DASM is not loaded. Check that ../res/ASM_core.js is reachable.';
+                return;
+            }
+
+            var bytes = decodeBase64ToBytes(document.getElementById('input').value);
+            var rows = parseBootRecords(bytes);
+            output.textContent = disassembleRows(rows);
+            status.className = 'status ok';
+            status.textContent = 'Decoded ' + rows.length + ' operation records (' + bytes.length + ' bytes).';
+        } catch (e) {
+            status.className = 'status error';
+            status.textContent = e.message;
+        }
+    }
+
+    /*
+    function sampleBase64() {
+        var rec = [
+            [0x59,0xFF, 0xA2,0xFF,0x00], // $FF59 LDX #$FF
+            [0x5B,0xFF, 0x9A,0x00,0x00], // $FF5B TXS
+            [0x5C,0xFF, 0x20,0xED,0xFD], // $FF5C JSR $FDED
+            [0x5F,0xFF, 0xAD,0x00,0xC0], // $FF5F LDA $C000
+            [0x62,0xFF, 0x10,0xFB,0x00]  // $FF62 BPL $FF5F
+        ];
+        return bytesToBase64(new Uint8Array([].concat.apply([], rec)));
+    }
+    */
+
+    function sampleBase64() 
+    {
+        return "YvrYAABj+iCE/oT+oP8Ahv6EMgCI/mAAAGb6IC/7L/upAAAx+4VIADP7rVbANvutVMA5+61RwDz7qQAAPvvwCwBL+4UiAE37qQAAT/uFIABR+6koAFP7hSEAVfupGABX+4UjAFn7qRcAW/uFJQBd+0wi/CL8pSUAJPwgwfvB+0gAAML7SgAAw/spAwDF+wkEAMf7hSkAyftoAADK+ykYAMz7kAIAzvtpfwDQ+4UoANL7CgAA0/sKAADU+wUoANb7hSgA2PtgAAAn/GUgACn8hSgAK/xgAABp+iCT/pP+qQAAlf6FPgCX/qI2AJn+oPAAm/6lPgCd/ikPAJ/+8AYAp/6p/QCp/pQAAKv+lQEArf5gAABs+iCJ/on+qQAAi/6FPgCN/qI4AI/+oBsAkf7QCACb/qU+AJ3+KQ8An/7wBgCn/qn9AKn+lAAAq/6VAQCt/mAAAG/6rVjAcvqtWsB1+q1dwHj6rV/Ae/qt/89++iwQwIH62AAAgvogOv86/6mHADz/TO397f1sNgDw/cmgAPL9kAIA9v2ENQD4/UgAAPn9IHj7ePvJjQB6+9AYAJT7TP37/fvJoAD/+7DvAAH8qAAAAvwQ7AAE/MmNAAb88FoACPzJigAK/PBaAAz8yYgADvzQyQDZ+8mHANv70BIA3fupQADf+yCo/Kj8OAAAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACu/GgAAK/86QEAsfzQ9gCp/EgAAKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACu/GgAAK/86QEAsfzQ9gCp/EgAAKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQA="
+    }
+
+    function clearAll() {
+        document.getElementById('input').value = '';
+        document.getElementById('output').textContent = '';
+        document.getElementById('status').textContent = '';
+        document.getElementById('status').className = 'status';
+    }
+
+    function copyOutput() {
+        var text = document.getElementById('output').textContent || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text);
+        }
+    }
+
+    function downloadOutput() {
+        var blob = new Blob([document.getElementById('output').textContent || ''], {type:'text/plain'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'bootlog_dasm.asm';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('decodeBtn').addEventListener('click', run);
+    document.getElementById('sampleBtn').addEventListener('click', function () {
+        document.getElementById('input').value = sampleBase64();
+        run();
+    });
+    document.getElementById('clearBtn').addEventListener('click', clearAll);
+    document.getElementById('copyBtn').addEventListener('click', copyOutput);
+    document.getElementById('downloadBtn').addEventListener('click', downloadOutput);
+
+    window.addEventListener('load', function () {
+        document.getElementById('input').value = sampleBase64();
+        run();
+    });
+}());
+</script>
+</body>
+</html>
