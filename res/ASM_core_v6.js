@@ -1,6 +1,6 @@
 /*
  * ASM_core_v6_3.js
- * Build filename: ASM_core_v6.js
+ * Build filename: ASM_core_v6_3.js
  * Clean 6502 assembler-analysis core for RetroAppleJS-style tooling.
  *
  * Goals:
@@ -25,7 +25,7 @@ function ASM(options) {
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.3";
+    this.version = "0.6.3.1";
     this.maxNumBytes = options.maxNumBytes || 2;
     this.label_len = options.label_len || 8;
     this.pc = 0;
@@ -415,6 +415,57 @@ function ASM(options) {
         return value <= 0xff ? 1 : 2;
     };
 
+    this.parseExpressionAtom = function (text, symtab) {
+        text = String(text == null ? "" : text);
+        symtab = symtab || this.symtab;
+
+        var leading = text.match(/^\s*/)[0].length;
+        var rest = text.substring(leading);
+        var m = rest.match(/^(\$[0-9a-f]+|%[01]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')/i);
+        if (!m) return { val: NaN, err: "missing operand after high/low byte operator", consumed: leading };
+
+        var token = m[1];
+        var n = this.getNumber(token, symtab);
+        n.consumed = leading + token.length;
+        n.token = token;
+        return n;
+    };
+
+    this.applyHiLoOperators = function (text, symtab, unresolved) {
+        text = String(text == null ? "" : text);
+        symtab = symtab || this.symtab;
+        unresolved = unresolved || [];
+
+        var out = "";
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (ch !== "<" && ch !== ">") { out += ch; continue; }
+
+            // Treat < and > as high/low byte operators only when they are unary:
+            // at the start of an expression, or immediately after another operator.
+            var p = i - 1;
+            while (p >= 0 && /\s/.test(text.charAt(p))) p--;
+            var prev = p >= 0 ? text.charAt(p) : "";
+            var unary = p < 0 || /[+\-*\/%%&|^~(,]/.test(prev);
+            if (!unary) { out += ch; continue; }
+
+            var j = i + 1;
+            while (j < text.length && /\s/.test(text.charAt(j))) j++;
+            var atom = this.parseExpressionAtom(text.substring(j), symtab);
+            if (atom.err || typeof atom.val !== "number" || isNaN(atom.val)) {
+                unresolved.push(atom.token || text.substring(j).split(/\s+/)[0] || ch);
+                out += "NaN";
+                i = j + Math.max(0, atom.consumed || 0) - 1;
+                continue;
+            }
+
+            var v = ch === ">" ? ((atom.val >> 8) & 0xff) : (atom.val & 0xff);
+            out += String(v);
+            i = j + atom.consumed - 1;
+        }
+        return out;
+    };
+
     this.getNumber = function (text, symtab) {
         text = String(text == null ? "" : text).trim();
         symtab = symtab || this.symtab;
@@ -422,9 +473,12 @@ function ASM(options) {
 
         var hiLo = text.charAt(0);
         if (hiLo === ">" || hiLo === "<") {
-            var inner = this.getExpression(text.substring(1), symtab);
-            if (inner.err) return inner;
-            var v = hiLo === ">" ? ((inner.val >> 8) & 0xff) : (inner.val & 0xff);
+            var rest = text.substring(1);
+            var atom = this.parseExpressionAtom(rest, symtab);
+            if (atom.err) return atom;
+            var v = hiLo === ">" ? ((atom.val >> 8) & 0xff) : (atom.val & 0xff);
+            var tail = rest.substring(atom.consumed).trim();
+            if (tail) return this.getExpression(String(v) + tail, symtab);
             return { val: v, bytes: 1, fmt: hiLo === ">" ? "HI" : "LO" };
         }
 
@@ -459,13 +513,15 @@ function ASM(options) {
         symtab = symtab || this.symtab;
         if (!text) return { val: NaN, err: "empty expression" };
 
-        // Single number/symbol/string fast path.
-        if (/^(>|<)?(\$[0-9a-f]+|%[01]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$-]*|"[^"]*"|'[^']*')$/i.test(text)) {
+        // Single number/symbol/string fast path.  A minus sign is treated as
+        // arithmetic, not as part of an identifier, so LABEL-1 parses as LABEL minus 1.
+        if (/^(>|<)?(\$[0-9a-f]+|%[01]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')$/i.test(text)) {
             return this.getNumber(text, symtab);
         }
 
         var unresolved = [];
-        var js = text.replace(/\$[0-9a-f]+|%[01]+|[A-Za-z_.$][A-Za-z0-9_.$-]*/gi, function (tok) {
+        text = this.applyHiLoOperators(text, symtab, unresolved);
+        var js = text.replace(/\$[0-9a-f]+|%[01]+|[A-Za-z_.$][A-Za-z0-9_.$]*/gi, function (tok) {
             if (tok.charAt(0) === "$") return "0x" + tok.substring(1);
             if (tok.charAt(0) === "%") return "0b" + tok.substring(1);
             var id = self.getID(tok);
