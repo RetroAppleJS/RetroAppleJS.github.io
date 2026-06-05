@@ -10,16 +10,11 @@
 ;*                                                                              *
 ;* Steve Wozniak                                                                *
 ;********************************************************************************
-;* Modified Nov 1978                                                            *
-;* By John A                                                                    *
-;********************************************************************************
 ;* This is a disassembly of the updated monitor ROM found in THE Apple ][+.     *
 ;* The labels AND comments come from "Autostart ROM Listing" in THE Apple II    *
 ;* Reference Manual (starts page 136).  This is a fairly direct translation --  *
 ;* operands ARE generally formatted as they appear in THE original listing.     *
-;********************************************************************************
-;* Project created by Freddy Vandriessche                                       *
-;* Last updated 2025/03/09                                                      *
+;* Last updated by Freddy Vandriessche on 2026/06/05                            *
 ;********************************************************************************
 IOADR       EQU     $c000  
 LOC0        EQU     $00
