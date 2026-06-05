@@ -13817,7 +13817,13 @@ function Apple2Hw(vid,keys)
         };
     };
 
-    this.safe_flashdump = function() { return new Uint8Array(ram); }
+    this.safe_flashdump = function()
+    { 
+        var temp = new Uint8Array(0xFFFF+1);
+        temp.set(ram);
+        temp.set(apple2Rom, ROM_ADDR);
+        return temp;
+    }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
     this.mount = function()
@@ -23358,13 +23364,15 @@ function Apple2Plus(context)
             {
               var hw = apple2plus.hwObj();
               var s = "";
+
+              const fldump = hw.safe_flashdump();
               for(var y=0;y<24;y++)
               {
                 for(var x=0;x<40;x++)
                 {
                     // calculate TEXT address from x & y text coordinates
                     var adr = 0x0400 + (y-(y&0xF8) << 7) + (y&0xF8) * 5 + x;
-                    var b = hw.read(adr);
+                    var b = fldump[adr];
                     s += b>=160 && b<=223 ? String.fromCharCode(b-128) : " "; // filter out chars out of range
                 }
                 s+="\r"
@@ -23395,6 +23403,7 @@ function Apple2Plus(context)
               if(addr_arr.length==2)
               {
                 var s = [];
+                const fldump = hw.safe_flashdump();
                 for(var i=addr_arr[0];i<=addr_arr[1];i++)
                 {
                   var idx = Math.floor((i-addr_arr[0])/8);
@@ -23403,7 +23412,7 @@ function Apple2Plus(context)
                     var adr = oCOM.getHexWord(i);
                     s[idx] = adr+":";
                   }
-                  var b = oCOM.getHexByte(hw.safe_read(i));
+                  var b = oCOM.getHexByte(fldump[i]);
                   s[idx] += " "+b;
                 }
                 EMUboard.boardText.value = s.join("\r");
