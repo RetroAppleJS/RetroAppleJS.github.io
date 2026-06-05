@@ -24,9 +24,9 @@ function RamCard()
     };
     this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // generic callback for softswitches
 
-    var bDebug_sw  = true;      // debug soft switch updates (light)
-    var bDebug_mon = false;      // debug RAM Write monitor
-    var bDebug     = false;      // debug all RAM R/W operations   
+    var bDebug_sw  = false;      // debug soft switch updates (light)
+    var bDebug_mon = false;     // debug RAM Write monitor
+    var bDebug     = false;     // debug all RAM R/W operations   
 
     const MEM_MAP_ORG   = 0xD000;                     // the address space origin this ramcard typically overrides
     const MEM_MAP_STEP  = 0x1000;                     // address space is divided in chunks of 0x1000 bytes (according to ramcard_address_encoder() logic)
@@ -144,7 +144,7 @@ function RamCard()
         this.state.softswitch_pos = sw_mask(io.address_encoder(rel_io_addr,"SlotIO",slot)); // set softswitch position
 
         const sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);        // read soft switch
-        debug_flush(); if(bDebug_sw) debug_soft_switch(this.state.softswitch_pos,sw,this.state);
+        debug_flush(); if(bDebug_sw) debug_soft_switch(sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == 0 ? 1 : this.state.RR) : 0;  // only flip write-enable state after double trigger sw.WE==1
 
         if((sw.WE==1 && this.state.RR==0) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
@@ -164,7 +164,7 @@ function RamCard()
     {
         var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
         const d8 = RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ]; 
-        if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK ? "A" : "B") : null);
+        if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null);
         return d8;
     }
 
