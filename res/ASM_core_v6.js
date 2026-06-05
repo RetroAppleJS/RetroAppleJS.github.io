@@ -1,13 +1,6 @@
 /*
  * ASM_core_v6_3.js
  * Build filename: ASM_core_v6_3.js
- * Clean 6502 assembler-analysis core for RetroAppleJS-style tooling.
- *
- * Goals:
- * - One ASM() container only.
- * - No DASM(), no mocha_test(), no browser DOM dependencies.
- * - Two-pass source analysis.
- * - Main public function: asm.tokenise(sourceText) -> JSON statement array.
  *
  * v6.3 architecture:
  * - Pragmas/directives keep their parser functions inside this.pragma entries.
@@ -19,7 +12,15 @@
 
 "use strict";
 
-function ASM(options) {
+
+//   █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
+//	██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
+//	███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████
+//	██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
+//	██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
+
+function ASM(options) 
+{
     options = options || {};
 
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);

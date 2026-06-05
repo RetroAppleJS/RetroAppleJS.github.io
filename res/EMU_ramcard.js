@@ -20,11 +20,11 @@ function RamCard()
         ,"slot":null            // slot number where the current card is plugged-in (always 0 for the language card)
         ,"softswitch_pos":0x1   // default soft switch state (documented by microsoft)
         ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
-        ,"RR":false             // flag to remember double-triggered Write-Enables (by double read)
+        ,"RR":0                 // flag to remember double-triggered Write-Enables (by double read)
     };
     this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // generic callback for softswitches
 
-    var bDebug_sw  = false;      // debug soft switch updates (light)
+    var bDebug_sw  = true;      // debug soft switch updates (light)
     var bDebug_mon = false;      // debug RAM Write monitor
     var bDebug     = false;      // debug all RAM R/W operations   
 
@@ -117,7 +117,7 @@ function RamCard()
         io = apple2plus.hwObj().io;
         debug_flush();
         this.state.bMapped = false;
-        this.state.RR      = false;
+        this.state.RR      = 0;
 
         oCOM.addRefreshEvent(oEMU.component.IO.RamCard.MEM_monitoring,"MEM_monitoring_MS16K",false);
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
@@ -136,22 +136,29 @@ function RamCard()
     {
         if(io===undefined) { io = apple2plus.hwObj().io;  console.warn("EMU_ramcard.js lost io from scope") }
 
-        const slot = 0;                                                 // TODO: take fromthis.state.slot
-        var sw_idx = io.address_encoder(rel_io_addr,"SlotIO",slot);     // index of the io address
-        const pre_sw = softswitch[this.state.softswitch_pos];           // previous switch state
+        const slot = 0;                                                         // TODO: take fromthis.state.slot
+        const pre_sw = softswitch[sw_mask(this.state.softswitch_pos)];          // previous switch state
+        const status_nibble = (pre_sw.BANK==1 ? 1 : 0) | (pre_sw.RE==1 ? 2 : 0) | (pre_sw.WE==1 ? 4 : 0) | (this.state.RR==1 ? 8 : 0);
+        if(apple2plus.hwObj().bRO == true) return status_nibble;                // skip soft switch manupulation; just return status when hardware is in Read-Only mode
 
-        var sw = softswitch[sw_idx] || {}; mon_soft_switch(sw);
-        debug_flush(); if(bDebug_sw) debug_soft_switch(sw_idx,sw,this.state);
-        this.state.RR = sw.WE==1 ? (this.state.RR == false ? true : this.state.RR) : false;  // only flip write-enable state after double trigger sw.WE==1
-        this.state.softswitch_pos = sw_idx;
+        this.state.softswitch_pos = sw_mask(io.address_encoder(rel_io_addr,"SlotIO",slot)); // set softswitch position
 
-        if((sw.WE==1 && this.state.RR==false) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
+        const sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);        // read soft switch
+        debug_flush(); if(bDebug_sw) debug_soft_switch(this.state.softswitch_pos,sw,this.state);
+        this.state.RR = sw.WE==1 ? (this.state.RR == 0 ? 1 : this.state.RR) : 0;  // only flip write-enable state after double trigger sw.WE==1
+
+        if((sw.WE==1 && this.state.RR==0) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
         {
             var ok = this.updateMemoryMap(!!sw.RE);
             if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
         }
         this.update_MEM_status();
+        return status_nibble;
     };
+
+    // mask io address (Ramcard specifically ignores bit 2, e.g. $C085 -> hits soft switch 0x1, as 0x5 is not a distinct soft switch)
+    function sw_mask(sw) { return sw & 0b1011; }
+
 
     this.read = function(rel_addr)
     {
@@ -164,7 +171,7 @@ function RamCard()
     this.write = function(rel_addr,d8)
     {
         var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
-        if(sw.WE==1 && this.state.RR)
+        if(sw.WE==1 && this.state.RR==1)
         {
             RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ] = d8;
             if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null );
@@ -410,11 +417,12 @@ function RamCard()
         }
     }
 
-    function debug_soft_switch(addr,sw,state)
+    function debug_soft_switch(sw,state)
     {
+        var addr = state.softswitch_pos;
         if(sw.WE==1)
         {
-            if(state.RR) console.log(PCODE+": SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
+            if(state.RR==1) console.log(PCODE+": SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
             else console.log(PCODE+": waiting for RR to write-enable ($"+oCOM.getHexByte(addr)+")");
         }
         else console.log(PCODE+": SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));

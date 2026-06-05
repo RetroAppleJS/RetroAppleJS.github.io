@@ -20,11 +20,12 @@ function Apple2Hw(vid,keys)
 
     this.RD = [];
     this.WR = [];
+    this.bRO = false;                   // Read-Only flag across the entire hardware (allowing safe read operations)
     this.default_map = null;
 
     var video = vid;                        
     this.io = new Apple2IO(video);      // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
-    this.children   = {}
+    this.children   = {}                // TODO: deprecate ?
 
     var RAM_SIZE =  0xc000,
     LORES_ADDR =    0x0400,
@@ -112,6 +113,19 @@ function Apple2Hw(vid,keys)
             ]
         };
     };
+
+
+    this.safe_read = function(addr)
+    {
+        const adr = addr & 0xffff;
+        const line = hw.lineDecode(adr);
+
+        this.bRO = true;
+        const d8 = hw.RD[line](adr) & 0xff;
+        this.bRO = false;
+
+        return d8;
+    }
 
     this.safe_flashdump = function()
     { 
