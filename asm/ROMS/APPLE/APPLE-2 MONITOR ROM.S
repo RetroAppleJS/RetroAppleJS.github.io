@@ -545,7 +545,8 @@ ESCNEW      CMP     #$CE            ;is this an N ?
             BEQ     ESCOLD          ;do normal
             BNE     ESCNOW          ;go do it
 
-           HEX  EAEAEAEAEAEAEAEAEAEAEAEAEAEA ;padding
+           HEX  EAEAEAEAEAEAEAEA
+           HEX  EAEAEAEAEAEA ;padding
 
 ; must ORG $FBC1
 BASCALC     PHA                     ;calc base adr in BASL,H

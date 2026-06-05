@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ASM core v4 tokenizer / JSON viewer</title>
+<title>AssemblerJS v0.6.2</title>
 
 <!-- Adjust these paths if this file is not next to /res. -->
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
-<script type="text/javascript" src="../res/ASM_core_v4.js"></script>
+<script type="text/javascript" src="../res/ASM_core_v6.js"></script>
 
 <style>
     :root {
@@ -33,7 +33,7 @@
         margin: 0;
         min-height: 100vh;
         display: grid;
-        grid-template-rows: auto auto 1fr;
+        grid-template-rows: auto auto minmax(0, 1fr) minmax(150px, 24vh);
         gap: 12px;
         padding: 18px;
         background: var(--bg);
@@ -110,7 +110,7 @@
     main {
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.1fr);
+        grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr) minmax(320px, 1.12fr);
         gap: 12px;
     }
 
@@ -140,6 +140,28 @@
     .pane-title strong {
         color: var(--text);
         font-size: 14px;
+    }
+
+    .pane-title-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .listing-columns-input {
+        width: min(360px, 42vw);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: #0b0f14;
+        color: var(--text);
+        padding: 4px 7px;
+        font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .listing-columns-input:focus {
+        outline: 1px solid var(--accent);
+        border-color: var(--accent);
     }
 
     textarea, .json-mount {
@@ -193,29 +215,37 @@
         color: var(--accent);
     }
 
+    .byte-pane {
+        min-height: 0;
+    }
+
+    @media (max-width: 1100px) {
+        body { grid-template-rows: auto auto minmax(0, 1fr) minmax(150px, 24vh); }
+        main { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 1fr) minmax(240px, 1fr) minmax(280px, 1.2fr); }
+        .status { margin-left: 0; width: 100%; }
+    }
+
     @media (max-width: 900px) {
         body { padding: 12px; }
         header { display: block; }
-        main { grid-template-columns: 1fr; grid-template-rows: minmax(280px, 1fr) minmax(320px, 1.2fr); }
-        .status { margin-left: 0; width: 100%; }
     }
 </style>
-
 </head>
 <body>
 <header>
     <div>
-        <h1>ASM core v4 tokenizer / JSON viewer</h1>
-        <div class="subtitle">Load a 6502 <code>.S</code> source file. Source stays on the left; parsed JSON appears on the right. v4 uses table-driven parsers for pragmas, mnemonics, and metadata.</div>
+        <h1>AssemblerJS v0.6.2</h1>
+        <div class="subtitle">Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header.</div>
     </div>
     <div class="drop-hint">Tip: drag a .S file anywhere on this page</div>
 </header>
 
 <section class="toolbar">
     <input id="fileInput" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain" />
-    <button id="parseButton" class="primary">TOKENISE</button>
+    <button id="assembleButton" class="primary">ASSEMBLE</button>
     <button id="copyJsonButton">Copy JSON</button>
     <button id="downloadJsonButton">Download JSON</button>
+    <button id="copyByteCodeButton">Copy byte code</button>
     <span id="status" class="status">Ready.</span>
 </section>
 
@@ -239,72 +269,138 @@ NOTCR LDA INVFLG
     </section>
 
     <section class="pane">
-        <div class="pane-title"><strong>JSON output</strong><span id="jsonInfo">tokenise()</span></div>
+        <div class="pane-title">
+            <span class="pane-title-main">
+                <strong>Assembly listing</strong>
+                <input id="listingColumnsInput" class="listing-columns-input" type="text" value="{adr:0,code:6,lbl:16,ins:25,opr:29,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" />
+            </span>
+            <span id="listingInfo">compile()</span>
+        </div>
+        <textarea id="listingPane" readonly spellcheck="false"></textarea>
+    </section>
+
+    <section class="pane">
+        <div class="pane-title"><strong>JSON output</strong><span id="jsonInfo">tokenise() + compile()</span></div>
         <div id="jsonMount" class="json-mount"></div>
     </section>
 </main>
 
-<script>
-var oASM = new ASM();
+<section class="pane byte-pane">
+    <div class="pane-title"><strong>Byte code</strong><span id="byteCodeInfo">8 bytes per line</span></div>
+    <textarea id="byteCodePane" readonly spellcheck="false"></textarea>
+</section>
 
+<script>
 var fileInput = document.getElementById("fileInput");
-var parseButton = document.getElementById("parseButton");
+var assembleButton = document.getElementById("assembleButton");
 var copyJsonButton = document.getElementById("copyJsonButton");
 var downloadJsonButton = document.getElementById("downloadJsonButton");
+var copyByteCodeButton = document.getElementById("copyByteCodeButton");
 var statusEl = document.getElementById("status");
 var sourcePane = document.getElementById("sourcePane");
+var listingPane = document.getElementById("listingPane");
+var listingColumnsInput = document.getElementById("listingColumnsInput");
+var byteCodePane = document.getElementById("byteCodePane");
 var jsonMount = document.getElementById("jsonMount");
 var sourceInfo = document.getElementById("sourceInfo");
+var listingInfo = document.getElementById("listingInfo");
+var byteCodeInfo = document.getElementById("byteCodeInfo");
 var jsonInfo = document.getElementById("jsonInfo");
 
 var currentFileName = "sample.S";
 var currentJsonText = "";
+var currentByteCodeText = "";
 window.oASM = null;
 window.asmTokeniseJSON = null;
+window.asmCompileResult = null;
 
 function setStatus(text, kind) {
     statusEl.className = "status" + (kind ? " " + kind : "");
     statusEl.textContent = text;
 }
 
-function tokeniseCurrentSource() {
+function fallbackEscapeHTML(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function prettifyJSON(mountEl) {
+    var styleMap = {
+        "{}": "color:#79b8ff;font-weight:800",
+        "[]": "color:#d2a8ff;font-weight:800"
+    };
+    if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.JSONprettify === "function") {
+        oCOM.JSONprettify(mountEl, styleMap, 2);
+        return;
+    }
+    mountEl.innerHTML = "<pre class=\"json-view\">" + fallbackEscapeHTML(mountEl.textContent) + "</pre>";
+}
+
+function assembleCurrentSource() {
     if (typeof window.ASM !== "function") {
-        var msg = "ASM() was not found. Check the ASM_core_v4.js <script src> path.";
+        var msg = "ASM() was not found. Check the ASM_core_v6.js <script src> path.";
         setStatus(msg, "bad");
         renderRawError(msg);
         return;
     }
 
     try {
-        window.oASM = new ASM();
+        window.oASM = new ASM({ listingColumns: listingColumnsInput ? listingColumnsInput.value : undefined });
+        if (listingColumnsInput && typeof window.oASM.setListingColumns === "function") {
+            window.oASM.setListingColumns(listingColumnsInput.value);
+        }
+
+        // v0.6: the compiler takes the JSON tokenisation object as input.
         var rows = window.oASM.tokenise(sourcePane.value);
+        var compiled = window.oASM.compile(rows);
+
         window.asmTokeniseJSON = rows;
+        window.asmCompileResult = compiled;
 
-        console.table( consoleTable(rows) );
+        listingPane.value = compiled.listingText || "";
+        currentByteCodeText = compiled.byteCodeText || "";
+        byteCodePane.value = currentByteCodeText;
 
-        currentJsonText = JSON.stringify(rows, null, 2);
+        console.table(consoleTable(compiled.rows || []));
+
+        currentJsonText = JSON.stringify(compiled, null, 2);
         jsonMount.textContent = currentJsonText;
-        oCOM.JSONprettify(jsonMount, 
-        {
-            "{}": "color:#79b8ff;font-weight:800",
-            "[]": "color:#d2a8ff;font-weight:800"
-        }, 2);
+        prettifyJSON(jsonMount);
 
-        var count = Array.isArray(rows) ? rows.length : 0;
-        jsonInfo.textContent = count + (count === 1 ? " statement" : " statements");
-        setStatus("Tokenised " + count + " statements from " + currentFileName + ".", "ok");
+        var sourceLineCount = sourcePane.value.split(/\r\n|\r|\n/).length;
+        var listingLineCount = listingPane.value.split(/\r\n|\r|\n/).length;
+        var rowCount = compiled.rows && compiled.rows.length ? compiled.rows.length : 0;
+        var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
+        var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
+
+        listingInfo.textContent = listingLineCount + " listing lines";
+        byteCodeInfo.textContent = byteCount + " bytes";
+        jsonInfo.textContent = rowCount + " JSON rows";
+
+        if (sourceLineCount !== listingLineCount) {
+            setStatus("Assembled with line-count mismatch: source " + sourceLineCount + ", listing " + listingLineCount + ".", "warn");
+        } else if (errorCount) {
+            setStatus("Assembled " + rowCount + " rows / " + byteCount + " bytes with " + errorCount + " unresolved/error row(s).", "warn");
+        } else {
+            setStatus("Assembled " + rowCount + " rows / " + byteCount + " bytes from " + currentFileName + ".", "ok");
+        }
     } catch (err) {
         console.error(err);
+        listingPane.value = "";
+        byteCodePane.value = "";
         renderRawError(err && err.stack ? err.stack : String(err));
         setStatus("Error: " + (err && err.message ? err.message : String(err)), "bad");
     }
 }
 
-function renderRawError(message) 
-{
+function renderRawError(message) {
     currentJsonText = JSON.stringify({ error: String(message) }, null, 2);
     jsonMount.textContent = currentJsonText;
-    oCOM.JSONprettify(jsonMount, { "{}": "color:#ff8a8a;font-weight:800", "[]": "color:#d2a8ff;font-weight:800" }, 2);
+    prettifyJSON(jsonMount);
 }
 
 async function loadFile(file) {
@@ -312,38 +408,35 @@ async function loadFile(file) {
     currentFileName = file.name || "source.S";
     sourcePane.value = await file.text();
     sourceInfo.textContent = currentFileName + " — " + sourcePane.value.split(/\r\n|\r|\n/).length + " lines";
-    tokeniseCurrentSource();
+    assembleCurrentSource();
 }
 
 function jsonDownloadName() {
     var name = currentFileName || "source.S";
     var dot = name.lastIndexOf(".");
     if (dot > 0) name = name.substring(0, dot);
-    return name + ".tokenise.json";
+    return name + ".compile.json";
 }
 
-function consoleTable(r)
-{
-    var newrows = JSON.parse( JSON.stringify(r) );
-    for(var i=0;i<r.length;i++) 
-    {
-        //newrows[i] = r[i];
-        for(var j in r[i])
-        {
-            if(j=="pc") newrows[i]["pc"] = oASM.pcHex(newrows[i]["pc"]);
-            if(j=="opc") newrows[i]["opc"] = oASM.opcHex(newrows[i]["opc"]);
-            if(j=="val") newrows[i]["val"] = oASM.valHex(newrows[i]["val"],newrows[i]["oby"]);
-            if(typeof(newrows[i][j])=="object") newrows[i][j] = newrows[i][j].join("|");
+function consoleTable(rows) {
+    var newrows = JSON.parse(JSON.stringify(rows || []));
+    for (var i = 0; i < newrows.length; i++) {
+        for (var j in newrows[i]) {
+            if (j === "pc") newrows[i][j] = window.oASM.pcHex(newrows[i][j]);
+            else if (j === "opc") newrows[i][j] = window.oASM.opcHex(newrows[i][j]);
+            else if (j === "val") newrows[i][j] = window.oASM.valHex(newrows[i][j], newrows[i].oby);
+            else if (j === "bytes") newrows[i][j] = window.oASM.bytesToHex(newrows[i][j]);
+            else if (typeof newrows[i][j] === "object" && newrows[i][j] != null) newrows[i][j] = Array.isArray(newrows[i][j]) ? newrows[i][j].join("|") : JSON.stringify(newrows[i][j]);
         }
     }
-    return newrows
+    return newrows;
 }
 
 fileInput.addEventListener("change", function () {
     loadFile(fileInput.files && fileInput.files[0]);
 });
 
-parseButton.addEventListener("click", tokeniseCurrentSource);
+assembleButton.addEventListener("click", assembleCurrentSource);
 
 copyJsonButton.addEventListener("click", async function () {
     try {
@@ -355,7 +448,7 @@ copyJsonButton.addEventListener("click", async function () {
 });
 
 downloadJsonButton.addEventListener("click", function () {
-    var blob = new Blob([currentJsonText || "[]"], { type: "application/json;charset=utf-8" });
+    var blob = new Blob([currentJsonText || "{}"], { type: "application/json;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
@@ -364,6 +457,15 @@ downloadJsonButton.addEventListener("click", function () {
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+});
+
+copyByteCodeButton.addEventListener("click", async function () {
+    try {
+        await navigator.clipboard.writeText(currentByteCodeText || "");
+        setStatus("Byte code copied to clipboard.", "ok");
+    } catch (err) {
+        setStatus("Clipboard copy failed; select the byte code manually.", "warn");
+    }
 });
 
 ["dragenter", "dragover"].forEach(function (name) {
@@ -383,12 +485,21 @@ document.addEventListener("drop", function (ev) {
     loadFile(file);
 });
 
+if (listingColumnsInput) {
+    listingColumnsInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            assembleCurrentSource();
+        }
+    });
+    listingColumnsInput.addEventListener("change", assembleCurrentSource);
+}
+
 sourcePane.addEventListener("keydown", function (ev) {
-    if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") tokeniseCurrentSource();
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") assembleCurrentSource();
 });
 
-tokeniseCurrentSource();
-
+assembleCurrentSource();
 </script>
 </body>
 </html>
