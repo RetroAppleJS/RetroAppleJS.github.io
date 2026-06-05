@@ -113,7 +113,13 @@ function Apple2Hw(vid,keys)
         };
     };
 
-    this.safe_flashdump = function() { return new Uint8Array(ram); }
+    this.safe_flashdump = function()
+    { 
+        var temp = new Uint8Array(0xFFFF+1);
+        temp.set(ram);
+        temp.set(apple2Rom, ROM_ADDR);
+        return temp;
+    }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
     this.mount = function()
