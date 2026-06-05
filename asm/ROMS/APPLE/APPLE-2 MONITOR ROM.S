@@ -178,8 +178,7 @@ SCRN2       BCC     RTMSKZ          ;if even, use lo H
 RTMSKZ      AND     #$0F            ;mask 4-bits
             RTS
 ;OK F882
-;• Clear variables
-LMNEM       EQU    $2C                  
+LMNEM       EQU    $2C              ;initialise variables          
 RMNEM       EQU    $2D    
 FORMAT      EQU    $2E    
 LENGTH      EQU    $2F    
