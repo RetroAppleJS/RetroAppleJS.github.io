@@ -3397,6 +3397,174 @@ function COM()
       return JSON.parse(JSON.stringify(obj));
   }
 
+
+// Interactive JSON pretty printer, adapted from the JSON.prettify pattern used in AsciiCAD_CMD.js.
+this.JSONprettify = function makeInteractiveJson(mountEl, boundaryStyles, indent) 
+{
+    if (!mountEl) throw new Error("mountEl is required");
+    indent = indent || 2;
+    var jsonStr = mountEl.textContent;
+
+    var styleMap = Array.isArray(boundaryStyles)
+        ? Object.fromEntries(boundaryStyles)
+        : (boundaryStyles || {});
+
+    var openToKey = {};
+    var closeToKey = {};
+    Object.keys(styleMap).forEach(function (pairKey) {
+        if (typeof pairKey !== "string" || pairKey.length !== 2) return;
+        openToKey[pairKey.charAt(0)] = pairKey;
+        closeToKey[pairKey.charAt(1)] = pairKey;
+    });
+
+    var pretty;
+    try {
+        pretty = prettyJsonAllman(JSON.parse(jsonStr), indent);
+    } catch (e) {
+        var fallback = document.createElement("pre");
+        fallback.className = "json-view";
+        fallback.textContent = jsonStr;
+        mountEl.replaceChildren(fallback);
+        return fallback;
+    }
+
+    var root = document.createElement("pre");
+    root.className = "json-view";
+    var stacks = {};
+    var nextPairId = 1;
+    var frag = document.createDocumentFragment();
+
+    function appendText(text) {
+        if (text) frag.appendChild(document.createTextNode(text));
+    }
+
+    function appendBoundarySpan(ch, pairKey, pairId) {
+        var sp = document.createElement("span");
+        sp.className = "json-boundary";
+        sp.textContent = ch;
+        sp.dataset.pair = String(pairId);
+        if (styleMap[pairKey]) sp.setAttribute("style", styleMap[pairKey]);
+        frag.appendChild(sp);
+        return sp;
+    }
+
+    var i = 0;
+    while (i < pretty.length) {
+        var ch = pretty.charAt(i);
+
+        if (openToKey[ch]) {
+            var openPairKey = openToKey[ch];
+            var pairId = nextPairId++;
+            appendBoundarySpan(ch, openPairKey, pairId);
+            if (!stacks[openPairKey]) stacks[openPairKey] = [];
+            stacks[openPairKey].push(pairId);
+            i++;
+            continue;
+        }
+
+        if (closeToKey[ch]) {
+            var closePairKey = closeToKey[ch];
+            var stack = stacks[closePairKey];
+            if (stack && stack.length) appendBoundarySpan(ch, closePairKey, stack.pop());
+            else appendText(ch);
+            i++;
+            continue;
+        }
+
+        // Light token coloring on top of the boundary-pair highlighting.
+        var rest = pretty.substring(i);
+        var m;
+        if ((m = rest.match(/^\s+|^[:,]/))) {
+            appendText(m[0]);
+            i += m[0].length;
+            continue;
+        }
+        if ((m = rest.match(/^"(?:\\.|[^"\\])*"(?=\s*:)/))) {
+            appendClassed(m[0], "json-key");
+            i += m[0].length;
+            continue;
+        }
+        if ((m = rest.match(/^"(?:\\.|[^"\\])*"/))) {
+            appendClassed(m[0], "json-string");
+            i += m[0].length;
+            continue;
+        }
+        if ((m = rest.match(/^-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?/))) {
+            appendClassed(m[0], "json-number");
+            i += m[0].length;
+            continue;
+        }
+        if ((m = rest.match(/^(true|false)\b/))) {
+            appendClassed(m[0], "json-boolean");
+            i += m[0].length;
+            continue;
+        }
+        if ((m = rest.match(/^null\b/))) {
+            appendClassed(m[0], "json-null");
+            i += m[0].length;
+            continue;
+        }
+
+        appendText(ch);
+        i++;
+    }
+
+    function appendClassed(text, className) {
+        var sp = document.createElement("span");
+        sp.className = className;
+        sp.textContent = text;
+        frag.appendChild(sp);
+    }
+
+    root.appendChild(frag);
+    mountEl.replaceChildren(root);
+
+    var activePair = null;
+    function cssEscape(s) {
+        if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(String(s));
+        return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+    }
+    function setActive(pairId) {
+        if (activePair === pairId) return;
+        clearActive();
+        activePair = pairId;
+        root.querySelectorAll('.json-boundary[data-pair="' + cssEscape(pairId) + '"]').forEach(function (el) {
+            el.classList.add("active");
+        });
+    }
+    function clearActive() {
+        if (activePair == null) return;
+        root.querySelectorAll('.json-boundary[data-pair="' + cssEscape(activePair) + '"]').forEach(function (el) {
+            el.classList.remove("active");
+        });
+        activePair = null;
+    }
+
+    root.addEventListener("mousemove", function (e) {
+        var b = e.target.closest(".json-boundary");
+        if (!b || !root.contains(b)) { clearActive(); return; }
+        setActive(b.dataset.pair);
+    });
+    root.addEventListener("mouseleave", clearActive);
+    return root;
+};
+
+function prettyJsonAllman(value, indent) {
+    indent = indent || 2;
+    var obj = (typeof value === "string") ? JSON.parse(value) : value;
+    var s = JSON.stringify(obj, null, indent);
+    s = s.replace(/^(\s*)"([^"]+)"\s*:\s*([{\[])([}\]])?\s*(,?)\s*$/gm,
+        function (_m, ws, key, open, maybeClose, comma) {
+            if (maybeClose) {
+                return ws + '"' + key + '":\n' + ws + open + '\n' + ws + ' '.repeat(indent) + '\n' + ws + maybeClose + comma;
+            }
+            return ws + '"' + key + '":\n' + ws + open;
+        }
+    );
+    return s;
+}
+
+
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
 
