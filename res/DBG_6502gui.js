@@ -629,17 +629,6 @@ function loadRom(addr,data) {
 	console.log('DBG ready.');
 }
 
-function loadC64Roms() {
-	if (confirm('Sure to load C64 ROMs?\nMemory transfer could take some time ...')) {
-		if ((self.c64loader) && (self.c64loader.location)) {
-			self.c64loader.location.href='c64ROMs/romloader.html';
-		}
-		else {
-			alert('Sorry.\nIFRAME not found.');
-		}
-	}
-}
-
 function loadApple2PlusRoms(str) {
 	if(str="DBG")
 	{
