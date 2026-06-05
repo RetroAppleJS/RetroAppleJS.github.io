@@ -3398,6 +3398,134 @@ function COM()
   }
 
 
+
+  /////////////////////////////////
+  // FIXED-COLUMN TEXT RENDERER  //
+  /////////////////////////////////
+
+  this.parseColumnSpec = function(spec, defaults)
+  {
+    defaults = defaults || {};
+    var out = {};
+
+    function put(k, v)
+    {
+      v = Number(v);
+      if (!Number.isFinite(v)) return;
+      out[String(k)] = v | 0;
+    }
+
+    for (var k in defaults) put(k, defaults[k]);
+
+    if (spec == null || spec === "") return out;
+
+    if (typeof spec === "object")
+    {
+      for (var kk in spec) put(kk, spec[kk]);
+      return out;
+    }
+
+    var text = String(spec).trim();
+    if (!text) return out;
+
+    try
+    {
+      var jsonish = text;
+      // Accept both JSON and compact object notation like {adr:0,code:6,lbl:16}.
+      if (jsonish.charAt(0) === "{" && jsonish.indexOf('"') < 0)
+        jsonish = jsonish.replace(/([A-Za-z_$][A-Za-z0-9_$-]*)\s*:/g, '"$1":');
+      var obj = JSON.parse(jsonish);
+      for (var j in obj) put(j, obj[j]);
+      return out;
+    }
+    catch (_ignore) {}
+
+    var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
+    while ((m = re.exec(text))) put(m[1], m[2]);
+    return out;
+  };
+
+  this.textTableClip = function(text, width, ellipsis)
+  {
+    text = String(text == null ? "" : text);
+    ellipsis = ellipsis || "…";
+    if (width == null || !Number.isFinite(Number(width)) || Number(width) < 0) return text;
+    width = Number(width) | 0;
+    if (width === 0) return "";
+    if (text.length <= width) return text;
+    if (width <= ellipsis.length) return ellipsis.substring(0, width);
+    return text.substring(0, width - ellipsis.length) + ellipsis;
+  };
+
+  this.renderTextTableRows = function(rows, columnSpec, options)
+  {
+    options = options || {};
+    rows = rows || [];
+    var ellipsis = options.ellipsis || "…";
+    var trimRight = options.trimRight !== false;
+    var singleColumnRaw = options.singleColumnRaw !== false;
+    var defaults = options.defaults || {};
+    var spec = this.parseColumnSpec(columnSpec, defaults);
+    var order = (options.order || Object.keys(spec)).slice();
+
+    // Keep only configured keys and sort them by their start column. Ties keep order[] priority.
+    order = order.filter(function(k) { return spec[k] != null; });
+    order.sort(function(a, b) {
+      var d = spec[a] - spec[b];
+      return d || ((options.order || []).indexOf(a) - (options.order || []).indexOf(b));
+    });
+
+    function rowToLine(row)
+    {
+      row = row || {};
+      var nonEmpty = [];
+      for (var i = 0; i < order.length; i++)
+      {
+        var key = order[i];
+        var val = row[key];
+        if (val != null && String(val) !== "") nonEmpty.push(key);
+      }
+
+      if (singleColumnRaw && nonEmpty.length === 1)
+        return String(row[nonEmpty[0]]);
+
+      var line = "";
+      for (var c = 0; c < order.length; c++)
+      {
+        var key = order[c];
+        var text = row[key];
+        if (text == null || String(text) === "") continue;
+        var col = Number(spec[key]) | 0;
+        var nextKey = null;
+        for (var n = c + 1; n < order.length; n++)
+        {
+          if (spec[order[n]] > col) { nextKey = order[n]; break; }
+        }
+        var width = nextKey == null ? undefined : (Number(spec[nextKey]) - col);
+        text = this.textTableClip(text, width, ellipsis);
+        if (line.length < col) line = line + " ".repeat(col - line.length);
+        if (line.length > col)
+        {
+          // Preserve an already-written overflowing field; move this field just after it.
+          // Properly configured columns should not hit this path because clipping happens above.
+          line += " ";
+        }
+        line += text;
+      }
+      return trimRight ? line.replace(/\s+$/, "") : line;
+    }
+
+    var out = [];
+    for (var r = 0; r < rows.length; r++) out.push(rowToLine.call(this, rows[r]));
+    return out;
+  };
+
+  this.renderTextTable = function(rows, columnSpec, options)
+  {
+    return this.renderTextTableRows(rows, columnSpec, options).join((options && options.lineBreak) || "\n");
+  };
+
+
 // Interactive JSON pretty printer, adapted from the JSON.prettify pattern used in AsciiCAD_CMD.js.
 this.JSONprettify = function makeInteractiveJson(mountEl, boundaryStyles, indent) 
 {
