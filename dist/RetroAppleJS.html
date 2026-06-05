@@ -28524,17 +28524,6 @@ function loadRom(addr,data) {
 	console.log('DBG ready.');
 }
 
-function loadC64Roms() {
-	if (confirm('Sure to load C64 ROMs?\nMemory transfer could take some time ...')) {
-		if ((self.c64loader) && (self.c64loader.location)) {
-			self.c64loader.location.href='c64ROMs/romloader.html';
-		}
-		else {
-			alert('Sorry.\nIFRAME not found.');
-		}
-	}
-}
-
 function loadApple2PlusRoms(str) {
 	if(str="DBG")
 	{
@@ -28975,7 +28964,6 @@ oCOM.addToEventStack("onload",DBG_init);
                     <input type="button" value="look up mem #" class="isButton" onclick="memLookup()">
                     <input type="button" value="reset CPU" class="isButton" onclick="masterReset()">
                     show ASCII <input type="checkbox" id="showASCII" value="1" class="formField"><br>
-                    <input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
                     <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
                     <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
                     <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS'],document.getElementById('debugfield'))">
