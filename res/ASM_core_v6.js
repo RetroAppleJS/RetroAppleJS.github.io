@@ -1,6 +1,6 @@
 /*
  * ASM_core_v6_3.js
- * Build filename: ASM_core_v6_3.js
+ * Build filename: ASM_core_v6.js
  * Clean 6502 assembler-analysis core for RetroAppleJS-style tooling.
  *
  * Goals:
