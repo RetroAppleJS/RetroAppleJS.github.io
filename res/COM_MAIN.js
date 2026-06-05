@@ -873,7 +873,6 @@ function COM()
   }
 
 
-
   /////////////////////////////////
   // FIXED-COLUMN TEXT RENDERER  //
   /////////////////////////////////
@@ -961,6 +960,7 @@ function COM()
         if (val != null && String(val) !== "") nonEmpty.push(key);
       }
 
+      // UX rule for comment-only or otherwise single-field rows: print at column 0.
       if (singleColumnRaw && nonEmpty.length === 1)
         return String(row[nonEmpty[0]]);
 
@@ -1002,7 +1002,7 @@ function COM()
 
 
 // Interactive JSON pretty printer, adapted from the JSON.prettify pattern used in AsciiCAD_CMD.js.
-this.JSONprettify = function makeInteractiveJson(mountEl, boundaryStyles, indent) 
+this.JSONprettify = function makeInteractiveJson(mountEl, boundaryStyles, indent)
 {
     if (!mountEl) throw new Error("mountEl is required");
     indent = indent || 2;
@@ -1156,11 +1156,11 @@ function prettyJsonAllman(value, indent) {
     indent = indent || 2;
     var obj = (typeof value === "string") ? JSON.parse(value) : value;
     var s = JSON.stringify(obj, null, indent);
-    s = s.replace(/^(\s*)"([^"]+)"\s*:\s*([{\[])([}\]])?\s*(,?)\s*$/gm,
+    s = s.replace(/^(\s*)"([^"]+)"\s*:\s*([\{\[])([\}\]])?\s*(,?)\s*$/gm,
         function (_m, ws, key, open, maybeClose, comma) {
-            if (maybeClose) {
-                return ws + '"' + key + '":\n' + ws + open + '\n' + ws + ' '.repeat(indent) + '\n' + ws + maybeClose + comma;
-            }
+            // Keep empty arrays/objects compact: "tag": [] and "sym": {}.
+            if (maybeClose) return ws + '"' + key + '": ' + open + maybeClose + comma;
+            // For non-empty object/array values, keep the existing Allman-style key break.
             return ws + '"' + key + '":\n' + ws + open;
         }
     );

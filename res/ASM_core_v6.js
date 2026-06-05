@@ -1,6 +1,6 @@
 /*
- * ASM_core_v6_2.js
- * Build filename: ASM_core_v6_2.js
+ * ASM_core_v6_3.js
+ * Build filename: ASM_core_v6_3.js
  * Clean 6502 assembler-analysis core for RetroAppleJS-style tooling.
  *
  * Goals:
@@ -9,7 +9,7 @@
  * - Two-pass source analysis.
  * - Main public function: asm.tokenise(sourceText) -> JSON statement array.
  *
- * v6 architecture:
+ * v6.3 architecture:
  * - Pragmas/directives keep their parser functions inside this.pragma entries.
  * - 6502 mnemonics keep their parser functions inside this.mnemonics entries.
  * - Metadata/unclassified statement handling is dispatched through this.metadata entries.
@@ -25,7 +25,7 @@ function ASM(options) {
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.2";
+    this.version = "0.6.3";
     this.maxNumBytes = options.maxNumBytes || 2;
     this.label_len = options.label_len || 8;
     this.pc = 0;

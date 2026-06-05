@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AssemblerJS v0.6.2</title>
+<title>AssemblerJS v0.6.3</title>
 
 <!-- Adjust these paths if this file is not next to /res. -->
-<script type="text/javascript" src="../res/COM_MAIN.js"></script>
-<script type="text/javascript" src="../res/ASM_core_v6.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.3"></script>
+<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.3"></script>
 
 <style>
     :root {
@@ -180,9 +180,22 @@
 
     textarea { resize: none; white-space: pre; }
 
+
+    .json-pane {
+        align-self: start;
+        height: var(--source-pane-height, auto);
+        max-height: var(--source-pane-height, none);
+    }
+
+    .json-mount:focus {
+        outline: 1px solid var(--accent);
+        outline-offset: -1px;
+    }
+
     .json-view {
         margin: 0;
         white-space: pre;
+        min-width: max-content;
         color: var(--text);
     }
 
@@ -234,8 +247,8 @@
 <body>
 <header>
     <div>
-        <h1>AssemblerJS v0.6.2</h1>
-        <div class="subtitle">Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header.</div>
+        <h1>AssemblerJS v0.6.3</h1>
+        <div class="subtitle">Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. Using versioned filenames to avoid browser cache conflicts.</div>
     </div>
     <div class="drop-hint">Tip: drag a .S file anywhere on this page</div>
 </header>
@@ -250,7 +263,7 @@
 </section>
 
 <main>
-    <section class="pane">
+    <section class="pane" id="sourcePaneWrapper">
         <div class="pane-title"><strong>Source</strong><span id="sourceInfo">sample source</span></div>
         <textarea id="sourcePane" spellcheck="false">ORG $6000
 INVFLG      EQU     $0032
@@ -279,9 +292,9 @@ NOTCR LDA INVFLG
         <textarea id="listingPane" readonly spellcheck="false"></textarea>
     </section>
 
-    <section class="pane">
-        <div class="pane-title"><strong>JSON output</strong><span id="jsonInfo">tokenise() + compile()</span></div>
-        <div id="jsonMount" class="json-mount"></div>
+    <section class="pane json-pane" id="jsonPaneWrapper">
+        <div class="pane-title"><strong>JSON output</strong><span id="jsonInfo">interactive JSON</span></div>
+        <div id="jsonMount" class="json-mount" tabindex="0"></div>
     </section>
 </main>
 
@@ -298,10 +311,12 @@ var downloadJsonButton = document.getElementById("downloadJsonButton");
 var copyByteCodeButton = document.getElementById("copyByteCodeButton");
 var statusEl = document.getElementById("status");
 var sourcePane = document.getElementById("sourcePane");
+var sourcePaneWrapper = document.getElementById("sourcePaneWrapper");
 var listingPane = document.getElementById("listingPane");
 var listingColumnsInput = document.getElementById("listingColumnsInput");
 var byteCodePane = document.getElementById("byteCodePane");
 var jsonMount = document.getElementById("jsonMount");
+var jsonPaneWrapper = document.getElementById("jsonPaneWrapper");
 var sourceInfo = document.getElementById("sourceInfo");
 var listingInfo = document.getElementById("listingInfo");
 var byteCodeInfo = document.getElementById("byteCodeInfo");
@@ -340,9 +355,29 @@ function prettifyJSON(mountEl) {
     mountEl.innerHTML = "<pre class=\"json-view\">" + fallbackEscapeHTML(mountEl.textContent) + "</pre>";
 }
 
+
+function syncJsonPaneHeight() {
+    if (!sourcePaneWrapper || !jsonPaneWrapper) return;
+    var h = Math.round(sourcePaneWrapper.getBoundingClientRect().height);
+    if (h > 0) {
+        document.documentElement.style.setProperty("--source-pane-height", h + "px");
+        jsonPaneWrapper.style.height = h + "px";
+        jsonPaneWrapper.style.maxHeight = h + "px";
+    }
+}
+
+function scrollWindowBackToTop() {
+    requestAnimationFrame(function () {
+        var scroller = document.scrollingElement || document.documentElement || document.body;
+        try { window.scrollTo({ top: 0, left: 0, behavior: "smooth" }); }
+        catch (_ignore) { window.scrollTo(0, 0); }
+        if (scroller) scroller.scrollTop = 0;
+    });
+}
+
 function assembleCurrentSource() {
     if (typeof window.ASM !== "function") {
-        var msg = "ASM() was not found. Check the ASM_core_v6.js <script src> path.";
+        var msg = "ASM() was not found. Check the ASM_core_v6_3.js <script src> path.";
         setStatus(msg, "bad");
         renderRawError(msg);
         return;
@@ -357,6 +392,7 @@ function assembleCurrentSource() {
         // v0.6: the compiler takes the JSON tokenisation object as input.
         var rows = window.oASM.tokenise(sourcePane.value);
         var compiled = window.oASM.compile(rows);
+        var coreVersion = window.oASM.version || "?";
 
         window.asmTokeniseJSON = rows;
         window.asmCompileResult = compiled;
@@ -370,6 +406,8 @@ function assembleCurrentSource() {
         currentJsonText = JSON.stringify(compiled, null, 2);
         jsonMount.textContent = currentJsonText;
         prettifyJSON(jsonMount);
+        if (jsonMount) jsonMount.scrollTop = 0;
+        syncJsonPaneHeight();
 
         var sourceLineCount = sourcePane.value.split(/\r\n|\r|\n/).length;
         var listingLineCount = listingPane.value.split(/\r\n|\r|\n/).length;
@@ -379,14 +417,14 @@ function assembleCurrentSource() {
 
         listingInfo.textContent = listingLineCount + " listing lines";
         byteCodeInfo.textContent = byteCount + " bytes";
-        jsonInfo.textContent = rowCount + " JSON rows";
+        jsonInfo.textContent = "interactive JSON";
 
         if (sourceLineCount !== listingLineCount) {
-            setStatus("Assembled with line-count mismatch: source " + sourceLineCount + ", listing " + listingLineCount + ".", "warn");
+            setStatus("ASM core v" + coreVersion + ": assembled with line-count mismatch: source " + sourceLineCount + ", listing " + listingLineCount + ".", "warn");
         } else if (errorCount) {
-            setStatus("Assembled " + rowCount + " rows / " + byteCount + " bytes with " + errorCount + " unresolved/error row(s).", "warn");
+            setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes with " + errorCount + " unresolved/error row(s).", "warn");
         } else {
-            setStatus("Assembled " + rowCount + " rows / " + byteCount + " bytes from " + currentFileName + ".", "ok");
+            setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes from " + currentFileName + ".", "ok");
         }
     } catch (err) {
         console.error(err);
@@ -401,6 +439,7 @@ function renderRawError(message) {
     currentJsonText = JSON.stringify({ error: String(message) }, null, 2);
     jsonMount.textContent = currentJsonText;
     prettifyJSON(jsonMount);
+    syncJsonPaneHeight();
 }
 
 async function loadFile(file) {
@@ -495,11 +534,25 @@ if (listingColumnsInput) {
     listingColumnsInput.addEventListener("change", assembleCurrentSource);
 }
 
+
+sourcePane.addEventListener("paste", function () {
+    setTimeout(function () {
+        sourcePane.scrollTop = 0;
+        scrollWindowBackToTop();
+        syncJsonPaneHeight();
+    }, 0);
+});
+
+window.addEventListener("resize", function () {
+    requestAnimationFrame(syncJsonPaneHeight);
+});
+
 sourcePane.addEventListener("keydown", function (ev) {
     if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") assembleCurrentSource();
 });
 
 assembleCurrentSource();
+requestAnimationFrame(syncJsonPaneHeight);
 </script>
 </body>
 </html>
