@@ -26,7 +26,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.3.1";
+    this.version = "0.6.3";
     this.maxNumBytes = options.maxNumBytes || 2;
     this.label_len = options.label_len || 8;
     this.pc = 0;
@@ -962,7 +962,6 @@ function ASM(options)
         };
     };
 
-    // v0.6 fixed listing columns, zero-based.  The short keys match the UI input.
     this.defaultListingColumns = { adr: 0, code: 6, lbl: 16, ins: 25, opr: 29, com: 46 };
     this.listingColumns = Object.assign({}, this.defaultListingColumns);
     this.listingLabelLen = options.listingLabelLen || 8;
