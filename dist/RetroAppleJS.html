@@ -14146,11 +14146,23 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 function Cpu6502(hwobj)
 {
     const bDebug_boot = true;        // debug CPU boot
-    const BOOTsiz = 1024;
+    //const BOOTsiz = 1024;
+    const BOOTsiz = 131072;
+    //const BOOTsiz = 524288;
+    //const BOOTsiz = 1048576;
 
-    var BOOTlog_adr = new Uint16Array(BOOTsiz);  // starting PC of each executed instruction
-    var BOOTlog_opc = new Uint32Array(BOOTsiz);  // opcode | op1<<8 | op2<<16
+    //var BOOTlog_adr = new Uint16Array(BOOTsiz);  // starting PC of each executed instruction
+    //var BOOTlog_opc = new Uint32Array(BOOTsiz);  // opcode | op1<<8 | op2<<16
     var BOOTcnt = 0;
+
+    const BOOT_RECORD_BYTES = 10;
+
+    var BOOTlog_adr = new Uint16Array(BOOTsiz);
+    var BOOTlog_cpu = new BigUint64Array(BOOTsiz);
+
+    const BOOTlog_exclude = new Set([
+        //0xFCAA, 0xFCAC, 0xFCAE, 0xFCAF, 0xFCB1, 0xFCA9
+    ]);
 
 
     // 6502 reserved addresses.
@@ -14391,15 +14403,22 @@ function Cpu6502(hwobj)
                 break;
         }
 
-        if (bDebug_boot && BOOTcnt < BOOTsiz)
+        const exclude = [0xFCAA,0xFCAC,0xFCAE,0xFCAF,0xFCB1,0xFCA9];
+
+        var boot_pc = instr_pc & 0xffff;
+
+        if (bDebug_boot && BOOTcnt < BOOTsiz && !BOOTlog_exclude.has(boot_pc))
         {
-            BOOTlog_adr[BOOTcnt] = instr_pc;
-            BOOTlog_opc[BOOTcnt] = (opcode & 0xff) | ((operand & 0xffff) << 8);
+            BOOTlog_adr[BOOTcnt] = boot_pc;
+            BOOTlog_cpu[BOOTcnt] = packBootState(opcode, operand);
             BOOTcnt++;
 
-            if(BOOTcnt == BOOTsiz) console.log("BOOTlog = "+this.getBootLogBase64());
+            if (BOOTcnt == BOOTsiz)
+            {
+                alert("cpu log ended");
+                console.log("BOOTlog = " + this.getBootLogBase64());
+            }
         }
-
 
         // Execute!
         switch (opcode) {
@@ -14757,48 +14776,37 @@ function Cpu6502(hwobj)
     this.watch = function()     {  return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay} }
     this.getConfig = function() { return { "instrlen":instrlen,"cycle_count":cycle_count,"opctab":opctab } }
 
-    /*
-    this.getBootLog = function()
+    function packBootState(opcode, operand)
     {
-        var rows = [];
-
-        for (var i = 0; i < BOOTcnt; i++)
-        {
-            var packed = BOOTlog_opc[i] >>> 0;
-            var opc = packed & 0xff;
-            var len = instrlen[opc] || 1;
-
-            var bytes = [opc];
-            if (len > 1) bytes[1] = (packed >>> 8) & 0xff;
-            if (len > 2) bytes[2] = (packed >>> 16) & 0xff;
-
-            rows[i] = {
-                "idx": i,
-                "adr": BOOTlog_adr[i],
-                "opc": opc,
-                "len": len,
-                "bytes": bytes
-            };
-        }
-
-        return rows;
+        return  BigInt(opcode & 0xff) |
+            (BigInt(operand & 0xffff) << 8n) |
+            (BigInt(a & 0xff)       << 24n) |
+            (BigInt(x & 0xff)       << 32n) |
+            (BigInt(y & 0xff)       << 40n) |
+            (BigInt(p & 0xff)       << 48n) |
+            (BigInt(sp & 0xff)      << 56n);
     }
-    */
 
     this.getBootLogBase64 = function()
     {
-        var bytes = new Uint8Array(BOOTcnt * 5);
+        var bytes = new Uint8Array(BOOTcnt * BOOT_RECORD_BYTES);
 
-        for (var i = 0, o = 0; i < BOOTcnt; i++, o += 5)
+        for (var i = 0, o = 0; i < BOOTcnt; i++, o += BOOT_RECORD_BYTES)
         {
             var adr = BOOTlog_adr[i] & 0xffff;
-            var opc = BOOTlog_opc[i] >>> 0;
+            var cpu = BOOTlog_cpu[i];   // BigInt
 
             bytes[o    ] = adr & 0xff;
-            bytes[o + 1] = adr >> 8;
-            bytes[o + 2] = opc & 0xff;
-            bytes[o + 3] = (opc >> 8) & 0xff;
-            bytes[o + 4] = (opc >> 16) & 0xff;
+            bytes[o + 1] = (adr >> 8) & 0xff;
+
+            bytes[o + 2] = Number( cpu        & 0xffn);  // opcode
+            bytes[o + 3] = Number((cpu >> 8n)  & 0xffn);  // operand low
+            bytes[o + 4] = Number((cpu >> 16n) & 0xffn);  // operand high
+            bytes[o + 5] = Number((cpu >> 24n) & 0xffn);  // A
+            bytes[o + 6] = Number((cpu >> 32n) & 0xffn);  // X
+            bytes[o + 7] = Number((cpu >> 40n) & 0xffn);  // Y
+            bytes[o + 8] = Number((cpu >> 48n) & 0xffn);  // P
+            bytes[o + 9] = Number((cpu >> 56n) & 0xffn);  // SP
         }
 
         return u8ToBase64(bytes);
