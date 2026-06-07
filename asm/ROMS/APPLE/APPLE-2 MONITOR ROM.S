@@ -17,8 +17,8 @@
 ;* Last updated by Freddy Vandriessche on 2026/06/05                            *
 ;********************************************************************************
 IOADR       EQU     $c000  
-LOC0        EQU     $00
-LOC1        EQU     $01
+LOC0        EQU     $00     ; SLOTROM VECTOR - LO
+LOC1        EQU     $01     ; SLOTROM VECTOR - HI
 WNDLFT      EQU     $20
 WNDWDTH     EQU     $21
 WNDTOP      EQU     $22
@@ -411,15 +411,15 @@ FIXSEV      LDY     #$03            ;no so point at warm start
 NOFIX       JMP     (SOFTEV)        ;soft entry vector
 
 ; ********************
-PWRUP       JSR     APPLEII
+PWRUP       JSR     APPLEII         ;clear the screen & print APPLE ][
 SETPG3      LDX     #$05            ;set page 3 vectors
-LFAAB       LDA     PWRCON-1,X      ;with cntrl B adrs
+LFAAB       LDA     PWRCON-1,X      ;with ctrl-B adrs
             STA     BRKV-1,X        ;of current BASIC
             DEX
             BNE     LFAAB
             LDA     #$C8            ;load hi slot +1
-            STX     *LOC0            ;SETPG3 must return X=0
-            STA     *LOC1            ;set PTR H
+            STX     *LOC0           ;SETPG3 must return X=0
+            STA     *LOC1           ;set PTR H
 SLOOP       LDY     #$07            ;Y is byte PTR
             DEC     *LOC1
             LDA     *LOC1
@@ -455,8 +455,9 @@ RDSP1       LDA     #$A0
             BMI     RDSP1
             RTS
 ;OK FAFD
-PWRCON      .WORD   OLDBRK
-            HEX  00E045
+PWRCON      .WORD   OLDBRK          ; DEFAULT JUMP VECTOR TO REGISTER DUMP & GO TO MONITOR
+            HEX     00E045
+
 DISKID      HEX  20FF00FF03FF3C
 TITLE       ASC   “APPLE ][”
 XLTBL       HEX  C4C2C1FFC3FFFFFF
