@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Apple II 6502 DASM v10</title>
+<title>Apple II 6502 DASM v11</title>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/ASM_core.js"></script>
 <style>
@@ -80,6 +80,16 @@
         padding-bottom:0px;
         padding-left:300px
     }
+    .group-state {
+        display:block;
+        color:#E6C229;
+        font-size:10px;
+        line-height:8px;
+        margin:0;
+        padding-top:5px;
+        padding-bottom:2px;
+        padding-left:20px;
+    }
 
 
     .status { color:var(--muted); min-height:20px; }
@@ -88,7 +98,7 @@
 </style>
 </head>
 <body>
-<h1>Apple II 6502 DASM v10</h1>
+<h1>Apple II 6502 DASM v11</h1>
 <p>
     Input formats: legacy 5-byte CPU trace records
     (<code>adrLo adrHi opcode op1 op2</code>, base64 encoded), enhanced 10-byte CPU trace records
@@ -447,8 +457,67 @@ SUBTBL EQU $FFE3
 </div>
 
 <script type="text/javascript">
+
 const HIST_LIMIT = 256;
 
+
+const BOOT_GROUP_MEMBER_TABLE = [
+    {"group":1,"step":0,"pc":"$FD1B","count":19747,"bytes":"E6 4E","instruction":"INC RNDL"},
+    {"group":1,"step":1,"pc":"$FD1D","count":19747,"bytes":"D0 02","instruction":"BNE KEYIN2"},
+    {"group":1,"step":2,"pc":"$FD21","count":19746,"bytes":"2C 00 C0","instruction":"BIT KBD"},
+    {"group":1,"step":3,"pc":"$FD24","count":19746,"bytes":"10 F5","instruction":"BPL KEYIN"},
+    {"group":2,"step":0,"pc":"$FCAA","count":17058,"bytes":"E9 01","instruction":"SBC #$01"},
+    {"group":2,"step":1,"pc":"$FCAC","count":17058,"bytes":"D0 FC","instruction":"BNE WAIT3"},
+    {"group":3,"step":0,"pc":"$FCA0","count":960,"bytes":"91 28","instruction":"STA (BASL),Y"},
+    {"group":3,"step":1,"pc":"$FCA2","count":960,"bytes":"C8","instruction":"INY"},
+    {"group":3,"step":2,"pc":"$FCA3","count":960,"bytes":"C4 21","instruction":"CPY WNDWDTH"},
+    {"group":3,"step":3,"pc":"$FCA5","count":960,"bytes":"90 F9","instruction":"BCC CLREO2"},
+    {"group":4,"step":0,"pc":"$F181","count":184,"bytes":"E6 51","instruction":"INC $51"},
+    {"group":4,"step":1,"pc":"$F183","count":184,"bytes":"B1 50","instruction":"LDA ($50),Y"},
+    {"group":4,"step":2,"pc":"$F185","count":184,"bytes":"49 FF","instruction":"EOR #$FF"},
+    {"group":4,"step":3,"pc":"$F187","count":184,"bytes":"91 50","instruction":"STA ($50),Y"},
+    {"group":4,"step":4,"pc":"$F189","count":184,"bytes":"D1 50","instruction":"CMP ($50),Y"},
+    {"group":4,"step":5,"pc":"$F18B","count":184,"bytes":"D0 08","instruction":"BNE $F195"},
+    {"group":4,"step":6,"pc":"$F18D","count":183,"bytes":"49 FF","instruction":"EOR #$FF"},
+    {"group":4,"step":7,"pc":"$F18F","count":183,"bytes":"91 50","instruction":"STA ($50),Y"},
+    {"group":4,"step":8,"pc":"$F191","count":183,"bytes":"D1 50","instruction":"CMP ($50),Y"},
+    {"group":4,"step":9,"pc":"$F193","count":183,"bytes":"F0 EC","instruction":"BEQ $F181"},
+    {"group":5,"step":0,"pc":"$F152","count":28,"bytes":"BD 0A F1","instruction":"LDA $F10A,X"},
+    {"group":5,"step":1,"pc":"$F155","count":28,"bytes":"95 B0","instruction":"STA $B0,X"},
+    {"group":5,"step":2,"pc":"$F157","count":28,"bytes":"86 F1","instruction":"STX $F1"},
+    {"group":5,"step":3,"pc":"$F159","count":28,"bytes":"CA","instruction":"DEX"},
+    {"group":5,"step":4,"pc":"$F15A","count":28,"bytes":"D0 F6","instruction":"BNE $F152"},
+    {"group":6,"step":0,"pc":"$FABA","count":8,"bytes":"A0 07","instruction":"LDY #$07"},
+    {"group":6,"step":1,"pc":"$FABC","count":8,"bytes":"C6 01","instruction":"DEC LOC1"},
+    {"group":6,"step":2,"pc":"$FABE","count":8,"bytes":"A5 01","instruction":"LDA LOC1"},
+    {"group":6,"step":3,"pc":"$FAC0","count":8,"bytes":"C9 C0","instruction":"CMP #$C0"},
+    {"group":6,"step":4,"pc":"$FAC2","count":8,"bytes":"F0 D7","instruction":"BEQ FIXSEV"},
+    {"group":6,"step":5,"pc":"$FAC4","count":7,"bytes":"8D F8 07","instruction":"STA MSLOT"},
+    {"group":6,"step":6,"pc":"$FAC7","count":7,"bytes":"B1 00","instruction":"LDA (LOC0),Y"},
+    {"group":6,"step":7,"pc":"$FAC9","count":7,"bytes":"D9 01 FB","instruction":"CMP $FB01,Y"},
+    {"group":6,"step":8,"pc":"$FACC","count":7,"bytes":"D0 EC","instruction":"BNE SLOOP"},
+    {"group":7,"step":0,"pc":"$FB65","count":8,"bytes":"B9 08 FB","instruction":"LDA $FB08,Y"},
+    {"group":7,"step":1,"pc":"$FB68","count":8,"bytes":"99 0E 04","instruction":"STA $040E,Y"},
+    {"group":7,"step":2,"pc":"$FB6B","count":8,"bytes":"88","instruction":"DEY"},
+    {"group":7,"step":3,"pc":"$FB6C","count":8,"bytes":"D0 F7","instruction":"BNE STITLE"},
+    {"group":8,"step":0,"pc":"$FAAB","count":5,"bytes":"BD FC FA","instruction":"LDA $FAFC,X"},
+    {"group":8,"step":1,"pc":"$FAAE","count":5,"bytes":"9D EF 03","instruction":"STA $03EF,X"},
+    {"group":8,"step":2,"pc":"$FAB1","count":5,"bytes":"CA","instruction":"DEX"},
+    {"group":8,"step":3,"pc":"$FAB2","count":5,"bytes":"D0 F7","instruction":"BNE LFAAB"}
+];
+
+const BOOT_GROUPS = (function () {
+    var groups = Object.create(null);
+    BOOT_GROUP_MEMBER_TABLE.forEach(function (m) {
+        var g = m.group | 0;
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(m);
+    });
+    Object.keys(groups).forEach(function (g) {
+        groups[g].sort(function (a, b) { return (a.step | 0) - (b.step | 0); });
+    });
+    return groups;
+}());
 
 (function () {
     'use strict';
@@ -608,6 +677,18 @@ const HIST_LIMIT = 256;
             var opcode = bytes[i + 2];
             var op1 = bytes[i + 3];
             var op2 = bytes[i + 4];
+
+            if (adr === 0xFFFF) {
+                rows.push({
+                    idx:r,
+                    adr:0xFFFF,
+                    record_bytes:10,
+                    is_group_marker:true,
+                    group:(opcode | (op1 << 8)) & 0xffff,
+                    repeat_count:(op2 | (bytes[i + 5] << 8) | (bytes[i + 6] << 16) | (bytes[i + 7] << 24)) >>> 0
+                });
+                continue;
+            }
 
             rows.push(makeBootRow(r, adr, opcode, op1, op2, {
                 record_bytes:10,
@@ -921,6 +1002,13 @@ const HIST_LIMIT = 256;
             ' SP=' + getHexByte(row.sp);
     }
 
+    function renderGroupState(row, showIdx) {
+        var group = BOOT_GROUPS[row.group];
+        var sequence = group ? group.map(function (m) { return m.instruction; }).join(' | ') : '(unknown group)';
+        var idx = showIdx ? (String(row.idx).padStart(4, '0') + '  ') : '';
+        return idx + 'GROUP ' + row.group + ' repeated ' + row.repeat_count + 'x: ' + sequence;
+    }
+
     function parseOptionalPcFilter() {
         var el = document.getElementById('histPcFilter');
         if (!el) return null;
@@ -964,6 +1052,7 @@ const HIST_LIMIT = 256;
 
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
+            if (row.is_group_marker) continue;
             var key = rowIdentityKey(row);
 
             if (!map[key]) {
@@ -1013,6 +1102,7 @@ const HIST_LIMIT = 256;
         }
 
         for (var i = 0; i + 1 < rows.length; i++) {
+            if (rows[i].is_group_marker || rows[i + 1].is_group_marker) continue;
             addTransition(rowIdentityKey(rows[i]), rowIdentityKey(rows[i + 1]));
         }
 
@@ -1233,8 +1323,9 @@ const HIST_LIMIT = 256;
         };
     }
 
-    function logTraceStatistics(rows, mode) {
-        
+    function logTraceStatistics(rows, mode) 
+    {
+
 
         if (!rows || !rows.length) {
             console.warn('No parsed rows available for trace statistics.');
@@ -1330,6 +1421,11 @@ const HIST_LIMIT = 256;
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
 
+            if (row.is_group_marker) {
+                lines.push('<span class="group-state">' + escapeHtml(renderGroupState(row, showIdx)) + '</span>');
+                continue;
+            }
+
             // Compatibility with older ASM_core.js versions whose rel branch formatter still reads global pc.
             window.pc = row.adr;
 
@@ -1400,14 +1496,16 @@ const HIST_LIMIT = 256;
 
     function sampleBase6410()
     {
-        // Three enhanced 10-byte records:
+        // Three enhanced 10-byte records followed by one compressed group marker:
         // $FF59 LDX #$FF  A=00 X=00 Y=00 P=24 SP=FF
         // $FF5B TXS       A=00 X=FF Y=00 P=A4 SP=FF
         // $FF5C JSR $FDED A=00 X=FF Y=00 P=A4 SP=FF
+        // $FFFF marker: group 1 repeated 3x
         var rec = [
             [0x59,0xFF, 0xA2,0xFF,0x00, 0x00,0x00,0x00,0x24,0xFF],
             [0x5B,0xFF, 0x9A,0x00,0x00, 0x00,0xFF,0x00,0xA4,0xFF],
-            [0x5C,0xFF, 0x20,0xED,0xFD, 0x00,0xFF,0x00,0xA4,0xFF]
+            [0x5C,0xFF, 0x20,0xED,0xFD, 0x00,0xFF,0x00,0xA4,0xFF],
+            [0xFF,0xFF, 0x01,0x00,0x03, 0x00,0x00,0x00,0x00,0x00]
         ];
         return bytesToBase64(new Uint8Array([].concat.apply([], rec)));
     }
@@ -1444,7 +1542,7 @@ const HIST_LIMIT = 256;
         var blob = new Blob([document.getElementById('output').textContent || ''], {type:'text/plain'});
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'bootlog_dasm_v10.asm';
+        a.download = 'bootlog_dasm_v11.asm';
         a.click();
         URL.revokeObjectURL(a.href);
     }
