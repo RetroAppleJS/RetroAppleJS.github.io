@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Apple II 6502 Boot Log DASM v1</title>
+<title>Apple II 6502 DASM v10</title>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/ASM_core.js"></script>
 <style>
@@ -28,8 +28,8 @@
     h1 { margin:0 0 8px; font-size:22px; }
     p { color:var(--muted); margin:0 0 16px; }
     code { color:var(--text); }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
-    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .grid { display:grid; grid-template-columns:1fr; gap:16px; align-items:start; width:100%; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; width:100%; }
     label { display:block; font-weight:600; margin:0 0 6px; }
     textarea {
         width:100%;
@@ -67,39 +67,55 @@
         padding:12px;
         min-height:380px;
         font:13px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+        line-height:5px;
+
     }
+    .cpu-state {
+        display:block;
+        color:#3F5799;
+        font-size:10px;
+        line-height:7px;
+        margin:0;
+        padding-top:5px;
+        padding-bottom:0px;
+        padding-left:300px
+    }
+
+
     .status { color:var(--muted); min-height:20px; }
     .error { color:var(--bad); }
     .ok { color:var(--good); }
-    @media (max-width:900px) { .grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
-<h1>Apple II 6502 Boot Log DASM v1</h1>
+<h1>Apple II 6502 DASM v10</h1>
 <p>
-    Input format: one fixed 5-byte record per executed CPU operation:
-    <code>adrLo adrHi opcode op1 op2</code>. This is the same as
-    <code>16 address bits + 24 operation bits</code>. The viewer uses
-    <code>../res/ASM_core.js</code> for <code>DASM</code> and overrides symbols only on its own local instance.
+    Input formats: legacy 5-byte CPU trace records
+    (<code>adrLo adrHi opcode op1 op2</code>, base64 encoded), enhanced 10-byte CPU trace records
+    (<code>adrLo adrHi opcode op1 op2 A X Y P SP</code>, base64 encoded), or a regular memory dump such as
+    <code>F800: 4A 08 20 47 F8</code>. In 10-byte trace mode, CPU registers are shown before the instruction because they represent pre-execution state. The viewer uses <code>../res/ASM_core.js</code> for
+    <code>DASM</code> and overrides symbols only on its own local instance. Every disassembly also logs a top-16 PC histogram and repeated closed instruction groups using <code>console.table()</code>.
 </p>
 
 <div class="grid">
     <div class="panel">
-        <label for="input">Boot log base64</label>
-        <textarea id="input" spellcheck="false" placeholder="Paste base64 here..."></textarea>
+        <label for="input">Boot log base64 / memory dump</label>
+        <textarea id="input" spellcheck="false" placeholder="Paste enhanced 10-byte base64 trace data, legacy 5-byte trace data, or a memory dump like: F800: 4A 08 20 47 F8..."></textarea>
 
         <div class="row">
             <button class="primary" id="decodeBtn" type="button">Disassemble</button>
-            <button id="sampleBtn" type="button">Load sample</button>
+            <button id="sampleBtn" type="button">Load 10-byte trace sample</button>
             <button id="clearBtn" type="button">Clear</button>
             <button id="copyBtn" type="button">Copy output</button>
             <button id="downloadBtn" type="button">Download .asm</button>
         </div>
 
         <div class="row">
+            <label class="check">Input mode <select id="inputMode"><option value="auto" selected>auto-detect</option><option value="bootlog10">boot log base64, 10-byte</option><option value="bootlog5">boot log base64, 5-byte legacy</option><option value="dump">memory dump</option></select></label>
             <label class="check"><input type="checkbox" id="useDefaultSymbols" checked> ASM_core.js mem_sym</label>
             <label class="check"><input type="checkbox" id="patchUnofficial" checked> friendly unofficial opcode names</label>
             <label class="check"><input type="checkbox" id="showIdx" checked> index column</label>
+            <label class="check"><input type="checkbox" id="showCpuState" checked> CPU state</label>
         </div>
 
         <label for="symbols">Extra symbols</label>
@@ -431,8 +447,13 @@ SUBTBL EQU $FFE3
 </div>
 
 <script type="text/javascript">
+const HIST_LIMIT = 256;
+
+
 (function () {
     'use strict';
+
+    var lastParsed = null;
 
     /*
         This tool intentionally does NOT embed or modify DASM.
@@ -537,9 +558,31 @@ SUBTBL EQU $FFE3
         return bytes;
     }
 
-    function parseBootRecords(bytes) {
+    function makeBootRow(r, adr, opcode, op1, op2, extra) {
+        var len = instrlen[opcode] || 1;
+        var row = {
+            idx: r,
+            adr: adr & 0xffff,
+            opcode: opcode & 0xff,
+            op1: op1 & 0xff,
+            op2: op2 & 0xff,
+            len: len,
+            byte_len: len,
+            code_arr: [opcode & 0xff, op1 & 0xff, op2 & 0xff]
+        };
+
+        if (extra) {
+            for (var k in extra) {
+                if (Object.prototype.hasOwnProperty.call(extra, k)) row[k] = extra[k];
+            }
+        }
+
+        return row;
+    }
+
+    function parseBootRecords5(bytes) {
         if (bytes.length % 5 !== 0) {
-            throw new Error('Input byte length is ' + bytes.length + ', but BOOTlog records must be 5 bytes each.');
+            throw new Error('Input byte length is ' + bytes.length + ', but legacy BOOTlog records must be 5 bytes each.');
         }
 
         var rows = [];
@@ -548,20 +591,189 @@ SUBTBL EQU $FFE3
             var opcode = bytes[i + 2];
             var op1 = bytes[i + 3];
             var op2 = bytes[i + 4];
-            var len = instrlen[opcode] || 1;
-            var code = [opcode, op1, op2];
 
-            rows.push({
-                idx: r,
-                adr: adr,
-                opcode: opcode,
-                op1: op1,
-                op2: op2,
-                len: len,
-                code_arr: code
-            });
+            rows.push(makeBootRow(r, adr, opcode, op1, op2, { record_bytes:5 }));
         }
         return rows;
+    }
+
+    function parseBootRecords10(bytes) {
+        if (bytes.length % 10 !== 0) {
+            throw new Error('Input byte length is ' + bytes.length + ', but enhanced BOOTlog records must be 10 bytes each.');
+        }
+
+        var rows = [];
+        for (var i = 0, r = 0; i < bytes.length; i += 10, r++) {
+            var adr = bytes[i] | (bytes[i + 1] << 8);
+            var opcode = bytes[i + 2];
+            var op1 = bytes[i + 3];
+            var op2 = bytes[i + 4];
+
+            rows.push(makeBootRow(r, adr, opcode, op1, op2, {
+                record_bytes:10,
+                has_cpu_state:true,
+                a: bytes[i + 5],
+                x: bytes[i + 6],
+                y: bytes[i + 7],
+                p: bytes[i + 8],
+                sp: bytes[i + 9]
+            }));
+        }
+        return rows;
+    }
+
+    function looksLikeMemoryDump(text) {
+        return /^\s*(?:\$|0x)?[0-9a-f]{1,4}\s*:/im.test(String(text || ''));
+    }
+
+    function parseMemoryDump(text) {
+        var segments = [];
+
+        String(text || '').split(/\r?\n/).forEach(function (line, lineNo) {
+            var raw = String(line || '');
+            var semi = raw.indexOf(';');
+            var slash = raw.indexOf('//');
+            var cut = -1;
+
+            if (semi >= 0) cut = semi;
+            if (slash >= 0 && (cut < 0 || slash < cut)) cut = slash;
+            if (cut >= 0) raw = raw.substring(0, cut);
+
+            raw = raw.trim();
+            if (!raw) return;
+
+            var m = raw.match(/^(?:\$|0x)?([0-9a-f]{1,4})\s*:\s*(.*)$/i);
+            if (!m) {
+                throw new Error('Memory dump parse error on line ' + (lineNo + 1) + ': expected "ADDR: xx xx ...".');
+            }
+
+            var addr = parseInt(m[1], 16) & 0xffff;
+            var tail = m[2].trim();
+            if (!tail) return;
+
+            var tokens = tail.match(/[0-9a-f]{2}/ig) || [];
+            if (!tokens.length) {
+                throw new Error('Memory dump parse error on line ' + (lineNo + 1) + ': no byte values found.');
+            }
+
+            var bytes = tokens.map(function (t) { return parseInt(t, 16) & 0xff; });
+            segments.push({ addr:addr, bytes:bytes, lineNo:lineNo + 1 });
+        });
+
+        if (!segments.length) throw new Error('Paste a memory dump first. Example: F800: 4A 08 20 47 F8');
+
+        segments.sort(function (a, b) { return a.addr - b.addr; });
+
+        var merged = [];
+        segments.forEach(function (seg) {
+            if (!merged.length) {
+                merged.push({ addr:seg.addr, bytes:seg.bytes.slice() });
+                return;
+            }
+
+            var last = merged[merged.length - 1];
+            var lastEnd = (last.addr + last.bytes.length) & 0xffff;
+
+            if (lastEnd === seg.addr) {
+                Array.prototype.push.apply(last.bytes, seg.bytes);
+            } else {
+                merged.push({ addr:seg.addr, bytes:seg.bytes.slice() });
+            }
+        });
+
+        var rows = [];
+        var idx = 0;
+        var truncated = 0;
+
+        merged.forEach(function (seg) {
+            for (var off = 0; off < seg.bytes.length; ) {
+                var adr = (seg.addr + off) & 0xffff;
+                var opcode = seg.bytes[off];
+                var len = instrlen[opcode] || 1;
+                var have = Math.min(len, seg.bytes.length - off);
+                var op1 = have > 1 ? seg.bytes[off + 1] : 0;
+                var op2 = have > 2 ? seg.bytes[off + 2] : 0;
+
+                if (have < len) truncated++;
+
+                rows.push({
+                    idx: idx++,
+                    adr: adr,
+                    opcode: opcode,
+                    op1: op1,
+                    op2: op2,
+                    len: len,
+                    byte_len: have,
+                    code_arr: [opcode, op1, op2]
+                });
+
+                off += len;
+            }
+        });
+
+        return { rows:rows, segments:merged.length, bytes:segments.reduce(function (n, seg) { return n + seg.bytes.length; }, 0), truncated:truncated };
+    }
+
+    function parseInput(text, forcedMode) {
+        var mode = forcedMode || 'auto';
+
+        if (mode === 'dump' || (mode === 'auto' && looksLikeMemoryDump(text))) {
+            var dump = parseMemoryDump(text);
+            var status = 'Disassembled ' + dump.rows.length + ' instruction rows from ' + dump.bytes +
+                ' memory dump bytes in ' + dump.segments + ' segment' + (dump.segments === 1 ? '' : 's') + '.';
+
+            if (dump.truncated) status += ' Warning: ' + dump.truncated + ' final instruction operand' + (dump.truncated === 1 ? ' was' : 's were') + ' incomplete.';
+
+            return { mode:'dump', rows:dump.rows, bytes:dump.bytes, status:status };
+        }
+
+        var bytes = decodeBase64ToBytes(text);
+        var rows;
+
+        if (mode === 'bootlog10') {
+            rows = parseBootRecords10(bytes);
+            return {
+                mode:'bootlog10',
+                rows:rows,
+                bytes:bytes.length,
+                status:'Decoded ' + rows.length + ' enhanced operation records (' + bytes.length + ' bytes, 10 bytes/record).'
+            };
+        }
+
+        if (mode === 'bootlog5') {
+            rows = parseBootRecords5(bytes);
+            return {
+                mode:'bootlog5',
+                rows:rows,
+                bytes:bytes.length,
+                status:'Decoded ' + rows.length + ' legacy operation records (' + bytes.length + ' bytes, 5 bytes/record).'
+            };
+        }
+
+        // Base64 auto-detect is ambiguous when an old 5-byte log has an even number of records,
+        // because its byte length is also divisible by 10. Prefer the new 10-byte format, but
+        // let the explicit input-mode selector override this.
+        if (bytes.length % 10 === 0) {
+            rows = parseBootRecords10(bytes);
+            return {
+                mode:'bootlog10',
+                rows:rows,
+                bytes:bytes.length,
+                status:'Auto-detected enhanced 10-byte BOOTlog: decoded ' + rows.length + ' operation records (' + bytes.length + ' bytes). If this was an old even-length 5-byte log, select “boot log base64, 5-byte legacy”.'
+            };
+        }
+
+        if (bytes.length % 5 === 0) {
+            rows = parseBootRecords5(bytes);
+            return {
+                mode:'bootlog5',
+                rows:rows,
+                bytes:bytes.length,
+                status:'Auto-detected legacy 5-byte BOOTlog: decoded ' + rows.length + ' operation records (' + bytes.length + ' bytes).'
+            };
+        }
+
+        throw new Error('Input byte length is ' + bytes.length + '. It is neither a 10-byte enhanced BOOTlog nor a 5-byte legacy BOOTlog.');
     }
 
     function parseAddr(s) {
@@ -679,12 +891,430 @@ SUBTBL EQU $FFE3
         return String(s || '').replace(/&nbsp;/g, ' ').replace(/\s+$/g, '');
     }
 
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, function (ch) {
+            return {
+                '&':'&amp;',
+                '<':'&lt;',
+                '>':'&gt;',
+                '"':'&quot;',
+                "'":'&#39;'
+            }[ch];
+        });
+    }
+
     function renderBytes(row) {
         var parts = [getHexByte(row.opcode)];
-        if (row.len > 1) parts.push(getHexByte(row.op1));
-        if (row.len > 2) parts.push(getHexByte(row.op2));
+        var have = row.byte_len || row.len || 1;
+        if (have > 1) parts.push(getHexByte(row.op1));
+        if (have > 2) parts.push(getHexByte(row.op2));
         while (parts.length < 3) parts.push('  ');
         return parts.join(' ');
+    }
+
+    function renderCpuState(row) {
+        if (!row || !row.has_cpu_state) return '';
+        return 'A=' + getHexByte(row.a) +
+            ' X=' + getHexByte(row.x) +
+            ' Y=' + getHexByte(row.y) +
+            ' P=' + getHexByte(row.p) +
+            ' SP=' + getHexByte(row.sp);
+    }
+
+    function parseOptionalPcFilter() {
+        var el = document.getElementById('histPcFilter');
+        if (!el) return null;
+
+        var txt = String(el.value || '').trim();
+        if (!txt) return null;
+
+        var adr = parseAddr(txt);
+        if (adr === null) {
+            throw new Error('Histogram PC filter must be a hexadecimal address, for example FCAA, $FCAA, or 0xFCAA.');
+        }
+
+        return adr & 0xffff;
+    }
+
+    function formatRowMnemonic(row, dasm, localOpctab) {
+        window.pc = row.adr;
+        dasm.last_symbol_comment = '';
+
+        var ret = dasm.disassemble({
+            code_arr: row.code_arr,
+            pc: row.adr,
+            opctab: localOpctab
+        });
+
+        var asm = normalizeHtmlSpaces(ret.mnemonic);
+        if (dasm.last_symbol_comment) asm += ' ; ' + dasm.last_symbol_comment;
+        return asm;
+    }
+
+    function rowIdentityKey(row) {
+        return getHexWord(row.adr) + ':' +
+            getHexByte(row.opcode) + ':' +
+            getHexByte(row.op1) + ':' +
+            getHexByte(row.op2) + ':' +
+            (row.byte_len || row.len || 1);
+    }
+
+    function buildHistogramRecords(rows, dasm, localOpctab) {
+        var map = Object.create(null);
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var key = rowIdentityKey(row);
+
+            if (!map[key]) {
+                map[key] = {
+                    key:key,
+                    pc:'$' + getHexWord(row.adr),
+                    pc_num:row.adr & 0xffff,
+                    count:0,
+                    opcode:getHexByte(row.opcode),
+                    bytes:renderBytes(row).trim().replace(/\s+/g, ' '),
+                    instruction:formatRowMnemonic(row, dasm, localOpctab),
+                    first_idx:row.idx,
+                    last_idx:row.idx,
+                    group:0
+                };
+            }
+
+            map[key].count++;
+            map[key].last_idx = row.idx;
+        }
+
+        var records = Object.keys(map).map(function (key) { return map[key]; })
+            .sort(function (a, b) {
+                if (b.count !== a.count) return b.count - a.count;
+                return a.pc_num - b.pc_num;
+            });
+
+        return { map:map, records:records };
+    }
+
+    function buildDominantTransitions(rows, candidateSet, histMap) {
+        var transitions = Object.create(null);
+
+        function addTransition(from, to) {
+            if (!candidateSet[from] || !candidateSet[to]) return;
+
+            if (!transitions[from]) {
+                transitions[from] = {
+                    key:from,
+                    total:0,
+                    next:Object.create(null)
+                };
+            }
+
+            transitions[from].total++;
+            transitions[from].next[to] = (transitions[from].next[to] || 0) + 1;
+        }
+
+        for (var i = 0; i + 1 < rows.length; i++) {
+            addTransition(rowIdentityKey(rows[i]), rowIdentityKey(rows[i + 1]));
+        }
+
+        var dominant = Object.create(null);
+
+        Object.keys(transitions).forEach(function (from) {
+            var nextMap = transitions[from].next;
+            var bestTo = null;
+            var bestCount = -1;
+
+            Object.keys(nextMap).forEach(function (to) {
+                var count = nextMap[to];
+                if (count > bestCount) {
+                    bestTo = to;
+                    bestCount = count;
+                    return;
+                }
+
+                if (count === bestCount && bestTo !== null) {
+                    var a = histMap[to] ? histMap[to].pc_num : 0xffff;
+                    var b = histMap[bestTo] ? histMap[bestTo].pc_num : 0xffff;
+                    if (a < b) bestTo = to;
+                }
+            });
+
+            if (bestTo !== null && histMap[from]) {
+                dominant[from] = {
+                    from:from,
+                    to:bestTo,
+                    count:bestCount,
+                    ratio:histMap[from].count ? (bestCount / histMap[from].count) : 0
+                };
+            }
+        });
+
+        return { transitions:transitions, dominant:dominant };
+    }
+
+    function canonicalCycleSignature(keys) {
+        if (!keys || !keys.length) return '';
+
+        var best = null;
+        for (var i = 0; i < keys.length; i++) {
+            var rotated = keys.slice(i).concat(keys.slice(0, i)).join('|');
+            if (best === null || rotated < best) best = rotated;
+        }
+
+        return best || keys.join('|');
+    }
+
+    function countContiguousCycleSegments(rows, pattern) {
+        if (!pattern || pattern.length < 2) return { segments:0, repetitions:0 };
+
+        var segments = 0;
+        var repetitions = 0;
+        var p = pattern.length;
+
+        for (var i = 0; i <= rows.length - p; ) {
+            var matchedCycles = 0;
+
+            while (i + ((matchedCycles + 1) * p) <= rows.length) {
+                var ok = true;
+                for (var j = 0; j < p; j++) {
+                    if (rowIdentityKey(rows[i + matchedCycles * p + j]) !== pattern[j]) {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if (!ok) break;
+                matchedCycles++;
+            }
+
+            if (matchedCycles > 0) {
+                segments++;
+                repetitions += matchedCycles;
+                i += matchedCycles * p;
+            } else {
+                i++;
+            }
+        }
+
+        return { segments:segments, repetitions:repetitions };
+    }
+
+    function detectRepeatedInstructionGroups(rows, topRecords, histMap) {
+        var topKeySet = Object.create(null);
+        topRecords.forEach(function (rec) { topKeySet[rec.key] = true; });
+
+        var transitionData = buildDominantTransitions(rows, topKeySet, histMap);
+        var dominant = transitionData.dominant;
+        var groups = [];
+        var groupsBySignature = Object.create(null);
+        var keyToGroup = Object.create(null);
+
+        const MIN_GROUP_LEN = 2;
+        const MAX_GROUP_LEN = 32;
+        const MIN_EDGE_COUNT = 2;
+        const MIN_EDGE_RATIO = 0.50;
+
+        function registerGroup(pattern, method, edgeCounts, edgeRatios) {
+            if (!pattern || pattern.length < MIN_GROUP_LEN) return null;
+
+            var distinct = Object.create(null);
+            var distinctCount = 0;
+            pattern.forEach(function (key) {
+                if (!distinct[key]) {
+                    distinct[key] = true;
+                    distinctCount++;
+                }
+            });
+            if (distinctCount < MIN_GROUP_LEN) return null;
+
+            var signature = canonicalCycleSignature(pattern);
+            var group = groupsBySignature[signature];
+
+            var minEdge = edgeCounts.length ? Math.min.apply(Math, edgeCounts) : 0;
+            var avgRatio = edgeRatios.length ?
+                edgeRatios.reduce(function (n, v) { return n + v; }, 0) / edgeRatios.length :
+                0;
+
+            var contiguous = countContiguousCycleSegments(rows, pattern);
+            var memberOccurrences = pattern.reduce(function (n, key) {
+                return n + (histMap[key] ? histMap[key].count : 0);
+            }, 0);
+
+            var firstIdx = pattern.reduce(function (n, key) {
+                return Math.min(n, histMap[key] ? histMap[key].first_idx : n);
+            }, Number.MAX_SAFE_INTEGER);
+
+            var lastIdx = pattern.reduce(function (n, key) {
+                return Math.max(n, histMap[key] ? histMap[key].last_idx : n);
+            }, 0);
+
+            if (!group) {
+                group = {
+                    group:groups.length + 1,
+                    keys:pattern.slice(),
+                    method:method,
+                    repetitions:minEdge,
+                    segments:contiguous.segments,
+                    contiguous_repetitions:contiguous.repetitions,
+                    total_rows:memberOccurrences,
+                    min_edge_count:minEdge,
+                    avg_edge_ratio:avgRatio,
+                    first_idx:firstIdx === Number.MAX_SAFE_INTEGER ? 0 : firstIdx,
+                    last_idx:lastIdx
+                };
+                groupsBySignature[signature] = group;
+                groups.push(group);
+            } else {
+                group.repetitions = Math.max(group.repetitions, minEdge);
+                group.segments += contiguous.segments;
+                group.contiguous_repetitions += contiguous.repetitions;
+                group.total_rows = Math.max(group.total_rows, memberOccurrences);
+                group.min_edge_count = Math.max(group.min_edge_count, minEdge);
+                group.avg_edge_ratio = Math.max(group.avg_edge_ratio, avgRatio);
+                group.first_idx = Math.min(group.first_idx, firstIdx === Number.MAX_SAFE_INTEGER ? group.first_idx : firstIdx);
+                group.last_idx = Math.max(group.last_idx, lastIdx);
+            }
+
+            pattern.forEach(function (key) {
+                if (!keyToGroup[key]) keyToGroup[key] = group.group;
+            });
+
+            return group;
+        }
+
+        // Main pass: follow each instruction's dominant next-instruction edge.
+        // This detects frequently recurring closed sequences even when they are
+        // split across several trace regions or occasionally interrupted by
+        // non-dominant paths, such as FD1F INC RNDH inside KEYIN.
+        topRecords.forEach(function (rec) {
+            var start = rec.key;
+            if (keyToGroup[start]) return;
+
+            var seen = Object.create(null);
+            var path = [];
+            var edgeCounts = [];
+            var edgeRatios = [];
+            var key = start;
+
+            while (path.length <= MAX_GROUP_LEN) {
+                if (seen[key] != null) {
+                    if (key === start && path.length >= MIN_GROUP_LEN) {
+                        registerGroup(path, 'dominant-cycle', edgeCounts, edgeRatios);
+                    }
+                    return;
+                }
+
+                if (!topKeySet[key] || keyToGroup[key]) return;
+
+                seen[key] = path.length;
+                path.push(key);
+
+                var edge = dominant[key];
+                if (!edge) return;
+                if (edge.count < MIN_EDGE_COUNT) return;
+                if (edge.ratio < MIN_EDGE_RATIO) return;
+
+                edgeCounts.push(edge.count);
+                edgeRatios.push(edge.ratio);
+                key = edge.to;
+            }
+        });
+
+        groups.forEach(function (group) {
+            group.keys.forEach(function (key) {
+                if (histMap[key]) histMap[key].group = group.group;
+            });
+        });
+
+        return {
+            groups:groups,
+            keyToGroup:keyToGroup,
+            dominant:dominant,
+            transitions:transitionData.transitions
+        };
+    }
+
+    function logTraceStatistics(rows, mode) {
+        
+
+        if (!rows || !rows.length) {
+            console.warn('No parsed rows available for trace statistics.');
+            return { histRows:0, groups:0 };
+        }
+
+        var symbolMap = parseSymbols(document.getElementById('symbols').value);
+        var useDefaultSymbols = document.getElementById('useDefaultSymbols').checked;
+        var patchUnofficial = document.getElementById('patchUnofficial').checked;
+        var localOpctab = patchUnofficial ? applyUnofficialOpcodeNames(cloneOpctab()) : cloneOpctab();
+        var dasm = makeDasm(symbolMap, useDefaultSymbols);
+        var hist = buildHistogramRecords(rows, dasm, localOpctab);
+        var topRecords = hist.records.slice(0, HIST_LIMIT);
+        var detected = detectRepeatedInstructionGroups(rows, topRecords, hist.map);
+
+        var table = topRecords.map(function (rec, idx) {
+            return {
+                rank:idx + 1,
+                group:rec.group || 0,
+                count:rec.count,
+                percent:((rec.count * 100 / rows.length).toFixed(2) + '%'),
+                pc:rec.pc,
+                opcode:rec.opcode,
+                bytes:rec.bytes,
+                instruction:rec.instruction,
+                first_idx:rec.first_idx,
+                last_idx:rec.last_idx
+            };
+        });
+
+        console.log('Top ' + table.length + ' repeated instruction-at-PC occurrences (' + rows.length + ' rows, mode=' + (mode || 'unknown') + ')');
+        console.table(table);
+
+        if (detected.groups.length) {
+            var groupTable = detected.groups.map(function (group) {
+                return {
+                    group:group.group,
+                    period:group.keys.length,
+                    repetitions:group.repetitions,
+                    segments:group.segments,
+                    total_rows:group.total_rows,
+                    first_idx:group.first_idx,
+                    last_idx:group.last_idx,
+                    sequence:group.keys.map(function (key) {
+                        var rec = hist.map[key];
+                        return rec ? (rec.pc + ' ' + rec.instruction) : key;
+                    }).join(' | ')
+                };
+            });
+
+            var memberTable = [];
+            detected.groups.forEach(function (group) {
+                group.keys.forEach(function (key, step) {
+                    var rec = hist.map[key];
+                    if (!rec) return;
+                    memberTable.push({
+                        group:group.group,
+                        step:step,
+                        pc:rec.pc,
+                        count:rec.count,
+                        bytes:rec.bytes,
+                        instruction:rec.instruction
+                    });
+                });
+            });
+
+            console.log('Repeated closed instruction groups detected from the top-' + HIST_LIMIT + ' histogram candidates');
+            console.table(groupTable);
+            console.log('Repeated group members');
+            console.table(memberTable);
+        } else {
+            console.log('No repeated closed instruction groups detected from the top-' + HIST_LIMIT + ' histogram candidates.');
+        }
+
+        return { histRows:table.length, groups:detected.groups.length };
+    }
+
+    function parseCurrentInput() {
+        var mode = document.getElementById('inputMode').value;
+        return parseInput(document.getElementById('input').value, mode);
     }
 
     function disassembleRows(rows) {
@@ -692,6 +1322,7 @@ SUBTBL EQU $FFE3
         var useDefaultSymbols = document.getElementById('useDefaultSymbols').checked;
         var patchUnofficial = document.getElementById('patchUnofficial').checked;
         var showIdx = document.getElementById('showIdx').checked;
+        var showCpuState = document.getElementById('showCpuState').checked;
         var localOpctab = patchUnofficial ? applyUnofficialOpcodeNames(cloneOpctab()) : cloneOpctab();
         var dasm = makeDasm(symbolMap, useDefaultSymbols);
         var lines = [];
@@ -713,8 +1344,13 @@ SUBTBL EQU $FFE3
             var addr = normalizeHtmlSpaces(ret.adr_lst || getHexWord(row.adr));
             var bytes = renderBytes(row).padEnd(8, ' ');
             var asm = normalizeHtmlSpaces(ret.mnemonic);
-            if (dasm.last_symbol_comment) asm += '   ; ' + dasm.last_symbol_comment;
-            lines.push(idx + addr + '  ' + bytes + '  ' + asm);
+            var line = idx + addr + '  ' + bytes + '  ' + asm;
+            var cpuState = showCpuState ? renderCpuState(row) : '';
+
+            if (dasm.last_symbol_comment) line += '   ; ' + dasm.last_symbol_comment;
+
+            if (cpuState) lines.push('<span class="cpu-state">' + escapeHtml(cpuState) + '</span>');
+            lines.push(escapeHtml(line));
         }
 
         return lines.join('\n');
@@ -737,11 +1373,12 @@ SUBTBL EQU $FFE3
                 return;
             }
 
-            var bytes = decodeBase64ToBytes(document.getElementById('input').value);
-            var rows = parseBootRecords(bytes);
-            output.textContent = disassembleRows(rows);
+            var parsed = parseCurrentInput();
+            lastParsed = parsed;
+            output.innerHTML = disassembleRows(parsed.rows);
+            var stats = logTraceStatistics(parsed.rows, parsed.mode);
             status.className = 'status ok';
-            status.textContent = 'Decoded ' + rows.length + ' operation records (' + bytes.length + ' bytes).';
+            status.textContent = parsed.status + ' Console statistics: ' + stats.histRows + ' histogram row' + (stats.histRows === 1 ? '' : 's') + ', ' + stats.groups + ' repeated group' + (stats.groups === 1 ? '' : 's') + '.';
         } catch (e) {
             status.className = 'status error';
             status.textContent = e.message;
@@ -761,9 +1398,32 @@ SUBTBL EQU $FFE3
     }
     */
 
+    function sampleBase6410()
+    {
+        // Three enhanced 10-byte records:
+        // $FF59 LDX #$FF  A=00 X=00 Y=00 P=24 SP=FF
+        // $FF5B TXS       A=00 X=FF Y=00 P=A4 SP=FF
+        // $FF5C JSR $FDED A=00 X=FF Y=00 P=A4 SP=FF
+        var rec = [
+            [0x59,0xFF, 0xA2,0xFF,0x00, 0x00,0x00,0x00,0x24,0xFF],
+            [0x5B,0xFF, 0x9A,0x00,0x00, 0x00,0xFF,0x00,0xA4,0xFF],
+            [0x5C,0xFF, 0x20,0xED,0xFD, 0x00,0xFF,0x00,0xA4,0xFF]
+        ];
+        return bytesToBase64(new Uint8Array([].concat.apply([], rec)));
+    }
+
     function sampleBase64() 
     {
         return "YvrYAABj+iCE/oT+oP8Ahv6EMgCI/mAAAGb6IC/7L/upAAAx+4VIADP7rVbANvutVMA5+61RwDz7qQAAPvvwCwBL+4UiAE37qQAAT/uFIABR+6koAFP7hSEAVfupGABX+4UjAFn7qRcAW/uFJQBd+0wi/CL8pSUAJPwgwfvB+0gAAML7SgAAw/spAwDF+wkEAMf7hSkAyftoAADK+ykYAMz7kAIAzvtpfwDQ+4UoANL7CgAA0/sKAADU+wUoANb7hSgA2PtgAAAn/GUgACn8hSgAK/xgAABp+iCT/pP+qQAAlf6FPgCX/qI2AJn+oPAAm/6lPgCd/ikPAJ/+8AYAp/6p/QCp/pQAAKv+lQEArf5gAABs+iCJ/on+qQAAi/6FPgCN/qI4AI/+oBsAkf7QCACb/qU+AJ3+KQ8An/7wBgCn/qn9AKn+lAAAq/6VAQCt/mAAAG/6rVjAcvqtWsB1+q1dwHj6rV/Ae/qt/89++iwQwIH62AAAgvogOv86/6mHADz/TO397f1sNgDw/cmgAPL9kAIA9v2ENQD4/UgAAPn9IHj7ePvJjQB6+9AYAJT7TP37/fvJoAD/+7DvAAH8qAAAAvwQ7AAE/MmNAAb88FoACPzJigAK/PBaAAz8yYgADvzQyQDZ+8mHANv70BIA3fupQADf+yCo/Kj8OAAAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACu/GgAAK/86QEAsfzQ9gCp/EgAAKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACu/GgAAK/86QEAsfzQ9gCp/EgAAKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwArvxoAACv/OkBALH80PYAqfxIAACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQCs/ND8AKr86QEArPzQ/ACq/OkBAKz80PwAqvzpAQA="
+    }
+
+    function sampleMemoryDump() {
+        return [
+            'F800: 4A 08 20 47 F8 28 A9 0F',
+            'F808: 90 02 69 E0 85 2E B1 26',
+            'F810: 45 30 25 2E 51 26 91 26',
+            'F818: 60 20 00 F8 C4 2C B0 11'
+        ].join('\n');
     }
 
     function clearAll() {
@@ -784,14 +1444,15 @@ SUBTBL EQU $FFE3
         var blob = new Blob([document.getElementById('output').textContent || ''], {type:'text/plain'});
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'bootlog_dasm.asm';
+        a.download = 'bootlog_dasm_v10.asm';
         a.click();
         URL.revokeObjectURL(a.href);
     }
 
     document.getElementById('decodeBtn').addEventListener('click', run);
     document.getElementById('sampleBtn').addEventListener('click', function () {
-        document.getElementById('input').value = sampleBase64();
+        document.getElementById('inputMode').value = 'bootlog10';
+        document.getElementById('input').value = sampleBase6410();
         run();
     });
     document.getElementById('clearBtn').addEventListener('click', clearAll);
@@ -799,7 +1460,8 @@ SUBTBL EQU $FFE3
     document.getElementById('downloadBtn').addEventListener('click', downloadOutput);
 
     window.addEventListener('load', function () {
-        document.getElementById('input').value = sampleBase64();
+        document.getElementById('inputMode').value = 'bootlog10';
+        document.getElementById('input').value = sampleBase6410();
         run();
     });
 }());
