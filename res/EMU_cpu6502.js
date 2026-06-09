@@ -16,6 +16,7 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 function Cpu6502(hwobj)
 {
     var self = this;
+
     const bDebug_boot = true;        // debug CPU boot
     //const BOOTsiz = 1024;
     const BOOTsiz = 131072;
@@ -55,27 +56,20 @@ function Cpu6502(hwobj)
         {"group":5,"step":2,"pc":"$F157","count":28,"bytes":"86 F1","instruction":"STX $F1"},
         {"group":5,"step":3,"pc":"$F159","count":28,"bytes":"CA","instruction":"DEX"},
         {"group":5,"step":4,"pc":"$F15A","count":28,"bytes":"D0 F6","instruction":"BNE $F152"},
-        {"group":6,"step":0,"pc":"$FABA","count":8,"bytes":"A0 07","instruction":"LDY #$07"},
-        {"group":6,"step":1,"pc":"$FABC","count":8,"bytes":"C6 01","instruction":"DEC LOC1"},
-        {"group":6,"step":2,"pc":"$FABE","count":8,"bytes":"A5 01","instruction":"LDA LOC1"},
-        {"group":6,"step":3,"pc":"$FAC0","count":8,"bytes":"C9 C0","instruction":"CMP #$C0"},
-        {"group":6,"step":4,"pc":"$FAC2","count":8,"bytes":"F0 D7","instruction":"BEQ FIXSEV"},
-        {"group":6,"step":5,"pc":"$FAC4","count":7,"bytes":"8D F8 07","instruction":"STA MSLOT"},
-        {"group":6,"step":6,"pc":"$FAC7","count":7,"bytes":"B1 00","instruction":"LDA (LOC0),Y"},
-        {"group":6,"step":7,"pc":"$FAC9","count":7,"bytes":"D9 01 FB","instruction":"CMP $FB01,Y"},
-        {"group":6,"step":8,"pc":"$FACC","count":7,"bytes":"D0 EC","instruction":"BNE SLOOP"},
-        {"group":7,"step":0,"pc":"$FB65","count":8,"bytes":"B9 08 FB","instruction":"LDA $FB08,Y"},
-        {"group":7,"step":1,"pc":"$FB68","count":8,"bytes":"99 0E 04","instruction":"STA $040E,Y"},
-        {"group":7,"step":2,"pc":"$FB6B","count":8,"bytes":"88","instruction":"DEY"},
-        {"group":7,"step":3,"pc":"$FB6C","count":8,"bytes":"D0 F7","instruction":"BNE STITLE"},
-        {"group":8,"step":0,"pc":"$FAAB","count":5,"bytes":"BD FC FA","instruction":"LDA $FAFC,X"},
-        {"group":8,"step":1,"pc":"$FAAE","count":5,"bytes":"9D EF 03","instruction":"STA $03EF,X"},
-        {"group":8,"step":2,"pc":"$FAB1","count":5,"bytes":"CA","instruction":"DEX"},
-        {"group":8,"step":3,"pc":"$FAB2","count":5,"bytes":"D0 F7","instruction":"BNE LFAAB"}
+        {"group":6,"step":0,"pc":"$FB65","count":8,"bytes":"B9 08 FB","instruction":"LDA $FB08,Y"},
+        {"group":6,"step":1,"pc":"$FB68","count":8,"bytes":"99 0E 04","instruction":"STA $040E,Y"},
+        {"group":6,"step":2,"pc":"$FB6B","count":8,"bytes":"88","instruction":"DEY"},
+        {"group":6,"step":3,"pc":"$FB6C","count":8,"bytes":"D0 F7","instruction":"BNE STITLE"},
+        {"group":7,"step":0,"pc":"$FACE","count":0,"bytes":"88","instruction":"DEY"},
+        {"group":7,"step":1,"pc":"$FACF","count":0,"bytes":"88","instruction":"DEY"},
+        {"group":7,"step":2,"pc":"$FAD0","count":0,"bytes":"10 F5","instruction":"BPL NXTBYT"},
+        {"group":7,"step":3,"pc":"$FAC7","count":0,"bytes":"B1 00","instruction":"LDA (LOC0),Y"},
+        {"group":7,"step":4,"pc":"$FAC9","count":0,"bytes":"D9 01 FB","instruction":"CMP $FB01,Y"},
+        {"group":7,"step":5,"pc":"$FACC","count":0,"bytes":"D0 EC","instruction":"BNE SLOOP"}
     ];
 
     const memberExcl = memberTable.map(function (m) { return parseInt(m.pc.substring(1), 16) & 0xffff; });
-    const BOOTlog_exclude = new Set(memberExcl);
+    const BOOTlog_exclude = new Set(memberExcl); // retained for quick inspection/debugging; compression uses BOOTgroup_lookup
     const BOOTgroup_lookup = buildBootGroupLookup(memberTable);
     const BOOTgroup_sequences = buildBootGroupSequences(memberTable);
 
@@ -84,6 +78,10 @@ function Cpu6502(hwobj)
     var BOOTgroup_count = 0;
     var BOOTgroup_record = -1;
     var BOOTgroup_pending = [];
+    this.BOOTparam = function()
+    {
+        return {"bDebug_boot":bDebug_boot }  
+    }
 
     // 6502 reserved addresses.
     var STACK_ADDR =    0x0100

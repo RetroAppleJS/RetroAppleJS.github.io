@@ -40,6 +40,11 @@ function Apple2Plus(context)
           { console.log("running Apple2Plus without CPU") }
     else var cpu  = new Cpu6502(this.hw);
 
+    this.cpuObj = function()
+    {
+        return cpu;
+    }
+
     this.reset = function()
     {
         this.hw.reset();

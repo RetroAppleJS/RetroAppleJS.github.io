@@ -69,6 +69,8 @@ function Apple2Debug()
                         +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
                         +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
                         +"<i class='fa fa-sign-out-alt' title='step out'></i>"
+                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"&nbsp;<div class='lightbut'><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
+                        //+"<i class='fa fa-cloud-download-alt' title='download bootlog'></i>"
                         +"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                         +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'></div>"
                     +"</div>"
