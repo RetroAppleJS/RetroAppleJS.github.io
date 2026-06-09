@@ -69,7 +69,7 @@ function Apple2Debug()
                         +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
                         +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
                         +"<i class='fa fa-sign-out-alt' title='step out'></i>"
-                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"&nbsp;<div class='lightbut'><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
+                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"&nbsp;<div class='lightbut' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
                         //+"<i class='fa fa-cloud-download-alt' title='download bootlog'></i>"
                         +"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                         +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'></div>"
@@ -77,6 +77,30 @@ function Apple2Debug()
                 +"</div>"
 
     }
+
+    this.downloadBootLog = function()
+    {
+        var cpu = apple2plus.cpuObj();
+        if(typeof(cpu.getBootLogBase64)!="function")
+        {
+            alert("Bootlog download is unavailable: getBootLogBase64() is missing.");
+            return;
+        }
+
+        var base64 = cpu.getBootLogBase64();
+        var filename = "apple2_bootlog_" + new Date().toISOString().replace(/[:.]/g,"-") + ".txt";
+        var blob = new Blob([base64], {type:"text/plain;charset=utf-8"});
+
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }    
 
     this.cycle = function(obj)
     {

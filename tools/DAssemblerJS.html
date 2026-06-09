@@ -44,7 +44,7 @@
     }
     #symbols { min-height:120px; }
     .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; }
-    button, select {
+    button, select, .filebut {
         background:#202736;
         color:var(--text);
         border:1px solid var(--border);
@@ -52,9 +52,11 @@
         padding:8px 10px;
         font:inherit;
     }
-    button { cursor:pointer; }
+    button, .filebut { cursor:pointer; }
     button.primary { background:#263b68; border-color:#385eaa; }
-    button:hover { border-color:var(--accent); }
+    button:hover, .filebut:hover { border-color:var(--accent); }
+    .filebut { display:inline-block; }
+    .hidden-file-input { display:none; }
     .check { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-weight:500; }
     pre {
         margin:0;
@@ -115,6 +117,8 @@
         <div class="row">
             <button class="primary" id="decodeBtn" type="button">Disassemble</button>
             <button id="sampleBtn" type="button">Load 10-byte trace sample</button>
+            <label class="filebut" for="bootlogFile">Load .txt bootlog</label>
+            <input id="bootlogFile" class="hidden-file-input" type="file" accept=".txt,text/plain">
             <button id="clearBtn" type="button">Clear</button>
             <button id="copyBtn" type="button">Copy output</button>
             <button id="downloadBtn" type="button">Download .asm</button>
@@ -1512,6 +1516,39 @@ const BOOT_GROUPS = (function () {
         ].join('\n');
     }
 
+    function loadBootLogFile(file) {
+        var status = document.getElementById('status');
+
+        if (!file) return;
+
+        if (typeof FileReader === 'undefined') {
+            status.className = 'status error';
+            status.textContent = 'File loading is unavailable in this browser.';
+            return;
+        }
+
+        var reader = new FileReader();
+
+        reader.onload = function (ev) {
+            var text = String((ev && ev.target && ev.target.result) || '').trim();
+
+            document.getElementById('inputMode').value = 'bootlog10';
+            document.getElementById('input').value = text;
+
+            status.className = 'status ok';
+            status.textContent = 'Loaded ' + file.name + ' (' + text.length + ' characters).';
+
+            run();
+        };
+
+        reader.onerror = function () {
+            status.className = 'status error';
+            status.textContent = 'Could not read ' + file.name + '.';
+        };
+
+        reader.readAsText(file);
+    }
+
     function clearAll() {
         document.getElementById('input').value = '';
         document.getElementById('output').textContent = '';
@@ -1540,6 +1577,10 @@ const BOOT_GROUPS = (function () {
         document.getElementById('inputMode').value = 'bootlog10';
         document.getElementById('input').value = sampleBase6410();
         run();
+    });
+    document.getElementById('bootlogFile').addEventListener('change', function () {
+        loadBootLogFile(this.files && this.files[0]);
+        this.value = '';
     });
     document.getElementById('clearBtn').addEventListener('click', clearAll);
     document.getElementById('copyBtn').addEventListener('click', copyOutput);
