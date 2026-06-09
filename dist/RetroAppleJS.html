@@ -14145,25 +14145,75 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 
 function Cpu6502(hwobj)
 {
+    var self = this;
     const bDebug_boot = true;        // debug CPU boot
     //const BOOTsiz = 1024;
     const BOOTsiz = 131072;
     //const BOOTsiz = 524288;
     //const BOOTsiz = 1048576;
 
-    //var BOOTlog_adr = new Uint16Array(BOOTsiz);  // starting PC of each executed instruction
-    //var BOOTlog_opc = new Uint32Array(BOOTsiz);  // opcode | op1<<8 | op2<<16
+    const BOOT_RECORD_BYTES = 10;
+    const BOOT_GROUP_MARKER_ADR = 0xFFFF;
+
+    var BOOTlog_adr = new Uint16Array(BOOTsiz);     // starting PC of each executed instruction, or $FFFF for a compressed group marker
+    var BOOTlog_cpu = new BigUint64Array(BOOTsiz);  // opcode/op1/op2 + A/X/Y/P/SP, or group/repeat payload for marker rows
     var BOOTcnt = 0;
 
-    const BOOT_RECORD_BYTES = 10;
+    const memberTable = [
+        {"group":1,"step":0,"pc":"$FD1B","count":19747,"bytes":"E6 4E","instruction":"INC RNDL"},
+        {"group":1,"step":1,"pc":"$FD1D","count":19747,"bytes":"D0 02","instruction":"BNE KEYIN2"},
+        {"group":1,"step":2,"pc":"$FD21","count":19746,"bytes":"2C 00 C0","instruction":"BIT KBD"},
+        {"group":1,"step":3,"pc":"$FD24","count":19746,"bytes":"10 F5","instruction":"BPL KEYIN"},
+        {"group":2,"step":0,"pc":"$FCAA","count":17058,"bytes":"E9 01","instruction":"SBC #$01"},
+        {"group":2,"step":1,"pc":"$FCAC","count":17058,"bytes":"D0 FC","instruction":"BNE WAIT3"},
+        {"group":3,"step":0,"pc":"$FCA0","count":960,"bytes":"91 28","instruction":"STA (BASL),Y"},
+        {"group":3,"step":1,"pc":"$FCA2","count":960,"bytes":"C8","instruction":"INY"},
+        {"group":3,"step":2,"pc":"$FCA3","count":960,"bytes":"C4 21","instruction":"CPY WNDWDTH"},
+        {"group":3,"step":3,"pc":"$FCA5","count":960,"bytes":"90 F9","instruction":"BCC CLREO2"},
+        {"group":4,"step":0,"pc":"$F181","count":184,"bytes":"E6 51","instruction":"INC $51"},
+        {"group":4,"step":1,"pc":"$F183","count":184,"bytes":"B1 50","instruction":"LDA ($50),Y"},
+        {"group":4,"step":2,"pc":"$F185","count":184,"bytes":"49 FF","instruction":"EOR #$FF"},
+        {"group":4,"step":3,"pc":"$F187","count":184,"bytes":"91 50","instruction":"STA ($50),Y"},
+        {"group":4,"step":4,"pc":"$F189","count":184,"bytes":"D1 50","instruction":"CMP ($50),Y"},
+        {"group":4,"step":5,"pc":"$F18B","count":184,"bytes":"D0 08","instruction":"BNE $F195"},
+        {"group":4,"step":6,"pc":"$F18D","count":183,"bytes":"49 FF","instruction":"EOR #$FF"},
+        {"group":4,"step":7,"pc":"$F18F","count":183,"bytes":"91 50","instruction":"STA ($50),Y"},
+        {"group":4,"step":8,"pc":"$F191","count":183,"bytes":"D1 50","instruction":"CMP ($50),Y"},
+        {"group":4,"step":9,"pc":"$F193","count":183,"bytes":"F0 EC","instruction":"BEQ $F181"},
+        {"group":5,"step":0,"pc":"$F152","count":28,"bytes":"BD 0A F1","instruction":"LDA $F10A,X"},
+        {"group":5,"step":1,"pc":"$F155","count":28,"bytes":"95 B0","instruction":"STA $B0,X"},
+        {"group":5,"step":2,"pc":"$F157","count":28,"bytes":"86 F1","instruction":"STX $F1"},
+        {"group":5,"step":3,"pc":"$F159","count":28,"bytes":"CA","instruction":"DEX"},
+        {"group":5,"step":4,"pc":"$F15A","count":28,"bytes":"D0 F6","instruction":"BNE $F152"},
+        {"group":6,"step":0,"pc":"$FABA","count":8,"bytes":"A0 07","instruction":"LDY #$07"},
+        {"group":6,"step":1,"pc":"$FABC","count":8,"bytes":"C6 01","instruction":"DEC LOC1"},
+        {"group":6,"step":2,"pc":"$FABE","count":8,"bytes":"A5 01","instruction":"LDA LOC1"},
+        {"group":6,"step":3,"pc":"$FAC0","count":8,"bytes":"C9 C0","instruction":"CMP #$C0"},
+        {"group":6,"step":4,"pc":"$FAC2","count":8,"bytes":"F0 D7","instruction":"BEQ FIXSEV"},
+        {"group":6,"step":5,"pc":"$FAC4","count":7,"bytes":"8D F8 07","instruction":"STA MSLOT"},
+        {"group":6,"step":6,"pc":"$FAC7","count":7,"bytes":"B1 00","instruction":"LDA (LOC0),Y"},
+        {"group":6,"step":7,"pc":"$FAC9","count":7,"bytes":"D9 01 FB","instruction":"CMP $FB01,Y"},
+        {"group":6,"step":8,"pc":"$FACC","count":7,"bytes":"D0 EC","instruction":"BNE SLOOP"},
+        {"group":7,"step":0,"pc":"$FB65","count":8,"bytes":"B9 08 FB","instruction":"LDA $FB08,Y"},
+        {"group":7,"step":1,"pc":"$FB68","count":8,"bytes":"99 0E 04","instruction":"STA $040E,Y"},
+        {"group":7,"step":2,"pc":"$FB6B","count":8,"bytes":"88","instruction":"DEY"},
+        {"group":7,"step":3,"pc":"$FB6C","count":8,"bytes":"D0 F7","instruction":"BNE STITLE"},
+        {"group":8,"step":0,"pc":"$FAAB","count":5,"bytes":"BD FC FA","instruction":"LDA $FAFC,X"},
+        {"group":8,"step":1,"pc":"$FAAE","count":5,"bytes":"9D EF 03","instruction":"STA $03EF,X"},
+        {"group":8,"step":2,"pc":"$FAB1","count":5,"bytes":"CA","instruction":"DEX"},
+        {"group":8,"step":3,"pc":"$FAB2","count":5,"bytes":"D0 F7","instruction":"BNE LFAAB"}
+    ];
 
-    var BOOTlog_adr = new Uint16Array(BOOTsiz);
-    var BOOTlog_cpu = new BigUint64Array(BOOTsiz);
+    const memberExcl = memberTable.map(function (m) { return parseInt(m.pc.substring(1), 16) & 0xffff; });
+    const BOOTlog_exclude = new Set(memberExcl);
+    const BOOTgroup_lookup = buildBootGroupLookup(memberTable);
+    const BOOTgroup_sequences = buildBootGroupSequences(memberTable);
 
-    const BOOTlog_exclude = new Set([
-        //0xFCAA, 0xFCAC, 0xFCAE, 0xFCAF, 0xFCB1, 0xFCA9
-    ]);
-
+    var BOOTgroup_id = 0;
+    var BOOTgroup_next_step = 0;
+    var BOOTgroup_count = 0;
+    var BOOTgroup_record = -1;
+    var BOOTgroup_pending = [];
 
     // 6502 reserved addresses.
     var STACK_ADDR =    0x0100
@@ -14339,6 +14389,176 @@ function Cpu6502(hwobj)
     function readWord(addr)         { return readByte(addr) | (readByte(addr + 1) << 8) }
     function readWordZp(addr)       { addr &= 0xff; return readByte(addr) | (readByte((addr + 1) & 0xff) << 8) }
 
+    // Boot log record payload, stored little-endian when exported:
+    //   PClo PChi OPC OP1 OP2 A X Y P SP
+    // BOOTlog_adr stores PClo/PChi, BOOTlog_cpu stores the remaining 8 bytes.
+    // The register values are the pre-execution CPU state for the fetched instruction.
+    function buildBootGroupLookup(table)
+    {
+        var lookup = Object.create(null);
+        for (var i = 0; i < table.length; i++) {
+            var m = table[i];
+            var pcNum = parseInt(m.pc.substring(1), 16) & 0xffff;
+            lookup[pcNum] = { group:m.group | 0, step:m.step | 0, pc:pcNum };
+        }
+        return lookup;
+    }
+
+    function buildBootGroupSequences(table)
+    {
+        var groups = Object.create(null);
+        for (var i = 0; i < table.length; i++) {
+            var m = table[i];
+            var g = m.group | 0;
+            if (!groups[g]) groups[g] = [];
+            groups[g].push({ step:m.step | 0, pc:parseInt(m.pc.substring(1), 16) & 0xffff });
+        }
+
+        Object.keys(groups).forEach(function (g) {
+            groups[g].sort(function (a, b) { return a.step - b.step; });
+        });
+
+        return groups;
+    }
+
+    function resetBootGroupState()
+    {
+        BOOTgroup_id = 0;
+        BOOTgroup_next_step = 0;
+        BOOTgroup_count = 0;
+        BOOTgroup_record = -1;
+        BOOTgroup_pending = [];
+    }
+
+    function emitBootPacked(adr, packed)
+    {
+        if (!bDebug_boot || BOOTcnt >= BOOTsiz) return false;
+
+        BOOTlog_adr[BOOTcnt] = adr & 0xffff;
+        BOOTlog_cpu[BOOTcnt] = packed;
+        BOOTcnt++;
+
+        if (BOOTcnt == BOOTsiz)
+        {
+            alert("cpu log ended");
+            console.log("BOOTlog = " + self.getBootLogBase64());
+        }
+
+        return true;
+    }
+
+    function emitOrUpdateBootGroupMarker()
+    {
+        if (BOOTgroup_count <= 0) return;
+
+        if (BOOTgroup_record < 0)
+        {
+            if (BOOTcnt >= BOOTsiz) return;
+            BOOTgroup_record = BOOTcnt;
+            BOOTlog_adr[BOOTcnt] = BOOT_GROUP_MARKER_ADR;
+            BOOTlog_cpu[BOOTcnt] = packGroupState(BOOTgroup_id, BOOTgroup_count);
+            BOOTcnt++;
+
+            if (BOOTcnt == BOOTsiz)
+            {
+                alert("cpu log ended");
+                console.log("BOOTlog = " + self.getBootLogBase64());
+            }
+        }
+        else BOOTlog_cpu[BOOTgroup_record] = packGroupState(BOOTgroup_id, BOOTgroup_count);
+    }
+
+    function flushBootGroupPending()
+    {
+        for (var i = 0; i < BOOTgroup_pending.length; i++)
+            emitBootPacked(BOOTgroup_pending[i].adr, BOOTgroup_pending[i].packed);
+
+        resetBootGroupState();
+    }
+
+    function startBootGroup(member, boot_pc, packed)
+    {
+        var seq = BOOTgroup_sequences[member.group];
+        if (!seq || !seq.length || member.step !== 0) return false;
+
+        BOOTgroup_id = member.group;
+        BOOTgroup_next_step = 1 % seq.length;
+        BOOTgroup_count = 0;
+        BOOTgroup_record = -1;
+        BOOTgroup_pending = [{ adr:boot_pc, packed:packed }];
+
+        if (seq.length == 1)
+        {
+            BOOTgroup_count = 1;
+            BOOTgroup_pending = [];
+            emitOrUpdateBootGroupMarker();
+        }
+
+        return true;
+    }
+
+    function logBootInstruction(boot_pc, opcode, operand)
+    {
+        if (!bDebug_boot || BOOTcnt >= BOOTsiz) return;
+
+        var packed = packBootState(opcode, operand);
+        var member = BOOTgroup_lookup[boot_pc & 0xffff];
+
+        if (!member)
+        {
+            flushBootGroupPending();
+            emitBootPacked(boot_pc, packed);
+            return;
+        }
+
+        if (!BOOTgroup_id)
+        {
+            if (!startBootGroup(member, boot_pc, packed)) emitBootPacked(boot_pc, packed);
+            return;
+        }
+
+        var seq = BOOTgroup_sequences[BOOTgroup_id];
+        var seqLen = seq ? seq.length : 0;
+
+        if (member.group === BOOTgroup_id && member.step === BOOTgroup_next_step && seqLen > 0)
+        {
+            BOOTgroup_pending.push({ adr:boot_pc, packed:packed });
+            BOOTgroup_next_step = (BOOTgroup_next_step + 1) % seqLen;
+
+            if (BOOTgroup_next_step === 0)
+            {
+                BOOTgroup_count++;
+                BOOTgroup_pending = [];
+                emitOrUpdateBootGroupMarker();
+            }
+            return;
+        }
+
+        // Sequence broke.  Completed repetitions stay compressed;
+        // any incomplete tail is written back as normal raw records so it is not lost.
+        flushBootGroupPending();
+
+        if (!startBootGroup(member, boot_pc, packed)) emitBootPacked(boot_pc, packed);
+    }
+
+    function packBootState(opcode, operand)
+    {
+        return  BigInt(opcode & 0xff) |
+               (BigInt(operand & 0xffff) << 8n) |
+               (BigInt(a & 0xff)       << 24n) |
+               (BigInt(x & 0xff)       << 32n) |
+               (BigInt(y & 0xff)       << 40n) |
+               (BigInt(p & 0xff)       << 48n) |
+               (BigInt(sp & 0xff)      << 56n);
+    }
+
+    function packGroupState(group, repeatCount)
+    {
+        return BigInt(group & 0xffff) |
+               (BigInt(repeatCount >>> 0) << 16n);
+    }
+
+
     // NMOS 6502 JMP ($xxFF) wraps the high-byte read inside the same page.
     function readWordBug(addr)      { return readByte(addr) | (readByte((addr & 0xff00) | ((addr + 1) & 0xff)) << 8) }
 
@@ -14355,7 +14575,11 @@ function Cpu6502(hwobj)
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
 
-        if (bDebug_boot) BOOTcnt = 0;
+        if (bDebug_boot)
+        {
+            BOOTcnt = 0;
+            resetBootGroupState();
+        }
     }
 
     this.cycle = function()
@@ -14403,22 +14627,8 @@ function Cpu6502(hwobj)
                 break;
         }
 
-        const exclude = [0xFCAA,0xFCAC,0xFCAE,0xFCAF,0xFCB1,0xFCA9];
+        logBootInstruction(instr_pc & 0xffff, opcode, operand);
 
-        var boot_pc = instr_pc & 0xffff;
-
-        if (bDebug_boot && BOOTcnt < BOOTsiz && !BOOTlog_exclude.has(boot_pc))
-        {
-            BOOTlog_adr[BOOTcnt] = boot_pc;
-            BOOTlog_cpu[BOOTcnt] = packBootState(opcode, operand);
-            BOOTcnt++;
-
-            if (BOOTcnt == BOOTsiz)
-            {
-                alert("cpu log ended");
-                console.log("BOOTlog = " + this.getBootLogBase64());
-            }
-        }
 
         // Execute!
         switch (opcode) {
@@ -14776,37 +14986,111 @@ function Cpu6502(hwobj)
     this.watch = function()     {  return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay} }
     this.getConfig = function() { return { "instrlen":instrlen,"cycle_count":cycle_count,"opctab":opctab } }
 
-    function packBootState(opcode, operand)
+    /*
+    this.getBootLog = function()
     {
-        return  BigInt(opcode & 0xff) |
-            (BigInt(operand & 0xffff) << 8n) |
-            (BigInt(a & 0xff)       << 24n) |
-            (BigInt(x & 0xff)       << 32n) |
-            (BigInt(y & 0xff)       << 40n) |
-            (BigInt(p & 0xff)       << 48n) |
-            (BigInt(sp & 0xff)      << 56n);
+        var rows = [];
+
+        for (var i = 0; i < BOOTcnt; i++)
+        {
+            var packed = BOOTlog_opc[i] >>> 0;
+            var opc = packed & 0xff;
+            var len = instrlen[opc] || 1;
+
+            var bytes = [opc];
+            if (len > 1) bytes[1] = (packed >>> 8) & 0xff;
+            if (len > 2) bytes[2] = (packed >>> 16) & 0xff;
+
+            rows[i] = {
+                "idx": i,
+                "adr": BOOTlog_adr[i],
+                "opc": opc,
+                "len": len,
+                "bytes": bytes
+            };
+        }
+
+        return rows;
+    }
+    */
+
+    this.getBootLog = function()
+    {
+        flushBootGroupPending();
+
+        var rows = [];
+
+        for (var i = 0; i < BOOTcnt; i++)
+        {
+            var packed = BOOTlog_cpu[i];
+            var opc = Number(packed & 0xffn);
+            var len = instrlen[opc] || 1;
+
+            var bytes = [opc];
+            if (len > 1) bytes[1] = Number((packed >> 8n) & 0xffn);
+            if (len > 2) bytes[2] = Number((packed >> 16n) & 0xffn);
+
+            rows[i] = {
+                "idx": i,
+                "adr": BOOTlog_adr[i],
+                "opc": opc,
+                "len": len,
+                "bytes": bytes,
+                "a":  Number((packed >> 24n) & 0xffn),
+                "x":  Number((packed >> 32n) & 0xffn),
+                "y":  Number((packed >> 40n) & 0xffn),
+                "p":  Number((packed >> 48n) & 0xffn),
+                "sp": Number((packed >> 56n) & 0xffn)
+            };
+        }
+
+        return rows;
     }
 
     this.getBootLogBase64 = function()
     {
+        flushBootGroupPending();
+
         var bytes = new Uint8Array(BOOTcnt * BOOT_RECORD_BYTES);
 
         for (var i = 0, o = 0; i < BOOTcnt; i++, o += BOOT_RECORD_BYTES)
         {
             var adr = BOOTlog_adr[i] & 0xffff;
-            var cpu = BOOTlog_cpu[i];   // BigInt
+            var packed = BOOTlog_cpu[i];
 
             bytes[o    ] = adr & 0xff;
-            bytes[o + 1] = (adr >> 8) & 0xff;
+            bytes[o + 1] = adr >> 8;
+            bytes[o + 2] = Number( packed        & 0xffn);  // opcode
+            bytes[o + 3] = Number((packed >> 8n)  & 0xffn);  // op1
+            bytes[o + 4] = Number((packed >> 16n) & 0xffn);  // op2
+            bytes[o + 5] = Number((packed >> 24n) & 0xffn);  // A
+            bytes[o + 6] = Number((packed >> 32n) & 0xffn);  // X
+            bytes[o + 7] = Number((packed >> 40n) & 0xffn);  // Y
+            bytes[o + 8] = Number((packed >> 48n) & 0xffn);  // P
+            bytes[o + 9] = Number((packed >> 56n) & 0xffn);  // SP
+        }
 
-            bytes[o + 2] = Number( cpu        & 0xffn);  // opcode
-            bytes[o + 3] = Number((cpu >> 8n)  & 0xffn);  // operand low
-            bytes[o + 4] = Number((cpu >> 16n) & 0xffn);  // operand high
-            bytes[o + 5] = Number((cpu >> 24n) & 0xffn);  // A
-            bytes[o + 6] = Number((cpu >> 32n) & 0xffn);  // X
-            bytes[o + 7] = Number((cpu >> 40n) & 0xffn);  // Y
-            bytes[o + 8] = Number((cpu >> 48n) & 0xffn);  // P
-            bytes[o + 9] = Number((cpu >> 56n) & 0xffn);  // SP
+        return u8ToBase64(bytes);
+    };
+
+    // Backward-compatible export for the old 5-byte disassembler input:
+    //   PClo PChi OPC OP1 OP2
+    this.getBootLogBase64_legacy = function()
+    {
+        flushBootGroupPending();
+
+        var bytes = new Uint8Array(BOOTcnt * 5);
+
+        for (var i = 0, o = 0; i < BOOTcnt; i++, o += 5)
+        {
+            var adr = BOOTlog_adr[i] & 0xffff;
+            var packed = BOOTlog_cpu[i];
+
+            bytes[o    ] = adr & 0xff;
+            bytes[o + 1] = adr >> 8;
+            bytes[o + 2] = Number( packed        & 0xffn);
+            bytes[o + 3] = Number((packed >> 8n)  & 0xffn);
+            bytes[o + 4] = Number((packed >> 16n) & 0xffn);
         }
 
         return u8ToBase64(bytes);
@@ -14823,6 +15107,7 @@ function Cpu6502(hwobj)
     this.clearBootLog = function()
     {
         BOOTcnt = 0;
+        resetBootGroupState();
     }
 
 }
