@@ -17,9 +17,7 @@
     <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
     <script type="text/javascript" src="res/THREEJS_scene.js"></script> 
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <script id="rendered-js">
       
 //   ____    ____          _            
@@ -217,11 +215,11 @@
             <script type="text/javascript" src="res/EMU_apple2spk.js"></script>
             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
-            <!--script type="text/javascript" src="res/EMU_apple2GPU.js"></script-->
-            <!--script type="text/javascript" src="res/EMU_apple2THREE.js"></script-->
-            <!--script type="text/javascript" src="res/EMU_apple2GPUwave.js"></script-->
-            <script type="text/javascript" src="res/EMU_apple2GPU.js"></script>
+
             <!--script type="text/javascript" src="res/EMU_apple2video.js"></script-->
+            <script type="text/javascript" src="res/EMU_apple2GPU.js"></script>
+            <!--script type="text/javascript" src="res/EMU_apple2GPUwave.js"></script-->
+            <!--script type="text/javascript" src="res/EMU_apple2THREE.js"></script-->
             <script type="text/javascript" src="res/EMU_appledisk2.js"></script>
             <script type="text/javascript" src="res/EMU_ramcard.js"></script>
             <!--script type="text/javascript" src="res/EMU_saturnRAM.js"></script-->
@@ -448,7 +446,6 @@
             {
               var hw = apple2plus.hwObj();
               var s = "";
-
               const fldump = hw.safe_flashdump();
               for(var y=0;y<24;y++)
               {
@@ -536,8 +533,6 @@
             <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
             <div id="kbd" style="position:relative; z-index:1;" onload="oEMU.component?.Keyboard.init({elid:'kbd'})"></div>
-
-            </script>
 
 
             <!--
@@ -660,10 +655,8 @@ Label1 TXA
                             ontouchstart="return ASM_traceDown(event)"
                             ontouchend="return ASM_traceUp(event)"
                             ontouchcancel="return ASM_traceCancel(event)">
-                      <i class="fa fa-road"></i> trace</button>
-      
+                      <i class="fa fa-road"></i> trace</button>      
 <script>
-
 var ASM_trace_holdTimer = null;
 var ASM_trace_repeatTimer = null;
 var ASM_trace_isDown = false;

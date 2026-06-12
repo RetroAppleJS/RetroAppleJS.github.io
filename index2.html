@@ -14,9 +14,10 @@
     <script type="text/javascript" src="res/pako.min.js"></script>    <!-- compression/decompression library -->
     <script type="text/javascript" src="res/purify.min.js"></script>  <!-- safely filter out all HTML tags -->
     <script type="text/javascript" src="res/ayumi.js"></script>    <!--  AY-3-8910 chip emulator -->
-
+    <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="text/javascript" src="res/THREEJS_scene.js"></script> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <script id="rendered-js">
       
 //   ____    ____          _            
@@ -214,9 +215,11 @@
             <script type="text/javascript" src="res/EMU_apple2spk.js"></script>
             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
-            <script type="text/javascript" src="res/EMU_apple2GPUwave.js"></script>
-            <!--script type="text/javascript" src="res/EMU_apple2GPU.js"></script-->
+
             <!--script type="text/javascript" src="res/EMU_apple2video.js"></script-->
+            <script type="text/javascript" src="res/EMU_apple2GPU.js"></script>
+            <script type="text/javascript" src="res/EMU_apple2GPUwave.js"></script>
+            <!--script type="text/javascript" src="res/EMU_apple2THREE.js"></script-->
             <script type="text/javascript" src="res/EMU_appledisk2.js"></script>
             <script type="text/javascript" src="res/EMU_ramcard.js"></script>
             <!--script type="text/javascript" src="res/EMU_saturnRAM.js"></script-->
@@ -224,7 +227,6 @@
             <script type="text/javascript" src="res/EMU_mockingboard.js"></script>
             <script type="text/javascript" src="res/EMU_hostio.js"></script>
             <script type="text/javascript" src="res/EMU_apple2io.js"></script>
-            <!--script type="text/javascript" src="res/EMU_A2Pkeys_v0.js"></script-->
             <script type="text/javascript" src="res/EMU_A2Pkeys.js"></script>
             <script type="text/javascript" src="res/EMU_apple2plus.js"></script>
 
@@ -270,7 +272,7 @@
                         ontouchcancel="return oEMUI.restartBtnCancel();">
                   <i class="fa fa-power-off"></i>
                 </button>
-                <button class=appbut onclick="javascript:oEMUI.deviceBtn({id:'devices'})" id="devices" title="Peripheral controls" data-slot=""></button>
+                <button class=appbut onclick="javascript:apple2plus.hwObj().io.deviceBtn({id:'devices'})" id="devices" title="Peripheral controls" data-slot=""></button>
                   <!-- <i class="fa fa-cube"></i> -->
                 </button>
 
@@ -444,13 +446,14 @@
             {
               var hw = apple2plus.hwObj();
               var s = "";
+              const fldump = hw.safe_flashdump();
               for(var y=0;y<24;y++)
               {
                 for(var x=0;x<40;x++)
                 {
                     // calculate TEXT address from x & y text coordinates
                     var adr = 0x0400 + (y-(y&0xF8) << 7) + (y&0xF8) * 5 + x;
-                    var b = hw.read(adr);
+                    var b = fldump[adr];
                     s += b>=160 && b<=223 ? String.fromCharCode(b-128) : " "; // filter out chars out of range
                 }
                 s+="\r"
@@ -481,6 +484,7 @@
               if(addr_arr.length==2)
               {
                 var s = [];
+                const fldump = hw.safe_flashdump();
                 for(var i=addr_arr[0];i<=addr_arr[1];i++)
                 {
                   var idx = Math.floor((i-addr_arr[0])/8);
@@ -489,7 +493,7 @@
                     var adr = oCOM.getHexWord(i);
                     s[idx] = adr+":";
                   }
-                  var b = oCOM.getHexByte(hw.safe_read(i));
+                  var b = oCOM.getHexByte(fldump[i]);
                   s[idx] += " "+b;
                 }
                 EMUboard.boardText.value = s.join("\r");
@@ -528,12 +532,7 @@
             <div class="appdskLID" id="dskLID_D1" style="left:250px;top:652px;z-index:0"></div>
             <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
-            <div id="kbd" style="position:relative; z-index:1;"></div>
-            <script>
-            var keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
-            var keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
-            var keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
-            </script>
+            <div id="kbd" style="position:relative; z-index:1;" onload="oEMU.component?.Keyboard.init({elid:'kbd'})"></div>
 
 
             <!--
@@ -649,9 +648,79 @@ Label1 TXA
                     <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
                     <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
       
-                    <button onclick="oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));rrr()"><i class="fa fa-road"></i> trace</button>
-      
+                    <button type="button"
+                            onmousedown="return ASM_traceDown(event)"
+                            onmouseup="return ASM_traceUp(event)"
+                            onmouseleave="return ASM_traceCancel(event)"
+                            ontouchstart="return ASM_traceDown(event)"
+                            ontouchend="return ASM_traceUp(event)"
+                            ontouchcancel="return ASM_traceCancel(event)">
+                      <i class="fa fa-road"></i> trace</button>      
 <script>
+var ASM_trace_holdTimer = null;
+var ASM_trace_repeatTimer = null;
+var ASM_trace_isDown = false;
+var ASM_trace_isRepeating = false;
+
+function ASM_traceStep()
+{
+  oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));
+  rrr();
+}
+
+function ASM_traceDown(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Ignore repeated down-events while the button is already held.
+  if(ASM_trace_isDown) return false;
+
+  ASM_trace_isDown = true;
+  ASM_trace_isRepeating = false;
+
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+
+  ASM_trace_holdTimer = setTimeout(function()
+  {
+    if(!ASM_trace_isDown) return;
+
+    ASM_trace_isRepeating = true;
+    ASM_traceStep();                         // first repeated step after 0.5s
+
+    ASM_trace_repeatTimer = setInterval(function()
+    {
+      if(ASM_trace_isDown) ASM_traceStep();  // then every 0.1s
+    },25);
+  },500);
+
+  return false;
+}
+
+function ASM_traceUp(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Short click: still perform exactly one trace step.
+  if(ASM_trace_isDown && !ASM_trace_isRepeating) ASM_traceStep();
+
+  ASM_traceCancel(ev);
+  return false;
+}
+
+function ASM_traceCancel(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  ASM_trace_isDown = false;
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+  ASM_trace_holdTimer = null;
+  ASM_trace_repeatTimer = null;
+  ASM_trace_isRepeating = false;
+
+  return false;
+}
 
 function rrr()
 {
@@ -870,7 +939,6 @@ function rrr()
                     <input type="button" value="look up mem #" class="isButton" onclick="memLookup()">
                     <input type="button" value="reset CPU" class="isButton" onclick="masterReset()">
                     show ASCII <input type="checkbox" id="showASCII" value="1" class="formField"><br>
-                    <input type="button" value="load C64 ROMs" class="isButton" onclick="loadC64Roms()">
                     <input type="button" value="load AppleII+ ROMs" class="isButton" onclick="loadApple2PlusRoms()">
                     <input type="button" value="load AppleII+ DEBUG" class="isButton" onclick="loadApple2PlusRoms('DBG')">
                     <input type="button" value="map AppleII+ zero-page" class="isButton" onclick="onhelp(_DOCS['ZEROPAGE_APPLE2PLUS'],document.getElementById('debugfield'))">
