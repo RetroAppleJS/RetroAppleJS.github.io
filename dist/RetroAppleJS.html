@@ -17337,8 +17337,6 @@ const eightycolumnRom  = new Uint8Array([ // P5A
 </script>
 
 
-
-
 <script type="text/javascript">
 //
 // Copyright (c) 2024 Freddy Vandriessche.
@@ -17446,16 +17444,28 @@ function Apple2Video(ctx)
     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
     //this.reflash = function() { frame_redraw = true; this.redraw() }
 
-    this.redraw = function()
-    {
-      this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
-      this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
-      this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
-  
-      // RUN THE KERNEL !
-      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel( apple2plus.hwObj().safe_videodump(),apple2CharRom,apple2plus.vidObj().serial8 )} );
-      frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
-    }
+  this.redraw = function()
+  {
+      this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
+      this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
+      this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
+
+      const video = this;
+
+      window.requestAnimationFrame(function()
+      {
+          if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
+          if (typeof(video.kernel) !== "function") return;
+
+          video.kernel(
+              video.hw.safe_videodump(),
+              apple2CharRom,
+              video.serial8
+          );
+      });
+
+      frame_redraw = false;
+  }
 
     this.write = function(addr, d8) // FLOATING BUS behavior ?
     {
@@ -17682,7 +17692,7 @@ function Apple2Video(ctx)
 
 </script>
 <script>
-  window.Apple2VideoGPU = window.Apple2Video;
+    var Apple2VideoGPU = Apple2Video;
 </script>
 
 <script type="text/javascript">
@@ -18363,13 +18373,12 @@ function Apple2Video(ctx)
 
 </script>
 <script>
-  window.Apple2VideoWave = window.Apple2Video;
+    var Apple2VideoWave = Apple2Video;
 </script>
 
 <script>
-  // EMU_apple2THREE.js captures the previously loaded Apple2Video
-  // as its 2D producer. Force that producer to be the normal GPU renderer.
-  window.Apple2Video = window.Apple2VideoGPU;
+    // EMU_apple2THREE.js captures the previous Apple2Video as its 2D producer.
+    Apple2Video = Apple2VideoGPU;
 </script>
 <script type="text/javascript">
 //
@@ -19279,7 +19288,7 @@ function Apple2Video(ctx)
 
 </script>
 <script>
-  window.Apple2VideoTHREE = window.Apple2Video;
+    var Apple2VideoTHREE = Apple2Video;
 </script>
 
 <script type="text/javascript">
@@ -19669,346 +19678,301 @@ function Apple2Video(ctx)
 
 </script>
 <script>
-  window.Apple2VideoCanvas = window.Apple2Video;
+    var Apple2VideoCanvas = Apple2Video;
 </script>
 
-<script>
-(function(global)
+<script type="text/javascript">
+var oApple2Video = null;
+
+function Apple2VideoMUX(canvas)
 {
-    "use strict";
+    const DISPLAY_W = 560;
+    const DISPLAY_H = 384;
 
-    function Apple2VideoMUX(canvas)
+    this.id = "MUX";
+    this.baseCanvas = canvas || null;
+    this.canvas = canvas || null;
+    this.ctx = canvas || null;
+
+    this.vidram = null;
+    this.hw = null;
+
+    this.state = {
+        gfx: false,
+        mix: false,
+        page2: false,
+        hires: false,
+        chrome: 0
+    };
+
+    this.renderModes = [
+        { name: "GPU",     ctor: Apple2VideoGPU,    context: "canvas" },
+        { name: "Wave",    ctor: Apple2VideoWave,   context: "canvas" },
+        { name: "ThreeJS", ctor: Apple2VideoTHREE,  context: "canvas" },
+        { name: "video",   ctor: Apple2VideoCanvas, context: "2d"     }
+    ];
+
+    this.modeIndex = 0;
+    this.active = null;
+    this.activeName = "GPU";
+
+    this.renderers = {};
+    this.canvases = {};
+
+    this.initGPU = function()
     {
-        const DISPLAY_W = 560;
-        const DISPLAY_H = 384;
+        return true;
+    };
 
-        var mux = this;
+    this.setCanvas = function(canvas)
+    {
+        this.baseCanvas = canvas;
+        this.canvas = canvas;
+    };
 
-        this.id = "MUX";
-        this.baseCanvas = canvas || null;
-        this.canvas = canvas || null;
-        this.ctx = canvas || null;
+    this.getBaseCanvas = function()
+    {
+        if(this.baseCanvas) return this.baseCanvas;
+        this.baseCanvas = document.getElementById("applescreen");
+        return this.baseCanvas;
+    };
 
-        this.vidram = null;
-        this.hw = null;
+    this.getCanvasFor = function(spec)
+    {
+        if(this.canvases[spec.name])
+            return this.canvases[spec.name];
 
-        this.serial8 = new Uint8Array();
+        var base = this.getBaseCanvas();
+        var c;
 
-        this.state = {
-            gfx: false,
-            mix: false,
-            page2: false,
-            hires: false,
-            chrome: 0
-        };
+        if(spec.name == "GPU" && base)
+            c = base;
+        else if(base)
+            c = base.cloneNode(false);
+        else
+            c = document.createElement("canvas");
 
-        var allModes = [
-            { name: "GPU",     ctor: global.Apple2VideoGPU,    context: "canvas" },
-            { name: "Wave",    ctor: global.Apple2VideoWave,   context: "canvas" },
-            { name: "ThreeJS", ctor: global.Apple2VideoTHREE,  context: "canvas" },
-            { name: "video",   ctor: global.Apple2VideoCanvas, context: "2d"     }
-        ];
+        c.id = "applescreen";
+        c.width = DISPLAY_W;
+        c.height = DISPLAY_H;
 
-        this.renderModes = allModes.filter(function(m)
+        if(c.style)
         {
-            if (typeof(m.ctor) !== "function")
-            {
-                console.warn("Apple2VideoMUX: renderer unavailable:", m.name);
-                return false;
-            }
-            return true;
-        });
+            c.style.display = "block";
+            c.style.outline = "none";
+        }
 
-        this.modeIndex = 0;       // GPU default
-        this.active = null;
-        this.activeName = "GPU";
-        this.renderers = {};
-        this.canvases = {};
+        this.canvases[spec.name] = c;
+        return c;
+    };
 
-        // Make Apple2Plus pass the canvas, not a 2D context.
-        this.initGPU = function()
+    this.attachCanvas = function(c)
+    {
+        var visible = document.getElementById("applescreen");
+
+        if(visible && visible !== c && visible.parentNode)
+            visible.parentNode.replaceChild(c, visible);
+
+        this.canvas = c;
+        this.ctx = c;
+    };
+
+    this.applyState = function(r)
+    {
+        if(!r) return;
+
+        r.vidram = this.vidram;
+        r.hw = this.hw;
+
+        if(typeof(r.setGfx) == "function")   r.setGfx(this.state.gfx);
+        if(typeof(r.setMix) == "function")   r.setMix(this.state.mix);
+        if(typeof(r.setPage2) == "function") r.setPage2(this.state.page2);
+        if(typeof(r.setHires) == "function") r.setHires(this.state.hires);
+        if(typeof(r.setMonitor) == "function") r.setMonitor(this.state.chrome);
+
+        if(typeof(r.sync2DLinks) == "function")
+            r.sync2DLinks();
+    };
+
+    this.getRenderer = function(spec, forceReset)
+    {
+        var r = this.renderers[spec.name];
+
+        if(!r)
         {
-            return true;
-        };
-
-        this.getBaseCanvas = function()
-        {
-            if (this.baseCanvas) return this.baseCanvas;
-
-            this.baseCanvas = document.getElementById("applescreen");
-            return this.baseCanvas;
-        };
-
-        this.getCanvasFor = function(spec)
-        {
-            if (this.canvases[spec.name])
-                return this.canvases[spec.name];
-
-            var base = this.getBaseCanvas();
-            var c;
-
-            if (spec.name === "GPU" && base)
-                c = base;
-            else if (base)
-                c = base.cloneNode(false);
-            else
-                c = document.createElement("canvas");
-
-            c.id = "applescreen";
-            c.width = DISPLAY_W;
-            c.height = DISPLAY_H;
-
-            if (c.style)
-            {
-                c.style.display = "block";
-                c.style.outline = "none";
-            }
-
-            this.canvases[spec.name] = c;
-            return c;
-        };
-
-        this.attachCanvas = function(c)
-        {
-            var visible = document.getElementById("applescreen");
-
-            if (visible && visible !== c && visible.parentNode)
-                visible.parentNode.replaceChild(c, visible);
-
-            this.canvas = c;
-            this.ctx = c;
-        };
-
-        this.applyState = function(r)
-        {
-            if (!r) return;
-
-            r.vidram = this.vidram;
-            r.hw = this.hw;
-
-            if (typeof(r.setGfx) === "function")   r.setGfx(this.state.gfx);
-            if (typeof(r.setMix) === "function")   r.setMix(this.state.mix);
-            if (typeof(r.setPage2) === "function") r.setPage2(this.state.page2);
-            if (typeof(r.setHires) === "function") r.setHires(this.state.hires);
-            if (typeof(r.setMonitor) === "function") r.setMonitor(this.state.chrome);
-
-            if (typeof(r.sync2DLinks) === "function")
-                r.sync2DLinks();
-        };
-
-        this.bindActiveInterfaces = function()
-        {
-            if (this.active && this.active.serial8)
-                this.serial8 = this.active.serial8;
-            else
-                this.serial8 = new Uint8Array();
-        };
-
-        this.kernel = function()
-        {
-            if (mux.active && typeof(mux.active.kernel) === "function")
-                return mux.active.kernel.apply(mux.active, arguments);
-        };
-
-        this.getRenderer = function(spec, forceReset)
-        {
-            var r = this.renderers[spec.name];
-
-            if (!r)
-            {
-                var c = this.getCanvasFor(spec);
-                var arg = spec.context === "2d" ? c.getContext("2d") : c;
-
-                r = new spec.ctor(arg);
-                r.vidram = this.vidram;
-                r.hw = this.hw;
-
-                this.renderers[spec.name] = r;
-                forceReset = true;
-            }
-
-            r.vidram = this.vidram;
-            r.hw = this.hw;
-
-            if (forceReset && typeof(r.reset) === "function")
-                r.reset();
-
-            this.applyState(r);
-            return r;
-        };
-
-        this.setMode = function(idx, uiEl, forceReset)
-        {
-            if (!this.renderModes.length) return this;
-
-            this.modeIndex = ((idx % this.renderModes.length) + this.renderModes.length) % this.renderModes.length;
-
-            var spec = this.renderModes[this.modeIndex];
             var c = this.getCanvasFor(spec);
+            var arg = spec.context == "2d" ? c.getContext("2d") : c;
 
-            this.attachCanvas(c);
+            r = new spec.ctor(arg);
+            this.renderers[spec.name] = r;
+            forceReset = true;
+        }
 
-            this.active = this.getRenderer(spec, !!forceReset);
-            this.activeName = spec.name;
+        r.vidram = this.vidram;
+        r.hw = this.hw;
 
-            this.bindActiveInterfaces();
+        if(forceReset && typeof(r.reset) == "function")
+            r.reset();
 
-            if (typeof(this.active.redraw) === "function")
-                this.active.redraw();
+        this.applyState(r);
+        return r;
+    };
 
-            this.updateRenderModeUI(uiEl);
-            return this;
-        };
+    this.setMode = function(idx, uiEl, forceReset)
+    {
+        this.modeIndex = ((idx % this.renderModes.length) + this.renderModes.length) % this.renderModes.length;
 
-        this.nextMode = function(uiEl)
-        {
-            return this.setMode(this.modeIndex + 1, uiEl, false);
-        };
+        var spec = this.renderModes[this.modeIndex];
+        var c = this.getCanvasFor(spec);
 
-        this.getRenderMode = function()
-        {
-            return this.activeName || "GPU";
-        };
+        this.attachCanvas(c);
 
-        this.updateRenderModeUI = function(uiEl)
-        {
-            var el = uiEl || document.getElementById("render_mode");
-            if (el)
-                el.title = this.getRenderMode();
-        };
+        this.active = this.getRenderer(spec, !!forceReset);
+        this.activeName = spec.name;
 
-        this.ensureActive = function()
-        {
-            if (!this.active)
-                this.setMode(this.modeIndex, null, false);
+        if(typeof(this.active.redraw) == "function")
+            this.active.redraw();
 
-            return !!this.active;
-        };
+        this.updateRenderModeUI(uiEl);
+        return this;
+    };
 
-        this.reset = function()
-        {
-            this.state.gfx = false;
-            this.state.mix = false;
-            this.state.page2 = false;
-            this.state.hires = false;
-            this.state.chrome = 0;
+    this.nextMode = function(uiEl)
+    {
+        return this.setMode(this.modeIndex + 1, uiEl, false);
+    };
 
-            this.setMode(this.modeIndex, null, true);
-        };
+    this.getRenderMode = function()
+    {
+        return this.activeName || "GPU";
+    };
 
-        this.cycle = function()
-        {
-            if (this.ensureActive() && typeof(this.active.cycle) === "function")
-                return this.active.cycle();
-        };
+    this.updateRenderModeUI = function(uiEl)
+    {
+        var el = uiEl || document.getElementById("render_mode");
+        if(el) el.title = this.getRenderMode();
+    };
 
-        this.redraw = function()
-        {
-            if (this.ensureActive() && typeof(this.active.redraw) === "function")
-                return this.active.redraw();
-        };
+    this.ensureActive = function()
+    {
+        if(!this.active)
+            this.setMode(this.modeIndex, null, false);
 
-        this.reflash = function()
-        {
-            if (this.ensureActive() && typeof(this.active.reflash) === "function")
-                return this.active.reflash();
+        return this.active != null;
+    };
 
-            return this.redraw();
-        };
+    this.reset = function()
+    {
+        this.state.gfx = false;
+        this.state.mix = false;
+        this.state.page2 = false;
+        this.state.hires = false;
+        this.state.chrome = 0;
 
-        this.write = function(addr, d8)
-        {
-            if (!this.ensureActive()) return;
+        this.setMode(this.modeIndex, null, true);
+    };
 
-            this.active.vidram = this.vidram;
+    this.cycle = function()
+    {
+        if(this.ensureActive() && typeof(this.active.cycle) == "function")
+            return this.active.cycle();
+    };
 
-            if (typeof(this.active.write) === "function")
-                return this.active.write(addr, d8);
-        };
+    this.redraw = function()
+    {
+        if(this.ensureActive() && typeof(this.active.redraw) == "function")
+            return this.active.redraw();
+    };
 
-        this.setGfx = function(flag)
-        {
-            this.state.gfx = !!flag;
-            if (this.ensureActive() && typeof(this.active.setGfx) === "function")
-                return this.active.setGfx(this.state.gfx);
-        };
+    this.reflash = function()
+    {
+        if(this.ensureActive() && typeof(this.active.reflash) == "function")
+            return this.active.reflash();
 
-        this.setMix = function(flag)
-        {
-            this.state.mix = !!flag;
-            if (this.ensureActive() && typeof(this.active.setMix) === "function")
-                return this.active.setMix(this.state.mix);
-        };
+        return this.redraw();
+    };
 
-        this.setPage2 = function(flag)
-        {
-            this.state.page2 = !!flag;
-            if (this.ensureActive() && typeof(this.active.setPage2) === "function")
-                return this.active.setPage2(this.state.page2);
-        };
+    this.write = function(addr,d8)
+    {
+        if(!this.ensureActive()) return;
 
-        this.setHires = function(flag)
-        {
-            this.state.hires = !!flag;
-            if (this.ensureActive() && typeof(this.active.setHires) === "function")
-                return this.active.setHires(this.state.hires);
-        };
+        this.active.vidram = this.vidram;
+        this.active.hw = this.hw;
 
-        this.setMonitor = function(mode)
-        {
-            this.state.chrome = mode & 3;
+        if(typeof(this.active.write) == "function")
+            return this.active.write(addr,d8);
+    };
 
-            if (this.ensureActive() && typeof(this.active.setMonitor) === "function")
-                return this.active.setMonitor(this.state.chrome);
+    this.setGfx = function(flag)
+    {
+        this.state.gfx = !!flag;
+        if(this.ensureActive() && typeof(this.active.setGfx) == "function")
+            return this.active.setGfx(this.state.gfx);
+    };
 
-            return { color: "#000000", name: "Color" };
-        };
+    this.setMix = function(flag)
+    {
+        this.state.mix = !!flag;
+        if(this.ensureActive() && typeof(this.active.setMix) == "function")
+            return this.active.setMix(this.state.mix);
+    };
 
-        this.getChromeMode = function()
-        {
-            return this.state.chrome;
-        };
+    this.setPage2 = function(flag)
+    {
+        this.state.page2 = !!flag;
+        if(this.ensureActive() && typeof(this.active.setPage2) == "function")
+            return this.active.setPage2(this.state.page2);
+    };
 
-        this.getloresCols = function()
-        {
-            if (this.ensureActive() && typeof(this.active.getloresCols) === "function")
-                return this.active.getloresCols();
+    this.setHires = function(flag)
+    {
+        this.state.hires = !!flag;
+        if(this.ensureActive() && typeof(this.active.setHires) == "function")
+            return this.active.setHires(this.state.hires);
+    };
 
-            return [];
-        };
+    this.setMonitor = function(mode)
+    {
+        this.state.chrome = mode & 3;
 
-        this.gethiresCols = function()
-        {
-            if (this.ensureActive() && typeof(this.active.gethiresCols) === "function")
-                return this.active.gethiresCols();
+        if(this.ensureActive() && typeof(this.active.setMonitor) == "function")
+            return this.active.setMonitor(this.state.chrome);
 
-            return [];
-        };
+        return {color:"#000000",name:"Color"};
+    };
 
-        this.setCol = function(idx, column, val)
-        {
-            if (this.ensureActive() && typeof(this.active.setCol) === "function")
-                return this.active.setCol(idx, column, val);
+    this.getloresCols = function()
+    {
+        if(this.ensureActive() && typeof(this.active.getloresCols) == "function")
+            return this.active.getloresCols();
 
-            return val;
-        };
+        return [];
+    };
 
-        this.addrVisible = function(addr)
-        {
-            if (this.ensureActive() && typeof(this.active.addrVisible) === "function")
-                return this.active.addrVisible(addr);
+    this.gethiresCols = function()
+    {
+        if(this.ensureActive() && typeof(this.active.gethiresCols) == "function")
+            return this.active.gethiresCols();
 
-            return true;
-        };
-    }
+        return [];
+    };
 
-    global.Apple2VideoMUX = Apple2VideoMUX;
-    global.Apple2Video = Apple2VideoMUX;
+    this.setCol = function(idx,column,val)
+    {
+        if(this.ensureActive() && typeof(this.active.setCol) == "function")
+            return this.active.setCol(idx,column,val);
 
-    if (global.oEMU && global.oEMU.component && global.oEMU.component.Video)
-        global.oEMU.component.Video.Apple2Video = new Apple2VideoMUX();
+        return val;
+    };
 
-})(typeof(window) !== "undefined" ? window : this);
+    this.addrVisible = function(addr)
+    {
+        if(this.ensureActive() && typeof(this.active.addrVisible) == "function")
+            return this.active.addrVisible(addr);
+
+        return true;
+    };
+}
 </script>
 
 
@@ -25940,19 +25904,32 @@ oEMU.system["A2P"] = {/*  config overrides */  "active":true};
 function Apple2Plus(context)
 {
     if(context===undefined)
-    { console.warn("running Apple2Plus without video or hardware context") }
-    else if(new Apple2Video().initGPU===undefined)
     {
-        var vidContext = context.getContext("2d")
+        console.warn("running Apple2Plus without video or hardware context");
+    }
+
+    if(typeof(Apple2VideoMUX) == "function")
+    {
+        if(typeof(oApple2Video) == "undefined" || oApple2Video == null)
+            oApple2Video = new Apple2VideoMUX(context);
+        else
+            oApple2Video.setCanvas(context);
+
+        var video = oApple2Video;
+    }
+    else if(new Apple2Video().initGPU === undefined)
+    {
+        var vidContext = context.getContext("2d");
         var video = new Apple2Video(vidContext);
     }
     else
     {
-        var vidContext = context
+        var vidContext = context;
         var video = new Apple2Video(vidContext);
     }
 
     this.hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");       // Apple2plus owns Apple2Hw object instance
+    video.hw = this.hw;
     const hw = this.hw
     
     //var keys = oEMU.component.Keyboard;
