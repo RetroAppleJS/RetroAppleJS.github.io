@@ -203,5 +203,6 @@ function Apple2Hw(vid,keys)
     }
 
     // Link memory to Video
-    video.vidram = ram.slice(0,0x6000);
+    //video.vidram = ram.slice(0,0x6000);
+    video.vidram = ram.subarray(0, 0x6000);
 }
