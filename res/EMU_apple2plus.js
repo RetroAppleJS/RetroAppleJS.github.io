@@ -13,19 +13,32 @@ oEMU.system["A2P"] = {/*  config overrides */  "active":true};
 function Apple2Plus(context)
 {
     if(context===undefined)
-    { console.warn("running Apple2Plus without video or hardware context") }
-    else if(new Apple2Video().initGPU===undefined)
     {
-        var vidContext = context.getContext("2d")
+        console.warn("running Apple2Plus without video or hardware context");
+    }
+
+    if(typeof(Apple2VideoMUX) == "function")
+    {
+        if(typeof(oApple2Video) == "undefined" || oApple2Video == null)
+            oApple2Video = new Apple2VideoMUX(context);
+        else
+            oApple2Video.setCanvas(context);
+
+        var video = oApple2Video;
+    }
+    else if(new Apple2Video().initGPU === undefined)
+    {
+        var vidContext = context.getContext("2d");
         var video = new Apple2Video(vidContext);
     }
     else
     {
-        var vidContext = context
+        var vidContext = context;
         var video = new Apple2Video(vidContext);
     }
 
     this.hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");       // Apple2plus owns Apple2Hw object instance
+    video.hw = this.hw;
     const hw = this.hw
     
     //var keys = oEMU.component.Keyboard;

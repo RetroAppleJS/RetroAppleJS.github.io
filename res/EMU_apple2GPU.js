@@ -104,16 +104,28 @@ function Apple2Video(ctx)
     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
     //this.reflash = function() { frame_redraw = true; this.redraw() }
 
-    this.redraw = function()
-    {
-      this.serial8[ this.idx8("CHROME_MODE") ]  = chrome_mode;
-      this.serial8[ this.idx8("GFX_FLG") ]      = this.register_mode();
-      this.serial8[ this.idx8("FLASH") ]        = flash_on ? 1 : 0;
-  
-      // RUN THE KERNEL !
-      window.requestAnimationFrame( function() { apple2plus.vidObj().kernel( apple2plus.hwObj().safe_videodump(),apple2CharRom,apple2plus.vidObj().serial8 )} );
-      frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
-    }
+  this.redraw = function()
+  {
+      this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
+      this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
+      this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
+
+      const video = this;
+
+      window.requestAnimationFrame(function()
+      {
+          if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
+          if (typeof(video.kernel) !== "function") return;
+
+          video.kernel(
+              video.hw.safe_videodump(),
+              apple2CharRom,
+              video.serial8
+          );
+      });
+
+      frame_redraw = false;
+  }
 
     this.write = function(addr, d8) // FLOATING BUS behavior ?
     {
