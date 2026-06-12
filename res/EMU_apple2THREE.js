@@ -225,8 +225,7 @@
             this.video2D.vidram = this.vidram;
             this.video2D.hw = this.hw;
 
-            // EMU_apple2GPU.js redraw() calls apple2plus.vidObj().serial8 and
-            // apple2plus.vidObj().kernel().  Therefore expose the 2D renderer's
+            // Expose the 2D renderer's
             // serial buffer and delegate kernel calls back to it.
             if (this.video2D.serial8)
                 this.serial8 = this.video2D.serial8;
@@ -260,7 +259,14 @@
         this.cycle = function()
         {
             if (this.video2D && typeof(this.video2D.cycle) === "function")
+            {
                 this.video2D.cycle();
+
+                // Since EMU_apple2GPU.js now calls its own kernel directly,
+                // Apple2VideoTHREE no longer sees the kernel call.
+                // Keep the Three texture upload loop alive while this renderer is active.
+                this.textureDirty = true;
+            }
         };
 
         this.redraw = function()
@@ -275,7 +281,9 @@
             if (this.video2D && typeof(this.video2D.write) === "function")
             {
                 this.video2D.vidram = this.vidram;
+                this.video2D.hw = this.hw;
                 this.video2D.write(addr, d8);
+                this.textureDirty = true;
             }
         };
 
