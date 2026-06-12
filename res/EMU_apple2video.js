@@ -49,14 +49,13 @@ function Apple2Video(ctx)
         this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
     }
 
-    this.cycle = function() {
+    this.cycle = function() 
+    {
         if (++flash_count > 250000) {
             flash_on = ! flash_on;
             flash_count = 0;
             this.reflash();
         }
-        if(flash_count % (250000/4+1) == 0)
-            this.rept();
     }
 
     this.setGfx = function(flag) {
@@ -158,8 +157,8 @@ function Apple2Video(ctx)
 
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
-    function text_Draw(col, row, d8) {
-
+    function text_Draw(col, row, d8) 
+    {
         // Black out entire character
         ctx.fillStyle = text_PixelColor(0);
         ctx.fillRect(col * 14, row * 16, 14, 16);
@@ -227,6 +226,8 @@ function Apple2Video(ctx)
     // Called if a write lands in any possible video RAM area.
     this.write = function(addr, d8)
     {
+        if (this.vidram[addr] == d8) return;   // biggest cheap win
+        this.vidram[addr] == d8;
         if(this.ctx === undefined) return;
 
         if (gfx_mode && hires_mode &&
@@ -294,10 +295,12 @@ function Apple2Video(ctx)
                {
                     var addr = (((row & 0x07) << 7) | (row & 0x18) | ((row & 0x18) << 2) |
                         (page2_mode ? LORES2_ADDR : LORES1_ADDR)) + col;
+
                     var d8 = this.vidram[addr];
 
                     // Redraw flashing characters.
-                    if ((d8 & 0xc0) == 0x40) text_Draw(col, row, d8);
+                    if ((d8 & 0xc0) == 0x40) 
+                        text_Draw(col, row, d8);
                 }
         }
         if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
@@ -344,10 +347,6 @@ function Apple2Video(ctx)
                 }
             }
         if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
-    }
-
-    this.rept = function() {
-    // cursor repeat pace (TODO)
     }
 
     this.hgr_Draw = function(col, y, d8_l, d8, d8_r, modes)
