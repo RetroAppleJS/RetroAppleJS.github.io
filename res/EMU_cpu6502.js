@@ -19,7 +19,8 @@ function Cpu6502(hwobj)
 
     const bDebug_boot = true;        // debug CPU boot
     //const BOOTsiz = 1024;
-    const BOOTsiz = 131072;
+    const BOOTsiz = 65536;
+    //const BOOTsiz = 131072;
     //const BOOTsiz = 524288;
     //const BOOTsiz = 1048576;
 
@@ -317,13 +318,6 @@ function Cpu6502(hwobj)
         BOOTlog_adr[BOOTcnt] = adr & 0xffff;
         BOOTlog_cpu[BOOTcnt] = packed;
         BOOTcnt++;
-
-        if (BOOTcnt == BOOTsiz)
-        {
-            //alert("cpu log ended");
-            //console.log("BOOTlog = " + self.getBootLogBase64());
-        }
-
         return true;
     }
 
