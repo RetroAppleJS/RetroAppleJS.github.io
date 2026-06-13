@@ -14477,12 +14477,6 @@ function Cpu6502(hwobj)
             BOOTlog_adr[BOOTcnt] = BOOT_GROUP_MARKER_ADR;
             BOOTlog_cpu[BOOTcnt] = packGroupState(BOOTgroup_id, BOOTgroup_count);
             BOOTcnt++;
-
-            if (BOOTcnt == BOOTsiz)
-            {
-                alert("cpu log ended");
-                console.log("BOOTlog = " + self.getBootLogBase64());
-            }
         }
         else BOOTlog_cpu[BOOTgroup_record] = packGroupState(BOOTgroup_id, BOOTgroup_count);
     }
