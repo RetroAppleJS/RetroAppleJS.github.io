@@ -273,6 +273,25 @@ function Apple2VideoMUX(canvas)
         return [];
     };
 
+    this.hgr_PixelColor = function(x, y, left, me, right, b7)
+    {
+        if(this.ensureActive() && typeof(this.active.hgr_PixelColor) == "function")
+            return this.active.hgr_PixelColor(x, y, left, me, right, b7);
+
+        // Fallback: use the classic canvas renderer as the color reference.
+        for(var i=0;i<this.renderModes.length;i++)
+        {
+            if(this.renderModes[i].name == "video")
+            {
+                var r = this.getRenderer(this.renderModes[i], false);
+                if(r && typeof(r.hgr_PixelColor) == "function")
+                    return r.hgr_PixelColor(x, y, left, me, right, b7);
+            }
+        }
+
+        return "#000000";
+    };
+
     this.setCol = function(idx,column,val)
     {
         if(this.ensureActive() && typeof(this.active.setCol) == "function")

@@ -12,13 +12,43 @@ https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity
 
 <html style="background-color:#B0B0B0">
   <head>
-    <script type="text/javascript" src="../res/COM_MAIN.js"></script>
-  <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
-  <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
-  <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
-  <script type="text/javascript" src="../res/HGRpalette.js"></script>
-  <script type="text/javascript" src="../res/HGRpattern.js"></script>
-  <script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+
+<script type="text/javascript" src="../res/gpu-browser.min.js"></script>
+<script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script type="text/javascript" src="../res/THREEJS_scene.js"></script>
+
+<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script>
+<script>
+    var Apple2VideoGPU = Apple2Video;
+</script>
+
+<script type="text/javascript" src="../res/EMU_apple2GPUwave.js"></script>
+<script>
+    var Apple2VideoWave = Apple2Video;
+</script>
+
+<script>
+    Apple2Video = Apple2VideoGPU;
+</script>
+<script type="text/javascript" src="../res/EMU_apple2THREE.js"></script>
+<script>
+    var Apple2VideoTHREE = Apple2Video;
+</script>
+
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
+<script>
+    var Apple2VideoCanvas = Apple2Video;
+</script>
+
+<script type="text/javascript" src="../res/EMU_apple2videoMUX.js"></script>
+
+<script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
+<script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+<script type="text/javascript" src="../res/HGRpalette.js"></script>
+<script type="text/javascript" src="../res/HGRpattern.js"></script>
+<script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
 
 <script>
 //   ____  ____   ______  _______                    _     _                              _____   ______   
@@ -64,7 +94,21 @@ for(var i=0;i<_D.YVERTL.length;i+=2)
   yref[i/2] = parseInt( _D.YVERTH.substring(i,i+2),16)*256
               +parseInt( _D.YVERTL.substring(i,i+2),16);
 
-var oEMU = {"component":"Video"};
+if(typeof(oEMU) == "undefined")
+  var oEMU = {"component":{"Video":{},"IO":{}}};
+else
+{
+    if(typeof(oEMU.component) != "object")
+        oEMU.component = {};
+
+    if(typeof(oEMU.component.Video) == "undefined")
+        oEMU.component.Video = {};
+
+    if(typeof(oEMU.component.IO) == "undefined")
+        oEMU.component.IO = {};
+}
+
+
 var oPATTERN = new PATTERN();
 var oPALETTE = new PALETTE();
 oPALETTE.bProgressbar = true;
@@ -107,7 +151,7 @@ function init_gui(bRefresh)
   try{ document.getElementById('slider_title').outerHTML = _TITLE() } catch(e){}  
   if(!bRefresh)
   {
-    vidContext          = document.getElementById('applescreen').getContext("2d");
+    vidContext          = document.getElementById('applescreen');
     apple2plus          = new Apple2Plus(vidContext);
     document.getElementById('applescreen').style.margin = (_D.topheight+1)+"px 0px 0px 0px";
     apple2plus.video.setCol(3,0, "#FF00FF");    // tweak purple value (#D043E5)
@@ -550,15 +594,33 @@ function draw_number(num,pos)
     }
 }
 
-function Apple2Plus(context)
+function Apple2Plus(canvas)
 {
-  this.video = new Apple2Video(context);
-  this.hw    = new Apple2Hw(this.video);
-  // Switch on Apple II Hi-Res graphics
-  this.video.reset();
-  this.video.setGfx(true);
-  this.video.setHires(true);
-  this.video.redraw();
+    if(typeof(Apple2VideoMUX) == "function")
+        this.video = new Apple2VideoMUX(canvas);
+    else if(typeof(Apple2Video) == "function" && new Apple2Video().initGPU === undefined)
+        this.video = new Apple2Video(canvas.getContext("2d"));
+    else
+        this.video = new Apple2Video(canvas);
+
+    this.hw = new Apple2Hw(this.video);
+    this.video.hw = this.hw;
+
+    this.hwObj = function()
+    {
+        return this.hw;
+    };
+
+    this.vidObj = function()
+    {
+        return this.video;
+    };
+
+    // Switch on Apple II Hi-Res graphics.
+    this.video.reset();
+    this.video.setGfx(true);
+    this.video.setHires(true);
+    this.video.redraw();
 }
 
 var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; 
@@ -873,6 +935,14 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
         <li>
           <input id=param4 value=0 hidden>
           <input id=param5 value=1 hidden>
+        </li>
+        <li>
+          <div class=blink style=display:inline>
+            <i class='fa fa-eye'
+              id='render_mode'
+              title='GPU'
+              onclick="javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);"></i>
+          </div>
         </li>
       </ul>
     </div>
