@@ -12,36 +12,38 @@ https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity
 
 <html style="background-color:#B0B0B0">
   <head>
+
+<link rel="stylesheet" href="../res/COM_fontawesome/all.css">
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
+
+<script>
+if(typeof(oEMU) == "undefined")
+    var oEMU = {"component":{}};
+
+if(typeof(oEMU.component) != "object")
+    oEMU.component = {};
+
+if(typeof(oEMU.component.Video) == "undefined")
+    oEMU.component.Video = {};
+
+if(typeof(oEMU.component.IO) == "undefined")
+    oEMU.component.IO = {};
+
+if(typeof(oEMU.component.ROM) == "undefined")
+    oEMU.component.ROM = {};
+</script>
+
+<script type="text/javascript" src="../res/EMU_apple2roms.js"></script>
 
 <script type="text/javascript" src="../res/gpu-browser.min.js"></script>
 <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script type="text/javascript" src="../res/THREEJS_scene.js"></script>
 
-<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script>
-<script>
-    var Apple2VideoGPU = Apple2Video;
-</script>
-
-<script type="text/javascript" src="../res/EMU_apple2GPUwave.js"></script>
-<script>
-    var Apple2VideoWave = Apple2Video;
-</script>
-
-<script>
-    Apple2Video = Apple2VideoGPU;
-</script>
-<script type="text/javascript" src="../res/EMU_apple2THREE.js"></script>
-<script>
-    var Apple2VideoTHREE = Apple2Video;
-</script>
-
-<script type="text/javascript" src="../res/EMU_apple2video.js"></script>
-<script>
-    var Apple2VideoCanvas = Apple2Video;
-</script>
-
+<script type="text/javascript" src="../res/EMU_apple2GPU.js"></script><script>var Apple2VideoGPU = Apple2Video;</script>
+<script type="text/javascript" src="../res/EMU_apple2GPUwave.js"></script><script>var Apple2VideoWave = Apple2Video; Apple2Video = Apple2VideoGPU;</script>
+<script type="text/javascript" src="../res/EMU_apple2THREE.js"></script><script>var Apple2VideoTHREE = Apple2Video;</script>
+<script type="text/javascript" src="../res/EMU_apple2video.js"></script><script>var Apple2VideoCanvas = Apple2Video;</script>
 <script type="text/javascript" src="../res/EMU_apple2videoMUX.js"></script>
 
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
@@ -49,6 +51,7 @@ https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity
 <script type="text/javascript" src="../res/HGRpalette.js"></script>
 <script type="text/javascript" src="../res/HGRpattern.js"></script>
 <script type="text/javascript" src="../res/rhill-voronoi-core.js"></script>
+
 
 <script>
 //   ____  ____   ______  _______                    _     _                              _____   ______   
@@ -95,7 +98,7 @@ for(var i=0;i<_D.YVERTL.length;i+=2)
               +parseInt( _D.YVERTL.substring(i,i+2),16);
 
 if(typeof(oEMU) == "undefined")
-  var oEMU = {"component":{"Video":{},"IO":{}}};
+  var oEMU = {"component":{"Video":{},"IO":{},"ROM":{}}};
 else
 {
     if(typeof(oEMU.component) != "object")
@@ -106,6 +109,9 @@ else
 
     if(typeof(oEMU.component.IO) == "undefined")
         oEMU.component.IO = {};
+
+    if(typeof(oEMU.component.ROM) == "undefined")
+        oEMU.component.ROM = {};
 }
 
 
@@ -687,6 +693,13 @@ function wipe_HGR(byte)
 
 }
 
+function focusIfExists(id)
+{
+    var el = document.getElementById(id);
+    if(el && typeof(el.focus) == "function") el.focus();
+}
+
+
 //  ██    ██  ██████  ██████   ██████  ███    ██  ██████  ██ 
 //  ██    ██ ██    ██ ██   ██ ██    ██ ████   ██ ██    ██ ██ 
 //  ██    ██ ██    ██ ██████  ██    ██ ██ ██  ██ ██    ██ ██ 
@@ -893,9 +906,12 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
               <input type="radio" name=param7 value=2 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>2</small>
               <input type="radio" name=param7 value=4 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;' checked><small>4</small>
               <input type="radio" name=param7 value=6 onchange="setTimeout(function(){update(false);init_gui(true)},10)" style='margin:0px 0px 0px; padding:0px 0px 0px 0px 0px;'><small>6</small> bit
-              <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
-              <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();document.getElementById('FSL').focus();" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
-              </td></tr></tr><td>
+
+              <input type=button value="next" onclick="document.getElementById('param4').value++;update();generate_HGR();focusIfExists('FSL');" style='vertical-align:top; float: right;  margin:0px 0px 0px 0px'>
+              <input type=button value="prev" onclick="document.getElementById('param4').value--;update();generate_HGR();focusIfExists('FSL');" style='vertical-align:top; float: right; margin:0px 0px 0px 0px'>
+
+            </td></tr></tr><td>
+              
               <input type=image  src=../res/arrow_button_left.png onclick="document.getElementById('param3').value--;update(true);">
               <input type="range" min="-1" max="0" value="-1" class="slider" id="param3" step=1 style="width:280px;height:20px;margin:0px 0px 0px 0px;" oninput="update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">
               <input type=image  src=../res/arrow_button_right.png onclick="document.getElementById('param3').value++;update();oPALETTE.clear_layer(1);oVoronoi.render();oPALETTE.draw_colormatches(oPATTERN);generate_GRIDS();generate_HGR();">
@@ -938,10 +954,7 @@ return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
         </li>
         <li>
           <div class=blink style=display:inline>
-            <i class='fa fa-eye'
-              id='render_mode'
-              title='GPU'
-              onclick="javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);"></i>
+            <i class='fa fa-eye' id='render_mode' title='GPU' onclick="javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);"></i>
           </div>
         </li>
       </ul>
