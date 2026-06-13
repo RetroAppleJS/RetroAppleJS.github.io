@@ -19935,6 +19935,25 @@ function Apple2VideoMUX(canvas)
         return [];
     };
 
+    this.hgr_PixelColor = function(x, y, left, me, right, b7)
+    {
+        if(this.ensureActive() && typeof(this.active.hgr_PixelColor) == "function")
+            return this.active.hgr_PixelColor(x, y, left, me, right, b7);
+
+        // Fallback: use the classic canvas renderer as the color reference.
+        for(var i=0;i<this.renderModes.length;i++)
+        {
+            if(this.renderModes[i].name == "video")
+            {
+                var r = this.getRenderer(this.renderModes[i], false);
+                if(r && typeof(r.hgr_PixelColor) == "function")
+                    return r.hgr_PixelColor(x, y, left, me, right, b7);
+            }
+        }
+
+        return "#000000";
+    };
+
     this.setCol = function(idx,column,val)
     {
         if(this.ensureActive() && typeof(this.active.setCol) == "function")
@@ -23635,6 +23654,15 @@ function Apple2IO(vid)
         }
     }
 
+    var CIO = {ACTION_MAP:{RD:{}, WR:{}}};
+
+    function ensureActionMap()
+    {
+        if(!CIO.ACTION_MAP) CIO.ACTION_MAP = {};
+        if(!CIO.ACTION_MAP.RD) CIO.ACTION_MAP.RD = {};
+        if(!CIO.ACTION_MAP.WR) CIO.ACTION_MAP.WR = {};
+    }
+
 
 //     _____      __  ___          _       _______  _____  
 //    |_   _|    / /.'   `.       / \     |_   __ \|_   _| 
@@ -23655,41 +23683,46 @@ function Apple2IO(vid)
         if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
         if(this.disk2 && this.disk2.restart) this.disk2.restart();
 
+        ensureActionMap();
+
+        // Some tools, such as tools/HGRpatternJS.html, instantiate Apple2Hw/Apple2IO
+        // without the full emulator shell.  In that case there are no slots to mount.
+        const bFullEmulator =
+               typeof(apple2plus) == "object"
+            && apple2plus
+            && typeof(apple2plus.hwObj) == "function"
+            && typeof(oEMU) == "object"
+            && oEMU
+            && typeof(oEMU.component) == "object"
+            && oEMU.component.IO
+            && typeof(slot_count) != "undefined"
+            && typeof(slotR) != "undefined"
+            && typeof(_CFG_PSLOT) != "undefined";
+
+        if(!bFullEmulator)
+            return;
 
         // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
         // MAKE SURE slot_cfg is declared and provisioned at this moment!!! (currently it is declared later)
         oEMU.component.MIO = apple2plus.hwObj().io.slot_cfg;
         console.log("oEMU.component.MIO = "+JSON.stringify(oEMU.component.MIO));
 
-        for(var slotIdx=0;slotIdx<slot_count;slotIdx++)  // MOUNT = ATTACH A PERIPHERAL TO A SLOT (calculate the mapped I/O address ranges on the fly) 
+        for(var slotIdx=0;slotIdx<slot_count;slotIdx++)
         {
             if(slotR.slotMap[slotIdx])
             {
                 var peripheral_names = this.listPeripheralNames();
-                var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];   // BASIC PERIPHERAL INFO
+                var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];
                 if(pinfo===undefined) continue;
-                var cinfo = _CFG_PSLOT[pinfo.PCODE];                       // CONFIGURATION INFO
+                var cinfo = _CFG_PSLOT[pinfo.PCODE];
                 var o = this.mount(cinfo,pinfo,slotIdx);
 
                 slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":o.pInfo}
                 slotObj[slotIdx+1]  = o.pObj;
-
             }
             else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
         }
 
-        //slotCfg = [
-        //  {"slotTitle":"board","lock":true,"peripheral":{"objID":"mainboard","PCODE":"BOARD","icon":"fa fa-cube"}}
-        // ,{"slotTitle":"PR#0","peripheral":{"PCODE":"MS16K","icon":"fa fa-microchip","objID":"RamCard","coID":"RamCard","SlotIO":{"from":128,"to":143},"description":"Microsoft 16K Language card"}}
-        // ,{"slotTitle":"PR#1"}
-        // ,{"slotTitle":"PR#2"}
-        // ,{"slotTitle":"PR#3","peripheral":{"PCODE":"VIDEX","icon":"fa fa-tv","objID":"col80card","coID":"col80card","HostROM":{"from":2048,"to":4095},"SlotIO":{"from":176,"to":191},"SlotROM":{"from":768,"to":1023},"description":"Videx Videoterm 80 Column Display"}}
-        // ,{"slotTitle":"PR#4","peripheral":{"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems","objID":"mockingboard","coID":"mockingboard","SlotIO":{"from":192,"to":207},"description":"Mockingboard C"}}
-        // ,{"slotTitle":"PR#5"}
-        // ,{"slotTitle":"PR#6","peripheral":{"PCODE":"DISKII","icon":"fa fa-save","objID":"AppleDisk2","coID":"AppleDisk2","SlotIO":{"from":224,"to":239},"SlotROM":{"from":1536,"to":1791},"description":"Apple Disk II Floppy Disk Subsystem"}}
-        // ,{"slotTitle":"PR#7"}]
-
-        if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
         console.log(CIO.ACTION_MAP);
         console.group("ACTION_MAP overview");
         console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
@@ -23700,13 +23733,7 @@ function Apple2IO(vid)
         console.group("slot configuration overview");
         console.table(slotConfigReport(slotCfg));
         console.log("slotCfg = "+JSON.stringify(slotCfg));
-
-
-
         console.groupEnd();
-
-
-
     }
 
     this.address_encoder = function(rel_addr,bucket,slot)
@@ -23722,10 +23749,9 @@ function Apple2IO(vid)
 
     if(typeof(EMU_system_get)!="undefined")
     {
-        //var ACTION_MAP = oEMU.component.IO.ACTION_MAP;
-        var CIO = oEMU.component.IO;
+        CIO = oEMU.component.IO;
         CIO.ACTION_MAP = oEMU.component.IO.board.IO_map(EMU_system_get(),IOMAP_CALLS);
-        //console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
+        ensureActionMap();
     }
 
     function line_decode(adr) { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
