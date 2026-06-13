@@ -5,6 +5,8 @@ function Apple2VideoMUX(canvas)
     const DISPLAY_W = 560;
     const DISPLAY_H = 384;
 
+    var mux = this;
+
     this.id = "MUX";
     this.baseCanvas = canvas || null;
     this.canvas = canvas || null;
@@ -275,15 +277,15 @@ function Apple2VideoMUX(canvas)
 
     this.hgr_PixelColor = function(x, y, left, me, right, b7)
     {
-        if(this.ensureActive() && typeof(this.active.hgr_PixelColor) == "function")
-            return this.active.hgr_PixelColor(x, y, left, me, right, b7);
+        if(mux.ensureActive() && typeof(mux.active.hgr_PixelColor) == "function")
+            return mux.active.hgr_PixelColor(x, y, left, me, right, b7);
 
         // Fallback: use the classic canvas renderer as the color reference.
-        for(var i=0;i<this.renderModes.length;i++)
+        for(var i=0;i<mux.renderModes.length;i++)
         {
-            if(this.renderModes[i].name == "video")
+            if(mux.renderModes[i].name == "video")
             {
-                var r = this.getRenderer(this.renderModes[i], false);
+                var r = mux.getRenderer(mux.renderModes[i], false);
                 if(r && typeof(r.hgr_PixelColor) == "function")
                     return r.hgr_PixelColor(x, y, left, me, right, b7);
             }

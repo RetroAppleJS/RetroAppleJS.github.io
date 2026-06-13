@@ -170,7 +170,7 @@ function init_gui(bRefresh)
   //   _| |_  _/ /   \ \_  _| |_      _| |_    _| |__/ | _| |  \ \_  _| |_\   |_  
   //  |_____||____| |____||_____|    |_____|  |________||____| |___||_____|\____| 
 
-  oPATTERN.colorFN = apple2plus.video.hgr_PixelColor;
+ oPATTERN.colorFN = apple2plus.video.hgr_PixelColor.bind(apple2plus.video);
   oPATTERN.set_prep(bRefresh?oPATTERN.prep:_D.prep);
 
   oPATTERN.criteria_desc = {
