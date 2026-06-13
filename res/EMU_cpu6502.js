@@ -65,21 +65,19 @@ function Cpu6502(hwobj)
         {"group":7,"step":2,"pc":"$FAD0","count":0,"bytes":"10 F5","instruction":"BPL NXTBYT"},
         {"group":7,"step":3,"pc":"$FAC7","count":0,"bytes":"B1 00","instruction":"LDA (LOC0),Y"},
         {"group":7,"step":4,"pc":"$FAC9","count":0,"bytes":"D9 01 FB","instruction":"CMP $FB01,Y"},
-        {"group":7,"step":5,"pc":"$FACC","count":0,"bytes":"D0 EC","instruction":"BNE SLOOP"}
+        {"group":7,"step":5,"pc":"$FACC","count":0,"bytes":"D0 EC","instruction":"BNE SLOOP"},
 
-        /*
         {"group":8,"step":0,"pc":"$FCAE","count":17058,"bytes":"68","instruction":"PLA"},
         {"group":8,"step":1,"pc":"$FCAF","count":17058,"bytes":"E9 01","instruction":"SBC #$01"},  
         {"group":8,"step":2,"pc":"$FCB1","count":17058,"bytes":"D0 F6","instruction":"BNE WAIT2"},
         {"group":8,"step":3,"pc":"$FCA9","count":17058,"bytes":"48","instruction":"PHA"}   
-
-
+        
+        /*
         {"group":9,"step":0,"pc":"$C65E","count":17058,"bytes":"BD 8C C0","instruction":"LDA $C08C,X"},
         {"group":9,"step":1,"pc":"$C661","count":17058,"bytes":"10 FB","instruction":"BPL $C65E"},  
         {"group":9,"step":2,"pc":"$C663","count":17058,"bytes":"49 D5","instruction":"EOR #$D5"},
         {"group":9,"step":3,"pc":"$C665","count":17058,"bytes":"D0 F7","instruction":"BNE $C65E"},  
         */
-
     ];
 
     const memberExcl = memberTable.map(function (m) { return parseInt(m.pc.substring(1), 16) & 0xffff; });
@@ -927,6 +925,11 @@ function Cpu6502(hwobj)
         }
 
         return rows;
+    }
+
+    this.getBootLogFilters = function()
+    {
+        return memberTable;
     }
 
     this.getBootLogBase64 = function()

@@ -6,6 +6,7 @@
 <title>Apple II 6502 DASM v11</title>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/ASM_core.js"></script>
+<script type="text/javascript" src="../res/EMU_cpu6502.js"></script>
 <style>
     :root {
         --bg:#0f1115;
@@ -461,43 +462,8 @@ SUBTBL EQU $FFE3
 </div>
 
 <script type="text/javascript">
-const BOOT_GROUP_MEMBER_TABLE = [
-    {"group":1,"step":0,"pc":"$FD1B","count":19747,"bytes":"E6 4E","instruction":"INC RNDL"},
-    {"group":1,"step":1,"pc":"$FD1D","count":19747,"bytes":"D0 02","instruction":"BNE KEYIN2"},
-    {"group":1,"step":2,"pc":"$FD21","count":19746,"bytes":"2C 00 C0","instruction":"BIT KBD"},
-    {"group":1,"step":3,"pc":"$FD24","count":19746,"bytes":"10 F5","instruction":"BPL KEYIN"},
-    {"group":2,"step":0,"pc":"$FCAA","count":17058,"bytes":"E9 01","instruction":"SBC #$01"},
-    {"group":2,"step":1,"pc":"$FCAC","count":17058,"bytes":"D0 FC","instruction":"BNE WAIT3"},
-    {"group":3,"step":0,"pc":"$FCA0","count":960,"bytes":"91 28","instruction":"STA (BASL),Y"},
-    {"group":3,"step":1,"pc":"$FCA2","count":960,"bytes":"C8","instruction":"INY"},
-    {"group":3,"step":2,"pc":"$FCA3","count":960,"bytes":"C4 21","instruction":"CPY WNDWDTH"},
-    {"group":3,"step":3,"pc":"$FCA5","count":960,"bytes":"90 F9","instruction":"BCC CLREO2"},
-    {"group":4,"step":0,"pc":"$F181","count":184,"bytes":"E6 51","instruction":"INC $51"},
-    {"group":4,"step":1,"pc":"$F183","count":184,"bytes":"B1 50","instruction":"LDA ($50),Y"},
-    {"group":4,"step":2,"pc":"$F185","count":184,"bytes":"49 FF","instruction":"EOR #$FF"},
-    {"group":4,"step":3,"pc":"$F187","count":184,"bytes":"91 50","instruction":"STA ($50),Y"},
-    {"group":4,"step":4,"pc":"$F189","count":184,"bytes":"D1 50","instruction":"CMP ($50),Y"},
-    {"group":4,"step":5,"pc":"$F18B","count":184,"bytes":"D0 08","instruction":"BNE $F195"},
-    {"group":4,"step":6,"pc":"$F18D","count":183,"bytes":"49 FF","instruction":"EOR #$FF"},
-    {"group":4,"step":7,"pc":"$F18F","count":183,"bytes":"91 50","instruction":"STA ($50),Y"},
-    {"group":4,"step":8,"pc":"$F191","count":183,"bytes":"D1 50","instruction":"CMP ($50),Y"},
-    {"group":4,"step":9,"pc":"$F193","count":183,"bytes":"F0 EC","instruction":"BEQ $F181"},
-    {"group":5,"step":0,"pc":"$F152","count":28,"bytes":"BD 0A F1","instruction":"LDA $F10A,X"},
-    {"group":5,"step":1,"pc":"$F155","count":28,"bytes":"95 B0","instruction":"STA $B0,X"},
-    {"group":5,"step":2,"pc":"$F157","count":28,"bytes":"86 F1","instruction":"STX $F1"},
-    {"group":5,"step":3,"pc":"$F159","count":28,"bytes":"CA","instruction":"DEX"},
-    {"group":5,"step":4,"pc":"$F15A","count":28,"bytes":"D0 F6","instruction":"BNE $F152"},
-    {"group":6,"step":0,"pc":"$FB65","count":8,"bytes":"B9 08 FB","instruction":"LDA $FB08,Y"},
-    {"group":6,"step":1,"pc":"$FB68","count":8,"bytes":"99 0E 04","instruction":"STA $040E,Y"},
-    {"group":6,"step":2,"pc":"$FB6B","count":8,"bytes":"88","instruction":"DEY"},
-    {"group":6,"step":3,"pc":"$FB6C","count":8,"bytes":"D0 F7","instruction":"BNE STITLE"},
-    {"group":7,"step":0,"pc":"$FACE","count":0,"bytes":"88","instruction":"DEY"},
-    {"group":7,"step":1,"pc":"$FACF","count":0,"bytes":"88","instruction":"DEY"},
-    {"group":7,"step":2,"pc":"$FAD0","count":0,"bytes":"10 F5","instruction":"BPL NXTBYT"},
-    {"group":7,"step":3,"pc":"$FAC7","count":0,"bytes":"B1 00","instruction":"LDA (LOC0),Y"},
-    {"group":7,"step":4,"pc":"$FAC9","count":0,"bytes":"D9 01 FB","instruction":"CMP $FB01,Y"},
-    {"group":7,"step":5,"pc":"$FACC","count":0,"bytes":"D0 EC","instruction":"BNE SLOOP"}
-];
+var oCPU = new Cpu6502();
+const BOOT_GROUP_MEMBER_TABLE = oCPU.getBootLogFilters()
 
 const BOOT_GROUPS = (function () {
     var groups = Object.create(null);
