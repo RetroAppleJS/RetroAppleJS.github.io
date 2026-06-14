@@ -38,13 +38,39 @@ var HGRpalette = [];
 var vidContext, apple2plus;
 function Apple2Plus(context)
 {
-  this.video = new Apple2Video(context);
-  this.hw    = new Apple2Hw(this.video);
-  // Switch on Apple II Hi-Res graphics
-  this.video.reset();
-  this.video.setGfx(true);
-  this.video.setHires(true);
-  this.video.redraw();
+    this.video = new Apple2Video(context);
+    this.hw    = new Apple2Hw(this.video);
+
+    this.video.hw = this.hw;
+    this.hw.mount();
+
+    this.hw.read = function(addr)
+    {
+        return this.safe_read(addr);
+    };
+
+    this.hw.write = function(addr,d8)
+    {
+        addr &= 0xffff;
+        const line = this.lineDecode(addr);
+        return this.WR[line](addr,d8 & 0xff);
+    };
+
+    this.hwObj = function()
+    {
+        return this.hw;
+    };
+
+    this.vidObj = function()
+    {
+        return this.video;
+    };
+
+    // Switch on Apple II Hi-Res graphics.
+    this.video.reset();
+    this.video.setGfx(true);
+    this.video.setHires(true);
+    this.video.redraw();
 }
 
 function update_dither(bInit,idx)
@@ -485,7 +511,47 @@ background: #fff;
 
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/COM_CONFIG.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2main.js"></script>
+
+<script>
+if(typeof(oEMU) == "undefined")
+    var oEMU = {"component":{}};
+
+if(typeof(oEMU.component) != "object")
+    oEMU.component = {};
+
+if(typeof(oEMU.component.Video) == "undefined")
+    oEMU.component.Video = {};
+
+if(typeof(oEMU.component.IO) == "undefined")
+    oEMU.component.IO = {};
+
+if(typeof(oEMU.component.Keyboard) == "undefined")
+    oEMU.component.Keyboard = {};
+
+if(typeof(oEMU.component.ROM) == "undefined")
+    oEMU.component.ROM = {};
+
+if(typeof(oEMUI) == "undefined")
+{
+    var oEMUI = {
+        "slotConfig":function(){},
+        "slotsRender":function(){},
+        "deviceBtn":function(){},
+        "refreshDeviceToolboxes":function(){}
+    };
+}
+
+if(typeof(oMEMGRID) == "undefined")
+{
+    var oMEMGRID = {
+        "mem_gran":4,
+        "paint_grid":function(){},
+        "update_grid":function(){}
+    };
+}
+</script>
+
+<script type="text/javascript" src="../res/EMU_apple2roms.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
