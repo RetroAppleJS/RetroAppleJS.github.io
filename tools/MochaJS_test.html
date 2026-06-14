@@ -26,21 +26,78 @@
 
 
   <link rel="stylesheet" href="../res/mocha.css" />
-  <style> /* mocha.css style corrector */
-    #mocha { overflow: scroll; height:400px; width: 700px; float: left; }
-    #mocha::-webkit-scrollbar { background-color: transparent }
-    #mocha::-webkit-scrollbar-thumb { background-color: white; border-radius: 5px; }
-    #mocha::-webkit-scrollbar-corner { background: transparent }
-    #mocha-stats { top:30px;   }
-    #obj-inspector { overflow: scroll; height:400px; width: 400px; float: left ; border:'black 1px solid';vertical-align: top; }
-    </style>
-  <style>
-  html {height:100%;font-family:"Arial"}
-  body {background-color:#808080;height:100%;margin:0px;padding:0px;}
-  .no_margins { margin:0px 0px 0px; padding:0px 0px 0px 0px 0px; border:0px solid; }
-  </style>
+<style> /* mocha.css style corrector */
+  #mocha {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 400px;
+    width: 700px;
+    float: left;
+  }
 
+  #mocha::-webkit-scrollbar {
+    background-color: transparent;
+  }
 
+  #mocha::-webkit-scrollbar-thumb {
+    background-color: white;
+    border-radius: 5px;
+  }
+
+  #mocha::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  #mocha-stats {
+    top: 30px;
+  }
+
+  #mocha .test {
+    overflow: visible;
+  }
+
+  #mocha .test a.replay {
+    display: none !important;
+  }
+
+  #mocha .test pre {
+    float: none !important;
+    clear: both !important;
+    display: block;
+    box-sizing: border-box;
+
+    max-width: calc(100% - 42px);
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    white-space: pre;
+    word-wrap: normal;
+    overflow-wrap: normal;
+  }
+
+  #obj-inspector {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 400px;
+    width: 400px;
+    float: left;
+    border: 1px solid black;
+    vertical-align: top;
+  }
+
+  #mocha-stats .progress-contain
+  {
+
+    display: none !important;
+  }
+
+  #mocha-stats
+  {
+    border: 1px solid black;
+    margin-top: 10px;
+  }
+
+</style>
 </head>
 
 
@@ -111,8 +168,9 @@ function init_gui(_o)
 //  ██   ██    ██    ██      ██ ███████ 
 -->
 
-<body class="slider_main" onload="init_gui();" style="background-color:#B0B0B0">
+<body class="slider_main" onload="init_page();" style="background-color:#B0B0B0">
 
+</body>
 <div id="slider_title"></div>
 
 <div class="slider_overlay">
@@ -153,16 +211,39 @@ function init_gui(_o)
   //  ██  ██  ██ ██   ██ ██ ██  ██ ██ 
   //  ██      ██ ██   ██ ██ ██   ████
 
-        function start()
-        {
-          mocha.setup('bdd');
-          oASM.mocha_test({"chai":chai})
-          mocha.run();
 
-          var oObj_inspector = new OBJ_INSPECTOR();
-          oObj_inspector.load_mocha(mocha);
-          document.getElementById("obj-inspector").innerHTML += oObj_inspector.scan(this);
-        }
+  var mocha_started = false;
+
+  function init_page()
+  {
+    init_gui();
+
+    // Mocha replay links reload this page with ?grep=...
+    // In that case, automatically start the test run.
+    if(new URLSearchParams(window.location.search).has("grep"))
+      start();
+  }
+
+  function start()
+  {
+    if(mocha_started) return;
+    mocha_started = true;
+
+    mocha.setup('bdd');
+    oASM.mocha_test({"chai":chai});
+
+    var grep = new URLSearchParams(window.location.search).get("grep");
+    if(grep)
+      mocha.grep(new RegExp(grep));
+
+    mocha.run();
+
+    var oObj_inspector = new OBJ_INSPECTOR();
+    oObj_inspector.load_mocha(mocha);
+    document.getElementById("obj-inspector").innerHTML += oObj_inspector.scan(this);
+  }
+
+
 
   //  ████████  █████  ██ ██          ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
   //     ██    ██   ██ ██ ██          ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
