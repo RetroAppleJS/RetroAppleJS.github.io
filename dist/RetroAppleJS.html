@@ -4238,8 +4238,7 @@ function PANE()
         for(var k in attr)
         {
             if(attr[k] === false || attr[k] == null) continue;
-            if(attr[k] === true) out.push(k);
-            else out.push(k + '="' + this.escapeHTML(attr[k]) + '"');
+            out.push(attr[k] === true ? k : k + '="' + this.escapeHTML(attr[k]) + '"');
         }
         return out.length ? " " + out.join(" ") : "";
     };
@@ -4248,18 +4247,16 @@ function PANE()
     {
         if(!style) return "";
         if(typeof style == "string") return style;
-
         var out = [];
-        for(var k in style)
-            if(style[k] != null) out.push(k + ":" + style[k]);
+        for(var k in style) if(style[k] != null) out.push(k + ":" + style[k]);
         return out.join(";");
     };
 
     this.searchBarHTML = function(cfg)
     {
         if(!cfg) return "";
-
         var opt = cfg.opt || [];
+
         return ''
             + '<span class="pane-searchbar">'
             + '<input type="text" class="pane-find" placeholder="Find">'
@@ -4267,9 +4264,9 @@ function PANE()
             + '<button type="button" data-pane-act="find-prev">Prev</button>'
             + '<button type="button" data-pane-act="find-next">Next</button>'
             + '<button type="button" data-pane-act="replace">Replace</button>'
-            + (opt.includes("all") ? '<button type="button" data-pane-act="replace-all">All</button>' : '')
-            + (opt.includes("regexp") ? '<label><input type="checkbox" class="pane-regexp">.*</label>' : '')
-            + (opt.includes("case") ? '<label><input type="checkbox" class="pane-case">Aa</label>' : '')
+            + (opt.indexOf("all") >= 0 ? '<button type="button" data-pane-act="replace-all">All</button>' : '')
+            + (opt.indexOf("regexp") >= 0 ? '<label><input type="checkbox" class="pane-regexp">.*</label>' : '')
+            + (opt.indexOf("case") >= 0 ? '<label><input type="checkbox" class="pane-case">Aa</label>' : '')
             + '</span>';
     };
 
@@ -4279,30 +4276,96 @@ function PANE()
         var header = cfg.header || {};
         var body   = cfg.body || {};
 
-        var id      = cfg.id || "";
-        var cls     = cfg.class || "pane";
-        var hcls    = header.class || "pane-title";
-        var btag    = body.tag || "textarea";
-        var bcls    = body.class || "";
-        var bid     = body.id ? ' id="' + this.escapeHTML(body.id) + '"' : "";
-        var bstyle  = this.styleHTML(body.style);
-        var battr   = this.attrHTML(body.attr);
-
+        var btag = body.tag || "textarea";
         var content = body.content !== undefined ? body.content : txt;
 
         return ''
-            + '<section' + (id ? ' id="' + this.escapeHTML(id) + '"' : '') + ' class="' + this.escapeHTML(cls) + '">'
-            +   '<div class="' + this.escapeHTML(hcls) + '">'
-            +     '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
-            +     this.searchBarHTML(header.searchBar)
-            +   '</div>'
-            +   '<' + btag + bid
-            +      (bcls ? ' class="' + this.escapeHTML(bcls) + '"' : '')
-            +      (bstyle ? ' style="' + this.escapeHTML(bstyle) + '"' : '')
-            +      battr + '>'
-            +      this.escapeHTML(content || "")
-            +   '</' + btag + '>'
+            + '<section'
+            + (cfg.id ? ' id="' + this.escapeHTML(cfg.id) + '"' : '')
+            + ' class="' + this.escapeHTML(cfg.class || "pane") + '">'
+            + '<div class="' + this.escapeHTML(header.class || "pane-title") + '">'
+            + (header.html || (
+                '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
+                + this.searchBarHTML(header.searchBar)
+                + (header.infoId ? '<span id="' + this.escapeHTML(header.infoId) + '">' + this.escapeHTML(header.info || "") + '</span>' : '')
+            ))
+            + '</div>'
+            + '<' + btag
+            + (body.id ? ' id="' + this.escapeHTML(body.id) + '"' : '')
+            + (body.class ? ' class="' + this.escapeHTML(body.class) + '"' : '')
+            + (body.style ? ' style="' + this.escapeHTML(this.styleHTML(body.style)) + '"' : '')
+            + this.attrHTML(body.attr)
+            + '>'
+            + this.escapeHTML(content || "")
+            + '</' + btag + '>'
             + '</section>';
+    };
+
+    this.bindSearch = function(wrapper, target, callback)
+    {
+        if(typeof wrapper == "string") wrapper = document.getElementById(wrapper);
+        if(typeof target == "string") target = document.getElementById(target);
+        if(!wrapper || !target) return;
+
+        var findEl = wrapper.querySelector(".pane-find");
+        var replEl = wrapper.querySelector(".pane-replace");
+        var reEl   = wrapper.querySelector(".pane-regexp");
+        var caseEl = wrapper.querySelector(".pane-case");
+        if(!findEl) return;
+
+        function flags(global)
+        {
+            return (global ? "g" : "") + (caseEl && caseEl.checked ? "" : "i");
+        }
+
+        function pattern(global)
+        {
+            var s = findEl.value;
+            if(!s) return null;
+            if(reEl && reEl.checked) return new RegExp(s, flags(global));
+            return new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags(global));
+        }
+
+        function find(next)
+        {
+            var re = pattern(false);
+            if(!re) return;
+
+            var txt = target.value || target.textContent || "";
+            var from = next ? target.selectionEnd || 0 : 0;
+            var m = txt.slice(from).match(re);
+            if(!m && from > 0) m = txt.match(re), from = 0;
+            if(!m) return;
+
+            var pos = from + m.index;
+            if(target.setSelectionRange) {
+                target.focus();
+                target.setSelectionRange(pos, pos + m[0].length);
+            }
+        }
+
+        function replace(all)
+        {
+            var re = pattern(all);
+            if(!re) return;
+
+            if(target.value !== undefined) target.value = target.value.replace(re, replEl ? replEl.value : "");
+            else target.textContent = target.textContent.replace(re, replEl ? replEl.value : "");
+
+            if(typeof callback == "function") callback(target);
+        }
+
+        wrapper.addEventListener("click", function(ev) {
+            var act = ev.target && ev.target.dataset ? ev.target.dataset.paneAct : "";
+            if(act == "find-prev") find(false);
+            if(act == "find-next") find(true);
+            if(act == "replace") replace(false);
+            if(act == "replace-all") replace(true);
+        });
+
+        findEl.addEventListener("keydown", function(ev) {
+            if(ev.key == "Enter") { ev.preventDefault(); find(!ev.shiftKey); }
+        });
     };
 }
 
