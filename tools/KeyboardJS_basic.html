@@ -1,5 +1,6 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link rel='stylesheet' href='https://retroapplejs.github.io/tools/../res/kb_new.css'>
+<script type="text/javascript" src="../res/pako.min.js"></script>    <!-- compression/decompression library -->
 <style>
 @import url(http://fonts.googleapis.com/css?family=Fragment+Mono);
 #keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400; }
@@ -16,8 +17,7 @@ inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));
 function doit()
 {
 var s = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n"
-       +"<meta http-equiv="Content-Type" content="text/html; charset=utf-8">\n"
-       +"<style>\n"+custom_css+"\n</style>\n"
+       //+"<style>\n"+custom_css+"\n</style>\n"
        +"<div id=\"glyphScroller\">"
        +new TextDecoder().decode(inflator.result)
        +"</div>"
