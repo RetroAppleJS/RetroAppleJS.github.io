@@ -27034,8 +27034,8 @@ function ASM()
 					_a.deepEqual(oASM.getNumber('"AB"').f(),    {val:49602,fmt:'ASC',bytes:2}, "double quoted two chars");
 					_a.deepEqual(oASM.getNumber("'AB'").f(),    {val:16706,fmt:'ASC',bytes:2}, "single quoted two chars");
 
-					_a.deepEqual(oASM.getNumber("\"\"'\"").f(), {val:34983,fmt:'ASC',bytes:2}, "double quote wrapper, quote char inside");
-					_a.deepEqual(oASM.getNumber("\"'\"\"").f(), {val:34722,fmt:'ASC',bytes:2}, "double quote wrapper, single+double quote");
+					_a.deepEqual(oASM.getNumber("\"\"'\"").f(), {val:41639,fmt:'ASC',bytes:2}, "double quote wrapper, quote char inside");
+					_a.deepEqual(oASM.getNumber("\"'\"\"").f(), {val:42914,fmt:'ASC',bytes:2}, "double quote wrapper, single+double quote");
 
 					_a.deepEqual(oASM.getNumber("\"'\"").f(),   {val:167,fmt:'ASC',bytes:1}, "single quote char with high bit");
 					_a.deepEqual(oASM.getNumber("'\"'").f(),    {val:34, fmt:'ASC',bytes:1}, "double quote char without high bit");
@@ -27045,7 +27045,8 @@ function ASM()
 					_a.deepEqual(oASM.getNumber("").f(["val","err"]),     {val:0}, "empty string currently resolves as DEC zero");
 					_a.deepEqual(oASM.getNumber().f(["val","err"]),       {val:"NaN","err":"number malformation"}, "undefined");
 
-					_a.deepEqual(oASM.getNumber("\"ABC\"").f(), {val:12632259,"fmt":"ASC","bytes":3,"err":"number range error"}, "ASCII too large");
+					_a.deepEqual(oASM.getNumber("\"ABC\"").f(), {val:12698307,"fmt":"ASC","bytes":3,"err":"number range error"}, "ASCII too large");
+					_a.deepEqual(oASM.getNumber("'ABC'").f(), {val:4276803,"fmt":"ASC","bytes":3,"err":"number range error"}, "single-quoted ASCII too large");
 					_a.deepEqual(oASM.getNumber("\"A").f(["val"]), {val:"NaN"}, "unclosed double quote");
 				});
 				
