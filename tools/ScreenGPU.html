@@ -391,9 +391,9 @@ var Apple2Video = function(ctx)
     window.requestAnimationFrame( function()
     { 
       apple2plus.vidObj().kernel(
-      apple2plus.hwObj().safe_flashdump()           // MEMORY DATA
-      ,CHAR_ROM[apple2plus.vidObj().font_name].data // CHARACTER ROM DATA
-      ,apple2plus.vidObj().serial8)                 // CONFIG DATA
+        apple2plus.hwObj().safe_videodump()           // MEMORY DATA
+        ,CHAR_ROM[apple2plus.vidObj().font_name].data // CHARACTER ROM DATA
+        ,apple2plus.vidObj().serial8)                 // CONFIG DATA
     } );
     frame_redraw=false;  // OPEN ISSUE (ANDROID related) https://github.com/gpujs/gpu.js/issues/521
   }
