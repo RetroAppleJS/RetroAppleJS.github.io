@@ -27,41 +27,46 @@
     <textarea id="output" placeholder="OCR output will appear here..."></textarea>
 
     <script>
-        async function performOCR() {
-            const fileInput = document.getElementById('uploader');
-            const outputArea = document.getElementById('output');
+async function performOCR()
+{
+    const fileInput = document.getElementById('uploader');
+    const outputArea = document.getElementById('output');
 
-            if (fileInput.files.length === 0) {
-                alert('Please select a PNG image first.');
-                return;
+    if(fileInput.files.length === 0)
+    {
+        alert('Please select a PNG image first.');
+        return;
+    }
+
+    const imageFile = fileInput.files[0];
+    outputArea.value = "Processing OCR... Please wait.";
+
+    try
+    {
+        const { data: { text } } = await Tesseract.recognize(
+            imageFile,
+            'eng',
+            {
+                tessedit_char_whitelist: '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz&"\'§!()[]{}-$*%?,;/:+=\\@# ',
+                logger: m => { console.log(m); }
             }
+        );
 
-            const imageFile = fileInput.files[0];
+        var t = text.trim();
 
-            outputArea.value = "Processing OCR... Please wait.";
+        // Replace very long lowercase OCR noise strings by dots.
+        var m = t.match(/[a-z]{12,}/g) || [];
+        for(var i=0;i<m.length;i++)
+            t = t.replace(m[i],".".repeat(m[i].length));
 
-            const { data: { text } } = await Tesseract.recognize(
-                imageFile,
-                'eng',
-                {
-                    tessedit_char_whitelist: '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz&"\'§!()[]{}-$*%?,;/:+=\\@# ',
-
-
-                    logger: m => { console.log(m); }
-                }
-            );
-
-            var t = text.trim();
-            var m = t.match(/([a-z]){12,}/g);
-            for(var i=0;i<m.length;i++)
-                t = t.replace(m[i],".".repeat(m[i].length))
-                
-
-            // Simple Markdown formatting (preserve structure, add code fences)
-            const markdownResult = t;
-
-            outputArea.value = markdownResult;
-        }
+        outputArea.value = t;
+    }
+    catch(e)
+    {
+        console.error(e);
+        outputArea.value = "OCR failed: " + (e && e.message ? e.message : e);
+    }
+}
     </script>
 </body>
 </html>
