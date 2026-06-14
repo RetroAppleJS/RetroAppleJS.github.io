@@ -1,124 +1,68 @@
-<html>
-    <head>
-        <title>KeyboardJS - KEYBOARD MAPPING TOOL</title>
-    </head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel='stylesheet' href='https://retroapplejs.github.io/tools/../res/kb_new.css'>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/pako.min.js"></script>    <!-- compression/decompression library -->
+<style>
+@import url(http://fonts.googleapis.com/css?family=Fragment+Mono);
+#keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400; }
+#keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px; }
+#keyboard .keycap .altfont, #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -3px; }
+</style>
 <script>
-//   ██████  ██    ██ ██     ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
-//  ██       ██    ██ ██     ██      ██    ██ ████   ██ ██         ██    ██ ██    ██ ████   ██ ██      
-//  ██   ███ ██    ██ ██     █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
-//  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
-//   ██████   ██████  ██     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████ 
-
-/////////////////////////////////////////////////////////
-
-
-var CONF_version="";
-var CONF_builddate="";  
-var _T = function _T(idx,mod)
+var c_body =
+ "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";
+const inflator = new pako.Inflate();
+inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));
+function doit()
 {
-    this.t = {
-        get _language(){ return "NL" }
-        ,"title":document.title
-        ,"menu_convert":""
-        ,"menu_info":"Info/Contact"
-        ,"intro":""
-        ,"version":(CONF_version?("Version "+CONF_version):"")
-        ,"built":(CONF_builddate?("Built "+CONF_builddate):"")
-        ,get _(){return this}
-    }
-    if(idx.length>0 && typeof(this.t[idx])=="undefined") { alert(idx); return "<font color=red>"+idx+"</font>" }
-    switch(mod)
-    {
-        case "cap": return this.t[idx].charAt(0).toUpperCase()+this.t[idx].substring(1,this.t[idx].length);
-        case "inv": { var j = {}; for(var i in t) { j[ t[i] ] = i }; return j } // inverse associative
-        default: return this.t[idx];
-    }
+var s = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n"
+       //+"<style>\n"+custom_css+"\n</style>\n"
+       +"<div id=\"glyphScroller\">"
+       +new TextDecoder().decode(inflator.result)
+       +"</div>"
+document.getElementById("body").innerHTML = s;
+document.getElementById("code").value = s;
 }
-function _D(idx) { if(typeof(_T(idx)=="string")) document.write(_T(idx)) }
-function _TITLE() {
-    var hight_pct = 6;
-    var css = "#texturespace {background: #f7f7f7 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;}"
-    +"#carvetext {color: transparent;background: #f7f7f7;font: 62.5%/1 sans-serif;stroke: 2px rgba(0,0,0,0.2);background-color: rgba(140,140,140,1);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px, rgba(255,255,255,0.2) 1px 3px 3px;transition: text-shadow .1s ease-out, background-color .2s ease-out;}"
-    +"#carvetext:hover {color: transparent;background-color: rgba(82,96,117,0.5);-webkit-background-clip: text;text-shadow: rgba(255,255,255,0.5) 0 5px 6px;}"
-    +"#carvetext:focus {outline: none;}.slider_main {position: relative;height: 100%;}"
-    +".slider_overlay {position: absolute;bottom: 0;left: 0;right: 0;background-color: #F0F0F0;overflow: hidden;width: 100%;height: 85%;transition: .5s ease;}"
-    //+".slider_main:hover "
-    +".slider_overlay {height: 100%;}"
-    +"#topmenu{width:100%;background-color:#f0f0f0}"
-    +"ul#minitabs{list-style:none;margin:0;padding:3px 0 0 0;border-left:1px solid #ccc;border-right:1px solid #ccc;border-top:1px solid #ccc;border-bottom:1px solid #ccc;font-weight:700;text-align:left;white-space:nowrap}ul#minitabs li{display:inline;margin:0 3px}ul#minitabs a{text-decoration:none;color:#999}ul#minitabs a#current{border-color:#f60;color:#06f}ul#minitabs a:hover{border-color:#f60;color:#666}"
+var keycapmap = {"keylabel0":"top-left","keylabel1":"top-center","keylabel2":"top-right","keylabel3":"center-left","keylabel4":"center-center","keylabel5":"center-right","keylabel6":"bottom-left","keylabel7":"bottom-center","keylabel8":"bottom-right","keylabel9":"front-left","keylabel10":"front-center","keylabel11":"front-right"}
+function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
+function keycap_over(t) { t.classList.replace("keycap","selected") }
+function keycap_out(t) { t.classList.replace("selected","keycap") }
+function keycap_click(t)
+{
+   console.log("");
 
-    return "<style>"+css+".slider_overlay{height: "+(100-hight_pct)+"%}</style>"
-    +"<div id=texturespace style='height:100%;width:100%'><center><div id='carvetext'>"
-    +"<div style='font-size:5em'>"+(typeof(_T("title"))=="string"?_T("title"):"")+"</div>"
-    +"<div style='font-size:1em'>"+(typeof(_T("version"))=="string"?_T("version"):"")
-    +" &nbsp; "+(typeof(_T("built"))=="string"?_T("built"):"")+"</div>"
-    +"</div></center></div>"
+   const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);
+   var s = "";
+
+   for(const match of matches)
+   {
+      var el = t.getElementsByClassName(match[1]);
+      if(!el || !el[0] || !el[0].firstElementChild) continue;
+
+      var child = el[0].firstElementChild.innerHTML;
+      var log = [keycapmap[match[1]], stripHTML(child), child];
+
+      console.log(log[0]+" "+log[1], log[2]);
+      s += log[0]+" "+log[1]+"<br>";
+   }
+
+   oCOM.POPUP.html(s);
 }
 </script>
+<body onload="doit()">
 
-<script type="text/javascript" src="../res/EMU_A2Pkeys_v0.js"></script>
-<script>
-const _o = {"tools":{}
-        ,"sys":{}
-        ,"EMU_keyb_timer":false
-        ,"EMU_keyb_active":false
-        ,"EMU_kbd_id":"kbdimg"
-        ,"EMU_key_id":"keybox"
-        ,"KBD_Xoff":-6
-        ,"KBD_Yoff":-50
-        ,"EMU_Updates_s":10                 // Emulator intervals per second 
-        ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
-        ,"CPU_ClocksTicks_s":1000000        // CPU clocksTicks per second
-    };
-
-var oEMU = {};
-oEMU.component = {"Keyboard":["A2P"]};
-var keys = new A2Pkeys();
-keys.bDebug = true;
-var innerHTML = true;
-
-function init_gui(_o)
-{
-    document.getElementById("slider_title").outerHTML = _TITLE();
-    if(innerHTML)
-    {
-         keys.KbdHTML({id:"kbd",path:"../res/"
-        ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
-        ,key_events:"onkeydown=onkeyup=keys.keystroke(event)"});
-    }
-}
-
-/////////////////////////////////////////////////////////
-
-</script>
-
-<body class="slider_main" onload="init_gui();" onkeydown=keys.keystroke(event)  style="background-color:#B0B0B0">
-    <div id="slider_title"></div>
-
-    <div class="slider_overlay">
-      <div id="topmenu">
-        <ul id="minitabs">
-          <li class=no_margins style=vertical-align:top;>
-            <!--TEST-->
-        </li>
-    </ul>
-    </div>
-    <div id=main>
-
-        <br><br><br><br><br><br><br><br>
-        <br><br><br><br><br><br><br><br>
-        <script>
-        if(!innerHTML)
-        {
-             keys.KbdHTML({path:"../res/"
-            ,kbd_events:"onmousemove=keys.KbdHover(event); onmouseout=keys.KbdHover(event)"
-            ,key_events:"onclick=keys.keystroke(event)"});
-        }
-        </script>
-        <div id='kbd'></div>
-
-    </div>
+<div class="appbox"
+     id="COM_popup"
+     style="position:absolute; z-index:3; left:0px; top:120px; background:#f0f0f0; border:1px solid #808080; padding:6px;"
+     hidden="">
+  <div class="appbut"
+       onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML='';"
+       style="text-align:center;float:right;cursor:pointer;">x</div>
+  <div id="COM_popup_text"></div>
 </div>
-<textarea id="key_debug" rows="10" cols="80"></textarea>
+
+<div id="body"></div>
+<textarea id="code" style=width:600px;height:150px></textarea>
 </body>
-</html>
