@@ -36,10 +36,54 @@ doc:      https://cryptobook.nakov.com/asymmetric-key-ciphers/elliptic-curve-cry
 <script type="text/javascript" src="TOOLS_Header.js"></script>
 <script type="text/javascript" src="../res/COM_CONFIG.js"></script>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
-<script type="text/javascript" src="../res/EMU_apple2main.js"></script>
+
+<script>
+if(typeof(oEMU) == "undefined")
+    var oEMU = {"component":{}};
+
+if(typeof(oEMU.component) != "object")
+    oEMU.component = {};
+
+if(typeof(oEMU.component.Video) == "undefined")
+    oEMU.component.Video = {};
+
+if(typeof(oEMU.component.IO) == "undefined")
+    oEMU.component.IO = {};
+
+if(typeof(oEMU.component.Keyboard) == "undefined")
+    oEMU.component.Keyboard = {};
+
+if(typeof(oEMU.component.ROM) == "undefined")
+    oEMU.component.ROM = {};
+
+if(typeof(oEMUI) == "undefined")
+{
+    var oEMUI = {
+        "slotConfig":function(){},
+        "slotsRender":function(){},
+        "deviceBtn":function(){},
+        "refreshDeviceToolboxes":function(){}
+    };
+}
+
+// EMU_apple2hw.js marks writes for the memory grid.
+// This tool does not show a memory grid, so provide a harmless stub.
+if(typeof(oMEMGRID) == "undefined")
+{
+    var oMEMGRID = {
+        "mem_gran":4,
+        "paint_grid":function(){},
+        "update_grid":function(){}
+    };
+}
+</script>
+
+<script type="text/javascript" src="../res/EMU_apple2roms.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2video.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2hw.js"></script>
 <script type="text/javascript" src="../res/EMU_apple2io.js"></script>
+
+
 <script>
 
 var CONF_version="0.0.1";
@@ -143,13 +187,42 @@ function init_gui(_o)
 
 function Apple2Plus(context)
 {
-  this.video = new Apple2Video(context);
-  this.hw    = new Apple2Hw(this.video);
-  // Switch on Apple II Hi-Res graphics
-  this.video.reset();
-  this.video.setGfx(true);
-  this.video.setHires(true);
-  this.video.redraw();
+    this.video = new Apple2Video(context);
+    this.hw    = new Apple2Hw(this.video);
+
+    this.video.hw = this.hw;
+
+    // Current Apple2Hw exposes RD/WR maps, not the old hw.read()/hw.write() API.
+    // Keep this tool compatible without changing the emulator.
+    this.hw.mount();
+
+    this.hw.read = function(addr)
+    {
+        const line = this.lineDecode(addr);
+        return this.RD[line](addr);
+    };
+
+    this.hw.write = function(addr,d8)
+    {
+        const line = this.lineDecode(addr);
+        return this.WR[line](addr,d8);
+    };
+
+    this.hwObj = function()
+    {
+        return this.hw;
+    };
+
+    this.vidObj = function()
+    {
+        return this.video;
+    };
+
+    // Switch on Apple II Hi-Res graphics.
+    this.video.reset();
+    this.video.setGfx(true);
+    this.video.setHires(true);
+    this.video.redraw();
 }
 
 // Overloading the setPixel function to accomodate patterning
@@ -216,11 +289,9 @@ var status_message = function(str) { document.getElementById("status").innerHTML
 
 function draw_curve()
 {
-  //for(var i=8192;i<16384;i++)      // clear video RAM
-  //  apple2plus.hw.write(i,i%255);
-
   p.update = false;
   wipe_HGR(0);
+
   for(var xi=gx.xmin;xi<=gx.xmax;xi++)
   {
     for(var yi=gx.ymax;yi<=gx.ymin;yi++)
@@ -231,12 +302,13 @@ function draw_curve()
     }
   }
 
+  apple2plus.video.redraw();
 
-    document.getElementById("dump").innerHTML = "<small>"+s.join("<br>")+"</small>"
-    //s.length = 0;
-    s.length = 0; 
-    ii = 0;
+  document.getElementById("dump").innerHTML = "<small>"+s.join("<br>")+"</small>";
+  s.length = 0; 
+  ii = 0;
 }
+
 
 var mod = function (n, m) {
     var remain = n % m;
