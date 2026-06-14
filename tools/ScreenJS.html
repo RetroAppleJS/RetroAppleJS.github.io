@@ -94,6 +94,15 @@ const _o = {
 
 var oEMU = { "system":{}, "component":{"CPU":{},"Video":{},"RAM":{},"ROM":{},"IO":{}},"stats":{} }
 
+if(typeof(oMEMGRID) == "undefined")
+{
+    var oMEMGRID = {
+        "mem_gran":4,
+        "paint_grid":function(){},
+        "update_grid":function(){}
+    };
+}
+
 function EMU_init()
 {
   document.getElementById('slider_title').outerHTML = _TITLE();
@@ -127,13 +136,25 @@ var vidContext, apple2plus;
 
 function Apple2Plus(context)
 {
-  this.video = new Apple2Video(context);
-  this.hw    = new Apple2Hw(this.video);
-  // Switch on Apple II Hi-Res graphics
-  this.video.reset();
-  this.video.setGfx(true);
-  this.video.setHires(true);
-  this.video.redraw();
+    this.video = new Apple2Video(context);
+    this.hw    = new Apple2Hw(this.video);
+    this.video.hw = this.hw;
+    this.hw.mount();  // Current Apple2Hw uses RD/WR maps.
+
+    this.hw.read = function(addr) { return this.safe_read(addr); }
+
+    this.hw.write = function(addr,d8)
+    {
+        addr &= 0xffff;
+        const line = this.lineDecode(addr);
+        return this.WR[line](addr,d8 & 0xff);
+    };
+
+    // Switch on Apple II Hi-Res graphics.
+    this.video.reset();
+    this.video.setGfx(true);
+    this.video.setHires(true);
+    this.video.redraw();
 }
 </script>
 
@@ -206,6 +227,7 @@ function draw(color_pattern)
   }
 
   document.getElementById("debug").innerHTML = s.join("");
+  apple2plus.video.redraw();
 }
 
 function paste_pattern(wbyt,xi,yi,pat,dimx,dimy)
