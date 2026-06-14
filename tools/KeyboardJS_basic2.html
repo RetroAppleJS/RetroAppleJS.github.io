@@ -40,7 +40,20 @@
 
 
         var keys = new A2Pkeys(hw);
-        keys.KbdHTML({"id":"kbd","path":"../res/","Yoffset":40});        // Paste keyboard HTML code
+
+        if(typeof(oEMU) == "undefined")
+            var oEMU = {"component":{}};
+
+        if(typeof(oEMU.component) != "object")
+            oEMU.component = {};
+
+        oEMU.component.Keyboard = keys;
+
+        keycap_over  = keys.events({"srcElement":{"id":"keycap"},"type":"over"});
+        keycap_out   = keys.events({"srcElement":{"id":"keycap"},"type":"out"});
+        keycap_click = keys.events({"srcElement":{"id":"keycap"},"type":"click"});
+
+        keys.KbdHTML({"id":"kbd","path":"../res/","Yoffset":40});
 
 
         var numrows = 24, numcols = 40;

@@ -655,7 +655,7 @@ function ASM()
 					_a.deepEqual(oASM.getNumber("<256").f(),{"val":0,"fmt":"DEC","bytes":1},"DEC low byte = 0");
 					_a.deepEqual(oASM.getNumber(">255").f(),{"val":0,"fmt":"DEC","bytes":1},"DEC high byte = undefined");
 					_a.deepEqual(oASM.getNumber("0").f(),   {"val":0,"fmt":"DEC","bytes":1},"edge case 1 digit DEC");
-					_a.deepEqual(oASM.getNumber(0).f(["val","err"]),{"val":"NaN","err":"number malformation"},"wrong input datatype");
+					_a.deepEqual(oASM.getNumber(0).f(), {"val":0,"fmt":"DEC","bytes":1}, "numeric zero");
 				});
 				it('parses ASCII encoding',function()
 				{
@@ -692,7 +692,8 @@ function ASM()
 	// TODO ALWAYS ASSUME r.bytes as the byte size of the address bus
 	this.getNumber = function(str,arg)   
 	{
-		var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
+		if(typeof(str) == "number") str = String(str);
+		 var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string" ? ["",""] : [str.charAt(0),str.substring(1)];
 		Array.prototype.mr = function (m) {  return this[0].match(new RegExp(m))!=null || (this[0]=="0" && this[1]=="")? [m,this[1]] : this }
 		c = c.mr("[1-9]");
 		switch(c[0])
