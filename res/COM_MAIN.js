@@ -1675,3 +1675,93 @@ var oMEMGRID = new function()
   }
 
 }(COM)
+
+
+function PANE()
+{
+    this.escapeHTML = function(s)
+    {
+        return String(s ?? "")
+            .replace(/&/g,"&amp;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;")
+            .replace(/"/g,"&quot;");
+    };
+
+    this.attrHTML = function(attr)
+    {
+        if(!attr) return "";
+        if(typeof attr == "string") return " " + attr;
+
+        var out = [];
+        for(var k in attr)
+        {
+            if(attr[k] === false || attr[k] == null) continue;
+            if(attr[k] === true) out.push(k);
+            else out.push(k + '="' + this.escapeHTML(attr[k]) + '"');
+        }
+        return out.length ? " " + out.join(" ") : "";
+    };
+
+    this.styleHTML = function(style)
+    {
+        if(!style) return "";
+        if(typeof style == "string") return style;
+
+        var out = [];
+        for(var k in style)
+            if(style[k] != null) out.push(k + ":" + style[k]);
+        return out.join(";");
+    };
+
+    this.searchBarHTML = function(cfg)
+    {
+        if(!cfg) return "";
+
+        var opt = cfg.opt || [];
+        return ''
+            + '<span class="pane-searchbar">'
+            + '<input type="text" class="pane-find" placeholder="Find">'
+            + '<input type="text" class="pane-replace" placeholder="Replace">'
+            + '<button type="button" data-pane-act="find-prev">Prev</button>'
+            + '<button type="button" data-pane-act="find-next">Next</button>'
+            + '<button type="button" data-pane-act="replace">Replace</button>'
+            + (opt.includes("all") ? '<button type="button" data-pane-act="replace-all">All</button>' : '')
+            + (opt.includes("regexp") ? '<label><input type="checkbox" class="pane-regexp">.*</label>' : '')
+            + (opt.includes("case") ? '<label><input type="checkbox" class="pane-case">Aa</label>' : '')
+            + '</span>';
+    };
+
+    this.getHTML = function(txt, cfg)
+    {
+        cfg = cfg || {};
+        var header = cfg.header || {};
+        var body   = cfg.body || {};
+
+        var id      = cfg.id || "";
+        var cls     = cfg.class || "pane";
+        var hcls    = header.class || "pane-title";
+        var btag    = body.tag || "textarea";
+        var bcls    = body.class || "";
+        var bid     = body.id ? ' id="' + this.escapeHTML(body.id) + '"' : "";
+        var bstyle  = this.styleHTML(body.style);
+        var battr   = this.attrHTML(body.attr);
+
+        var content = body.content !== undefined ? body.content : txt;
+
+        return ''
+            + '<section' + (id ? ' id="' + this.escapeHTML(id) + '"' : '') + ' class="' + this.escapeHTML(cls) + '">'
+            +   '<div class="' + this.escapeHTML(hcls) + '">'
+            +     '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
+            +     this.searchBarHTML(header.searchBar)
+            +   '</div>'
+            +   '<' + btag + bid
+            +      (bcls ? ' class="' + this.escapeHTML(bcls) + '"' : '')
+            +      (bstyle ? ' style="' + this.escapeHTML(bstyle) + '"' : '')
+            +      battr + '>'
+            +      this.escapeHTML(content || "")
+            +   '</' + btag + '>'
+            + '</section>';
+    };
+}
+
