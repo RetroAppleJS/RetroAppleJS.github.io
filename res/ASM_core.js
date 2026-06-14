@@ -747,17 +747,17 @@ function ASM()
 				break;
 			case "\"":		    // ASCII  -  high bit will be on if a double quote (") is used and off if enclosed by a signle quote (')
 				var h = 0x80;	// set high bit
-			case "'":
-				var h = h??0x00;
-				err = (str.replace(RegExp(c[0],"g"),"").split(c[0]).length-1)%2!=0 ? "open quote" : null;
-				
-				var p = p>=0?p:c[1].lastIndexOf(c[0]);
+			case "'":           // ASCII - high bit off for single quote
+				var h = h ?? 0x00;
+				var p = c[1].lastIndexOf(c[0]);
+				if(p < 0) { err = "open quote"; r = {"val":NaN}; break; }
 				var s = c[1].substring(0,p);
+				if(s.length == 0) { err = "number malformation"; r = {"val":NaN}; break; }
 
-				if(s.length>0)
-					for(var i=s.length-1,v=0;i>=0;i--)
-						v += (s.charCodeAt(s.length-1-i) | h) << (8*i);
-				r =  {"val":v,"fmt":"ASC","bytes":s.length,"err":err};
+				for(var i=s.length-1,v=0;i>=0;i--)
+					v += (s.charCodeAt(s.length-1-i) | h) << (8*i);
+
+				r = {"val":v,"fmt":"ASC","bytes":s.length};
 				break;
 			default:
 				if(this.validate(str,"[A-Za-z0-9_.-]+")) // IDENTIFIER
