@@ -31,19 +31,38 @@ function keycap_over(t) { t.classList.replace("keycap","selected") }
 function keycap_out(t) { t.classList.replace("selected","keycap") }
 function keycap_click(t)
 {
-   console.log("");const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);s=""
+   console.log("");
+
+   const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);
+   var s = "";
+
    for(const match of matches)
    {
       var el = t.getElementsByClassName(match[1]);
+      if(!el || !el[0] || !el[0].firstElementChild) continue;
+
       var child = el[0].firstElementChild.innerHTML;
-      var log = [keycapmap[match[1]],stripHTML(child),child];
-      console.log(log[0]+" "+log[1],log[2]);
-      s+= log[0]+" "+log[1]+"<br>";
+      var log = [keycapmap[match[1]], stripHTML(child), child];
+
+      console.log(log[0]+" "+log[1], log[2]);
+      s += log[0]+" "+log[1]+"<br>";
    }
-  oCOM.POPUP.html(s);
+
+   oCOM.POPUP.html(s);
 }
 </script>
 <body onload="doit()">
+
+<div class="appbox"
+     id="COM_popup"
+     style="position:absolute; z-index:3; left:0px; top:120px; background:#f0f0f0; border:1px solid #808080; padding:6px;"
+     hidden="">
+  <div class="appbut"
+       onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML='';"
+       style="text-align:center;float:right;cursor:pointer;">x</div>
+  <div id="COM_popup_text"></div>
+</div>
+
 <div id="body"></div>
 <textarea id="code" style=width:600px;height:150px></textarea>
 </body>
