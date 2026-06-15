@@ -151,7 +151,7 @@
     }
 
     .listing-columns-input {
-        width: min(360px, 42vw);
+        width: min(180px, 24vw);
         border: 1px solid var(--border);
         border-radius: 7px;
         background: #0b0f14;
@@ -280,7 +280,8 @@
 <template id="sampleSourceTemplate">
 </template>
 
-    <section class="pane listing-pane" id="listingPaneWrapper">
+
+    <!--section class="pane listing-pane" id="listingPaneWrapper">
         <div class="pane-title">
             <span class="pane-title-main">
                 <strong>Assembly listing</strong>
@@ -295,7 +296,7 @@
         <div class="pane-title"><strong>JSON output</strong><span id="jsonInfo">interactive JSON</span></div>
         <div id="jsonMount" class="json-mount" tabindex="0"></div>
     </section>
-</main>
+</main-->
 
 <section class="pane byte-pane">
     <div class="pane-title"><strong>Byte code</strong><span id="byteCodeInfo">8 bytes per line</span></div>
@@ -1517,10 +1518,10 @@ asmPaneHost.innerHTML =
         header:{
             class:"pane-title",
             html:'<span class="pane-title-main">'
-                + '<strong>Assembly listing</strong>'
+                + '<strong>Listing</strong>'
                 + '<input id="listingColumnsInput" class="listing-columns-input" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" />'
                 + '</span>'
-                + oPANE.searchBarHTML({opt:["all","regexp","case"]})
+                //+ oPANE.searchBarHTML({opt:["all","regexp","case"]})
                 + '<span id="listingInfo">compile()</span>'
         },
         body:{

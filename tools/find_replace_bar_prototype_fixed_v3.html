@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Find / Replace Bar Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+    --bar-bg:#f3f3f3;
+    --bar-border:#d2d2d2;
+    --field-bg:#fff;
+    --text:#5f5f5f;
+    --muted:#9a9a9a;
+    --active:#0078d4;
+    --active-bg:#e9f4ff;
+    --editor-bg:#111820;
+    --editor-text:#e6edf3;
+    --match-bg:rgba(255,210,70,.28);
+    --current-bg:rgba(255,185,45,.85);
+    --selection-bg:rgba(190,190,190,.35);
+}
+* { box-sizing:border-box; }
+body {
+    margin:0;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:#20242a;
+    color:var(--editor-text);
+}
+
+.editor-wrap {
+    position:relative;
+    width:100%;
+    height:100vh;
+    background:var(--editor-bg);
+    overflow:hidden;
+}
+
+#editorOverlay,
+#editor {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    margin:0;
+    padding:92px 28px 28px;
+    border:0;
+    outline:0;
+    font:15px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+    tab-size:4;
+    white-space:pre;
+    overflow:auto;
+}
+
+#editorOverlay {
+    pointer-events:none;
+    color:var(--editor-text);
+    background:var(--editor-bg);
+}
+
+#editor {
+    resize:none;
+    background:transparent;
+    color:transparent;
+    caret-color:var(--editor-text);
+}
+
+#editor::selection {
+    background:rgba(197,139,27,.65);
+    color:transparent;
+}
+
+.hl-selection { background:var(--selection-bg); }
+.hl-match { background:var(--match-bg); }
+.hl-current { background:var(--current-bg); color:#000; }
+
+.search-shell {
+    position:fixed;
+    top:8px;
+    left:8px;
+    right:8px;
+    z-index:20;
+    display:none;
+    grid-template-columns:auto minmax(150px,392px) auto auto auto auto auto;
+    grid-template-rows:24px;
+    align-items:center;
+    gap:4px;
+    padding:2px 4px;
+    border:1px solid var(--bar-border);
+    border-radius:4px;
+    background:var(--bar-bg);
+    box-shadow:0 2px 12px rgba(0,0,0,.18);
+    color:var(--text);
+}
+.search-shell.open { display:grid; }
+.search-shell.expanded { grid-template-rows:24px 24px; }
+
+.search-expander,
+.icon-btn {
+    font-size:14px;
+    width:20px;
+    min-width:20px;
+    height:20px;
+    border:1px solid transparent;
+    border-radius:3px;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+}
+.search-expander { color:#333; }
+.search-expander:hover,
+.search-expander.active,
+.icon-btn.active {
+    border-color:var(--active);
+    background:var(--active-bg);
+    color:#111;
+}
+.icon-btn:hover { color:#555; background:#ececec; }
+.icon-btn:disabled { opacity:.35; cursor:default; pointer-events:none; }
+
+.search-expander .chev { display:inline-block; transform:rotate(0deg); }
+.search-shell.expanded .search-expander .chev { transform:rotate(90deg); }
+
+.field-wrap {
+    display:flex;
+    height:20px;
+    border-radius:3px;
+    background:var(--field-bg);
+    overflow:hidden;
+}
+.field-wrap input {
+    min-width:0;
+    flex:1;
+    padding:0 2px;
+    border:0;
+    outline:0;
+    font:10px/1 sans-serif;
+    overflow:hidden;
+}
+.field-buttons {
+    display:flex;
+    height:100%;
+    align-items:center;
+    padding-right:4px;
+    gap:4px;
+}
+.under { text-decoration:underline; text-underline-offset:4px; }
+.results { font-size:10px; min-width:70px; }
+.nav-btn, .close-btn, .find-selection { font-size:14px; }
+
+.replace-row-spacer { grid-column:1; }
+.replace-field { grid-column:2; grid-row:2; }
+.replace-actions {
+    grid-column:3 / span 3;
+    grid-row:2;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+.replace-actions .icon-btn { font-size:14px; }
+.hidden-row { display:none; }
+.search-shell.expanded .hidden-row { display:flex; }
+</style>
+</head>
+<body>
+
+<div id="searchBar" style="width:400px" class="search-shell" aria-label="Find and replace">
+    <button id="expandBtn" class="search-expander" title="Expand / collapse replace"><span class="chev">›</span></button>
+    <div class="field-wrap">
+        <input id="findInput" placeholder="Find" autocomplete="off" spellcheck="false">
+        <span class="field-buttons">
+            <button id="caseBtn" class="icon-btn active" title="Match case">Aa</button>
+            <button id="wordBtn" class="icon-btn" title="Match whole word"><span class="under">ab</span></button>
+            <button id="regexBtn" class="icon-btn" title="Use regular expression">.*</button>
+        </span>
+    </div>
+    <div id="resultInfo" class="results">No results</div>
+    <button id="prevBtn" class="icon-btn nav-btn" title="Previous match">↑</button>
+    <button id="nextBtn" class="icon-btn nav-btn" title="Next match">↓</button>
+    <button id="selectionBtn" class="icon-btn find-selection" title="Find in selection">☰</button>
+    <button id="closeBtn" class="icon-btn close-btn" title="Close">×</button>
+
+    <div class="replace-row-spacer hidden-row"></div>
+    <div class="field-wrap replace-field hidden-row">
+        <input id="replaceInput" placeholder="Replace" autocomplete="off" spellcheck="false">
+        <span class="field-buttons"><button id="preserveBtn" class="icon-btn" title="Preserve case">AB</button></span>
+    </div>
+    <div class="replace-actions hidden-row">
+        <button id="replaceBtn" class="icon-btn" title="Replace selected match">c</button>
+        <button id="replaceAllBtn" class="icon-btn" title="Replace all">ac</button>
+    </div>
+</div>
+
+<div class="editor-wrap">
+    <pre id="editorOverlay" aria-hidden="true"></pre>
+    <textarea id="editor" wrap="off" spellcheck="false">ORG $6000
+; test source
+LABEL       LDA     #$00
+            STA     $0400
+            LDA     #$41
+            STA     $0401
+            RTS
+
+; Try Ctrl-F / Command-F
+; Try Enter and Shift-Enter to navigate.
+; Try Ctrl-H / Command-H to expand Replace.
+</textarea>
+</div>
+
+<script>
+(function () {
+    const editor = document.getElementById("editor");
+    const overlay = document.getElementById("editorOverlay");
+    const bar = document.getElementById("searchBar");
+    const expandBtn = document.getElementById("expandBtn");
+    const findInput = document.getElementById("findInput");
+    const replaceInput = document.getElementById("replaceInput");
+    const resultInfo = document.getElementById("resultInfo");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    const buttons = {
+        caseBtn: document.getElementById("caseBtn"),
+        wordBtn: document.getElementById("wordBtn"),
+        regexBtn: document.getElementById("regexBtn"),
+        preserveBtn: document.getElementById("preserveBtn"),
+        selectionBtn: document.getElementById("selectionBtn")
+    };
+
+    let matches = [];
+    let current = -1;
+    let selectionRange = null;       // frozen range used by Find in selection
+    let lastEditorSelection = null;  // most recent manual textarea selection
+    let findTimer = null;
+
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    function rangesForOverlay() {
+        const ranges = [];
+        const visibleSelection = selectionRange || lastEditorSelection;
+        if (visibleSelection && visibleSelection.end > visibleSelection.start) {
+            ranges.push({ start:visibleSelection.start, end:visibleSelection.end, cls:"hl-selection", priority:1 });
+        }
+        for (let i = 0; i < matches.length; i++) {
+            ranges.push({
+                start:matches[i].start,
+                end:matches[i].end,
+                cls:i === current ? "hl-current" : "hl-match",
+                priority:i === current ? 3 : 2
+            });
+        }
+        return ranges;
+    }
+
+    function renderOverlay() {
+        const text = editor.value;
+        const ranges = rangesForOverlay()
+            .filter(r => r.end > r.start)
+            .sort((a,b) => a.start - b.start || b.priority - a.priority);
+
+        let out = "";
+        let pos = 0;
+
+        for (const r of ranges) {
+            if (r.end <= pos) continue;
+            const start = Math.max(r.start, pos);
+            if (start > pos) out += esc(text.slice(pos, start));
+            out += '<span class="' + r.cls + '">' + esc(text.slice(start, r.end)) + '</span>';
+            pos = r.end;
+        }
+
+        if (pos < text.length) out += esc(text.slice(pos));
+        overlay.innerHTML = out || " ";
+        syncOverlayScroll();
+    }
+
+    function syncOverlayScroll() {
+        overlay.scrollTop = editor.scrollTop;
+        overlay.scrollLeft = editor.scrollLeft;
+    }
+
+    function rememberEditorSelection() {
+        if (editor.selectionStart !== editor.selectionEnd) {
+            lastEditorSelection = { start: editor.selectionStart, end: editor.selectionEnd };
+        }
+        updateSelectionButtonState();
+    }
+
+    function hasUsableEditorSelection() {
+        return !!(lastEditorSelection && lastEditorSelection.end > lastEditorSelection.start);
+    }
+
+    function updateSelectionButtonState() {
+        const active = buttons.selectionBtn.classList.contains("active");
+        buttons.selectionBtn.disabled = !active && !hasUsableEditorSelection();
+    }
+
+    function updateNavButtons() {
+        const enabled = matches.length > 0;
+        prevBtn.disabled = !enabled;
+        nextBtn.disabled = !enabled;
+    }
+
+    function openSearch(expanded=false) {
+        rememberEditorSelection();
+        bar.classList.add("open");
+        bar.classList.toggle("expanded", expanded);
+        setTimeout(() => { findInput.focus(); findInput.select(); }, 0);
+        scheduleFind();
+    }
+
+    function closeSearch() {
+        bar.classList.remove("open");
+        editor.focus();
+    }
+
+    function escapeRegex(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function flags(global) {
+        return (global ? "g" : "") + (buttons.caseBtn.classList.contains("active") ? "" : "i");
+    }
+
+    function buildRegex(global=true) {
+        let q = findInput.value;
+        if (!q) return null;
+        if (!buttons.regexBtn.classList.contains("active")) q = escapeRegex(q);
+        if (buttons.wordBtn.classList.contains("active")) q = "\\b(?:" + q + ")\\b";
+        try { return new RegExp(q, flags(global)); }
+        catch(e) { return null; }
+    }
+
+    function findScope() {
+        const txt = editor.value;
+        if (buttons.selectionBtn.classList.contains("active") && selectionRange) {
+            return { text:txt.slice(selectionRange.start, selectionRange.end), offset:selectionRange.start };
+        }
+        return { text:txt, offset:0 };
+    }
+
+    function scheduleFind() {
+        clearTimeout(findTimer);
+        matches = [];
+        current = -1;
+        resultInfo.textContent = findInput.value ? "..." : "No results";
+        updateNavButtons();
+        renderOverlay();
+
+        findTimer = setTimeout(function() {
+            updateMatches({ selectFirst:true, keepFindFocus:true });
+        }, 1000);
+    }
+
+    function updateMatches(options) {
+        options = options || {};
+        const re = buildRegex(true);
+        const scope = findScope();
+
+        matches = [];
+        current = -1;
+
+        if (re) {
+            let m;
+            while ((m = re.exec(scope.text)) !== null) {
+                matches.push({ start:scope.offset + m.index, end:scope.offset + m.index + m[0].length, text:m[0] });
+                if (m[0].length === 0) re.lastIndex++;
+            }
+        }
+
+        if (matches.length) current = 0;
+        resultInfo.textContent = matches.length ? "1 of " + matches.length : "No results";
+        updateNavButtons();
+
+        if (matches.length && options.selectFirst) {
+            selectCurrent({ keepFindFocus:!!options.keepFindFocus });
+        } else {
+            renderOverlay();
+        }
+    }
+
+    function selectCurrent(mode) {
+        if (current < 0 || !matches[current]) {
+            renderOverlay();
+            return;
+        }
+
+        mode = mode || {};
+        const m = matches[current];
+
+        // Store caret/selection position for editing, but do not require editor focus for visual highlight.
+        editor.setSelectionRange(m.start, m.end);
+        resultInfo.textContent = (current + 1) + " of " + matches.length;
+        renderOverlay();
+
+        if (mode.focusEditor) editor.focus();
+        else if (mode.keepFindFocus) findInput.focus();
+    }
+
+    function nextMatch(dir) {
+        clearTimeout(findTimer);
+        if (!matches.length) { updateNavButtons(); renderOverlay(); return; }
+        current = (current + dir + matches.length) % matches.length;
+        selectCurrent({ keepFindFocus:true });
+    }
+
+    function preserveCase(replacement, found) {
+        if (!buttons.preserveBtn.classList.contains("active")) return replacement;
+        if (found.toUpperCase() === found) return replacement.toUpperCase();
+        if (found.toLowerCase() === found) return replacement.toLowerCase();
+        if (found[0] && found[0].toUpperCase() === found[0])
+            return replacement.charAt(0).toUpperCase() + replacement.slice(1).toLowerCase();
+        return replacement;
+    }
+
+    function replaceCurrent() {
+        clearTimeout(findTimer);
+        if (current < 0 || !matches[current]) return;
+        const m = matches[current];
+        const rep = preserveCase(replaceInput.value, m.text);
+        editor.value = editor.value.slice(0, m.start) + rep + editor.value.slice(m.end);
+
+        if (selectionRange && m.start >= selectionRange.start && m.end <= selectionRange.end) {
+            const delta = rep.length - (m.end - m.start);
+            selectionRange.end += delta;
+            lastEditorSelection = { start:selectionRange.start, end:selectionRange.end };
+        }
+
+        updateMatches({ selectFirst:true, keepFindFocus:true });
+    }
+
+    function replaceAll() {
+        clearTimeout(findTimer);
+        const re = buildRegex(true);
+        if (!re) return;
+
+        const scope = findScope();
+        const replaced = scope.text.replace(re, found => preserveCase(replaceInput.value, found));
+        editor.value = editor.value.slice(0, scope.offset) + replaced + editor.value.slice(scope.offset + scope.text.length);
+
+        if (selectionRange) {
+            selectionRange.end = selectionRange.start + replaced.length;
+            lastEditorSelection = { start:selectionRange.start, end:selectionRange.end };
+        }
+
+        updateMatches({ selectFirst:true, keepFindFocus:true });
+    }
+
+    document.addEventListener("keydown", ev => {
+        const mod = ev.ctrlKey || ev.metaKey;
+
+        if (mod && ev.key.toLowerCase() === "f") {
+            ev.preventDefault();
+            openSearch(false);
+        }
+
+        if (mod && ev.key.toLowerCase() === "h") {
+            ev.preventDefault();
+            openSearch(true);
+        }
+
+        if (ev.key === "Escape" && bar.classList.contains("open")) {
+            ev.preventDefault();
+            closeSearch();
+        }
+    });
+
+    editor.addEventListener("mousedown", function() {
+        // A click/tap back in the editor starts a new editor selection/caret action.
+        // The persisted grey selection should disappear immediately unless Find in selection is active.
+        if (!buttons.selectionBtn.classList.contains("active")) {
+            lastEditorSelection = null;
+            renderOverlay();
+            updateSelectionButtonState();
+        }
+    });
+
+    ["mouseup", "keyup", "select"].forEach(name => editor.addEventListener(name, function() {
+        rememberEditorSelection();
+        renderOverlay();
+    }));
+
+    editor.addEventListener("input", function() {
+        rememberEditorSelection();
+        if (buttons.selectionBtn.classList.contains("active")) {
+            buttons.selectionBtn.classList.remove("active");
+            selectionRange = null;
+        }
+        scheduleFind();
+    });
+
+    editor.addEventListener("scroll", syncOverlayScroll);
+
+    findInput.addEventListener("input", scheduleFind);
+    findInput.addEventListener("keydown", ev => {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            clearTimeout(findTimer);
+            if (!matches.length) updateMatches({ selectFirst:true, keepFindFocus:true });
+            else nextMatch(ev.shiftKey ? -1 : 1);
+        }
+    });
+
+    replaceInput.addEventListener("keydown", ev => {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            replaceCurrent();
+        }
+    });
+
+    expandBtn.onclick = () => bar.classList.toggle("expanded");
+    prevBtn.onclick = () => nextMatch(-1);
+    nextBtn.onclick = () => nextMatch(1);
+    document.getElementById("replaceBtn").onclick = replaceCurrent;
+    document.getElementById("replaceAllBtn").onclick = replaceAll;
+    document.getElementById("closeBtn").onclick = closeSearch;
+
+    buttons.caseBtn.onclick = () => { buttons.caseBtn.classList.toggle("active"); scheduleFind(); };
+    buttons.wordBtn.onclick = () => { buttons.wordBtn.classList.toggle("active"); scheduleFind(); };
+    buttons.regexBtn.onclick = () => { buttons.regexBtn.classList.toggle("active"); scheduleFind(); };
+    buttons.preserveBtn.onclick = () => buttons.preserveBtn.classList.toggle("active");
+
+    buttons.selectionBtn.onclick = () => {
+        if (buttons.selectionBtn.disabled) return;
+
+        if (buttons.selectionBtn.classList.contains("active")) {
+            buttons.selectionBtn.classList.remove("active");
+            selectionRange = null;
+            // Keep lastEditorSelection visible as the persisted manual selection.
+            scheduleFind();
+            return;
+        }
+
+        if (!hasUsableEditorSelection()) return;
+
+        selectionRange = { start:lastEditorSelection.start, end:lastEditorSelection.end };
+        buttons.selectionBtn.classList.add("active");
+        updateSelectionButtonState();
+        scheduleFind();
+        findInput.focus();
+    };
+
+    renderOverlay();
+    updateSelectionButtonState();
+    updateNavButtons();
+})();
+</script>
+</body>
+</html>
