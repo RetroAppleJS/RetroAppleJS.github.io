@@ -417,11 +417,38 @@ LABEL       LDA     #$00
         return replacement;
     }
 
+    function regexReplacementText(template, found, groups) {
+        if (!buttons.regexBtn.classList.contains("active")) return template;
+
+        return String(template).replace(/\\(n|r|t|\\)|\$(\$|&|`|'|\d{1,2})/g, function(token, esc, dollar) {
+            if (esc === "n") return "\n";
+            if (esc === "r") return "\r";
+            if (esc === "t") return "\t";
+            if (esc === "\\") return "\\";
+
+            if (dollar === "$") return "$";
+            if (dollar === "&") return found;
+            if (/^\d+$/.test(dollar)) return groups[Number(dollar) - 1] || "";
+
+            // Before/after text is not currently passed into this helper.
+            if (dollar === "`" || dollar === "'") return "";
+
+            return token;
+        });
+    }
+
+    function replacementForMatch(template, found, groups) {
+        return preserveCase(regexReplacementText(template, found, groups || []), found);
+    }
+
     function replaceCurrent() {
         clearTimeout(findTimer);
         if (current < 0 || !matches[current]) return;
         const m = matches[current];
-        const rep = preserveCase(replaceInput.value, m.text);
+        const singleRe = buildRegex(false);
+        const singleMatch = singleRe ? singleRe.exec(m.text) : null;
+        const groups = singleMatch ? Array.prototype.slice.call(singleMatch, 1) : [];
+        const rep = replacementForMatch(replaceInput.value, m.text, groups);
         editor.value = editor.value.slice(0, m.start) + rep + editor.value.slice(m.end);
 
         if (selectionRange && m.start >= selectionRange.start && m.end <= selectionRange.end) {
@@ -439,7 +466,11 @@ LABEL       LDA     #$00
         if (!re) return;
 
         const scope = findScope();
-        const replaced = scope.text.replace(re, found => preserveCase(replaceInput.value, found));
+        const replaced = scope.text.replace(re, function() {
+            const found = arguments[0];
+            const groups = Array.prototype.slice.call(arguments, 1, -2);
+            return replacementForMatch(replaceInput.value, found, groups);
+        });
         editor.value = editor.value.slice(0, scope.offset) + replaced + editor.value.slice(scope.offset + scope.text.length);
 
         if (selectionRange) {
