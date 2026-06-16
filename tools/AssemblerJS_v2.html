@@ -116,7 +116,10 @@
     main {
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr) minmax(320px, 1.12fr);
+        grid-template-columns:
+            minmax(260px, var(--asm-pane-source, 1fr))
+            minmax(260px, var(--asm-pane-listing, 1fr))
+            minmax(320px, var(--asm-pane-json, 1.12fr));
         align-items: start;
         gap: 12px;
     }
@@ -130,8 +133,42 @@
         border-radius: 12px;
         overflow: hidden;
         background: var(--panel);
+        position: relative;
     }
 
+    .asm-pane-column-handle {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 8px;
+        z-index: 60;
+        cursor: col-resize;
+        touch-action: none;
+        background: transparent;
+    }
+
+    .asm-pane-column-handle::after {
+        content: "";
+        position: absolute;
+        top: 38px;
+        bottom: 8px;
+        left: 3px;
+        width: 2px;
+        border-radius: 2px;
+        background: transparent;
+    }
+
+    .asm-pane-column-handle:hover::after,
+    .asm-pane-column-handle.dragging::after {
+        background: var(--resize-handle-active);
+    }
+
+    body.asm-pane-resizing 
+    {
+        cursor: col-resize;
+        user-select: none;
+    }
     .pane-title {
         display: flex;
         align-items: center;
@@ -297,6 +334,7 @@
     @media (max-width: 1100px) {
         body { grid-template-rows: auto auto auto auto; }
         main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+        .asm-pane-column-handle { display: none; }
         .status { margin-left: 0; width: 100%; }
     }
 
@@ -1658,7 +1696,8 @@ var appThemes = {
             "button-primary-bg":"#1d4f7a",
             "button-primary-border":"#2c6ca3",
             "listing-columns-bg":"#0b0f14",
-            "listing-columns-text":"#e6edf3"
+            "listing-columns-text":"#e6edf3",
+            "resize-handle-active":"#79b8ff"
         },
         findReplace: {
             "bg":"#111820",
@@ -1696,7 +1735,8 @@ var appThemes = {
             "button-primary-bg":"#0969da",
             "button-primary-border":"#0550ae",
             "listing-columns-bg":"#ffffff",
-            "listing-columns-text":"#1f2328"
+            "listing-columns-text":"#1f2328",
+            "resize-handle-active":"#0969da"
         },
         findReplace: {
             "bg":"#f3f3f3",
@@ -1740,9 +1780,137 @@ function applyAppTheme(name) {
     equalizePaneHeaders();
 }
 
-function toggleAppTheme() {
-    applyAppTheme(appThemeName == "dark" ? "light" : "dark");
+ function toggleAppTheme() {
+     applyAppTheme(appThemeName == "dark" ? "light" : "dark");
 }
+
+var asmPaneResizeState = {
+    weights: [1, 1, 1.12],
+    min: [260, 260, 320],
+    storageKey: "AssemblerJS.asmPaneWeights"
+};
+
+function applyAsmPaneWeights(weights) {
+    if (!asmPaneHost || !weights || weights.length !== 3) return;
+
+    asmPaneResizeState.weights = weights.map(function(v) {
+        v = Number(v);
+        return Number.isFinite(v) && v > 0 ? v : 1;
+    });
+
+    document.documentElement.style.setProperty("--asm-pane-source", asmPaneResizeState.weights[0] + "fr");
+    document.documentElement.style.setProperty("--asm-pane-listing", asmPaneResizeState.weights[1] + "fr");
+    document.documentElement.style.setProperty("--asm-pane-json", asmPaneResizeState.weights[2] + "fr");
+
+    try {
+        localStorage.setItem(asmPaneResizeState.storageKey, JSON.stringify(asmPaneResizeState.weights));
+    } catch (_ignore) {}
+
+    sizeJsonPaneToAvailableSpace();
+    syncPaneHeightsFromListing();
+}
+
+function loadAsmPaneWeights() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(asmPaneResizeState.storageKey) || "null");
+        if (Array.isArray(stored) && stored.length === 3) {
+            applyAsmPaneWeights(stored);
+            return;
+        }
+    } catch (_ignore) {}
+
+    applyAsmPaneWeights(asmPaneResizeState.weights);
+}
+
+function installAsmPaneColumnHandles() {
+    if (!asmPaneHost) return;
+
+    var panes = [
+        document.getElementById("sourcePaneWrapper"),
+        document.getElementById("listingPaneWrapper"),
+        document.getElementById("jsonPaneWrapper")
+    ];
+
+    panes.forEach(function(pane, idx) {
+        if (!pane || pane.querySelector(".asm-pane-column-handle")) return;
+
+        var h = document.createElement("span");
+        h.className = "asm-pane-column-handle";
+        h.dataset.asmPaneIndex = String(idx);
+        h.title = "Drag to resize this pane";
+        h.setAttribute("role", "separator");
+        h.setAttribute("aria-orientation", "vertical");
+        pane.appendChild(h);
+    });
+
+    asmPaneHost.addEventListener("pointerdown", function(ev) {
+        var handle = ev.target && ev.target.closest ? ev.target.closest(".asm-pane-column-handle") : null;
+        if (!handle) return;
+
+        var idx = Number(handle.dataset.asmPaneIndex);
+        if (!Number.isInteger(idx) || idx < 0 || idx > 2) return;
+
+        var isSingleColumn = window.matchMedia && window.matchMedia("(max-width: 1100px)").matches;
+        if (isSingleColumn) return;
+
+        var startX = ev.clientX;
+        var startRects = panes.map(function(p) { return p.getBoundingClientRect(); });
+        var startWidths = startRects.map(function(r) { return Math.max(0, r.width); });
+        var total = startWidths.reduce(function(a, b) { return a + b; }, 0);
+        var min = asmPaneResizeState.min.slice();
+        var minTotal = min.reduce(function(a, b) { return a + b; }, 0);
+
+        if (total <= minTotal) return;
+
+        var others = [0, 1, 2].filter(function(i) { return i !== idx; });
+        var otherSlack = others.map(function(i) { return Math.max(0, startWidths[i] - min[i]); });
+        var otherSlackTotal = otherSlack.reduce(function(a, b) { return a + b; }, 0);
+
+        handle.classList.add("dragging");
+        document.body.classList.add("asm-pane-resizing");
+        try { handle.setPointerCapture(ev.pointerId); } catch (_ignore) {}
+
+        function clamp(v, lo, hi) {
+            return Math.max(lo, Math.min(hi, v));
+        }
+
+        function move(e) {
+            var dx = e.clientX - startX;
+            var maxTarget = total - (minTotal - min[idx]);
+            var targetWidth = clamp(startWidths[idx] + dx, min[idx], maxTarget);
+            var remaining = total - targetWidth;
+            var remainingSlack = remaining - (min[others[0]] + min[others[1]]);
+            var widths = [0, 0, 0];
+
+            widths[idx] = targetWidth;
+
+            for (var n = 0; n < others.length; n++) {
+                var oi = others[n];
+                var ratio = otherSlackTotal > 0 ? otherSlack[n] / otherSlackTotal : 1 / others.length;
+                widths[oi] = min[oi] + remainingSlack * ratio;
+            }
+
+            var weightSum = widths.reduce(function(a, b) { return a + b; }, 0) || 1;
+            applyAsmPaneWeights(widths.map(function(w) { return Math.max(0.001, w / weightSum); }));
+            e.preventDefault();
+        }
+
+        function up(e) {
+            handle.classList.remove("dragging");
+            document.body.classList.remove("asm-pane-resizing");
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            window.removeEventListener("pointercancel", up);
+            try { handle.releasePointerCapture(ev.pointerId); } catch (_ignore) {}
+            e.preventDefault();
+        }
+
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        window.addEventListener("pointercancel", up);
+        ev.preventDefault();
+    });
+ }
 
 function equalizePaneHeaders() {
     if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
@@ -2233,6 +2401,8 @@ sourcePane.addEventListener("keydown", function (ev) {
     if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") assembleCurrentSource();
 });
 
+installAsmPaneColumnHandles();
+loadAsmPaneWeights();
 assembleCurrentSource();
 syncPaneHeightsFromListing();
 refreshFindReplaceOverlays();
