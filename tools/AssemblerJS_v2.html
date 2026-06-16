@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../res/COM_fontawesome/all.css">
 
 <!-- Adjust these paths if this file is not next to /res. -->
-<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.5-heightsync"></script>
-<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.5-heightsync"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.6-heightsync"></script>
+<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.6-heightsync"></script>
 
 <style>
     :root {
@@ -291,6 +291,7 @@
     .halfsizeBtn 
     {
         scale: 70%;
+        padding: 4px;
     }
 
     @media (max-width: 1100px) {
@@ -309,7 +310,7 @@
 <header>
     <div>
         <h1>AssemblerJS</h1>
-        <div class="subtitle">(v0.6.5) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
+        <div class="subtitle">(v0.6.6) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
     </div>
     <div class="drop-hint">Tip: drag a .S file anywhere on this page</div>
 </header>
@@ -317,7 +318,6 @@
 <section class="toolbar">
     <input id="fileInput" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain" />
     <button id="assembleButton" class="primary">ASSEMBLE</button>
-    <button class=halfsizeBtn id="copyJsonButton">Copy JSON</button>
     <button class=halfsizeBtn id="copyByteCodeButton">Copy byte code</button>
     <!--button id="downloadJsonButton">Download JSON</button-->
     <span id="status" class="status">Ready.</span>
@@ -328,28 +328,7 @@
 <template id="sampleSourceTemplate">
 </template>
 
-
-    <!--section class="pane listing-pane" id="listingPaneWrapper">
-        <div class="pane-title">
-            <span class="pane-title-main">
-                <strong>Assembly listing</strong>
-                <input id="listingColumnsInput" class="listing-columns-input" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" />
-            </span>
-            <span id="listingInfo">compile()</span>
-        </div>
-        <textarea id="listingPane" readonly spellcheck="false"></textarea>
-    </section>
-
-    <section class="pane json-pane" id="jsonPaneWrapper">
-        <div class="pane-title"><strong>JSON output</strong><span id="jsonInfo">interactive JSON</span></div>
-        <div id="jsonMount" class="json-mount" tabindex="0"></div>
-    </section>
-</main-->
-
-<section class="pane byte-pane">
-    <div class="pane-title"><strong>Byte code</strong><span id="byteCodeInfo">8 bytes per line</span></div>
-    <textarea id="byteCodePane" readonly spellcheck="false"></textarea>
-</section>
+<div id="bytePaneHost"></div>
 
 <script>
 
@@ -1543,6 +1522,7 @@ if (typeof oPANE.injectFindReplaceCSS == "function") {
 }
 
 var asmPaneHost = document.getElementById("asmPaneHost");
+var bytePaneHost = document.getElementById("bytePaneHost");
 //var sampleSourceText = document.getElementById("sampleSourceTemplate").textContent.replace(/^\n/, "");
 
 asmPaneHost.innerHTML =
@@ -1586,7 +1566,7 @@ asmPaneHost.innerHTML =
             title:"JSON output",
             class:"pane-title",
             infoId:"jsonInfo",
-            info:"interactive JSON"
+            infoHTML:'<button class="halfsizeBtn" id="copyJsonButton" type="button">Copy JSON</button>'
         },
         body:{
             id:"jsonMount",
@@ -1598,12 +1578,32 @@ asmPaneHost.innerHTML =
         }
     });
 
+    bytePaneHost.innerHTML =
+        oPANE.getHTML("", {
+            id:"bytePaneWrapper",
+            class:"pane byte-pane",
+            header:{
+                title:"Byte code",
+                class:"pane-title",
+                infoHTML:'<span id="byteCodeInfo">0 bytes</span>'
+                    + '<button class="halfsizeBtn" id="scrollTopButton" type="button" title="Back to top">'
+                    + '<i class="fa fa-angle-double-up"></i>'
+                    + '</button>'
+            },
+            body:{
+                id:"byteCodePane",
+                tag:"textarea",
+                content:"",
+                attr:{readonly:true,spellcheck:false}
+            }
+        });
 
 var fileInput = document.getElementById("fileInput");
 var assembleButton = document.getElementById("assembleButton");
 var copyJsonButton = document.getElementById("copyJsonButton");
 var downloadJsonButton = document.getElementById("downloadJsonButton");
 var copyByteCodeButton = document.getElementById("copyByteCodeButton");
+var scrollTopButton = document.getElementById("scrollTopButton");
 var statusEl = document.getElementById("status");
 var sourcePane = document.getElementById("sourcePane");
 var sourcePaneWrapper = document.getElementById("sourcePaneWrapper");
@@ -1715,11 +1715,6 @@ var appThemes = {
     }
 };
 
- function equalizePaneHeaders() {
-     if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
-         oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title");
- }
-
 function applyConfigVars(vars, target, prefix) {
     target = target || document.documentElement;
     prefix = prefix || "--";
@@ -1751,7 +1746,7 @@ function toggleAppTheme() {
 
 function equalizePaneHeaders() {
     if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
-        oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title");
+        oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title, #bytePaneHost .pane-title");
 }
 
 function normalizeLineEndingsInfo(text) {
@@ -1873,7 +1868,8 @@ function bindSourceDefaultWidgetActions() {
         else if (act == "indent") sourceIndent();
         else if (act == "outdent") sourceOutdent();
         else if (act == "theme") toggleAppTheme();
-
+        else if (act == "bottom") window.scrollTo(0, document.body.scrollHeight);
+        else if (act == "top") window.scrollTo({ top: 0 });
         ev.preventDefault();
     });
 }
@@ -2076,7 +2072,8 @@ function assembleCurrentSource() {
 
         listingInfo.textContent = listingLineCount + " listing lines";
         byteCodeInfo.textContent = byteCount + " bytes";
-        jsonInfo.textContent = "interactive JSON";
+        if (jsonInfo) jsonInfo.title = "interactive JSON";
+        //jsonInfo.innerHTML = "<button class=halfsizeBtn id=\"copyJsonButton\">Copy JSON</button>"
 
         if (sourceLineCount !== listingLineCount) {
             setStatus("ASM core v" + coreVersion + ": assembled with line-count mismatch: source " + sourceLineCount + ", listing " + listingLineCount + ".", "warn");
@@ -2137,16 +2134,17 @@ fileInput.addEventListener("change", function () {
     loadFile(fileInput.files && fileInput.files[0]);
 });
 
-assembleButton.addEventListener("click", assembleCurrentSource);
-
-copyJsonButton.addEventListener("click", async function () {
+if (copyJsonButton) copyJsonButton.addEventListener("click", async function () 
+{
     try {
         await navigator.clipboard.writeText(currentJsonText || "");
         setStatus("JSON copied to clipboard.", "ok");
     } catch (err) {
         setStatus("Clipboard copy failed; select the JSON text manually.", "warn");
-    }
+     }
 });
+
+if (scrollTopButton) scrollTopButton.addEventListener("click", scrollWindowBackToTop);
 
 /*
 downloadJsonButton.addEventListener("click", function () {

@@ -1,5 +1,6 @@
 function COM()
 {
+  // v1.02
   /*
   this.debugMe = function()
   {
@@ -1738,6 +1739,15 @@ function PANE()
         var btag = body.tag || "textarea";
         var content = body.content !== undefined ? body.content : txt;
 
+        var infoHTML = "";
+        if(header.infoId || header.info != null || header.infoHTML != null) {
+            infoHTML = '<span'
+                + (header.infoId ? ' id="' + this.escapeHTML(header.infoId) + '"' : '')
+                + '>'
+                + (header.infoHTML != null ? String(header.infoHTML) : this.escapeHTML(header.info || ""))
+                + '</span>';
+        }
+
         return ''
             + '<section'
             + (cfg.id ? ' id="' + this.escapeHTML(cfg.id) + '"' : '')
@@ -1746,7 +1756,7 @@ function PANE()
             + (header.html || (
                 '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
                 + this.searchBarHTML(header.searchBar)
-                + (header.infoId ? '<span id="' + this.escapeHTML(header.infoId) + '">' + this.escapeHTML(header.info || "") + '</span>' : '')
+                + infoHTML
             ))
             + '</div>'
             + '<' + btag
@@ -1804,6 +1814,7 @@ function PANE()
         + '.pane-header-widget-host{display:flex;align-items:center;justify-content:flex-end;margin-left:auto;min-width:0;position:relative;}'
         + '.pane-header-widget{display:none;}'
         + '.pane-header-widget.active{display:flex;}'
+        + '.pane-findreplace.pane-header-widget.active{display:grid;}'
         + '.pane-header-default-widget{align-items:center;gap:4px;}'
         + '.pane-header-default-widget .pane-fr-btn{display:inline-flex;}'
         + '.pane-fr-expander,.pane-fr-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;'
@@ -1894,6 +1905,8 @@ function PANE()
         if(cfg.scheme) {
             for(var k in cfg.scheme) bar.style.setProperty("--pane-fr-" + k, cfg.scheme[k]);
         }
+        if(cfg.manager && typeof cfg.manager.add == "function")
+            cfg.manager.add(uid, bar, false);
 
         var wrap = target.parentNode;
         var overlay;
@@ -2263,6 +2276,15 @@ function PANE()
             }
             widgets[id] = el;
             if(!el.parentNode) host.appendChild(el);
+
+            /*
+             * If a non-default widget is registered after the default widget
+             * has already been activated, keep it hidden until activate(id)
+             * is called.  This is the one-line header toggle contract:
+             * exactly one registered widget is visible at a time.
+             */
+            el.classList.toggle("active", activeId == id);
+
             return el;
         }
 
@@ -2305,6 +2327,7 @@ function PANE()
             + '<button type="button" class="pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
             + '<button type="button" class="pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
             + '<button type="button" class="pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
+            + '<button type="button" class="pane-fr-btn" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
             + '</span>';
     };
 
