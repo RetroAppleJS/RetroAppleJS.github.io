@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../res/COM_fontawesome/all.css">
 
 <!-- Adjust these paths if this file is not next to /res. -->
-<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.8-heightsync"></script>
-<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.8-heightsync"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.5-heightsync"></script>
+<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.5-heightsync"></script>
 
 <style>
     :root {
@@ -116,10 +116,7 @@
     main {
         min-height: 0;
         display: grid;
-        grid-template-columns:
-            minmax(260px, var(--asm-pane-source, 1fr))
-            minmax(260px, var(--asm-pane-listing, 1fr))
-            minmax(320px, var(--asm-pane-json, 1.12fr));
+        grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr) minmax(320px, 1.12fr);
         align-items: start;
         gap: 12px;
     }
@@ -133,42 +130,8 @@
         border-radius: 12px;
         overflow: hidden;
         background: var(--panel);
-        position: relative;
     }
 
-    .asm-pane-column-handle {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 8px;
-        z-index: 60;
-        cursor: col-resize;
-        touch-action: none;
-        background: transparent;
-    }
-
-    .asm-pane-column-handle::after {
-        content: "";
-        position: absolute;
-        top: 38px;
-        bottom: 8px;
-        left: 3px;
-        width: 2px;
-        border-radius: 2px;
-        background: transparent;
-    }
-
-    .asm-pane-column-handle:hover::after,
-    .asm-pane-column-handle.dragging::after {
-        background: var(--resize-handle-active);
-    }
-
-    body.asm-pane-resizing 
-    {
-        cursor: col-resize;
-        user-select: none;
-    }
     .pane-title {
         display: flex;
         align-items: center;
@@ -219,7 +182,7 @@
         border-color: var(--accent);
     }
 
-    textarea, .json-mount, .pane-fr-wrap {
+    textarea, .json-mount, .com-pane-fr-wrap {
         width: 100%;
         height: 100%;
         min-height: 0;
@@ -334,7 +297,6 @@
     @media (max-width: 1100px) {
         body { grid-template-rows: auto auto auto auto; }
         main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-        .asm-pane-column-handle { display: none; }
         .status { margin-left: 0; width: 100%; }
     }
 
@@ -348,7 +310,7 @@
 <header>
     <div>
         <h1>AssemblerJS</h1>
-        <div class="subtitle">(v0.6.8) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
+        <div class="subtitle">(v0.6.5) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
     </div>
     <div class="drop-hint">Tip: drag a .S file anywhere on this page</div>
 </header>
@@ -366,7 +328,10 @@
 <template id="sampleSourceTemplate">
 </template>
 
-<div id="bytePaneHost"></div>
+<section class="pane byte-pane">
+    <div class="pane-title"><strong>Byte code</strong><span id="byteCodeInfo">8 bytes per line</span></div>
+    <textarea id="byteCodePane" readonly spellcheck="false"></textarea>
+</section>
 
 <script>
 
@@ -1560,7 +1525,6 @@ if (typeof oPANE.injectFindReplaceCSS == "function") {
 }
 
 var asmPaneHost = document.getElementById("asmPaneHost");
-var bytePaneHost = document.getElementById("bytePaneHost");
 //var sampleSourceText = document.getElementById("sampleSourceTemplate").textContent.replace(/^\n/, "");
 
 asmPaneHost.innerHTML =
@@ -1603,8 +1567,8 @@ asmPaneHost.innerHTML =
         header:{
             title:"JSON output",
             class:"pane-title",
-            infoId:"jsonInfo",
-            infoHTML:'<button class="halfsizeBtn" id="copyJsonButton" type="button">Copy JSON</button>'
+            infoHTML:'<span id="jsonInfo">not assembled</span>'
+                + '<button class="halfsizeBtn" id="copyJsonButton" type="button" title="Copy JSON">Copy JSON</button>'
         },
         body:{
             id:"jsonMount",
@@ -1616,32 +1580,12 @@ asmPaneHost.innerHTML =
         }
     });
 
-    bytePaneHost.innerHTML =
-        oPANE.getHTML("", {
-            id:"bytePaneWrapper",
-            class:"pane byte-pane",
-            header:{
-                title:"Byte code",
-                class:"pane-title",
-                infoHTML:'<span id="byteCodeInfo">0 bytes</span>'
-                    + '<button class="halfsizeBtn" id="scrollTopButton" type="button" title="Back to top">'
-                    + '<i class="fa fa-angle-double-up"></i>'
-                    + '</button>'
-            },
-            body:{
-                id:"byteCodePane",
-                tag:"textarea",
-                content:"",
-                attr:{readonly:true,spellcheck:false}
-            }
-        });
 
 var fileInput = document.getElementById("fileInput");
 var assembleButton = document.getElementById("assembleButton");
 var copyJsonButton = document.getElementById("copyJsonButton");
 var downloadJsonButton = document.getElementById("downloadJsonButton");
 var copyByteCodeButton = document.getElementById("copyByteCodeButton");
-var scrollTopButton = document.getElementById("scrollTopButton");
 var statusEl = document.getElementById("status");
 var sourcePane = document.getElementById("sourcePane");
 var sourcePaneWrapper = document.getElementById("sourcePaneWrapper");
@@ -1655,6 +1599,18 @@ var sourceInfo = document.getElementById("sourceInfo");
 var listingInfo = document.getElementById("listingInfo");
 var byteCodeInfo = document.getElementById("byteCodeInfo");
 var jsonInfo = document.getElementById("jsonInfo");
+
+if (!jsonInfo && jsonPaneWrapper) {
+    var jsonTitle = jsonPaneWrapper.querySelector(".com-pane-title, .pane-title");
+    if (jsonTitle) {
+        jsonTitle.insertAdjacentHTML("beforeend",
+            '<span id="jsonInfo">not assembled</span>'
+            + '<button class="halfsizeBtn" id="copyJsonButton" type="button" title="Copy JSON">Copy JSON</button>'
+        );
+        jsonInfo = document.getElementById("jsonInfo");
+        copyJsonButton = document.getElementById("copyJsonButton");
+    }
+}
 
 var currentFileName = "sample.S";
 var currentJsonText = "";
@@ -1696,8 +1652,7 @@ var appThemes = {
             "button-primary-bg":"#1d4f7a",
             "button-primary-border":"#2c6ca3",
             "listing-columns-bg":"#0b0f14",
-            "listing-columns-text":"#e6edf3",
-            "resize-handle-active":"#79b8ff"
+            "listing-columns-text":"#e6edf3"
         },
         findReplace: {
             "bg":"#111820",
@@ -1735,8 +1690,7 @@ var appThemes = {
             "button-primary-bg":"#0969da",
             "button-primary-border":"#0550ae",
             "listing-columns-bg":"#ffffff",
-            "listing-columns-text":"#1f2328",
-            "resize-handle-active":"#0969da"
+            "listing-columns-text":"#1f2328"
         },
         findReplace: {
             "bg":"#f3f3f3",
@@ -1755,6 +1709,11 @@ var appThemes = {
     }
 };
 
+ function equalizePaneHeaders() {
+     if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
+         oPANE.equalizePaneHeaderHeights("#asmPaneHost .com-pane-title");
+ }
+
 function applyConfigVars(vars, target, prefix) {
     target = target || document.documentElement;
     prefix = prefix || "--";
@@ -1765,7 +1724,7 @@ function applyFindReplaceScheme(scheme) {
     var ids = ["sourceFindReplace", "listingFindReplace"];
     for (var i = 0; i < ids.length; i++) {
         var el = document.getElementById(ids[i]);
-        if (el) applyConfigVars(scheme, el, "--pane-fr-");
+        if (el) applyConfigVars(scheme, el, "--com-pane-fr-");
     }
 }
 
@@ -1780,141 +1739,13 @@ function applyAppTheme(name) {
     equalizePaneHeaders();
 }
 
- function toggleAppTheme() {
-     applyAppTheme(appThemeName == "dark" ? "light" : "dark");
+function toggleAppTheme() {
+    applyAppTheme(appThemeName == "dark" ? "light" : "dark");
 }
-
-var asmPaneResizeState = {
-    weights: [1, 1, 1.12],
-    min: [260, 260, 320],
-    storageKey: "AssemblerJS.asmPaneWeights"
-};
-
-function applyAsmPaneWeights(weights) {
-    if (!asmPaneHost || !weights || weights.length !== 3) return;
-
-    asmPaneResizeState.weights = weights.map(function(v) {
-        v = Number(v);
-        return Number.isFinite(v) && v > 0 ? v : 1;
-    });
-
-    document.documentElement.style.setProperty("--asm-pane-source", asmPaneResizeState.weights[0] + "fr");
-    document.documentElement.style.setProperty("--asm-pane-listing", asmPaneResizeState.weights[1] + "fr");
-    document.documentElement.style.setProperty("--asm-pane-json", asmPaneResizeState.weights[2] + "fr");
-
-    try {
-        localStorage.setItem(asmPaneResizeState.storageKey, JSON.stringify(asmPaneResizeState.weights));
-    } catch (_ignore) {}
-
-    sizeJsonPaneToAvailableSpace();
-    syncPaneHeightsFromListing();
-}
-
-function loadAsmPaneWeights() {
-    try {
-        var stored = JSON.parse(localStorage.getItem(asmPaneResizeState.storageKey) || "null");
-        if (Array.isArray(stored) && stored.length === 3) {
-            applyAsmPaneWeights(stored);
-            return;
-        }
-    } catch (_ignore) {}
-
-    applyAsmPaneWeights(asmPaneResizeState.weights);
-}
-
-function installAsmPaneColumnHandles() {
-    if (!asmPaneHost) return;
-
-    var panes = [
-        document.getElementById("sourcePaneWrapper"),
-        document.getElementById("listingPaneWrapper"),
-        document.getElementById("jsonPaneWrapper")
-    ];
-
-    panes.forEach(function(pane, idx) {
-        if (!pane || pane.querySelector(".asm-pane-column-handle")) return;
-
-        var h = document.createElement("span");
-        h.className = "asm-pane-column-handle";
-        h.dataset.asmPaneIndex = String(idx);
-        h.title = "Drag to resize this pane";
-        h.setAttribute("role", "separator");
-        h.setAttribute("aria-orientation", "vertical");
-        pane.appendChild(h);
-    });
-
-    asmPaneHost.addEventListener("pointerdown", function(ev) {
-        var handle = ev.target && ev.target.closest ? ev.target.closest(".asm-pane-column-handle") : null;
-        if (!handle) return;
-
-        var idx = Number(handle.dataset.asmPaneIndex);
-        if (!Number.isInteger(idx) || idx < 0 || idx > 2) return;
-
-        var isSingleColumn = window.matchMedia && window.matchMedia("(max-width: 1100px)").matches;
-        if (isSingleColumn) return;
-
-        var startX = ev.clientX;
-        var startRects = panes.map(function(p) { return p.getBoundingClientRect(); });
-        var startWidths = startRects.map(function(r) { return Math.max(0, r.width); });
-        var total = startWidths.reduce(function(a, b) { return a + b; }, 0);
-        var min = asmPaneResizeState.min.slice();
-        var minTotal = min.reduce(function(a, b) { return a + b; }, 0);
-
-        if (total <= minTotal) return;
-
-        var others = [0, 1, 2].filter(function(i) { return i !== idx; });
-        var otherSlack = others.map(function(i) { return Math.max(0, startWidths[i] - min[i]); });
-        var otherSlackTotal = otherSlack.reduce(function(a, b) { return a + b; }, 0);
-
-        handle.classList.add("dragging");
-        document.body.classList.add("asm-pane-resizing");
-        try { handle.setPointerCapture(ev.pointerId); } catch (_ignore) {}
-
-        function clamp(v, lo, hi) {
-            return Math.max(lo, Math.min(hi, v));
-        }
-
-        function move(e) {
-            var dx = e.clientX - startX;
-            var maxTarget = total - (minTotal - min[idx]);
-            var targetWidth = clamp(startWidths[idx] + dx, min[idx], maxTarget);
-            var remaining = total - targetWidth;
-            var remainingSlack = remaining - (min[others[0]] + min[others[1]]);
-            var widths = [0, 0, 0];
-
-            widths[idx] = targetWidth;
-
-            for (var n = 0; n < others.length; n++) {
-                var oi = others[n];
-                var ratio = otherSlackTotal > 0 ? otherSlack[n] / otherSlackTotal : 1 / others.length;
-                widths[oi] = min[oi] + remainingSlack * ratio;
-            }
-
-            var weightSum = widths.reduce(function(a, b) { return a + b; }, 0) || 1;
-            applyAsmPaneWeights(widths.map(function(w) { return Math.max(0.001, w / weightSum); }));
-            e.preventDefault();
-        }
-
-        function up(e) {
-            handle.classList.remove("dragging");
-            document.body.classList.remove("asm-pane-resizing");
-            window.removeEventListener("pointermove", move);
-            window.removeEventListener("pointerup", up);
-            window.removeEventListener("pointercancel", up);
-            try { handle.releasePointerCapture(ev.pointerId); } catch (_ignore) {}
-            e.preventDefault();
-        }
-
-        window.addEventListener("pointermove", move);
-        window.addEventListener("pointerup", up);
-        window.addEventListener("pointercancel", up);
-        ev.preventDefault();
-    });
- }
 
 function equalizePaneHeaders() {
     if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
-        oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title, #bytePaneHost .pane-title");
+        oPANE.equalizePaneHeaderHeights("#asmPaneHost .com-pane-title");
 }
 
 function normalizeLineEndingsInfo(text) {
@@ -2036,8 +1867,7 @@ function bindSourceDefaultWidgetActions() {
         else if (act == "indent") sourceIndent();
         else if (act == "outdent") sourceOutdent();
         else if (act == "theme") toggleAppTheme();
-        else if (act == "bottom") window.scrollTo(0, document.body.scrollHeight);
-        else if (act == "top") window.scrollTo({ top: 0 });
+
         ev.preventDefault();
     });
 }
@@ -2110,7 +1940,7 @@ function autosizeTextareaPane(textarea)
 {
     if (!textarea) return;
 
-    var wrap = textarea.closest(".pane-fr-wrap");
+    var wrap = textarea.closest(".com-pane-fr-wrap");
 
     textarea.style.height = "auto";
     textarea.style.overflow = "hidden";
@@ -2238,10 +2068,9 @@ function assembleCurrentSource() {
         var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
         var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
 
-        listingInfo.textContent = listingLineCount + " listing lines";
-        byteCodeInfo.textContent = byteCount + " bytes";
-        if (jsonInfo) jsonInfo.title = "interactive JSON";
-        //jsonInfo.innerHTML = "<button class=halfsizeBtn id=\"copyJsonButton\">Copy JSON</button>"
+        if (listingInfo) listingInfo.textContent = listingLineCount + " listing lines";
+        if (byteCodeInfo) byteCodeInfo.textContent = byteCount + " bytes";
+        if (jsonInfo) jsonInfo.textContent = "interactive JSON";
 
         if (sourceLineCount !== listingLineCount) {
             setStatus("ASM core v" + coreVersion + ": assembled with line-count mismatch: source " + sourceLineCount + ", listing " + listingLineCount + ".", "warn");
@@ -2267,14 +2096,55 @@ function renderRawError(message) {
     syncPaneHeightsFromListing();
 }
 
+function clearAssemblerOutputs(message, kind) {
+    currentJsonText = "";
+    currentByteCodeText = "";
+    window.oASM = null;
+    window.asmTokeniseJSON = null;
+    window.asmCompileResult = null;
+
+    if (listingPane) {
+        listingPane.value = "";
+        autosizeListingPane();
+    }
+    if (byteCodePane) byteCodePane.value = "";
+    if (jsonMount) jsonMount.replaceChildren();
+
+    if (listingInfo) listingInfo.textContent = "not assembled";
+    if (byteCodeInfo) byteCodeInfo.textContent = "0 bytes";
+    if (jsonInfo) jsonInfo.textContent = "not assembled";
+
+    refreshFindReplaceOverlays();
+    sizeJsonPaneToAvailableSpace();
+    syncPaneHeightsFromListing();
+
+    if (message) setStatus(message, kind || "");
+}
+
+function setSourceText(text, options) {
+    options = options || {};
+    if (!sourcePane) return;
+
+    sourcePane.value = text || "";
+    sourcePane.scrollTop = 0;
+
+    if (options.resetHistory) {
+        sourceEditHistory.undo.length = 0;
+        sourceEditHistory.redo.length = 0;
+        sourceEditHistory.outdent.length = 0;
+    }
+
+    autosizeSourcePane();
+    refreshFindReplaceOverlays();
+    syncPaneHeightsFromListing();
+}
+
 async function loadFile(file) {
     if (!file) return;
     currentFileName = file.name || "source.S";
-    sourcePane.value = await file.text();
-    autosizeSourcePane();
-    refreshFindReplaceOverlays();
-    /* Source header is occupied by Find/Replace; status remains in main toolbar. */    
-    assembleCurrentSource();
+    setSourceText(await file.text(), { resetHistory:true });
+    /* Source header is occupied by Find/Replace; status remains in main toolbar. */
+    clearAssemblerOutputs("Loaded " + currentFileName + ". Click ASSEMBLE to generate the listing and JSON.", "ok");
 }
 
 function jsonDownloadName() {
@@ -2302,17 +2172,16 @@ fileInput.addEventListener("change", function () {
     loadFile(fileInput.files && fileInput.files[0]);
 });
 
-if (copyJsonButton) copyJsonButton.addEventListener("click", async function () 
-{
+assembleButton.addEventListener("click", assembleCurrentSource);
+
+if (copyJsonButton) copyJsonButton.addEventListener("click", async function () {
     try {
         await navigator.clipboard.writeText(currentJsonText || "");
         setStatus("JSON copied to clipboard.", "ok");
     } catch (err) {
         setStatus("Clipboard copy failed; select the JSON text manually.", "warn");
-     }
+    }
 });
-
-if (scrollTopButton) scrollTopButton.addEventListener("click", scrollWindowBackToTop);
 
 /*
 downloadJsonButton.addEventListener("click", function () {
@@ -2358,10 +2227,12 @@ if (listingColumnsInput) {
     listingColumnsInput.addEventListener("keydown", function (ev) {
         if (ev.key === "Enter") {
             ev.preventDefault();
-            assembleCurrentSource();
+            clearAssemblerOutputs("Listing columns changed. Click ASSEMBLE to regenerate the listing and JSON.", "warn");
         }
     });
-    listingColumnsInput.addEventListener("change", assembleCurrentSource);
+    listingColumnsInput.addEventListener("change", function () {
+        clearAssemblerOutputs("Listing columns changed. Click ASSEMBLE to regenerate the listing and JSON.", "warn");
+    });
 }
 
 
@@ -2401,9 +2272,8 @@ sourcePane.addEventListener("keydown", function (ev) {
     if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") assembleCurrentSource();
 });
 
-installAsmPaneColumnHandles();
-loadAsmPaneWeights();
-assembleCurrentSource();
+setSourceText(sampleSourceText, { resetHistory:true });
+clearAssemblerOutputs("Sample source loaded. Click ASSEMBLE to generate the listing and JSON.", "");
 syncPaneHeightsFromListing();
 refreshFindReplaceOverlays();
 equalizePaneHeaders();
