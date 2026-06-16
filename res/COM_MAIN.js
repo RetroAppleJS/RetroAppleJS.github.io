@@ -1,6 +1,6 @@
 function COM()
 {
-  // v1.02
+  // v1.03
   /*
   this.debugMe = function()
   {
