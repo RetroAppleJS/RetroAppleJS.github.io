@@ -60,7 +60,8 @@
         font-size: 14px;
     }
 
-    .toolbar {
+    .toolbar 
+    {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -165,7 +166,7 @@
         border-color: var(--accent);
     }
 
-    textarea, .json-mount {
+    textarea, .json-mount, .pane-fr-wrap {
         width: 100%;
         height: 100%;
         min-height: 0;
@@ -1490,6 +1491,9 @@ SUBTBL      .BYTE    <BASCONT-1
 //document.getElementById("sampleSourceTemplate").textContent = init_asm_src;
 
 var oPANE = new PANE();
+if (typeof oPANE.injectFindReplaceCSS == "function") {
+    oPANE.injectFindReplaceCSS();
+}
 
 var asmPaneHost = document.getElementById("asmPaneHost");
 //var sampleSourceText = document.getElementById("sampleSourceTemplate").textContent.replace(/^\n/, "");
@@ -1502,8 +1506,7 @@ asmPaneHost.innerHTML =
             title:"Source",
             class:"pane-title",
             infoId:"sourceInfo",
-            info:"sample source",
-            searchBar:{opt:["all","regexp","case"]}
+            info:"sample source"
         },
         body:{
             id:"sourcePane",
@@ -1521,7 +1524,6 @@ asmPaneHost.innerHTML =
                 + '<strong>Listing</strong>'
                 + '<input id="listingColumnsInput" class="listing-columns-input" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" />'
                 + '</span>'
-                //+ oPANE.searchBarHTML({opt:["all","regexp","case"]})
                 + '<span id="listingInfo">compile()</span>'
         },
         body:{
@@ -1570,22 +1572,28 @@ var listingInfo = document.getElementById("listingInfo");
 var byteCodeInfo = document.getElementById("byteCodeInfo");
 var jsonInfo = document.getElementById("jsonInfo");
 
-
-oPANE.bindSearch("sourcePaneWrapper", "sourcePane", function() {
-    syncPaneHeightsFromListing();
-});
-
-oPANE.bindSearch("listingPaneWrapper", "listingPane", function() {
-    autosizeListingPane();
-    syncPaneHeightsFromListing();
-});
-
 var currentFileName = "sample.S";
 var currentJsonText = "";
 var currentByteCodeText = "";
 window.oASM = null;
 window.asmTokeniseJSON = null;
 window.asmCompileResult = null;
+
+if (typeof oPANE.bindFindReplace == "function") {
+    oPANE.bindFindReplace("sourcePane", {
+        id:"sourceFindReplace",
+        barWidth:"400px",
+        debounce_ms:500,
+        onChange:function(){ syncPaneHeightsFromListing(); }
+    });
+
+    oPANE.bindFindReplace("listingPane", {
+        id:"listingFindReplace",
+        barWidth:"400px",
+        debounce_ms:500,
+        onChange:function(){ autosizeListingPane(); syncPaneHeightsFromListing(); }
+    });
+}
 
 function setStatus(text, kind) {
     statusEl.className = "status" + (kind ? " " + kind : "");
