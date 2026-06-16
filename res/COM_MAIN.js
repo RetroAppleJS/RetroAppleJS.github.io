@@ -1840,6 +1840,14 @@ function PANE()
         + '.pane-findreplace.expanded .pane-fr-hidden-row{display:flex;}';
     };
 
+    /*
+     * Library-safety rule:
+     * This function only injects style text when called explicitly.
+     * Do not call it from COM_MAIN.js top-level code.
+     *
+     * If emulator pages never instantiate PANE() / never call this method,
+     * COM_MAIN.js must not add CSS or alter layout.
+     */
     this.injectFindReplaceCSS = function()
     {
         if(document.getElementById("pane_findreplace_css")) return;
