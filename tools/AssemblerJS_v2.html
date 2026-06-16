@@ -33,9 +33,10 @@
         margin: 0;
         min-height: 100vh;
         display: grid;
-        grid-template-rows: auto auto auto minmax(150px, 24vh);
-        gap: 12px;
-        padding: 18px;
+        grid-template-rows: auto auto auto auto;
+        align-content: start;
+        gap: 6px;
+        padding: 10px;
         background: var(--bg);
         color: var(--text);
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -65,11 +66,13 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
+        align-self: start;
         gap: 8px;
-        padding: 12px;
+        padding: 4px 8px;
         border: 1px solid var(--border);
         border-radius: 12px;
         background: var(--panel);
+        min-height: 0;
     }
 
     button, input::file-selector-button {
@@ -186,13 +189,39 @@
     #sourcePaneWrapper,
     #jsonPaneWrapper {
         align-self: start;
-        height: var(--listing-pane-height, auto);
-        max-height: var(--listing-pane-height, none);
+        height: auto;
+        max-height: none;
     }
 
-    .listing-pane {
+    #jsonPaneWrapper {
+        height: var(--json-pane-height, 420px);
+        max-height: var(--json-pane-height, 420px);
+    }
+
+    #jsonMount {
+        height: 100%;
+        overflow: auto;
+    }
+
+    #sourcePaneWrapper {
+        min-height: 0;
+    }
+
+    #listingPaneWrapper {
+        min-height: 0;
+    }
+
+    .listing-pane 
+    {
         align-self: start;
         grid-template-rows: auto auto;
+    }
+
+    #sourcePane
+    {
+        height: auto;
+        min-height: 0;
+        overflow: hidden;    
     }
 
     #listingPane {
@@ -243,12 +272,12 @@
     }
 
     .byte-pane {
-        min-height: 0;
+        min-height: 100px;
     }
 
     @media (max-width: 1100px) {
-        body { grid-template-rows: auto auto auto minmax(150px, 24vh); }
-        main { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 1fr) minmax(240px, 1fr) minmax(280px, 1.2fr); }
+        body { grid-template-rows: auto auto auto auto; }
+        main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
         .status { margin-left: 0; width: 100%; }
     }
 
@@ -1578,16 +1607,18 @@ var currentByteCodeText = "";
 window.oASM = null;
 window.asmTokeniseJSON = null;
 window.asmCompileResult = null;
+var sourceFindReplace = null;
+var listingFindReplace = null;
 
 if (typeof oPANE.bindFindReplace == "function") {
-    oPANE.bindFindReplace("sourcePane", {
+    sourceFindReplace = oPANE.bindFindReplace("sourcePane", {
         id:"sourceFindReplace",
         barWidth:"400px",
         debounce_ms:500,
         onChange:function(){ syncPaneHeightsFromListing(); }
     });
 
-    oPANE.bindFindReplace("listingPane", {
+    listingFindReplace = oPANE.bindFindReplace("listingPane", {
         id:"listingFindReplace",
         barWidth:"400px",
         debounce_ms:500,
@@ -1621,28 +1652,81 @@ function prettifyJSON(mountEl) {
     mountEl.innerHTML = "<pre class=\"json-view\">" + fallbackEscapeHTML(mountEl.textContent) + "</pre>";
 }
 
+function autosizeTextareaPane(textarea)
+{
+    if (!textarea) return;
+
+    var wrap = textarea.closest(".pane-fr-wrap");
+
+    textarea.style.height = "auto";
+    textarea.style.overflow = "hidden";
+
+    if (wrap) {
+        wrap.style.height = "auto";
+        wrap.style.overflow = "hidden";
+    }
+
+    var h = Math.max(textarea.scrollHeight, 0);
+    if (h > 0) {
+        textarea.style.height = h + "px";
+        if (wrap) wrap.style.height = h + "px";
+    }
+}
 
 function autosizeListingPane() {
-    if (!listingPane) return;
-    listingPane.style.height = "auto";
-    listingPane.style.overflow = "hidden";
-    var h = Math.max(listingPane.scrollHeight, 0);
-    if (h > 0) listingPane.style.height = h + "px";
+    autosizeTextareaPane(listingPane);
+}
+
+function autosizeSourcePane() 
+{
+    autosizeTextareaPane(sourcePane);
+}
+
+function refreshFindReplaceOverlays() {
+    if (sourceFindReplace && typeof sourceFindReplace.render == "function")
+        sourceFindReplace.render();
+    if (listingFindReplace && typeof listingFindReplace.render == "function")
+        listingFindReplace.render();
+}
+
+function sizeJsonPaneToAvailableSpace() {
+    if (!jsonPaneWrapper || !jsonMount) return;
+
+    var viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+    if (!viewportH) return;
+
+    var top = jsonPaneWrapper.getBoundingClientRect().top;
+    var byteTop = byteCodePane
+        ? byteCodePane.closest(".byte-pane").getBoundingClientRect().top
+        : viewportH;
+
+    /*
+     * JSON should use all currently available vertical room in its row,
+     * but must not push the byte-code pane downward.  So its maximum height
+     * is bounded by the beginning of the byte-code pane when that pane is
+     * already visible below the three editor panes.
+     */
+    var bottom = Math.min(viewportH - 10, byteTop - 12);
+    var h = Math.floor(bottom - top);
+
+    h = Math.max(h, 140);
+
+    jsonPaneWrapper.style.height = h + "px";
+    jsonPaneWrapper.style.maxHeight = h + "px";
+    jsonMount.style.height = "100%";
+    jsonMount.style.overflow = "auto";
+
+    document.documentElement.style.setProperty("--json-pane-height", h + "px");
 }
 
 function syncPaneHeightsFromListing() {
     requestAnimationFrame(function () {
+        autosizeSourcePane();
         autosizeListingPane();
+        sizeJsonPaneToAvailableSpace();
         if (!listingPaneWrapper) return;
         var h = Math.ceil(listingPaneWrapper.getBoundingClientRect().height);
         if (h <= 0) return;
-
-        document.documentElement.style.setProperty("--listing-pane-height", h + "px");
-        [sourcePaneWrapper, jsonPaneWrapper].forEach(function (el) {
-            if (!el) return;
-            el.style.height = h + "px";
-            el.style.maxHeight = h + "px";
-        });
     });
 }
 
@@ -1677,7 +1761,9 @@ function assembleCurrentSource() {
         window.asmCompileResult = compiled;
 
         listingPane.value = compiled.listingText || "";
+        autosizeSourcePane();
         autosizeListingPane();
+        refreshFindReplaceOverlays();
         currentByteCodeText = compiled.byteCodeText || "";
         byteCodePane.value = currentByteCodeText;
 
@@ -1687,6 +1773,7 @@ function assembleCurrentSource() {
         jsonMount.textContent = currentJsonText;
         prettifyJSON(jsonMount);
         if (jsonMount) jsonMount.scrollTop = 0;
+        sizeJsonPaneToAvailableSpace();
         syncPaneHeightsFromListing();
 
         var sourceLineCount = sourcePane.value.split(/\r\n|\r|\n/).length;
@@ -1710,6 +1797,7 @@ function assembleCurrentSource() {
         console.error(err);
         listingPane.value = "";
         byteCodePane.value = "";
+        refreshFindReplaceOverlays();
         renderRawError(err && err.stack ? err.stack : String(err));
         setStatus("Error: " + (err && err.message ? err.message : String(err)), "bad");
     }
@@ -1726,6 +1814,8 @@ async function loadFile(file) {
     if (!file) return;
     currentFileName = file.name || "source.S";
     sourcePane.value = await file.text();
+    autosizeSourcePane();
+    refreshFindReplaceOverlays();
     sourceInfo.textContent = currentFileName + " — " + sourcePane.value.split(/\r\n|\r|\n/).length + " lines";
     assembleCurrentSource();
 }
@@ -1823,7 +1913,9 @@ sourcePane.addEventListener("paste", function () {
     }, 0);
 });
 
-window.addEventListener("resize", function () {
+window.addEventListener("resize", function () 
+{
+    sizeJsonPaneToAvailableSpace();
     syncPaneHeightsFromListing();
 });
 
@@ -1833,6 +1925,7 @@ sourcePane.addEventListener("keydown", function (ev) {
 
 assembleCurrentSource();
 syncPaneHeightsFromListing();
+refreshFindReplaceOverlays();
 </script>
 </body>
 </html>
