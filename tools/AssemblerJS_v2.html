@@ -282,6 +282,11 @@
         min-height: 100px;
     }
 
+    .halfsizeBtn 
+    {
+        scale: 70%;
+    }
+
     @media (max-width: 1100px) {
         body { grid-template-rows: auto auto auto auto; }
         main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
@@ -306,9 +311,9 @@
 <section class="toolbar">
     <input id="fileInput" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain" />
     <button id="assembleButton" class="primary">ASSEMBLE</button>
-    <button id="copyJsonButton">Copy JSON</button>
-    <button id="downloadJsonButton">Download JSON</button>
-    <button id="copyByteCodeButton">Copy byte code</button>
+    <button class=halfsizeBtn id="copyJsonButton">Copy JSON</button>
+    <button class=halfsizeBtn id="copyByteCodeButton">Copy byte code</button>
+    <!--button id="downloadJsonButton">Download JSON</button-->
     <span id="status" class="status">Ready.</span>
 </section>
 
@@ -1891,6 +1896,7 @@ copyJsonButton.addEventListener("click", async function () {
     }
 });
 
+/*
 downloadJsonButton.addEventListener("click", function () {
     var blob = new Blob([currentJsonText || "{}"], { type: "application/json;charset=utf-8" });
     var url = URL.createObjectURL(blob);
@@ -1902,6 +1908,7 @@ downloadJsonButton.addEventListener("click", function () {
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
 });
+*/
 
 copyByteCodeButton.addEventListener("click", async function () {
     try {
