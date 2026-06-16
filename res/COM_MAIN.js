@@ -1,6 +1,5 @@
 function COM()
 {
-  // v1.03
   /*
   this.debugMe = function()
   {
@@ -1680,6 +1679,25 @@ var oMEMGRID = new function()
 
 function PANE()
 {
+    this.rootClass = "com-pane";
+    this.titleClass = "com-pane-title";
+    this.titleEqualizedClass = "com-pane-title-equalized";
+
+    this.classHTML = function()
+    {
+        var seen = {};
+        var out = [];
+        for(var i = 0; i < arguments.length; i++)
+        {
+            var s = String(arguments[i] || "").trim();
+            if(!s) continue;
+            s.split(/\s+/).forEach(function(cls) {
+                if(cls && !seen[cls]) { seen[cls] = true; out.push(cls); }
+            });
+        }
+        return out.join(" ");
+    };
+
     this.escapeHTML = function(s)
     {
         return String(s ?? "")
@@ -1718,15 +1736,15 @@ function PANE()
         var opt = cfg.opt || [];
 
         return ''
-            + '<span class="pane-searchbar">'
-            + '<input type="text" class="pane-find" placeholder="Find">'
-            + '<input type="text" class="pane-replace" placeholder="Replace">'
+            + '<span class="com-pane-searchbar">'
+            + '<input type="text" class="com-pane-find" placeholder="Find">'
+            + '<input type="text" class="com-pane-replace" placeholder="Replace">'
             + '<button type="button" data-pane-act="find-prev">Prev</button>'
             + '<button type="button" data-pane-act="find-next">Next</button>'
             + '<button type="button" data-pane-act="replace">Replace</button>'
             + (opt.indexOf("all") >= 0 ? '<button type="button" data-pane-act="replace-all">All</button>' : '')
-            + (opt.indexOf("regexp") >= 0 ? '<label><input type="checkbox" class="pane-regexp">.*</label>' : '')
-            + (opt.indexOf("case") >= 0 ? '<label><input type="checkbox" class="pane-case">Aa</label>' : '')
+            + (opt.indexOf("regexp") >= 0 ? '<label><input type="checkbox" class="com-pane-regexp">.*</label>' : '')
+            + (opt.indexOf("case") >= 0 ? '<label><input type="checkbox" class="com-pane-case">Aa</label>' : '')
             + '</span>';
     };
 
@@ -1739,24 +1757,18 @@ function PANE()
         var btag = body.tag || "textarea";
         var content = body.content !== undefined ? body.content : txt;
 
-        var infoHTML = "";
-        if(header.infoId || header.info != null || header.infoHTML != null) {
-            infoHTML = '<span'
-                + (header.infoId ? ' id="' + this.escapeHTML(header.infoId) + '"' : '')
-                + '>'
-                + (header.infoHTML != null ? String(header.infoHTML) : this.escapeHTML(header.info || ""))
-                + '</span>';
-        }
+        var sectionClass = this.classHTML(this.rootClass, cfg.class || "pane");
+        var headerClass  = this.classHTML(this.titleClass, header.class || "pane-title");
 
         return ''
             + '<section'
             + (cfg.id ? ' id="' + this.escapeHTML(cfg.id) + '"' : '')
-            + ' class="' + this.escapeHTML(cfg.class || "pane") + '">'
-            + '<div class="' + this.escapeHTML(header.class || "pane-title") + '">'
+            + ' class="' + this.escapeHTML(sectionClass) + '">'
+            + '<div class="' + this.escapeHTML(headerClass) + '">'
             + (header.html || (
                 '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
                 + this.searchBarHTML(header.searchBar)
-                + infoHTML
+                + (header.infoId ? '<span id="' + this.escapeHTML(header.infoId) + '">' + this.escapeHTML(header.info || "") + '</span>' : '')
             ))
             + '</div>'
             + '<' + btag
@@ -1790,69 +1802,61 @@ function PANE()
     this.findReplaceCSS = function()
     {
         return ''
-        + '.pane-fr-wrap{position:relative;width:100%;height:100%;min-height:0;background:var(--panel2,#0b0f14);overflow:hidden;}'
-        + '.pane-fr-wrap>textarea,.pane-fr-overlay{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;outline:0;'
+        + '.com-pane-fr-wrap{position:relative;width:100%;height:100%;min-height:0;background:var(--panel2,#0b0f14);overflow:hidden;}'
+        + '.com-pane-fr-wrap>textarea,.com-pane-fr-overlay{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;outline:0;'
             + 'padding:14px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;'
             + 'tab-size:4;white-space:pre;overflow:auto;}'
-        + '.pane-fr-overlay{pointer-events:none;color:var(--text,#e6edf3);background:var(--panel2,#0b0f14);}'
-        + '.pane-fr-wrap>textarea{resize:none;background:transparent!important;color:transparent!important;caret-color:var(--text,#e6edf3);}'
-        + '.pane-fr-wrap>textarea::selection{background:rgba(197,139,27,.65);color:transparent;}'
-        + '.pane-fr-selection{background:rgba(190,190,190,.35);}'
-        + '.pane-fr-match{background:rgba(255,210,70,.28);}'
-        + '.pane-fr-current{background:rgba(255,185,45,.85);color:#000;}'
-        + '.pane-title{position:relative;}'
-        + '.pane-title.pane-title-equalized{height:var(--pane-title-height,auto);min-height:var(--pane-title-height,auto);}'
-        + '.pane-findreplace{z-index:2000;display:none;'        
+        + '.com-pane-fr-overlay{pointer-events:none;color:var(--text,#e6edf3);background:var(--panel2,#0b0f14);}'
+        + '.com-pane-fr-wrap>textarea{resize:none;background:transparent!important;color:transparent!important;caret-color:var(--text,#e6edf3);}'
+        + '.com-pane-fr-wrap>textarea::selection{background:rgba(197,139,27,.65);color:transparent;}'
+        + '.com-pane-fr-selection{background:rgba(190,190,190,.35);}'
+        + '.com-pane-fr-match{background:rgba(255,210,70,.28);}'
+        + '.com-pane-fr-current{background:rgba(255,185,45,.85);color:#000;}'
+        + '.com-pane-title{position:relative;}'
+        + '.com-pane-title.com-pane-title-equalized{height:var(--com-pane-title-height,auto);min-height:var(--com-pane-title-height,auto);}'
+        + '.com-pane-findreplace{z-index:2000;display:none;'        
             + 'grid-template-columns:auto minmax(150px,392px) auto auto auto auto auto;grid-template-rows:24px;'
-            + 'align-items:center;gap:4px;padding:2px 4px;border:1px solid var(--pane-fr-border,#d2d2d2);'
-            + 'border-radius:4px;background:var(--pane-fr-bg,#f3f3f3);box-shadow:0 2px 12px rgba(0,0,0,.18);'
-            + 'color:var(--pane-fr-text,#5f5f5f);}'
-        + '.pane-findreplace.pane-fr-inline{position:relative;top:auto;left:auto;right:auto;box-shadow:none;}'
-        + '.pane-findreplace.pane-fr-overlay-expand.expanded{position:absolute;right:8px;top:2px;transform:none;box-shadow:0 2px 12px rgba(0,0,0,.35);}'
-        + '.pane-findreplace.open{display:grid;}'
-        + '.pane-findreplace.expanded{grid-template-rows:24px 24px;}'
-        + '.pane-header-widget-host{display:flex;align-items:center;justify-content:flex-end;margin-left:auto;min-width:0;position:relative;}'
-        + '.pane-header-widget{display:none;}'
-        + '.pane-header-widget.active{display:flex;}'
-        + '.pane-findreplace.pane-header-widget.active{display:grid;}'
-        + '.pane-header-default-widget{align-items:center;gap:4px;}'
-        + '.pane-header-default-widget .pane-fr-btn{display:inline-flex;}'
-        + '.pane-fr-expander,.pane-fr-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;'
+            + 'align-items:center;gap:4px;padding:2px 4px;border:1px solid var(--com-pane-fr-border,#d2d2d2);'
+            + 'border-radius:4px;background:var(--com-pane-fr-bg,#f3f3f3);box-shadow:0 2px 12px rgba(0,0,0,.18);'
+            + 'color:var(--com-pane-fr-text,#5f5f5f);}'
+        + '.com-pane-findreplace.com-pane-fr-inline{position:relative;top:auto;left:auto;right:auto;box-shadow:none;}'
+        + '.com-pane-findreplace.com-pane-fr-overlay-expand.expanded{position:absolute;right:8px;top:2px;transform:none;box-shadow:0 2px 12px rgba(0,0,0,.35);}'
+        + '.com-pane-findreplace.open{display:grid;}'
+        + '.com-pane-findreplace.expanded{grid-template-rows:24px 24px;}'
+        + '.com-pane-header-widget-host{display:flex;align-items:center;justify-content:flex-end;margin-left:auto;min-width:0;position:relative;}'
+        + '.com-pane-header-widget{display:none;}'
+        + '.com-pane-header-widget.active{display:flex;}'
+        + '.com-pane-findreplace.com-pane-header-widget.active{display:grid;}'
+        + '.com-pane-header-default-widget{align-items:center;gap:4px;}'
+        + '.com-pane-header-default-widget .com-pane-fr-btn{display:inline-flex;}'
+        + '.com-pane-fr-expander,.com-pane-fr-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;'
             + 'width:20px;min-width:20px;height:20px;padding:0;margin:0;border:1px solid transparent;border-radius:3px;'
-            + 'background:transparent;color:var(--pane-fr-muted,#9a9a9a);cursor:pointer;font:14px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;'
+            + 'background:transparent;color:var(--com-pane-fr-muted,#9a9a9a);cursor:pointer;font:14px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;'
             + 'text-align:center;vertical-align:middle;}'
-        + '.pane-fr-expander{color:var(--pane-fr-expander,#333);}'
-        + '.pane-fr-expander:hover,.pane-fr-expander.active,.pane-fr-btn.active{border-color:var(--pane-fr-active,#0078d4);background:var(--pane-fr-active-bg,#e9f4ff);color:var(--pane-fr-active-text,#111);}'
-        + '.pane-fr-btn:hover{color:var(--pane-fr-hover-text,#555);background:var(--pane-fr-hover-bg,#ececec);}'
-        + '.pane-fr-btn:disabled{opacity:.35;cursor:default;pointer-events:none;}'
-        + '.pane-fr-expander .chev{display:inline-flex;align-items:center;justify-content:center;line-height:1;transform:rotate(0deg);}'
-        + '.pane-findreplace.expanded .pane-fr-expander .chev{transform:rotate(90deg);}'
-        + '.pane-fr-field{display:flex;height:20px;border-radius:3px;background:var(--pane-fr-field-bg,#fff);overflow:hidden;}'
-        + '.pane-fr-field input{min-width:0;flex:1;padding:0 2px;border:0;outline:0;font:10px/1 sans-serif;overflow:hidden;color:var(--pane-fr-field-text,#5f5f5f);background:var(--pane-fr-field-bg,#fff);}'        
-        + '.pane-fr-field-buttons{display:flex;height:100%;align-items:center;padding-right:8px;gap:2px;}'
-        + '.pane-fr-under{display:inline-flex;align-items:center;justify-content:center;line-height:1;text-decoration:underline;text-underline-offset:3px;}'
-        + '.pane-fr-results{font-size:10px;min-width:70px;white-space:nowrap;}'
-        + '.pane-fr-nav,.pane-fr-close,.pane-fr-selection-btn{font-size:14px;}'
-        + '.pane-fr-replace-spacer{grid-column:1;}'
-        + '.pane-fr-replace-field{grid-column:2;grid-row:2;}'
-        + '.pane-fr-actions{grid-column:3 / span 3;grid-row:2;display:flex;align-items:center;gap:10px;}'
-        + '.pane-fr-hidden-row{display:none;}'
-        + '.pane-findreplace.expanded .pane-fr-hidden-row{display:flex;}';
+        + '.com-pane-fr-expander{color:var(--com-pane-fr-expander,#333);}'
+        + '.com-pane-fr-expander:hover,.com-pane-fr-expander.active,.com-pane-fr-btn.active{border-color:var(--com-pane-fr-active,#0078d4);background:var(--com-pane-fr-active-bg,#e9f4ff);color:var(--com-pane-fr-active-text,#111);}'
+        + '.com-pane-fr-btn:hover{color:var(--com-pane-fr-hover-text,#555);background:var(--com-pane-fr-hover-bg,#ececec);}'
+        + '.com-pane-fr-btn:disabled{opacity:.35;cursor:default;pointer-events:none;}'
+        + '.com-pane-fr-expander .chev{display:inline-flex;align-items:center;justify-content:center;line-height:1;transform:rotate(0deg);}'
+        + '.com-pane-findreplace.expanded .com-pane-fr-expander .chev{transform:rotate(90deg);}'
+        + '.com-pane-fr-field{display:flex;height:20px;border-radius:3px;background:var(--com-pane-fr-field-bg,#fff);overflow:hidden;}'
+        + '.com-pane-fr-field input{min-width:0;flex:1;padding:0 2px;border:0;outline:0;font:10px/1 sans-serif;overflow:hidden;color:var(--com-pane-fr-field-text,#5f5f5f);background:var(--com-pane-fr-field-bg,#fff);}'        
+        + '.com-pane-fr-field-buttons{display:flex;height:100%;align-items:center;padding-right:8px;gap:2px;}'
+        + '.com-pane-fr-under{display:inline-flex;align-items:center;justify-content:center;line-height:1;text-decoration:underline;text-underline-offset:3px;}'
+        + '.com-pane-fr-results{font-size:10px;min-width:70px;white-space:nowrap;}'
+        + '.com-pane-fr-nav,.com-pane-fr-close,.com-pane-fr-selection-btn{font-size:14px;}'
+        + '.com-pane-fr-replace-spacer{grid-column:1;}'
+        + '.com-pane-fr-replace-field{grid-column:2;grid-row:2;}'
+        + '.com-pane-fr-actions{grid-column:3 / span 3;grid-row:2;display:flex;align-items:center;gap:10px;}'
+        + '.com-pane-fr-hidden-row{display:none;}'
+        + '.com-pane-findreplace.expanded .com-pane-fr-hidden-row{display:flex;}';
     };
 
-    /*
-     * Library-safety rule:
-     * This function only injects style text when called explicitly.
-     * Do not call it from COM_MAIN.js top-level code.
-     *
-     * If emulator pages never instantiate PANE() / never call this method,
-     * COM_MAIN.js must not add CSS or alter layout.
-     */
     this.injectFindReplaceCSS = function()
     {
-        if(document.getElementById("pane_findreplace_css")) return;
+        if(document.getElementById("com_pane_findreplace_css")) return;
         var style = document.createElement("style");
-        style.id = "pane_findreplace_css";
+        style.id = "com_pane_findreplace_css";
         style.textContent = this.findReplaceCSS();
         document.head.appendChild(style);
     };
@@ -1862,29 +1866,29 @@ function PANE()
         cfg = cfg || {};
         var w = cfg.barWidth || "400px";
         return ''
-        + '<div id="' + this.escapeHTML(id) + '" style="width:' + this.escapeHTML(w) + '" class="pane-findreplace" aria-label="Find and replace">'
-        +   '<button type="button" class="pane-fr-expander" data-fr-act="expand" title="Expand / collapse replace"><span class="chev">›</span></button>'
-        +   '<div class="pane-fr-field">'
-        +     '<input class="pane-fr-find" placeholder="Find" autocomplete="off" spellcheck="false">'
-        +     '<span class="pane-fr-field-buttons">'
-        +       '<button type="button" class="pane-fr-btn pane-fr-case active" title="Match case">Aa</button>'
-        +       '<button type="button" class="pane-fr-btn pane-fr-word" title="Match whole word"><span class="pane-fr-under">ab</span></button>'
-        +       '<button type="button" class="pane-fr-btn pane-fr-regex" title="Use regular expression">.*</button>'
+        + '<div id="' + this.escapeHTML(id) + '" style="width:' + this.escapeHTML(w) + '" class="com-pane-findreplace" aria-label="Find and replace">'
+        +   '<button type="button" class="com-pane-fr-expander" data-fr-act="expand" title="Expand / collapse replace"><span class="chev">›</span></button>'
+        +   '<div class="com-pane-fr-field">'
+        +     '<input class="com-pane-fr-find" placeholder="Find" autocomplete="off" spellcheck="false">'
+        +     '<span class="com-pane-fr-field-buttons">'
+        +       '<button type="button" class="com-pane-fr-btn com-pane-fr-case active" title="Match case">Aa</button>'
+        +       '<button type="button" class="com-pane-fr-btn com-pane-fr-word" title="Match whole word"><span class="com-pane-fr-under">ab</span></button>'
+        +       '<button type="button" class="com-pane-fr-btn com-pane-fr-regex" title="Use regular expression">.*</button>'
         +     '</span>'
         +   '</div>'
-        +   '<div class="pane-fr-results">No results</div>'
-        +   '<button type="button" class="pane-fr-btn pane-fr-nav pane-fr-prev" title="Previous match">↑</button>'
-        +   '<button type="button" class="pane-fr-btn pane-fr-nav pane-fr-next" title="Next match">↓</button>'
-        +   '<button type="button" class="pane-fr-btn pane-fr-selection-btn" title="Find in selection">☰</button>'
-        +   '<button type="button" class="pane-fr-btn pane-fr-close" title="Close">×</button>'
-        +   '<div class="pane-fr-replace-spacer pane-fr-hidden-row"></div>'
-        +   '<div class="pane-fr-field pane-fr-replace-field pane-fr-hidden-row">'
-        +     '<input class="pane-fr-replace" placeholder="Replace" autocomplete="off" spellcheck="false">'
-        +     '<span class="pane-fr-field-buttons"><button type="button" class="pane-fr-btn pane-fr-preserve" title="Preserve case">AB</button></span>'
+        +   '<div class="com-pane-fr-results">No results</div>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-nav com-pane-fr-prev" title="Previous match">↑</button>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-nav com-pane-fr-next" title="Next match">↓</button>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-selection-btn" title="Find in selection">☰</button>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-close" title="Close">×</button>'
+        +   '<div class="com-pane-fr-replace-spacer com-pane-fr-hidden-row"></div>'
+        +   '<div class="com-pane-fr-field com-pane-fr-replace-field com-pane-fr-hidden-row">'
+        +     '<input class="com-pane-fr-replace" placeholder="Replace" autocomplete="off" spellcheck="false">'
+        +     '<span class="com-pane-fr-field-buttons"><button type="button" class="com-pane-fr-btn com-pane-fr-preserve" title="Preserve case">AB</button></span>'
         +   '</div>'
-        +   '<div class="pane-fr-actions pane-fr-hidden-row">'
-        +     '<button type="button" class="pane-fr-btn pane-fr-replace-one" title="Replace selected match">c</button>'
-        +     '<button type="button" class="pane-fr-btn pane-fr-replace-all" title="Replace all">ac</button>'
+        +   '<div class="com-pane-fr-actions com-pane-fr-hidden-row">'
+        +     '<button type="button" class="com-pane-fr-btn com-pane-fr-replace-one" title="Replace selected match">c</button>'
+        +     '<button type="button" class="com-pane-fr-btn com-pane-fr-replace-all" title="Replace all">ac</button>'
         +   '</div>'
         + '</div>';
     };
@@ -1908,39 +1912,39 @@ function PANE()
             bar = document.getElementById(uid);
         }
 
-        if(cfg.inline !== false) bar.classList.add("pane-fr-inline");
-        if(cfg.overlayExpand) bar.classList.add("pane-fr-overlay-expand");
+        if(cfg.inline !== false) bar.classList.add("com-pane-fr-inline");
+        if(cfg.overlayExpand) bar.classList.add("com-pane-fr-overlay-expand");
         if(cfg.scheme) {
-            for(var k in cfg.scheme) bar.style.setProperty("--pane-fr-" + k, cfg.scheme[k]);
+            for(var k in cfg.scheme) bar.style.setProperty("--com-pane-fr-" + k, cfg.scheme[k]);
         }
         if(cfg.manager && typeof cfg.manager.add == "function")
             cfg.manager.add(uid, bar, false);
 
         var wrap = target.parentNode;
         var overlay;
-        if(!wrap.classList || !wrap.classList.contains("pane-fr-wrap")) {
+        if(!wrap.classList || !wrap.classList.contains("com-pane-fr-wrap")) {
             wrap = document.createElement("div");
-            wrap.className = "pane-fr-wrap";
+            wrap.className = "com-pane-fr-wrap";
             target.parentNode.insertBefore(wrap, target);
             overlay = document.createElement("pre");
-            overlay.className = "pane-fr-overlay";
+            overlay.className = "com-pane-fr-overlay";
             overlay.setAttribute("aria-hidden", "true");
             wrap.appendChild(overlay);
             wrap.appendChild(target);
         } else {
-            overlay = wrap.querySelector(".pane-fr-overlay");
+            overlay = wrap.querySelector(".com-pane-fr-overlay");
         }
 
-        var findInput    = bar.querySelector(".pane-fr-find");
-        var replaceInput = bar.querySelector(".pane-fr-replace");
-        var resultInfo   = bar.querySelector(".pane-fr-results");
-        var prevBtn      = bar.querySelector(".pane-fr-prev");
-        var nextBtn      = bar.querySelector(".pane-fr-next");
-        var caseBtn      = bar.querySelector(".pane-fr-case");
-        var wordBtn      = bar.querySelector(".pane-fr-word");
-        var regexBtn     = bar.querySelector(".pane-fr-regex");
-        var preserveBtn  = bar.querySelector(".pane-fr-preserve");
-        var selectionBtn = bar.querySelector(".pane-fr-selection-btn");
+        var findInput    = bar.querySelector(".com-pane-fr-find");
+        var replaceInput = bar.querySelector(".com-pane-fr-replace");
+        var resultInfo   = bar.querySelector(".com-pane-fr-results");
+        var prevBtn      = bar.querySelector(".com-pane-fr-prev");
+        var nextBtn      = bar.querySelector(".com-pane-fr-next");
+        var caseBtn      = bar.querySelector(".com-pane-fr-case");
+        var wordBtn      = bar.querySelector(".com-pane-fr-word");
+        var regexBtn     = bar.querySelector(".com-pane-fr-regex");
+        var preserveBtn  = bar.querySelector(".com-pane-fr-preserve");
+        var selectionBtn = bar.querySelector(".com-pane-fr-selection-btn");
 
         var state = {
             matches: [],
@@ -1960,10 +1964,10 @@ function PANE()
             var ranges = [];
             var visibleSelection = state.selectionRange || state.lastEditorSelection;
             if(visibleSelection && visibleSelection.end > visibleSelection.start)
-                ranges.push({start:visibleSelection.start,end:visibleSelection.end,cls:"pane-fr-selection",priority:1});
+                ranges.push({start:visibleSelection.start,end:visibleSelection.end,cls:"com-pane-fr-selection",priority:1});
 
             for(var i=0;i<state.matches.length;i++)
-                ranges.push({start:state.matches[i].start,end:state.matches[i].end,cls:i==state.current?"pane-fr-current":"pane-fr-match",priority:i==state.current?3:2});
+                ranges.push({start:state.matches[i].start,end:state.matches[i].end,cls:i==state.current?"com-pane-fr-current":"com-pane-fr-match",priority:i==state.current?3:2});
 
             ranges = ranges.filter(function(r){return r.end>r.start}).sort(function(a,b){return a.start-b.start || b.priority-a.priority});
             var out = "", pos = 0;
@@ -2218,9 +2222,9 @@ function PANE()
         bar.querySelector('[data-fr-act="expand"]').onclick = function(){ bar.classList.toggle("expanded"); };
         prevBtn.onclick = function(){ nextMatch(-1); };
         nextBtn.onclick = function(){ nextMatch(1); };
-        bar.querySelector(".pane-fr-replace-one").onclick = replaceCurrent;
-        bar.querySelector(".pane-fr-replace-all").onclick = replaceAll;
-        bar.querySelector(".pane-fr-close").onclick = closeSearch;
+        bar.querySelector(".com-pane-fr-replace-one").onclick = replaceCurrent;
+        bar.querySelector(".com-pane-fr-replace-all").onclick = replaceAll;
+        bar.querySelector(".com-pane-fr-close").onclick = closeSearch;
         caseBtn.onclick = function(){ caseBtn.classList.toggle("active"); scheduleFind(); };
         wordBtn.onclick = function(){ wordBtn.classList.toggle("active"); scheduleFind(); };
         regexBtn.onclick = function(){ regexBtn.classList.toggle("active"); scheduleFind(); };
@@ -2253,7 +2257,7 @@ function PANE()
         if(typeof host == "string") host = document.getElementById(host);
         if(!host) return null;
 
-        host.classList.add("pane-header-widget-host");
+        host.classList.add("com-pane-header-widget-host");
 
         var widgets = {};
         var activeId = "";
@@ -2277,22 +2281,14 @@ function PANE()
             }
             if(!el) return null;
 
-            el.classList.add("pane-header-widget");
+            el.classList.add("com-pane-header-widget");
             if(isDefault) {
                 defaultId = id;
-                el.classList.add("pane-header-default-widget");
+                el.classList.add("com-pane-header-default-widget");
             }
             widgets[id] = el;
             if(!el.parentNode) host.appendChild(el);
-
-            /*
-             * If a non-default widget is registered after the default widget
-             * has already been activated, keep it hidden until activate(id)
-             * is called.  This is the one-line header toggle contract:
-             * exactly one registered widget is visible at a time.
-             */
             el.classList.toggle("active", activeId == id);
-
             return el;
         }
 
@@ -2329,30 +2325,29 @@ function PANE()
     this.defaultPaneHeaderWidgetHTML = function()
     {
         return ''
-            + '<span class="pane-header-default-widget pane-header-widget">'
-            + '<button type="button" class="pane-fr-btn" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
-            + '<button type="button" class="pane-fr-btn" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
-            + '<button type="button" class="pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
-            + '<button type="button" class="pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
-            + '<button type="button" class="pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
-            + '<button type="button" class="pane-fr-btn" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
+            + '<span class="com-pane-header-default-widget com-pane-header-widget">'
+            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
+            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
+            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
+            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
+            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
             + '</span>';
     };
 
     this.equalizePaneHeaderHeights = function(selector)
     {
-        selector = selector || ".pane-title";
+        selector = selector || ".com-pane-title";
         requestAnimationFrame(function() {
             var headers = Array.prototype.slice.call(document.querySelectorAll(selector));
             var h = 0;
             headers.forEach(function(el) {
-                el.classList.remove("pane-title-equalized");
+                el.classList.remove("com-pane-title-equalized");
                 el.style.removeProperty("height");
                 h = Math.max(h, Math.ceil(el.getBoundingClientRect().height));
             });
             if(h <= 0) return;
-            document.documentElement.style.setProperty("--pane-title-height", h + "px");
-            headers.forEach(function(el) { el.classList.add("pane-title-equalized"); });
+            document.documentElement.style.setProperty("--com-pane-title-height", h + "px");
+            headers.forEach(function(el) { el.classList.add("com-pane-title-equalized"); });
         });
     };
 
