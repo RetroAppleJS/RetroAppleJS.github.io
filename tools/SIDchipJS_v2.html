@@ -1,0 +1,596 @@
+<!--
+//
+// Copyright (c) 2023 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+//
+// SIDchipJS_v2.html
+// Tracker-style SID register monitor added on top of SIDchipJS.html.
+//
+-->
+<html>
+<head>
+  <title>SID EMULATOR + TRACKER VIEW</title>
+  <script type="text/javascript" src="TOOLS_Header.js"></script>
+  <script type="text/javascript" src="../res/COM_MAIN.js"></script>
+  <script type="text/javascript" src="../res/jsSID.js"></script>
+  <script type="text/javascript" src="../res/pako.min.js"></script>
+
+  <meta name="description" content="SID player with live 3-voice tracker-style note/register view">
+  <meta name="author" content="Freddy Vandriessche">
+  <meta charset="utf-8">
+
+  <style>
+    body { font-family: monospace; }
+    button { margin: 2px; }
+    .sidbox { display:inline-block; border:1px solid gray; vertical-align:top; color:black; margin:4px; padding:4px; background:#c8c8c8; }
+    .sidbox textarea { font-family: monospace; }
+    .tracker-panel { border:1px solid #777; background:#111; color:#ddd; padding:6px; margin-top:8px; width:calc(100% - 22px); min-width:940px; }
+    .tracker-controls { color:#eee; margin-bottom:6px; }
+    .tracker-table-wrap { max-height:520px; overflow:auto; border:1px solid #444; background:#000; }
+    table.tracker { border-collapse:collapse; width:100%; font-family:Consolas, Monaco, monospace; font-size:12px; }
+    table.tracker th { position:sticky; top:0; background:#202020; color:#fff; border-bottom:1px solid #666; padding:3px 5px; white-space:nowrap; }
+    table.tracker td { border-bottom:1px solid #222; padding:2px 5px; white-space:nowrap; }
+    table.tracker td.frame { color:#9f9; text-align:right; }
+    table.tracker td.time { color:#8df; text-align:right; }
+    table.tracker td.note { color:#ffd; font-weight:bold; }
+    table.tracker td.fx { color:#ddd; }
+    table.tracker td.muted { color:#666; }
+    .mini { font-size:11px; color:#333; }
+    .warning { color:#700; font-weight:bold; }
+  </style>
+</head>
+
+<script>
+var CONF_version="2.0.0";
+var CONF_builddate="20260616-000000";
+var b64 = "";
+var st = 0;
+var bPause = false;
+var playTimer = null;
+
+function init_gui()
+{
+    document.getElementById('slider_title').outerHTML = _TITLE();
+
+    // LOAD SID IMAGE VIA URI PARAMETER (compatible with SIDchipJS.html)
+    oCOM.URL.parse(document.location.toString());
+    var sid = oCOM.URL.uri["sid"];
+    if(sid===undefined || sid.length===0) return null;
+
+    var db = oCOM.base64ToArrayBuffer(sid);
+    if(db==null) return null;
+
+    const inflator = new pako.Inflate();
+    inflator.push(db);
+
+    var dd = inflator.result;
+    if(dd===undefined) return null;
+    b64 = oCOM.ArrayBufferTobase64(dd); // override default song data
+
+    document.getElementById("b64").value = b64;
+    load_from_base64();
+}
+
+/////////////////////////////////////////////////////////
+// Tracker-aware jsSID wrapper
+/////////////////////////////////////////////////////////
+
+function makeTrackerSIDConstructor()
+{
+    var src = jsSID.toString();
+
+    var apiMarker = /var SIDamount = 1\s*,\s*mix = 0;/;
+    var apiPatch = `
+    var SIDamount = 1
+      , mix = 0;
+
+    var trackerFrameHook = null
+      , trackerFrameCounter = 0;
+
+    this.settrackerframecallback = function(fn) {
+        trackerFrameHook = (typeof fn === 'function') ? fn : null;
+    };
+
+    this.gettrackersnapshot = function() {
+        return getTrackerSnapshot();
+    };
+
+    function getTrackerSnapshot() {
+        var base = SID_address[0] || 0xD400;
+        var chans = [];
+        for (var ch = 0; ch < SID_CHANNEL_AMOUNT; ch++) {
+            var a = base + ch * 7;
+            var rawfreq = memory[a] + memory[a + 1] * 256;
+            var rawpw = memory[a + 2] + ((memory[a + 3] & 0x0F) * 256);
+            var ctrlreg = memory[a + 4];
+            var adreg = memory[a + 5];
+            var srreg = memory[a + 6];
+            chans[ch] = {
+                ch: ch + 1,
+                addr: a,
+                freq: rawfreq,
+                hz: rawfreq * C64_PAL_CPUCLK / 16777216,
+                pw: rawpw,
+                ctrl: ctrlreg,
+                gate: ctrlreg & GATE_BITMASK,
+                sync: ctrlreg & SYNC_BITMASK,
+                ring: ctrlreg & RING_BITMASK,
+                test: ctrlreg & TEST_BITMASK,
+                wave: ctrlreg & 0xF0,
+                attack: adreg >> 4,
+                decay: adreg & 0x0F,
+                sustain: srreg >> 4,
+                release: srreg & 0x0F,
+                env: envcnt[ch] || 0,
+                filter: (memory[base + 23] & FILTSW[ch]) ? 1 : 0
+            };
+        }
+        return {
+            frame: trackerFrameCounter,
+            playtime: playtime,
+            subtune: subtune,
+            sidaddr: base,
+            sidamount: SIDamount,
+            volume: memory[base + 24] & 0x0F,
+            cutoff: ((memory[base + 22] << 3) | (memory[base + 21] & 0x07)),
+            resonance: (memory[base + 23] >> 4) & 0x0F,
+            filterctrl: memory[base + 23],
+            filtertype: memory[base + 24] & 0x70,
+            channels: chans
+        };
+    }
+`;
+
+    src = src.replace(apiMarker, apiPatch);
+
+    var frameMarker = /CPUtime\s*-=\s*clk_ratio;\s*}\s*}\s*if\s*\(playlength\s*>\s*0/;
+    var framePatch = `CPUtime -= clk_ratio;
+                if (trackerFrameHook !== null) {
+                    trackerFrameCounter++;
+                    trackerFrameHook(getTrackerSnapshot());
+                }
+            }
+        }
+
+        if (playlength > 0`;
+
+    src = src.replace(frameMarker, framePatch);
+
+    if (src.indexOf('settrackerframecallback') < 0 || src.indexOf('trackerFrameHook(getTrackerSnapshot())') < 0) {
+        throw new Error('SID tracker patch failed: jsSID.js source layout was not recognized.');
+    }
+
+    return (new Function('return (' + src + ');'))();
+}
+
+var TrackerSID = null;
+
+function construct_SID()
+{
+    if (TrackerSID === null) TrackerSID = makeTrackerSIDConstructor();
+    if (typeof SIDplayer === 'undefined' || !SIDplayer.__trackerEnabled) {
+        SIDplayer = new TrackerSID(16384, 0.0005);
+        SIDplayer.__trackerEnabled = true;
+        SIDplayer.settrackerframecallback(tracker_on_frame);
+    }
+}
+
+/////////////////////////////////////////////////////////
+// Player controls
+/////////////////////////////////////////////////////////
+
+function init()
+{
+    load_from_base64();
+}
+
+function load_from_base64()
+{
+    var text = clean_b64(document.getElementById('b64').value);
+    if(text.length < 16 || text.indexOf('PASTEHERE') >= 0 || text.substring(0,2) === '>>') {
+        alert("First paste a SID file as Base64 into the text area, or use 'Load from File'.");
+        return false;
+    }
+
+    b64 = text;
+    tracker_clear();
+    playSID_b64(b64, st);
+    SIDplayer.settrackerframecallback(tracker_on_frame);
+    init_tune();
+
+    if(playTimer === null) playTimer = setInterval(show_playtime, 1000);
+    return true;
+}
+
+function init_tune() {
+    st = 0;
+    show_info();
+}
+
+function start_current_subtune()
+{
+    if(typeof SIDplayer === 'undefined') {
+        if(!load_from_base64()) return;
+    }
+    tracker_clear();
+    SIDplayer.settrackerframecallback(tracker_on_frame);
+    SIDplayer.start(st);
+    show_info();
+}
+
+function prev_subtune()
+{
+    if(typeof SIDplayer === 'undefined') return;
+    if(st>0) { st--; tracker_clear(); SIDplayer.start(st); show_info(); }
+}
+
+function next_subtune()
+{
+    if(typeof SIDplayer === 'undefined') return;
+    if(st<SIDplayer.getsubtunes()-1) { st++; tracker_clear(); SIDplayer.start(st); show_info(); }
+}
+
+function show_info() {
+    if(typeof SIDplayer === 'undefined') return;
+    document.getElementById('subtdisp').innerHTML = SIDplayer.getsubtunes();
+    document.getElementById('selsubt').innerHTML = st+1;
+    document.getElementById('prefmodeldisp').innerHTML = SIDplayer.getprefmodel();
+    document.getElementById('modeldisp').innerHTML = SIDplayer.getmodel();
+    document.getElementById('titledisp').innerHTML = SIDplayer.gettitle();
+    document.getElementById('authdisp').innerHTML = SIDplayer.getauthor();
+    document.getElementById('infodisp').innerHTML = SIDplayer.getinfo();
+}
+
+function showvol(pos) {
+    document.getElementById('voldisp').innerHTML = pos;
+}
+
+function show_playtime() {
+    if(typeof SIDplayer === 'undefined') return;
+    var t = SIDplayer.getplaytime();
+    document.getElementById('playtimedisp').innerHTML = parseInt(t/60)+':'+('0'+parseInt(t%60)).slice(-2);
+}
+
+function toggle_pause(btn)
+{
+    if(typeof SIDplayer === 'undefined') return;
+    if(bPause) { SIDplayer.playcont(); btn.innerHTML='&nbsp;&nbsp;Pause&nbsp;&nbsp;&nbsp;'; }
+    else       { SIDplayer.pause();    btn.innerHTML='Continue'; }
+    bPause = !bPause;
+}
+
+function setSIDmodel(model) {
+    if(typeof SIDplayer === 'undefined') construct_SID();
+    SIDplayer.setmodel(model);
+    show_info();
+}
+
+function clean_b64(s)
+{
+    return (s || '').replace(/\s+/g,'');
+}
+
+function arrayBufferToBase64(buffer)
+{
+    var bytes = new Uint8Array(buffer);
+    var binary = '';
+    var chunk = 0x8000;
+    for (var i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+}
+
+function load_file(file_obj)
+{
+    if(!file_obj) return;
+    var fread = new FileReader();
+    fread.onload = function(levent)
+    {
+        b64 = arrayBufferToBase64(levent.target.result);
+        document.getElementById('b64').value = b64;
+        load_from_base64();
+    };
+    fread.readAsArrayBuffer(file_obj);
+}
+
+/////////////////////////////////////////////////////////
+// Tracker formatting
+/////////////////////////////////////////////////////////
+
+var trackerRows = [];
+var trackerLastKey = '';
+var trackerMaxRows = 512;
+var trackerDirty = false;
+var trackerRenderTimer = null;
+var noteNames = ['C-','C#','D-','D#','E-','F-','F#','G-','G#','A-','A#','B-'];
+
+function sid_note_name(hz)
+{
+    if(!hz || hz < 4) return '---';
+    var midi = Math.round(69 + 12 * Math.log(hz / 440) / Math.LN2);
+    if(midi < 0 || midi > 127) return '???';
+    var name = noteNames[midi % 12] + Math.floor(midi / 12 - 1);
+    var ideal = 440 * Math.pow(2, (midi - 69) / 12);
+    var cents = Math.round(1200 * Math.log(hz / ideal) / Math.LN2);
+    if(cents > 0) name += '+' + cents;
+    else if(cents < 0) name += cents;
+    return name;
+}
+
+function hex(v, n)
+{
+    var s = (v >>> 0).toString(16).toUpperCase();
+    while(s.length < n) s = '0' + s;
+    return s;
+}
+
+function wave_name(ctrl)
+{
+    var w = [];
+    if(ctrl & 0x10) w.push('TRI');
+    if(ctrl & 0x20) w.push('SAW');
+    if(ctrl & 0x40) w.push('PUL');
+    if(ctrl & 0x80) w.push('NOI');
+    return w.length ? w.join('+') : '---';
+}
+
+function ctrl_mods(c)
+{
+    var m = [];
+    if(c.sync) m.push('SYN');
+    if(c.ring) m.push('RNG');
+    if(c.test) m.push('TST');
+    if(c.filter) m.push('FLT');
+    return m.join(' ');
+}
+
+function filter_type_name(v)
+{
+    var f = [];
+    if(v & 0x10) f.push('LP');
+    if(v & 0x20) f.push('BP');
+    if(v & 0x40) f.push('HP');
+    return f.length ? f.join('+') : '--';
+}
+
+function channel_key(c)
+{
+    return [c.freq,c.pw,c.ctrl,c.attack,c.decay,c.sustain,c.release,c.env,c.filter].join('/');
+}
+
+function snapshot_key(s)
+{
+    return channel_key(s.channels[0]) + '|' + channel_key(s.channels[1]) + '|' + channel_key(s.channels[2]) + '|' + s.volume + '/' + s.cutoff + '/' + s.resonance + '/' + s.filtertype;
+}
+
+function tracker_on_frame(snap)
+{
+    if(!snap || !snap.channels) return;
+
+    var changesOnly = document.getElementById('changesOnly').checked;
+    var key = snapshot_key(snap);
+    if(changesOnly && key === trackerLastKey) return;
+    trackerLastKey = key;
+
+    trackerRows.push(snap);
+    trackerMaxRows = parseInt(document.getElementById('maxRows').value, 10) || 512;
+    while(trackerRows.length > trackerMaxRows) trackerRows.shift();
+
+    trackerDirty = true;
+    if(trackerRenderTimer === null) trackerRenderTimer = setTimeout(tracker_render, 120);
+}
+
+function tracker_render()
+{
+    trackerRenderTimer = null;
+    if(!trackerDirty) return;
+    trackerDirty = false;
+
+    var tbody = document.getElementById('trackerBody');
+    var html = '';
+
+    for(var r=0; r<trackerRows.length; r++) {
+        var s = trackerRows[r];
+        html += '<tr>';
+        html += '<td class="frame">' + hex(s.frame & 0xFFFF,4) + '</td>';
+        html += '<td class="time">' + s.playtime.toFixed(2) + '</td>';
+        for(var ch=0; ch<3; ch++) html += tracker_cells(s.channels[ch]);
+        html += '<td class="fx">V' + hex(s.volume,1) + ' C' + hex(s.cutoff,3) + ' R' + hex(s.resonance,1) + ' ' + filter_type_name(s.filtertype) + '</td>';
+        html += '</tr>';
+    }
+
+    tbody.innerHTML = html;
+    if(document.getElementById('autoscroll').checked) {
+        var wrap = document.getElementById('trackerWrap');
+        wrap.scrollTop = wrap.scrollHeight;
+    }
+
+    document.getElementById('rowCount').innerHTML = trackerRows.length;
+}
+
+function tracker_cells(c)
+{
+    var muted = c.gate ? '' : ' muted';
+    var note = c.gate ? sid_note_name(c.hz) : '...';
+    var fx = 'F' + hex(c.freq,4) + ' PW' + hex(c.pw,3) + ' A' + hex(c.attack,1) + 'D' + hex(c.decay,1) + 'S' + hex(c.sustain,1) + 'R' + hex(c.release,1) + ' E' + hex(c.env,2);
+    var mods = ctrl_mods(c);
+    if(mods.length) fx += ' ' + mods;
+    return '<td class="note' + muted + '">' + note + '</td>' +
+           '<td class="fx' + muted + '">' + wave_name(c.ctrl) + '</td>' +
+           '<td class="fx' + muted + '">' + fx + '</td>';
+}
+
+function tracker_clear()
+{
+    trackerRows = [];
+    trackerLastKey = '';
+    trackerDirty = true;
+    tracker_render();
+}
+
+function tracker_export_text()
+{
+    var lines = [];
+    lines.push('ROW   TIME     V1 NOTE WAVE FX                         | V2 NOTE WAVE FX                         | V3 NOTE WAVE FX                         | FILTER');
+    for(var r=0; r<trackerRows.length; r++) {
+        var s = trackerRows[r];
+        var parts = [hex(s.frame & 0xFFFF,4), ('      ' + s.playtime.toFixed(2)).slice(-7)];
+        for(var ch=0; ch<3; ch++) {
+            var c = s.channels[ch];
+            var note = c.gate ? sid_note_name(c.hz) : '...';
+            var fx = 'F' + hex(c.freq,4) + ' PW' + hex(c.pw,3) + ' A' + hex(c.attack,1) + 'D' + hex(c.decay,1) + 'S' + hex(c.sustain,1) + 'R' + hex(c.release,1) + ' E' + hex(c.env,2);
+            var mods = ctrl_mods(c);
+            if(mods.length) fx += ' ' + mods;
+            parts.push((note + '    ').slice(0,5) + ' ' + (wave_name(c.ctrl) + '        ').slice(0,8) + ' ' + fx);
+        }
+        parts.push('V' + hex(s.volume,1) + ' C' + hex(s.cutoff,3) + ' R' + hex(s.resonance,1) + ' ' + filter_type_name(s.filtertype));
+        lines.push(parts.join(' | '));
+    }
+    document.getElementById('trackerExport').value = lines.join('\n');
+}
+
+/////////////////////////////////////////////////////////
+// Apple II export, retained from original page
+/////////////////////////////////////////////////////////
+
+var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+var getHexByte = function(v) { return hextab[(v>>4)&0x0F]+hextab[v&0x0F]; };
+var getHexWord = function(v) { return ''+hextab[Math.floor(v/0x1000)&0x0F]+hextab[Math.floor((v&0x0f00)/256)&0x0F]+hextab[Math.floor((v&0xf0)/16)&0x0F]+hextab[v&0x000f]; };
+
+function export_apple()
+{
+    var text = clean_b64(document.getElementById('b64').value);
+    if(text.length < 16) { alert('First paste a Base64 string into the text area'); return; }
+    var binary_string = atob(text);
+    var bin = new Uint8Array(binary_string.length);
+    for(var k=0;k<binary_string.length;k++) bin[k]=binary_string.charCodeAt(k);
+
+    var org_adr = parseInt(document.getElementById('hexadr').value,16);
+    var adr = org_adr;
+
+    document.getElementById('hexcode').value = 'CALL-151\n';
+    for(var i=0;i<bin.length;i+=16)
+    {
+        document.getElementById('hexcode').value += getHexWord(adr)+': ';
+        for(var j=0;j<16 && i+j<bin.length;j++) document.getElementById('hexcode').value += getHexByte(bin[i+j])+' ';
+        adr += 16;
+        document.getElementById('hexcode').value += '\n';
+    }
+    document.getElementById('hexcode').value += String.fromCharCode(2)+'\n';
+    document.getElementById('hexcode').value += 'BSAVE SONG.SID,A$'+getHexWord(org_adr)+',L$'+getHexWord(bin.length)+'\n';
+}
+</script>
+
+<body class="slider_main" onload="init_gui();" onbeforeunload="" style="background-color:#B0B0B0">
+
+<div id="slider_title"></div>
+
+<div class="slider_overlay">
+  <div id="topmenu">
+    <ul id="minitabs">
+      <li class="no_margins" style="vertical-align:top;">
+        <table class="no_margins" style="display:inline-block;border:0px solid; vertical-align: top;">
+          <tr>
+            <td style="vertical-align:top;border:1px solid;width:260px">
+              <button onclick="start_current_subtune();">Start</button>
+              <small><span id="playtimedisp"></span></small>
+              <button onclick="toggle_pause(this);">&nbsp;&nbsp;Pause&nbsp;&nbsp;&nbsp;</button>
+              <input id="play" hidden>
+              <button onclick="if(typeof SIDplayer!=='undefined') SIDplayer.stop(); tracker_clear();">Stop</button>
+            </td>
+            <td style="vertical-align:top;border:1px solid;">
+              <button onclick="prev_subtune();">subtune-</button><small> subtune: <span id="selsubt">1</span>/<span id="subtdisp">0</span></small>
+              <button onclick="next_subtune();">subtune+</button>
+            </td>
+            <td style="vertical-align:top;border:1px solid;">
+              <button onclick="setSIDmodel(8580);">use 8580</button>
+              <button onclick="setSIDmodel(6581);">use 6581</button>
+            </td>
+            <td>
+              <button onclick="window.location='https://github.com/jhohertz/jsSID'">jhohertz</button>
+            </td>
+          </tr>
+        </table>
+      </li>
+      <li>volume:
+        <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="if(typeof SIDplayer!=='undefined') SIDplayer.setvolume(value/100);showvol(this.value);" onchange="if(typeof SIDplayer!=='undefined') SIDplayer.setvolume(value/100);showvol(this.value);"></input>
+        <span id="voldisp">100</span>%<br/>
+      </li>
+    </ul>
+  </div>
+
+  <div id="main">
+    <br>
+
+    <div class="sidbox">
+      <textarea id="b64" style="width:500px;height:100px" onclick="if(this.value.indexOf('PASTE HERE')>=0)this.value='';">
+
+      >> PASTE HERE YOUR INPUT SID FILE AS BASE64, AND PRESS 'LOAD' <<
+      </textarea>
+    </div>
+
+    <div class="sidbox">
+      <small>
+        SID Author: <span id="authdisp">...</span><br>
+        Preferred SID-model: <span id="prefmodeldisp">0</span>, using: <span id="modeldisp"></span><br>
+        SID Title: <span id="titledisp">...</span><br>
+        SID release info: <span id="infodisp">...</span><br>
+        <button id="files" onclick="load_from_base64();">Load from Base64</button>
+        <button onclick="document.getElementById('getFile').click();">Load from File</button>
+        <input type="file" id="getFile" style="display:none" onchange="load_file(this.files[0]);" accept=".sid,.SID">
+        <br><span class="mini">The tracker below is a runtime SID-register log, not a recovered original tracker pattern.</span>
+      </small>
+    </div>
+
+    <br><br>
+
+    <div class="tracker-panel">
+      <div class="tracker-controls">
+        <button onclick="tracker_clear();">Clear tracker</button>
+        <button onclick="tracker_export_text();">Export tracker text</button>
+        <label><input type="checkbox" id="changesOnly" checked> log changes only</label>
+        <label><input type="checkbox" id="autoscroll" checked> autoscroll</label>
+        max rows <input id="maxRows" value="512" size="4">
+        rows: <span id="rowCount">0</span>
+      </div>
+      <div id="trackerWrap" class="tracker-table-wrap">
+        <table class="tracker">
+          <thead>
+            <tr>
+              <th>ROW</th><th>TIME</th>
+              <th>V1 NOTE</th><th>V1 WAVE</th><th>V1 MODIFIERS</th>
+              <th>V2 NOTE</th><th>V2 WAVE</th><th>V2 MODIFIERS</th>
+              <th>V3 NOTE</th><th>V3 WAVE</th><th>V3 MODIFIERS</th>
+              <th>FILTER</th>
+            </tr>
+          </thead>
+          <tbody id="trackerBody"></tbody>
+        </table>
+      </div>
+      <textarea id="trackerExport" style="width:100%;height:120px;margin-top:6px;background:#070707;color:#ddd;" placeholder="Tracker export appears here..."></textarea>
+    </div>
+
+    <br><br>
+
+    <div class="sidbox">
+      <textarea style="width:500px;height:100px" id="hexcode">
+
+      >> APPLE II EXPORT <<
+      </textarea>
+    </div>
+    <div class="sidbox">
+      <small>
+        Start at $<input value="6000" id="hexadr" size="4"> Hex<br>
+        <button onclick="export_apple();">Export to Apple II</button>
+      </small>
+    </div>
+
+    <hr>
+    <footer><small>Based on jsSID <span id="ver"></span> by Hermit - a JavaScript SID emulator and player for the Web Audio API</small></footer>
+  </div>
+</div>
+
+<div id="debug"></div>
+</body>
+</html>
