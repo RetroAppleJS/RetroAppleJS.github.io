@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AssemblerJS</title>
 
+<link rel="stylesheet" href="../res/COM_fontawesome/all.css">
+
 <!-- Adjust these paths if this file is not next to /res. -->
-<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.3-heightsync"></script>
-<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.3-heightsync"></script>
+<script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.5-heightsync"></script>
+<script type="text/javascript" src="../res/ASM_core_v6.js?v=0.6.5-heightsync"></script>
 
 <style>
     :root {
@@ -78,7 +80,7 @@
     button, input::file-selector-button {
         border: 1px solid var(--border);
         border-radius: 8px;
-        background: #21262d;
+        background: var(--button-bg);
         color: var(--text);
         padding: 8px 12px;
         font: inherit;
@@ -88,8 +90,8 @@
     button:hover, input::file-selector-button:hover { border-color: var(--accent); }
 
     button.primary {
-        background: #1d4f7a;
-        border-color: #2c6ca3;
+        background: var(--button-primary-bg);
+        border-color: var(--button-primary-border);
     }
 
     button:disabled {
@@ -139,14 +141,18 @@
         border-bottom: 1px solid var(--border);
         color: var(--muted);
         font-size: 13px;
-        background: #111820;
+        background: var(--pane-title-bg);
         overflow: visible;
         position: relative;
     }
 
     .pane-title-search-host {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
         margin-left: auto;
         min-width: 0;
+        position: relative;
     }
 
     .pane-title strong {
@@ -165,8 +171,8 @@
         width: min(180px, 24vw);
         border: 1px solid var(--border);
         border-radius: 7px;
-        background: #0b0f14;
-        color: var(--text);
+        background: var(--listing-columns-bg);
+        color: var(--listing-columns-text);
         padding: 4px 7px;
         font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
@@ -303,7 +309,7 @@
 <header>
     <div>
         <h1>AssemblerJS</h1>
-        <div class="subtitle">(v0.6.4) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
+        <div class="subtitle">(v0.6.5) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
     </div>
     <div class="drop-hint">Tip: drag a .S file anywhere on this page</div>
 </header>
@@ -1620,21 +1626,271 @@ window.asmTokeniseJSON = null;
 window.asmCompileResult = null;
 var sourceFindReplace = null;
 var listingFindReplace = null;
+var sourceHeaderWidgetManager = null;
 
-var findReplaceDarkScheme = {
-    "bg":"#111820",
-    "border":"#30363d",
-    "text":"#e6edf3",
-    "muted":"#8b949e",
-    "field-bg":"#0b0f14",
-    "field-text":"#e6edf3",
-    "active":"#79b8ff",
-    "active-bg":"#1d4f7a",
-    "active-text":"#ffffff",
-    "hover-bg":"#21262d",
-    "hover-text":"#e6edf3",
-    "expander":"#e6edf3"
+var sourceEditHistory = {
+    undo: [],
+    redo: [],
+    outdent: [],
+    max: 100
 };
+
+var appThemeName = "dark";
+var appThemes = {
+    dark: {
+        vars: {
+            "bg":"#0d1117",
+            "panel":"#161b22",
+            "panel2":"#0b0f14",
+            "border":"#30363d",
+            "text":"#e6edf3",
+            "muted":"#8b949e",
+            "accent":"#79b8ff",
+            "ok":"#8bd17c",
+            "warn":"#ffd166",
+            "bad":"#ff8a8a",
+            "key":"#79c0ff",
+            "string":"#a5d6ff",
+            "number":"#f2cc60",
+            "bool":"#ffab70",
+            "pane-title-bg":"#111820",
+            "button-bg":"#21262d",
+            "button-primary-bg":"#1d4f7a",
+            "button-primary-border":"#2c6ca3",
+            "listing-columns-bg":"#0b0f14",
+            "listing-columns-text":"#e6edf3"
+        },
+        findReplace: {
+            "bg":"#111820",
+            "border":"#30363d",
+            "text":"#e6edf3",
+            "muted":"#8b949e",
+            "field-bg":"#0b0f14",
+            "field-text":"#e6edf3",
+            "active":"#79b8ff",
+            "active-bg":"#1d4f7a",
+            "active-text":"#ffffff",
+            "hover-bg":"#21262d",
+            "hover-text":"#e6edf3",
+            "expander":"#e6edf3"
+        }
+    },
+    light: {
+        vars: {
+            "bg":"#f5f7fb",
+            "panel":"#ffffff",
+            "panel2":"#fbfbfb",
+            "border":"#cfd7e3",
+            "text":"#1f2328",
+            "muted":"#59636e",
+            "accent":"#0969da",
+            "ok":"#1a7f37",
+            "warn":"#9a6700",
+            "bad":"#cf222e",
+            "key":"#0550ae",
+            "string":"#0a3069",
+            "number":"#953800",
+            "bool":"#8250df",
+            "pane-title-bg":"#eef2f7",
+            "button-bg":"#f6f8fa",
+            "button-primary-bg":"#0969da",
+            "button-primary-border":"#0550ae",
+            "listing-columns-bg":"#ffffff",
+            "listing-columns-text":"#1f2328"
+        },
+        findReplace: {
+            "bg":"#f3f3f3",
+            "border":"#d2d2d2",
+            "text":"#5f5f5f",
+            "muted":"#8c8c8c",
+            "field-bg":"#ffffff",
+            "field-text":"#333333",
+            "active":"#0078d4",
+            "active-bg":"#e9f4ff",
+            "active-text":"#111111",
+            "hover-bg":"#ececec",
+            "hover-text":"#555555",
+            "expander":"#333333"
+        }
+    }
+};
+
+ function equalizePaneHeaders() {
+     if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
+         oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title");
+ }
+
+function applyConfigVars(vars, target, prefix) {
+    target = target || document.documentElement;
+    prefix = prefix || "--";
+    for (var k in vars) target.style.setProperty(prefix + k, vars[k]);
+}
+
+function applyFindReplaceScheme(scheme) {
+    var ids = ["sourceFindReplace", "listingFindReplace"];
+    for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) applyConfigVars(scheme, el, "--pane-fr-");
+    }
+}
+
+function applyAppTheme(name) {
+    if (!appThemes[name]) name = "dark";
+    appThemeName = name;
+    document.body.setAttribute("data-theme", name);
+    applyConfigVars(appThemes[name].vars);
+    applyFindReplaceScheme(appThemes[name].findReplace);
+    try { localStorage.setItem("AssemblerJS.theme", name); } catch (_ignore) {}
+    refreshFindReplaceOverlays();
+    equalizePaneHeaders();
+}
+
+function toggleAppTheme() {
+    applyAppTheme(appThemeName == "dark" ? "light" : "dark");
+}
+
+function equalizePaneHeaders() {
+    if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
+        oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title");
+}
+
+function normalizeLineEndingsInfo(text) {
+    var m = text.match(/\r\n|\r|\n/);
+    return {
+        eol: m ? m[0] : "\n",
+        hasFinalEol: /(\r\n|\r|\n)$/.test(text)
+    };
+}
+
+function splitSourceLines(text) {
+    return text.split(/\r\n|\r|\n/);
+}
+
+function joinSourceLines(lines, info) {
+    var out = lines.join(info.eol || "\n");
+    if (info.hasFinalEol && lines.length && lines[lines.length - 1] !== "") out += info.eol || "\n";
+    return out;
+}
+
+function snapshotSourceEdit(label) {
+    if (!sourcePane) return null;
+    return {
+        label: label || "edit",
+        value: sourcePane.value,
+        selectionStart: sourcePane.selectionStart || 0,
+        selectionEnd: sourcePane.selectionEnd || 0,
+        scrollTop: sourcePane.scrollTop || 0
+    };
+}
+
+function restoreSourceSnapshot(snap) {
+    if (!snap || !sourcePane) return;
+    sourcePane.value = snap.value;
+    autosizeSourcePane();
+    refreshFindReplaceOverlays();
+    syncPaneHeightsFromListing();
+    sourcePane.focus();
+    try { sourcePane.setSelectionRange(snap.selectionStart, snap.selectionEnd); } catch (_ignore) {}
+    sourcePane.scrollTop = snap.scrollTop || 0;
+}
+
+function pushSourceUndo(label) {
+    sourceEditHistory.undo.push(snapshotSourceEdit(label));
+    if (sourceEditHistory.undo.length > sourceEditHistory.max) sourceEditHistory.undo.shift();
+    sourceEditHistory.redo.length = 0;
+}
+
+function sourceUndo() {
+    if (!sourceEditHistory.undo.length) return;
+    sourceEditHistory.redo.push(snapshotSourceEdit("redo"));
+    restoreSourceSnapshot(sourceEditHistory.undo.pop());
+}
+
+function sourceRedo() {
+    if (!sourceEditHistory.redo.length) return;
+    sourceEditHistory.undo.push(snapshotSourceEdit("undo"));
+    restoreSourceSnapshot(sourceEditHistory.redo.pop());
+}
+
+function sourceOutdent() {
+    if (!sourcePane) return;
+
+    pushSourceUndo("outdent");
+
+    var text = sourcePane.value;
+    var info = normalizeLineEndingsInfo(text);
+    var lines = splitSourceLines(text);
+    var removed = [];
+
+    for (var i = 0; i < lines.length; i++) {
+        if (lines[i].length) {
+            removed[i] = lines[i].charAt(0);
+            lines[i] = lines[i].slice(1);
+        } else {
+            removed[i] = "";
+        }
+    }
+
+    sourceEditHistory.outdent.push(removed);
+    sourcePane.value = joinSourceLines(lines, info);
+    autosizeSourcePane();
+    refreshFindReplaceOverlays();
+    syncPaneHeightsFromListing();
+}
+
+function sourceIndent() {
+    if (!sourcePane) return;
+
+    pushSourceUndo("indent");
+
+    var text = sourcePane.value;
+    var info = normalizeLineEndingsInfo(text);
+    var lines = splitSourceLines(text);
+    var restore = sourceEditHistory.outdent.length ? sourceEditHistory.outdent.pop() : null;
+    var nbsp = "\u00A0";
+
+    for (var i = 0; i < lines.length; i++) {
+        lines[i] = (restore ? (restore[i] || "") : nbsp) + lines[i];
+    }
+
+    sourcePane.value = joinSourceLines(lines, info);
+    autosizeSourcePane();
+    refreshFindReplaceOverlays();
+    syncPaneHeightsFromListing();
+}
+
+function bindSourceDefaultWidgetActions() {
+    var host = document.getElementById("sourceFindReplaceMount");
+    if (!host) return;
+
+    host.addEventListener("click", function(ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest("[data-pane-default-act]") : null;
+        if (!btn) return;
+
+        var act = btn.getAttribute("data-pane-default-act");
+        if (act == "undo") sourceUndo();
+        else if (act == "redo") sourceRedo();
+        else if (act == "indent") sourceIndent();
+        else if (act == "outdent") sourceOutdent();
+        else if (act == "theme") toggleAppTheme();
+
+        ev.preventDefault();
+    });
+}
+
+try {
+    appThemeName = localStorage.getItem("AssemblerJS.theme") || appThemeName;
+} catch (_ignore) {}
+applyAppTheme(appThemeName);
+
+if (typeof oPANE.createPaneHeaderWidgetManager == "function") {
+    sourceHeaderWidgetManager = oPANE.createPaneHeaderWidgetManager("sourceFindReplaceMount", {
+        defaultId:"default",
+        defaultHTML:oPANE.defaultPaneHeaderWidgetHTML(),
+        onChange:function(){ equalizePaneHeaders(); }
+    });
+    bindSourceDefaultWidgetActions();
+}
 
 if (typeof oPANE.bindFindReplace == "function") {
     sourceFindReplace = oPANE.bindFindReplace("sourcePane", {
@@ -1642,7 +1898,8 @@ if (typeof oPANE.bindFindReplace == "function") {
         mount:"sourceFindReplaceMount",
         inline:true,
         overlayExpand:true,
-        scheme:findReplaceDarkScheme,
+        manager:sourceHeaderWidgetManager,
+        scheme:appThemes[appThemeName].findReplace,
         barWidth:"390px",
         debounce_ms:500,
         onChange:function(){ syncPaneHeightsFromListing(); equalizePaneHeaders(); }
@@ -1651,17 +1908,12 @@ if (typeof oPANE.bindFindReplace == "function") {
     listingFindReplace = oPANE.bindFindReplace("listingPane", {
         id:"listingFindReplace",
         inline:false,
-        scheme:findReplaceDarkScheme,
+        scheme:appThemes[appThemeName].findReplace,
         barWidth:"400px",
         debounce_ms:500,
         onChange:function(){ autosizeListingPane(); syncPaneHeightsFromListing(); }
     });
-
-    
-    function equalizePaneHeaders() {
-        if (oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
-            oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title");
-    }    
+   
 }
 
 function setStatus(text, kind) {
@@ -1803,6 +2055,7 @@ function assembleCurrentSource() {
         autosizeSourcePane();
         autosizeListingPane();
         refreshFindReplaceOverlays();
+        applyAppTheme(appThemeName);
         currentByteCodeText = compiled.byteCodeText || "";
         byteCodePane.value = currentByteCodeText;
 
@@ -1855,7 +2108,6 @@ async function loadFile(file) {
     sourcePane.value = await file.text();
     autosizeSourcePane();
     refreshFindReplaceOverlays();
-    sourceInfo.textContent = currentFileName + " — " + sourcePane.value.split(/\r\n|\r|\n/).length + " lines";
     /* Source header is occupied by Find/Replace; status remains in main toolbar. */    
     assembleCurrentSource();
 }
@@ -1953,6 +2205,23 @@ sourcePane.addEventListener("paste", function () {
         scrollWindowBackToTop();
         syncPaneHeightsFromListing();
     }, 0);
+});
+
+
+sourcePane.addEventListener("beforeinput", function(ev) {
+    if (ev.inputType && ev.inputType.indexOf("history") === 0) return;
+    pushSourceUndo(ev.inputType || "input");
+});
+
+sourcePane.addEventListener("keydown", function(ev) {
+    var mod = ev.ctrlKey || ev.metaKey;
+    if (mod && !ev.shiftKey && ev.key.toLowerCase() == "z") {
+        ev.preventDefault();
+        sourceUndo();
+    } else if ((mod && ev.key.toLowerCase() == "y") || (mod && ev.shiftKey && ev.key.toLowerCase() == "z")) {
+        ev.preventDefault();
+        sourceRedo();
+    }
 });
 
 window.addEventListener("resize", function () 

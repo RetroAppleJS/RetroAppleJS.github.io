@@ -1798,9 +1798,14 @@ function PANE()
             + 'border-radius:4px;background:var(--pane-fr-bg,#f3f3f3);box-shadow:0 2px 12px rgba(0,0,0,.18);'
             + 'color:var(--pane-fr-text,#5f5f5f);}'
         + '.pane-findreplace.pane-fr-inline{position:relative;top:auto;left:auto;right:auto;box-shadow:none;}'
-        + '.pane-findreplace.pane-fr-overlay-expand.expanded{position:absolute;right:8px;top:50%;transform:translateY(-50%);box-shadow:0 2px 12px rgba(0,0,0,.35);}'
+        + '.pane-findreplace.pane-fr-overlay-expand.expanded{position:absolute;right:8px;top:2px;transform:none;box-shadow:0 2px 12px rgba(0,0,0,.35);}'
         + '.pane-findreplace.open{display:grid;}'
         + '.pane-findreplace.expanded{grid-template-rows:24px 24px;}'
+        + '.pane-header-widget-host{display:flex;align-items:center;justify-content:flex-end;margin-left:auto;min-width:0;position:relative;}'
+        + '.pane-header-widget{display:none;}'
+        + '.pane-header-widget.active{display:flex;}'
+        + '.pane-header-default-widget{align-items:center;gap:4px;}'
+        + '.pane-header-default-widget .pane-fr-btn{display:inline-flex;}'
         + '.pane-fr-expander,.pane-fr-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;'
             + 'width:20px;min-width:20px;height:20px;padding:0;margin:0;border:1px solid transparent;border-radius:3px;'
             + 'background:transparent;color:var(--pane-fr-muted,#9a9a9a);cursor:pointer;font:14px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;'
@@ -1981,16 +1986,25 @@ function PANE()
 
         function openSearch(expanded) {
             rememberEditorSelection();
+            if(cfg.manager && typeof cfg.manager.activate == "function") cfg.manager.activate(uid);
             bar.classList.add("open");
             bar.classList.toggle("expanded", !!expanded);
             setTimeout(function(){ findInput.focus(); findInput.select(); }, 0);
             scheduleFind();
         }
 
-        function closeSearch() {
+        function closeSearch() 
+        {
             bar.classList.remove("open");
+            bar.classList.remove("expanded");
+            if(cfg.manager && typeof cfg.manager.activateDefault == "function") cfg.manager.activateDefault();
             target.focus();
         }
+
+        function toggleSearch(expanded) {
+            if(bar.classList.contains("open")) closeSearch();
+            else openSearch(expanded);
+        }        
 
         function escapeRegex(s) {
             return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -2134,10 +2148,10 @@ function PANE()
         document.addEventListener("keydown", function(ev) {
             var mod = ev.ctrlKey || ev.metaKey;
             if((document.activeElement === target || document.activeElement === findInput || document.activeElement === replaceInput) && mod && ev.key.toLowerCase() === "f") {
-                ev.preventDefault(); openSearch(false);
+                ev.preventDefault(); toggleSearch(false);
             }
             if((document.activeElement === target || document.activeElement === findInput || document.activeElement === replaceInput) && mod && ev.key.toLowerCase() === "h") {
-                ev.preventDefault(); openSearch(true);
+                ev.preventDefault(); toggleSearch(true);
             }
             if(ev.key === "Escape" && bar.classList.contains("open")) {
                 ev.preventDefault(); closeSearch();
@@ -2209,7 +2223,89 @@ function PANE()
         renderOverlay();
         updateSelectionButtonState();
         updateNavButtons();
-        return { open:openSearch, close:closeSearch, update:updateMatches, render:renderOverlay };
+        return { open:openSearch, close:closeSearch, toggle:toggleSearch, update:updateMatches, render:renderOverlay };
+    };
+
+    this.createPaneHeaderWidgetManager = function(host, cfg)
+    {
+        cfg = cfg || {};
+        if(typeof host == "string") host = document.getElementById(host);
+        if(!host) return null;
+
+        host.classList.add("pane-header-widget-host");
+
+        var widgets = {};
+        var activeId = "";
+        var defaultId = cfg.defaultId || "default";
+
+        function setVisible(id)
+        {
+            activeId = id;
+            for(var k in widgets) {
+                if(widgets[k])
+                    widgets[k].classList.toggle("active", k == id);
+            }
+            if(typeof cfg.onChange == "function") cfg.onChange(id);
+        }
+
+        function add(id, el, isDefault)
+        {
+            if(typeof el == "string") {
+                host.insertAdjacentHTML("beforeend", el);
+                el = host.lastElementChild;
+            }
+            if(!el) return null;
+
+            el.classList.add("pane-header-widget");
+            if(isDefault) {
+                defaultId = id;
+                el.classList.add("pane-header-default-widget");
+            }
+            widgets[id] = el;
+            if(!el.parentNode) host.appendChild(el);
+            return el;
+        }
+
+        function activate(id)
+        {
+            if(!widgets[id]) return;
+            setVisible(id);
+        }
+
+        function activateDefault()
+        {
+            if(widgets[defaultId]) setVisible(defaultId);
+        }
+
+        function current()
+        {
+            return activeId;
+        }
+
+        var api = {
+            host:host,
+            widgets:widgets,
+            add:add,
+            activate:activate,
+            activateDefault:activateDefault,
+            current:current
+        };
+
+        if(cfg.defaultHTML) add(defaultId, cfg.defaultHTML, true);
+        activateDefault();
+        return api;
+    };
+
+    this.defaultPaneHeaderWidgetHTML = function()
+    {
+        return ''
+            + '<span class="pane-header-default-widget pane-header-widget">'
+            + '<button type="button" class="pane-fr-btn" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
+            + '<button type="button" class="pane-fr-btn" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
+            + '<button type="button" class="pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
+            + '<button type="button" class="pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
+            + '<button type="button" class="pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
+            + '</span>';
     };
 
     this.equalizePaneHeaderHeights = function(selector)
