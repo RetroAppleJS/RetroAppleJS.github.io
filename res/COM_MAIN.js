@@ -1,5 +1,6 @@
 function COM()
 {
+  // v1.06 - PANE namespace + floating find navigation focus fix
   /*
   this.debugMe = function()
   {
@@ -1760,6 +1761,17 @@ function PANE()
         var sectionClass = this.classHTML(this.rootClass, cfg.class || "pane");
         var headerClass  = this.classHTML(this.titleClass, header.class || "pane-title");
 
+        var infoHTML = "";
+        if(header.infoHTML != null) {
+            infoHTML = String(header.infoHTML);
+        } else if(header.infoId || header.info != null) {
+            infoHTML = '<span'
+                + (header.infoId ? ' id="' + this.escapeHTML(header.infoId) + '"' : '')
+                + '>'
+                + this.escapeHTML(header.info || "")
+                + '</span>';
+        }
+
         return ''
             + '<section'
             + (cfg.id ? ' id="' + this.escapeHTML(cfg.id) + '"' : '')
@@ -1768,7 +1780,7 @@ function PANE()
             + (header.html || (
                 '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
                 + this.searchBarHTML(header.searchBar)
-                + (header.infoId ? '<span id="' + this.escapeHTML(header.infoId) + '">' + this.escapeHTML(header.info || "") + '</span>' : '')
+                + infoHTML
             ))
             + '</div>'
             + '<' + btag
@@ -1813,7 +1825,7 @@ function PANE()
         + '.com-pane-fr-match{background:rgba(255,210,70,.28);}'
         + '.com-pane-fr-current{background:rgba(255,185,45,.85);color:#000;}'
         + '.com-pane-title{position:relative;}'
-        + '.com-pane-title.com-pane-title-equalized{height:var(--com-pane-title-height,auto);min-height:var(--com-pane-title-height,auto);}'
+        + '.pane-title.com-pane-title-equalized{height:var(--com-pane-title-height,auto);min-height:var(--com-pane-title-height,auto);}'
         + '.com-pane-findreplace{z-index:2000;display:none;'        
             + 'grid-template-columns:auto minmax(150px,392px) auto auto auto auto auto;grid-template-rows:24px;'
             + 'align-items:center;gap:4px;padding:2px 4px;border:1px solid var(--com-pane-fr-border,#d2d2d2);'
@@ -1848,6 +1860,11 @@ function PANE()
         + '.com-pane-fr-replace-spacer{grid-column:1;}'
         + '.com-pane-fr-replace-field{grid-column:2;grid-row:2;}'
         + '.com-pane-fr-actions{grid-column:3 / span 3;grid-row:2;display:flex;align-items:center;gap:10px;}'
+        + '.com-pane-fr-floating{position:fixed;left:10px;top:10px;z-index:3000;display:none;align-items:center;gap:4px;'
+            + 'padding:4px;border:1px solid var(--com-pane-fr-border,#d2d2d2);border-radius:6px;'
+            + 'background:var(--com-pane-fr-bg,#f3f3f3);box-shadow:0 2px 12px rgba(0,0,0,.22);color:var(--com-pane-fr-text,#5f5f5f);}'
+        + '.com-pane-fr-floating.open{display:flex;}'
+        + '.com-pane-fr-floating .com-pane-fr-btn{flex:0 0 24px;width:24px;min-width:24px;height:24px;}'
         + '.com-pane-fr-hidden-row{display:none;}'
         + '.com-pane-findreplace.expanded .com-pane-fr-hidden-row{display:flex;}';
     };
@@ -1893,6 +1910,17 @@ function PANE()
         + '</div>';
     };
 
+    this.findReplaceFloatingNavHTML = function(id)
+    {
+        return ''
+        + '<div id="' + this.escapeHTML(id) + '" class="com-pane-fr-floating" aria-label="Find navigation">'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-nav com-pane-fr-float-prev" title="Previous match">↑</button>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-nav com-pane-fr-float-next" title="Next match">↓</button>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-float-top" title="Back to top"><i class="fa fa-angle-double-up"></i></button>'
+        +   '<button type="button" class="com-pane-fr-btn com-pane-fr-close com-pane-fr-float-close" title="Close">×</button>'
+        + '</div>';
+    };
+
     this.bindFindReplace = function(target, cfg)
     {
         cfg = cfg || {};
@@ -1901,7 +1929,7 @@ function PANE()
         if(typeof target == "string") target = document.getElementById(target);
         if(!target || target.tagName.toUpperCase() != "TEXTAREA") return null;
 
-        var uid = cfg.id || ("pane_findreplace_" + (target.id || Math.random().toString(36).slice(2)));
+        var uid = cfg.id || ("com_pane_findreplace_" + (target.id || Math.random().toString(36).slice(2)));
         var bar = document.getElementById(uid);
 
         if(!bar) {
@@ -1914,8 +1942,22 @@ function PANE()
 
         if(cfg.inline !== false) bar.classList.add("com-pane-fr-inline");
         if(cfg.overlayExpand) bar.classList.add("com-pane-fr-overlay-expand");
+
+        var floatingNav = null;
+        if(cfg.floatingNav) {
+            var floatingId = uid + "_floating";
+            floatingNav = document.getElementById(floatingId);
+            if(!floatingNav) {
+                document.body.insertAdjacentHTML("beforeend", this.findReplaceFloatingNavHTML(floatingId));
+                floatingNav = document.getElementById(floatingId);
+            }
+        }
+
         if(cfg.scheme) {
-            for(var k in cfg.scheme) bar.style.setProperty("--com-pane-fr-" + k, cfg.scheme[k]);
+            for(var k in cfg.scheme) {
+                bar.style.setProperty("--com-pane-fr-" + k, cfg.scheme[k]);
+                if(floatingNav) floatingNav.style.setProperty("--com-pane-fr-" + k, cfg.scheme[k]);
+            }
         }
         if(cfg.manager && typeof cfg.manager.add == "function")
             cfg.manager.add(uid, bar, false);
@@ -1945,6 +1987,10 @@ function PANE()
         var regexBtn     = bar.querySelector(".com-pane-fr-regex");
         var preserveBtn  = bar.querySelector(".com-pane-fr-preserve");
         var selectionBtn = bar.querySelector(".com-pane-fr-selection-btn");
+        var floatPrevBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-prev") : null;
+        var floatNextBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-next") : null;
+        var floatTopBtn  = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-top") : null;
+        var floatCloseBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-close") : null;
 
         var state = {
             matches: [],
@@ -2007,6 +2053,8 @@ function PANE()
             var enabled = state.matches.length > 0;
             prevBtn.disabled = !enabled;
             nextBtn.disabled = !enabled;
+            if(floatPrevBtn) floatPrevBtn.disabled = !enabled;
+            if(floatNextBtn) floatNextBtn.disabled = !enabled;
         }
 
         function openSearch(expanded) {
@@ -2014,6 +2062,7 @@ function PANE()
             if(cfg.manager && typeof cfg.manager.activate == "function") cfg.manager.activate(uid);
             bar.classList.add("open");
             bar.classList.toggle("expanded", !!expanded);
+            if(floatingNav) floatingNav.classList.add("open");
             setTimeout(function(){ findInput.focus(); findInput.select(); }, 0);
             scheduleFind();
         }
@@ -2022,6 +2071,7 @@ function PANE()
         {
             bar.classList.remove("open");
             bar.classList.remove("expanded");
+            if(floatingNav) floatingNav.classList.remove("open");
             if(cfg.manager && typeof cfg.manager.activateDefault == "function") cfg.manager.activateDefault();
             target.focus();
         }
@@ -2087,6 +2137,21 @@ function PANE()
             else renderOverlay();
         }
 
+        function scrollCurrentMatchIntoPage() {
+            if(!cfg.pageScrollOnMatch) return;
+
+            requestAnimationFrame(function() {
+                var current = overlay ? overlay.querySelector(".com-pane-fr-current") : null;
+                if(current && typeof current.getBoundingClientRect == "function") {
+                    var rect = current.getBoundingClientRect();
+                    var currentY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    var targetY = Math.max(0, currentY + rect.top - (cfg.pageScrollOffset == null ? 72 : cfg.pageScrollOffset));
+                    try { window.scrollTo({ top: targetY, left: 0, behavior: cfg.pageScrollBehavior || "smooth" }); }
+                    catch (_ignore) { window.scrollTo(0, targetY); }
+                }
+            });
+        }
+
         function selectCurrent(mode) {
             if(state.current < 0 || !state.matches[state.current]) { renderOverlay(); return; }
             mode = mode || {};
@@ -2094,15 +2159,16 @@ function PANE()
             target.setSelectionRange(m.start, m.end);
             resultInfo.textContent = (state.current + 1) + " of " + state.matches.length;
             renderOverlay();
+            scrollCurrentMatchIntoPage();
             if(mode.focusEditor) target.focus();
             else if(mode.keepFindFocus) findInput.focus();
         }
 
-        function nextMatch(dir) {
+        function nextMatch(dir, selectMode) {
             clearTimeout(state.timer);
             if(!state.matches.length) { updateNavButtons(); renderOverlay(); return; }
             state.current = (state.current + dir + state.matches.length) % state.matches.length;
-            selectCurrent({keepFindFocus:true});
+            selectCurrent(selectMode || {keepFindFocus:true});
         }
 
         function preserveCase(replacement, found) {
@@ -2225,6 +2291,23 @@ function PANE()
         bar.querySelector(".com-pane-fr-replace-one").onclick = replaceCurrent;
         bar.querySelector(".com-pane-fr-replace-all").onclick = replaceAll;
         bar.querySelector(".com-pane-fr-close").onclick = closeSearch;
+        if(floatPrevBtn) floatPrevBtn.onclick = function(ev){
+            if(ev) ev.preventDefault();
+            nextMatch(-1, {});
+        };
+        if(floatNextBtn) floatNextBtn.onclick = function(ev){
+            if(ev) ev.preventDefault();
+            nextMatch(1, {});
+        };
+        if(floatTopBtn) floatTopBtn.onclick = function(ev){
+            if(ev) ev.preventDefault();
+            try { window.scrollTo({ top: 0, left: 0, behavior: "smooth" }); }
+            catch (_ignore) { window.scrollTo(0, 0); }
+        };
+        if(floatCloseBtn) floatCloseBtn.onclick = function(ev){
+            if(ev) ev.preventDefault();
+            closeSearch();
+        };
         caseBtn.onclick = function(){ caseBtn.classList.toggle("active"); scheduleFind(); };
         wordBtn.onclick = function(){ wordBtn.classList.toggle("active"); scheduleFind(); };
         regexBtn.onclick = function(){ regexBtn.classList.toggle("active"); scheduleFind(); };
@@ -2248,7 +2331,7 @@ function PANE()
         renderOverlay();
         updateSelectionButtonState();
         updateNavButtons();
-        return { open:openSearch, close:closeSearch, toggle:toggleSearch, update:updateMatches, render:renderOverlay };
+        return { open:openSearch, close:closeSearch, toggle:toggleSearch, update:updateMatches, render:renderOverlay, floatingNav:floatingNav };
     };
 
     this.createPaneHeaderWidgetManager = function(host, cfg)
@@ -2288,7 +2371,15 @@ function PANE()
             }
             widgets[id] = el;
             if(!el.parentNode) host.appendChild(el);
+
+            /*
+             * If a non-default widget is registered after the default widget
+             * has already been activated, keep it hidden until activate(id)
+             * is called.  This is the one-line header toggle contract:
+             * exactly one registered widget is visible at a time.
+             */
             el.classList.toggle("active", activeId == id);
+
             return el;
         }
 
@@ -2331,6 +2422,7 @@ function PANE()
             + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
             + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
             + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
+            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
             + '</span>';
     };
 
@@ -2357,4 +2449,3 @@ function PANE()
       return this.bindFindReplace(target, { onChange:callback });
     };
 }
-
