@@ -4301,71 +4301,446 @@ function PANE()
             + '</section>';
     };
 
+    /*
+     * Visual-Studio-style Find / Replace for textarea panes.
+     *
+     * Usage:
+     *   oPANE.bindFindReplace("sourcePane", {
+     *       barWidth:"400px",
+     *       debounce_ms:500,
+     *       onChange:function(target){ ... }
+     *   });
+     *
+     * Notes:
+     *   - This replaces the older pane-searchbar/bindSearch UI.
+     *   - The target textarea is wrapped in an overlay container so matches and
+     *     persistent "find in selection" can remain visible while focus is in
+     *     the Find input.
+     *   - Regex replacement supports \n, \r, \t, \\, $&, $$, $1..$99.
+     */
+    this.findReplaceCSS = function()
+    {
+        return ''
+        + '.pane-fr-wrap{position:relative;width:100%;height:100%;min-height:0;background:var(--panel2,#0b0f14);overflow:hidden;}'
+        + '.pane-fr-wrap>textarea,.pane-fr-overlay{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;outline:0;'
+            + 'padding:14px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;'
+            + 'tab-size:4;white-space:pre;overflow:auto;}'
+        + '.pane-fr-overlay{pointer-events:none;color:var(--text,#e6edf3);background:var(--panel2,#0b0f14);}'
+        + '.pane-fr-wrap>textarea{resize:none;background:transparent!important;color:transparent!important;caret-color:var(--text,#e6edf3);}'
+        + '.pane-fr-wrap>textarea::selection{background:rgba(197,139,27,.65);color:transparent;}'
+        + '.pane-fr-selection{background:rgba(190,190,190,.35);}'
+        + '.pane-fr-match{background:rgba(255,210,70,.28);}'
+        + '.pane-fr-current{background:rgba(255,185,45,.85);color:#000;}'
+        + '.pane-findreplace{position:fixed;top:8px;left:8px;right:8px;z-index:2000;display:none;'
+            + 'grid-template-columns:auto minmax(150px,392px) auto auto auto auto auto;grid-template-rows:24px;'
+            + 'align-items:center;gap:4px;padding:2px 4px;border:1px solid #d2d2d2;border-radius:4px;background:#f3f3f3;'
+            + 'box-shadow:0 2px 12px rgba(0,0,0,.18);color:#5f5f5f;}'
+        + '.pane-findreplace.open{display:grid;}'
+        + '.pane-findreplace.expanded{grid-template-rows:24px 24px;}'
+        + '.pane-fr-expander,.pane-fr-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;'
+            + 'width:20px;min-width:20px;height:20px;padding:0;margin:0;border:1px solid transparent;border-radius:3px;'
+            + 'background:transparent;color:#9a9a9a;cursor:pointer;font:14px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;'
+            + 'text-align:center;vertical-align:middle;}'
+        + '.pane-fr-expander{color:#333;}'
+        + '.pane-fr-expander:hover,.pane-fr-expander.active,.pane-fr-btn.active{border-color:#0078d4;background:#e9f4ff;color:#111;}'
+        + '.pane-fr-btn:hover{color:#555;background:#ececec;}'
+        + '.pane-fr-btn:disabled{opacity:.35;cursor:default;pointer-events:none;}'
+        + '.pane-fr-expander .chev{display:inline-flex;align-items:center;justify-content:center;line-height:1;transform:rotate(0deg);}'
+        + '.pane-findreplace.expanded .pane-fr-expander .chev{transform:rotate(90deg);}'
+        + '.pane-fr-field{display:flex;height:20px;border-radius:3px;background:#fff;overflow:hidden;}'
+        + '.pane-fr-field input{min-width:0;flex:1;padding:0 2px;border:0;outline:0;font:10px/1 sans-serif;overflow:hidden;color:#5f5f5f;background:#fff;}'
+        + '.pane-fr-field-buttons{display:flex;height:100%;align-items:center;padding-right:8px;gap:2px;}'
+        + '.pane-fr-under{display:inline-flex;align-items:center;justify-content:center;line-height:1;text-decoration:underline;text-underline-offset:3px;}'
+        + '.pane-fr-results{font-size:10px;min-width:70px;white-space:nowrap;}'
+        + '.pane-fr-nav,.pane-fr-close,.pane-fr-selection-btn{font-size:14px;}'
+        + '.pane-fr-replace-spacer{grid-column:1;}'
+        + '.pane-fr-replace-field{grid-column:2;grid-row:2;}'
+        + '.pane-fr-actions{grid-column:3 / span 3;grid-row:2;display:flex;align-items:center;gap:10px;}'
+        + '.pane-fr-hidden-row{display:none;}'
+        + '.pane-findreplace.expanded .pane-fr-hidden-row{display:flex;}';
+    };
+
+    this.injectFindReplaceCSS = function()
+    {
+        if(document.getElementById("pane_findreplace_css")) return;
+        var style = document.createElement("style");
+        style.id = "pane_findreplace_css";
+        style.textContent = this.findReplaceCSS();
+        document.head.appendChild(style);
+    };
+
+    this.findReplaceHTML = function(id, cfg)
+    {
+        cfg = cfg || {};
+        var w = cfg.barWidth || "400px";
+        return ''
+        + '<div id="' + this.escapeHTML(id) + '" style="width:' + this.escapeHTML(w) + '" class="pane-findreplace" aria-label="Find and replace">'
+        +   '<button type="button" class="pane-fr-expander" data-fr-act="expand" title="Expand / collapse replace"><span class="chev">›</span></button>'
+        +   '<div class="pane-fr-field">'
+        +     '<input class="pane-fr-find" placeholder="Find" autocomplete="off" spellcheck="false">'
+        +     '<span class="pane-fr-field-buttons">'
+        +       '<button type="button" class="pane-fr-btn pane-fr-case active" title="Match case">Aa</button>'
+        +       '<button type="button" class="pane-fr-btn pane-fr-word" title="Match whole word"><span class="pane-fr-under">ab</span></button>'
+        +       '<button type="button" class="pane-fr-btn pane-fr-regex" title="Use regular expression">.*</button>'
+        +     '</span>'
+        +   '</div>'
+        +   '<div class="pane-fr-results">No results</div>'
+        +   '<button type="button" class="pane-fr-btn pane-fr-nav pane-fr-prev" title="Previous match">↑</button>'
+        +   '<button type="button" class="pane-fr-btn pane-fr-nav pane-fr-next" title="Next match">↓</button>'
+        +   '<button type="button" class="pane-fr-btn pane-fr-selection-btn" title="Find in selection">☰</button>'
+        +   '<button type="button" class="pane-fr-btn pane-fr-close" title="Close">×</button>'
+        +   '<div class="pane-fr-replace-spacer pane-fr-hidden-row"></div>'
+        +   '<div class="pane-fr-field pane-fr-replace-field pane-fr-hidden-row">'
+        +     '<input class="pane-fr-replace" placeholder="Replace" autocomplete="off" spellcheck="false">'
+        +     '<span class="pane-fr-field-buttons"><button type="button" class="pane-fr-btn pane-fr-preserve" title="Preserve case">AB</button></span>'
+        +   '</div>'
+        +   '<div class="pane-fr-actions pane-fr-hidden-row">'
+        +     '<button type="button" class="pane-fr-btn pane-fr-replace-one" title="Replace selected match">c</button>'
+        +     '<button type="button" class="pane-fr-btn pane-fr-replace-all" title="Replace all">ac</button>'
+        +   '</div>'
+        + '</div>';
+    };
+
+    this.bindFindReplace = function(target, cfg)
+    {
+        cfg = cfg || {};
+        this.injectFindReplaceCSS();
+
+        if(typeof target == "string") target = document.getElementById(target);
+        if(!target || target.tagName.toUpperCase() != "TEXTAREA") return null;
+
+        var uid = cfg.id || ("pane_findreplace_" + (target.id || Math.random().toString(36).slice(2)));
+        var bar = document.getElementById(uid);
+        if(!bar) {
+            document.body.insertAdjacentHTML("beforeend", this.findReplaceHTML(uid, cfg));
+            bar = document.getElementById(uid);
+        }
+
+        var wrap = target.parentNode;
+        var overlay;
+        if(!wrap.classList || !wrap.classList.contains("pane-fr-wrap")) {
+            wrap = document.createElement("div");
+            wrap.className = "pane-fr-wrap";
+            target.parentNode.insertBefore(wrap, target);
+            overlay = document.createElement("pre");
+            overlay.className = "pane-fr-overlay";
+            overlay.setAttribute("aria-hidden", "true");
+            wrap.appendChild(overlay);
+            wrap.appendChild(target);
+        } else {
+            overlay = wrap.querySelector(".pane-fr-overlay");
+        }
+
+        var findInput    = bar.querySelector(".pane-fr-find");
+        var replaceInput = bar.querySelector(".pane-fr-replace");
+        var resultInfo   = bar.querySelector(".pane-fr-results");
+        var prevBtn      = bar.querySelector(".pane-fr-prev");
+        var nextBtn      = bar.querySelector(".pane-fr-next");
+        var caseBtn      = bar.querySelector(".pane-fr-case");
+        var wordBtn      = bar.querySelector(".pane-fr-word");
+        var regexBtn     = bar.querySelector(".pane-fr-regex");
+        var preserveBtn  = bar.querySelector(".pane-fr-preserve");
+        var selectionBtn = bar.querySelector(".pane-fr-selection-btn");
+
+        var state = {
+            matches: [],
+            current: -1,
+            selectionRange: null,
+            lastEditorSelection: null,
+            timer: null,
+            debounce_ms: cfg.debounce_ms == null ? 500 : cfg.debounce_ms
+        };
+
+        function esc(s) {
+            return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        }
+
+        function renderOverlay() {
+            var text = target.value;
+            var ranges = [];
+            var visibleSelection = state.selectionRange || state.lastEditorSelection;
+            if(visibleSelection && visibleSelection.end > visibleSelection.start)
+                ranges.push({start:visibleSelection.start,end:visibleSelection.end,cls:"pane-fr-selection",priority:1});
+
+            for(var i=0;i<state.matches.length;i++)
+                ranges.push({start:state.matches[i].start,end:state.matches[i].end,cls:i==state.current?"pane-fr-current":"pane-fr-match",priority:i==state.current?3:2});
+
+            ranges = ranges.filter(function(r){return r.end>r.start}).sort(function(a,b){return a.start-b.start || b.priority-a.priority});
+            var out = "", pos = 0;
+            for(var r=0;r<ranges.length;r++) {
+                if(ranges[r].end <= pos) continue;
+                var start = Math.max(ranges[r].start, pos);
+                if(start > pos) out += esc(text.slice(pos,start));
+                out += '<span class="'+ranges[r].cls+'">'+esc(text.slice(start,ranges[r].end))+'</span>';
+                pos = ranges[r].end;
+            }
+            if(pos < text.length) out += esc(text.slice(pos));
+            overlay.innerHTML = out || " ";
+            syncOverlayScroll();
+        }
+
+        function syncOverlayScroll() {
+            overlay.scrollTop = target.scrollTop;
+            overlay.scrollLeft = target.scrollLeft;
+        }
+
+        function rememberEditorSelection() {
+            if(target.selectionStart !== target.selectionEnd)
+                state.lastEditorSelection = {start:target.selectionStart,end:target.selectionEnd};
+            updateSelectionButtonState();
+        }
+
+        function hasUsableEditorSelection() {
+            return !!(state.lastEditorSelection && state.lastEditorSelection.end > state.lastEditorSelection.start);
+        }
+
+        function updateSelectionButtonState() {
+            var active = selectionBtn.classList.contains("active");
+            selectionBtn.disabled = !active && !hasUsableEditorSelection();
+        }
+
+        function updateNavButtons() {
+            var enabled = state.matches.length > 0;
+            prevBtn.disabled = !enabled;
+            nextBtn.disabled = !enabled;
+        }
+
+        function openSearch(expanded) {
+            rememberEditorSelection();
+            bar.classList.add("open");
+            bar.classList.toggle("expanded", !!expanded);
+            setTimeout(function(){ findInput.focus(); findInput.select(); }, 0);
+            scheduleFind();
+        }
+
+        function closeSearch() {
+            bar.classList.remove("open");
+            target.focus();
+        }
+
+        function escapeRegex(s) {
+            return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }
+
+        function flags(global) {
+            return (global ? "g" : "") + (caseBtn.classList.contains("active") ? "" : "i");
+        }
+
+        function buildRegex(global) {
+            var q = findInput.value;
+            if(!q) return null;
+            if(!regexBtn.classList.contains("active")) q = escapeRegex(q);
+            if(wordBtn.classList.contains("active")) q = "\\b(?:" + q + ")\\b";
+            try { return new RegExp(q, flags(global)); }
+            catch(e) { return null; }
+        }
+
+        function findScope() {
+            var txt = target.value;
+            if(selectionBtn.classList.contains("active") && state.selectionRange)
+                return {text:txt.slice(state.selectionRange.start,state.selectionRange.end),offset:state.selectionRange.start};
+            return {text:txt,offset:0};
+        }
+
+        function scheduleFind() {
+            clearTimeout(state.timer);
+            state.matches = [];
+            state.current = -1;
+            resultInfo.textContent = findInput.value ? "..." : "No results";
+            updateNavButtons();
+            renderOverlay();
+            state.timer = setTimeout(function(){ updateMatches({selectFirst:true, keepFindFocus:true}); }, state.debounce_ms);
+        }
+
+        function updateMatches(options) {
+            options = options || {};
+            var re = buildRegex(true), scope = findScope();
+            state.matches = [];
+            state.current = -1;
+
+            if(re) {
+                var m;
+                while((m = re.exec(scope.text)) !== null) {
+                    state.matches.push({start:scope.offset + m.index,end:scope.offset + m.index + m[0].length,text:m[0]});
+                    if(m[0].length === 0) re.lastIndex++;
+                }
+            }
+
+            if(state.matches.length) state.current = 0;
+            resultInfo.textContent = state.matches.length ? "1 of " + state.matches.length : "No results";
+            updateNavButtons();
+
+            if(state.matches.length && options.selectFirst) selectCurrent({keepFindFocus:!!options.keepFindFocus});
+            else renderOverlay();
+        }
+
+        function selectCurrent(mode) {
+            if(state.current < 0 || !state.matches[state.current]) { renderOverlay(); return; }
+            mode = mode || {};
+            var m = state.matches[state.current];
+            target.setSelectionRange(m.start, m.end);
+            resultInfo.textContent = (state.current + 1) + " of " + state.matches.length;
+            renderOverlay();
+            if(mode.focusEditor) target.focus();
+            else if(mode.keepFindFocus) findInput.focus();
+        }
+
+        function nextMatch(dir) {
+            clearTimeout(state.timer);
+            if(!state.matches.length) { updateNavButtons(); renderOverlay(); return; }
+            state.current = (state.current + dir + state.matches.length) % state.matches.length;
+            selectCurrent({keepFindFocus:true});
+        }
+
+        function preserveCase(replacement, found) {
+            if(!preserveBtn.classList.contains("active")) return replacement;
+            if(found.toUpperCase() === found) return replacement.toUpperCase();
+            if(found.toLowerCase() === found) return replacement.toLowerCase();
+            if(found[0] && found[0].toUpperCase() === found[0])
+                return replacement.charAt(0).toUpperCase() + replacement.slice(1).toLowerCase();
+            return replacement;
+        }
+
+        function regexReplacementText(template, found, groups) {
+            if(!regexBtn.classList.contains("active")) return template;
+            return String(template).replace(/\\(n|r|t|\\)|\$(\$|&|`|'|\d{1,2})/g, function(token, esc, dollar) {
+                if(esc === "n") return "\n";
+                if(esc === "r") return "\r";
+                if(esc === "t") return "\t";
+                if(esc === "\\") return "\\";
+                if(dollar === "$") return "$";
+                if(dollar === "&") return found;
+                if(/^\d+$/.test(dollar)) return groups[Number(dollar)-1] || "";
+                if(dollar === "`" || dollar === "'") return "";
+                return token;
+            });
+        }
+
+        function replacementForMatch(template, found, groups) {
+            return preserveCase(regexReplacementText(template, found, groups || []), found);
+        }
+
+        function replaceCurrent() {
+            clearTimeout(state.timer);
+            if(state.current < 0 || !state.matches[state.current]) return;
+            var m = state.matches[state.current];
+            var singleRe = buildRegex(false);
+            var singleMatch = singleRe ? singleRe.exec(m.text) : null;
+            var groups = singleMatch ? Array.prototype.slice.call(singleMatch, 1) : [];
+            var rep = replacementForMatch(replaceInput.value, m.text, groups);
+            target.value = target.value.slice(0,m.start) + rep + target.value.slice(m.end);
+
+            if(state.selectionRange && m.start >= state.selectionRange.start && m.end <= state.selectionRange.end) {
+                state.selectionRange.end += rep.length - (m.end - m.start);
+                state.lastEditorSelection = {start:state.selectionRange.start,end:state.selectionRange.end};
+            }
+            if(typeof cfg.onChange == "function") cfg.onChange(target);
+            updateMatches({selectFirst:true, keepFindFocus:true});
+        }
+
+        function replaceAll() {
+            clearTimeout(state.timer);
+            var re = buildRegex(true);
+            if(!re) return;
+            var scope = findScope();
+            var replaced = scope.text.replace(re, function() {
+                var found = arguments[0];
+                var groups = Array.prototype.slice.call(arguments, 1, -2);
+                return replacementForMatch(replaceInput.value, found, groups);
+            });
+            target.value = target.value.slice(0,scope.offset) + replaced + target.value.slice(scope.offset + scope.text.length);
+            if(state.selectionRange) {
+                state.selectionRange.end = state.selectionRange.start + replaced.length;
+                state.lastEditorSelection = {start:state.selectionRange.start,end:state.selectionRange.end};
+            }
+            if(typeof cfg.onChange == "function") cfg.onChange(target);
+            updateMatches({selectFirst:true, keepFindFocus:true});
+        }
+
+        document.addEventListener("keydown", function(ev) {
+            var mod = ev.ctrlKey || ev.metaKey;
+            if((document.activeElement === target || document.activeElement === findInput || document.activeElement === replaceInput) && mod && ev.key.toLowerCase() === "f") {
+                ev.preventDefault(); openSearch(false);
+            }
+            if((document.activeElement === target || document.activeElement === findInput || document.activeElement === replaceInput) && mod && ev.key.toLowerCase() === "h") {
+                ev.preventDefault(); openSearch(true);
+            }
+            if(ev.key === "Escape" && bar.classList.contains("open")) {
+                ev.preventDefault(); closeSearch();
+            }
+        });
+
+        target.addEventListener("mousedown", function() {
+            if(!selectionBtn.classList.contains("active")) {
+                state.lastEditorSelection = null;
+                renderOverlay();
+                updateSelectionButtonState();
+            }
+        });
+
+        ["mouseup","keyup","select"].forEach(function(name) {
+            target.addEventListener(name, function(){ rememberEditorSelection(); renderOverlay(); });
+        });
+
+        target.addEventListener("input", function() {
+            rememberEditorSelection();
+            if(selectionBtn.classList.contains("active")) {
+                selectionBtn.classList.remove("active");
+                state.selectionRange = null;
+            }
+            if(typeof cfg.onChange == "function") cfg.onChange(target);
+            scheduleFind();
+        });
+
+        target.addEventListener("scroll", syncOverlayScroll);
+        findInput.addEventListener("input", scheduleFind);
+        findInput.addEventListener("keydown", function(ev) {
+            if(ev.key === "Enter") {
+                ev.preventDefault();
+                clearTimeout(state.timer);
+                if(!state.matches.length) updateMatches({selectFirst:true, keepFindFocus:true});
+                else nextMatch(ev.shiftKey ? -1 : 1);
+            }
+        });
+        replaceInput.addEventListener("keydown", function(ev) {
+            if(ev.key === "Enter") { ev.preventDefault(); replaceCurrent(); }
+        });
+
+        bar.querySelector('[data-fr-act="expand"]').onclick = function(){ bar.classList.toggle("expanded"); };
+        prevBtn.onclick = function(){ nextMatch(-1); };
+        nextBtn.onclick = function(){ nextMatch(1); };
+        bar.querySelector(".pane-fr-replace-one").onclick = replaceCurrent;
+        bar.querySelector(".pane-fr-replace-all").onclick = replaceAll;
+        bar.querySelector(".pane-fr-close").onclick = closeSearch;
+        caseBtn.onclick = function(){ caseBtn.classList.toggle("active"); scheduleFind(); };
+        wordBtn.onclick = function(){ wordBtn.classList.toggle("active"); scheduleFind(); };
+        regexBtn.onclick = function(){ regexBtn.classList.toggle("active"); scheduleFind(); };
+        preserveBtn.onclick = function(){ preserveBtn.classList.toggle("active"); };
+        selectionBtn.onclick = function() {
+            if(selectionBtn.disabled) return;
+            if(selectionBtn.classList.contains("active")) {
+                selectionBtn.classList.remove("active");
+                state.selectionRange = null;
+                scheduleFind();
+                return;
+            }
+            if(!hasUsableEditorSelection()) return;
+            state.selectionRange = {start:state.lastEditorSelection.start,end:state.lastEditorSelection.end};
+            selectionBtn.classList.add("active");
+            updateSelectionButtonState();
+            scheduleFind();
+            findInput.focus();
+        };
+
+        renderOverlay();
+        updateSelectionButtonState();
+        updateNavButtons();
+        return { open:openSearch, close:closeSearch, update:updateMatches, render:renderOverlay };
+    };
+
     this.bindSearch = function(wrapper, target, callback)
     {
-        if(typeof wrapper == "string") wrapper = document.getElementById(wrapper);
-        if(typeof target == "string") target = document.getElementById(target);
-        if(!wrapper || !target) return;
-
-        var findEl = wrapper.querySelector(".pane-find");
-        var replEl = wrapper.querySelector(".pane-replace");
-        var reEl   = wrapper.querySelector(".pane-regexp");
-        var caseEl = wrapper.querySelector(".pane-case");
-        if(!findEl) return;
-
-        function flags(global)
-        {
-            return (global ? "g" : "") + (caseEl && caseEl.checked ? "" : "i");
-        }
-
-        function pattern(global)
-        {
-            var s = findEl.value;
-            if(!s) return null;
-            if(reEl && reEl.checked) return new RegExp(s, flags(global));
-            return new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags(global));
-        }
-
-        function find(next)
-        {
-            var re = pattern(false);
-            if(!re) return;
-
-            var txt = target.value || target.textContent || "";
-            var from = next ? target.selectionEnd || 0 : 0;
-            var m = txt.slice(from).match(re);
-            if(!m && from > 0) m = txt.match(re), from = 0;
-            if(!m) return;
-
-            var pos = from + m.index;
-            if(target.setSelectionRange) {
-                target.focus();
-                target.setSelectionRange(pos, pos + m[0].length);
-            }
-        }
-
-        function replace(all)
-        {
-            var re = pattern(all);
-            if(!re) return;
-
-            if(target.value !== undefined) target.value = target.value.replace(re, replEl ? replEl.value : "");
-            else target.textContent = target.textContent.replace(re, replEl ? replEl.value : "");
-
-            if(typeof callback == "function") callback(target);
-        }
-
-        wrapper.addEventListener("click", function(ev) {
-            var act = ev.target && ev.target.dataset ? ev.target.dataset.paneAct : "";
-            if(act == "find-prev") find(false);
-            if(act == "find-next") find(true);
-            if(act == "replace") replace(false);
-            if(act == "replace-all") replace(true);
-        });
-
-        findEl.addEventListener("keydown", function(ev) {
-            if(ev.key == "Enter") { ev.preventDefault(); find(!ev.shiftKey); }
-        });
+      return this.bindFindReplace(target, { onChange:callback });
     };
 }
 
