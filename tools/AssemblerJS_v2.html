@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AssemblerJS v0.6.3</title>
+<title>AssemblerJS</title>
 
 <!-- Adjust these paths if this file is not next to /res. -->
 <script type="text/javascript" src="../res/COM_MAIN.js?v=0.6.3-heightsync"></script>
@@ -135,11 +135,18 @@
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        padding: 10px 12px;
+        padding: 6px 10px;
         border-bottom: 1px solid var(--border);
         color: var(--muted);
         font-size: 13px;
         background: #111820;
+        overflow: visible;
+        position: relative;
+    }
+
+    .pane-title-search-host {
+        margin-left: auto;
+        min-width: 0;
     }
 
     .pane-title strong {
@@ -291,7 +298,7 @@
 <header>
     <div>
         <h1>AssemblerJS v0.6.3</h1>
-        <div class="subtitle">Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
+        <div class="subtitle">(v0.6.4) Load a 6502 <code>.S</code> source file. Source is shown left, assembly listing in the middle, JSON at right, and byte code below. Listing columns are editable in the listing header. UI height-sync build: the listing pane determines the source/JSON pane height after ASSEMBLE.</div>
     </div>
     <div class="drop-hint">Tip: drag a .S file anywhere on this page</div>
 </header>
@@ -1534,8 +1541,7 @@ asmPaneHost.innerHTML =
         header:{
             title:"Source",
             class:"pane-title",
-            infoId:"sourceInfo",
-            info:"sample source"
+            html:'<strong>Source</strong><span id="sourceFindReplaceMount" class="pane-title-search-host"></span>'
         },
         body:{
             id:"sourcePane",
@@ -1610,20 +1616,47 @@ window.asmCompileResult = null;
 var sourceFindReplace = null;
 var listingFindReplace = null;
 
+var findReplaceDarkScheme = {
+    "bg":"#111820",
+    "border":"#30363d",
+    "text":"#e6edf3",
+    "muted":"#8b949e",
+    "field-bg":"#0b0f14",
+    "field-text":"#e6edf3",
+    "active":"#79b8ff",
+    "active-bg":"#1d4f7a",
+    "active-text":"#ffffff",
+    "hover-bg":"#21262d",
+    "hover-text":"#e6edf3",
+    "expander":"#e6edf3"
+};
+
 if (typeof oPANE.bindFindReplace == "function") {
     sourceFindReplace = oPANE.bindFindReplace("sourcePane", {
         id:"sourceFindReplace",
-        barWidth:"400px",
+        mount:"sourceFindReplaceMount",
+        inline:true,
+        overlayExpand:true,
+        scheme:findReplaceDarkScheme,
+        barWidth:"390px",
         debounce_ms:500,
-        onChange:function(){ syncPaneHeightsFromListing(); }
+        onChange:function(){ syncPaneHeightsFromListing(); equalizePaneHeaders(); }
     });
 
     listingFindReplace = oPANE.bindFindReplace("listingPane", {
         id:"listingFindReplace",
+        inline:false,
+        scheme:findReplaceDarkScheme,
         barWidth:"400px",
         debounce_ms:500,
         onChange:function(){ autosizeListingPane(); syncPaneHeightsFromListing(); }
     });
+
+    
+    function equalizePaneHeaders() {
+        if (oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
+            oPANE.equalizePaneHeaderHeights("#asmPaneHost .pane-title");
+    }    
 }
 
 function setStatus(text, kind) {
@@ -1724,6 +1757,7 @@ function syncPaneHeightsFromListing() {
         autosizeSourcePane();
         autosizeListingPane();
         sizeJsonPaneToAvailableSpace();
+        equalizePaneHeaders();
         if (!listingPaneWrapper) return;
         var h = Math.ceil(listingPaneWrapper.getBoundingClientRect().height);
         if (h <= 0) return;
@@ -1817,6 +1851,7 @@ async function loadFile(file) {
     autosizeSourcePane();
     refreshFindReplaceOverlays();
     sourceInfo.textContent = currentFileName + " — " + sourcePane.value.split(/\r\n|\r|\n/).length + " lines";
+    /* Source header is occupied by Find/Replace; status remains in main toolbar. */    
     assembleCurrentSource();
 }
 
@@ -1917,6 +1952,7 @@ window.addEventListener("resize", function ()
 {
     sizeJsonPaneToAvailableSpace();
     syncPaneHeightsFromListing();
+    equalizePaneHeaders();
 });
 
 sourcePane.addEventListener("keydown", function (ev) {
@@ -1926,6 +1962,7 @@ sourcePane.addEventListener("keydown", function (ev) {
 assembleCurrentSource();
 syncPaneHeightsFromListing();
 refreshFindReplaceOverlays();
+equalizePaneHeaders();
 </script>
 </body>
 </html>
