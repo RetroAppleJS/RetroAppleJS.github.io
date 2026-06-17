@@ -79,7 +79,7 @@ function Apple2Plus(context)
     this.CPU_monitoring = function() {}  // overridable by GUI update function
 
 
-    // moved to DISK2
+    // TODO: move to DISK2
     this.DSK_monitoring = function()
     {
         var o = disk2.getDataObj();

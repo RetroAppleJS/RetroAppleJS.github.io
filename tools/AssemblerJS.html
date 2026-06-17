@@ -791,21 +791,21 @@ LFAAB       LDA     PWRCON-1,X      ;with cntrl B adrs
             DEX
             BNE     LFAAB
             LDA     #$C8            ;load hi slot +1
-            STX     *LOC0            ;SETPG3 must return X=0
-            STA     *LOC1            ;set PTR H
+            STX     *LOC0           ;set PTR LO  (#$00)
+            STA     *LOC1           ;set PTR HI  (#$C8)
 SLOOP       LDY     #$07            ;Y is byte PTR
-            DEC     *LOC1
+            DEC     *LOC1           ;(C7->C6->C5->C4->C3->C2->C1->C0)
             LDA     *LOC1
             CMP     #$C0            ;at last slot yet?
             BEQ     FIXSEV          ;yes AND it cant be a disk
             STA     MSLOT
 NXTBYT      LDA     (LOC0),Y        ;fetch a slot byte
-            CMP     DISKID-1,Y      ;is it a disk ??
+            CMP     DISKID-1,Y      ;is it a disk ??  (check for ROM sequence 3C->03->00->20)
             BNE     SLOOP           ;no so next slot down
             DEY
             DEY                     ;yes so check next byte
-            BPL     NXTBYT          ;until 4 checked
-            JMP     (LOC0)
+            BPL     NXTBYT          ;until 4 checked (Y iterates from 7->5->3->1)
+            JMP     (LOC0)          ;jump to DISK ROM ($C80n)
 
             NOP
             NOP
@@ -830,7 +830,7 @@ RDSP1       LDA     #$A0
 ;OK FAFD
 PWRCON      .WORD   OLDBRK
             HEX  00E045
-DISKID      HEX  20FF00FF03FF3C
+DISKID      HEX  20FF00FF03FF3C     ; DISK ROM IDENTIFIER
 TITLE       ASC   “APPLE ][”
 XLTBL       HEX  C4C2C1FFC3FFFFFF
 ; must ORG $FB19
