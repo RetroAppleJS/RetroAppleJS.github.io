@@ -422,7 +422,7 @@ function Apple2IO(vid)
         var arr = str.split(",");
         for(var i=0;i<arr.length;i++)
         {
-            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
+            var n = slotID2n( arr[i].replace(RegExp("\\*","g"),"") );
             if(isNaN(n)==false)
             {
                 if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
@@ -437,6 +437,11 @@ function Apple2IO(vid)
         return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
     }     
 
+    function slotID2n(slotID)
+    {
+        // previously slotID == "B"
+        return slotID == "H" ? 0 : Number(slotID) + 1;
+    }
 
     this.PCODE2obj = function(PCODE)
     {
