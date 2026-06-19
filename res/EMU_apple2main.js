@@ -478,14 +478,14 @@ function EMUI()
     this.muteAct = function(arg)
     {
         if(arg===undefined) arg = this.muteArg;
-        var b = arg.override===undefined?
-            (oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+        var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
-                .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
-            oEMU.component.IO.AppleDisk.init("audio_ctx")
-                .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
+                .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });
+
+            oEMU.component.IO.AppleDisk.init("audio_ctx").then(()=>{  
+                    oEMU.component.IO.AppleDisk.init("audio_buffer") });
         }
         else
         {
@@ -723,6 +723,7 @@ function EMUI()
 
 function loadDisk_fromFile(file_obj,deviceID)
 {
+    
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
     if(file_obj==null || disk2.state.active==false) { apple2plus.loadDisk([],deviceID); return }
 
@@ -785,10 +786,10 @@ async function EMU_audio_try_unlock(forceButtonState)
         await EMU_audio_prepare();
 
         const spk = oEMU.component.IO.AppleSpeaker;
-        const dsk = oEMU.component.IO.AppleDisk;
+        const disk2 = oEMU.component.IO.AppleDisk;
 
         const spkRunning = spk.audio && spk.audio.state === "running";
-        const dskRunning = dsk.audio && dsk.audio.state === "running";
+        const dskRunning = disk2.audio && disk2.audio.state === "running";
 
         // If both are already running, cold-start worked.
         if (spkRunning && dskRunning)

@@ -14,10 +14,9 @@ else oEMU.component.IO["RamCard"] = new RamCard();
 
 function RamCard()
 {
-    this.id     = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
+    this.id     = {"PCODE":"MS16K", "icon":"fa fa-microchip", "slotLock":true}
     this.state  = {
          "active":true          // flag to remember if peripheral is altogether operational or not 
-        ,"slot":null            // slot number where the current card is plugged-in (always 0 for the language card)
         ,"softswitch_pos":0x1   // default soft switch state (documented by microsoft)
         ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
         ,"RR":0                 // flag to remember double-triggered Write-Enables (by double read)
