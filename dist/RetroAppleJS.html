@@ -14303,14 +14303,14 @@ function EMUI()
     this.muteAct = function(arg)
     {
         if(arg===undefined) arg = this.muteArg;
-        var b = arg.override===undefined?
-            (oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+        var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
-                .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });  
-            oEMU.component.IO.AppleDisk.init("audio_ctx")
-                .then(()=>{  oEMU.component.IO.AppleDisk.init("audio_buffer") });
+                .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });
+
+            oEMU.component.IO.AppleDisk.init("audio_ctx").then(()=>{  
+                    oEMU.component.IO.AppleDisk.init("audio_buffer") });
         }
         else
         {
@@ -14548,6 +14548,7 @@ function EMUI()
 
 function loadDisk_fromFile(file_obj,deviceID)
 {
+    
     var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
     if(file_obj==null || disk2.state.active==false) { apple2plus.loadDisk([],deviceID); return }
 
@@ -14610,10 +14611,10 @@ async function EMU_audio_try_unlock(forceButtonState)
         await EMU_audio_prepare();
 
         const spk = oEMU.component.IO.AppleSpeaker;
-        const dsk = oEMU.component.IO.AppleDisk;
+        const disk2 = oEMU.component.IO.AppleDisk;
 
         const spkRunning = spk.audio && spk.audio.state === "running";
-        const dskRunning = dsk.audio && dsk.audio.state === "running";
+        const dskRunning = disk2.audio && disk2.audio.state === "running";
 
         // If both are already running, cold-start worked.
         if (spkRunning && dskRunning)
@@ -23533,10 +23534,9 @@ else oEMU.component.IO["RamCard"] = new RamCard();
 
 function RamCard()
 {
-    this.id     = {"PCODE":"MS16K", "icon":"fa fa-microchip"}
+    this.id     = {"PCODE":"MS16K", "icon":"fa fa-microchip", "slotLock":true}
     this.state  = {
          "active":true          // flag to remember if peripheral is altogether operational or not 
-        ,"slot":null            // slot number where the current card is plugged-in (always 0 for the language card)
         ,"softswitch_pos":0x1   // default soft switch state (documented by microsoft)
         ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
         ,"RR":0                 // flag to remember double-triggered Write-Enables (by double read)
@@ -24054,7 +24054,7 @@ function col80card()
 {
     //console.log("oEMU="+typeof(oEMU))
     this.id    = {"PCODE":"VIDEX", "icon":"fa fa-tv"};
-    this.state = {"active":true,"slot":null};
+    this.state = {"active":true};
     this.action = 
     { 
         /*
@@ -26906,7 +26906,6 @@ function Apple2Plus(context)
 
 
                 <!--  DEBUG  -->
-                
                 <!--div class=toolbox>
                   <div class=appbox style="text-align:left;height:80px;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px">
                     <canvas id="scopeCanvas" width="300" height="55" style="border:0px solid #E0E0E0;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px"></canvas>
@@ -30636,7 +30635,7 @@ Label1 TXA
                             ontouchstart="return ASM_traceDown(event)"
                             ontouchend="return ASM_traceUp(event)"
                             ontouchcancel="return ASM_traceCancel(event)">
-                      <i class="fa fa-road"></i> trace</button>      
+                      <i class="fa fa-road"></i> trace</button>
 <script>
 var ASM_trace_holdTimer = null;
 var ASM_trace_repeatTimer = null;
