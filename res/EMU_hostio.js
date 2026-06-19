@@ -13,8 +13,8 @@ else
 
 function AppleBoard()
 {
-    this.id    = {"PCODE":"BOARD", "icon":"fa fa-tv"};
-    this.state = {"active":true,"slot":null};
+    this.id    = {"PCODE":"A2BO", "icon":"fa fa-home", "slotLock":true};
+    this.state = {"active":true};
     this.action = 
     { 
          "HostIO" :{ "RD":{"callback":read.bind(this)}

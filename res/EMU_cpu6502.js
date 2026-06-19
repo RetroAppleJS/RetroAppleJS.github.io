@@ -498,6 +498,10 @@ function Cpu6502(hwobj)
 
         logBootInstruction(instr_pc & 0xffff, opcode, operand);
 
+        if(BOOTcnt == 7547)
+        {
+            //alert("BOOT STOP");
+        }
 
         // Execute!
         switch (opcode) {
