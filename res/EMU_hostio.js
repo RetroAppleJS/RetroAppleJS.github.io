@@ -25,11 +25,26 @@ function AppleBoard()
     function write() {}
 
 
-    this.IO_map = function(model,IOMAP_CALLS)
+    this.IO_map = function(model)
     {
 
+        // hack - TODO: find a permanent fix
+        const IOMAP_CALLS = {
+            "KBD":      function(ctx2){ return ctx2.keys.polling(ctx2.keys.lastkey); },
+            "KBDSTRB":  function(ctx2){ ctx2.keys.strobe();        return 0x00; },
+            "SPKR":     function(ctx2){ ctx2.snd.toggle();         return 0x00; },
 
+            "TXTCLR":   function(ctx){ ctx.vid.setGfx(true);     return 0x00; },
+            "TXTSET":   function(ctx){ ctx.vid.setGfx(false);    return 0x00; },
+            "MIXCLR":   function(ctx){ ctx.vid.setMix(false);    return 0x00; },
+            "MIXSET":   function(ctx){ ctx.vid.setMix(true);     return 0x00; },
+            "TXTPAGE1": function(ctx){ ctx.vid.setPage2(false);  return 0x00; },
+            "TXTPAGE2": function(ctx){ ctx.vid.setPage2(true);   return 0x00; },
+            "LORES":    function(ctx){ ctx.vid.setHires(false);  return 0x00; },
+            "HIRES":    function(ctx){ ctx.vid.setHires(true);   return 0x00; }
+        };
 
+  
         var IOMAP_ID = null;
         update_IORANGES(model);
 
@@ -118,7 +133,7 @@ function AppleBoard()
                 : IOMAP_CALLS[IOMAP_ID][name];
 
             if(model_match && cm!=null && (cm.ST!=null || cm!=null))
-             {
+            {
                 var acts = behavior_list(act_name_str);
                 if(acts.indexOf("WR")>=0) output.WR[addr_n] = cm; // WRITE
                 if(acts.indexOf("RR")>=0) output.RR[addr_n] = cm; // DOUBLE READ
@@ -127,7 +142,6 @@ function AppleBoard()
                 if(acts.indexOf("RG")>=0) output.RG[addr_n] = cm; // REGISTER
                 console.log(addr,addr_n,name,act_name_str,desc,cm);
             }
-
             
         }
 
@@ -135,6 +149,50 @@ function AppleBoard()
        //console.log(JSON.stringify(iomap_rows)) 
 
         this.IOMAP_ROWS = iomap_rows;
+    
+
+
+        const SOFTSWITCH_50 = 
+        {
+            0x0: IOMAP_CALLS["TXTCLR"],
+            0x1: IOMAP_CALLS["TXTSET"],
+            0x2: IOMAP_CALLS["MIXCLR"],
+            0x3: IOMAP_CALLS["MIXSET"],
+            0x4: IOMAP_CALLS["TXTPAGE1"],
+            0x5: IOMAP_CALLS["TXTPAGE2"],
+            0x6: IOMAP_CALLS["LORES"],
+            0x7: IOMAP_CALLS["HIRES"]
+        };
+
+        var output = {
+            "BT":{},
+            "RD":
+            {
+                 0x00: function(rel_addr,ctx) { return IOMAP_CALLS["KBD"](ctx) }
+                ,0x10: function(rel_addr,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
+                ,0x30: function(rel_addr,ctx) { return IOMAP_CALLS["SPKR"](ctx) }
+                ,0x50: function(rel_addr,ctx)
+                {
+                    const fn = SOFTSWITCH_50[rel_addr];
+                    return fn ? fn(ctx) : 0x00;
+                }
+            },
+            "RG":{},
+            "RR":{},
+            "SV":{},
+            "VA":{},
+            "WR":
+            {
+                 0x10: function(rel_addr,d8,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
+                ,0x50: function(rel_addr,d8,ctx)
+                {
+                    const fn = SOFTSWITCH_50[rel_addr];
+                    return fn ? fn() : 0x00;
+                }
+            }
+        }
+
+
         return output;
         
     }
@@ -180,3 +238,6 @@ function AppleBoard()
         return s;
     }
 }
+
+globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
+globalThis.Apple2IO_PeripheralRegistry["A2BO"] = {"ctor":AppleBoard,"icon":"fa fa-home","slotLock":true};

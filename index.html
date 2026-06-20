@@ -388,16 +388,18 @@
  
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
-              var lc = apple2plus.hwObj().io.ramcard;
-              var bLC = lc && lc.state && lc.state.active && lc.MEM_grid && typeof(lc.build_MEM_map)=="function";
+              //var lc = apple2plus.hwObj().io.ramcard;
+              var ramcard = apple2plus.hwObj().io.PCODE2obj( "MS16K"  )[0];
+
+              var bLC = ramcard && ramcard.state && ramcard.state.active && ramcard.MEM_grid && typeof(ramcard.build_MEM_map)=="function";
               el.innerHTML =
                 "<div style='display:flex;'>"
               +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
               +   oMEMGRID.build_grid(15*linestep,8,-linestep,cnf)
-              +   (bLC ? lc.build_MEM_map(linestep) : "")
+              +   (bLC ? ramcard.build_MEM_map(linestep) : "")
               + "</div>";
               oMEMGRID.paint_grid(apple2plus.hwObj().mem_layout,cnf);
-              if(bLC && typeof(lc.paint_MEM_map)=="function") lc.paint_MEM_map();
+              if(bLC && typeof(ramcard.paint_MEM_map)=="function") ramcard.paint_MEM_map();
 
             }
 

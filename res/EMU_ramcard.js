@@ -9,8 +9,8 @@
 //
 // EMU_ramcard.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":new RamCard()}}}
-else oEMU.component.IO["RamCard"] = new RamCard();
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":null}}}
+else oEMU.component.IO["RamCard"] = null;
 
 function RamCard()
 {
@@ -118,7 +118,8 @@ function RamCard()
         this.state.bMapped = false;
         this.state.RR      = 0;
 
-        oCOM.addRefreshEvent(oEMU.component.IO.RamCard.MEM_monitoring,"MEM_monitoring_MS16K",false);
+        var ramcard = apple2plus.hwObj().io.HASH2obj( this.mount.hash  ); // reference the ramcard object by hash
+        oCOM.addRefreshEvent(ramcard.MEM_monitoring,"MEM_monitoring_MS16K",false);  // TODO: investigate why memory monitoring does not take extended ram
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 

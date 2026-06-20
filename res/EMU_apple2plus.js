@@ -44,7 +44,7 @@ function Apple2Plus(context)
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{getDataObj:function(){},update:function(){}},"AppleDisk");
+    var disk2;
 
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
     
@@ -69,7 +69,7 @@ function Apple2Plus(context)
     this.restart = function()
     {
         this.onrestart();
-        this.hw.restart();
+        this.hw.restart();  // will restart I/O as well, which will mount all default peripherals
         this.reset();
         system_tab_update();
     }
@@ -82,7 +82,8 @@ function Apple2Plus(context)
     // TODO: move to DISK2
     this.DSK_monitoring = function()
     {
-        var o = disk2.getDataObj();
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        var o = disk2.getState().hw;
         disk2.GUI_update(o);
     }
 
@@ -124,8 +125,9 @@ function Apple2Plus(context)
             dashboard_refresh(args);
     }
 
-    this.DiskObj = function() {
-        return this.hw.io.disk2;
+    this.DiskObj = function() // TODO: deprecated -> phase out
+    {
+        return this.hw.io.PCODE2obj("DISKII")[0];
     }
 
     this.keysObj = function() {
@@ -141,15 +143,18 @@ function Apple2Plus(context)
     }
 
     // TODO: move this to EMU_appledisk2.js
-    this.loadDisk = function(bytes,drive) {
+    this.loadDisk = function(bytes,drive) 
+    {
         var drv = Number(drive.slice(1))-1;
-        this.hw.io.disk2.state.diskData[ drv ] = bytes;
+        var disk2 = this.hwObj().io.PCODE2obj("DISKII")[0];
+        disk2.getState().diskData[ drv ] = bytes;
     }  
 
     // TODO: move this to EMU_appledisk2.js
     this.dumpDisk = function(drive) {
         var drv = Number(drive.slice(1))-1;
-        this.hw.io.disk2.dump(drv);
+        var disk2 = this.PCODE2obj("DISKII")[0];
+        disk2.dump(drv);
     }
 
     this.monitor = function(type) {

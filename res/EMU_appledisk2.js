@@ -4,8 +4,12 @@
 // EMU_apple2disk2.js
 
 // Add object to device registry
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
-else oEMU.component.IO.AppleDisk = new AppleDisk2();
+//if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
+//else oEMU.component.IO.AppleDisk = new AppleDisk2();
+
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk2":null}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
+else oEMU.component.IO.AppleDisk2 = null;
+
 
 function AppleDisk2()
 {
@@ -13,7 +17,7 @@ function AppleDisk2()
     var bDebug_N = false;   // debug disk noise only 
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
-    this.state = 
+    var state = 
     {
         "active":true
         ,"drive_enable":0
@@ -56,6 +60,29 @@ function AppleDisk2()
         }]
     };
 
+    this.action = 
+    {
+        "SlotIO": 
+        { 
+            "RD":{ "callback": function(addr) {
+                var d8 = disk2.read(addr);
+                 return d8;
+                } }
+            ,"WR":{ "callback": function(addr,d8) {
+                disk2.write(addr,d8); 
+            } }
+        }
+        ,
+        "SlotROM": 
+        {
+            "RD":{ "callback": function(addr) { 
+                var d8 = disk2.readROM(addr);
+                return d8; 
+            } }
+        }
+    };
+
+
     // relative peripheral addresses
     const MOTOR_OFF =   0x08,
         MOTOR_ON =      0x09,
@@ -67,17 +94,18 @@ function AppleDisk2()
         Q7H =           0x0f;
     const TRACK_SIZE =  6656;
 
+    var disk2       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
 
     this.applyDriveEnable = function(reason)
     {
-        var deviceN = this.state.drv;
-        var enabled = this.state.drive_enable ? 1 : 0;
+        var deviceN = state.drv;
+        var enabled = state.drive_enable ? 1 : 0;
 
-        for (var i = 0; i < this.state.hw.length; i++)
+        for (var i = 0; i < state.hw.length; i++)
         {
-            var oldMotor = this.state.hw[i].motor;
+            var oldMotor = state.hw[i].motor;
             var newMotor = (enabled && i == deviceN) ? 1 : 0;
-            this.state.hw[i].motor = newMotor;
+            state.hw[i].motor = newMotor;
             if (oldMotor != newMotor)
             {
                 this.traceChange(
@@ -102,27 +130,39 @@ function AppleDisk2()
             case "audio_ctx":
                 if(this.audio===undefined)
                 {
-                    this.audio = new AudioContext({ latencyHint: 'interactive', sampleRate: this.sampleRate },"apple_disk2");
+                    var audioOptions = { latencyHint: 'interactive' };
+                    if (Number.isFinite(this.sampleRate) && this.sampleRate > 0)
+                        audioOptions.sampleRate = this.sampleRate;
+
+                    this.audio = new AudioContext(audioOptions);
                     this.gain  =  this.audio.createGain();
                     this.gain.gain.value = 0.1;
                     //this.audio.audioWorklet.addModule(s_worklet_js); // Load an this.audio worklet
-                } else this.audio.resume();
+                } else await this.audio.resume();
                 this.dNd.enable = true;
             break;
             case "audio_buffer":
-                for(var sample in dN_samples) // check if any data is already loaded -> if so, skip!
-                    if( typeof(dN_samples[sample].audio) != "undefined") return;
+                if(this.audio===undefined)
+                    await this.init("audio_ctx");
 
-                this.s_load_all(dN_samples).then((response) => 
-                { 
-                    var i = 0;
-                    for(var name in dN_samples)
+                for (var sample in dN_samples)
+                    if (typeof(dN_samples[sample].audio) != "undefined") return;
+
+                try
+                {
+                    const response = await this.s_load_all(dN_samples);
+                    for (const item of response)
                     {
-                        dN_samples[name].audio = response[i++];
-                        dN_samples[name].audio.sampleRate = this.sampleRate;
-                        delete dN_samples[sample].src;    // free .wav file memory space (keep audio)
+                        dN_samples[item.name].audio = item.audio;
+                        // Do not assign sampleRate; AudioBuffer.sampleRate is read-only in practice.
+                        delete dN_samples[item.name].src;
                     }
-                });
+                }
+                catch(e)
+                {
+                    console.warn("AppleDisk2: disk-noise preload failed:", e);
+                    this.dNd.enable = false;
+                }
             break;
             case "audio_off":
                 this.dNd.enable = false;
@@ -139,32 +179,32 @@ function AppleDisk2()
     this.restart = function()
     {
         // TODO: -> in future, handle DSK_monitoring, but first have a DSK object per slot where it is installed
-         //oCOM.addRefreshEvent(apple2plus.hwObj().io.disk2.DSK_monitoring,"DSK_monitoring",true);
+        
     }
 
     // Do not reset hw[n].track here.
     // A CPU reset does not mechanically move the Disk II head.
     this.reset = function() 
     {
-        this.state.drive_enable = 0;
-        this.state.hw[0].phase = 0;
-        this.state.hw[0].motor = 0;
-        this.state.hw[0].q6 = 0;
-        this.state.hw[0].q7 = 0;
-        this.state.hw[0].offset = 0;
+        state.drive_enable = 0;
+        state.hw[0].phase = 0;
+        state.hw[0].motor = 0;
+        state.hw[0].q6 = 0;
+        state.hw[0].q7 = 0;
+        state.hw[0].offset = 0;
 
-        this.state.hw[1].phase = 0;
-        this.state.hw[1].motor = 0;
-        this.state.hw[1].q6 = 0;
-        this.state.hw[1].q7 = 0;
-        this.state.hw[1].offset = 0;
+        state.hw[1].phase = 0;
+        state.hw[1].motor = 0;
+        state.hw[1].q6 = 0;
+        state.hw[1].q7 = 0;
+        state.hw[1].offset = 0;
 
-        this.state.drv = 0;
+        state.drv = 0;
         this.cancelTrackStatsFlush(0);
         this.cancelTrackStatsFlush(1);
     }
 
-    this.getDataObj = function() { return this.state.hw }
+    this.getState = function() { return state }
 
     this.GUI_update = function() {}   // overridable function to update drive status (LED)
     
@@ -173,9 +213,9 @@ function AppleDisk2()
     this.flushTrackStats = function(deviceN, reason)
     {
         if (!bDebug) return;
-        if (deviceN === undefined) deviceN = this.state.drv;
+        if (deviceN === undefined) deviceN = state.drv;
 
-        var hw = this.state.hw[deviceN];
+        var hw = state.hw[deviceN];
         if (!hw || !hw.stats) return;
 
         var stats = hw.stats;
@@ -194,14 +234,14 @@ function AppleDisk2()
 
     this.scheduleTrackStatsFlush = function(deviceN, reason, delay)
     {
-        if (deviceN === undefined) deviceN = this.state.drv;
+        if (deviceN === undefined) deviceN = state.drv;
         if (delay === undefined) delay = 1000;
 
-        var hw = this.state.hw[deviceN];
+        var hw = state.hw[deviceN];
         if (!hw || !hw.stats) return;
 
         var stats = hw.stats;
-        var disk2 = this;
+        //var disk2 = this;
 
         if (stats.motorOffTimer)
             clearTimeout(stats.motorOffTimer);
@@ -213,7 +253,7 @@ function AppleDisk2()
             // Only flush if this drive is still spun down.
             // If motor came back on, MOTOR_ON should already have cancelled this timer,
             // but this extra guard makes it robust.
-            if (disk2.state.hw[deviceN].motor == 0)
+            if (disk2.getState().hw[deviceN].motor == 0)
                 disk2.flushTrackStats(deviceN);
 
         }, delay);
@@ -221,9 +261,9 @@ function AppleDisk2()
 
     this.cancelTrackStatsFlush = function(deviceN)
     {
-        if (deviceN === undefined) deviceN = this.state.drv;
+        if (deviceN === undefined) deviceN = state.drv;
 
-        var hw = this.state.hw[deviceN];
+        var hw = state.hw[deviceN];
         if (!hw || !hw.stats) return;
 
         if (hw.stats.motorOffTimer)
@@ -241,63 +281,64 @@ function AppleDisk2()
 
     this.readROM = function(addr)
     {
-        if(this.state.diskData[this.state.drv])        // if disk data is loaded on the selected drive
-                    return this.ROM[addr];    // return content of disk ROM addres
+        if(state.diskData[state.drv])        // if disk data is loaded on the selected drive
+                    return ROM[addr];    // return content of disk ROM addres
+        else console.warn("DISK2 not booted: no disk data available during boot")
         return null;
     }
 
     this.read = function(addr) 
     {
         //console.log("AppleDisk2: read %s", addr.toString(16));
-        const deviceN = this.state.drv
+        const deviceN = state.drv
         if (addr < 0x08) 
         {
             if ((addr & 1) != 0)           // Stepper motor on
             {
                 var p = ((addr >> 1) & 3); // phase we're turning on.
 
-                if (((this.state.hw[deviceN].phase + 1) & 3) == p) 
+                if (((state.hw[deviceN].phase + 1) & 3) == p) 
                 {
-                    this.state.hw[deviceN].phase = p;     // Ascending order, track arm moves inward.
+                    state.hw[deviceN].phase = p;     // Ascending order, track arm moves inward.
                     this.update_logs("phase");
-                    if ((this.state.hw[deviceN].phase & 1) == 0)
+                    if ((state.hw[deviceN].phase & 1) == 0)
                     {
-                        var oldTrack = this.state.hw[deviceN].track;
+                        var oldTrack = state.hw[deviceN].track;
                         this.flushTrackStats(deviceN);
-                        if (++this.state.hw[deviceN].track >= 35)
+                        if (++state.hw[deviceN].track >= 35)
                         {
-                            this.state.hw[deviceN].track = 35; // CLICK! CLICK! CLICK!
+                            state.hw[deviceN].track = 35; // CLICK! CLICK! CLICK!
                             this.dN_update("CLICK_OUT");
-                            this.traceArmStep(deviceN, "CLICK_OUT", oldTrack, this.state.hw[deviceN].track);
+                            this.traceArmStep(deviceN, "CLICK_OUT", oldTrack, state.hw[deviceN].track);
                         }
                         else
                         {
-                            this.state.hw[deviceN].stats.track = this.state.hw[deviceN].track;
+                            state.hw[deviceN].stats.track = state.hw[deviceN].track;
                             this.dN_update("ARM_OUT");
-                            this.traceArmStep(deviceN, "ARM_OUT", oldTrack, this.state.hw[deviceN].track);
+                            this.traceArmStep(deviceN, "ARM_OUT", oldTrack, state.hw[deviceN].track);
                         }
                     }
                 }
-                else if (((this.state.hw[deviceN].phase - 1) & 3) == p) 
+                else if (((state.hw[deviceN].phase - 1) & 3) == p) 
                 {
                     // Descending order, track arm moves outward.
-                    this.state.hw[deviceN].phase = p;
-                    if ((this.state.hw[deviceN].phase & 1) == 0)
+                    state.hw[deviceN].phase = p;
+                    if ((state.hw[deviceN].phase & 1) == 0)
                     {
-                        var oldTrack = this.state.hw[deviceN].track;
+                        var oldTrack = state.hw[deviceN].track;
                         this.flushTrackStats(deviceN);
-                        if (--this.state.hw[deviceN].track < 0)
+                        if (--state.hw[deviceN].track < 0)
                         {
-                            this.state.hw[deviceN].track = 0; // CLICK! CLICK! CLICK!
-                            this.state.hw[deviceN].stats.track = this.state.hw[deviceN].track;
+                            state.hw[deviceN].track = 0; // CLICK! CLICK! CLICK!
+                            state.hw[deviceN].stats.track = state.hw[deviceN].track;
                             this.dN_update("CLICK_IN");
-                            this.traceArmStep(deviceN, "CLICK_IN", oldTrack, this.state.hw[deviceN].track);
+                            this.traceArmStep(deviceN, "CLICK_IN", oldTrack, state.hw[deviceN].track);
                         }
                         else
                         {
-                            this.state.hw[deviceN].stats.track = this.state.hw[deviceN].track;
+                            state.hw[deviceN].stats.track = state.hw[deviceN].track;
                             this.dN_update("ARM_IN");
-                            this.traceArmStep(deviceN, "ARM_IN", oldTrack, this.state.hw[deviceN].track);
+                            this.traceArmStep(deviceN, "ARM_IN", oldTrack, state.hw[deviceN].track);
                         }
                     }
                 }
@@ -306,46 +347,46 @@ function AppleDisk2()
         else {
             switch (addr) {
             case MOTOR_ON:
-                this.state.drive_enable = 1;
+                state.drive_enable = 1;
                 this.applyDriveEnable("MOTOR_ON");
                 this.dN_update("MOTOR_ON");
                 break;
             case MOTOR_OFF:
-                this.state.drive_enable = 0;
+                state.drive_enable = 0;
                 this.applyDriveEnable("MOTOR_OFF");
                 this.dN_update("MOTOR_OFF");
                 break;              
             case DRV0EN:
-                var oldDrv = this.state.drv;
+                var oldDrv = state.drv;
                 this.traceFlush("DRV0EN");
-                this.state.drv = 0;
+                state.drv = 0;
                 this.traceChange("DRV0EN", 0, "drv", oldDrv, 0);
                 this.applyDriveEnable("DRV0EN");
                 this.update_logs("D1");
                 break;
             case DRV1EN:
-                var oldDrv = this.state.drv;
+                var oldDrv = state.drv;
                 this.traceFlush("DRV1EN");
-                this.state.drv = 1;
+                state.drv = 1;
                 this.traceChange("DRV1EN", 1, "drv", oldDrv, 1);
                 this.applyDriveEnable("DRV1EN");
                 this.update_logs("D2");
                 break;
             case Q6L:
-                var oldQ6 = this.state.hw[deviceN].q6;
-                this.state.hw[deviceN].q6 = 0;
+                var oldQ6 = state.hw[deviceN].q6;
+                state.hw[deviceN].q6 = 0;
 
                 if (oldQ6 != 0)
                     this.traceChange("Q6L_STROBE_DATA_LATCH", deviceN, "q6", oldQ6, 0);
 
                 // Strobe Data Latch for I/O
-                if (!this.state.diskData[deviceN])
+                if (!state.diskData[deviceN])
                 {
                     this.traceUnavailable(deviceN, "diskData=null");
                     return 0xff;
                 }
 
-                if (!this.state.hw[deviceN].motor)
+                if (!state.hw[deviceN].motor)
                 {
                     this.traceUnavailable(deviceN, "motor=0");
                     return 0xff;
@@ -353,48 +394,48 @@ function AppleDisk2()
 
                 this.trace.lastUnavailable = "";
 
-                if (++this.state.hw[deviceN].offset == TRACK_SIZE)
-                    this.state.hw[deviceN].offset = 0;
+                if (++state.hw[deviceN].offset == TRACK_SIZE)
+                    state.hw[deviceN].offset = 0;
 
-                var loc = this.state.hw[deviceN].track * TRACK_SIZE + this.state.hw[deviceN].offset;
+                var loc = state.hw[deviceN].track * TRACK_SIZE + state.hw[deviceN].offset;
 
-                var stats = this.state.hw[deviceN].stats;
-                if (stats) stats.track = this.state.hw[deviceN].track;
+                var stats = state.hw[deviceN].stats;
+                if (stats) stats.track = state.hw[deviceN].track;
 
-                if (this.state.hw[deviceN].q7)
+                if (state.hw[deviceN].q7)
                 {
                     // Write to disk.
-                    this.state.diskData[deviceN][loc] = this.state.hw[deviceN].data_latch;
-                    if (this.state.hw[deviceN].stats) this.state.hw[deviceN].stats.write++;
-                    this.traceDataByte("WRITE", deviceN, loc, this.state.hw[deviceN].data_latch);
-                    return this.state.hw[deviceN].data_latch;
+                    state.diskData[deviceN][loc] = state.hw[deviceN].data_latch;
+                    if (state.hw[deviceN].stats) state.hw[deviceN].stats.write++;
+                    this.traceDataByte("WRITE", deviceN, loc, state.hw[deviceN].data_latch);
+                    return state.hw[deviceN].data_latch;
                 }
                 else
                 {
                     // Read from disk.
-                    var d8 = this.state.diskData[deviceN][loc];
-                    if (this.state.hw[deviceN].stats) this.state.hw[deviceN].stats.read++;
+                    var d8 = state.diskData[deviceN][loc];
+                    if (state.hw[deviceN].stats) state.hw[deviceN].stats.read++;
                     this.traceDataByte("READ", deviceN, loc, d8);
                     return d8;
                 }
                 // NOTREACHED
             case Q6H:
                 // Load data latch. Also sense write-protect.
-                var oldQ6 = this.state.hw[deviceN].q6;
-                this.state.hw[deviceN].q6 = 1;
+                var oldQ6 = state.hw[deviceN].q6;
+                state.hw[deviceN].q6 = 1;
                 if (oldQ6 != 1) this.traceChange("Q6H_LOAD_DATA_LATCH_OR_SENSE_WRITE_PROTECT", deviceN, "q6", oldQ6, 1);
                 break;
             case Q7L:
                 // Prepare latch for input.
-                var oldQ7 = this.state.hw[deviceN].q7;
-                this.state.hw[deviceN].q7 = 0;
+                var oldQ7 = state.hw[deviceN].q7;
+                state.hw[deviceN].q7 = 0;
                 this.traceChange("Q7L_PREPARE_LATCH_INPUT", deviceN, "q7", oldQ7, 0);
                 this.update_logs("q7");
                 break;
             case Q7H:
                 // Prepare latch for output.
-                var oldQ7 = this.state.hw[deviceN].q7;
-                this.state.hw[deviceN].q7 = 1;
+                var oldQ7 = state.hw[deviceN].q7;
+                state.hw[deviceN].q7 = 1;
                 this.traceChange("Q7H_PREPARE_LATCH_OUTPUT", deviceN, "q7", oldQ7, 1);
                 this.update_logs("q7");
                 break;
@@ -416,13 +457,19 @@ function AppleDisk2()
 
     this.write = function(addr, d8)
     {
-        if (addr == Q6H) 
-        {
-            // Do not trace every data_latch mutation here.
-            // Actual disk writes are summarized by WRITE_DATA_BLOCK in Q6L.
-            this.state.hw[this.state.drv].data_latch = d8;
-        }
-    }
+        /*
+            Disk II soft-switches react to accesses, not only reads.
+            DOS commonly uses STA $C0xx during write sequences.
+
+            For Q6H, the value on the data bus must be captured first;
+            then the normal soft-switch side effect must still happen.
+        */
+
+        if (addr == Q6H)
+            state.hw[state.drv].data_latch = d8 & 0xff;
+
+        return this.read(addr);
+    };
 
 
     //Apple DOS 3.3.dsk
@@ -461,7 +508,7 @@ function AppleDisk2()
                 throw new Error("Unsupported or unknown disk image type: " + info.reason);
         }
 
-        this.state.diskData[deviceN] = nibBytes;
+        state.diskData[deviceN] = nibBytes;
 
         this.traceLog("setDiskData",
         {
@@ -481,7 +528,7 @@ function AppleDisk2()
         if(deviceID===undefined) return;
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         this.traceFlush("getDiskData");
-        var nibBytes = this.state.diskData[deviceN];
+        var nibBytes = state.diskData[deviceN];
         var dskBytes = this.convertNib2Dsk(nibBytes);
         this.traceLog("getDiskData", 
         {
@@ -499,7 +546,7 @@ function AppleDisk2()
     {
         if(deviceID===undefined) return;
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
-        return this.state.diskData[deviceN]!=null;
+        return state.diskData[deviceN]!=null;
     }
 
     // DOS 3.3 Disk sector skew constants for disk format conversions
@@ -1270,20 +1317,33 @@ this.detectDiskImageType = function(imageBytes, filepath)
     this.s_load_all = async function(samplesDS)
     {
         const audioBuffers = [];
-        for(const path in samplesDS)
+
+        for (const name in samplesDS)
         {
-            await this.s_getFile("data:@file/wav;base64,"+samplesDS[path].src)
-                .then((f)=>{ audioBuffers.push(f) })
+            try
+            {
+                const f = await this.s_getFile(
+                    "data:audio/wav;base64," + samplesDS[name].src
+                );
+                audioBuffers.push({ name:name, audio:f });
+            }
+            catch(e)
+            {
+                console.warn("AppleDisk2: failed to decode disk-noise sample:", name, e);
+            }
         }
+
         return audioBuffers;
     }
 
     this.s_getFile = async function(samplePath)
     {
-      const response    = await fetch(samplePath);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await this.audio.decodeAudioData(arrayBuffer);
-      return audioBuffer;
+        if (!this.audio)
+            throw new Error("AudioContext not initialized. Call init('audio_ctx') before init('audio_buffer').");
+
+        const response = await fetch(samplePath);
+        const arrayBuffer = await response.arrayBuffer();
+        return await this.audio.decodeAudioData(arrayBuffer);
     }
 
     this.dN_update = function(status)
@@ -1389,7 +1449,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
    +"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"}
    }
 
-   this.ROM = new Uint8Array([ // P5A
+   const ROM = new Uint8Array([ // P5A
     0xA2, 0x20, 0xA0, 0x00, 0xA2, 0x03, 0x86, 0x3C,
     0x8A, 0x0A, 0x24, 0x3C, 0xF0, 0x10, 0x05, 0x3C,
     0x49, 0xFF, 0x29, 0x7E, 0xB0, 0x08, 0x4A, 0xD0,
@@ -1516,8 +1576,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
         data = data || {};
         var deviceN = data.drv;
-        if (deviceN === undefined) deviceN = this.state.drv;
-        var hw = this.state.hw[deviceN] || {};
+        if (deviceN === undefined) deviceN = state.drv;
+        var hw = state.hw[deviceN] || {};
 
         var e = {
             seq: ++this.trace.seq,
@@ -1785,7 +1845,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
     }
 
 
-    this.GitHubDirOffline =
+    const GitHubDirOffline =
     {
         "https://api.github.com/repos/RetroAppleJS/RetroAppleJS.github.io/contents/disks?ref=main":
         {
@@ -1836,7 +1896,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
         }
     };
 
-    this.OfflineDisks =
+    const OfflineDisks =
     {
         "disks/Apple DOS 3.3.dsk":
         { 
@@ -2069,7 +2129,10 @@ this.detectDiskImageType = function(imageBytes, filepath)
             arg.ref = arg.ref || "main";
             arg.path = arg.path || "";
 
-            var disk2 = apple2plus.DiskObj();
+            //var disk2 = apple2plus.DiskObj();
+            
+
+
             var url = disk2.githubContentsURL(arg);
 
             function useOfflineDir(reason)
@@ -2261,7 +2324,9 @@ this.detectDiskImageType = function(imageBytes, filepath)
     {
         try
         {
-            var disk2 = oCOM.default( oEMU.component.IO.AppleDisk, {state:{active:false}}, "AppleDisk");
+            //var disk2 = oCOM.default( oEMU.component.IO.AppleDisk, {state:{active:false}}, "AppleDisk");
+            var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+
             if(disk2.state.active == false) return;
             arg.ref = arg.ref || "main";
 
@@ -2434,8 +2499,9 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     this.getOfflineDir = function(url)
     {
-        var disk2 = apple2plus.DiskObj();
-        var entry = disk2.GitHubDirOffline[url];
+        //var disk2 = apple2plus.DiskObj();
+
+        var entry = GitHubDirOffline[url];
 
         if(entry === undefined)
             return null;
@@ -2448,8 +2514,10 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     this.getOfflineDiskBytes = function(arg, full_path)
     {
-        var disk2 = apple2plus.DiskObj();
-        var rec = disk2.OfflineDisks[arg.path] || disk2.OfflineDisks[arg.name] || disk2.OfflineDisks[full_path];
+        //var disk2 = apple2plus.DiskObj();
+
+        var rec = OfflineDisks[arg.path] || OfflineDisks[arg.name] || OfflineDisks[full_path];
+
         if(rec === undefined) return null;
         if(typeof rec == "string") { rec = { encoding:"zlib-base64", data:rec }; }
         var bytes = oCOM.base64ToArray(rec.data);
@@ -2660,7 +2728,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
             var deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
 
             var status = document.getElementById("surfaceMap_status_"+deviceID);
-            if(this.state.diskData[deviceN] == null)
+            if(state.diskData[deviceN] == null)
             {
                 if(status) status.innerHTML = "no disk";
                 this.surfaceMap_clear_drive(deviceN);
@@ -2668,7 +2736,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
             }
 
             var dskBytes = null;
-            try { dskBytes = this.convertNib2Dsk(this.state.diskData[deviceN]); }
+            try { dskBytes = this.convertNib2Dsk(state.diskData[deviceN]); }
             catch(e)
             {
                 if(status) status.innerHTML = "decode error";
@@ -2737,7 +2805,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
             var old = document.getElementById(this.surfaceMap_headCell[deviceN]);
             if(old) old.style.outline = "";
         }
-        var hw = this.state.hw[deviceN]; if(!hw) return;
+        var hw = state.hw[deviceN]; if(!hw) return;
         var track = Math.max(0,Math.min(34,hw.track));
         var sector = Math.max(0,Math.min(15,Math.floor(hw.offset / (6656/16))));
         var id = "surfaceMap_"+deviceID+"_"+track+"_"+sector;
@@ -2747,3 +2815,5 @@ this.detectDiskImageType = function(imageBytes, filepath)
     };
 }
 
+globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
+globalThis.Apple2IO_PeripheralRegistry["DISKII"] = {"ctor":AppleDisk2,"icon":"fa fa-save"};

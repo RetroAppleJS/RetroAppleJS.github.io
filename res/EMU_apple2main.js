@@ -266,15 +266,16 @@ function EMU_init()
 
     //if(slot_count>0)
     //{
-        apple2plus.hwObj().io.slotsRender("peripheral_slots",slotCfg);                      // sets apple2plus.hwObj().io.slot_cfg = slotCfg
-        apple2plus.hwObj().io.deviceBtn({"id":"devices","init":true,"default_slot":6});    
+        apple2plus.hwObj().io.slotsRender("peripheral_slots",apple2plus.hwObj().io.slot_cfg.slotConfig);
+        apple2plus.hwObj().io.deviceBtn({"id":"devices","init":true,"default_slot":6});
     //}
 
 
 
 
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,state:{active:false}},"AppleDisk");
-    
+    //var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,state:{active:false}},"AppleDisk");
+    var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+    if(disk2===undefined) console.error("disk2 not found ??")
 
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
     keys.init();
@@ -302,6 +303,7 @@ function EMU_init()
         document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
     }
 
+
     disk2.dN_speed_update = function(pct)  // override
     {
         //var dsk = oEMU.component.IO.AppleDisk;
@@ -322,31 +324,33 @@ function EMU_init()
         }
 
         // CATCH CHANGES ONLY
+        var state = this.getState();
         if(this.Pstate 
-            && this.Pstate[0].motor == this.state.hw[0].motor
-            && this.Pstate[1].motor == this.state.hw[1].motor
-            && this.Pstate[0].b_diskData == (this.state.diskData[0]!=null)
-            && this.Pstate[1].b_diskData == (this.state.diskData[1]!=null
+            && this.Pstate[0].motor == state.hw[0].motor
+            && this.Pstate[1].motor == state.hw[1].motor
+            && this.Pstate[0].b_diskData == (state.diskData[0]!=null)
+            && this.Pstate[1].b_diskData == (state.diskData[1]!=null
             //|| cmd == "kbd"
             )) return;
-
-        if(this.state.DSK_led.length) this.state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
-        if(this.state.hw[this.state.drv].motor==1) { this.state.DSK_led[this.state.drv].style.visibility = "visible"; }
-        else this.state.DSK_led[this.state.drv].style.visibility = "hidden";
-        //if(_o.EMU_keyb_active) { this.state.DSK_led[0].style.visibility="hidden"; this.state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard (fixed by z-index)
+            
+        if(state.DSK_led.length) state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
+        if(state.hw[state.drv].motor==1) { state.DSK_led[state.drv].style.visibility = "visible"; }
+        else state.DSK_led[state.drv].style.visibility = "hidden";
+        //if(_o.EMU_keyb_active) { state.DSK_led[0].style.visibility="hidden"; state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard (fixed by z-index)
 
         // LID
-        if(this.state.diskData[0]==null) this.state.DSK_lid[0].style.visibility="hidden";
-        else this.state.DSK_lid[0].style.visibility="visible";
+        if(state.diskData[0]==null) state.DSK_lid[0].style.visibility="hidden";
+        else state.DSK_lid[0].style.visibility="visible";
 
-        if(this.state.diskData[1]==null) this.state.DSK_lid[1].style.visibility="hidden";
-        else this.state.DSK_lid[1].style.visibility="visible";
+        if(state.diskData[1]==null) state.DSK_lid[1].style.visibility="hidden";
+        else state.DSK_lid[1].style.visibility="visible";
 
-        this.Pstate = [{"motor":this.state.hw[0].motor,"b_diskData":this.state.diskData[0]!=null}
-                      ,{"motor":this.state.hw[1].motor,"b_diskData":this.state.diskData[1]!=null}
-                      ,{"keyb_active":_o.EMU_keyb_active}
+        this.Pstate = [{"motor":state.hw[0].motor,"b_diskData":state.diskData[0]!=null}
+                    ,{"motor":state.hw[1].motor,"b_diskData":state.diskData[1]!=null}
+                    ,{"keyb_active":_o.EMU_keyb_active}
                     ];
     }
+
 
     
     // overrides function that defines conditions for having an active emulator keyboard
@@ -358,11 +362,11 @@ function EMU_init()
         return b;
     }
 
-    disk2.state.DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
-    disk2.state.DSK_led[1] = document.getElementById("dskLED_D2");
+    disk2.getState().DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
+    disk2.getState().DSK_led[1] = document.getElementById("dskLED_D2");
 
-    disk2.state.DSK_lid[0] = document.getElementById("dskLID_D1");        // required for GUI_update
-    disk2.state.DSK_lid[1] = document.getElementById("dskLID_D2");
+    disk2.getState().DSK_lid[0] = document.getElementById("dskLID_D1");        // required for GUI_update
+    disk2.getState().DSK_lid[1] = document.getElementById("dskLID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
@@ -447,7 +451,9 @@ function EMUI()
         _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-        oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
+        //oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        disk2.dN_speed_update(pct*100);
         console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");       
     }
 
@@ -478,19 +484,22 @@ function EMUI()
     this.muteAct = function(arg)
     {
         if(arg===undefined) arg = this.muteArg;
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
         var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
                 .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });
 
-            oEMU.component.IO.AppleDisk.init("audio_ctx").then(()=>{  
-                    oEMU.component.IO.AppleDisk.init("audio_buffer") });
+            disk2.init("audio_ctx").then(()=>{  
+                    var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+                    disk2.init("audio_buffer") 
+                });
         }
         else
         {
             oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
-            oEMU.component.IO.AppleDisk.init("audio_off").then(()=>{});
+            disk2.init("audio_off").then(()=>{});
         }
     }
 
@@ -721,11 +730,19 @@ function EMUI()
 
 
 
-function loadDisk_fromFile(file_obj,deviceID)
+function loadDisk_fromFile(file_obj,slotN,deviceID)
 {
-    
-    var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
-    if(file_obj==null || disk2.state.active==false) { apple2plus.loadDisk([],deviceID); return }
+    //var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
+    var io = apple2plus.hwObj().io;
+    var disk2 = io.SLOT2obj(slotN);
+
+
+    if(file_obj==null || disk2.getState().active==false)
+    { 
+        var drv = io.deviceID2N(deviceID,disk2.id.PCODE);
+        disk2.getState().diskData[ drv ] = [];
+        return;
+    }
 
     var file = file_obj.files[0];
     if (!file) return;
@@ -737,7 +754,7 @@ function loadDisk_fromFile(file_obj,deviceID)
     fread1.readAsArrayBuffer(file);
     const filepath = file_obj.value;
 
-    function onloadHandler(filepath, deviceID)
+    function onloadHandler(filepath, slotN, deviceID)
     {
         return function(levent)
         {
@@ -749,10 +766,14 @@ function loadDisk_fromFile(file_obj,deviceID)
                 bytes[i] = data.getUint8(i);
 
             if (size == 143360)
+            {
+                var io = apple2plus.hwObj().io;
+                var disk2 = io.SLOT2obj(slotN);
                 disk2.setDiskData(bytes, deviceID, filepath);
+            }
         };
     }
-    fread1.onload = onloadHandler(filepath, deviceID);
+    fread1.onload = onloadHandler(filepath, slotN, deviceID);
 
 }
 
@@ -764,7 +785,9 @@ async function EMU_audio_prepare()
     {
         // Create contexts early. This may still leave them suspended.
         await oEMU.component.IO.AppleSpeaker.init("audio_ctx");
-        await oEMU.component.IO.AppleDisk.init("audio_ctx");
+
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        await disk2.init("audio_ctx");
 
         _o.EMU_audio.prepared = true;
         return true;
@@ -786,7 +809,7 @@ async function EMU_audio_try_unlock(forceButtonState)
         await EMU_audio_prepare();
 
         const spk = oEMU.component.IO.AppleSpeaker;
-        const disk2 = oEMU.component.IO.AppleDisk;
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
 
         const spkRunning = spk.audio && spk.audio.state === "running";
         const dskRunning = disk2.audio && disk2.audio.state === "running";
@@ -802,14 +825,14 @@ async function EMU_audio_try_unlock(forceButtonState)
             if (spk.audio && spk.audio.state !== "running")
                 await spk.audio.resume();
 
-            if (dsk.audio && dsk.audio.state !== "running")
-                await dsk.audio.resume();
+            if (disk2.audio && disk2.audio.state !== "running")
+                await disk2.audio.resume();
 
-            if (dsk.init) await dsk.init("audio_buffer");
+            if (disk2.init) await disk2.init("audio_buffer");
 
             _o.EMU_audio.unlocked =
                 spk.audio && spk.audio.state === "running" &&
-                dsk.audio && dsk.audio.state === "running";
+                disk2.audio && disk2.audio.state === "running";
         }
 
         if (_o.EMU_audio.unlocked)
@@ -827,7 +850,7 @@ async function EMU_audio_try_unlock(forceButtonState)
 
             // Ensure normal sound-on logic is active.
             await oEMU.component.IO.AppleSpeaker.init("audio_on");
-            await oEMU.component.IO.AppleDisk.init("audio_buffer");
+            await apple2plus.hwObj().io.PCODE2obj("DISKII")[0].init("audio_buffer");
         }
 
         return _o.EMU_audio.unlocked;
@@ -851,12 +874,12 @@ function EMU_audio_event_unlock()
 
 function loadDisk_fromBuffer(arr_buffer,deviceID)
 {
-    //oCOM.POPUP.html("disk2.state.active==true");
+    //oCOM.POPUP.html("disk2.getState().active==true");
 
     try
     {
-        var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
-        if(disk2.state.active==false) return;
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];   
+        if(disk2.getState().active==false) return;
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
         apple2plus.loadDisk(bytes,deviceID);

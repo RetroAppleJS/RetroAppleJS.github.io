@@ -13,12 +13,12 @@ if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
 
 
-var slotObj = [];
-var slotCfg = [{slotTitle: "board", lock:true, peripheral: { objID: "Mboard", PCODE: "BOARD" ,icon: "fa fa-cube"}}];  // FILL SLOTS WITH BASICS
-  
-
 function Apple2IO(vid)
 {
+    const bDebug = true;
+
+    this.slot_ctx = {};
+    this.slot_cfg = {"slotConfig":[]};
 
     const ROM_ADDR =    0xD000;
     const ROM_SIZE =    0x4000;
@@ -66,36 +66,12 @@ function Apple2IO(vid)
         //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
         var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
         var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
-        this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
-        this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
-        this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{"reset":function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
+        //this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
+        //this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
+        //this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{"reset":function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
+        //this.disk2 = this.PCODE2obj("DISKII")[0];
+
         oEMU.component.IO.self = this;
-    }
-
-    const IOMAP_CALLS = 
-    {1: // _CFG_IOMAP index
-        {
-            "KBD":         function(){ return keys.polling(keys.lastkey)}
-            ,"KBDSTRB":     function(){ keys.strobe();      return 0x00 }
-            ,"SPKR":        function(){ snd.toggle();       return 0x00 }
-            ,"TXTCLR":      function(){ vid.setGfx(true);   return 0x00 }
-            ,"TXTSET":      function(){ vid.setGfx(false);  return 0x00 }
-            ,"MIXCLR":      function(){ vid.setMix(false);  return 0x00 }
-            ,"MIXSET":      function(){ vid.setMix(true);   return 0x00 }
-            ,"TXTPAGE1":    function(){ vid.setPage2(false);return 0x00 }
-            ,"TXTPAGE2":    function(){ vid.setPage2(true); return 0x00 }
-            ,"LORES":       function(){ vid.setHires(false);return 0x00 }
-            ,"HIRES":       function(){ vid.setHires(true); return 0x00 }
-        }
-    }
-
-    var CIO = {ACTION_MAP:{RD:{}, WR:{}}};
-
-    function ensureActionMap()
-    {
-        if(!CIO.ACTION_MAP) CIO.ACTION_MAP = {};
-        if(!CIO.ACTION_MAP.RD) CIO.ACTION_MAP.RD = {};
-        if(!CIO.ACTION_MAP.WR) CIO.ACTION_MAP.WR = {};
     }
 
 
@@ -109,66 +85,111 @@ function Apple2IO(vid)
     this.reset = function()
     {
         keys.reset();
-        this.disk2.reset();
-        if(this.ramcard && this.ramcard.reset) this.ramcard.reset();
+        var disk2 = this.PCODE2obj("DISKII")[0];
+        if(disk2) disk2.reset();
+
+        var ramcard = this.PCODE2obj("MS16K")[0];
+        if(ramcard) ramcard.reset();
     }
 
     this.restart = function()
     {
-        if(this.ramcard && this.ramcard.restart) this.ramcard.restart();
-        if(this.disk2 && this.disk2.restart) this.disk2.restart();
-
-        ensureActionMap();
-
-        // Some tools, such as tools/HGRpatternJS.html, instantiate Apple2Hw/Apple2IO
-        // without the full emulator shell.  In that case there are no slots to mount.
-        const bFullEmulator =
-               typeof(apple2plus) == "object"
-            && apple2plus
-            && typeof(apple2plus.hwObj) == "function"
-            && typeof(oEMU) == "object"
-            && oEMU
-            && typeof(oEMU.component) == "object"
-            && oEMU.component.IO
-            && typeof(slot_count) != "undefined"
-            && typeof(slotR) != "undefined"
-            && typeof(_CFG_PSLOT) != "undefined";
-
-        if(!bFullEmulator)
-            return;
-
         // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
-        // MAKE SURE slot_cfg is declared and provisioned at this moment!!! (currently it is declared later)
-        oEMU.component.MIO = apple2plus.hwObj().io.slot_cfg;
-        console.log("oEMU.component.MIO = "+JSON.stringify(oEMU.component.MIO));
+        oEMU.component.MIO = this.slot_cfg;
+        //console.log("oEMU.component.MIO = "+JSON.stringify(oEMU.component.MIO));
 
-        for(var slotIdx=0;slotIdx<slot_count;slotIdx++)
+        // create empty slot info directly in the Apple2IO-owned configuration
+        if(this.slot_cfg.slotConfig.length==0)
         {
-            if(slotR.slotMap[slotIdx])
-            {
-                var peripheral_names = this.listPeripheralNames();
-                var pinfo = peripheral_names[slotR.slotMap[slotIdx][0]];
-                if(pinfo===undefined) continue;
-                var cinfo = _CFG_PSLOT[pinfo.PCODE];
-                var o = this.mount(cinfo,pinfo,slotIdx);
-
-                slotCfg[slotIdx+1]  = {"slotTitle":"PR#"+slotIdx,"peripheral":o.pInfo}
-                slotObj[slotIdx+1]  = o.pObj;
-            }
-            else slotCfg[slotIdx+1] = {"slotTitle":"PR#"+slotIdx}
+            this.slot_cfg.slotConfig = [];
+            for(var slotN=0;slotN<slot_count+1;slotN++)
+                this.slot_cfg.slotConfig[slotN] = {"slotTitle":slotN2name(slotN)}
         }
 
-        console.log(CIO.ACTION_MAP);
-        console.group("ACTION_MAP overview");
-        console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
-        console.table(actionMapEntryCount(CIO.ACTION_MAP));
-        console.table(actionMapSpanReport(CIO.ACTION_MAP));
-        console.groupEnd();
+        // discover object containers
+        var pContainers = this.scanPeripheralContainers();
+
+        // mount peripherals according to default configuration _CFG_PSLOT
+        for(var slotN in slotR.slotMap)
+        {
+            if(isNaN(slotN)) continue;
+            var pinfo = pContainers[slotR.slotMap[slotN][0]];   // BASIC PERIPHERAL INFO
+            if(pinfo===undefined) continue;
+            var cinfo = _CFG_PSLOT[pinfo.PCODE];                // CONFIGURATION INFO
+            var slotObj = this.slot_cfg.slotConfig[slotN];
+            if(slotObj.peripheral?.mount.source == "COM_CONFIG") continue;   // skip if peripheral source == "COM_CONFIG"
+
+            var o = this.mount(cinfo,pinfo,slotN,slotR.slotFit[slotN]);
+            
+            if(bDebug) console.log("EMU_apple2io.js - mount(<"+pinfo.PCODE+" in "+slotN2name(slotN)+">)" );
+            for(var so in o.sInfo) slotObj[so] = o.sInfo[so];  // ADD SLOT INFO (e.g. lock)
+            slotObj.peripheral = o.pObj;                      // THE LIVE MOUNTED PERIPHERAL OBJECT
+        }
+
+/*
+Example output of a mounted peripheral:
+
+this.slot_cfg.slotConfig[3] = 
+{
+   "slotTitle":"PR#2",
+   "peripheral":
+   {
+      "id":
+      {
+         "PCODE":"VIDEX",
+         "icon":"fa fa-tv",
+         "coID":"col80card",
+         "description":"Videx Videoterm 80 Column Display"
+      },
+      "state":{ "active":true },
+      "action":{ },
+      "mount":
+      {
+         "slotN":3,
+         "slotFit":["DISKII","VIDEX","MOCK"],
+         "ranges":
+         {
+            "HostROM":{ "from":2048, "to":4095 },
+            "SlotIO":{ "from":176, "to":191 },
+            "SlotROM":{ "from":768, "to":1023 }
+         },
+         "hash":16425
+      }
+   }
+}
+*/
+
+        //console.log(CIO.ACTION_MAP);
+        //console.group("ACTION_MAP overview");
+        //console.log("ACTION_MAP size="+oCOM.roughSizeOfObject(CIO.ACTION_MAP)+"bytes");
+        //console.table(actionMapEntryCount(CIO.ACTION_MAP));
+        //console.table(actionMapSpanReport(CIO.ACTION_MAP));
+        //console.groupEnd();
 
         console.group("slot configuration overview");
-        console.table(slotConfigReport(slotCfg));
-        console.log("slotCfg = "+JSON.stringify(slotCfg));
+        console.table(slotConfigReport(this.slot_cfg.slotConfig));
+        //console.log("this.slot_cfg.slotConfig = "+JSON.stringify(this.slot_cfg.slotConfig));
         console.groupEnd();
+
+        // restart all plugged-in and active peripherals
+        for(var slotN in this.slot_cfg.slotConfig)
+        {
+            if(this.slot_cfg.slotConfig[slotN].peripheral===undefined) continue;
+            var peripheral_obj = this.slot_cfg.slotConfig[slotN].peripheral;
+            if(peripheral_obj.restart)
+            {
+                peripheral_obj.restart();
+                if(bDebug) console.log("EMU_apple2io.js - restart(<"+peripheral_obj.id.PCODE+" in "+slotN2name(slotN)+">)" );
+            }
+        }
+
+        // legacy adaptation
+        var ramcard = this.PCODE2obj("MS16K")[0];
+        if(ramcard) ramcard.restart();
+        //if(this.disk2 && this.disk2.restart) this.disk2.restart();
+
+
+        //if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
     }
 
     this.address_encoder = function(rel_addr,bucket,slot)
@@ -184,143 +205,152 @@ function Apple2IO(vid)
 
     if(typeof(EMU_system_get)!="undefined")
     {
-        CIO = oEMU.component.IO;
-        CIO.ACTION_MAP = oEMU.component.IO.board.IO_map(EMU_system_get(),IOMAP_CALLS);
-        ensureActionMap();
+        var CIO = oEMU.component.IO;
+        CIO.ACTION_MAP = oEMU.component.IO.board.IO_map(EMU_system_get());
+        console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
     }
 
     function line_decode(adr) { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
 
-    this.read = function(rel_addr)
+    this.read = function(rel_addr)      // relative to 0xC000
     {
+        
+
         var line = line_decode(rel_addr);
+        var xline = oCOM.getHexMulti(line,4);
 
-        switch(line)
+        if(rel_addr >= 0x50 && rel_addr < 0x80)
         {
-            //case 0xA545:  // DISKII
+            line = line;
+            //return 0x00;
+        } 
 
-            // TODO: ACTION MAP SHOULD LOOKUP IN WHICH SLOT IS EACH DEVICE, AND ASSIGN READ ADDRESSES
-            // LIKELY THIS INFORMATION CAN BE LOOKED-UP IN BIND.. we also need to solve slot re-assignment
+        ////////////////////////////////////////////////////////////
+        // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
+        ////////////////////////////////////////////////////////////
 
-            case 0xE0:   return this.disk2.read(rel_addr - DISK_IO);
-            case 0x600:  return this.disk2.readROM(rel_addr - DISK_PROM);
-
-            default:
-
-                if(this.ramcard.state.active  && // RAMCARD SOFT SWITCHES
-                    rel_addr >= MEM_RAMCARD_IO && rel_addr < MEM_RAMCARD_IO + MEM_RAMCARD_IO_SIZE)
-                {// 0080
-                    //return this.ramcard.soft_switch(rel_addr - MEM_RAMCARD_IO); // REPLACED BY I/O ACTION MAP (below)
-                }
-                else if(this.ramcard.state.active &&
-                    rel_addr >= ROM_ADDR && rel_addr < ROM_ADDR + ROM_SIZE)
-                {// FD00
-                    //return this.ramcard.read(rel_addr - ROM_ADDR);
-                }
-                else if(this.col80card.state.active &&
-                    rel_addr >= MEM_COL80CARD_IO && rel_addr < MEM_COL80CARD_IO + ROM_SIZE)
-                {
-                    // TODO: read ROM from 80-column card !!
-                    //alert("80_COL $"+oCOM.getHexWord(rel_addr));
-                }
-
-                ////////////////////////////////////////////////////////////
-                // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
-                ////////////////////////////////////////////////////////////
-
-                if(CIO.ACTION_MAP.RD[rel_addr]!==undefined)
-                {
-                    //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
-                    return CIO.ACTION_MAP.RD[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
-                }
-            break;
+        const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
+        if(CIO.ACTION_MAP.RD[line]!==undefined)
+        {
+            //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
+            return CIO.ACTION_MAP.RD[line](rel_addr-line,ctx2);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
         }
+
         return 0x00;
     }
 
     this.write = function(rel_addr, d8)
     {
-        if (rel_addr >= DISK_IO && rel_addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
-            this.disk2.write(rel_addr - DISK_IO, d8);
-        else if(this.ramcard.state.active && rel_addr >= ROM_ADDR && rel_addr < ROM_ADDR + ROM_SIZE)
-            return this.ramcard.write(rel_addr - ROM_ADDR,d8)
-        
-        // I/O ACTION MAP FOR WRITE OPERATIONS
+        var line = line_decode(rel_addr);
+        var xline = oCOM.getHexMulti(line,4);
+
+        //if (rel_addr >= DISK_IO && rel_addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
+        //    this.disk2.write(rel_addr - DISK_IO, d8);
+
+        ////////////////////////////////////////////////////////////
+        // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
+        ////////////////////////////////////////////////////////////
+
+        const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
         if(CIO.ACTION_MAP.WR[rel_addr]!==undefined)
         {
             //if(rel_addr > 16) console.log("ACTION: "+ACTION_MAP.RD[rel_addr]);
-            return CIO.ACTION_MAP.WR[rel_addr](rel_addr);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
+            return CIO.ACTION_MAP.WR[line](rel_addr-line,d8,ctx2);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
         }
 
         // Implement same side-effects as read.
         // TODO: double check if we want writes to SLOTIO etc.. to have the same effect as reads
-        this.read(rel_addr);
+        this.read(rel_addr);  // curiously APPLE DOS 3.3 does not load INTBASIC without this add-on
     }
 
     this.cycle = function() {}
 
-    this.mount = function(cinfo,pinfo,slotIdx)
+    this.mount = function(cinfo,peripheral_info,slotIdx,slotFit)
     {
         if(oEMU.system===undefined) return;
-        oPeri = null;
-        if(oEMU.system["IORANGES"] && pinfo)                       // ENRICH PERIPHERAL INFO
+
+        //var peripheral_obj = {};
+        var slot_info = {};
+
+        if(oEMU.system["IORANGES"] && peripheral_info)
         {
             const bHostROM = typeof(oEMU.system.IORANGES.HostROM)!="undefined" && cinfo.HostROM == "X";
             const bSlotIO  = typeof(oEMU.system.IORANGES.SlotIO) !="undefined" && cinfo.SlotIO  == "X";
             const bSlotROM = typeof(oEMU.system.IORANGES.SlotROM)!="undefined" && cinfo.SlotROM == "X";
-            // TODO: check if range is applicable or not
+            const bHostIO  = typeof(oEMU.system.IORANGES.HostIO) !="undefined" && cinfo.HostIO  == "X";
 
+            var ranges = {};
             var ioBase = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO).from; // usually $C000 = base reference for the I/O address space
-            if(bHostROM) pinfo["HostROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx,base:ioBase});     // _CFG_PSLOT -> LROMrange
-            if(bSlotIO)  pinfo["SlotIO"]  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO, {n:slotIdx,base:ioBase});     // _CFG_PSLOT -> IOrange
-            if(bSlotROM) pinfo["SlotROM"] = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx,base:ioBase});     // _CFG_PSLOT -> SlotROM
 
-            // ASK THE PERIPHERAL TO PROVIDE AN ACTION_MAP
-            //const oPeripheral = oEMU.component.IO[pinfo.objID]; // TODO: (deprecated) WE MUST INSTANTIATE COMPONENTS PER SLOT INSEAD OF DEFINING THEM ONCE, otherwise we will have peripheral conflicts!!!!
+            if(bHostROM) ranges.HostROM = oCOM.parseRngExpr(oEMU.system.IORANGES.HostROM,{n:slotIdx,base:ioBase});
+            if(bSlotIO)  ranges.SlotIO  = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotIO, {n:slotIdx-1,base:ioBase});
+            if(bSlotROM) ranges.SlotROM = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx-1,base:ioBase});
+            if(bHostIO)  ranges.HostIO  = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO, {n:slotIdx,base:ioBase});
 
-            const hashKey = slotIdx +  pinfo.PCODE;   // constituted of initial slot and PCODE, but is meaningless since this object can move from one slot to another, while keeping the hashKey 
-            let oPeri = new globalThis[pinfo.coID](); // this is our freshly made object instance from the object container
-            if (oPeri.id && oPeri.id.PCODE == "MS16K")  // temporary patch!!!  making sure oEMU.component.IO.RamCard (old) remains in sync with oPeri, so that mem monitoring uses the same object between apple ram updates in EMU_apple2hw.js and ramcard ram updates in EMU_ramcard.js 
+            // coID = container ID
+            peripheral_obj = new globalThis[peripheral_info.coID](); // freshly made object instance from the object container
+            //if(cinfo!=null)  peripheral_obj.bFirstConfig = true;
+
+            if(peripheral_obj)
             {
-                this.ramcard = oPeri;
-                oEMU.component.IO.RamCard = oPeri;
-            }
-
-
-            oPeri.hash =  oCOM.crc16(new TextEncoder("utf-8").encode(hashKey)); // DETERMINE DEVICE ID (CRC16 hash)
-  
-
-            if(oPeri && oPeri.action)
-            {
-                const _act = oPeri.action;     // ACTION_MAP
                 var CIO = oEMU.component.IO;
-                const _bHostROM  = !(_act.HostROM === undefined);
-                const _bSlotIO   = !(_act.SlotIO  === undefined);
-                const _bSlotROM  = !(_act.SlotROM === undefined);
 
-                // PROVIDE SLOT NUMBER TO THE PERIPHERAL INSTANCE
-                oPeri.state.slot = slotIdx;
+                // Keep static identity on the peripheral object itself.
+                if(!peripheral_obj.id) peripheral_obj.id = {};
+                if(peripheral_obj.id.PCODE===undefined) peripheral_obj.id.PCODE = peripheral_info.PCODE;
+                if(peripheral_obj.id.icon===undefined)  peripheral_obj.id.icon  = peripheral_info.icon || "fa fa-cube";
+                peripheral_obj.id.coID = peripheral_info.coID || peripheral_obj.constructor.name;
+                peripheral_obj.id.description = cinfo.NAME;
 
-                // PROVIDE PERIPHERAL INFO TO THE PERIPHERAL
-                oPeri.state.pinfo = pinfo;
+                // Keep mount-specific metadata on the peripheral object itself.
+                //const hashKey = slotIdx + peripheralPCODE(peripheral_obj);
+                const hashKey = Math.random();
+                peripheral_obj.mount = {
+                     "slotN": slotIdx
+                    ,"slotFit": slotFit || []
+                    ,"ranges": ranges
+                    ,"hash": oCOM.crc16(new TextEncoder("utf-8").encode(hashKey))
+                    ,"source":cinfo!=null?"COM_CONFIG":"USER"
+                };
 
-                // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
-                if(_bHostROM) _act.HostROM.base  = pinfo.HostROM.from;
-                if(_bSlotROM) _act.SlotROM.base  = pinfo.SlotROM.from;
-                if(_bSlotIO)  _act.SlotIO.base   = pinfo.SlotIO.from;
+                //if(slotIdx == 7)
+                //    alert("mounted DISKII "+peripheral_obj.mount.hash)
 
-                // Add non-functional metadata to callbacks so diagnostics can show
-                // the actual mounted owner behind each ACTION_MAP span.
-                tagActionCallback(_act.HostROM && _act.HostROM.RD, "HostROM", "RD");
-                tagActionCallback(_act.SlotROM && _act.SlotROM.RD, "SlotROM", "RD");
-                tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
-                tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
+                /*
+                if (peripheral_obj.id && peripheral_obj.id.PCODE == "MS16K")  // temporary patch!!!  making sure oEMU.component.IO.RamCard (old) remains in sync with peripheral_obj, so that mem monitoring uses the same object between apple ram updates in EMU_apple2hw.js and ramcard ram updates in EMU_ramcard.js
+                {
+                    this.ramcard = peripheral_obj;
+                    oEMU.component.IO.RamCard = peripheral_obj;
+                }
+                */
 
-                if(_bHostROM && _act.HostROM.RD) { for(var i=pinfo.HostROM.from;i<=pinfo.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
-                if(_bSlotROM && _act.SlotROM.RD) { for(var i=pinfo.SlotROM.from;i<=pinfo.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
-                    //console.log("ACTION_MAP.RD["+(pinfo.from+i)+"] = ",_act.SlotROM.RD.callback); // pinfo.from --> pinfo.to ???  where is defined the address range of _act.SlotROM ?
-                if(_bSlotIO && _act.SlotIO.RD) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
-                if(_bSlotIO && _act.SlotIO.WR) { for(var i=pinfo.SlotIO.from;i<=pinfo.SlotIO.to;i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
+                if(peripheral_info.slotLock==true) { slot_info.lock = true; } // inform the slot to never move this peripheral
+
+                if(peripheral_obj.action)
+                {
+                    const _act = peripheral_obj.action;     // ACTION_MAP
+
+                    const _bHostROM  = !(_act.HostROM === undefined);
+                    const _bSlotIO   = !(_act.SlotIO  === undefined);
+                    const _bSlotROM  = !(_act.SlotROM === undefined);
+
+                    // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
+                    if(_bHostROM && ranges.HostROM) _act.HostROM.base = ranges.HostROM.from;
+                    if(_bSlotROM && ranges.SlotROM) _act.SlotROM.base = ranges.SlotROM.from;
+                    if(_bSlotIO  && ranges.SlotIO)  _act.SlotIO.base  = ranges.SlotIO.from;
+
+                    // Add non-functional metadata to callbacks so diagnostics can show
+                    // the actual mounted owner behind each ACTION_MAP span.
+                    tagActionCallback(_act.HostROM && _act.HostROM.RD, "HostROM", "RD");
+                    tagActionCallback(_act.SlotROM && _act.SlotROM.RD, "SlotROM", "RD");
+                    tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
+                    tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
+
+                    if(_bHostROM && _act.HostROM.RD && ranges.HostROM) { for(var i=ranges.HostROM.from;i<=ranges.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
+                    if(_bSlotROM && _act.SlotROM.RD && ranges.SlotROM) { for(var i=ranges.SlotROM.from;i<=ranges.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
+                    if(_bSlotIO  && _act.SlotIO.RD  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to; i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
+                    if(_bSlotIO  && _act.SlotIO.WR  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to; i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
+                }
 
                 function tagActionCallback(action,rangeName,op)
                 {
@@ -328,32 +358,20 @@ function Apple2IO(vid)
 
                     action.callback._ioReport =
                     {
-                         "PCODE": pinfo.PCODE
-                        ,"slotTitle": "PR#" + slotIdx
+                         "PCODE": peripheralPCODE(peripheral_obj)
+                        ,"slotTitle": slotN2name(slotIdx)
                         ,"range": rangeName
                         ,"op": op
-                        ,"hash": oPeri.hash
+                        ,"hash": peripheral_obj.mount.hash
                     };
                 }
-
             }
         }
-        pinfo["description"] = cinfo.NAME;
-        return {"pInfo":pinfo,"pObj":oPeri};
+
+        return {"sInfo":slot_info,"pObj":peripheral_obj};
     }
 
     // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
-    //var peripheral_names = this.listPeripheralNames();
-    //console.log("peripheral_names="+JSON.stringify(peripheral_names));
-    
-    this.unmount = function(name,slot_num)
-    {
-        if(typeof(oEMUI.slotConfig)=="function")
-            oEMUI.slotConfig({"id":"slot"+slot_num,"icon":"fa fa-cube","active":false});
-
-        if(typeof(oEMUI.refreshDeviceToolboxes)=="function")
-            oEMUI.refreshDeviceToolboxes({"id":"devices"});
-    }
 
     // TODO: let apple2keys.js itself intercept keypress events   or eventually make a generic event dispatcher in io
     this.keypress = function(code)
@@ -368,18 +386,32 @@ function Apple2IO(vid)
     }
 
     // SLOT MAPPING
-    this.listPeripheralNames = function()
+    // TODO: make sure we do not skip DISKII
+    this.scanPeripheralContainers = function()
     {
         var names = {};
         for(var o in oEMU.component.IO)
         {
-            var objID = oEMU.component.IO[o].constructor.name;
             var PCODE = oEMU.component.IO[o]?.id?.PCODE;
             if(PCODE===undefined) continue;
             names[PCODE] = oEMU.component.IO[o].id;
-            names[PCODE]["objID"] = oEMU.component.IO[o].constructor.name; // TODO: deprecate
             names[PCODE]["coID"]  = oEMU.component.IO[o].constructor.name; // new: coID = container ID
         }
+
+        for(var o in oEMU.component.IO)
+        {
+            try
+            {
+                var tempObj = new globalThis[o]();
+            } catch(e){ var tempObj={}  }
+
+            var PCODE = tempObj?.id?.PCODE;
+            if(PCODE===undefined) continue;
+            names[PCODE] = tempObj.id;
+            names[PCODE]["coID"]  = o; // new: coID = container ID
+            delete tempObj;
+        }
+
         return names;
     }
 
@@ -419,15 +451,16 @@ function Apple2IO(vid)
 
     function extract_slotRef(str,PCODE,ref)
     {
+        if(ref.slotFit===undefined) ref.slotFit = [];
+        if(ref.slotMap===undefined) ref.slotMap = [];
         var arr = str.split(",");
         for(var i=0;i<arr.length;i++)
         {
             var n = slotID2n( arr[i].replace(RegExp("\\*","g"),"") );
-            if(isNaN(n)==false)
-            {
-                if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
-                ref.slotFit[n].push(PCODE);
-            }
+
+            if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
+            ref.slotFit[n].push(PCODE);
+
             if(arr[i].indexOf("*")>=0)  
             {       
                 if(ref.slotMap[n]===undefined) { ref.slotMap[n] = [] };
@@ -443,13 +476,86 @@ function Apple2IO(vid)
         return slotID == "H" ? 0 : Number(slotID) + 1;
     }
 
+    this.slot2ID = function(slotN)
+    {
+        // previously slotID == "B"
+        return slotN == 0 ? "H" : Number(slotN) - 1;
+    }
+
+    function slotN2name(slotN)  // name = display name of a slot
+    {
+        return slotN == 0 ? "board" : ("PR#"+(slotN-1));
+    }
+
+    function slotName2n(slotName)
+    {
+        return slotName=="board" ? 0 : Number(slotName.slice(-1))+1
+    }
+
+    function peripheralPCODE(p)
+    {
+        return p ? (p.id && p.id.PCODE ? p.id.PCODE : (p.PCODE || "")) : "";
+    }
+
+    function peripheralIcon(p)
+    {
+        return p ? (p.id && p.id.icon ? p.id.icon : (p.icon || "fa fa-cube")) : "fa fa-cube";
+    }
+
+    function peripheralCoID(p)
+    {
+        return p ? (p.id && p.id.coID ? p.id.coID : (p.coID || (p.constructor ? p.constructor.name : ""))) : "";
+    }
+
+    function peripheralDescription(p)
+    {
+        return p ? (p.id && p.id.description ? p.id.description : (p.description || "")) : "";
+    }
+
+    function peripheralRange(p,rangeName)
+    {
+        if(!p) return undefined;
+        if(p.mount && p.mount.ranges && p.mount.ranges[rangeName]) return p.mount.ranges[rangeName];
+        return p[rangeName]; // legacy fallback
+    }
+
+    function setPeripheralSlot(p,slotN,slotTitle)
+    {
+        if(!p) return;
+        //p.slotN = slotN;
+        if(!p.mount) p.mount = {};
+        p.mount.slotN = slotN;
+        //p.mount.slotTitle = slotTitle || slotN2name(slotN);
+    }
+
     this.PCODE2obj = function(PCODE)
     {
-        // TODO search across slotCfg for occurences of PCODE
-        for(var slotIdx = 0; slotIdx < slotCfg.length; slotIdx++)
+        var obj_arr = [];
+        var cfg = this.slot_cfg.slotConfig;
+        for(var o in cfg)
         {
-            //var isPCODE =  slotCfg 
+            if(cfg[o].peripheral?.id.PCODE == PCODE)
+                obj_arr.push(cfg[o].peripheral);         // we can have multiple matches, since we do not specify slotN
         }
+        return obj_arr;
+    }
+
+    this.HASH2obj = function(HASH)
+    {
+        var cfg = this.slot_cfg.slotConfig;
+        for(var o in cfg)
+        {
+            if(cfg[o].peripheral?.mount.hash == HASH)
+                return cfg[o].peripheral;         // we can have multiple matches, since we do not specify slotN
+        }
+        return null;
+    }
+
+    this.SLOT2obj = function(slotN)
+    {
+        var cfg = this.slot_cfg.slotConfig;
+        if(cfg[slotN].peripheral===undefined) return null;
+        return cfg[slotN].peripheral;
     }
 
     this.DeviceName2obj = function(str)
@@ -662,7 +768,7 @@ function Apple2IO(vid)
         var slot_count = slotAvail.logSlots_n;
     }
 
-    var slotR = {slotMap:{"B":["BOARD"]},slotFit:{"B":["BOARD"]}};  // TODO: remove as this is now in CONFIG     
+    var slotR = {};  // TODO: remove as this is now in CONFIG     
     
     if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
     {
@@ -673,22 +779,11 @@ function Apple2IO(vid)
             //var slotrange_mask = extract_slotrange_mask(_CFG_PSLOT[PCODE].SLOTrange);  // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
             slotR = extract_slotRef(_CFG_PSLOT[PCODE].SLOTrange,PCODE,slotR);
         }
-        /*
-       slotR =  {
-                     "slotMap":{"B":["BOARD"],"0":["MS16K"],"3":["VIDEX"],"6":["DISKII"]}
-                    ,"slotFit":{"B":["BOARD"],"0":["MS16K"],"1":["DISKII","VIDEX"],"2":["DISKII","VIDEX"],"3":["DISKII","VIDEX"],"4":["DISKII","VIDEX"],"5":["DISKII","VIDEX"],"6":["DISKII","VIDEX"],"7":["DISKII","VIDEX"]}
-                }
-        */
+
+        //slotR = {"slotMap":[["A2BO"],["MS16K"],null,null,["VIDEX"],["MOCK"],null,["DISKII"]]
+        //        ,"slotFit":[["A2BO"],["MS16K"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","VIDEX","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"]]}
+
     }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -705,9 +800,6 @@ function Apple2IO(vid)
 //    | \____) | | || \__. || |,  | \__. | \__. | | | | |  | |   | | \ \._// 
 //     \______.'[___]'.__.' \__/  '.___.' '.__.' [___||__][___] [___].',__`  
 //                                                                  ( ( __)) 
-
-    this.slot_ctx = {};
-    this.slot_cfg = {};
 
     this.onSlotAdd = function(ctx, ev) 
     {
@@ -750,11 +842,11 @@ function Apple2IO(vid)
       ctx.host = document.getElementById(elid);
       if (!ctx.host) return;
 
-      function getSlotById(slotCfg, slotTitle) { return slotCfg.find(function(slot) { return slot.slotTitle === slotTitle; }) }
+      function getSlotById(Cfg, slotTitle) { return Cfg.find(function(slot) { return slot.slotTitle === slotTitle; }) }
 
       function renderGhost(slot)
       {
-        var iconClass = (slot && slot.peripheral && slot.peripheral.icon) ? slot.peripheral.icon : "fa fa-circle";
+        var iconClass = slot && slot.peripheral ? peripheralIcon(slot.peripheral) : "fa fa-circle";
 
         return `
           <button class="appbut ghost-cog" type="button" tabindex="-1" aria-hidden="true">
@@ -780,7 +872,7 @@ function Apple2IO(vid)
                   data-host-id="${ctx.hostId}">
               <div class="peripheral-card">
                 ${slot.lock ? "" : `
-                  <span class="drag-handle" title="Move ${slot.peripheral.PCODE}">
+                  <span class="drag-handle" title="Move ${peripheralPCODE(slot.peripheral)}">
                     <i class="fa fa-ellipsis-h dots dots1"></i>
                     <i class="fa fa-ellipsis-h dots"></i>
                   </span>
@@ -811,7 +903,7 @@ function Apple2IO(vid)
             <div class="slot-label">${slot.slotTitle}</div>
             <div class="sloticons">
               ${slot.peripheral
-                ? `<button id="${slot.peripheral.PCODE}" class="appbut cogbtn" type="button" title="configure ${slot.peripheral.PCODE} / ${slot.peripheral.objID}()"><i class="${slot.peripheral.icon || ""}"></i></button>`
+                ? `<button id="${peripheralPCODE(slot.peripheral)}" class="appbut cogbtn" type="button" title="configure ${peripheralPCODE(slot.peripheral)} / ${peripheralCoID(slot.peripheral)}()"><i class="${peripheralIcon(slot.peripheral)}"></i></button>`
                 : ""}
               ${renderAnchor(slot)}
             </div>
@@ -942,11 +1034,9 @@ function Apple2IO(vid)
           if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
 
           to.peripheral = from.peripheral;
-          //to.icon = from.icon;
+          setPeripheralSlot(to.peripheral, slotName2n(toSlotId), toSlotId);
 
-          //from.peripheral = null;
           delete from.peripheral;
-          //delete from.icon;
         };
       }
 
@@ -991,11 +1081,50 @@ function Apple2IO(vid)
       var hostId  = ctx.hostId;
 
       this.slotConfig_detail(slotID);
+
+
       //oCOM.POPUP.toggle("slotConfig_popup");
 
       console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
     };
 
+
+    this.slotConfig = function(arg)
+    {
+        if(arg.active==false) document.getElementById(arg.id).innerHTML = "";
+
+        //var ss = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
+        var s = "document.getElementById('"+arg.id+"').innerHTML='"+arg.id+"';"
+        if(document.getElementById(arg.id)!=null)
+            document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"apple2plus.hwObj().io.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\""+arg.icon+"\"></i></button>"
+    }
+
+    this.slotConfig_detail = function(slotName)
+    {
+        var n = slotName2n(slotName)
+        //oCOM.POPUP.on("slotConfig_popup");
+        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
+        // TODO extend here to all popup customisations?
+    
+        
+        
+        if(n==0)
+        {
+            var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+            document.getElementById("slotConfig_popup").innerHTML =
+                "board I/O ["+model+"]" + close + oEMU.component.IO.board.boardIO_html(model);
+                
+            oCOM.POPUP.toggle("slotConfig_popup");
+            return;
+        }
+        else
+        {
+            document.getElementById("slotConfig_popup").innerHTML = slotName + close;
+            console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
+            alert("this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n]))
+        }
+
+    }
 
     /////////////////////////////////////////////////////////////////
 
@@ -1015,7 +1144,7 @@ function Apple2IO(vid)
         html += "<br><br>";
 
         var io = apple2plus.hwObj().io;
-        var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
         console.log(names);
         for (var pcode in names) 
         {
@@ -1065,17 +1194,16 @@ function Apple2IO(vid)
         if (!slot || slot.lock || slot.peripheral) return;
 
         var io = oEMU.component.IO.self;
-        var names = io && io.listPeripheralNames ? io.listPeripheralNames() : {};
+        var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
         var id = names[pcode];
+        var cinfo = (typeof(_CFG_PSLOT)!="undefined" && _CFG_PSLOT[pcode]) ? _CFG_PSLOT[pcode] : null;
 
-        if (!id) return;
+        if (!id || !cinfo) return;
 
-        slot.peripheral = {
-            PCODE: id.PCODE,
-            icon: id.icon || "fa fa-cube",
-            objID: id.objID,
-            active: true
-        };
+        var slotN = slotName2n(slotTitle);
+        var o = io.mount(cinfo,id,slotN,slotR.slotFit ? slotR.slotFit[slotN] : []);
+        for(var so in o.sInfo) slot[so] = o.sInfo[so];
+        slot.peripheral = o.pObj;
 
         oCOM.POPUP.toggle("slotConfig_popup");
         this.slotsRender(hostId);
@@ -1094,7 +1222,16 @@ function Apple2IO(vid)
         );
     };
 
-
+// END
+// ^ ^ ^ ^
+// | | | |
+//      ______   __          _                               ___  _          
+//    .' ____ \ [  |        / |_                           .' ..](_)         
+//    | (___ \_| | |  .--. `| |-'  .---.   .--.   _ .--.  _| |_  __   .--./) 
+//     _.____`.  | |/ .'`\ \| |   / /'`\]/ .'`\ \[ `.-. |'-| |-'[  | / /'`\; 
+//    | \____) | | || \__. || |,  | \__. | \__. | | | | |  | |   | | \ \._// 
+//     \______.'[___]'.__.' \__/  '.___.' '.__.' [___||__][___] [___].',__`  
+//                                                                  ( ( __)) 
 
 
 
@@ -1173,8 +1310,13 @@ function Apple2IO(vid)
         // Rebuild only when mounted devices changed.
         if(oldSig !== sig)
         {
-            box.innerHTML = this.deviceToolHTML();
+            // display all Peripheral controls
+            var slots = this.deviceSlots();
+            for(var slotN=0,html_arr=[];slotN<slots.length;slotN++)
+                html_arr.push(this.deviceToolSlotHTML( slots[slotN] ));
+            box.innerHTML = html_arr.join("");
             box.setAttribute("data-topology",sig);
+
             if(typeof(EMU_mem_map)=="function" && typeof(apple2plus)=="object" && apple2plus!=null)
                 EMU_mem_map();
         }
@@ -1202,11 +1344,12 @@ function Apple2IO(vid)
         return slot;
     }
 
-
+/*
     this.renderDeviceTool = function(slot)
     {
       this.refreshDeviceToolboxes({"id":"devices","default_slot":slot});
     }
+*/
 
     this.showDeviceTool = function(slot)
     {
@@ -1220,6 +1363,7 @@ function Apple2IO(vid)
         if(el) el.hidden = false;
     }
 
+    /*
     this.deviceToolHTML = function()
     {
         var slots = this.deviceSlots();
@@ -1230,14 +1374,16 @@ function Apple2IO(vid)
 
         return out.join("");
     }
+    */
 
-    this.deviceToolSlotHTML = function(slot)
+    this.deviceToolSlotHTML = function(slotID)
     {
-        var pcode = slot==="H"
-            ? "HostIO"
-            : (_CFG_SLOT[slot] && _CFG_SLOT[slot].PCODE ? _CFG_SLOT[slot].PCODE : "");
- 
+        var slotN = slotID2n(slotID);
 
+        var pcode = slotID==="H"
+            ? "HostIO"
+            : (_CFG_SLOT[slotID] && _CFG_SLOT[slotID].PCODE ? _CFG_SLOT[slotID].PCODE : "");
+ 
         switch(pcode)
         {
             case "HostIO":
@@ -1255,7 +1401,7 @@ function Apple2IO(vid)
                     + "</div>";
             case "MS16K":
                 return ""
-                + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
                 + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
                 + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\""
                         +"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
@@ -1268,14 +1414,14 @@ function Apple2IO(vid)
 
             case "VIDEX":
                 return ""
-                    + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                    + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-                    + "    <b>#"+slot+" VIDEX</b><br>80-column toolbox is under construction."
+                    + "    <b>#"+slotID+" VIDEX</b><br>80-column toolbox is under construction."
                     + "  </div>"
                     + "</div>";
             case "DISKII":
                 return ""
-                    + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+                    + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
                     + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
 
                     // FILE BOX D1
@@ -1284,15 +1430,19 @@ function Apple2IO(vid)
                     + "        <input type=button method=get class=appbut id=\"but_D1\" value=\"Drive1\""
                     + " data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\"  "
                     + " onclick=\"ejectDisk(this,'D1')\""
-                    + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
-                    + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
+
+                    + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
+                    + "  onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
+                    //+ " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
+                    //+ " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
 
                     + "      <form action=\"index.html\" id=\"f_D1\" style=\"display:inline;\">"
-                    // TODO: this HTML is duplicated in apple2plus.DiskObj().diskFileInputHTML(), but cannot be called since apple2plus object does not exist at this time
-                    + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D1')\">"
+                    + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D1')\">"
                     + "      </form>"
                     
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D1'))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    //+ "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D1'))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D1'))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+
                     + "    </div>"
 
                     // FILE BOX D2
@@ -1303,12 +1453,13 @@ function Apple2IO(vid)
                     + " onclick=\"ejectDisk(this,'D2')\""
                     + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
                     + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
-                    // TODO: this HTML is duplicated in apple2plus.DiskObj().diskFileInputHTML(), but cannot be called since apple2plus object does not exist at this time
+                
                     + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
-                    + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'D2')\">"
+                    + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
                     + "      </form>"
 
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D2'))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    //+ "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D2'))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D2'))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     + "  </div>"
@@ -1329,43 +1480,14 @@ function Apple2IO(vid)
         }
 
         return ""
-            + "<div class=toolbox id=\"device_tool_"+slot+"\" hidden>"
+            + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
             + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-            + "    <b>#"+slot+" "+pcode+"</b><br>No toolbox is available yet."
+            + "    <b>#"+slotID+" "+pcode+"</b><br>No toolbox is available yet."
             + "  </div>"
             + "</div>";
     }
 
 
-
-
-    this.slotConfig = function(arg)
-    {
-        if(arg.active==false) document.getElementById(arg.id).innerHTML = "";
-
-        //var ss = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
-        var s = "document.getElementById('"+arg.id+"').innerHTML='"+arg.id+"';"
-        if(document.getElementById(arg.id)!=null)
-            document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"apple2plus.hwObj().io.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\""+arg.icon+"\"></i></button>"
-    }
-
-    this.slotConfig_detail = function(id)
-    {
-        //oCOM.POPUP.on("slotConfig_popup");
-        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
-        // TODO extend here to all popup customisations?
-        if(id=="board")
-        {
-            var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-            document.getElementById("slotConfig_popup").innerHTML =
-                "board I/O ["+model+"]" + close + oEMU.component.IO.board.boardIO_html(model);
-                
-            oCOM.POPUP.toggle("slotConfig_popup");
-            return;
-        }
-        document.getElementById("slotConfig_popup").innerHTML = id + close;
-        console.log("apple2plus.hwObj().io.slotConfig_detail('"+id+"')");
-    }
 
 
 
@@ -1442,16 +1564,16 @@ function Apple2IO(vid)
         for(var i=0;i<cfg.length;i++)
         {
             var slot = cfg[i] || {};
-            var p = slot.peripheral || {};
+            var p = slot.peripheral || null;
             rows.push({
                  "slot": slot.slotTitle || ""
                 ,"lock": slot.lock ? "yes" : ""
-                ,"PCODE": p.PCODE || ""
-                ,"container": p.coID || p.objID || ""
-                ,"HostROM": reportRange(p.HostROM)
-                ,"SlotIO": reportRange(p.SlotIO)
-                ,"SlotROM": reportRange(p.SlotROM)
-                ,"description": p.description || ""
+                ,"PCODE": peripheralPCODE(p)
+                ,"container": peripheralCoID(p)
+                ,"HostROM": reportRange(peripheralRange(p,"HostROM"))
+                ,"SlotIO": reportRange(peripheralRange(p,"SlotIO"))
+                ,"SlotROM": reportRange(peripheralRange(p,"SlotROM"))
+                ,"description": peripheralDescription(p)
             });
         }
         return rows;

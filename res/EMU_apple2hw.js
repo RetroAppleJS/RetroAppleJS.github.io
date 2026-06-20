@@ -58,8 +58,8 @@ function Apple2Hw(vid,keys)
     {
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
-        this.mount();
-        hw.io.restart();
+        this.mount();       // mount hardware callbacks
+        hw.io.restart();    // mount peripheral callbacks
     };
 
     function abs2IO(addr) { return addr - 0xC000 };
@@ -114,26 +114,7 @@ function Apple2Hw(vid,keys)
         };
     };
 
-
-    this.safe_read = function(addr)
-    {
-        const adr = addr & 0xffff;
-        const line = hw.lineDecode(adr);
-
-        this.bRO = true;
-        const d8 = hw.RD[line](adr) & 0xff;
-        this.bRO = false;
-
-        return d8;
-    }
-
-    this.safe_flashdump = function()
-    { 
-        var temp = new Uint8Array(0xFFFF+1);
-        temp.set(ram);
-        temp.set(apple2Rom, ROM_ADDR);
-        return temp;
-    }
+    this.safe_flashdump = function() { return new Uint8Array(ram); }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
     this.mount = function()
