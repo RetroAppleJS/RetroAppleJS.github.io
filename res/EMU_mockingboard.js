@@ -29,3 +29,6 @@ function mockingboard()
 
     }
 }
+
+globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
+globalThis.Apple2IO_PeripheralRegistry["MOCK"] = {"ctor":mockingboard,"icon":"fa fa-assistive-listening-systems"};

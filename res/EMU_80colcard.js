@@ -66,11 +66,11 @@ function col80card()
     {
         //oEMU.component.IO.ACTION_MAP.Hslot = null;  // TEMP: force it, just for testing
         var CIO = oEMU.component.IO;
-        if(this.action.HostROM && CIO.ACTION_MAP.Hslot != this.state.slot) 
+        if(this.action.HostROM && CIO.ACTION_MAP.Hslot != (this.mount.slotN-1)) 
         {
             // Accessing this range sets the expansion ROM ownership flag, giving the Videx card control of the $C800–$CFFF space
             console.log(this.id.PCODE,"claims from now access to the expansion ROM (until another peripheral claims it)")
-            CIO.ACTION_MAP.Hslot = this.state.slot; //   this peripheral card claims now the HostROM address space
+            CIO.ACTION_MAP.Hslot = this.mount.slotN-1; //   this peripheral card claims now the HostROM address space
             var pinfo = this.state.pinfo;
             // TODO: we could eventually make a call to IO, but that may be to complex from here 
             // (actually, apple2plus.hwObj().io should be in charge of updating callbacks, instead of the peripheral itself)
@@ -99,3 +99,6 @@ function col80card()
         // TODO: THE VIDEX HAS TO DO SOMETHING WITH WHAT THE PERIPHERAL RECEIVES FROM THE BUS
     }
 }
+
+globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
+globalThis.Apple2IO_PeripheralRegistry["VIDEX"] = {"ctor":col80card,"icon":"fa fa-tv"};
