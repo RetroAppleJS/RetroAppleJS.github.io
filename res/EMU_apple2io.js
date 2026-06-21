@@ -1106,8 +1106,6 @@ this.slot_cfg.slotConfig[3] =
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
         // TODO extend here to all popup customisations?
     
-        
-        
         if(n==0)
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
