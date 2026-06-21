@@ -69,7 +69,7 @@
     var THREE_CFG_DEFAULT = {
         textureFPS: 10,
         renderFPS: 50,
-        orbitControls: true,
+        orbitControls: false,
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
 
