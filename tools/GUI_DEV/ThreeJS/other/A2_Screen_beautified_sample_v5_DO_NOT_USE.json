@@ -1,0 +1,384 @@
+{
+  "metadata": {},
+  "project": {
+    "shadows": true,
+    "shadowType": 1,
+    "toneMapping": 0,
+    "toneMappingExposure": 1
+  },
+  "camera": {
+    "metadata": {
+      "version": 4.6,
+      "type": "Object",
+      "generator": "Object3D.toJSON"
+    },
+    "object": {
+      "uuid": "db7df58b-5826-4686-a620-fb0c393acc34",
+      "type": "PerspectiveCamera",
+      "name": "Camera",
+      "layers": 1,
+      "matrix": [
+        0.4130461354846072,
+        2.7755575615628914e-17,
+        0.9107101020419348,
+        0,
+        0.2914840398005568,
+        0.947396471906859,
+        -0.13220052783549524,
+        0,
+        -0.8628035376044647,
+        0.320062376761837,
+        0.39131845149287936,
+        0,
+        -2.1129414968506417,
+        1.0868177977941966,
+        1.9567459635661029,
+        1
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ],
+      "fov": 50,
+      "zoom": 1,
+      "near": 0.01,
+      "far": 1000,
+      "focus": 10,
+      "aspect": 1.4299802761341223,
+      "filmGauge": 35,
+      "filmOffset": 0
+    }
+  },
+  "scene": {
+    "metadata": {
+      "version": 4.6,
+      "type": "Object",
+      "generator": "Object3D.toJSON"
+    },
+    "geometries": [
+      {
+        "uuid": "a9dcedd2-100b-401d-9818-e8185a8ed1d7",
+        "type": "BufferGeometry",
+        "data": {
+          "attributes": {
+            "position": {
+              "itemSize": 3,
+              "type": "Float32Array",
+              "array": [...],
+              "normalized": false
+            },
+            "normal": {
+              "itemSize": 3,
+              "type": "Float32Array",
+              "array": [...],
+              "normalized": false
+            },
+            "uv": {
+              "itemSize": 2,
+              "type": "Float32Array",
+              "array": [...],
+              "normalized": false
+            }
+          },
+          "index": {
+            "type": "Uint16Array",
+            "array": [...]
+          },
+          "boundingSphere": {
+            "center": [
+              0,
+              0.0037840306758880615,
+              0.09122857812326401
+            ],
+            "radius": 1.2537738765519388
+          }
+        }
+      }
+    ],
+    "materials": [
+      {
+        "uuid": "8727a210-fbcc-4c2f-bdd0-93781facd407",
+        "type": "MeshStandardMaterial",
+        "name": "monitor_screen_mat",
+        "color": 16777215,
+        "roughness": 1,
+        "metalness": 0,
+        "emissive": 45930,
+        "emissiveIntensity": 7.74,
+        "map": "aba35000-4083-4a2d-8e5d-a245dfd3a3d2",
+        "roughnessMap": "5772f862-788b-4c5c-b4fd-5fee9130554e",
+        "metalnessMap": "5772f862-788b-4c5c-b4fd-5fee9130554e",
+        "emissiveMap": "2fd50e10-42dd-477d-8504-24e7d2b27b08",
+        "envMapRotation": [
+          0,
+          0,
+          0,
+          "XYZ"
+        ],
+        "envMapIntensity": 1,
+        "blendColor": 0
+      }
+    ],
+    "textures": [
+      {
+        "uuid": "aba35000-4083-4a2d-8e5d-a245dfd3a3d2",
+        "name": "monitor_screen_mat_BaseColor",
+        "image": "73b36f22-6079-479f-8908-0d9363686ec3",
+        "mapping": 300,
+        "channel": 0,
+        "repeat": [
+          1,
+          1
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "center": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ],
+        "format": 1023,
+        "internalFormat": null,
+        "type": 1009,
+        "colorSpace": "srgb",
+        "minFilter": 1008,
+        "magFilter": 1006,
+        "anisotropy": 1,
+        "flipY": false,
+        "generateMipmaps": true,
+        "premultiplyAlpha": false,
+        "unpackAlignment": 4,
+        "userData": {
+          "mimeType": "image/jpeg"
+        }
+      },
+      {
+        "uuid": "5772f862-788b-4c5c-b4fd-5fee9130554e",
+        "name": "monitor_screen_mat_Roughness",
+        "image": "81d97a34-d4e3-4fbe-9bff-29cae6f1a9df",
+        "mapping": 300,
+        "channel": 0,
+        "repeat": [
+          1,
+          1
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "center": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ],
+        "format": 1023,
+        "internalFormat": null,
+        "type": 1009,
+        "colorSpace": "",
+        "minFilter": 1008,
+        "magFilter": 1006,
+        "anisotropy": 1,
+        "flipY": false,
+        "generateMipmaps": true,
+        "premultiplyAlpha": false,
+        "unpackAlignment": 4,
+        "userData": {
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "uuid": "2fd50e10-42dd-477d-8504-24e7d2b27b08",
+        "name": "",
+        "image": "c22f5acf-8e3a-40ce-a194-c16f7a0dd275",
+        "mapping": 300,
+        "channel": 0,
+        "repeat": [
+          1,
+          1
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "center": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "wrap": [
+          1001,
+          1001
+        ],
+        "format": 1023,
+        "internalFormat": null,
+        "type": 1009,
+        "colorSpace": "srgb",
+        "minFilter": 1008,
+        "magFilter": 1006,
+        "anisotropy": 1,
+        "flipY": true,
+        "generateMipmaps": true,
+        "premultiplyAlpha": false,
+        "unpackAlignment": 4
+      }
+    ],
+    "images": [
+      {
+        "uuid": "73b36f22-6079-479f-8908-0d9363686ec3",
+        "url":"..."},
+      {
+        "uuid": "81d97a34-d4e3-4fbe-9bff-29cae6f1a9df",
+        "url":"..."},
+      {
+        "uuid": "c22f5acf-8e3a-40ce-a194-c16f7a0dd275",
+        "url": "..."}
+    ],
+    "object": {
+      "uuid": "f8f04c68-7363-4afc-b835-d89a6e53b8c6",
+      "type": "Scene",
+      "name": "Scene",
+      "layers": 1,
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ],
+      "children": [
+        {
+          "uuid": "9f935e3e-24f1-4432-aa1e-83b714855974",
+          "type": "Mesh",
+          "name": "screen",
+          "userData": {
+            "name": "screen"
+          },
+          "layers": 1,
+          "matrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -0.31300148367881775,
+            0.49523985385894775,
+            0.5577312434612818,
+            1
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "geometry": "a9dcedd2-100b-401d-9818-e8185a8ed1d7",
+          "material": "8727a210-fbcc-4c2f-bdd0-93781facd407"
+        },
+        {
+          "uuid": "1555ddf9-8a97-4269-93d5-f14e5b634d9e",
+          "type": "PointLight",
+          "name": "PointLight",
+          "layers": 1,
+          "matrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -0.45669859804274227,
+            1.1293625747226137,
+            1.4174270774311593,
+            1
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "color": 16777215,
+          "intensity": 1,
+          "distance": 0,
+          "decay": 2,
+          "shadow": {
+            "camera": {
+              "uuid": "3c8d6e23-a82f-4f3c-bcdd-586f20c79930",
+              "type": "PerspectiveCamera",
+              "layers": 1,
+              "up": [
+                0,
+                1,
+                0
+              ],
+              "fov": 90,
+              "zoom": 1,
+              "near": 0.5,
+              "far": 500,
+              "focus": 10,
+              "aspect": 1,
+              "filmGauge": 35,
+              "filmOffset": 0
+            }
+          }
+        }
+      ],
+      "backgroundRotation": [
+        0,
+        0,
+        0,
+        "XYZ"
+      ],
+      "environmentRotation": [
+        0,
+        0,
+        0,
+        "XYZ"
+      ]
+    }
+  },
+  "scripts": {},
+  "history": {
+    "undos": [],
+    "redos": []
+  },
+  "environment": null
+}
