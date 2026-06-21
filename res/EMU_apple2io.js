@@ -1110,16 +1110,29 @@ this.slot_cfg.slotConfig[3] =
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             document.getElementById("slotConfig_popup").innerHTML =
-                "board I/O ["+model+"]" + close + oEMU.component.IO.board.boardIO_html(model);
+
+                "<div>test<div>"
+                +"(EMU_apple2io.js) board I/O ["+model+"]" + close 
+
+                + oEMU.component.IO.board.deviceList_html(model)
+                + oEMU.component.IO.board.boardIO_html(model);
+                
                 
             oCOM.POPUP.toggle("slotConfig_popup");
             return;
         }
         else
         {
-            document.getElementById("slotConfig_popup").innerHTML = slotName + close;
-            console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
-            alert("this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n]))
+            document.getElementById("slotConfig_popup").innerHTML = 
+                slotName
+                + close 
+                + "<div class=appbut style=width:400px;word-break: break-all;>"
+                + "this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n])
+                + "<div>"
+
+            //console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
+            //alert("this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n]));
+            oCOM.POPUP.toggle("slotConfig_popup");
         }
 
     }

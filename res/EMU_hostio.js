@@ -237,6 +237,42 @@ function AppleBoard()
         s += '</table></div>';
         return s;
     }
+
+    this.deviceList_html = function(model)
+    {
+
+        var ct =  "<div id=\"slider_1v\" style=\"float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;\">"
+                    +"perspective"
+                  +"</div>"
+                 +"<input id=\"myRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px\"></input>"
+                 +"<br>"
+                 +"<div id=\"slider_1v\" style=\"float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;\">"
+                    +"luminosity"
+                  +"</div>"
+                 +"<input id=\"myRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px\"></input>"
+                 +"<div class=lightbut>move light</div>"      
+
+                 var rows = [{"name":"ThreeJS_vid","ctrl":ct}];
+
+                var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
+            + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+            + '<tr>'
+            + '<th style="text-align:left;padding:2px 4px;">Name</th>'
+            + '<th style="text-align:left;padding:2px 4px;">Controls</th>'
+            + '</tr>';
+
+        for(var i=0;i<rows.length;i++)
+        {
+            s += '<tr>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+rows[i].ctrl+'</td>'
+            + '</tr>';
+        }
+
+        s += '</table></div>';
+        return s;
+
+    }
 }
 
 globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
