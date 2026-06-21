@@ -70,6 +70,12 @@
         textureFPS: 10,
         renderFPS: 50,
         orbitControls: false,
+
+        fixedCameraLookAt: true,
+        fixedCameraTargetX: 0,
+        fixedCameraTargetY: 0,
+        fixedCameraTargetZ: 0,
+
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
 
@@ -624,7 +630,19 @@
             if (c.up) cam.up.fromArray(c.up);
             if (c.layers !== undefined) cam.layers.mask = c.layers;
 
+            if (cfg.fixedCameraLookAt)
+            {
+                cam.lookAt(
+                    cfg.fixedCameraTargetX || 0,
+                    cfg.fixedCameraTargetY || 0,
+                    cfg.fixedCameraTargetZ || 0
+                );
+            }
+
             cam.updateProjectionMatrix();
+            cam.updateMatrix();
+            cam.updateMatrixWorld(true);
+
             return cam;
         };
 
