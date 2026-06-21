@@ -25630,8 +25630,6 @@ this.slot_cfg.slotConfig[3] =
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
         // TODO extend here to all popup customisations?
     
-        
-        
         if(n==0)
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
@@ -27239,8 +27237,8 @@ function Apple2Plus(context)
                           document.getElementById("cpu_component").innerHTML = _CFG_SYSCODE["A2P"].CPU;
                           document.getElementById("all_components").innerHTML = ""
                           //_CFG_SYSCODE[oEMU.system.Video].Display
-                          +_CFG_SYSCODE["A2P"].Display+" Vid <i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i>"
-                          +"<div class=blink style=display:inline><i class='fa fa-eye' id='render_mode' title='GPU' onclick=\"javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i></div><br>"
+                          +_CFG_SYSCODE["A2P"].Display+" Vid <div class=lightbut style=display:inline><i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i></div>"
+                          +"<div class=lightbut style=display:inline><i class='fa fa-eye' id='render_mode' title='GPU' onclick=\"javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i></div><br>"
                           +_CFG_SYSCODE["A2P"].KeysROM+" Kbd <i class='fa fa-keyboard' title='Keyboard'></i><i class='fa fa-cog'></i>"
                         }
                       </script>
