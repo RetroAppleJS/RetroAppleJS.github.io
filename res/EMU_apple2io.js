@@ -1111,8 +1111,7 @@ this.slot_cfg.slotConfig[3] =
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             document.getElementById("slotConfig_popup").innerHTML =
 
-                "<div>test<div>"
-                +"(EMU_apple2io.js) board I/O ["+model+"]" + close 
+                "(EMU_apple2io.js) board I/O ["+model+"]" + close 
 
                 + oEMU.component.IO.board.deviceList_html(model)
                 + oEMU.component.IO.board.boardIO_html(model);

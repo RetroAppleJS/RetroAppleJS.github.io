@@ -342,6 +342,20 @@ table { border-collapse: collapse; position: relative;}
       background: rgba(255, 255, 255, 1);
   }
 
+  .appbut.mini
+  {
+    display: inline-block;
+    padding: 2px;
+    margin:0px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.4);
+  }
+
+  .appbut.mini:hover
+  {
+    background: rgba(255, 255, 255, 0.75);
+  }
+
   .lightbut
   {
     border: 1px solid #FFFFFF00;
@@ -390,6 +404,14 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.8);
     float:left;
     text-align:center;
+  }
+
+  .appbox .mini
+  {
+    display: inline-block;
+    padding: 2px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.4);
   }
 
   .toolbox

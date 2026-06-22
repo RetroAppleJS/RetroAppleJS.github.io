@@ -4,7 +4,7 @@
 //
 // EMU_hostio.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":new AppleBoard()}}}
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":null}}}
 else 
 {
     oEMU.component.IO.board= new AppleBoard();
@@ -241,30 +241,36 @@ function AppleBoard()
     this.deviceList_html = function(model)
     {
 
-        var ct =  "<div id=\"slider_1v\" style=\"float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;\">"
-                    +"perspective"
-                  +"</div>"
-                 +"<input id=\"myRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px\"></input>"
-                 +"<br>"
-                 +"<div id=\"slider_1v\" style=\"float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;\">"
-                    +"luminosity"
-                  +"</div>"
-                 +"<input id=\"myRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px\"></input>"
-                 +"<div class=lightbut>move light</div>"      
+        var ct =  
+                  
+                 "<div class=\"appbut mini\">"
+                 +"<input id=\"perspRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
+                    +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective</div>"
+                 +"</div><br>"
+                 
+                 +"<div class=\"appbut mini\">"
+                   +"<input id=\"lumRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
+                   +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity</div>"
+                 +"</div><br>"
 
-                 var rows = [{"name":"ThreeJS_vid","ctrl":ct}];
+                 +"<div class=\"appbut mini\">"
+                   +"<input id=\"moveLight\" type=\"checkbox\" onchange=\"\" style=\"width:65px;float:left\"></input>"
+                   +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"  
+                 +"</div>"    
+
+                 var rows = [{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;ThreeJS_vid</div>","ctrl":ct}];
 
                 var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
             + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
             + '<tr>'
-            + '<th style="text-align:left;padding:2px 4px;">Name</th>'
+            + '<th style="text-align:left;padding:2px 4px;">Device</th>'
             + '<th style="text-align:left;padding:2px 4px;">Controls</th>'
             + '</tr>';
 
         for(var i=0;i<rows.length;i++)
         {
             s += '<tr>'
-            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].name)+'</td>'
+            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+rows[i].name+'</td>'
             + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+rows[i].ctrl+'</td>'
             + '</tr>';
         }
@@ -274,6 +280,3 @@ function AppleBoard()
 
     }
 }
-
-globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
-globalThis.Apple2IO_PeripheralRegistry["A2BO"] = {"ctor":AppleBoard,"icon":"fa fa-home","slotLock":true};
