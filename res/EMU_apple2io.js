@@ -95,7 +95,7 @@ function Apple2IO(vid)
     this.restart = function()
     {
         // FIRST TODO: TAKE MAPPED I/O INPUT AND MOUNT YOUR DEVICES (OBJECT) ON THIS DATASTRUCTURE
-        oEMU.component.MIO = this.slot_cfg;
+        //oEMU.component.MIO = this.slot_cfg;
         //console.log("oEMU.component.MIO = "+JSON.stringify(oEMU.component.MIO));
 
         // create empty slot info directly in the Apple2IO-owned configuration
