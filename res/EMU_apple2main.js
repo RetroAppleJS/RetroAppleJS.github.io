@@ -284,13 +284,15 @@ function EMU_init()
     keys.onHover_in = function()
     {
         //console.log("keys.onHover_in");
-        apple2plus.DiskObj().GUI_update('kbd');
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        disk2.GUI_update('kbd');
     }
 
     keys.onHover_out = function()
     {
         //console.log("keys.onHover_out");
-        apple2plus.DiskObj().GUI_update('kbd');
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        disk2.GUI_update('kbd');
     }
 
     keys.KbdHTML({id:"kbd",path:"res/"
@@ -320,7 +322,8 @@ function EMU_init()
         {
             var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
             var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
-            if(b1 && b2) apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
+            var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+            if(b1 && b2) disk2.surfaceMap_update("surfaceMap_popup");
         }
 
         // CATCH CHANGES ONLY
@@ -381,7 +384,6 @@ function EMU_init()
 
     // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier
     // TODO: also consider building in this event as a branch within DSK_monitoring
-    //oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup") },"surfaceMap_monitoring",false);
     
     var bBOOTmon = false;
     if(bBOOTmon)
@@ -872,6 +874,7 @@ function EMU_audio_event_unlock()
     EMU_audio_try_unlock(true);
 }
 
+// TODO: extend eject disk in different slots.  Add slot inside DeviceID ?
 function loadDisk_fromBuffer(arr_buffer,deviceID)
 {
     //oCOM.POPUP.html("disk2.getState().active==true");
@@ -892,7 +895,7 @@ function loadDisk_fromBuffer(arr_buffer,deviceID)
 }
 
 
-
+// TODO: extend eject disk in different slots.  Add slot inside DeviceID ?
 function ejectDisk(el,deviceID)
 {
   const oDevice = apple2plus.hwObj().io.deviceID2obj(deviceID);
@@ -900,11 +903,11 @@ function ejectDisk(el,deviceID)
   var fe = document.getElementById("file_"+oDevice.deviceID);
   fe.value = "";
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-  var o = apple2plus.DiskObj()
+  var o = apple2plus.hwObj().io.PCODE2obj("DISKII")[0]; // temporary patch
   o.state.diskData[oDevice.deviceN] = null;
   o.GUI_update();
 
-  apple2plus.DiskObj().restoreDriveFileInput(oDevice.deviceID);
+  o.restoreDriveFileInput(oDevice.deviceID);
 
   var d = oCOM.URL.uri[oDevice.deviceID];
   if(d)

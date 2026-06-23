@@ -2293,8 +2293,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     // LINK TO A SUBDIREcTORY
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
                     var cmd  = bDir
-                        ?"apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")"     // FOLDER CLICK
-                        :"apple2plus.DiskObj().getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
+                        ?"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+")"     // FOLDER CLICK
+                        :"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
                     head += '<tr>'
@@ -2327,7 +2327,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
             //var disk2 = oCOM.default( oEMU.component.IO.AppleDisk, {state:{active:false}}, "AppleDisk");
             var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
 
-            if(disk2.state.active == false) return;
+            if(disk2.getState().active == false) return;
             arg.ref = arg.ref || "main";
 
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.

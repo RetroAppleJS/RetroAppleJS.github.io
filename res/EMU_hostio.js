@@ -7,7 +7,8 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":null}}}
 else 
 {
-    oEMU.component.IO.board= new AppleBoard();
+    //oEMU.component.IO.board= new AppleBoard();
+    oEMU.component.IO.board = null;
 }
 
 
@@ -21,7 +22,7 @@ function AppleBoard()
                     ,"WR":{"callback":write.bind(this)}}                                      // by default always 16 bytes
     }
 
-    function read() {alert("test")}
+    function read()  {}
     function write() {}
 
 
@@ -184,11 +185,11 @@ function AppleBoard()
             "WR":
             {
                  0x10: function(rel_addr,d8,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-                ,0x50: function(rel_addr,d8,ctx)
-                {
-                    const fn = SOFTSWITCH_50[rel_addr];
-                    return fn ? fn() : 0x00;
-                }
+            ,0x50: function(rel_addr,d8,ctx)
+            {
+                const fn = SOFTSWITCH_50[rel_addr];
+                return fn ? fn(ctx) : 0x00;
+            }
             }
         }
 
