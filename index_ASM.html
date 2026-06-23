@@ -551,79 +551,197 @@
             ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
             ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
           -->
-          <div id="tab2" style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
-            <!--form name="tab2" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
-            <script type="text/javascript" src="res/ASM_core.js"></script>
-            <script type="text/javascript" src="res/ASM_6502.js"></script>
-            <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
-            <link   rel="stylesheet"       href="res/ASM_6502.css">
+          
+<div id="tab2"
+     class="asm-v6"
+     style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
 
-            <div style="padding:0px 90px">
-              <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-              <button class=appbut value="Tools" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
-            </div>
 
-            <!--  ASM SETTINGS -->
+  <script type="text/javascript" src="res/ASM_core_v6.js"></script>
 
-            <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
-              <div class=toolbox>
-                <div class=appbox title="System" style="text-align:left;padding:0px 6px 0px 6px;">
-                  PRESETS
-                  <div style="font-family:arial;font-size:11px">
-                    
-                    <script>
-                      _TABS["tab2"].SYS = _TABS["tab2"].DEF_SYS;
-                      document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
-                    </script>
-                      
-                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('ASM_system_param');"></i>
-                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
-                      <!--  PRELOAD SYSTEM INFO !-->
-                      <script>document.write( oCOM.onSystemSelect(_TABS["tab2"].SYS,"tab2") )</script>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+  <style>
+    #tab2.asm-v6 {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel2: #0b0f14;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #79b8ff;
+      --ok: #8bd17c;
+      --warn: #ffd166;
+      --bad: #ff8a8a;
+      --key: #79c0ff;
+      --string: #a5d6ff;
+      --number: #f2cc60;
+      --bool: #ffab70;
 
-            <!--  ASM TOOLS -->
+      display: grid;
+      grid-template-rows: auto auto auto auto;
+      align-content: start;
+      gap: 6px;
+      padding: 10px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-            <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;margin-top:3px">
-              <div class=toolbox>
-                <form name="ASMboard">
-                  <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
-                  <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
-                  <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
-                  <input type="button" value="X" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')">
-                </form>
-              </div>
-            </div>
+    #tab2.asm-v6 * {
+      box-sizing: border-box;
+    }
 
-            <script type="text/javascript">
-            function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
-            function onASMBoardPaste()
-            {
-              var e = ASMboard.boardText.value.toUpperCase(); 
-              e = e.replace(/^.*[!-\/;-@G-~].*$/gm,"");   // remove each line with incompliant characters
-              e = e.replace(/[\r\n ]/g,"");               // remove all [cr] [lf] [spaces]                
-              e = e.replace(/([0-9A-F]{4}:)/g,"\n$1");    // introduce linefeed
-              e = e.replace(/([0-9A-F]{2})/g," $1");      // equally separate bytes
-              e = e.replace(/ ([0-9A-F]{2}) ([0-9A-F]{2}): /g,"$1$2:"); // re-join 16-bit addresses
-              e = e.replace(/^[\s\n]/g,"");               // remove heading spaces and linefeeds
-              ass.srcfield.value = e;
-              //ass.listing.value = e;
-              
-              var s = "";
-            }
-            function onASMBoardClear() { ASMboard.boardText.value = "" }; 
-            </script>
+    #tab2.asm-v6 header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+    }
 
-            <form name="ass" onsubmit="return false">
-              <table style="background:#76B9CE;border-radius:10px;">
-                <tr>
-                  <td valign=top style="display:flex;flex-wrap:wrap;width:300px;">
-                    <!-- LEFT PANE -->
-                    <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>ORG $6000
+    #tab2.asm-v6 h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 650;
+    }
+
+    #tab2.asm-v6 .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    #tab2.asm-v6 .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+
+    #tab2.asm-v6 button,
+    #tab2.asm-v6 input::file-selector-button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #21262d;
+      color: var(--text);
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #tab2.asm-v6 button:hover,
+    #tab2.asm-v6 input::file-selector-button:hover {
+      border-color: var(--accent);
+    }
+
+    #tab2.asm-v6 button.primary {
+      background: #1d4f7a;
+      border-color: #2c6ca3;
+    }
+
+    #tab2.asm-v6 .status {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    #tab2.asm-v6 .status.ok { color: var(--ok); }
+    #tab2.asm-v6 .status.warn { color: var(--warn); }
+    #tab2.asm-v6 .status.bad { color: var(--bad); }
+
+    #tab2.asm-v6 main {
+      display: grid;
+      grid-template-columns:
+        minmax(260px, 1fr)
+        minmax(260px, 1fr)
+        minmax(320px, 1.12fr);
+      align-items: start;
+      gap: 12px;
+    }
+
+    #tab2.asm-v6 .pane {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    #tab2.asm-v6 .pane-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+      background: #111820;
+    }
+
+    #tab2.asm-v6 .pane-title strong {
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    #tab2.asm-v6 textarea,
+    #tab2.asm-v6 .json-mount {
+      width: 100%;
+      height: 420px;
+      min-height: 0;
+      border: 0;
+      outline: 0;
+      padding: 14px;
+      background: var(--panel2);
+      color: var(--text);
+      font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      overflow: auto;
+      tab-size: 4;
+      resize: vertical;
+      white-space: pre;
+    }
+
+    #tab2.asm-v6 .json-view {
+      margin: 0;
+      white-space: pre;
+      min-width: max-content;
+      color: var(--text);
+    }
+
+    #tab2.asm-v6 .byte-pane {
+      margin-top: 12px;
+    }
+
+    #tab2.asm-v6 #byteCodePane {
+      height: 160px;
+    }
+  </style>
+
+  <header>
+    <div>
+      <h1>AssemblerJS</h1>
+      <div class="subtitle">
+        ASM core v6 integration inside RetroAppleJS tab2.
+      </div>
+    </div>
+  </header>
+
+  <section class="toolbar">
+    <input id="asmV6FileInput" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain" />
+    <button id="asmV6AssembleButton" class="primary">ASSEMBLE</button>
+    <button id="asmV6CopyByteCodeButton">Copy byte code</button>
+    <button id="asmV6ToEmulatorButton">To emulator</button>
+    <span id="asmV6Status" class="status">Ready.</span>
+  </section>
+
+  <main id="asmV6PaneHost">
+    <section class="pane">
+      <div class="pane-title"><strong>Source</strong></div>
+      <textarea id="asmV6SourcePane" spellcheck="false">ORG $6000
        LDX #0
 Label1 TXA
        STA $0400,X
@@ -632,134 +750,212 @@ Label1 TXA
        INX
        BNE Label1
        RTS
-.END
-                    </textarea>
-                    <br>
-                    <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
-                    
-                    <!--
-                    <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
-                    -->
-                    <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';oCOM.POPUP.toggle('tab1.2');COM_switchTab('tab1')">
-                      <i class="fa fa-arrow-circle-up"></i> to emulator</button>
-                    <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
-                        <i class="fa fa-arrow-circle-up"></i> to debugger</button>
-                    <button onclick="javascript:onToolBox('SrcTools');"><i class="fa fa-wrench"></i> tools & config</button>
-      
-                    <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
-                    <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
-      
-                    <button type="button"
-                            onmousedown="return ASM_traceDown(event)"
-                            onmouseup="return ASM_traceUp(event)"
-                            onmouseleave="return ASM_traceCancel(event)"
-                            ontouchstart="return ASM_traceDown(event)"
-                            ontouchend="return ASM_traceUp(event)"
-                            ontouchcancel="return ASM_traceCancel(event)">
-                      <i class="fa fa-road"></i> trace</button>
-<script>
-var ASM_trace_holdTimer = null;
-var ASM_trace_repeatTimer = null;
-var ASM_trace_isDown = false;
-var ASM_trace_isRepeating = false;
+.END</textarea>
+    </section>
 
-function ASM_traceStep()
-{
-  oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));
-  rrr();
-}
+    <section class="pane">
+      <div class="pane-title">
+        <strong>Listing</strong>
+        <span id="asmV6ListingInfo">not assembled</span>
+      </div>
+      <textarea id="asmV6ListingPane" readonly spellcheck="false"></textarea>
+    </section>
 
-function ASM_traceDown(ev)
-{
-  if(ev && ev.preventDefault) ev.preventDefault();
+    <section class="pane">
+      <div class="pane-title">
+        <strong>JSON</strong>
+        <button id="asmV6CopyJsonButton" type="button">Copy JSON</button>
+      </div>
+      <div id="asmV6JsonMount" class="json-mount" tabindex="0"></div>
+    </section>
+  </main>
 
-  // Ignore repeated down-events while the button is already held.
-  if(ASM_trace_isDown) return false;
+  <section class="pane byte-pane">
+    <div class="pane-title">
+      <strong>Byte code</strong>
+      <span id="asmV6ByteCodeInfo">0 bytes</span>
+    </div>
+    <textarea id="asmV6ByteCodePane" readonly spellcheck="false"></textarea>
+  </section>
 
-  ASM_trace_isDown = true;
-  ASM_trace_isRepeating = false;
+  <script>
+  (function initAssemblerTab2V6() {
+    var fileInput = document.getElementById("asmV6FileInput");
+    var assembleButton = document.getElementById("asmV6AssembleButton");
+    var copyByteCodeButton = document.getElementById("asmV6CopyByteCodeButton");
+    var copyJsonButton = document.getElementById("asmV6CopyJsonButton");
+    var toEmulatorButton = document.getElementById("asmV6ToEmulatorButton");
 
-  clearTimeout(ASM_trace_holdTimer);
-  clearInterval(ASM_trace_repeatTimer);
+    var statusEl = document.getElementById("asmV6Status");
+    var sourcePane = document.getElementById("asmV6SourcePane");
+    var listingPane = document.getElementById("asmV6ListingPane");
+    var byteCodePane = document.getElementById("asmV6ByteCodePane");
+    var jsonMount = document.getElementById("asmV6JsonMount");
+    var listingInfo = document.getElementById("asmV6ListingInfo");
+    var byteCodeInfo = document.getElementById("asmV6ByteCodeInfo");
 
-  ASM_trace_holdTimer = setTimeout(function()
-  {
-    if(!ASM_trace_isDown) return;
+    var currentFileName = "sample.S";
+    var currentJsonText = "";
+    var currentByteCodeText = "";
 
-    ASM_trace_isRepeating = true;
-    ASM_traceStep();                         // first repeated step after 0.5s
+    function setStatus(text, kind) {
+      statusEl.className = "status" + (kind ? " " + kind : "");
+      statusEl.textContent = text;
+    }
 
-    ASM_trace_repeatTimer = setInterval(function()
-    {
-      if(ASM_trace_isDown) ASM_traceStep();  // then every 0.1s
-    },25);
-  },500);
+    function fallbackEscapeHTML(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
-  return false;
-}
+    function prettifyJSON() {
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.JSONprettify === "function") {
+        oCOM.JSONprettify(jsonMount, {
+          "{}": "color:#79b8ff;font-weight:800",
+          "[]": "color:#d2a8ff;font-weight:800"
+        }, 2);
+        return;
+      }
 
-function ASM_traceUp(ev)
-{
-  if(ev && ev.preventDefault) ev.preventDefault();
+      jsonMount.innerHTML = "<pre class=\"json-view\">" + fallbackEscapeHTML(jsonMount.textContent) + "</pre>";
+    }
 
-  // Short click: still perform exactly one trace step.
-  if(ASM_trace_isDown && !ASM_trace_isRepeating) ASM_traceStep();
+    function consoleTable(rows) {
+      var newrows = JSON.parse(JSON.stringify(rows || []));
+      for (var i = 0; i < newrows.length; i++) {
+        for (var j in newrows[i]) {
+          if (j === "pc") newrows[i][j] = window.oASM.pcHex(newrows[i][j]);
+          else if (j === "opc") newrows[i][j] = window.oASM.opcHex(newrows[i][j]);
+          else if (j === "val") newrows[i][j] = window.oASM.valHex(newrows[i][j], newrows[i].oby);
+          else if (j === "bytes") newrows[i][j] = window.oASM.bytesToHex(newrows[i][j]);
+          else if (typeof newrows[i][j] === "object" && newrows[i][j] != null)
+            newrows[i][j] = Array.isArray(newrows[i][j]) ? newrows[i][j].join("|") : JSON.stringify(newrows[i][j]);
+        }
+      }
+      return newrows;
+    }
 
-  ASM_traceCancel(ev);
-  return false;
-}
+    function assembleCurrentSource() {
+      if (typeof window.ASM !== "function") {
+        var msg = "ASM() was not found. Check res/ASM_core_v6.js.";
+        setStatus(msg, "bad");
+        jsonMount.textContent = JSON.stringify({ error: msg }, null, 2);
+        prettifyJSON();
+        return;
+      }
 
-function ASM_traceCancel(ev)
-{
-  if(ev && ev.preventDefault) ev.preventDefault();
+      try {
+        window.oASM = new ASM({
+          listingColumns: "{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}"
+        });
 
-  ASM_trace_isDown = false;
-  clearTimeout(ASM_trace_holdTimer);
-  clearInterval(ASM_trace_repeatTimer);
-  ASM_trace_holdTimer = null;
-  ASM_trace_repeatTimer = null;
-  ASM_trace_isRepeating = false;
+        var rows = window.oASM.tokenise(sourcePane.value);
+        var compiled = window.oASM.compile(rows);
+        var coreVersion = window.oASM.version || "?";
 
-  return false;
-}
+        window.asmTokeniseJSON = rows;
+        window.asmCompileResult = compiled;
 
-function rrr()
-{
-  //this.updateScroll(document.getElementById('dispStep'));
-  oASM.updateScroll(document.getElementsByName('listing')[0])
-}
-</script>
+        listingPane.value = compiled.listingText || "";
+        currentByteCodeText = compiled.byteCodeText || "";
+        byteCodePane.value = currentByteCodeText;
 
-                  </td>
-                  <td valign=top>
-                    <!-- RIGHT PANE -->
-                    <textarea name="listing" onscroll="syncScroll(document.forms.ass.listing,document.forms.ass.srcfield)" readonly="readonly" wrap="virtual" class="dotmatrix_bck" style="width:340px;height:400px;margin:10px 10px 10px 0px;-webkit-filter: brightness(0.95);filter: brightness(0.95);" placeholder="Listing"></textarea>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan=2>
-                    <div id="SrcTools" hidden="">
-                      <script>document.write(sTools);</script>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <!--<td colspan=2 style="background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;background-image:url('res/CRT_TV_50b.png');">-->
-                  <td colspan=2 class="CRT_TV">
-                    <div style="height:90px"></div>
-                    <div name="codefield" id="codefield" class="markdown_mon" style="background-color: transparent; border-color: transparent; resize: none;"></div>
-                    <div style="height:180px"></div>
-                  </td>
-                </tr>
-              </table>
-            </form>
+        currentJsonText = JSON.stringify(compiled, null, 2);
+        jsonMount.textContent = currentJsonText;
+        prettifyJSON();
 
-            <script>
-            function syncScroll(element1, element2) { element2.scrollTop = element1.scrollTop; }
-            </script>
+        console.table(consoleTable(compiled.rows || []));
 
-          </div>
+        var rowCount = compiled.rows && compiled.rows.length ? compiled.rows.length : 0;
+        var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
+        var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
 
+        listingInfo.textContent = rowCount + " rows";
+        byteCodeInfo.textContent = byteCount + " bytes";
+
+        if (errorCount) {
+          setStatus("ASM core v" + coreVersion + ": assembled with " + errorCount + " unresolved/error row(s).", "warn");
+        } else {
+          setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes from " + currentFileName + ".", "ok");
+        }
+      } catch (err) {
+        console.error(err);
+        listingPane.value = "";
+        byteCodePane.value = "";
+        currentByteCodeText = "";
+        currentJsonText = JSON.stringify({ error: err && err.stack ? err.stack : String(err) }, null, 2);
+        jsonMount.textContent = currentJsonText;
+        prettifyJSON();
+        setStatus("Error: " + (err && err.message ? err.message : String(err)), "bad");
+      }
+    }
+
+    async function loadFile(file) {
+      if (!file) return;
+      currentFileName = file.name || "source.S";
+      sourcePane.value = await file.text();
+      listingPane.value = "";
+      byteCodePane.value = "";
+      jsonMount.replaceChildren();
+      setStatus("Loaded " + currentFileName + ". Click ASSEMBLE.", "ok");
+    }
+
+    function copyText(text, okMessage) {
+      if (!navigator.clipboard) {
+        setStatus("Clipboard unavailable; select and copy manually.", "warn");
+        return;
+      }
+
+      navigator.clipboard.writeText(text || "")
+        .then(function () { setStatus(okMessage, "ok"); })
+        .catch(function () { setStatus("Clipboard copy failed; select manually.", "warn"); });
+    }
+
+    fileInput.addEventListener("change", function () {
+      loadFile(fileInput.files && fileInput.files[0]);
+    });
+
+    assembleButton.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      assembleCurrentSource();
+    });
+
+    copyByteCodeButton.addEventListener("click", function () {
+      copyText(currentByteCodeText, "Byte code copied to clipboard.");
+    });
+
+    copyJsonButton.addEventListener("click", function () {
+      copyText(currentJsonText, "JSON copied to clipboard.");
+    });
+
+    toEmulatorButton.addEventListener("click", function () {
+      if (!currentByteCodeText) assembleCurrentSource();
+
+      if (typeof EMUboard !== "undefined" && EMUboard.boardText) {
+        EMUboard.boardText.value = "CALL-151\r" + currentByteCodeText.replace(/\n/g, "\r") + "\r";
+        if (typeof oCOM !== "undefined" && oCOM.POPUP) oCOM.POPUP.toggle("tab1.2");
+        if (typeof COM_switchTab === "function") COM_switchTab("tab1");
+        setStatus("Byte code copied to emulator paste board.", "ok");
+      } else {
+        setStatus("Emulator paste board is not available.", "warn");
+      }
+    });
+
+    sourcePane.addEventListener("keydown", function (ev) {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") {
+        ev.preventDefault();
+        assembleCurrentSource();
+      }
+    });
+
+    setStatus("Sample source loaded. Click ASSEMBLE.", "");
+  })();
+  </script>
+</div>
 
           <!--
             ██████  ███████ ██████  ██    ██  ██████   ██████  ███████ ██████ 
