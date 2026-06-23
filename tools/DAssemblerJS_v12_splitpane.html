@@ -184,7 +184,7 @@ CLRAN3      EQU     $c05f           ;RW annunciator 3 on
 TAPEIN      EQU     $c060
 PADDL0      EQU     $c064           ;R analog input 0
 PTRIG       EQU     $c070           ;RW analog input reset
-CLRROM      EQU     $cfff           ;disable slot C8 ROM
+CLRROM      EQU     $cfff           ;Free up HostROM $C800-$CFFF to other cards (in case one already mapped it)
 BASIC       EQU     $e000
 BASIC2      EQU     $e003
 H2          EQU     $2C    
