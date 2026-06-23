@@ -14131,13 +14131,15 @@ function EMU_init()
     keys.onHover_in = function()
     {
         //console.log("keys.onHover_in");
-        apple2plus.DiskObj().GUI_update('kbd');
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        disk2.GUI_update('kbd');
     }
 
     keys.onHover_out = function()
     {
         //console.log("keys.onHover_out");
-        apple2plus.DiskObj().GUI_update('kbd');
+        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        disk2.GUI_update('kbd');
     }
 
     keys.KbdHTML({id:"kbd",path:"res/"
@@ -14167,7 +14169,8 @@ function EMU_init()
         {
             var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
             var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
-            if(b1 && b2) apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup");
+            var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+            if(b1 && b2) disk2.surfaceMap_update("surfaceMap_popup");
         }
 
         // CATCH CHANGES ONLY
@@ -14228,7 +14231,6 @@ function EMU_init()
 
     // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier
     // TODO: also consider building in this event as a branch within DSK_monitoring
-    //oCOM.addRefreshEvent(function() { apple2plus.DiskObj().surfaceMap_update("surfaceMap_popup") },"surfaceMap_monitoring",false);
     
     var bBOOTmon = false;
     if(bBOOTmon)
@@ -14719,6 +14721,7 @@ function EMU_audio_event_unlock()
     EMU_audio_try_unlock(true);
 }
 
+// TODO: extend eject disk in different slots.  Add slot inside DeviceID ?
 function loadDisk_fromBuffer(arr_buffer,deviceID)
 {
     //oCOM.POPUP.html("disk2.getState().active==true");
@@ -14739,7 +14742,7 @@ function loadDisk_fromBuffer(arr_buffer,deviceID)
 }
 
 
-
+// TODO: extend eject disk in different slots.  Add slot inside DeviceID ?
 function ejectDisk(el,deviceID)
 {
   const oDevice = apple2plus.hwObj().io.deviceID2obj(deviceID);
@@ -14747,11 +14750,11 @@ function ejectDisk(el,deviceID)
   var fe = document.getElementById("file_"+oDevice.deviceID);
   fe.value = "";
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-  var o = apple2plus.DiskObj()
+  var o = apple2plus.hwObj().io.PCODE2obj("DISKII")[0]; // temporary patch
   o.state.diskData[oDevice.deviceN] = null;
   o.GUI_update();
 
-  apple2plus.DiskObj().restoreDriveFileInput(oDevice.deviceID);
+  o.restoreDriveFileInput(oDevice.deviceID);
 
   var d = oCOM.URL.uri[oDevice.deviceID];
   if(d)
@@ -23109,8 +23112,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     // LINK TO A SUBDIREcTORY
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
                     var cmd  = bDir
-                        ?"apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")"     // FOLDER CLICK
-                        :"apple2plus.DiskObj().getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
+                        ?"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+")"     // FOLDER CLICK
+                        :"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
                     head += '<tr>'
@@ -23143,7 +23146,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
             //var disk2 = oCOM.default( oEMU.component.IO.AppleDisk, {state:{active:false}}, "AppleDisk");
             var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
 
-            if(disk2.state.active == false) return;
+            if(disk2.getState().active == false) return;
             arg.ref = arg.ref || "main";
 
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
@@ -24307,7 +24310,8 @@ globalThis.Apple2IO_PeripheralRegistry["MOCK"] = {"ctor":mockingboard,"icon":"fa
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":null}}}
 else 
 {
-    oEMU.component.IO.board= new AppleBoard();
+    //oEMU.component.IO.board= new AppleBoard();
+    oEMU.component.IO.board = null;
 }
 
 
@@ -24321,7 +24325,7 @@ function AppleBoard()
                     ,"WR":{"callback":write.bind(this)}}                                      // by default always 16 bytes
     }
 
-    function read() {alert("test")}
+    function read()  {}
     function write() {}
 
 
@@ -24484,11 +24488,11 @@ function AppleBoard()
             "WR":
             {
                  0x10: function(rel_addr,d8,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-                ,0x50: function(rel_addr,d8,ctx)
-                {
-                    const fn = SOFTSWITCH_50[rel_addr];
-                    return fn ? fn() : 0x00;
-                }
+            ,0x50: function(rel_addr,d8,ctx)
+            {
+                const fn = SOFTSWITCH_50[rel_addr];
+                return fn ? fn(ctx) : 0x00;
+            }
             }
         }
 
@@ -24597,7 +24601,6 @@ if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
 
-
 function Apple2IO(vid)
 {
     const bDebug = true;
@@ -24691,6 +24694,11 @@ function Apple2IO(vid)
                 this.slot_cfg.slotConfig[slotN] = {"slotTitle":slotN2name(slotN)}
         }
 
+        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+
+        update_IORANGES(model);
+        if(!CIO.ACTION_MAP) CIO.ACTION_MAP = emptyActionMap();
+
         // discover object containers
         var pContainers = this.scanPeripheralContainers();
 
@@ -24698,18 +24706,75 @@ function Apple2IO(vid)
         for(var slotN in slotR.slotMap)
         {
             if(isNaN(slotN)) continue;
-            var pinfo = pContainers[slotR.slotMap[slotN][0]];   // BASIC PERIPHERAL INFO
+
+            var pinfo = pContainers[slotR.slotMap[slotN][0]];
             if(pinfo===undefined) continue;
-            var cinfo = _CFG_PSLOT[pinfo.PCODE];                // CONFIGURATION INFO
+
+            var cinfo = _CFG_PSLOT[pinfo.PCODE];
             var slotObj = this.slot_cfg.slotConfig[slotN];
-            if(slotObj.peripheral?.mount.source == "COM_CONFIG") continue;   // skip if peripheral source == "COM_CONFIG"
+            if(slotObj===undefined) { continue; }
+
+            if(slotObj.peripheral?.mount?.source == "COM_CONFIG") continue;     // avoid re-mounting pre-configured peripherals at the next restart
 
             var o = this.mount(cinfo,pinfo,slotN,slotR.slotFit[slotN]);
+            if(!o || !o.pObj) continue;
+
+            for(var so in o.sInfo) slotObj[so] = o.sInfo[so];
+            slotObj.peripheral = o.pObj;
+
+            if(o.pObj.id?.PCODE == "A2BO" && typeof(o.pObj.IO_map)=="function")
+            {
+
+                //CIO.ACTION_MAP.RD[0x0F00] = hostROM_CALL; // TODO: refactor this, make sure EMU_Hostio.js captures empty slot R/W operations?
+
+                /*
+                CIO.ACTION_MAP.RD[0x0700] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0600] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0600+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0500] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0500+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0400] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0400+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0300] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0300+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0200] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0200+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0100] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0100+rel_addr)) }
+                CIO.ACTION_MAP.RD[0x0000] = function(rel_addr,d8,ctx) { 
+                    //console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0000+rel_addr)) 
+                    }
+
+                CIO.ACTION_MAP.WR[0x0700] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0600] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0600+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0500] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0500+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0400] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0400+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0300] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0300+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0200] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0200+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0100] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0100+rel_addr)) }
+                CIO.ACTION_MAP.WR[0x0000] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0000+rel_addr)) }
+                */
+
+                mergeActionMap(CIO.ACTION_MAP,o.pObj.IO_map(model));
+            }
+
             
+
             if(bDebug) console.log("EMU_apple2io.js - mount(<"+pinfo.PCODE+" in "+slotN2name(slotN)+">)" );
-            for(var so in o.sInfo) slotObj[so] = o.sInfo[so];  // ADD SLOT INFO (e.g. lock)
-            slotObj.peripheral = o.pObj;                      // THE LIVE MOUNTED PERIPHERAL OBJECT
         }
+
+        var hostROM_CALL = function(rel_addr,d8,ctx)
+        {
+            if(rel_addr==0xFF) console.log("HostIO: free up $C800-$CFFF to other cards")
+        }
+
+        for(var slotN = 0; slotN < slot_count+1; slotN++)
+        {
+            var line = 0x100 * slotN;
+            if(!CIO.ACTION_MAP.RD[line]) 
+                CIO.ACTION_MAP.RD[line] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
+            if(!CIO.ACTION_MAP.WR[line]) 
+                CIO.ACTION_MAP.WR[line] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
+        }
+        line = 0xF00; // last line at the end of HOSTROM
+        if(!CIO.ACTION_MAP.RD[line])
+            CIO.ACTION_MAP.RD[line] = hostROM_CALL; // TODO: refactor this, make sure EMU_Hostio.js captures empty slot R/W operations?
+
+        // TODO: MAP UNUSED SLOTS AS THE APPLE ROM is accessing them
 
 /*
 Example output of a mounted peripheral:
@@ -24777,6 +24842,21 @@ this.slot_cfg.slotConfig[3] =
         //if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
     }
 
+function mergeActionMap(dst,src)
+{
+    if(!dst) dst = emptyActionMap();
+    if(!src) return dst;
+
+    for(var op in src)
+    {
+        if(!dst[op]) dst[op] = {};
+        for(var addr in src[op])
+            dst[op][addr] = src[op][addr];
+    }
+
+    return dst;
+}
+
     this.address_encoder = function(rel_addr,bucket,slot)
     {
         switch(bucket)
@@ -24788,14 +24868,67 @@ this.slot_cfg.slotConfig[3] =
         } 
     }
 
-    if(typeof(EMU_system_get)!="undefined")
+    this.PCODE2obj = function(PCODE)
     {
-        var CIO = oEMU.component.IO;
-        CIO.ACTION_MAP = oEMU.component.IO.board.IO_map(EMU_system_get());
-        console.log("ACTION_MAP="+JSON.stringify(CIO.ACTION_MAP));
+        var obj_arr = [];
+        var cfg = this.slot_cfg.slotConfig;
+        for(var o in cfg)
+        {
+            if(cfg[o].peripheral?.id.PCODE == PCODE)
+                obj_arr.push(cfg[o].peripheral);         // we can have multiple matches, since we do not specify slotN
+        }
+        return obj_arr;
     }
 
-    function line_decode(adr) { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
+
+
+    function emptyActionMap()
+    {
+        return {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{},"BT":{},"RG":{}};
+    }
+
+function update_IORANGES(sys_model)
+{
+    if(oEMU.system===undefined) return;
+    if(typeof(_CFG_IORANGES)==="undefined") return;
+
+    for(var o in _CFG_IORANGES)
+    {
+        if(syscode_has_model(o,sys_model))
+        {
+            oEMU.system["IORANGES"] = _CFG_IORANGES[o];
+
+            oEMU.system["IORANGES-SLOT"] = {};
+            for(var r in _CFG_IORANGES[o])
+            {
+                oEMU.system["IORANGES-SLOT"][r] =
+                    oCOM.parseRngExpr(_CFG_IORANGES[o][r],{n:3});
+            }
+            return;
+        }
+    }
+}
+
+function syscode_has_model(syscodes,sys_model)
+{
+    if(!syscodes || !sys_model) return false;
+
+    var needle = String(sys_model).toUpperCase();
+    var list = String(syscodes)
+        .replace(/<br\s*\/?\s*>/gi,"")
+        .split(",");
+
+    for(var i=0;i<list.length;i++)
+    {
+        if(oCOM.trim(list[i]).toUpperCase()===needle) return true;
+    }
+    return false;
+}
+
+   var CIO = oEMU.component.IO;
+
+
+    function line_decode(adr)  { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
 
     this.read = function(rel_addr)      // relative to 0xC000
     {
@@ -24815,47 +24948,49 @@ this.slot_cfg.slotConfig[3] =
         ////////////////////////////////////////////////////////////
 
         const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
-        if(CIO.ACTION_MAP.RD[line]!==undefined)
-        {
+        //if(CIO.ACTION_MAP.RD[line]!==undefined)
+        //{
             //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
             return CIO.ACTION_MAP.RD[line](rel_addr-line,ctx2);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
-        }
+        //}
 
         return 0x00;
     }
 
-    this.write = function(rel_addr, d8)
+    this.read = function(rel_addr)
     {
-        var line = line_decode(rel_addr);
-        var xline = oCOM.getHexMulti(line,4);
-
-        //if (rel_addr >= DISK_IO && rel_addr < DISK_IO + DISK_IO_SIZE)   // detect I/O range of DISK2
-        //    this.disk2.write(rel_addr - DISK_IO, d8);
-
-        ////////////////////////////////////////////////////////////
-        // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
-        ////////////////////////////////////////////////////////////
-
+        var line = line_decode(rel_addr); var xline = oCOM.getHexMulti(line,4);
         const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
-        if(CIO.ACTION_MAP.WR[rel_addr]!==undefined)
-        {
-            //if(rel_addr > 16) console.log("ACTION: "+ACTION_MAP.RD[rel_addr]);
-            return CIO.ACTION_MAP.WR[line](rel_addr-line,d8,ctx2);   // EXECUTE ACTION TRIGGERED BY A WRITE AT THIS ADDRESS
-        }
 
-        // Implement same side-effects as read.
-        // TODO: double check if we want writes to SLOTIO etc.. to have the same effect as reads
-        this.read(rel_addr);  // curiously APPLE DOS 3.3 does not load INTBASIC without this add-on
+
+        if(!CIO.ACTION_MAP.RD[line])
+            console.warn("CIO.ACTION_MAP.RD["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")")
+
+        return CIO.ACTION_MAP.RD[line](rel_addr-line,ctx2);
+    }
+
+    this.write = function(rel_addr,d8)
+    {
+        var line = line_decode(rel_addr); var xline = oCOM.getHexMulti(line,4);
+        const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
+
+        if(!CIO.ACTION_MAP.WR[line])
+            console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")")
+
+        return CIO.ACTION_MAP.WR[line](rel_addr-line,d8,ctx2);
     }
 
     this.cycle = function() {}
 
     this.mount = function(cinfo,peripheral_info,slotIdx,slotFit)
     {
-        if(oEMU.system===undefined) return;
-
-        //var peripheral_obj = {};
+        var peripheral_obj = null;
         var slot_info = {};
+
+        if(oEMU.system===undefined) return {"sInfo":slot_info,"pObj":peripheral_obj};
+        if(!cinfo || !peripheral_info) return {"sInfo":slot_info,"pObj":peripheral_obj};
+        if(!oEMU.system["IORANGES"]) return {"sInfo":slot_info,"pObj":peripheral_obj};
+        if(typeof(globalThis[peripheral_info.coID])!="function") return {"sInfo":slot_info,"pObj":peripheral_obj};
 
         if(oEMU.system["IORANGES"] && peripheral_info)
         {
@@ -24918,11 +25053,13 @@ this.slot_cfg.slotConfig[3] =
                     const _bHostROM  = !(_act.HostROM === undefined);
                     const _bSlotIO   = !(_act.SlotIO  === undefined);
                     const _bSlotROM  = !(_act.SlotROM === undefined);
+                    const _bHostIO   = !(_act.HostIO  === undefined);
 
                     // PROVIDE THE BASE ADDRESS FOR EACH MEMORY SPACE
                     if(_bHostROM && ranges.HostROM) _act.HostROM.base = ranges.HostROM.from;
                     if(_bSlotROM && ranges.SlotROM) _act.SlotROM.base = ranges.SlotROM.from;
                     if(_bSlotIO  && ranges.SlotIO)  _act.SlotIO.base  = ranges.SlotIO.from;
+                    if(_bHostIO  && ranges.HostIO)  _act.HostIO.base  = ranges.HostIO.from;
 
                     // Add non-functional metadata to callbacks so diagnostics can show
                     // the actual mounted owner behind each ACTION_MAP span.
@@ -24930,11 +25067,15 @@ this.slot_cfg.slotConfig[3] =
                     tagActionCallback(_act.SlotROM && _act.SlotROM.RD, "SlotROM", "RD");
                     tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
                     tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
+                    tagActionCallback(_act.HostIO  && _act.HostIO.RD,  "HostIO",  "RD");
+                    tagActionCallback(_act.HostIO  && _act.HostIO.WR,  "HostIO",  "WR");
 
                     if(_bHostROM && _act.HostROM.RD && ranges.HostROM) { for(var i=ranges.HostROM.from;i<=ranges.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
                     if(_bSlotROM && _act.SlotROM.RD && ranges.SlotROM) { for(var i=ranges.SlotROM.from;i<=ranges.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
-                    if(_bSlotIO  && _act.SlotIO.RD  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to; i++) CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
-                    if(_bSlotIO  && _act.SlotIO.WR  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to; i++) CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
+                    if(_bSlotIO  && _act.SlotIO.RD  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to;i++)  CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
+                    if(_bSlotIO  && _act.SlotIO.WR  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to;i++)  CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
+                    if(_bHostIO && _act.HostIO.RD   && ranges.HostIO)  { for(var i=ranges.HostIO.from;i<=ranges.HostIO.to;i++)   CIO.ACTION_MAP.RD[i] = _act.HostIO.RD.callback; }
+                    if(_bHostIO && _act.HostIO.WR   && ranges.HostIO)  { for(var i=ranges.HostIO.from;i<=ranges.HostIO.to;i++)   CIO.ACTION_MAP.WR[i] = _act.HostIO.WR.callback; }
                 }
 
                 function tagActionCallback(action,rangeName,op)
@@ -24975,26 +25116,46 @@ this.slot_cfg.slotConfig[3] =
     this.scanPeripheralContainers = function()
     {
         var names = {};
+
+        function registerPeripheralObj(obj, coID)
+        {
+            var PCODE = obj?.id?.PCODE;
+            if(PCODE===undefined) return;
+
+            names[PCODE] = obj.id;
+            names[PCODE]["coID"] = coID;
+        }
+
         for(var o in oEMU.component.IO)
         {
-            var PCODE = oEMU.component.IO[o]?.id?.PCODE;
-            if(PCODE===undefined) continue;
-            names[PCODE] = oEMU.component.IO[o].id;
-            names[PCODE]["coID"]  = oEMU.component.IO[o].constructor.name; // new: coID = container ID
+            var obj = oEMU.component.IO[o];
+
+            if(obj?.id?.PCODE!==undefined)
+            {
+                registerPeripheralObj(obj, obj.constructor.name);
+                continue;
+            }
+
+            /*
+                oEMU.component.IO.board is intentionally null.
+                The container key is "board", but the constructor is AppleBoard().
+                This keeps board ownership in slot_cfg while still allowing discovery.
+            */
+            if(o=="board" && typeof(globalThis.AppleBoard)=="function")
+            {
+                try { registerPeripheralObj(new globalThis.AppleBoard(), "AppleBoard"); }
+                catch(e) {}
+            }
         }
 
         for(var o in oEMU.component.IO)
         {
             try
             {
-                var tempObj = new globalThis[o]();
-            } catch(e){ var tempObj={}  }
-
-            var PCODE = tempObj?.id?.PCODE;
-            if(PCODE===undefined) continue;
-            names[PCODE] = tempObj.id;
-            names[PCODE]["coID"]  = o; // new: coID = container ID
-            delete tempObj;
+                if(typeof(globalThis[o])=="function")
+                    registerPeripheralObj(new globalThis[o](), o);
+            }
+            catch(e) {}
         }
 
         return names;
@@ -25111,18 +25272,6 @@ this.slot_cfg.slotConfig[3] =
         if(!p.mount) p.mount = {};
         p.mount.slotN = slotN;
         //p.mount.slotTitle = slotTitle || slotN2name(slotN);
-    }
-
-    this.PCODE2obj = function(PCODE)
-    {
-        var obj_arr = [];
-        var cfg = this.slot_cfg.slotConfig;
-        for(var o in cfg)
-        {
-            if(cfg[o].peripheral?.id.PCODE == PCODE)
-                obj_arr.push(cfg[o].peripheral);         // we can have multiple matches, since we do not specify slotN
-        }
-        return obj_arr;
     }
 
     this.HASH2obj = function(HASH)
@@ -25694,12 +25843,13 @@ this.slot_cfg.slotConfig[3] =
         if(n==0)
         {
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+            var board = this.PCODE2obj("A2BO")[0];
             document.getElementById("slotConfig_popup").innerHTML =
 
                 "(EMU_apple2io.js) board I/O ["+model+"]" + close 
 
-                + oEMU.component.IO.board.deviceList_html(model)
-                + oEMU.component.IO.board.boardIO_html(model);
+                + (board && typeof(board.deviceList_html)=="function" ? board.deviceList_html(model) : "")
+                + (board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "")
                 
                 
             oCOM.POPUP.toggle("slotConfig_popup");
