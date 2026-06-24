@@ -1607,8 +1607,8 @@ function syscode_has_model(syscodes,sys_model)
                     + "        <input type=button method=get class=appbut id=\"but_D2\" value=\"Drive2\""
                     + " data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\"  "
                     + " onclick=\"ejectDisk(this,'D2')\""
-                    + " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
-                    + " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
+                    + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
+                    + " onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
                 
                     + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
@@ -1622,9 +1622,9 @@ function syscode_has_model(syscodes,sys_model)
 
                     // BUTTON BOX
                     + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-                    + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
+                    + "      <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
                     + "      <br>"
-                    + "      <button class=appbut onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+                    + "      <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
                     //+ "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
                     //+ "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
                     + "  </div>"

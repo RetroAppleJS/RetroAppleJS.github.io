@@ -588,11 +588,6 @@
                 box-sizing: border-box;
               }
 
-              .ASM_buttonBar {
-                height: 30px;
-                padding: 0px 90px 0px 0px;
-              }
-
               .ASM_toolbar {
                 display: flex;
                 flex-wrap: wrap;
@@ -605,31 +600,11 @@
                 background: var(--ASM_panel);
               }
 
-              .ASM_button,
-              .ASM_root input::file-selector-button {
-                border: 1px solid var(--ASM_border);
-                border-radius: 8px;
-                background: #21262d;
-                color: var(--ASM_text);
-                padding: 6px 10px;
-                font: inherit;
-                cursor: pointer;
-              }
-
-              .ASM_button:hover,
-              .ASM_root input::file-selector-button:hover {
-                border-color: var(--ASM_accent);
-              }
-
               .ASM_buttonPrimary {
                 background: #1d4f7a;
                 border-color: #2c6ca3;
               }
 
-              .ASM_fileInput {
-                max-width: 340px;
-                color: var(--ASM_muted);
-              }
 
               .ASM_status {
                 margin-left: auto;
@@ -665,71 +640,53 @@
               .ASM_pane {
                 min-width: 0;
                 max-width: 100%;
-                display: grid;
-                grid-template-rows: auto 1fr;
+                display: block;
                 border: 1px solid var(--ASM_border);
                 border-radius: 10px;
                 overflow: hidden;
                 background: var(--ASM_panel);
               }
 
-              .ASM_paneTitle {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
-                padding: 6px 10px;
-                border-bottom: 1px solid var(--ASM_border);
-                color: var(--ASM_muted);
-                font-size: 13px;
-                background: #111820;
-              }
-
-              .ASM_paneTitle strong {
-                color: var(--ASM_text);
-                font-size: 14px;
-              }
-
-              .ASM_paneTitleMain {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                min-width: 0;
-              }
-
-              .ASM_listingColumnsInput {
-                width: min(180px, 24vw);
-                border: 1px solid var(--ASM_border);
-                border-radius: 7px;
-                background: var(--ASM_panel2);
-                color: var(--ASM_text);
-                padding: 4px 7px;
-                font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-              }
-
               .ASM_editor,
               .ASM_jsonMount {
                 width: 100%;
                 max-width: 100%;
-                height: 420px;
                 min-height: 420px;
-                max-height: 420px;
                 border: 0;
                 outline: 0;
                 padding: 14px;
                 background: var(--ASM_panel2);
                 color: #000000;
                 font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-                overflow: auto;
                 tab-size: 4;
                 white-space: pre;
                 resize: none;
               }
 
+              .ASM_editor {
+                height: auto;
+                overflow-y: hidden;
+                overflow-x: auto;
+              }
+
               .ASM_jsonMount {
+                height: 420px;
+                max-height: 420px;
                 overflow-y: auto;
                 overflow-x: auto;
                 resize: none;
+                scrollbar-color: rgba(0,0,0,0.30) transparent;
+                scrollbar-width: thin;
+              }
+
+              .ASM_jsonMount::-webkit-scrollbar { width: 10px; height: 10px; }
+              .ASM_jsonMount::-webkit-scrollbar-track { background: transparent; }
+              .ASM_jsonMount::-webkit-scrollbar-corner { background: transparent; }
+              .ASM_jsonMount::-webkit-scrollbar-thumb {
+                background-color: rgba(0,0,0,0.30);
+                border-radius: 10px;
+                border: 2px solid transparent;
+                background-clip: content-box;
               }
 
               .ASM_jsonView {
@@ -756,6 +713,66 @@
                 font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
               }
 
+              .ASM_byteCodeInfo {
+                color: #000000;
+                font-family: arial;
+                font-size: 11px;
+                padding: 0px 6px;
+                white-space: nowrap;
+              }
+
+              .ASM_findReplaceMount {
+                display: inline-flex;
+                align-items: center;
+                min-height: 26px;
+                max-width: 430px;
+                margin: 2px 0px 0px 0px;
+                color: #000000;
+                font-family: arial;
+                font-size: 11px;
+                vertical-align: middle;
+              }
+
+              .ASM_findReplaceMount .com-pane-fr {
+                color: #000000;
+              }
+
+              .ASM_findReplaceMount input {
+                color: #000000;
+              }
+
+              .ASM_root .com-pane-fr-wrap {
+                width: 100%;
+                max-width: 100%;
+                min-height: 420px;
+                padding: 0px;
+                background-color: #f4f4f4;
+                background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
+                background-size: 585px 42px;
+                background-attachment: local;
+                overflow: visible;
+              }
+
+              .ASM_root .com-pane-fr-wrap textarea {
+                background-color: transparent !important;
+                background-image: none !important;
+                color: #000000 !important;
+                -webkit-text-fill-color: #000000 !important;
+                caret-color: #000000;
+              }
+
+              #ASM_sourcePane,
+              .ASM_root #ASM_sourcePane,
+              .ASM_root .com-pane-fr-wrap #ASM_sourcePane {
+                color: #000000 !important;
+                -webkit-text-fill-color: #000000 !important;
+                caret-color: #000000;
+              }
+
+              .ASM_root .com-pane-fr-wrap [class*="com-pane-fr"] {
+                background-color: transparent;
+              }
+
             .ASM_dotmatrix_bck
             {
                 background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");                /*background-size: auto;*/
@@ -775,13 +792,28 @@
                 .ASM_paneHost.ASM_showJson { grid-template-columns: 1fr; }
                 .ASM_status { margin-left: 0; width: 100%; }
               }
+
+            .vertical {
+              display: flex;
+            }
+
+            .vertical hr {
+              min-height: 100%;
+              max-height: 100vh;
+              margin-left: 7px;
+              opacity: 25%;
+            }
+
+
             </style>
 
             <div id="ASM_root" class="ASM_root">
 
-              <div class="ASM_buttonBar">
+              <div class="vertical" style="height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings');oCOM.POPUP.off('ASM_tools');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
                 <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.toggle('ASM_tools');oCOM.POPUP.off('ASM_settings');" title="Tools"><i class="fa fa-toolbox"></i></button>
+                <hr>
+                <button class=appbut id="ASM_assembleButton" title="Assemble"><i class="fa fa-play"></i></button>
               </div>
 
               <!--  ASM SETTINGS -->
@@ -801,13 +833,13 @@
               <div class="hints1" id="ASM_tools" style="z-index:2;position:absolute;margin-top:3px">
                 <div class=toolbox>
                   <form name="ASMboard" onsubmit="return false">
-                    <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Paste 6502 source or byte-code text here" name="boardText"></textarea><br>
-                    <input id="ASM_toEmulatorButton" type="button" value="to emulator">
-                    <input id="ASM_toDebuggerButton" type="button" value="to debugger">
-                    <input type="button" value="Paste source" onclick="javascript:ASM_pasteBoardToSource()">
-                    <input type="button" value="Clear"        onclick="javascript:ASM_clearBoard()">
-                    <span id="ASM_byteCodeInfo" style="font-family:arial;font-size:11px;padding:0px 6px;">0 bytes</span>
-                    <input type="button" value="X"            onclick="javascript:oCOM.POPUP.off('ASM_tools')">
+                    <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code output" name="boardText"></textarea><br>
+                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" type="button" value="to emulator">
+                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" type="button" value="to debugger">
+                    <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" value="copy">
+                    <input title="Clear byte code" type="button" value="Clear" onclick="javascript:ASM_clearBoard()">
+                    <span id="ASM_byteCodeInfo" class="ASM_byteCodeInfo">0 bytes</span>
+                    <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('ASM_tools')">
                   </form>
                 </div>
 
@@ -816,19 +848,23 @@
                   <button id="ASM_assembleButton" class=appbut type="button" title="Assemble"><i class="fa fa-cogs"></i></button>
                   <button id="ASM_toggleJsonButton" class=appbut type="button" title="Show JSON output"><i class="fa fa-code"></i></button>
                   <br>
-                  <button id="ASM_copyByteCodeButton" class=appbut type="button" title="Copy byte code"><i class="fa fa-copy"></i></button>
+                  <button id="ASM_helpButton" class="appbut" type="button"><i class="fa fa-book"></i></button>
+                </div>
+
+                <!--  ASM FILE TOOLBOX -->
+                <div class=toolbox>
+                  <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
+                    <div class=appbut style="color:black">
+                      load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
+                    </div>
+                    <span id="ASM_status" class="ASM_status">Ready.</span><br>
+                    <div id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount"></div>
+                </div>
                 </div>
               </div>
 
-              <section class="ASM_toolbar">
-                <input id="ASM_fileInput" class="ASM_fileInput" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
-                <button id="ASM_helpButton" class="ASM_button" type="button"><i class="fa fa-book"></i> help</button>
-                <span id="ASM_status" class="ASM_status">Ready.</span>
-              </section>
-
               <div id="ASM_paneHost" class="ASM_paneHost">
                 <section class="ASM_pane">
-                  <div class="ASM_paneTitle"><strong>Source</strong></div>
                   <textarea id="ASM_sourcePane" class="ASM_editor ASM_dotmatrix_bck" spellcheck="false" wrap="off" placeholder="Source code">ORG $6000
        LDX #0
 Label1 TXA
@@ -842,21 +878,10 @@ Label1 TXA
                 </section>
 
                 <section class="ASM_pane">
-                  <div class="ASM_paneTitle">
-                    <span class="ASM_paneTitleMain">
-                      <strong>Listing</strong>
-                      <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
-                    </span>
-                    <span id="ASM_listingInfo">not assembled</span>
-                  </div>
                   <textarea id="ASM_listingPane" class="ASM_editor ASM_dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
                 </section>
 
                 <section id="ASM_jsonPane" class="ASM_pane ASM_jsonPane">
-                  <div class="ASM_paneTitle">
-                    <strong>JSON</strong>
-                    <button id="ASM_copyJsonButton" class="ASM_button" type="button">copy JSON</button>
-                  </div>
                   <div id="ASM_jsonMount" class="ASM_jsonMount ASM_dotmatrix_bck" tabindex="0"></div>
                 </section>
               </div>
@@ -866,8 +891,38 @@ Label1 TXA
             var ASM_currentFileName = "sample.S";
             var ASM_currentJsonText = "";
             var ASM_currentByteCodeText = "";
+            var ASM_oPANE = null;
+            var ASM_sourceFindReplace = null;
 
             function ASM_el(id) { return document.getElementById(id); }
+
+            function ASM_applyConfigVars(vars, target, prefix)
+            {
+              target = target || document.documentElement;
+              prefix = prefix || "--";
+              for(var k in vars) target.style.setProperty(prefix + k, vars[k]);
+            }
+
+            var ASM_findReplaceScheme = {
+              "bg":"#f3f3f3",
+              "border":"#d2d2d2",
+              "text":"#000000",
+              "muted":"#666666",
+              "field-bg":"#ffffff",
+              "field-text":"#000000",
+              "active":"#0078d4",
+              "active-bg":"#e9f4ff",
+              "active-text":"#000000",
+              "hover-bg":"#ececec",
+              "hover-text":"#000000",
+              "expander":"#000000"
+            };
+
+            function ASM_applyFindReplaceScheme()
+            {
+              var mount = ASM_el("ASM_sourceFindReplaceMount");
+              if(mount) ASM_applyConfigVars(ASM_findReplaceScheme,mount,"--com-pane-fr-");
+            }
 
             function ASM_countByteCodeText(text)
             {
@@ -940,20 +995,6 @@ Label1 TXA
               mountEl.innerHTML = "<pre class=\"ASM_jsonView\">" + ASM_escapeHTML(mountEl.textContent) + "</pre>";
             }
 
-            function ASM_syncListingColumnsFromSettings()
-            {
-              var settingsInput = ASM_el("ASM_settingsListingColumnsInput");
-              var listingInput  = ASM_el("ASM_listingColumnsInput");
-              if(settingsInput && listingInput) listingInput.value = settingsInput.value;
-            }
-
-            function ASM_syncSettingsFromListingColumns()
-            {
-              var settingsInput = ASM_el("ASM_settingsListingColumnsInput");
-              var listingInput  = ASM_el("ASM_listingColumnsInput");
-              if(settingsInput && listingInput) settingsInput.value = listingInput.value;
-            }
-
             function ASM_consoleTable(rows)
             {
               var newrows = JSON.parse(JSON.stringify(rows || []));
@@ -983,7 +1024,8 @@ Label1 TXA
 
               if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
               if(ASM_el("ASM_jsonMount"))    ASM_el("ASM_jsonMount").replaceChildren();
-              if(ASM_el("ASM_listingInfo"))  ASM_el("ASM_listingInfo").textContent = "not assembled";
+              ASM_resizeSourceListingPanes();
+              ASM_refreshFindReplaceOverlay();
 
               if(message) ASM_setStatus(message,kind || "");
             }
@@ -1003,7 +1045,7 @@ Label1 TXA
               try
               {
                 var sourcePane = ASM_el("ASM_sourcePane");
-                var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
+                var listingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
                 var listingPane = ASM_el("ASM_listingPane");
                 var jsonMount = ASM_el("ASM_jsonMount");
 
@@ -1030,8 +1072,9 @@ Label1 TXA
                 var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
                 var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
 
-                ASM_el("ASM_listingInfo").textContent = rowCount + " rows";
                 ASM_setByteCodeOutput(compiled.byteCodeText || "", byteCount);
+                ASM_resizeSourceListingPanes();
+                ASM_refreshFindReplaceOverlay();
 
                 if(errorCount)
                   ASM_setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes with " + errorCount + " unresolved/error row(s).","warn");
@@ -1044,6 +1087,8 @@ Label1 TXA
               {
                 console.error(err);
                 if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value = "";
+                ASM_resizeSourceListingPanes();
+                ASM_refreshFindReplaceOverlay();
                 ASM_setByteCodeOutput("",0);
                 ASM_currentJsonText = JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2);
                 ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
@@ -1059,6 +1104,8 @@ Label1 TXA
               ASM_currentFileName = file.name || "source.S";
               ASM_el("ASM_sourcePane").value = await file.text();
               ASM_clearOutputs("Loaded " + ASM_currentFileName + ". Click assemble to generate the listing, JSON and byte code.","ok");
+              ASM_resizeSourceListingPanes();
+              ASM_refreshFindReplaceOverlay();
             }
 
             function ASM_copyText(text,okMessage)
@@ -1106,19 +1153,47 @@ Label1 TXA
               else ASM_setStatus("Debugger output field is not available.","warn");
             }
 
-            function ASM_pasteBoardToSource()
-            {
-              var board = ASM_el("ASM_boardText");
-              var source = ASM_el("ASM_sourcePane");
-              if(!board || !source) return;
-              source.value = board.value;
-              ASM_clearOutputs("Paste board copied to source. Click assemble to regenerate output.","ok");
-              oCOM.POPUP.off("ASM_tools");
-            }
-
             function ASM_clearBoard()
             {
               ASM_setByteCodeOutput("",0);
+            }
+
+            function ASM_resizeTextAreaToContent(el)
+            {
+              if(!el) return;
+
+              var wrap = el.closest ? el.closest(".com-pane-fr-wrap") : null;
+
+              el.style.height = "auto";
+              el.style.overflowY = "hidden";
+
+              if(wrap)
+              {
+                wrap.style.height = "auto";
+                wrap.style.overflow = "visible";
+              }
+
+              var h = Math.max(420, el.scrollHeight);
+              el.style.height = h + "px";
+              if(wrap) wrap.style.height = h + "px";
+            }
+
+            function ASM_resizeSourceListingPanes()
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              var listingPane = ASM_el("ASM_listingPane");
+              var jsonMount  = ASM_el("ASM_jsonMount");
+
+              ASM_resizeTextAreaToContent(sourcePane);
+              ASM_resizeTextAreaToContent(listingPane);
+
+              if(jsonMount)
+              {
+                var sourceHeight  = sourcePane ? sourcePane.offsetHeight : 420;
+                var listingHeight = listingPane ? listingPane.offsetHeight : 420;
+                jsonMount.style.height = Math.max(420, sourceHeight, listingHeight) + "px";
+                jsonMount.style.maxHeight = jsonMount.style.height;
+              }
             }
 
             function ASM_toggleJsonPane(forceShow)
@@ -1139,19 +1214,60 @@ Label1 TXA
               }
             }
 
+            function ASM_refreshFindReplaceOverlay()
+            {
+              if(ASM_sourceFindReplace && typeof ASM_sourceFindReplace.render == "function")
+                ASM_sourceFindReplace.render();
+            }
+
+            function ASM_bindSourceFindReplace()
+            {
+              if(typeof PANE != "function")
+              {
+                ASM_setStatus("PANE() was not found. Search & replace is unavailable.","warn");
+                return;
+              }
+
+              ASM_oPANE = new PANE();
+
+              if(typeof ASM_oPANE.injectFindReplaceCSS == "function")
+                ASM_oPANE.injectFindReplaceCSS();
+
+              ASM_applyFindReplaceScheme();
+
+              if(typeof ASM_oPANE.bindFindReplace == "function")
+              {
+                ASM_sourceFindReplace = ASM_oPANE.bindFindReplace("ASM_sourcePane", {
+                  id:"ASM_sourceFindReplace",
+                  mount:"ASM_sourceFindReplaceMount",
+                  inline:true,
+                  overlayExpand:true,
+                  floatingNav:true,
+                  pageScrollOnMatch:true,
+                  pageScrollOffset:72,
+                  scheme:ASM_findReplaceScheme,
+                  barWidth:"390px",
+                  debounce_ms:500,
+                  onChange:function(){
+                    ASM_resizeSourceListingPanes();
+                    ASM_setStatus("Source updated by search & replace. Click assemble to regenerate output.","warn");
+                  }
+                });
+              }
+              else ASM_setStatus("PANE.bindFindReplace() was not found. Search & replace is unavailable.","warn");
+            }
+
             function ASM_bindEvents()
             {
               var fileInput = ASM_el("ASM_fileInput");
               var assembleButton = ASM_el("ASM_assembleButton");
               var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
-              var copyJsonButton = ASM_el("ASM_copyJsonButton");
               var toEmulatorButton = ASM_el("ASM_toEmulatorButton");
               var toDebuggerButton = ASM_el("ASM_toDebuggerButton");
               var helpButton = ASM_el("ASM_helpButton");
               var sourcePane = ASM_el("ASM_sourcePane");
               var boardText = ASM_el("ASM_boardText");
-              var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
               var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
 
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
@@ -1159,33 +1275,36 @@ Label1 TXA
               if(toggleJsonButton) toggleJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(); });
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
               if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
-              if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
               if(toEmulatorButton) toEmulatorButton.addEventListener("click",ASM_toEmulator);
               if(toDebuggerButton) toDebuggerButton.addEventListener("click",ASM_toDebugger);
               if(helpButton) helpButton.addEventListener("click",function(){ onhelp(_DOCS["ASSEMBLER"],ASM_el("ASM_jsonMount")); });
 
-              if(sourcePane) sourcePane.addEventListener("keydown",function(ev){
-                if((ev.ctrlKey || ev.metaKey) && ev.key == "Enter")
-                {
-                  ev.preventDefault();
-                  ASM_assembleCurrentSource();
-                }
-              });
-
-              if(listingColumnsInput) listingColumnsInput.addEventListener("change",function(){
-                ASM_syncSettingsFromListingColumns();
-                ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
-              });
+              if(sourcePane)
+              {
+                sourcePane.addEventListener("input",function(){
+                  ASM_resizeSourceListingPanes();
+                  ASM_refreshFindReplaceOverlay();
+                });
+                sourcePane.addEventListener("keydown",function(ev){
+                  if((ev.ctrlKey || ev.metaKey) && ev.key == "Enter")
+                  {
+                    ev.preventDefault();
+                    ASM_assembleCurrentSource();
+                  }
+                });
+              }
 
               if(settingsListingColumnsInput) settingsListingColumnsInput.addEventListener("change",function(){
-                ASM_syncListingColumnsFromSettings();
                 ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
               });
             }
 
             ASM_bindEvents();
+            ASM_bindSourceFindReplace();
             ASM_toggleJsonPane(false);
             ASM_clearOutputs("Sample source loaded. Click assemble to generate output.","");
+            ASM_resizeSourceListingPanes();
+            ASM_refreshFindReplaceOverlay();
             </script>
 
           </div>
