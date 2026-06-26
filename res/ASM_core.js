@@ -1,6 +1,5 @@
 /*
  * ASM_core_v6_3.js
- * Build filename: ASM_core_v6_3.js
  *
  * v6.3 architecture:
  * - Pragmas/directives keep their parser functions inside this.pragma entries.
