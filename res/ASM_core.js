@@ -1,13 +1,17 @@
-//const { split } = require("lodash");
-//const { connectableObservableDescriptor } = require("rxjs/internal/observable/ConnectableObservable");
+/*
+ * ASM_core_v6_3.js
+ * Build filename: ASM_core_v6_3.js
+ *
+ * v6.3 architecture:
+ * - Pragmas/directives keep their parser functions inside this.pragma entries.
+ * - 6502 mnemonics keep their parser functions inside this.mnemonics entries.
+ * - Metadata/unclassified statement handling is dispatched through this.metadata entries.
+ * - This makes tokenisation/parsing consistently table-driven.
+ * - Adds compile(tokenisedRows) to generate byte code, listing lines, and byte-code dump lines.
+ */
 
-//BUG1: listing LDA (ADR),Y
-//BUG2: listing LDA (ADR,X)
-//BUG3: .WORD ==> asm listing must be little endian
-//BUG4: STA (A1L,X) ==> asm listing (STA ($3C),Y
+"use strict";
 
-function ASM()
-{
 
 //   █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
 //	██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
@@ -15,2035 +19,1465 @@ function ASM()
 //	██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██
 //	██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
 
-
-	const log2 = Math.log10(2);
-	const label_len = 6;
-	this.bDebug = false;
-	this.pragma_sym = {};
-	this.mnemonics  = {};
-
-	this.crlf = "<br>";
-
-	this.init = function(a)
-	{
-		if(a!=null)
-		{
-			// TODO load maxNumBytes,mnemonics and pragma here !!!!!!!!!!!!
-
-			if(a.maxNumBytes!=null)		this.maxNumBytes = a.maxNumBytes;
-
-			if(a.label_len!=null) 		this.label_len	 = a.label_len;
-
-			if(a.codefield_el!=null) 	this.codefield_el  = a.codefield_el; // el: binary pane
-			if(a.srcfield_el!=null)
-			{
-				this.srcfield_el = a.srcfield_el;					// el: input pane
-				this.codesrc = this.getSrc(this.srcfield_el,false); // Slice ASM lines -> codesrc (array)
-				this.codefield_el.innerHTML = ' '+this.crlf;		// clear binary pane
-			}
-			if(a.listing_el!=null)
-			{
-				this.listing_el  = a.listing_el; // el: output pane
-				this.listing_el.value = '';  // clear output pane
-			}
-
-		} 
-		this.codedst    = new Uint8Array();
-		this.codedst_len = 0;
-		this.pass		= 0;
-		this.step		= 0;
-		this.sym		= [];
-		this.symlink_l	= 0;
-		this.symlink	= {};	// table of label values
-		this.symtab		= {};	// table of labels
-		this.code		= [];
-		this.srcl		= 0;
-		this.srcc		= 0;
-		this.pc			= 0;
-		this.code_pc    = new Array();
-		this.label_len  = label_len;
-		this.listing_rewrite = true;
-		this.bDebug 	= false;
-	}
-
-
-	// Keep the assembler instance program counter and the legacy global pc in sync.
-	// The global pc is still used by older tools, but this.pc is the preferred source.
-	this.set_pc = function(v)
-	{
-		v = Number(v);
-		if(isNaN(v)) v = 0;
-		this.pc = v & 0xFFFF;
-		if(typeof globalThis != "undefined") globalThis.pc = this.pc;
-		return this.pc;
-	}
-
-	this.add_pc = function(v)
-	{
-		v = Number(v);
-		if(isNaN(v)) v = 0;
-		return this.set_pc((this.pc + v) & 0xFFFF);
-	}
-
-	this.sync_pc_from_global = function()
-	{
-		if(typeof globalThis != "undefined" && typeof globalThis.pc == "number")
-			this.pc = globalThis.pc & 0xFFFF;
-		return this.pc;
-	}
-
-	this.ext = "";  //" [A]";		// TODO: tag compiler compatibility
-
-	this.pragma_sym = 
-	{
-		"*=":  {"ref":".ORG","asm":["MAC/65"]}      // sym[0] (ignore) & sym[1] = '='	// sym[0] = '*'    & sym[1] = '='
-		,"ORG":{"ref":".ORG","asm":["ASL","DASM"]}
-		,"OBJ":{"ref":".ORG","asm":["Merlin"]}
-		,".OR":{"ref":".ORG","asm":["S-C"]}
-		,".ORG":
-		{
-			 "asm":["ca65"]
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
-				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-				var dat = [];
-				var e = this.getExpression(arr[0]);
-				if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
-				if (e.err) { displayError(e.err); return {"val":false}  }
-				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
-				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
-
-				oASM.code_pc[oASM.get_code_len()] = e.val & 0xFFFF;		//  register ORG as program counter change at byte index (for byte stream listing) 
-
-				this.set_pc(e.val);
-				listing.value += "$"+this.getHexWord(this.pc)+this.ext;
-				return {"val":true}
-			}
-		}
-		,"EQU":
-		{
-			"asm":["ca65"]
-			,"description":"define symbol representing a address label or implicit value"
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-				var arr = sym.slice(ofs + 1, sym.length);
-				var err = null;
-				if(this.validate(arr[0],"[A-Za-z0-9_.-]+")) // IDENTIFIER
-				{
-					r = this.getIdentifier(arr[0]);	// TODO: find more elegant to figure out if identifier exists or not
-					err = r.err;
-					if(err)
-					{
-						var v = this.getExpression(arr[1]);
-						oASM.symtab[arr[0]] = v.val;
-						listing.value += arr[0] + " " + "$"+oCOM.getHexMulti(v.val,v.bytes)
-						return {"val":true}
-					}
-					else return {"val":false,"err":"can't override: identifier already existed"}
-				}
-				return {"val":false}
-			}
-		}
-		,"=":{"ref":"EQU"}   // sym[0] (ignore) & sym[1] = '='
-		,".EQ":{"ref":"EQU","asm":["S-C"]}   // sym[0] (ignore) & sym[1] = '='
-		,".RES":
-		{
-			"asm":["ca65","ACME"]
-			,"description":"Reserve storage — Command takes one or two constant expressions. The first (required) sets the number of bytes to reserve. The second (optional) sets the fill byte; if omitted, the linker uses the value from its configuration (default: 0)."
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-	
-				var e = this.getExpression(arr[0]);
-				var len = e.val;
-
-				var val = 0;    // default
-				if(typeof(arr[1])!="undefined") 
-				{
-					var e = this.getExpression(arr[1]);
-					val = e.val
-				}
-
-				if(pass==1)
-				{
-					var lbl = oASM.getID(sym[0]).val;
-					oASM.sym_link(				// STORE SYMBOL
-					{
-						 "type": "def"
-						,"PC": this.pc
-						,"val": 0
-						,"sym": lbl
-						,"sym0": sym[0]
-					})
-					oASM.symtab[lbl] = this.pc;		// LINK ADDRESS TO SYMBOL
-
-					listing.value += len+",$"+oCOM.getHexByte(val)+" "+this.ext;
-				}
-
-				if(pass==2)
-				{
-					for(var i=0,dat = [],arr=[];i<len;i++) { dat[i] = val; arr[i] = this.getHexByte(val) }
-					oASM.concat_code(dat);
-			
-					listing.value += arr.join(" ");
-				}
-
-				this.add_pc(len);
-				return {"val":true}
-			}
-			
-		}		
-		,"CONSTANT":{"asm":"ASL","description":"In contrast to EQU, always expects comma separated name and value as arguments"}
-		,"HEX": 
-		{
-			"parser":function(arg)
-			{
-				// TODO DEBUG:   HEX $00 should produce an error !
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
-				var arg = sym.slice(ofs + 1, sym.length).join(" ");
-				var dat = this.getByteArray(arg);
-				if (pass == 1) listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
-				if (pass == 2)
-				{
-					oASM.concat_code(dat);
-					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
-				}
-				listing.value += this.ext;
-				this.add_pc(dat.length);
-				return {"val":true};
-			}
-		}
-		,"BIN": true
-		,"ASC":    // TODO IMPLEMENT APPROX SAME WAY AS .BYTE
-        {
-			//https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ASM_MANUAL_MERLIN.md#ASC
-			 "asm":["Merlin"]
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
-				var str = sym.slice(ofs + 1, sym.length).join("");
-				var e = this.getExpression(str);
-				if (e.err) { displayError("malformed expression | "+e.err); return {"val":false} }
-				if(typeof(e.val)=="number") { e.val = [e.val]; e.type = "string"	} // string is always expected here
-				for (var i = 0; i < e.val.length; i++)
-					listing.value += this.getHexByte(e.val[i]);
-				if (pass == 2) oASM.concat_code(e.val);
-				listing.value += this.ext;
-				this.add_pc(e.val.length);
-				return {"val":true}
-			}
-		}
-		,".END":true
-		,"DFB":{"ref":".BYTE","asm":["Merlin"],"description":"Define Byte"}
-		,".BYTE":
-		{
-			 "asm":["ca65","S-C"]
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
-				// numerical expressions and strings are split as array with byte size elements 
-				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
-				if(pass==1) listing.value += arr.join(",");
-				if(pass==2)
-				{
-					var dat = [];
-					for(var i=0;i<arr.length;i++)  // loop through CSV elements
-					{
-						var e = this.getExpression(arr[i]);
-						if (e.err) { displayError(e.err); return {"val":false} }
-						e.val = e.val & 0xFF;
-						if(e.type=="string") byte_arr = e.val;
-						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
-
-						var k = dat.length;
-						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
-							dat[k+j] = byte_arr[j];
-					}
-
-					for(var i=0;i<dat.length;i++)			// overwrite arr
-						arr[i] = this.getHexByte(dat[i]);
-
-					oASM.concat_code(dat);
-					listing.value += arr.join(" ")+this.ext;
-				}
-				this.add_pc(arr.length);
-				return {"val":true}
-			}
-		}
-		,"DFB":{"ref":"DA","asm":["Merlin"],"description":"Define Address"}
-		,".WORD":
-		{
-			 "asm":["ca65","S-C"]
-			,"parser":function(arg)
-			{
-				// process all other symbols !
-				// expect ANY aritmetic expression 
-				// from which the outcome is 2 bytes long
-				// e.g. $FFFF
-				// e.g. %01010
-				// e.g. >ADR - generates only one byte !
-				// e.g. *12
-				// e.g. >$FFFF - generates only one byte !
-
-				// TODO:ELIMINATE DUPLICATE CODE WITH .BYTE and DBB (by function override?)
-
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
-				// numerical expressions and strings are split as array with byte size elements 
-				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
-				if(pass==1) listing.value += arr.join(",");
-				if(pass==2)
-				{
-					var dat = [];
-					for(var i=0;i<arr.length;i++)  // loop through CSV elements
-					{
-						var e = this.getExpression(arr[i]);
-						if (e.err) { displayError(e.err); return {"val":false} }
-						e.val = e.val & 0xFFFF;
-						e.bytes = 2;
-						if(e.type=="string") byte_arr = e.val;
-						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
-
-						var k = dat.length;
-						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
-							dat[k+j] = byte_arr[j];
-					}
-
-					for(var i=0;i<dat.length;i++)			// overwrite arr
-						arr[i] = this.getHexByte(dat[i]);
-
-					oASM.concat_code(dat);
-					listing.value += arr.join(" ")+this.ext;
-				}
-				this.add_pc(arr.length << 1);
-				return {"val":true}
-			}
-		}
-		,"DDB":
-		{
-			 "asm":["Merlin"]
-			 ,"description":"Define Double-Byte"
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-
-				// numerical expressions and strings are split as array with byte size elements 
-				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
-				if(pass==1) listing.value += arr.join(",");
-				if(pass==2)
-				{
-					var dat = [];
-					for(var i=0;i<arr.length;i++)  // loop through CSV elements
-					{
-						var e = this.getExpression(arr[i]);
-						if (e.err) { displayError(e.err); return {"val":false} }
-						e.val = e.val & 0xFFFF;
-						e.bytes = 2;
-						if(e.type=="string") byte_arr = e.val;
-						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
-
-						var k = dat.length;
-						for(var j=0;j<byte_arr.length;j+=2)  // loop through element, with potentially larger byte size
-						{
-							dat[k+j] = byte_arr[j+1];
-							dat[k+j+1] = byte_arr[j];
-						}
-					}
-
-					for(var i=0;i<dat.length;i++)			// overwrite arr
-						arr[i] = this.getHexByte(dat[i]);
-
-					oASM.concat_code(dat);
-					listing.value += arr.join(" ")+this.ext;
-				}
-				this.add_pc(arr.length << 1);
-				return {"val":true}				
-			}
-		}
-		,".AT":true
-		,"DO":
-		{
-			"asm":["Merlin"]
-			,"description":"Disable Output (stop assembling code range when expression >< 0"
-			,"parser":function(arg)
-			{
-				var sym = arg.sym, pass = arg.pass, ofs = arg.ofs;
-				// numerical expressions and strings are split as array with byte size elements 
-				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
-				if(pass==1 || pass==2)
-				{
-					var e = this.getExpression(arr[0]);
-					
-					if(this.pragma_sym["DO"]["STACK"]===undefined) this.pragma_sym["DO"]["STACK"] = [ e.val!=0 ];
-					else this.pragma_sym["DO"]["STACK"][  this.pragma_sym["DO"]["STACK"].length  ] = e.val!=0;
-					
-					// TODO SUBMIT WARNING IF STACKS ARE NOT EMPTY AFTER ASSEMBLY IS DONE
-					// TODO GARBAGE COLLECT STACKS AFTER ASSEMBLY IS DONE
-
-					if(this.bDebug) listing.value += arr.join(",") + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
-					listing.value += e.val!=0;
-				}
-			}
-
-				//if (sym.length >= 2 && pass==1)	// more than two operands
-				//{
-				//	alert(sym.slice(2, sym.length).join(" "));
-				//}
-		}
-		,"ELSE":
-		{
-			"asm":["Merlin"]
-			,"description":"Else (DO range)"
-			,"parser":function(arg)
-			{
-				if(this.pragma_sym["DO"]["STACK"]===undefined || this.pragma_sym["DO"]["STACK"].length==0)
-				{ displayError("ELSE without DO"); return false }
-				var l = this.pragma_sym["DO"]["STACK"].length-1;
-				this.pragma_sym["DO"]["STACK"][l] = !this.pragma_sym["DO"]["STACK"][l];		// invert status
-				if(this.bDebug) listing.value +=  arg.sym[0] + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
-			}
-		}		
-		,"FIN":
-		{
-			"asm":["Merlin"]
-			,"description":"Finish (DO range)"
-			,"parser":function(arg)
-			{
-				if(this.pragma_sym["DO"]["STACK"]===undefined || this.pragma_sym["DO"]["STACK"].length==0)
-				{ displayError("FIN without DO"); return false }				
-				var s = this.pragma_sym["DO"]["STACK"].pop();
-				if(this.bDebug) listing.value +=  arg.sym[0] + "|" + JSON.stringify(this.pragma_sym["DO"]["STACK"]);
-			}
-		}
-		,".DEFINE":true
-		,".IFDEF":true
-		,".IFNDEF":true
-		,".ENDIF":true
-		,".SYMBOLS":true
-		,".TF":
-		{
-			 "asm":["S-C"]
-	   		,"parser":function(arg)
-			{
-				 displayError("Skipped expression - not implemented");
-			}
-		}
-	}
-
-	this.assemble_step = function(srcfield_el,listing_el,codefield_el)
-	{
-		if(this.pass==null)
-			this.init({"srcfield_el":srcfield_el,"listing_el":listing_el,"codefield_el":codefield_el});
-		
-		var showADR = document.ass.showADR.checked;
-
-		if (this.pass == 0 && this.step == 0)
-			this.listing_el.value += 'pass 1\n';
-
-		if (this.pass == 1 && this.step == 0)
-			this.listing_el.value += 'pass 2\n';
-	
-		// skip empty lines
-		do{ this.sym = this.getSym() } while(this.sym!=null && this.sym.length==0)
-
-		this.step++;
-
-		// detect end of pass 0
-		if(this.sym==null && this.pass==0) { this.pass = 1; this.step = 0 }
-	
-		if(this.sym != null)
-		{
-			var s = "";
-			var tag = this.statement_tagger(this.sym)
-			if(tag[0]=="LBL")
-			{
-				this.symtab[this.sym[0]] = this.pc;
-				//s+=" symtab[\""+this.sym[0]+"\"] = $"+this.getHexWord(this.pc)+"\n";
-			}
-			this.listing_el.value += "asm.sym ["+this.sym.join(" ")+"] ["+tag.join(" ")+"]\n"
-								 +s
-		}
-		else
-			this.listing_el.value += "asm.pass = ["+this.pass+"]\n"
-	}
-
-	this.statement_tagger = function(sym)
-	{
-		var arr = [];
-		// first symbol can be only (mnemonic, pragma or label)
-		if(this.mnemonics[sym[0]]!=null)
-		{
-			arr[0] = "MNE";
-			if(sym[1]!=null)	arr[1] = "OPR";
-				//arr[1] = sym[1]!="A" ? "VAL" : "ACC";   // LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
-		}
-		else if (this.mnemonics[sym[1]]!=null) // check mnemonic preceeded by LBL
-		{
-			arr[0] = "LBL"; // TODO store label !!!!
-			arr[1] = "MNE";
-			if(sym[2]!=null) 	arr[2] = "OPR" 
-				//arr[2] = sym[2]!="A" ? "VAL" : "ACC";	// LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
-		}
-		else if(this.pragma_sym[sym[0]]!=null )
-		{
-			arr[0] = "PGM";
-			if(sym[1]!=null) 	arr[1] = "OPR" 
-		}
-		else if ( this.pragma_sym[" "+sym[1]]!=null) // check space separated pragmas (example?)
-		{
-			//arr[0] = sym[0]=="*"?"PC":"LBL";  // LEAVE THAT TO MNEMONIC/PRAGMA TAGGER
-			arr[0] = "LBL";
-			arr[1] = "PGM";
-			arr[2] = "OPR";
-		}
-		else if( this.pragma_sym[sym[1]]!=null ) // check pragma preceeded by LBL
-		{
-			arr[0] = "LBL";
-			arr[1] = "PGM";
-			if(sym[2]!=null) 	arr[2] = "OPR" 
-		}
-		else
-			arr[0] = "---";
-
-		return arr;
-	}
-
-	this.mnemonic_tagger = function(mne,opr)
-	{
-		if(opr=="A") return 1;
-		if(opr.charAt(0)=="#") return 2;
-		
-	}
-
-	/////////////////////////////////////////
-	// GetSrc()                            //
-	// Slice ASM source into lines         //
-	// & Remove all comments               //
-	/////////////////////////////////////////
-	this.getSrc = function(formfield, arg)
-	{
-		var src = formfield.value!=null ? formfield.value.replace(/[“”]/g,"\"") : "";
-
-		if(src.indexOf('\r\n') >= 0)
-			src = src.split('\r\n');
-		else if (src.indexOf('\r') >= 0)
-			src = src.split('\r');
-		else
-			src = src.split('\n');
-
-			// TODO: rename src to srcArr (because it is an array)
-
-		//FVD remove all comments
-		// TODO rule out semicolons between single/double quotes
-		// comments start at position where an unquoted (single/double) and unescaped semicolon extists
-
-
-		if (arg!=null && arg.LComment!=null)		//  strip out left comments if applicable
-		{
-			var cc = oCOM.escapeREGEXP(arg.LComment);
-			for (var i = 0; i < src.length; i++)
-			{
-				var r = RegExp("^[ ]*["+cc+"]"); 
-				if(src[i].match(r) != null) { src[i] = ""; continue }	// skip if line starts with comment
-			}
-		}
-
-		if (arg!=null && arg.RComment!=null)		//  strip out right comments if applicable
-		{
-			var cc = oCOM.escapeREGEXP(arg.RComment);
-			for (var _i = 0; _i < src.length; _i++)
-			{
-				var p_src = src[_i];
-
-				var r = RegExp("[ \t]["+cc+"]");
-				var csrc = src[_i].replace(/[\\][^\\]/g," ");			// substitute any escaped character by space
-				if(csrc.match(r) != null)
-				{
-					var dq_src = csrc.replace(/"([^"]*)"/g, function(match) 					    // replace any character between double quotes by space
-					{
-						for (var j=0, spaces=""; j<match.length-2; j++) spaces += " ";
-						return '"'+spaces+'"';
-					});
-
-					var sq_src = csrc.replace(/'([^']*)"/g, function(match)							// replace any character between single quotes by space
-					{
-						for (var j=0, spaces=""; j<match.length-2; j++) spaces += " ";
-						return '\''+spaces+'\'';
-					});
-
-					var dqp = dq_src.indexOf( dq_src.match(r)[0] );
-					var sqp = sq_src.indexOf( sq_src.match(r)[0] );
-					if(dqp==sqp) src[_i] = src[_i].substring(0,dqp);									// truncate comments
-					else alert("can't mix single quotes and double quotes in same statement");
-				}
-
-				p_src = "";
-
-			}
-		}
-		return src;
-	}
-
-	this.mocha_test = function(_o)
-	{
-		// https://www.chaijs.com/api/assert/#method_deepequal
-		Object.prototype.f = function (arr)
-		{ 
-			var val = this,r = {},arr = arr===undefined?["val","fmt","bytes","err"]:arr;
-			arr.forEach(function(v, i) { if(typeof(val[v])!="undefined") r[v] = val[v]});
-			return r;
-		}
-		var _a = _o.chai.assert; // shortened assert expression
-
-		describe("ASM",function()
-		{
-			describe("validate",function()
-			{
-				it('validates HEX numbers',function(){ _a.equal(oASM.validate("0123456789ABCDEF","[0-9A-Fa-f]+"),true,"HEX numbers") });
-				it('matches BIN numbers',function(){ _a.equal(oASM.validate("10","[01]+"),true,"BIN numbers") });
-				it('matches OCT numbers',function(){ _a.equal(oASM.validate("01234567","[0-7]+"),true,"OCT numbers") });
-				it('matches DEC numbers',function(){ _a.equal(oASM.validate("0123456789","[0-9]+"),true,"DEC numbers") });
-			});
-
-			describe("getNumber",function()
-			{
-				it('parses HEX numbers',function()
-				{
-					_a.deepEqual(oASM.getNumber("$FF").f(), {"val":255,"fmt":"HEX","bytes":1},"edge case 1 byte HEX");
-					_a.deepEqual(oASM.getNumber("$100").f(),{"val":256,"fmt":"HEX","bytes":2},"edge case 2 byte HEX");
-					_a.deepEqual(oASM.getNumber("-$1").f(), {"val":255,"fmt":"HEX","bytes":1},"negative HEX");
-					_a.equal(    oASM.getNumber("$-1").err,'number malformation','misplaced sign');
-					_a.deepEqual(oASM.getNumber(">$FEFF").f(),{"val":254,"fmt":"HEX","bytes":1},"HEX high byte");
-					_a.deepEqual(oASM.getNumber("<$FEFF").f(),{"val":255,"fmt":"HEX","bytes":1},"HEX low byte");
-					_a.deepEqual(oASM.getNumber("$FEFFF").f(),{"val":1044479,"fmt":"HEX","bytes":3,"err":"number range error"},"HEX too large");
-				});
-				it('parses BIN numbers',function()
-				{
-					_a.deepEqual(oASM.getNumber("%11111111").f(), 	{"val":255,"fmt":"BIN","bytes":1},"edge case 1 byte BIN");
-					_a.deepEqual(oASM.getNumber("%100000000").f(),	{"val":256,"fmt":"BIN","bytes":2},"edge case 2 byte BIN");
-					_a.deepEqual(oASM.getNumber("-%1").f(), 		{"val":255,"fmt":"BIN","bytes":1},"negative BIN");
-					_a.equal(oASM.getNumber("--%1").err,'number malformation',"double negative BIN");
-					_a.deepEqual(oASM.getNumber("+%1").f(),       	{"val":1,"fmt":"BIN","bytes":1 },'plus sign ignored');
-					_a.equal(    oASM.getNumber("%-1").err,'number malformation','misplaced sign');
-				});
-				it('parses OCT numbers',function()
-				{
-					_a.deepEqual(oASM.getNumber("0377").f(),  {"val":255,"fmt":"OCT","bytes":1},"edge case 1 byte OCT");
-					_a.deepEqual(oASM.getNumber("0400").f(),  {"val":256,"fmt":"OCT","bytes":2},"edge case 2 byte OCT");
-					_a.deepEqual(oASM.getNumber("-01").f(),   {"val":255,"fmt":"OCT","bytes":1},"negative OCT");
-					_a.equal(    oASM.getNumber("0+1").err,'number malformation','misplaced sign');
-				});
-				it('parses DEC numbers',function()
-				{
-					_a.deepEqual(oASM.getNumber("255").f(), {"val":255,"fmt":"DEC","bytes":1},"edge case 1 byte DEC");
-					_a.deepEqual(oASM.getNumber("256").f(),{"val":256,"fmt":"DEC","bytes":2},"edge case 2 byte DEC");
-					_a.deepEqual(oASM.getNumber("-1").f(), {"val":255,"fmt":"DEC","bytes":1},"negative DEC");
-					_a.deepEqual(oASM.getNumber("-128").f(), {"val":128,"fmt":"DEC","bytes":1},"negative 1 byte DEC");
-					_a.deepEqual(oASM.getNumber("-129").f(), {"val":65407,"fmt":"DEC","bytes":2},"-129 negative 2 byte DEC");
-					_a.deepEqual(oASM.getNumber("-256").f(), {"val":65280,"fmt":"DEC","bytes":2},"-256 negative 2 byte DEC");
-					//65407
-					_a.deepEqual(oASM.getNumber("-32768").f(), {"val":32768,"fmt":"DEC","bytes":2},"-32768 negative 2 byte DEC");
-					_a.equal(oASM.getNumber("-32769").err, 'number range error',"negative 3 byte DEC");
-					_a.deepEqual(oASM.getNumber(">256").f(),{"val":1,"fmt":"DEC","bytes":1},"DEC high byte");
-					_a.deepEqual(oASM.getNumber("<256").f(),{"val":0,"fmt":"DEC","bytes":1},"DEC low byte = 0");
-					_a.deepEqual(oASM.getNumber(">255").f(),{"val":0,"fmt":"DEC","bytes":1},"DEC high byte = undefined");
-					_a.deepEqual(oASM.getNumber("0").f(),   {"val":0,"fmt":"DEC","bytes":1},"edge case 1 digit DEC");
-					_a.deepEqual(oASM.getNumber(0).f(), {"val":0,"fmt":"DEC","bytes":1}, "numeric zero");
-				});
-
-				it('parses ASCII encoding',function()
-				{
-					_a.deepEqual(oASM.getNumber('"A"').f(),  {val:193,fmt:'ASC',bytes:1},"double quote sets high bit");
-					_a.deepEqual(oASM.getNumber("'A'").f(),  {val:65, fmt:'ASC',bytes:1},"single quote keeps high bit off");
-
-					_a.deepEqual(oASM.getNumber('"AB"').f(),    {val:49602,fmt:'ASC',bytes:2}, "double quoted two chars");
-					_a.deepEqual(oASM.getNumber("'AB'").f(),    {val:16706,fmt:'ASC',bytes:2}, "single quoted two chars");
-
-					_a.deepEqual(oASM.getNumber("\"\"'\"").f(), {val:41639,fmt:'ASC',bytes:2}, "double quote wrapper, quote char inside");
-					_a.deepEqual(oASM.getNumber("\"'\"\"").f(), {val:42914,fmt:'ASC',bytes:2}, "double quote wrapper, single+double quote");
-
-					_a.deepEqual(oASM.getNumber("\"'\"").f(),   {val:167,fmt:'ASC',bytes:1}, "single quote char with high bit");
-					_a.deepEqual(oASM.getNumber("'\"'").f(),    {val:34, fmt:'ASC',bytes:1}, "double quote char without high bit");
-
-					_a.deepEqual(oASM.getNumber("''").f(["val","err"]),   {val:"NaN","err":"number malformation"}, "empty");
-					_a.deepEqual(oASM.getNumber("\"\"").f(["val","err"]), {val:"NaN","err":"number malformation"}, "empty");
-					_a.deepEqual(oASM.getNumber("").f(["val","err"]),     {val:0}, "empty string currently resolves as DEC zero");
-					_a.deepEqual(oASM.getNumber().f(["val","err"]),       {val:"NaN","err":"number malformation"}, "undefined");
-
-					_a.deepEqual(oASM.getNumber("\"ABC\"").f(), {val:12698307,"fmt":"ASC","bytes":3,"err":"number range error"}, "ASCII too large");
-					_a.deepEqual(oASM.getNumber("'ABC'").f(), {val:4276803,"fmt":"ASC","bytes":3,"err":"number range error"}, "single-quoted ASCII too large");
-					_a.deepEqual(oASM.getNumber("\"A").f(["val"]), {val:"NaN"}, "unclosed double quote");
-				});
-				
-				it('parses VARIABLES',function()
-				{
-					oASM.symtab={"VARIAB":10};
-					_a.deepEqual(oASM.getNumber("VARIAB").f(),{val:10,fmt:'ID',bytes:1},"variable");
-					_a.deepEqual(oASM.getNumber("VARIAA").f(["val","err"]),{val:"NaN",err:"identifier 'VARIAA' does not exist"},"variable");
-				});					
-
-			})
-			
-
-		})
-	}
-
-	// Parse prefixed strings & return base10 equivalent
-	// TODO ALWAYS ASSUME r.bytes as the byte size of the address bus
-	this.getNumber = function(str,arg)   
-	{
-		if(typeof(str) == "number") str = String(str);
-		 var r = "NaN", err = "number malformation", c = str==null || typeof(str)!="string" ? ["",""] : [str.charAt(0),str.substring(1)];
-		Array.prototype.mr = function (m) {  return this[0].match(new RegExp(m))!=null || (this[0]=="0" && this[1]=="")? [m,this[1]] : this }
-		c = c.mr("[1-9]");
-		switch(c[0])
-		{
-			case ">":		// HI-BYTE
-				r = this.getNumber(str.substring(1));
-				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
-				break;
-			case "<":		// LO-BYTE
-				r = this.getNumber(str.substring(1));
-				r.val = r.val & 0xff; r.bytes = 1;
-				break;			
-			case "-":		// NEGATIVE
-				if(str.split("-").length>2) { r.err = "number malformation"; break}
-				r = this.getNumber(str.substring(1));
-				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
-				if(this.maxNumBytes!=null) r.bytes = this.maxNumBytes
-				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
-				break;
-			case "+":		// POSITIVE
-				r = this.getNumber(str.substring(1));
-				break;					
-			case "$":		// HEX
-				if(this.validate(c[1],"[0-9A-Fa-f]+"))
-					r =  {"val":parseInt(c[1],16),"fmt":"HEX","bytes":c[1].length+1>>1};
-				break;
-			case "%":		// BIN
-				if(this.validate(c[1],"[01]+"))
-					r =  {"val":parseInt(c[1],2),"fmt":"BIN","bytes":c[1].length+7>>3};
-				break;
-			case "0":		// OCT
-				if(this.validate(c[1],"[0-7]+"))
-				{
-					var b = (Math.log10(Math.abs(parseInt(c[1],8)))/log2>>3)+1;
-					r =  {"val":parseInt(c[1],8),"fmt":"OCT","bytes":b};
-					break;
-				} // decimal processing if octal processing fails
-			case "[1-9]":	// DEC
-				if (c[1]=="") r =  {"val":parseInt(c[0],16),"fmt":"DEC","bytes":1};
-				if(this.validate(str,"[0-9]+"))
-				{
-					var b = (Math.log10(Math.abs(parseInt(str,10)))/log2>>3)+1;
-					r =  {"val":parseInt(str,10),"fmt":"DEC","bytes":b};
-				}
-				break;
-			case "\"":		    // ASCII  -  high bit will be on if a double quote (") is used and off if enclosed by a signle quote (')
-				var h = 0x80;	// set high bit
-			case "'":           // ASCII - high bit off for single quote
-				var h = h ?? 0x00;
-				var p = c[1].lastIndexOf(c[0]);
-				if(p < 0) { err = "open quote"; r = {"val":NaN}; break; }
-				var s = c[1].substring(0,p);
-				if(s.length == 0) { err = "number malformation"; r = {"val":NaN}; break; }
-
-				for(var i=s.length-1,v=0;i>=0;i--)
-					v += (s.charCodeAt(s.length-1-i) | h) << (8*i);
-
-				r = {"val":v,"fmt":"ASC","bytes":s.length};
-				break;
-			default:
-				if(this.validate(str,"[A-Za-z0-9_.-]+")) // IDENTIFIER
-				{
-					r = this.getIdentifier(str);
-					err = r.err;
-				}
-				// TODO DEBUG !!!
-				if(str=="")
-					r = {"val":0,"fmt":"DEC","bytes":1};
-		}
-		if(r.bytes>2) r.err = "number range error";
-		var m = typeof(str)=="string"?str.match(/(["']).*(["'])/):null;
-		if(m!=null && m.length!=3) err = "open quote"
-
-		r = isNaN(r.val) ? {val:"NaN","str":str,"err":err} : r;
-		r.hex = this.getHexWord(r.val);
-
-		if(this.bDebug) console.log("getNumber("+str+") = "+JSON.stringify(r));
-		return r;
-	}
-
-	this.validate = function(v,rule)
-	{
-		var m = typeof(v)=="string"?v.match(rule):null;
-		if(m!=null && v.match(rule)[0].length==v.length) return true
-		return false;
-	}
-
-	this.getOffset = function(n)   // TODO replace by getExpression ?
-	{
-		var a = n.lastIndexOf("+");
-		var b = n.lastIndexOf("-");
-		var c = a >= 0 && b < 0 ? a : b; // position of sign 
-		var d = n.length - c - 1;		 // length of expression before the sign
-		if (c < 0 && d > 6 || c < 0) return 0;	 
-		nn = n.slice(-d - 1);
-		var nn = this.getNumber(nn);
-		return nn.val == "NaN" ? 0 : nn.val;
-	}	
-
-	this.getExpression = function(str)
-	{
-		// TODO: DEBUG str = '"-"' 
-
-		if(typeof(str)==="number") str += "";
-		var exp = str.split(new RegExp("[+\\-\\*^~\\&\\|]","g"));  // slice at math operators to dig out deeper numbers and symbols
-		var r = {"val":NaN}, err = "expression malformation";
-
-		var c = str==null || typeof(str)!="string"?["",""]:[str.charAt(0),str.substring(1)];
-		switch(c[0])
-		{
-			case ">":		// HI-BYTE
-				r = this.getExpression(str.substring(1));
-				r.val = (r.val >> 8) & 0xff; r.bytes = 1; 
-				return r;
-			case "<":		// LO-BYTE
-				r = this.getExpression(str.substring(1));
-				r.val = r.val & 0xff; r.bytes = 1;
-				return r;
-			case "-":
-				r = this.getExpression(str.substring(1));
-				r.bytes += r.val>(1<<r.bytes*8-1) && r.val<(1<<r.bytes*8) ? 1:0;
-				r.val = (~r.val&(1<<(r.bytes*8))-1)+1;   // 2's complement !!
-				return r;
-							// TODO PROCESS SINGLE LONG STRING BETWEEN QUOTES (only containing escaped characters)
-			case "\"":
-			case "'":		// TODO process as Number if a single character was enclosed and go further to default, otherwise assume string
-				r = oCOM.rtrim(str);
-				r = r.substring(1,r.length-1)   //.replace(RegExp("\\"+c[0],"g"))
-
-				var m1 = r.match(RegExp("\\w*(?<!\\\\)"+c[0],"g"))!=null;	// any unescaped quotes ?           true   = BAD!
-				var m2 = (r.split(RegExp("\\\\"+c[0],"g")).length-1)%2==0;	// count even amount of escaped quotes ? uneven = BAD!
-				r = r.replace(RegExp("\\\\"+c[0],"g"),c[0]);
-				var m3 = r.length;
-
-				// m1==true && m2==even && m3>1 ? most likely a long expression ==> default
-				// m1==false && m3==1 ? Surely a one-letter expression			==> default
-				// m1==false && m2==even && m3>1 ? most likely a long string	==> process string
-
-				if(m3==1)	    // one-letter expression ?
-				{
-					if(m1==true) return {"err":"unpaired quotes in string"};
-					var e={"val":[ r.charCodeAt(0) | (c[0]=="'"?0x00:0x80) ],"type":"string","bytes":1}
-				}
-				else if(m3>1 && m1==false)				// long string ?
-				{
-					//if(m1==true) return {"err":"unpaired quotes in string"};
-					//if(m3>1 && m2==true)
-					//{
-						var e={"val":[],"type":"string","bytes":r.length}
-						for(var i=0;i<r.length;i++)
-						{
-							e.val[i] = r.charCodeAt(i) | (c[0]=="'"?0x00:0x80)
-						}
-						return e;
-					//}
-					//else return {"err":"unpaired quotes in string"};
-				}
-				//else if( m1==true && m2==true ) // long expression ?
-				//{
-					// -> flow to default
-				//}
-
-			default:	// long expression ?
-				// TODO: check if quote enclosures always contain correctly escaped characters (quotes or double quotes)
-
-				var nexp = "",l=0,err = "";
-				for(var i=0;i<exp.length;i++)
-				{
-					l+=exp[i].length+1;
-					var oper = str.charAt(l-1);
-					var e = this.getNumber(exp[i]);
-					exp[i] = e.val;
-					err += e.err==undefined?"":e.err
-					nexp += exp[i]+oper;
-				}
-				if(err.length>0) return {"val":"NaN","err":err}
-
-				var parser = new oCOM.MathParser();
-				if(this.bDebug) console.log(str+" >> oCOM.MathParser().parse('"+nexp+"') = "+parser.parse(nexp))
-				
-				var e = this.getNumber(parser.parse(nexp)+"")
-
-				r = {"val":e.val,"err":(!r.err && !e.err)?"":(r.err+"|"+e.err),"bytes":e.bytes};
-				return r;
-		}	
-	}
-
-	this.getID = function(n) // TODO: get rid of this function
-	{
-		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
-		if(this.validate(n,"[A-Za-z0-9_.]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\ninvalid identifier"}
-		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
-		n = n.substring(0, this.label_len);	// truncate identifier length
-		return {"val":n};
-	}
-
-	this.getIdentifier = function(n)
-	{
-		if(typeof(n)!="string") return {val:"NaN",err:"number malformation"}
-		if(this.validate(n,"[A-Za-z0-9_.]+")==false) return {"val":"NaN","fmt":"ID","err":"syntax error:\nmalformed identifier"}
-
-		n = n.split("+")[0].split("-")[0];  // FVD separate + and - postfixes from labels ???
-		n = n.substring(0, this.label_len);	// truncate identifier length
-		if(oASM.symtab[n] === undefined) 
-			return {"val":"NaN","fmt":"ID","err":"identifier '"+n+"' does not exist"}
-
-		var b = (Math.log10(Math.abs( oASM.symtab[n] ))/log2>>3)+1;
-		return {"val":oASM.symtab[n],"fmt":"ID","bytes":b};
-	}
-
-	this.getSym = function()
-	{
-		var c = this.getChar();
-		if (c == 'EOF') return null;
-		var sym = [''];
-		var s = 0;		// string index
-		var m = false;  // multi character
-		var q = false;	// quote
-		while ((c != ';') && (c != '\n') && (c != 'EOF'))
-		{
-			if ((c == ' ' || c == '\t') && !q)
-			{
-				if(m)
-				{
-				sym[++s] = '';
-				m = false;
-				}
-			}
-			else if (c == "'" || c == "\"")
-			{
-				sym[s] += c;
-				q = !q			// toggle quote
-				m = false;
-			}
-			else
-			{
-				sym[s] += c;
-				m = true;
-			}
-			c = this.getChar();
-		}
-		while ((sym.length) && (sym[sym.length - 1] == '')) sym.length--;
-		return (c == 'EOF') ? null : sym;
-	}
-
-
-	this.getChar = function()
-	{
-		if (this.srcl >= this.codesrc.length) return 'EOF';
-		if (this.srcc >= this.codesrc[this.srcl].length)
-		{
-			this.srcc = 0;
-			this.srcl++;
-			return '\n';
-		}
-		else
-		{
-			var c = this.peekChar();
-			this.srcc++;
-			return c
-		}
-	}
-	
-	this.peekChar = function()
-	{
-		return this.codesrc[this.srcl].charAt(this.srcc);
-	}
-
-	this.getByteArray = function(arg)
-	{
-		str = arg.replace(/[^A-Fa-f0-9]/g, "");
-		if (str.length % 2 != 0) { displayError('format error:\nwrong or odd digits'); return false }
-		for (var dat = []; dat.length < (arg.length / 2);)
-		{
-			dat[dat.length] = parseInt(arg.substring(dat.length * 2, dat.length * 2 + 2), 16);
-		}
-		return dat;
-	}
-
-	this.getBitArray = function(arg)
-	{
-		str = arg.replace(/[^0-1]/g, "");
-		if (arg != str || arg.length % 8 != 0)
-		{
-			displayError('format error:\nwrong or odd digits');
-			return false;
-		}
-		for (var dat = []; dat.length < (arg.length / 8);)
-		{
-			dat[dat.length] = parseInt(arg.substring(dat.length * 8, dat.length * 8 + 8), 2);
-		}
-		return dat;
-	}
-
-	// A pragma is a directive that provides instructions
-	// to the assembler on how to process code.
-
-	this.parse_pragma = function(sym,pass,xarg)
-	{
-		var ofs = xarg===undefined || xarg.ofs===undefined ? 0 : xarg.ofs  
-		switch(sym[ofs])
-		{
-/*
-			case "ORG":
-			case "*=":
-				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-				var dat = [];
-				var e = this.getExpression(arr[0]);
-				if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
-				if (e.err) { displayError(e.err); return {"val":false}  }
-				dat[0]     = (e.val & 0xFF)+"";	    // extract  lo byte
-				dat[1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
-
-				oASM.code_pc[oASM.get_code_len()] = e.val & 0xFFFF;		//  register ORG as program counter change at byte index (for byte stream listing) 
-
-				this.set_pc(e.val);
-				listing.value += "$"+this.getHexWord(this.pc);
-				return {"val":true}
-
-			case "EQU":
-			case "=":
-				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-				var dat = [];
-				var e = this.getExpression(arr[0]);
-				if(e.bytes>2) e.err += "expression exceeds 2 bytes "+(e.bytes==undefined?"":("("+e.bytes+")"))
-				if (e.err) { displayError(e.err); return {"val":false}  }
-	
-				if(pass==1)
-				{
-					var lbl = oASM.getID(sym[0]).val;
-					oASM.symtab[lbl] = e.val;
-					oASM.sym_link(
-					{
-						 "type": "def"
-						,"PC": this.pc
-						,"val": e.val
-						,"sym": lbl
-						,"sym0": sym[0]
-					})
-				}
-				listing.value += "$"+(e.bytes==1? this.getHexByte(e.val) : this.getHexWord(e.val) );
-				return {"val":true}
-
-			case "HEX":
-				var arg = sym.slice(ofs + 1, sym.length).join(" ");
-				var dat = this.getByteArray(arg);
-				if (pass == 1) listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
-				if (pass == 2)
-				{
-					oASM.concat_code(dat);
-					listing.value += arg.replace(/[^A-Fa-f0-9]/g, "");
-				}
-				this.add_pc(dat.length);
-				return {"val":true};
-
-			case "BIN":
-				var arg = sym.slice(ofs + 1, sym.length).join(" ");
-				var dat = this.getBitArray(arg);
-				if (pass == 1) listing.value += arg;
-				if (pass == 2)
-				{
-					oASM.concat_code(dat);
-					listing.value += arg;
-				}
-				this.add_pc(dat.length);
-				return {"val":true};
-*/
-			case "ASC":
-				// TODO process escape characters !
-				var str = sym.join(" ").split(/"|“|”/g)[1];
-				eval("var arg=\"" + str + "\"");
-				if (pass == 1) listing.value += "\"" + arg + "\"";
-				var dat = [];
-				for (var i = 0; i < arg.length; i++)
-					dat[i] = getAscii(arg.charAt(i));
-				if (pass == 2)
-				{
-					oASM.concat_code(dat);
-					//listing.value += "\"" + arg + "\"";
-					for (var i = 0; i < arg.length; i++)
-						listing.value += this.getHexByte(dat[i]);
-				}
-				this.add_pc(dat.length);
-				return {"val":true};			
-
-			case ".ASCIIZ":
-				// Define a string with a trailing zero.
-				// https://cc65.github.io/doc/ca65.html#ss11.5
-				return {"val":false};
-
-			case ".END":
-				//listing.value += sym[0];
-				return {"val":true};
-
-			case ".WORD":
-				// process all other symbols !
-				// expect ANY aritmetic expression 
-				// from which the outcome is 2 bytes long
-				// e.g. $FFFF
-				// e.g. %01010
-				// e.g. >ADR - generates only one byte !
-				// e.g. *12
-				// e.g. >$FFFF - generates only one byte !
-
-				var arr = sym.slice(ofs + 1, sym.length).join("").split(",");
-				if(pass==1) listing.value += arr.join(",");
-				if(pass==2)
-				{
-					var dat = [];
-					for(var i=0;i<arr.length;i++)
-					{
-						var e = this.getExpression(arr[i]);
-						if(e.bytes!=2) e.err += "expression is not 2 bytes long "+(e.bytes==undefined?"":("("+e.bytes+")"))
-						if (e.err) { displayError(e.err); return {"val":false}  }
-						dat[i<<1]     = (e.val & 0xFF)+"";	    // extract  lo byte
-						dat[(i<<1)+1] = (e.val >> 8 & 0xFF)+"";	// truncate hi byte
-						arr[i] = this.getHexWord(e.val & 0xFFFF);
-					}
-					oASM.concat_code(dat);
-					listing.value += arr.join(",");
-				}
-				this.add_pc(arr.length*2);
-
-				return {"val":true}
-
-			case ".BYTE":	// ca65
-			case "DFB":		// Merlin
-				// numerical expressions and strings are split as array with byte size elements 
-				var arr = oCOM.CSVParser.parse(  sym.slice(ofs + 1, sym.length).join("") );
-				if(pass==1) listing.value += arr.join(",");
-				if(pass==2)
-				{
-					var dat = [];
-					for(var i=0;i<arr.length;i++)  // loop through CSV elements
-					{
-						var e = this.getExpression(arr[i]);
-						if (e.err) { displayError(e.err); return {"val":false} }
-						if(e.type=="string") 
-						{
-							var utf8Encode = new TextEncoder();
-							var byte_arr = utf8Encode.encode(e.val);
-						}
-						else var byte_arr = this.getNumByteArr(e.val).slice(0,e.bytes);
-
-						var k = dat.length;
-						for(var j=0;j<byte_arr.length;j++)  // loop through element, with potentially larger byte size
-							dat[k+j] = byte_arr[j];
-					}
-
-					for(var i=0;i<dat.length;i++)				// overwrite arr
-						arr[i] = this.getHexByte(dat[i]);
-
-					oASM.concat_code(dat);
-					listing.value += arr.join(" ");
-				}
-				this.add_pc(arr.length);
-				return {"val":true}
-
-			case ".DS":
-				// Merlin: .DS=Define Storage, reserves an uninitialised amount of bytes
-				// e.g. Buffer .DS 256   ; Reserves 256 bytes of storage for 'Buffer'
-				var arr = sym.slice(1).join("").split(",");
-
-				var i = arr.length-1;
-				var n = arr[i];
-				var e = this.getExpression(n);
-
-				if(pass==1)
-				{
-					if(isNaN(e.val))
-					{
-						displayError('label must be defined at this stage');  // since in pass1 we need to count the precise data length 
-						return {"val":false}
-					}
-					arr[i] = e.val+"";
-				}
-				if(pass==2)
-				{
-					for(var i=0;i<arr.length;i++)
-					{
-						var e = this.getExpression(arr[i]);
-						arr[i] = e.val+"";
-						//if (e.err) { return displayError(e.err) }
-						//	oper = e.val;
-					}
-					//alert(pass+".DS "+arr.join(","));
-				}
-
-				this.add_pc(arr.length);
-				listing.value += arr.join(",");
-
-				//oASM.getExpression(addr);
-				return {"val":true}
-
-			case ".AT":
-				// https://www.sbprojects.net/sbasm/directives.php?directive=at
-				
-				var bNeg = false;
-				if(sym[1].charAt(0)=="-") { sym[1] = sym[1].substring(1); bNeg = true }
-				if(sym[1].charAt(0)=="/")
-					var str = sym.join(" ").split("/")[1];
-				else
-					var str = sym.join(" ").split(/"|“|”/g)[1];
-
-				eval("var arg=\"" + str + "\"");
-				if (pass == 1) listing.value += "\"" + arg + "\"";
-				for (var i = 0, dat = []; i < arg.length; i++)
-					dat[i] = (i!=arg.length-1) != !bNeg ? getAscii(arg.charAt(i)) : getAscii(arg.charAt(i))-128;
-
-				if (pass == 2)
-				{
-					oASM.concat_code(dat);
-					for (var i = 0; i < arg.length; i++)
-						listing.value += this.getHexByte(dat[i]);
-				}
-				this.add_pc(dat.length);
-				return {"val":true};
-
-			case ".DEFINE":
-				if (sym.length >= 2 && pass==1)	// more than two operands
-				{
-					if (typeof (this.pragma_sym[".DEFINE"]) == "undefined")
-						this.pragma_sym[".DEFINE"] = {};
-					this.pragma_sym[".DEFINE"][sym[1]] = sym.slice(2, sym.length).join(" ");
-					return {"val":true};
-				}				
-				break;
-			case ".IFDEF":
-				break;
-			case ".IFNDEF":
-				break;
-			case ".ENDIF":
-				break;
-			case ".SYMBOLS":
-				break;
-			default:
-				displayError('syntax error:\ninvalid pragma "' + sym[0] + '"');
-				return;
-		}
-		return null;
-	}
-
-	this.sym_link = function(_obj)
-	{
-		// TODO: CHECK IF IT IS REALLY NECESSARY TO DISTINGUISH LOCATIONS FROM DEFINITIONS
-		// 
-
-		var key = ""
-		switch (_obj.type)
-		{
-			case "loc":
-				if (typeof (this.symlink[_obj.PC]) != "undefined") 
-					console.warn("double entry! Label pointing to same address "+ JSON.stringify(_obj) + " ~ "+this.symlink[_obj.PC])
-					key = _obj.PC;
-					this.symlink[key] = {
-					"type": _obj.type,
-					"sym": _obj.sym
-				};
-				break;
-			case "def":
-				key = _obj.val
-
-				for(o in oASM.symlink)							   // search through all symlinks
-					if(oASM.symlink[o].sym == _obj.sym) 
-						delete oASM.symlink[o];  				   // if duplicate found, delete the previous entry
-																   // because: parser first believes it is a label, then realises it is a variable definition 
-
-				if (_obj.val < 256)
-					this.symlink[key] = {
-						"type": "vdef",
-						"sym": _obj.sym
-					};
-				else
-					this.symlink[key] = {
-						"type": "ldef",
-						"sym": _obj.sym
-					};
-				break;
-			default:
-				key = "i" + this.symlink_l
-				this.symlink[key] = _obj;
-				globalThis.symlink_l++;
-		}
-		if(_obj.call) this.symlink[key].call = _obj.call;
-	}
-
-
-	this.read_code = function(idx)
-	{
-		return this.codedst[idx];
-	}
-
-	this.write_code = function(byte)
-	{
-		this.codedst[this.codedst_len] = byte;
-		this.codedst_len++;
-		if(this.bDebug) console.log("write_code("+this.getHexByte(byte)+")")
-		if(byte==2)
-			console.log("DEBUG")
-	}
-
-	this.concat_code = function(byte_array)
-	{
-		for(var i=0;i<byte_array.length;i++)
-		{
-			this.codedst[ this.codedst_len++ ] = byte_array[i];
-		}
-
-		if(this.bDebug)
-		{
-			for(var i=0,s="";i<byte_array.length;i++) s+= this.getHexByte(byte_array[i])
-			console.log("write_code("+this.getHexByte(byte)+")")
-		}
-	}
-
-	this.get_code_len = function()
-	{
-		return this.codedst_len;
-	}
-
-	this.clear_code = function()
-	{
-		this.codedst_len = 0;
-		this.codedst = new Uint8Array(65536);	// 64K buffer
-	}
-
-	this.concat_json = function(json1,json2)
-	{
-		var json3 = json1;
-		for(var i in json2) json3[i] = json2[i];
-		return json3;
-	}
-
-    this.updateScroll = function(el)
-	{
-		el.scrollTop = el.scrollHeight;
-	}
-
-	this.hextab = oCOM.hextab;
-	this.getHexByte = oCOM.getHexByte;
-	this.getHexWord = oCOM.getHexWord;
-	//this.getHexMulti = oCOM.getHexMulti;
-	this.getNumByteArr = oCOM.getNumByteArr;
+function ASM(options) 
+{
+    options = options || {};
+
+    var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
+    var self = this;
+
+    this.version = "0.6.3";
+    this.maxNumBytes = options.maxNumBytes || 2;
+    this.label_len = options.label_len || 8;
+    this.pc = 0;
+    this.symtab = {};
+    this.symlink = {};
+    this.code_pc = [];
+    this.errors = [];
+    this.warnings = [];
+    this.passNo = 0;
+
+    // Addressing mode order deliberately matches the original RetroAppleJS table.
+    this.addrModeName = ["imp", "acc", "imm", "abs", "abx", "aby", "zpg", "zpx", "zpy", "ind", "inx", "iny", "rel"];
+    this.addrModeLongName = {
+        imp: "implicit",
+        acc: "accumulator",
+        imm: "immediate",
+        abs: "absolute",
+        abx: "absolute,x",
+        aby: "absolute,y",
+        zpg: "zero-page",
+        zpx: "zero-page,x",
+        zpy: "zero-page,y",
+        ind: "indirect",
+        inx: "(indirect,X)",
+        iny: "(indirect),Y",
+        rel: "relative"
+    };
+    this.steptab = [1, 1, 2, 3, 3, 3, 2, 2, 2, 3, 2, 2, 2];
+    this.addrtab = { imp: 0, acc: 1, imm: 2, abs: 3, abx: 4, aby: 5, zpg: 6, zpx: 7, zpy: 8, ind: 9, inx: 10, iny: 11, rel: 12 };
+
+    this.defaultAsmCompatibility = ["raJS", "ca65"];
+
+    function mkInstruction(opcodes, asmList) {
+        return {
+            opcodes: opcodes,
+            asm: asmList || self.defaultAsmCompatibility.slice(),
+            parser: parseMnemonic
+        };
+    }
+
+    function mkPragma(ref, asmList, parser) {
+        return {
+            ref: ref,
+            asm: asmList || ["raJS"],
+            parser: parser
+        };
+    }
+
+    function mkMeta(asmList, parser) {
+        return {
+            asm: asmList || [],
+            parser: parser
+        };
+    }
+
+    // 6502 mnemonic table. Each entry is now a dataset object with opcodes + parser.
+    // -1 means the addressing mode is invalid for that mnemonic.
+    this.mnemonics = {
+        ADC: mkInstruction([-1, -1, 0x69, 0x6d, 0x7d, 0x79, 0x65, 0x75, -1, -1, 0x61, 0x71, -1]),
+        AND: mkInstruction([-1, -1, 0x29, 0x2d, 0x3d, 0x39, 0x25, 0x35, -1, -1, 0x21, 0x31, -1]),
+        ASL: mkInstruction([-1, 0x0a, -1, 0x0e, 0x1e, -1, 0x06, 0x16, -1, -1, -1, -1, -1]),
+        BCC: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x90]),
+        BCS: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0xb0]),
+        BEQ: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0xf0]),
+        BIT: mkInstruction([-1, -1, -1, 0x2c, -1, -1, 0x24, -1, -1, -1, -1, -1, -1]),
+        BMI: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x30]),
+        BNE: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0xd0]),
+        BPL: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x10]),
+        BRK: mkInstruction([0x00, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        BVC: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x50]),
+        BVS: mkInstruction([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x70]),
+        CLC: mkInstruction([0x18, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        CLD: mkInstruction([0xd8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        CLI: mkInstruction([0x58, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        CLV: mkInstruction([0xb8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        CMP: mkInstruction([-1, -1, 0xc9, 0xcd, 0xdd, 0xd9, 0xc5, 0xd5, -1, -1, 0xc1, 0xd1, -1]),
+        CPX: mkInstruction([-1, -1, 0xe0, 0xec, -1, -1, 0xe4, -1, -1, -1, -1, -1, -1]),
+        CPY: mkInstruction([-1, -1, 0xc0, 0xcc, -1, -1, 0xc4, -1, -1, -1, -1, -1, -1]),
+        DEC: mkInstruction([-1, -1, -1, 0xce, 0xde, -1, 0xc6, 0xd6, -1, -1, -1, -1, -1]),
+        DEX: mkInstruction([0xca, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        DEY: mkInstruction([0x88, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        EOR: mkInstruction([-1, -1, 0x49, 0x4d, 0x5d, 0x59, 0x45, 0x55, -1, -1, 0x41, 0x51, -1]),
+        INC: mkInstruction([-1, -1, -1, 0xee, 0xfe, -1, 0xe6, 0xf6, -1, -1, -1, -1, -1]),
+        INX: mkInstruction([0xe8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        INY: mkInstruction([0xc8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        JMP: mkInstruction([-1, -1, -1, 0x4c, -1, -1, -1, -1, -1, 0x6c, -1, -1, -1]),
+        JSR: mkInstruction([-1, -1, -1, 0x20, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        LDA: mkInstruction([-1, -1, 0xa9, 0xad, 0xbd, 0xb9, 0xa5, 0xb5, -1, -1, 0xa1, 0xb1, -1]),
+        LDX: mkInstruction([-1, -1, 0xa2, 0xae, -1, 0xbe, 0xa6, -1, 0xb6, -1, -1, -1, -1]),
+        LDY: mkInstruction([-1, -1, 0xa0, 0xac, 0xbc, -1, 0xa4, 0xb4, -1, -1, -1, -1, -1]),
+        LSR: mkInstruction([-1, 0x4a, -1, 0x4e, 0x5e, -1, 0x46, 0x56, -1, -1, -1, -1, -1]),
+        NOP: mkInstruction([0xea, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        ORA: mkInstruction([-1, -1, 0x09, 0x0d, 0x1d, 0x19, 0x05, 0x15, -1, -1, 0x01, 0x11, -1]),
+        PHA: mkInstruction([0x48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        PHP: mkInstruction([0x08, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        PLA: mkInstruction([0x68, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        PLP: mkInstruction([0x28, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        ROL: mkInstruction([-1, 0x2a, -1, 0x2e, 0x3e, -1, 0x26, 0x36, -1, -1, -1, -1, -1]),
+        ROR: mkInstruction([-1, 0x6a, -1, 0x6e, 0x7e, -1, 0x66, 0x76, -1, -1, -1, -1, -1]),
+        RTI: mkInstruction([0x40, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        RTS: mkInstruction([0x60, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        SBC: mkInstruction([-1, -1, 0xe9, 0xed, 0xfd, 0xf9, 0xe5, 0xf5, -1, -1, 0xe1, 0xf1, -1]),
+        SEC: mkInstruction([0x38, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        SED: mkInstruction([0xf8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        SEI: mkInstruction([0x78, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        STA: mkInstruction([-1, -1, -1, 0x8d, 0x9d, 0x99, 0x85, 0x95, -1, -1, 0x81, 0x91, -1]),
+        STX: mkInstruction([-1, -1, -1, 0x8e, -1, -1, 0x86, -1, 0x96, -1, -1, -1, -1]),
+        STY: mkInstruction([-1, -1, -1, 0x8c, -1, -1, 0x84, 0x94, -1, -1, -1, -1, -1]),
+        TAX: mkInstruction([0xaa, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        TAY: mkInstruction([0xa8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        TSX: mkInstruction([0xba, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        TXA: mkInstruction([0x8a, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        TXS: mkInstruction([0x9a, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        TYA: mkInstruction([0x98, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+    };
+
+    // Pragmas/directives. Parser functions are intentionally in the dataset.
+    this.pragma = {
+        "ORG":   mkPragma("ORG",     ["raJS", "ca65"], parsePragmaORG),
+        ".ORG":  mkPragma("ORG",     ["raJS", "ca65"], parsePragmaORG),
+        "*=":    mkPragma("ORG",     ["raJS"], parsePragmaORG),
+        "OBJ":   mkPragma("ORG",     ["raJS", "Merlin"], parsePragmaORG),
+        ".OR":   mkPragma("ORG",     ["raJS", "S-C"], parsePragmaORG),
+
+        "EQU":   mkPragma("EQU",     ["raJS", "ca65"], parsePragmaEQU),
+        "=":     mkPragma("EQU",     ["raJS", "Merlin", "S-C"], parsePragmaEQU),
+        ".EQ":   mkPragma("EQU",     ["raJS", "S-C"], parsePragmaEQU),
+
+        ".BYTE": mkPragma("BYTE",    ["raJS", "ca65", "S-C"], parsePragmaData),
+        "DFB":   mkPragma("BYTE",    ["raJS", "Merlin"], parsePragmaData),
+        "DB":    mkPragma("BYTE",    ["raJS"], parsePragmaData),
+        "HEX":   mkPragma("HEX",     ["raJS", "Merlin"], parsePragmaData),
+        "BIN":   mkPragma("BIN",     ["raJS"], parsePragmaData),
+        "ASC":   mkPragma("ASC",     ["raJS", "Merlin"], parsePragmaData),
+        ".AT":   mkPragma("ASC",     ["raJS", "S-C"], parsePragmaData),
+
+        ".WORD": mkPragma("WORD",    ["raJS", "ca65", "S-C"], parsePragmaData),
+        "DA":    mkPragma("WORD",    ["raJS", "Merlin"], parsePragmaData),
+        "DDB":   mkPragma("WORD_BE", ["raJS", "Merlin"], parsePragmaData),
+
+        ".RES":  mkPragma("RES",     ["raJS", "ca65"], parsePragmaData),
+        ".DS":   mkPragma("RES",     ["raJS", "Merlin"], parsePragmaData),
+
+        ".END":  mkPragma("END",     ["raJS", "ca65", "S-C", "Merlin"], parsePragmaNoop),
+        "DO":    mkPragma("COND",    ["raJS", "Merlin"], parsePragmaNoop),
+        "ELSE":  mkPragma("COND",    ["raJS", "Merlin"], parsePragmaNoop),
+        "FIN":   mkPragma("COND",    ["raJS", "Merlin"], parsePragmaNoop)
+    };
+
+    // Metadata / non-code classifications, also table-driven.
+    this.metadata = {
+        "LBL": mkMeta(["raJS", "ca65", "S-C", "Merlin"], parseMetadataLabel),
+        "---": mkMeta([], parseMetadataUnknown)
+    };
+
+    this.reset = function () {
+        this.pc = 0;
+        this.symtab = {};
+        this.symlink = {};
+        this.code_pc = [];
+        this.errors = [];
+        this.warnings = [];
+        this.passNo = 0;
+        return this;
+    };
+
+    this.set_pc = function (value) {
+        value = Number(value);
+        if (isNaN(value)) value = 0;
+        this.pc = value & 0xffff;
+        return this.pc;
+    };
+
+    this.add_pc = function (delta) {
+        delta = Number(delta);
+        if (isNaN(delta)) delta = 0;
+        return this.set_pc(this.pc + delta);
+    };
+
+    this.getHexByte = function (value) {
+        value = Number(value) & 0xff;
+        if (root.oCOM && typeof root.oCOM.getHexByte === "function") return root.oCOM.getHexByte(value);
+        return ("0" + value.toString(16).toUpperCase()).slice(-2);
+    };
+
+    this.getHexWord = function (value) {
+        value = Number(value) & 0xffff;
+        if (root.oCOM && typeof root.oCOM.getHexWord === "function") return root.oCOM.getHexWord(value);
+        return ("000" + value.toString(16).toUpperCase()).slice(-4);
+    };
+
+    this.pcHex = function (value) {
+        return "0x" + this.getHexWord(value);
+    };
+
+    this.opcHex = function (value) {
+        return "0x" + this.getHexByte(value);
+    };
+
+    this.valHex = function (value, bytes) {
+        return bytes === 1 ? "0x" + this.getHexByte(value) : "0x" + this.getHexWord(value);
+    };
+
+    this.isMnemonic = function (token) {
+        return !!this.mnemonicInfo(token);
+    };
+
+    this.isPragma = function (token) {
+        return !!this.pragmaInfo(token);
+    };
+
+    this.mnemonicInfo = function (token) {
+        return this.mnemonics[String(token || "").toUpperCase()] || null;
+    };
+
+    this.pragmaInfo = function (token) {
+        return this.pragma[String(token || "").toUpperCase()] || null;
+    };
+
+    this.metadataInfo = function (tagName) {
+        return this.metadata[String(tagName || "").toUpperCase()] || null;
+    };
+
+    this.getID = function (text) {
+        text = String(text || "").trim();
+        text = text.split("+")[0].split("-")[0];
+        return text.substring(0, this.label_len);
+    };
+
+    this.splitSource = function (sourceText) {
+        return String(sourceText == null ? "" : sourceText).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    };
+
+    this.stripRightComment = function (line) {
+        var text = String(line || "").replace(/[“”]/g, "\"");
+        var out = "";
+        var quote = "";
+        var escaped = false;
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (escaped) { out += ch; escaped = false; continue; }
+            if (ch === "\\") { out += ch; escaped = true; continue; }
+            if (quote) {
+                out += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === '"') { quote = ch; out += ch; continue; }
+            if (ch === ";") break;
+            out += ch;
+        }
+        return out;
+    };
+
+    this.splitCSV = function (text) {
+        text = String(text == null ? "" : text);
+        if (root.oCOM && root.oCOM.CSVParser && typeof root.oCOM.CSVParser.parse === "function") {
+            return root.oCOM.CSVParser.parse(text).filter(function (s) { return s != null && String(s).length > 0; });
+        }
+        var out = [];
+        var cur = "";
+        var quote = "";
+        var escaped = false;
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (escaped) { cur += ch; escaped = false; continue; }
+            if (ch === "\\") { cur += ch; escaped = true; continue; }
+            if (quote) {
+                cur += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === '"') { quote = ch; cur += ch; continue; }
+            if (ch === ",") { out.push(cur.trim()); cur = ""; continue; }
+            cur += ch;
+        }
+        out.push(cur.trim());
+        return out.filter(function (s) { return s.length > 0; });
+    };
+
+    this.statement_splitter = function (line) {
+        var text = this.stripRightComment(line).trim();
+        if (!text) return [];
+        var sym = [];
+        var token = "";
+        var quote = "";
+        var escaped = false;
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (escaped) { token += ch; escaped = false; continue; }
+            if (ch === "\\") { token += ch; escaped = true; continue; }
+            if (quote) {
+                token += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === '"') { quote = ch; token += ch; continue; }
+            if (ch === " " || ch === "\t") {
+                if (token) { sym.push(token); token = ""; }
+                continue;
+            }
+            token += ch;
+        }
+        if (token) sym.push(token);
+        return sym;
+    };
+
+    this.statement_tagger = function (sym) {
+        sym = sym || [];
+        var tag = [];
+        if (sym.length === 0) return tag;
+
+        var s0 = String(sym[0] || "").toUpperCase();
+        var s1 = String(sym[1] || "").toUpperCase();
+
+        if (this.isMnemonic(s0)) {
+            tag[0] = "MNE";
+            if (sym[1] != null) tag[1] = "OPR";
+        } else if (this.isMnemonic(s1)) {
+            tag[0] = "LBL";
+            tag[1] = "MNE";
+            if (sym[2] != null) tag[2] = "OPR";
+        } else if (this.isPragma(s0)) {
+            tag[0] = "PGM";
+            if (sym[1] != null) tag[1] = "OPR";
+        } else if (this.isPragma(s1)) {
+            tag[0] = "LBL";
+            tag[1] = "PGM";
+            if (sym[2] != null) tag[2] = "OPR";
+        } else if (sym.length === 1) {
+            tag[0] = "LBL";
+        } else {
+            tag[0] = "---";
+        }
+        return tag;
+    };
+
+    this.getTokenByTag = function (sym, tag, wanted) {
+        for (var i = 0; i < tag.length; i++) if (tag[i] === wanted) return sym[i];
+        return undefined;
+    };
+
+    this.getTokenIndexByTag = function (tag, wanted) {
+        for (var i = 0; i < tag.length; i++) if (tag[i] === wanted) return i;
+        return -1;
+    };
+
+    this.getOperandToken = function (sym, tag) {
+        var idx = this.getTokenIndexByTag(tag, "OPR");
+        return idx >= 0 ? sym.slice(idx).join(" ") : undefined;
+    };
+
+    this.registerLabelLocation = function (row, passNo) {
+        if (passNo !== 1 || row.tag[0] !== "LBL") return;
+        var label = this.getID(row.sym[0]);
+        if (!label) return;
+        this.symtab[label] = this.pc;
+        this.symlink[label] = { type: "loc", pc: this.pc };
+    };
+
+    this.registerLabelDefinition = function (row, passNo, value) {
+        if (passNo !== 1 || row.tag[0] !== "LBL") return;
+        var label = this.getID(row.sym[0]);
+        if (!label) return;
+        this.symtab[label] = value & 0xffff;
+        this.symlink[label] = { type: "def", val: value & 0xffff };
+    };
+
+    this.cleanOperandValue = function (operand, mode) {
+        var s = String(operand == null ? "" : operand).trim();
+        var u = s.toUpperCase();
+        if (mode === 2) return s.substring(1); // #value
+        if (mode === 6 || mode === 7 || mode === 8) s = s.charAt(0) === "*" ? s.substring(1) : s;
+        u = s.toUpperCase();
+        if (mode === 7 || mode === 4) return s.substring(0, u.lastIndexOf(",X"));
+        if (mode === 8 || mode === 5) return s.substring(0, u.lastIndexOf(",Y"));
+        if (mode === 9) return s.substring(1, s.lastIndexOf(")"));
+        if (mode === 10) return s.substring(1, u.lastIndexOf(",X)"));
+        if (mode === 11) return s.substring(1, u.lastIndexOf("),Y"));
+        return s;
+    };
+
+    this.operandByteSizeFromValue = function (value) {
+        value = Number(value);
+        if (isNaN(value)) return undefined;
+        if (value < 0) value = ((~(-value) & 0xffff) + 1) & 0xffff;
+        return value <= 0xff ? 1 : 2;
+    };
+
+    this.parseExpressionAtom = function (text, symtab) {
+        text = String(text == null ? "" : text);
+        symtab = symtab || this.symtab;
+
+        var leading = text.match(/^\s*/)[0].length;
+        var rest = text.substring(leading);
+        var m = rest.match(/^(\$[0-9a-f]+|%[01]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')/i);
+        if (!m) return { val: NaN, err: "missing operand after high/low byte operator", consumed: leading };
+
+        var token = m[1];
+        var n = this.getNumber(token, symtab);
+        n.consumed = leading + token.length;
+        n.token = token;
+        return n;
+    };
+
+    this.applyHiLoOperators = function (text, symtab, unresolved) {
+        text = String(text == null ? "" : text);
+        symtab = symtab || this.symtab;
+        unresolved = unresolved || [];
+
+        var out = "";
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (ch !== "<" && ch !== ">") { out += ch; continue; }
+
+            // Treat < and > as high/low byte operators only when they are unary:
+            // at the start of an expression, or immediately after another operator.
+            var p = i - 1;
+            while (p >= 0 && /\s/.test(text.charAt(p))) p--;
+            var prev = p >= 0 ? text.charAt(p) : "";
+            var unary = p < 0 || /[+\-*\/%%&|^~(,]/.test(prev);
+            if (!unary) { out += ch; continue; }
+
+            var j = i + 1;
+            while (j < text.length && /\s/.test(text.charAt(j))) j++;
+            var atom = this.parseExpressionAtom(text.substring(j), symtab);
+            if (atom.err || typeof atom.val !== "number" || isNaN(atom.val)) {
+                unresolved.push(atom.token || text.substring(j).split(/\s+/)[0] || ch);
+                out += "NaN";
+                i = j + Math.max(0, atom.consumed || 0) - 1;
+                continue;
+            }
+
+            var v = ch === ">" ? ((atom.val >> 8) & 0xff) : (atom.val & 0xff);
+            out += String(v);
+            i = j + atom.consumed - 1;
+        }
+        return out;
+    };
+
+    this.getNumber = function (text, symtab) {
+        text = String(text == null ? "" : text).trim();
+        symtab = symtab || this.symtab;
+        if (!text) return { val: NaN, err: "empty number" };
+
+        var hiLo = text.charAt(0);
+        if (hiLo === ">" || hiLo === "<") {
+            var rest = text.substring(1);
+            var atom = this.parseExpressionAtom(rest, symtab);
+            if (atom.err) return atom;
+            var v = hiLo === ">" ? ((atom.val >> 8) & 0xff) : (atom.val & 0xff);
+            var tail = rest.substring(atom.consumed).trim();
+            if (tail) return this.getExpression(String(v) + tail, symtab);
+            return { val: v, bytes: 1, fmt: hiLo === ">" ? "HI" : "LO" };
+        }
+
+        if (/^\$[0-9a-f]+$/i.test(text)) {
+            var hv = parseInt(text.substring(1), 16);
+            return { val: hv, bytes: Math.max(1, Math.ceil((text.length - 1) / 2)), fmt: "HEX" };
+        }
+        if (/^%[01]+$/.test(text)) {
+            var bv = parseInt(text.substring(1), 2);
+            return { val: bv, bytes: Math.max(1, Math.ceil((text.length - 1) / 8)), fmt: "BIN" };
+        }
+        if (/^[+-]?[0-9]+$/.test(text)) {
+            var dv = parseInt(text, 10);
+            return { val: dv, bytes: this.operandByteSizeFromValue(dv), fmt: "DEC" };
+        }
+        if ((text.charAt(0) === '"' || text.charAt(0) === "'") && text.charAt(text.length - 1) === text.charAt(0)) {
+            var body = text.substring(1, text.length - 1);
+            if (body.length === 1) return { val: body.charCodeAt(0) | (text.charAt(0) === '"' ? 0x80 : 0), bytes: 1, fmt: "ASC" };
+            return { val: body.split("").map(function (c) { return c.charCodeAt(0) | (text.charAt(0) === '"' ? 0x80 : 0); }), bytes: body.length, fmt: "ASC", type: "string" };
+        }
+
+        var id = this.getID(text);
+        if (Object.prototype.hasOwnProperty.call(symtab, id)) {
+            var sv = symtab[id];
+            return { val: sv, bytes: this.operandByteSizeFromValue(sv), fmt: "ID" };
+        }
+        return { val: NaN, err: "identifier does not exist: " + text };
+    };
+
+    this.getExpression = function (text, symtab) {
+        text = String(text == null ? "" : text).trim();
+        symtab = symtab || this.symtab;
+        if (!text) return { val: NaN, err: "empty expression" };
+
+        // Single number/symbol/string fast path.  A minus sign is treated as
+        // arithmetic, not as part of an identifier, so LABEL-1 parses as LABEL minus 1.
+        if (/^(>|<)?(\$[0-9a-f]+|%[01]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')$/i.test(text)) {
+            return this.getNumber(text, symtab);
+        }
+
+        var unresolved = [];
+        text = this.applyHiLoOperators(text, symtab, unresolved);
+        var js = text.replace(/\$[0-9a-f]+|%[01]+|[A-Za-z_.$][A-Za-z0-9_.$]*/gi, function (tok) {
+            if (tok.charAt(0) === "$") return "0x" + tok.substring(1);
+            if (tok.charAt(0) === "%") return "0b" + tok.substring(1);
+            var id = self.getID(tok);
+            if (Object.prototype.hasOwnProperty.call(symtab, id)) return String(symtab[id]);
+            if (/^(and|or|not)$/i.test(tok)) return tok;
+            unresolved.push(tok);
+            return "NaN";
+        });
+        if (unresolved.length) return { val: NaN, err: "unresolved identifier(s): " + unresolved.join(", ") };
+        if (!/^[0-9a-fxobA-FXOB+\-*/%&|^~()<> \t.]+$/.test(js)) return { val: NaN, err: "unsafe expression: " + text };
+        try {
+            /* eslint no-new-func: 0 */
+            var val;
+            if (root.oCOM && typeof root.oCOM.MathParser === "function") {
+                try { val = new root.oCOM.MathParser().parse(js); }
+                catch (_ignore) { val = Function("return (" + js + ")")(); }
+            } else {
+                val = Function("return (" + js + ")")();
+            }
+            return { val: Number(val), bytes: this.operandByteSizeFromValue(Number(val)), fmt: "EXP" };
+        } catch (err) {
+            return { val: NaN, err: "expression error: " + err.message };
+        }
+    };
+
+    this.isValidMode = function (entry, mode) {
+        var opctab = entry && entry.opcodes ? entry.opcodes : entry;
+        return !!opctab && mode >= 0 && mode < opctab.length && opctab[mode] >= 0;
+    };
+
+    this.inferAddressMode = function (mnemonic, operand) {
+        var mne = String(mnemonic || "").toUpperCase();
+        var entry = this.mnemonicInfo(mne);
+        var opctab = entry && entry.opcodes;
+        if (!opctab) return { mode: null, mod: undefined, bytes: 0, oby: undefined, opc: undefined, err: "unknown mnemonic" };
+
+        if (operand === undefined || operand === null || String(operand).trim() === "") {
+            if (this.isValidMode(entry, 0)) return this.modeInfo(0, opctab[0]);
+            if (this.isValidMode(entry, 1)) return this.modeInfo(1, opctab[1]);
+            return { mode: null, mod: undefined, bytes: 0, oby: undefined, opc: undefined, err: "missing operand" };
+        }
+
+        var addr = String(operand).trim();
+        var upper = addr.toUpperCase();
+        var mode = null;
+
+        if (upper === "A" && this.isValidMode(entry, 1)) mode = 1;
+        else if (addr.charAt(0) === "#") mode = 2;
+        else if (addr.charAt(0) === "*") {
+            if (upper.indexOf(",X") > 0) mode = 7;
+            else if (upper.indexOf(",Y") > 0) mode = 8;
+            else mode = 6;
+        } else if (addr.charAt(0) === "(") {
+            if (upper.indexOf(",X)") > 0 && upper.indexOf(",X)") === upper.length - 3) mode = 10;
+            else if (upper.indexOf("),Y") > 0 && upper.indexOf("),Y") === upper.length - 3) mode = 11;
+            else if (upper.indexOf(")") > 0) mode = 9;
+        } else {
+            if (upper.indexOf(",X") > 0) mode = 4;
+            else if (upper.indexOf(",Y") > 0) mode = 5;
+            else if (this.isValidMode(entry, 12)) mode = 12;
+            else mode = 3;
+        }
+
+        if (mode == null) return { mode: null, mod: undefined, bytes: 0, oby: undefined, opc: undefined, err: "invalid addressing syntax" };
+        if (!this.isValidMode(entry, mode)) return { mode: mode, mod: this.addrModeName[mode], bytes: this.steptab[mode], oby: Math.max(0, this.steptab[mode] - 1), opc: undefined, err: "invalid address mode for " + mne };
+        return this.modeInfo(mode, opctab[mode]);
+    };
+
+    this.modeInfo = function (mode, opcode) {
+        var bytes = this.steptab[mode] || 0;
+        return { mode: mode, mod: this.addrModeName[mode], bytes: bytes, oby: Math.max(0, bytes - 1), opc: opcode };
+    };
+
+    this.byteCountForDataPragma = function (canonical, operandText, symtab) {
+        operandText = String(operandText == null ? "" : operandText);
+        var arr, n, i, e;
+        switch (canonical) {
+            case "BYTE":
+                arr = this.splitCSV(operandText);
+                n = 0;
+                for (i = 0; i < arr.length; i++) n += this.byteCountForValue(arr[i], symtab, 1);
+                return { bytes: n, oby: n };
+            case "WORD":
+            case "WORD_BE":
+                arr = this.splitCSV(operandText);
+                return { bytes: arr.length * 2, oby: 2 };
+            case "HEX":
+                n = operandText.replace(/[^A-Fa-f0-9]/g, "").length >> 1;
+                return { bytes: n, oby: n };
+            case "BIN":
+                n = operandText.replace(/[^01]/g, "").length >> 3;
+                return { bytes: n, oby: n };
+            case "ASC":
+                return { bytes: this.stringByteLength(operandText), oby: this.stringByteLength(operandText) };
+            case "RES":
+                arr = this.splitCSV(operandText);
+                e = this.getExpression(arr[0] || "0", symtab);
+                n = isNaN(e.val) ? 0 : Math.max(0, e.val | 0);
+                return { bytes: n, oby: n };
+            default:
+                return { bytes: 0, oby: undefined };
+        }
+    };
+
+    this.byteCountForValue = function (text, symtab, defaultBytes) {
+        text = String(text == null ? "" : text).trim();
+        if (!text) return 0;
+        if ((text.charAt(0) === '"' || text.charAt(0) === "'") && text.charAt(text.length - 1) === text.charAt(0)) return text.length - 2;
+        var e = this.getExpression(text, symtab);
+        return e.bytes || defaultBytes || 1;
+    };
+
+    this.stringByteLength = function (text) {
+        text = String(text == null ? "" : text).trim();
+        if (!text) return 0;
+        if ((text.charAt(0) === '"' || text.charAt(0) === "'") && text.charAt(text.length - 1) === text.charAt(0)) return text.length - 2;
+        var m = text.match(/^[\-/]([^\-/]*)[\-/]?$/);
+        if (m) return m[1].length;
+        return text.length;
+    };
+
+    this.preparse = function (sourceText) {
+        var lines = this.splitSource(sourceText);
+        var statements = [];
+        for (var i = 0; i < lines.length; i++) {
+            var raw = lines[i];
+            var statement = String(raw || "").trim();
+            var sym = this.statement_splitter(raw);
+            var tag = sym.length ? this.statement_tagger(sym) : [];
+            // v0.5 keeps one row per source line so the assembly listing can align 1:1 with the source pane.
+            statements.push({ line: i + 1, source: raw, statement: statement, sym: sym, tag: tag });
+        }
+        return statements;
+    };
+
+    this.pass = function (statements, passNo) {
+        var out = [];
+        this.passNo = passNo;
+        this.set_pc(0);
+        if (passNo === 1) {
+            this.symtab = {};
+            this.symlink = {};
+            this.code_pc = [];
+        }
+
+        for (var i = 0; i < statements.length; i++) {
+            var base = statements[i];
+            var row = {
+                line: base.line,
+                pc: this.pc,
+                source: base.source,
+                statement: base.statement,
+                tag: base.tag.slice(),
+                sym: base.sym.slice()
+            };
+
+            this.dispatchRow(row, passNo);
+            if (passNo === 2) out.push(row);
+        }
+        return out;
+    };
+
+    this.dispatchRow = function (row, passNo) {
+        if (!row.tag || row.tag.length === 0) {
+            row.asm = [];
+            return row;
+        }
+        var arg = { asm: this, row: row, passNo: passNo };
+
+        if (row.tag.indexOf("PGM") >= 0) {
+            var pgmIndex = this.getTokenIndexByTag(row.tag, "PGM");
+            var pgm = row.sym[pgmIndex];
+            var pinfo = this.pragmaInfo(pgm);
+            if (!pinfo || typeof pinfo.parser !== "function") return parseMetadataUnknown.call(this.metadata["---"], arg);
+            return pinfo.parser.call(pinfo, arg);
+        }
+
+        if (row.tag.indexOf("MNE") >= 0) {
+            var mneIndex = this.getTokenIndexByTag(row.tag, "MNE");
+            var mne = row.sym[mneIndex];
+            var minfo = this.mnemonicInfo(mne);
+            if (!minfo || typeof minfo.parser !== "function") return parseMetadataUnknown.call(this.metadata["---"], arg);
+            return minfo.parser.call(minfo, arg);
+        }
+
+        var meta = this.metadataInfo(row.tag[0]);
+        if (meta && typeof meta.parser === "function") return meta.parser.call(meta, arg);
+        return parseMetadataUnknown.call(this.metadata["---"], arg);
+    };
+
+    //////////////////////////////
+    // v0.5 compiler functions   //
+    //////////////////////////////
+
+    this.cloneRows = function (rows) {
+        return JSON.parse(JSON.stringify(rows || []));
+    };
+
+    this.buildSymbolTableFromRows = function (rows) {
+        var symtab = {};
+        rows = rows || [];
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            var tag = row.tag || [];
+            var sym = row.sym || [];
+            if (tag[0] !== "LBL" || !sym[0]) continue;
+            var lbl = this.getID(sym[0]);
+            if (!lbl) continue;
+
+            if (tag[1] === "PGM") {
+                var pgmIndex = this.getTokenIndexByTag(tag, "PGM");
+                var pinfo = this.pragmaInfo(sym[pgmIndex]);
+                if (pinfo && pinfo.ref === "EQU" && typeof row.val === "number") symtab[lbl] = row.val & 0xffff;
+                else symtab[lbl] = row.pc & 0xffff;
+            } else {
+                symtab[lbl] = row.pc & 0xffff;
+            }
+        }
+        return symtab;
+    };
+
+    this.compile = function (tokenisedRows) {
+        var rows = this.cloneRows(tokenisedRows || []);
+        var symtab = Object.assign({}, tokenisedRows && tokenisedRows.symtab ? tokenisedRows.symtab : {}, this.buildSymbolTableFromRows(rows));
+        var byteRecords = [];
+        var listingLines = [];
+        var errors = [];
+        var warnings = [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var bytes = this.compileRow(row, symtab);
+            row.bytes = bytes;
+            row.hex = this.bytesToHex(bytes);
+            row.listing = this.formatListingLine(row, bytes);
+            listingLines.push(row.listing);
+
+            if (row.err) errors.push({ line: row.line, statement: row.statement, err: row.err });
+            if (row.warn) warnings.push({ line: row.line, statement: row.statement, warn: row.warn });
+
+            for (var j = 0; j < bytes.length; j++) {
+                byteRecords.push({ pc: (row.pc + j) & 0xffff, val: bytes[j] & 0xff });
+            }
+        }
+
+        var byteCodeLines = this.formatByteCodeLines(byteRecords, 8);
+        return {
+            rows: rows,
+            symtab: symtab,
+            bytes: byteRecords,
+            byteCodeLines: byteCodeLines,
+            byteCodeText: byteCodeLines.join("\n"),
+            listingLines: listingLines,
+            listingText: listingLines.join("\n"),
+            errors: errors.concat((tokenisedRows && tokenisedRows.errors) || []),
+            warnings: warnings.concat((tokenisedRows && tokenisedRows.warnings) || [])
+        };
+    };
+
+    this.compileRow = function (row, symtab) {
+        if (!row || !row.tag || row.tag.length === 0) return [];
+        if (row.err) return [];
+        if (row.tag.indexOf("MNE") >= 0) return this.compileMnemonicRow(row, symtab);
+        if (row.tag.indexOf("PGM") >= 0) return this.compilePragmaRow(row, symtab);
+        return [];
+    };
+
+    this.compileMnemonicRow = function (row, symtab) {
+        var tag = row.tag || [];
+        var sym = row.sym || [];
+        var mneIndex = this.getTokenIndexByTag(tag, "MNE");
+        var oprIndex = this.getTokenIndexByTag(tag, "OPR");
+        var mnemonic = sym[mneIndex];
+        var operand = oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : undefined;
+        var info = this.inferAddressMode(mnemonic, operand);
+        var bytes = [];
+        if (info.err || info.opc === undefined) {
+            row.err = row.err || info.err || "cannot compile mnemonic";
+            return bytes;
+        }
+
+        bytes.push(info.opc & 0xff);
+        if (!info.oby) return bytes;
+
+        var expr = this.cleanOperandValue(operand, info.mode);
+        var e = this.getExpression(expr, symtab);
+        if (e.err || typeof e.val !== "number" || isNaN(e.val)) {
+            row.err = row.err || e.err || "cannot resolve operand: " + expr;
+            return [];
+        }
+
+        var value = e.val & 0xffff;
+        row.val = value;
+        if (info.mode === this.addrtab.rel) {
+            var rel = value - ((row.pc + 2) & 0xffff);
+            if (rel < -128 || rel > 127) {
+                row.err = row.err || "branch target out of range";
+                return [];
+            }
+            bytes.push(rel & 0xff);
+        } else if (info.oby === 1) {
+            bytes.push(value & 0xff);
+        } else if (info.oby === 2) {
+            bytes.push(value & 0xff, (value >> 8) & 0xff);
+        }
+        return bytes;
+    };
+
+    this.compilePragmaRow = function (row, symtab) {
+        var tag = row.tag || [];
+        var sym = row.sym || [];
+        var pgmIndex = this.getTokenIndexByTag(tag, "PGM");
+        if (pgmIndex < 0) return [];
+        var pgm = sym[pgmIndex];
+        var pinfo = this.pragmaInfo(pgm);
+        var ref = pinfo ? pinfo.ref : String(pgm || "").toUpperCase();
+        var operands = sym.slice(pgmIndex + 1).join(" ");
+        switch (ref) {
+            case "BYTE": return this.compileByteData(operands, symtab);
+            case "WORD": return this.compileWordData(operands, symtab, false);
+            case "WORD_BE": return this.compileWordData(operands, symtab, true);
+            case "HEX": return this.compileHexData(operands);
+            case "BIN": return this.compileBinData(operands);
+            case "ASC": return this.compileAsciiData(operands);
+            case "RES": return this.compileReserveData(operands, symtab);
+            case "ORG":
+            case "EQU":
+            case "END":
+            case "COND":
+            default:
+                return [];
+        }
+    };
+
+    this.compileByteData = function (operandText, symtab) {
+        var arr = this.splitCSV(operandText);
+        var out = [];
+        for (var i = 0; i < arr.length; i++) {
+            var b = this.valueToBytes(arr[i], symtab, 1);
+            for (var j = 0; j < b.length; j++) out.push(b[j] & 0xff);
+        }
+        return out;
+    };
+
+    this.compileWordData = function (operandText, symtab, bigEndian) {
+        var arr = this.splitCSV(operandText);
+        var out = [];
+        for (var i = 0; i < arr.length; i++) {
+            var e = this.getExpression(String(arr[i]), symtab);
+            var value = (!e.err && typeof e.val === "number") ? (e.val & 0xffff) : 0;
+            if (bigEndian) out.push((value >> 8) & 0xff, value & 0xff);
+            else out.push(value & 0xff, (value >> 8) & 0xff);
+        }
+        return out;
+    };
+
+    this.compileHexData = function (operandText) {
+        var s = String(operandText || "").replace(/[^A-Fa-f0-9]/g, "");
+        var out = [];
+        for (var i = 0; i + 1 < s.length; i += 2) out.push(parseInt(s.substring(i, i + 2), 16) & 0xff);
+        return out;
+    };
+
+    this.compileBinData = function (operandText) {
+        var s = String(operandText || "").replace(/[^01]/g, "");
+        var out = [];
+        for (var i = 0; i + 7 < s.length; i += 8) out.push(parseInt(s.substring(i, i + 8), 2) & 0xff);
+        return out;
+    };
+
+    this.compileAsciiData = function (operandText) {
+        operandText = String(operandText == null ? "" : operandText).trim();
+        var quoted = operandText.match(/^(["'])([\s\S]*)\1$/);
+        var slash = operandText.match(/^[\-/]([\s\S]*)[\-/]?$/);
+        var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
+        var highBit = quoted && quoted[1] === '"';
+        var out = [];
+        for (var i = 0; i < text.length; i++) out.push((text.charCodeAt(i) | (highBit ? 0x80 : 0)) & 0xff);
+        return out;
+    };
+
+    this.compileReserveData = function (operandText, symtab) {
+        var arr = this.splitCSV(operandText);
+        var lenExpr = this.getExpression(String(arr[0] || "0"), symtab);
+        var fillExpr = this.getExpression(String(arr[1] || "0"), symtab);
+        var len = (!lenExpr.err && typeof lenExpr.val === "number") ? Math.max(0, lenExpr.val | 0) : 0;
+        var fill = (!fillExpr.err && typeof fillExpr.val === "number") ? fillExpr.val & 0xff : 0;
+        var out = [];
+        for (var i = 0; i < len; i++) out.push(fill);
+        return out;
+    };
+
+    this.valueToBytes = function (text, symtab, defaultBytes) {
+        text = String(text == null ? "" : text).trim();
+        if (!text) return [];
+        var e = this.getExpression(text, symtab);
+        if (e.type === "string" && Array.isArray(e.val)) return e.val.map(function (v) { return v & 0xff; });
+        if (e.err || typeof e.val !== "number" || isNaN(e.val)) return [0];
+        var bytes = defaultBytes || e.bytes || 1;
+        var value = e.val & 0xffff;
+        var out = [];
+        for (var i = 0; i < bytes; i++) out.push((value >> (8 * i)) & 0xff);
+        return out;
+    };
+
+    this.bytesToHex = function (bytes) {
+        bytes = bytes || [];
+        var out = [];
+        for (var i = 0; i < bytes.length; i++) out.push(this.getHexByte(bytes[i]));
+        return out.join(" ");
+    };
+
+    this.splitStatementAndComment = function (line) {
+        var text = String(line == null ? "" : line).replace(/[“”]/g, "\"");
+        var body = "";
+        var comment = "";
+        var quote = "";
+        var escaped = false;
+
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (escaped) { body += ch; escaped = false; continue; }
+            if (ch === "\\") { body += ch; escaped = true; continue; }
+            if (quote) {
+                body += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === "\"") { quote = ch; body += ch; continue; }
+            if (ch === ";") { comment = text.substring(i).trimRight(); break; }
+            body += ch;
+        }
+
+        return {
+            body: body.trim(),
+            comment: comment
+        };
+    };
+
+    this.defaultListingColumns = { adr: 0, code: 6, lbl: 16, ins: 25, opr: 29, com: 46 };
+    this.listingColumns = Object.assign({}, this.defaultListingColumns);
+    this.listingLabelLen = options.listingLabelLen || 8;
+
+    this.parseListingColumns = function (spec) {
+        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lbl: 16, ins: 25, opr: 29, com: 46 };
+        var parsed = {};
+
+        function put(k, v) {
+            v = Number(v);
+            if (!isFinite(v)) return;
+            parsed[String(k)] = v | 0;
+        }
+
+        for (var d in defaults) put(d, defaults[d]);
+
+        if (spec == null || spec === "") return parsed;
+        if (typeof spec === "object") {
+            for (var ok in spec) put(ok, spec[ok]);
+        } else if (root.oCOM && typeof root.oCOM.parseColumnSpec === "function") {
+            parsed = root.oCOM.parseColumnSpec(spec, defaults);
+        } else {
+            var text = String(spec);
+            var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
+            while ((m = re.exec(text))) put(m[1], m[2]);
+        }
+
+        // Backward-friendly aliases, in case callers still use long names.
+        if (parsed.address != null) parsed.adr = parsed.address;
+        if (parsed.bytes != null) parsed.code = parsed.bytes;
+        if (parsed.label != null) parsed.lbl = parsed.label;
+        if (parsed.instruction != null) parsed.ins = parsed.instruction;
+        if (parsed.operand != null) parsed.opr = parsed.operand;
+        if (parsed.comment != null) parsed.com = parsed.comment;
+
+        return {
+            adr: Number(parsed.adr) | 0,
+            code: Number(parsed.code) | 0,
+            lbl: Number(parsed.lbl) | 0,
+            ins: Number(parsed.ins) | 0,
+            opr: Number(parsed.opr) | 0,
+            com: Number(parsed.com) | 0
+        };
+    };
+
+    this.setListingColumns = function (spec) {
+        this.listingColumns = this.parseListingColumns(spec);
+        return this.listingColumns;
+    };
+
+    this.cropListingField = function (text, width) {
+        text = String(text == null ? "" : text);
+        if (root.oCOM && typeof root.oCOM.textTableClip === "function") return root.oCOM.textTableClip(text, width, "…");
+        if (width == null || !isFinite(Number(width)) || Number(width) < 0) return text;
+        width = Number(width) | 0;
+        if (width === 0) return "";
+        if (text.length <= width) return text;
+        return width === 1 ? "…" : text.substring(0, width - 1) + "…";
+    };
+
+    this.truncateListingLabel = function (label) {
+        return this.cropListingField(label, this.listingLabelLen);
+    };
+
+    this.normaliseListingInstruction = function (row, token, isPragma) {
+        token = String(token == null ? "" : token);
+        if (!token) return "";
+        if (isPragma) {
+            var pinfo = this.pragmaInfo(token);
+            if (pinfo && pinfo.ref) {
+                switch (pinfo.ref) {
+                    case "WORD_BE": return "DDB";
+                    case "BYTE": return "BYTE";
+                    case "WORD": return "WORD";
+                    case "ORG": return "ORG";
+                    case "EQU": return "EQU";
+                    case "RES": return "RES";
+                    case "END": return "END";
+                    case "COND": return token.replace(/^\./, "").toUpperCase();
+                    default: return String(pinfo.ref).replace(/^\./, "").toUpperCase();
+                }
+            }
+            return token.replace(/^\./, "").toUpperCase();
+        }
+        return token.toUpperCase();
+    };
+
+    this.getListingParts = function (row, bytes) {
+        row = row || {};
+        bytes = bytes || [];
+        var tag = row.tag || [];
+        var sym = row.sym || [];
+        var parts = { adr: "", code: "", lbl: "", ins: "", opr: "", com: "" };
+        var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);
+        parts.com = split.comment || "";
+
+        if (bytes.length) {
+            parts.adr = this.getHexWord(row.pc).toLowerCase() + ":";
+            parts.code = this.bytesToHex(bytes).toLowerCase();
+        }
+
+        var lblIndex = this.getTokenIndexByTag(tag, "LBL");
+        var mneIndex = this.getTokenIndexByTag(tag, "MNE");
+        var pgmIndex = this.getTokenIndexByTag(tag, "PGM");
+        var oprIndex = this.getTokenIndexByTag(tag, "OPR");
+
+        if (lblIndex >= 0) parts.lbl = this.truncateListingLabel(sym[lblIndex]);
+        if (mneIndex >= 0) parts.ins = this.normaliseListingInstruction(row, sym[mneIndex], false);
+        else if (pgmIndex >= 0) parts.ins = this.normaliseListingInstruction(row, sym[pgmIndex], true);
+        if (oprIndex >= 0) parts.opr = sym.slice(oprIndex).join(" ");
+
+        return parts;
+    };
+
+    this.formatListingLine = function (row, bytes) {
+        var parts = this.getListingParts(row, bytes || []);
+        var columns = this.listingColumns || this.defaultListingColumns;
+        var order = ["adr", "code", "lbl", "ins", "opr", "com"];
+
+        if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
+            return root.oCOM.renderTextTableRows([parts], columns, {
+                order: order,
+                defaults: this.defaultListingColumns,
+                trimRight: true,
+                singleColumnRaw: true,
+                ellipsis: "…"
+            })[0];
+        }
+
+        // Local fallback for non-browser/unit-test use without COM_MAIN.js.
+        var line = "";
+        var nonEmpty = order.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
+        if (nonEmpty.length === 1) return String(parts[nonEmpty[0]]);
+        for (var i = 0; i < order.length; i++) {
+            var key = order[i];
+            if (!parts[key]) continue;
+            var col = columns[key] | 0;
+            var width = undefined;
+            for (var j = i + 1; j < order.length; j++) {
+                if ((columns[order[j]] | 0) > col) { width = (columns[order[j]] | 0) - col; break; }
+            }
+            var text = this.cropListingField(parts[key], width);
+            if (line.length < col) line = line.padEnd(col, " ");
+            else if (line.length > col) line += " ";
+            line += text;
+        }
+        return line.replace(/\s+$/, "");
+    };
+
+    if (options.listingColumns !== undefined) this.setListingColumns(options.listingColumns);
+
+    this.formatByteCodeLines = function (byteRecords, maxPerLine) {
+        byteRecords = byteRecords || [];
+        maxPerLine = maxPerLine || 8;
+        var lines = [];
+        var curAddr = null;
+        var curBytes = [];
+        var lastAddr = null;
+
+        function flush(asm) {
+            if (curAddr === null || curBytes.length === 0) return;
+            lines.push(asm.getHexWord(curAddr) + ": " + curBytes.map(function (b) { return asm.getHexByte(b); }).join(" "));
+            curAddr = null;
+            curBytes = [];
+            lastAddr = null;
+        }
+
+        for (var i = 0; i < byteRecords.length; i++) {
+            var rec = byteRecords[i];
+            var addr = rec.pc & 0xffff;
+            if (curAddr === null) curAddr = addr;
+            if (lastAddr !== null && ((lastAddr + 1) & 0xffff) !== addr) flush(this);
+            if (curBytes.length >= maxPerLine) flush(this);
+            if (curAddr === null) curAddr = addr;
+            curBytes.push(rec.val & 0xff);
+            lastAddr = addr;
+        }
+        flush(this);
+        return lines;
+    };
+
+    this.compileSource = function (sourceText) {
+        return this.compile(this.tokenise(sourceText));
+    };
+
+    this.tokenise = function (sourceText) {
+        this.reset();
+        var statements = this.preparse(sourceText);
+        this.pass(statements, 1);
+        var result = this.pass(statements, 2);
+        result.symtab = Object.assign({}, this.symtab);
+        result.errors = this.errors.slice();
+        result.warnings = this.warnings.slice();
+        return result;
+    };
+
+    // American spelling alias for callers that expect it.
+    this.tokenize = this.tokenise;
+
+    // Alias with assembler-like naming; v0.5 returns the compiled assembly object.
+    this.assemble = this.compileSource;
+
+    // Backward-compatible alias for callers that only want analysis rows.
+    this.analyse = this.tokenise;
+
+    //////////////////////////////
+    // Dataset parser functions  //
+    //////////////////////////////
+
+    function parseMnemonic(arg) {
+        var asm = arg.asm;
+        var row = arg.row;
+        var passNo = arg.passNo;
+        var mneIndex = asm.getTokenIndexByTag(row.tag, "MNE");
+        var oprIndex = asm.getTokenIndexByTag(row.tag, "OPR");
+        var mnemonic = row.sym[mneIndex];
+        var operand = oprIndex >= 0 ? row.sym.slice(oprIndex).join(" ") : undefined;
+        var info = asm.inferAddressMode(mnemonic, operand);
+
+        if (row.tag[0] === "LBL") asm.registerLabelLocation(row, passNo);
+
+        row.asm = this.asm ? this.asm.slice() : asm.defaultAsmCompatibility.slice();
+        if (info.mod) row.mod = info.mod;
+        if (info.oby) row.oby = info.oby;
+        if (info.opc !== undefined) row.opc = info.opc;
+        if (info.err) row.err = info.err;
+
+        // Optional resolved operand value; useful in pass 2 and harmless for JSON consumers.
+        if (operand !== undefined && info.mode != null && info.mode > 1) {
+            var expr = asm.cleanOperandValue(operand, info.mode);
+            var e = asm.getExpression(expr, asm.symtab);
+            if (!e.err && typeof e.val === "number" && !isNaN(e.val)) row.val = e.val & 0xffff;
+            else if (e.err && !row.err) row.warn = e.err;
+        }
+
+        asm.add_pc(info.bytes || 0);
+        return row;
+    }
+
+    function parsePragmaORG(arg) {
+        var asm = arg.asm;
+        var row = arg.row;
+        var pgmIndex = asm.getTokenIndexByTag(row.tag, "PGM");
+        var operands = row.sym.slice(pgmIndex + 1).join(" ");
+        var org = asm.getExpression(operands, asm.symtab);
+        row.asm = this.asm ? this.asm.slice() : ["raJS"];
+        if (!org.err && typeof org.val === "number" && !isNaN(org.val)) {
+            row.oby = org.bytes || 2;
+            var val = org.val & 0xffff;
+            row.val = val;
+            asm.code_pc[0] = val;
+            asm.set_pc(val);
+        } else {
+            row.err = org.err || "invalid ORG";
+        }
+        return row;
+    }
+
+    function parsePragmaEQU(arg) {
+        var asm = arg.asm;
+        var row = arg.row;
+        var passNo = arg.passNo;
+        var pgmIndex = asm.getTokenIndexByTag(row.tag, "PGM");
+        var operands = row.sym.slice(pgmIndex + 1).join(" ");
+        var eq = asm.getExpression(operands, asm.symtab);
+        row.asm = this.asm ? this.asm.slice() : ["raJS"];
+        if (!eq.err && typeof eq.val === "number" && !isNaN(eq.val)) {
+            row.oby = eq.bytes || asm.operandByteSizeFromValue(eq.val);
+            var val = eq.val & 0xffff;
+            row.val = val;
+            asm.registerLabelDefinition(row, passNo, val);
+        } else {
+            row.err = eq.err || "invalid EQU";
+        }
+        return row;
+    }
+
+    function parsePragmaData(arg) {
+        var asm = arg.asm;
+        var row = arg.row;
+        var passNo = arg.passNo;
+        var pgmIndex = asm.getTokenIndexByTag(row.tag, "PGM");
+        var operands = row.sym.slice(pgmIndex + 1).join(" ");
+        row.asm = this.asm ? this.asm.slice() : ["raJS"];
+
+        if (row.tag[0] === "LBL") asm.registerLabelLocation(row, passNo);
+
+        var bc = asm.byteCountForDataPragma(this.ref, operands, asm.symtab);
+        if (bc.oby !== undefined) row.oby = bc.oby;
+        asm.add_pc(bc.bytes || 0);
+        return row;
+    }
+
+    function parsePragmaNoop(arg) {
+        var row = arg.row;
+        row.asm = this.asm ? this.asm.slice() : ["raJS"];
+        return row;
+    }
+
+    function parseMetadataLabel(arg) {
+        var asm = arg.asm;
+        var row = arg.row;
+        asm.registerLabelLocation(row, arg.passNo);
+        row.asm = this.asm ? this.asm.slice() : ["raJS"];
+        return row;
+    }
+
+    function parseMetadataUnknown(arg) {
+        var row = arg.row;
+        row.asm = this.asm ? this.asm.slice() : [];
+        row.err = row.err || "unclassified statement";
+        return row;
+    }
 }
 
+
+
+/*
+ * Legacy DASM compatibility container.
+ *
+ * ASM_core_v6.js intentionally contains the v6 assembler core only, but
+ * DBG_6502gui.js still creates `new DASM()` during load.  Keep DASM here
+ * so pages that include only ASM_core_v6.js still expose the legacy
+ * debugger/disassembler object expected by DBG_6502gui.js.
+ */
 function DASM()
 {
-	
-    //  ██████  ██ ███████  █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
-    //  ██   ██ ██ ██      ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
-    //  ██   ██ ██ ███████ ███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████  
-    //  ██   ██ ██      ██ ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██ 
-    //  ██████  ██ ███████ ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██ 
-
-    this.disassemble_GUI = function()
-    {
-		var ret = this.disassemble({"code_arr":[this.ByteAt(pc),this.ByteAt(pc+1),this.ByteAt(pc+2)],"pc":pc,"opctab":opctab})
-
-        var disp = '<div style="width:100px;float:left">'+ret.adr_lst+'&nbsp;'+ret.opcode_lst+'</div>'+ret.mnemonic+"<br>"; // works with all fonts (proportional)
-        //var disp = oCOM.padding([ret.adr_lst,ret.opcode_lst,ret.mnemonic],[5,10])+"<br>";  								// only works with monospaced fonts!   
-
-        this.writeShow('regdisp',ret.adr_lst,ret.opcode_lst,ret.mnemonic);
-        this.writeDisplay('dispStep',disp,"beforeend");
-		this.updateScroll(document.getElementById('dispStep'));
-
-		dispmem += disp
-        var dispmem_arr = dispmem.split("<br>");
-        if(dispmem_arr.length>5)
-        {
-			dispmem = dispmem_arr[1]+ "<br>"
-					+ dispmem_arr[2]+ "<br>"
-							+ dispmem_arr[3]+ "<br>"
-							+ dispmem_arr[4]+ "<br>"
-							+ dispmem_arr[5]
-        }
-    }
-
-	this.disassemble = function(arg)
-    {
-		var ops=this.getHexByte(arg.code_arr[0]);					    // instruction
-		var op1=this.getHexByte(arg.code_arr[1]); if (op1==null) op1=0;	// operand 1
-		var op2=this.getHexByte(arg.code_arr[2]); if (op2==null) op2=0;	// operand 2
-
-		const mne   = arg.opctab[ arg.code_arr[0] ][0];						// mnemonic
-		const adm   = arg.opctab[ arg.code_arr[0] ][1];						// addressing mode
-		var expr = mne;
-
-		switch (adm)
-		{
-			case 'imm' :
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;#$'+this.sym_search(op1,adm);
-				break;
-			case 'zpg' :
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;'+this.sym_search("$"+op1,adm);
-				break;
-			case 'acc' :
-				ops+='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;A';
-				break;
-			case 'abs' :
-				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				expr+='&nbsp;'+this.sym_search("$"+op2+op1,adm);
-				break;
-			case 'zpx' :
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;'+this.sym_search("$"+op1,adm)+',X';
-				break;
-			case 'zpy' :
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;'+this.sym_search("$"+op1,adm)+',Y';
-				break;
-			case 'abx' :
-				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				expr+='&nbsp;'+this.sym_search("$"+op2+op1,adm)+',X';
-				break;
-			case 'aby' :
-				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				expr+='&nbsp;'+this.sym_search("$"+op2+op1,adm)+',Y';
-				break;
-			case 'iny' :
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;('+this.sym_search("$"+op1,adm)+'),Y';
-				break;
-			case 'inx' :
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;('+this.sym_search("$"+op1,adm)+',X)';
-				break;
-			case 'rel' :
-				var opv=arg.code_arr[1];
-				var targ=pc+2;
-				if (opv&128) targ-=(opv^255)+1; else targ +=opv;
-				targ&=0xffff;
-				ops+='&nbsp;'+op1+'&nbsp;&nbsp;&nbsp;';
-				expr+='&nbsp;'+this.sym_search("$"+oCOM.getHexWord(targ),adm);
-				break;
-			case 'ind' :
-				ops+='&nbsp;'+op1+'&nbsp;'+op2;
-				expr+='&nbsp;('+this.sym_search("$"+op2+op1,adm)+')';
-				break;
-			default :
-				ops+='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
-		}
-		var ret = {"adr_lst":oCOM.getHexWord(arg.pc),"opcode_lst":ops,"mnemonic":expr}
-		return ret;
-    }
-
-
-    this.getReg = function(r) {
-        switch (r) {
-            case 'PC' : return pc;
-            case 'AC' : return a;
-            case 'XR' : return x;
-            case 'YR' : return y;
-            case 'SR' : return flags;
-            case 'SP' : return sp;
-            default : return '';
-        }
-    }
-
-    this.StatusRegister = function(cfg)
-	{
-	  	var c = cfg.rw;
-		if(c.join("")=="") return "";
-		var bv = this.getReg("SR").toString(2);
-		var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
-		var a = ["N","V",".","B","D","I","Z","C"];
-		var b = ["neg","over","&nbsp;","break","deci","interr","zero","carry"];
-		var s = "<div class=regscroll_h id=rd><div class=regpar>";
-		for(var i=0;i<8;i++)
-			s += ("<div class=regbox>"
-			+"<div class=regadr>"+b[i]+"</div>"
-			+"<div class=regbyte"+(c[i].replace("R","_green").replace("W","_red").replace("B","_yellow"))+">"+bv2.charAt(i)+"</div>"
-			+"</div>"
-			);
-		s+= "</div></div>";
-		return s;
-	}
-
-	this.writeShow = function(dd,a,o,d)
-	{
-		var s = "";
-		var adm = ['imm','zpg','acc','abs','zpx','zpy','abx','aby','iny','inx','rel','ind'];
-	  var b   = ["neg","over","&nbsp;","break","deci","interr","zero","carry"];
-		var instr = d.substring(0,3);
-		var oper  = d.substring(4,d.length);
-		var ops = o.split("&nbsp;");
-	  var nreg = Object.assign({},
-			{"PC":oCOM.getHexWord(this.getReg("PC")),"AC":this.getHexByte(this.getReg("AC")),"XR":this.getHexByte(this.getReg("XR")),"YR":this.getHexByte(this.getReg("YR")),"SR":this.getHexByte(this.getReg("SR")),"SP":this.getHexByte(this.getReg("SP"))},
-			this.nameBit(this.getReg("SR"),["neg","over","&nbsp;","break","deci","interr","zero","carry"]),
-			{"ops":ops});
-
-		switch(instr)
-		{
-			case "ADC":
-				s  = "Add with carry"
-				var opc ={"69":"imm","65":"zpg","75":"zpx","6D":"abs","7D":"abx","79":"aby","61":"inx","71":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "A = A<sub>"+nreg.AC+"h</sub> + "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" + C<sub>"+(this.getReg("SR")&1)+"</sub><br>";
-				s += this.StatusRegister({"rw":["W","W","","","","","W","R"]});
-			break;
-			case "AND":
-				s  = "And"
-				var opc ={"29":"imm","25":"zpg","35":"zpx","2D":"abs","3D":"abx","39":"aby","21":"inx","31":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>"
-				s += "A = A<sub>"+nreg.AC+"h</sub> & "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n"
-				s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-				s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-				// TODO READ CARRY IF INDEXED !!!
-			break;
-			case "ASL":
-				s  = "Arithmetic Shift Left"
-				var opc ={"0A":"acc","06":"zpg","16":"zpx","0E":"abs","1E":"abx"};
-				s += " - ["+opc[ops[0]]+"]<br>"
-				//s += "A = << "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				this.AddressingModeTmpl(opc[ops[0]],nreg);
-				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B05;</div>"
-				var postfix = "<div>&#x2B05;</div>"+this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div><small>&nbsp;"+this.getHexByte(nreg["mem"])+"h</small></div>"
-				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":nreg["mem"].toString(2),"rw":["","","","","","","",""]});
-				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "B":"W";
-				s += this.StatusRegister({"rw":["W","W","","","","","",c]});
-				// TODO SAME FOR ROL !!!
-			break;
-			case "BCC":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Carry Clear<br>";
-				s += "<div>carry-bit "+bv2.charAt(2)+" = 0 ? "
-					+(bv2.charAt(2)=="0" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["","","R","","","","",""]});
-			break;
-			case "BCS":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Carry Set<br>";
-				s += "<div>carry-bit "+bv2.charAt(2)+" = 1 ? "
-					+(bv2.charAt(2)=="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["","","R","","","","",""]});
-			break;
-			case "BEQ":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Result Zero<br>";
-				s += "<div>zero-bit "+bv2.charAt(6)+" = 1 ? "
-					+(bv2.charAt(6)=="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["","","","","","","R",""]});
-			break;
-			case "BIT":
-				s += "Test Bits in Memory with Acc<br>";
-				var opc ={"24":"zpg","2C":"abs"};
-				var postfix = "&nbsp;<div>z=A<sub>"+nreg.AC+"h </sub>&<sub> "+this.getHexByte(this.ByteAt(parseInt(ops[1],16)))+"h</sub></div>";
-				s += this.BitGrid({"value":this.ByteAt(parseInt(ops[1],16)).toString(2),"postfix":postfix,"height":18,"rnames":[""],"rw":["R","R","","","","","",""]});
-				s += this.StatusRegister({"rw":["W","W","","","","","W",""]});
-			break;
-			case "BMI":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Result Minus<br>";
-				s += "<div>negative-bit "+bv2.charAt(0)+" = 1 ? "
-					+(bv2.charAt(0)=="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["R","","","","","","",""]});
-			break;
-			case "BNE":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s = "Branch if Not Equal<br>";
-				s +="<div>zero-bit "+bv2.charAt(6)+" ≠ 1 ? "
-					+(bv2.charAt(6)!="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["","","","","","","R",""]});
-			break;
-			case "BPL":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Result Minus<br>";
-				s +="<div>negative-bit "+bv2.charAt(0)+" ≠ 1 ? "
-					+(bv2.charAt(0)!="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["R","","","","","","",""]});
-			break;
-			case "BRK":
-				s  = "Force Break<br>";
-				// TODO
-				// interrupt,push PC+2, push SR
-			break;
-			case "BVC":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Overflow Clear<br>";
-				s += "<div>overflow-bit "+bv2.charAt(7)+" = 0 ? "
-					+(bv2.charAt(7)=="0" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["","","","","","","","R"]});
-			break;
-			case "BVS":
-				var bv = this.getReg("SR").toString(2);
-				var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-				s  = "Branch on Overflow Set<br>";
-				s +="<div>overflow-bit "+bv2.charAt(7)+" = 1 ? "
-					+(bv2.charAt(7)=="1" ? ("jump "+(129-(parseInt(ops[1],16)^127))):"CONTINUE")+"</div>";
-				s += this.StatusRegister({"rw":["","","","","","","","R"]});
-			break;
-			case "CLC":
-				s = "Clear carry flag<br>";
-				s+= "C = 0";
-				s+= this.StatusRegister({"rw":["","","","","","","","W"]});
-			break;
-			case "CLD":
-				s = "Clear decimal flag<br>";
-				s+= "D = 0";
-				s+= this.StatusRegister({"rw":["","","","","W","","",""]});
-			break;
-			case "CLI":
-				s = "Clear interrupt disable bit<br>";
-				s+= "I = 0";
-				s+= this.StatusRegister({"rw":["","","","","","W","",""]});
-			break;
-			case "CLV":
-				s = "Clear overflow flag<br>";
-				s+= "V = 0";
-				s+= this.StatusRegister({"rw":["","W","","","","","",""]});
-			break;
-			case "CMP":
-				s  = "Compare";
-				var opc ={"C9":"imm","C5":"zpg","D5":"zpx","CD":"abs","DD":"abx","D9":"aby","C1":"inx","D1":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "A<sub>"+nreg.AC+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" ?<br>\r\n";
-				s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
-			break;
-			case "CPX":
-			// TODO
-			break;
-			case "CMY":
-			// TODO
-			break;
-			case "DEC":
-				s  = "Decrement";
-				var opc ={"C6":"zpg","D6":"zpx","CE":"abs","DE":"abx"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "[$"+nreg.ops[2]+nreg.ops[1]+"] = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"-1<br>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "DEX":
-				s  = "Decrement X Register<br>";
-				s += "<div>X = "+nreg.YR+"h-1</div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "DEY":
-				s  = "Decrement Y Register<br>";
-				s += "<div>Y = "+nreg.YR+"h-1</div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "EOR":
-				s  = "Exclusive-OR";
-				var opc ={"49":"imm","45":"zpg","55":"zpx","4D":"abs","5D":"abx","59":"aby","41":"inx","51":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>"
-				s += "A = A<sub>"+nreg.AC+"h</sub> ⊕ "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n"
-				s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-				s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-			break;
-			case "INC":
-				s  = "Increment"
-				var opc ={"E6":"zpg","F6":"zpx","EE":"abs","FE":"abx"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "[$"+nreg.ops[2]+nreg.ops[1]+"] = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"+1<br>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "INX":
-				s  = "Increment X Register<br>";
-				s += "<div>X = "+nreg.XR+"h+1</div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "INY":
-				s  = "Increment Y Register<br>";
-				s += "<div>Y = "+nreg.YR+"h+1</div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "JMP":
-				if(typeof(opc)=="undefined") s = "Jump";
-				var opc ={"4C":"abs","6C":"ind"};
-				s += " - ["+opc[ops[0]]+"]<br>"
-				s += "PC = "+this.AddressingModeTmpl(opc[ops[0]],nreg)//.split("<sub>#")[0]
-			break;
-			case "JSR":
-				if(typeof(opc)=="undefined") s = "Jump Subroutine";
-				var opc ={"20":"abs"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "PC = "+this.AddressingModeTmpl(opc[ops[0]],nreg).split("<sub>#")[0]
-				   +"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-2<br>";
-			break;
-			case "LDY":
-				if(typeof(opc)=="undefined") var opc = {"title":"Load Y Register","reg":"YR","A0":"imm","A4":"zpg","B4":"zpx","AC":"abs","BC":"abx"};
-			case "LDX":
-				if(typeof(opc)=="undefined") var opc = {"title":"Load X Register","reg":"XR","A2":"imm","A6":"zpg","B6":"zpy","AE":"abs","BE":"aby"};
-			case "LDA":
-				if(typeof(opc)=="undefined") var opc = {"title":"Load Accumulator","reg":"AC","A9":"imm","A5":"zpg","B5":"zpx","AD":"abs","BD":"abx","B9":"aby","A1":"inx","B1":"iny"};
-				s += opc.title+" - ["+opc[ops[0]]+"]<br>";
-				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
-				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "R":""	// READS CARRY TO ADD TO X OR Y INDEX !!
-				s += this.StatusRegister({"rw":["W","","","","","","W",c]});
-			break;
-			case "LSR":
-				s  = "Logical Shift Right";
-				var opc ={"4A":"acc","46":"zpg","56":"zpx","4E":"abs","5E":"abx"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				//s += "A = >> "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				s += instr.slice(-1)+"<sub>"+this.getHexByte(this.getReg(opc.reg))+"h</sub> = "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>";
-				var prefix = this.BitUnit( {"value":0,"class":"regbyte_green"} )+"<div>&#x2B95;</div>";
-				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("AC")&1,"reg":"carry"} );
-				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
-				//s += this.StatusRegister({"rw":["W","","","","","","W","W"]});  // runs out of screen
-			break;
-			case "NOP":
-				s  = "No operation";
-			break;
-			case "ORA":
-				s  = "Exclusive-OR";
-				var opc ={"09":"imm","05":"zpg","15":"zpx","0D":"abs","1D":"abx","19":"aby","01":"inx","11":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "A = A<sub>"+nreg.AC+"h</sub> | "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>\r\n";
-				s += this.BitGrid({"value":this.getReg("AC").toString(2),"postfix":"&nbsp;<small>"+nreg.AC+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-				s += this.BitGrid({"value":nreg["mem"].toString(2),"postfix":"&nbsp;<small>"+this.getHexByte(nreg["mem"])+"h</small>","height":18,"rnames":[""],"rw":["","","","","","","",""]});
-			break;
-			case "PHA":
-				s  = "Push Accumulator on Stack<br>";
-				s += "[$1"+nreg.SP+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)))+"h</sub> = A<sub>"+nreg.AC+"h</sub>";
-				+"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-1<br>";
-			break;
-			case "PHP":
-				s  = "Push Processor Status on Stack<br>";
-				s += "[$1"+nreg.SP+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)))+"h</sub> = PS<sub>"+nreg.SR+"h</sub>";
-				+"&nbsp;SP = SP<sub>"+nreg.SP+"h</sub>-1<br>";
-			break;
-			case "PLA":
-				s  = "Pull Accumulator from Stack<br>";
-				s += "SP = SP<sub>"+nreg.SP+"h</sub>+1";
-				s += "&nbsp;A<sub>"+nreg.AC+"h</sub> = [$"+(parseInt(nreg.SP,16)+256+1).toString(16).toUpperCase()+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)+1))+"h</sub>";
-			break;
-			case "PLP":
-				s  = "Pull Processor Status from Stack<br>";
-				s += "SP = SP<sub>"+nreg.SP+"h</sub>+1";
-				s += "&nbsp;PS<sub>"+nreg.SR+"h</sub> = [$"+(parseInt(nreg.SP,16)+256+1).toString(16).toUpperCase()+"]<sub>"+this.getHexByte(this.ByteAt(parseInt("1"+nreg.SP,16)+1))+"h</sub>";
-				s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
-			break;
-			case "ROL":
-				s  = "Rotate Left";
-				var opc ={"2A":"acc","26":"zpg","36":"zpx","2E":"abs","3E":"abx"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				//s += "A = << "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B05;</div>";
-				var postfix = "<div>&#x2B05;</div>"+this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} );
-				s += this.BitGrid({"pretfix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
-				s += this.StatusRegister({"rw":["W","W","W","","","","",""]});
-			break;
-			case "ROR":
-				s  = "Rotate Right";
-				var opc ={"6A":"acc","66":"zpg","76":"zpx","6E":"abs","7E":"abx"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				//s += "A = >> "+this.AddressingModeTmpl(opc[ops[0]],nreg)+"<br>"
-				var prefix = this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} )+"<div>&#x2B95;</div>";
-				var postfix = "<div>&#x2B95;</div>"+this.BitUnit( {"value":this.getReg("SR")&1,"reg":"carry"} );
-				s += this.BitGrid({"prefix":prefix,"postfix":postfix,"height":18,"value":this.getReg("AC").toString(2),"rw":["","","","","","","",""]});
-				s += this.StatusRegister({"rw":["W","","","","","","W","W"]});
-			break;
-			case "RTI":
-			  	s  = "Return from Interrupt<br>";
-				// TODO PULL SR ???
-				s += "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+oCOM.getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>";
-				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>";
-				s += this.StatusRegister({"rw":["W","W","W","W","W","W","W","W"]});
-			break;
-			case "RTS":
-			  	s  = "Return from subroutine<br>";
-				s += "PC = [$1"+this.getHexByte(this.getReg("SP")+1)+"]<sub>"+oCOM.getHexWord(this.ByteAt(this.getReg("SP")+256+1)+this.ByteAt(this.getReg("SP")+256+2)*256+1)+"h</sub>"
-				 +"<br>SP<sub>"+nreg.SP+"h</sub> = SP+2<br>";
-			break;
-			case "SBC":
-				s  = "Substract with borrow";
-				var opc ={"E9":"imm","E5":"zpg","F5":"zpx","ED":"abs","FD":"abx","E9":"aby","E1":"inx","F1":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += "A = A<sub>"+nreg.AC+"h</sub> - "+this.AddressingModeTmpl(opc[ops[0]],nreg)+" - C<sub>"+(this.getReg("SR")&1)+"</sub><br>";
-			break;
-			case "SEC":
-				s = "Set carry flag<br>";
-				s+= "C = 1";
-				s+= this.StatusRegister({"rw":["","","","","","","","W"]});
-			break;
-			case "SED":
-				s = "Set decimal flag<br>";
-				s+= "D = 1";
-				s += this.StatusRegister({"rw":["","","","","W","","",""]});
-			break;
-			case "SEI":
-				s = "Set interrupt disable flag<br>";
-				s+= "I = 1";
-				s += this.StatusRegister({"rw":["","","","","","W","",""]});
-			break;
-			case "STA":
-				s  = "Store Accumulator";
-				var opc ={"85":"zpg","95":"zpx","8D":"abs","9D":"abx","99":"aby","81":"inx","91":"iny"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w",nreg.AC)+" = A<sub>"+nreg.AC+"h</sub><br>";
-				var c = opc[ops[0]]=="abx" || opc[ops[0]]=="aby" ? "R" : "";
-				s += this.StatusRegister({"rw":["","","","","","","",c]});
-			break;
-			case "STX":
-				s  = "Store X"
-				var opc ={"86":"zpg","96":"zpy","8E":"abs"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w",nreg.XR)+" = A<sub>"+nreg.XR+"h</sub><br>";
-			break;
-			case "STY":
-				s  = "Store Y";
-				var opc ={"84":"zpg","94":"zpx","8C":"abs"};
-				s += " - ["+opc[ops[0]]+"]<br>";
-				s += this.AddressingModeTmpl(opc[ops[0]],nreg,"w",nreg.YR)+" = A<sub>"+nreg.YR+"h</sub><br>";
-			break;
-			case "TAX":
-				s  = "Transfer Accumulator to X<br>";
-				s += "<div>X = A<sub>"+nreg.AC+"h<sub></div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "TAY":
-				s  = "Transfer Accumulator to Y<br>";
-				s += "<div>Y = A<sub>"+nreg.AC+"h<sub></div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "TSX":
-			  	s  = "Transfer stack pointer to X";
-				s += "<div>X = SP<sub>"+nreg.SP+"h<sub></div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "TXA":
-				s  = "Transfer X to Accumulator<br>";
-				s += "<div>A = X<sub>"+nreg.XR+"h<sub></div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			case "TXS":
-				s  = "Transfer X to stack pointer";
-				s += "<div>SP = X<sub>"+nreg.XR+"h<sub></div>";
-			break;
-			case "TYA":
-				s  = "Transfer Y to Accumulator<br>";
-				s += "<div>A = Y<sub>"+nreg.YR+"h<sub></div>";
-				s += this.StatusRegister({"rw":["W","","","","","","W",""]});
-			break;
-			default:
-				s  = "";
-		}
-		this.writeDisplay(dd,s);
-	}
-
-    this.nameBit = function(hex,arr)
-	{
-		var nb = new Array();
-		var bv = hex.toString(2);
-		var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7)
-		for(var i=0;i<arr.length;i++)
-			nb[ arr[i] ] = bv2.charAt(i);
-		return nb;
-	}
-
-    this.AddressingModeTmpl = function(adr_mode,narr,rw_mode,reg)
-	{
-		var s = "";
-	  	switch(adr_mode)
-		{
-			case "acc":
-				s += "A<sub>"+narr.AC+"h</sub>";
-				narr["mem"]=this.getReg("AC");
-			break;
-			case "imm":
-				narr["mem"]=parseInt(narr.ops[1],16);
-				s += "#"+narr.ops[1]+"h";
-			break;
-			case "zpg":
-				var adr = parseInt(narr.ops[1],16);
-				narr["mem"]=this.ByteAt( adr );
-				s += "[$"+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?reg:narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "abs":
-				adr = parseInt(narr.ops[2]+narr.ops[1],16)
-				narr["mem"]=this.ByteAt( adr );
-				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				// TODO check effect of report_watch() 'reg' parameter
-				report_watch({"type":adr_mode,"adr":adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "zpx":
-				// operand is zeropage address; effective address is address incremented by X without carry ** 
-				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				adr = base_adr+parseInt(narr.XR,16);
-				s += "["+narr.ops[1]+"+"+narr.XR+"] = "+adr.toString(16).toUpperCase()+"h"
-				narr["mem"]=this.ByteAt( adr );
-				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "zpy":
-				// operand is zeropage address; effective address is address incremented by Y without carry ** 
-				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				adr = base_adr+parseInt(narr.YR,16);
-				s += "["+narr.ops[1]+"+"+narr.YR+"] = "+adr.toString(16).toUpperCase()+"h"
-				narr["mem"]=this.ByteAt( adr );
-				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "abx":
-				// operand is address; effective address is address incremented by X with carry **  
-				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				adr = base_adr+parseInt(narr.XR,16)+parseInt(narr.carry,16);
-				narr["mem"]=this.ByteAt( adr );
-				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.XR+"] = "+adr.toString(16).toUpperCase()+"h";
-				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "aby":
-				// operand is address; effective address is address incremented by Y with carry **  
-				var base_adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				adr = base_adr+parseInt(narr.YR,16)+parseInt(narr.carry,16);
-				narr["mem"]=this.ByteAt( adr );
-				s+="["+narr.ops[2]+narr.ops[1]+"+"+narr.YR+"] = "+adr.toString(16).toUpperCase()+"h";
-				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":(rw_mode=="w"?narr["AC"]:narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "iny":
-				var adr = parseInt(narr.ops[1],16);
-				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256
-				narr["mem"]=this.ByteAt(rel + parseInt(narr.YR,16));
-				s += "[$"+oCOM.getHexWord(rel)+"+"+narr.YR+"h]<sub>"+this.getHexByte(narr["mem"])+"h</sub>";
-				if(rw_mode=="w")
-					report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":this.getHexByte(narr["mem"]),"ins":narr.ops[0]});
-			break;
-			case "inx":
-				var adr = parseInt(narr.ops[1],16);
-				var idx = parseInt(narr.XR,16);
-				var rel = this.ByteAt(adr+idx)+this.ByteAt(adr+idx+1)*256
-				narr["mem"]=this.ByteAt(rel);
-				s += "[[$"+narr.ops[1]+"+"+idx+"]<sub>"+oCOM.getHexWord(rel)+"h</sub>] = "+this.getHexByte(narr["mem"])+"h";
-				report_watch({"type":adr_mode,"adr":adr,"base_adr":base_adr,"val":narr["mem"],"ins":narr.ops[0]});
-			break;
-			//case "rel":
-			//break;
-			case "ind":
-				var adr = parseInt(narr.ops[2]+narr.ops[1],16);
-				var rel = this.ByteAt(adr)+this.ByteAt(adr+1)*256;
-				narr["mem"]=rel;
-				s += "[$"+narr.ops[2]+narr.ops[1]+"]<sub>"+oCOM.getHexWord(narr["mem"])+"h</sub>";
-			break;
-		}
-		return s;
-	}
-
-    this.BitGrid = function(cfg)
-	{
-		var c = cfg.rw;
-		var bv = cfg["value"];
-		var bv2 = ("0000000"+bv).substring(bv.length-1,bv.length+7);
-		var b = cfg["rnames"]==null || cfg["rnames"].length==0?["7","6","5","4","3","2","1","0"]:cfg["rnames"];
-		var s = "<div class=regscroll_h id=rd style=height:"+cfg.height+"px><div class=regpar>\r\n";
-		s += cfg["prefix"]?cfg["prefix"]:""
-		for(var i=0;i<8;i++)
-			s += this.BitUnit( {"value":bv2.charAt(i),"reg":b[i],"width":cfg.width,"height":cfg.height
-				,"class":"regbyte"+(c[i].replace("R","_green").replace("W","_red")) }
-			);
-		s += cfg["postfix"]?cfg["postfix"]:""
-		s += "</div></div>\r\n";
-		return s;
-	}
-
-    this.BitUnit = function(cfg)
-	{
-		return "<div class=regbox style=width:"+(cfg.width?cfg.width:15)+"px;height:"+(cfg.height?cfg.height:40)+"px>"
-		+"<div class="+(cfg.class?cfg.class:"regbyte")+" style=width:"+(cfg.width?cfg.width:15)+"px>"+cfg.value+"</div>"
-		+(cfg.reg?("<div class=regadr style=width:"+(cfg.width?cfg.width:15)+"px>"+cfg.reg+"</div>"):"")
-		+"</div>\r\n"
-	}
-
-	this.writeDisplay = oCOM.writeDisplay;
-
-    this.updateScroll = function(el)
-	{
-		el.scrollTop = el.scrollHeight;
-	}
+    this.hextab = (typeof oCOM != "undefined" && oCOM.hextab) ? oCOM.hextab : ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
 
     this.getHexByte = function(v)
     {
-        console.log("getHexByte("+v+") requires an inheritant")
-    }
+        if(typeof oCOM != "undefined" && oCOM && typeof oCOM.getHexByte == "function") return oCOM.getHexByte(v);
+        v = Number(v) & 0xFF;
+        return this.hextab[(v >> 4) & 0x0F] + this.hextab[v & 0x0F];
+    };
+
+    this.getHexWord = function(v)
+    {
+        if(typeof oCOM != "undefined" && oCOM && typeof oCOM.getHexWord == "function") return oCOM.getHexWord(v);
+        v = Number(v) & 0xFFFF;
+        return this.getHexByte((v >> 8) & 0xFF) + this.getHexByte(v & 0xFF);
+    };
 
     this.ByteAt = function(addr)
     {
-        console.log("ByteAt("+addr+") requires an inheritant")
-    }
+        if(typeof RAM != "undefined" && RAM) return RAM[addr & 0xFFFF] || 0;
+        return 0;
+    };
 
     this.sym_search = function(op,adm)
     {
-        console.log("sym_search("+op+","+adm+") requires an inheritant")
-    }
+        return op + "<small>[" + adm + "]</small>";
+    };
 
+    this.updateScroll = function(el)
+    {
+        if(el) el.scrollTop = el.scrollHeight;
+    };
 
-	// type 0=ref  1=jump 2=sub 3=soft/sw 
-	// TODO: check if we can use these symbols in DASM
-    this.mem_sym = {
-        0xC000:[0,"IOADR"],
-        0x00:[0,"LOC0"],
-        0x01:[0,"LOC1"],
-        0x20:[0,"WNDLFT"],
-        0x21:[0,"WNDWDTH"],
-        0x22:[0,"WNDTOP"],
-        0x23:[0,"WNDBTM"],
-        0x24:[0,"CH"],
-        0x25:[0,"CV"],
-        0x26:[0,"GBASL"],
-        0x27:[0,"GBASH"],
-        0x28:[0,"BASL"],
-        0x29:[0,"BASH"],
-        0x2A:[0,"BAS2L"],
-        0x2B:[0,"BAS2H"],
-        0x30:[0,"COLOR"],
-        0x31:[0,"MODE"],
-        0x32:[0,"INVFLG"],
-        0x33:[0,"PROMPT"],
-        0x34:[0,"YSAV"],
-        0x35:[0,"YSAV1"],
-        0x36:[0,"CSWL"],
-        0x38:[0,"KSWL"],
-        0x3A:[0,"PCL"],
-        0x3B:[0,"PCH"],
-        0x3C:[0,"A1L"],
-        0x3D:[0,"A1H"],
-        0x3E:[0,"A2L"],
-        0x3F:[0,"A2H"],
-        0x40:[0,"A3L"],
-        0x41:[0,"A3H"],
-        0x42:[0,"A4L"],
-        0x43:[0,"A4H"],
-        0x44:[0,"A5L"],
-        0x45:[0,"A5H"],
-        0x45:[0,"ACC"],
-        0x46:[0,"XREG"],
-        0x47:[0,"YREG"],
-        0x48:[0,"STATUS"],
-        0x49:[0,"SPNT"],
-        0x4E:[0,"RNDL"],
-        0x4F:[0,"RNDH"],
-        0x200:[0,"IN"],
-        0x3F0:[0,"BRKV","nEw vECtor For BRK"],
-        0x3F2:[0,"SOFTEV","vECtor For wArm stArt"],
-        0x3F4:[0,"PWREDUP","this must = EOR #A5 oF SOFTEV+1"],
-        0x3F8:[0,"USRADR"]
-    }
+    this.writeDisplay = function(id,html,insertMode)
+    {
+        var el = (typeof id == "string") ? document.getElementById(id) : id;
+        if(!el) return;
+
+        if(insertMode == "beforeend") el.insertAdjacentHTML("beforeend",html || "");
+        else el.innerHTML = html || "";
+    };
+
+    this.getReg = function(r)
+    {
+        switch(r)
+        {
+            case "PC": return (typeof pc    != "undefined") ? pc    : 0;
+            case "AC": return (typeof a     != "undefined") ? a     : 0;
+            case "XR": return (typeof x     != "undefined") ? x     : 0;
+            case "YR": return (typeof y     != "undefined") ? y     : 0;
+            case "SR": return (typeof flags != "undefined") ? flags : 0;
+            case "SP": return (typeof sp    != "undefined") ? sp    : 0;
+            default: return 0;
+        }
+    };
+
+    this.StatusRegister = function(cfg)
+    {
+        cfg = cfg || {};
+        var rw = cfg.rw || ["","","","","","","",""];
+        if(rw.join("") == "") return "";
+
+        var value = this.getReg("SR") & 0xFF;
+        var bits = ("0000000" + value.toString(2)).slice(-8);
+        var names = ["neg","over","&nbsp;","break","deci","interr","zero","carry"];
+        var s = "<div class=regscroll_h id=rd><div class=regpar>";
+        for(var i=0;i<8;i++)
+        {
+            s += "<div class=regbox>"
+               + "<div class=regadr>" + names[i] + "</div>"
+               + "<div class=regbyte" + String(rw[i] || "").replace("R","_green").replace("W","_red").replace("B","_yellow") + ">" + bits.charAt(i) + "</div>"
+               + "</div>";
+        }
+        return s + "</div></div>";
+    };
+
+    this.disassemble_GUI = function()
+    {
+        var pcv = (typeof pc != "undefined") ? (pc & 0xFFFF) : 0;
+        var ret = this.disassemble({
+            code_arr:[this.ByteAt(pcv),this.ByteAt(pcv + 1),this.ByteAt(pcv + 2)],
+            pc:pcv,
+            opctab:(typeof opctab != "undefined") ? opctab : null
+        });
+
+        var disp = '<div style="width:100px;float:left">' + ret.adr_lst + '&nbsp;' + ret.opcode_lst + '</div>' + ret.mnemonic + "<br>";
+
+        this.writeShow("regdisp",ret.adr_lst,ret.opcode_lst,ret.mnemonic);
+        this.writeDisplay("dispStep",disp,"beforeend");
+        this.updateScroll(document.getElementById("dispStep"));
+
+        if(typeof dispmem != "undefined")
+        {
+            dispmem += disp;
+            var dispmem_arr = dispmem.split("<br>");
+            if(dispmem_arr.length > 5)
+            {
+                dispmem = dispmem_arr.slice(Math.max(0,dispmem_arr.length - 6),dispmem_arr.length - 1).join("<br>");
+            }
+        }
+    };
+
+    this.disassemble = function(arg)
+    {
+        arg = arg || {};
+        var code_arr = arg.code_arr || [0,0,0];
+        var table = arg.opctab || [];
+        var pcv = (typeof arg.pc == "number") ? (arg.pc & 0xFFFF) : ((typeof pc != "undefined") ? (pc & 0xFFFF) : 0);
+
+        var op0 = code_arr[0] & 0xFF;
+        var op1v = (code_arr[1] == null ? 0 : code_arr[1]) & 0xFF;
+        var op2v = (code_arr[2] == null ? 0 : code_arr[2]) & 0xFF;
+        var ops = this.getHexByte(op0);
+        var op1 = this.getHexByte(op1v);
+        var op2 = this.getHexByte(op2v);
+
+        var entry = table[op0] || ["???","imp"];
+        var mne = entry[0] || "???";
+        var adm = entry[1] || "imp";
+        var expr = mne;
+
+        switch(adm)
+        {
+            case "imm":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;#$" + this.sym_search(op1,adm);
+                break;
+            case "zpg":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + op1,adm);
+                break;
+            case "acc":
+                ops += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;A";
+                break;
+            case "abs":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;" + this.sym_search("$" + op2 + op1,adm);
+                break;
+            case "zpx":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + op1,adm) + ",X";
+                break;
+            case "zpy":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + op1,adm) + ",Y";
+                break;
+            case "abx":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;" + this.sym_search("$" + op2 + op1,adm) + ",X";
+                break;
+            case "aby":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;" + this.sym_search("$" + op2 + op1,adm) + ",Y";
+                break;
+            case "iny":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;(" + this.sym_search("$" + op1,adm) + "),Y";
+                break;
+            case "inx":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;(" + this.sym_search("$" + op1,adm) + ",X)";
+                break;
+            case "rel":
+                var targ = (pcv + 2) & 0xFFFF;
+                if(op1v & 0x80) targ = (targ - ((op1v ^ 0xFF) + 1)) & 0xFFFF;
+                else targ = (targ + op1v) & 0xFFFF;
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + this.getHexWord(targ),adm);
+                break;
+            case "ind":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;(" + this.sym_search("$" + op2 + op1,adm) + ")";
+                break;
+            default:
+                ops += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+        }
+
+        return {adr_lst:this.getHexWord(pcv),opcode_lst:ops,mnemonic:expr};
+    };
+
+    this.writeShow = function(dd,a,o,d)
+    {
+        var regLine = "";
+        regLine += "PC=" + this.getHexWord(this.getReg("PC")) + " ";
+        regLine += "A="  + this.getHexByte(this.getReg("AC")) + " ";
+        regLine += "X="  + this.getHexByte(this.getReg("XR")) + " ";
+        regLine += "Y="  + this.getHexByte(this.getReg("YR")) + " ";
+        regLine += "SR=" + this.getHexByte(this.getReg("SR")) + " ";
+        regLine += "SP=" + this.getHexByte(this.getReg("SP"));
+        this.writeDisplay(dd,"<div>" + a + "&nbsp;" + o + "&nbsp;" + d + "</div><div>" + regLine + "</div>");
+    };
 }

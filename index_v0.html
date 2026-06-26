@@ -553,426 +553,77 @@
           -->
           <div id="tab2" style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
             <!--form name="tab2" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
-            <script type="text/javascript" src="res/ASM_core_v6.js"></script>
+            <script type="text/javascript" src="res/ASM_core.js"></script>
+            <script type="text/javascript" src="res/ASM_6502.js"></script>
+            <script type="text/javascript" src="res/ASM_6502_gui.js"></script>
+            <link   rel="stylesheet"       href="res/ASM_6502.css">
 
-            <style>
-              /*
-               * ASM namespace rules
-               * Keep tab2 itself owned by the common tab system.
-               * All assembler-specific layout and styling lives below ASM_root.
-               */
-              .ASM_root {
-                --ASM_bg: #0d1117;
-                --ASM_panel: #161b22;
-                --ASM_panel2: #0b0f14;
-                --ASM_border: #30363d;
-                --ASM_text: #e6edf3;
-                --ASM_muted: #8b949e;
-                --ASM_accent: #79b8ff;
-                --ASM_ok: #8bd17c;
-                --ASM_warn: #ffd166;
-                --ASM_bad: #ff8a8a;
-                --ASM_key: #79c0ff;
-                --ASM_string: #a5d6ff;
-                --ASM_number: #f2cc60;
-                --ASM_bool: #ffab70;
+            <div style="padding:0px 90px">
+              <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings')" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+              <button class=appbut value="Tools" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')" title="Tools"><i class="fa fa-toolbox"></i></button>
+            </div>
 
-                width: 1180px;
-                margin: 0px;
-                padding: 0px;
-                color: var(--ASM_text);
-                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-              }
+            <!--  ASM SETTINGS -->
 
-              .ASM_root * {
-                box-sizing: border-box;
-              }
-
-              .ASM_toolbar {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                gap: 8px;
-                margin: 0px 0px 8px 0px;
-                padding: 6px 8px;
-                border: 1px solid var(--ASM_border);
-                border-radius: 10px;
-                background: var(--ASM_panel);
-              }
-
-              .ASM_buttonPrimary {
-                background: #1d4f7a;
-                border-color: #2c6ca3;
-              }
-
-
-              .ASM_status {
-                margin-left: auto;
-                color: var(--ASM_muted);
-                font-size: 13px;
-              }
-
-              .ASM_status_ok { color: var(--ASM_ok); }
-              .ASM_status_warn { color: var(--ASM_warn); }
-              .ASM_status_bad { color: var(--ASM_bad); }
-
-              .ASM_paneHost {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                align-items: start;
-                gap: 10px;
-                width: 100%;
-                max-width: 100%;
-              }
-
-              .ASM_paneHost.ASM_showJson {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-              }
-
-              .ASM_paneHost .ASM_jsonPane {
-                display: none;
-              }
-
-              .ASM_paneHost.ASM_showJson .ASM_jsonPane {
-                display: grid;
-              }
-/*
-              .ASM_pane {
-                min-width: 0;
-                max-width: 100%;
-                display: block;
-                border: 1px solid var(--ASM_border);
-                border-radius: 10px;
-                overflow: hidden;
-                background: var(--ASM_panel);
-              }
-*/
-
-              .ASM_pane {
-                line-height: 0;
-                margin-top:2px;
-                margin-bottom:10px;
-
-              }
-
-              .ASM_editor,
-              .ASM_jsonMount,
-              .ASM_root .com-pane-fr-wrap {
-                display: block;
-                line-height: 21px;
-                border-radius: 10px;
-              }
-
-              .ASM_editor,
-              .ASM_jsonMount {
-                width: 100%;
-                max-width: 100%;
-                min-height: 420px;
-                border: 0;
-                outline: 0;
-                padding: 14px;
-                background: var(--ASM_panel2);
-                color: #000000;
-                font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-                tab-size: 4;
-                white-space: pre;
-                resize: none;
-              }
-
-              .ASM_editor {
-                height: auto;
-                overflow-y: hidden;
-                overflow-x: auto;
-              }
-
-              .ASM_jsonMount {
-                height: 420px;
-                max-height: 420px;
-                overflow-y: auto;
-                overflow-x: auto;
-                resize: none;
-                scrollbar-color: rgba(0,0,0,0.30) transparent;
-                scrollbar-width: thin;
-              }
-
-              .ASM_jsonMount::-webkit-scrollbar { width: 10px; height: 10px; }
-              .ASM_jsonMount::-webkit-scrollbar-track { background: transparent; }
-              .ASM_jsonMount::-webkit-scrollbar-corner { background: transparent; }
-              .ASM_jsonMount::-webkit-scrollbar-thumb {
-                background-color: rgba(0,0,0,0.30);
-                border-radius: 10px;
-                border: 2px solid transparent;
-                background-clip: content-box;
-              }
-
-              .ASM_jsonView {
-                margin: 0;
-                white-space: pre;
-                min-width: max-content;
-                max-width: none;
-                color: #000000;
-              }
-
-              .ASM_jsonMount *,
-              .ASM_jsonKey,
-              .ASM_jsonString,
-              .ASM_jsonNumber,
-              .ASM_jsonBoolean,
-              .ASM_jsonNull { color: #000000 !important; }
-
-
-              .ASM_popupTextArea {
-                width: 360px;
-                height: 74px;
-                margin: 0px;
-                padding: 4px;
-                font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-              }
-
-              .ASM_byteCodeInfo {
-                color: #000000;
-                font-family: arial;
-                font-size: 11px;
-                padding: 0px 6px;
-                white-space: nowrap;
-              }
-
-              /*
-               * Native input[type=button] controls can ignore or flatten box-shadow
-               * on some browsers unless their native appearance is disabled.
-               */
-              .ASM_root input[type="button"].ASM_boardButtonShadow {
-                -webkit-appearance: none;
-                appearance: none;
-                background-color: #f4f4f4;
-                border: 1px solid rgba(0,0,0,0.45);
-                border-radius: 3px;
-                color: #000000;
-                box-shadow: 3px 3px 0px rgba(0,0,0,0.35) !important;
-                margin: 0px 2px 3px 0px;
-                position: relative;
-              }
-
-              .ASM_root input[type="button"].ASM_boardButtonShadow:active {
-                box-shadow: 1px 1px 0px rgba(0,0,0,0.35) !important;
-                transform: translate(2px,2px);
-              }
-
-              .ASM_findReplaceMount {
-                display: inline-flex;
-                align-items: center;
-                min-height: 26px;
-                max-width: 430px;
-                margin: 2px 0px 0px 0px;
-                color: #000000;
-                font-family: arial;
-                font-size: 11px;
-                vertical-align: middle;
-              }
-
-              .ASM_findReplaceMount .com-pane-fr {
-                color: #000000;
-              }
-
-              .ASM_findReplaceMount input {
-                color: #000000;
-              }
-
-              .ASM_root .com-pane-fr-wrap {
-                width: 100%;
-                max-width: 100%;
-                min-height: 420px;
-                padding: 0px;
-                background-color: #f4f4f4;
-                background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
-                background-size: 585px 42px;
-                background-attachment: local;
-                overflow: visible;
-              }
-
-              .ASM_root .com-pane-fr-wrap textarea {
-                background-color: transparent !important;
-                background-image: none !important;
-                color: #000000 !important;
-                -webkit-text-fill-color: #000000 !important;
-                caret-color: #000000;
-              }
-
-              #ASM_sourcePane,
-              .ASM_root #ASM_sourcePane,
-              .ASM_root .com-pane-fr-wrap #ASM_sourcePane {
-                color: #000000 !important;
-                -webkit-text-fill-color: #000000 !important;
-                caret-color: #000000;
-              }
-
-              .ASM_root .com-pane-fr-wrap [class*="com-pane-fr"] {
-                background-color: transparent;
-              }
-
-
-              /* Keep the source pane rendering identical to the listing pane, even after
-                 PANE.bindFindReplace() wraps ASM_sourcePane and injects its own CSS. */
-              .ASM_root .com-pane-fr-wrap,
-              .ASM_root .com-pane-fr-wrap textarea,
-              .ASM_root .com-pane-fr-wrap pre,
-              .ASM_root .com-pane-fr-wrap code,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-overlay,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-layer,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-text,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-match-layer {
-                font-family: courier, monospace !important;
-                font-size: 12px !important;
-                font-weight: 500 !important;
-                line-height: 21px !important;
-                letter-spacing: normal !important;
-                font-kerning: none;
-                font-variant-ligatures: none;
-                text-rendering: auto;
-              }
-
-              .ASM_root .com-pane-fr-wrap #ASM_sourcePane {
-                font: 500 12px/21px courier, monospace !important;
-              }
-
-
-              /* Match the effective Source pane inset to the Listing pane.
-                 The listing textarea gets its final padding from ASM_dotmatrix_bck
-                 (0px top/bottom, 30px left/right).  After find/replace wraps
-                 ASM_sourcePane, the wrapper/overlay stack must not add another
-                 inset or fall back to the generic 14px editor padding. */
-              .ASM_root .com-pane-fr-wrap {
-                padding: 0px !important;
-              }
-
-              .ASM_root .com-pane-fr-wrap #ASM_sourcePane,
-              .ASM_root .com-pane-fr-wrap textarea,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-overlay,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-layer,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-text,
-              .ASM_root .com-pane-fr-wrap .com-pane-fr-match-layer {
-                padding: 0px 30px !important;
-                box-sizing: border-box;
-              }
-
-            .ASM_dotmatrix_bck
-            {
-                background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");                /*background-size: auto;*/
-                /* 52 * 400/500 */
-                background-size: 585px 42px;
-                border-radius:10px;
-                padding: 0px 30px;
-                line-height: 21px;
-                background-attachment:local;
-                color: #000000;
-                font-family: courier,monospace; font-size: 12px; font-weight:500;
-              }
-
-
-
-              .ASM_manualPane {
-                width: 100%;
-                max-width: 100%;
-                margin: 10px 0px 0px 0px;
-                padding: 0px;
-                border-radius: 10px;
-                overflow: hidden;
-              }
-
-              .ASM_manualField {
-                width: calc(100% - 210px);
-                height: 270px;
-                margin-left: 105px;
-                background-color: transparent !important;
-                border-color: transparent !important;
-                resize: none;
-                overflow-y: auto;
-              }
-
-              .ASM_manualField:focus {
-                outline: none;
-              }
-
-              @media (max-width: 1100px) {
-                .ASM_root { width: 100%; }
-                .ASM_paneHost,
-                .ASM_paneHost.ASM_showJson { grid-template-columns: 1fr; }
-                .ASM_status { margin-left: 0; width: 100%; }
-              }
-
-            .vertical {
-              display: flex;
-            }
-
-            .vertical hr {
-              min-height: 100%;
-              max-height: 100vh;
-              margin-left: 7px;
-              opacity: 25%;
-            }
-
-
-            </style>
-
-            <div id="ASM_root" class="ASM_root">
-
-              <div class="vertical" style="height:30px;padding:0px 90px 0px 0px;">
-                <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings');oCOM.POPUP.off('ASM_tools');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.toggle('ASM_tools');oCOM.POPUP.off('ASM_settings');" title="Tools"><i class="fa fa-toolbox"></i></button>
-                <hr>
-                <button class=appbut id="ASM_assembleButton" title="Assemble"><i class="fa fa-play"></i></button>
-              </div>
-
-              <!--  ASM SETTINGS -->
-              <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
-                <div class=toolbox>
-                  <div class=appbox title="Assembler settings" style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
-                    ASSEMBLER<br>
-                    <div style="font-family:arial;font-size:11px">
-                      Listing columns<br>
-                      <input id="ASM_settingsListingColumnsInput" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" size=42 style="font-family:monospace;font-size:11px">
+            <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <div class=toolbox>
+                <div class=appbox title="System" style="text-align:left;padding:0px 6px 0px 6px;">
+                  PRESETS
+                  <div style="font-family:arial;font-size:11px">
+                    
+                    <script>
+                      _TABS["tab2"].SYS = _TABS["tab2"].DEF_SYS;
+                      document.write(oCOM.SystemSelect("ASM_system_param","tab2"));
+                    </script>
+                      
+                    <i class="fa fa-info-circle" style="float:right;margin:3px" onclick="oCOM.POPUP.toggle('ASM_system_param');"></i>
+                    <div id="ASM_system_param" hidden="" style="inline-size: 150px;word-break:break-all;">
+                      <!--  PRELOAD SYSTEM INFO !-->
+                      <script>document.write( oCOM.onSystemSelect(_TABS["tab2"].SYS,"tab2") )</script>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <!--  ASM TOOLS -->
-              <div class="hints1" id="ASM_tools" style="z-index:2;position:absolute;margin-top:3px">
-                <div class=toolbox>
-                  <form name="ASMboard" onsubmit="return false">
-                    <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code output" name="boardText"></textarea><br>
-                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" class="ASM_boardButtonShadow" type="button" value="to emulator">
-                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" class="ASM_boardButtonShadow" type="button" value="to debugger">
-                    <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" class="ASM_boardButtonShadow" value="copy">
-                    <input title="Clear byte code" type="button" class="ASM_boardButtonShadow" value="Clear" onclick="javascript:ASM_clearBoard()">
-                    <span id="ASM_byteCodeInfo" class="ASM_byteCodeInfo">0 bytes</span>
-                    <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('ASM_tools')">
-                  </form>
-                </div>
+            <!--  ASM TOOLS -->
 
-                <!--  ASM ACTION BUTTONS -->
-                <div class=toolbox>
-                  <!--button id="ASM_assembleButton" class=appbut type="button" title="Assemble"><i class="fa fa-cogs"></i></button-->
-                  <button id="ASM_toggleJsonButton" class=appbut type="button" title="Show JSON output"><i class="fa fa-code"></i></button>
-                  <br>
-                </div>
-
-                <!--  ASM FILE TOOLBOX -->
-                <div class=toolbox>
-                  <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
-                    <div class=appbut style="color:black">
-                      load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
-                    </div>
-                    <!--span id="ASM_status" class="ASM_status">Ready.</span-->
-                    <div id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount"></div>
-                </div>
-                </div>
+            <div class="hints1" id="ASM_paste" hidden="" style="z-index:2;position:absolute;margin-top:3px">
+              <div class=toolbox>
+                <form name="ASMboard">
+                  <textarea cols=40 rows=4  placeholder="Paste ByteCode here" name=boardText style="float:left"></textarea><br>
+                  <input type="button" value="Paste" onclick="javascript:onASMPasteboard();onASMBoardPaste()">
+                  <input type="button" value="Clear" onclick="javascript:onASMBoardClear()">
+                  <input type="button" value="X" onclick="javascript:oCOM.POPUP.toggle('ASM_paste')">
+                </form>
               </div>
+            </div>
 
-              <div id="ASM_paneHost" class="ASM_paneHost">
+            <script type="text/javascript">
+            function onASMPasteboard() { var e = document.getElementById('ASM_paste'); e.hidden = !e.hidden; }
+            function onASMBoardPaste()
+            {
+              var e = ASMboard.boardText.value.toUpperCase(); 
+              e = e.replace(/^.*[!-\/;-@G-~].*$/gm,"");   // remove each line with incompliant characters
+              e = e.replace(/[\r\n ]/g,"");               // remove all [cr] [lf] [spaces]                
+              e = e.replace(/([0-9A-F]{4}:)/g,"\n$1");    // introduce linefeed
+              e = e.replace(/([0-9A-F]{2})/g," $1");      // equally separate bytes
+              e = e.replace(/ ([0-9A-F]{2}) ([0-9A-F]{2}): /g,"$1$2:"); // re-join 16-bit addresses
+              e = e.replace(/^[\s\n]/g,"");               // remove heading spaces and linefeeds
+              ass.srcfield.value = e;
+              //ass.listing.value = e;
+              
+              var s = "";
+            }
+            function onASMBoardClear() { ASMboard.boardText.value = "" }; 
+            </script>
 
-                <section class="ASM_pane">
-                  <textarea id="ASM_sourcePane" class="ASM_editor ASM_dotmatrix_bck" spellcheck="false" wrap="off" placeholder="Source code">ORG $6000
+            <form name="ass" onsubmit="return false">
+              <table style="background:#76B9CE;border-radius:10px;">
+                <tr>
+                  <td valign=top style="display:flex;flex-wrap:wrap;width:300px;">
+                    <!-- LEFT PANE -->
+                    <textarea name="srcfield" onscroll="syncScroll(document.forms.ass.srcfield,document.forms.ass.listing)" class="dotmatrix_bck" style="width:280px;height:400px;margin:10px;overflow:auto;white-space:pre;word-wrap:normal;/*white-space:nowrap;*/" wrap=off placeholder="Source code" autofocus>ORG $6000
        LDX #0
 Label1 TXA
        STA $0400,X
@@ -981,478 +632,130 @@ Label1 TXA
        INX
        BNE Label1
        RTS
-.END</textarea>
-                </section>
-
-                <section class="ASM_pane">
-                  <textarea id="ASM_listingPane" class="ASM_editor ASM_dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
-                </section>
-
-                <section id="ASM_jsonPane" class="ASM_pane ASM_jsonPane">
-                  <div id="ASM_jsonMount" class="ASM_jsonMount ASM_dotmatrix_bck" tabindex="0"></div>
-                </section>
-                
-              </div>
-
-              <section id="ASM_manualPane" class="ASM_manualPane CRT_TV DOUBL_TV">
-                <div style="height:120px"></div>
-                <div name="codefield" id="ASM_codefield" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div>
-                <div style="height:300px"></div>
-              </section>
-            </div>
-
-            <script type="text/javascript">
-            var ASM_currentFileName = "sample.S";
-            var ASM_currentJsonText = "";
-            var ASM_currentByteCodeText = "";
-            var ASM_oPANE = null;
-            var ASM_sourceFindReplace = null;
-
-            function ASM_el(id) { return document.getElementById(id); }
-
-            function ASM_applyConfigVars(vars, target, prefix)
-            {
-              target = target || document.documentElement;
-              prefix = prefix || "--";
-              for(var k in vars) target.style.setProperty(prefix + k, vars[k]);
-            }
-
-            var ASM_findReplaceScheme = {
-              "bg":"#f3f3f3",
-              "border":"#d2d2d2",
-              "text":"#000000",
-              "muted":"#666666",
-              "field-bg":"#ffffff",
-              "field-text":"#000000",
-              "active":"#0078d4",
-              "active-bg":"#e9f4ff",
-              "active-text":"#000000",
-              "hover-bg":"#ececec",
-              "hover-text":"#000000",
-              "expander":"#000000"
-            };
-
-            function ASM_applyFindReplaceScheme()
-            {
-              var mount = ASM_el("ASM_sourceFindReplaceMount");
-              if(mount) ASM_applyConfigVars(ASM_findReplaceScheme,mount,"--com-pane-fr-");
-            }
-
-            function ASM_countByteCodeText(text)
-            {
-              var s = String(text || "").toUpperCase();
-
-              // Remove common monitor/listing address prefixes such as "6000:".
-              s = s.replace(/(^|[\r\n])\s*[0-9A-F]{4}\s*:/g,"$1");
-
-              var m = s.match(/\b[0-9A-F]{2}\b/g);
-              return m ? m.length : 0;
-            }
-
-            function ASM_updateByteCodeInfo(byteCount)
-            {
-              var info = ASM_el("ASM_byteCodeInfo");
-              if(info) info.textContent = (byteCount || 0) + " bytes";
-            }
-
-            function ASM_syncByteCodeFromBoard()
-            {
-              var board = ASM_el("ASM_boardText");
-              ASM_currentByteCodeText = board ? board.value : "";
-              ASM_updateByteCodeInfo(ASM_countByteCodeText(ASM_currentByteCodeText));
-            }
-
-            function ASM_setByteCodeOutput(text, byteCount)
-            {
-              ASM_currentByteCodeText = text || "";
-
-              var board = ASM_el("ASM_boardText");
-              if(board) board.value = ASM_currentByteCodeText;
-
-              ASM_updateByteCodeInfo(typeof byteCount == "number" ? byteCount : ASM_countByteCodeText(ASM_currentByteCodeText));
-            }
-
-            function ASM_setStatus(text, kind)
-            {
-              var statusEl = ASM_el("ASM_sourceFindReplaceMount");
-              if(!statusEl) return;
-              statusEl.className = "ASM_sourceFindReplaceMount" + (kind ? " ASM_status_" + kind : "");
-              statusEl.textContent = text;
-            }
-
-            function ASM_escapeHTML(str)
-            {
-              return String(str)
-                .replace(/&/g,"&amp;")
-                .replace(/</g,"&lt;")
-                .replace(/>/g,"&gt;")
-                .replace(/\"/g,"&quot;")
-                .replace(/'/g,"&#039;");
-            }
-
-            function ASM_prettifyJSON()
-            {
-              var mountEl = ASM_el("ASM_jsonMount");
-              if(!mountEl) return;
-
-              var styleMap = {
-                "{}": "color:#000000;font-weight:800",
-                "[]": "color:#000000;font-weight:800"
-              };
-
-              if(typeof oCOM != "undefined" && oCOM && typeof oCOM.JSONprettify == "function")
-              {
-                oCOM.JSONprettify(mountEl,styleMap,2);
-                return;
-              }
-
-              mountEl.innerHTML = "<pre class=\"ASM_jsonView\">" + ASM_escapeHTML(mountEl.textContent) + "</pre>";
-            }
-
-            function ASM_consoleTable(rows)
-            {
-              var newrows = JSON.parse(JSON.stringify(rows || []));
-              if(!window.oASM) return newrows;
-
-              for(var i=0;i<newrows.length;i++)
-              {
-                for(var j in newrows[i])
-                {
-                  if(j == "pc") newrows[i][j] = window.oASM.pcHex(newrows[i][j]);
-                  else if(j == "opc") newrows[i][j] = window.oASM.opcHex(newrows[i][j]);
-                  else if(j == "val") newrows[i][j] = window.oASM.valHex(newrows[i][j],newrows[i].oby);
-                  else if(j == "bytes") newrows[i][j] = window.oASM.bytesToHex(newrows[i][j]);
-                  else if(typeof newrows[i][j] == "object" && newrows[i][j] != null)
-                    newrows[i][j] = Array.isArray(newrows[i][j]) ? newrows[i][j].join("|") : JSON.stringify(newrows[i][j]);
-                }
-              }
-              return newrows;
-            }
-
-            function ASM_clearOutputs(message,kind)
-            {
-              ASM_currentJsonText = "";
-              ASM_setByteCodeOutput("",0);
-              window.asmTokeniseJSON = null;
-              window.asmCompileResult = null;
-
-              if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
-              if(ASM_el("ASM_jsonMount"))    ASM_el("ASM_jsonMount").replaceChildren();
-              ASM_resizeSourceListingPanes();
-              ASM_refreshFindReplaceOverlay();
-
-              if(message) ASM_setStatus(message,kind || "");
-            }
-
-            function ASM_assembleCurrentSource()
-            {
-              if(typeof window.ASM != "function")
-              {
-                var msg = "ASM() was not found. Check res/ASM_core_v6.js.";
-                ASM_setStatus(msg,"bad");
-                ASM_currentJsonText = JSON.stringify({error:msg},null,2);
-                ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
-                ASM_prettifyJSON();
-                return false;
-              }
-
-              try
-              {
-                var sourcePane = ASM_el("ASM_sourcePane");
-                var listingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
-                var listingPane = ASM_el("ASM_listingPane");
-                var jsonMount = ASM_el("ASM_jsonMount");
-
-                window.oASM = new ASM({listingColumns:listingColumnsInput ? listingColumnsInput.value : undefined});
-                if(listingColumnsInput && typeof window.oASM.setListingColumns == "function")
-                  window.oASM.setListingColumns(listingColumnsInput.value);
-
-                var rows = window.oASM.tokenise(sourcePane.value);
-                var compiled = window.oASM.compile(rows);
-                var coreVersion = window.oASM.version || "?";
-
-                window.asmTokeniseJSON = rows;
-                window.asmCompileResult = compiled;
-
-                listingPane.value = compiled.listingText || "";
-
-                ASM_currentJsonText = JSON.stringify(compiled,null,2);
-                jsonMount.textContent = ASM_currentJsonText;
-                ASM_prettifyJSON();
-
-                console.table(ASM_consoleTable(compiled.rows || []));
-
-                var rowCount = compiled.rows && compiled.rows.length ? compiled.rows.length : 0;
-                var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
-                var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
-
-                ASM_setByteCodeOutput(compiled.byteCodeText || "", byteCount);
-                ASM_resizeSourceListingPanes();
-                ASM_refreshFindReplaceOverlay();
-
-                if(errorCount)
-                  ASM_setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes with " + errorCount + " unresolved/error row(s).","warn");
-                else
-                  ASM_setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes from " + ASM_currentFileName + ".","ok");
-
-                return true;
-              }
-              catch(err)
-              {
-                console.error(err);
-                if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value = "";
-                ASM_resizeSourceListingPanes();
-                ASM_refreshFindReplaceOverlay();
-                ASM_setByteCodeOutput("",0);
-                ASM_currentJsonText = JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2);
-                ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
-                ASM_prettifyJSON();
-                ASM_setStatus("Error: " + (err && err.message ? err.message : String(err)),"bad");
-                return false;
-              }
-            }
-
-            async function ASM_loadFile(file)
-            {
-              if(!file) return;
-              ASM_currentFileName = file.name || "source.S";
-              ASM_el("ASM_sourcePane").value = await file.text();
-              ASM_clearOutputs("Loaded " + ASM_currentFileName + ". Click assemble to generate the listing, JSON and byte code.","ok");
-              ASM_resizeSourceListingPanes();
-              ASM_refreshFindReplaceOverlay();
-            }
-
-            function ASM_copyText(text,okMessage)
-            {
-              if(!navigator.clipboard)
-              {
-                ASM_setStatus("Clipboard unavailable; select and copy manually.","warn");
-                return;
-              }
-
-              navigator.clipboard.writeText(text || "")
-                .then(function(){ ASM_setStatus(okMessage,"ok"); })
-                .catch(function(){ ASM_setStatus("Clipboard copy failed; select manually.","warn"); });
-            }
-
-            function ASM_showEmulatorTools()
-            {
-              var settings = ASM_el("tab1.1");
-              var tools    = ASM_el("tab1.2");
-
-              if(typeof oCOM != "undefined" && oCOM.POPUP && typeof oCOM.POPUP.off == "function")
-                oCOM.POPUP.off("tab1.1");
-
-              if(settings)
-              {
-                settings.hidden = true;
-                settings.setAttribute("hidden","");
-                settings.style.display = "none";
-              }
-
-              if(tools)
-              {
-                tools.hidden = false;
-                tools.removeAttribute("hidden");
-                tools.style.display = "";
-              }
-            }
-
-            function ASM_toEmulator()
-            {
-              ASM_syncByteCodeFromBoard();
-              if(!ASM_currentByteCodeText)
-                if(!ASM_assembleCurrentSource()) return;
-
-              if(typeof EMUboard != "undefined" && EMUboard.boardText)
-              {
-                EMUboard.boardText.value = "CALL-151\r\n" + ASM_currentByteCodeText.replace(/\n/g,"\r\n") + "\r\n";
-                ASM_showEmulatorTools();
-                COM_switchTab("tab1");
-                ASM_setStatus("Byte code copied to emulator paste board.","ok");
-              }
-              else ASM_setStatus("Emulator paste board is not available.","warn");
-            }
-
-            function ASM_toDebugger()
-            {
-              ASM_syncByteCodeFromBoard();
-              if(!ASM_currentByteCodeText)
-                if(!ASM_assembleCurrentSource()) return;
-
-              var debugfield = ASM_el("debugfield");
-              if(debugfield)
-              {
-                debugfield.innerHTML = ASM_escapeHTML(ASM_currentByteCodeText).replace(/\n/g,"<br>");
-                COM_switchTab("tab3");
-                ASM_setStatus("Byte code copied to debugger tab.","ok");
-              }
-              else ASM_setStatus("Debugger output field is not available.","warn");
-            }
-
-            function ASM_clearBoard()
-            {
-              ASM_setByteCodeOutput("",0);
-            }
-
-            function ASM_resizeTextAreaToContent(el)
-            {
-              if(!el) return;
-
-              var wrap = el.closest ? el.closest(".com-pane-fr-wrap") : null;
-
-              el.style.height = "auto";
-              el.style.overflowY = "hidden";
-
-              if(wrap)
-              {
-                wrap.style.height = "auto";
-                wrap.style.overflow = "visible";
-              }
-
-              var h = Math.max(420, el.scrollHeight);
-              el.style.height = h + "px";
-              if(wrap) wrap.style.height = h + "px";
-            }
-
-            function ASM_resizeSourceListingPanes()
-            {
-              var sourcePane = ASM_el("ASM_sourcePane");
-              var listingPane = ASM_el("ASM_listingPane");
-              var jsonMount  = ASM_el("ASM_jsonMount");
-
-              ASM_resizeTextAreaToContent(sourcePane);
-              ASM_resizeTextAreaToContent(listingPane);
-
-              if(jsonMount)
-              {
-                var sourceHeight  = sourcePane ? sourcePane.offsetHeight : 420;
-                var listingHeight = listingPane ? listingPane.offsetHeight : 420;
-                jsonMount.style.height = Math.max(420, sourceHeight, listingHeight) + "px";
-                jsonMount.style.maxHeight = jsonMount.style.height;
-              }
-            }
-
-            function ASM_toggleJsonPane(forceShow)
-            {
-              var host = ASM_el("ASM_paneHost");
-              var btn  = ASM_el("ASM_toggleJsonButton");
-              if(!host) return;
-
-              var show = (typeof forceShow == "boolean") ? forceShow : !host.classList.contains("ASM_showJson");
-
-              if(show) host.classList.add("ASM_showJson");
-              else     host.classList.remove("ASM_showJson");
-
-              if(btn)
-              {
-                btn.innerHTML = '<i class="fa fa-code"></i>';
-                btn.title = show ? "Hide JSON output" : "Show JSON output";
-              }
-            }
-
-            function ASM_refreshFindReplaceOverlay()
-            {
-              if(ASM_sourceFindReplace && typeof ASM_sourceFindReplace.render == "function")
-                ASM_sourceFindReplace.render();
-            }
-
-            function ASM_bindSourceFindReplace()
-            {
-              if(typeof PANE != "function")
-              {
-                ASM_setStatus("PANE() was not found. Search & replace is unavailable.","warn");
-                return;
-              }
-
-              ASM_oPANE = new PANE();
-
-              if(typeof ASM_oPANE.injectFindReplaceCSS == "function")
-                ASM_oPANE.injectFindReplaceCSS();
-
-              ASM_applyFindReplaceScheme();
-
-              if(typeof ASM_oPANE.bindFindReplace == "function")
-              {
-                ASM_sourceFindReplace = ASM_oPANE.bindFindReplace("ASM_sourcePane", {
-                  id:"ASM_sourceFindReplace",
-                  mount:"ASM_sourceFindReplaceMount",
-                  inline:true,
-                  overlayExpand:true,
-                  floatingNav:true,
-                  pageScrollOnMatch:true,
-                  pageScrollOffset:72,
-                  scheme:ASM_findReplaceScheme,
-                  barWidth:"390px",
-                  debounce_ms:500,
-                  onChange:function(){
-                    ASM_resizeSourceListingPanes();
-                    ASM_setStatus("Source updated by search & replace. Click assemble to regenerate output.","warn");
-                  }
-                });
-              }
-              else ASM_setStatus("PANE.bindFindReplace() was not found. Search & replace is unavailable.","warn");
-            }
-
-
-            function ASM_loadManualPane()
-            {
-              var manualEl = ASM_el("ASM_codefield");
-              if(!manualEl) return;
-
-              if(typeof _DOCS != "undefined" && _DOCS && _DOCS["ASSEMBLER"])
-                manualEl.innerHTML = String(_DOCS["ASSEMBLER"]);
-              else
-                manualEl.textContent = "Assembler manual is not available.";
-            }
-
-            function ASM_bindEvents()
-            {
-              var fileInput = ASM_el("ASM_fileInput");
-              var assembleButton = ASM_el("ASM_assembleButton");
-              var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
-              var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
-              var toEmulatorButton = ASM_el("ASM_toEmulatorButton");
-              var toDebuggerButton = ASM_el("ASM_toDebuggerButton");
-              var sourcePane = ASM_el("ASM_sourcePane");
-              var boardText = ASM_el("ASM_boardText");
-              var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
-
-              if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
-              if(assembleButton) assembleButton.addEventListener("click",function(ev){ ev.preventDefault(); ASM_assembleCurrentSource(); });
-              if(toggleJsonButton) toggleJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(); });
-              if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
-              if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
-              if(toEmulatorButton) toEmulatorButton.addEventListener("click",ASM_toEmulator);
-              if(toDebuggerButton) toDebuggerButton.addEventListener("click",ASM_toDebugger);
-
-              if(sourcePane)
-              {
-                sourcePane.addEventListener("input",function(){
-                  ASM_resizeSourceListingPanes();
-                  ASM_refreshFindReplaceOverlay();
-                });
-                sourcePane.addEventListener("keydown",function(ev){
-                  if((ev.ctrlKey || ev.metaKey) && ev.key == "Enter")
-                  {
-                    ev.preventDefault();
-                    ASM_assembleCurrentSource();
-                  }
-                });
-              }
-
-              if(settingsListingColumnsInput) settingsListingColumnsInput.addEventListener("change",function(){
-                ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
-              });
-            }
-
-            ASM_bindEvents();
-            ASM_bindSourceFindReplace();
-            ASM_loadManualPane();
-            ASM_toggleJsonPane(false);
-            ASM_clearOutputs("Sample source loaded. Click assemble to generate output.","");
-            ASM_resizeSourceListingPanes();
-            ASM_refreshFindReplaceOverlay();
+.END
+                    </textarea>
+                    <br>
+                    <button onclick="assemble();/*;document.getElementById('codefield').innerHTML=ass.codefield.value.replace(/\n/g,'<br>')*/"><i class="fa fa-cogs"></i> assemble</button>
+                    
+                    <!--
+                    <button onclick="alert('disassemble')"><i class="fa fa-puzzle-piece"></i> disassemble</button>
+                    -->
+                    <button onclick="EMUboard.boardText.value='CALL-151\r\n'+document.getElementById('codefield').innerHTML.replace(/<br>/g,'\n')+'\r\n';oCOM.POPUP.toggle('tab1.2');COM_switchTab('tab1')">
+                      <i class="fa fa-arrow-circle-up"></i> to emulator</button>
+                    <button onclick="document.getElementById('debugfield').innerHTML=document.getElementById('codefield').innerHTML;COM_switchTab('tab3')">
+                        <i class="fa fa-arrow-circle-up"></i> to debugger</button>
+                    <button onclick="javascript:onToolBox('SrcTools');"><i class="fa fa-wrench"></i> tools & config</button>
+      
+                    <button onclick="onhelp(_DOCS['ASSEMBLER'],document.getElementById('codefield'))"><i class="fa fa-book"></i> help</button>
+                    <!--button onclick="onhelp(asmHelp(),document.getElementById('codefield'))"><i class="fa fa-book"></i> help</!--button-->
+      
+                    <button type="button"
+                            onmousedown="return ASM_traceDown(event)"
+                            onmouseup="return ASM_traceUp(event)"
+                            onmouseleave="return ASM_traceCancel(event)"
+                            ontouchstart="return ASM_traceDown(event)"
+                            ontouchend="return ASM_traceUp(event)"
+                            ontouchcancel="return ASM_traceCancel(event)">
+                      <i class="fa fa-road"></i> trace</button>
+<script>
+var ASM_trace_holdTimer = null;
+var ASM_trace_repeatTimer = null;
+var ASM_trace_isDown = false;
+var ASM_trace_isRepeating = false;
+
+function ASM_traceStep()
+{
+  oASM.assemble_step(document.forms.ass.srcfield,document.forms.ass.listing,document.getElementById('codefield'));
+  rrr();
+}
+
+function ASM_traceDown(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Ignore repeated down-events while the button is already held.
+  if(ASM_trace_isDown) return false;
+
+  ASM_trace_isDown = true;
+  ASM_trace_isRepeating = false;
+
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+
+  ASM_trace_holdTimer = setTimeout(function()
+  {
+    if(!ASM_trace_isDown) return;
+
+    ASM_trace_isRepeating = true;
+    ASM_traceStep();                         // first repeated step after 0.5s
+
+    ASM_trace_repeatTimer = setInterval(function()
+    {
+      if(ASM_trace_isDown) ASM_traceStep();  // then every 0.1s
+    },25);
+  },500);
+
+  return false;
+}
+
+function ASM_traceUp(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  // Short click: still perform exactly one trace step.
+  if(ASM_trace_isDown && !ASM_trace_isRepeating) ASM_traceStep();
+
+  ASM_traceCancel(ev);
+  return false;
+}
+
+function ASM_traceCancel(ev)
+{
+  if(ev && ev.preventDefault) ev.preventDefault();
+
+  ASM_trace_isDown = false;
+  clearTimeout(ASM_trace_holdTimer);
+  clearInterval(ASM_trace_repeatTimer);
+  ASM_trace_holdTimer = null;
+  ASM_trace_repeatTimer = null;
+  ASM_trace_isRepeating = false;
+
+  return false;
+}
+
+function rrr()
+{
+  //this.updateScroll(document.getElementById('dispStep'));
+  oASM.updateScroll(document.getElementsByName('listing')[0])
+}
+</script>
+
+                  </td>
+                  <td valign=top>
+                    <!-- RIGHT PANE -->
+                    <textarea name="listing" onscroll="syncScroll(document.forms.ass.listing,document.forms.ass.srcfield)" readonly="readonly" wrap="virtual" class="dotmatrix_bck" style="width:340px;height:400px;margin:10px 10px 10px 0px;-webkit-filter: brightness(0.95);filter: brightness(0.95);" placeholder="Listing"></textarea>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan=2>
+                    <div id="SrcTools" hidden="">
+                      <script>document.write(sTools);</script>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <!--<td colspan=2 style="background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;background-image:url('res/CRT_TV_50b.png');">-->
+                  <td colspan=2 class="CRT_TV">
+                    <div style="height:90px"></div>
+                    <div name="codefield" id="codefield" class="markdown_mon" style="background-color: transparent; border-color: transparent; resize: none;"></div>
+                    <div style="height:180px"></div>
+                  </td>
+                </tr>
+              </table>
+            </form>
+
+            <script>
+            function syncScroll(element1, element2) { element2.scrollTop = element1.scrollTop; }
             </script>
 
           </div>
@@ -1652,13 +955,13 @@ Label1 TXA
 
               <tr>
                 <!--<td colspan=2 style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">-->
-                  <td colspan=2 class="CRT_TV DOUBL_TV">
-                  <div style="height:90px;"></div>
+                  <td colspan=2 class="CRT_TV">
+                  <div style="height:90px"></div>
                   <div id="debugfield" contenteditable="true" class="markdown_mon"
-                      style="width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;">
+                      style="width:350px;height:270px;margin-left:105px;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll">
                   </div>
                   <!--textarea name="debugfield" hidden=""></!--textarea-->
-                  <div style="height:180px;border:1px solid black;"></div>
+                  <div style="height:180px"></div>
                 </td>
               </tr>
             </table>
@@ -1691,5 +994,5 @@ Label1 TXA
 </table>
 
 </body>
-<footer><small><a target=_blank href=https://github.com/RetroAppleJS/RetroAppleJS.github.io>GitHub</a>&nbsp;&nbsp;<a target=_blank href="tools/TOOLS_CATALOG.html">Tools</a>&nbsp;&nbsp;<a target=_blank href=https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md>Copyright (c) 2022, Freddy Vandriessche</a> <a href="JavaScript:document.body.scrollTop=0;document.documentElement.scrollTop = 0;">Top</a>  </small> <div id="footer" style="display: inline"></div></footer>
+<footer><small><a target=_blank href=https://github.com/RetroAppleJS/RetroAppleJS.github.io>GitHub</a>&nbsp;&nbsp;<a target=_blank href="tools/TOOLS_CATALOG.html">Tools</a>&nbsp;&nbsp;<a target=_blank href=https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md>Copyright (c) 2022, Freddy Vandriessche</a></small> <div id="footer" style="display: inline"></div></footer>
 </html>
