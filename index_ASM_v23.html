@@ -952,7 +952,7 @@
 
                 <!--  ASM ACTION BUTTONS -->
                 <div class=toolbox>
-                  <button id="ASM_assembleButton" class=appbut type="button" title="Assemble"><i class="fa fa-cogs"></i></button>
+                  <!--button id="ASM_assembleButton" class=appbut type="button" title="Assemble"><i class="fa fa-cogs"></i></button-->
                   <button id="ASM_toggleJsonButton" class=appbut type="button" title="Show JSON output"><i class="fa fa-code"></i></button>
                   <br>
                 </div>
@@ -963,7 +963,7 @@
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
                     </div>
-                    <span id="ASM_status" class="ASM_status">Ready.</span><br>
+                    <!--span id="ASM_status" class="ASM_status">Ready.</span-->
                     <div id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount"></div>
                 </div>
                 </div>
@@ -1074,9 +1074,9 @@ Label1 TXA
 
             function ASM_setStatus(text, kind)
             {
-              var statusEl = ASM_el("ASM_status");
+              var statusEl = ASM_el("ASM_sourceFindReplaceMount");
               if(!statusEl) return;
-              statusEl.className = "ASM_status" + (kind ? " ASM_status_" + kind : "");
+              statusEl.className = "ASM_sourceFindReplaceMount" + (kind ? " ASM_status_" + kind : "");
               statusEl.textContent = text;
             }
 
