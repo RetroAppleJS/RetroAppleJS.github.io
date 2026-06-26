@@ -25,7 +25,8 @@ oDASM.ByteAt = function ByteAt(addr) { return RAM[addr] }
 oDASM.sym_search = sym_search;
 //oDASM.srcfield_bin = new Uint8Array(); 
 
-var asm = oASM; 
+//var asm = oASM; 
+var asm = new ASM();
 
 // lookup tables
 

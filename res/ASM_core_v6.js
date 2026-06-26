@@ -1276,3 +1276,208 @@ function ASM(options)
         return row;
     }
 }
+
+
+
+/*
+ * Legacy DASM compatibility container.
+ *
+ * ASM_core_v6.js intentionally contains the v6 assembler core only, but
+ * DBG_6502gui.js still creates `new DASM()` during load.  Keep DASM here
+ * so pages that include only ASM_core_v6.js still expose the legacy
+ * debugger/disassembler object expected by DBG_6502gui.js.
+ */
+function DASM()
+{
+    this.hextab = (typeof oCOM != "undefined" && oCOM.hextab) ? oCOM.hextab : ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
+
+    this.getHexByte = function(v)
+    {
+        if(typeof oCOM != "undefined" && oCOM && typeof oCOM.getHexByte == "function") return oCOM.getHexByte(v);
+        v = Number(v) & 0xFF;
+        return this.hextab[(v >> 4) & 0x0F] + this.hextab[v & 0x0F];
+    };
+
+    this.getHexWord = function(v)
+    {
+        if(typeof oCOM != "undefined" && oCOM && typeof oCOM.getHexWord == "function") return oCOM.getHexWord(v);
+        v = Number(v) & 0xFFFF;
+        return this.getHexByte((v >> 8) & 0xFF) + this.getHexByte(v & 0xFF);
+    };
+
+    this.ByteAt = function(addr)
+    {
+        if(typeof RAM != "undefined" && RAM) return RAM[addr & 0xFFFF] || 0;
+        return 0;
+    };
+
+    this.sym_search = function(op,adm)
+    {
+        return op + "<small>[" + adm + "]</small>";
+    };
+
+    this.updateScroll = function(el)
+    {
+        if(el) el.scrollTop = el.scrollHeight;
+    };
+
+    this.writeDisplay = function(id,html,insertMode)
+    {
+        var el = (typeof id == "string") ? document.getElementById(id) : id;
+        if(!el) return;
+
+        if(insertMode == "beforeend") el.insertAdjacentHTML("beforeend",html || "");
+        else el.innerHTML = html || "";
+    };
+
+    this.getReg = function(r)
+    {
+        switch(r)
+        {
+            case "PC": return (typeof pc    != "undefined") ? pc    : 0;
+            case "AC": return (typeof a     != "undefined") ? a     : 0;
+            case "XR": return (typeof x     != "undefined") ? x     : 0;
+            case "YR": return (typeof y     != "undefined") ? y     : 0;
+            case "SR": return (typeof flags != "undefined") ? flags : 0;
+            case "SP": return (typeof sp    != "undefined") ? sp    : 0;
+            default: return 0;
+        }
+    };
+
+    this.StatusRegister = function(cfg)
+    {
+        cfg = cfg || {};
+        var rw = cfg.rw || ["","","","","","","",""];
+        if(rw.join("") == "") return "";
+
+        var value = this.getReg("SR") & 0xFF;
+        var bits = ("0000000" + value.toString(2)).slice(-8);
+        var names = ["neg","over","&nbsp;","break","deci","interr","zero","carry"];
+        var s = "<div class=regscroll_h id=rd><div class=regpar>";
+        for(var i=0;i<8;i++)
+        {
+            s += "<div class=regbox>"
+               + "<div class=regadr>" + names[i] + "</div>"
+               + "<div class=regbyte" + String(rw[i] || "").replace("R","_green").replace("W","_red").replace("B","_yellow") + ">" + bits.charAt(i) + "</div>"
+               + "</div>";
+        }
+        return s + "</div></div>";
+    };
+
+    this.disassemble_GUI = function()
+    {
+        var pcv = (typeof pc != "undefined") ? (pc & 0xFFFF) : 0;
+        var ret = this.disassemble({
+            code_arr:[this.ByteAt(pcv),this.ByteAt(pcv + 1),this.ByteAt(pcv + 2)],
+            pc:pcv,
+            opctab:(typeof opctab != "undefined") ? opctab : null
+        });
+
+        var disp = '<div style="width:100px;float:left">' + ret.adr_lst + '&nbsp;' + ret.opcode_lst + '</div>' + ret.mnemonic + "<br>";
+
+        this.writeShow("regdisp",ret.adr_lst,ret.opcode_lst,ret.mnemonic);
+        this.writeDisplay("dispStep",disp,"beforeend");
+        this.updateScroll(document.getElementById("dispStep"));
+
+        if(typeof dispmem != "undefined")
+        {
+            dispmem += disp;
+            var dispmem_arr = dispmem.split("<br>");
+            if(dispmem_arr.length > 5)
+            {
+                dispmem = dispmem_arr.slice(Math.max(0,dispmem_arr.length - 6),dispmem_arr.length - 1).join("<br>");
+            }
+        }
+    };
+
+    this.disassemble = function(arg)
+    {
+        arg = arg || {};
+        var code_arr = arg.code_arr || [0,0,0];
+        var table = arg.opctab || [];
+        var pcv = (typeof arg.pc == "number") ? (arg.pc & 0xFFFF) : ((typeof pc != "undefined") ? (pc & 0xFFFF) : 0);
+
+        var op0 = code_arr[0] & 0xFF;
+        var op1v = (code_arr[1] == null ? 0 : code_arr[1]) & 0xFF;
+        var op2v = (code_arr[2] == null ? 0 : code_arr[2]) & 0xFF;
+        var ops = this.getHexByte(op0);
+        var op1 = this.getHexByte(op1v);
+        var op2 = this.getHexByte(op2v);
+
+        var entry = table[op0] || ["???","imp"];
+        var mne = entry[0] || "???";
+        var adm = entry[1] || "imp";
+        var expr = mne;
+
+        switch(adm)
+        {
+            case "imm":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;#$" + this.sym_search(op1,adm);
+                break;
+            case "zpg":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + op1,adm);
+                break;
+            case "acc":
+                ops += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;A";
+                break;
+            case "abs":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;" + this.sym_search("$" + op2 + op1,adm);
+                break;
+            case "zpx":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + op1,adm) + ",X";
+                break;
+            case "zpy":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + op1,adm) + ",Y";
+                break;
+            case "abx":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;" + this.sym_search("$" + op2 + op1,adm) + ",X";
+                break;
+            case "aby":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;" + this.sym_search("$" + op2 + op1,adm) + ",Y";
+                break;
+            case "iny":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;(" + this.sym_search("$" + op1,adm) + "),Y";
+                break;
+            case "inx":
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;(" + this.sym_search("$" + op1,adm) + ",X)";
+                break;
+            case "rel":
+                var targ = (pcv + 2) & 0xFFFF;
+                if(op1v & 0x80) targ = (targ - ((op1v ^ 0xFF) + 1)) & 0xFFFF;
+                else targ = (targ + op1v) & 0xFFFF;
+                ops += "&nbsp;" + op1 + "&nbsp;&nbsp;&nbsp;";
+                expr += "&nbsp;" + this.sym_search("$" + this.getHexWord(targ),adm);
+                break;
+            case "ind":
+                ops += "&nbsp;" + op1 + "&nbsp;" + op2;
+                expr += "&nbsp;(" + this.sym_search("$" + op2 + op1,adm) + ")";
+                break;
+            default:
+                ops += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+        }
+
+        return {adr_lst:this.getHexWord(pcv),opcode_lst:ops,mnemonic:expr};
+    };
+
+    this.writeShow = function(dd,a,o,d)
+    {
+        var regLine = "";
+        regLine += "PC=" + this.getHexWord(this.getReg("PC")) + " ";
+        regLine += "A="  + this.getHexByte(this.getReg("AC")) + " ";
+        regLine += "X="  + this.getHexByte(this.getReg("XR")) + " ";
+        regLine += "Y="  + this.getHexByte(this.getReg("YR")) + " ";
+        regLine += "SR=" + this.getHexByte(this.getReg("SR")) + " ";
+        regLine += "SP=" + this.getHexByte(this.getReg("SP"));
+        this.writeDisplay(dd,"<div>" + a + "&nbsp;" + o + "&nbsp;" + d + "</div><div>" + regLine + "</div>");
+    };
+}
