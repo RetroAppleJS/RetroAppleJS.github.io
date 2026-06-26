@@ -29693,10 +29693,16 @@ Label1 TXA
 
             function ASM_setStatus(text, kind)
             {
-              var statusEl = ASM_el("ASM_sourceFindReplaceMount");
-              if(!statusEl) return;
-              statusEl.className = "ASM_sourceFindReplaceMount" + (kind ? " ASM_status_" + kind : "");
-              statusEl.textContent = text;
+              var msg = "[ASM" + (kind ? " " + kind.toUpperCase() : "") + "] " + text;
+
+              if(typeof console == "undefined") return;
+
+              if(kind == "bad" && typeof console.error == "function")
+                console.error(msg);
+              else if(kind == "warn" && typeof console.warn == "function")
+                console.warn(msg);
+              else if(typeof console.log == "function")
+                console.log(msg);
             }
 
             function ASM_escapeHTML(str)
