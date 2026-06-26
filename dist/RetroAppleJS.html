@@ -29425,8 +29425,32 @@ function DASM()
                 caret-color: #000000;
               }
 
-              .ASM_root .com-pane-fr-wrap [class*="com-pane-fr"] {
-                background-color: transparent;
+              /* Let the ASM dot-matrix wrapper background remain visible through the
+                find/replace overlay.  Do not blanket-clear every com-pane-fr element,
+                because the match spans also use com-pane-fr-* classes. */
+              .ASM_root .com-pane-fr-wrap > .com-pane-fr-overlay {
+                background-color: transparent !important;
+                background-image: none !important;
+              }
+
+              /* Keep the textarea itself transparent so the wrapper pattern shows through. */
+              .ASM_root .com-pane-fr-wrap > textarea {
+                background-color: transparent !important;
+                background-image: none !important;
+              }
+
+              /* Restore actual find/replace highlights. */
+              .ASM_root .com-pane-fr-wrap .com-pane-fr-selection {
+                background-color: rgba(190,190,190,.35) !important;
+              }
+
+              .ASM_root .com-pane-fr-wrap .com-pane-fr-match {
+                background-color: rgba(255,210,70,.28) !important;
+              }
+
+              .ASM_root .com-pane-fr-wrap .com-pane-fr-current {
+                background-color: rgba(255,185,45,.85) !important;
+                color: #000000 !important;
               }
 
 
