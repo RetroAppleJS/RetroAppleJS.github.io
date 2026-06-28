@@ -1043,8 +1043,6 @@
 
               .ASM_manualField {
                 width: calc(100% - 210px);
-                height: 270px;
-                margin-left: 105px;
                 background-color: transparent !important;
                 border-color: transparent !important;
                 resize: none;
@@ -1173,6 +1171,7 @@ Label1 TXA
 
               <section id="ASM_manualPane" class="ASM_manualPane CRT_TV DOUBL_TV">
                 <div style="height:120px"></div>
+                <!--div name="codefield" id="ASM_codefield" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div-->
                 <div name="codefield" id="ASM_codefield" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div>
                 <div style="height:300px"></div>
               </section>
@@ -1876,6 +1875,7 @@ Label1 TXA
               });
             }
 
+
             ASM_bindEvents();
             ASM_syncListingColumns();
             ASM_bindSourceFindReplace();
@@ -2035,6 +2035,12 @@ Label1 TXA
                       + oMEMGRID.build_grid(15*linestep,8,-linestep,cnf);
                       oMEMGRID.paint_grid(apple2plus.hwObj().mem_layout,cnf);
                   }
+
+                  function DBG_onToolBox(el) 
+                  {
+                    var e = document.getElementById(el);
+                    e.hidden = !e.hidden;
+                  }
                   </script>
                  
 
@@ -2056,7 +2062,7 @@ Label1 TXA
               <!-- BUTTON BAR 2-->
               <tr>
                 <td>
-                  <button onclick="javascript:onToolBox('DbgTools')">
+                  <button onclick="javascript:DBG_onToolBox('DbgTools')">
                     <i class="fa fa-wrench"></i> tools & config
                   </button>
                   <button onclick="onhelp(_DOCS['DEBUGGER'],document.getElementById('debugfield'));">
