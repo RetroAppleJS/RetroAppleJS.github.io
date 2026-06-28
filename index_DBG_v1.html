@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Apple II+ Debugger Layout v1</title>
+  <link rel="icon" type="image/x-icon" href="res/favicon.ico">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="res/COM_fontawesome/all.css">
+  <!--
+  <link rel="stylesheet" href="res/COM_MAIN.css">
+  -->
+  <script type="text/javascript" src="res/COM_MAIN.js"></script>
+  <script type="text/javascript" src="res/COM_CONFIG.js"></script>
+  <script type="text/javascript" src="res/ASM_core.js"></script>
+  <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
+  <script type="text/javascript" src="res/DBG_6502gui.js"></script>
+  <link rel="stylesheet" href="res/DBG_6502.css">
+
+  <style>
+    /*
+      index_DBG_v1.html
+      Layout-first prototype for redesigned Debugger tab.
+      This version intentionally uses mock content and lightweight UI toggles only.
+    */
+
+    body {
+      margin: 0px;
+      padding: 0px;
+      color: #000000;
+      font-family: arial, sans-serif;
+      background: #ffffff;
+    }
+
+    #DBG_shell {
+      width: 1320px;
+      margin: 0px;
+      padding: 0px 0px 20px 0px;
+      user-select: none;
+      -moz-user-select: none;
+      -webkit-user-drag: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+
+    #DBG_app {
+      height: 34px;
+      margin: 0px 0px 4px 0px;
+      padding: 0px;
+    }
+
+    #DBG_app ul {
+      position: relative;
+      width: 350px;
+      height: 30px;
+      margin: 0px;
+      padding: 0px;
+      float: left;
+      list-style: none;
+    }
+
+    #DBG_app a {
+      display: inline-block;
+      position: relative;
+      min-width: 78px;
+      height: 26px;
+      margin: 0px 2px 0px 0px;
+      padding: 6px 4px 0px 4px;
+      box-sizing: border-box;
+      border-radius: 8px 8px 0px 0px;
+      background: #e8e8e8;
+      color: #000000;
+      text-align: center;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    #DBG_app a.DBG_tabActive {
+      background: #76B9CE;
+      color: #000000;
+    }
+
+    #tab3 {
+      float: left;
+      width: 1300px;
+      min-height: 720px;
+      border-radius: 10px;
+      background-color: #76B9CE;
+      padding: 8px 10px 14px 10px;
+      box-sizing: border-box;
+    }
+
+    .DBG_topToolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      margin: 0px 0px 8px 0px;
+      padding: 0px 90px 0px 0px;
+    }
+
+    .DBG_topToolbar .DBG_titleBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      margin-left: 6px;
+      padding: 2px 9px;
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 7px;
+      background: rgba(244,244,244,0.74);
+      color: rgba(0,0,0,0.72);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .DBG_popupRow {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin: 0px 0px 8px 0px;
+    }
+
+    .DBG_panel 
+    {
+      padding: 8px 10px;
+      /*
+      border: 1px solid rgba(0,0,0,0.28);
+      border-radius: 10px;
+      background: rgba(244,244,244,0.96);
+      color: #000000;
+      box-shadow: 3px 3px 0px rgba(0,0,0,0.22);
+      */
+      font-size: 12px;
+      box-sizing: border-box;
+    }
+
+    .DBG_panel[hidden] {
+      display: none !important;
+    }
+
+    .DBG_panelTitle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0px 0px 6px 0px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(0,0,0,0.18);
+      font-weight: 700;
+    }
+
+    .DBG_panelGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 6px 16px;
+    }
+
+    .DBG_panelGroup {
+      padding: 5px 6px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.60);
+    }
+
+    .DBG_panelGroup strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .DBG_panel label,
+    .DBG_panel .DBG_toolLine {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 24px;
+      white-space: nowrap;
+    }
+
+    .DBG_panel input[type="number"],
+    .DBG_panel select,
+    .DBG_panel input[type="text"] {
+      width: 150px;
+      min-height: 20px;
+      border: 1px solid rgba(0,0,0,0.28);
+      border-radius: 4px;
+      background: #ffffff;
+      color: #000000;
+      font: 11px/1.2 courier, monospace;
+    }
+
+    .DBG_panel button,
+    .DBG_headerButton,
+    .DBG_tinyButton {
+      -webkit-appearance: none;
+      appearance: none;
+      min-width: 24px;
+      min-height: 22px;
+      margin: 0px;
+      padding: 2px 6px;
+      border: 1px solid rgba(0,0,0,0.35);
+      border-radius: 4px;
+      background: #f4f4f4;
+      color: #000000;
+      font: 11px/1.2 arial, sans-serif;
+      cursor: pointer;
+    }
+
+    .DBG_panel button:hover,
+    .DBG_headerButton:hover,
+    .DBG_tinyButton:hover {
+      border-color: #0078d4;
+      background: #ffffff;
+    }
+
+    .DBG_paneHost {
+      display: grid;
+      grid-template-columns: minmax(440px, 1.18fr) minmax(390px, 1fr) minmax(330px, 0.92fr);
+      gap: 10px;
+      width: 100%;
+      align-items: stretch;
+    }
+
+    .DBG_paneHost.DBG_hideWatch {
+      grid-template-columns: minmax(570px, 1.22fr) minmax(520px, 1fr);
+    }
+
+    .DBG_paneHost.DBG_hideWatch #DBG_watchPane {
+      display: none;
+    }
+
+    .DBG_pane {
+      min-width: 0;
+      border-radius: 10px;
+      overflow: visible;
+    }
+
+    .DBG_paneTitle,
+    .com-pane-title.DBG_paneTitle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 34px;
+      margin: 0px 0px 2px 0px;
+      padding: 4px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.18);
+      background: rgba(244,244,244,0.88);
+      color: #000000;
+      font-family: arial, sans-serif;
+      font-size: 12px;
+      line-height: 20px;
+      box-sizing: border-box;
+      overflow: visible;
+      position: relative;
+    }
+
+    .DBG_paneTitleMain {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .DBG_paneTitleMain strong {
+      color: #000000;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .DBG_paneInfo {
+      color: rgba(0,0,0,0.70);
+      font-family: arial, sans-serif;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .DBG_headerActions,
+    .com-pane-header-default-widget.DBG_headerActions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      flex-wrap: nowrap;
+    }
+
+    .DBG_headerButton i,
+    .DBG_tinyButton i {
+      pointer-events: none;
+    }
+
+    .DBG_dotmatrix_bck {
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
+      background-size: 585px 42px;
+      background-attachment: local;
+      border-radius: 10px;
+      color: #000000;
+      font-family: courier, monospace;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 21px;
+    }
+
+    .DBG_paneBody {
+      height: 595px;
+      min-height: 595px;
+      padding: 0px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.12);
+      box-sizing: border-box;
+      overflow: auto;
+    }
+
+    .DBG_paneBody pre {
+      margin: 0px;
+      padding: 0px 30px;
+      color: #000000;
+      background: transparent;
+      font-family: courier, monospace;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 21px;
+      tab-size: 4;
+      white-space: pre;
+    }
+
+    .DBG_listingLineCurrent {
+      display: block;
+      margin: 0px -30px;
+      padding: 0px 30px;
+      background: rgba(255, 214, 64, 0.42);
+    }
+
+    .DBG_breakpoint {
+      color: #9a0000;
+      font-weight: 700;
+    }
+
+    .DBG_traceLineCurrent {
+      display: block;
+      margin: 0px -30px;
+      padding: 0px 30px;
+      background: rgba(140, 190, 220, 0.33);
+    }
+
+    .DBG_watchBoard {
+      padding: 10px 14px 14px 14px;
+    }
+
+    .DBG_registerGrid {
+      display: grid;
+      grid-template-columns: 1.15fr repeat(5, 0.72fr);
+      gap: 6px;
+      margin: 0px 0px 9px 0px;
+    }
+
+    .DBG_registerCell,
+    .DBG_flagCell,
+    .DBG_watchCell {
+      min-height: 43px;
+      padding: 5px 6px;
+      border: 1px solid rgba(0,0,0,0.24);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.44);
+      box-sizing: border-box;
+    }
+
+    .DBG_registerCell label,
+    .DBG_flagCell label,
+    .DBG_watchCell label {
+      display: block;
+      margin-bottom: 2px;
+      color: rgba(0,0,0,0.72);
+      font-family: arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .DBG_registerCell span,
+    .DBG_flagCell span,
+    .DBG_watchCell span {
+      display: block;
+      color: #000000;
+      font-family: courier, monospace;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 18px;
+    }
+
+    .DBG_flagGrid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 5px;
+      margin: 0px 0px 10px 0px;
+    }
+
+    .DBG_flagCell {
+      min-height: 36px;
+      text-align: center;
+      padding: 4px 2px;
+    }
+
+    .DBG_watchTable {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0px 4px;
+      font-family: courier, monospace;
+      font-size: 12px;
+    }
+
+    .DBG_watchTable th {
+      color: rgba(0,0,0,0.72);
+      text-align: left;
+      font-family: arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-bottom: 1px solid rgba(0,0,0,0.20);
+    }
+
+    .DBG_watchTable td {
+      padding: 4px 5px;
+      border-top: 1px solid rgba(0,0,0,0.12);
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.40);
+    }
+
+    .DBG_watchTable td:first-child {
+      border-left: 1px solid rgba(0,0,0,0.12);
+      border-radius: 5px 0px 0px 5px;
+    }
+
+    .DBG_watchTable td:last-child {
+      border-right: 1px solid rgba(0,0,0,0.12);
+      border-radius: 0px 5px 5px 0px;
+    }
+
+    .DBG_changed {
+      background: rgba(255, 214, 64, 0.54) !important;
+      font-weight: 700;
+    }
+
+    .DBG_footerNote {
+      margin: 8px 0px 0px 0px;
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: rgba(244,244,244,0.74);
+      color: rgba(0,0,0,0.72);
+      font-size: 11px;
+    }
+
+    .DBG_legacyHidden {
+      display: none;
+    }
+
+    @media (max-width: 1100px) {
+      #DBG_shell,
+      #tab3 {
+        width: 100%;
+      }
+
+      .DBG_paneHost,
+      .DBG_paneHost.DBG_hideWatch {
+        grid-template-columns: 1fr;
+      }
+
+      .DBG_paneHost.DBG_hideWatch #DBG_watchPane {
+        display: none;
+      }
+
+      .DBG_panel {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .DBG_panelGrid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <script>
+    var DBG_oPANE = null;
+    var DBG_running = false;
+
+    function DBG_el(id) {
+      return document.getElementById(id);
+    }
+
+    function DBG_togglePanel(id) {
+      var target = DBG_el(id);
+      if (!target) return;
+
+      var other = id === "DBG_settings" ? DBG_el("DBG_tools") : DBG_el("DBG_settings");
+      if (other) other.hidden = true;
+      target.hidden = !target.hidden;
+      DBG_equalizePaneHeaders();
+    }
+
+    function DBG_closePanels() {
+      if (DBG_el("DBG_settings")) DBG_el("DBG_settings").hidden = true;
+      if (DBG_el("DBG_tools")) DBG_el("DBG_tools").hidden = true;
+    }
+
+    function DBG_toggleRun(btn) {
+      DBG_running = !DBG_running;
+      if (!btn) btn = DBG_el("DBG_runToggle");
+      if (!btn) return;
+
+      if (DBG_running) {
+        btn.innerHTML = '<i class="fa fa-snowflake"></i>';
+        btn.title = "Stop continuous run";
+        btn.setAttribute("aria-label", "Stop continuous run");
+      } else {
+        btn.innerHTML = '<i class="fa fa-running"></i>';
+        btn.title = "Continuous run";
+        btn.setAttribute("aria-label", "Continuous run");
+      }
+    }
+
+    function DBG_togglePane3(forceVisible) {
+      var host = DBG_el("DBG_paneHost");
+      var btn = DBG_el("DBG_toggleWatchPaneButton");
+      if (!host) return;
+
+      var hide = host.classList.contains("DBG_hideWatch");
+      if (typeof forceVisible === "boolean") hide = forceVisible ? true : false;
+
+      if (hide) host.classList.remove("DBG_hideWatch");
+      else host.classList.add("DBG_hideWatch");
+
+      if (btn) {
+        var visible = !host.classList.contains("DBG_hideWatch");
+        btn.innerHTML = visible ? '<i class="fa fa-eye-slash"></i> hide pane 3' : '<i class="fa fa-eye"></i> show pane 3';
+        btn.title = visible ? "Hide Register/Memory Watch pane" : "Show Register/Memory Watch pane";
+      }
+      DBG_equalizePaneHeaders();
+    }
+
+    function DBG_stub(action) {
+      var status = DBG_el("DBG_status");
+      if (status) status.textContent = "Layout prototype: " + action + " is not wired yet.";
+    }
+
+    function DBG_equalizePaneHeaders() {
+      if (DBG_oPANE && typeof DBG_oPANE.equalizePaneHeaderHeights === "function") {
+        DBG_oPANE.equalizePaneHeaderHeights("#DBG_root .com-pane-title");
+      }
+    }
+
+    function DBG_initPaneContainer() {
+      if (typeof PANE === "function") {
+        DBG_oPANE = new PANE();
+      }
+      DBG_equalizePaneHeaders();
+    }
+
+    if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.addToEventStack === "function") {
+      oCOM.addToEventStack("onload", DBG_initPaneContainer);
+    } else {
+      window.addEventListener("load", DBG_initPaneContainer);
+    }
+  </script>
+</head>
+
+<body>
+  <div id="DBG_shell">
+    <div id="DBG_app">
+      <ul>
+        <a href="#tab1">Emulator</a>
+        <a href="#tab2">Assembler</a>
+        <a href="#tab3" class="DBG_tabActive">Debugger</a>
+        <a href="#tab4">Manual</a>
+      </ul>
+    </div>
+
+    <div class="tabs">
+      <div id="tab3">
+        <div id="DBG_root">
+          <div class="DBG_topToolbar">
+            <button class="appbut" value="Settings" onclick="DBG_togglePanel('DBG_settings');" title="Debugger Settings">
+              <i class="fa fa-sliders-h"></i>
+            </button>
+            <button class="appbut" value="Tools" onclick="DBG_togglePanel('DBG_tools');" title="Debugger Tools">
+              <i class="fa fa-toolbox"></i>
+            </button>
+            <span class="DBG_titleBadge"><i class="fa fa-bug"></i> Debugger layout prototype v1</span>
+          </div>
+
+          <div class="DBG_popupRow">
+            <div class="DBG_panel" id="DBG_settings" hidden>
+              <div class="DBG_panelGrid">
+                <div class="DBG_panelGroup">
+                  <strong>Debugger display</strong>
+                  <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
+                  <label>Source/disassembly fusion
+                    <select onchange="DBG_stub('Source/disassembly fusion')">
+                      <option>source + disassembly</option>
+                      <option>source only</option>
+                      <option>full disassembly</option>
+                      <option>mixed</option>
+                    </select>
+                  </label>
+                  <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
+                  <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
+                </div>
+
+                <div class="DBG_panelGroup">
+                  <strong>Trace configuration</strong>
+                  <label>Trace depth / ring buffer <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')"></label>
+                  <label>Trace format
+                    <select onchange="DBG_stub('Trace format')">
+                      <option>assembler-like</option>
+                      <option>compact</option>
+                      <option>verbose</option>
+                    </select>
+                  </label>
+                  <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
+                  <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
+                </div>
+
+                <div class="DBG_panelGroup">
+                  <strong>Run limits</strong>
+                  <label>Max run speed
+                    <select onchange="DBG_stub('Max run speed')">
+                      <option>balanced</option>
+                      <option>slow</option>
+                      <option>fast</option>
+                      <option>unlimited</option>
+                    </select>
+                  </label>
+                  <label>Stop after N instructions <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')"></label>
+                </div>
+
+                <div class="DBG_panelGroup">
+                  <strong>Watch defaults</strong>
+                  <label>Default watch size
+                    <select onchange="DBG_stub('Default watch size')">
+                      <option>byte</option>
+                      <option>word</option>
+                      <option>bit</option>
+                    </select>
+                  </label>
+                  <label>Default watch format
+                    <select onchange="DBG_stub('Default watch format')">
+                      <option>hex</option>
+                      <option>decimal</option>
+                      <option>binary</option>
+                      <option>ASCII</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="DBG_panel" id="DBG_tools" hidden>
+              <div class="DBG_panelGrid">
+
+                <div class="DBG_panelGroup">
+                  <strong>Layout</strong>
+                  <div class="DBG_toolLine"><span>Register/Memory Watch pane</span><button id="DBG_toggleWatchPaneButton" onclick="DBG_togglePane3();"><i class="fa fa-eye-slash"></i> hide pane 3</button></div>
+                  <div class="DBG_toolLine"><span>Restore default debugger layout</span><button onclick="DBG_togglePane3(true); DBG_stub('Restore default layout');"><i class="fa fa-columns"></i> restore</button></div>
+                </div>
+
+                <div class="DBG_panelGroup">
+                  <strong>Runtime</strong>
+                  <div class="DBG_toolLine"><span>Reset debugger</span><button onclick="DBG_stub('Reset debugger')"><i class="fa fa-redo"></i> reset</button></div>
+                  <div class="DBG_toolLine"><span>Reset CPU</span><button onclick="DBG_stub('Reset CPU')"><i class="fa fa-power-off"></i> reset CPU</button></div>
+                  <div class="DBG_toolLine"><span>Load Emulator image</span><button onclick="DBG_stub('Load Emulator image')"><i class="fa fa-microchip"></i> load</button></div>
+                </div>
+
+                <div class="DBG_panelGroup">
+                  <strong>Memory</strong>
+                  <div class="DBG_toolLine"><span>Show memory</span><button onclick="DBG_stub('Show memory')"><i class="fa fa-table"></i> show</button></div>
+                  <div class="DBG_toolLine"><span>Show memory map</span><button onclick="DBG_stub('Show memory map')"><i class="fa fa-map"></i> map</button></div>
+                  <div class="DBG_toolLine"><span>Map Apple II+ zero-page</span><button onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button></div>
+                </div>
+
+                <div class="DBG_panelGroup">
+                  <strong>Export / diagnostics</strong>
+                  <div class="DBG_toolLine"><span>Export watch list</span><button onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button></div>
+                  <div class="DBG_toolLine"><span>Clear all breakpoints/watchpoints</span><button onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="DBG_paneHost" class="DBG_paneHost">
+            <section id="DBG_listingPane" class="DBG_pane">
+              <div class="com-pane-title DBG_paneTitle">
+                <div class="DBG_paneTitleMain">
+                  <strong>Listing</strong>
+                  <span class="DBG_paneInfo">source listing + uncovered memory</span>
+                </div>
+                <div class="com-pane-header-default-widget DBG_headerActions">
+                  <button class="DBG_headerButton" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
+                  <button id="DBG_runToggle" class="DBG_headerButton" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="goto-pc" onclick="DBG_stub('Go to current PC')" title="Go to current PC"><i class="fa fa-crosshairs"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="find" onclick="DBG_stub('Find address / label / opcode')" title="Find address / label / opcode"><i class="fa fa-search"></i></button>
+                </div>
+              </div>
+              <div class="DBG_paneBody DBG_dotmatrix_bck">
+<pre id="debugfield">; adr   bytes       label       instruction           comment
+; ----  ----------  ----------  --------------------  ------------------------
+<span class="DBG_listingLineCurrent"> 6000  A9 00       START       LDA #$00              ; current PC</span>
+ 6002  8D 00 04                STA $0400             ; write to text page 1
+ 6005  A9 C1                   LDA #$C1              ; 'A'
+ 6007  8D 01 04                STA $0401
+ 600A  20 ED FD                JSR COUT
+ 600D  4C 00 60                JMP START
+
+; --- disassembled uncovered memory space, mock preview ---
+ C000  AD 00 C0                LDA $C000             ; keyboard data
+ C010  AD 10 C0                LDA $C010             ; keyboard strobe
+ C030  AD 30 C0                LDA $C030             ; speaker toggle
+ C050  AD 50 C0                LDA $C050             ; TXTCLR
+ C051  AD 51 C0                LDA $C051             ; TXTSET
+ C052  AD 52 C0                LDA $C052             ; MIXCLR
+ C053  AD 53 C0                LDA $C053             ; MIXSET
+<span class="DBG_breakpoint">*FDED  60                      RTS                   ; sample breakpoint</span>
+ FDF0  20 58 FC                JSR HOME
+ FDF3  4C 59 FF                JMP MONZ
+</pre>
+              </div>
+            </section>
+
+            <section id="DBG_tracePane" class="DBG_pane">
+              <div class="com-pane-title DBG_paneTitle">
+                <div class="DBG_paneTitleMain">
+                  <strong>CPU Trace</strong>
+                  <span class="DBG_paneInfo">PC bytes opcode A X Y P SP cycles</span>
+                </div>
+                <div class="com-pane-header-default-widget DBG_headerActions">
+                  <button class="DBG_headerButton" data-dbg-action="pause-trace" onclick="DBG_stub('Freeze trace display')" title="Freeze trace display"><i class="fa fa-pause"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="copy-trace" onclick="DBG_stub('Copy trace')" title="Copy trace"><i class="fa fa-copy"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
+                  
+                
+                </div>
+              </div>
+              <div class="DBG_paneBody DBG_dotmatrix_bck">
+<pre id="DBG_traceView">; #     PC    bytes       op                   A  X  Y  P  SP  cyc
+; ----  ----  ----------  -------------------  -- -- -- -- --  ----
+ 0001  6000  A9 00       LDA #$00             00 00 00 20 FF     2
+<span class="DBG_traceLineCurrent"> 0002  6002  8D 00 04    STA $0400            00 00 00 22 FF     6</span>
+ 0003  6005  A9 C1       LDA #$C1             00 00 00 22 FF     2
+ 0004  6007  8D 01 04    STA $0401            C1 00 00 A0 FF     6
+ 0005  600A  20 ED FD    JSR COUT             C1 00 00 A0 FF     6
+ 0006  FDED  60          RTS                  C1 00 00 A0 FD     6
+ 0007  600D  4C 00 60    JMP $6000            C1 00 00 A0 FF     3
+
+; trace display options live under Settings:
+; - trace depth / ring buffer size
+; - show cycles
+; - show PC histogram
+; - trace format
+</pre>
+              </div>
+            </section>
+
+            <section id="DBG_watchPane" class="DBG_pane">
+              <div class="com-pane-title DBG_paneTitle">
+                <div class="DBG_paneTitleMain">
+                  <strong>Memory Watch</strong>
+                  <span class="DBG_paneInfo">CPU + byte/word/bit watchers</span>
+                </div>
+                <div class="com-pane-header-default-widget DBG_headerActions">
+                  <button class="DBG_headerButton" data-dbg-action="add-watch" onclick="DBG_stub('Add watcher')" title="Add watcher"><i class="fa fa-stethoscope"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="edit-watch" onclick="DBG_stub('Edit selected watcher')" title="Edit selected watcher"><i class="fa fa-pen"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="remove-watch" onclick="DBG_stub('Remove selected watcher')" title="Remove selected watcher"><i class="fa fa-minus-circle"></i></button>
+                  <button class="DBG_headerButton" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Break on changed value"><i class="fa fa-bell"></i></button>
+                </div>
+              </div>
+              <div class="DBG_paneBody DBG_dotmatrix_bck DBG_watchBoard">
+                <div class="DBG_registerGrid">
+                  <div class="DBG_registerCell"><label>PC</label><span id="dispPC">6002</span></div>
+                  <div class="DBG_registerCell"><label>A</label><span id="dispAC">00</span></div>
+                  <div class="DBG_registerCell"><label>X</label><span id="dispXR">00</span></div>
+                  <div class="DBG_registerCell"><label>Y</label><span id="dispYR">00</span></div>
+                  <div class="DBG_registerCell DBG_changed"><label>SR</label><span id="dispSR">22</span></div>
+                  <div class="DBG_registerCell"><label>SP</label><span id="dispSP">FF</span></div>
+                </div>
+
+                <div class="DBG_flagGrid">
+                  <div class="DBG_flagCell"><label>N</label><span id="dispSR7">0</span></div>
+                  <div class="DBG_flagCell"><label>V</label><span id="dispSR6">0</span></div>
+                  <div class="DBG_flagCell"><label>-</label><span id="dispSR5">1</span></div>
+                  <div class="DBG_flagCell"><label>B</label><span id="dispSR4">0</span></div>
+                  <div class="DBG_flagCell"><label>D</label><span id="dispSR3">0</span></div>
+                  <div class="DBG_flagCell"><label>I</label><span id="dispSR2">0</span></div>
+                  <div class="DBG_flagCell DBG_changed"><label>Z</label><span id="dispSR1">1</span></div>
+                  <div class="DBG_flagCell"><label>C</label><span id="dispSR0">0</span></div>
+                </div>
+
+                <table class="DBG_watchTable" aria-label="Debugger watchers">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Address</th>
+                      <th>Size</th>
+                      <th>Value</th>
+                      <th>Mode</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Text page cursor</td>
+                      <td>$0400</td>
+                      <td>byte</td>
+                      <td class="DBG_changed">00</td>
+                      <td>break on change</td>
+                    </tr>
+                    <tr>
+                      <td>KBD</td>
+                      <td>$C000</td>
+                      <td>byte</td>
+                      <td>80</td>
+                      <td>read watch</td>
+                    </tr>
+                    <tr>
+                      <td>KBDSTRB bit 7</td>
+                      <td>$C010.7</td>
+                      <td>bit</td>
+                      <td>1</td>
+                      <td>manual</td>
+                    </tr>
+                    <tr>
+                      <td>BASL/BASH</td>
+                      <td>$0028</td>
+                      <td>word</td>
+                      <td>0400</td>
+                      <td>auto</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div class="DBG_footerNote" id="DBG_status">Layout prototype: debugger actions are visual placeholders only.</div>
+              </div>
+            </section>
+          </div>
+
+          <div class="DBG_footerNote">
+            v1 keeps execution-critical actions in pane headers. Display preferences live under Settings; layout/runtime/memory/export actions live under Tools.
+          </div>
+
+          <!-- Legacy debugger fields kept as placeholders for later integration. -->
+          <div class="DBG_legacyHidden">
+            <form action="#" onsubmit="return false"></form>
+            <form name="MemLoader" onsubmit="return false"></form>
+            <textarea id="mem" name="mem" rows="16" cols="62" wrap="virtual"></textarea>
+            <input type="text" id="memAddr" name="memAddr" size="4" value="6000">
+            <input type="checkbox" id="showASCII" value="1">
+            <input id="watchparam" value="">
+            <input id="watchparam2" value="">
+            <div id="dispStep"></div>
+            <div id="watchdisp"></div>
+            <div id="regdisp"></div>
+            <div id="dispAD">0000</div>
+            <div id="dispR1">00</div><div id="dispR2">00</div><div id="dispR3">00</div>
+            <div id="dispR4">00</div><div id="dispR5">00</div><div id="dispR6">00</div>
+            <div id="disp7">0</div><div id="disp6">0</div><div id="disp5">0</div><div id="disp4">0</div>
+            <div id="disp3">0</div><div id="disp2">0</div><div id="disp1">0</div><div id="disp0">0</div>
+            <div id="DBG_mem_map"></div>
+            <div id="dispCycles">total cycles: 0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
