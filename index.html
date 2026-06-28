@@ -695,6 +695,16 @@
                 scrollbar-width: thin;
               }
 
+              .ASM_jsonMount:empty::before {
+                content: attr(data-placeholder);
+                color: rgba(0,0,0,0.55);
+                font-family: courier, monospace;
+                font-size: 12px;
+                font-weight: 500;
+                pointer-events: none;
+              }
+
+
               .ASM_jsonMount::-webkit-scrollbar { width: 10px; height: 10px; }
               .ASM_jsonMount::-webkit-scrollbar-track { background: transparent; }
               .ASM_jsonMount::-webkit-scrollbar-corner { background: transparent; }
@@ -776,6 +786,134 @@
 
               .ASM_findReplaceMount input {
                 color: #000000;
+              }
+
+              .ASM_paneTitle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                min-height: 34px;
+                margin: 0px 0px 2px 0px;
+                padding: 4px 8px;
+                border-radius: 10px;
+                border: 1px solid rgba(0,0,0,0.18);
+                background: rgba(244,244,244,0.88);
+                color: #000000;
+                font-family: arial, sans-serif;
+                font-size: 12px;
+                line-height: 20px;
+                overflow: visible;
+                position: relative;
+              }
+
+              .ASM_paneTitle strong {
+                color: #000000;
+                font-size: 13px;
+                font-weight: 700;
+              }
+
+              .ASM_paneTitleMain {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+              }
+
+              .ASM_listingColumnsInput {
+                width: 245px;
+                max-width: 24vw;
+                border: 1px solid rgba(0,0,0,0.25);
+                border-radius: 4px;
+                background: #ffffff;
+                color: #000000;
+                padding: 2px 5px;
+                font: 11px/1.2 courier, monospace;
+              }
+
+              .ASM_listingColumnsInput:focus {
+                outline: 1px solid #0078d4;
+                border-color: #0078d4;
+              }
+
+              .ASM_paneInfo {
+                color: rgba(0,0,0,0.70);
+                font-family: arial, sans-serif;
+                font-size: 11px;
+                white-space: nowrap;
+              }
+
+              .ASM_paneTitleButton {
+                -webkit-appearance: none;
+                appearance: none;
+                border: 1px solid rgba(0,0,0,0.35);
+                border-radius: 4px;
+                background: #f4f4f4;
+                color: #000000;
+                padding: 2px 6px;
+                font: 11px/1.2 arial, sans-serif;
+                cursor: pointer;
+              }
+
+              .ASM_paneTitleButton:hover {
+                border-color: #0078d4;
+              }
+
+              .ASM_paneTitle .ASM_findReplaceMount {
+                margin: 0px;
+                max-width: 430px;
+                min-height: 24px;
+              }
+
+              .ASM_root.ASM_headerDark .ASM_paneTitle {
+                background: #111820;
+                border-color: #30363d;
+                color: #e6edf3;
+              }
+
+              .ASM_root.ASM_headerDark .ASM_paneTitle strong {
+                color: #e6edf3;
+              }
+
+              .ASM_root.ASM_headerDark .ASM_paneInfo {
+                color: #8b949e;
+              }
+
+              .ASM_root.ASM_headerDark .ASM_listingColumnsInput {
+                background: #0b0f14;
+                border-color: #30363d;
+                color: #e6edf3;
+              }
+
+              .ASM_root.ASM_headerDark .ASM_paneTitleButton {
+                background: #21262d;
+                border-color: #30363d;
+                color: #e6edf3;
+              }
+
+              .ASM_root .com-pane-header-default-widget {
+                gap: 4px;
+              }
+
+              .ASM_root .com-pane-fr-btn {
+                color: #000000;
+              }
+
+              .ASM_root.ASM_headerDark .com-pane-fr-btn {
+                color: #e6edf3;
+              }
+
+              .ASM_root .com-pane-fr-btn:hover {
+                background: rgba(0,0,0,0.08);
+              }
+
+              .ASM_root .com-pane-fr-btn:disabled {
+                opacity: 0.35;
+                cursor: default;
+              }
+
+              .ASM_root .com-pane-fr-btn i {
+                pointer-events: none;
               }
 
               .ASM_root .com-pane-fr-wrap {
@@ -943,8 +1081,6 @@
               <div class="vertical" style="height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings');oCOM.POPUP.off('ASM_tools');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
                 <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.toggle('ASM_tools');oCOM.POPUP.off('ASM_settings');" title="Tools"><i class="fa fa-toolbox"></i></button>
-                <hr>
-                <button class=appbut id="ASM_assembleButton" title="Assemble"><i class="fa fa-play"></i></button>
               </div>
 
               <!--  ASM SETTINGS -->
@@ -961,7 +1097,7 @@
               </div>
 
               <!--  ASM TOOLS -->
-              <div class="hints1" id="ASM_tools" style="z-index:2;position:absolute;margin-top:3px">
+              <div class="hints1" id="ASM_tools" hidden="" style="z-index:2;position:absolute;margin-top:3px">
                 <div class=toolbox>
                   <form name="ASMboard" onsubmit="return false">
                     <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code output" name="boardText"></textarea><br>
@@ -987,8 +1123,7 @@
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
                     </div>
-                    <!--span id="ASM_status" class="ASM_status">Ready.</span-->
-                    <div id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount"></div>
+                    <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
                 </div>
                 </div>
               </div>
@@ -996,6 +1131,10 @@
               <div id="ASM_paneHost" class="ASM_paneHost">
 
                 <section class="ASM_pane">
+                  <div class="ASM_paneTitle pane-title com-pane-title">
+                    <strong>Source</strong>
+                    <span id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount pane-title-search-host"></span>
+                  </div>
                   <textarea id="ASM_sourcePane" class="ASM_editor ASM_dotmatrix_bck" spellcheck="false" wrap="off" placeholder="Source code">ORG $6000
        LDX #0
 Label1 TXA
@@ -1009,11 +1148,25 @@ Label1 TXA
                 </section>
 
                 <section class="ASM_pane">
+                  <div class="ASM_paneTitle pane-title com-pane-title">
+                    <span class="ASM_paneTitleMain">
+                      <strong>Listing</strong>
+                      <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
+                    </span>
+                    <span id="ASM_listingInfo" class="ASM_paneInfo">compile()</span>
+                  </div>
                   <textarea id="ASM_listingPane" class="ASM_editor ASM_dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
                 </section>
 
                 <section id="ASM_jsonPane" class="ASM_pane ASM_jsonPane">
-                  <div id="ASM_jsonMount" class="ASM_jsonMount ASM_dotmatrix_bck" placeholder="Parser output (JSON)" tabindex="0"></div>
+                  <div class="ASM_paneTitle pane-title com-pane-title">
+                    <strong>JSON output</strong>
+                    <span class="ASM_paneTitleMain">
+                      <span id="ASM_jsonInfo" class="ASM_paneInfo">not assembled</span>
+                      <button id="ASM_copyJsonButton" class="ASM_paneTitleButton" type="button" title="Copy JSON">Copy JSON</button>
+                    </span>
+                  </div>
+                  <div id="ASM_jsonMount" class="ASM_jsonMount ASM_dotmatrix_bck" data-placeholder="Parser output (JSON)" aria-label="Parser output (JSON)" tabindex="0"></div>
                 </section>
                 
               </div>
@@ -1031,6 +1184,14 @@ Label1 TXA
             var ASM_currentByteCodeText = "";
             var ASM_oPANE = null;
             var ASM_sourceFindReplace = null;
+            var ASM_sourceHeaderWidgetManager = null;
+            var ASM_sourceEditHistory = {
+              undo: [],
+              redo: [],
+              outdent: [],
+              max: 100
+            };
+            var ASM_headerThemeDark = false;
 
             function ASM_el(id) { return document.getElementById(id); }
 
@@ -1094,6 +1255,45 @@ Label1 TXA
               if(board) board.value = ASM_currentByteCodeText;
 
               ASM_updateByteCodeInfo(typeof byteCount == "number" ? byteCount : ASM_countByteCodeText(ASM_currentByteCodeText));
+            }
+
+            function ASM_listingColumnsValue()
+            {
+              var headerInput   = ASM_el("ASM_listingColumnsInput");
+              var settingsInput = ASM_el("ASM_settingsListingColumnsInput");
+              return headerInput ? headerInput.value : (settingsInput ? settingsInput.value : undefined);
+            }
+
+            function ASM_syncListingColumns(sourceInput)
+            {
+              var headerInput   = ASM_el("ASM_listingColumnsInput");
+              var settingsInput = ASM_el("ASM_settingsListingColumnsInput");
+              var value = sourceInput ? sourceInput.value : ASM_listingColumnsValue();
+
+              if(headerInput && headerInput !== sourceInput)     headerInput.value = value;
+              if(settingsInput && settingsInput !== sourceInput) settingsInput.value = value;
+            }
+
+            function ASM_setPaneInfos(listingText, jsonState)
+            {
+              var listingInfo = ASM_el("ASM_listingInfo");
+              var jsonInfo    = ASM_el("ASM_jsonInfo");
+
+              if(listingInfo)
+              {
+                if(listingText)
+                {
+                  var n = String(listingText).split(/\r\n|\r|\n/).length;
+                  listingInfo.textContent = n + " listing lines";
+                }
+                else listingInfo.textContent = "compile()";
+              }
+
+              if(jsonInfo)
+              {
+                jsonInfo.textContent = jsonState || "not assembled";
+                jsonInfo.title = jsonInfo.textContent;
+              }
             }
 
             function ASM_setStatus(text, kind)
@@ -1168,6 +1368,7 @@ Label1 TXA
 
               if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
               if(ASM_el("ASM_jsonMount"))    ASM_el("ASM_jsonMount").replaceChildren();
+              ASM_setPaneInfos("", "not assembled");
               ASM_resizeSourceListingPanes();
               ASM_refreshFindReplaceOverlay();
 
@@ -1183,16 +1384,18 @@ Label1 TXA
                 ASM_currentJsonText = JSON.stringify({error:msg},null,2);
                 ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
                 ASM_prettifyJSON();
+                ASM_setPaneInfos("", "error");
                 return false;
               }
 
               try
               {
                 var sourcePane = ASM_el("ASM_sourcePane");
-                var listingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
+                var listingColumnsInput = ASM_el("ASM_listingColumnsInput") || ASM_el("ASM_settingsListingColumnsInput");
                 var listingPane = ASM_el("ASM_listingPane");
                 var jsonMount = ASM_el("ASM_jsonMount");
 
+                ASM_syncListingColumns(listingColumnsInput);
                 window.oASM = new ASM({listingColumns:listingColumnsInput ? listingColumnsInput.value : undefined});
                 if(listingColumnsInput && typeof window.oASM.setListingColumns == "function")
                   window.oASM.setListingColumns(listingColumnsInput.value);
@@ -1209,6 +1412,7 @@ Label1 TXA
                 ASM_currentJsonText = JSON.stringify(compiled,null,2);
                 jsonMount.textContent = ASM_currentJsonText;
                 ASM_prettifyJSON();
+                ASM_setPaneInfos(listingPane.value, "interactive JSON");
 
                 console.table(ASM_consoleTable(compiled.rows || []));
 
@@ -1237,6 +1441,7 @@ Label1 TXA
                 ASM_currentJsonText = JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2);
                 ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
                 ASM_prettifyJSON();
+                ASM_setPaneInfos("", "error");
                 ASM_setStatus("Error: " + (err && err.message ? err.message : String(err)),"bad");
                 return false;
               }
@@ -1361,6 +1566,177 @@ Label1 TXA
                 jsonMount.style.height = Math.max(420, sourceHeight, listingHeight) + "px";
                 jsonMount.style.maxHeight = jsonMount.style.height;
               }
+
+              ASM_equalizePaneHeaders();
+            }
+
+            function ASM_normalizeLineEndingsInfo(text)
+            {
+              var m = String(text || "").match(/\r\n|\r|\n/);
+              return {
+                eol: m ? m[0] : "\n",
+                hasFinalEol: /(\r\n|\r|\n)$/.test(String(text || ""))
+              };
+            }
+
+            function ASM_splitSourceLines(text)
+            {
+              return String(text || "").split(/\r\n|\r|\n/);
+            }
+
+            function ASM_joinSourceLines(lines, info)
+            {
+              var out = lines.join(info.eol || "\n");
+              if(info.hasFinalEol && lines.length && lines[lines.length - 1] !== "") out += info.eol || "\n";
+              return out;
+            }
+
+            function ASM_snapshotSourceEdit(label)
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              if(!sourcePane) return null;
+              return {
+                label: label || "edit",
+                value: sourcePane.value,
+                selectionStart: sourcePane.selectionStart || 0,
+                selectionEnd: sourcePane.selectionEnd || 0,
+                scrollTop: sourcePane.scrollTop || 0
+              };
+            }
+
+            function ASM_restoreSourceSnapshot(snap)
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              if(!snap || !sourcePane) return;
+              sourcePane.value = snap.value;
+              ASM_resizeSourceListingPanes();
+              ASM_refreshFindReplaceOverlay();
+              sourcePane.focus();
+              try { sourcePane.setSelectionRange(snap.selectionStart, snap.selectionEnd); } catch(_ignore) {}
+              sourcePane.scrollTop = snap.scrollTop || 0;
+            }
+
+            function ASM_pushSourceUndo(label)
+            {
+              var snap = ASM_snapshotSourceEdit(label);
+              if(!snap) return;
+              ASM_sourceEditHistory.undo.push(snap);
+              if(ASM_sourceEditHistory.undo.length > ASM_sourceEditHistory.max) ASM_sourceEditHistory.undo.shift();
+              ASM_sourceEditHistory.redo.length = 0;
+            }
+
+            function ASM_sourceUndo()
+            {
+              if(!ASM_sourceEditHistory.undo.length) return;
+              ASM_sourceEditHistory.redo.push(ASM_snapshotSourceEdit("redo"));
+              ASM_restoreSourceSnapshot(ASM_sourceEditHistory.undo.pop());
+            }
+
+            function ASM_sourceRedo()
+            {
+              if(!ASM_sourceEditHistory.redo.length) return;
+              ASM_sourceEditHistory.undo.push(ASM_snapshotSourceEdit("undo"));
+              ASM_restoreSourceSnapshot(ASM_sourceEditHistory.redo.pop());
+            }
+
+            function ASM_sourceOutdent()
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              if(!sourcePane) return;
+
+              ASM_pushSourceUndo("outdent");
+
+              var text = sourcePane.value;
+              var info = ASM_normalizeLineEndingsInfo(text);
+              var lines = ASM_splitSourceLines(text);
+              var removed = [];
+
+              for(var i=0;i<lines.length;i++)
+              {
+                if(lines[i].length)
+                {
+                  removed[i] = lines[i].charAt(0);
+                  lines[i] = lines[i].slice(1);
+                }
+                else removed[i] = "";
+              }
+
+              ASM_sourceEditHistory.outdent.push(removed);
+              sourcePane.value = ASM_joinSourceLines(lines, info);
+              ASM_resizeSourceListingPanes();
+              ASM_refreshFindReplaceOverlay();
+            }
+
+            function ASM_sourceIndent()
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              if(!sourcePane) return;
+
+              ASM_pushSourceUndo("indent");
+
+              var text = sourcePane.value;
+              var info = ASM_normalizeLineEndingsInfo(text);
+              var lines = ASM_splitSourceLines(text);
+              var restore = ASM_sourceEditHistory.outdent.length ? ASM_sourceEditHistory.outdent.pop() : null;
+              var nbsp = " ";
+
+              for(var i=0;i<lines.length;i++)
+                lines[i] = (restore ? (restore[i] || "") : nbsp) + lines[i];
+
+              sourcePane.value = ASM_joinSourceLines(lines, info);
+              ASM_resizeSourceListingPanes();
+              ASM_refreshFindReplaceOverlay();
+            }
+
+            function ASM_toggleHeaderTheme()
+            {
+              var root = ASM_el("ASM_root");
+              if(!root) return;
+              ASM_headerThemeDark = !ASM_headerThemeDark;
+              root.classList.toggle("ASM_headerDark", ASM_headerThemeDark);
+            }
+
+            function ASM_sourceDefaultPaneHeaderHTML()
+            {
+              if(!ASM_oPANE || typeof ASM_oPANE.defaultPaneHeaderWidgetHTML != "function")
+                return '<span class="com-pane-header-default-widget com-pane-header-widget">'
+                  + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                  + '</span>';
+
+              return ASM_oPANE.defaultPaneHeaderWidgetHTML().replace(
+                '<span class="com-pane-header-default-widget com-pane-header-widget">',
+                '<span class="com-pane-header-default-widget com-pane-header-widget">'
+                + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+              );
+            }
+
+            function ASM_bindSourceDefaultWidgetActions()
+            {
+              var host = ASM_el("ASM_sourceFindReplaceMount");
+              if(!host) return;
+
+              host.addEventListener("click", function(ev){
+                var btn = ev.target && ev.target.closest ? ev.target.closest("[data-pane-default-act]") : null;
+                if(!btn) return;
+
+                var act = btn.getAttribute("data-pane-default-act");
+                if(act == "assemble") ASM_assembleCurrentSource();
+                else if(act == "undo") ASM_sourceUndo();
+                else if(act == "redo") ASM_sourceRedo();
+                else if(act == "indent") ASM_sourceIndent();
+                else if(act == "outdent") ASM_sourceOutdent();
+                else if(act == "theme") ASM_toggleHeaderTheme();
+                else if(act == "bottom") window.scrollTo(0, document.body.scrollHeight);
+                else if(act == "top") window.scrollTo({ top: 0 });
+
+                ev.preventDefault();
+              });
+            }
+
+            function ASM_equalizePaneHeaders()
+            {
+              if(ASM_oPANE && typeof ASM_oPANE.equalizePaneHeaderHeights == "function")
+                ASM_oPANE.equalizePaneHeaderHeights("#ASM_root .com-pane-title");
             }
 
             function ASM_toggleJsonPane(forceShow)
@@ -1379,6 +1755,8 @@ Label1 TXA
                 btn.innerHTML = '<i class="fa fa-code"></i>';
                 btn.title = show ? "Hide JSON output" : "Show JSON output";
               }
+
+              ASM_equalizePaneHeaders();
             }
 
             function ASM_refreshFindReplaceOverlay()
@@ -1402,6 +1780,17 @@ Label1 TXA
 
               ASM_applyFindReplaceScheme();
 
+              if(typeof ASM_oPANE.createPaneHeaderWidgetManager == "function"
+                 && typeof ASM_oPANE.defaultPaneHeaderWidgetHTML == "function")
+              {
+                ASM_sourceHeaderWidgetManager = ASM_oPANE.createPaneHeaderWidgetManager("ASM_sourceFindReplaceMount", {
+                  defaultId:"default",
+                  defaultHTML:ASM_sourceDefaultPaneHeaderHTML(),
+                  onChange:function(){ ASM_equalizePaneHeaders(); }
+                });
+                ASM_bindSourceDefaultWidgetActions();
+              }
+
               if(typeof ASM_oPANE.bindFindReplace == "function")
               {
                 ASM_sourceFindReplace = ASM_oPANE.bindFindReplace("ASM_sourcePane", {
@@ -1412,11 +1801,13 @@ Label1 TXA
                   floatingNav:true,
                   pageScrollOnMatch:true,
                   pageScrollOffset:72,
+                  manager:ASM_sourceHeaderWidgetManager,
                   scheme:ASM_findReplaceScheme,
                   barWidth:"390px",
                   debounce_ms:500,
                   onChange:function(){
                     ASM_resizeSourceListingPanes();
+                    ASM_equalizePaneHeaders();
                     ASM_setStatus("Source updated by search & replace. Click assemble to regenerate output.","warn");
                   }
                 });
@@ -1442,16 +1833,19 @@ Label1 TXA
               var assembleButton = ASM_el("ASM_assembleButton");
               var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
+              var copyJsonButton = ASM_el("ASM_copyJsonButton");
               var toEmulatorButton = ASM_el("ASM_toEmulatorButton");
               var toDebuggerButton = ASM_el("ASM_toDebuggerButton");
               var sourcePane = ASM_el("ASM_sourcePane");
               var boardText = ASM_el("ASM_boardText");
+              var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
               var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
 
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
               if(assembleButton) assembleButton.addEventListener("click",function(ev){ ev.preventDefault(); ASM_assembleCurrentSource(); });
               if(toggleJsonButton) toggleJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(); });
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
+              if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
               if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
               if(toEmulatorButton) toEmulatorButton.addEventListener("click",ASM_toEmulator);
               if(toDebuggerButton) toDebuggerButton.addEventListener("click",ASM_toDebugger);
@@ -1471,18 +1865,26 @@ Label1 TXA
                 });
               }
 
+              if(listingColumnsInput) listingColumnsInput.addEventListener("change",function(){
+                ASM_syncListingColumns(listingColumnsInput);
+                ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
+              });
+
               if(settingsListingColumnsInput) settingsListingColumnsInput.addEventListener("change",function(){
+                ASM_syncListingColumns(settingsListingColumnsInput);
                 ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
               });
             }
 
             ASM_bindEvents();
+            ASM_syncListingColumns();
             ASM_bindSourceFindReplace();
             ASM_loadManualPane();
             ASM_toggleJsonPane(false);
             ASM_clearOutputs("Sample source loaded. Click assemble to generate output.","");
             ASM_resizeSourceListingPanes();
             ASM_refreshFindReplaceOverlay();
+            ASM_equalizePaneHeaders();
             </script>
 
           </div>
