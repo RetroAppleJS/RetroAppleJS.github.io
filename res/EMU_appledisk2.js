@@ -283,7 +283,7 @@ function AppleDisk2()
     {
         if(state.diskData[state.drv])        // if disk data is loaded on the selected drive
                     return ROM[addr];    // return content of disk ROM addres
-        else console.warn("DISK2 not booted: no disk data available during boot")
+        else console.log("DISK2: not booted: no disk data available during restart (not uncommon")
         return null;
     }
 
