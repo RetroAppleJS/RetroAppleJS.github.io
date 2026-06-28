@@ -544,8 +544,10 @@ table { border-collapse: collapse; position: relative;}
   font-family:'Arcade';
   font-size:8px;
   color:#AFFFF6;
+  /*
   width:350px;
   height:270px;
+  */
   margin-left:105px;
   white-space:normal;
   word-break:break-all;
