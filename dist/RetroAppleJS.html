@@ -29298,10 +29298,14 @@ function DASM()
                 min-height: 420px;
                 border: 0;
                 outline: 0;
-                padding: 14px;
-                background: var(--ASM_panel2);
+                padding: 0px 30px;
                 color: #000000;
-                font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+                -webkit-text-fill-color: #000000;
+                caret-color: #000000;
+                font-family: courier, monospace;
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 21px;
                 tab-size: 4;
                 white-space: pre;
                 resize: none;
@@ -29326,10 +29330,9 @@ function DASM()
               .ASM_jsonMount:empty::before {
                 content: attr(data-placeholder);
                 color: rgba(0,0,0,0.55);
-                font-family: courier, monospace;
-                font-size: 12px;
-                font-weight: 500;
-                pointer-events: none;
+                font: inherit;
+                line-height: inherit;      
+               pointer-events: none;
               }
 
 
@@ -29345,11 +29348,32 @@ function DASM()
 
               .ASM_jsonView {
                 margin: 0;
+                padding: 0;
+                background: transparent !important;
                 white-space: pre;
                 min-width: max-content;
                 max-width: none;
-                color: #000000;
+                color: inherit;
+                font: inherit;
+                line-height: inherit;
               }
+
+              /* oCOM.JSONprettify() creates <pre class="json-view">.
+                 Keep JSON output aligned with Source and Listing. */
+              .ASM_jsonMount > pre,
+              .ASM_jsonMount .json-view,
+              .ASM_jsonMount .ASM_jsonView {
+                margin: 0;
+                padding: 0;
+                background: transparent !important;
+                color: inherit;
+                font: inherit;
+                line-height: inherit;
+                white-space: pre;
+                min-width: max-content;
+                max-width: none;
+              }
+
 
               .ASM_jsonMount *,
               .ASM_jsonKey,
