@@ -2438,19 +2438,6 @@ function PANE()
         return api;
     };
 
-    this.defaultPaneHeaderWidgetHTML = function()
-    {
-        return ''
-            + '<span class="com-pane-header-default-widget com-pane-header-widget">'
-            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
-            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
-            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
-            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
-            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
-            + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
-            + '</span>';
-    };
-
     this.equalizePaneHeaderHeights = function(selector)
     {
         selector = selector || ".com-pane-title";

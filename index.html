@@ -895,6 +895,7 @@
                 gap: 4px;
               }
 
+              /*
               .ASM_root .com-pane-fr-btn {
                 color: #000000;
               }
@@ -915,6 +916,7 @@
               .ASM_root .com-pane-fr-btn i {
                 pointer-events: none;
               }
+                */
 
               .ASM_root .com-pane-fr-wrap {
                 width: 100%;
@@ -1695,17 +1697,30 @@ Label1 TXA
               root.classList.toggle("ASM_headerDark", ASM_headerThemeDark);
             }
 
+            function defaultPaneHeaderWidgetHTML()
+            {
+                return ''
+                    + '<span class="com-pane-header-default-widget com-pane-header-widget">'
+                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
+                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
+                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
+                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
+                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
+                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
+                    + '</span>';
+            };
+
             function ASM_sourceDefaultPaneHeaderHTML()
             {
-              if(!ASM_oPANE || typeof ASM_oPANE.defaultPaneHeaderWidgetHTML != "function")
+              if(!ASM_oPANE || typeof defaultPaneHeaderWidgetHTML != "function")
                 return '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                  + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                  + '<button type="button" class="appbut mini" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
                   + '</span>';
 
-              return ASM_oPANE.defaultPaneHeaderWidgetHTML().replace(
+              return defaultPaneHeaderWidgetHTML().replace(
                 '<span class="com-pane-header-default-widget com-pane-header-widget">',
                 '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                + '<button type="button" class="appbut mini" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
               );
             }
 
@@ -1780,7 +1795,7 @@ Label1 TXA
               ASM_applyFindReplaceScheme();
 
               if(typeof ASM_oPANE.createPaneHeaderWidgetManager == "function"
-                 && typeof ASM_oPANE.defaultPaneHeaderWidgetHTML == "function")
+                 && typeof defaultPaneHeaderWidgetHTML == "function")
               {
                 ASM_sourceHeaderWidgetManager = ASM_oPANE.createPaneHeaderWidgetManager("ASM_sourceFindReplaceMount", {
                   defaultId:"default",
