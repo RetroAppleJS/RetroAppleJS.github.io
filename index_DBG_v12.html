@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="res/COM_fontawesome/all.css">
 
-  <!--link rel="stylesheet" href="res/COM_MAIN.css"-->
+  <link rel="stylesheet" href="res/COM_MAIN.css">
 
   <script type="text/javascript" src="res/COM_MAIN.js"></script>
   <script type="text/javascript" src="res/COM_CONFIG.js"></script>
@@ -155,14 +155,14 @@
       gap: 6px 16px;
     }
 
-    .DBG_panelGroup {
-      padding: 5px 6px;
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.60);
+    .DBG_panelGrid > .appbox {
+      float: none;
+      height: auto;
+      text-align: left;
+      box-sizing: border-box;
     }
 
-    .DBG_panelGroup strong {
+    .DBG_panelGrid > .appbox strong {
       display: block;
       margin-bottom: 4px;
       font-size: 12px;
@@ -188,30 +188,6 @@
       background: #ffffff;
       color: #000000;
       font: 11px/1.2 courier, monospace;
-    }
-
-    .DBG_panel button,
-    .DBG_headerButton,
-    .DBG_tinyButton {
-      -webkit-appearance: none;
-      appearance: none;
-      min-width: 24px;
-      min-height: 22px;
-      margin: 0px;
-      padding: 2px 6px;
-      border: 1px solid rgba(0,0,0,0.35);
-      border-radius: 4px;
-      background: #f4f4f4;
-      color: #000000;
-      font: 11px/1.2 arial, sans-serif;
-      cursor: pointer;
-    }
-
-    .DBG_panel button:hover,
-    .DBG_headerButton:hover,
-    .DBG_tinyButton:hover {
-      border-color: #0078d4;
-      background: #ffffff;
     }
 
     .DBG_paneHost {
@@ -287,21 +263,8 @@
       flex-wrap: nowrap;
     }
 
-    .DBG_headerButton i,
-    .DBG_tinyButton i {
+    .DBG_headerActions .appbut i {
       pointer-events: none;
-    }
-
-    .DBG_dotmatrix_bck {
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
-      background-size: 585px 42px;
-      background-attachment: local;
-      border-radius: 10px;
-      color: #000000;
-      font-family: courier, monospace;
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 21px;
     }
 
     .DBG_paneBody {
@@ -578,7 +541,7 @@
     </div>
 
     <div class="tabs">
-      <div id="tab3">
+      <div id="tab3" class="active">
         <div id="DBG_root">
           <div class="DBG_topToolbar">
             <button class="appbut" value="Settings" onclick="DBG_togglePanel('DBG_settings');" title="Debugger Settings">
@@ -591,9 +554,9 @@
           </div>
 
           <div class="DBG_popupRow">
-            <div class="DBG_panel" id="DBG_settings" hidden>
+            <div class="DBG_panel appbox" id="DBG_settings" hidden>
               <div class="DBG_panelGrid">
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Debugger display</strong>
                   <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
                   <label>Source/disassembly fusion
@@ -608,7 +571,7 @@
                   <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
                 </div>
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Trace configuration</strong>
                   <label>Trace depth / ring buffer <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')"></label>
                   <!--label>Trace format
@@ -623,7 +586,7 @@
                   <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
                 </div>
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Run limits</strong>
                   <label>Continuous run speed
                     <select onchange="DBG_stub('Continuous run speed')">
@@ -637,7 +600,7 @@
                   <label>Stop after N instructions <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')"></label>
                 </div>
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Watch defaults</strong>
                   <label>Default watch size
                     <select onchange="DBG_stub('Default watch size')">
@@ -658,33 +621,33 @@
               </div>
             </div>
 
-            <div class="DBG_panel" id="DBG_tools" hidden>
+            <div class="DBG_panel appbox" id="DBG_tools" hidden>
               <div class="DBG_panelGrid">
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Layout</strong>
                   
-                  <div class="DBG_toolLine"><span>Restore default debugger layout</span><button onclick="DBG_togglePane3(true); DBG_stub('Restore default layout');"><i class="fa fa-columns"></i> restore</button></div>
+                  <div class="DBG_toolLine"><span>Restore default debugger layout</span><button class="appbut skinny" onclick="DBG_togglePane3(true); DBG_stub('Restore default layout');"><i class="fa fa-columns"></i> restore</button></div>
                 </div>
 
                 <div style="display:block;width:100px">
                   <div class="DBG_toolLine"><button id="DBG_toggleWatchPaneButton" onclick="DBG_togglePane3();"><i class="fa fa-eye-slash"></i></button></div>
                 </div>
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Runtime</strong>
-                  <div class="DBG_toolLine"><span>Reset debugger</span><button onclick="DBG_stub('Reset debugger')"><i class="fa fa-redo"></i> reset</button></div>
+                  <div class="DBG_toolLine"><span>Reset debugger</span><button class="appbut skinny" onclick="DBG_stub('Reset debugger')"><i class="fa fa-redo"></i> reset</button></div>
                   <div class="DBG_toolLine"><span>Reset CPU</span><button onclick="DBG_stub('Reset CPU')"><i class="fa fa-power-off"></i> reset CPU</button></div>
                   <div class="DBG_toolLine"><span>Load Emulator image</span><button onclick="DBG_stub('Load Emulator image')"><i class="fa fa-microchip"></i> load</button></div>
                 </div>
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Memory</strong>
                   <div class="DBG_toolLine"><span>Show memory map</span><button onclick="DBG_stub('Show memory map')"><i class="fa fa-map"></i> map</button></div>
                   <div class="DBG_toolLine"><span>Map Apple II+ zero-page</span><button onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button></div>
                 </div>
 
-                <div class="DBG_panelGroup">
+                <div class="appbox">
                   <strong>Export / diagnostics</strong>
                   <div class="DBG_toolLine"><span>Export watch list</span><button onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button></div>
                   <div class="DBG_toolLine"><span>Clear all breakpoints/watchpoints</span><button onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button></div>
@@ -701,16 +664,16 @@
                   <span class="DBG_paneInfo">source listing + uncovered memory</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="DBG_headerButton" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
-                  <button id="DBG_runToggle" class="DBG_headerButton" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="goto-pc" onclick="DBG_stub('Go to PC')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
-                  <!--button class="DBG_headerButton" data-dbg-action="find" onclick="DBG_stub('Find address / label / opcode')" title="Find address / label / opcode"><i class="fa fa-search"></i></button-->
+                  <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
+                  <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
+                  <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
+                  <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_stub('Go to PC')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
+                  <!--button class="appbut skinny" data-dbg-action="find" onclick="DBG_stub('Find address / label / opcode')" title="Find address / label / opcode"><i class="fa fa-search"></i></button-->
                   <!-- TODO: use the find & replace function here (triggered by ctrl/command + F), same pop-up behavior as in tab2 -->
                 </div>
               </div>
-              <div class="DBG_paneBody DBG_dotmatrix_bck">
-<pre id="debugfield">; adr   bytes       label       instruction           comment
+              <div class="DBG_paneBody dotmatrix_bck">
+              <pre id="debugfield">; adr   bytes       label       instruction           comment
 ; ----  ----------  ----------  --------------------  ------------------------
 <span class="DBG_listingLineCurrent"> 6000  A9 00       START       LDA #$00              ; current PC</span>
  6002  8D 00 04                STA $0400             ; write to text page 1
@@ -741,16 +704,16 @@
                   <span class="DBG_paneInfo">PC bytes opcode A X Y P SP cycles</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="DBG_headerButton" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
-                  <!--button class="DBG_headerButton" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
+                  <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
+                  <!--button class="appbut skinny" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
                   <!-- TODO: always auto-scroll -->
-                  <button class="DBG_headerButton" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
+                  <button class="appbut skinny" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
+                  <button class="appbut skinny" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
                   
                 
                 </div>
               </div>
-              <div class="DBG_paneBody DBG_dotmatrix_bck">
+              <div class="DBG_paneBody dotmatrix_bck">
 <pre id="DBG_traceView">; #     PC    bytes       op                   A  X  Y  P  SP  cyc
 ; ----  ----  ----------  -------------------  -- -- -- -- --  ----
  0001  6000  A9 00       LDA #$00             00 00 00 20 FF     2
@@ -776,16 +739,16 @@
                   <span class="DBG_paneInfo">CPU + byte/word/bit watchers</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="DBG_headerButton" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
-                  <!--button class="DBG_headerButton" data-dbg-action="remove-watch" onclick="DBG_stub('Remove selected watcher')" title="Remove selected watcher"><i class="fa fa-minus-circle"></i></button-->
+                  <button class="appbut skinny" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
+                  <!--button class="appbut skinny" data-dbg-action="remove-watch" onclick="DBG_stub('Remove selected watcher')" title="Remove selected watcher"><i class="fa fa-minus-circle"></i></button-->
                   <!--  TODO: WE WILL PUT A DELETE PICTOGRAM NEXT TO EACH MEMORY WATCH ITEM like <i class="fa fa-times-circle"></i> -->
-                  <button class="DBG_headerButton" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Add break rule"><i class="fa fa-bell"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="load-save-watch-and-break" onclick="DBG_stub('Load/Save watch & break ')" title="Load/Save"><i class="fa fa-save"></i></button>
+                  <button class="appbut skinny" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Add break rule"><i class="fa fa-bell"></i></button>
+                  <button class="appbut skinny" data-dbg-action="load-save-watch-and-break" onclick="DBG_stub('Load/Save watch & break ')" title="Load/Save"><i class="fa fa-save"></i></button>
 
 
                 </div>
               </div>
-              <div class="DBG_paneBody DBG_dotmatrix_bck DBG_watchBoard">
+              <div class="DBG_paneBody dotmatrix_bck DBG_watchBoard">
                 <div class="DBG_registerGrid">
                   <div class="DBG_registerCell"><label>PC</label><span id="dispPC">6002</span></div>
                   <div class="DBG_registerCell"><label>A</label><span id="dispAC">00</span></div>
