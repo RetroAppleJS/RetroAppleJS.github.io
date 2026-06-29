@@ -1701,18 +1701,18 @@ background-size:1200px 840px;
 }
 
 
-.dotmatrix_bck
-{
-    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");                /*background-size: auto;*/
-    /* 52 * 400/500 */
-    background-size: 585px 42px;
-    border-radius:10px;
-    padding: 0px 30px;
-    line-height: 21px;
-    background-attachment:local;
-    color: #000000;
-    font-family: courier,monospace; font-size: 12px; font-weight:500;
-  }
+/* ---------------------------------------------------------
+   Generic reusable dot-matrix background skin.
+   Used by ASM panes, debugger panes, and any later UI pane.
+   --------------------------------------------------------- */
+
+.dotmatrix_bck {
+  background-color: #f4f4f4 !important;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==") !important;
+  background-size: 585px 42px !important;
+  background-attachment: local;
+  background-repeat: repeat;
+}
 
 /*
 
@@ -29292,14 +29292,6 @@ function DASM()
               }
 
               .ASM_editor,
-              .ASM_jsonMount,
-              .ASM_root .com-pane-fr-wrap {
-                display: block;
-                line-height: 21px;
-                border-radius: 10px;
-              }
-
-              .ASM_editor,
               .ASM_jsonMount {
                 width: 100%;
                 max-width: 100%;
@@ -29634,6 +29626,22 @@ function DASM()
                 padding: 0px 30px !important;
                 box-sizing: border-box;
               }
+
+/* Source pane: PANE.bindFindReplace() adds wrapper/overlay layers.
+   Keep those transparent so the shared dotmatrix_bck skin remains visible. */
+.ASM_root .com-pane-fr-wrap textarea,
+.ASM_root .com-pane-fr-wrap > .com-pane-fr-overlay,
+.ASM_root .com-pane-fr-wrap .com-pane-fr-layer,
+.ASM_root .com-pane-fr-wrap .com-pane-fr-text,
+.ASM_root .com-pane-fr-wrap .com-pane-fr-match-layer {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* JSON pane: the generated <pre> must not cover ASM_jsonMount's background. */
+.ASM_jsonMount .ASM_jsonView {
+  background: transparent !important;
+}
 
               .ASM_manualPane {
                 width: 100%;
@@ -30426,6 +30434,11 @@ Label1 TXA
                     ASM_setStatus("Source updated by search & replace. Click assemble to regenerate output.","warn");
                   }
                 });
+
+                var sourceWrap = document.querySelector("#ASM_sourcePane") &&
+                 document.querySelector("#ASM_sourcePane").closest(".com-pane-fr-wrap");
+
+                if(sourceWrap) sourceWrap.classList.add("dotmatrix_bck");
               }
               else ASM_setStatus("PANE.bindFindReplace() was not found. Search & replace is unavailable.","warn");
             }
