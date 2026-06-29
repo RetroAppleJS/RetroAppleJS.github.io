@@ -655,14 +655,6 @@
               }
 
               .ASM_editor,
-              .ASM_jsonMount,
-              .ASM_root .com-pane-fr-wrap {
-                display: block;
-                line-height: 21px;
-                border-radius: 10px;
-              }
-
-              .ASM_editor,
               .ASM_jsonMount {
                 width: 100%;
                 max-width: 100%;
@@ -997,6 +989,22 @@
                 padding: 0px 30px !important;
                 box-sizing: border-box;
               }
+
+/* Source pane: PANE.bindFindReplace() adds wrapper/overlay layers.
+   Keep those transparent so the shared dotmatrix_bck skin remains visible. */
+.ASM_root .com-pane-fr-wrap textarea,
+.ASM_root .com-pane-fr-wrap > .com-pane-fr-overlay,
+.ASM_root .com-pane-fr-wrap .com-pane-fr-layer,
+.ASM_root .com-pane-fr-wrap .com-pane-fr-text,
+.ASM_root .com-pane-fr-wrap .com-pane-fr-match-layer {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* JSON pane: the generated <pre> must not cover ASM_jsonMount's background. */
+.ASM_jsonMount .ASM_jsonView {
+  background: transparent !important;
+}
 
               .ASM_manualPane {
                 width: 100%;
@@ -1789,6 +1797,11 @@ Label1 TXA
                     ASM_setStatus("Source updated by search & replace. Click assemble to regenerate output.","warn");
                   }
                 });
+
+                var sourceWrap = document.querySelector("#ASM_sourcePane") &&
+                 document.querySelector("#ASM_sourcePane").closest(".com-pane-fr-wrap");
+
+                if(sourceWrap) sourceWrap.classList.add("dotmatrix_bck");
               }
               else ASM_setStatus("PANE.bindFindReplace() was not found. Search & replace is unavailable.","warn");
             }
