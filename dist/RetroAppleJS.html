@@ -2039,22 +2039,6 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.75);
   }
 
-  .lightbut
-  {
-    border: 1px solid #FFFFFF00;
-    border-radius: 5px;
-    display: inline-block;
-    cursor:pointer;
-  }
-
-  .lightbut:hover
-  {
-    border: 1px solid black;
-    border-radius: 5px;
-    background: rgba(240, 240, 255, 0.65);
-    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.05);
-  }
-
   .appbut_flash
   {
     font-family: "Arial";
@@ -27483,8 +27467,8 @@ function Apple2Plus(context)
                           document.getElementById("cpu_component").innerHTML = _CFG_SYSCODE["A2P"].CPU;
                           document.getElementById("all_components").innerHTML = ""
                           //_CFG_SYSCODE[oEMU.system.Video].Display
-                          +_CFG_SYSCODE["A2P"].Display+" Vid <div class=lightbut style=display:inline><i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i></div>"
-                          +"<div class=lightbut style=display:inline><i class='fa fa-eye' id='render_mode' title='GPU' onclick=\"javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i></div><br>"
+                          +_CFG_SYSCODE["A2P"].Display+" Vid <div class=\"appbut skinny\" style=display:inline><i class='fa fa-palette' id='clr' onclick=\"javascript:this.name=(this.name?Number(this.name)+1:1);var m=apple2plus.monitor(this.name);this.style.color=m.color;this.title=m.name\" title='Color mode'></i></div>"
+                          +"<div class=\"appbut skinny\" style=display:inline><i class='fa fa-eye' id='render_mode' title='GPU' onclick=\"javascript:if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i></div><br>"
                           +_CFG_SYSCODE["A2P"].KeysROM+" Kbd <i class='fa fa-keyboard' title='Keyboard'></i><i class='fa fa-cog'></i>"
                         }
                       </script>
