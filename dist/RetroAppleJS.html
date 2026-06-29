@@ -1700,6 +1700,20 @@ background-size:1200px 840px;
    src: URL('../res/ARCADE_N.TTF') format('truetype');
 }
 
+
+.dotmatrix_bck
+{
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");                /*background-size: auto;*/
+    /* 52 * 400/500 */
+    background-size: 585px 42px;
+    border-radius:10px;
+    padding: 0px 30px;
+    line-height: 21px;
+    background-attachment:local;
+    color: #000000;
+    font-family: courier,monospace; font-size: 12px; font-weight:500;
+  }
+
 /*
 
   ████████  █████  ██████  ███████ 
@@ -2011,6 +2025,20 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.75);
   }
 
+   .appbut.skinny
+  {
+    display: inline-block;
+    padding: 2px;
+    margin:0px;
+    border-radius: 3px;
+    background: rgba(128,128,128,0.08);
+  }
+
+  .appbut.skinny:hover
+  {
+    background: rgba(255, 255, 255, 0.75);
+  }
+
   .lightbut
   {
     border: 1px solid #FFFFFF00;
@@ -2072,7 +2100,6 @@ table { border-collapse: collapse; position: relative;}
   .toolbox
   {
     height:80px;
-    /*border:1px solid yellow;*/
     float:left;
   }
 
@@ -2082,6 +2109,7 @@ table { border-collapse: collapse; position: relative;}
     margin:0px 0px 0px 0px;
   }
 
+  /*
   .appkbd
   {
     background-image:url('../res/appleIIplus_kbd_650.png');
@@ -2095,8 +2123,9 @@ table { border-collapse: collapse; position: relative;}
     image-rendering:pixelated;
     opacity:0.5;
   }
+  */
 
-/*
+  /*
   .appdskLED {
     z-index:0;
     opacity:0.5;
@@ -29260,7 +29289,6 @@ function DASM()
                 line-height: 0;
                 margin-top:2px;
                 margin-bottom:10px;
-
               }
 
               .ASM_editor,
@@ -29359,6 +29387,8 @@ function DASM()
                * Native input[type=button] controls can ignore or flatten box-shadow
                * on some browsers unless their native appearance is disabled.
                */
+
+               /*
               .ASM_root input[type="button"].ASM_boardButtonShadow {
                 -webkit-appearance: none;
                 appearance: none;
@@ -29375,6 +29405,7 @@ function DASM()
                 box-shadow: 1px 1px 0px rgba(0,0,0,0.35) !important;
                 transform: translate(2px,2px);
               }
+                */
 
               .ASM_findReplaceMount {
                 display: inline-flex;
@@ -29503,29 +29534,6 @@ function DASM()
                 gap: 4px;
               }
 
-              /*
-              .ASM_root .com-pane-fr-btn {
-                color: #000000;
-              }
-
-              .ASM_root.ASM_headerDark .com-pane-fr-btn {
-                color: #e6edf3;
-              }
-
-              .ASM_root .com-pane-fr-btn:hover {
-                background: rgba(0,0,0,0.08);
-              }
-
-              .ASM_root .com-pane-fr-btn:disabled {
-                opacity: 0.35;
-                cursor: default;
-              }
-
-              .ASM_root .com-pane-fr-btn i {
-                pointer-events: none;
-              }
-                */
-
               .ASM_root .com-pane-fr-wrap {
                 width: 100%;
                 max-width: 100%;
@@ -29609,7 +29617,7 @@ function DASM()
 
 
               /* Match the effective Source pane inset to the Listing pane.
-                 The listing textarea gets its final padding from ASM_dotmatrix_bck
+                 The listing textarea gets its final padding from dotmatrix_bck
                  (0px top/bottom, 30px left/right).  After find/replace wraps
                  ASM_sourcePane, the wrapper/overlay stack must not add another
                  inset or fall back to the generic 14px editor padding. */
@@ -29626,21 +29634,6 @@ function DASM()
                 padding: 0px 30px !important;
                 box-sizing: border-box;
               }
-
-            .ASM_dotmatrix_bck
-            {
-                background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");                /*background-size: auto;*/
-                /* 52 * 400/500 */
-                background-size: 585px 42px;
-                border-radius:10px;
-                padding: 0px 30px;
-                line-height: 21px;
-                background-attachment:local;
-                color: #000000;
-                font-family: courier,monospace; font-size: 12px; font-weight:500;
-              }
-
-
 
               .ASM_manualPane {
                 width: 100%;
@@ -29709,10 +29702,10 @@ function DASM()
                 <div class=toolbox>
                   <form name="ASMboard" onsubmit="return false">
                     <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code output" name="boardText"></textarea><br>
-                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" class="ASM_boardButtonShadow" type="button" value="to emulator">
-                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" class="ASM_boardButtonShadow" type="button" value="to debugger">
-                    <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" class="ASM_boardButtonShadow" value="copy">
-                    <input title="Clear byte code" type="button" class="ASM_boardButtonShadow" value="Clear" onclick="javascript:ASM_clearBoard()">
+                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" type="button" value="to emulator">
+                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" type="button" value="to debugger">
+                    <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" value="copy">
+                    <input title="Clear byte code" type="button" value="Clear" onclick="javascript:ASM_clearBoard()">
                     <span id="ASM_byteCodeInfo" class="ASM_byteCodeInfo">0 bytes</span>
                     <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('ASM_tools')">
                   </form>
@@ -29739,11 +29732,11 @@ function DASM()
               <div id="ASM_paneHost" class="ASM_paneHost">
 
                 <section class="ASM_pane">
-                  <div class="ASM_paneTitle pane-title com-pane-title">
+                  <div class="ASM_paneTitle">
                     <strong>Source</strong>
                     <span id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount pane-title-search-host"></span>
                   </div>
-                  <textarea id="ASM_sourcePane" class="ASM_editor ASM_dotmatrix_bck" spellcheck="false" wrap="off" placeholder="Source code">ORG $6000
+                  <textarea id="ASM_sourcePane" class="ASM_editor dotmatrix_bck" spellcheck="false" wrap="off" placeholder="Source code">ORG $6000
        LDX #0
 Label1 TXA
        STA $0400,X
@@ -29756,25 +29749,25 @@ Label1 TXA
                 </section>
 
                 <section class="ASM_pane">
-                  <div class="ASM_paneTitle pane-title com-pane-title">
+                  <div class="ASM_paneTitle">
                     <span class="ASM_paneTitleMain">
                       <strong>Listing</strong>
                       <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
                     </span>
                     <span id="ASM_listingInfo" class="ASM_paneInfo">compile()</span>
                   </div>
-                  <textarea id="ASM_listingPane" class="ASM_editor ASM_dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
+                  <textarea id="ASM_listingPane" class="ASM_editor dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
                 </section>
 
                 <section id="ASM_jsonPane" class="ASM_pane ASM_jsonPane">
-                  <div class="ASM_paneTitle pane-title com-pane-title">
+                  <div class="ASM_paneTitle">
                     <strong>JSON output</strong>
                     <span class="ASM_paneTitleMain">
                       <span id="ASM_jsonInfo" class="ASM_paneInfo">not assembled</span>
                       <button id="ASM_copyJsonButton" class="ASM_paneTitleButton" type="button" title="Copy JSON">Copy JSON</button>
                     </span>
                   </div>
-                  <div id="ASM_jsonMount" class="ASM_jsonMount ASM_dotmatrix_bck" data-placeholder="Parser output (JSON)" aria-label="Parser output (JSON)" tabindex="0"></div>
+                  <div id="ASM_jsonMount" class="ASM_jsonMount dotmatrix_bck" data-placeholder="Parser output (JSON)" aria-label="Parser output (JSON)" tabindex="0"></div>
                 </section>
                 
               </div>
@@ -30309,12 +30302,12 @@ Label1 TXA
             {
                 return ''
                     + '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
-                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
-                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
-                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
-                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
-                    + '<button type="button" class="com-pane-fr-btn" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
+                    + '<button type="button" class="appbut skinny" data-pane-default-act="undo" title="Undo"><i class="fa fa-undo"></i></button>'
+                    + '<button type="button" class="appbut skinny" data-pane-default-act="redo" title="Redo"><i class="fa fa-redo"></i></button>'
+                    + '<button type="button" class="appbut skinny" data-pane-default-act="indent" title="Indent"><i class="fa fa-indent"></i></button>'
+                    + '<button type="button" class="appbut skinny" data-pane-default-act="outdent" title="Outdent"><i class="fa fa-outdent"></i></button>'
+                    + '<button type="button" class="appbut skinny" data-pane-default-act="theme" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>'
+                    + '<button type="button" class="appbut skinny" data-pane-default-act="bottom" title="Jump to the bottom"><i class="fa fa-angle-double-down"></i></button>'
                     + '</span>';
             };
 
@@ -30322,13 +30315,13 @@ Label1 TXA
             {
               if(!ASM_oPANE || typeof defaultPaneHeaderWidgetHTML != "function")
                 return '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                  + '<button type="button" class="appbut mini" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                  + '<button type="button" class="appbut skinny" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
                   + '</span>';
 
               return defaultPaneHeaderWidgetHTML().replace(
                 '<span class="com-pane-header-default-widget com-pane-header-widget">',
                 '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                + '<button type="button" class="appbut mini" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                + '<button type="button" class="appbut skinny" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
               );
             }
 
@@ -30358,7 +30351,7 @@ Label1 TXA
             function ASM_equalizePaneHeaders()
             {
               if(ASM_oPANE && typeof ASM_oPANE.equalizePaneHeaderHeights == "function")
-                ASM_oPANE.equalizePaneHeaderHeights("#ASM_root .com-pane-title");
+                ASM_oPANE.equalizePaneHeaderHeights("#ASM_root");
             }
 
             function ASM_toggleJsonPane(forceShow)
