@@ -176,14 +176,6 @@ function Apple2Hw(vid,keys)
         return out;
     };
 
-
-
-
-
-
-
-
-
     this.mount = function()
     {
         this.default_map = this.build_mount();  // initialise the default memory mapping
