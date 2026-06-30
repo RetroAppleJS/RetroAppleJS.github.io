@@ -467,6 +467,73 @@
             {
               tag.value=tag.value=="hex"?"dec":"hex";
             }
+            function EMU_safeBusRead(addr)
+            {
+              var hw = apple2plus.hwObj();
+              addr = Number(addr) & 0xFFFF;
+
+              // Prefer the hardware-level safe reader when available.
+              if(hw && typeof(hw.safe_read)=="function")
+                return hw.safe_read(addr) & 0xFF;
+
+              // Fallback for builds where Apple2Hw.safe_read() has not been added yet.
+              // This still uses the current CPU-visible RD[] callback map and raises
+              // hw.bRO so hardware dependencies can suppress soft-switch side effects.
+              if(!hw || !hw.RD || typeof(hw.lineDecode)!="function") return 0x00;
+
+              var old_bRO = hw.bRO;
+              hw.bRO = true;
+
+              try
+              {
+                var line = hw.lineDecode(addr);
+                var fn = hw.RD[line];
+                var d8 = typeof(fn)=="function" ? fn(addr) : 0x00;
+                return (d8==null ? 0x00 : d8) & 0xFF;
+              }
+              finally
+              {
+                hw.bRO = old_bRO;
+              }
+            }
+
+            function EMU_safeBusDump(from,to)
+            {
+              var hw = apple2plus.hwObj();
+              from = Number(from) & 0xFFFF;
+              to   = Number(to)   & 0xFFFF;
+
+              // Prefer the hardware-level safe dump when available.
+              if(hw && typeof(hw.safe_dump)=="function")
+                return hw.safe_dump(from,to);
+
+              var len = ((to - from) & 0xFFFF) + 1;
+              var out = new Uint8Array(len);
+
+              if(!hw || !hw.RD || typeof(hw.lineDecode)!="function") return out;
+
+              var old_bRO = hw.bRO;
+              hw.bRO = true;
+
+              try
+              {
+                for(var i=0;i<len;i++)
+                {
+                  var addr = (from + i) & 0xFFFF;
+                  var line = hw.lineDecode(addr);
+                  var fn = hw.RD[line];
+                  var d8 = typeof(fn)=="function" ? fn(addr) : 0x00;
+                  out[i] = (d8==null ? 0x00 : d8) & 0xFF;
+                }
+              }
+              finally
+              {
+                hw.bRO = old_bRO;
+              }
+
+              return out;
+            }
+
             function onMemCapture(id1,id2)
             {
               var hw = apple2plus.hwObj();
@@ -493,28 +560,25 @@
                   from = to;
                   to = tmp;
                 }
-                
+
                 var s = [];
-                var dump = typeof(hw.safe_dump) == "function" ? hw.safe_dump(from,to) : null;
-                var fldump = !dump && typeof(hw.safe_flashdump) == "function" ? hw.safe_flashdump() : null;
+                var dump = EMU_safeBusDump(from,to);
 
                 for(var i=from;i<=to;i++)
                 {
-                  var adr = oCOM.getHexWord(i);
-                  s[idx] = adr+":";
-                }
-                var d8 = dump
-                ? dump[i-from]
-                : (typeof(hw.safe_read) == "function"
-                    ? hw.safe_read(i)
-                    : (fldump && i < fldump.length ? fldump[i] : 0x00));
+                  var idx = Math.floor((i-from)/8);
+                  if((i-from)%8==0)
+                  {
+                    var adr = oCOM.getHexWord(i);
+                    s[idx] = adr+":";
+                  }
 
-                var b = oCOM.getHexByte(d8);                 
-                s[idx] += " "+b;
-              }
-              EMUboard.boardText.value = s.join("\r");
-            }           
-            
+                  var b = oCOM.getHexByte(dump[i-from]);
+                  s[idx] += " "+b;
+                }
+                EMUboard.boardText.value = s.join("");
+              }           
+            }
 
             function onCaptureAddr(el)
             {
@@ -1526,105 +1590,6 @@ Label1 TXA
               return "$" + ("000" + value.toString(16).toUpperCase()).slice(-4);
             }
 
-            function ASM_cleanCommentText(comment)
-            {
-              return String(comment || "")
-                .replace(/^\s*;\s?/,"")
-                .replace(/\s+$/,"");
-            }
-
-            function ASM_rowStatementSplit(row)
-            {
-              row = row || {};
-              var asm = window.oASM;
-              var source = row.source != null ? row.source : row.statement;
-
-              if(asm && typeof asm.splitStatementAndComment == "function")
-                return asm.splitStatementAndComment(source);
-
-              // Local fallback: keep semicolons inside quoted strings.
-              var text = String(source || "").replace(/[“”]/g,"\"");
-              var body = "";
-              var comment = "";
-              var quote = "";
-              var escaped = false;
-
-              for(var i=0;i<text.length;i++)
-              {
-                var ch = text.charAt(i);
-
-                if(escaped) { body += ch; escaped = false; continue; }
-                if(ch === "\\") { body += ch; escaped = true; continue; }
-
-                if(quote)
-                {
-                  body += ch;
-                  if(ch === quote) quote = "";
-                  continue;
-                }
-
-                if(ch === "'" || ch === "\"") { quote = ch; body += ch; continue; }
-                if(ch === ";") { comment = text.substring(i).trimRight(); break; }
-
-                body += ch;
-              }
-
-              return {body:body.trim(),comment:comment};
-            }
-
-            function ASM_rowComment(row)
-            {
-              return ASM_cleanCommentText(ASM_rowStatementSplit(row).comment);
-            }
-
-            function ASM_byteArrayHex(bytes)
-            {
-              bytes = bytes || [];
-              var out = [];
-              for(var i=0;i<bytes.length;i++)
-                out.push(ASM_symbolHex(bytes[i] & 0xFF,1).replace("$",""));
-              return out;
-            }
-
-            function ASM_rowBytes(row)
-            {
-              row = row || {};
-              if(Array.isArray(row.bytes))
-                return row.bytes.map(function(b){ return Number(b) & 0xFF; });
-
-              if(typeof row.hex == "string")
-              {
-                var m = row.hex.match(/\b[0-9A-F]{2}\b/gi);
-                return m ? m.map(function(h){ return parseInt(h,16) & 0xFF; }) : [];
-              }
-
-              return [];
-            }
-
-            function ASM_rowInstructionParts(row)
-            {
-              row = row || {};
-              var asm = window.oASM;
-              var tag = row.tag || [];
-              var sym = row.sym || [];
-
-              if(!asm || !tag.length || !sym.length) return null;
-
-              var mneIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"MNE") : tag.indexOf("MNE");
-              if(mneIndex < 0) return null;
-
-              var oprIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"OPR") : tag.indexOf("OPR");
-              var mnemonic = String(sym[mneIndex] || "").toUpperCase();
-              var operand = oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : "";
-              var instruction = mnemonic + (operand ? " " + operand : "");
-
-              return {
-                mnemonic: mnemonic,
-                operand: operand,
-                instruction: instruction
-              };
-            }
-
             function ASM_collectSymbols()
             {
               var out = [];
@@ -1672,74 +1637,12 @@ Label1 TXA
                 value = value & 0xFFFF;
                 seen[name] = true;
 
-                var item = {
+                out.push({
                   name: name,
                   type: type,
                   bytes: bytes,
                   value: value,
-                  hex: ASM_symbolHex(value,bytes),
-                  line: row.line || null
-                };
-
-                var comment = ASM_rowComment(row);
-                var rowBytes = ASM_rowBytes(row);
-                var hasInstructionComment = rowBytes.length > 0 && ASM_rowInstructionParts(row) != null;
-
-                // EQU comments describe the value/address declaration.
-                // Label-only comments describe the label itself.
-                // Label+instruction comments are exported as fixed instruction comments below.
-                if(comment && (type == "equ" || !hasInstructionComment))
-                  item.comment = comment;
-
-                out.push(item);
-              }
-
-              return out;
-            }
-
-            function ASM_collectInstructionComments()
-            {
-              var out = [];
-              var rows = window.asmCompileResult && window.asmCompileResult.rows ? window.asmCompileResult.rows : [];
-              var asm = window.oASM;
-
-              if(!asm) return out;
-
-              for(var i=0;i<rows.length;i++)
-              {
-                var row = rows[i] || {};
-                var pc = typeof row.pc == "number" ? (row.pc & 0xFFFF) : null;
-                var bytes = ASM_rowBytes(row);
-                var comment = ASM_rowComment(row);
-                var instr = ASM_rowInstructionParts(row);
-
-                // A comment is exported as an instruction annotation only if it
-                // has both a fixed address and a fixed instruction byte signature.
-                if(pc == null || !bytes.length || !comment || !instr) continue;
-
-                var label = "";
-                if(row.tag && row.tag[0] === "LBL" && row.sym && row.sym[0])
-                  label = asm.getID ? asm.getID(row.sym[0]) : String(row.sym[0]).substring(0,8);
-
-                var byteHex = ASM_byteArrayHex(bytes);
-
-                out.push({
-                  pc: pc,
-                  hex: ASM_symbolHex(pc,2),
-                  bytes: bytes,
-                  byteText: byteHex.join(" "),
-                  size: bytes.length,
-                  match: {
-                    pc: pc,
-                    bytes: bytes.slice()
-                  },
-                  key: ASM_symbolHex(pc,2) + ":" + byteHex.join(" "),
-                  label: label || undefined,
-                  mnemonic: instr.mnemonic,
-                  operand: instr.operand,
-                  instruction: instr.instruction,
-                  comment: comment,
-                  line: row.line || null
+                  hex: ASM_symbolHex(value,bytes)
                 });
               }
 
@@ -1754,20 +1657,13 @@ Label1 TXA
               }
 
               var symbols = ASM_collectSymbols();
-              var comments = ASM_collectInstructionComments();
 
               var exportObject = {
                 format: "RetroAppleJS-ASM-symbols",
-                version: 2,
+                version: 1,
                 source: ASM_currentFileName || "source.S",
-                matchRule: "instruction comments apply only when both pc and bytes match",
-                counts: {
-                  symbols: symbols.length,
-                  instructionComments: comments.length
-                },
                 count: symbols.length,
-                symbols: symbols,
-                instructionComments: comments
+                symbols: symbols
               };
 
               var base = String(ASM_currentFileName || "symbols")
@@ -1775,7 +1671,7 @@ Label1 TXA
                 .replace(/[^A-Za-z0-9_.-]+/g,"_");
 
               ASM_downloadText(base + ".symbols.json",JSON.stringify(exportObject,null,2),"application/json;charset=utf-8");
-              ASM_setStatus("Exported " + symbols.length + " symbol(s) and " + comments.length + " instruction comment(s).","ok");
+              ASM_setStatus("Exported " + symbols.length + " symbol(s).","ok");
             }
 
             function ASM_showEmulatorTools()
