@@ -20964,24 +20964,20 @@ function AppleDisk2()
     {
         "SlotIO": 
         { 
-            "RD":{ "callback": function(addr) {
-                var d8 = disk2.read(addr);
-                 return d8;
-                } }
-            ,"WR":{ "callback": function(addr,d8) {
-                disk2.write(addr,d8); 
+            "RD":{ "callback": function(addr,ctx) {
+                return isSafeRead(ctx) ? disk2.read(addr,ctx) : 0x00;
+            } },
+            "WR":{ "callback": function(addr,d8,ctx) {
+                return disk2.write(addr,d8,ctx); 
             } }
-        }
-        ,
+        },
         "SlotROM": 
         {
-            "RD":{ "callback": function(addr) { 
-                var d8 = disk2.readROM(addr);
-                return d8; 
+            "RD":{ "callback": function(addr,ctx) { 
+                return disk2.readROM(addr,ctx);
             } }
         }
     };
-
 
     // relative peripheral addresses
     const MOTOR_OFF =   0x08,
@@ -21173,6 +21169,11 @@ function AppleDisk2()
         }
     };
 
+    function isSafeRead(ctx)
+    {
+        return ctx && ctx.bRO === true;
+    }
+
     //  ██████  ███████  █████  ██████  
     //  ██   ██ ██      ██   ██ ██   ██ 
     //  ██████  █████   ███████ ██   ██ 
@@ -21187,7 +21188,7 @@ function AppleDisk2()
         return null;
     }
 
-    this.read = function(addr) 
+    this.read = function(addr,ctx) 
     {
         //console.log("AppleDisk2: read %s", addr.toString(16));
         const deviceN = state.drv
