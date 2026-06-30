@@ -484,22 +484,37 @@
 
               if(addr_arr.length==2)
               {
-                var s = [];
-                const fldump = hw.safe_flashdump();
-                for(var i=addr_arr[0];i<=addr_arr[1];i++)
+                var from = Math.max(0,Math.min(0xFFFF,addr_arr[0] & 0xFFFF));
+                var to   = Math.max(0,Math.min(0xFFFF,addr_arr[1] & 0xFFFF));
+
+                if(to < from)
                 {
-                  var idx = Math.floor((i-addr_arr[0])/8);
-                  if((i-addr_arr[0])%8==0)
-                  {
-                    var adr = oCOM.getHexWord(i);
-                    s[idx] = adr+":";
-                  }
-                  var b = oCOM.getHexByte(fldump[i]);
-                  s[idx] += " "+b;
+                  var tmp = from;
+                  from = to;
+                  to = tmp;
                 }
-                EMUboard.boardText.value = s.join("\r");
-              }           
-            }
+                
+                var s = [];
+                var dump = typeof(hw.safe_dump) == "function" ? hw.safe_dump(from,to) : null;
+                var fldump = !dump && typeof(hw.safe_flashdump) == "function" ? hw.safe_flashdump() : null;
+
+                for(var i=from;i<=to;i++)
+                {
+                  var adr = oCOM.getHexWord(i);
+                  s[idx] = adr+":";
+                }
+                var d8 = dump
+                ? dump[i-from]
+                : (typeof(hw.safe_read) == "function"
+                    ? hw.safe_read(i)
+                    : (fldump && i < fldump.length ? fldump[i] : 0x00));
+
+                var b = oCOM.getHexByte(d8);                 
+                s[idx] += " "+b;
+              }
+              EMUboard.boardText.value = s.join("\r");
+            }           
+            
 
             function onCaptureAddr(el)
             {
