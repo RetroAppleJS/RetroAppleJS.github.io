@@ -65,7 +65,7 @@ function AppleDisk2()
         "SlotIO": 
         { 
             "RD":{ "callback": function(addr,ctx) {
-                return isSafeRead(ctx) ? disk2.read(addr,ctx) : 0x00;
+                return disk2.read(addr,ctx);
             } },
             "WR":{ "callback": function(addr,d8,ctx) {
                 return disk2.write(addr,d8,ctx); 
@@ -290,6 +290,8 @@ function AppleDisk2()
 
     this.read = function(addr,ctx) 
     {
+        if(apple2plus.hwObj().bRO == true) return status_nibble;                // skip soft switch manupulation; just return status when hardware is in Read-Only mode
+
         //console.log("AppleDisk2: read %s", addr.toString(16));
         const deviceN = state.drv
         if (addr < 0x08) 
