@@ -366,8 +366,10 @@ function syscode_has_model(syscodes,sys_model)
 
     this.read = function(rel_addr)
     {
-        var line = line_decode(rel_addr); var xline = oCOM.getHexMulti(line,4);
-        const ctx2 = 
+        var line = line_decode(rel_addr);
+        var xline = oCOM.getHexMulti(line,4);
+
+        const ctx2 =
         {
             "keys": keys,
             "snd": snd,
@@ -376,11 +378,22 @@ function syscode_has_model(syscodes,sys_model)
             "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
         };
 
+        var fn = CIO.ACTION_MAP.RD[line];
+        if(!fn) { if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.RD["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")"); return 0x00; }
 
-        if(!CIO.ACTION_MAP.RD[line])
-            console.warn("CIO.ACTION_MAP.RD["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")")
+        /*
+        * Read-only bus scan policy:
+        *
+        * SlotROM / HostROM must still be read normally, because these are real
+        * CPU-visible ROM bytes, for example Disk II card ROM.
+        *
+        * SlotIO reads are different: on many Apple II cards they are soft-switch
+        * triggers. During bRO scans, do not call those callbacks.
+        */
+        if(ctx2.bRO && fn._ioReport && fn._ioReport.range == "SlotIO")
+            return 0x00;
 
-        return CIO.ACTION_MAP.RD[line](rel_addr-line,ctx2);
+        return fn(rel_addr-line,ctx2);
     }
 
     this.write = function(rel_addr,d8)
