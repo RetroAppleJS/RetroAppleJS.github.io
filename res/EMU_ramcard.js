@@ -162,11 +162,15 @@ function RamCard()
 
     this.read = function(rel_addr)
     {
-        var sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);
-        const d8 = RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ]; 
-        if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null);
+        var sw = softswitch[this.state.softswitch_pos] || {};
+        const d8 = RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ];
+        if(apple2plus.hwObj().bRO != true)
+        {
+            mon_soft_switch(sw);
+            if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_READ_BANK : DBG_READ_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null );
+        }
         return d8;
-    }
+    };
 
     this.write = function(rel_addr,d8)
     {
