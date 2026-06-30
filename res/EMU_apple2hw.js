@@ -117,6 +117,73 @@ function Apple2Hw(vid,keys)
     this.safe_flashdump = function() { return new Uint8Array(ram); }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
+    /*
+     * Safe CPU-bus read.
+     *
+     * This reads the currently mapped CPU address space through the active
+     * RD[line] callback table, but temporarily raises the hardware read-only
+     * flag so soft-switches and memory-mapped I/O callbacks can return status
+     * without mutating emulator state.
+     */
+    this.safe_read = function(addr)
+    {
+        addr = addr & 0xFFFF;
+
+        var old_bRO = this.bRO;
+        this.bRO = true;
+
+        try
+        {
+            var line = this.lineDecode(addr);
+            var fn = this.RD[line];
+            var d8 = typeof(fn) == "function" ? fn(addr) : 0x00;
+
+            return (d8 == null ? 0x00 : d8) & 0xFF;
+        }
+        finally { this.bRO = old_bRO; }
+    };
+
+    /*
+     * Safe CPU-bus memory dump.
+     *
+     * from/to are inclusive CPU addresses.  This scans the current mapped
+     * address space, including ROM, slot ROM, RAM-card mapping, etc.
+     */
+    this.safe_dump = function(from,to)
+    {
+        from = from == null ? 0x0000 : (from & 0xFFFF);
+        to   = to   == null ? 0xFFFF : (to   & 0xFFFF);
+
+        var len = ((to - from) & 0xFFFF) + 1;
+        var out = new Uint8Array(len);
+        var old_bRO = this.bRO;
+
+        this.bRO = true;
+
+        try
+        {
+            for(var i=0;i<len;i++)
+            {
+                var addr = (from + i) & 0xFFFF;
+                var line = this.lineDecode(addr);
+                var fn = this.RD[line];
+                var d8 = typeof(fn) == "function" ? fn(addr) : 0x00;
+                out[i] = (d8 == null ? 0x00 : d8) & 0xFF;
+            }
+        }
+        finally { this.bRO = old_bRO; }
+
+        return out;
+    };
+
+
+
+
+
+
+
+
+
     this.mount = function()
     {
         this.default_map = this.build_mount();  // initialise the default memory mapping
