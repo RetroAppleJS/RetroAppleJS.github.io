@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v1.1</title>
+  <title>Apple II+ Debugger Layout v1.4</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="res/COM_fontawesome/all.css">
 
-  <!--link rel="stylesheet" href="res/COM_MAIN.css"-->
+  <link rel="stylesheet" href="res/COM_MAIN.css">
 
   <script type="text/javascript" src="res/COM_MAIN.js"></script>
   <script type="text/javascript" src="res/COM_CONFIG.js"></script>
@@ -18,7 +18,6 @@
 
   <style>
     /*
-      index_DBG_v1.html
       Layout-first prototype for redesigned Debugger tab.
       This version intentionally uses mock content and lightweight UI toggles only.
     */
@@ -90,6 +89,10 @@
       box-sizing: border-box;
     }
 
+    #DBG_root {
+      position: relative;
+    }
+
     .DBG_topToolbar {
       display: flex;
       align-items: center;
@@ -114,73 +117,43 @@
       font-weight: 700;
     }
 
-    .DBG_popupRow {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      margin: 0px 0px 8px 0px;
+    .DBG_popupHost {
+      position: absolute;
+      left: 0px;
+      top: 32px;
+      z-index: 20;
+      margin: 0px;
+      padding: 0px;
     }
 
-    .DBG_panel 
-    {
-      padding: 8px 10px;
-      /*
-      border: 1px solid rgba(0,0,0,0.28);
-      border-radius: 10px;
-      background: rgba(244,244,244,0.96);
-      color: #000000;
-      box-shadow: 3px 3px 0px rgba(0,0,0,0.22);
-      */
-      font-size: 12px;
-      box-sizing: border-box;
-    }
-
-    .DBG_panel[hidden] {
+    .DBG_popupHost[hidden] {
       display: none !important;
     }
 
-    .DBG_panelTitle {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 0px 0px 6px 0px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid rgba(0,0,0,0.18);
-      font-weight: 700;
+    .DBG_popupHost .toolbox {
+      height: auto;
     }
 
-    .DBG_panelGrid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
-      gap: 6px 16px;
+    .DBG_popupHost .appbox {
+      height: auto;
+      min-height: 63px;
+      padding: 0px 6px;
+      text-align: left;
+      box-sizing: border-box;
     }
 
-    .DBG_panelGroup {
-      padding: 5px 6px;
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.60);
-    }
-
-    .DBG_panelGroup strong {
+    .DBG_popupHost label {
       display: block;
-      margin-bottom: 4px;
-      font-size: 12px;
-    }
-
-    .DBG_panel label,
-    .DBG_panel .DBG_toolLine {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-height: 24px;
+      min-height: 18px;
+      line-height: 18px;
       white-space: nowrap;
+      font-family: arial;
+      font-size: 11px;
     }
 
-    .DBG_panel input[type="number"],
-    .DBG_panel select,
-    .DBG_panel input[type="text"] {
+    .DBG_popupHost input[type="number"],
+    .DBG_popupHost select,
+    .DBG_popupHost input[type="text"] {
       width: 150px;
       min-height: 20px;
       border: 1px solid rgba(0,0,0,0.28);
@@ -190,28 +163,15 @@
       font: 11px/1.2 courier, monospace;
     }
 
-    .DBG_panel button,
-    .DBG_headerButton,
-    .DBG_tinyButton {
-      -webkit-appearance: none;
-      appearance: none;
-      min-width: 24px;
-      min-height: 22px;
-      margin: 0px;
-      padding: 2px 6px;
-      border: 1px solid rgba(0,0,0,0.35);
-      border-radius: 4px;
-      background: #f4f4f4;
-      color: #000000;
-      font: 11px/1.2 arial, sans-serif;
-      cursor: pointer;
+    .DBG_popupHost input.DBG_listingColumnsInput {
+      width: 310px;
     }
 
-    .DBG_panel button:hover,
-    .DBG_headerButton:hover,
-    .DBG_tinyButton:hover {
-      border-color: #0078d4;
-      background: #ffffff;
+    .DBG_byteCodeInfo {
+      color: #000000;
+      font-family: arial;
+      font-size: 11px;
+      white-space: nowrap;
     }
 
     .DBG_paneHost {
@@ -287,21 +247,8 @@
       flex-wrap: nowrap;
     }
 
-    .DBG_headerButton i,
-    .DBG_tinyButton i {
+    .DBG_headerActions .appbut i {
       pointer-events: none;
-    }
-
-    .DBG_dotmatrix_bck {
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
-      background-size: 585px 42px;
-      background-attachment: local;
-      border-radius: 10px;
-      color: #000000;
-      font-family: courier, monospace;
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 21px;
     }
 
     .DBG_paneBody {
@@ -485,9 +432,244 @@
   <script>
     var DBG_oPANE = null;
     var DBG_running = false;
+    var DBG_RAM_SIZE = 0x10000;
+    var DBG_RAM = new Uint8Array(DBG_RAM_SIZE);
+    var DBG_currentByteCodeText = "";
+    var DBG_defaultListingColumns = {adr:0,code:6,lbl:15,ins:25,opr:30,com:46};
 
     function DBG_el(id) {
       return document.getElementById(id);
+    }
+
+    function DBG_hexByte(v) {
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexByte === "function") return oCOM.getHexByte(v & 0xff);
+      return ("0" + ((v & 0xff).toString(16).toUpperCase())).slice(-2);
+    }
+
+    function DBG_hexWord(v) {
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexWord === "function") return oCOM.getHexWord(v & 0xffff);
+      return ("000" + ((v & 0xffff).toString(16).toUpperCase())).slice(-4);
+    }
+
+    function DBG_decodeDASMText(text) {
+      return String(text || "")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function DBG_parseListingColumns(text) {
+      var cfg = Object.assign({}, DBG_defaultListingColumns);
+      String(text || "").replace(/([a-zA-Z_][\w]*)\s*:\s*(-?\d+)/g, function(_, key, val) {
+        if (Object.prototype.hasOwnProperty.call(cfg, key)) cfg[key] = parseInt(val, 10) || 0;
+        return "";
+      });
+      return cfg;
+    }
+
+    function DBG_listingColumnsValue() {
+      var input = DBG_el("DBG_listingColumnsInput");
+      return input ? input.value : "{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}";
+    }
+
+    function DBG_cropListingField(text, width) {
+      text = String(text == null ? "" : text);
+      if (width == null || width <= 0 || text.length <= width) return text;
+      if (width <= 1) return text.slice(0, width);
+      return text.slice(0, width - 1) + "…";
+    }
+
+    function DBG_formatListingParts(parts) {
+      var columns = DBG_parseListingColumns(DBG_listingColumnsValue());
+      var order = ["adr","code","lbl","ins","opr","com"];
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.renderTextTableRows === "function") {
+        return oCOM.renderTextTableRows([parts], columns, {
+          order: order,
+          defaults: DBG_defaultListingColumns,
+          trimRight: true,
+          singleColumnRaw: true,
+          ellipsis: "…"
+        })[0];
+      }
+
+      var line = "";
+      for (var i = 0; i < order.length; i++) {
+        var key = order[i];
+        if (!parts[key]) continue;
+        var col = columns[key] | 0;
+        var width;
+        for (var j = i + 1; j < order.length; j++) {
+          if ((columns[order[j]] | 0) > col) { width = (columns[order[j]] | 0) - col; break; }
+        }
+        var text = DBG_cropListingField(parts[key], width);
+        if (line.length < col) line = line.padEnd(col, " ");
+        else if (line.length > col) line += " ";
+        line += text;
+      }
+      return line.replace(/\s+$/, "");
+    }
+
+    function DBG_countByteCodeText(text) {
+      return DBG_parseByteCodeText(text).records.length;
+    }
+
+    function DBG_parseByteCodeText(text) {
+      var lines = String(text || "").split(/\r\n|\r|\n/);
+      var records = [];
+      var errors = [];
+      var currentAddr = null;
+
+      for (var lineNo = 0; lineNo < lines.length; lineNo++) {
+        var raw = lines[lineNo];
+        var clean = raw.replace(/;.*/, "").replace(/\/\/.*$/, "").trim();
+        if (!clean) continue;
+
+        var addrMatch = clean.match(/^\$?([0-9A-Fa-f]{4})\s*:?[\s,]*(.*)$/);
+        var rest = clean;
+
+        if (addrMatch) {
+          currentAddr = parseInt(addrMatch[1], 16) & 0xffff;
+          rest = addrMatch[2] || "";
+        }
+
+        var bytes = rest.match(/\b[0-9A-Fa-f]{2}\b/g);
+        if (!bytes || !bytes.length) continue;
+
+        if (currentAddr === null) {
+          errors.push("Line " + (lineNo + 1) + ": byte data has no address prefix.");
+          continue;
+        }
+
+        for (var i = 0; i < bytes.length; i++) {
+          records.push({pc: currentAddr, val: parseInt(bytes[i], 16) & 0xff, line: lineNo + 1});
+          currentAddr = (currentAddr + 1) & 0xffff;
+        }
+      }
+
+      return {records: records, errors: errors};
+    }
+
+    function DBG_updateByteCodeInfo(byteCount, extraText) {
+      var info = DBG_el("DBG_byteCodeInfo");
+      if (info) info.textContent = (byteCount || 0) + " bytes" + (extraText ? " / " + extraText : "");
+    }
+
+    function DBG_syncByteCodeFromBoard() {
+      var board = DBG_el("DBG_boardText");
+      DBG_currentByteCodeText = board ? board.value : "";
+      var parsed = DBG_parseByteCodeText(DBG_currentByteCodeText);
+      DBG_updateByteCodeInfo(parsed.records.length, parsed.errors.length ? parsed.errors.length + " parse warning(s)" : "");
+      return parsed;
+    }
+
+    function DBG_clearBoard() {
+      DBG_currentByteCodeText = "";
+      var board = DBG_el("DBG_boardText");
+      if (board) board.value = "";
+      DBG_updateByteCodeInfo(0);
+    }
+
+    function DBG_instructionLength(opcode) {
+      var entry = (typeof opctab !== "undefined" && opctab) ? opctab[opcode & 0xff] : null;
+      var mode = entry && entry[1] ? entry[1] : "imp";
+      switch (mode) {
+        case "imm":
+        case "zpg":
+        case "zpx":
+        case "zpy":
+        case "inx":
+        case "iny":
+        case "rel":
+          return 2;
+        case "abs":
+        case "abx":
+        case "aby":
+        case "ind":
+          return 3;
+        case "acc":
+        case "imp":
+        default:
+          return 1;
+      }
+    }
+
+    function DBG_disassembleInstruction(pcAddr) {
+      var pcv = pcAddr & 0xffff;
+      var opcode = DBG_RAM[pcv] & 0xff;
+      var len = DBG_instructionLength(opcode);
+      var dasm = new DASM();
+      dasm.sym_search = function(op, adm) { return op; };
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexByte === "function") dasm.getHexByte = oCOM.getHexByte;
+      var ret = dasm.disassemble({
+        code_arr: [DBG_RAM[pcv], DBG_RAM[(pcv + 1) & 0xffff], DBG_RAM[(pcv + 2) & 0xffff]],
+        pc: pcv,
+        opctab: (typeof opctab !== "undefined") ? opctab : null
+      });
+
+      var mnemonicText = DBG_decodeDASMText(ret.mnemonic);
+      var ins = mnemonicText;
+      var opr = "";
+      var split = mnemonicText.match(/^([^\s]+)(?:\s+(.*))?$/);
+      if (split) {
+        ins = split[1] || "";
+        opr = split[2] || "";
+      }
+
+      var bytes = [];
+      for (var i = 0; i < len; i++) bytes.push(DBG_hexByte(DBG_RAM[(pcv + i) & 0xffff]));
+
+      return {
+        len: len,
+        line: DBG_formatListingParts({
+          adr: DBG_hexWord(pcv).toLowerCase() + ":",
+          code: bytes.join(" ").toLowerCase(),
+          lbl: "",
+          ins: ins,
+          opr: opr,
+          com: ""
+        })
+      };
+    }
+
+    function DBG_disassembleRAM() {
+      var lines = [];
+      var pcAddr = 0;
+      while (pcAddr < DBG_RAM_SIZE) {
+        var d = DBG_disassembleInstruction(pcAddr);
+        lines.push(d.line);
+        pcAddr += Math.max(1, d.len || 1);
+      }
+
+      var debugfield = DBG_el("debugfield");
+      if (debugfield) debugfield.textContent = lines.join("\n");
+
+      var info = DBG_el("DBG_listingInfo");
+      if (info) info.textContent = lines.length + " listing lines / 64K RAM";
+
+      return lines.length;
+    }
+
+    function DBG_importBoardByteCode() {
+      var parsed = DBG_syncByteCodeFromBoard();
+      if (!parsed.records.length) {
+        DBG_stub("No byte code to import");
+        return false;
+      }
+
+      for (var i = 0; i < parsed.records.length; i++) {
+        DBG_RAM[parsed.records[i].pc & 0xffff] = parsed.records[i].val & 0xff;
+      }
+
+      var lineCount = DBG_disassembleRAM();
+      DBG_updateByteCodeInfo(parsed.records.length, lineCount + " listing lines");
+      DBG_stub("Imported " + parsed.records.length + " byte(s) and disassembled RAM");
+
+      if (parsed.errors.length && typeof console !== "undefined" && console.warn) console.warn(parsed.errors.join("\n"));
+      return true;
     }
 
     function DBG_togglePanel(id) {
@@ -555,6 +737,10 @@
       if (typeof PANE === "function") {
         DBG_oPANE = new PANE();
       }
+
+      var board = DBG_el("DBG_boardText");
+      if (board) DBG_syncByteCodeFromBoard();
+
       DBG_equalizePaneHeaders();
     }
 
@@ -575,120 +761,154 @@
         <a href="#tab3" class="DBG_tabActive">Debugger</a>
         <a href="#tab4">Manual</a>
       </ul>
-    </div>
 
-    <div class="tabs">
-      <div id="tab3">
-        <div id="DBG_root">
-          <div class="DBG_topToolbar">
-            <button class="appbut" value="Settings" onclick="DBG_togglePanel('DBG_settings');" title="Debugger Settings">
+      <ul>
+                    <button class="appbut" value="Settings" onclick="DBG_togglePanel('DBG_settings');" title="Debugger Settings">
               <i class="fa fa-sliders-h"></i>
             </button>
             <button class="appbut" value="Tools" onclick="DBG_togglePanel('DBG_tools');" title="Debugger Tools">
               <i class="fa fa-toolbox"></i>
             </button>
-            <span class="DBG_titleBadge"><i class="fa fa-bug"></i> Debugger layout prototype v1</span>
+      </ul>
+    </div>
+
+    <div class="tabs">
+      <div id="tab3" class="active">
+        <div id="DBG_root">
+
+          <!-- DEBUGGER SETTINGS -->
+          <div class="hints1 DBG_popupHost" id="DBG_settings" hidden>
+            <div class="toolbox">
+              <div class="appbox" title="Debugger display">
+                DEBUGGER DISPLAY<br>
+                <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
+                <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
+                <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
+                <label>
+                  Source/disassembly fusion<br>
+                  <select onchange="DBG_stub('Source/disassembly fusion')">
+                    <option>source + disassembly</option>
+                    <option>source only</option>
+                    <option>full disassembly</option>
+                    <option>mixed</option>
+                  </select>
+                </label>
+                <label>
+                  Listing columns<br>
+                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
+                </label>
+              </div>
+            </div>
+
+            <div class="toolbox">
+              <div class="appbox" title="Trace configuration">
+                TRACE<br>
+                <label>Trace depth / ring buffer<br>
+                  <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')">
+                </label>
+                <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
+                <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
+              </div>
+            </div>
+
+            <div class="toolbox">
+              <div class="appbox" title="Run limits">
+                RUN LIMITS<br>
+                <label>
+                  Continuous run speed<br>
+                  <select onchange="DBG_stub('Continuous run speed')">
+                    <option>1 IPS</option>
+                    <option>10 IPS</option>
+                    <option>100 IPS</option>
+                    <option>1000 IPS</option>
+                    <option>Max</option>
+                  </select>
+                </label>
+                <label>Stop after N instructions<br>
+                  <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')">
+                </label>
+              </div>
+            </div>
+
+            <div class="toolbox">
+              <div class="appbox" title="Watch defaults">
+                WATCH DEFAULTS<br>
+                <label>
+                  Default watch size<br>
+                  <select onchange="DBG_stub('Default watch size')">
+                    <option>byte</option>
+                    <option>word</option>
+                    <option>bit</option>
+                  </select>
+                </label>
+                <label>
+                  Default watch format<br>
+                  <select onchange="DBG_stub('Default watch format')">
+                    <option>hex</option>
+                    <option>decimal</option>
+                    <option>binary</option>
+                    <option>ASCII</option>
+                  </select>
+                </label>
+              </div>
+            </div>
           </div>
 
-          <div class="DBG_popupRow">
-            <div class="DBG_panel" id="DBG_settings" hidden>
-              <div class="DBG_panelGrid">
-                <div class="DBG_panelGroup">
-                  <strong>Debugger display</strong>
-                  <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
-                  <label>Source/disassembly fusion
-                    <select onchange="DBG_stub('Source/disassembly fusion')">
-                      <option>source + disassembly</option>
-                      <option>source only</option>
-                      <option>full disassembly</option>
-                      <option>mixed</option>
-                    </select>
-                  </label>
-                  <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
-                  <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
-                </div>
+          <!-- DEBUGGER TOOLS -->
+          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden>
+    
+          <div class=toolbox>
+            <form name="DBGboard" onsubmit="return false">
+              <textarea id="DBG_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code input" name="boardText" oninput="DBG_syncByteCodeFromBoard()"></textarea><br>
+              <input title="Send byte code to debugger" id="DBG_ByteCodeImportButton" type="button" value="to debugger" onclick="DBG_importBoardByteCode()">
+              <input title="Clear byte code" type="button" value="Clear" onclick="javascript:DBG_clearBoard()">
+              <span id="DBG_byteCodeInfo" class="DBG_byteCodeInfo">0 bytes</span>
+              <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('DBG_tools')">
+            </form>
+          </div>
 
-                <div class="DBG_panelGroup">
-                  <strong>Trace configuration</strong>
-                  <label>Trace depth / ring buffer <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')"></label>
-                  <!--label>Trace format
-                    <select onchange="DBG_stub('Trace format')">
-                      <option>assembler-like</option>
-                      <option>compact</option>
-                      <option>verbose</option>
-                    </select>
-                  </label-->
-                  <!-- TODO: always assume assembler-like trace format -->
-                  <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
-                  <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
-                </div>
 
-                <div class="DBG_panelGroup">
-                  <strong>Run limits</strong>
-                  <label>Continuous run speed
-                    <select onchange="DBG_stub('Continuous run speed')">
-                      <option>1 IPS</option>
-                      <option>10 IPS</option>
-                      <option>100 IPS</option>
-                      <option>1000 IPS</option>
-                      <option>Max</option>
-                    </select>
-                  </label>
-                  <label>Stop after N instructions <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')"></label>
-                </div>
-
-                <div class="DBG_panelGroup">
-                  <strong>Watch defaults</strong>
-                  <label>Default watch size
-                    <select onchange="DBG_stub('Default watch size')">
-                      <option>byte</option>
-                      <option>word</option>
-                      <option>bit</option>
-                    </select>
-                  </label>
-                  <label>Default watch format
-                    <select onchange="DBG_stub('Default watch format')">
-                      <option>hex</option>
-                      <option>decimal</option>
-                      <option>binary</option>
-                      <option>ASCII</option>
-                    </select>
-                  </label>
+            <!-- RUNTIME TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox" style="text-align:left;padding:0px 6px 0px 6px;">
+                SYSTEM<br>
+                <div style="font-family:arial;font-size:11px">
+                  CPU<button class="appbut skinny" onclick="DBG_stub('Reset CPU')" title="Reset CPU"><i class="fa fa-redo"></i></button>
+                  <button class="appbut skinny" onclick="DBG_stub('Restart CPU')" title="Restart CPU"><i class="fa fa-power-off"></i></button>
+                  <br>
+                  <button class="appbut skinny" onclick="DBG_stub('Load Emulator image')" title="Load emulator image">load <i class="fa fa-microchip"></i></button>
                 </div>
               </div>
             </div>
 
-            <div class="DBG_panel" id="DBG_tools" hidden>
-              <div class="DBG_panelGrid">
+            <!-- DEBUGGER ACTION BUTTONS -->
+            <div class="toolbox">
+              <button id="DBG_toggleWatchPaneButton" class="appbut" onclick="DBG_togglePane3();" title="Show/hide Memory Watch pane">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+              <br>
+              <button class="appbut" onclick="DBG_stub('Show memory map')" title="Show/hide Memory Map">
+                <i class="fa fa-th"></i>
+              </button>
+              <br>
+            </div>
 
-                <div class="DBG_panelGroup">
-                  <strong>Layout</strong>
-                  
-                  <div class="DBG_toolLine"><span>Restore default debugger layout</span><button onclick="DBG_togglePane3(true); DBG_stub('Restore default layout');"><i class="fa fa-columns"></i> restore</button></div>
-                </div>
+            <!-- MEMORY TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox" title="Memory tools">
+                MEMORY<br>
+                
+                <button class="appbut skinny" onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button>
+              </div>
+            </div>
 
-                <div style="display:block;width:100px">
-                  <div class="DBG_toolLine"><button id="DBG_toggleWatchPaneButton" onclick="DBG_togglePane3();"><i class="fa fa-eye-slash"></i></button></div>
-                </div>
-
-                <div class="DBG_panelGroup">
-                  <strong>Runtime</strong>
-                  <div class="DBG_toolLine"><span>Reset debugger</span><button onclick="DBG_stub('Reset debugger')"><i class="fa fa-redo"></i> reset</button></div>
-                  <div class="DBG_toolLine"><span>Reset CPU</span><button onclick="DBG_stub('Reset CPU')"><i class="fa fa-power-off"></i> reset CPU</button></div>
-                  <div class="DBG_toolLine"><span>Load Emulator image</span><button onclick="DBG_stub('Load Emulator image')"><i class="fa fa-microchip"></i> load</button></div>
-                </div>
-
-                <div class="DBG_panelGroup">
-                  <strong>Memory</strong>
-                  <div class="DBG_toolLine"><span>Show memory map</span><button onclick="DBG_stub('Show memory map')"><i class="fa fa-map"></i> map</button></div>
-                  <div class="DBG_toolLine"><span>Map Apple II+ zero-page</span><button onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button></div>
-                </div>
-
-                <div class="DBG_panelGroup">
-                  <strong>Export / diagnostics</strong>
-                  <div class="DBG_toolLine"><span>Export watch list</span><button onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button></div>
-                  <div class="DBG_toolLine"><span>Clear all breakpoints/watchpoints</span><button onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button></div>
-                </div>
+            <!-- EXPORT TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox" title="Export and diagnostics">
+                EXPORT / DIAGNOSTICS<br>
+                <button class="appbut skinny" onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button>
+                <br>
+                <button class="appbut skinny" onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button>
               </div>
             </div>
           </div>
@@ -698,19 +918,19 @@
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
                   <strong>Listing</strong>
-                  <span class="DBG_paneInfo">source listing + uncovered memory</span>
+                  <span id="DBG_listingInfo" class="DBG_paneInfo">source listing + uncovered memory</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="DBG_headerButton" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
-                  <button id="DBG_runToggle" class="DBG_headerButton" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="goto-pc" onclick="DBG_stub('Go to PC')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
-                  <!--button class="DBG_headerButton" data-dbg-action="find" onclick="DBG_stub('Find address / label / opcode')" title="Find address / label / opcode"><i class="fa fa-search"></i></button-->
+                  <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
+                  <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
+                  <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
+                  <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_stub('Go to PC')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
+                  <!--button class="appbut skinny" data-dbg-action="find" onclick="DBG_stub('Find address / label / opcode')" title="Find address / label / opcode"><i class="fa fa-search"></i></button-->
                   <!-- TODO: use the find & replace function here (triggered by ctrl/command + F), same pop-up behavior as in tab2 -->
                 </div>
               </div>
-              <div class="DBG_paneBody DBG_dotmatrix_bck">
-<pre id="debugfield">; adr   bytes       label       instruction           comment
+              <div class="DBG_paneBody dotmatrix_bck">
+              <pre id="debugfield">; adr   bytes       label       instruction           comment
 ; ----  ----------  ----------  --------------------  ------------------------
 <span class="DBG_listingLineCurrent"> 6000  A9 00       START       LDA #$00              ; current PC</span>
  6002  8D 00 04                STA $0400             ; write to text page 1
@@ -741,16 +961,16 @@
                   <span class="DBG_paneInfo">PC bytes opcode A X Y P SP cycles</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="DBG_headerButton" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
-                  <!--button class="DBG_headerButton" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
+                  <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
+                  <!--button class="appbut skinny" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
                   <!-- TODO: always auto-scroll -->
-                  <button class="DBG_headerButton" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
+                  <button class="appbut skinny" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
+                  <button class="appbut skinny" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
                   
                 
                 </div>
               </div>
-              <div class="DBG_paneBody DBG_dotmatrix_bck">
+              <div class="DBG_paneBody dotmatrix_bck">
 <pre id="DBG_traceView">; #     PC    bytes       op                   A  X  Y  P  SP  cyc
 ; ----  ----  ----------  -------------------  -- -- -- -- --  ----
  0001  6000  A9 00       LDA #$00             00 00 00 20 FF     2
@@ -776,16 +996,16 @@
                   <span class="DBG_paneInfo">CPU + byte/word/bit watchers</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="DBG_headerButton" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
-                  <!--button class="DBG_headerButton" data-dbg-action="remove-watch" onclick="DBG_stub('Remove selected watcher')" title="Remove selected watcher"><i class="fa fa-minus-circle"></i></button-->
+                  <button class="appbut skinny" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
+                  <!--button class="appbut skinny" data-dbg-action="remove-watch" onclick="DBG_stub('Remove selected watcher')" title="Remove selected watcher"><i class="fa fa-minus-circle"></i></button-->
                   <!--  TODO: WE WILL PUT A DELETE PICTOGRAM NEXT TO EACH MEMORY WATCH ITEM like <i class="fa fa-times-circle"></i> -->
-                  <button class="DBG_headerButton" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Add break rule"><i class="fa fa-bell"></i></button>
-                  <button class="DBG_headerButton" data-dbg-action="load-save-watch-and-break" onclick="DBG_stub('Load/Save watch & break ')" title="Load/Save"><i class="fa fa-save"></i></button>
+                  <button class="appbut skinny" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Add break rule"><i class="fa fa-bell"></i></button>
+                  <button class="appbut skinny" data-dbg-action="load-save-watch-and-break" onclick="DBG_stub('Load/Save watch & break ')" title="Load/Save"><i class="fa fa-save"></i></button>
 
 
                 </div>
               </div>
-              <div class="DBG_paneBody DBG_dotmatrix_bck DBG_watchBoard">
+              <div class="DBG_paneBody dotmatrix_bck DBG_watchBoard">
                 <div class="DBG_registerGrid">
                   <div class="DBG_registerCell"><label>PC</label><span id="dispPC">6002</span></div>
                   <div class="DBG_registerCell"><label>A</label><span id="dispAC">00</span></div>
@@ -854,7 +1074,7 @@
           </div>
 
           <div class="DBG_footerNote">
-            v1 keeps execution-critical actions in pane headers. Display preferences live under Settings; layout/runtime/memory/export actions live under Tools.
+            v1.4 keeps execution-critical actions in pane headers. Display preferences live under Settings; layout/runtime/memory/export actions live under Tools.
           </div>
 
           <!-- Legacy debugger fields kept as placeholders for later integration. -->

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v1.1</title>
+  <title>Apple II+ Debugger Layout v1.3</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,7 +18,6 @@
 
   <style>
     /*
-      index_DBG_v1.html
       Layout-first prototype for redesigned Debugger tab.
       This version intentionally uses mock content and lightweight UI toggles only.
     */
@@ -114,73 +113,43 @@
       font-weight: 700;
     }
 
-    .DBG_popupRow {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      margin: 0px 0px 8px 0px;
+    .DBG_popupHost {
+      position: absolute;
+      left: 0px;
+      top: 32px;
+      z-index: 20;
+      margin: 0px;
+      padding: 0px;
     }
 
-    .DBG_panel 
-    {
-      padding: 8px 10px;
-      /*
-      border: 1px solid rgba(0,0,0,0.28);
-      border-radius: 10px;
-      background: rgba(244,244,244,0.96);
-      color: #000000;
-      box-shadow: 3px 3px 0px rgba(0,0,0,0.22);
-      */
-      font-size: 12px;
-      box-sizing: border-box;
-    }
-
-    .DBG_panel[hidden] {
+    .DBG_popupHost[hidden] {
       display: none !important;
     }
 
-    .DBG_panelTitle {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 0px 0px 6px 0px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid rgba(0,0,0,0.18);
-      font-weight: 700;
-    }
-
-    .DBG_panelGrid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
-      gap: 6px 16px;
-    }
-
-    .DBG_panelGrid > .appbox {
-      float: none;
+    .DBG_popupHost .toolbox {
       height: auto;
+    }
+
+    .DBG_popupHost .appbox {
+      height: auto;
+      min-height: 63px;
+      padding: 0px 6px;
       text-align: left;
       box-sizing: border-box;
     }
 
-    .DBG_panelGrid > .appbox strong {
+    .DBG_popupHost label {
       display: block;
-      margin-bottom: 4px;
-      font-size: 12px;
-    }
-
-    .DBG_panel label,
-    .DBG_panel .DBG_toolLine {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-height: 24px;
+      min-height: 18px;
+      line-height: 18px;
       white-space: nowrap;
+      font-family: arial;
+      font-size: 11px;
     }
 
-    .DBG_panel input[type="number"],
-    .DBG_panel select,
-    .DBG_panel input[type="text"] {
+    .DBG_popupHost input[type="number"],
+    .DBG_popupHost select,
+    .DBG_popupHost input[type="text"] {
       width: 150px;
       min-height: 20px;
       border: 1px solid rgba(0,0,0,0.28);
@@ -538,120 +507,150 @@
         <a href="#tab3" class="DBG_tabActive">Debugger</a>
         <a href="#tab4">Manual</a>
       </ul>
-    </div>
 
-    <div class="tabs">
-      <div id="tab3" class="active">
-        <div id="DBG_root">
-          <div class="DBG_topToolbar">
-            <button class="appbut" value="Settings" onclick="DBG_togglePanel('DBG_settings');" title="Debugger Settings">
+      <ul>
+                    <button class="appbut" value="Settings" onclick="DBG_togglePanel('DBG_settings');" title="Debugger Settings">
               <i class="fa fa-sliders-h"></i>
             </button>
             <button class="appbut" value="Tools" onclick="DBG_togglePanel('DBG_tools');" title="Debugger Tools">
               <i class="fa fa-toolbox"></i>
             </button>
-            <span class="DBG_titleBadge"><i class="fa fa-bug"></i> Debugger layout prototype v1</span>
+      </ul>
+    </div>
+
+    <div class="tabs">
+      <div id="tab3" class="active">
+        <div id="DBG_root">
+
+          <!-- DEBUGGER SETTINGS -->
+          <div class="hints1 DBG_popupHost" id="DBG_settings" hidden>
+            <div class="toolbox">
+              <div class="appbox" title="Debugger display">
+                DEBUGGER DISPLAY<br>
+                <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
+                <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
+                <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
+                <label>
+                  Source/disassembly fusion<br>
+                  <select onchange="DBG_stub('Source/disassembly fusion')">
+                    <option>source + disassembly</option>
+                    <option>source only</option>
+                    <option>full disassembly</option>
+                    <option>mixed</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="toolbox">
+              <div class="appbox" title="Trace configuration">
+                TRACE<br>
+                <label>Trace depth / ring buffer<br>
+                  <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')">
+                </label>
+                <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
+                <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
+              </div>
+            </div>
+
+            <div class="toolbox">
+              <div class="appbox" title="Run limits">
+                RUN LIMITS<br>
+                <label>
+                  Continuous run speed<br>
+                  <select onchange="DBG_stub('Continuous run speed')">
+                    <option>1 IPS</option>
+                    <option>10 IPS</option>
+                    <option>100 IPS</option>
+                    <option>1000 IPS</option>
+                    <option>Max</option>
+                  </select>
+                </label>
+                <label>Stop after N instructions<br>
+                  <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')">
+                </label>
+              </div>
+            </div>
+
+            <div class="toolbox">
+              <div class="appbox" title="Watch defaults">
+                WATCH DEFAULTS<br>
+                <label>
+                  Default watch size<br>
+                  <select onchange="DBG_stub('Default watch size')">
+                    <option>byte</option>
+                    <option>word</option>
+                    <option>bit</option>
+                  </select>
+                </label>
+                <label>
+                  Default watch format<br>
+                  <select onchange="DBG_stub('Default watch format')">
+                    <option>hex</option>
+                    <option>decimal</option>
+                    <option>binary</option>
+                    <option>ASCII</option>
+                  </select>
+                </label>
+              </div>
+            </div>
           </div>
 
-          <div class="DBG_popupRow">
-            <div class="DBG_panel appbox" id="DBG_settings" hidden>
-              <div class="DBG_panelGrid">
-                <div class="appbox">
-                  <strong>Debugger display</strong>
-                  <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
-                  <label>Source/disassembly fusion
-                    <select onchange="DBG_stub('Source/disassembly fusion')">
-                      <option>source + disassembly</option>
-                      <option>source only</option>
-                      <option>full disassembly</option>
-                      <option>mixed</option>
-                    </select>
-                  </label>
-                  <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
-                  <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
-                </div>
+          <!-- DEBUGGER TOOLS -->
+          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden>
+    
+          <div class=toolbox>
+            <form name="DBGboard" onsubmit="return false">
+              <textarea id="DBG_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code input" name="boardText"></textarea><br>
+              <input title="Send byte code to debugger" id="DBG_ByteCodeImportButton" type="button" value="to debugger">
+              <input title="Clear byte code" type="button" value="Clear" onclick="javascript:DBG_clearBoard()">
+              <span id="DBG_byteCodeInfo" class="DBG_byteCodeInfo">0 bytes</span>
+              <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('DBG_tools')">
+            </form>
+          </div>
 
-                <div class="appbox">
-                  <strong>Trace configuration</strong>
-                  <label>Trace depth / ring buffer <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')"></label>
-                  <!--label>Trace format
-                    <select onchange="DBG_stub('Trace format')">
-                      <option>assembler-like</option>
-                      <option>compact</option>
-                      <option>verbose</option>
-                    </select>
-                  </label-->
-                  <!-- TODO: always assume assembler-like trace format -->
-                  <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
-                  <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
-                </div>
 
-                <div class="appbox">
-                  <strong>Run limits</strong>
-                  <label>Continuous run speed
-                    <select onchange="DBG_stub('Continuous run speed')">
-                      <option>1 IPS</option>
-                      <option>10 IPS</option>
-                      <option>100 IPS</option>
-                      <option>1000 IPS</option>
-                      <option>Max</option>
-                    </select>
-                  </label>
-                  <label>Stop after N instructions <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')"></label>
-                </div>
-
-                <div class="appbox">
-                  <strong>Watch defaults</strong>
-                  <label>Default watch size
-                    <select onchange="DBG_stub('Default watch size')">
-                      <option>byte</option>
-                      <option>word</option>
-                      <option>bit</option>
-                    </select>
-                  </label>
-                  <label>Default watch format
-                    <select onchange="DBG_stub('Default watch format')">
-                      <option>hex</option>
-                      <option>decimal</option>
-                      <option>binary</option>
-                      <option>ASCII</option>
-                    </select>
-                  </label>
+            <!-- RUNTIME TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox" style="text-align:left;padding:0px 6px 0px 6px;">
+                SYSTEM<br>
+                <div style="font-family:arial;font-size:11px">
+                  CPU<button class="appbut skinny" onclick="DBG_stub('Reset CPU')" title="Reset CPU"><i class="fa fa-redo"></i></button>
+                  <button class="appbut skinny" onclick="DBG_stub('Restart CPU')" title="Restart CPU"><i class="fa fa-power-off"></i></button>
+                  <br>
+                  <button class="appbut skinny" onclick="DBG_stub('Load Emulator image')" title="Load emulator image">load <i class="fa fa-microchip"></i></button>
                 </div>
               </div>
             </div>
 
-            <div class="DBG_panel appbox" id="DBG_tools" hidden>
-              <div class="DBG_panelGrid">
+            <!-- DEBUGGER ACTION BUTTONS -->
+            <div class="toolbox">
+              <button id="DBG_toggleWatchPaneButton" class="appbut" onclick="DBG_togglePane3();" title="Show/hide Memory Watch pane">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+              <br>
+              <button class="appbut" onclick="DBG_stub('Show memory map')" title="Show/hide Memory Map">
+                <i class="fa fa-th"></i>
+              </button>
+              <br>
+            </div>
 
-                <div class="appbox">
-                  <strong>Layout</strong>
-                  
-                  <div class="DBG_toolLine"><span>Restore default debugger layout</span><button class="appbut skinny" onclick="DBG_togglePane3(true); DBG_stub('Restore default layout');"><i class="fa fa-columns"></i> restore</button></div>
-                </div>
+            <!-- MEMORY TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox" title="Memory tools">
+                MEMORY<br>
+                
+                <button class="appbut skinny" onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button>
+              </div>
+            </div>
 
-                <div style="display:block;width:100px">
-                  <div class="DBG_toolLine"><button id="DBG_toggleWatchPaneButton" onclick="DBG_togglePane3();"><i class="fa fa-eye-slash"></i></button></div>
-                </div>
-
-                <div class="appbox">
-                  <strong>Runtime</strong>
-                  <div class="DBG_toolLine"><span>Reset debugger</span><button class="appbut skinny" onclick="DBG_stub('Reset debugger')"><i class="fa fa-redo"></i> reset</button></div>
-                  <div class="DBG_toolLine"><span>Reset CPU</span><button onclick="DBG_stub('Reset CPU')"><i class="fa fa-power-off"></i> reset CPU</button></div>
-                  <div class="DBG_toolLine"><span>Load Emulator image</span><button onclick="DBG_stub('Load Emulator image')"><i class="fa fa-microchip"></i> load</button></div>
-                </div>
-
-                <div class="appbox">
-                  <strong>Memory</strong>
-                  <div class="DBG_toolLine"><span>Show memory map</span><button onclick="DBG_stub('Show memory map')"><i class="fa fa-map"></i> map</button></div>
-                  <div class="DBG_toolLine"><span>Map Apple II+ zero-page</span><button onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button></div>
-                </div>
-
-                <div class="appbox">
-                  <strong>Export / diagnostics</strong>
-                  <div class="DBG_toolLine"><span>Export watch list</span><button onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button></div>
-                  <div class="DBG_toolLine"><span>Clear all breakpoints/watchpoints</span><button onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button></div>
-                </div>
+            <!-- EXPORT TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox" title="Export and diagnostics">
+                EXPORT / DIAGNOSTICS<br>
+                <button class="appbut skinny" onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button>
+                <br>
+                <button class="appbut skinny" onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button>
               </div>
             </div>
           </div>
