@@ -1149,7 +1149,16 @@ Label1 TXA
                       <strong>Listing</strong>
                       <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
                     </span>
-                    <span id="ASM_listingInfo" class="ASM_paneInfo">compile()</span>
+                    <span class="ASM_paneTitleMain">
+                      <span id="ASM_listingInfo" class="ASM_paneInfo">compile()</span>
+                      <button id="ASM_exportSymbolsButton"
+                              class="ASM_paneTitleButton"
+                              type="button"
+                              title="Export symbols"
+                              onclick="ASM_exportSymbols()">
+                        <i class="fa fa-download"></i>
+                      </button>
+                    </span>
                   </div>
                   <textarea id="ASM_listingPane" class="ASM_editor dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
                 </section>
@@ -1465,6 +1474,293 @@ Label1 TXA
               navigator.clipboard.writeText(text || "")
                 .then(function(){ ASM_setStatus(okMessage,"ok"); })
                 .catch(function(){ ASM_setStatus("Clipboard copy failed; select manually.","warn"); });
+            }
+
+            function ASM_downloadText(filename,text,mime)
+            {
+              filename = filename || "symbols.json";
+              text = text || "";
+              mime = mime || "application/json;charset=utf-8";
+
+              var blob = new Blob([text],{type:mime});
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement("a");
+
+              a.href = url;
+              a.download = filename;
+              a.style.display = "none";
+
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+
+              URL.revokeObjectURL(url);
+            }
+
+            function ASM_symbolHex(value,bytes)
+            {
+              value = Number(value) & 0xFFFF;
+              bytes = bytes === 1 ? 1 : 2;
+
+              if(window.oASM && typeof window.oASM.valHex == "function")
+                return window.oASM.valHex(value,bytes).replace(/^0x/i,"$");
+
+              if(bytes === 1)
+                return "$" + ("0" + (value & 0xFF).toString(16).toUpperCase()).slice(-2);
+
+              return "$" + ("000" + value.toString(16).toUpperCase()).slice(-4);
+            }
+
+            function ASM_cleanCommentText(comment)
+            {
+              return String(comment || "")
+                .replace(/^\s*;\s?/,"")
+                .replace(/\s+$/,"");
+            }
+
+            function ASM_rowStatementSplit(row)
+            {
+              row = row || {};
+              var asm = window.oASM;
+              var source = row.source != null ? row.source : row.statement;
+
+              if(asm && typeof asm.splitStatementAndComment == "function")
+                return asm.splitStatementAndComment(source);
+
+              // Local fallback: keep semicolons inside quoted strings.
+              var text = String(source || "").replace(/[“”]/g,"\"");
+              var body = "";
+              var comment = "";
+              var quote = "";
+              var escaped = false;
+
+              for(var i=0;i<text.length;i++)
+              {
+                var ch = text.charAt(i);
+
+                if(escaped) { body += ch; escaped = false; continue; }
+                if(ch === "\\") { body += ch; escaped = true; continue; }
+
+                if(quote)
+                {
+                  body += ch;
+                  if(ch === quote) quote = "";
+                  continue;
+                }
+
+                if(ch === "'" || ch === "\"") { quote = ch; body += ch; continue; }
+                if(ch === ";") { comment = text.substring(i).trimRight(); break; }
+
+                body += ch;
+              }
+
+              return {body:body.trim(),comment:comment};
+            }
+
+            function ASM_rowComment(row)
+            {
+              return ASM_cleanCommentText(ASM_rowStatementSplit(row).comment);
+            }
+
+            function ASM_byteArrayHex(bytes)
+            {
+              bytes = bytes || [];
+              var out = [];
+              for(var i=0;i<bytes.length;i++)
+                out.push(ASM_symbolHex(bytes[i] & 0xFF,1).replace("$",""));
+              return out;
+            }
+
+            function ASM_rowBytes(row)
+            {
+              row = row || {};
+              if(Array.isArray(row.bytes))
+                return row.bytes.map(function(b){ return Number(b) & 0xFF; });
+
+              if(typeof row.hex == "string")
+              {
+                var m = row.hex.match(/\b[0-9A-F]{2}\b/gi);
+                return m ? m.map(function(h){ return parseInt(h,16) & 0xFF; }) : [];
+              }
+
+              return [];
+            }
+
+            function ASM_rowInstructionParts(row)
+            {
+              row = row || {};
+              var asm = window.oASM;
+              var tag = row.tag || [];
+              var sym = row.sym || [];
+
+              if(!asm || !tag.length || !sym.length) return null;
+
+              var mneIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"MNE") : tag.indexOf("MNE");
+              if(mneIndex < 0) return null;
+
+              var oprIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"OPR") : tag.indexOf("OPR");
+              var mnemonic = String(sym[mneIndex] || "").toUpperCase();
+              var operand = oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : "";
+              var instruction = mnemonic + (operand ? " " + operand : "");
+
+              return {
+                mnemonic: mnemonic,
+                operand: operand,
+                instruction: instruction
+              };
+            }
+
+            function ASM_collectSymbols()
+            {
+              var out = [];
+              var seen = {};
+              var rows = window.asmCompileResult && window.asmCompileResult.rows ? window.asmCompileResult.rows : [];
+              var asm = window.oASM;
+
+              if(!asm) return out;
+
+              for(var i=0;i<rows.length;i++)
+              {
+                var row = rows[i] || {};
+                var tag = row.tag || [];
+                var sym = row.sym || [];
+
+                if(tag[0] !== "LBL" || !sym[0]) continue;
+
+                var name = asm.getID ? asm.getID(sym[0]) : String(sym[0]).substring(0,8);
+                if(!name || seen[name]) continue;
+
+                var pgmIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"PGM") : -1;
+                var type = "label";
+                var value;
+                var bytes = 2;
+
+                if(pgmIndex >= 0 && asm.pragmaInfo)
+                {
+                  var pinfo = asm.pragmaInfo(sym[pgmIndex]);
+                  if(pinfo && pinfo.ref === "EQU")
+                  {
+                    type = "equ";
+                    value = typeof row.val == "number" ? row.val : (asm.symtab ? asm.symtab[name] : undefined);
+                    bytes = row.oby === 1 ? 1 : 2;
+                  }
+                }
+
+                if(type === "label")
+                {
+                  value = typeof row.pc == "number" ? row.pc : (asm.symtab ? asm.symtab[name] : undefined);
+                  bytes = 2;
+                }
+
+                if(typeof value != "number" || isNaN(value)) continue;
+
+                value = value & 0xFFFF;
+                seen[name] = true;
+
+                var item = {
+                  name: name,
+                  type: type,
+                  bytes: bytes,
+                  value: value,
+                  hex: ASM_symbolHex(value,bytes),
+                  line: row.line || null
+                };
+
+                var comment = ASM_rowComment(row);
+                var rowBytes = ASM_rowBytes(row);
+                var hasInstructionComment = rowBytes.length > 0 && ASM_rowInstructionParts(row) != null;
+
+                // EQU comments describe the value/address declaration.
+                // Label-only comments describe the label itself.
+                // Label+instruction comments are exported as fixed instruction comments below.
+                if(comment && (type == "equ" || !hasInstructionComment))
+                  item.comment = comment;
+
+                out.push(item);
+              }
+
+              return out;
+            }
+
+            function ASM_collectInstructionComments()
+            {
+              var out = [];
+              var rows = window.asmCompileResult && window.asmCompileResult.rows ? window.asmCompileResult.rows : [];
+              var asm = window.oASM;
+
+              if(!asm) return out;
+
+              for(var i=0;i<rows.length;i++)
+              {
+                var row = rows[i] || {};
+                var pc = typeof row.pc == "number" ? (row.pc & 0xFFFF) : null;
+                var bytes = ASM_rowBytes(row);
+                var comment = ASM_rowComment(row);
+                var instr = ASM_rowInstructionParts(row);
+
+                // A comment is exported as an instruction annotation only if it
+                // has both a fixed address and a fixed instruction byte signature.
+                if(pc == null || !bytes.length || !comment || !instr) continue;
+
+                var label = "";
+                if(row.tag && row.tag[0] === "LBL" && row.sym && row.sym[0])
+                  label = asm.getID ? asm.getID(row.sym[0]) : String(row.sym[0]).substring(0,8);
+
+                var byteHex = ASM_byteArrayHex(bytes);
+
+                out.push({
+                  pc: pc,
+                  hex: ASM_symbolHex(pc,2),
+                  bytes: bytes,
+                  byteText: byteHex.join(" "),
+                  size: bytes.length,
+                  match: {
+                    pc: pc,
+                    bytes: bytes.slice()
+                  },
+                  key: ASM_symbolHex(pc,2) + ":" + byteHex.join(" "),
+                  label: label || undefined,
+                  mnemonic: instr.mnemonic,
+                  operand: instr.operand,
+                  instruction: instr.instruction,
+                  comment: comment,
+                  line: row.line || null
+                });
+              }
+
+              return out;
+            }
+
+            function ASM_exportSymbols()
+            {
+              if(!window.asmCompileResult || !window.oASM)
+              {
+                if(!ASM_assembleCurrentSource()) return;
+              }
+
+              var symbols = ASM_collectSymbols();
+              var comments = ASM_collectInstructionComments();
+
+              var exportObject = {
+                format: "RetroAppleJS-ASM-symbols",
+                version: 2,
+                source: ASM_currentFileName || "source.S",
+                matchRule: "instruction comments apply only when both pc and bytes match",
+                counts: {
+                  symbols: symbols.length,
+                  instructionComments: comments.length
+                },
+                count: symbols.length,
+                symbols: symbols,
+                instructionComments: comments
+              };
+
+              var base = String(ASM_currentFileName || "symbols")
+                .replace(/\.[^.]*$/,"")
+                .replace(/[^A-Za-z0-9_.-]+/g,"_");
+
+              ASM_downloadText(base + ".symbols.json",JSON.stringify(exportObject,null,2),"application/json;charset=utf-8");
+              ASM_setStatus("Exported " + symbols.length + " symbol(s) and " + comments.length + " instruction comment(s).","ok");
             }
 
             function ASM_showEmulatorTools()
