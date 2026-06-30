@@ -28,23 +28,23 @@ function AppleBoard()
 
     this.IO_map = function(model)
     {
+        function isRO(ctx) { return ctx && ctx.bRO === true; }
 
         // hack - TODO: find a permanent fix
         const IOMAP_CALLS = {
-            "KBD":      function(ctx2){ return ctx2.keys.polling(ctx2.keys.lastkey); },
-            "KBDSTRB":  function(ctx2){ ctx2.keys.strobe();        return 0x00; },
-            "SPKR":     function(ctx2){ ctx2.snd.toggle();         return 0x00; },
+            "KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
+            "KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
+            "SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
 
-            "TXTCLR":   function(ctx){ ctx.vid.setGfx(true);     return 0x00; },
-            "TXTSET":   function(ctx){ ctx.vid.setGfx(false);    return 0x00; },
-            "MIXCLR":   function(ctx){ ctx.vid.setMix(false);    return 0x00; },
-            "MIXSET":   function(ctx){ ctx.vid.setMix(true);     return 0x00; },
-            "TXTPAGE1": function(ctx){ ctx.vid.setPage2(false);  return 0x00; },
-            "TXTPAGE2": function(ctx){ ctx.vid.setPage2(true);   return 0x00; },
-            "LORES":    function(ctx){ ctx.vid.setHires(false);  return 0x00; },
-            "HIRES":    function(ctx){ ctx.vid.setHires(true);   return 0x00; }
+            "TXTCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(true);       return 0x00; },
+            "TXTSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(false);      return 0x00; },
+            "MIXCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setMix(false);      return 0x00; },
+            "MIXSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setMix(true);       return 0x00; },
+            "TXTPAGE1": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(false);    return 0x00; },
+            "TXTPAGE2": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(true);     return 0x00; },
+            "LORES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(false);    return 0x00; },
+            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; }
         };
-
   
         var IOMAP_ID = null;
         update_IORANGES(model);
