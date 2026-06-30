@@ -135,57 +135,80 @@ function Apple2IO(vid)
 
             if(o.pObj.id?.PCODE == "A2BO" && typeof(o.pObj.IO_map)=="function")
             {
-
-                //CIO.ACTION_MAP.RD[0x0F00] = hostROM_CALL; // TODO: refactor this, make sure EMU_Hostio.js captures empty slot R/W operations?
-
-                /*
-                CIO.ACTION_MAP.RD[0x0700] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0600] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0600+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0500] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0500+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0400] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0400+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0300] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0300+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0200] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0200+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0100] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0100+rel_addr)) }
-                CIO.ACTION_MAP.RD[0x0000] = function(rel_addr,d8,ctx) { 
-                    //console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0000+rel_addr)) 
-                    }
-
-                CIO.ACTION_MAP.WR[0x0700] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0600] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0600+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0500] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0500+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0400] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0400+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0300] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0300+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0200] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0200+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0100] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0100+rel_addr)) }
-                CIO.ACTION_MAP.WR[0x0000] = function(rel_addr,d8,ctx) { console.log("SlotROM: WR unmapped address at "+oCOM.getHexWord(0xC000+0x0000+rel_addr)) }
-                */
-
                 mergeActionMap(CIO.ACTION_MAP,o.pObj.IO_map(model));
             }
-
-            
 
             if(bDebug) console.log("EMU_apple2io.js - mount(<"+pinfo.PCODE+" in "+slotN2name(slotN)+">)" );
         }
 
-        var hostROM_CALL = function(rel_addr,d8,ctx)
+        installEmptyIOActions();
+
+        function installEmptyIOActions()
         {
-            if(rel_addr==0xFF) console.log("HostIO: free up $C800-$CFFF to other cards")
+            function isSafeRead(ctx) { return ctx && ctx.bRO === true; }
+
+            function rd_empty(base,label)
+            {
+                return function(rel_addr,ctx)
+                {
+                    if(!isSafeRead(ctx) && bDebug)  //Empty bus / unmapped I/O read. During safe memory scans, stay silent.
+                        console.warn(label + ": RD unmapped address at $" + oCOM.getHexWord(0xC000 + base + rel_addr));
+                    return 0x00;
+                };
+            }
+
+            function wr_empty(base,label)
+            {
+                return function(rel_addr,d8,ctx)
+                {
+                    if(!isSafeRead(ctx) && bDebug)
+                        console.warn(label + ": WR unmapped address at $" + oCOM.getHexWord(0xC000 + base + rel_addr));
+
+                    return 0x00;
+                };
+            }
+
+            /*
+            * $C000-$C07F: Host I/O.
+            * AppleBoard maps the real soft-switches; fill the remaining lines only.
+            */
+            for(var line = 0x00; line <= 0x70; line += 0x10)
+            {
+                if(!CIO.ACTION_MAP.RD[line]) CIO.ACTION_MAP.RD[line] = rd_empty(line,"HostIO");
+                if(!CIO.ACTION_MAP.WR[line]) CIO.ACTION_MAP.WR[line] = wr_empty(line,"HostIO");
+            }
+
+            /*
+            * $C080-$C0FF: Slot I/O.
+            * This fixes the observed $C090 case when slot 1 has no mounted peripheral.
+            */
+            for(var line = 0x80; line <= 0xF0; line += 0x10)
+            {
+                if(!CIO.ACTION_MAP.RD[line]) CIO.ACTION_MAP.RD[line] = rd_empty(line,"SlotIO");
+                if(!CIO.ACTION_MAP.WR[line]) CIO.ACTION_MAP.WR[line] = wr_empty(line,"SlotIO");
+            }
+
+            /*
+            * $C100-$C7FF: Slot ROM.
+            */
+            for(var line = 0x100; line <= 0x700; line += 0x100)
+            {
+                if(!CIO.ACTION_MAP.RD[line]) CIO.ACTION_MAP.RD[line] = rd_empty(line,"SlotROM");
+                if(!CIO.ACTION_MAP.WR[line]) CIO.ACTION_MAP.WR[line] = wr_empty(line,"SlotROM");
+            }
+
+            /*
+            * $C800-$CFFF: Shared expansion ROM / Host ROM area.
+            * $CFFF is the conventional "disable slot C8 ROM" address, but when no
+            * card owns this area, it must still be safely readable.
+            */
+            for(var line = 0x800; line <= 0xF00; line += 0x100)
+            {
+                if(!CIO.ACTION_MAP.RD[line]) CIO.ACTION_MAP.RD[line] = rd_empty(line,"HostROM");
+                if(!CIO.ACTION_MAP.WR[line]) CIO.ACTION_MAP.WR[line] = wr_empty(line,"HostROM");
+            }
         }
 
-        for(var slotN = 0; slotN < slot_count+1; slotN++)
-        {
-            var line = 0x100 * slotN;
-            if(!CIO.ACTION_MAP.RD[line]) 
-                CIO.ACTION_MAP.RD[line] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
-            if(!CIO.ACTION_MAP.WR[line]) 
-                CIO.ACTION_MAP.WR[line] = function(rel_addr,d8,ctx) { console.log("SlotROM: RD unmapped address at "+oCOM.getHexWord(0xC000+0x0700+rel_addr)) }
-        }
-        line = 0xF00; // last line at the end of HOSTROM
-        if(!CIO.ACTION_MAP.RD[line])
-            CIO.ACTION_MAP.RD[line] = hostROM_CALL; // TODO: refactor this, make sure EMU_Hostio.js captures empty slot R/W operations?
-
-        // TODO: MAP UNUSED SLOTS AS THE APPLE ROM is accessing them
 
 /*
 Example output of a mounted peripheral:
@@ -341,37 +364,17 @@ function syscode_has_model(syscodes,sys_model)
 
     function line_decode(adr)  { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
 
-    this.read = function(rel_addr)      // relative to 0xC000
-    {
-        
-
-        var line = line_decode(rel_addr);
-        var xline = oCOM.getHexMulti(line,4);
-
-        if(rel_addr >= 0x50 && rel_addr < 0x80)
-        {
-            line = line;
-            //return 0x00;
-        } 
-
-        ////////////////////////////////////////////////////////////
-        // MAIN FUNCTION CALL: I/O ACTION MAP FOR READ OPERATIONS //
-        ////////////////////////////////////////////////////////////
-
-        const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
-        //if(CIO.ACTION_MAP.RD[line]!==undefined)
-        //{
-            //if(rel_addr > 16) console.log("ACTION: "+CIO.ACTION_MAP.RD[rel_addr]);
-            return CIO.ACTION_MAP.RD[line](rel_addr-line,ctx2);   // EXECUTE ACTION TRIGGERED BY A READ AT THIS ADDRESS
-        //}
-
-        return 0x00;
-    }
-
     this.read = function(rel_addr)
     {
         var line = line_decode(rel_addr); var xline = oCOM.getHexMulti(line,4);
-        const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
+        const ctx2 = 
+        {
+            "keys": keys,
+            "snd": snd,
+            "vid": vid,
+            "io": this,
+            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
+        };
 
 
         if(!CIO.ACTION_MAP.RD[line])
@@ -383,7 +386,14 @@ function syscode_has_model(syscodes,sys_model)
     this.write = function(rel_addr,d8)
     {
         var line = line_decode(rel_addr); var xline = oCOM.getHexMulti(line,4);
-        const ctx2 = {"keys":keys,"snd":snd,"vid":vid};
+        const ctx2 = 
+        {
+            "keys": keys,
+            "snd": snd,
+            "vid": vid,
+            "io": this,
+            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
+        };
 
         if(!CIO.ACTION_MAP.WR[line])
             console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")")
