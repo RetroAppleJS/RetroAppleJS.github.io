@@ -244,6 +244,13 @@ function disk_build_action_panel()
        + "<button onclick=\"show_zlib_base64('"+fmt+"')\">ZLIB_BASE64 ."+fmt.toUpperCase()+"</button> "
        + "<span>."+fmt+" bytes:"+b.length+" CRC32:"+disk_crc32(b)+"</span><br>";
   }
+
+  s += "<br>"
+     + "<button onclick=\"parser_dump()\">Analyze DOS 3.3</button> "
+     + "<button onclick=\"purge_unreferenced_blocks('freeUserArea')\">Purge FREE unref</button> "
+     + "<button onclick=\"purge_unreferenced_blocks('all')\">Purge ALL unref</button> "
+     + "<span>Purge FREE excludes DOS system tracks T$00-T$02. Purge ALL requires typing ALL.</span><br>";
+
   s += "</div>";
   return s;
 }
@@ -635,21 +642,101 @@ var oDISK = new function()
       }
     }
 
+    var free = [];
+    var allocated = [];
+    var unknown = [];
+    var freeUserArea = [];
+
+    for(var i=0;i<unref.length;i++)
+    {
+      var o = unref[i];
+
+      // DOS 3.3 boot/system tracks are often not referenced by catalog chains.
+      // Keep them out of the default purge candidate list.
+      o.systemTrack = (o.t >= 0 && o.t <= 2);
+      o.vtocTrack = (o.t == geo.VTOC_TRACK);
+
+      if(o.status == "FREE")
+      {
+        free[free.length] = o;
+        if(!o.systemTrack) freeUserArea[freeUserArea.length] = o;
+      }
+      else if(o.status == "ALLOCATED")
+        allocated[allocated.length] = o;
+      else
+        unknown[unknown.length] = o;
+    }
+
+    var analysis = {
+      type: "DOS3_UNREFERENCED_NON_EMPTY_SECTOR_ANALYSIS",
+      geometry: {
+        sectorSize: geo.SECTOR_SIZE,
+        sectorsPerTrack: geo.SECTORS_PER_TRACK,
+        tracksPerDisk: geo.TRACKS_PER_DISK,
+        vtocTrack: geo.VTOC_TRACK,
+        vtocSector: geo.VTOC_SECTOR
+      },
+      refs: ref,
+      files: files,
+      deletedEntries: deletedEntries,
+      unreferenced: unref,
+      candidates: {
+        freeUserArea: freeUserArea,
+        free: free,
+        allocated: allocated,
+        unknown: unknown,
+        all: unref
+      },
+      summary: {
+        liveFiles: files.length,
+        deletedEntries: deletedEntries,
+        unreferencedNonEmpty: unref.length,
+        freeNonEmpty: free.length,
+        freeUserAreaNonEmpty: freeUserArea.length,
+        allocatedNonEmpty: allocated.length,
+        unknownNonEmpty: unknown.length
+      },
+      warnings: warnings
+    };
+
+    analysis.logs = this.DOS3_render_unreferenced_report(analysis);
+
+    return analysis;
+  }
+
+  this.DOS3_render_unreferenced_report = function(analysis)
+  {
+    var geo = this.DOS3_m.DISK_GEO;
+    var log_arr = [];
+
+    function html(txt)
+    {
+      return String(txt)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;");
+    }
+
     log_arr[log_arr.length] = "<font color='teal'>";
     log_arr[log_arr.length] = "<b>UNREFERENCED NON-EMPTY SECTOR ANALYSIS</b>";
-    log_arr[log_arr.length] =
-      "Catalog live files: <b>" + files.length + "</b>, deleted catalog entries: <b>" + deletedEntries + "</b>";
 
     log_arr[log_arr.length] =
-      "Non-empty sectors not referenced by live catalog/T/S chains: <b>" + unref.length + "</b>"
-      + " — FREE: <b>" + freeNonEmpty + "</b>"
-      + ", ALLOCATED: <b>" + allocatedNonEmpty + "</b>";
+      "Catalog live files: <b>" + analysis.summary.liveFiles + "</b>"
+      + ", deleted catalog entries: <b>" + analysis.summary.deletedEntries + "</b>";
 
     log_arr[log_arr.length] =
-      "FREE + non-empty sectors are the best candidates for previously deleted data. "
-      + "ALLOCATED + unreferenced sectors may be DOS/system/reserved/orphaned data and should not be purged blindly.";
+      "Non-empty sectors not referenced by live catalog/T/S chains: <b>"
+      + analysis.summary.unreferencedNonEmpty + "</b>"
+      + " — FREE: <b>" + analysis.summary.freeNonEmpty + "</b>"
+      + ", FREE user-area: <b>" + analysis.summary.freeUserAreaNonEmpty + "</b>"
+      + ", ALLOCATED: <b>" + analysis.summary.allocatedNonEmpty + "</b>"
+      + ", UNKNOWN: <b>" + analysis.summary.unknownNonEmpty + "</b>";
 
-    if(unref.length == 0)
+    log_arr[log_arr.length] =
+      "Default purge candidate = FREE + unreferenced + non-empty, excluding DOS system tracks T$00-T$02. "
+      + "Use ALL mode only for disk images where non-DOS/custom/boot data may safely be destroyed.";
+
+    if(analysis.unreferenced.length == 0)
     {
       log_arr[log_arr.length] = "No non-empty unreferenced sectors found.";
     }
@@ -657,13 +744,19 @@ var oDISK = new function()
     {
       log_arr[log_arr.length] = "<b>Candidate sectors</b>";
 
-      for(var i=0;i<unref.length;i++)
+      for(var i=0;i<analysis.unreferenced.length;i++)
       {
-        var o = unref[i];
+        var o = analysis.unreferenced[i];
+        var flags = [];
+
+        if(o.systemTrack) flags[flags.length] = "SYSTEM-TRACK";
+        if(o.vtocTrack) flags[flags.length] = "VTOC-TRACK";
+
         log_arr[log_arr.length] =
           "T$" + oCOM.getHexByte(o.t)
           + " S$" + oCOM.getHexByte(o.s)
           + " " + o.status
+          + (flags.length ? " [" + flags.join(",") + "]" : "")
           + " non-zero:" + o.nonZero + "/" + geo.SECTOR_SIZE
           + " (" + o.pct + "%)"
           + " first:$" + oCOM.getHexByte(o.first)
@@ -672,25 +765,17 @@ var oDISK = new function()
       }
     }
 
-    if(warnings.length)
+    if(analysis.warnings.length)
     {
       log_arr[log_arr.length] = "<b>Reference warnings</b>";
-      for(var w=0;w<warnings.length;w++)
-        log_arr[log_arr.length] = html(warnings[w]);
+      for(var w=0;w<analysis.warnings.length;w++)
+        log_arr[log_arr.length] = html(analysis.warnings[w]);
     }
 
     log_arr[log_arr.length] = "</font>";
 
-    return {
-      refs: ref,
-      files: files,
-      unreferenced: unref,
-      warnings: warnings,
-      logs: log_arr
-    };
+    return log_arr;
   }
-
-
 
 
 //  ██████  ██ ███████ ██   ██     ██ ██████  ███████ ███    ██ ████████ ██ ███████ ██ ███████ ██████  
@@ -1008,11 +1093,131 @@ function parsedisk(bytes)
     var _o = oDISK.DOS3_parse(bytes);    // PARSE DISK DATA
     log_arr.push(_o.logs.join("<br>"));
     var orphan = oDISK.DOS3_analyze_unreferenced(bytes);
-    log_arr.push(orphan.logs.join("<br>"));
+    log_arr.push(oDISK.DOS3_render_unreferenced_report(orphan).join("<br>"));
   }
   //else if(_s==0) log_arr[log_arr.length] = "<br>PARSER SKIPPED - POOR MATCH<br>";
   return log_arr;
   //document.getElementById('dump').innerHTML = log_arr.join("<br>");
+}
+
+function disk_after_dsk_mutation(bytes)
+{
+  var disk2 = disk_appledisk();
+
+  DISK_image.dskBytes = disk_bytes_to_array(bytes);
+  DISK_image.nibBytes = disk_bytes_to_array(disk2.convertDsk2Nib(DISK_image.dskBytes));
+  DISK_image.poBytes = null;
+
+  // Keep parser and download actions using the modified DSK-order image.
+  oCOM.UploadData = DISK_image.dskBytes;
+
+  disk_set_status(disk_build_action_panel());
+}
+
+function purge_unreferenced_blocks(mode)
+{
+  try
+  {
+    mode = mode || "freeUserArea";
+
+    if(!DISK_image.dskBytes && !oCOM.UploadData)
+      throw new Error("Load a DOS 3.3 disk image first");
+
+    var bytes = disk_bytes_to_array(DISK_image.dskBytes || oCOM.UploadData);
+    var detected = oDISK.detect(bytes);
+
+    if(detected["DOS 3.3"] <= 99)
+      throw new Error("Purge skipped: disk does not look like DOS 3.3");
+
+    var analysis = oDISK.DOS3_analyze_unreferenced(bytes);
+    var candidates;
+
+    switch(mode)
+    {
+      case "freeUserArea":
+        candidates = analysis.candidates.freeUserArea;
+        break;
+
+      case "free":
+        candidates = analysis.candidates.free;
+        break;
+
+      case "all":
+        candidates = analysis.candidates.all;
+        break;
+
+      default:
+        throw new Error("Unknown purge mode: " + mode);
+    }
+
+    if(candidates.length == 0)
+    {
+      document.getElementById('dump').innerHTML =
+        oDISK.DOS3_render_unreferenced_report(analysis).join("<br>")
+        + "<br><br><b>No purge candidates found for mode: " + mode + "</b>";
+      return;
+    }
+
+    var msg =
+      "Purge " + candidates.length + " unreferenced non-empty sector(s)?\n\n"
+      + "Mode: " + mode + "\n"
+      + "freeUserArea = FREE sectors only, excluding DOS system tracks T00-T02.\n"
+      + "free = FREE sectors on all tracks.\n"
+      + "all = every unreferenced non-empty sector, including allocated/custom/system data.\n\n"
+      + "This modifies the disk image in memory. Download the disk afterwards to save it.";
+
+    if(mode == "all")
+    {
+      var typed = prompt(msg + "\n\nType ALL to continue.");
+      if(typed != "ALL") return;
+    }
+    else
+    {
+      if(!confirm(msg)) return;
+    }
+
+    var geo = oDISK.DOS3_m.DISK_GEO;
+    var purged = [];
+
+    for(var i=0;i<candidates.length;i++)
+    {
+      var c = candidates[i];
+      var off = oDISK.byte_offset(c.t,c.s,geo);
+
+      for(var j=0;j<geo.SECTOR_SIZE;j++)
+        bytes[off+j] = 0x00;
+
+      purged[purged.length] =
+        "T$" + oCOM.getHexByte(c.t)
+        + " S$" + oCOM.getHexByte(c.s)
+        + " " + c.status
+        + " CRC32-before:" + c.crc32;
+    }
+
+    disk_after_dsk_mutation(bytes);
+
+    // Redraw heatmap/grid from the modified disk.
+    dumpdisk(DISK_image.dskBytes);
+
+    var after = oDISK.DOS3_analyze_unreferenced(DISK_image.dskBytes);
+    var report = [];
+
+    report[report.length] = "<font color='green'><b>PURGE COMPLETED</b>";
+    report[report.length] = "Mode: <b>" + mode + "</b>";
+    report[report.length] = "Purged sectors: <b>" + purged.length + "</b>";
+    report[report.length] = purged.join("<br>");
+    report[report.length] = "</font>";
+    report[report.length] = "<br>";
+    report[report.length] = oDISK.DOS3_render_unreferenced_report(after).join("<br>");
+
+    document.getElementById('dump').innerHTML = report.join("<br>");
+  }
+  catch(e)
+  {
+    alert(e.message || e);
+    document.getElementById('dump').innerHTML =
+      "<font color=red>" + (e.message || e) + "</font>";
+  }
 }
 
 
