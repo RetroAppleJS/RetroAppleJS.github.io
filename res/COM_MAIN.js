@@ -2056,6 +2056,66 @@ function PANE()
         var selectionBtn = bar.querySelector(".com-pane-fr-selection-btn");
         var floatPrevBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-prev") : null;
         var floatNextBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-next") : null;
+        var floatTopBtn  = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-top") : null;
+        var floatCloseBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-close") : null;
+
+        var state = {
+            matches: [],
+            current: -1,
+            selectionRange: null,
+            lastEditorSelection: null,
+            timer: null,
+            debounce_ms: cfg.debounce_ms == null ? 500 : cfg.debounce_ms
+        };
+
+        function esc(s) {
+            return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        }
+
+        function renderOverlay() {
+            var text = target.value;
+            var ranges = [];
+            var visibleSelection = state.selectionRange || state.lastEditorSelection;
+            if(visibleSelection && visibleSelection.end > visibleSelection.start)
+                ranges.push({start:visibleSelection.start,end:visibleSelection.end,cls:"com-pane-fr-selection",priority:1});
+
+            for(var i=0;i<state.matches.length;i++)
+                ranges.push({start:state.matches[i].start,end:state.matches[i].end,cls:i==state.current?"com-pane-fr-current":"com-pane-fr-match",priority:i==state.current?3:2});
+
+            ranges = ranges.filter(function(r){return r.end>r.start}).sort(function(a,b){return a.start-b.start || b.priority-a.priority});
+            var out = "", pos = 0;
+            for(var r=0;r<ranges.length;r++) {
+                if(ranges[r].end <= pos) continue;
+                var start = Math.max(ranges[r].start, pos);
+                if(start > pos) out += esc(text.slice(pos,start));
+                out += '<span class="'+ranges[r].cls+'">'+esc(text.slice(start,ranges[r].end))+'</span>';
+                pos = ranges[r].end;
+            }
+            if(pos < text.length) out += esc(text.slice(pos));
+            overlay.innerHTML = out || " ";
+            syncOverlayScroll();
+        }
+
+        function syncOverlayScroll() {
+            overlay.scrollTop = target.scrollTop;
+            overlay.scrollLeft = target.scrollLeft;
+        }
+
+        function rememberEditorSelection() {
+            if(target.selectionStart !== target.selectionEnd)
+                state.lastEditorSelection = {start:target.selectionStart,end:target.selectionEnd};
+            updateSelectionButtonState();
+        }
+
+        function hasUsableEditorSelection() {
+            return !!(state.lastEditorSelection && state.lastEditorSelection.end > state.lastEditorSelection.start);
+        }
+
+        function updateSelectionButtonState() {
+            var active = selectionBtn.classList.contains("active");
+            selectionBtn.disabled = !active && !hasUsableEditorSelection();
+        }
+
 
         function updateNavButtons()
         {
