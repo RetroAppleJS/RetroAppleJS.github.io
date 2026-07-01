@@ -2286,9 +2286,10 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
                     // LINK TO A SUBDIREcTORY
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
+                    var audioWakeup = "EMU_audio_event_unlock();"
                     var cmd  = bDir
-                        ?"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+")"     // FOLDER CLICK
-                        :"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getFile("+JSON.stringify(arg_cpy)+")";               // FILE CLICK
+                        ?"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+");"+audioWakeup     // FOLDER CLICK
+                        :"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getFile("+JSON.stringify(arg_cpy)+");"+audioWakeup;               // FILE CLICK
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
                     head += '<tr>'

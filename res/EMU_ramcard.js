@@ -21,7 +21,16 @@ function RamCard()
         ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
         ,"RR":0                 // flag to remember double-triggered Write-Enables (by double read)
     };
-    this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // generic callback for softswitches
+    //this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // generic callback for softswitches
+
+    this.action =
+    {
+        "SlotIO":
+        {
+            "RD": { "callback": function(addr,ctx)       { return card.soft_switch(addr,ctx); } },
+            "WR": { "callback": function(addr,d8,ctx)    { return card.soft_switch(addr,ctx); } }
+        }
+    };  // generic callback for language-card softswitches; reads and writes both trigger them
 
     var bDebug_sw  = false;      // debug soft switch updates (light)
     var bDebug_mon = false;     // debug RAM Write monitor
