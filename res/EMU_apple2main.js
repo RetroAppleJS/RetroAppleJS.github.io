@@ -899,15 +899,25 @@ function loadDisk_fromBuffer(arr_buffer,deviceID)
 function ejectDisk(el,deviceID)
 {
   const oDevice = apple2plus.hwObj().io.deviceID2obj(deviceID);
+  if(!oDevice) return;
 
   var fe = document.getElementById("file_"+oDevice.deviceID);
-  fe.value = "";
-  oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
-  var o = apple2plus.hwObj().io.PCODE2obj("DISKII")[0]; // temporary patch
-  o.state.diskData[oDevice.deviceN] = null;
-  o.GUI_update();
+  if(fe) fe.value = "";
 
-  o.restoreDriveFileInput(oDevice.deviceID);
+  oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
+
+  var o = apple2plus.hwObj().io.PCODE2obj("DISKII")[0]; // temporary patch
+  if(!o || typeof(o.getState)!="function") return;
+
+  var st = o.getState();
+  if(st.diskData && oDevice.deviceN !== undefined)
+      st.diskData[oDevice.deviceN] = null;
+
+  if(typeof(o.GUI_update)=="function")
+      o.GUI_update();
+
+  if(typeof(o.restoreDriveFileInput)=="function")
+      o.restoreDriveFileInput(oDevice.deviceID);
 
   var d = oCOM.URL.uri[oDevice.deviceID];
   if(d)
@@ -921,7 +931,6 @@ function ejectDisk(el,deviceID)
     highlight_appbut(el,false);
     el.type='button';
   }
-
 }
 
 
