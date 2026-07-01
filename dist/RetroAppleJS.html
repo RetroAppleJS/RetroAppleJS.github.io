@@ -4288,112 +4288,150 @@ var oMEMGRID = new function()
 
 function PANE()
 {
-    this.rootClass = "com-pane";
-    this.titleClass = "com-pane-title";
-    this.titleEqualizedClass = "com-pane-title-equalized";
+     this.rootClass = "com-pane";
+     this.titleClass = "com-pane-title";
+     this.titleEqualizedClass = "com-pane-title-equalized";
 
-    this.classHTML = function()
+    /*
+     * Common pane skin owned by PANE().
+     * Page files should not define pane/header/body fonts, colors, dark-mode
+     * foreground/background, or pane background patterns.  They should only
+     * provide layout constraints, content, ids, and callbacks.
+     */
+    this.dotMatrixImage = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==")';
+
+    this.paneCSS = function()
     {
-        var seen = {};
-        var out = [];
-        for(var i = 0; i < arguments.length; i++)
-        {
-            var s = String(arguments[i] || "").trim();
-            if(!s) continue;
-            s.split(/\s+/).forEach(function(cls) {
-                if(cls && !seen[cls]) { seen[cls] = true; out.push(cls); }
-            });
-        }
-        return out.join(" ");
-    };
-
-    this.escapeHTML = function(s)
-    {
-        return String(s ?? "")
-            .replace(/&/g,"&amp;")
-            .replace(/</g,"&lt;")
-            .replace(/>/g,"&gt;")
-            .replace(/"/g,"&quot;");
-    };
-
-    this.attrHTML = function(attr)
-    {
-        if(!attr) return "";
-        if(typeof attr == "string") return " " + attr;
-
-        var out = [];
-        for(var k in attr)
-        {
-            if(attr[k] === false || attr[k] == null) continue;
-            out.push(attr[k] === true ? k : k + '="' + this.escapeHTML(attr[k]) + '"');
-        }
-        return out.length ? " " + out.join(" ") : "";
-    };
-
-    this.styleHTML = function(style)
-    {
-        if(!style) return "";
-        if(typeof style == "string") return style;
-        var out = [];
-        for(var k in style) if(style[k] != null) out.push(k + ":" + style[k]);
-        return out.join(";");
-    };
-
-    this.searchBarHTML = function(cfg)
-    {
-        if(!cfg) return "";
-        var opt = cfg.opt || [];
-
         return ''
-            + '<span class="com-pane-searchbar">'
-            + '<input type="text" class="com-pane-find" placeholder="Find">'
-            + '<input type="text" class="com-pane-replace" placeholder="Replace">'
-            + '<button type="button" data-pane-act="find-prev">Prev</button>'
-            + '<button type="button" data-pane-act="find-next">Next</button>'
-            + '<button type="button" data-pane-act="replace">Replace</button>'
-            + (opt.indexOf("all") >= 0 ? '<button type="button" data-pane-act="replace-all">All</button>' : '')
-            + (opt.indexOf("regexp") >= 0 ? '<label><input type="checkbox" class="com-pane-regexp">.*</label>' : '')
-            + (opt.indexOf("case") >= 0 ? '<label><input type="checkbox" class="com-pane-case">Aa</label>' : '')
-            + '</span>';
+        + '.com-pane-host{display:grid;grid-template-columns:repeat(var(--com-pane-visible-count,1),minmax(0,1fr));gap:10px;width:100%;align-items:start;}'
+        + '.com-pane-host>.com-pane[hidden]{display:none!important;}'
+        + '.com-pane{min-width:0;max-width:100%;display:flex;flex-direction:column;gap:2px;border-radius:10px;overflow:visible;'
+            + '--com-pane-light-header-bg:rgba(244,244,244,.88);--com-pane-light-header-fg:#000;--com-pane-light-header-border:rgba(0,0,0,.18);'
+            + '--com-pane-light-body-bg:#f4f4f4;--com-pane-light-body-fg:#000;--com-pane-light-body-border:rgba(0,0,0,.12);'
+            + '--com-pane-dark-header-bg:#111820;--com-pane-dark-header-fg:#e6edf3;--com-pane-dark-header-border:#30363d;'
+            + '--com-pane-dark-body-bg:#000;--com-pane-dark-body-fg:#e6edf3;--com-pane-dark-body-border:#30363d;'
+            + '--com-pane-body-font:500 12px/21px courier,monospace;--com-pane-title-font:12px/20px arial,sans-serif;'
+            + '--com-pane-pattern-image:' + this.dotMatrixImage + ';--com-pane-pattern-size:585px 42px;}'
+        + '.com-pane-title{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;margin:0 0 2px 0;padding:4px 8px;'
+            + 'border-radius:10px;border:1px solid var(--com-pane-light-header-border);background:var(--com-pane-light-header-bg);color:var(--com-pane-light-header-fg);'
+            + 'font:var(--com-pane-title-font);box-sizing:border-box;overflow:visible;position:relative;}'
+        + '.com-pane-title-left{display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap;}'
+        + '.com-pane-title-right{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:nowrap;margin-left:auto;}'
+        + '.com-pane-title strong{color:inherit;font-size:13px;font-weight:700;}'
+        + '.com-pane-info{color:rgba(0,0,0,.70);font:11px/1.2 arial,sans-serif;white-space:nowrap;}'
+        + '.com-pane-action{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:2px;margin:0;border:0;border-radius:3px;'
+            + 'background:rgba(255,255,255,.4);color:inherit;cursor:pointer;font:13px/1 arial,sans-serif;}'
+        + '.com-pane-action:hover{background:rgba(255,255,255,.75);}'
+        + '.com-pane-body{width:100%;max-width:100%;min-height:var(--com-pane-body-min-height,420px);height:var(--com-pane-body-height,auto);'
+            + 'padding:0 30px;border:1px solid var(--com-pane-light-body-border);border-radius:10px;box-sizing:border-box;'
+            + 'background-color:var(--com-pane-light-body-bg);color:var(--com-pane-light-body-fg);font:var(--com-pane-body-font);tab-size:4;white-space:pre;'
+            + 'overflow-x:auto;overflow-y:var(--com-pane-body-overflow-y,hidden);resize:none;}'
+        + '.com-pane-body-pattern{background-image:var(--com-pane-pattern-image);background-size:var(--com-pane-pattern-size);background-attachment:local;background-repeat:repeat;}'
+        + '.com-pane-body-plain{background-image:none;}'
+        + '.com-pane-body-auto-grow{height:auto;overflow-y:hidden;}'
+        + '.com-pane-body-scroll{overflow-y:auto;}'
+        + '.com-pane-theme-dark .com-pane-title{border-color:var(--com-pane-dark-header-border);background:var(--com-pane-dark-header-bg);color:var(--com-pane-dark-header-fg);}'
+        + '.com-pane-theme-dark .com-pane-info{color:rgba(230,237,243,.72);}'
+        + '.com-pane-theme-dark .com-pane-action{background:rgba(255,255,255,.08);color:var(--com-pane-dark-header-fg);}'
+        + '.com-pane-theme-dark .com-pane-action:hover{background:rgba(255,255,255,.16);}'
+        + '.com-pane-theme-dark .com-pane-body{border-color:var(--com-pane-dark-body-border);background-color:var(--com-pane-dark-body-bg);background-image:var(--com-pane-dark-body-image,none);color:var(--com-pane-dark-body-fg);caret-color:var(--com-pane-dark-body-fg);}'
+        + '.com-pane-theme-dark .com-pane-body *{color:var(--com-pane-dark-body-fg);}'
+        + '.com-pane-theme-dark .com-pane-highlight-current{background:rgba(255,214,64,.62)!important;color:#000!important;}'
+        + '.com-pane-theme-dark .com-pane-highlight-current *{color:#000!important;}';
+    };
+
+    this.injectPaneCSS = function()
+    {
+        if(document.getElementById("com_pane_core_css")) return;
+        var style = document.createElement("style");
+        style.id = "com_pane_core_css";
+        style.textContent = this.paneCSS();
+        document.head.appendChild(style);
+    };
+
+    this.setTheme = function(root, theme)
+    {
+        if(typeof root == "string") root = document.getElementById(root);
+        if(!root) return false;
+        var dark = (theme === true || theme === "dark");
+        root.classList.toggle("com-pane-theme-dark", dark);
+        root.classList.toggle("com-pane-theme-light", !dark);
+        return dark;
+    };
+
+    this.toggleTheme = function(root)
+    {
+        if(typeof root == "string") root = document.getElementById(root);
+        if(!root) return false;
+        return this.setTheme(root, !root.classList.contains("com-pane-theme-dark"));
+    };
+
+    this.syncVisiblePanes = function(host)
+    {
+        if(typeof host == "string") host = document.getElementById(host);
+        if(!host) return 0;
+        var panes = Array.prototype.slice.call(host.children).filter(function(el){
+            return el.classList && el.classList.contains("com-pane") && !el.hidden && getComputedStyle(el).display !== "none";
+        });
+        host.style.setProperty("--com-pane-visible-count", Math.max(1, panes.length));
+        return panes.length;
+    };
+
+    this.actionButtonHTML = function(action)
+    {
+        action = action || {};
+        return '<button type="button" class="com-pane-action ' + this.escapeHTML(action.class || "") + '"'
+            + (action.id ? ' id="' + this.escapeHTML(action.id) + '"' : '')
+            + (action.act ? ' data-pane-default-act="' + this.escapeHTML(action.act) + '"' : '')
+            + (action.onclick ? ' onclick="' + this.escapeHTML(action.onclick) + '"' : '')
+            + (action.title ? ' title="' + this.escapeHTML(action.title) + '"' : '')
+            + '>' + (action.html || (action.icon ? '<i class="' + this.escapeHTML(action.icon) + '"></i>' : this.escapeHTML(action.text || ""))) + '</button>';
+    };
+
+    this.headerHTML = function(header)
+    {
+        header = header || {};
+        var left = header.leftHTML || ('<strong>' + this.escapeHTML(header.title || "") + '</strong>'
+            + (header.info ? '<span class="com-pane-info"' + (header.infoId ? ' id="' + this.escapeHTML(header.infoId) + '"' : '') + '>' + this.escapeHTML(header.info) + '</span>' : '')
+            + (header.inputHTML || ""));
+        var actions = (header.actions || []).map(this.actionButtonHTML.bind(this)).join("");
+        var right = header.rightHTML || actions;
+        return '<div class="com-pane-title ' + this.escapeHTML(header.class || "") + '">'
+            + '<div class="com-pane-title-left">' + left + '</div>'
+            + '<div class="com-pane-title-right">' + right + '</div>'
+            + '</div>';
+    };
+
+    this.bodyClass = function(body)
+    {
+        body = body || {};
+        return this.classHTML(
+            "com-pane-body",
+            body.pattern === false ? "com-pane-body-plain" : "com-pane-body-pattern",
+            body.grow ? "com-pane-body-auto-grow" : "",
+            body.scroll ? "com-pane-body-scroll" : "",
+            body.class || ""
+        );
     };
 
     this.getHTML = function(txt, cfg)
-    {
+     {
+        this.injectPaneCSS();
         cfg = cfg || {};
         var header = cfg.header || {};
         var body   = cfg.body || {};
 
-        var btag = body.tag || "textarea";
-        var content = body.content !== undefined ? body.content : txt;
-
-        var sectionClass = this.classHTML(this.rootClass, cfg.class || "pane");
-        var headerClass  = this.classHTML(this.titleClass, header.class || "pane-title");
-
-        var infoHTML = "";
-        if(header.infoHTML != null) {
-            infoHTML = String(header.infoHTML);
-        } else if(header.infoId || header.info != null) {
-            infoHTML = '<span'
-                + (header.infoId ? ' id="' + this.escapeHTML(header.infoId) + '"' : '')
-                + '>'
-                + this.escapeHTML(header.info || "")
-                + '</span>';
-        }
+        var sectionClass = this.classHTML(this.rootClass, cfg.class || "");
+        var bodyClass = this.bodyClass(body);       
 
         return ''
             + '<section'
             + (cfg.id ? ' id="' + this.escapeHTML(cfg.id) + '"' : '')
             + ' class="' + this.escapeHTML(sectionClass) + '">'
-            + '<div class="' + this.escapeHTML(headerClass) + '">'
-            + (header.html || (
-                '<strong>' + this.escapeHTML(header.title || "") + '</strong>'
-                + this.searchBarHTML(header.searchBar)
-                + infoHTML
-            ))
-            + '</div>'
+            + (header.html || this.headerHTML(header))
             + '<' + btag
             + (body.id ? ' id="' + this.escapeHTML(body.id) + '"' : '')
-            + (body.class ? ' class="' + this.escapeHTML(body.class) + '"' : '')
+            + ' class="' + this.escapeHTML(bodyClass) + '"'
             + (body.style ? ' style="' + this.escapeHTML(this.styleHTML(body.style)) + '"' : '')
             + this.attrHTML(body.attr)
             + '>'
@@ -4422,12 +4460,15 @@ function PANE()
     this.findReplaceCSS = function()
     {
         return ''
-        + '.com-pane-fr-wrap{position:relative;width:100%;height:100%;min-height:0;background:var(--panel2,#0b0f14);overflow:hidden;}'
+        + '.com-pane-fr-wrap{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;}'
         + '.com-pane-fr-wrap>textarea,.com-pane-fr-overlay{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;outline:0;'
             + 'padding:14px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;'
             + 'tab-size:4;white-space:pre;overflow:auto;}'
+
         + '.com-pane-fr-overlay{pointer-events:none;color:var(--text,#e6edf3);background:var(--panel2,#0b0f14);}'
         + '.com-pane-fr-wrap>textarea{resize:none;background:transparent!important;color:transparent!important;caret-color:var(--text,#e6edf3);}'
+        + '.com-pane-fr-overlay{pointer-events:none;color:inherit;background:transparent;}'
+        + '.com-pane-fr-wrap>textarea{resize:none;background:transparent!important;color:transparent!important;caret-color:currentColor;}'
         + '.com-pane-fr-wrap>textarea::selection{background:rgba(197,139,27,.65);color:transparent;}'
         + '.com-pane-fr-selection{background:rgba(190,190,190,.35);}'
         + '.com-pane-fr-match{background:rgba(255,210,70,.28);}'
@@ -4479,6 +4520,7 @@ function PANE()
 
     this.injectFindReplaceCSS = function()
     {
+        this.injectPaneCSS();
         if(document.getElementById("com_pane_findreplace_css")) return;
         var style = document.createElement("style");
         style.id = "com_pane_findreplace_css";
@@ -4597,79 +4639,16 @@ function PANE()
         var selectionBtn = bar.querySelector(".com-pane-fr-selection-btn");
         var floatPrevBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-prev") : null;
         var floatNextBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-next") : null;
-        var floatTopBtn  = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-top") : null;
-        var floatCloseBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-close") : null;
-
-        var state = {
-            matches: [],
-            current: -1,
-            selectionRange: null,
-            lastEditorSelection: null,
-            timer: null,
-            debounce_ms: cfg.debounce_ms == null ? 500 : cfg.debounce_ms
-        };
-
-        function esc(s) {
-            return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-        }
-
-        function renderOverlay() {
-            var text = target.value;
-            var ranges = [];
-            var visibleSelection = state.selectionRange || state.lastEditorSelection;
-            if(visibleSelection && visibleSelection.end > visibleSelection.start)
-                ranges.push({start:visibleSelection.start,end:visibleSelection.end,cls:"com-pane-fr-selection",priority:1});
-
-            for(var i=0;i<state.matches.length;i++)
-                ranges.push({start:state.matches[i].start,end:state.matches[i].end,cls:i==state.current?"com-pane-fr-current":"com-pane-fr-match",priority:i==state.current?3:2});
-
-            ranges = ranges.filter(function(r){return r.end>r.start}).sort(function(a,b){return a.start-b.start || b.priority-a.priority});
-            var out = "", pos = 0;
-            for(var r=0;r<ranges.length;r++) {
-                if(ranges[r].end <= pos) continue;
-                var start = Math.max(ranges[r].start, pos);
-                if(start > pos) out += esc(text.slice(pos,start));
-                out += '<span class="'+ranges[r].cls+'">'+esc(text.slice(start,ranges[r].end))+'</span>';
-                pos = ranges[r].end;
-            }
-            if(pos < text.length) out += esc(text.slice(pos));
-            overlay.innerHTML = out || " ";
-            syncOverlayScroll();
-        }
-
-        function syncOverlayScroll() {
-            overlay.scrollTop = target.scrollTop;
-            overlay.scrollLeft = target.scrollLeft;
-        }
-
-        function rememberEditorSelection() {
-            if(target.selectionStart !== target.selectionEnd)
-                state.lastEditorSelection = {start:target.selectionStart,end:target.selectionEnd};
-            updateSelectionButtonState();
-        }
-
-        function hasUsableEditorSelection() {
-            return !!(state.lastEditorSelection && state.lastEditorSelection.end > state.lastEditorSelection.start);
-        }
-
-        function updateSelectionButtonState() {
-            var active = selectionBtn.classList.contains("active");
-            selectionBtn.disabled = !active && !hasUsableEditorSelection();
-        }
-
-        function updateNavButtons() {
-            var enabled = state.matches.length > 0;
-            prevBtn.disabled = !enabled;
-            nextBtn.disabled = !enabled;
-            if(floatPrevBtn) floatPrevBtn.disabled = !enabled;
+        if(floatPrevBtn) floatPrevBtn.disabled = !enabled;
             if(floatNextBtn) floatNextBtn.disabled = !enabled;
-        }
+        
 
         function openSearch(expanded) {
+            var expandedState = !!expanded;
             rememberEditorSelection();
             if(cfg.manager && typeof cfg.manager.activate == "function") cfg.manager.activate(uid);
             bar.classList.add("open");
-            bar.classList.toggle("expanded", !!expanded);
+            bar.classList.toggle("expanded", expandedState);
             if(floatingNav) floatingNav.classList.add("open");
             setTimeout(function(){ findInput.focus(); findInput.select(); }, 0);
             scheduleFind();
@@ -4844,7 +4823,8 @@ function PANE()
             updateMatches({selectFirst:true, keepFindFocus:true});
         }
 
-        document.addEventListener("keydown", function(ev) {
+        document.addEventListener("keydown", function(ev) 
+        {
             var mod = ev.ctrlKey || ev.metaKey;
             if((document.activeElement === target || document.activeElement === findInput || document.activeElement === replaceInput) && mod && ev.key.toLowerCase() === "f") {
                 ev.preventDefault(); toggleSearch(false);
@@ -4857,7 +4837,8 @@ function PANE()
             }
         });
 
-        target.addEventListener("mousedown", function() {
+        target.addEventListener("mousedown", function() 
+        {
             if(!selectionBtn.classList.contains("active")) {
                 state.lastEditorSelection = null;
                 renderOverlay();
@@ -4865,11 +4846,13 @@ function PANE()
             }
         });
 
-        ["mouseup","keyup","select"].forEach(function(name) {
+        ["mouseup","keyup","select"].forEach(function(name) 
+        {
             target.addEventListener(name, function(){ rememberEditorSelection(); renderOverlay(); });
         });
 
-        target.addEventListener("input", function() {
+        target.addEventListener("input", function() 
+        {
             rememberEditorSelection();
             if(selectionBtn.classList.contains("active")) {
                 selectionBtn.classList.remove("active");
@@ -4881,7 +4864,8 @@ function PANE()
 
         target.addEventListener("scroll", syncOverlayScroll);
         findInput.addEventListener("input", scheduleFind);
-        findInput.addEventListener("keydown", function(ev) {
+        findInput.addEventListener("keydown", function(ev) 
+        {
             if(ev.key === "Enter") {
                 ev.preventDefault();
                 clearTimeout(state.timer);
@@ -4899,7 +4883,8 @@ function PANE()
         bar.querySelector(".com-pane-fr-replace-one").onclick = replaceCurrent;
         bar.querySelector(".com-pane-fr-replace-all").onclick = replaceAll;
         bar.querySelector(".com-pane-fr-close").onclick = closeSearch;
-        if(floatPrevBtn) floatPrevBtn.onclick = function(ev){
+        if(floatPrevBtn) floatPrevBtn.onclick = function(ev)
+        {
             if(ev) ev.preventDefault();
             nextMatch(-1, {});
         };
@@ -4920,7 +4905,8 @@ function PANE()
         wordBtn.onclick = function(){ wordBtn.classList.toggle("active"); scheduleFind(); };
         regexBtn.onclick = function(){ regexBtn.classList.toggle("active"); scheduleFind(); };
         preserveBtn.onclick = function(){ preserveBtn.classList.toggle("active"); };
-        selectionBtn.onclick = function() {
+        selectionBtn.onclick = function() 
+        {
             if(selectionBtn.disabled) return;
             if(selectionBtn.classList.contains("active")) {
                 selectionBtn.classList.remove("active");
@@ -5043,6 +5029,24 @@ function PANE()
     {
       return this.bindFindReplace(target, { onChange:callback });
     };
+
+    this.escapeHTML = function(str) 
+    {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("&lt;b&gt;", "<b>")
+        .replaceAll("&lt;/b&gt;", "</b>")
+        .replaceAll("&lt;u&gt;", "<u>")
+        .replaceAll("&lt;/u&gt;", "</u>")
+        .replaceAll("&lt;i&gt;", "<i>")
+        .replaceAll("&lt;/i&gt;", "</i>")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;")
+        .replaceAll("\n","<br>")
+        .replaceAll(" ", "&nbsp;");
+    }
 }
 </script>
     <script type="text/javascript">
