@@ -4639,9 +4639,15 @@ function PANE()
         var selectionBtn = bar.querySelector(".com-pane-fr-selection-btn");
         var floatPrevBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-prev") : null;
         var floatNextBtn = floatingNav ? floatingNav.querySelector(".com-pane-fr-float-next") : null;
-        if(floatPrevBtn) floatPrevBtn.disabled = !enabled;
+
+        function updateNavButtons()
+        {
+            var enabled = state.matches.length > 0;
+            prevBtn.disabled = !enabled;
+            nextBtn.disabled = !enabled;
+            if(floatPrevBtn) floatPrevBtn.disabled = !enabled;
             if(floatNextBtn) floatNextBtn.disabled = !enabled;
-        
+        }
 
         function openSearch(expanded) {
             var expandedState = !!expanded;
