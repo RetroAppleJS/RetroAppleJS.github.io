@@ -738,6 +738,11 @@ function loadDisk_fromFile(file_obj,slotN,deviceID)
     var io = apple2plus.hwObj().io;
     var disk2 = io.SLOT2obj(slotN);
 
+    if(!disk2 || disk2.id?.PCODE != "DISKII")
+    {
+        oCOM.POPUP.html("loadDisk_fromFile failed: no DISKII peripheral in slotN=" + slotN);
+        return;
+    }
 
     if(file_obj==null || disk2.getState().active==false)
     { 

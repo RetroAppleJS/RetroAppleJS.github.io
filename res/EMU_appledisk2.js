@@ -2583,7 +2583,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
     this.diskFileInputHTML = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
-        return "        <input type=\"file\" name=\"" + drv + "\" id=\"file_" + drv + "\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,'" + drv + "')\">"
+        var slotN = (this.mount && this.mount.slotN !== undefined) ? this.mount.slotN : 7;
+        return "        <input type=\"file\" name=\"" + drv + "\" id=\"file_" + drv + "\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this," + slotN + ",'" + drv + "')\">"
     }
 
     this.diskCatalogLabelHTML = function(drv, fileName)

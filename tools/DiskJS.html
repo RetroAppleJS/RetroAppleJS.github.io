@@ -140,14 +140,45 @@ function disk_set_status(msg)
 
 function disk_appledisk()
 {
-  return oEMU.component.IO["AppleDisk"];
+  const DEFAULT_DISKII_SLOTN = 7; // PR#6 in current slot numbering
+
+  if(typeof oEMU == "undefined")
+    globalThis.oEMU = {"component":{"IO":{}}};
+
+  if(oEMU.component === undefined) oEMU.component = {};
+  if(oEMU.component.IO === undefined) oEMU.component.IO = {};
+
+  var disk2 = oEMU.component.IO["AppleDisk2"] || oEMU.component.IO["AppleDisk"];
+
+  if(!disk2)
+  {
+    if(typeof AppleDisk2 != "function")
+      throw new Error("AppleDisk2 constructor is not available");
+
+    disk2 = new AppleDisk2();
+
+    // DiskJS is a standalone tool. It does not mount a real Apple2IO slot,
+    // but newer AppleDisk2 code expects slot-aware context.
+    if(!disk2.mount) disk2.mount = {};
+    if(disk2.mount.slotN === undefined) disk2.mount.slotN = DEFAULT_DISKII_SLOTN;
+
+    oEMU.component.IO["AppleDisk2"] = disk2;
+
+    // Legacy alias for older DiskJS/helper code.
+    oEMU.component.IO["AppleDisk"] = disk2;
+  }
+
+  if(typeof disk2.detectDiskImageType != "function")
+    throw new Error("AppleDisk2.detectDiskImageType() is not available");
+
+  return disk2;  
 }
 
 function disk_normalize(bytes)
 {
   var disk2 = disk_appledisk();
   var original = disk_bytes_to_array(bytes);
-  var info = disk2.detectDiskImageType(original);
+  var info = disk2.detectDiskImageType(original, oCOM.UploadName || "");
   var ext = disk_ext_from_name(oCOM.UploadName || "");
 
   // 140 KB flat images can be ambiguous.  If the filename is .po, respect it.
