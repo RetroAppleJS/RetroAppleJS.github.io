@@ -1105,6 +1105,20 @@
   background: transparent !important;
 }
 
+/* Source pane light mode:
+   PANE.bindFindReplace() wraps the source textarea in .com-pane-fr-wrap.
+   The wrapper can otherwise keep/receive PANE's plain dark background.
+   Put the shared COM_MAIN.css dotmatrix_bck skin on the source section and
+   let the generated wrapper inherit that skin.  This avoids duplicating the
+   base64 background image in index.html. */
+.ASM_root:not(.ASM_paneDark) .ASM_pane.ASM_sourcePaneHost .com-pane-fr-wrap.dotmatrix_bck {
+  background-color: inherit !important;
+  background-image: inherit !important;
+  background-size: inherit !important;
+  background-attachment: inherit !important;
+  background-repeat: inherit !important;
+}
+
 
 /* Theme the pane interiors, not only the pane headers.
    Light mode uses the shared .dotmatrix_bck pattern from COM_MAIN.css.
@@ -1138,6 +1152,15 @@
 .ASM_root.ASM_paneDark .ASM_jsonBoolean,
 .ASM_root.ASM_paneDark .ASM_jsonNull {
   color: #e6edf3 !important;
+}
+
+/* Beat the earlier #ASM_sourcePane light-mode rule, which also uses
+   !important and otherwise keeps the source text black in dark mode. */
+.ASM_root.ASM_paneDark #ASM_sourcePane,
+.ASM_root.ASM_paneDark .com-pane-fr-wrap #ASM_sourcePane {
+  color: #e6edf3 !important;
+  -webkit-text-fill-color: #e6edf3 !important;
+  caret-color: #e6edf3 !important;
 }
 
 .ASM_root.ASM_paneDark .com-pane-fr-current {
@@ -1242,7 +1265,7 @@
 
               <div id="ASM_paneHost" class="ASM_paneHost">
 
-                <section class="ASM_pane">
+                <section class="ASM_pane ASM_sourcePaneHost dotmatrix_bck">
                   <div class="ASM_paneTitle">
                     <strong>Source</strong>
                     <span id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount pane-title-search-host"></span>
@@ -1266,7 +1289,6 @@ Label1 TXA
                       <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
                     </span>
                     <span class="ASM_paneTitleMain">
-                      <span id="ASM_listingInfo" class="ASM_paneInfo">compile()</span>
                       <button id="ASM_exportSymbolsButton"
                               class="ASM_paneTitleButton"
                               type="button"

@@ -390,6 +390,76 @@
       font-weight: 700;
     }
 
+
+    /*
+     * Debugger light/dark theme.
+     * Light mode is the existing default: pane bodies use the shared
+     * .dotmatrix_bck pattern from COM_MAIN.css.
+     * Dark mode removes that image and makes pane bodies plain black.
+     */
+    #tab3.DBG_dark {
+      background-color: #0d1117;
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_paneTitle,
+    #tab3.DBG_dark .com-pane-title.DBG_paneTitle {
+      background: #111820;
+      border-color: #30363d;
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_paneTitleMain strong,
+    #tab3.DBG_dark .DBG_paneInfo {
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .dotmatrix_bck {
+      background-color: #000000 !important;
+      background-image: none !important;
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_paneBody {
+      border-color: #30363d;
+    }
+
+    #tab3.DBG_dark .DBG_paneBody pre,
+    #tab3.DBG_dark .DBG_watchTable,
+    #tab3.DBG_dark .DBG_registerCell span,
+    #tab3.DBG_dark .DBG_flagCell span,
+    #tab3.DBG_dark .DBG_watchCell span {
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_registerCell,
+    #tab3.DBG_dark .DBG_flagCell,
+    #tab3.DBG_dark .DBG_watchCell,
+    #tab3.DBG_dark .DBG_watchTable td,
+    #tab3.DBG_dark .DBG_footerNote {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.16);
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_registerCell label,
+    #tab3.DBG_dark .DBG_flagCell label,
+    #tab3.DBG_dark .DBG_watchCell label,
+    #tab3.DBG_dark .DBG_watchTable th {
+      color: rgba(230,237,243,0.72);
+    }
+
+    #tab3.DBG_dark .DBG_listingLineCurrent,
+    #tab3.DBG_dark .DBG_traceLineCurrent,
+    #tab3.DBG_dark .DBG_changed,
+    #tab3.DBG_dark .DBG_changed span {
+      color: #000000 !important;
+    }
+
+    #tab3.DBG_dark .DBG_breakpoint {
+      color: #ff7a7a;
+    }
+
     .DBG_footerNote {
       margin: 8px 0px 0px 0px;
       padding: 6px 9px;
@@ -436,6 +506,7 @@
     var DBG_RAM = new Uint8Array(DBG_RAM_SIZE);
     var DBG_currentByteCodeText = "";
     var DBG_defaultListingColumns = {adr:0,code:6,lbl:15,ins:25,opr:30,com:46};
+    var DBG_darkMode = false;
 
     function DBG_el(id) {
       return document.getElementById(id);
@@ -722,6 +793,13 @@
       DBG_equalizePaneHeaders();
     }
 
+    function DBG_toggleTheme() {
+      DBG_darkMode = !DBG_darkMode;
+      var tab = DBG_el("tab3");
+      if (tab) tab.classList.toggle("DBG_dark", DBG_darkMode);
+      DBG_equalizePaneHeaders();
+    }
+
     function DBG_stub(action) {
       var status = DBG_el("DBG_status");
       if (status) status.textContent = "Layout prototype: " + action + " is not wired yet.";
@@ -921,6 +999,7 @@
                   <span id="DBG_listingInfo" class="DBG_paneInfo">source listing + uncovered memory</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
+                  <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
