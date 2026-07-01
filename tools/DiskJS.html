@@ -400,6 +400,299 @@ var oDISK = new function()
     return {"data":this.DOS3_m,"logs":log_arr} 
   }
 
+  this.DOS3_analyze_unreferenced = function(dsk_data)
+  {
+    var geo = this.DOS3_m.DISK_GEO;
+    var log_arr = [];
+    var ref = {};
+    var warnings = [];
+    var files = [];
+    var deletedEntries = 0;
+
+    function key(t,s) { return t + ":" + s; }
+
+    function validTS(t,s)
+    {
+      return t >= 0 && t < geo.TRACKS_PER_DISK &&
+             s >= 0 && s < geo.SECTORS_PER_TRACK;
+    }
+
+    function sectorBytes(t,s)
+    {
+      var off = oDISK.byte_offset(t,s,geo);
+      return dsk_data.slice(off, off + geo.SECTOR_SIZE);
+    }
+
+    function mark(t,s,kind,detail)
+    {
+      if(!validTS(t,s))
+      {
+        warnings[warnings.length] = kind + " points outside disk: T" + t + " S" + s;
+        return;
+      }
+
+      var k = key(t,s);
+      if(ref[k] === undefined)
+        ref[k] = { t:t, s:s, kinds:{} };
+
+      if(ref[k].kinds[kind] === undefined)
+        ref[k].kinds[kind] = [];
+
+      if(detail !== undefined)
+        ref[k].kinds[kind].push(detail);
+    }
+
+    function sectorNonZeroInfo(t,s)
+    {
+      var sec = sectorBytes(t,s);
+      var nonZero = 0;
+      var first = -1;
+      var last = -1;
+
+      for(var i=0;i<sec.length;i++)
+      {
+        if((sec[i] & 0xff) != 0)
+        {
+          nonZero++;
+          if(first < 0) first = i;
+          last = i;
+        }
+      }
+
+      return {
+        nonZero: nonZero,
+        pct: Math.round(nonZero * 10000 / geo.SECTOR_SIZE) / 100,
+        first: first,
+        last: last,
+        crc32: disk_crc32(sec)
+      };
+    }
+
+    function vtocIsFree(vtoc,t,s)
+    {
+      var mapOff = 0x38 + t * 4 + Math.floor(s / 8);
+      if(mapOff >= vtoc.length) return null;
+
+      // DOS 3.3 VTOC bitmap: bit set = free.
+      // Sector 0 is bit 7 of the first bitmap byte.
+      var mask = 0x80 >> (s % 8);
+      return (vtoc[mapOff] & mask) != 0;
+    }
+
+    function dosFileName(catSec,base)
+    {
+      var s = "";
+      for(var i=3;i<33;i++)
+      {
+        var c = catSec[base+i] & 0x7f;
+        if(c < 32 || c > 126) c = 32;
+        s += String.fromCharCode(c);
+      }
+      return s.replace(/\s+$/,"");
+    }
+
+    function html(txt)
+    {
+      return String(txt)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;");
+    }
+
+    function walkTSList(tsT,tsS,fileName,fileIdx)
+    {
+      var seen = {};
+      var guard = 0;
+
+      while(validTS(tsT,tsS) && guard++ < 256)
+      {
+        var k = key(tsT,tsS);
+        if(seen[k])
+        {
+          warnings[warnings.length] = "T/S-list loop in file " + fileIdx + " " + fileName + " at T" + tsT + " S" + tsS;
+          break;
+        }
+        seen[k] = true;
+
+        mark(tsT,tsS,"TSLIST","file " + fileIdx + " " + fileName);
+
+        var tsSec = sectorBytes(tsT,tsS);
+
+        for(var off=0x0C; off<geo.SECTOR_SIZE; off+=2)
+        {
+          var dt = tsSec[off];
+          var ds = tsSec[off+1];
+
+          if(dt == 0 && ds == 0) continue;
+
+          if(validTS(dt,ds))
+            mark(dt,ds,"DATA","file " + fileIdx + " " + fileName);
+          else
+            warnings[warnings.length] = "Invalid data sector in file " + fileIdx + " " + fileName + ": T" + dt + " S" + ds;
+        }
+
+        var nextT = tsSec[0];
+        var nextS = tsSec[1];
+
+        if(nextT == 0 && nextS == 0) break;
+
+        tsT = nextT;
+        tsS = nextS;
+      }
+    }
+
+    var vtocT = geo.VTOC_TRACK;
+    var vtocS = geo.VTOC_SECTOR;
+    var vtoc = sectorBytes(vtocT,vtocS);
+
+    mark(vtocT,vtocS,"VTOC","volume table of contents");
+
+    var catT = vtoc[0x01];
+    var catS = vtoc[0x02];
+    var seenCatalog = {};
+    var catalogGuard = 0;
+
+    while(validTS(catT,catS) && catalogGuard++ < 32)
+    {
+      var ck = key(catT,catS);
+      if(seenCatalog[ck])
+      {
+        warnings[warnings.length] = "Catalog loop at T" + catT + " S" + catS;
+        break;
+      }
+      seenCatalog[ck] = true;
+
+      mark(catT,catS,"CATALOG","catalog sector");
+
+      var catSec = sectorBytes(catT,catS);
+
+      // DOS 3.3 catalog sector contains 7 entries of $23 bytes.
+      // First entry starts at $0B.
+      for(var base=0x0B, entryN=0; entryN<7; entryN++, base+=0x23)
+      {
+        var tsT = catSec[base];
+        var tsS = catSec[base+1];
+
+        if(tsT == 0x00) continue;      // unused catalog entry
+        if(tsT == 0xFF)                // deleted catalog entry
+        {
+          deletedEntries++;
+          continue;
+        }
+
+        var fileName = dosFileName(catSec,base);
+        var fileType = catSec[base+2];
+
+        files[files.length] = {
+          idx: files.length + 1,
+          name: fileName,
+          type: fileType,
+          tsT: tsT,
+          tsS: tsS
+        };
+
+        walkTSList(tsT,tsS,fileName,files.length);
+      }
+
+      var nextT = catSec[0];
+      var nextS = catSec[1];
+
+      if(nextT == 0 && nextS == 0) break;
+
+      catT = nextT;
+      catS = nextS;
+    }
+
+    var unref = [];
+    var freeNonEmpty = 0;
+    var allocatedNonEmpty = 0;
+
+    for(var t=0;t<geo.TRACKS_PER_DISK;t++)
+    {
+      for(var s=0;s<geo.SECTORS_PER_TRACK;s++)
+      {
+        if(ref[key(t,s)] !== undefined) continue;
+
+        var info = sectorNonZeroInfo(t,s);
+        if(info.nonZero == 0) continue;
+
+        var bFree = vtocIsFree(vtoc,t,s);
+        var status = bFree === true ? "FREE" : (bFree === false ? "ALLOCATED" : "UNKNOWN");
+
+        if(status == "FREE") freeNonEmpty++;
+        if(status == "ALLOCATED") allocatedNonEmpty++;
+
+        unref[unref.length] = {
+          t:t,
+          s:s,
+          status:status,
+          nonZero:info.nonZero,
+          pct:info.pct,
+          first:info.first,
+          last:info.last,
+          crc32:info.crc32
+        };
+      }
+    }
+
+    log_arr[log_arr.length] = "<font color='teal'>";
+    log_arr[log_arr.length] = "<b>UNREFERENCED NON-EMPTY SECTOR ANALYSIS</b>";
+    log_arr[log_arr.length] =
+      "Catalog live files: <b>" + files.length + "</b>, deleted catalog entries: <b>" + deletedEntries + "</b>";
+
+    log_arr[log_arr.length] =
+      "Non-empty sectors not referenced by live catalog/T/S chains: <b>" + unref.length + "</b>"
+      + " — FREE: <b>" + freeNonEmpty + "</b>"
+      + ", ALLOCATED: <b>" + allocatedNonEmpty + "</b>";
+
+    log_arr[log_arr.length] =
+      "FREE + non-empty sectors are the best candidates for previously deleted data. "
+      + "ALLOCATED + unreferenced sectors may be DOS/system/reserved/orphaned data and should not be purged blindly.";
+
+    if(unref.length == 0)
+    {
+      log_arr[log_arr.length] = "No non-empty unreferenced sectors found.";
+    }
+    else
+    {
+      log_arr[log_arr.length] = "<b>Candidate sectors</b>";
+
+      for(var i=0;i<unref.length;i++)
+      {
+        var o = unref[i];
+        log_arr[log_arr.length] =
+          "T$" + oCOM.getHexByte(o.t)
+          + " S$" + oCOM.getHexByte(o.s)
+          + " " + o.status
+          + " non-zero:" + o.nonZero + "/" + geo.SECTOR_SIZE
+          + " (" + o.pct + "%)"
+          + " first:$" + oCOM.getHexByte(o.first)
+          + " last:$" + oCOM.getHexByte(o.last)
+          + " CRC32:" + o.crc32;
+      }
+    }
+
+    if(warnings.length)
+    {
+      log_arr[log_arr.length] = "<b>Reference warnings</b>";
+      for(var w=0;w<warnings.length;w++)
+        log_arr[log_arr.length] = html(warnings[w]);
+    }
+
+    log_arr[log_arr.length] = "</font>";
+
+    return {
+      refs: ref,
+      files: files,
+      unreferenced: unref,
+      warnings: warnings,
+      logs: log_arr
+    };
+  }
+
+
+
+
 //  ██████  ██ ███████ ██   ██     ██ ██████  ███████ ███    ██ ████████ ██ ███████ ██ ███████ ██████  
 //  ██   ██ ██ ██      ██  ██      ██ ██   ██ ██      ████   ██    ██    ██ ██      ██ ██      ██   ██ 
 //  ██   ██ ██ ███████ █████       ██ ██   ██ █████   ██ ██  ██    ██    ██ █████   ██ █████   ██████  
@@ -714,6 +1007,8 @@ function parsedisk(bytes)
   {
     var _o = oDISK.DOS3_parse(bytes);    // PARSE DISK DATA
     log_arr.push(_o.logs.join("<br>"));
+    var orphan = oDISK.DOS3_analyze_unreferenced(bytes);
+    log_arr.push(orphan.logs.join("<br>"));
   }
   //else if(_s==0) log_arr[log_arr.length] = "<br>PARSER SKIPPED - POOR MATCH<br>";
   return log_arr;
