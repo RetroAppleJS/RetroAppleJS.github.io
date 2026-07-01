@@ -282,15 +282,28 @@ function AppleDisk2()
 
     this.readROM = function(addr)
     {
+        /*
+            Disk II ROM belongs to the controller card, not to the disk media.
+            If the DISKII peripheral is mounted, the slot ROM is readable whether
+            a disk image is inserted or not.
+        */
+        addr = addr & 0xFF;
+        return ROM && ROM[addr] != null ? (ROM[addr] & 0xFF) : 0x00;
+    }
+
+    /*
+    this.readROM = function(addr)
+    {
         if(state.diskData[state.drv])        // if disk data is loaded on the selected drive
                     return ROM[addr];    // return content of disk ROM addres
         else console.log("DISK2: not booted: no disk data available during restart (not uncommon")
         return null;
     }
+    */
 
     this.read = function(addr,ctx) 
     {
-        if(apple2plus.hwObj().bRO == true) return status_nibble;                // skip soft switch manupulation; just return status when hardware is in Read-Only mode
+        //if(apple2plus.hwObj().bRO == true) return status_nibble;                // skip soft switch manupulation; just return status when hardware is in Read-Only mode
 
         //console.log("AppleDisk2: read %s", addr.toString(16));
         const deviceN = state.drv
