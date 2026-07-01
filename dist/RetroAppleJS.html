@@ -29738,10 +29738,6 @@ function DASM()
                 max-width: 100%;
                 min-height: 420px;
                 padding: 0px;
-                background-color: #f4f4f4;
-                background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
-                background-size: 585px 42px;
-                background-attachment: local;
                 overflow: visible;
               }
 
@@ -29849,6 +29845,47 @@ function DASM()
 .ASM_jsonMount .ASM_jsonView {
   background: transparent !important;
 }
+
+
+/* Theme the pane interiors, not only the pane headers.
+   Light mode uses the shared .dotmatrix_bck pattern from COM_MAIN.css.
+   Dark mode deliberately removes the image and uses plain black. */
+.ASM_root.ASM_paneDark .dotmatrix_bck,
+.ASM_root.ASM_paneDark .com-pane-fr-wrap {
+  background-color: #000000 !important;
+  background-image: none !important;
+  color: #e6edf3 !important;
+  -webkit-text-fill-color: #e6edf3 !important;
+  caret-color: #e6edf3;
+}
+
+.ASM_root.ASM_paneDark .ASM_editor,
+.ASM_root.ASM_paneDark .ASM_jsonMount,
+.ASM_root.ASM_paneDark .com-pane-fr-wrap textarea,
+.ASM_root.ASM_paneDark .com-pane-fr-overlay {
+  color: #e6edf3 !important;
+  -webkit-text-fill-color: #e6edf3 !important;
+  caret-color: #e6edf3;
+}
+
+.ASM_root.ASM_paneDark .ASM_jsonMount:empty::before {
+  color: rgba(230,237,243,0.58);
+}
+
+.ASM_root.ASM_paneDark .ASM_jsonMount *,
+.ASM_root.ASM_paneDark .ASM_jsonKey,
+.ASM_root.ASM_paneDark .ASM_jsonString,
+.ASM_root.ASM_paneDark .ASM_jsonNumber,
+.ASM_root.ASM_paneDark .ASM_jsonBoolean,
+.ASM_root.ASM_paneDark .ASM_jsonNull {
+  color: #e6edf3 !important;
+}
+
+.ASM_root.ASM_paneDark .com-pane-fr-current {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
 
               .ASM_manualPane {
                 width: 100%;
@@ -30633,12 +30670,27 @@ Label1 TXA
               ASM_refreshFindReplaceOverlay();
             }
 
+            function ASM_syncSourceFindReplaceSkin()
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              var wrap = sourcePane && sourcePane.closest ? sourcePane.closest(".com-pane-fr-wrap") : null;
+
+              /*
+               * Source is wrapped by PANE.bindFindReplace().  Put the common
+               * COM_MAIN.css dot-matrix skin on the wrapper instead of
+               * duplicating the background-image in index.html.
+               */
+              if(wrap) wrap.classList.add("dotmatrix_bck");
+            }
+
             function ASM_toggleHeaderTheme()
             {
               var root = ASM_el("ASM_root");
               if(!root) return;
               ASM_headerThemeDark = !ASM_headerThemeDark;
               root.classList.toggle("ASM_headerDark", ASM_headerThemeDark);
+              root.classList.toggle("ASM_paneDark", ASM_headerThemeDark);
+              ASM_refreshFindReplaceOverlay();
             }
 
             function defaultPaneHeaderWidgetHTML()
@@ -30837,6 +30889,8 @@ Label1 TXA
                 ASM_syncListingColumns(settingsListingColumnsInput);
                 ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
               });
+
+              ASM_syncSourceFindReplaceSkin();
             }
 
 
