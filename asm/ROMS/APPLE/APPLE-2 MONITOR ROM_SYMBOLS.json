@@ -1,0 +1,2157 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 1,
+  "source": "sample.S",
+  "count": 307,
+  "symbols": [
+    {
+      "name": "IOADR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49152,
+      "hex": "$C000"
+    },
+    {
+      "name": "LOC0",
+      "type": "equ",
+      "bytes": 1,
+      "value": 0,
+      "hex": "$00"
+    },
+    {
+      "name": "LOC1",
+      "type": "equ",
+      "bytes": 1,
+      "value": 1,
+      "hex": "$01"
+    },
+    {
+      "name": "WNDLFT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 32,
+      "hex": "$20"
+    },
+    {
+      "name": "WNDWDTH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 33,
+      "hex": "$21"
+    },
+    {
+      "name": "WNDTOP",
+      "type": "equ",
+      "bytes": 1,
+      "value": 34,
+      "hex": "$22"
+    },
+    {
+      "name": "WNDBTM",
+      "type": "equ",
+      "bytes": 1,
+      "value": 35,
+      "hex": "$23"
+    },
+    {
+      "name": "CH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 36,
+      "hex": "$24"
+    },
+    {
+      "name": "CV",
+      "type": "equ",
+      "bytes": 1,
+      "value": 37,
+      "hex": "$25"
+    },
+    {
+      "name": "GBASL",
+      "type": "equ",
+      "bytes": 1,
+      "value": 38,
+      "hex": "$26"
+    },
+    {
+      "name": "GBASH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 39,
+      "hex": "$27"
+    },
+    {
+      "name": "BASL",
+      "type": "equ",
+      "bytes": 1,
+      "value": 40,
+      "hex": "$28"
+    },
+    {
+      "name": "BASH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 41,
+      "hex": "$29"
+    },
+    {
+      "name": "BAS2L",
+      "type": "equ",
+      "bytes": 1,
+      "value": 42,
+      "hex": "$2A"
+    },
+    {
+      "name": "BAS2H",
+      "type": "equ",
+      "bytes": 1,
+      "value": 43,
+      "hex": "$2B"
+    },
+    {
+      "name": "COLOR",
+      "type": "equ",
+      "bytes": 1,
+      "value": 48,
+      "hex": "$30"
+    },
+    {
+      "name": "MODE",
+      "type": "equ",
+      "bytes": 1,
+      "value": 49,
+      "hex": "$31"
+    },
+    {
+      "name": "INVFLG",
+      "type": "equ",
+      "bytes": 1,
+      "value": 50,
+      "hex": "$32"
+    },
+    {
+      "name": "PROMPT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 51,
+      "hex": "$33"
+    },
+    {
+      "name": "YSAV",
+      "type": "equ",
+      "bytes": 1,
+      "value": 52,
+      "hex": "$34"
+    },
+    {
+      "name": "YSAV1",
+      "type": "equ",
+      "bytes": 1,
+      "value": 53,
+      "hex": "$35"
+    },
+    {
+      "name": "CSWL",
+      "type": "equ",
+      "bytes": 1,
+      "value": 54,
+      "hex": "$36"
+    },
+    {
+      "name": "KSWL",
+      "type": "equ",
+      "bytes": 1,
+      "value": 56,
+      "hex": "$38"
+    },
+    {
+      "name": "PCL",
+      "type": "equ",
+      "bytes": 1,
+      "value": 58,
+      "hex": "$3A"
+    },
+    {
+      "name": "PCH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 59,
+      "hex": "$3B"
+    },
+    {
+      "name": "A1L",
+      "type": "equ",
+      "bytes": 1,
+      "value": 60,
+      "hex": "$3C"
+    },
+    {
+      "name": "A1H",
+      "type": "equ",
+      "bytes": 1,
+      "value": 61,
+      "hex": "$3D"
+    },
+    {
+      "name": "A2L",
+      "type": "equ",
+      "bytes": 1,
+      "value": 62,
+      "hex": "$3E"
+    },
+    {
+      "name": "A2H",
+      "type": "equ",
+      "bytes": 1,
+      "value": 63,
+      "hex": "$3F"
+    },
+    {
+      "name": "A3L",
+      "type": "equ",
+      "bytes": 1,
+      "value": 64,
+      "hex": "$40"
+    },
+    {
+      "name": "A3H",
+      "type": "equ",
+      "bytes": 1,
+      "value": 65,
+      "hex": "$41"
+    },
+    {
+      "name": "A4L",
+      "type": "equ",
+      "bytes": 1,
+      "value": 66,
+      "hex": "$42"
+    },
+    {
+      "name": "A4H",
+      "type": "equ",
+      "bytes": 1,
+      "value": 67,
+      "hex": "$43"
+    },
+    {
+      "name": "A5L",
+      "type": "equ",
+      "bytes": 1,
+      "value": 68,
+      "hex": "$44"
+    },
+    {
+      "name": "A5H",
+      "type": "equ",
+      "bytes": 1,
+      "value": 69,
+      "hex": "$45"
+    },
+    {
+      "name": "ACC",
+      "type": "equ",
+      "bytes": 1,
+      "value": 69,
+      "hex": "$45"
+    },
+    {
+      "name": "XREG",
+      "type": "equ",
+      "bytes": 1,
+      "value": 70,
+      "hex": "$46"
+    },
+    {
+      "name": "YREG",
+      "type": "equ",
+      "bytes": 1,
+      "value": 71,
+      "hex": "$47"
+    },
+    {
+      "name": "STATUS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 72,
+      "hex": "$48"
+    },
+    {
+      "name": "SPNT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 73,
+      "hex": "$49"
+    },
+    {
+      "name": "RNDL",
+      "type": "equ",
+      "bytes": 1,
+      "value": 78,
+      "hex": "$4E"
+    },
+    {
+      "name": "RNDH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 79,
+      "hex": "$4F"
+    },
+    {
+      "name": "PICK",
+      "type": "equ",
+      "bytes": 1,
+      "value": 149,
+      "hex": "$95"
+    },
+    {
+      "name": "IN",
+      "type": "equ",
+      "bytes": 2,
+      "value": 512,
+      "hex": "$0200"
+    },
+    {
+      "name": "BRKV",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1008,
+      "hex": "$03F0"
+    },
+    {
+      "name": "SOFTEV",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1010,
+      "hex": "$03F2"
+    },
+    {
+      "name": "PWREDUP",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1012,
+      "hex": "$03F4"
+    },
+    {
+      "name": "USRADR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1016,
+      "hex": "$03F8"
+    },
+    {
+      "name": "NMI",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1019,
+      "hex": "$03FB"
+    },
+    {
+      "name": "IRQLOC",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1022,
+      "hex": "$03FE"
+    },
+    {
+      "name": "LINE1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 1024,
+      "hex": "$0400"
+    },
+    {
+      "name": "MSLOT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 2040,
+      "hex": "$07F8"
+    },
+    {
+      "name": "KBD",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49152,
+      "hex": "$C000"
+    },
+    {
+      "name": "KBDSTRB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49168,
+      "hex": "$C010"
+    },
+    {
+      "name": "TAPEOUT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49184,
+      "hex": "$C020"
+    },
+    {
+      "name": "SPKR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49200,
+      "hex": "$C030"
+    },
+    {
+      "name": "TXTCLR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49232,
+      "hex": "$C050"
+    },
+    {
+      "name": "TXTSET",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49233,
+      "hex": "$C051"
+    },
+    {
+      "name": "MIXSET",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49235,
+      "hex": "$C053"
+    },
+    {
+      "name": "TXTPAGE1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49236,
+      "hex": "$C054"
+    },
+    {
+      "name": "LORES",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49238,
+      "hex": "$C056"
+    },
+    {
+      "name": "SETAN0",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49240,
+      "hex": "$C058"
+    },
+    {
+      "name": "SETAN1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49242,
+      "hex": "$C05A"
+    },
+    {
+      "name": "CLRAN2",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49245,
+      "hex": "$C05D"
+    },
+    {
+      "name": "CLRAN3",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49247,
+      "hex": "$C05F"
+    },
+    {
+      "name": "TAPEIN",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49248,
+      "hex": "$C060"
+    },
+    {
+      "name": "PADDL0",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49252,
+      "hex": "$C064"
+    },
+    {
+      "name": "PTRIG",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49264,
+      "hex": "$C070"
+    },
+    {
+      "name": "CLRROM",
+      "type": "equ",
+      "bytes": 2,
+      "value": 53247,
+      "hex": "$CFFF"
+    },
+    {
+      "name": "BASIC",
+      "type": "equ",
+      "bytes": 2,
+      "value": 57344,
+      "hex": "$E000"
+    },
+    {
+      "name": "BASIC2",
+      "type": "equ",
+      "bytes": 2,
+      "value": 57347,
+      "hex": "$E003"
+    },
+    {
+      "name": "H2",
+      "type": "equ",
+      "bytes": 1,
+      "value": 44,
+      "hex": "$2C"
+    },
+    {
+      "name": "V2",
+      "type": "equ",
+      "bytes": 1,
+      "value": 45,
+      "hex": "$2D"
+    },
+    {
+      "name": "MASK",
+      "type": "equ",
+      "bytes": 1,
+      "value": 46,
+      "hex": "$2E"
+    },
+    {
+      "name": "PLOT",
+      "type": "label",
+      "bytes": 2,
+      "value": 63488,
+      "hex": "$F800"
+    },
+    {
+      "name": "RTMASK",
+      "type": "label",
+      "bytes": 2,
+      "value": 63500,
+      "hex": "$F80C"
+    },
+    {
+      "name": "PLOT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63502,
+      "hex": "$F80E"
+    },
+    {
+      "name": "HLINE",
+      "type": "label",
+      "bytes": 2,
+      "value": 63513,
+      "hex": "$F819"
+    },
+    {
+      "name": "HLINE1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63516,
+      "hex": "$F81C"
+    },
+    {
+      "name": "VLINEZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 63526,
+      "hex": "$F826"
+    },
+    {
+      "name": "VLINE",
+      "type": "label",
+      "bytes": 2,
+      "value": 63528,
+      "hex": "$F828"
+    },
+    {
+      "name": "RTS1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63537,
+      "hex": "$F831"
+    },
+    {
+      "name": "CLRSCR",
+      "type": "label",
+      "bytes": 2,
+      "value": 63538,
+      "hex": "$F832"
+    },
+    {
+      "name": "CLRTOP",
+      "type": "label",
+      "bytes": 2,
+      "value": 63542,
+      "hex": "$F836"
+    },
+    {
+      "name": "CLRSC2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63544,
+      "hex": "$F838"
+    },
+    {
+      "name": "CLRSC3",
+      "type": "label",
+      "bytes": 2,
+      "value": 63548,
+      "hex": "$F83C"
+    },
+    {
+      "name": "GBASCALC",
+      "type": "label",
+      "bytes": 2,
+      "value": 63559,
+      "hex": "$F847"
+    },
+    {
+      "name": "GBCALC",
+      "type": "label",
+      "bytes": 2,
+      "value": 63574,
+      "hex": "$F856"
+    },
+    {
+      "name": "NEXTCOL",
+      "type": "label",
+      "bytes": 2,
+      "value": 63583,
+      "hex": "$F85F"
+    },
+    {
+      "name": "SETCOL",
+      "type": "label",
+      "bytes": 2,
+      "value": 63588,
+      "hex": "$F864"
+    },
+    {
+      "name": "SCRN",
+      "type": "label",
+      "bytes": 2,
+      "value": 63601,
+      "hex": "$F871"
+    },
+    {
+      "name": "SCRN2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63609,
+      "hex": "$F879"
+    },
+    {
+      "name": "RTMSKZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 63615,
+      "hex": "$F87F"
+    },
+    {
+      "name": "LMNEM",
+      "type": "equ",
+      "bytes": 1,
+      "value": 44,
+      "hex": "$2C"
+    },
+    {
+      "name": "RMNEM",
+      "type": "equ",
+      "bytes": 1,
+      "value": 45,
+      "hex": "$2D"
+    },
+    {
+      "name": "FORMAT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 46,
+      "hex": "$2E"
+    },
+    {
+      "name": "LENGTH",
+      "type": "equ",
+      "bytes": 1,
+      "value": 47,
+      "hex": "$2F"
+    },
+    {
+      "name": "INSDS1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63618,
+      "hex": "$F882"
+    },
+    {
+      "name": "IEVEN",
+      "type": "label",
+      "bytes": 2,
+      "value": 63643,
+      "hex": "$F89B"
+    },
+    {
+      "name": "ERR",
+      "type": "label",
+      "bytes": 2,
+      "value": 63653,
+      "hex": "$F8A5"
+    },
+    {
+      "name": "GETFMT",
+      "type": "label",
+      "bytes": 2,
+      "value": 63657,
+      "hex": "$F8A9"
+    },
+    {
+      "name": "MNNDX1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63678,
+      "hex": "$F8BE"
+    },
+    {
+      "name": "MNNDX2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63682,
+      "hex": "$F8C2"
+    },
+    {
+      "name": "MNNDX3",
+      "type": "label",
+      "bytes": 2,
+      "value": 63689,
+      "hex": "$F8C9"
+    },
+    {
+      "name": "INSTDSP",
+      "type": "label",
+      "bytes": 2,
+      "value": 63696,
+      "hex": "$F8D0"
+    },
+    {
+      "name": "PRNTOP",
+      "type": "label",
+      "bytes": 2,
+      "value": 63700,
+      "hex": "$F8D4"
+    },
+    {
+      "name": "PRNTBL",
+      "type": "label",
+      "bytes": 2,
+      "value": 63707,
+      "hex": "$F8DB"
+    },
+    {
+      "name": "NXTCOL",
+      "type": "label",
+      "bytes": 2,
+      "value": 63733,
+      "hex": "$F8F5"
+    },
+    {
+      "name": "PRMN2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63737,
+      "hex": "$F8F9"
+    },
+    {
+      "name": "PRADR1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63760,
+      "hex": "$F910"
+    },
+    {
+      "name": "PRADR2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63764,
+      "hex": "$F914"
+    },
+    {
+      "name": "PRADR3",
+      "type": "label",
+      "bytes": 2,
+      "value": 63782,
+      "hex": "$F926"
+    },
+    {
+      "name": "PRADR4",
+      "type": "label",
+      "bytes": 2,
+      "value": 63786,
+      "hex": "$F92A"
+    },
+    {
+      "name": "PRADR5",
+      "type": "label",
+      "bytes": 2,
+      "value": 63792,
+      "hex": "$F930"
+    },
+    {
+      "name": "RELADR",
+      "type": "label",
+      "bytes": 2,
+      "value": 63800,
+      "hex": "$F938"
+    },
+    {
+      "name": "PRNTYX",
+      "type": "label",
+      "bytes": 2,
+      "value": 63808,
+      "hex": "$F940"
+    },
+    {
+      "name": "PRNTAX",
+      "type": "label",
+      "bytes": 2,
+      "value": 63809,
+      "hex": "$F941"
+    },
+    {
+      "name": "PRNTX",
+      "type": "label",
+      "bytes": 2,
+      "value": 63812,
+      "hex": "$F944"
+    },
+    {
+      "name": "PRBLNK",
+      "type": "label",
+      "bytes": 2,
+      "value": 63816,
+      "hex": "$F948"
+    },
+    {
+      "name": "PRBL2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63818,
+      "hex": "$F94A"
+    },
+    {
+      "name": "PCADJ",
+      "type": "label",
+      "bytes": 2,
+      "value": 63827,
+      "hex": "$F953"
+    },
+    {
+      "name": "PCADJ2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63828,
+      "hex": "$F954"
+    },
+    {
+      "name": "PCADJ3",
+      "type": "label",
+      "bytes": 2,
+      "value": 63830,
+      "hex": "$F956"
+    },
+    {
+      "name": "PCADJ4",
+      "type": "label",
+      "bytes": 2,
+      "value": 63836,
+      "hex": "$F95C"
+    },
+    {
+      "name": "RTS2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63841,
+      "hex": "$F961"
+    },
+    {
+      "name": "FMT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63842,
+      "hex": "$F962"
+    },
+    {
+      "name": "FMT2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63910,
+      "hex": "$F9A6"
+    },
+    {
+      "name": "CHAR1",
+      "type": "label",
+      "bytes": 2,
+      "value": 63924,
+      "hex": "$F9B4"
+    },
+    {
+      "name": "CHAR2",
+      "type": "label",
+      "bytes": 2,
+      "value": 63930,
+      "hex": "$F9BA"
+    },
+    {
+      "name": "MNEML",
+      "type": "label",
+      "bytes": 2,
+      "value": 63936,
+      "hex": "$F9C0"
+    },
+    {
+      "name": "MNEMR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64000,
+      "hex": "$FA00"
+    },
+    {
+      "name": "IRQ",
+      "type": "label",
+      "bytes": 2,
+      "value": 64064,
+      "hex": "$FA40"
+    },
+    {
+      "name": "BREAK",
+      "type": "label",
+      "bytes": 2,
+      "value": 64076,
+      "hex": "$FA4C"
+    },
+    {
+      "name": "OLDBRK",
+      "type": "label",
+      "bytes": 2,
+      "value": 64089,
+      "hex": "$FA59"
+    },
+    {
+      "name": "RESET",
+      "type": "label",
+      "bytes": 2,
+      "value": 64098,
+      "hex": "$FA62"
+    },
+    {
+      "name": "FIXSEV",
+      "type": "label",
+      "bytes": 2,
+      "value": 64155,
+      "hex": "$FA9B"
+    },
+    {
+      "name": "NOFIX",
+      "type": "label",
+      "bytes": 2,
+      "value": 64163,
+      "hex": "$FAA3"
+    },
+    {
+      "name": "PWRUP",
+      "type": "label",
+      "bytes": 2,
+      "value": 64166,
+      "hex": "$FAA6"
+    },
+    {
+      "name": "SETPG3",
+      "type": "label",
+      "bytes": 2,
+      "value": 64169,
+      "hex": "$FAA9"
+    },
+    {
+      "name": "LFAAB",
+      "type": "label",
+      "bytes": 2,
+      "value": 64171,
+      "hex": "$FAAB"
+    },
+    {
+      "name": "SLOOP",
+      "type": "label",
+      "bytes": 2,
+      "value": 64186,
+      "hex": "$FABA"
+    },
+    {
+      "name": "NXTBYT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64199,
+      "hex": "$FAC7"
+    },
+    {
+      "name": "REGDSP",
+      "type": "label",
+      "bytes": 2,
+      "value": 64215,
+      "hex": "$FAD7"
+    },
+    {
+      "name": "RGDSP1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64218,
+      "hex": "$FADA"
+    },
+    {
+      "name": "RDSP1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64228,
+      "hex": "$FAE4"
+    },
+    {
+      "name": "PWRCON",
+      "type": "label",
+      "bytes": 2,
+      "value": 64253,
+      "hex": "$FAFD"
+    },
+    {
+      "name": "DISKID",
+      "type": "label",
+      "bytes": 2,
+      "value": 64258,
+      "hex": "$FB02"
+    },
+    {
+      "name": "TITLE",
+      "type": "label",
+      "bytes": 2,
+      "value": 64265,
+      "hex": "$FB09"
+    },
+    {
+      "name": "XLTBL",
+      "type": "label",
+      "bytes": 2,
+      "value": 64273,
+      "hex": "$FB11"
+    },
+    {
+      "name": "RTBL",
+      "type": "label",
+      "bytes": 2,
+      "value": 64281,
+      "hex": "$FB19"
+    },
+    {
+      "name": "PREAD",
+      "type": "label",
+      "bytes": 2,
+      "value": 64286,
+      "hex": "$FB1E"
+    },
+    {
+      "name": "PREAD2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64293,
+      "hex": "$FB25"
+    },
+    {
+      "name": "RTS2D",
+      "type": "label",
+      "bytes": 2,
+      "value": 64302,
+      "hex": "$FB2E"
+    },
+    {
+      "name": "INIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64303,
+      "hex": "$FB2F"
+    },
+    {
+      "name": "SETTXT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64313,
+      "hex": "$FB39"
+    },
+    {
+      "name": "SETGR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64320,
+      "hex": "$FB40"
+    },
+    {
+      "name": "SETWND",
+      "type": "label",
+      "bytes": 2,
+      "value": 64331,
+      "hex": "$FB4B"
+    },
+    {
+      "name": "TABV",
+      "type": "label",
+      "bytes": 2,
+      "value": 64347,
+      "hex": "$FB5B"
+    },
+    {
+      "name": "APPLEII",
+      "type": "label",
+      "bytes": 2,
+      "value": 64352,
+      "hex": "$FB60"
+    },
+    {
+      "name": "STITLE",
+      "type": "label",
+      "bytes": 2,
+      "value": 64357,
+      "hex": "$FB65"
+    },
+    {
+      "name": "SETPWRC",
+      "type": "label",
+      "bytes": 2,
+      "value": 64367,
+      "hex": "$FB6F"
+    },
+    {
+      "name": "VIDWAIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64376,
+      "hex": "$FB78"
+    },
+    {
+      "name": "KBDWAIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64392,
+      "hex": "$FB88"
+    },
+    {
+      "name": "NOWAIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64404,
+      "hex": "$FB94"
+    },
+    {
+      "name": "ESCOLD",
+      "type": "label",
+      "bytes": 2,
+      "value": 64407,
+      "hex": "$FB97"
+    },
+    {
+      "name": "ESCNOW",
+      "type": "label",
+      "bytes": 2,
+      "value": 64411,
+      "hex": "$FB9B"
+    },
+    {
+      "name": "ESCNEW",
+      "type": "label",
+      "bytes": 2,
+      "value": 64421,
+      "hex": "$FBA5"
+    },
+    {
+      "name": "BASCALC",
+      "type": "label",
+      "bytes": 2,
+      "value": 64449,
+      "hex": "$FBC1"
+    },
+    {
+      "name": "BASCLC2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64464,
+      "hex": "$FBD0"
+    },
+    {
+      "name": "BELL1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64473,
+      "hex": "$FBD9"
+    },
+    {
+      "name": "BELL2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64484,
+      "hex": "$FBE4"
+    },
+    {
+      "name": "RTS2B",
+      "type": "label",
+      "bytes": 2,
+      "value": 64495,
+      "hex": "$FBEF"
+    },
+    {
+      "name": "STORADV",
+      "type": "label",
+      "bytes": 2,
+      "value": 64496,
+      "hex": "$FBF0"
+    },
+    {
+      "name": "ADVANCE",
+      "type": "label",
+      "bytes": 2,
+      "value": 64500,
+      "hex": "$FBF4"
+    },
+    {
+      "name": "RTS3",
+      "type": "label",
+      "bytes": 2,
+      "value": 64508,
+      "hex": "$FBFC"
+    },
+    {
+      "name": "VIDOUT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64509,
+      "hex": "$FBFD"
+    },
+    {
+      "name": "BS",
+      "type": "label",
+      "bytes": 2,
+      "value": 64528,
+      "hex": "$FC10"
+    },
+    {
+      "name": "UP",
+      "type": "label",
+      "bytes": 2,
+      "value": 64538,
+      "hex": "$FC1A"
+    },
+    {
+      "name": "VTAB",
+      "type": "label",
+      "bytes": 2,
+      "value": 64546,
+      "hex": "$FC22"
+    },
+    {
+      "name": "VTABZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 64548,
+      "hex": "$FC24"
+    },
+    {
+      "name": "RTS4",
+      "type": "label",
+      "bytes": 2,
+      "value": 64555,
+      "hex": "$FC2B"
+    },
+    {
+      "name": "ESC1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64556,
+      "hex": "$FC2C"
+    },
+    {
+      "name": "CLREOP",
+      "type": "label",
+      "bytes": 2,
+      "value": 64578,
+      "hex": "$FC42"
+    },
+    {
+      "name": "CLEOP1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64582,
+      "hex": "$FC46"
+    },
+    {
+      "name": "HOME",
+      "type": "label",
+      "bytes": 2,
+      "value": 64600,
+      "hex": "$FC58"
+    },
+    {
+      "name": "CR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64610,
+      "hex": "$FC62"
+    },
+    {
+      "name": "LF",
+      "type": "label",
+      "bytes": 2,
+      "value": 64614,
+      "hex": "$FC66"
+    },
+    {
+      "name": "SCROLL",
+      "type": "label",
+      "bytes": 2,
+      "value": 64624,
+      "hex": "$FC70"
+    },
+    {
+      "name": "SCRL1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64630,
+      "hex": "$FC76"
+    },
+    {
+      "name": "SCRL2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64652,
+      "hex": "$FC8C"
+    },
+    {
+      "name": "SCRL3",
+      "type": "label",
+      "bytes": 2,
+      "value": 64661,
+      "hex": "$FC95"
+    },
+    {
+      "name": "CLREOL",
+      "type": "label",
+      "bytes": 2,
+      "value": 64668,
+      "hex": "$FC9C"
+    },
+    {
+      "name": "CLEOLZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 64670,
+      "hex": "$FC9E"
+    },
+    {
+      "name": "CLREO2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64672,
+      "hex": "$FCA0"
+    },
+    {
+      "name": "WAIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64680,
+      "hex": "$FCA8"
+    },
+    {
+      "name": "WAIT2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64681,
+      "hex": "$FCA9"
+    },
+    {
+      "name": "WAIT3",
+      "type": "label",
+      "bytes": 2,
+      "value": 64682,
+      "hex": "$FCAA"
+    },
+    {
+      "name": "NXTA4",
+      "type": "label",
+      "bytes": 2,
+      "value": 64692,
+      "hex": "$FCB4"
+    },
+    {
+      "name": "NXTA1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64698,
+      "hex": "$FCBA"
+    },
+    {
+      "name": "RTS4B",
+      "type": "label",
+      "bytes": 2,
+      "value": 64712,
+      "hex": "$FCC8"
+    },
+    {
+      "name": "HEADR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64713,
+      "hex": "$FCC9"
+    },
+    {
+      "name": "WRBIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64726,
+      "hex": "$FCD6"
+    },
+    {
+      "name": "ZERDLY",
+      "type": "label",
+      "bytes": 2,
+      "value": 64731,
+      "hex": "$FCDB"
+    },
+    {
+      "name": "ONEDLY",
+      "type": "label",
+      "bytes": 2,
+      "value": 64738,
+      "hex": "$FCE2"
+    },
+    {
+      "name": "WRTAPE",
+      "type": "label",
+      "bytes": 2,
+      "value": 64741,
+      "hex": "$FCE5"
+    },
+    {
+      "name": "RDBYTE",
+      "type": "label",
+      "bytes": 2,
+      "value": 64748,
+      "hex": "$FCEC"
+    },
+    {
+      "name": "RDBYT2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64750,
+      "hex": "$FCEE"
+    },
+    {
+      "name": "LASTIN",
+      "type": "equ",
+      "bytes": 1,
+      "value": 47,
+      "hex": "$2F"
+    },
+    {
+      "name": "RD2BIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64762,
+      "hex": "$FCFA"
+    },
+    {
+      "name": "RDBIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64765,
+      "hex": "$FCFD"
+    },
+    {
+      "name": "RDKEY",
+      "type": "label",
+      "bytes": 2,
+      "value": 64780,
+      "hex": "$FD0C"
+    },
+    {
+      "name": "KEYIN",
+      "type": "label",
+      "bytes": 2,
+      "value": 64795,
+      "hex": "$FD1B"
+    },
+    {
+      "name": "KEYIN2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64801,
+      "hex": "$FD21"
+    },
+    {
+      "name": "ESC",
+      "type": "label",
+      "bytes": 2,
+      "value": 64815,
+      "hex": "$FD2F"
+    },
+    {
+      "name": "RDCHAR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64821,
+      "hex": "$FD35"
+    },
+    {
+      "name": "NOTCR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64829,
+      "hex": "$FD3D"
+    },
+    {
+      "name": "NOTCR1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64863,
+      "hex": "$FD5F"
+    },
+    {
+      "name": "CANCEL",
+      "type": "label",
+      "bytes": 2,
+      "value": 64866,
+      "hex": "$FD62"
+    },
+    {
+      "name": "GETLNZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 64871,
+      "hex": "$FD67"
+    },
+    {
+      "name": "GETLN",
+      "type": "label",
+      "bytes": 2,
+      "value": 64874,
+      "hex": "$FD6A"
+    },
+    {
+      "name": "GETLN1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64879,
+      "hex": "$FD6F"
+    },
+    {
+      "name": "BCKSPC",
+      "type": "label",
+      "bytes": 2,
+      "value": 64881,
+      "hex": "$FD71"
+    },
+    {
+      "name": "NXTCHAR",
+      "type": "label",
+      "bytes": 2,
+      "value": 64885,
+      "hex": "$FD75"
+    },
+    {
+      "name": "CAPTST",
+      "type": "label",
+      "bytes": 2,
+      "value": 64894,
+      "hex": "$FD7E"
+    },
+    {
+      "name": "ADDINP",
+      "type": "label",
+      "bytes": 2,
+      "value": 64900,
+      "hex": "$FD84"
+    },
+    {
+      "name": "CROUT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64907,
+      "hex": "$FD8B"
+    },
+    {
+      "name": "CROUT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64910,
+      "hex": "$FD8E"
+    },
+    {
+      "name": "PRA1",
+      "type": "label",
+      "bytes": 2,
+      "value": 64914,
+      "hex": "$FD92"
+    },
+    {
+      "name": "PRYX2",
+      "type": "label",
+      "bytes": 2,
+      "value": 64918,
+      "hex": "$FD96"
+    },
+    {
+      "name": "XAMB",
+      "type": "label",
+      "bytes": 2,
+      "value": 64931,
+      "hex": "$FDA3"
+    },
+    {
+      "name": "MOD8CHK",
+      "type": "label",
+      "bytes": 2,
+      "value": 64941,
+      "hex": "$FDAD"
+    },
+    {
+      "name": "XAM",
+      "type": "label",
+      "bytes": 2,
+      "value": 64947,
+      "hex": "$FDB3"
+    },
+    {
+      "name": "DATAOUT",
+      "type": "label",
+      "bytes": 2,
+      "value": 64950,
+      "hex": "$FDB6"
+    },
+    {
+      "name": "RTS4C",
+      "type": "label",
+      "bytes": 2,
+      "value": 64965,
+      "hex": "$FDC5"
+    },
+    {
+      "name": "XAMPM",
+      "type": "label",
+      "bytes": 2,
+      "value": 64966,
+      "hex": "$FDC6"
+    },
+    {
+      "name": "ADD",
+      "type": "label",
+      "bytes": 2,
+      "value": 64977,
+      "hex": "$FDD1"
+    },
+    {
+      "name": "PRBYTE",
+      "type": "label",
+      "bytes": 2,
+      "value": 64986,
+      "hex": "$FDDA"
+    },
+    {
+      "name": "PRHEX",
+      "type": "label",
+      "bytes": 2,
+      "value": 64995,
+      "hex": "$FDE3"
+    },
+    {
+      "name": "PRHEXZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 64997,
+      "hex": "$FDE5"
+    },
+    {
+      "name": "COUT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65005,
+      "hex": "$FDED"
+    },
+    {
+      "name": "COUT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 65008,
+      "hex": "$FDF0"
+    },
+    {
+      "name": "COUTZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 65014,
+      "hex": "$FDF6"
+    },
+    {
+      "name": "BL1",
+      "type": "label",
+      "bytes": 2,
+      "value": 65024,
+      "hex": "$FE00"
+    },
+    {
+      "name": "BLANK",
+      "type": "label",
+      "bytes": 2,
+      "value": 65028,
+      "hex": "$FE04"
+    },
+    {
+      "name": "RTS5",
+      "type": "label",
+      "bytes": 2,
+      "value": 65047,
+      "hex": "$FE17"
+    },
+    {
+      "name": "SETMODE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65048,
+      "hex": "$FE18"
+    },
+    {
+      "name": "SETMDZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 65053,
+      "hex": "$FE1D"
+    },
+    {
+      "name": "LT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65056,
+      "hex": "$FE20"
+    },
+    {
+      "name": "LT2",
+      "type": "label",
+      "bytes": 2,
+      "value": 65058,
+      "hex": "$FE22"
+    },
+    {
+      "name": "MOVE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65068,
+      "hex": "$FE2C"
+    },
+    {
+      "name": "VFY",
+      "type": "label",
+      "bytes": 2,
+      "value": 65078,
+      "hex": "$FE36"
+    },
+    {
+      "name": "VFYOK",
+      "type": "label",
+      "bytes": 2,
+      "value": 65112,
+      "hex": "$FE58"
+    },
+    {
+      "name": "LIST",
+      "type": "label",
+      "bytes": 2,
+      "value": 65118,
+      "hex": "$FE5E"
+    },
+    {
+      "name": "LIST2",
+      "type": "label",
+      "bytes": 2,
+      "value": 65123,
+      "hex": "$FE63"
+    },
+    {
+      "name": "A1PC",
+      "type": "label",
+      "bytes": 2,
+      "value": 65141,
+      "hex": "$FE75"
+    },
+    {
+      "name": "A1PCLP",
+      "type": "label",
+      "bytes": 2,
+      "value": 65144,
+      "hex": "$FE78"
+    },
+    {
+      "name": "A1PCRTS",
+      "type": "label",
+      "bytes": 2,
+      "value": 65151,
+      "hex": "$FE7F"
+    },
+    {
+      "name": "SETINV",
+      "type": "label",
+      "bytes": 2,
+      "value": 65152,
+      "hex": "$FE80"
+    },
+    {
+      "name": "SETNORM",
+      "type": "label",
+      "bytes": 2,
+      "value": 65156,
+      "hex": "$FE84"
+    },
+    {
+      "name": "SETIFLG",
+      "type": "label",
+      "bytes": 2,
+      "value": 65158,
+      "hex": "$FE86"
+    },
+    {
+      "name": "SETKBD",
+      "type": "label",
+      "bytes": 2,
+      "value": 65161,
+      "hex": "$FE89"
+    },
+    {
+      "name": "INPORT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65163,
+      "hex": "$FE8B"
+    },
+    {
+      "name": "INPRT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65165,
+      "hex": "$FE8D"
+    },
+    {
+      "name": "SETVID",
+      "type": "label",
+      "bytes": 2,
+      "value": 65171,
+      "hex": "$FE93"
+    },
+    {
+      "name": "OUTPORT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65173,
+      "hex": "$FE95"
+    },
+    {
+      "name": "OUTPRT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65175,
+      "hex": "$FE97"
+    },
+    {
+      "name": "IOPRT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65179,
+      "hex": "$FE9B"
+    },
+    {
+      "name": "IOPRT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 65191,
+      "hex": "$FEA7"
+    },
+    {
+      "name": "IOPRT2",
+      "type": "label",
+      "bytes": 2,
+      "value": 65193,
+      "hex": "$FEA9"
+    },
+    {
+      "name": "XBASIC",
+      "type": "label",
+      "bytes": 2,
+      "value": 65200,
+      "hex": "$FEB0"
+    },
+    {
+      "name": "BASCONT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65203,
+      "hex": "$FEB3"
+    },
+    {
+      "name": "GO",
+      "type": "label",
+      "bytes": 2,
+      "value": 65206,
+      "hex": "$FEB6"
+    },
+    {
+      "name": "REGZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 65215,
+      "hex": "$FEBF"
+    },
+    {
+      "name": "TRACE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65218,
+      "hex": "$FEC2"
+    },
+    {
+      "name": "STEPZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 65220,
+      "hex": "$FEC4"
+    },
+    {
+      "name": "REMOVED",
+      "type": "label",
+      "bytes": 2,
+      "value": 65221,
+      "hex": "$FEC5"
+    },
+    {
+      "name": "USR",
+      "type": "label",
+      "bytes": 2,
+      "value": 65226,
+      "hex": "$FECA"
+    },
+    {
+      "name": "WRITE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65229,
+      "hex": "$FECD"
+    },
+    {
+      "name": "WR1",
+      "type": "label",
+      "bytes": 2,
+      "value": 65236,
+      "hex": "$FED4"
+    },
+    {
+      "name": "WRBYTE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65261,
+      "hex": "$FEED"
+    },
+    {
+      "name": "WRBYT2",
+      "type": "label",
+      "bytes": 2,
+      "value": 65263,
+      "hex": "$FEEF"
+    },
+    {
+      "name": "CHKSUM",
+      "type": "equ",
+      "bytes": 1,
+      "value": 46,
+      "hex": "$2E"
+    },
+    {
+      "name": "CRMON",
+      "type": "label",
+      "bytes": 2,
+      "value": 65270,
+      "hex": "$FEF6"
+    },
+    {
+      "name": "READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 65277,
+      "hex": "$FEFD"
+    },
+    {
+      "name": "RD2",
+      "type": "label",
+      "bytes": 2,
+      "value": 65290,
+      "hex": "$FF0A"
+    },
+    {
+      "name": "RD3",
+      "type": "label",
+      "bytes": 2,
+      "value": 65302,
+      "hex": "$FF16"
+    },
+    {
+      "name": "PRERR",
+      "type": "label",
+      "bytes": 2,
+      "value": 65325,
+      "hex": "$FF2D"
+    },
+    {
+      "name": "BELL",
+      "type": "label",
+      "bytes": 2,
+      "value": 65338,
+      "hex": "$FF3A"
+    },
+    {
+      "name": "RESTORE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65343,
+      "hex": "$FF3F"
+    },
+    {
+      "name": "RESTR1",
+      "type": "label",
+      "bytes": 2,
+      "value": 65348,
+      "hex": "$FF44"
+    },
+    {
+      "name": "SAVE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65354,
+      "hex": "$FF4A"
+    },
+    {
+      "name": "SAV1",
+      "type": "label",
+      "bytes": 2,
+      "value": 65356,
+      "hex": "$FF4C"
+    },
+    {
+      "name": "OLDRST",
+      "type": "label",
+      "bytes": 2,
+      "value": 65369,
+      "hex": "$FF59"
+    },
+    {
+      "name": "MON",
+      "type": "label",
+      "bytes": 2,
+      "value": 65381,
+      "hex": "$FF65"
+    },
+    {
+      "name": "MONZ",
+      "type": "label",
+      "bytes": 2,
+      "value": 65385,
+      "hex": "$FF69"
+    },
+    {
+      "name": "NXTITM",
+      "type": "label",
+      "bytes": 2,
+      "value": 65395,
+      "hex": "$FF73"
+    },
+    {
+      "name": "CHRSRCH",
+      "type": "label",
+      "bytes": 2,
+      "value": 65402,
+      "hex": "$FF7A"
+    },
+    {
+      "name": "DIG",
+      "type": "label",
+      "bytes": 2,
+      "value": 65418,
+      "hex": "$FF8A"
+    },
+    {
+      "name": "NXTBIT",
+      "type": "label",
+      "bytes": 2,
+      "value": 65424,
+      "hex": "$FF90"
+    },
+    {
+      "name": "NXTBAS",
+      "type": "label",
+      "bytes": 2,
+      "value": 65432,
+      "hex": "$FF98"
+    },
+    {
+      "name": "NXTBS2",
+      "type": "label",
+      "bytes": 2,
+      "value": 65442,
+      "hex": "$FFA2"
+    },
+    {
+      "name": "GETNUM",
+      "type": "label",
+      "bytes": 2,
+      "value": 65447,
+      "hex": "$FFA7"
+    },
+    {
+      "name": "NXTCHR",
+      "type": "label",
+      "bytes": 2,
+      "value": 65453,
+      "hex": "$FFAD"
+    },
+    {
+      "name": "TOSUB",
+      "type": "label",
+      "bytes": 2,
+      "value": 65470,
+      "hex": "$FFBE"
+    },
+    {
+      "name": "ZMODE",
+      "type": "label",
+      "bytes": 2,
+      "value": 65479,
+      "hex": "$FFC7"
+    },
+    {
+      "name": "CHRTBL",
+      "type": "label",
+      "bytes": 2,
+      "value": 65484,
+      "hex": "$FFCC"
+    },
+    {
+      "name": "SUBTBL",
+      "type": "label",
+      "bytes": 2,
+      "value": 65507,
+      "hex": "$FFE3"
+    }
+  ]
+}
