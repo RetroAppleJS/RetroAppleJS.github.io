@@ -952,6 +952,8 @@ function ASM(options)
         }
 
         var conditional = /^(BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS)$/.test(mne);
+        // Only static control-flow can be visualised in a source listing.
+        // JMP (addr) is runtime-dependent and therefore deliberately excluded.
         var absoluteJump = (mne === "JMP" && row.addrMode === "abs");
         if (!conditional && !absoluteJump) return null;
         if (typeof row.val !== "number") return null;
@@ -961,13 +963,6 @@ function ASM(options)
             conditional: conditional,
             absolute: absoluteJump
         };
-    };
-
-    this.mergeListingLineMarker = function (oldMarker, newMarker) 
-    {
-        if (!oldMarker || !String(oldMarker).trim()) return newMarker;
-        if (oldMarker === newMarker) return oldMarker;
-        return "┼──┤";
     };
 
     this.applyListingLineColumn = function (rows) {
@@ -983,40 +978,117 @@ function ASM(options)
                 addrToRow[row.pc & 0xffff] = i;
         }
 
-        function setMarker(idx, marker) {
-            if (idx < 0 || idx >= rows.length) return;
-            rows[idx].lin = this.mergeListingLineMarker(rows[idx].lin, marker);
-        }
-
+        var jumps = [];
         for (var j = 0; j < rows.length; j++) {
             var src = rows[j] || {};
             var info = this.getListingJumpInfo(src);
             if (!info) continue;
 
             var targetIdx = addrToRow[info.target];
-            if (targetIdx == null) {
-                setMarker.call(this, j, info.conditional ? "├───" : "┌───");
-                continue;
+            if (targetIdx == null || targetIdx === j) continue;
+
+
+            jumps.push({
+                source: j,
+                target: targetIdx,
+                top: Math.min(j, targetIdx),
+                bottom: Math.max(j, targetIdx),
+                lane: -1,
+                conditional: info.conditional,
+                absolute: info.absolute
+            });
+        }
+
+        if (!jumps.length) return rows;
+
+        // Allocate one stable lane per overlapping jump range.  A later range
+        // can reuse a lane only when the previous range has completely ended.
+        jumps.sort(function(a, b) {
+            return a.top - b.top || b.bottom - a.bottom || a.source - b.source;
+        });
+
+        var laneBottom = [];
+        for (var ji = 0; ji < jumps.length; ji++) {
+            var jump = jumps[ji];
+            var lane = -1;
+            for (var l = 0; l < laneBottom.length; l++) {
+                if (laneBottom[l] < jump.top) { lane = l; break; }
+             }
+            if (lane < 0) {
+                lane = laneBottom.length;
+                laneBottom.push(-1);
             }
+            jump.lane = lane;
+            laneBottom[lane] = jump.bottom;
+        }
 
-            if (targetIdx === j) {
-                setMarker.call(this, j, info.conditional ? "├─┤" : "┌─┐");
-                continue;
-            }
-
-            var top = Math.min(j, targetIdx);
-            var bottom = Math.max(j, targetIdx);
-            for (var k = top + 1; k < bottom; k++)
-                setMarker.call(this, k, "│  │");
-
-            if (j < targetIdx) {
-                setMarker.call(this, j, info.conditional ? "├──┐" : "┌──┐");
-                setMarker.call(this, targetIdx, info.conditional ? "└──┤" : "└──┘");
-            } else {
-                setMarker.call(this, targetIdx, info.conditional ? "┌──┤" : "┌──┐");
-                setMarker.call(this, j, info.conditional ? "├──┘" : "└──┘");
+        var laneCount = laneBottom.length;
+        var targetCol = laneCount; // n+1 columns: n lanes + one target/source tail column.
+        var cells = [];
+        for (var cr = 0; cr < rows.length; cr++) {
+            cells[cr] = [];
+            for (var cc = 0; cc <= targetCol; cc++) cells[cr][cc] = " ";
+        }
+        function priority(ch) {
+            switch (ch) {
+                case "│": return 5;
+                case "├":
+                case "┤":
+                case "┼": return 4;
+                case "┌":
+                case "└": return 3;
+                case "─": return 2;
+                default: return 0;
             }
         }
+
+        function mergeCell(oldCh, newCh) {
+            if (!oldCh || oldCh === " ") return newCh;
+            if (!newCh || newCh === " " || oldCh === newCh) return oldCh;
+
+            // Vertical flow wins over horizontal flow.  This is the rule that
+            // makes rows like "└││─" possible: the horizontal run is suppressed
+            // wherever another jump has a vertical lane.
+            if (oldCh === "│" && newCh === "─") return oldCh;
+            if (oldCh === "─" && newCh === "│") return newCh;
+
+            // Endpoint + vertical means a junction in the same lane.
+            if ((oldCh === "│" && (newCh === "┌" || newCh === "└")) ||
+                (newCh === "│" && (oldCh === "┌" || oldCh === "└"))) return "├";
+
+            // Target/source tail has priority over a plain horizontal tail.
+            if (oldCh === "─" && newCh === "┤") return newCh;
+            if (oldCh === "┤" && newCh === "─") return oldCh;
+
+            return priority(newCh) > priority(oldCh) ? newCh : oldCh;
+        }
+
+        function put(rowIdx, colIdx, ch) {
+            if (rowIdx < 0 || rowIdx >= cells.length) return;
+            if (colIdx < 0 || colIdx > targetCol) return;
+            cells[rowIdx][colIdx] = mergeCell(cells[rowIdx][colIdx], ch);
+        }
+
+        function drawEndpoint(rowIdx, lane, isTop, isTarget) {
+            put(rowIdx, lane, isTop ? "┌" : "└");
+            for (var h = lane + 1; h < targetCol; h++) put(rowIdx, h, "─");
+            put(rowIdx, targetCol, isTarget ? "┤" : "─");
+        }
+
+        for (var dj = 0; dj < jumps.length; dj++) {
+            var jp = jumps[dj];
+            var topIsTarget = jp.target === jp.top;
+            var bottomIsTarget = jp.target === jp.bottom;
+
+            drawEndpoint(jp.top, jp.lane, true, topIsTarget);
+            for (var vr = jp.top + 1; vr < jp.bottom; vr++) put(vr, jp.lane, "│");
+            drawEndpoint(jp.bottom, jp.lane, false, bottomIsTarget);
+        }
+
+        for (var rr = 0; rr < rows.length; rr++) {
+            rows[rr].lin = cells[rr].join("").replace(/\s+$/, "");
+        }
+
 
         return rows;
     };
