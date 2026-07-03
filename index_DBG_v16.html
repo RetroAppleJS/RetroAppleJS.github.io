@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v1.4</title>
+  <title>Apple II+ Debugger Layout v1.6</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -933,7 +933,7 @@
           </div>
 
           <!-- DEBUGGER TOOLS -->
-          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden>
+          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden style="padding-top:0px;margin-top:-32px">
     
           <div class=toolbox>
             <form name="DBGboard" onsubmit="return false">
@@ -945,6 +945,32 @@
             </form>
           </div>
 
+            <!-- DEBUGGER ACTION BUTTONS -->
+            <div class="toolbox">
+              <button id="DBG_toggleWatchPaneButton" class="appbut" onclick="DBG_togglePane3();" title="Show/hide Memory Watch pane">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+              <br>
+              <button class="appbut" onclick="DBG_stub('Show memory map')" title="Show/hide Memory Map">
+                <i class="fa fa-th"></i>
+              </button>            
+            </div>
+
+            <!--  SYMBOL FILE TOOLBOX -->
+            <div class=toolbox>
+              <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
+                <div class=appbut style="color:black">add symbol table<input id="DBG_sym_fileInput" type="file" accept=".JSON">
+                </div>
+                <div class="DBG_symbolLabelWrap" style="max-width:360px;">
+                  <div class="appbut label">A2P MONITOR ROM <div class="appbut skinny">x</div></div> 
+                  <div class="appbut label">A2P APPLESOFT ROM <div class="appbut skinny">x</div></div> 
+                  <div class="appbut label">DISKII ROM <div class="appbut skinny">x</div></div>
+
+                  <div class="appbut label">DISKII ROM <div class="appbut skinny">x</div></div>
+                  <div class="appbut label">DISKII ROM <div class="appbut skinny">x</div></div>
+                 </div>
+              </div>
+            </div>
 
             <!-- RUNTIME TOOLBOX -->
             <div class="toolbox">
@@ -959,23 +985,10 @@
               </div>
             </div>
 
-            <!-- DEBUGGER ACTION BUTTONS -->
-            <div class="toolbox">
-              <button id="DBG_toggleWatchPaneButton" class="appbut" onclick="DBG_togglePane3();" title="Show/hide Memory Watch pane">
-                <i class="fa fa-eye-slash"></i>
-              </button>
-              <br>
-              <button class="appbut" onclick="DBG_stub('Show memory map')" title="Show/hide Memory Map">
-                <i class="fa fa-th"></i>
-              </button>
-              <br>
-            </div>
-
             <!-- MEMORY TOOLBOX -->
             <div class="toolbox">
               <div class="appbox" title="Memory tools">
                 MEMORY<br>
-                
                 <button class="appbut skinny" onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button>
               </div>
             </div>
@@ -1150,10 +1163,6 @@
                 <div class="DBG_footerNote" id="DBG_status">Layout prototype: debugger actions are visual placeholders only.</div>
               </div>
             </section>
-          </div>
-
-          <div class="DBG_footerNote">
-            v1.4 keeps execution-critical actions in pane headers. Display preferences live under Settings; layout/runtime/memory/export actions live under Tools.
           </div>
 
           <!-- Legacy debugger fields kept as placeholders for later integration. -->

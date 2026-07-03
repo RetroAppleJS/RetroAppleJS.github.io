@@ -1,7 +1,20 @@
 {
   "format": "RetroAppleJS-ASM-symbols",
-  "version": 1,
+  "version": 2,
   "source": "sample.S",
+  "scopeMode": "instruction-pc",
+  "scope": [
+    [
+      63488,
+      65535
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$F800",
+      "$FFFF"
+    ]
+  ],
   "count": 307,
   "symbols": [
     {

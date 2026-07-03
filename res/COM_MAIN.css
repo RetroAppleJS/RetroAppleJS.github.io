@@ -361,18 +361,41 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.75);
   }
 
-   .appbut.skinny
+  .appbut.skinny
   {
     display: inline-block;
-    padding: 2px;
+    padding: 0px;
     margin:0px;
+    border:0px;
+    box-shadow: none;
     border-radius: 3px;
     background: rgba(128,128,128,0.08);
+    font-family:'Arial';
+    font-size:11px;
   }
 
   .appbut.skinny:hover
   {
     background: rgba(255, 255, 255, 0.75);
+  }
+
+  .appbut.label
+  {
+    min-width: 0;
+    display: inline-block;
+    margin:0px;
+    border-radius: 3px;
+    background: rgba(128,128,128,0.08);
+    border:1px solid black;
+    font-family:arial;font-size:11px;
+    padding: 0px 2px 0px 2px;
+  }
+
+  .DBG_symbolLabelWrap
+  {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    min-width: 0;
   }
 
   .appbut_flash
