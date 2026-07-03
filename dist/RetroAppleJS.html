@@ -28742,8 +28742,7 @@ function ASM(options)
             var bytes = this.compileRow(row, symtab);
             row.bytes = bytes;
             row.hex = this.bytesToHex(bytes);
-            row.listing = this.formatListingLine(row, bytes);
-            listingLines.push(row.listing);
+
 
             if (row.err) errors.push({ line: row.line, statement: row.statement, err: row.err });
             if (row.warn) warnings.push({ line: row.line, statement: row.statement, warn: row.warn });
@@ -28752,6 +28751,11 @@ function ASM(options)
                 byteRecords.push({ pc: (row.pc + j) & 0xffff, val: bytes[j] & 0xff });
             }
         }
+
+        this.applyListingLineColumn(rows);
+        for (var li = 0; li < rows.length; li++) {
+            rows[li].listing = this.formatListingLine(rows[li], rows[li].bytes || []);
+            listingLines.push(rows[li].listing);
 
         var byteCodeLines = this.formatByteCodeLines(byteRecords, 8);
         return {
@@ -28783,6 +28787,8 @@ function ASM(options)
         var mnemonic = sym[mneIndex];
         var operand = oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : undefined;
         var info = this.inferAddressMode(mnemonic, operand);
+        row.mnemonic = String(mnemonic || "").toUpperCase();
+        row.addrMode = this.addrModeName[info.mode] || "";
         var bytes = [];
         if (info.err || info.opc === undefined) {
             row.err = row.err || info.err || "cannot compile mnemonic";
@@ -28920,6 +28926,83 @@ function ASM(options)
         return out.join(" ");
     };
 
+    this.getListingJumpInfo = function (row) {
+        row = row || {};
+        var mne = String(row.mnemonic || "").toUpperCase();
+        if (!mne && row.tag && row.sym) {
+            var mneIndex = this.getTokenIndexByTag(row.tag, "MNE");
+            if (mneIndex >= 0) mne = String(row.sym[mneIndex] || "").toUpperCase();
+        }
+
+        var conditional = /^(BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS)$/.test(mne);
+        var absoluteJump = (mne === "JMP" && row.addrMode === "abs");
+        if (!conditional && !absoluteJump) return null;
+        if (typeof row.val !== "number") return null;
+
+        return {
+            target: row.val & 0xffff,
+            conditional: conditional,
+            absolute: absoluteJump
+        };
+    };
+
+    this.mergeListingLineMarker = function (oldMarker, newMarker) {
+        if (!oldMarker || !String(oldMarker).trim()) return newMarker;
+        if (oldMarker === newMarker) return oldMarker;
+        return "┼──┤";
+    };
+
+    this.applyListingLineColumn = function (rows) {
+        rows = rows || [];
+        var columns = this.listingColumns || this.defaultListingColumns;
+        for (var r = 0; r < rows.length; r++) rows[r].lin = "";
+        if (!columns || columns.lin == null) return rows;
+
+        var addrToRow = {};
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            if (row.bytes && row.bytes.length && typeof row.pc === "number")
+                addrToRow[row.pc & 0xffff] = i;
+        }
+
+        function setMarker(idx, marker) {
+            if (idx < 0 || idx >= rows.length) return;
+            rows[idx].lin = this.mergeListingLineMarker(rows[idx].lin, marker);
+        }
+
+        for (var j = 0; j < rows.length; j++) {
+            var src = rows[j] || {};
+            var info = this.getListingJumpInfo(src);
+            if (!info) continue;
+
+            var targetIdx = addrToRow[info.target];
+            if (targetIdx == null) {
+                setMarker.call(this, j, info.conditional ? "├───" : "┌───");
+                continue;
+            }
+
+            if (targetIdx === j) {
+                setMarker.call(this, j, info.conditional ? "├─┤" : "┌─┐");
+                continue;
+            }
+
+            var top = Math.min(j, targetIdx);
+            var bottom = Math.max(j, targetIdx);
+            for (var k = top + 1; k < bottom; k++)
+                setMarker.call(this, k, "│  │");
+
+            if (j < targetIdx) {
+                setMarker.call(this, j, info.conditional ? "├──┐" : "┌──┐");
+                setMarker.call(this, targetIdx, info.conditional ? "└──┤" : "└──┘");
+            } else {
+                setMarker.call(this, targetIdx, info.conditional ? "┌──┤" : "┌──┐");
+                setMarker.call(this, j, info.conditional ? "├──┘" : "└──┘");
+            }
+        }
+
+        return rows;
+    };
+
     this.splitStatementAndComment = function (line) {
         var text = String(line == null ? "" : line).replace(/[“”]/g, "\"");
         var body = "";
@@ -28947,13 +29030,14 @@ function ASM(options)
         };
     };
 
-    this.defaultListingColumns = { adr: 0, code: 6, lbl: 16, ins: 25, opr: 29, com: 46 };
+    this.defaultListingColumns = { adr: 0, code: 6, lin: 15, lbl: 20, ins: 30, opr: 35, com: 51 };
     this.listingColumns = Object.assign({}, this.defaultListingColumns);
     this.listingLabelLen = options.listingLabelLen || 8;
 
     this.parseListingColumns = function (spec) {
-        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lbl: 16, ins: 25, opr: 29, com: 46 };
+        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lin: 15, lbl: 20, ins: 30, opr: 35, com: 51 };
         var parsed = {};
+        var out = {};
 
         function put(k, v) {
             v = Number(v);
@@ -28961,41 +29045,48 @@ function ASM(options)
             parsed[String(k)] = v | 0;
         }
 
-        for (var d in defaults) put(d, defaults[d]);
-
-        if (spec == null || spec === "") return parsed;
-        if (typeof spec === "object") {
+        if (spec == null || spec === "") {
+            for (var d in defaults) put(d, defaults[d]);
+        }
+        else if (typeof spec === "object") {
             for (var ok in spec) put(ok, spec[ok]);
         } else if (root.oCOM && typeof root.oCOM.parseColumnSpec === "function") {
-            parsed = root.oCOM.parseColumnSpec(spec, defaults);
-        } else {
+            parsed = root.oCOM.parseColumnSpec(spec, {});
+        }
+        else {
             var text = String(spec);
             var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
             while ((m = re.exec(text))) put(m[1], m[2]);
         }
 
+        /*
+         * Missing keys are intentional: if the user removes "com:51",
+         * the comment column is hidden.  Defaults are used only when the
+         * whole column specification is empty or missing.
+         */
+
         // Backward-friendly aliases, in case callers still use long names.
         if (parsed.address != null) parsed.adr = parsed.address;
         if (parsed.bytes != null) parsed.code = parsed.bytes;
+        if (parsed.line != null) parsed.lin = parsed.line;
+        if (parsed.jump != null) parsed.lin = parsed.jump;
         if (parsed.label != null) parsed.lbl = parsed.label;
         if (parsed.instruction != null) parsed.ins = parsed.instruction;
         if (parsed.operand != null) parsed.opr = parsed.operand;
         if (parsed.comment != null) parsed.com = parsed.comment;
 
-        return {
-            adr: Number(parsed.adr) | 0,
-            code: Number(parsed.code) | 0,
-            lbl: Number(parsed.lbl) | 0,
-            ins: Number(parsed.ins) | 0,
-            opr: Number(parsed.opr) | 0,
-            com: Number(parsed.com) | 0
-        };
+ 
     };
 
     this.setListingColumns = function (spec) {
         this.listingColumns = this.parseListingColumns(spec);
         return this.listingColumns;
     };
+    ["adr", "code", "lin", "lbl", "ins", "opr", "com"].forEach(function (k) {
+        if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
+    });
+    return out;
+     };
 
     this.cropListingField = function (text, width) {
         text = String(text == null ? "" : text);
@@ -29039,7 +29130,7 @@ function ASM(options)
         bytes = bytes || [];
         var tag = row.tag || [];
         var sym = row.sym || [];
-        var parts = { adr: "", code: "", lbl: "", ins: "", opr: "", com: "" };
+        var parts = { adr: "", code: "", lin: row.lin || "", lbl: "", ins: "", opr: "", com: "" };
         var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);
         parts.com = split.comment || "";
 
@@ -29064,12 +29155,11 @@ function ASM(options)
     this.formatListingLine = function (row, bytes) {
         var parts = this.getListingParts(row, bytes || []);
         var columns = this.listingColumns || this.defaultListingColumns;
-        var order = ["adr", "code", "lbl", "ins", "opr", "com"];
+        var order = ["adr", "code", "lin", "lbl", "ins", "opr", "com"];
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
             return root.oCOM.renderTextTableRows([parts], columns, {
                 order: order,
-                defaults: this.defaultListingColumns,
                 trimRight: true,
                 singleColumnRaw: true,
                 ellipsis: "…"
@@ -29078,15 +29168,16 @@ function ASM(options)
 
         // Local fallback for non-browser/unit-test use without COM_MAIN.js.
         var line = "";
-        var nonEmpty = order.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
+        var visibleOrder = order.filter(function (k) { return columns[k] != null; });
+        var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });        
         if (nonEmpty.length === 1) return String(parts[nonEmpty[0]]);
-        for (var i = 0; i < order.length; i++) {
-            var key = order[i];
+        for (var i = 0; i < visibleOrder.length; i++) {
+            var key = visibleOrder[i];
             if (!parts[key]) continue;
             var col = columns[key] | 0;
             var width = undefined;
-            for (var j = i + 1; j < order.length; j++) {
-                if ((columns[order[j]] | 0) > col) { width = (columns[order[j]] | 0) - col; break; }
+            for (var j = i + 1; j < visibleOrder.length; j++) {
+                if ((columns[visibleOrder[j]] | 0) > col) { width = (columns[visibleOrder[j]] | 0) - col; break; }
             }
             var text = this.cropListingField(parts[key], width);
             if (line.length < col) line = line.padEnd(col, " ");
@@ -29752,8 +29843,8 @@ function DASM()
               }
 
               .ASM_listingColumnsInput {
-                width: 245px;
-                max-width: 24vw;
+                width: 410px;
+                max-width: 36vw;
                 border: 1px solid rgba(0,0,0,0.25);
                 border-radius: 4px;
                 background: #ffffff;
@@ -30115,14 +30206,15 @@ Label1 TXA
        RTS
 .END</textarea>
                 </section>
-
                 <section class="ASM_pane">
                   <div class="ASM_paneTitle">
                     <span class="ASM_paneTitleMain">
                       <strong>Listing</strong>
                       <!--
                       <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
+                      
                       -->
+                      <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, line/jump guide, label, instruction, operand, comment. Omit a key to hide that column." spellcheck="false">
                     </span>
                     <span class="ASM_paneTitleMain">
                       <button id="ASM_exportSymbolsButton"
