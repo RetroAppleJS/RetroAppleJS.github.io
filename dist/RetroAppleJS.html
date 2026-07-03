@@ -29299,25 +29299,33 @@ function ASM(options)
         return columns;
     };
 
-    this.formatListingLine = function (row, bytes, columnsOverride) {
+    this.formatListingLine = function (row, bytes, columnsOverride) 
+    {
         var parts = this.getListingParts(row, bytes || []);
         var columns = columnsOverride || this.listingColumns || this.defaultListingColumns;
         var order = this.getListingColumnOrder();
+        var visibleOrder = order.filter(function (k) { return columns[k] != null; });
+        var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
+        var singleColumnRaw = !(nonEmpty.length === 1 && nonEmpty[0] === "lin");
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
             return root.oCOM.renderTextTableRows([parts], columns, {
                 order: order,
                 trimRight: true,
-                singleColumnRaw: true,
+                singleColumnRaw: singleColumnRaw,
                 ellipsis: "…"
             })[0];
         }
 
         // Local fallback for non-browser/unit-test use without COM_MAIN.js.
         var line = "";
-        var visibleOrder = order.filter(function (k) { return columns[k] != null; });
-        var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });        
-        if (nonEmpty.length === 1) return String(parts[nonEmpty[0]]);
+        /*
+         * Keep the legacy raw behaviour for comment-only/source-only style
+         * rows, but not for lin-only rows.  A lin-only row is usually a blank
+         * source line crossed by active jump lanes, so it must still be
+         * padded to the configured lin column.
+         */
+        if (nonEmpty.length === 1 && nonEmpty[0] !== "lin") return String(parts[nonEmpty[0]]);
         for (var i = 0; i < visibleOrder.length; i++) {
             var key = visibleOrder[i];
             if (!parts[key]) continue;
