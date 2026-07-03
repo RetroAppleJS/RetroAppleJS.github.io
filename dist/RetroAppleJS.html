@@ -2011,18 +2011,41 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.75);
   }
 
-   .appbut.skinny
+  .appbut.skinny
   {
     display: inline-block;
-    padding: 2px;
+    padding: 0px;
     margin:0px;
+    border:0px;
+    box-shadow: none;
     border-radius: 3px;
     background: rgba(128,128,128,0.08);
+    font-family:'Arial';
+    font-size:11px;
   }
 
   .appbut.skinny:hover
   {
     background: rgba(255, 255, 255, 0.75);
+  }
+
+  .appbut.label
+  {
+    min-width: 0;
+    display: inline-block;
+    margin:0px;
+    border-radius: 3px;
+    background: rgba(128,128,128,0.08);
+    border:1px solid black;
+    font-family:arial;font-size:11px;
+    padding: 0px 2px 0px 2px;
+  }
+
+  .DBG_symbolLabelWrap
+  {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    min-width: 0;
   }
 
   .appbut_flash
@@ -30097,7 +30120,9 @@ Label1 TXA
                   <div class="ASM_paneTitle">
                     <span class="ASM_paneTitleMain">
                       <strong>Listing</strong>
+                      <!--
                       <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
+                      -->
                     </span>
                     <span class="ASM_paneTitleMain">
                       <button id="ASM_exportSymbolsButton"
@@ -30446,6 +30471,64 @@ Label1 TXA
               URL.revokeObjectURL(url);
             }
 
+            function ASM_symbolScopeFromBytes()
+            {
+              var compiled = window.asmCompileResult || {};
+              var records = compiled.bytes || [];
+              var ranges = [];
+
+              if(!records.length) return ranges;
+
+              var pcs = [];
+
+              for(var i=0;i<records.length;i++)
+              {
+                if(typeof records[i].pc == "number")
+                  pcs.push(records[i].pc & 0xFFFF);
+              }
+
+              if(!pcs.length) return ranges;
+
+              pcs.sort(function(a,b){ return a-b; });
+
+              var start = pcs[0];
+              var prev  = pcs[0];
+
+              for(var j=1;j<pcs.length;j++)
+              {
+                var pc = pcs[j];
+
+                if(pc === prev || pc === ((prev + 1) & 0xFFFF))
+                {
+                  prev = pc;
+                  continue;
+                }
+
+                ranges.push([start,prev]);
+                start = pc;
+                prev  = pc;
+              }
+
+              ranges.push([start,prev]);
+
+              return ranges;
+            }
+
+            function ASM_scopeHex(scope)
+            {
+              var out = [];
+
+              for(var i=0;i<(scope || []).length;i++)
+              {
+                out.push([
+                  ASM_symbolHex(scope[i][0],2),
+                  ASM_symbolHex(scope[i][1],2)
+                ]);
+              }
+
+              return out;
+            }
+
             function ASM_symbolHex(value,bytes)
             {
               value = Number(value) & 0xFFFF;
@@ -30521,17 +30604,28 @@ Label1 TXA
 
             function ASM_exportSymbols()
             {
-              if(!window.asmCompileResult || !window.oASM)
-              {
-                if(!ASM_assembleCurrentSource()) return;
-              }
+              /*
+              * Always assemble before export, otherwise the symbol table can be stale
+              * after source edits.
+              */
+              if(!ASM_assembleCurrentSource()) return;
 
               var symbols = ASM_collectSymbols();
+              var scope = ASM_symbolScopeFromBytes();
 
               var exportObject = {
                 format: "RetroAppleJS-ASM-symbols",
-                version: 1,
+                version: 2,
                 source: ASM_currentFileName || "source.S",
+
+                /*
+                * The table is valid only when the disassembled instruction address
+                * is inside one of these ranges.
+                */
+                scopeMode: "instruction-pc",
+                scope: scope,
+                scopeHex: ASM_scopeHex(scope),
+
                 count: symbols.length,
                 symbols: symbols
               };
@@ -30540,9 +30634,17 @@ Label1 TXA
                 .replace(/\.[^.]*$/,"")
                 .replace(/[^A-Za-z0-9_.-]+/g,"_");
 
-              ASM_downloadText(base + ".symbols.json",JSON.stringify(exportObject,null,2),"application/json;charset=utf-8");
-              ASM_setStatus("Exported " + symbols.length + " symbol(s).","ok");
-            }
+              ASM_downloadText(
+                base + ".symbols.json",
+                JSON.stringify(exportObject,null,2),
+                "application/json;charset=utf-8"
+              );
+
+              ASM_setStatus(
+                "Exported " + symbols.length + " symbol(s) / " + scope.length + " scope range(s).",
+                "ok"
+              );
+            }            
 
             function ASM_showEmulatorTools()
             {
