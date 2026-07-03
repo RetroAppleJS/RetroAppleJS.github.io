@@ -720,7 +720,8 @@ function ASM(options)
         return JSON.parse(JSON.stringify(rows || []));
     };
 
-    this.buildSymbolTableFromRows = function (rows) {
+    this.buildSymbolTableFromRows = function (rows) 
+    {
         var symtab = {};
         rows = rows || [];
         for (var i = 0; i < rows.length; i++) {
@@ -767,9 +768,11 @@ function ASM(options)
         }
 
         this.applyListingLineColumn(rows);
-        for (var li = 0; li < rows.length; li++) {
+        for (var li = 0; li < rows.length; li++) 
+        {
             rows[li].listing = this.formatListingLine(rows[li], rows[li].bytes || []);
             listingLines.push(rows[li].listing);
+        }
 
         var byteCodeLines = this.formatByteCodeLines(byteRecords, 8);
         return {
@@ -960,7 +963,8 @@ function ASM(options)
         };
     };
 
-    this.mergeListingLineMarker = function (oldMarker, newMarker) {
+    this.mergeListingLineMarker = function (oldMarker, newMarker) 
+    {
         if (!oldMarker || !String(oldMarker).trim()) return newMarker;
         if (oldMarker === newMarker) return oldMarker;
         return "┼──┤";
@@ -1048,7 +1052,8 @@ function ASM(options)
     this.listingColumns = Object.assign({}, this.defaultListingColumns);
     this.listingLabelLen = options.listingLabelLen || 8;
 
-    this.parseListingColumns = function (spec) {
+    this.parseListingColumns = function (spec) 
+    {
         var defaults = this.defaultListingColumns || { adr: 0, code: 6, lin: 15, lbl: 20, ins: 30, opr: 35, com: 51 };
         var parsed = {};
         var out = {};
@@ -1089,18 +1094,20 @@ function ASM(options)
         if (parsed.operand != null) parsed.opr = parsed.operand;
         if (parsed.comment != null) parsed.com = parsed.comment;
 
- 
+        ["adr", "code", "lin", "lbl", "ins", "opr", "com"].forEach(function (k) {
+            if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
+        });
+
+        return out;
     };
 
-    this.setListingColumns = function (spec) {
+    this.setListingColumns = function (spec) 
+    {
         this.listingColumns = this.parseListingColumns(spec);
         return this.listingColumns;
     };
-    ["adr", "code", "lin", "lbl", "ins", "opr", "com"].forEach(function (k) {
-        if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
-    });
-    return out;
-     };
+ 
+    
 
     this.cropListingField = function (text, width) {
         text = String(text == null ? "" : text);
