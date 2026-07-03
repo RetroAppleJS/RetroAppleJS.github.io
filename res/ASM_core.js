@@ -768,9 +768,10 @@ function ASM(options)
         }
 
         this.applyListingLineColumn(rows);
+        var listingColumns = this.getEffectiveListingColumns(rows);
         for (var li = 0; li < rows.length; li++) 
         {
-            rows[li].listing = this.formatListingLine(rows[li], rows[li].bytes || []);
+            rows[li].listing = this.formatListingLine(rows[li], rows[li].bytes || [], listingColumns);
             listingLines.push(rows[li].listing);
         }
 
@@ -952,8 +953,6 @@ function ASM(options)
         }
 
         var conditional = /^(BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS)$/.test(mne);
-        // Only static control-flow can be visualised in a source listing.
-        // JMP (addr) is runtime-dependent and therefore deliberately excluded.
         var absoluteJump = (mne === "JMP" && row.addrMode === "abs");
         if (!conditional && !absoluteJump) return null;
         if (typeof row.val !== "number") return null;
@@ -978,6 +977,19 @@ function ASM(options)
                 addrToRow[row.pc & 0xffff] = i;
         }
 
+        /*
+         * Static jump visualisation.
+         *
+         * The line topology uses the U+2500..U+254B box drawing block.
+         * The target marker is deliberately U+25B6 BLACK RIGHT-POINTING
+         * TRIANGLE ("▶"), because it is not part of the line toolbox; it is
+         * the visual arrowhead showing where the line goes.
+         *
+         * We only draw static targets:
+         * - relative branches
+         * - absolute JMP
+         * Indirect JMP is excluded because its target depends on runtime data.
+         */
         var jumps = [];
         for (var j = 0; j < rows.length; j++) {
             var src = rows[j] || {};
@@ -985,110 +997,122 @@ function ASM(options)
             if (!info) continue;
 
             var targetIdx = addrToRow[info.target];
-            if (targetIdx == null || targetIdx === j) continue;
-
+            if (targetIdx == null) continue;
 
             jumps.push({
-                source: j,
-                target: targetIdx,
+                from: j,
+                to: targetIdx,
                 top: Math.min(j, targetIdx),
                 bottom: Math.max(j, targetIdx),
-                lane: -1,
-                conditional: info.conditional,
-                absolute: info.absolute
+                lane: -1
             });
         }
 
         if (!jumps.length) return rows;
 
-        // Allocate one stable lane per overlapping jump range.  A later range
-        // can reuse a lane only when the previous range has completely ended.
-        jumps.sort(function(a, b) {
-            return a.top - b.top || b.bottom - a.bottom || a.source - b.source;
+        /*
+         * Allocate non-overlapping vertical lanes.
+         * Longer ranges are placed first for stable outer-to-inner nesting.
+         */
+        jumps.sort(function (a, b) {
+            return a.top - b.top || b.bottom - a.bottom || a.from - b.from;
         });
 
-        var laneBottom = [];
-        for (var ji = 0; ji < jumps.length; ji++) {
-            var jump = jumps[ji];
-            var lane = -1;
-            for (var l = 0; l < laneBottom.length; l++) {
-                if (laneBottom[l] < jump.top) { lane = l; break; }
-             }
-            if (lane < 0) {
-                lane = laneBottom.length;
-                laneBottom.push(-1);
-            }
+        var active = [];
+        var maxLane = -1;
+        for (var a = 0; a < jumps.length; a++) {
+            var jump = jumps[a];
+
+            active = active.filter(function (other) {
+                return other.bottom >= jump.top;
+            });
+
+            var used = {};
+            for (var u = 0; u < active.length; u++) used[active[u].lane] = true;
+
+            var lane = 0;
+            while (used[lane]) lane++;
+
             jump.lane = lane;
-            laneBottom[lane] = jump.bottom;
+            if (lane > maxLane) maxLane = lane;
+            active.push(jump);
         }
 
-        var laneCount = laneBottom.length;
-        var targetCol = laneCount; // n+1 columns: n lanes + one target/source tail column.
-        var cells = [];
-        for (var cr = 0; cr < rows.length; cr++) {
-            cells[cr] = [];
-            for (var cc = 0; cc <= targetCol; cc++) cells[cr][cc] = " ";
+        /*
+         * n active line lanes need n+1 columns: the last column is where the
+         * target arrowhead or final horizontal line segment is drawn.
+         */
+        var width = maxLane + 2;
+        var grid = [];
+        for (var gr = 0; gr < rows.length; gr++) {
+            grid[gr] = [];
+            for (var gc = 0; gc < width; gc++) grid[gr][gc] = " ";
         }
+
         function priority(ch) {
-            switch (ch) {
-                case "│": return 5;
-                case "├":
-                case "┤":
-                case "┼": return 4;
-                case "┌":
-                case "└": return 3;
-                case "─": return 2;
-                default: return 0;
+            if (ch === "▶") return 4;
+            if (ch === "│") return 3;
+            if (ch === "┌" || ch === "┐" || ch === "└" || ch === "┘" || ch === "├" || ch === "┤" || ch === "┼") return 2;
+            if (ch === "─") return 1;
+            return 0;
+        }
+
+        function put(rowIndex, colIndex, ch) {
+            if (rowIndex < 0 || rowIndex >= grid.length) return;
+            if (colIndex < 0 || colIndex >= width) return;
+
+            var old = grid[rowIndex][colIndex];
+
+            /*
+             * Vertical continuation lines win over horizontal segments.
+             * This is the important case in rows where a horizontal jump
+             * crosses another active vertical jump lane.
+             */
+            if (old === "│" && ch === "─") return;
+            if (ch === "│" && old === "─") {
+                grid[rowIndex][colIndex] = ch;
+                return;
+            }
+
+            if (priority(ch) >= priority(old)) grid[rowIndex][colIndex] = ch;
+        }
+
+        function drawHorizontal(rowIndex, fromCol, toCol) {
+            for (var h = fromCol; h <= toCol; h++) put(rowIndex, h, "─");
+        }
+
+        for (var d = 0; d < jumps.length; d++) {
+            var jp = jumps[d];
+            var ln = jp.lane;
+
+            if (jp.from === jp.to) {
+                put(jp.from, ln, "┌");
+                drawHorizontal(jp.from, ln + 1, width - 2);
+                put(jp.from, width - 1, "▶");
+                continue;
+            }
+
+            for (var v = jp.top + 1; v < jp.bottom; v++) put(v, ln, "│");
+
+            if (jp.from < jp.to) {
+                /* Forward jump: source opens downward, target receives arrow. */
+                put(jp.from, ln, "┌");
+                drawHorizontal(jp.from, ln + 1, width - 1);
+                put(jp.to, ln, "└");
+                drawHorizontal(jp.to, ln + 1, width - 2);
+                put(jp.to, width - 1, "▶");
+            } else {
+                /* Backward jump: target receives arrow, source closes upward. */
+                put(jp.to, ln, "┌");
+                drawHorizontal(jp.to, ln + 1, width - 2);
+                put(jp.to, width - 1, "▶");
+                put(jp.from, ln, "└");
+                drawHorizontal(jp.from, ln + 1, width - 1);
             }
         }
 
-        function mergeCell(oldCh, newCh) {
-            if (!oldCh || oldCh === " ") return newCh;
-            if (!newCh || newCh === " " || oldCh === newCh) return oldCh;
-
-            // Vertical flow wins over horizontal flow.  This is the rule that
-            // makes rows like "└││─" possible: the horizontal run is suppressed
-            // wherever another jump has a vertical lane.
-            if (oldCh === "│" && newCh === "─") return oldCh;
-            if (oldCh === "─" && newCh === "│") return newCh;
-
-            // Endpoint + vertical means a junction in the same lane.
-            if ((oldCh === "│" && (newCh === "┌" || newCh === "└")) ||
-                (newCh === "│" && (oldCh === "┌" || oldCh === "└"))) return "├";
-
-            // Target/source tail has priority over a plain horizontal tail.
-            if (oldCh === "─" && newCh === "┤") return newCh;
-            if (oldCh === "┤" && newCh === "─") return oldCh;
-
-            return priority(newCh) > priority(oldCh) ? newCh : oldCh;
-        }
-
-        function put(rowIdx, colIdx, ch) {
-            if (rowIdx < 0 || rowIdx >= cells.length) return;
-            if (colIdx < 0 || colIdx > targetCol) return;
-            cells[rowIdx][colIdx] = mergeCell(cells[rowIdx][colIdx], ch);
-        }
-
-        function drawEndpoint(rowIdx, lane, isTop, isTarget) {
-            put(rowIdx, lane, isTop ? "┌" : "└");
-            for (var h = lane + 1; h < targetCol; h++) put(rowIdx, h, "─");
-            put(rowIdx, targetCol, isTarget ? "┤" : "─");
-        }
-
-        for (var dj = 0; dj < jumps.length; dj++) {
-            var jp = jumps[dj];
-            var topIsTarget = jp.target === jp.top;
-            var bottomIsTarget = jp.target === jp.bottom;
-
-            drawEndpoint(jp.top, jp.lane, true, topIsTarget);
-            for (var vr = jp.top + 1; vr < jp.bottom; vr++) put(vr, jp.lane, "│");
-            drawEndpoint(jp.bottom, jp.lane, false, bottomIsTarget);
-        }
-
-        for (var rr = 0; rr < rows.length; rr++) {
-            rows[rr].lin = cells[rr].join("").replace(/\s+$/, "");
-        }
-
+        for (var out = 0; out < rows.length; out++)
+            rows[out].lin = grid[out].join("").replace(/\s+$/, "");
 
         return rows;
     };
@@ -1245,10 +1269,54 @@ function ASM(options)
         return parts;
     };
 
-    this.formatListingLine = function (row, bytes) {
+    this.getListingColumnOrder = function () {
+        return ["adr", "code", "lin", "lbl", "ins", "opr", "com"];
+    };
+
+    this.getEffectiveListingColumns = function (rows) {
+        var base = this.listingColumns || this.defaultListingColumns || {};
+        var columns = {};
+        for (var k in base) columns[k] = base[k];
+
+        if (columns.lin == null) return columns;
+
+        var linCol = Number(columns.lin) | 0;
+        var linWidth = 0;
+        rows = rows || [];
+        for (var r = 0; r < rows.length; r++)
+            linWidth = Math.max(linWidth, String(rows[r].lin || "").length);
+
+        if (!linWidth) return columns;
+
+        /*
+         * The line renderer needs n+1 columns.  If the user's current spacing
+         * leaves too little room before the next visible listing column,
+         * shift all following columns to the right.  This avoids clipping the
+         * line guide to an ellipsis while preserving the user's chosen starts.
+         */
+        var nextCol = null;
+        for (var key in columns) {
+            if (key === "lin") continue;
+            var col = Number(columns[key]) | 0;
+            if (col > linCol && (nextCol == null || col < nextCol)) nextCol = col;
+        }
+
+        if (nextCol == null) return columns;
+
+        var available = nextCol - linCol;
+        if (linWidth <= available) return columns;
+
+        var shift = linWidth - available;
+        for (var sk in columns)
+            if (sk !== "lin" && (Number(columns[sk]) | 0) > linCol) columns[sk] = (Number(columns[sk]) | 0) + shift;
+
+        return columns;
+    };
+
+    this.formatListingLine = function (row, bytes, columnsOverride) {
         var parts = this.getListingParts(row, bytes || []);
-        var columns = this.listingColumns || this.defaultListingColumns;
-        var order = ["adr", "code", "lin", "lbl", "ins", "opr", "com"];
+        var columns = columnsOverride || this.listingColumns || this.defaultListingColumns;
+        var order = this.getListingColumnOrder();
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
             return root.oCOM.renderTextTableRows([parts], columns, {
