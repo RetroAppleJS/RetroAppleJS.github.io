@@ -30884,6 +30884,14 @@ Label1 TXA
               return "";
             }
 
+            function ASM_commentName(prefix,value,index)
+            {
+              prefix = String(prefix || "COMMENT").replace(/[^A-Za-z0-9_.-]+/g,"_");
+              if(value != null && !isNaN(Number(value)))
+                return prefix + "_" + ASM_symbolHex(value,2).replace(/^\$/,"") + "_" + index;
+              return prefix + "_" + index;
+            }
+
             function ASM_collectComments()
             {
               var out = [];
@@ -30895,16 +30903,59 @@ Label1 TXA
               for(var i=0;i<rows.length;i++)
               {
                 var row = rows[i] || {};
+                var tag = row.tag || [];
+                var sym = row.sym || [];
                 var bytes = row.bytes || [];
                 var comment = ASM_rowComment(row,asm);
                 var commentText = ASM_cleanCommentText(comment);
 
+                if(!commentText) continue;
+
+                var lblIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"LBL") : -1;
+                var pgmIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"PGM") : -1;
+                var mneIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"MNE") : -1;
+                var oprIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"OPR") : -1;
+                var isEqu = false;
+
+                if(pgmIndex >= 0 && asm.pragmaInfo)
+                {
+                  var pinfo = asm.pragmaInfo(sym[pgmIndex]);
+                  isEqu = !!(pinfo && pinfo.ref === "EQU");
+                }
+
                 /*
-                 * Export only comments that are attached to generated code/data.
-                 * Pure comment rows have no instruction address/opcode sequence
-                 * to match against, so they are not usable as debugger symbols.
+                 * EQU comments are symbol comments: they belong to the EQU
+                 * symbol value rather than to an instruction PC.
                  */
-                if(!commentText || !bytes.length || typeof row.pc != "number") continue;
+                if(isEqu && lblIndex >= 0 && sym[lblIndex])
+                {
+                  var equName = asm.getID ? asm.getID(sym[lblIndex]) : String(sym[lblIndex]).substring(0,8);
+                  var equValue = typeof row.val == "number" ? row.val : (asm.symtab ? asm.symtab[equName] : undefined);
+                  if(typeof equValue == "number" && !isNaN(equValue))
+                  {
+                    var equBytes = row.oby === 1 ? 1 : 2;
+                    out.push({
+                      name: "COMMENT_" + equName,
+                      type: "comment",
+                      targetType: "equ",
+                      symbol: equName,
+                      bytes: equBytes,
+                      value: equValue & 0xFFFF,
+                      hex: ASM_symbolHex(equValue,equBytes),
+                      line: row.line || null,
+                      comment: commentText,
+                      statement: row.statement || ""
+                    });
+                  }
+                  continue;
+                }
+
+                /*
+                 * Instruction/data comments must be matched to a generated
+                 * address and opcode/data-byte sequence.  Pure comment rows
+                 * do not have enough information for debugger-side matching.
+                 */
+                if(!bytes.length || typeof row.pc != "number") continue;
 
                 var parts = (asm && typeof asm.getListingParts == "function") ? asm.getListingParts(row,bytes) : {};
                 var value = row.pc & 0xFFFF;
@@ -30912,8 +30963,9 @@ Label1 TXA
                 var instruction = [parts.ins || row.mnemonic || "", parts.opr || ""].join(" ").replace(/\s+$/,"").replace(/^\s+/,"");
 
                 out.push({
-                  name: "COMMENT_" + ASM_symbolHex(value,2).replace(/^\$/,"") + "_" + out.length,
+                  name: ASM_commentName("COMMENT",value,out.length),
                   type: "comment",
+                  targetType: mneIndex >= 0 ? "instruction" : "data",
                   bytes: 2,
                   value: value,
                   hex: ASM_symbolHex(value,2),
@@ -30922,13 +30974,11 @@ Label1 TXA
                   statement: row.statement || "",
                   instruction: instruction,
                   mnemonic: row.mnemonic || parts.ins || "",
-                  operand: parts.opr || "",
+                  operand: parts.opr || (oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : ""),
                   opcode: bytes.slice ? bytes.slice() : [],
                   opcodeHex: opcodeHex
                 });
               }
-
-              out = out.concat(ASM_collectComments());
 
               return out;
             }
@@ -30988,6 +31038,8 @@ Label1 TXA
                   hex: ASM_symbolHex(value,bytes)
                 });
               }
+
+              out = out.concat(ASM_collectComments());
 
               return out;
             }
