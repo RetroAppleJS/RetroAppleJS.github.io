@@ -1709,6 +1709,94 @@ Label1 TXA
               return "$" + ("000" + value.toString(16).toUpperCase()).slice(-4);
             }
 
+
+            function ASM_cleanCommentText(comment)
+            {
+              comment = String(comment == null ? "" : comment).trim();
+              return comment.replace(/^;\s*/,"");
+            }
+
+            function ASM_rowComment(row,asm)
+            {
+              row = row || {};
+              asm = asm || window.oASM;
+
+              if(asm && typeof asm.splitStatementAndComment == "function")
+              {
+                var split = asm.splitStatementAndComment(row.source != null ? row.source : row.statement);
+                return split && split.comment ? String(split.comment) : "";
+              }
+
+              var src = String(row.source != null ? row.source : row.statement || "");
+              var quote = "";
+              var escaped = false;
+
+              for(var i=0;i<src.length;i++)
+              {
+                var ch = src.charAt(i);
+                if(escaped) { escaped = false; continue; }
+                if(ch == "\\") { escaped = true; continue; }
+                if(quote)
+                {
+                  if(ch == quote) quote = "";
+                  continue;
+                }
+                if(ch == "'" || ch == '"') { quote = ch; continue; }
+                if(ch == ";") return src.substring(i);
+              }
+
+              return "";
+            }
+
+            function ASM_collectComments()
+            {
+              var out = [];
+              var rows = window.asmCompileResult && window.asmCompileResult.rows ? window.asmCompileResult.rows : [];
+              var asm = window.oASM;
+
+              if(!asm) return out;
+
+              for(var i=0;i<rows.length;i++)
+              {
+                var row = rows[i] || {};
+                var bytes = row.bytes || [];
+                var comment = ASM_rowComment(row,asm);
+                var commentText = ASM_cleanCommentText(comment);
+
+                /*
+                 * Export only comments that are attached to generated code/data.
+                 * Pure comment rows have no instruction address/opcode sequence
+                 * to match against, so they are not usable as debugger symbols.
+                 */
+                if(!commentText || !bytes.length || typeof row.pc != "number") continue;
+
+                var parts = (asm && typeof asm.getListingParts == "function") ? asm.getListingParts(row,bytes) : {};
+                var value = row.pc & 0xFFFF;
+                var opcodeHex = asm && typeof asm.bytesToHex == "function" ? asm.bytesToHex(bytes).toLowerCase() : String(row.hex || "").toLowerCase();
+                var instruction = [parts.ins || row.mnemonic || "", parts.opr || ""].join(" ").replace(/\s+$/,"").replace(/^\s+/,"");
+
+                out.push({
+                  name: "COMMENT_" + ASM_symbolHex(value,2).replace(/^\$/,"") + "_" + out.length,
+                  type: "comment",
+                  bytes: 2,
+                  value: value,
+                  hex: ASM_symbolHex(value,2),
+                  line: row.line || null,
+                  comment: commentText,
+                  statement: row.statement || "",
+                  instruction: instruction,
+                  mnemonic: row.mnemonic || parts.ins || "",
+                  operand: parts.opr || "",
+                  opcode: bytes.slice ? bytes.slice() : [],
+                  opcodeHex: opcodeHex
+                });
+              }
+
+              out = out.concat(ASM_collectComments());
+
+              return out;
+            }
+
             function ASM_collectSymbols()
             {
               var out = [];
