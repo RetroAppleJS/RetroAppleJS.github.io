@@ -1,0 +1,1179 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "DISKII_PROM.S",
+  "scopeMode": "instruction-pc",
+  "scope": [
+    [
+      50688,
+      50938
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$C600",
+      "$C6FA"
+    ]
+  ],
+  "count": 117,
+  "symbols": [
+    {
+      "name": "LSLOT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 43,
+      "hex": "$2B"
+    },
+    {
+      "name": "SLOTIO",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49280,
+      "hex": "$C080"
+    },
+    {
+      "name": "M.WAIT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 64680,
+      "hex": "$FCA8"
+    },
+    {
+      "name": "DOS.1",
+      "type": "equ",
+      "bytes": 1,
+      "value": 60,
+      "hex": "$3C"
+    },
+    {
+      "name": "DOS.2",
+      "type": "equ",
+      "bytes": 1,
+      "value": 61,
+      "hex": "$3D"
+    },
+    {
+      "name": "DOS.3",
+      "type": "equ",
+      "bytes": 1,
+      "value": 64,
+      "hex": "$40"
+    },
+    {
+      "name": "DOS.4",
+      "type": "equ",
+      "bytes": 1,
+      "value": 65,
+      "hex": "$41"
+    },
+    {
+      "name": "L01",
+      "type": "label",
+      "bytes": 2,
+      "value": 50694,
+      "hex": "$C606"
+    },
+    {
+      "name": "L02",
+      "type": "label",
+      "bytes": 2,
+      "value": 50708,
+      "hex": "$C614"
+    },
+    {
+      "name": "L03",
+      "type": "label",
+      "bytes": 2,
+      "value": 50718,
+      "hex": "$C61E"
+    },
+    {
+      "name": "L04",
+      "type": "label",
+      "bytes": 2,
+      "value": 50749,
+      "hex": "$C63D"
+    },
+    {
+      "name": "L05",
+      "type": "label",
+      "bytes": 2,
+      "value": 50780,
+      "hex": "$C65C"
+    },
+    {
+      "name": "L06",
+      "type": "label",
+      "bytes": 2,
+      "value": 50781,
+      "hex": "$C65D"
+    },
+    {
+      "name": "L07",
+      "type": "label",
+      "bytes": 2,
+      "value": 50782,
+      "hex": "$C65E"
+    },
+    {
+      "name": "L08",
+      "type": "label",
+      "bytes": 2,
+      "value": 50787,
+      "hex": "$C663"
+    },
+    {
+      "name": "L09",
+      "type": "label",
+      "bytes": 2,
+      "value": 50791,
+      "hex": "$C667"
+    },
+    {
+      "name": "L10",
+      "type": "label",
+      "bytes": 2,
+      "value": 50801,
+      "hex": "$C671"
+    },
+    {
+      "name": "L11",
+      "type": "label",
+      "bytes": 2,
+      "value": 50819,
+      "hex": "$C683"
+    },
+    {
+      "name": "L12",
+      "type": "label",
+      "bytes": 2,
+      "value": 50821,
+      "hex": "$C685"
+    },
+    {
+      "name": "L13",
+      "type": "label",
+      "bytes": 2,
+      "value": 50823,
+      "hex": "$C687"
+    },
+    {
+      "name": "L14",
+      "type": "label",
+      "bytes": 2,
+      "value": 50831,
+      "hex": "$C68F"
+    },
+    {
+      "name": "L15",
+      "type": "label",
+      "bytes": 2,
+      "value": 50854,
+      "hex": "$C6A6"
+    },
+    {
+      "name": "L16",
+      "type": "label",
+      "bytes": 2,
+      "value": 50856,
+      "hex": "$C6A8"
+    },
+    {
+      "name": "L17",
+      "type": "label",
+      "bytes": 2,
+      "value": 50858,
+      "hex": "$C6AA"
+    },
+    {
+      "name": "L18",
+      "type": "label",
+      "bytes": 2,
+      "value": 50874,
+      "hex": "$C6BA"
+    },
+    {
+      "name": "L19",
+      "type": "label",
+      "bytes": 2,
+      "value": 50876,
+      "hex": "$C6BC"
+    },
+    {
+      "name": "L20",
+      "type": "label",
+      "bytes": 2,
+      "value": 50891,
+      "hex": "$C6CB"
+    },
+    {
+      "name": "L21",
+      "type": "label",
+      "bytes": 2,
+      "value": 50899,
+      "hex": "$C6D3"
+    },
+    {
+      "name": "L22",
+      "type": "label",
+      "bytes": 2,
+      "value": 50903,
+      "hex": "$C6D7"
+    },
+    {
+      "name": "L23",
+      "type": "label",
+      "bytes": 2,
+      "value": 50905,
+      "hex": "$C6D9"
+    },
+    {
+      "name": "COMMENT_LSLOT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 43,
+      "comment": "Last booted slot number * 16"
+    },
+    {
+      "name": "COMMENT_SLOTIO",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49280,
+      "comment": "Slot I/O"
+    },
+    {
+      "name": "COMMENT_M.WAIT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 64680,
+      "comment": "ROM WAIT"
+    },
+    {
+      "name": "COMMENT_DOS.1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 60,
+      "comment": "VARIABLE 1"
+    },
+    {
+      "name": "COMMENT_DOS.2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 61,
+      "comment": "VARIABLE 2"
+    },
+    {
+      "name": "COMMENT_DOS.3",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 64,
+      "comment": "VARIABLE 3"
+    },
+    {
+      "name": "COMMENT_DOS.4",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 65,
+      "comment": "VARIABLE 4"
+    },
+    {
+      "name": "COMMENT_C600_7",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50688,
+      "comment": "32",
+      "opcode": [
+        162,
+        32
+      ]
+    },
+    {
+      "name": "COMMENT_C606_8",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50694,
+      "comment": "Store X in DOS register",
+      "opcode": [
+        134,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C609_9",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50697,
+      "comment": "*2",
+      "opcode": [
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_C60A_10",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50698,
+      "comment": "AND ACC with DOS register",
+      "opcode": [
+        36,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C60C_11",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50700,
+      "comment": "JUMP IF ZERO",
+      "opcode": [
+        240,
+        16
+      ]
+    },
+    {
+      "name": "COMMENT_C60E_12",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50702,
+      "comment": "OR ACC with DOS register >> put back in ACC",
+      "opcode": [
+        5,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C610_13",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50704,
+      "comment": "%11111111 invert all ACC bits",
+      "opcode": [
+        73,
+        255
+      ]
+    },
+    {
+      "name": "COMMENT_C612_14",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50706,
+      "comment": "%01111110 remove first & last bit of ACC",
+      "opcode": [
+        41,
+        126
+      ]
+    },
+    {
+      "name": "COMMENT_C61A_15",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50714,
+      "comment": "write in lookup table",
+      "opcode": [
+        157,
+        86,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C621_16",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50721,
+      "comment": "RTS (in ROM)",
+      "opcode": [
+        32,
+        88,
+        255
+      ]
+    },
+    {
+      "name": "COMMENT_C624_17",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50724,
+      "comment": "Put status register in X",
+      "opcode": [
+        186
+      ]
+    },
+    {
+      "name": "COMMENT_C625_18",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50725,
+      "comment": "Stack",
+      "opcode": [
+        189,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "COMMENT_C62B_19",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50731,
+      "comment": "*16 (move lower nibble to upper)",
+      "opcode": [
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_C62F_20",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50735,
+      "comment": "TRIGGER I/O",
+      "opcode": [
+        189,
+        142,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C632_21",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50738,
+      "comment": "TRIGGER I/O",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C635_22",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50741,
+      "comment": "TRIGGER I/O",
+      "opcode": [
+        189,
+        138,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C638_23",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50744,
+      "comment": "TRIGGER I/O",
+      "opcode": [
+        189,
+        137,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C63B_24",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50747,
+      "comment": "80",
+      "opcode": [
+        160,
+        80
+      ]
+    },
+    {
+      "name": "COMMENT_C63D_25",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50749,
+      "comment": "TRIGGER I/O",
+      "opcode": [
+        189,
+        128,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C641_26",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50753,
+      "comment": "3",
+      "opcode": [
+        41,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C643_27",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50755,
+      "comment": "*2",
+      "opcode": [
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_C647_28",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50759,
+      "comment": "TRIGGER I/O",
+      "opcode": [
+        189,
+        129,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C64A_29",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50762,
+      "comment": "LOAD WAITING TIME",
+      "opcode": [
+        169,
+        86
+      ]
+    },
+    {
+      "name": "COMMENT_C64C_30",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50764,
+      "comment": "WAIT 1.9664s",
+      "opcode": [
+        32,
+        168,
+        252
+      ]
+    },
+    {
+      "name": "COMMENT_C650_31",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50768,
+      "comment": "LOOP #$50 (80) times",
+      "opcode": [
+        16,
+        235
+      ]
+    },
+    {
+      "name": "COMMENT_C652_32",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50770,
+      "comment": "LORES cursor row address (LO)",
+      "opcode": [
+        133,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C654_33",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50772,
+      "comment": "DOS register",
+      "opcode": [
+        133,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C656_34",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50774,
+      "comment": "DOS register",
+      "opcode": [
+        133,
+        65
+      ]
+    },
+    {
+      "name": "COMMENT_C65A_35",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50778,
+      "comment": "LORES cursor row address (HI)",
+      "opcode": [
+        133,
+        39
+      ]
+    },
+    {
+      "name": "COMMENT_C65D_36",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50781,
+      "comment": "PUSH Processor status on stack",
+      "opcode": [
+        8
+      ]
+    },
+    {
+      "name": "COMMENT_C65E_37",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50782,
+      "comment": "LOAD I/O",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C661_38",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50785,
+      "comment": "LOOP IF NEG",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C665_39",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50789,
+      "comment": "LOOP IF NEG",
+      "opcode": [
+        208,
+        247
+      ]
+    },
+    {
+      "name": "COMMENT_C667_40",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50791,
+      "comment": "LOAD I/O",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C66A_41",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50794,
+      "comment": "LOOP IF POS",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C66E_42",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50798,
+      "comment": "LOOP IF NEG",
+      "opcode": [
+        208,
+        243
+      ]
+    },
+    {
+      "name": "COMMENT_C671_43",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50801,
+      "comment": "LOAD I/O",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C674_44",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50804,
+      "comment": "LOOP IF POS",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C678_45",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50808,
+      "comment": "JUMP IF = 150",
+      "opcode": [
+        240,
+        9
+      ]
+    },
+    {
+      "name": "COMMENT_C67A_46",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50810,
+      "comment": "Overwrite processor status register with stack value",
+      "opcode": [
+        40
+      ]
+    },
+    {
+      "name": "COMMENT_C67B_47",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50811,
+      "comment": "LOOP IF CARRY CLEAR",
+      "opcode": [
+        144,
+        223
+      ]
+    },
+    {
+      "name": "COMMENT_C67F_48",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50815,
+      "comment": "JUMP IF EQUAL",
+      "opcode": [
+        240,
+        37
+      ]
+    },
+    {
+      "name": "COMMENT_C681_49",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50817,
+      "comment": "LOOP IF NOT EQUAL",
+      "opcode": [
+        208,
+        217
+      ]
+    },
+    {
+      "name": "COMMENT_C685_50",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50821,
+      "comment": "DOS register",
+      "opcode": [
+        133,
+        64
+      ]
+    },
+    {
+      "name": "COMMENT_C687_51",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50823,
+      "comment": "LOAD I/O",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C68A_52",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50826,
+      "comment": "Keep reading until neg value found",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C68F_53",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50831,
+      "comment": "LOAD I/O",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C692_54",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50834,
+      "comment": "Keep reading until neg value found",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C694_55",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50836,
+      "comment": "DOS register",
+      "opcode": [
+        37,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C697_56",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50839,
+      "comment": "LOOP IF NOT EQUAL",
+      "opcode": [
+        208,
+        236
+      ]
+    },
+    {
+      "name": "COMMENT_C699_57",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50841,
+      "comment": "PULL processor status from stack",
+      "opcode": [
+        40
+      ]
+    },
+    {
+      "name": "COMMENT_C69A_58",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50842,
+      "comment": "CMP DOS register",
+      "opcode": [
+        197,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C69C_59",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50844,
+      "comment": "LOOP IF NOT EQUAL",
+      "opcode": [
+        208,
+        190
+      ]
+    },
+    {
+      "name": "COMMENT_C69E_60",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50846,
+      "comment": "DOS REGISTER",
+      "opcode": [
+        165,
+        64
+      ]
+    },
+    {
+      "name": "COMMENT_C6A0_61",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50848,
+      "comment": "DOS REGISTER",
+      "opcode": [
+        197,
+        65
+      ]
+    },
+    {
+      "name": "COMMENT_C6A2_62",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50850,
+      "comment": "LOOP IF NOT EQUAL",
+      "opcode": [
+        208,
+        184
+      ]
+    },
+    {
+      "name": "COMMENT_C6A4_63",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50852,
+      "comment": "LOOP IF CARRY SET",
+      "opcode": [
+        176,
+        183
+      ]
+    },
+    {
+      "name": "COMMENT_C6A6_64",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50854,
+      "comment": "POINTER",
+      "opcode": [
+        160,
+        86
+      ]
+    },
+    {
+      "name": "COMMENT_C6A8_65",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50856,
+      "comment": "DOS REGISTER",
+      "opcode": [
+        132,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6AA_66",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50858,
+      "comment": "LOAD I/O",
+      "opcode": [
+        188,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C6AF_67",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50863,
+      "comment": "Plain memory",
+      "opcode": [
+        89,
+        214,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_C6B2_68",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50866,
+      "comment": "DOS REGISTER",
+      "opcode": [
+        164,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6B5_69",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50869,
+      "comment": "Plain memory",
+      "opcode": [
+        153,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C6BA_70",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50874,
+      "comment": "DOS REGISTER",
+      "opcode": [
+        132,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6BC_71",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50876,
+      "comment": "LOAD I/O",
+      "opcode": [
+        188,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C6C1_72",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50881,
+      "comment": "Plain memory",
+      "opcode": [
+        89,
+        214,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_C6C4_73",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50884,
+      "comment": "DOS REGISTER",
+      "opcode": [
+        164,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6C6_74",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50886,
+      "comment": "LORES cursor row address (LO)",
+      "opcode": [
+        145,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C6CB_75",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50891,
+      "comment": "LOAD I/O",
+      "opcode": [
+        188,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C6D0_76",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50896,
+      "comment": "Plain memory",
+      "opcode": [
+        89,
+        214,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_C6DA_77",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50906,
+      "comment": "LOOP 86 times (delay)",
+      "opcode": [
+        48,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C6DC_78",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50908,
+      "comment": "LORES cursor row address (LO)",
+      "opcode": [
+        177,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C6DE_79",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50910,
+      "comment": "Plain memory",
+      "opcode": [
+        94,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C6E2_80",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50914,
+      "comment": "Plain memory",
+      "opcode": [
+        94,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C6E6_81",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50918,
+      "comment": "LORES cursor row address (LO)",
+      "opcode": [
+        145,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C6EB_82",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50923,
+      "comment": "LORES cursor row address (HI)",
+      "opcode": [
+        230,
+        39
+      ]
+    },
+    {
+      "name": "COMMENT_C6ED_83",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50925,
+      "comment": "DOS register",
+      "opcode": [
+        230,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C6EF_84",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50927,
+      "comment": "DOS register",
+      "opcode": [
+        165,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C6F1_85",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50929,
+      "comment": "Beginning of BASIC Program",
+      "opcode": [
+        205,
+        0,
+        8
+      ]
+    },
+    {
+      "name": "COMMENT_C6F8_86",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50936,
+      "comment": "Beginning of BASIC Program",
+      "opcode": [
+        76,
+        1,
+        8
+      ]
+    }
+  ]
+}
