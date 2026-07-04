@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v1.3</title>
+  <title>Apple II+ Debugger Layout v1.7</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -89,6 +89,10 @@
       box-sizing: border-box;
     }
 
+    #DBG_root {
+      position: relative;
+    }
+
     .DBG_topToolbar {
       display: flex;
       align-items: center;
@@ -157,6 +161,17 @@
       background: #ffffff;
       color: #000000;
       font: 11px/1.2 courier, monospace;
+    }
+
+    .DBG_popupHost input.DBG_listingColumnsInput {
+      width: 310px;
+    }
+
+    .DBG_byteCodeInfo {
+      color: #000000;
+      font-family: arial;
+      font-size: 11px;
+      white-space: nowrap;
     }
 
     .DBG_paneHost {
@@ -375,6 +390,200 @@
       font-weight: 700;
     }
 
+
+    /*
+     * Debugger light/dark theme.
+     * Light mode is the existing default: pane bodies use the shared
+     * .dotmatrix_bck pattern from COM_MAIN.css.
+     * Dark mode removes that image and makes pane bodies plain black.
+     */
+    #tab3.DBG_dark {
+      background-color: #0d1117;
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_paneTitle,
+    #tab3.DBG_dark .com-pane-title.DBG_paneTitle {
+      background: #111820;
+      border-color: #30363d;
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_paneTitleMain strong,
+    #tab3.DBG_dark .DBG_paneInfo {
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .dotmatrix_bck {
+      background-color: #000000 !important;
+      background-image: none !important;
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_paneBody {
+      border-color: #30363d;
+    }
+
+    #tab3.DBG_dark .DBG_paneBody pre,
+    #tab3.DBG_dark .DBG_watchTable,
+    #tab3.DBG_dark .DBG_registerCell span,
+    #tab3.DBG_dark .DBG_flagCell span,
+    #tab3.DBG_dark .DBG_watchCell span {
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_registerCell,
+    #tab3.DBG_dark .DBG_flagCell,
+    #tab3.DBG_dark .DBG_watchCell,
+    #tab3.DBG_dark .DBG_watchTable td,
+    #tab3.DBG_dark .DBG_footerNote {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.16);
+      color: #e6edf3;
+    }
+
+    #tab3.DBG_dark .DBG_registerCell label,
+    #tab3.DBG_dark .DBG_flagCell label,
+    #tab3.DBG_dark .DBG_watchCell label,
+    #tab3.DBG_dark .DBG_watchTable th {
+      color: rgba(230,237,243,0.72);
+    }
+
+    #tab3.DBG_dark .DBG_listingLineCurrent,
+    #tab3.DBG_dark .DBG_traceLineCurrent,
+    #tab3.DBG_dark .DBG_changed,
+    #tab3.DBG_dark .DBG_changed span {
+      color: #000000 !important;
+    }
+
+    #tab3.DBG_dark .DBG_breakpoint {
+      color: #ff7a7a;
+    }
+
+
+    .DBG_symbolBox {
+      width: 360px;
+      max-width: 360px;
+      height: auto;
+      min-height: 63px;
+      padding: 0px 6px;
+      text-align: left;
+      box-sizing: border-box;
+      overflow: visible;
+    }
+
+    .DBG_symbolLabelWrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 2px 3px;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      margin-top: 2px;
+    }
+
+    .DBG_symbolLabelWrap .appbut.label {
+      float: none !important;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      width: auto !important;
+      min-width: 0;
+      height: auto;
+      min-height: 16px;
+      line-height: 14px;
+      margin: 0px;
+      border-radius: 3px;
+      background: rgba(128,128,128,0.08);
+      border: 1px solid black;
+      color: #000000;
+      font-family: arial;
+      font-size: 11px;
+      padding: 0px 2px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    .DBG_symbolLabelWrap .appbut.label:hover {
+      background: rgba(255,255,255,0.75);
+    }
+
+    .DBG_symbolLabelWrap .DBG_symbolRemove {
+      float: none !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px !important;
+      min-width: 14px;
+      height: 14px;
+      min-height: 14px;
+      line-height: 12px;
+      margin: 0px;
+      padding: 0px;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .DBG_symbolOverlapBack {
+      position: fixed;
+      left: 0px;
+      top: 0px;
+      right: 0px;
+      bottom: 0px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.28);
+    }
+
+    .DBG_symbolOverlapBack[hidden] {
+      display: none !important;
+    }
+
+    .DBG_symbolOverlapBox {
+      width: 520px;
+      max-width: calc(100vw - 40px);
+      padding: 10px;
+      border: 1px solid rgba(0,0,0,0.42);
+      border-radius: 8px;
+      background: #f4f4f4;
+      color: #000000;
+      box-shadow: 0px 4px 18px rgba(0,0,0,0.35);
+      font-family: arial, sans-serif;
+      font-size: 12px;
+    }
+
+    .DBG_symbolOverlapBox strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .DBG_symbolOverlapBox pre {
+      max-height: 220px;
+      margin: 6px 0px;
+      padding: 6px;
+      overflow: auto;
+      border: 1px solid rgba(0,0,0,0.20);
+      border-radius: 4px;
+      background: #ffffff;
+      color: #000000;
+      font-family: courier, monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+    }
+
+    .DBG_symbolOverlapButtons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
     .DBG_footerNote {
       margin: 8px 0px 0px 0px;
       padding: 6px 9px;
@@ -417,9 +626,623 @@
   <script>
     var DBG_oPANE = null;
     var DBG_running = false;
+    var DBG_RAM_SIZE = 0x10000;
+    var DBG_RAM = new Uint8Array(DBG_RAM_SIZE);
+    var DBG_currentByteCodeText = "";
+    var DBG_defaultListingColumns = {adr:0,code:6,lbl:15,ins:25,opr:30,com:46};
+    var DBG_darkMode = false;
+    var DBG_symbolTables = [];
+    var DBG_symbolTablesById = {};
+    var DBG_symbolAddressIndex = new Array(DBG_RAM_SIZE);
+    var DBG_pendingSymbolImport = null;
+    var DBG_nextSymbolTableId = 1;
+
 
     function DBG_el(id) {
       return document.getElementById(id);
+    }
+
+    function DBG_hexByte(v) {
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexByte === "function") return oCOM.getHexByte(v & 0xff);
+      return ("0" + ((v & 0xff).toString(16).toUpperCase())).slice(-2);
+    }
+
+    function DBG_hexWord(v) {
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexWord === "function") return oCOM.getHexWord(v & 0xffff);
+      return ("000" + ((v & 0xffff).toString(16).toUpperCase())).slice(-4);
+    }
+
+    function DBG_decodeDASMText(text) {
+      return String(text || "")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function DBG_parseListingColumns(text) {
+      var cfg = Object.assign({}, DBG_defaultListingColumns);
+      String(text || "").replace(/([a-zA-Z_][\w]*)\s*:\s*(-?\d+)/g, function(_, key, val) {
+        if (Object.prototype.hasOwnProperty.call(cfg, key)) cfg[key] = parseInt(val, 10) || 0;
+        return "";
+      });
+      return cfg;
+    }
+
+    function DBG_listingColumnsValue() {
+      var input = DBG_el("DBG_listingColumnsInput");
+      return input ? input.value : "{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}";
+    }
+
+    function DBG_cropListingField(text, width) {
+      text = String(text == null ? "" : text);
+      if (width == null || width <= 0 || text.length <= width) return text;
+      if (width <= 1) return text.slice(0, width);
+      return text.slice(0, width - 1) + "…";
+    }
+
+    function DBG_formatListingParts(parts) {
+      var columns = DBG_parseListingColumns(DBG_listingColumnsValue());
+      var order = ["adr","code","lbl","ins","opr","com"];
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.renderTextTableRows === "function") {
+        return oCOM.renderTextTableRows([parts], columns, {
+          order: order,
+          defaults: DBG_defaultListingColumns,
+          trimRight: true,
+          singleColumnRaw: true,
+          ellipsis: "…"
+        })[0];
+      }
+
+      var line = "";
+      for (var i = 0; i < order.length; i++) {
+        var key = order[i];
+        if (!parts[key]) continue;
+        var col = columns[key] | 0;
+        var width;
+        for (var j = i + 1; j < order.length; j++) {
+          if ((columns[order[j]] | 0) > col) { width = (columns[order[j]] | 0) - col; break; }
+        }
+        var text = DBG_cropListingField(parts[key], width);
+        if (line.length < col) line = line.padEnd(col, " ");
+        else if (line.length > col) line += " ";
+        line += text;
+      }
+      return line.replace(/\s+$/, "");
+    }
+
+    function DBG_countByteCodeText(text) {
+      return DBG_parseByteCodeText(text).records.length;
+    }
+
+    function DBG_parseByteCodeText(text) {
+      var lines = String(text || "").split(/\r\n|\r|\n/);
+      var records = [];
+      var errors = [];
+      var currentAddr = null;
+
+      for (var lineNo = 0; lineNo < lines.length; lineNo++) {
+        var raw = lines[lineNo];
+        var clean = raw.replace(/;.*/, "").replace(/\/\/.*$/, "").trim();
+        if (!clean) continue;
+
+        var addrMatch = clean.match(/^\$?([0-9A-Fa-f]{4})\s*:?[\s,]*(.*)$/);
+        var rest = clean;
+
+        if (addrMatch) {
+          currentAddr = parseInt(addrMatch[1], 16) & 0xffff;
+          rest = addrMatch[2] || "";
+        }
+
+        var bytes = rest.match(/\b[0-9A-Fa-f]{2}\b/g);
+        if (!bytes || !bytes.length) continue;
+
+        if (currentAddr === null) {
+          errors.push("Line " + (lineNo + 1) + ": byte data has no address prefix.");
+          continue;
+        }
+
+        for (var i = 0; i < bytes.length; i++) {
+          records.push({pc: currentAddr, val: parseInt(bytes[i], 16) & 0xff, line: lineNo + 1});
+          currentAddr = (currentAddr + 1) & 0xffff;
+        }
+      }
+
+      return {records: records, errors: errors};
+    }
+
+    function DBG_updateByteCodeInfo(byteCount, extraText) {
+      var info = DBG_el("DBG_byteCodeInfo");
+      if (info) info.textContent = (byteCount || 0) + " bytes" + (extraText ? " / " + extraText : "");
+    }
+
+    function DBG_syncByteCodeFromBoard() {
+      var board = DBG_el("DBG_boardText");
+      DBG_currentByteCodeText = board ? board.value : "";
+      var parsed = DBG_parseByteCodeText(DBG_currentByteCodeText);
+      DBG_updateByteCodeInfo(parsed.records.length, parsed.errors.length ? parsed.errors.length + " parse warning(s)" : "");
+      return parsed;
+    }
+
+    function DBG_clearBoard() {
+      DBG_currentByteCodeText = "";
+      var board = DBG_el("DBG_boardText");
+      if (board) board.value = "";
+      DBG_updateByteCodeInfo(0);
+    }
+
+
+    function DBG_statusText(text) {
+      var status = DBG_el("DBG_status");
+      if (status) status.textContent = text;
+    }
+
+    function DBG_rangeListNormalize(scope) {
+      var ranges = [];
+      for (var i = 0; i < (scope || []).length; i++) {
+        var r = scope[i] || [];
+        if (r.length < 2) continue;
+        var a = Number(r[0]);
+        var b = Number(r[1]);
+        if (isNaN(a) || isNaN(b)) continue;
+        a = a & 0xffff;
+        b = b & 0xffff;
+        if (b < a) { var t = a; a = b; b = t; }
+        ranges.push([a,b]);
+      }
+
+      ranges.sort(function(x,y){ return x[0] - y[0] || x[1] - y[1]; });
+
+      var out = [];
+      for (var j = 0; j < ranges.length; j++) {
+        var cur = ranges[j];
+        if (!out.length || cur[0] > out[out.length - 1][1] + 1) {
+          out.push(cur.slice());
+        } else if (cur[1] > out[out.length - 1][1]) {
+          out[out.length - 1][1] = cur[1];
+        }
+      }
+      return out;
+    }
+
+    function DBG_rangeListSubtract(baseRanges, cutRanges) {
+      var base = DBG_rangeListNormalize(baseRanges);
+      var cuts = DBG_rangeListNormalize(cutRanges);
+      var out = [];
+
+      for (var i = 0; i < base.length; i++) {
+        var fragments = [base[i].slice()];
+
+        for (var j = 0; j < cuts.length && fragments.length; j++) {
+          var cut = cuts[j];
+          var next = [];
+
+          for (var k = 0; k < fragments.length; k++) {
+            var f = fragments[k];
+
+            if (cut[1] < f[0] || cut[0] > f[1]) {
+              next.push(f);
+              continue;
+            }
+
+            if (cut[0] > f[0]) next.push([f[0], cut[0] - 1]);
+            if (cut[1] < f[1]) next.push([cut[1] + 1, f[1]]);
+          }
+
+          fragments = next;
+        }
+
+        for (var n = 0; n < fragments.length; n++) out.push(fragments[n]);
+      }
+
+      return DBG_rangeListNormalize(out);
+    }
+
+    function DBG_rangeListHex(ranges) {
+      var out = [];
+      for (var i = 0; i < (ranges || []).length; i++)
+        out.push("$" + DBG_hexWord(ranges[i][0]) + "-$" + DBG_hexWord(ranges[i][1]));
+      return out;
+    }
+
+    function DBG_symbolSourceName(table) {
+      var s = table && table.source ? String(table.source) : "";
+      if (!s && table && table.filename) s = String(table.filename);
+      return s || "symbol table";
+    }
+
+    function DBG_normalizeSymbolTable(raw, fileName) {
+      if (!raw || typeof raw !== "object") throw new Error("Invalid JSON symbol table.");
+      if (raw.format && raw.format !== "RetroAppleJS-ASM-symbols")
+        throw new Error("Unsupported symbol table format: " + raw.format);
+
+      var scope = DBG_rangeListNormalize(raw.scope || []);
+      if (!scope.length) throw new Error("Symbol table has no usable scope.");
+
+      var table = {
+        id: "symtab_" + (DBG_nextSymbolTableId++),
+        source: DBG_symbolSourceName(raw) || fileName || "symbol table",
+        filename: fileName || "",
+        format: raw.format || "",
+        version: raw.version || 0,
+        scopeMode: raw.scopeMode || "instruction-pc",
+        scope: scope,
+        effectiveScope: scope.slice(),
+        raw: raw,
+        symbols: Array.isArray(raw.symbols) ? raw.symbols : [],
+        byValue: {1:{}, 2:{}},
+        labelsByAddress: {}
+      };
+
+      for (var i = 0; i < table.symbols.length; i++) {
+        var sym = table.symbols[i] || {};
+        if (typeof sym.value !== "number") continue;
+
+        var value = sym.value & 0xffff;
+        var bytes = sym.bytes === 1 ? 1 : 2;
+
+        if (!table.byValue[bytes][value]) table.byValue[bytes][value] = [];
+        table.byValue[bytes][value].push(sym);
+
+        if (sym.type === "label") {
+          if (!table.labelsByAddress[value]) table.labelsByAddress[value] = [];
+          table.labelsByAddress[value].push(sym);
+        }
+      }
+
+      return table;
+    }
+
+    function DBG_rebuildSymbolIndex() {
+      DBG_symbolTablesById = {};
+      DBG_symbolAddressIndex = new Array(DBG_RAM_SIZE);
+
+      for (var i = 0; i < DBG_symbolTables.length; i++) {
+        var table = DBG_symbolTables[i];
+        DBG_symbolTablesById[table.id] = table;
+
+        var ranges = table.effectiveScope || [];
+        for (var r = 0; r < ranges.length; r++) {
+          for (var a = ranges[r][0]; a <= ranges[r][1]; a++) {
+            var pc = a & 0xffff;
+            if (!DBG_symbolAddressIndex[pc]) DBG_symbolAddressIndex[pc] = [];
+            if (DBG_symbolAddressIndex[pc].indexOf(table.id) < 0)
+              DBG_symbolAddressIndex[pc].push(table.id);
+          }
+        }
+      }
+    }
+
+    function DBG_getSymbolTablesAt(pc) {
+      var ids = DBG_symbolAddressIndex[pc & 0xffff] || [];
+      var out = [];
+      for (var i = 0; i < ids.length; i++) {
+        var table = DBG_symbolTablesById[ids[i]];
+        if (table) out.push(table);
+      }
+      return out;
+    }
+
+    function DBG_findSymbolScopeOverlaps(scope) {
+      var ranges = DBG_rangeListNormalize(scope);
+      var overlaps = [];
+      var active = null;
+
+      function flush() {
+        if (active) {
+          overlaps.push({
+            from: active.from,
+            to: active.to,
+            tableIds: Object.keys(active.ids)
+          });
+          active = null;
+        }
+      }
+
+      for (var r = 0; r < ranges.length; r++) {
+        for (var a = ranges[r][0]; a <= ranges[r][1]; a++) {
+          var ids = DBG_symbolAddressIndex[a & 0xffff] || [];
+          if (!ids.length) { flush(); continue; }
+
+          var key = ids.slice().sort().join("|");
+          if (!active || active.key !== key || active.to + 1 !== a) {
+            flush();
+            active = {from:a, to:a, key:key, ids:{}};
+            for (var i = 0; i < ids.length; i++) active.ids[ids[i]] = true;
+          } else {
+            active.to = a;
+            for (var j = 0; j < ids.length; j++) active.ids[ids[j]] = true;
+          }
+        }
+        flush();
+      }
+
+      return overlaps;
+    }
+
+    function DBG_formatSymbolOverlapReport(incoming, overlaps) {
+      var lines = [];
+      lines.push("New table: " + DBG_symbolSourceName(incoming));
+      lines.push("New scope: " + DBG_rangeListHex(incoming.scope).join(", "));
+      lines.push("");
+      lines.push("Overlapping ranges:");
+
+      for (var i = 0; i < overlaps.length; i++) {
+        var ov = overlaps[i];
+        var names = [];
+        for (var j = 0; j < ov.tableIds.length; j++) {
+          var table = DBG_symbolTablesById[ov.tableIds[j]];
+          if (table) names.push(DBG_symbolSourceName(table));
+        }
+        lines.push("  $" + DBG_hexWord(ov.from) + "-$" + DBG_hexWord(ov.to) + "  ->  " + names.join(", "));
+      }
+
+      lines.push("");
+      lines.push("Cancel: do not import this table.");
+      lines.push("Override: new table replaces existing tables in the overlapping address ranges.");
+      lines.push("Merge: import only the non-overlapping part of the new table.");
+
+      return lines.join("\n");
+    }
+
+    function DBG_showSymbolOverlapPopup(incoming, overlaps) {
+      DBG_pendingSymbolImport = {table: incoming, overlaps: overlaps};
+
+      var text = DBG_el("DBG_symbolOverlapText");
+      if (text) text.textContent = DBG_formatSymbolOverlapReport(incoming, overlaps);
+
+      var popup = DBG_el("DBG_symbolOverlapPopup");
+      if (popup) popup.hidden = false;
+    }
+
+    function DBG_resolveSymbolOverlap(choice) {
+      var pending = DBG_pendingSymbolImport;
+      DBG_pendingSymbolImport = null;
+
+      var popup = DBG_el("DBG_symbolOverlapPopup");
+      if (popup) popup.hidden = true;
+
+      if (!pending || choice === "cancel") {
+        DBG_statusText("Symbol table import cancelled.");
+        return;
+      }
+
+      if (choice === "override") {
+        for (var i = 0; i < DBG_symbolTables.length; i++) {
+          DBG_symbolTables[i].effectiveScope =
+            DBG_rangeListSubtract(DBG_symbolTables[i].effectiveScope, pending.table.scope);
+        }
+        DBG_symbolTables = DBG_symbolTables.filter(function(t){
+          return t.effectiveScope && t.effectiveScope.length;
+        });
+        pending.table.effectiveScope = pending.table.scope.slice();
+        DBG_addSymbolTable(pending.table);
+        return;
+      }
+
+      if (choice === "merge") {
+        var occupied = [];
+        for (var j = 0; j < DBG_symbolTables.length; j++)
+          occupied = occupied.concat(DBG_symbolTables[j].effectiveScope || []);
+
+        pending.table.effectiveScope = DBG_rangeListSubtract(pending.table.scope, occupied);
+
+        if (!pending.table.effectiveScope.length) {
+          DBG_statusText("Symbol table merge skipped: no non-overlapping scoped addresses.");
+          return;
+        }
+
+        DBG_addSymbolTable(pending.table);
+      }
+    }
+
+    function DBG_addSymbolTable(table) {
+      DBG_symbolTables.push(table);
+      DBG_rebuildSymbolIndex();
+      DBG_renderSymbolLabels();
+
+      DBG_statusText(
+        "Loaded symbol table: " + DBG_symbolSourceName(table) +
+        " / " + table.symbols.length + " symbol(s) / active scope " +
+        DBG_rangeListHex(table.effectiveScope).join(", ")
+      );
+    }
+
+    function DBG_removeSymbolTable(id) {
+      DBG_symbolTables = DBG_symbolTables.filter(function(t){ return t.id !== id; });
+      DBG_rebuildSymbolIndex();
+      DBG_renderSymbolLabels();
+      DBG_disassembleRAM();
+      DBG_statusText("Removed symbol table.");
+    }
+
+    function DBG_renderSymbolLabels() {
+      var wrap = DBG_el("DBG_symbolLabelWrap");
+      if (!wrap) return;
+
+      wrap.replaceChildren();
+
+      for (var i = 0; i < DBG_symbolTables.length; i++) {
+        var table = DBG_symbolTables[i];
+
+        var chip = document.createElement("div");
+        chip.className = "appbut label";
+        chip.title = DBG_rangeListHex(table.effectiveScope).join(", ");
+        chip.appendChild(document.createTextNode(DBG_symbolSourceName(table) + " "));
+
+        var x = document.createElement("div");
+        x.className = "appbut skinny DBG_symbolRemove";
+        x.title = "Remove symbol table";
+        x.textContent = "x";
+        x.setAttribute("data-symbol-id", table.id);
+        x.onclick = function(e) {
+          e.stopPropagation();
+          DBG_removeSymbolTable(this.getAttribute("data-symbol-id"));
+        };
+
+        chip.appendChild(x);
+        wrap.appendChild(chip);
+      }
+    }
+
+    async function DBG_onSymbolFileChange(evt) {
+      var input = evt && evt.target ? evt.target : DBG_el("DBG_sym_fileInput");
+      var file = input && input.files && input.files[0] ? input.files[0] : null;
+      if (!file) return;
+
+      try {
+        var raw = JSON.parse(await file.text());
+        var table = DBG_normalizeSymbolTable(raw, file.name);
+        var overlaps = DBG_findSymbolScopeOverlaps(table.scope);
+
+        if (overlaps.length) DBG_showSymbolOverlapPopup(table, overlaps);
+        else DBG_addSymbolTable(table);
+      } catch (err) {
+        DBG_statusText("Symbol table import failed: " + (err && err.message ? err.message : String(err)));
+        if (typeof console !== "undefined" && console.error) console.error(err);
+      } finally {
+        if (input) input.value = "";
+      }
+    }
+
+    function DBG_symbolNameForValue(instrPc, value, bytes) {
+      var tables = DBG_getSymbolTablesAt(instrPc);
+      value = value & (bytes === 1 ? 0xff : 0xffff);
+      bytes = bytes === 1 ? 1 : 2;
+
+      for (var i = 0; i < tables.length; i++) {
+        var list = tables[i].byValue[bytes][value] || [];
+        if (list.length) return list[0].name;
+      }
+
+      return "";
+    }
+
+    function DBG_labelForAddress(instrPc) {
+      var tables = DBG_getSymbolTablesAt(instrPc);
+      var value = instrPc & 0xffff;
+
+      for (var i = 0; i < tables.length; i++) {
+        var list = tables[i].labelsByAddress[value] || [];
+        if (list.length) return list[0].name;
+      }
+
+      return "";
+    }
+
+    function DBG_applySymbolsToOperand(operand, instrPc) {
+      return String(operand || "").replace(/\$([0-9A-Fa-f]{2,4})\b/g, function(match, hex) {
+        var bytes = hex.length <= 2 ? 1 : 2;
+        var value = parseInt(hex,16);
+        var name = DBG_symbolNameForValue(instrPc,value,bytes);
+        return name || match;
+      });
+    }
+
+
+    function DBG_instructionLength(opcode) {
+      var entry = (typeof opctab !== "undefined" && opctab) ? opctab[opcode & 0xff] : null;
+      var mode = entry && entry[1] ? entry[1] : "imp";
+      switch (mode) {
+        case "imm":
+        case "zpg":
+        case "zpx":
+        case "zpy":
+        case "inx":
+        case "iny":
+        case "rel":
+          return 2;
+        case "abs":
+        case "abx":
+        case "aby":
+        case "ind":
+          return 3;
+        case "acc":
+        case "imp":
+        default:
+          return 1;
+      }
+    }
+
+    function DBG_disassembleInstruction(pcAddr) {
+      var pcv = pcAddr & 0xffff;
+      var opcode = DBG_RAM[pcv] & 0xff;
+      var len = DBG_instructionLength(opcode);
+      var dasm = new DASM();
+      dasm.sym_search = function(op, adm) { return op; };
+      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexByte === "function") dasm.getHexByte = oCOM.getHexByte;
+      var ret = dasm.disassemble({
+        code_arr: [DBG_RAM[pcv], DBG_RAM[(pcv + 1) & 0xffff], DBG_RAM[(pcv + 2) & 0xffff]],
+        pc: pcv,
+        opctab: (typeof opctab !== "undefined") ? opctab : null
+      });
+
+      var mnemonicText = DBG_decodeDASMText(ret.mnemonic);
+      var ins = mnemonicText;
+      var opr = "";
+      var split = mnemonicText.match(/^([^\s]+)(?:\s+(.*))?$/);
+      if (split) {
+        ins = split[1] || "";
+        opr = split[2] || "";
+      }
+
+      opr = DBG_applySymbolsToOperand(opr, pcv);
+      var label = DBG_labelForAddress(pcv);
+
+      var bytes = [];
+      for (var i = 0; i < len; i++) bytes.push(DBG_hexByte(DBG_RAM[(pcv + i) & 0xffff]));
+
+      return {
+        len: len,
+        line: DBG_formatListingParts({
+          adr: DBG_hexWord(pcv).toLowerCase() + ":",
+          code: bytes.join(" ").toLowerCase(),
+          lbl: label,
+          ins: ins,
+          opr: opr,
+          com: ""
+        })
+      };
+    }
+
+    function DBG_disassembleRAM() {
+      var lines = [];
+      var pcAddr = 0;
+      while (pcAddr < DBG_RAM_SIZE) {
+        var d = DBG_disassembleInstruction(pcAddr);
+        lines.push(d.line);
+        pcAddr += Math.max(1, d.len || 1);
+      }
+
+      var debugfield = DBG_el("debugfield");
+      if (debugfield) debugfield.textContent = lines.join("\n");
+
+      var info = DBG_el("DBG_listingInfo");
+      if (info) info.textContent = lines.length + " listing lines / 64K RAM";
+
+      return lines.length;
+    }
+
+    function DBG_importBoardByteCode() {
+      var parsed = DBG_syncByteCodeFromBoard();
+      if (!parsed.records.length) {
+        DBG_stub("No byte code to import");
+        return false;
+      }
+
+      for (var i = 0; i < parsed.records.length; i++) {
+        DBG_RAM[parsed.records[i].pc & 0xffff] = parsed.records[i].val & 0xff;
+      }
+
+      var lineCount = DBG_disassembleRAM();
+      DBG_updateByteCodeInfo(parsed.records.length, lineCount + " listing lines");
+      DBG_stub("Imported " + parsed.records.length + " byte(s) and disassembled RAM");
+
+      if (parsed.errors.length && typeof console !== "undefined" && console.warn) console.warn(parsed.errors.join("\n"));
+      return true;
     }
 
     function DBG_togglePanel(id) {
@@ -472,6 +1295,13 @@
       DBG_equalizePaneHeaders();
     }
 
+    function DBG_toggleTheme() {
+      DBG_darkMode = !DBG_darkMode;
+      var tab = DBG_el("tab3");
+      if (tab) tab.classList.toggle("DBG_dark", DBG_darkMode);
+      DBG_equalizePaneHeaders();
+    }
+
     function DBG_stub(action) {
       var status = DBG_el("DBG_status");
       if (status) status.textContent = "Layout prototype: " + action + " is not wired yet.";
@@ -487,6 +1317,14 @@
       if (typeof PANE === "function") {
         DBG_oPANE = new PANE();
       }
+
+      var board = DBG_el("DBG_boardText");
+      if (board) DBG_syncByteCodeFromBoard();
+
+      var symFile = DBG_el("DBG_sym_fileInput");
+      if (symFile) symFile.addEventListener("change", DBG_onSymbolFileChange);
+
+      DBG_renderSymbolLabels();
       DBG_equalizePaneHeaders();
     }
 
@@ -538,6 +1376,10 @@
                     <option>full disassembly</option>
                     <option>mixed</option>
                   </select>
+                </label>
+                <label>
+                  Listing columns<br>
+                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
                 </label>
               </div>
             </div>
@@ -597,18 +1439,38 @@
           </div>
 
           <!-- DEBUGGER TOOLS -->
-          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden>
+          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden style="padding-top:0px;margin-top:-32px">
     
           <div class=toolbox>
             <form name="DBGboard" onsubmit="return false">
-              <textarea id="DBG_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code input" name="boardText"></textarea><br>
-              <input title="Send byte code to debugger" id="DBG_ByteCodeImportButton" type="button" value="to debugger">
+              <textarea id="DBG_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code input" name="boardText" oninput="DBG_syncByteCodeFromBoard()"></textarea><br>
+              <input title="Send byte code to debugger" id="DBG_ByteCodeImportButton" type="button" value="to debugger" onclick="DBG_importBoardByteCode()">
               <input title="Clear byte code" type="button" value="Clear" onclick="javascript:DBG_clearBoard()">
               <span id="DBG_byteCodeInfo" class="DBG_byteCodeInfo">0 bytes</span>
               <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('DBG_tools')">
             </form>
           </div>
 
+            <!-- DEBUGGER ACTION BUTTONS -->
+            <div class="toolbox">
+              <button id="DBG_toggleWatchPaneButton" class="appbut" onclick="DBG_togglePane3();" title="Show/hide Memory Watch pane">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+              <br>
+              <button class="appbut" onclick="DBG_stub('Show memory map')" title="Show/hide Memory Map">
+                <i class="fa fa-th"></i>
+              </button>            
+            </div>
+
+            <!--  SYMBOL FILE TOOLBOX -->
+            <div class="toolbox">
+              <div class="appbox DBG_symbolBox">
+                <div class="appbut" style="color:black">
+                  add symbol table<input id="DBG_sym_fileInput" type="file" accept=".JSON,.json">
+                </div>
+                <div id="DBG_symbolLabelWrap" class="DBG_symbolLabelWrap"></div>
+              </div>
+            </div>
 
             <!-- RUNTIME TOOLBOX -->
             <div class="toolbox">
@@ -623,23 +1485,10 @@
               </div>
             </div>
 
-            <!-- DEBUGGER ACTION BUTTONS -->
-            <div class="toolbox">
-              <button id="DBG_toggleWatchPaneButton" class="appbut" onclick="DBG_togglePane3();" title="Show/hide Memory Watch pane">
-                <i class="fa fa-eye-slash"></i>
-              </button>
-              <br>
-              <button class="appbut" onclick="DBG_stub('Show memory map')" title="Show/hide Memory Map">
-                <i class="fa fa-th"></i>
-              </button>
-              <br>
-            </div>
-
             <!-- MEMORY TOOLBOX -->
             <div class="toolbox">
               <div class="appbox" title="Memory tools">
                 MEMORY<br>
-                
                 <button class="appbut skinny" onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button>
               </div>
             </div>
@@ -655,14 +1504,28 @@
             </div>
           </div>
 
+          <div id="DBG_symbolOverlapPopup" class="DBG_symbolOverlapBack" hidden>
+            <div class="DBG_symbolOverlapBox">
+              <strong>Symbol table scope overlap</strong>
+              <div>The new symbol table overlaps with already loaded scoped addresses.</div>
+              <pre id="DBG_symbolOverlapText"></pre>
+              <div class="DBG_symbolOverlapButtons">
+                <button class="appbut skinny" type="button" onclick="DBG_resolveSymbolOverlap('cancel')">Cancel</button>
+                <button class="appbut skinny" type="button" onclick="DBG_resolveSymbolOverlap('override')">Override</button>
+                <button class="appbut skinny" type="button" onclick="DBG_resolveSymbolOverlap('merge')">Merge</button>
+              </div>
+            </div>
+          </div>
+
           <div id="DBG_paneHost" class="DBG_paneHost">
             <section id="DBG_listingPane" class="DBG_pane">
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
                   <strong>Listing</strong>
-                  <span class="DBG_paneInfo">source listing + uncovered memory</span>
+                  <span id="DBG_listingInfo" class="DBG_paneInfo">source listing + uncovered memory</span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
+                  <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
@@ -813,10 +1676,6 @@
                 <div class="DBG_footerNote" id="DBG_status">Layout prototype: debugger actions are visual placeholders only.</div>
               </div>
             </section>
-          </div>
-
-          <div class="DBG_footerNote">
-            v1 keeps execution-critical actions in pane headers. Display preferences live under Settings; layout/runtime/memory/export actions live under Tools.
           </div>
 
           <!-- Legacy debugger fields kept as placeholders for later integration. -->
