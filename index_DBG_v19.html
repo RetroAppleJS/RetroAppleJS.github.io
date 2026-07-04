@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v1.7</title>
+  <title>Apple II+ Debugger Layout v1.9</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -462,8 +462,8 @@
 
 
     .DBG_symbolBox {
-      width: 360px;
-      max-width: 360px;
+      width: 370px;
+      max-width: 370px;
       height: auto;
       min-height: 63px;
       padding: 0px 6px;
@@ -629,7 +629,7 @@
     var DBG_RAM_SIZE = 0x10000;
     var DBG_RAM = new Uint8Array(DBG_RAM_SIZE);
     var DBG_currentByteCodeText = "";
-    var DBG_defaultListingColumns = {adr:0,code:6,lbl:15,ins:25,opr:30,com:46};
+    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51};
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
     var DBG_symbolTablesById = {};
@@ -674,7 +674,7 @@
 
     function DBG_listingColumnsValue() {
       var input = DBG_el("DBG_listingColumnsInput");
-      return input ? input.value : "{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}";
+      return input ? input.value : "{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}";
     }
 
     function DBG_cropListingField(text, width) {
@@ -686,7 +686,7 @@
 
     function DBG_formatListingParts(parts) {
       var columns = DBG_parseListingColumns(DBG_listingColumnsValue());
-      var order = ["adr","code","lbl","ins","opr","com"];
+      var order = ["adr","code","lin","lbl","ins","opr","com"];
       if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.renderTextTableRows === "function") {
         return oCOM.renderTextTableRows([parts], columns, {
           order: order,
@@ -874,7 +874,8 @@
         raw: raw,
         symbols: Array.isArray(raw.symbols) ? raw.symbols : [],
         byValue: {1:{}, 2:{}},
-        labelsByAddress: {}
+        labelsByAddress: {},
+        commentsByAddress: {}
       };
 
       for (var i = 0; i < table.symbols.length; i++) {
@@ -882,6 +883,25 @@
         if (typeof sym.value !== "number") continue;
 
         var value = sym.value & 0xffff;
+
+        /*
+         * Comment entries use a reduced metadata set.  They must not enter
+         * byValue, otherwise COMMENT_FD42 could be substituted as an operand
+         * symbol.  Instruction/data comments are indexed by address and are
+         * applied only after their opcode bytes match RAM at disassembly time.
+         */
+        if (sym.type === "comment") {
+          if ((sym.targetType === "instruction" || sym.targetType === "data") &&
+              typeof sym.comment === "string" &&
+              sym.comment &&
+              Array.isArray(sym.opcode) &&
+              sym.opcode.length) {
+            if (!table.commentsByAddress[value]) table.commentsByAddress[value] = [];
+            table.commentsByAddress[value].push(sym);
+          }
+          continue;
+        }
+
         var bytes = sym.bytes === 1 ? 1 : 2;
 
         if (!table.byValue[bytes][value]) table.byValue[bytes][value] = [];
@@ -1043,6 +1063,7 @@
       DBG_symbolTables.push(table);
       DBG_rebuildSymbolIndex();
       DBG_renderSymbolLabels();
+      DBG_disassembleRAM();
 
       DBG_statusText(
         "Loaded symbol table: " + DBG_symbolSourceName(table) +
@@ -1143,9 +1164,51 @@
     }
 
 
-    function DBG_instructionLength(opcode) {
+    function DBG_opcodeMatchesAt(pcAddr, opcode) {
+      if (!Array.isArray(opcode) || !opcode.length) return false;
+
+      pcAddr = pcAddr & 0xffff;
+      for (var i = 0; i < opcode.length; i++) {
+        var b = Number(opcode[i]);
+        if (isNaN(b)) return false;
+        if ((DBG_RAM[(pcAddr + i) & 0xffff] & 0xff) !== (b & 0xff)) return false;
+      }
+
+      return true;
+    }
+
+    function DBG_commentForInstruction(instrPc) {
+      var tables = DBG_getSymbolTablesAt(instrPc);
+      var value = instrPc & 0xffff;
+
+      for (var i = 0; i < tables.length; i++) {
+        var table = tables[i] || {};
+        var list = table.commentsByAddress && table.commentsByAddress[value] ? table.commentsByAddress[value] : [];
+
+        for (var j = 0; j < list.length; j++) {
+          var sym = list[j] || {};
+          if (sym.targetType !== "instruction" && sym.targetType !== "data") continue;
+          if (!DBG_opcodeMatchesAt(value, sym.opcode)) continue;
+          return String(sym.comment || "");
+        }
+      }
+
+      return "";
+    }
+
+    function DBG_formatDisassemblyComment(comment) {
+      comment = String(comment || "").trim();
+      if (!comment) return "";
+      return /^;/.test(comment) ? comment : "; " + comment;
+    }
+
+    function DBG_instructionAddressMode(opcode) {
       var entry = (typeof opctab !== "undefined" && opctab) ? opctab[opcode & 0xff] : null;
-      var mode = entry && entry[1] ? entry[1] : "imp";
+      return entry && entry[1] ? entry[1] : "imp";
+    }
+
+    function DBG_instructionLength(opcode) {
+      var mode = DBG_instructionAddressMode(opcode);
       switch (mode) {
         case "imm":
         case "zpg":
@@ -1167,9 +1230,57 @@
       }
     }
 
+    function DBG_instructionTarget(pcAddr, mode) {
+      pcAddr = pcAddr & 0xffff;
+
+      if (mode === "rel") {
+        var off = DBG_RAM[(pcAddr + 1) & 0xffff] & 0xff;
+        if (off & 0x80) off -= 0x100;
+        return (pcAddr + 2 + off) & 0xffff;
+      }
+
+      if (mode === "abs") {
+        return (DBG_RAM[(pcAddr + 1) & 0xffff] | (DBG_RAM[(pcAddr + 2) & 0xffff] << 8)) & 0xffff;
+      }
+
+      return null;
+    }
+
+    function DBG_listingLineAssembler() {
+      if (typeof ASM !== "function") return null;
+
+      var asm = new ASM({listingColumns: DBG_listingColumnsValue()});
+      if (typeof asm.setListingColumns === "function")
+        asm.setListingColumns(DBG_listingColumnsValue());
+
+      return asm;
+    }
+
+    function DBG_applyDisassemblyJumpLines(rows) {
+      var asm = DBG_listingLineAssembler();
+      if (asm && typeof asm.applyListingLineColumn === "function")
+        asm.applyListingLineColumn(rows || []);
+      return rows || [];
+    }
+
+    function DBG_formatDisassemblyRow(row) {
+      row = row || {};
+      return DBG_formatListingParts({
+        adr: DBG_hexWord(row.pc).toLowerCase() + ":",
+        code: (row.byteHex || []).join(" ").toLowerCase(),
+        lin: row.lin || "",
+        lbl: row.label || "",
+        ins: row.ins || "",
+        opr: row.opr || "",
+        com: row.com || ""
+      });
+    }
+
+
     function DBG_disassembleInstruction(pcAddr) {
       var pcv = pcAddr & 0xffff;
       var opcode = DBG_RAM[pcv] & 0xff;
+      var mode = DBG_instructionAddressMode(opcode);
       var len = DBG_instructionLength(opcode);
       var dasm = new DASM();
       dasm.sym_search = function(op, adm) { return op; };
@@ -1193,29 +1304,47 @@
       var label = DBG_labelForAddress(pcv);
 
       var bytes = [];
-      for (var i = 0; i < len; i++) bytes.push(DBG_hexByte(DBG_RAM[(pcv + i) & 0xffff]));
+      var byteHex = [];
+      for (var i = 0; i < len; i++) {
+        var b = DBG_RAM[(pcv + i) & 0xffff] & 0xff;
+        bytes.push(b);
+        byteHex.push(DBG_hexByte(b));
+      }
+       var comment = DBG_commentForInstruction(pcv);
+      var row = {
+        pc: pcv,
+        bytes: bytes,
+        byteHex: byteHex,
+        mnemonic: ins,
+        addrMode: mode,
+        val: DBG_instructionTarget(pcv, mode),
+        lin: "",
+        label: label,
+        ins: ins,
+        opr: opr,
+        com: DBG_formatDisassemblyComment(comment)
+      };      
 
       return {
         len: len,
-        line: DBG_formatListingParts({
-          adr: DBG_hexWord(pcv).toLowerCase() + ":",
-          code: bytes.join(" ").toLowerCase(),
-          lbl: label,
-          ins: ins,
-          opr: opr,
-          com: ""
-        })
+        row: row,
+        line: DBG_formatDisassemblyRow(row)        
       };
     }
 
     function DBG_disassembleRAM() {
+      var rows = [];
       var lines = [];
       var pcAddr = 0;
       while (pcAddr < DBG_RAM_SIZE) {
         var d = DBG_disassembleInstruction(pcAddr);
-        lines.push(d.line);
+        if (d && d.row) rows.push(d.row);
         pcAddr += Math.max(1, d.len || 1);
       }
+
+      DBG_applyDisassemblyJumpLines(rows);
+      for (var i = 0; i < rows.length; i++)
+        lines.push(DBG_formatDisassemblyRow(rows[i]));
 
       var debugfield = DBG_el("debugfield");
       if (debugfield) debugfield.textContent = lines.join("\n");
@@ -1379,7 +1508,7 @@
                 </label>
                 <label>
                   Listing columns<br>
-                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
+                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
                 </label>
               </div>
             </div>
