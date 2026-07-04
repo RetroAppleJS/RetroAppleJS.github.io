@@ -944,6 +944,116 @@ function ASM(options)
         return out.join(" ");
     };
 
+    this.getListingColumnOrder = function () {
+        return ["adr", "code", "lin", "lbl", "ins", "opr", "com"];
+    };
+
+    this.getListingLineLayout = function (columns) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        if (columns.lin == null) return { linCol: null, nextCol: null, width: 0, laneCount: 0, arrowCol: 0 };
+
+        var linCol = Number(columns.lin) | 0;
+        var nextCol = null;
+        var order = this.getListingColumnOrder();
+
+        for (var i = 0; i < order.length; i++) {
+            var key = order[i];
+            if (key === "lin" || columns[key] == null) continue;
+            var col = Number(columns[key]) | 0;
+            if (col > linCol && (nextCol == null || col < nextCol)) nextCol = col;
+        }
+
+        /*
+         * The configured distance between lin and the next visible column is
+         * the complete line-guide field.  One column is reserved for the
+         * arrow head, so {lin:15,lbl:20} gives 5 usable character columns:
+         * 4 line lanes + 1 arrow column.  Extra overlapping jumps are not
+         * rendered; the user can widen the field by moving the next column.
+         */
+        if (nextCol == null) return { linCol: linCol, nextCol: null, width: 0, laneCount: 0, arrowCol: 0 };
+
+        var width = Math.max(0, nextCol - linCol);
+        return {
+            linCol: linCol,
+            nextCol: nextCol,
+            width: width,
+            laneCount: Math.max(0, width - 1),
+            arrowCol: Math.max(0, width - 1)
+        };
+    };
+
+    this.sortListingJumpLaneCandidates = function (items, compareFn) {
+        /*
+         * Generic sort boundary for jump-lane assignment.  Keep lane priority
+         * selection behind this function so it can later be replaced by a
+         * GPU.js-backed sorter without changing the renderer.
+         */
+        return (items || []).slice().sort(compareFn || function () { return 0; });
+    };
+
+    this.compareListingJumpLanePriority = function (a, b) {
+        /*
+         * Lowest score first: short jumps get first choice of the rightmost
+         * conflict-free lane.  Line delta is used as the score because it is
+         * already available and directly corresponds to the visual range.
+         */
+        return (a.score - b.score)
+            || (a.top - b.top)
+            || (a.bottom - b.bottom)
+            || (a.from - b.from)
+            || (a.to - b.to);
+    };
+
+    this.listingJumpRangesConflict = function (a, b) {
+        return !(a.bottom < b.top || b.bottom < a.top);
+    };
+
+    this.assignListingJumpLanes = function (jumps, laneCount) {
+        laneCount = Math.max(0, Number(laneCount) | 0);
+        if (!laneCount) return [];
+
+        var sorted = this.sortListingJumpLaneCandidates(jumps, this.compareListingJumpLanePriority);
+        var lanes = [];
+        var accepted = [];
+
+        for (var i = 0; i < sorted.length; i++) {
+            var jump = sorted[i];
+            var assignedLane = -1;
+
+            /*
+             * Always try the rightmost lane first.  Because shorter jumps are
+             * sorted first, they win the rightmost conflict-free lane when
+             * two or more jumps overlap.
+             */
+            for (var lane = laneCount - 1; lane >= 0; lane--) {
+                var conflict = false;
+                var laneItems = lanes[lane] || [];
+
+                for (var j = 0; j < laneItems.length; j++) {
+                    if (this.listingJumpRangesConflict(jump, laneItems[j])) {
+                        conflict = true;
+                        break;
+                    }
+                }
+
+                if (!conflict) {
+                    assignedLane = lane;
+                    break;
+                }
+            }
+
+            if (assignedLane < 0) continue;  // overflow: not enough configured lanes
+
+            jump.lane = assignedLane;
+            if (!lanes[assignedLane]) lanes[assignedLane] = [];
+            lanes[assignedLane].push(jump);
+            accepted.push(jump);
+        }
+
+        return accepted;
+    };
+
+
     this.getListingJumpInfo = function (row) {
         row = row || {};
         var mne = String(row.mnemonic || "").toUpperCase();
@@ -969,6 +1079,8 @@ function ASM(options)
         var columns = this.listingColumns || this.defaultListingColumns;
         for (var r = 0; r < rows.length; r++) rows[r].lin = "";
         if (!columns || columns.lin == null) return rows;
+        var layout = this.getListingLineLayout(columns);
+        if (!layout.laneCount || !layout.width) return rows;
 
         var addrToRow = {};
         for (var i = 0; i < rows.length; i++) {
@@ -1004,45 +1116,20 @@ function ASM(options)
                 to: targetIdx,
                 top: Math.min(j, targetIdx),
                 bottom: Math.max(j, targetIdx),
+                score: Math.abs(targetIdx - j),
                 lane: -1
             });
         }
 
+        jumps = this.assignListingJumpLanes(jumps, layout.laneCount);
         if (!jumps.length) return rows;
 
         /*
-         * Allocate non-overlapping vertical lanes.
-         * Longer ranges are placed first for stable outer-to-inner nesting.
-         */
-        jumps.sort(function (a, b) {
-            return a.top - b.top || b.bottom - a.bottom || a.from - b.from;
-        });
+         * The fixed configured width is used exactly.  Wider jump guides need
+         * wider user column spacing, not automatic shifting of later columns.
+        */
 
-        var active = [];
-        var maxLane = -1;
-        for (var a = 0; a < jumps.length; a++) {
-            var jump = jumps[a];
-
-            active = active.filter(function (other) {
-                return other.bottom >= jump.top;
-            });
-
-            var used = {};
-            for (var u = 0; u < active.length; u++) used[active[u].lane] = true;
-
-            var lane = 0;
-            while (used[lane]) lane++;
-
-            jump.lane = lane;
-            if (lane > maxLane) maxLane = lane;
-            active.push(jump);
-        }
-
-        /*
-         * n active line lanes need n+1 columns: the last column is where the
-         * target arrowhead or final horizontal line segment is drawn.
-         */
-        var width = maxLane + 2;
+        var width = layout.width;
         var grid = [];
         for (var gr = 0; gr < rows.length; gr++) {
             grid[gr] = [];
@@ -1087,8 +1174,8 @@ function ASM(options)
 
             if (jp.from === jp.to) {
                 put(jp.from, ln, "┌");
-                drawHorizontal(jp.from, ln + 1, width - 2);
-                put(jp.from, width - 1, "▶");
+                drawHorizontal(jp.from, ln + 1, layout.arrowCol - 1);
+                put(jp.from, layout.arrowCol, "▶");
                 continue;
             }
 
@@ -1097,17 +1184,17 @@ function ASM(options)
             if (jp.from < jp.to) {
                 /* Forward jump: source opens downward, target receives arrow. */
                 put(jp.from, ln, "┌");
-                drawHorizontal(jp.from, ln + 1, width - 1);
+                drawHorizontal(jp.from, ln + 1, layout.arrowCol);
                 put(jp.to, ln, "└");
-                drawHorizontal(jp.to, ln + 1, width - 2);
-                put(jp.to, width - 1, "▶");
+                drawHorizontal(jp.to, ln + 1, layout.arrowCol - 1);
+                put(jp.to, layout.arrowCol, "▶");
             } else {
                 /* Backward jump: target receives arrow, source closes upward. */
                 put(jp.to, ln, "┌");
-                drawHorizontal(jp.to, ln + 1, width - 2);
-                put(jp.to, width - 1, "▶");
+                drawHorizontal(jp.to, ln + 1, layout.arrowCol - 1);
+                put(jp.to, layout.arrowCol, "▶");
                 put(jp.from, ln, "└");
-                drawHorizontal(jp.from, ln + 1, width - 1);
+                drawHorizontal(jp.from, ln + 1, layout.arrowCol);
             }
         }
 
@@ -1269,47 +1356,16 @@ function ASM(options)
         return parts;
     };
 
-    this.getListingColumnOrder = function () {
-        return ["adr", "code", "lin", "lbl", "ins", "opr", "com"];
-    };
-
     this.getEffectiveListingColumns = function (rows) {
         var base = this.listingColumns || this.defaultListingColumns || {};
         var columns = {};
         for (var k in base) columns[k] = base[k];
 
-        if (columns.lin == null) return columns;
-
-        var linCol = Number(columns.lin) | 0;
-        var linWidth = 0;
-        rows = rows || [];
-        for (var r = 0; r < rows.length; r++)
-            linWidth = Math.max(linWidth, String(rows[r].lin || "").length);
-
-        if (!linWidth) return columns;
-
         /*
-         * The line renderer needs n+1 columns.  If the user's current spacing
-         * leaves too little room before the next visible listing column,
-         * shift all following columns to the right.  This avoids clipping the
-         * line guide to an ellipsis while preserving the user's chosen starts.
-         */
-        var nextCol = null;
-        for (var key in columns) {
-            if (key === "lin") continue;
-            var col = Number(columns[key]) | 0;
-            if (col > linCol && (nextCol == null || col < nextCol)) nextCol = col;
-        }
-
-        if (nextCol == null) return columns;
-
-        var available = nextCol - linCol;
-        if (linWidth <= available) return columns;
-
-        var shift = linWidth - available;
-        for (var sk in columns)
-            if (sk !== "lin" && (Number(columns[sk]) | 0) > linCol) columns[sk] = (Number(columns[sk]) | 0) + shift;
-
+         * Do not auto-shift columns after lin.  The configured gap between
+         * lin and the next visible column is the hard maximum for rendered
+         * jump lanes.  Overflow jumps are deliberately not shown.        
+        */
         return columns;
     };
 
