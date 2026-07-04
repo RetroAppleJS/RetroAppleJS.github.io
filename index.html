@@ -1778,7 +1778,6 @@ Label1 TXA
                 var lblIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"LBL") : -1;
                 var pgmIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"PGM") : -1;
                 var mneIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"MNE") : -1;
-                var oprIndex = asm.getTokenIndexByTag ? asm.getTokenIndexByTag(tag,"OPR") : -1;
                 var isEqu = false;
 
                 if(pgmIndex >= 0 && asm.pragmaInfo)
@@ -1797,18 +1796,12 @@ Label1 TXA
                   var equValue = typeof row.val == "number" ? row.val : (asm.symtab ? asm.symtab[equName] : undefined);
                   if(typeof equValue == "number" && !isNaN(equValue))
                   {
-                    var equBytes = row.oby === 1 ? 1 : 2;
                     out.push({
                       name: "COMMENT_" + equName,
                       type: "comment",
                       targetType: "equ",
-                      symbol: equName,
-                      bytes: equBytes,
                       value: equValue & 0xFFFF,
-                      hex: ASM_symbolHex(equValue,equBytes),
-                      line: row.line || null,
-                      comment: commentText,
-                      statement: row.statement || ""
+                      comment: commentText
                     });
                   }
                   continue;
@@ -1821,26 +1814,15 @@ Label1 TXA
                  */
                 if(!bytes.length || typeof row.pc != "number") continue;
 
-                var parts = (asm && typeof asm.getListingParts == "function") ? asm.getListingParts(row,bytes) : {};
                 var value = row.pc & 0xFFFF;
-                var opcodeHex = asm && typeof asm.bytesToHex == "function" ? asm.bytesToHex(bytes).toLowerCase() : String(row.hex || "").toLowerCase();
-                var instruction = [parts.ins || row.mnemonic || "", parts.opr || ""].join(" ").replace(/\s+$/,"").replace(/^\s+/,"");
 
                 out.push({
                   name: ASM_commentName("COMMENT",value,out.length),
                   type: "comment",
                   targetType: mneIndex >= 0 ? "instruction" : "data",
-                  bytes: 2,
                   value: value,
-                  hex: ASM_symbolHex(value,2),
-                  line: row.line || null,
                   comment: commentText,
-                  statement: row.statement || "",
-                  instruction: instruction,
-                  mnemonic: row.mnemonic || parts.ins || "",
-                  operand: parts.opr || (oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : ""),
-                  opcode: bytes.slice ? bytes.slice() : [],
-                  opcodeHex: opcodeHex
+                  opcode: bytes.slice ? bytes.slice() : []
                 });
               }
 
