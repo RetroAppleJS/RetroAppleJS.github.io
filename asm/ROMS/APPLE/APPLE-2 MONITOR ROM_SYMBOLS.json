@@ -1,7 +1,7 @@
 {
   "format": "RetroAppleJS-ASM-symbols",
   "version": 2,
-  "source": "sample.S",
+  "source": "APPLE-2 MONITOR ROM.S",
   "scopeMode": "instruction-pc",
   "scope": [
     [
