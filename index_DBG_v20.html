@@ -126,6 +126,7 @@
       padding: 0px;
     }
 
+    /* TODO: review if we can make this popup action dynamic (driven by code) instead of trying hard to override one CSS by another */
     .DBG_popupHost[hidden] {
       display: none !important;
     }
@@ -249,6 +250,37 @@
 
     .DBG_headerActions .appbut i {
       pointer-events: none;
+    }
+
+    .DBG_headerActions.DBG_requestActive [data-dbg-action] {
+      display: none !important;
+    }
+
+    .DBG_startPcRequester {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .DBG_startPcRequester[hidden] {
+      display: none !important;
+    }
+
+    .DBG_startPcRequester span {
+      color: rgba(0,0,0,0.72);
+      font-family: arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .DBG_startPcInput {
+      width: 64px;
+      min-height: 20px;
+      font: 12px/1.2 courier, monospace;
+      text-transform: uppercase;
+      box-sizing: border-box;
     }
 
     .DBG_paneBody {
@@ -629,6 +661,8 @@
     var DBG_RAM_SIZE = 0x10000;
     var DBG_RAM = new Uint8Array(DBG_RAM_SIZE);
     var DBG_currentByteCodeText = "";
+    var DBG_debuggerStarted = false;
+    var DBG_debuggerStartPC = 0x0000;
     var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51};
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
@@ -779,6 +813,88 @@
       var status = DBG_el("DBG_status");
       if (status) status.textContent = text;
     }
+
+    function DBG_parseHexAddress(text) {
+      text = String(text == null ? "" : text).trim();
+      text = text.replace(/^\$/,"").replace(/^0x/i,"");
+      if (!/^[0-9A-Fa-f]{1,4}$/.test(text)) return null;
+      var value = parseInt(text,16);
+      if (isNaN(value) || value < 0 || value > 0xffff) return null;
+      return value & 0xffff;
+    }
+
+    function DBG_startPcHost(hostId) {
+      return DBG_el(hostId || "DBG_traceHeaderActions");
+    }
+
+    function DBG_showStartPcRequester(hostId) {
+      var host = DBG_startPcHost(hostId);
+      if (!host) return;
+
+      var requester = host.querySelector(".DBG_startPcRequester");
+      var input = host.querySelector(".DBG_startPcInput");
+      if (!requester || !input) return;
+
+      host.classList.add("DBG_requestActive");
+      requester.hidden = false;
+      input.value = "$" + DBG_hexWord(DBG_debuggerStartPC);
+
+      DBG_statusText("Enter hexadecimal start address for the debugger.");
+
+      window.setTimeout(function(){
+        input.focus();
+        input.select();
+      },0);
+
+      DBG_equalizePaneHeaders();
+    }
+
+    function DBG_hideStartPcRequester(hostId) {
+      var host = DBG_startPcHost(hostId);
+      if (!host) return;
+
+      var requester = host.querySelector(".DBG_startPcRequester");
+      var input = host.querySelector(".DBG_startPcInput");
+
+      host.classList.remove("DBG_requestActive");
+      if (requester) requester.hidden = true;
+      if (input) input.value = "";
+
+      DBG_equalizePaneHeaders();
+    }
+
+    function DBG_startDebuggerAtPC(hostId) {
+      var host = DBG_startPcHost(hostId);
+      if (!host) return;
+
+      var input = host.querySelector(".DBG_startPcInput");
+      var pc = DBG_parseHexAddress(input ? input.value : "");
+
+      if (pc === null) {
+        DBG_statusText("Invalid start address. Use hexadecimal 0000-FFFF.");
+        if (input) {
+          input.focus();
+          input.select();
+        }
+        return;
+      }
+
+      DBG_debuggerStartPC = pc & 0xffff;
+      DBG_debuggerStarted = true;
+
+      var pcDisplay = DBG_el("dispPC");
+      if (pcDisplay) pcDisplay.textContent = DBG_hexWord(DBG_debuggerStartPC);
+
+      DBG_hideStartPcRequester(hostId);
+      DBG_statusText("Debugger start address set to $" + DBG_hexWord(DBG_debuggerStartPC) + ".");
+    }
+
+    function DBG_startPcKeyDown(evt,hostId) {
+      evt = evt || window.event;
+      if (evt.key === "Enter") { evt.preventDefault(); DBG_startDebuggerAtPC(hostId); }
+      else if (evt.key === "Escape") { evt.preventDefault(); DBG_hideStartPcRequester(hostId); }
+    }
+
 
     function DBG_rangeListNormalize(scope) {
       var ranges = [];
@@ -1653,12 +1769,19 @@
                   <strong>Listing</strong>
                   <span id="DBG_listingInfo" class="DBG_paneInfo">source listing + uncovered memory</span>
                 </div>
-                <div class="com-pane-header-default-widget DBG_headerActions">
+                <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
-                  <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_stub('Go to PC')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
+
+                  <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
+                  <span class="DBG_startPcRequester" hidden>
+                    <span>PC</span>
+                    <input class="DBG_startPcInput" type="text" value="$0000" maxlength="6" spellcheck="false" onkeydown="DBG_startPcKeyDown(event,'DBG_listingHeaderActions')">
+                    <button class="appbut skinny" type="button" onclick="DBG_startDebuggerAtPC('DBG_listingHeaderActions')" title="Start debugger at this PC"><i class="fa fa-play"></i></button>
+                  </span>
+
                   <!--button class="appbut skinny" data-dbg-action="find" onclick="DBG_stub('Find address / label / opcode')" title="Find address / label / opcode"><i class="fa fa-search"></i></button-->
                   <!-- TODO: use the find & replace function here (triggered by ctrl/command + F), same pop-up behavior as in tab2 -->
                 </div>
@@ -1694,13 +1817,20 @@
                   <strong>CPU Trace</strong>
                   <span class="DBG_paneInfo">PC bytes opcode A X Y P SP cycles</span>
                 </div>
-                <div class="com-pane-header-default-widget DBG_headerActions">
+                <div id="DBG_traceHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
+                  <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_traceHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
                   <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
                   <!--button class="appbut skinny" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
                   <!-- TODO: always auto-scroll -->
                   <button class="appbut skinny" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
                   <button class="appbut skinny" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
                   
+                  <span class="DBG_startPcRequester" hidden>
+                    <span>PC</span>
+                    <input class="DBG_startPcInput" type="text" value="$0000" maxlength="6" spellcheck="false" onkeydown="DBG_startPcKeyDown(event,'DBG_traceHeaderActions')">
+                    <button class="appbut skinny" type="button" onclick="DBG_startDebuggerAtPC('DBG_traceHeaderActions')" title="Start debugger at this PC"><i class="fa fa-play"></i></button>
+                  </span>
+
                 
                 </div>
               </div>
