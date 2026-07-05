@@ -287,6 +287,7 @@
       height: 595px;
       min-height: 595px;
       padding: 0px;
+      position: relative;
       border-radius: 10px;
       border: 1px solid rgba(0,0,0,0.12);
       box-sizing: border-box;
@@ -303,7 +304,20 @@
       font-weight: 500;
       line-height: 21px;
       tab-size: 4;
+      position: relative;
+      z-index: 1;
       white-space: pre;
+    }
+
+    .DBG_listingPcOverlay 
+    {
+      position: absolute;
+      left: 0px;
+      right: 0px;
+      height: 21px;
+      background: rgba(255, 214, 64, 0.42);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .DBG_listingLineCurrent {
@@ -486,6 +500,10 @@
     #tab3.DBG_dark .DBG_changed,
     #tab3.DBG_dark .DBG_changed span {
       color: #000000 !important;
+    }
+
+    #tab3.DBG_dark .DBG_listingPcOverlay {
+      background: rgba(255, 214, 64, 0.34);
     }
 
     #tab3.DBG_dark .DBG_breakpoint {
