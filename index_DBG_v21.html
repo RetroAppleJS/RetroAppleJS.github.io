@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v2.0</title>
+  <title>Apple II+ Debugger Layout v2.1</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -681,6 +681,12 @@
     var DBG_currentByteCodeText = "";
     var DBG_debuggerStarted = false;
     var DBG_debuggerStartPC = 0x0000;
+    var DBG_listingRows = [];
+    var DBG_listingLines = [];
+    var DBG_listingRowByPc = new Int32Array(DBG_RAM_SIZE);
+    var DBG_listingRowByByteAddress = new Int32Array(DBG_RAM_SIZE);
+    var DBG_listingCurrentPC = null;
+    var DBG_listingScrollBehavior = "auto";
     var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51};
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
@@ -689,6 +695,8 @@
     var DBG_pendingSymbolImport = null;
     var DBG_nextSymbolTableId = 1;
 
+    DBG_listingRowByPc.fill(-1);
+    DBG_listingRowByByteAddress.fill(-1);
 
     function DBG_el(id) {
       return document.getElementById(id);
@@ -903,8 +911,12 @@
       var pcDisplay = DBG_el("dispPC");
       if (pcDisplay) pcDisplay.textContent = DBG_hexWord(DBG_debuggerStartPC);
 
+      var listed = DBG_scrollListingToPC(DBG_debuggerStartPC,{behavior:DBG_listingScrollBehavior});
+
       DBG_hideStartPcRequester(hostId);
-      DBG_statusText("Debugger start address set to $" + DBG_hexWord(DBG_debuggerStartPC) + ".");
+      DBG_statusText(
+        "Debugger start address set to $" + DBG_hexWord(DBG_debuggerStartPC) + (listed ? " / listing positioned." : " / listing row not found.")
+      );
     }
 
     function DBG_startPcKeyDown(evt,hostId) {
@@ -1466,6 +1478,110 @@
       };
     }
 
+    function DBG_resetListingIndex() {
+      DBG_listingRows = [];
+      DBG_listingLines = [];
+      DBG_listingRowByPc.fill(-1);
+      DBG_listingRowByByteAddress.fill(-1);
+    }
+
+    function DBG_indexDisassemblyRows(rows,lines) {
+      DBG_resetListingIndex();
+      DBG_listingRows = rows || [];
+      DBG_listingLines = lines || [];
+
+      for (var i = 0; i < DBG_listingRows.length; i++) {
+        var row = DBG_listingRows[i] || {};
+        if (typeof row.pc !== "number") continue;
+
+        var pc = row.pc & 0xffff;
+        var len = row.bytes && row.bytes.length ? row.bytes.length : 1;
+
+        DBG_listingRowByPc[pc] = i;
+        for (var b = 0; b < len; b++)
+          DBG_listingRowByByteAddress[(pc + b) & 0xffff] = i;
+      }
+    }
+
+    function DBG_listingRowIndexForPC(pc) {
+      pc = pc & 0xffff;
+
+      var rowIndex = DBG_listingRowByPc[pc];
+      if (rowIndex >= 0) return rowIndex;
+
+      /*
+       * Fallback: if the selected address is inside a disassembled instruction
+       * byte sequence, scroll to that containing row.  This keeps navigation
+       * useful even before the future virtual tracer can re-decode from any
+       * arbitrary PC alignment.
+       */
+      rowIndex = DBG_listingRowByByteAddress[pc];
+      return rowIndex >= 0 ? rowIndex : -1;
+    }
+
+    function DBG_listingPaneBody() {
+      var pre = DBG_el("debugfield");
+      return pre && pre.parentElement ? pre.parentElement : null;
+    }
+
+    function DBG_listingLineHeight() {
+      var pre = DBG_el("debugfield");
+      if (!pre || !window.getComputedStyle) return 21;
+
+      var lh = parseFloat(window.getComputedStyle(pre).lineHeight);
+      return isFinite(lh) && lh > 0 ? lh : 21;
+    }
+
+    function DBG_positionListingPcOverlay(rowIndex) {
+      var overlay = DBG_el("DBG_listingPcOverlay");
+      if (!overlay || rowIndex == null || rowIndex < 0) return;
+
+      var lineH = DBG_listingLineHeight();
+      overlay.style.top = Math.round(rowIndex * lineH) + "px";
+      overlay.style.height = Math.ceil(lineH) + "px";
+      overlay.hidden = false;
+    }
+
+    function DBG_hideListingPcOverlay() {
+      var overlay = DBG_el("DBG_listingPcOverlay");
+      if (overlay) overlay.hidden = true;
+    }
+
+    function DBG_scrollListingToPC(pc,opts) {
+      pc = pc & 0xffff;
+
+      /*
+       * Full 64K disassembly is acceptable before tracing starts.  During
+       * tracing, this function should only consume the existing row index;
+       * the later virtual scroller/tracer will update a small visible window.
+       */
+      if (!DBG_listingRows.length) DBG_disassembleRAM();
+
+      var rowIndex = DBG_listingRowIndexForPC(pc);
+      if (rowIndex < 0) {
+        DBG_hideListingPcOverlay();
+        return false;
+      }
+
+      var body = DBG_listingPaneBody();
+      if (!body) return false;
+
+      var lineH = DBG_listingLineHeight();
+      var rowTop = Math.max(0, Math.round(rowIndex * lineH));
+      var targetTop = Math.max(0, Math.round(rowTop - ((body.clientHeight - lineH) / 2)));
+      var behavior = opts && opts.behavior ? opts.behavior : DBG_listingScrollBehavior;
+
+      if (typeof body.scrollTo === "function")
+        body.scrollTo({top:targetTop,behavior:behavior});
+      else
+        body.scrollTop = targetTop;
+
+      DBG_listingCurrentPC = pc;
+      DBG_positionListingPcOverlay(rowIndex);
+      return true;
+    }
+
+
     function DBG_disassembleRAM() {
       var rows = [];
       var lines = [];
@@ -1480,8 +1596,13 @@
       for (var i = 0; i < rows.length; i++)
         lines.push(DBG_formatDisassemblyRow(rows[i]));
 
+      DBG_indexDisassemblyRows(rows,lines);
+
       var debugfield = DBG_el("debugfield");
       if (debugfield) debugfield.textContent = lines.join("\n");
+
+      if (DBG_listingCurrentPC != null) DBG_scrollListingToPC(DBG_listingCurrentPC,{behavior:"auto"});
+      else DBG_hideListingPcOverlay();
 
       var info = DBG_el("DBG_listingInfo");
       if (info) info.textContent = lines.length + " listing lines / 64K RAM";
@@ -1805,6 +1926,7 @@
                 </div>
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
+              <div id="DBG_listingPcOverlay" class="DBG_listingPcOverlay" hidden></div>
               <pre id="debugfield">; adr   bytes       label       instruction           comment
 ; ----  ----------  ----------  --------------------  ------------------------
 <span class="DBG_listingLineCurrent"> 6000  A9 00       START       LDA #$00              ; current PC</span>
