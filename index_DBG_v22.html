@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Apple II+ Debugger Layout v2.1</title>
+  <title>Apple II+ Debugger Layout v2.2</title>
   <link rel="icon" type="image/x-icon" href="res/favicon.ico">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -2175,7 +2175,7 @@
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
                   <strong>CPU Trace</strong>
-                  <span class="DBG_paneInfo">PC bytes opcode A X Y P SP cycles</span>
+                  <span id="DBG_traceRegisterInfo" class="DBG_paneInfo DBG_traceRegisterInfo">PC=0000 A=00 X=00 Y=00 SR=<sub>n</sub>0<sub>v</sub>0<sub>-</sub>1<sub>b</sub>0<sub>d</sub>0<sub>i</sub>1<sub>z</sub>0<sub>c</sub>0 SP=FF</span>
                 </div>
                 <div id="DBG_traceHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
