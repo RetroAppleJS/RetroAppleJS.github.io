@@ -1988,6 +1988,29 @@
       if (DBG_el("DBG_tools")) DBG_el("DBG_tools").hidden = true;
     }
 
+    function DBG_applyPaneHeaderButtonTheme() {
+      /*
+       * Keep pane-header buttons readable in dark mode without adding more
+       * dark-mode CSS override chains.  These colors are UI state, so apply
+       * and clear them when the theme changes.
+       */
+      var buttons = document.querySelectorAll("#DBG_root .DBG_paneTitle .DBG_headerActions .appbut");
+
+      for (var i = 0; i < buttons.length; i++) {
+        var btn = buttons[i];
+
+        if (DBG_darkMode) {
+          btn.style.backgroundColor = "#2b3139";
+          btn.style.borderColor = "#59636f";
+          btn.style.color = "#e6edf3";
+        } else {
+          btn.style.backgroundColor = "";
+          btn.style.borderColor = "";
+          btn.style.color = "";
+        }
+      }
+    }
+
     function DBG_toggleRun(btn) {
       DBG_running = !DBG_running;
       if (!btn) btn = DBG_el("DBG_runToggle");
@@ -2027,6 +2050,7 @@
       DBG_darkMode = !DBG_darkMode;
       var tab = DBG_el("tab3");
       if (tab) tab.classList.toggle("DBG_dark", DBG_darkMode);
+      DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
     }
 
@@ -2053,6 +2077,7 @@
       if (symFile) symFile.addEventListener("change", DBG_onSymbolFileChange);
 
       DBG_renderSymbolLabels();
+      DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
     }
 
@@ -2303,7 +2328,7 @@
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
                   <strong>CPU Trace</strong>
-                  <span id="DBG_traceRegisterInfo" class="DBG_paneInfo DBG_traceRegisterInfo">PC=0000 A=00 X=00 Y=00 SR=<sub>n</sub>0<sub>v</sub>0<sub>-</sub>1<sub>b</sub>0<sub>d</sub>0<sub>i</sub>1<sub>z</sub>0<sub>c</sub>0 SP=FF</span>
+                  <span id="DBG_traceRegisterInfo" class="DBG_paneInfo DBG_traceRegisterInfo">A=00 X=00 Y=00 SR=<sub>n</sub>0<sub>v</sub>0<sub>-</sub>1<sub>b</sub>0<sub>d</sub>0<sub>i</sub>1<sub>z</sub>0<sub>c</sub>0 SP=FF</span>
                 </div>
                 <div id="DBG_traceHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
