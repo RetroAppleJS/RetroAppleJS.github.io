@@ -2424,7 +2424,8 @@ Label1 TXA
             ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
           -->
 
-        <div id="tab3" style="float:left;width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+          <div id="tab3" style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+
 
 <style>
     /*
@@ -2490,12 +2491,11 @@ Label1 TXA
     }
 
     #tab3 {
-      float: left;
       width: 1300px;
       min-height: 720px;
       border-radius: 10px;
       background-color: #76B9CE;
-      padding: 8px 10px 14px 10px;
+      padding: 0px 10px 14px 10px;
       box-sizing: border-box;
     }
 
@@ -4401,10 +4401,17 @@ Label1 TXA
 
     function DBG_registerPopupRules() {
       /*
-      * Keep the debugger tab buttons consistent with tab1:
-      * buttons call oCOM.POPUP.runRule(), rules toggle one overlay
-      * and close the other one.
-      */
+       * Keep the debugger tab buttons consistent with tab1:
+       * buttons call oCOM.POPUP.runRule(), rules toggle one overlay
+       * and close the other one.
+       *
+       * Rule names follow the tab1 convention:
+       *   tab3.1 = Settings
+       *   tab3.2 = Tools
+       *
+       * The actual popup IDs remain DBG_settings / DBG_tools,
+       * because the v22 debugger code already uses those IDs internally.
+       */
       if (typeof oCOM === "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule !== "function")
         return;
 
