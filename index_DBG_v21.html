@@ -12,7 +12,6 @@
   <script type="text/javascript" src="res/COM_MAIN.js"></script>
   <script type="text/javascript" src="res/COM_CONFIG.js"></script>
   <script type="text/javascript" src="res/ASM_core.js"></script>
-  <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
   <script type="text/javascript" src="res/DBG_6502gui.js"></script>
   <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
   <!--link rel="stylesheet" href="res/DBG_6502.css"-->
@@ -257,16 +256,8 @@
       display: none !important;
     }
 
- 
-     /* When the CPU tracer is active, keep only trace-specific controls visible
-        in the Listing header.  This preserves the v2.0 requestActive behaviour
-        while adding a separate trace-mode state. */
-     .DBG_headerActions.DBG_traceActive [data-dbg-action]:not([data-dbg-trace-action]) {
-       display: none !important;
-     }
- 
-     .DBG_traceRegisterInfo { font-family: courier, monospace; }
-     .DBG_traceRegisterInfo sub { font-size: 8px; line-height: 0; }
+    .DBG_traceRegisterInfo { font-family: courier, monospace; }
+    .DBG_traceRegisterInfo sub { font-size: 8px; line-height: 0; }
 
     .DBG_startPcRequester {
       display: inline-flex;
@@ -1740,8 +1731,10 @@
      }
  
      function DBG_setTraceActive(active) {
-       var host = DBG_el("DBG_listingHeaderActions");
-       if (host) host.classList.toggle("DBG_traceActive", !!active);
+        /*
+         * Trace mode does not hide Listing header action buttons.
+         * DBG_requestActive is the only header action/requester switch.
+         */
      }
  
      function DBG_renderTraceView() {
@@ -1775,8 +1768,7 @@
        DBG_traceStarted = true;
        DBG_traceStepCount = 0;
        DBG_traceLines = [];
- 
-       DBG_setTraceActive(true);
+
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(DBG_traceCPU.watch());
        DBG_scrollListingToPC(startPC,{behavior:DBG_listingScrollBehavior});
@@ -2139,7 +2131,7 @@
                 <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
-                  <button class="appbut skinny" data-dbg-action="step-forward" data-dbg-trace-action="1" onclick="DBG_traceStepForward()" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
+                  <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_traceStepForward()" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
 
                   <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
