@@ -694,6 +694,12 @@
     var DBG_symbolAddressIndex = new Array(DBG_RAM_SIZE);
     var DBG_pendingSymbolImport = null;
     var DBG_nextSymbolTableId = 1;
+    var DBG_traceCPU = null;
+    var DBG_traceHW = null;
+    var DBG_traceStarted = false;
+    var DBG_traceStepCount = 0;
+    var DBG_traceLines = [];
+    var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42};
 
     DBG_listingRowByPc.fill(-1);
     DBG_listingRowByByteAddress.fill(-1);
@@ -907,6 +913,7 @@
 
       DBG_debuggerStartPC = pc & 0xffff;
       DBG_debuggerStarted = true;
+      DBG_startCpuTraceAtPC(DBG_debuggerStartPC);
 
       var pcDisplay = DBG_el("dispPC");
       if (pcDisplay) pcDisplay.textContent = DBG_hexWord(DBG_debuggerStartPC);
@@ -1911,7 +1918,7 @@
                 <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
-                  <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_stub('Step forward')" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
+                  <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_traceStepForward();DBG_scrollListingToPC(cpuState.pc)" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
 
                   <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
