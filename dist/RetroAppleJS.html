@@ -31560,7 +31560,8 @@ Label1 TXA
             ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
           -->
 
-        <div id="tab3" style="float:left;width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+          <div id="tab3" style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+
 
 <style>
     /*
@@ -31626,12 +31627,11 @@ Label1 TXA
     }
 
     #tab3 {
-      float: left;
       width: 1300px;
       min-height: 720px;
       border-radius: 10px;
       background-color: #76B9CE;
-      padding: 8px 10px 14px 10px;
+      padding: 0px 10px 14px 10px;
       box-sizing: border-box;
     }
 
@@ -33535,6 +33535,35 @@ Label1 TXA
       if (DBG_el("DBG_tools")) DBG_el("DBG_tools").hidden = true;
     }
 
+    function DBG_registerPopupRules() {
+      /*
+       * Keep the debugger tab buttons consistent with tab1:
+       * buttons call oCOM.POPUP.runRule(), rules toggle one overlay
+       * and close the other one.
+       *
+       * Rule names follow the tab1 convention:
+       *   tab3.1 = Settings
+       *   tab3.2 = Tools
+       *
+       * The actual popup IDs remain DBG_settings / DBG_tools,
+       * because the v22 debugger code already uses those IDs internally.
+       */
+      if (typeof oCOM === "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule !== "function")
+        return;
+
+      oCOM.POPUP.addRule("tab3.1", function(o) {
+        o.toggle("DBG_settings");
+        o.off("DBG_tools");
+        DBG_equalizePaneHeaders();
+      });
+
+      oCOM.POPUP.addRule("tab3.2", function(o) {
+        o.toggle("DBG_tools");
+        o.off("DBG_settings");
+        DBG_equalizePaneHeaders();
+      });
+    }
+
     function DBG_applyPaneHeaderButtonTheme() {
       /*
        * Keep pane-header buttons readable in dark mode without adding more
@@ -33633,9 +33662,17 @@ Label1 TXA
     } else {
       window.addEventListener("load", DBG_initPaneContainer);
     }
+
+     DBG_registerPopupRules();
   </script>
 
         <div id="DBG_root">
+
+          <!-- DEBUGGER TAB PANE -->
+          <div style="height:30px;padding:0px 90px 0px 0px;">
+            <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab3.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+            <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab3.2');" title="Tools"><i class="fa fa-toolbox"></i></button>
+          </div>
 
           <!-- DEBUGGER SETTINGS -->
           <div class="hints1 DBG_popupHost" id="DBG_settings" hidden>
@@ -33720,7 +33757,7 @@ Label1 TXA
           </div>
 
           <!-- DEBUGGER TOOLS -->
-          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden style="padding-top:0px;margin-top:-32px">
+          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden style="padding-top:0px;">
     
           <div class=toolbox>
             <form name="DBGboard" onsubmit="return false">
