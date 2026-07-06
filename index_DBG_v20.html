@@ -14,6 +14,7 @@
   <script type="text/javascript" src="res/ASM_core.js"></script>
   <script type="text/javascript" src="res/DBG_6502cpu.js"></script>
   <script type="text/javascript" src="res/DBG_6502gui.js"></script>
+  <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
   <!--link rel="stylesheet" href="res/DBG_6502.css"-->
 
   <style>
@@ -255,6 +256,17 @@
     .DBG_headerActions.DBG_requestActive [data-dbg-action] {
       display: none !important;
     }
+
+ 
+     /* When the CPU tracer is active, keep only trace-specific controls visible
+        in the Listing header.  This preserves the v2.0 requestActive behaviour
+        while adding a separate trace-mode state. */
+     .DBG_headerActions.DBG_traceActive [data-dbg-action]:not([data-dbg-trace-action]) {
+       display: none !important;
+     }
+ 
+     .DBG_traceRegisterInfo { font-family: courier, monospace; }
+     .DBG_traceRegisterInfo sub { font-size: 8px; line-height: 0; }
 
     .DBG_startPcRequester {
       display: inline-flex;
@@ -1617,6 +1629,211 @@
       return lines.length;
     }
 
+     function DBG_traceColumnsValue() {
+       var input = DBG_el("DBG_traceColumnsInput");
+       return input ? input.value : "{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42}";
+     }
+ 
+     function DBG_parseTraceColumns(text) {
+       var cfg = Object.assign({}, DBG_defaultTraceColumns);
+       String(text || "").replace(/([a-zA-Z_][\w]*)\s*:\s*(-?\d+)/g, function(_, key, val) {
+         if (Object.prototype.hasOwnProperty.call(cfg, key)) cfg[key] = parseInt(val, 10) || 0;
+         return "";
+       });
+       return cfg;
+     }
+ 
+     function DBG_formatTraceParts(parts) {
+       var columns = DBG_parseTraceColumns(DBG_traceColumnsValue());
+       var order = ["stp","pc","byt","opc","rA","rX","rY","rP","rSP"];
+       var line = "";
+ 
+       for (var i = 0; i < order.length; i++) {
+         var key = order[i];
+         if (parts[key] == null || parts[key] === "") continue;
+         var col = columns[key] | 0;
+         var width;
+ 
+         for (var j = i + 1; j < order.length; j++) {
+           if ((columns[order[j]] | 0) > col) { width = (columns[order[j]] | 0) - col; break; }
+         }
+ 
+         var text = DBG_cropListingField(String(parts[key]), width);
+         if (line.length < col) line = line.padEnd(col, " ");
+         else if (line.length > col) line += " ";
+         line += text;
+       }
+ 
+       return line.replace(/\s+$/, "");
+     }
+ 
+     function DBG_escapeHTML(text) {
+       return String(text == null ? "" : text)
+         .replace(/&/g,"&amp;")
+         .replace(/</g,"&lt;")
+         .replace(/>/g,"&gt;")
+         .replace(/\"/g,"&quot;")
+         .replace(/'/g,"&#039;");
+     }
+ 
+     function DBG_createCpuTraceHw() {
+       var hw = {
+         nmi_signal: false,
+         irq_signal: false,
+         RD: [],
+         WR: [],
+         lineDecode: function(addr) { return ((addr & 0xffff) >> 12) & 0x0f; }
+       };
+ 
+       for (var i = 0; i < 16; i++) {
+         hw.RD[i] = function(addr) { return DBG_RAM[addr & 0xffff] & 0xff; };
+         hw.WR[i] = function(addr,d8) { DBG_RAM[addr & 0xffff] = d8 & 0xff; return 0x00; };
+       }
+ 
+       return hw;
+     }
+ 
+     function DBG_formatSRHTML(p) {
+       p = Number(p) & 0xff;
+       var names = ["n","v","-","b","d","i","z","c"];
+       var bits  = [7,6,5,4,3,2,1,0];
+       var out = "SR=";
+ 
+       for (var i = 0; i < bits.length; i++)
+         out += "<sub>" + names[i] + "</sub>" + ((p >> bits[i]) & 1);
+ 
+       return out;
+     }
+ 
+     function DBG_updateRegisterDisplays(state) {
+       state = state || (DBG_traceCPU && DBG_traceCPU.watch ? DBG_traceCPU.watch() : null);
+       if (!state) return;
+ 
+       var pc = state.pc & 0xffff;
+       var a  = state.a  & 0xff;
+       var x  = state.x  & 0xff;
+       var y  = state.y  & 0xff;
+       var p  = state.p  & 0xff;
+       var sp = state.sp & 0xff;
+ 
+       if (DBG_el("dispPC")) DBG_el("dispPC").textContent = DBG_hexWord(pc);
+       if (DBG_el("dispAC")) DBG_el("dispAC").textContent = DBG_hexByte(a);
+       if (DBG_el("dispXR")) DBG_el("dispXR").textContent = DBG_hexByte(x);
+       if (DBG_el("dispYR")) DBG_el("dispYR").textContent = DBG_hexByte(y);
+       if (DBG_el("dispSR")) DBG_el("dispSR").textContent = DBG_hexByte(p);
+       if (DBG_el("dispSP")) DBG_el("dispSP").textContent = DBG_hexByte(sp);
+ 
+       for (var i = 0; i < 8; i++) {
+         var bitEl = DBG_el("dispSR" + i);
+         if (bitEl) bitEl.textContent = String((p >> i) & 1);
+       }
+ 
+       var info = DBG_el("DBG_traceRegisterInfo");
+       if (info) {
+         info.innerHTML = "PC=" + DBG_hexWord(pc) +
+           " A=" + DBG_hexByte(a) +
+           " X=" + DBG_hexByte(x) +
+           " Y=" + DBG_hexByte(y) +
+           " " + DBG_formatSRHTML(p) +
+           " SP=" + DBG_hexByte(sp);
+       }
+     }
+ 
+     function DBG_setTraceActive(active) {
+       var host = DBG_el("DBG_listingHeaderActions");
+       if (host) host.classList.toggle("DBG_traceActive", !!active);
+     }
+ 
+     function DBG_renderTraceView() {
+       var pre = DBG_el("DBG_traceView");
+       if (!pre) return;
+ 
+       //var header = DBG_formatTraceParts({stp:"; #", pc:"PC", byt:"bytes", opc:"opcode", rA:"A", rX:"X", rY:"Y", rP:"P", rSP:"SP"});
+       //var ruler  = DBG_formatTraceParts({stp:"; ----", pc:"----", byt:"----------", opc:"-------------------", rA:"--", rX:"--", rY:"--", rP:"--", rSP:"--"});
+       //var html = DBG_escapeHTML(header + "\n" + ruler);
+       var html = "";
+
+       for (var i = 0; i < DBG_traceLines.length; i++) {
+         var line = DBG_escapeHTML(DBG_traceLines[i]);
+         html += (i == DBG_traceLines.length - 1 ? '<span class="DBG_traceLineCurrent">' + line + '</span>' : line)+"\n";
+       }
+ 
+       pre.innerHTML = html;
+       if (pre.parentElement) pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+     }
+ 
+     function DBG_startCpuTraceAtPC(startPC) {
+       if (typeof Cpu6502 !== "function") {
+         DBG_statusText("Cpu6502() was not found. Check res/EMU_cpu6502.js.");
+         return false;
+       }
+ 
+       startPC = startPC & 0xffff;
+       DBG_traceHW = DBG_createCpuTraceHw();
+       DBG_traceCPU = new Cpu6502(DBG_traceHW);
+       DBG_traceCPU.load("00,00,00,ff,24," + DBG_hexWord(startPC));
+       DBG_traceStarted = true;
+       DBG_traceStepCount = 0;
+       DBG_traceLines = [];
+ 
+       DBG_setTraceActive(true);
+       DBG_renderTraceView();
+       DBG_updateRegisterDisplays(DBG_traceCPU.watch());
+       DBG_scrollListingToPC(startPC,{behavior:DBG_listingScrollBehavior});
+ 
+       return true;
+     }
+ 
+     function DBG_traceInstructionTextAt(pc) {
+       var d = DBG_disassembleInstruction(pc);
+       var row = d && d.row ? d.row : null;
+       if (!row) return {bytes:"", op:""};
+ 
+       return {
+         bytes: (row.byteHex || []).join(" "),
+         op: String(row.ins || "") + (row.opr ? " " + row.opr : "")
+       };
+     }
+ 
+     function DBG_traceStepForward() {
+       if (!DBG_traceStarted || !DBG_traceCPU) {
+         DBG_startCpuTraceAtPC(DBG_debuggerStartPC || 0x0000);
+         if (!DBG_traceCPU) return false;
+       }
+ 
+       var before = DBG_traceCPU.watch();
+       var pc = before.pc & 0xffff;
+       var decoded = DBG_traceInstructionTextAt(pc);
+       var cycles = 0;
+       var after;
+ 
+       do {
+         DBG_traceCPU.cycle();
+         cycles++;
+         after = DBG_traceCPU.watch();
+       } while (after && after.cycle_delay > 0 && cycles < 64);
+ 
+       DBG_traceStepCount++;
+       DBG_traceLines.push(DBG_formatTraceParts({
+         stp: ("0000" + DBG_traceStepCount).slice(-4),
+         pc: DBG_hexWord(pc),
+         byt: decoded.bytes,
+         opc: decoded.op,
+         rA: DBG_hexByte(before.a),
+         rX: DBG_hexByte(before.x),
+         rY: DBG_hexByte(before.y),
+         rP: DBG_hexByte(before.p),
+         rSP: DBG_hexByte(before.sp)
+       }));
+ 
+       DBG_renderTraceView();
+       DBG_updateRegisterDisplays(after);
+       if (after) DBG_scrollListingToPC(after.pc & 0xffff,{behavior:DBG_listingScrollBehavior});
+ 
+       return true;
+     }
+ 
+
     function DBG_importBoardByteCode() {
       var parsed = DBG_syncByteCodeFromBoard();
       if (!parsed.records.length) {
@@ -1781,6 +1998,10 @@
                 <label>Trace depth / ring buffer<br>
                   <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')">
                 </label>
+                 <label>
+                   Trace columns<br>
+                   <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP" spellcheck="false" onchange="DBG_renderTraceView()">
+                 </label>
                 <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
                 <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
               </div>
@@ -1918,7 +2139,7 @@
                 <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
-                  <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_traceStepForward();DBG_scrollListingToPC(cpuState.pc)" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
+                  <button class="appbut skinny" data-dbg-action="step-forward" data-dbg-trace-action="1" onclick="DBG_traceStepForward()" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
 
                   <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
@@ -1981,21 +2202,7 @@
                 </div>
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
-<pre id="DBG_traceView">; #     PC    bytes       op                   A  X  Y  P  SP  cyc
-; ----  ----  ----------  -------------------  -- -- -- -- --  ----
- 0001  6000  A9 00       LDA #$00             00 00 00 20 FF     2
-<span class="DBG_traceLineCurrent"> 0002  6002  8D 00 04    STA $0400            00 00 00 22 FF     6</span>
- 0003  6005  A9 C1       LDA #$C1             00 00 00 22 FF     2
- 0004  6007  8D 01 04    STA $0401            C1 00 00 A0 FF     6
- 0005  600A  20 ED FD    JSR COUT             C1 00 00 A0 FF     6
- 0006  FDED  60          RTS                  C1 00 00 A0 FD     6
- 0007  600D  4C 00 60    JMP $6000            C1 00 00 A0 FF     3
-
-; trace display options live under Settings:
-; - trace depth / ring buffer size
-; - show cycles
-; - show PC histogram
-</pre>
+              <pre id="DBG_traceView"></pre>
               </div>
             </section>
 
