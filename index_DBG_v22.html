@@ -12,7 +12,6 @@
   <script type="text/javascript" src="res/COM_MAIN.js"></script>
   <script type="text/javascript" src="res/COM_CONFIG.js"></script>
   <script type="text/javascript" src="res/ASM_core.js"></script>
-  <script type="text/javascript" src="res/DBG_6502gui.js"></script>
   <script type="text/javascript" src="res/EMU_cpu6502.js"></script>
   <!--link rel="stylesheet" href="res/DBG_6502.css"-->
 
@@ -707,6 +706,157 @@
     DBG_listingRowByPc.fill(-1);
     DBG_listingRowByByteAddress.fill(-1);
 
+
+    function DBGUI()
+    {
+      /*
+       * Debugger GUI helper container.
+       *
+       * index_DBG_v22.html used DBG_6502gui.js only for its 6502 opcode table.
+       * Keep that data local to this page so the redesigned debugger no longer
+       * loads the legacy GUI/debugger module with its global state.
+       */
+      this.opctab = [
+        ['BRK','imp'], ['ORA','inx'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['ORA','zpg'], ['ASL','zpg'], ['???','imp'],
+        ['PHP','imp'], ['ORA','imm'], ['ASL','acc'], ['???','imp'],
+        ['???','imp'], ['ORA','abs'], ['ASL','abs'], ['???','imp'],
+        ['BPL','rel'], ['ORA','iny'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['ORA','zpx'], ['ASL','zpx'], ['???','imp'],
+        ['CLC','imp'], ['ORA','aby'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['ORA','abx'], ['ASL','abx'], ['???','imp'],
+        ['JSR','abs'], ['AND','inx'], ['???','imp'], ['???','imp'],
+        ['BIT','zpg'], ['AND','zpg'], ['ROL','zpg'], ['???','imp'],
+        ['PLP','imp'], ['AND','imm'], ['ROL','acc'], ['???','imp'],
+        ['BIT','abs'], ['AND','abs'], ['ROL','abs'], ['???','imp'],
+        ['BMI','rel'], ['AND','iny'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['AND','zpx'], ['ROL','zpx'], ['???','imp'],
+        ['SEC','imp'], ['AND','aby'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['AND','abx'], ['ROL','abx'], ['???','imp'],
+        ['RTI','imp'], ['EOR','inx'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['EOR','zpg'], ['LSR','zpg'], ['???','imp'],
+        ['PHA','imp'], ['EOR','imm'], ['LSR','acc'], ['???','imp'],
+        ['JMP','abs'], ['EOR','abs'], ['LSR','abs'], ['???','imp'],
+        ['BVC','rel'], ['EOR','iny'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['EOR','zpx'], ['LSR','zpx'], ['???','imp'],
+        ['CLI','imp'], ['EOR','aby'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['EOR','abx'], ['LSR','abx'], ['???','imp'],
+        ['RTS','imp'], ['ADC','inx'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['ADC','zpg'], ['ROR','zpg'], ['???','imp'],
+        ['PLA','imp'], ['ADC','imm'], ['ROR','acc'], ['???','imp'],
+        ['JMP','ind'], ['ADC','abs'], ['ROR','abs'], ['???','imp'],
+        ['BVS','rel'], ['ADC','iny'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['ADC','zpx'], ['ROR','zpx'], ['???','imp'],
+        ['SEI','imp'], ['ADC','aby'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['ADC','abx'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['STA','inx'], ['???','imp'], ['???','imp'],
+        ['STY','zpg'], ['STA','zpg'], ['STX','zpg'], ['???','imp'],
+        ['DEY','imp'], ['???','imp'], ['TXA','imp'], ['???','imp'],
+        ['STY','abs'], ['STA','abs'], ['STX','abs'], ['???','imp'],
+        ['BCC','rel'], ['STA','iny'], ['???','imp'], ['???','imp'],
+        ['STY','zpx'], ['STA','zpx'], ['STX','zpy'], ['???','imp'],
+        ['TYA','imp'], ['STA','aby'], ['TXS','imp'], ['???','imp'],
+        ['???','imp'], ['STA','abx'], ['???','imp'], ['???','imp'],
+        ['LDY','imm'], ['LDA','inx'], ['LDX','imm'], ['???','imp'],
+        ['LDY','zpg'], ['LDA','zpg'], ['LDX','zpg'], ['???','imp'],
+        ['TAY','imp'], ['LDA','imm'], ['TAX','imp'], ['???','imp'],
+        ['LDY','abs'], ['LDA','abs'], ['LDX','abs'], ['???','imp'],
+        ['BCS','rel'], ['LDA','iny'], ['???','imp'], ['???','imp'],
+        ['LDY','zpx'], ['LDA','zpx'], ['LDX','zpy'], ['???','imp'],
+        ['CLV','imp'], ['LDA','aby'], ['TSX','imp'], ['???','imp'],
+        ['LDY','abx'], ['LDA','abx'], ['LDX','aby'], ['???','imp'],
+        ['CPY','imm'], ['CMP','inx'], ['???','imp'], ['???','imp'],
+        ['CPY','zpg'], ['CMP','zpg'], ['DEC','zpg'], ['???','imp'],
+        ['INY','imp'], ['CMP','imm'], ['DEX','imp'], ['???','imp'],
+        ['CPY','abs'], ['CMP','abs'], ['DEC','abs'], ['???','imp'],
+        ['BNE','rel'], ['CMP','iny'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['CMP','zpx'], ['DEC','zpx'], ['???','imp'],
+        ['CLD','imp'], ['CMP','aby'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['CMP','abx'], ['DEC','abx'], ['???','imp'],
+        ['CPX','imm'], ['SBC','inx'], ['???','imp'], ['???','imp'],
+        ['CPX','zpg'], ['SBC','zpg'], ['INC','zpg'], ['???','imp'],
+        ['INX','imp'], ['SBC','imm'], ['NOP','imp'], ['???','imp'],
+        ['CPX','abs'], ['SBC','abs'], ['INC','abs'], ['???','imp'],
+        ['BEQ','rel'], ['SBC','iny'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['SBC','zpx'], ['INC','zpx'], ['???','imp'],
+        ['SED','imp'], ['SBC','aby'], ['???','imp'], ['???','imp'],
+        ['???','imp'], ['SBC','abx'], ['INC','abx'], ['???','imp']
+      ];
+
+      this.resetProcessor = function()
+      {
+        /*
+         * Placeholder for future debugger GUI reset actions.
+         * The current CPU trace reset is driven by DBG_startCpuTraceAtPC().
+         */
+        return true;
+      };
+
+      this.getOpcodeEntry = function(opcode)
+      {
+        return this.opctab[opcode & 0xff] || ['???','imp'];
+      };
+
+      this.instructionAddressMode = function(opcode)
+      {
+        var entry = this.getOpcodeEntry(opcode);
+        return entry && entry[1] ? entry[1] : 'imp';
+      };
+
+      this.instructionLength = function(opcode)
+      {
+        switch(this.instructionAddressMode(opcode))
+        {
+          case 'imm':
+          case 'zpg':
+          case 'zpx':
+          case 'zpy':
+          case 'inx':
+          case 'iny':
+          case 'rel':
+            return 2;
+
+          case 'abs':
+          case 'abx':
+          case 'aby':
+          case 'ind':
+            return 3;
+
+          case 'acc':
+          case 'imp':
+          default:
+            return 1;
+        }
+      };
+
+      this.disassemble = function(arg)
+      {
+        arg = arg || {};
+
+        if(typeof DASM !== 'function')
+          return {adr_lst:'0000', opcode_lst:'', mnemonic:'???'};
+
+        var dasm = new DASM();
+
+        if(typeof arg.sym_search === 'function') dasm.sym_search = arg.sym_search;
+        else dasm.sym_search = function(op, adm) { return op; };
+
+        if(typeof oCOM !== 'undefined' && oCOM && typeof oCOM.getHexByte === 'function')
+          dasm.getHexByte = oCOM.getHexByte;
+
+        return dasm.disassemble({
+          code_arr: arg.code_arr || [0,0,0],
+          pc: typeof arg.pc === 'number' ? (arg.pc & 0xffff) : 0,
+          opctab: this.opctab
+        });
+      };
+    }
+
+    var oDBGUI = new DBGUI();
+
+
+
+
     function DBG_el(id) {
       return document.getElementById(id);
     }
@@ -1359,31 +1509,11 @@
     }
 
     function DBG_instructionAddressMode(opcode) {
-      var entry = (typeof opctab !== "undefined" && opctab) ? opctab[opcode & 0xff] : null;
-      return entry && entry[1] ? entry[1] : "imp";
+      return oDBGUI.instructionAddressMode(opcode);
     }
 
     function DBG_instructionLength(opcode) {
-      var mode = DBG_instructionAddressMode(opcode);
-      switch (mode) {
-        case "imm":
-        case "zpg":
-        case "zpx":
-        case "zpy":
-        case "inx":
-        case "iny":
-        case "rel":
-          return 2;
-        case "abs":
-        case "abx":
-        case "aby":
-        case "ind":
-          return 3;
-        case "acc":
-        case "imp":
-        default:
-          return 1;
-      }
+      return oDBGUI.instructionLength(opcode);
     }
 
     function DBG_instructionTarget(pcAddr, mode) {
@@ -1438,13 +1568,10 @@
       var opcode = DBG_RAM[pcv] & 0xff;
       var mode = DBG_instructionAddressMode(opcode);
       var len = DBG_instructionLength(opcode);
-      var dasm = new DASM();
-      dasm.sym_search = function(op, adm) { return op; };
-      if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.getHexByte === "function") dasm.getHexByte = oCOM.getHexByte;
-      var ret = dasm.disassemble({
+      var ret = oDBGUI.disassemble({
         code_arr: [DBG_RAM[pcv], DBG_RAM[(pcv + 1) & 0xffff], DBG_RAM[(pcv + 2) & 0xffff]],
         pc: pcv,
-        opctab: (typeof opctab !== "undefined") ? opctab : null
+        sym_search: function(op, adm) { return op; }
       });
 
       var mnemonicText = DBG_decodeDASMText(ret.mnemonic);
@@ -1721,7 +1848,8 @@
  
        var info = DBG_el("DBG_traceRegisterInfo");
        if (info) {
-         info.innerHTML = "PC=" + DBG_hexWord(pc) +
+         info.innerHTML = 
+           //"PC=" + DBG_hexWord(pc) +
            " A=" + DBG_hexByte(a) +
            " X=" + DBG_hexByte(x) +
            " Y=" + DBG_hexByte(y) +
