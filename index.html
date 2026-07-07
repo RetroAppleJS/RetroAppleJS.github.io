@@ -715,17 +715,6 @@
               .ASM_paneHost.ASM_showJson .ASM_jsonPane {
                 display: grid;
               }
-/*
-              .ASM_pane {
-                min-width: 0;
-                max-width: 100%;
-                display: block;
-                border: 1px solid var(--ASM_border);
-                border-radius: 10px;
-                overflow: hidden;
-                background: var(--ASM_panel);
-              }
-*/
 
               .ASM_pane {
                 display: flex;
@@ -846,30 +835,6 @@
                 padding: 0px 6px;
                 white-space: nowrap;
               }
-
-              /*
-               * Native input[type=button] controls can ignore or flatten box-shadow
-               * on some browsers unless their native appearance is disabled.
-               */
-
-               /*
-              .ASM_root input[type="button"].ASM_boardButtonShadow {
-                -webkit-appearance: none;
-                appearance: none;
-                background-color: #f4f4f4;
-                border: 1px solid rgba(0,0,0,0.45);
-                border-radius: 3px;
-                color: #000000;
-                box-shadow: 3px 3px 0px rgba(0,0,0,0.35) !important;
-                margin: 0px 2px 3px 0px;
-                position: relative;
-              }
-
-              .ASM_root input[type="button"].ASM_boardButtonShadow:active {
-                box-shadow: 1px 1px 0px rgba(0,0,0,0.35) !important;
-                transform: translate(2px,2px);
-              }
-                */
 
               .ASM_findReplaceMount {
                 display: inline-flex;
@@ -1231,7 +1196,7 @@
                     ASSEMBLER<br>
                     <div style="font-family:arial;font-size:11px">
                       Listing columns<br>
-                      <input id="ASM_settingsListingColumnsInput" value="{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}" size=42 style="font-family:monospace;font-size:11px">
+                      <input id="ASM_settingsListingColumnsInput" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" size=42 style="font-family:monospace;font-size:11px">
                     </div>
                   </div>
                 </div>
@@ -1291,12 +1256,13 @@ Label1 TXA
                   <div class="ASM_paneTitle">
                     <span class="ASM_paneTitleMain">
                       <strong>Listing</strong>
-                      <!--
-                      <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false">
-                      <input id="ASM_listingColumnsInput" class="ASM_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, line/jump guide, label, instruction, operand, comment. Omit a key to hide that column." spellcheck="false">
-                      -->
                     </span>
                     <span class="ASM_paneTitleMain">
+
+                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" type="button" value="to emulator">
+                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" type="button" value="to debugger">
+
+
                       <button id="ASM_exportSymbolsButton"
                               class="ASM_paneTitleButton"
                               type="button"
@@ -2223,13 +2189,13 @@ Label1 TXA
             {
               if(!ASM_oPANE || typeof defaultPaneHeaderWidgetHTML != "function")
                 return '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                  + '<button type="button" class="appbut skinny" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                  + '<button type="button" class="appbut skinny" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play blink"></i></button>'
                   + '</span>';
 
               return defaultPaneHeaderWidgetHTML().replace(
                 '<span class="com-pane-header-default-widget com-pane-header-widget">',
                 '<span class="com-pane-header-default-widget com-pane-header-widget">'
-                + '<button type="button" class="appbut skinny" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>'
+                + '<button type="button" class="appbut skinny" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play blink"></i></button>'
               );
             }
 
@@ -2967,7 +2933,7 @@ Label1 TXA
     var DBG_listingRowByByteAddress = new Int32Array(DBG_RAM_SIZE);
     var DBG_listingCurrentPC = null;
     var DBG_listingScrollBehavior = "auto";
-    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51};
+    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51};
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
     var DBG_symbolTablesById = {};
@@ -3171,7 +3137,7 @@ Label1 TXA
 
     function DBG_listingColumnsValue() {
       var input = DBG_el("DBG_listingColumnsInput");
-      return input ? input.value : "{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}";
+      return input ? input.value : "{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}";
     }
 
     function DBG_cropListingField(text, width) {
@@ -4523,7 +4489,7 @@ Label1 TXA
                 </label>
                 <label>
                   Listing columns<br>
-                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:20,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
+                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
                 </label>
               </div>
             </div>
@@ -4759,50 +4725,6 @@ Label1 TXA
                   <div class="DBG_flagCell DBG_changed"><label>Z</label><span id="dispSR1">1</span></div>
                   <div class="DBG_flagCell"><label>C</label><span id="dispSR0">0</span></div>
                 </div>
-
-                <!--
-                <table class="DBG_watchTable" aria-label="Debugger watchers">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Address</th>
-                      <th>Size</th>
-                      <th>Value</th>
-                      <th>Mode</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Text page cursor</td>
-                      <td>$0400</td>
-                      <td>byte</td>
-                      <td class="DBG_changed">00</td>
-                      <td>break on change</td>
-                    </tr>
-                    <tr>
-                      <td>KBD</td>
-                      <td>$C000</td>
-                      <td>byte</td>
-                      <td>80</td>
-                      <td>read watch</td>
-                    </tr>
-                    <tr>
-                      <td>KBDSTRB bit 7</td>
-                      <td>$C010.7</td>
-                      <td>bit</td>
-                      <td>1</td>
-                      <td>manual</td>
-                    </tr>
-                    <tr>
-                      <td>BASL/BASH</td>
-                      <td>$0028</td>
-                      <td>word</td>
-                      <td>0400</td>
-                      <td>auto</td>
-                    </tr>
-                  </tbody>
-                </table>
-                -->
 
                 <div class="DBG_footerNote" id="DBG_status"></div>
               </div>
