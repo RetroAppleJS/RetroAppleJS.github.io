@@ -2034,13 +2034,6 @@ table { border-collapse: collapse; position: relative;}
     padding: 0px 2px 0px 2px;
   }
 
-  .DBG_symbolLabelWrap
-  {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    min-width: 0;
-  }
-
   .appbut_flash
   {
     animation: appbut_blink steps(1) 2.5s infinite;
@@ -2063,14 +2056,6 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.8);
     float:left;
     text-align:center;
-  }
-
-  .appbox .mini
-  {
-    display: inline-block;
-    padding: 2px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.4);
   }
 
   .toolbox
@@ -29779,33 +29764,6 @@ function DASM()
                 box-sizing: border-box;
               }
 
-              .ASM_toolbar {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                gap: 8px;
-                margin: 0px 0px 8px 0px;
-                padding: 6px 8px;
-                border: 1px solid var(--ASM_border);
-                border-radius: 10px;
-                background: var(--ASM_panel);
-              }
-
-              .ASM_buttonPrimary {
-                background: #1d4f7a;
-                border-color: #2c6ca3;
-              }
-
-
-              .ASM_status {
-                margin-left: auto;
-                color: var(--ASM_muted);
-                font-size: 13px;
-              }
-
-              .ASM_status_ok { color: var(--ASM_ok); }
-              .ASM_status_warn { color: var(--ASM_warn); }
-              .ASM_status_bad { color: var(--ASM_bad); }
 
               .ASM_paneHost {
                 display: grid;
@@ -29932,22 +29890,6 @@ function DASM()
               .ASM_jsonNull { color: #000000 !important; }
 
 
-              .ASM_popupTextArea {
-                width: 360px;
-                height: 74px;
-                margin: 0px;
-                padding: 4px;
-                font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-              }
-
-              .ASM_byteCodeInfo {
-                color: #000000;
-                font-family: arial;
-                font-size: 11px;
-                padding: 0px 6px;
-                white-space: nowrap;
-              }
-
               .ASM_findReplaceMount {
                 display: inline-flex;
                 align-items: center;
@@ -30023,22 +29965,6 @@ function DASM()
                 white-space: nowrap;
               }
 
-              .ASM_sourceFileNameInput {
-                width: 150px;
-                max-width: 22vw;
-                border: 1px solid rgba(0,0,0,0.25);
-                border-radius: 4px;
-                background: #ffffff;
-                color: #000000;
-                padding: 2px 5px;
-                font: 11px/1.2 courier, monospace;
-              }
-
-              .ASM_sourceFileNameInput:focus {
-                outline: 1px solid #0078d4;
-                border-color: #0078d4;
-              }
-
               .ASM_paneTitleButton {
                 -webkit-appearance: none;
                 appearance: none;
@@ -30073,12 +29999,6 @@ function DASM()
 
               .ASM_root.ASM_headerDark .ASM_paneInfo {
                 color: #8b949e;
-              }
-
-              .ASM_root.ASM_headerDark .ASM_sourceFileNameInput {
-                background: #0b0f14;
-                border-color: #30363d;
-                color: #e6edf3;
               }
 
               .ASM_root.ASM_headerDark .ASM_listingColumnsInput {
@@ -30273,52 +30193,11 @@ function DASM()
   -webkit-text-fill-color: #000000 !important;
 }
 
-
-              .ASM_manualPane {
-                width: 100%;
-                max-width: 100%;
-                margin: 10px 0px 0px 0px;
-                padding: 0px;
-                border-radius: 10px;
-                overflow: hidden;
-              }
-
-              .ASM_manualField {
-                width: calc(100% - 210px);
-                background-color: transparent !important;
-                border-color: transparent !important;
-                resize: none;
-                overflow-y: auto;
-              }
-
-              .ASM_manualField:focus {
-                outline: none;
-              }
-
-              @media (max-width: 1100px) {
-                .ASM_root { width: 100%; }
-                .ASM_paneHost,
-                .ASM_paneHost.ASM_showJson { grid-template-columns: 1fr; }
-                .ASM_status { margin-left: 0; width: 100%; }
-              }
-
-            .vertical {
-              display: flex;
-            }
-
-            .vertical hr {
-              min-height: 100%;
-              max-height: 100vh;
-              margin-left: 7px;
-              opacity: 25%;
-            }
-
-
             </style>
 
             <div id="ASM_root" class="ASM_root">
 
-              <div class="vertical" style="height:30px;padding:0px 90px 0px 0px;">
+              <div style="display:flex;height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings');oCOM.POPUP.off('ASM_tools');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
                 <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.toggle('ASM_tools');oCOM.POPUP.off('ASM_settings');" title="Tools"><i class="fa fa-toolbox"></i></button>
               </div>
@@ -30345,7 +30224,7 @@ function DASM()
                     <input title="Send byte code to debugger" id="ASM_toDebuggerButton" class="ASM_toDebuggerButton" type="button" value="to debugger">
                     <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" value="copy">
                     <input title="Clear byte code" type="button" value="Clear" onclick="javascript:ASM_clearBoard()">
-                    <span id="ASM_byteCodeInfo" class="ASM_byteCodeInfo">0 bytes</span>
+                    <span id="ASM_byteCodeInfo" style="color:#000000;font-family:arial;font-size:11px;padding:0px 6px;white-space:nowrap;">0 bytes</span>
                     <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('ASM_tools')">
                   </form>
                 </div>
@@ -30375,11 +30254,11 @@ function DASM()
                     <span class="ASM_paneTitleMain">
                       <strong>Source</strong>
                       <input id="ASM_sourceFileNameInput"
-                             class="ASM_sourceFileNameInput"
                              type="text"
                              value="sample.S"
                              title="Source filename"
-                             spellcheck="false">
+                             spellcheck="false"
+                             style="width:150px;max-width:22vw;border:1px solid rgba(0,0,0,0.25);border-radius:4px;background:#ffffff;color:#000000;padding:2px 5px;font:11px/1.2 courier,monospace;">           
                       <button id="ASM_downloadSourceButton"
                               class="ASM_paneTitleButton"
                               type="button"
@@ -30433,9 +30312,9 @@ Label1 TXA
                 
               </div>
 
-              <section id="ASM_manualPane" class="ASM_manualPane CRT_TV DOUBL_TV">
+              <section id="ASM_manualPane" class="CRT_TV DOUBL_TV" style="width:100%;max-width:100%;margin:10px 0px 0px 0px;padding:0px;border-radius:10px;overflow:hidden;">
                 <div style="height:120px"></div>
-                <div name="codefield" id="ASM_manual" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div>
+                <div name="codefield" id="ASM_manual" class="markdown_mon" style="border:1px solid transparent;width:600px;height:420px;background-color:transparent;resize:none;overflow-y:auto;"></div>
                 <div style="height:300px"></div>
               </section>
             </div>
@@ -31415,6 +31294,25 @@ Label1 TXA
               if(wrap) wrap.classList.add("dotmatrix_bck");
             }
 
+            function ASM_syncSourceFileNameTheme()
+            {
+              var input = ASM_el("ASM_sourceFileNameInput");
+              if(!input) return;
+
+              if(ASM_headerThemeDark)
+              {
+                input.style.background = "#0b0f14";
+                input.style.borderColor = "#30363d";
+                input.style.color = "#e6edf3";
+              }
+              else
+              {
+                input.style.background = "#ffffff";
+                input.style.borderColor = "rgba(0,0,0,0.25)";
+                input.style.color = "#000000";
+              }
+            }
+
             function ASM_toggleHeaderTheme()
             {
               var root = ASM_el("ASM_root");
@@ -31422,6 +31320,7 @@ Label1 TXA
               ASM_headerThemeDark = !ASM_headerThemeDark;
               root.classList.toggle("ASM_headerDark", ASM_headerThemeDark);
               root.classList.toggle("ASM_paneDark", ASM_headerThemeDark);
+              ASM_syncSourceFileNameTheme();
               ASM_refreshFindReplaceOverlay();
             }
 
@@ -31661,6 +31560,7 @@ Label1 TXA
 
             ASM_bindEvents();
             ASM_updateSourceFileNameUI();
+            ASM_syncSourceFileNameTheme();
             ASM_syncListingColumns();
             ASM_bindSourceFindReplace();
             ASM_loadManualPane();
@@ -31744,13 +31644,6 @@ Label1 TXA
 
     .DBG_popupHost input.DBG_listingColumnsInput {
       width: 310px;
-    }
-
-    .DBG_byteCodeInfo {
-      color: #000000;
-      font-family: arial;
-      font-size: 11px;
-      white-space: nowrap;
     }
 
     .DBG_paneHost {
@@ -31976,41 +31869,6 @@ Label1 TXA
       min-height: 36px;
       text-align: center;
       padding: 4px 2px;
-    }
-
-    .DBG_watchTable {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0px 4px;
-      font-family: courier, monospace;
-      font-size: 12px;
-    }
-
-    .DBG_watchTable th {
-      color: rgba(0,0,0,0.72);
-      text-align: left;
-      font-family: arial, sans-serif;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 5px;
-      border-bottom: 1px solid rgba(0,0,0,0.20);
-    }
-
-    .DBG_watchTable td {
-      padding: 4px 5px;
-      border-top: 1px solid rgba(0,0,0,0.12);
-      border-bottom: 1px solid rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.40);
-    }
-
-    .DBG_watchTable td:first-child {
-      border-left: 1px solid rgba(0,0,0,0.12);
-      border-radius: 5px 0px 0px 5px;
-    }
-
-    .DBG_watchTable td:last-child {
-      border-right: 1px solid rgba(0,0,0,0.12);
-      border-radius: 0px 5px 5px 0px;
     }
 
     .DBG_changed {
@@ -33866,7 +33724,7 @@ Label1 TXA
               <textarea id="DBG_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code input" name="boardText" oninput="DBG_syncByteCodeFromBoard()"></textarea><br>
               <input title="Send byte code to debugger" id="DBG_ByteCodeImportButton" type="button" value="to debugger" onclick="DBG_importBoardByteCode()">
               <input title="Clear byte code" type="button" value="Clear" onclick="javascript:DBG_clearBoard()">
-              <span id="DBG_byteCodeInfo" class="DBG_byteCodeInfo">0 bytes</span>
+              <span id="DBG_byteCodeInfo" style="color:#000000;font-family:arial;font-size:11px;white-space:nowrap;">0 bytes</span>
               <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('DBG_tools')">
             </form>
           </div>
