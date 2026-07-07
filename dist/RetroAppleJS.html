@@ -31075,6 +31075,29 @@ Label1 TXA
               };
             }
 
+            function ASM_debuggerOriginAddress()
+            {
+              /*
+               * Prefer the first emitted byte from the assembler output.  This is
+               * the source/listing origin in normal ORG-based programs and stays
+               * stable even when the code contains later ORG blocks.
+               */
+              var compiled = window.asmCompileResult || {};
+              var records = compiled.bytes || [];
+
+              for(var i = 0; i < records.length; i++)
+              {
+                if(records[i] && typeof records[i].pc == "number")
+                  return records[i].pc & 0xFFFF;
+              }
+
+              var scope = ASM_symbolScopeFromBytes();
+              if(scope && scope.length && scope[0] && typeof scope[0][0] == "number")
+                return scope[0][0] & 0xFFFF;
+
+              return null;
+            }
+
             function ASM_exportSymbols()
             {
               /*
@@ -31154,6 +31177,7 @@ Label1 TXA
 
               var symbolImported = false;
               var symbolObject = ASM_buildSymbolExportObject();
+              var originPc = ASM_debuggerOriginAddress();
 
               if(typeof DBG_receiveSymbolTable == "function")
               {
@@ -31170,7 +31194,7 @@ Label1 TXA
 
               if(typeof DBG_receiveByteCode == "function")
               {
-                DBG_receiveByteCode(ASM_currentByteCodeText,true);
+                DBG_receiveByteCode(ASM_currentByteCodeText,true,originPc);
                 ASM_setStatus(
                   "Byte code" + (symbolImported ? " and symbol table" : "") + " imported into debugger tab.",
                   "ok"
@@ -31191,7 +31215,7 @@ Label1 TXA
               else ASM_setStatus("Debugger output field is not available.","warn");
             }
 
-            function DBG_receiveByteCode(text,switchToTab)
+            function DBG_receiveByteCode(text,switchToTab,originPc)
             {
               DBG_currentByteCodeText = String(text || "");
 
@@ -31202,6 +31226,25 @@ Label1 TXA
 
               if(switchToTab !== false && typeof COM_switchTab == "function")
                 COM_switchTab("tab3");
+
+              /*
+               * Scroll after the tab switch has applied, otherwise the hidden
+               * tab3 listing pane can report a zero clientHeight and the centering
+               * calculation in DBG_scrollListingToPC() becomes unreliable.
+               */
+              if(originPc != null && !isNaN(Number(originPc)))
+              {
+                var pc = Number(originPc) & 0xFFFF;
+                window.setTimeout(function(){
+                  if(typeof DBG_scrollListingToPC != "function") return;
+
+                  var listed = DBG_scrollListingToPC(pc,{behavior:"auto"});
+                  if(listed)
+                    DBG_statusText(
+                      "Imported byte code and positioned listing at $" + DBG_hexWord(pc) + "."
+                    );
+                },0);
+              }
 
               return ok;
             }
