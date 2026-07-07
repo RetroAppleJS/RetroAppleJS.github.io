@@ -2106,11 +2106,14 @@ table { border-collapse: collapse; position: relative;}
   {
     background-color:#f4f4f4;
     
-    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
+    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAmcAAAA0AgMAAACyWXfyAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAAR5JREFUeJzt2DEOgjAUxvGG7nIgEz2F9+ESb2cmDt6gPQqzEyOJhNqi0FfDQLq8z6T/6Y2/WFJ4KuXTHVat2tLGOKT6SKtso4Aa+jgX2tEKLac/oWnTSDH24peH7hopxl7PNs6wB3pp8WjaLpMb8Wjnexg0Is29wqCdA6TNYUCkeVMYoGkT3r32oSlPg3sbfGm1hTtQdZ2+Mx5tq9COVmg5JZ+S0jvxTy2nGemtmMdplaUbUOmzRtIcXqHlVGg5JfcaMK0jaQ6Pr8jakDSHl/4rSdIcXrq9kzSH52mnx0ILKzJJc3hhDx2XBw2SFvdQkubwwh4649LWXw3u8uDbO0lzeHx7hzvQdUUO2ztJc3ieVg/ob4NCO16h5YS/vb8BMlVl5TooI/UAAAAASUVORK5CYII=");
+
     /*
+    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
+    
     background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkkAAAA0AgMAAADjzUSRAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRFCwsLHw8UJyUoHRocYK5MZgAAARpJREFUeJzt2CEOwjAUxvGG59cLETgFdr3KLvE8egqN2Y6CxyAJIZR9jGWtgNS9T/SvOvcLJS97c25KepLcmgxDZOiVmDZj5wjyTfJQTT+rprLoTTJ0Vo40n84C6TsrR1qTzky+u9sdiUzb+RjvPCY5jzgJk8nHE04SI5PpghOVaR9vOHGanjzzyc8mN5lo5vhi8iPP3Ukcvw88prVq+lk1lZW/01nvmkuZabBeN9Ejf6fTA0GhqaaSqqksepMwmnq19qA2/06n1h4U8u90au1BId+D1dqDYLrOJuycau1BAftd9/kzcZnW/U6tPShgv7sQmpbfiWcWpHuwWntQm+7BPHe37JzYg9XagzCfIu8cr6Y/VVNZgXgPfgPwisbf2JoIlwAAAABJRU5ErkJggg==");
     */
-    background-size:585px 42px;
+    background-size:615px 42px;
     background-attachment:local;
     background-repeat:repeat;
   }
@@ -31723,14 +31726,14 @@ Label1 TXA
 
     .DBG_paneHost {
       display: grid;
-      grid-template-columns: minmax(440px, 1.18fr) minmax(390px, 1fr) minmax(330px, 0.92fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       width: 100%;
       align-items: stretch;
     }
 
     .DBG_paneHost.DBG_hideWatch {
-      grid-template-columns: minmax(570px, 1.22fr) minmax(520px, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .DBG_paneHost.DBG_hideWatch #DBG_watchPane {
@@ -33861,27 +33864,7 @@ Label1 TXA
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
               <div id="DBG_listingPcOverlay" class="DBG_listingPcOverlay" hidden></div>
-              <pre id="debugfield">; adr   bytes       label       instruction           comment
-; ----  ----------  ----------  --------------------  ------------------------
-<span class="DBG_listingLineCurrent"> 6000  A9 00       START       LDA #$00              ; current PC</span>
- 6002  8D 00 04                STA $0400             ; write to text page 1
- 6005  A9 C1                   LDA #$C1              ; 'A'
- 6007  8D 01 04                STA $0401
- 600A  20 ED FD                JSR COUT
- 600D  4C 00 60                JMP START
-
-; --- disassembled uncovered memory space, mock preview ---
- C000  AD 00 C0                LDA $C000             ; keyboard data
- C010  AD 10 C0                LDA $C010             ; keyboard strobe
- C030  AD 30 C0                LDA $C030             ; speaker toggle
- C050  AD 50 C0                LDA $C050             ; TXTCLR
- C051  AD 51 C0                LDA $C051             ; TXTSET
- C052  AD 52 C0                LDA $C052             ; MIXCLR
- C053  AD 53 C0                LDA $C053             ; MIXSET
-<span class="DBG_breakpoint">*FDED  60                      RTS                   ; sample breakpoint</span>
- FDF0  20 58 FC                JSR HOME
- FDF3  4C 59 FF                JMP MONZ
-</pre>
+              <pre id="debugfield"></pre>
               </div>
             </section>
 
@@ -33993,7 +33976,7 @@ Label1 TXA
                 </table>
                 -->
 
-                <div class="DBG_footerNote" id="DBG_status">Layout prototype: debugger actions are visual placeholders only.</div>
+                <div class="DBG_footerNote" id="DBG_status"></div>
               </div>
             </section>
           </div>
