@@ -190,7 +190,6 @@
             <a id="tab0" href="#tab1">Emulator</a>
             <a id="tab0" href="#tab2">Assembler</a>
             <a id="tab0" href="#tab3">Debugger</a>
-            <a id="tab0" href="#tab4">Manual</a>
             <div class="focus-el el--1"></div>
             <div class="focus-el el--2"></div>
           </ul>
@@ -2344,16 +2343,39 @@ Label1 TXA
               else ASM_setStatus("PANE.bindFindReplace() was not found. Search & replace is unavailable.","warn");
             }
 
+            function ASM_manualDocHTML(key)
+            {
+              if(typeof _DOCS == "undefined" || !_DOCS || !_DOCS[key]) return "";
+
+              return String(_DOCS[key])
+                .replace(/https\:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g,"");
+            }
 
             function ASM_loadManualPane()
             {
               var manualEl = ASM_el("ASM_manual");
               if(!manualEl) return;
 
-              if(typeof _DOCS != "undefined" && _DOCS && _DOCS["ASSEMBLER"])
-                manualEl.innerHTML = String(_DOCS["ASSEMBLER"]);
-              else
+              var assemblerDoc = ASM_manualDocHTML("ASSEMBLER");
+              var cpuDoc       = ASM_manualDocHTML("6502");
+
+              if(!assemblerDoc && !cpuDoc)
+              {
                 manualEl.textContent = "Assembler manual is not available.";
+                return;
+              }
+
+              manualEl.innerHTML =
+                assemblerDoc
+                + (cpuDoc
+                  ? [
+                      "",
+                      "<hr>",
+                      "<h1>6502 CPU Reference</h1>",
+                      cpuDoc
+                    ].join("\n")
+                  : "");              
+
             }
 
             function ASM_bindEvents()
@@ -4888,28 +4910,6 @@ Label1 TXA
 
         </div>
       </div>
-          
-
-          <!--
-            ███    ███  █████  ███    ██ ██    ██  █████  ██
-            ████  ████ ██   ██ ████   ██ ██    ██ ██   ██ ██
-            ██ ████ ██ ███████ ██ ██  ██ ██    ██ ███████ ██
-            ██  ██  ██ ██   ██ ██  ██ ██ ██    ██ ██   ██ ██
-            ██      ██ ██   ██ ██   ████  ██████  ██   ██ ███████ 
-          --> 
-
-          <div id="tab4" style="height:1000px;width:700px">
-            <table width="700px" cellspacing="0" cellpadding="0" style="background-color:#76B9CE;border-radius:10px;">
-              <tr>
-                <!--<td style="background-image:url('res/CRT_TV_50b.png');background-size:800px 560px;background-repeat:no-repeat;image-rendering:pixelated;">-->
-                  <td class="CRT_TV">
-                  <div style="height:90px"></div>
-                  <div id=manual contenteditable="true" class="markdown_mon" style="width:400px;height:280px"><script>document.write(_DOCS['6502'].replace(/https\:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g,""))</script></div>
-                  <div style="height:180px"></div>
-                </td>
-              </tr>
-            </table>
-          </div>
           
         </div>
       </td>
