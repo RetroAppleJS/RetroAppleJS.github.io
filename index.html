@@ -2461,63 +2461,6 @@ Label1 TXA
       This version intentionally uses mock content and lightweight UI toggles only.
     */
 
-    body {
-      margin: 0px;
-      padding: 0px;
-      color: #000000;
-      font-family: arial, sans-serif;
-      background: #ffffff;
-    }
-
-    #DBG_shell {
-      width: 1320px;
-      margin: 0px;
-      padding: 0px 0px 20px 0px;
-      user-select: none;
-      -moz-user-select: none;
-      -webkit-user-drag: none;
-      -webkit-user-select: none;
-      -ms-user-select: none;
-    }
-
-    #DBG_app {
-      height: 34px;
-      margin: 0px 0px 4px 0px;
-      padding: 0px;
-    }
-
-    #DBG_app ul {
-      position: relative;
-      width: 350px;
-      height: 30px;
-      margin: 0px;
-      padding: 0px;
-      float: left;
-      list-style: none;
-    }
-
-    #DBG_app a {
-      display: inline-block;
-      position: relative;
-      min-width: 78px;
-      height: 26px;
-      margin: 0px 2px 0px 0px;
-      padding: 6px 4px 0px 4px;
-      box-sizing: border-box;
-      border-radius: 8px 8px 0px 0px;
-      background: #e8e8e8;
-      color: #000000;
-      text-align: center;
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    #DBG_app a.DBG_tabActive {
-      background: #76B9CE;
-      color: #000000;
-    }
-
     #tab3 {
       width: 1300px;
       min-height: 720px;
@@ -2529,30 +2472,6 @@ Label1 TXA
 
     #DBG_root {
       position: relative;
-    }
-
-    .DBG_topToolbar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 30px;
-      margin: 0px 0px 8px 0px;
-      padding: 0px 90px 0px 0px;
-    }
-
-    .DBG_topToolbar .DBG_titleBadge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 24px;
-      margin-left: 6px;
-      padding: 2px 9px;
-      border: 1px solid rgba(0,0,0,0.18);
-      border-radius: 7px;
-      background: rgba(244,244,244,0.74);
-      color: rgba(0,0,0,0.72);
-      font-size: 12px;
-      font-weight: 700;
     }
 
     .DBG_popupHost {
@@ -3016,12 +2935,9 @@ Label1 TXA
       font-size: 11px;
     }
 
-    .DBG_legacyHidden {
-      display: none;
-    }
 
-    @media (max-width: 1100px) {
-      #DBG_shell,
+    @media (max-width: 1100px) 
+    {
       #tab3 {
         width: 100%;
       }
@@ -3033,15 +2949,6 @@ Label1 TXA
 
       .DBG_paneHost.DBG_hideWatch #DBG_watchPane {
         display: none;
-      }
-
-      .DBG_panel {
-        width: 100%;
-        max-width: 100%;
-      }
-
-      .DBG_panelGrid {
-        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -4766,12 +4673,13 @@ Label1 TXA
                   <span id="DBG_listingInfo" class="DBG_paneInfo">source listing + uncovered memory</span>
                 </div>
                 <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
+
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_traceStepForward()" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
-
                   <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
+                  <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
+
                   <span class="DBG_startPcRequester" hidden>
                     <span>PC</span>
                     <input class="DBG_startPcInput" type="text" value="$0000" maxlength="6" spellcheck="false" onkeydown="DBG_startPcKeyDown(event,'DBG_listingHeaderActions')">

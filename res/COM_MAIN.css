@@ -329,7 +329,9 @@ table { border-collapse: collapse; position: relative;}
       width: 560px;
       height: 384px;
   }
-  .appbut
+
+  .appbut,
+  .appbut_flash
   {
       font-family: "Arial";
       font-size:13px;
@@ -342,7 +344,8 @@ table { border-collapse: collapse; position: relative;}
       cursor:pointer;
   }
 
-  .appbut:hover
+  .appbut:hover,
+  .appbut_flash:hover
   {
       background: rgba(255, 255, 255, 1);
   }
@@ -400,16 +403,6 @@ table { border-collapse: collapse; position: relative;}
 
   .appbut_flash
   {
-    font-family: "Arial";
-    font-size:13px;
-    margin-left:6px;
-    padding: 6px;
-    border-radius: 10px;
-    border-style: none;
-    background: rgba(240, 240, 255, 0.65);
-    box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
-    cursor:pointer;
-    /*animation: blink 2s linear infinite; */
     animation: appbut_blink steps(1) 2.5s infinite;
   }
 
