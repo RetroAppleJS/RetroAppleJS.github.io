@@ -1184,19 +1184,35 @@ Label1 TXA
                   <div class="ASM_paneTitle">
                     <span class="ASM_paneTitleMain">
                       <strong>Listing</strong>
+                      <input id="ASM_sourceFileNameInput"
+                             type="text"
+                             value="sample.SYM"
+                             title="Source filename"
+                             spellcheck="false"
+                             style="width:150px;max-width:22vw;border:1px solid rgba(0,0,0,0.25);border-radius:4px;background:#ffffff;color:#000000;padding:2px 5px;font:11px/1.2 courier,monospace;">
+                      <button id="ASM_exportSymbolsButton"
+                              class="ASM_paneTitleButton"
+                              type="button"
+                              title="Download symbols"
+                              onclick="ASM_exportSymbols()">
+                              <i class="fa fa-cloud-download-alt"></i>
+                      </button>
+                    
                     </span>
+
+
                     <span class="ASM_paneTitleMain">
                     
-                    <input title="Send byte code to emulator" id="ASM_toEmulatorHeaderButton" class="ASM_toEmulatorButton" type="button" value="to emulator">
-                    <input title="Send byte code to debugger" id="ASM_toDebuggerHeaderButton" class="ASM_toDebuggerButton" type="button" value="to debugger">
+                    <div title="Send byte code to emulator" id="ASM_toEmulatorHeaderButton" class="ASM_toEmulatorButton appbut skinny"><i class="fa fa-apple-alt"></i>&nbsp;<i class="fa fa-caret-left"></i></div> | 
+                    <div title="Send byte code to debugger" id="ASM_toDebuggerHeaderButton" class="ASM_toDebuggerButton appbut skinny"><i class="fa fa-caret-right"></i>&nbsp;<i class="fa fa-bug"></i></div>                    
 
-                      <button id="ASM_exportSymbolsButton"
+                      <!--button id="ASM_exportSymbolsButton"
                               class="ASM_paneTitleButton"
                               type="button"
                               title="Export symbols"
                               onclick="ASM_exportSymbols()">
                         <i class="fa fa-download"></i>
-                      </button>
+                      </button-->
                     </span>
                   </div>
                   <textarea id="ASM_listingPane" class="ASM_editor dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
@@ -1207,7 +1223,7 @@ Label1 TXA
                     <strong>JSON output</strong>
                     <span class="ASM_paneTitleMain">
                       <span id="ASM_jsonInfo" class="ASM_paneInfo">not assembled</span>
-                      <button id="ASM_copyJsonButton" class="ASM_paneTitleButton" type="button" title="Copy JSON">Copy JSON</button>
+                      <div id="ASM_copyJsonButton" class="ASM_paneTitleButton" title="Copy JSON"><i class="fa fa-copy"></i></div>
                     </span>
                   </div>
                   <div id="ASM_jsonMount" class="ASM_jsonMount dotmatrix_bck" data-placeholder="Parser output (JSON)" aria-label="Parser output (JSON)" tabindex="0"></div>
@@ -1456,7 +1472,7 @@ Label1 TXA
                 ASM_currentJsonText = JSON.stringify(compiled,null,2);
                 jsonMount.textContent = ASM_currentJsonText;
                 ASM_prettifyJSON();
-                ASM_setPaneInfos(listingPane.value, "interactive JSON");
+                //ASM_setPaneInfos(listingPane.value, "interactive JSON");
 
                 console.table(ASM_consoleTable(compiled.rows || []));
 
