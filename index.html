@@ -1207,8 +1207,8 @@
                 <div class=toolbox>
                   <form name="ASMboard" onsubmit="return false">
                     <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code output" name="boardText"></textarea><br>
-                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" type="button" value="to emulator">
-                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" type="button" value="to debugger">
+                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" class="ASM_toEmulatorButton" type="button" value="to emulator">
+                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" class="ASM_toDebuggerButton" type="button" value="to debugger">
                     <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" value="copy">
                     <input title="Clear byte code" type="button" value="Clear" onclick="javascript:ASM_clearBoard()">
                     <span id="ASM_byteCodeInfo" class="ASM_byteCodeInfo">0 bytes</span>
@@ -1258,10 +1258,9 @@ Label1 TXA
                       <strong>Listing</strong>
                     </span>
                     <span class="ASM_paneTitleMain">
-
-                    <input title="Send byte code to emulator" id="ASM_toEmulatorButton" type="button" value="to emulator">
-                    <input title="Send byte code to debugger" id="ASM_toDebuggerButton" type="button" value="to debugger">
-
+                    
+                    <input title="Send byte code to emulator" id="ASM_toEmulatorHeaderButton" class="ASM_toEmulatorButton" type="button" value="to emulator">
+                    <input title="Send byte code to debugger" id="ASM_toDebuggerHeaderButton" class="ASM_toDebuggerButton" type="button" value="to debugger">
 
                       <button id="ASM_exportSymbolsButton"
                               class="ASM_paneTitleButton"
@@ -2351,8 +2350,8 @@ Label1 TXA
               var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
               var copyJsonButton = ASM_el("ASM_copyJsonButton");
-              var toEmulatorButton = ASM_el("ASM_toEmulatorButton");
-              var toDebuggerButton = ASM_el("ASM_toDebuggerButton");
+              var toEmulatorButtons = document.querySelectorAll(".ASM_toEmulatorButton");
+              var toDebuggerButtons = document.querySelectorAll(".ASM_toDebuggerButton");
               var sourcePane = ASM_el("ASM_sourcePane");
               var boardText = ASM_el("ASM_boardText");
               var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
@@ -2364,8 +2363,11 @@ Label1 TXA
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
               if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
               if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
-              if(toEmulatorButton) toEmulatorButton.addEventListener("click",ASM_toEmulator);
-              if(toDebuggerButton) toDebuggerButton.addEventListener("click",ASM_toDebugger);
+              for(var i = 0; i < toEmulatorButtons.length; i++)
+                toEmulatorButtons[i].addEventListener("click",ASM_toEmulator);
+
+              for(var j = 0; j < toDebuggerButtons.length; j++)
+                toDebuggerButtons[j].addEventListener("click",ASM_toDebugger);
 
               if(sourcePane)
               {
