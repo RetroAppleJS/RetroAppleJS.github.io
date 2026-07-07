@@ -29795,10 +29795,11 @@ function DASM()
                 --ASM_number: #f2cc60;
                 --ASM_bool: #ffab70;
 
-                width: 1180px;
+                width: 1300px;
                 margin: 0px;
-                padding: 0px;
+                padding: 0px 0px 0px 10px;
                 color: var(--ASM_text);
+                box-sizing: border-box;
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
               }
 
@@ -29867,9 +29868,14 @@ function DASM()
 */
 
               .ASM_pane {
-                line-height: 0;
-                margin-top:2px;
-                margin-bottom:10px;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                min-width: 0;
+                max-width: 100%;
+                line-height: normal;
+                margin-top: 2px;
+                margin-bottom: 10px;
               }
 
               .ASM_editor,
@@ -29877,6 +29883,7 @@ function DASM()
                 width: 100%;
                 max-width: 100%;
                 min-height: 420px;
+                display: block;
                 border: 0;
                 outline: 0;
                 padding: 0px 30px;
@@ -31634,7 +31641,7 @@ Label1 TXA
       min-height: 720px;
       border-radius: 10px;
       background-color: #76B9CE;
-      padding: 0px 10px 14px 10px;
+      padding: 0px 0px 14px 10px;
       box-sizing: border-box;
     }
 
@@ -31990,79 +31997,10 @@ Label1 TXA
 
 
     /*
-     * Debugger light/dark theme.
-     * Light mode is the existing default: pane bodies use the shared
-     * .dotmatrix_bck pattern from COM_MAIN.css.
-     * Dark mode removes that image and makes pane bodies plain black.
+     * Debugger dark mode is applied dynamically by DBG_applyTheme().
+     * Do not style #tab3 itself: the background around the panes must stay unchanged.
      */
-    #tab3.DBG_dark {
-      background-color: #0d1117;
-      color: #e6edf3;
-    }
-
-    #tab3.DBG_dark .DBG_paneTitle,
-    #tab3.DBG_dark .com-pane-title.DBG_paneTitle {
-      background: #111820;
-      border-color: #30363d;
-      color: #e6edf3;
-    }
-
-    #tab3.DBG_dark .DBG_paneTitleMain strong,
-    #tab3.DBG_dark .DBG_paneInfo {
-      color: #e6edf3;
-    }
-
-    #tab3.DBG_dark .dotmatrix_bck {
-      background-color: #000000 !important;
-      background-image: none !important;
-      color: #e6edf3;
-    }
-
-    #tab3.DBG_dark .DBG_paneBody {
-      border-color: #30363d;
-    }
-
-    #tab3.DBG_dark .DBG_paneBody pre,
-    #tab3.DBG_dark .DBG_watchTable,
-    #tab3.DBG_dark .DBG_registerCell span,
-    #tab3.DBG_dark .DBG_flagCell span,
-    #tab3.DBG_dark .DBG_watchCell span {
-      color: #e6edf3;
-    }
-
-    #tab3.DBG_dark .DBG_registerCell,
-    #tab3.DBG_dark .DBG_flagCell,
-    #tab3.DBG_dark .DBG_watchCell,
-    #tab3.DBG_dark .DBG_watchTable td,
-    #tab3.DBG_dark .DBG_footerNote {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(255,255,255,0.16);
-      color: #e6edf3;
-    }
-
-    #tab3.DBG_dark .DBG_registerCell label,
-    #tab3.DBG_dark .DBG_flagCell label,
-    #tab3.DBG_dark .DBG_watchCell label,
-    #tab3.DBG_dark .DBG_watchTable th {
-      color: rgba(230,237,243,0.72);
-    }
-
-    #tab3.DBG_dark .DBG_listingLineCurrent,
-    #tab3.DBG_dark .DBG_traceLineCurrent,
-    #tab3.DBG_dark .DBG_changed,
-    #tab3.DBG_dark .DBG_changed span {
-      color: #000000 !important;
-    }
-
-    #tab3.DBG_dark .DBG_listingPcOverlay {
-      background: rgba(255, 214, 64, 0.34);
-    }
-
-    #tab3.DBG_dark .DBG_breakpoint {
-      color: #ff7a7a;
-    }
-
-
+  
     .DBG_symbolBox {
       width: 370px;
       max-width: 370px;
@@ -33590,6 +33528,85 @@ Label1 TXA
       }
     }
 
+    function DBG_setStyles(selector, styles)
+    {
+      var nodes = document.querySelectorAll(selector);
+      for(var i = 0; i < nodes.length; i++)
+        for(var k in styles)
+          nodes[i].style[k] = styles[k];
+    }
+
+    function DBG_clearStyles(selector, props)
+    {
+      var nodes = document.querySelectorAll(selector);
+      for(var i = 0; i < nodes.length; i++)
+        for(var p = 0; p < props.length; p++)
+          nodes[i].style[props[p]] = "";
+    }
+
+    function DBG_applyTheme()
+    {
+      /*
+       * Dynamic-only debugger theme.
+       *
+       * Keep #tab3 itself untouched so the blue background around the panes
+       * remains identical to light mode.  Only pane headers, pane bodies,
+       * and pane body content are themed.
+       */
+      var tab = DBG_el("tab3");
+      if(tab)
+      {
+        tab.classList.remove("DBG_dark");
+        tab.style.backgroundColor = "";
+        tab.style.color = "";
+      }
+
+      var basicProps = ["backgroundColor","backgroundImage","background","borderColor","color","caretColor"];
+
+      if(DBG_darkMode)
+      {
+        DBG_setStyles("#DBG_root .DBG_paneTitle", {
+          background:"#111820",
+          borderColor:"#30363d",
+          color:"#e6edf3"
+        });
+        DBG_setStyles("#DBG_root .DBG_paneTitleMain strong, #DBG_root .DBG_paneInfo", {
+          color:"#e6edf3"
+        });
+        DBG_setStyles("#DBG_root .DBG_paneBody", {
+          backgroundColor:"#000000",
+          backgroundImage:"none",
+          borderColor:"#30363d",
+          color:"#e6edf3",
+          caretColor:"#e6edf3"
+        });
+        DBG_setStyles("#DBG_root .DBG_paneBody pre, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span", {
+          color:"#e6edf3"
+        });
+        DBG_setStyles("#DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote", {
+          background:"rgba(255,255,255,0.08)",
+          borderColor:"rgba(255,255,255,0.16)",
+          color:"#e6edf3"
+        });
+        DBG_setStyles("#DBG_root .DBG_registerCell label, #DBG_root .DBG_flagCell label, #DBG_root .DBG_watchCell label, #DBG_root .DBG_watchTable th", {
+          color:"rgba(230,237,243,0.72)"
+        });
+        DBG_setStyles("#DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_changed, #DBG_root .DBG_changed span", {
+          color:"#000000"
+        });
+        DBG_setStyles("#DBG_root .DBG_listingPcOverlay", {
+          background:"rgba(255, 214, 64, 0.34)"
+        });
+        DBG_setStyles("#DBG_root .DBG_breakpoint", {
+          color:"#ff7a7a"
+        });
+      }
+      else
+      {
+        DBG_clearStyles("#DBG_root .DBG_paneTitle, #DBG_root .DBG_paneTitleMain strong, #DBG_root .DBG_paneInfo, #DBG_root .DBG_paneBody, #DBG_root .DBG_paneBody pre, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span, #DBG_root .DBG_registerCell label, #DBG_root .DBG_flagCell label, #DBG_root .DBG_watchCell label, #DBG_root .DBG_watchTable th, #DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_changed, #DBG_root .DBG_changed span, #DBG_root .DBG_listingPcOverlay, #DBG_root .DBG_breakpoint", basicProps);
+      }
+    }
+
     function DBG_toggleRun(btn) {
       DBG_running = !DBG_running;
       if (!btn) btn = DBG_el("DBG_runToggle");
@@ -33627,8 +33644,7 @@ Label1 TXA
 
     function DBG_toggleTheme() {
       DBG_darkMode = !DBG_darkMode;
-      var tab = DBG_el("tab3");
-      if (tab) tab.classList.toggle("DBG_dark", DBG_darkMode);
+      DBG_applyTheme();
       DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
     }
@@ -33656,6 +33672,7 @@ Label1 TXA
       if (symFile) symFile.addEventListener("change", DBG_onSymbolFileChange);
 
       DBG_renderSymbolLabels();
+      DBG_applyTheme();
       DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
     }
