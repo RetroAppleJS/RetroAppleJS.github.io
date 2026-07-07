@@ -911,6 +911,22 @@
                 white-space: nowrap;
               }
 
+              .ASM_sourceFileNameInput {
+                width: 150px;
+                max-width: 22vw;
+                border: 1px solid rgba(0,0,0,0.25);
+                border-radius: 4px;
+                background: #ffffff;
+                color: #000000;
+                padding: 2px 5px;
+                font: 11px/1.2 courier, monospace;
+              }
+
+              .ASM_sourceFileNameInput:focus {
+                outline: 1px solid #0078d4;
+                border-color: #0078d4;
+              }
+
               .ASM_paneTitleButton {
                 -webkit-appearance: none;
                 appearance: none;
@@ -945,6 +961,12 @@
 
               .ASM_root.ASM_headerDark .ASM_paneInfo {
                 color: #8b949e;
+              }
+
+              .ASM_root.ASM_headerDark .ASM_sourceFileNameInput {
+                background: #0b0f14;
+                border-color: #30363d;
+                color: #e6edf3;
               }
 
               .ASM_root.ASM_headerDark .ASM_listingColumnsInput {
@@ -1238,7 +1260,19 @@
 
                 <section class="ASM_pane ASM_sourcePaneHost dotmatrix_bck">
                   <div class="ASM_paneTitle">
-                    <strong>Source</strong>
+                    <span class="ASM_paneTitleMain">
+                      <strong>Source</strong>
+                      <input id="ASM_sourceFileNameInput"
+                             class="ASM_sourceFileNameInput"
+                             type="text"
+                             value="sample.S"
+                             title="Source filename"
+                             spellcheck="false">
+                      <button id="ASM_downloadSourceButton"
+                              class="ASM_paneTitleButton"
+                              type="button"
+                              title="Download source"><i class="fa fa-cloud-download-alt"></i></button>
+                    </span>
                     <span id="ASM_sourceFindReplaceMount" class="ASM_findReplaceMount pane-title-search-host"></span>
                   </div>
                   <textarea id="ASM_sourcePane" class="ASM_editor dotmatrix_bck" spellcheck="false" wrap="off" placeholder="Source code">ORG $6000
@@ -1566,7 +1600,7 @@ Label1 TXA
             async function ASM_loadFile(file)
             {
               if(!file) return;
-              ASM_currentFileName = file.name || "source.S";
+              ASM_setCurrentFileName(file.name || "source.S");
               ASM_el("ASM_sourcePane").value = await file.text();
               ASM_clearOutputs("Loaded " + ASM_currentFileName + ". Click assemble to generate the listing, JSON and byte code.","ok");
               ASM_resizeSourceListingPanes();
@@ -1605,6 +1639,42 @@ Label1 TXA
               document.body.removeChild(a);
 
               URL.revokeObjectURL(url);
+            }
+
+            function ASM_safeSourceFileName(name)
+            {
+              name = String(name || "").trim();
+              name = name.replace(/[\\/:*?\"<>|]+/g,"_");
+              return name || "source.S";
+            }
+
+            function ASM_updateSourceFileNameUI()
+            {
+              var input = ASM_el("ASM_sourceFileNameInput");
+              if(input && input.value !== ASM_currentFileName)
+                input.value = ASM_currentFileName;
+            }
+
+            function ASM_setCurrentFileName(name)
+            {
+              ASM_currentFileName = ASM_safeSourceFileName(name);
+              ASM_updateSourceFileNameUI();
+              return ASM_currentFileName;
+            }
+
+            function ASM_downloadSource()
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              var input = ASM_el("ASM_sourceFileNameInput");
+              var filename = ASM_setCurrentFileName(input ? input.value : ASM_currentFileName);
+
+              ASM_downloadText(
+                filename,
+                sourcePane ? sourcePane.value : "",
+                "text/plain;charset=utf-8"
+              );
+
+              ASM_setStatus("Downloaded source as " + filename + ".","ok");
             }
 
             function ASM_symbolScopeFromBytes()
@@ -2348,6 +2418,8 @@ Label1 TXA
               var fileInput = ASM_el("ASM_fileInput");
               var assembleButton = ASM_el("ASM_assembleButton");
               var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
+              var sourceFileNameInput = ASM_el("ASM_sourceFileNameInput");
+              var downloadSourceButton = ASM_el("ASM_downloadSourceButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
               var copyJsonButton = ASM_el("ASM_copyJsonButton");
               var toEmulatorButtons = document.querySelectorAll(".ASM_toEmulatorButton");
@@ -2360,6 +2432,11 @@ Label1 TXA
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
               if(assembleButton) assembleButton.addEventListener("click",function(ev){ ev.preventDefault(); ASM_assembleCurrentSource(); });
               if(toggleJsonButton) toggleJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(); });
+              if(sourceFileNameInput) sourceFileNameInput.addEventListener("change",function(){ ASM_setCurrentFileName(sourceFileNameInput.value); });
+              if(sourceFileNameInput) sourceFileNameInput.addEventListener("keydown",function(ev){
+                if(ev.key == "Enter") { ev.preventDefault(); ASM_setCurrentFileName(sourceFileNameInput.value); sourceFileNameInput.blur(); }
+              });
+              if(downloadSourceButton) downloadSourceButton.addEventListener("click",ASM_downloadSource);
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
               if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
               if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
@@ -2399,6 +2476,7 @@ Label1 TXA
 
 
             ASM_bindEvents();
+            ASM_updateSourceFileNameUI();
             ASM_syncListingColumns();
             ASM_bindSourceFindReplace();
             ASM_loadManualPane();
