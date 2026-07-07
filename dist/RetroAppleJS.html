@@ -30457,8 +30457,7 @@ Label1 TXA
 
               <section id="ASM_manualPane" class="ASM_manualPane CRT_TV DOUBL_TV">
                 <div style="height:120px"></div>
-                <!--div name="codefield" id="ASM_codefield" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div-->
-                <div name="codefield" id="ASM_codefield" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div>
+                <div name="codefield" id="ASM_manual" class="ASM_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div>
                 <div style="height:300px"></div>
               </section>
             </div>
@@ -31480,7 +31479,7 @@ Label1 TXA
 
             function ASM_loadManualPane()
             {
-              var manualEl = ASM_el("ASM_codefield");
+              var manualEl = ASM_el("ASM_manual");
               if(!manualEl) return;
 
               if(typeof _DOCS != "undefined" && _DOCS && _DOCS["ASSEMBLER"])
@@ -33669,6 +33668,26 @@ Label1 TXA
       DBG_applyTheme();
       DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
+
+      DBG_loadManualPane();
+    }
+
+    function DBG_loadManualPane() {
+      /*
+      * Keep debugger manual loading explicit, mirroring the tab2 manual pane
+      * while using the debugger documentation block.
+      */
+      var manual = DBG_el("DBG_manual");
+      if (!manual) return false;
+
+      var html = "";
+      if (typeof _DOCS !== "undefined" && _DOCS && _DOCS["DEBUGGER"]) {
+        html = String(_DOCS["DEBUGGER"])
+          .replace(/https:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g, "");
+      }
+
+      manual.innerHTML = html;
+      return true;
     }
 
     if (typeof oCOM !== "undefined" && oCOM && typeof oCOM.addToEventStack === "function") {
@@ -33990,7 +34009,14 @@ Label1 TXA
                 <div class="DBG_footerNote" id="DBG_status"></div>
               </div>
             </section>
-          </div>
+
+         </div>
+
+            <section id="DBG_manualPane" class="DBG_manualPane CRT_TV DOUBL_TV">
+              <div style="height:120px"></div>
+              <div name="codefield" id="DBG_manual" class="DBG_manualField markdown_mon" style="border:1px solid black;width:625px;height:420px"></div>
+              <div style="height:300px"></div>
+            </section>
 
         </div>
       </div>
