@@ -31692,7 +31692,7 @@ Label1 TXA
             ██████  ███████ ██████   ██████   ██████   ██████  ███████ ██   ██
           -->
 
-          <div id="tab3" style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
+          <div id="tab3" style="width:1300px;min-height:720px;border-radius:10px;background-color:#76B9CE;padding: 0px 0px 14px 0px;box-sizing: border-box;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
 
 
 <style>
@@ -31700,15 +31700,6 @@ Label1 TXA
       Layout-first prototype for redesigned Debugger tab.
       This version intentionally uses mock content and lightweight UI toggles only.
     */
-
-    #tab3 {
-      width: 1300px;
-      min-height: 720px;
-      border-radius: 10px;
-      background-color: #76B9CE;
-      padding: 0px 0px 14px 0px;
-      box-sizing: border-box;
-    }
 
     #DBG_root {
       position: relative;
@@ -32176,21 +32167,7 @@ Label1 TXA
     }
 
 
-    @media (max-width: 1100px) 
-    {
-      #tab3 {
-        width: 100%;
-      }
 
-      .DBG_paneHost,
-      .DBG_paneHost.DBG_hideWatch {
-        grid-template-columns: 1fr;
-      }
-
-      .DBG_paneHost.DBG_hideWatch #DBG_watchPane {
-        display: none;
-      }
-    }
   </style>
 
 <script>
