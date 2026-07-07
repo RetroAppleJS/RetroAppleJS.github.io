@@ -1187,7 +1187,7 @@ Label1 TXA
                       <input id="ASM_symbolFileNameInput"
                              type="text"
                              value="sample.SYM"
-                             title="Source filename"
+                             title="Symbol filename"
                              spellcheck="false"
                              style="width:150px;max-width:22vw;border:1px solid rgba(0,0,0,0.25);border-radius:4px;background:#ffffff;color:#000000;padding:2px 5px;font:11px/1.2 courier,monospace;">
                       <button id="ASM_exportSymbolsButton"
@@ -1569,8 +1569,47 @@ Label1 TXA
             {
               ASM_currentFileName = ASM_safeSourceFileName(name);
               ASM_updateSourceFileNameUI();
+              ASM_updateSymbolFileNameFromSource();
               return ASM_currentFileName;
             }
+
+
+            function ASM_sourceBaseName(name)
+            {
+              name = ASM_safeSourceFileName(name || ASM_currentFileName || "source.S");
+              name = name.replace(/\.[^.]*$/,"");
+              name = name.replace(/[^A-Za-z0-9_.-]+/g,"_");
+              return name || "source";
+            }
+
+            function ASM_defaultSymbolFileName(sourceName)
+            {
+              return ASM_sourceBaseName(sourceName) + ".SYM";
+            }
+
+            function ASM_safeSymbolFileName(name)
+            {
+              name = String(name || "").trim();
+              name = name.replace(/[\\/:*?\"<>|]+/g,"_");
+              name = name.replace(/\.[^.]*$/,"");
+              name = name.replace(/[^A-Za-z0-9_.-]+/g,"_");
+              return (name || ASM_sourceBaseName()) + ".SYM";
+            }
+
+            function ASM_updateSymbolFileNameFromSource()
+            {
+              var input = ASM_el("ASM_symbolFileNameInput");
+              if(input) input.value = ASM_defaultSymbolFileName(ASM_currentFileName);
+            }
+
+            function ASM_getSymbolFileName()
+            {
+              var input = ASM_el("ASM_symbolFileNameInput");
+              var filename = ASM_safeSymbolFileName(input ? input.value : ASM_defaultSymbolFileName(ASM_currentFileName));
+              if(input && input.value !== filename) input.value = filename;
+              return filename;
+            }
+
 
             function ASM_downloadSource()
             {
@@ -1898,12 +1937,8 @@ Label1 TXA
               var symbols = exportObject.symbols || [];
               var scope = exportObject.scope || [];
 
-              var base = String(ASM_currentFileName || "symbols")
-                .replace(/\.[^.]*$/,"")
-                .replace(/[^A-Za-z0-9_.-]+/g,"_");
-
               ASM_downloadText(
-                base + ".symbols.json",
+                ASM_getSymbolFileName(),
                 JSON.stringify(exportObject,null,2),
                 "application/json;charset=utf-8"
               );
@@ -2421,6 +2456,7 @@ Label1 TXA
               var assembleButton = ASM_el("ASM_assembleButton");
               var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
               var sourceFileNameInput = ASM_el("ASM_sourceFileNameInput");
+              var symbolFileNameInput = ASM_el("ASM_symbolFileNameInput");
               var downloadSourceButton = ASM_el("ASM_downloadSourceButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
               var copyJsonButton = ASM_el("ASM_copyJsonButton");
@@ -2437,6 +2473,10 @@ Label1 TXA
               if(sourceFileNameInput) sourceFileNameInput.addEventListener("change",function(){ ASM_setCurrentFileName(sourceFileNameInput.value); });
               if(sourceFileNameInput) sourceFileNameInput.addEventListener("keydown",function(ev){
                 if(ev.key == "Enter") { ev.preventDefault(); ASM_setCurrentFileName(sourceFileNameInput.value); sourceFileNameInput.blur(); }
+              });
+              if(symbolFileNameInput) symbolFileNameInput.addEventListener("change",function(){ ASM_getSymbolFileName(); });
+              if(symbolFileNameInput) symbolFileNameInput.addEventListener("keydown",function(ev){
+                if(ev.key == "Enter") { ev.preventDefault(); ASM_getSymbolFileName(); symbolFileNameInput.blur(); }
               });
               if(downloadSourceButton) downloadSourceButton.addEventListener("click",ASM_downloadSource);
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
@@ -2479,6 +2519,7 @@ Label1 TXA
 
             ASM_bindEvents();
             ASM_updateSourceFileNameUI();
+            ASM_updateSymbolFileNameFromSource();
             ASM_syncSourceFileNameTheme();
             ASM_syncListingColumns();
             ASM_bindSourceFindReplace();
