@@ -31052,18 +31052,12 @@ Label1 TXA
               return out;
             }
 
-            function ASM_exportSymbols()
+            function ASM_buildSymbolExportObject()
             {
-              /*
-              * Always assemble before export, otherwise the symbol table can be stale
-              * after source edits.
-              */
-              if(!ASM_assembleCurrentSource()) return;
-
               var symbols = ASM_collectSymbols();
               var scope = ASM_symbolScopeFromBytes();
 
-              var exportObject = {
+              return {
                 format: "RetroAppleJS-ASM-symbols",
                 version: 2,
                 source: ASM_currentFileName || "source.S",
@@ -31079,6 +31073,19 @@ Label1 TXA
                 count: symbols.length,
                 symbols: symbols
               };
+            }
+
+            function ASM_exportSymbols()
+            {
+              /*
+              * Always assemble before export, otherwise the symbol table can be stale
+              * after source edits.
+              */
+              if(!ASM_assembleCurrentSource()) return;
+
+              var exportObject = ASM_buildSymbolExportObject();
+              var symbols = exportObject.symbols || [];
+              var scope = exportObject.scope || [];
 
               var base = String(ASM_currentFileName || "symbols")
                 .replace(/\.[^.]*$/,"")
@@ -31137,15 +31144,37 @@ Label1 TXA
 
             function ASM_toDebugger()
             {
+              /*
+               * Always assemble first so byte code, labels, EQU values and
+               * comments are generated from the same parser/compiler state.
+               */
+              if(!ASM_assembleCurrentSource()) return;
+
               ASM_syncByteCodeFromBoard();
 
-              if(!ASM_currentByteCodeText)
-                if(!ASM_assembleCurrentSource()) return;
+              var symbolImported = false;
+              var symbolObject = ASM_buildSymbolExportObject();
+
+              if(typeof DBG_receiveSymbolTable == "function")
+              {
+                symbolImported = DBG_receiveSymbolTable(
+                  symbolObject,
+                  ASM_currentFileName || "source.S",
+                  {
+                    overlap: "override",
+                    disassemble: false,
+                    status: false
+                  }
+                );
+              }              
 
               if(typeof DBG_receiveByteCode == "function")
               {
                 DBG_receiveByteCode(ASM_currentByteCodeText,true);
-                ASM_setStatus("Byte code imported into debugger tab.","ok");
+                ASM_setStatus(
+                  "Byte code" + (symbolImported ? " and symbol table" : "") + " imported into debugger tab.",
+                  "ok"
+                );                
                 return;
               }
 
@@ -32811,17 +32840,23 @@ Label1 TXA
       }
     }
 
-    function DBG_addSymbolTable(table) {
+    function DBG_addSymbolTable(table, options) {
+      options = options || {};
+
       DBG_symbolTables.push(table);
       DBG_rebuildSymbolIndex();
       DBG_renderSymbolLabels();
-      DBG_disassembleRAM();
+      if(options.disassemble !== false)
+        DBG_disassembleRAM();
 
-      DBG_statusText(
-        "Loaded symbol table: " + DBG_symbolSourceName(table) +
-        " / " + table.symbols.length + " symbol(s) / active scope " +
-        DBG_rangeListHex(table.effectiveScope).join(", ")
-      );
+      if(options.status !== false)
+      {
+        DBG_statusText(
+          "Loaded symbol table: " + DBG_symbolSourceName(table) +
+          " / " + table.symbols.length + " symbol(s) / active scope " +
+          DBG_rangeListHex(table.effectiveScope).join(", ")
+        );
+      }      
     }
 
     function DBG_removeSymbolTable(id) {
@@ -32878,6 +32913,72 @@ Label1 TXA
         if (typeof console !== "undefined" && console.error) console.error(err);
       } finally {
         if (input) input.value = "";
+      }
+    }
+
+    function DBG_receiveSymbolTable(raw, fileName, options) {
+      /*
+       * In-memory companion to DBG_onSymbolFileChange().
+       *
+       * Used by tab2's "to debugger" action so byte-code transfer can also
+       * update the debugger with labels, EQU values and scoped comments from
+       * the assembler parser without a manual export/import round-trip.
+       */
+      options = options || {};
+
+      try {
+        var table = DBG_normalizeSymbolTable(raw, fileName || "");
+        var overlaps = DBG_findSymbolScopeOverlaps(table.scope);
+        var mode = options.overlap || "ask";
+
+        if(overlaps.length && mode == "override")
+        {
+          for(var i = 0; i < DBG_symbolTables.length; i++)
+          {
+            DBG_symbolTables[i].effectiveScope =
+              DBG_rangeListSubtract(DBG_symbolTables[i].effectiveScope, table.scope);
+          }
+
+          DBG_symbolTables = DBG_symbolTables.filter(function(t){
+            return t.effectiveScope && t.effectiveScope.length;
+          });
+
+          table.effectiveScope = table.scope.slice();
+          DBG_addSymbolTable(table, options);
+          return true;
+        }
+
+        if(overlaps.length && mode == "merge")
+        {
+          var occupied = [];
+          for(var j = 0; j < DBG_symbolTables.length; j++)
+            occupied = occupied.concat(DBG_symbolTables[j].effectiveScope || []);
+
+          table.effectiveScope = DBG_rangeListSubtract(table.scope, occupied);
+
+          if(!table.effectiveScope.length)
+          {
+            if(options.status !== false)
+              DBG_statusText("Symbol table merge skipped: no non-overlapping scoped addresses.");
+            return false;
+          }
+
+          DBG_addSymbolTable(table, options);
+          return true;
+        }
+
+        if(overlaps.length)
+        {
+          DBG_showSymbolOverlapPopup(table, overlaps);
+          return false;
+        }
+
+        DBG_addSymbolTable(table, options);
+        return true;
+      } catch(err) {
+        DBG_statusText("Symbol table import failed: " + (err && err.message ? err.message : String(err)));
+        if(typeof console !== "undefined" && console.error) console.error(err);
+        return false;
       }
     }
 
