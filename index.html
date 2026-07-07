@@ -2587,14 +2587,14 @@ Label1 TXA
 
     .DBG_paneHost {
       display: grid;
-      grid-template-columns: minmax(440px, 1.18fr) minmax(390px, 1fr) minmax(330px, 0.92fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       width: 100%;
       align-items: stretch;
     }
 
     .DBG_paneHost.DBG_hideWatch {
-      grid-template-columns: minmax(570px, 1.22fr) minmax(520px, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .DBG_paneHost.DBG_hideWatch #DBG_watchPane {
@@ -4725,27 +4725,7 @@ Label1 TXA
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
               <div id="DBG_listingPcOverlay" class="DBG_listingPcOverlay" hidden></div>
-              <pre id="debugfield">; adr   bytes       label       instruction           comment
-; ----  ----------  ----------  --------------------  ------------------------
-<span class="DBG_listingLineCurrent"> 6000  A9 00       START       LDA #$00              ; current PC</span>
- 6002  8D 00 04                STA $0400             ; write to text page 1
- 6005  A9 C1                   LDA #$C1              ; 'A'
- 6007  8D 01 04                STA $0401
- 600A  20 ED FD                JSR COUT
- 600D  4C 00 60                JMP START
-
-; --- disassembled uncovered memory space, mock preview ---
- C000  AD 00 C0                LDA $C000             ; keyboard data
- C010  AD 10 C0                LDA $C010             ; keyboard strobe
- C030  AD 30 C0                LDA $C030             ; speaker toggle
- C050  AD 50 C0                LDA $C050             ; TXTCLR
- C051  AD 51 C0                LDA $C051             ; TXTSET
- C052  AD 52 C0                LDA $C052             ; MIXCLR
- C053  AD 53 C0                LDA $C053             ; MIXSET
-<span class="DBG_breakpoint">*FDED  60                      RTS                   ; sample breakpoint</span>
- FDF0  20 58 FC                JSR HOME
- FDF3  4C 59 FF                JMP MONZ
-</pre>
+              <pre id="debugfield"></pre>
               </div>
             </section>
 
@@ -4857,7 +4837,7 @@ Label1 TXA
                 </table>
                 -->
 
-                <div class="DBG_footerNote" id="DBG_status">Layout prototype: debugger actions are visual placeholders only.</div>
+                <div class="DBG_footerNote" id="DBG_status"></div>
               </div>
             </section>
           </div>
