@@ -3406,7 +3406,7 @@ Label1 TXA
         DBG_traceHW = null;
         DBG_traceStarted = false;
         DBG_traceStepCount = 0;
-        DBG_newTraceHistory();
+        DBG_resetTraceHistory();
         DBG_traceLines = [];
         DBG_renderTraceView();
       }
@@ -4553,43 +4553,19 @@ Label1 TXA
         return n;
       }
 
-       function DBG_traceHistoryRecords() {
-         if(!DBG_traceHistory) return [];
-         if(typeof DBG_traceHistory.toArray == "function") return DBG_traceHistory.toArray();
-         if(typeof DBG_traceHistory.slice == "function") return DBG_traceHistory.slice();
-         return [];
-       }
-
-       function DBG_newTraceHistory(records) {
-         var depth = DBG_traceDepthLimit();
-         DBG_traceHistory = oCOM.buffer(depth);
-
-         records = Array.isArray(records) ? records : [];
-         var start = Math.max(0,records.length - depth);
-
-         for(var i=start;i<records.length;i++)
-           DBG_traceHistory.push(records[i]);
-
+       function DBG_resetTraceHistory(records) 
+       {
+         DBG_traceHistory = (DBG_traceHistory || oCOM.buffer(DBG_traceDepthLimit()))
+           .resize(DBG_traceDepthLimit())
+           .fromArray(records || []);    
          return DBG_traceHistory;
        }
 
-       function DBG_clearTraceHistory() {
-         if(!DBG_traceHistory || typeof DBG_traceHistory.clear != "function")
-           return DBG_newTraceHistory();
 
-         DBG_traceHistory.clear();
-         return DBG_traceHistory;
-       }
-
-       function DBG_traceHistoryPush(record) {
-         if(!DBG_traceHistory) DBG_newTraceHistory();
-         DBG_traceHistory.push(record);
-         return DBG_traceHistory.length;
-       }
-
-
-      function DBG_applyTraceDepthLimit() {
-         DBG_newTraceHistory(DBG_traceHistoryRecords());
+      function DBG_applyTraceDepthLimit() 
+      {
+          if(DBG_traceHistory) DBG_traceHistory.resize(DBG_traceDepthLimit());
+          else DBG_resetTraceHistory();
          DBG_rebuildTraceLines();
       }
 
@@ -4647,9 +4623,9 @@ Label1 TXA
 
       function DBG_rebuildTraceLines() {
         DBG_traceLines = [];
-         var records = DBG_traceHistoryRecords();
-         for(var i=0;i<records.length;i++)
-           DBG_traceLines.push(DBG_traceLineFromRecord(records[i]));
+         if(DBG_traceHistory)
+           DBG_traceHistory.forEach(function(record){ DBG_traceLines.push(DBG_traceLineFromRecord(record)); });
+
       }
 
       function DBG_restoreTraceBefore(record) {
@@ -4764,7 +4740,7 @@ Label1 TXA
        DBG_traceCPU.load("00,00,00,ff,24," + DBG_hexWord(startPC));
        DBG_traceStarted = true;
        DBG_traceStepCount = 0;
-       DBG_newTraceHistory();
+       DBG_resetTraceHistory();
        DBG_traceLines = [];
        DBG_traceCurrentWrites = null;
 
@@ -4820,7 +4796,9 @@ Label1 TXA
          writes: writes.slice()
        };
 
-       DBG_traceHistoryPush(record);
+       if(!DBG_traceHistory) DBG_resetTraceHistory();
+       if(DBG_traceHistory.full()) DBG_traceLines.shift();
+       DBG_traceHistory.push(record);
        DBG_traceLines.push(DBG_traceLineFromRecord(record));
        while(DBG_traceLines.length > DBG_traceHistory.length)
          DBG_traceLines.shift();    
@@ -4838,7 +4816,7 @@ Label1 TXA
           * Do not reset the CPU and do not stop an active continuous run.
           */
          DBG_traceStepCount = 0;
-         DBG_clearTraceHistory();
+         DBG_resetTraceHistory();
          DBG_traceLines = [];
          DBG_renderTraceView();
          DBG_statusText("Trace cleared; next trace entry will be step 0001.");
@@ -4850,7 +4828,7 @@ Label1 TXA
          if(DBG_running)
            DBG_stopContinuousRun("Continuous run stopped before stepping backward.");
 
-        if(!DBG_traceHistory.length) {
+        if(!DBG_traceHistory || !DBG_traceHistory.length) {
           DBG_statusText("Trace history is empty; cannot step backward.");
           return false;
         }

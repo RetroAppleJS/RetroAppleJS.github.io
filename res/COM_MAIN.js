@@ -672,7 +672,7 @@ function COM()
    *   32             : Uint32Array
    *
    * This replaces the older RingBuffer implementation while keeping the same
-   * high-level API: push/pop/shift/unshift/front/back/clear/slice/debug.
+   * high-level API: push/pop/shift/unshift/front/back/clear/slice/debug plus resize/fromArray/forEach.
    */
   var _COM_this = this;
 
@@ -684,13 +684,18 @@ function COM()
     var _typed = false;
     var _buffer;
 
-    switch(Number(_type))
+    function _newBuffer(capacity)
     {
-      case 8:  _buffer = new Uint8Array(_capacity);  _typed = true; break;
-      case 16: _buffer = new Uint16Array(_capacity); _typed = true; break;
-      case 32: _buffer = new Uint32Array(_capacity); _typed = true; break;
-      default: _buffer = new Array(_capacity); break;
+      switch(Number(_type))
+      {
+        case 8:  _typed = true; return new Uint8Array(capacity);
+        case 16: _typed = true; return new Uint16Array(capacity);
+        case 32: _typed = true; return new Uint32Array(capacity);
+        default: _typed = false; return new Array(capacity);
+      }
     }
+
+    _buffer = _newBuffer(_capacity);
 
     var _first  = 0;
     var _length = 0;
@@ -763,6 +768,43 @@ function COM()
 
       // Historical helper used as a delay line: insert newest value at the front and discard the oldest value when the buffer is full.
       delay: function(value) { return this.unshift(value); },
+      resize: function(newCapacity)
+      {
+        newCapacity = Number(newCapacity) | 0;
+        if(newCapacity < 1) newCapacity = 1;
+        if(newCapacity === _capacity) return this;
+
+        var values = _toArray();
+
+        _capacity = newCapacity;
+        _buffer = _newBuffer(_capacity);
+        _first = 0;
+        _length = 0;
+
+        return this.fromArray(values);
+      },
+      fromArray: function(records)
+      {
+        this.clear();
+
+        if(!records) return this;
+        if(typeof records.length != "number") return this;
+
+        var start = Math.max(0,records.length - _capacity);
+        for(var i = start; i < records.length; i++)
+          this.push(records[i]);
+
+        return this;
+      },
+      forEach: function(callback,thisArg)
+      {
+        if(typeof callback != "function") return this;
+
+        for(var i = 0; i < _length; i++)
+          callback.call(thisArg,_buffer[_wrap(_first + i)],i,this);
+
+        return this;
+      },
       slice: function(pos1,pos2) { return _toArray().slice(pos1,pos2); },
       toArray: function() { return _toArray(); },
       _last: function()   { if(_length === 0) return undefined; else return _last(); },
