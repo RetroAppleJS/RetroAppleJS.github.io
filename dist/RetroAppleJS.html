@@ -16238,22 +16238,6 @@ function Apple2Debug()
         }
     }
 
-    /*
-    this.listing = function(watch)
-    {
-        var lines = 20;
-        var s = Array(lines);
-        
-        for(var line=0;line<lines;line++)
-        {
-            var ln = oCOM.getHexWord(watch.pc-(lines>>1)+line) + " "
-            if(line == (lines>>1)) ln = "<font color=#800000>"+ln+"</font>"
-            s[line] = ln;
-        }
-        return s.join("<br>");
-    }
-    */
-
     // CPU REAL-TIME DEBUGGER
     this.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
     {
