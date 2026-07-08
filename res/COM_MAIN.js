@@ -725,10 +725,7 @@ function COM()
       get capacity() { return _capacity; },
       get first()    { return _first; },
 
-      /*
-       * Backward-compatible debug fields.  Code should prefer length,
-       * capacity and first, but these keep the old RingBuffer shape readable.
-       */
+      // Backward-compatible debug fields.  Code should prefer length, capacity and first, but these keep the old RingBuffer shape readable.
       get _first()   { return _first; },
       set _first(v)  { _first = _wrap(Number(v) | 0); },
       get _length()  { return _length; },
@@ -759,10 +756,10 @@ function COM()
       front: function() { if(_length === 0) return undefined; else return _buffer[_first]; },
       back: function() { if(_length === 0) return undefined; else return _buffer[_last()]; },
       at: function(index) { index = Number(index) | 0; if(index < 0) index = _length + index; if(index < 0 || index >= _length) return undefined; else return _buffer[_wrap(_first + index)]; },
-      push: function(value) { if(_length === _capacity) this.shift(); else { _buffer[_wrap(_first + _length)] = value; _length++; return _length; } },
+      push: function(value) { if(_length === _capacity) this.shift(); _buffer[_wrap(_first + _length)] = value; _length++; return _length; },
       pop: function() { if(_length === 0) return undefined; else { var index = _last(); var value = _buffer[index]; _clearIndex(index); _length--; return value; } },
       shift: function() { if(_length === 0) return undefined; else { var value = _buffer[_first]; _clearIndex(_first); _first = _wrap(_first + 1); _length--; return value;} },
-      unshift: function(value) { if(_length === _capacity) this.pop(); else { _first = _wrap(_first - 1); _buffer[_first] = value; _length++; return _length; } },
+      unshift: function(value) { if(_length === _capacity) this.pop(); _first = _wrap(_first - 1); _buffer[_first] = value; _length++; return _length; },
 
       // Historical helper used as a delay line: insert newest value at the front and discard the oldest value when the buffer is full.
       delay: function(value) { return this.unshift(value); },
@@ -796,19 +793,11 @@ function COM()
       prev : function()
       {
         var tmp_pointer = (pointer - 1) % length;
-        if (buffer[tmp_pointer])
-        {
-          pointer = tmp_pointer;
-          return buffer[pointer];
-        }
+        if (buffer[tmp_pointer]) { pointer = tmp_pointer; return buffer[pointer]; }
       },
       next : function()
       {
-        if (buffer[pointer])
-        {
-          pointer = (pointer + 1) % length;
-          return buffer[pointer];
-        }
+        if (buffer[pointer]) { pointer = (pointer + 1) % length; return buffer[pointer]; }
       }
     };
   };
