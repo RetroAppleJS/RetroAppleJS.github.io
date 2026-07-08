@@ -30291,7 +30291,7 @@ Label1 TXA
                   <div class="ASM_paneTitle">
                     <strong>JSON output</strong>
                     <span class="ASM_paneTitleMain">
-                      <span id="ASM_jsonInfo" class="ASM_paneInfo">not assembled</span>
+                      <span id="ASM_jsonInfo" class="ASM_paneInfo"></span>
                       <div id="ASM_copyJsonButton" class="ASM_paneTitleButton" title="Copy JSON"><i class="fa fa-copy"></i></div>
                     </span>
                   </div>
@@ -30497,7 +30497,7 @@ Label1 TXA
 
               if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
               if(ASM_el("ASM_jsonMount"))    ASM_el("ASM_jsonMount").replaceChildren();
-              ASM_setPaneInfos("", "not assembled");
+              //ASM_setPaneInfos("", "not assembled");
               ASM_resizeSourceListingPanes();
               ASM_refreshFindReplaceOverlay();
 
