@@ -3214,7 +3214,7 @@ function COM()
    *   32             : Uint32Array
    *
    * This replaces the older RingBuffer implementation while keeping the same
-   * high-level API: push/pop/shift/unshift/front/back/clear/slice/debug.
+   * high-level API: push/pop/shift/unshift/front/back/clear/slice/debug plus resize/fromArray/forEach.
    */
   var _COM_this = this;
 
@@ -3226,13 +3226,18 @@ function COM()
     var _typed = false;
     var _buffer;
 
-    switch(Number(_type))
+    function _newBuffer(capacity)
     {
-      case 8:  _buffer = new Uint8Array(_capacity);  _typed = true; break;
-      case 16: _buffer = new Uint16Array(_capacity); _typed = true; break;
-      case 32: _buffer = new Uint32Array(_capacity); _typed = true; break;
-      default: _buffer = new Array(_capacity); break;
+      switch(Number(_type))
+      {
+        case 8:  _typed = true; return new Uint8Array(capacity);
+        case 16: _typed = true; return new Uint16Array(capacity);
+        case 32: _typed = true; return new Uint32Array(capacity);
+        default: _typed = false; return new Array(capacity);
+      }
     }
+
+    _buffer = _newBuffer(_capacity);
 
     var _first  = 0;
     var _length = 0;
@@ -3305,6 +3310,43 @@ function COM()
 
       // Historical helper used as a delay line: insert newest value at the front and discard the oldest value when the buffer is full.
       delay: function(value) { return this.unshift(value); },
+      resize: function(newCapacity)
+      {
+        newCapacity = Number(newCapacity) | 0;
+        if(newCapacity < 1) newCapacity = 1;
+        if(newCapacity === _capacity) return this;
+
+        var values = _toArray();
+
+        _capacity = newCapacity;
+        _buffer = _newBuffer(_capacity);
+        _first = 0;
+        _length = 0;
+
+        return this.fromArray(values);
+      },
+      fromArray: function(records)
+      {
+        this.clear();
+
+        if(!records) return this;
+        if(typeof records.length != "number") return this;
+
+        var start = Math.max(0,records.length - _capacity);
+        for(var i = start; i < records.length; i++)
+          this.push(records[i]);
+
+        return this;
+      },
+      forEach: function(callback,thisArg)
+      {
+        if(typeof callback != "function") return this;
+
+        for(var i = 0; i < _length; i++)
+          callback.call(thisArg,_buffer[_wrap(_first + i)],i,this);
+
+        return this;
+      },
       slice: function(pos1,pos2) { return _toArray().slice(pos1,pos2); },
       toArray: function() { return _toArray(); },
       _last: function()   { if(_length === 0) return undefined; else return _last(); },
@@ -32408,7 +32450,7 @@ Label1 TXA
         DBG_traceHW = null;
         DBG_traceStarted = false;
         DBG_traceStepCount = 0;
-        DBG_newTraceHistory();
+        DBG_resetTraceHistory();
         DBG_traceLines = [];
         DBG_renderTraceView();
       }
@@ -33555,43 +33597,19 @@ Label1 TXA
         return n;
       }
 
-       function DBG_traceHistoryRecords() {
-         if(!DBG_traceHistory) return [];
-         if(typeof DBG_traceHistory.toArray == "function") return DBG_traceHistory.toArray();
-         if(typeof DBG_traceHistory.slice == "function") return DBG_traceHistory.slice();
-         return [];
-       }
-
-       function DBG_newTraceHistory(records) {
-         var depth = DBG_traceDepthLimit();
-         DBG_traceHistory = oCOM.buffer(depth);
-
-         records = Array.isArray(records) ? records : [];
-         var start = Math.max(0,records.length - depth);
-
-         for(var i=start;i<records.length;i++)
-           DBG_traceHistory.push(records[i]);
-
+       function DBG_resetTraceHistory(records) 
+       {
+         DBG_traceHistory = (DBG_traceHistory || oCOM.buffer(DBG_traceDepthLimit()))
+           .resize(DBG_traceDepthLimit())
+           .fromArray(records || []);    
          return DBG_traceHistory;
        }
 
-       function DBG_clearTraceHistory() {
-         if(!DBG_traceHistory || typeof DBG_traceHistory.clear != "function")
-           return DBG_newTraceHistory();
 
-         DBG_traceHistory.clear();
-         return DBG_traceHistory;
-       }
-
-       function DBG_traceHistoryPush(record) {
-         if(!DBG_traceHistory) DBG_newTraceHistory();
-         DBG_traceHistory.push(record);
-         return DBG_traceHistory.length;
-       }
-
-
-      function DBG_applyTraceDepthLimit() {
-         DBG_newTraceHistory(DBG_traceHistoryRecords());
+      function DBG_applyTraceDepthLimit() 
+      {
+          if(DBG_traceHistory) DBG_traceHistory.resize(DBG_traceDepthLimit());
+          else DBG_resetTraceHistory();
          DBG_rebuildTraceLines();
       }
 
@@ -33649,9 +33667,9 @@ Label1 TXA
 
       function DBG_rebuildTraceLines() {
         DBG_traceLines = [];
-         var records = DBG_traceHistoryRecords();
-         for(var i=0;i<records.length;i++)
-           DBG_traceLines.push(DBG_traceLineFromRecord(records[i]));
+         if(DBG_traceHistory)
+           DBG_traceHistory.forEach(function(record){ DBG_traceLines.push(DBG_traceLineFromRecord(record)); });
+
       }
 
       function DBG_restoreTraceBefore(record) {
@@ -33766,7 +33784,7 @@ Label1 TXA
        DBG_traceCPU.load("00,00,00,ff,24," + DBG_hexWord(startPC));
        DBG_traceStarted = true;
        DBG_traceStepCount = 0;
-       DBG_newTraceHistory();
+       DBG_resetTraceHistory();
        DBG_traceLines = [];
        DBG_traceCurrentWrites = null;
 
@@ -33822,7 +33840,9 @@ Label1 TXA
          writes: writes.slice()
        };
 
-       DBG_traceHistoryPush(record);
+       if(!DBG_traceHistory) DBG_resetTraceHistory();
+       if(DBG_traceHistory.full()) DBG_traceLines.shift();
+       DBG_traceHistory.push(record);
        DBG_traceLines.push(DBG_traceLineFromRecord(record));
        while(DBG_traceLines.length > DBG_traceHistory.length)
          DBG_traceLines.shift();    
@@ -33840,7 +33860,7 @@ Label1 TXA
           * Do not reset the CPU and do not stop an active continuous run.
           */
          DBG_traceStepCount = 0;
-         DBG_clearTraceHistory();
+         DBG_resetTraceHistory();
          DBG_traceLines = [];
          DBG_renderTraceView();
          DBG_statusText("Trace cleared; next trace entry will be step 0001.");
@@ -33852,7 +33872,7 @@ Label1 TXA
          if(DBG_running)
            DBG_stopContinuousRun("Continuous run stopped before stepping backward.");
 
-        if(!DBG_traceHistory.length) {
+        if(!DBG_traceHistory || !DBG_traceHistory.length) {
           DBG_statusText("Trace history is empty; cannot step backward.");
           return false;
         }
