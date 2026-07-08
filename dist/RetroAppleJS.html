@@ -31127,6 +31127,10 @@ Label1 TXA
               if(originPc != null && !isNaN(Number(originPc)))
               {
                 var pc = Number(originPc) & 0xFFFF;
+                if(typeof DBG_prepareDebuggerStartPC == "function")
+                  DBG_prepareDebuggerStartPC(pc,{clearTrace:true});
+                if(typeof DBG_prepareDebuggerStartPC == "function")
+                  DBG_prepareDebuggerStartPC(pc,{clearTrace:true});
                 window.setTimeout(function(){
                   if(typeof DBG_scrollListingToPC != "function") return;
 
@@ -32069,9 +32073,11 @@ Label1 TXA
     var DBG_traceHW = null;
     var DBG_traceStarted = false;
     var DBG_traceStepCount = 0;
+    var DBG_traceHistory = [];
     var DBG_traceLines = [];
-    var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42};
-
+    var DBG_traceCurrentWrites = null;
+    var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45};
+   
     DBG_listingRowByPc.fill(-1);
     DBG_listingRowByByteAddress.fill(-1);
 
@@ -32415,6 +32421,78 @@ Label1 TXA
       if (input) input.value = "";
 
       DBG_equalizePaneHeaders();
+    }
+
+    function DBG_prepareDebuggerStartPC(pc,opts) {
+      /*
+       * Preset the debugger start PC without immediately starting execution.
+       *
+       * This is used by tab2's "to debugger" transfer.  After import, the
+       * Listing is positioned at the assembler origin and the next click on
+       * "Step one instruction forward" starts from that same address.
+       */
+      pc = Number(pc);
+      if (isNaN(pc)) return false;
+
+      pc = pc & 0xffff;
+      opts = opts || {};
+
+      DBG_debuggerStartPC = pc;
+      DBG_debuggerStarted = false;
+
+      if (opts.clearTrace !== false) {
+        DBG_traceCPU = null;
+        DBG_traceHW = null;
+        DBG_traceStarted = false;
+        DBG_traceStepCount = 0;
+        DBG_traceLines = [];
+        DBG_renderTraceView();
+      }
+
+      var pcDisplay = DBG_el("dispPC");
+      if (pcDisplay) pcDisplay.textContent = DBG_hexWord(pc);
+
+      var inputs = document.querySelectorAll(".DBG_startPcInput");
+      for (var i = 0; i < inputs.length; i++)
+        inputs[i].value = "$" + DBG_hexWord(pc);
+
+      return true;
+    }
+
+    function DBG_prepareDebuggerStartPC(pc,opts) {
+      /*
+       * Preset the debugger start PC without immediately starting execution.
+       *
+       * This is used by tab2's "to debugger" transfer.  After import, the
+       * Listing is positioned at the assembler origin and the next click on
+       * "Step one instruction forward" starts from that same address.
+       */
+      pc = Number(pc);
+      if (isNaN(pc)) return false;
+
+      pc = pc & 0xffff;
+      opts = opts || {};
+
+      DBG_debuggerStartPC = pc;
+      DBG_debuggerStarted = false;
+
+      if (opts.clearTrace !== false) {
+        DBG_traceCPU = null;
+        DBG_traceHW = null;
+        DBG_traceStarted = false;
+        DBG_traceStepCount = 0;
+        DBG_traceLines = [];
+        DBG_renderTraceView();
+      }
+
+      var pcDisplay = DBG_el("dispPC");
+      if (pcDisplay) pcDisplay.textContent = DBG_hexWord(pc);
+
+      var inputs = document.querySelectorAll(".DBG_startPcInput");
+      for (var i = 0; i < inputs.length; i++)
+        inputs[i].value = "$" + DBG_hexWord(pc);
+
+      return true;
     }
 
     function DBG_startDebuggerAtPC(hostId) {
@@ -33190,8 +33268,9 @@ Label1 TXA
 
      function DBG_traceColumnsValue() {
        var input = DBG_el("DBG_traceColumnsInput");
-       return input ? input.value : "{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42}";
-     }
+       return input ? input.value : "{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45}";
+
+      }
  
      function DBG_parseTraceColumns(text) {
        var cfg = Object.assign({}, DBG_defaultTraceColumns);
@@ -33204,7 +33283,7 @@ Label1 TXA
  
      function DBG_formatTraceParts(parts) {
        var columns = DBG_parseTraceColumns(DBG_traceColumnsValue());
-       var order = ["stp","pc","byt","opc","rA","rX","rY","rP","rSP"];
+       var order = ["stp","pc","byt","opc","rA","rX","rY","rP","rSP","cyc"];
        var line = "";
  
        for (var i = 0; i < order.length; i++) {
@@ -33246,12 +33325,117 @@ Label1 TXA
  
        for (var i = 0; i < 16; i++) {
          hw.RD[i] = function(addr) { return DBG_RAM[addr & 0xffff] & 0xff; };
-         hw.WR[i] = function(addr,d8) { DBG_RAM[addr & 0xffff] = d8 & 0xff; return 0x00; };
+         hw.WR[i] = function(addr,d8) {
+           var adr = addr & 0xffff;
+           var oldVal = DBG_RAM[adr] & 0xff;
+           var newVal = d8 & 0xff;
+           if(DBG_traceCurrentWrites) DBG_traceCurrentWrites.push({addr:adr,oldVal:oldVal,newVal:newVal});
+           DBG_RAM[adr] = newVal;
+           return 0x00;
+         };
        }
  
        return hw;
      }
  
+      function DBG_settingChecked(id,defaultValue) {
+        var el = DBG_el(id);
+        if(!el) return !!defaultValue;
+        return !!el.checked;
+      }
+
+      function DBG_highlightChangedValuesEnabled() {
+        return DBG_settingChecked("DBG_highlightChangedValuesInput",true);
+      }
+
+      function DBG_showCyclesEnabled() {
+        return DBG_settingChecked("DBG_showCyclesInput",true);
+      }
+
+      function DBG_traceDepthLimit() {
+        var input = DBG_el("DBG_traceDepthInput");
+        var n = input ? parseInt(input.value,10) : 2048;
+        if(isNaN(n) || n < 1) n = 2048;
+        if(input && String(input.value) !== String(n)) input.value = String(n);
+        return n;
+      }
+
+      function DBG_applyTraceDepthLimit() {
+        var max = DBG_traceDepthLimit();
+        while(DBG_traceHistory.length > max) DBG_traceHistory.shift();
+        while(DBG_traceLines.length > max) DBG_traceLines.shift();
+      }
+
+      function DBG_cloneTraceState(state) {
+        if(!state) return null;
+        return {
+          pc: state.pc & 0xffff,
+          a:  state.a  & 0xff,
+          x:  state.x  & 0xff,
+          y:  state.y  & 0xff,
+          p:  state.p  & 0xff,
+          sp: state.sp & 0xff,
+          cycle_delay: state.cycle_delay | 0
+        };
+      }
+
+      function DBG_traceStateLoadString(state) {
+        state = state || {};
+        return [
+          DBG_hexByte(state.a || 0),
+          DBG_hexByte(state.x || 0),
+          DBG_hexByte(state.y || 0),
+          DBG_hexByte(state.sp == null ? 0xff : state.sp),
+          DBG_hexByte(state.p == null ? 0x24 : state.p),
+          DBG_hexWord(state.pc || 0)
+        ].join(",");
+      }
+
+      function DBG_setWatchCellChanged(id,changed) {
+        var el = DBG_el(id);
+        if(!el) return;
+
+        var cell = el.closest ? el.closest(".DBG_registerCell,.DBG_flagCell,.DBG_watchCell") : el.parentElement;
+        if(cell && cell.classList) cell.classList.toggle("DBG_changed",!!changed);
+      }
+
+      function DBG_traceLineFromRecord(record) {
+        var before = record.before || {};
+        var decoded = record.decoded || {};
+        var parts = {
+          stp: ("0000" + record.step).slice(-4),
+          pc:  DBG_hexWord(record.pc),
+          byt: decoded.bytes || "",
+          opc: decoded.op || "",
+          rA:  DBG_hexByte(before.a || 0),
+          rX:  DBG_hexByte(before.x || 0),
+          rY:  DBG_hexByte(before.y || 0),
+          rP:  DBG_hexByte(before.p || 0),
+          rSP: DBG_hexByte(before.sp == null ? 0xff : before.sp)
+        };
+
+        if(DBG_showCyclesEnabled()) parts.cyc = String(record.cycles || 0);
+        return DBG_formatTraceParts(parts);
+      }
+
+      function DBG_rebuildTraceLines() {
+        DBG_traceLines = [];
+        for(var i=0;i<DBG_traceHistory.length;i++)
+          DBG_traceLines.push(DBG_traceLineFromRecord(DBG_traceHistory[i]));
+      }
+
+      function DBG_restoreTraceBefore(record) {
+        if(!record || !DBG_traceCPU) return false;
+
+        var writes = record.writes || [];
+        for(var i=writes.length-1;i>=0;i--)
+          DBG_RAM[writes[i].addr & 0xffff] = writes[i].oldVal & 0xff;
+
+        DBG_traceCPU.load(DBG_traceStateLoadString(record.before));
+        return true;
+      }
+
+
      function DBG_formatSRHTML(p) {
        p = Number(p) & 0xff;
        var names = ["n","v","-","b","d","i","z","c"];
@@ -33264,7 +33448,7 @@ Label1 TXA
        return out;
      }
  
-     function DBG_updateRegisterDisplays(state) {
+     function DBG_updateRegisterDisplays(state,compareState) {
        state = state || (DBG_traceCPU && DBG_traceCPU.watch ? DBG_traceCPU.watch() : null);
        if (!state) return;
  
@@ -33275,6 +33459,14 @@ Label1 TXA
        var p  = state.p  & 0xff;
        var sp = state.sp & 0xff;
  
+       var highlight = DBG_highlightChangedValuesEnabled() && !!compareState;
+       var cpc = compareState ? (compareState.pc & 0xffff) : pc;
+       var ca  = compareState ? (compareState.a  & 0xff) : a;
+       var cx  = compareState ? (compareState.x  & 0xff) : x;
+       var cy  = compareState ? (compareState.y  & 0xff) : y;
+       var cp  = compareState ? (compareState.p  & 0xff) : p;
+       var csp = compareState ? (compareState.sp & 0xff) : sp;
+
        if (DBG_el("dispPC")) DBG_el("dispPC").textContent = DBG_hexWord(pc);
        if (DBG_el("dispAC")) DBG_el("dispAC").textContent = DBG_hexByte(a);
        if (DBG_el("dispXR")) DBG_el("dispXR").textContent = DBG_hexByte(x);
@@ -33282,9 +33474,17 @@ Label1 TXA
        if (DBG_el("dispSR")) DBG_el("dispSR").textContent = DBG_hexByte(p);
        if (DBG_el("dispSP")) DBG_el("dispSP").textContent = DBG_hexByte(sp);
  
+       DBG_setWatchCellChanged("dispPC",highlight && pc !== cpc);
+       DBG_setWatchCellChanged("dispAC",highlight && a !== ca);
+       DBG_setWatchCellChanged("dispXR",highlight && x !== cx);
+       DBG_setWatchCellChanged("dispYR",highlight && y !== cy);
+       DBG_setWatchCellChanged("dispSR",highlight && p !== cp);
+       DBG_setWatchCellChanged("dispSP",highlight && sp !== csp);
+
        for (var i = 0; i < 8; i++) {
          var bitEl = DBG_el("dispSR" + i);
          if (bitEl) bitEl.textContent = String((p >> i) & 1);
+        DBG_setWatchCellChanged("dispSR" + i,highlight && (((p >> i) & 1) !== ((cp >> i) & 1)));
        }
  
        var info = DBG_el("DBG_traceRegisterInfo");
@@ -33336,7 +33536,9 @@ Label1 TXA
        DBG_traceCPU.load("00,00,00,ff,24," + DBG_hexWord(startPC));
        DBG_traceStarted = true;
        DBG_traceStepCount = 0;
+       DBG_traceHistory = [];
        DBG_traceLines = [];
+       DBG_traceCurrentWrites = null;
 
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(DBG_traceCPU.watch());
@@ -33362,38 +33564,68 @@ Label1 TXA
          if (!DBG_traceCPU) return false;
        }
  
-       var before = DBG_traceCPU.watch();
+       var before = DBG_cloneTraceState(DBG_traceCPU.watch());
        var pc = before.pc & 0xffff;
        var decoded = DBG_traceInstructionTextAt(pc);
        var cycles = 0;
        var after;
+       DBG_traceCurrentWrites = [];
  
        do {
          DBG_traceCPU.cycle();
          cycles++;
-         after = DBG_traceCPU.watch();
+         after = DBG_cloneTraceState(DBG_traceCPU.watch());
        } while (after && after.cycle_delay > 0 && cycles < 64);
  
+       var writes = DBG_traceCurrentWrites || [];
+       DBG_traceCurrentWrites = null;
+
        DBG_traceStepCount++;
-       DBG_traceLines.push(DBG_formatTraceParts({
-         stp: ("0000" + DBG_traceStepCount).slice(-4),
-         pc: DBG_hexWord(pc),
-         byt: decoded.bytes,
-         opc: decoded.op,
-         rA: DBG_hexByte(before.a),
-         rX: DBG_hexByte(before.x),
-         rY: DBG_hexByte(before.y),
-         rP: DBG_hexByte(before.p),
-         rSP: DBG_hexByte(before.sp)
-       }));
+
+       var record = {
+         step: DBG_traceStepCount,
+         before: before,
+         after: after,
+         pc: pc,
+         decoded: decoded,
+         cycles: cycles,
+         writes: writes.slice()
+       };
+
+       DBG_traceHistory.push(record);
+       DBG_traceLines.push(DBG_traceLineFromRecord(record));
+       DBG_applyTraceDepthLimit();       
  
        DBG_renderTraceView();
-       DBG_updateRegisterDisplays(after);
+       DBG_updateRegisterDisplays(after,before);
        if (after) DBG_scrollListingToPC(after.pc & 0xffff,{behavior:DBG_listingScrollBehavior});
  
        return true;
      }
  
+
+      function DBG_traceStepBackward() {
+        if(!DBG_traceHistory.length) {
+          DBG_statusText("Trace history is empty; cannot step backward.");
+          return false;
+        }
+
+        if(!DBG_traceCPU) {
+          DBG_statusText("Trace CPU is not active; cannot step backward.");
+          return false;
+        }
+
+        var record = DBG_traceHistory.pop();
+        if(!DBG_restoreTraceBefore(record)) return false;
+
+        DBG_traceStepCount = Math.max(0,DBG_traceStepCount - 1);
+        DBG_rebuildTraceLines();
+        DBG_renderTraceView();
+        DBG_updateRegisterDisplays(record.before,record.after);
+        DBG_scrollListingToPC(record.before.pc & 0xffff,{behavior:DBG_listingScrollBehavior});
+        DBG_statusText("Stepped backward to $" + DBG_hexWord(record.before.pc) + ".");
+        return true;
+      }      
 
     function DBG_importBoardByteCode() {
       var parsed = DBG_syncByteCodeFromBoard();
@@ -33670,7 +33902,7 @@ Label1 TXA
                 DEBUGGER DISPLAY<br>
                 <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
                 <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
-                <label>Highlight changed values <input type="checkbox" checked onchange="DBG_stub('Highlight changed values')"></label>
+                <label>Highlight changed values <input id="DBG_highlightChangedValuesInput" type="checkbox" checked onchange="DBG_updateRegisterDisplays()"></label>
                 <label>
                   Source/disassembly fusion<br>
                   <select onchange="DBG_stub('Source/disassembly fusion')">
@@ -33691,13 +33923,13 @@ Label1 TXA
               <div class="appbox" title="Trace configuration">
                 TRACE<br>
                 <label>Trace depth / ring buffer<br>
-                  <input type="number" value="2048" min="128" step="128" onchange="DBG_stub('Trace depth')">
+                  <input id="DBG_traceDepthInput" type="number" value="2048" min="1" step="128" onchange="DBG_applyTraceDepthLimit();DBG_renderTraceView();">
                 </label>
                  <label>
                    Trace columns<br>
-                   <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP" spellcheck="false" onchange="DBG_renderTraceView()">
+                   <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP, cycles" spellcheck="false" onchange="DBG_rebuildTraceLines();DBG_renderTraceView()">
                  </label>
-                <label>Show cycles <input type="checkbox" checked onchange="DBG_stub('Show cycles')"></label>
+                <label>Show cycles <input id="DBG_showCyclesInput" type="checkbox" checked onchange="DBG_rebuildTraceLines();DBG_renderTraceView()"></label>
                 <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
               </div>
             </div>
@@ -33833,7 +34065,7 @@ Label1 TXA
                 </div>
                 <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
 
-                  <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_stub('Step backward')" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
+                  <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_traceStepBackward()" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_traceStepForward()" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
                   <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
                   <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
@@ -33885,8 +34117,8 @@ Label1 TXA
             <section id="DBG_watchPane" class="DBG_pane">
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
-                  <strong>Memory Watch</strong>
-                  <span class="DBG_paneInfo">CPU + byte/word/bit watchers</span>
+                  <strong>CPU Watch</strong>
+                  <span class="DBG_paneInfo"></span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
