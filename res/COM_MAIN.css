@@ -60,7 +60,7 @@ ____    ____          _
     position: relative;
     height: 30px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr); 
+    grid-template-columns: repeat(var(--tab-count), 1fr);
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.65);
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
@@ -81,15 +81,17 @@ ____    ____          _
     position: absolute;
     left: 0;
     top: 0;
-    width: calc(100% / 4);
+    width: calc(100% / var(--tab-count));
     height: 100%;
     border-radius: 10px;
     background: #fff;
     box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
 }
 
-#app ul .focus-el.el--2 {
-    left: calc(-100% / 4);
+#app ul .focus-el.el--2 
+{
+    display: none;
+    left: calc(-100% / var(--tab-count));    
 }
 
 #box {

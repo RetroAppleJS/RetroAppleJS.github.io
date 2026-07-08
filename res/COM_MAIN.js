@@ -1150,6 +1150,271 @@ function prettyJsonAllman(value, indent) {
     return s;
 }
 
+  /////////////////////////////////
+  // TAB SWITCHING / ANIMATION   //
+  /////////////////////////////////
+
+  this.TAB_TWEEN = function()
+  {
+    this.jobs = new WeakMap();
+
+    this.ease = function(t)
+    {
+      /*
+       * Small approximation of GSAP's default power1.out easing:
+       * fast at the beginning, smooth near the end.
+       */
+      return 1 - Math.pow(1 - t,2);
+    };
+
+    this.to = function(el,duration,vars)
+    {
+      if(!el) return;
+
+      duration = Math.max(0,Number(duration) || 0);
+      vars = vars || {};
+
+      var previous = this.jobs.get(el);
+      if(previous) cancelAnimationFrame(previous);
+
+      var start = performance.now();
+      var from = {};
+      var to = {};
+
+      for(var prop in vars)
+      {
+        if(prop == "duration") continue;
+        from[prop] = parseFloat(getComputedStyle(el)[prop]) || 0;
+        to[prop] = parseFloat(vars[prop]) || 0;
+      }
+
+      var self = this;
+
+      function step(now)
+      {
+        var t = duration <= 0 ? 1 : Math.min(1,(now - start) / (duration * 1000));
+        var e = self.ease(t);
+
+        for(var prop in to)
+          el.style[prop] = (from[prop] + (to[prop] - from[prop]) * e) + "px";
+
+        if(t < 1) self.jobs.set(el,requestAnimationFrame(step));
+        else self.jobs.delete(el);
+      }
+
+      step(start);
+    };
+  }
+
+  this.TAB_SWITCHER = function(arg)
+  {
+    arg = arg || {};
+
+    this.menuID       = arg.menuID       || "#app ul";
+    this.contentCL    = arg.contentCL    || ".tabs";
+    this.defID        = arg.defID        || "";
+    this.animDuration = arg.animDuration == null ? 0.1 : arg.animDuration;
+    this.groups       = [];
+    this.animator     = arg.animator || new _COM_this.TAB_TWEEN();
+    this.readhash     = arg.readhash || function(event) {
+      if(typeof event == "string") return event;
+      if(event && typeof event.node == "string") return event.node;
+      return location.hash.slice(1);
+    };
+
+    this.init = function()
+    {
+      this.initGroupsOnly();
+      this.bindClicks();
+      this.switchTab();
+      return this;
+    };
+
+    this.initGroupsOnly = function()
+    {
+      var menus = document.querySelectorAll(this.menuID);
+      this.groups = [];
+
+      for(var i = 0; i < menus.length; i++)
+      {
+        var group = this.createGroup(menus[i],i);
+        if(group) this.groups.push(group);
+      }
+    };
+
+    this.createGroup = function(menuEl,index)
+    {
+      var links = [];
+
+      for(var i = 0; i < menuEl.childNodes.length; i++)
+        if(menuEl.childNodes[i].tagName == "A" && menuEl.childNodes[i].href !== undefined)
+          links.push(menuEl.childNodes[i]);
+
+      if(!links.length) return null;
+
+      var focusEl = menuEl.querySelector(".tab_div_end") || menuEl.querySelector(".focus-el");
+      var contentEl = this.findContentForMenu(menuEl);
+
+      if(!focusEl || !contentEl) return null;
+
+      menuEl.style.setProperty("--tab-count",String(links.length));
+
+      /*
+       * Keep the old second-slider markup inert.  The v42 implementation uses
+       * one focus element per menu and moves it directly to the active link.
+       */
+      var focusEls = menuEl.querySelectorAll(".tab_div_end,.focus-el");
+      for(var f = 0; f < focusEls.length; f++)
+        if(focusEls[f] !== focusEl)
+          focusEls[f].style.display = "none";
+
+      var defaultLink = null;
+      for(var d = 0; d < links.length; d++)
+        if(this.defID && links[d].id == this.defID)
+          defaultLink = links[d];
+
+      if(!defaultLink) defaultLink = links[0];
+
+      return {
+        index: index,
+        menuEl: menuEl,
+        focusEl: focusEl,
+        contentEl: contentEl,
+        links: links,
+        defaultLink: defaultLink
+      };
+    };
+
+    this.findContentForMenu = function(menuEl)
+    {
+      var wrapper = menuEl.parentElement;
+      var node = wrapper ? wrapper.nextElementSibling : null;
+
+      while(node)
+      {
+        if(node.classList && node.classList.contains("tabs"))
+          return node;
+        node = node.nextElementSibling;
+      }
+
+      var parent = wrapper ? wrapper.parentElement : null;
+      while(parent)
+      {
+        for(var i = 0; i < parent.children.length; i++)
+          if(parent.children[i].classList && parent.children[i].classList.contains("tabs"))
+            return parent.children[i];
+
+        parent = parent.parentElement;
+      }
+
+      return null;
+    };
+
+    this.bindClicks = function()
+    {
+      var self = this;
+
+      for(var i = 0; i < this.groups.length; i++)
+      {
+        for(var j = 0; j < this.groups[i].links.length; j++)
+        {
+          this.groups[i].links[j].onclick = function()
+          {
+            /*
+             * The browser updates location.hash after this click.
+             * setTimeout also handles clicks on the already-selected hash.
+             */
+            window.setTimeout(function(){ self.switchTab(); },0);
+          };
+        }
+      }
+    };
+
+    this.cleanTabId = function(id)
+    {
+      id = String(id || "").replace(/^#/,"");
+      if(id.indexOf("_") > 0) id = id.split("_")[0];
+      return id;
+    };
+
+    this.linkTarget = function(link)
+    {
+      return link.hash ? link.hash.split("#")[1] : "";
+    };
+
+    this.findTargetLink = function(group,target)
+    {
+      if(target)
+      {
+        for(var i = 0; i < group.links.length; i++)
+          if(this.linkTarget(group.links[i]) == target)
+            return group.links[i];
+
+        /*
+         * Prefix match handles parent tabs when the hash points deeper:
+         * #tab2-1 activates #tab2 in the parent group.
+         */
+        for(var j = 0; j < group.links.length; j++)
+        {
+          var linkId = this.linkTarget(group.links[j]);
+          if(target.indexOf(linkId + "-") == 0)
+            return group.links[j];
+        }
+      }
+
+      return group.defaultLink;
+    };
+
+    this.switchTab = function(event)
+    {
+      if(!this.groups.length) this.initGroupsOnly();
+
+      var target = this.cleanTabId(this.readhash(event));
+
+      for(var i = 0; i < this.groups.length; i++)
+      {
+        var group = this.groups[i];
+        var link = this.findTargetLink(group,target);
+
+        if(link)
+        {
+          this.switchTabHeader(group,link);
+          this.switchTabContent(group,this.linkTarget(link));
+        }
+      }
+
+      return true;
+    };
+
+    this.switchTabHeader = function(group,link)
+    {
+      var menuRect = group.menuEl.getBoundingClientRect();
+      var linkRect = link.getBoundingClientRect();
+
+      this.animator.to(group.focusEl,this.animDuration,{
+        left:  linkRect.left - menuRect.left,
+        width: linkRect.width
+      });
+    };
+
+    this.switchTabContent = function(group,sel_id)
+    {
+      var node = group.contentEl.childNodes;
+
+      for(var i = 0; i < node.length; i++)
+      {
+        if(!node[i].id || !node[i].classList) continue;
+        if(node[i].id == sel_id) node[i].classList.add("active");
+        else                     node[i].classList.remove("active");
+      }
+    };
+  }
+
+  this.tabSwitch = function(arg)
+  {
+    return new this.TAB_SWITCHER(arg || {});
+  }
+
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
