@@ -2607,7 +2607,7 @@ Label1 TXA
     }
 
     .DBG_popupHost input.DBG_listingColumnsInput {
-      width: 310px;
+      width: 120px;
     }
 
     .DBG_paneHost {
@@ -4966,21 +4966,12 @@ Label1 TXA
           <div class="hints1 DBG_popupHost" id="DBG_settings" hidden>
             <div class="toolbox">
               <div class="appbox" title="Debugger display">
-                DEBUGGER DISPLAY<br>
+                LISTING<br>
                 <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
                 <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
                 <label>Highlight changed values <input id="DBG_highlightChangedValuesInput" type="checkbox" checked onchange="DBG_updateRegisterDisplays()"></label>
                 <label>
-                  Source/disassembly fusion<br>
-                  <select onchange="DBG_stub('Source/disassembly fusion')">
-                    <option>source + disassembly</option>
-                    <option>source only</option>
-                    <option>full disassembly</option>
-                    <option>mixed</option>
-                  </select>
-                </label>
-                <label>
-                  Listing columns<br>
+                  Columns 
                   <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
                 </label>
               </div>
@@ -4988,12 +4979,12 @@ Label1 TXA
 
             <div class="toolbox">
               <div class="appbox" title="Trace configuration">
-                TRACE<br>
-                <label>Trace depth / ring buffer<br>
-                  <input id="DBG_traceDepthInput" type="number" value="2048" min="1" step="128" onchange="DBG_applyTraceDepthLimit();DBG_renderTraceView();">
+                CPU TRACE<br>
+                <label>Buffer 
+                  <input id="DBG_traceDepthInput" type="number" value="2048" min="1" step="128" title="Trace depth / ring buffer" onchange="DBG_applyTraceDepthLimit();DBG_renderTraceView();">
                 </label>
                  <label>
-                   Trace columns<br>
+                   Columns 
                    <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP, cycles" spellcheck="false" onchange="DBG_rebuildTraceLines();DBG_renderTraceView()">
                  </label>
                 <label>Show cycles <input id="DBG_showCyclesInput" type="checkbox" checked onchange="DBG_rebuildTraceLines();DBG_renderTraceView()"></label>
