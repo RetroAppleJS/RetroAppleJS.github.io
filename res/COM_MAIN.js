@@ -662,173 +662,118 @@ function COM()
   this.crc16 = function(r){var crc=0xFFFF;var odd; for(var i=0;i<r.length;i++) { crc = crc ^ r[i]; for (var j = 0; j < 8; j++) { odd = crc & 0x0001; crc = crc >> 1; if (odd) { crc = crc ^ 0xA001 }}} return crc };
   this.crc32 = function(r){for(var a,o=[],c=0;c<256;c++){a=c;for(var f=0;f<8;f++)a=1&a?3988292384^a>>>1:a>>>1;o[c]=a}for(var n=-1,t=0;t<r.length;t++)n=n>>>8^o[255&(n^r[t])];return(-1^n)>>>0};
 
-  // simpified (and faster) version of RingBuffer
+  /*
+   * General-purpose fixed-capacity ring buffer.
+   *
+   * _type is optional:
+   *   undefined/null : normal Array, accepts objects
+   *   8              : Uint8Array
+   *   16             : Uint16Array
+   *   32             : Uint32Array
+   *
+   * This replaces the older RingBuffer implementation while keeping the same
+   * high-level API: push/pop/shift/unshift/front/back/clear/slice/debug.
+   */
+  var _COM_this = this;
+
   this.buffer = function(_capacity,_type)
   {
-    switch(_type)
+    _capacity = Number(_capacity) | 0;
+    if(_capacity < 1) _capacity = 1;
+
+    var _typed = false;
+    var _buffer;
+
+    switch(Number(_type))
     {
-      case 8: var _buffer = new Uint8Array(_capacity); break;
-      case 16: var _buffer = new Uint16Array(_capacity); break;
-      case 32: var _buffer = new Uint32Array(_capacity); break;
+      case 8:  _buffer = new Uint8Array(_capacity);  _typed = true; break;
+      case 16: _buffer = new Uint16Array(_capacity); _typed = true; break;
+      case 32: _buffer = new Uint32Array(_capacity); _typed = true; break;
+      default: _buffer = new Array(_capacity); break;
     }
-    var _first = 0;
+
+    var _first  = 0;
     var _length = 0;
 
-    return {
-      pop: function()
-      {
-        if (_length != _capacity || _length === 0) return 0;
-        const index = _first + (_length - 1);
-        const last = (index > (_capacity - 1)) ? index - _capacity : index;
-        const value = _buffer[last];
-        _buffer[last] = 0;
-        _length--;
-        return value;
-      },
-      delay: function(value)
-      {
-        if (--_first < 0) _first = _capacity - 1
-        _buffer[_first] = value;
-        return _length++;
-      }
+    function _wrap(index)
+    {
+      index = index % _capacity;
+      return index < 0 ? index + _capacity : index;
     }
-  }
 
-  // TODO: replace Ringbuffer >> buffer
-  this.RingBuffer = function(_capacity)
-  {
-    /**
-     * Constructs a RingBuffer with fixed maximum _capacity.
-     * @param {Number} _capacity - maximum number of values in the buffer
-     */
+    function _last()
+    {
+      return _wrap(_first + _length - 1);
+    }
 
-    var _buffer      = new Array(_capacity)
+    function _clearIndex(index)
+    {
+      _buffer[index] = _typed ? 0 : undefined;
+    }
 
-    return {
-      /**
-       * Empties the ring buffer.
+    function _toArray()
+    {
+      var out = [];
+      for(var i = 0; i < _length; i++)
+        out.push(_buffer[_wrap(_first + i)]);
+      return out;
+    }
+
+    var api = 
+    {
+      get length()   { return _length; },
+      get capacity() { return _capacity; },
+      get first()    { return _first; },
+
+      /*
+       * Backward-compatible debug fields.  Code should prefer length,
+       * capacity and first, but these keep the old RingBuffer shape readable.
        */
-
-      _first:0,
-      _length:0,
+      get _first()   { return _first; },
+      set _first(v)  { _first = _wrap(Number(v) | 0); },
+      get _length()  { return _length; },
+      set _length(v) { _length = Math.max(0,Math.min(_capacity,Number(v) | 0)); },
+      get _capacity(){ return _capacity; },
 
       debug: function()
       {
-        return JSON.stringify( {"buffer":_buffer,"first":this._first,"length":this._length,"capacity":_capacity} )
+        return JSON.stringify({
+          buffer: _typed ? Array.from(_buffer) : _buffer.slice(),
+          first: _first,
+          length: _length,
+          capacity: _capacity,
+          typed: _typed,
+          type: _type || 0
+        });
       },
 
-      clear: function() 
+      clear: function()
       {
-        this._first = 0;
-        this._length = 0;
+        for(var i = 0; i < _capacity; i++) _clearIndex(i);
+        _first = 0;
+        _length = 0;
+        return this;
       },
-    
-      /**
-       * Returns the value at the back of the buffer.
-       * @returns {any} - the back of the buffer, or `undefined` if empty
-       */
-      back: function()
-      {
-        if (this._length === 0) return undefined
-        return _buffer[this._last()]
-      },
-    
-      /**
-       * Returns the value at the front of the buffer.
-       * @returns {any} - the front of the buffer, or `undefined` if empty
-       */
-      front: function()
-      {
-        if (this._length === 0) return undefined
-        return _buffer[this._first]
-      },
-    
-      /**
-       * Pushes a value onto the back of the buffer. If length === _capacity,
-       * the value at the front of the buffer is discarded.
-       * @param {any} value - value to push
-       * @returns {Number} - the current length of the buffer
-       */
-      push: function(value)
-      {
-        if (this._length === _capacity) this.shift()
-        this._length++;
-        _buffer[this._last()] = value;
-        return this._length
-      },
-    
-      /**
-       * Removes a value from the back of the buffer and returns it. The
-       * newly empty buffer location is set to undefined to release any
-       * object references.
-       * @returns {any} the value removed from the back of the buffer
-       * or `undefined` if empty.
-       */
-      pop: function()
-      {
-        if (this._length === 0) return undefined
-        const value = _buffer[this._last()]
-        _buffer[this._last()] = undefined // release reference on memory
-        this._length--
-        return value
-      },
-    
-      slice: function(pos1,pos2)
-      {
+      empty: function() { return _length === 0; },
+      full:  function() { return _length === _capacity; },
+      front: function() { if(_length === 0) return undefined; else return _buffer[_first]; },
+      back: function() { if(_length === 0) return undefined; else return _buffer[_last()]; },
+      at: function(index) { index = Number(index) | 0; if(index < 0) index = _length + index; if(index < 0 || index >= _length) return undefined; else return _buffer[_wrap(_first + index)]; },
+      push: function(value) { if(_length === _capacity) this.shift(); else { _buffer[_wrap(_first + _length)] = value; _length++; return _length; } },
+      pop: function() { if(_length === 0) return undefined; else { var index = _last(); var value = _buffer[index]; _clearIndex(index); _length--; return value; } },
+      shift: function() { if(_length === 0) return undefined; else { var value = _buffer[_first]; _clearIndex(_first); _first = _wrap(_first + 1); _length--; return value;} },
+      unshift: function(value) { if(_length === _capacity) this.pop(); else { _first = _wrap(_first - 1); _buffer[_first] = value; _length++; return _length; } },
 
-      },
+      // Historical helper used as a delay line: insert newest value at the front and discard the oldest value when the buffer is full.
+      delay: function(value) { return this.unshift(value); },
+      slice: function(pos1,pos2) { return _toArray().slice(pos1,pos2); },
+      toArray: function() { return _toArray(); },
+      _last: function()   { if(_length === 0) return undefined; else return _last(); },
+      _right: function()  { _first = _wrap(_first + 1); return _first; },
+      _left: function()   { _first = _wrap(_first - 1); return _first; }
+    };
 
-      /**
-       * Removes a value from the front of the buffer and returns it. The
-       * newly empty buffer location is set to undefined to release any
-       * object references.
-       * @returns {any} the value removed from the front of the buffer
-       * or `undefined` if empty.
-       */
-      shift: function()
-      {
-        if (this._length === 0) return undefined
-        const value = _buffer[this._first]
-        _buffer[this._first] = undefined // release reference on memory
-        this._length--
-        this._right()
-        return value
-      },
-    
-      /**
-       * Pushes a value on the front of the buffer. If length === _capacity,
-       * the value at the back is discarded.
-       * @param {any} value - to push onto the front
-       * @returns {Number} - the current length of the buffer
-       */
-      unshift: function(value)
-      {
-        if (this._length === _capacity) this.pop()
-        this._left()
-        this._length++
-        _buffer[this._first] = value
-        return this._length
-      },
-    
-      // Calculates the index of the value at the back of the buffer.
-      _last: function()
-      {
-        const index = this._first + (this._length - 1)
-        return (index > (_capacity - 1)) ? index - _capacity : index
-      },
-    
-      // moves the front of the buffer one step toward the back.
-      _right: function()
-      {
-        if (++this._first > (this._capacity - 1)) this._first = 0
-      },
-    
-      // moves the front of the buffer one step forward.
-      _left: function()
-      {
-        if (--this._first < 0) this._first = _capacity - 1
-      }
-    }
+    return api;
   }
 
   this.FIFO = function(length)
@@ -872,7 +817,6 @@ function COM()
   {
       return JSON.parse(JSON.stringify(obj));
   }
-
 
 
 //   ██████  ██    ██ ██     ███████ ██    ██ ███    ██  ██████ ████████ ██  ██████  ███    ██ ███████ 
