@@ -3007,6 +3007,9 @@ Label1 TXA
     var DBG_traceHistory = [];
     var DBG_traceLines = [];
     var DBG_traceCurrentWrites = null;
+    var DBG_runTimer = null;
+    var DBG_runInstructionCount = 0;
+    var DBG_runLastStatusStep = 0;
     var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45};
    
     DBG_listingRowByPc.fill(-1);
@@ -4535,7 +4538,11 @@ Label1 TXA
      }
  
 
-      function DBG_traceStepBackward() {
+      function DBG_traceStepBackward() 
+      {
+         if(DBG_running)
+           DBG_stopContinuousRun("Continuous run stopped before stepping backward.");
+
         if(!DBG_traceHistory.length) {
           DBG_statusText("Trace history is empty; cannot step backward.");
           return false;
@@ -4557,6 +4564,126 @@ Label1 TXA
         DBG_statusText("Stepped backward to $" + DBG_hexWord(record.before.pc) + ".");
         return true;
       }      
+
+      function DBG_runSpeedValue() {
+        var input = DBG_el("DBG_runSpeedInput");
+        var value = input ? String(input.value || "").toLowerCase() : "1";
+
+        if(value === "max") return {mode:"max",ips:0,stepsPerTick:250,delay:0,label:"Max"};
+
+        var ips = parseInt(value,10);
+        if(isNaN(ips) || ips < 1) ips = 1;
+
+        if(ips >= 1000) return {mode:"fixed",ips:1000,stepsPerTick:50,delay:50,label:"1000 IPS"};
+        if(ips >= 100)  return {mode:"fixed",ips:100, stepsPerTick:5, delay:50,label:"100 IPS"};
+        if(ips >= 10)   return {mode:"fixed",ips:10,  stepsPerTick:1, delay:100,label:"10 IPS"};
+
+        return {mode:"fixed",ips:1,stepsPerTick:1,delay:1000,label:"1 IPS"};
+      }
+
+      function DBG_stopAfterInstructionLimit() {
+        var input = DBG_el("DBG_stopAfterInput");
+        var n = input ? parseInt(input.value,10) : 0;
+        if(isNaN(n) || n < 0) n = 0;
+        if(input && String(input.value) !== String(n)) input.value = String(n);
+        return n;
+      }
+
+      function DBG_updateRunButton() {
+        var btn = DBG_el("DBG_runToggle");
+        if(!btn) return;
+
+        btn.innerHTML = DBG_running ? '<i class="fa fa-pause"></i>' : '<i class="fa fa-running"></i>';
+        btn.title = DBG_running ? "Stop continuous run" : "Continuous run";
+        btn.classList.toggle("DBG_changed",DBG_running);
+      }
+
+      function DBG_stopContinuousRun(reason) {
+        DBG_running = false;
+
+        if(DBG_runTimer !== null) {
+          window.clearTimeout(DBG_runTimer);
+          DBG_runTimer = null;
+        }
+
+        DBG_updateRunButton();
+        if(reason) DBG_statusText(reason);
+      }
+
+      function DBG_scheduleRunLoop(delay) {
+        if(DBG_runTimer !== null) window.clearTimeout(DBG_runTimer);
+        DBG_runTimer = window.setTimeout(DBG_runLoop,Math.max(0,delay | 0));
+      }
+
+      function DBG_runLoop() {
+        if(!DBG_running) return;
+
+        var speed = DBG_runSpeedValue();
+        var stopAfter = DBG_stopAfterInstructionLimit();
+        var stepsThisTick = Math.max(1,speed.stepsPerTick | 0);
+
+        for(var i=0;i<stepsThisTick;i++) {
+          if(stopAfter > 0 && DBG_runInstructionCount >= stopAfter) {
+            DBG_stopContinuousRun(
+              "Continuous run stopped after " + DBG_runInstructionCount + " instruction(s)."
+            );
+            return;
+          }
+
+          if(!DBG_traceStepForward()) {
+            DBG_stopContinuousRun("Continuous run stopped: step failed.");
+            return;
+          }
+
+          DBG_runInstructionCount++;
+
+          if(stopAfter > 0 && DBG_runInstructionCount >= stopAfter) {
+            DBG_stopContinuousRun(
+              "Continuous run stopped after " + DBG_runInstructionCount + " instruction(s)."
+            );
+            return;
+          }
+        }
+
+        if(DBG_traceStepCount !== DBG_runLastStatusStep) {
+          DBG_runLastStatusStep = DBG_traceStepCount;
+          DBG_statusText(
+            "Continuous run: " + DBG_runInstructionCount + " instruction(s) / " + speed.label +
+            (stopAfter > 0 ? " / stop at " + stopAfter : "")
+          );
+        }
+
+        DBG_scheduleRunLoop(speed.delay);
+      }
+
+      function DBG_startContinuousRun() {
+        if(DBG_running) return;
+
+        if(!DBG_traceStarted || !DBG_traceCPU) {
+          DBG_startCpuTraceAtPC(DBG_debuggerStartPC || 0x0000);
+          if(!DBG_traceCPU) return;
+        }
+
+        DBG_runInstructionCount = 0;
+        DBG_runLastStatusStep = DBG_traceStepCount;
+        DBG_running = true;
+        DBG_updateRunButton();
+
+        var speed = DBG_runSpeedValue();
+        var stopAfter = DBG_stopAfterInstructionLimit();
+        DBG_statusText(
+          "Continuous run started at " + speed.label +
+          (stopAfter > 0 ? " / stop after " + stopAfter + " instruction(s)." : ".")
+        );
+
+        DBG_scheduleRunLoop(0);
+      }
+
+      function DBG_toggleRun() {
+        if(DBG_running) DBG_stopContinuousRun("Continuous run stopped.");
+        else DBG_startContinuousRun();
+      }
+
 
     function DBG_importBoardByteCode() {
       var parsed = DBG_syncByteCodeFromBoard();
@@ -4870,16 +4997,16 @@ Label1 TXA
                 RUN LIMITS<br>
                 <label>
                   Continuous run speed<br>
-                  <select onchange="DBG_stub('Continuous run speed')">
-                    <option>1 IPS</option>
-                    <option>10 IPS</option>
-                    <option>100 IPS</option>
-                    <option>1000 IPS</option>
-                    <option>Max</option>
+                  <select id="DBG_runSpeedInput" onchange="DBG_statusText('Continuous run speed set to ' + this.options[this.selectedIndex].text + '.')">
+                    <option value="1">1 IPS</option>
+                    <option value="10">10 IPS</option>
+                    <option value="100">100 IPS</option>
+                    <option value="1000">1000 IPS</option>
+                    <option value="max">Max</option>
                   </select>
                 </label>
                 <label>Stop after N instructions<br>
-                  <input type="number" value="0" min="0" step="100" onchange="DBG_stub('Stop after N instructions')">
+                  <input id="DBG_stopAfterInput" type="number" value="0" min="0" step="100" onchange="DBG_stopAfterInstructionLimit()">
                 </label>
               </div>
             </div>
