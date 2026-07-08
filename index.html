@@ -1100,7 +1100,7 @@
 
             <div id="ASM_root" class="ASM_root">
 
-              <div style="display:flex;height:30px;padding:0px 90px 0px 0px;">
+              <div style="height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab2.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
                 <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab2.2');" title="Tools"><i class="fa fa-toolbox"></i></button>          
               </div>
@@ -3030,7 +3030,7 @@ Label1 TXA
     var DBG_traceHW = null;
     var DBG_traceStarted = false;
     var DBG_traceStepCount = 0;
-    var DBG_traceHistory = [];
+    var DBG_traceHistory = null;
     var DBG_traceLines = [];
     var DBG_traceCurrentWrites = null;
     var DBG_runTimer = null;
@@ -3406,7 +3406,7 @@ Label1 TXA
         DBG_traceHW = null;
         DBG_traceStarted = false;
         DBG_traceStepCount = 0;
-        DBG_traceHistory = [];
+        DBG_newTraceHistory();
         DBG_traceLines = [];
         DBG_renderTraceView();
       }
@@ -4553,10 +4553,44 @@ Label1 TXA
         return n;
       }
 
+       function DBG_traceHistoryRecords() {
+         if(!DBG_traceHistory) return [];
+         if(typeof DBG_traceHistory.toArray == "function") return DBG_traceHistory.toArray();
+         if(typeof DBG_traceHistory.slice == "function") return DBG_traceHistory.slice();
+         return [];
+       }
+
+       function DBG_newTraceHistory(records) {
+         var depth = DBG_traceDepthLimit();
+         DBG_traceHistory = oCOM.buffer(depth);
+
+         records = Array.isArray(records) ? records : [];
+         var start = Math.max(0,records.length - depth);
+
+         for(var i=start;i<records.length;i++)
+           DBG_traceHistory.push(records[i]);
+
+         return DBG_traceHistory;
+       }
+
+       function DBG_clearTraceHistory() {
+         if(!DBG_traceHistory || typeof DBG_traceHistory.clear != "function")
+           return DBG_newTraceHistory();
+
+         DBG_traceHistory.clear();
+         return DBG_traceHistory;
+       }
+
+       function DBG_traceHistoryPush(record) {
+         if(!DBG_traceHistory) DBG_newTraceHistory();
+         DBG_traceHistory.push(record);
+         return DBG_traceHistory.length;
+       }
+
+
       function DBG_applyTraceDepthLimit() {
-        var max = DBG_traceDepthLimit();
-        while(DBG_traceHistory.length > max) DBG_traceHistory.shift();
-        while(DBG_traceLines.length > max) DBG_traceLines.shift();
+         DBG_newTraceHistory(DBG_traceHistoryRecords());
+         DBG_rebuildTraceLines();
       }
 
       function DBG_cloneTraceState(state) {
@@ -4613,8 +4647,9 @@ Label1 TXA
 
       function DBG_rebuildTraceLines() {
         DBG_traceLines = [];
-        for(var i=0;i<DBG_traceHistory.length;i++)
-          DBG_traceLines.push(DBG_traceLineFromRecord(DBG_traceHistory[i]));
+         var records = DBG_traceHistoryRecords();
+         for(var i=0;i<records.length;i++)
+           DBG_traceLines.push(DBG_traceLineFromRecord(records[i]));
       }
 
       function DBG_restoreTraceBefore(record) {
@@ -4729,7 +4764,7 @@ Label1 TXA
        DBG_traceCPU.load("00,00,00,ff,24," + DBG_hexWord(startPC));
        DBG_traceStarted = true;
        DBG_traceStepCount = 0;
-       DBG_traceHistory = [];
+       DBG_newTraceHistory();
        DBG_traceLines = [];
        DBG_traceCurrentWrites = null;
 
@@ -4785,9 +4820,10 @@ Label1 TXA
          writes: writes.slice()
        };
 
-       DBG_traceHistory.push(record);
+       DBG_traceHistoryPush(record);
        DBG_traceLines.push(DBG_traceLineFromRecord(record));
-       DBG_applyTraceDepthLimit();       
+       while(DBG_traceLines.length > DBG_traceHistory.length)
+         DBG_traceLines.shift();    
  
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(after,before);
@@ -4802,7 +4838,7 @@ Label1 TXA
           * Do not reset the CPU and do not stop an active continuous run.
           */
          DBG_traceStepCount = 0;
-         DBG_traceHistory = [];
+         DBG_clearTraceHistory();
          DBG_traceLines = [];
          DBG_renderTraceView();
          DBG_statusText("Trace cleared; next trace entry will be step 0001.");
@@ -5337,13 +5373,8 @@ Label1 TXA
             <!--  SYMBOL FILE TOOLBOX -->
             <div class="toolbox">
               <div class="appbox DBG_symbolBox">
-                <div class="appbut" style="color:black">
-                  add symbol table<input id="DBG_sym_fileInput" type="file" accept=".JSON,.json">
-                </div>
-                <br>
-                <div class="appbut" style="color:black">
-                  load debugger session<input id="DBG_debugSessionFileInput" type="file" accept=".DEB,.deb,.JSON,.json">
-                </div>
+                <div class="appbut" style="color:black">add symbol table<input id="DBG_sym_fileInput" type="file" accept=".JSON,.json"></div>
+                <div class="appbut" style="color:black">load session<input id="DBG_debugSessionFileInput" type="file" accept=".DEB,.deb,.JSON,.json"></div>
                 <div id="DBG_symbolLabelWrap" class="DBG_symbolLabelWrap"></div>
               </div>
             </div>
