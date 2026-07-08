@@ -1,0 +1,151 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial;
+  padding: 18px;
+}
+
+#box {
+  width: 450px;
+  background:#76B9CE;
+  border-radius:10px;
+  padding: 14px;
+}
+
+.demo-rail {
+  position: relative;
+  width: 350px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+
+
+.demo-focus {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 87.5px;
+  height: 30px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+}
+
+#box {
+.demo-buttons {
+  margin-top: 12px;
+}
+
+.demo-buttons button {
+  font-family: Arial;
+  font-size: 13px;
+  margin: 0 4px 0 0;
+  padding: 6px;
+  border-radius: 10px;
+  border-style: none;
+  background: rgba(240, 240, 255, 0.65);
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div id="box">
+  <p style="margin-bottom:10px">Animation-only tab focus demo. No GSAP dependency.</p>
+
+  <div class="demo-rail">
+    <div id="demoFocus" class="demo-focus"></div>
+  </div>
+
+  <div class="demo-buttons">
+    <button onclick="moveFocus(0)">0</button>
+    <button onclick="moveFocus(1)">1</button>
+    <button onclick="moveFocus(2)">2</button>
+    <button onclick="moveFocus(3)">3</button>
+  </div>
+</div>
+
+<script id="rendered-js">
+
+////////////////////////////
+// TINY GSAP-LIKE TWEEN   //
+////////////////////////////
+
+function TAB_TWEEN()
+{
+  this.jobs = new WeakMap();
+
+  this.ease = function(t)
+  {
+    /*
+     * Small local approximation of GSAP's default power1.out easing:
+     * fast at the beginning, smooth near the end.
+     */
+    return 1 - Math.pow(1 - t,2);
+  };
+
+  this.to = function(el,duration,vars)
+  {
+    if(!el) return;
+
+    duration = Math.max(0,Number(duration) || 0);
+    vars = vars || {};
+
+    var previous = this.jobs.get(el);
+    if(previous) cancelAnimationFrame(previous);
+
+    var start = performance.now();
+    var from = {};
+    var to = {};
+
+    for(var prop in vars)
+    {
+      if(prop == "duration") continue;
+      from[prop] = parseFloat(getComputedStyle(el)[prop]) || 0;
+      to[prop] = parseFloat(vars[prop]) || 0;
+    }
+
+    var self = this;
+
+    function step(now)
+    {
+      var t = duration <= 0 ? 1 : Math.min(1,(now - start) / (duration * 1000));
+      var e = self.ease(t);
+
+      for(var prop in to)
+        el.style[prop] = (from[prop] + (to[prop] - from[prop]) * e) + "px";
+
+      if(t < 1) self.jobs.set(el,requestAnimationFrame(step));
+      else self.jobs.delete(el);
+    }
+
+    step(start);
+  };
+ }
+
+ var tween = new TAB_TWEEN();
+
+function moveFocus(index)
+{
+  var width = 87.5;
+  tween.to(document.getElementById("demoFocus"),0.2,{
+    left: index * width,
+    width: width
+  });
+}
+
+</script>
+</body>
+</html>

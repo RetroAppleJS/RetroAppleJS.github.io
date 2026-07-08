@@ -1,0 +1,266 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#app ul {
+  position: relative;
+  height: 30px;
+  display: grid;
+  grid-template-columns: repeat(var(--tab-count), 1fr);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.08), 0 100px 80px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+#app ul a {
+  list-style: none;
+  display: grid;
+  place-items: center;
+  color: #000;
+  z-index: 10;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#app ul .focus-el {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / var(--tab-count));
+  height: 100%;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12.5px 10px rgba(0, 0, 0, 0.015), 0 100px 80px rgba(0, 0, 0, 0.03);
+}
+
+#box {
+  background:#76B9CE;
+  border-radius:10px;
+}
+
+#box tr td {
+  flex-wrap:wrap;
+}
+
+.tabs > div { display:none; }
+.tabs > div.active { display:block; }
+
+</style>
+<link rel="stylesheet" href="../res/fontawesome/all.css">
+</head>
+<body style="font-family:'Arial'">
+
+  <table id=box style=width:450px>
+    <tr>
+      <td valign=top>
+
+        <!-- tab menu  -->
+        <div id=app>
+          <ul style="width:350px;float:left">
+            <!-- links -->
+            <a href="#tab0">Assembler</a>
+            <a href="#tab1">Debugger</a>
+            <a href="#tab2">Emulator</a>
+            <a href="#tab3">Reference</a>
+            <div class="focus-el el--1"></div>
+          </ul>
+        </div>
+        <br><br>
+
+        <!-- tab content -->
+        <div class="tabs">
+          <div id="tab0" style="height:150px"> Tab zero content </div>
+          <div id="tab1" style="height:200px"> Tab one content </div>
+          <div id="tab2" style="height:250px">
+              Tab two content with a <a href="#tab0">link to tab zero</a>
+          </div>
+          <div id="tab3" style="height:1000px"> Tab three content </div>
+        </div>
+      </td>
+  </tr>
+</table>
+
+<script id="rendered-js">
+
+////////////////////////////
+// TINY GSAP-LIKE TWEEN   //
+////////////////////////////
+
+function TAB_TWEEN()
+{
+  this.jobs = new WeakMap();
+
+  this.ease = function(t)
+  {
+    /*
+     * Approximation of GSAP's default power1.out behaviour.
+     */
+    return 1 - Math.pow(1 - t,2);
+  };
+
+  this.to = function(el,duration,vars)
+  {
+    if(!el) return;
+
+    duration = Math.max(0,Number(duration) || 0);
+    vars = vars || {};
+
+    var previous = this.jobs.get(el);
+    if(previous) cancelAnimationFrame(previous);
+
+    var start = performance.now();
+    var from = {};
+    var to = {};
+
+    for(var prop in vars)
+    {
+      if(prop == "duration") continue;
+      from[prop] = parseFloat(getComputedStyle(el)[prop]) || 0;
+      to[prop] = parseFloat(vars[prop]) || 0;
+    }
+
+    var self = this;
+
+    function step(now)
+    {
+      var t = duration <= 0 ? 1 : Math.min(1,(now - start) / (duration * 1000));
+      var e = self.ease(t);
+
+      for(var prop in to)
+        el.style[prop] = (from[prop] + (to[prop] - from[prop]) * e) + "px";
+
+      if(t < 1) self.jobs.set(el,requestAnimationFrame(step));
+      else self.jobs.delete(el);
+    }
+
+    step(start);
+  };
+}
+
+//////////////////////
+// TAB CONTROLLER    //
+//////////////////////
+
+function ANIMTAB(cfg)
+{
+  cfg = cfg || {};
+
+  this.menuSelector    = cfg.menuSelector    || "#app ul";
+  this.contentSelector = cfg.contentSelector || ".tabs";
+  this.startIndex      = cfg.startIndex == null ? 2 : cfg.startIndex;
+  this.startId         = cfg.startId || "";
+  this.animDuration    = cfg.animDuration == null ? 0.2 : cfg.animDuration;
+  this.animator        = cfg.animator || new TAB_TWEEN();
+
+  this.menuEl = null;
+  this.contentEl = null;
+  this.links = [];
+  this.focusEl = null;
+
+  this.init = function()
+  {
+    if(this.menuEl) return true;
+
+    this.menuEl = document.querySelector(this.menuSelector);
+    this.contentEl = document.querySelector(this.contentSelector);
+
+    if(!this.menuEl || !this.contentEl) return false;
+
+    this.links = Array.prototype.slice.call(this.menuEl.querySelectorAll("a[href^='#']"));
+    this.focusEl = this.menuEl.querySelector(".focus-el.el--1") || this.menuEl.querySelector(".focus-el");
+
+    this.menuEl.style.setProperty("--tab-count",String(Math.max(1,this.links.length)));
+
+    if(!this.startId && this.links[this.startIndex])
+      this.startId = this.tabIdFromLink(this.links[this.startIndex]);
+
+    if(!this.startId && this.links[0])
+      this.startId = this.tabIdFromLink(this.links[0]);
+
+    return this.links.length > 0 && !!this.focusEl;
+  };
+
+  this.tabIdFromString = function(value)
+  {
+    var id = String(value || "").replace(/^#/,"");
+    if(id.indexOf("_") > 0) id = id.split("_")[0];
+    return id;
+  };
+
+  this.tabIdFromLink = function(link)
+  {
+    return this.tabIdFromString(link ? link.getAttribute("href") : "");
+  };
+
+  this.findLink = function(tabId)
+  {
+    for(var i = 0; i < this.links.length; i++)
+      if(this.tabIdFromLink(this.links[i]) == tabId)
+        return this.links[i];
+
+    for(var j = 0; j < this.links.length; j++)
+      if(this.tabIdFromLink(this.links[j]) == this.startId)
+        return this.links[j];
+
+    return this.links[0] || null;
+  };
+
+  this.switchTab = function(sel)
+  {
+    if(!this.init()) return false;
+
+    var tabId = typeof sel == "string" ? this.tabIdFromString(sel) : this.tabIdFromString(location.hash);
+    var link = this.findLink(tabId || this.startId);
+
+    if(!link) return false;
+
+    tabId = this.tabIdFromLink(link);
+
+    this.switchTabHeader(link);
+    this.switchTabContent(tabId);
+
+    return true;
+  };
+
+  this.switchTabHeader = function(link)
+  {
+    var pos = link.getBoundingClientRect().left - this.menuEl.getBoundingClientRect().left;
+    var width = link.getBoundingClientRect().width;
+
+    this.animator.to(this.focusEl,this.animDuration,{
+      left: pos,
+      width: width
+    });
+  };
+
+  this.switchTabContent = function(tabId)
+  {
+    var node = this.contentEl.childNodes;
+
+    for(var i = 0; i < node.length; i++)
+    {
+      if(!node[i].id || !node[i].classList) continue;
+      if(node[i].id == tabId) node[i].classList.add("active");
+      else                    node[i].classList.remove("active");
+    }
+  };
+}
+
+var oTAB = new ANIMTAB({
+  startIndex: 2,
+  animDuration: 0.2
+});
+
+window.addEventListener("load",function(){ oTAB.switchTab(); },false);
+window.addEventListener("hashchange",function(){ oTAB.switchTab(); },false);
+
+</script>
+</body>
+</html>
