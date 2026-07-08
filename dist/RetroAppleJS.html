@@ -33748,7 +33748,7 @@ Label1 TXA
         DBG_scheduleRunLoop(0);
       }
 
-      function DBG_toggleRun() {
+      function DBG_toggleContinuousRun() {
         if(DBG_running) DBG_stopContinuousRun("Continuous run stopped.");
         else DBG_startContinuousRun();
       }
@@ -34194,7 +34194,7 @@ Label1 TXA
 
                   <button class="appbut skinny" data-dbg-action="step-back" onclick="DBG_traceStepBackward()" title="Step one instruction backward"><i class="fa fa-step-backward"></i></button>
                   <button class="appbut skinny" data-dbg-action="step-forward" onclick="DBG_traceStepForward()" title="Step one instruction forward"><i class="fa fa-step-forward"></i></button>
-                  <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleRun(this)" title="Continuous run"><i class="fa fa-running"></i></button>
+                  <button id="DBG_runToggle" class="appbut skinny" data-dbg-action="run" onclick="DBG_toggleContinuousRun()" title="Continuous run"><i class="fa fa-running"></i></button>
                   <button class="appbut skinny" data-dbg-action="goto-pc" onclick="DBG_showStartPcRequester('DBG_listingHeaderActions')" title="Go to PC"><i class="fa fa-crosshairs"></i></button>
                   <button class="appbut skinny" data-dbg-action="theme" onclick="DBG_toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-adjust"></i></button>
 
