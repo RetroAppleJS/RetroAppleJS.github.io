@@ -16086,17 +16086,6 @@ function Apple2Debug()
     var prev_adr = -1000;
     var cpu_config=null,max_instrlen,byte_scan,max_byte_lst;
 
-    /*
-    this.cycle = function(obj)
-    {
-        //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
-        var watch = obj.cpu.watch();
-        var jmp_adr = watch.pc - prev_adr;
-        el.innerHTML = this.listing(watch);
-        prev_adr = watch.pc;
-    }
-    */
-
     function init(cfg)
     {
         cpu_config = oEMU.component.CPU["6502"].getConfig();
@@ -16149,8 +16138,8 @@ function Apple2Debug()
                         +"<i id=cpuDbg_play class='fa fa-play' title='continue CPU execution' onclick=this.arr={'fa-pause':false,'fa-play':true};oCOM.POPUP.toggle_class(this,'fa-pause','fa-play');oEMU.component.CPU.Apple2Debug.play(!this.arr[oCOM.POPUP.states[this.id]])></i>&nbsp;"
                         +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
                         +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
-                        +"<i class='fa fa-sign-out-alt' title='step out'></i>"
-                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"&nbsp;<div class='lightbut' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
+                        +"<i class='fa fa-sign-out-alt' title='step out'></i>&nbsp;"
+                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"<div class='appbut skinny' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
                         //+"<i class='fa fa-cloud-download-alt' title='download bootlog'></i>"
                         +"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                         +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'></div>"
@@ -16235,6 +16224,7 @@ function Apple2Debug()
         return s.join("<br>");
     }
     */
+    
 
     // CPU REAL-TIME DEBUGGER
     this.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
