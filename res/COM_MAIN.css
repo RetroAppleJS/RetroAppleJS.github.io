@@ -31,7 +31,7 @@ ____    ____          _
 
 .DOUBL_TV
 {
-background-size:1200px 840px;
+  background-size:1200px 840px;
 }
 
 @font-face
@@ -428,34 +428,6 @@ table { border-collapse: collapse; position: relative;}
     background-attachment:local;
     background-repeat:repeat;
   }
-
-
-  /*
-  .appkbd
-  {
-    background-image:url('../res/appleIIplus_kbd_650.png');
-    width:650px;
-    height:257px;
-    background-size:650px 257px;
-    top: 50%;
-    left: 50%;
-    margin-left: 125px;
-    background-repeat:no-repeat;
-    image-rendering:pixelated;
-    opacity:0.5;
-  }
-  */
-
-  /*
-  .appdskLED {
-    z-index:0;
-    opacity:0.5;
-    visibility:hidden;
-    position:absolute;
-    background-color:#FF5555;
-    padding:9px 16px 0px 0px;
-  }
-  */
 
   .appdskLED 
   {
