@@ -317,7 +317,7 @@
                         </div>
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
-                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<i class=\'fa fa-bug\' onclick=oEMUI.cpuDbg(\'feature_box\') title=\'Step trace\'></i>&nbsp;')" style="width:65px">
+                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<div class=\'appbut skinny\'><i class=\'fa fa-bug\' onclick=oEMUI.cpuDbg(\'feature_box\') title=\'Step trace\'></i></div>&nbsp;')" style="width:65px">
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
@@ -5455,6 +5455,8 @@ Label1 TXA
                   <!--button class="appbut skinny" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
                   <!-- TODO: always auto-scroll -->
                   <!--button class="appbut skinny" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button-->
+                 
+                  <button class="appbut skinny" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Add break rule"><i class="fa fa-bell"></i></button>
                   <button class="appbut skinny" data-dbg-action="export-trace" onclick="DBG_stub('Export trace')" title="Export trace"><i class="fa fa-cloud-download-alt"></i></button>
                   
                   <span class="DBG_startPcRequester" hidden>
@@ -5481,9 +5483,7 @@ Label1 TXA
                   <button class="appbut skinny" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
                   <!--button class="appbut skinny" data-dbg-action="remove-watch" onclick="DBG_stub('Remove selected watcher')" title="Remove selected watcher"><i class="fa fa-minus-circle"></i></button-->
                   <!--  TODO: WE WILL PUT A DELETE PICTOGRAM NEXT TO EACH MEMORY WATCH ITEM like <i class="fa fa-times-circle"></i> -->
-                  <button class="appbut skinny" data-dbg-action="break-on-change" onclick="DBG_stub('Break on change')" title="Add break rule"><i class="fa fa-bell"></i></button>
-                  <button class="appbut skinny" data-dbg-action="load-save-watch-and-break" onclick="DBG_stub('Load/Save watch & break ')" title="Load/Save"><i class="fa fa-save"></i></button>
-
+                  <!--button class="appbut skinny" data-dbg-action="load-save-watch-and-break" onclick="DBG_stub('Load/Save watch & break ')" title="Load/Save"><i class="fa fa-save"></i></button-->
 
                 </div>
               </div>
