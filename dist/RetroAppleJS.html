@@ -30170,8 +30170,8 @@ function DASM()
             <div id="ASM_root" class="ASM_root">
 
               <div style="display:flex;height:30px;padding:0px 90px 0px 0px;">
-                <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.toggle('ASM_settings');oCOM.POPUP.off('ASM_tools');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.toggle('ASM_tools');oCOM.POPUP.off('ASM_settings');" title="Tools"><i class="fa fa-toolbox"></i></button>
+                <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab2.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
+                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab2.2');" title="Tools"><i class="fa fa-toolbox"></i></button>          
               </div>
 
               <!--  ASM SETTINGS -->
@@ -31523,6 +31523,31 @@ Label1 TXA
 
             }
 
+            function ASM_registerPopupRules()
+            {
+              /*
+               * Keep tab2 popup handling consistent with tab1 and tab3:
+               * buttons call oCOM.POPUP.runRule(), rules toggle one overlay
+               * and close the other one.
+               *
+               * Rule names:
+               *   tab2.1 = Settings
+               *   tab2.2 = Tools
+               */
+              if(typeof oCOM == "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule != "function")
+                return;
+
+              oCOM.POPUP.addRule("tab2.1",function(o){
+                o.toggle("ASM_settings");
+                o.off("ASM_tools");
+              });
+
+              oCOM.POPUP.addRule("tab2.2",function(o){
+                o.toggle("ASM_tools");
+                o.off("ASM_settings");
+              });
+            }
+
             function ASM_bindEvents()
             {
               var fileInput = ASM_el("ASM_fileInput");
@@ -31590,6 +31615,7 @@ Label1 TXA
             }
 
 
+            ASM_registerPopupRules();
             ASM_bindEvents();
             ASM_updateSourceFileNameUI();
             ASM_updateSymbolFileNameFromSource();
