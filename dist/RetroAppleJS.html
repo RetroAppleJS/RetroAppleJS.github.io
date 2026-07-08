@@ -33652,10 +33652,19 @@ Label1 TXA
 
       function DBG_stopAfterInstructionLimit() {
         var input = DBG_el("DBG_stopAfterInput");
-        var n = input ? parseInt(input.value,10) : 0;
-        if(isNaN(n) || n < 0) n = 0;
-        if(input && String(input.value) !== String(n)) input.value = String(n);
-        return n;
+         if(!input) return 0;
+
+         var raw = String(input.value || "").trim();
+         if(raw === "") return 0;          // empty means no run limit / infinity
+
+         var n = parseInt(raw,10);
+         if(isNaN(n) || n < 1) {
+           input.value = "";
+           return 0;
+         }
+
+         if(String(input.value) !== String(n)) input.value = String(n);
+         return n;
       }
 
       function DBG_updateRunButton() {
@@ -33664,7 +33673,7 @@ Label1 TXA
 
         btn.innerHTML = DBG_running ? '<i class="fa fa-pause"></i>' : '<i class="fa fa-running"></i>';
         btn.title = DBG_running ? "Stop continuous run" : "Continuous run";
-        btn.classList.toggle("DBG_changed",DBG_running);
+        btn.classList.remove("DBG_changed");
       }
 
       function DBG_stopContinuousRun(reason) {
@@ -34075,7 +34084,7 @@ Label1 TXA
                   </select>
                 </label>
                 <label>Stop after N instructions<br>
-                  <input id="DBG_stopAfterInput" type="number" value="0" min="0" step="100" onchange="DBG_stopAfterInstructionLimit()">
+                  <input id="DBG_stopAfterInput" type="number" value="" placeholder="∞" min="1" step="100" onchange="DBG_stopAfterInstructionLimit()">
                 </label>
               </div>
             </div>
