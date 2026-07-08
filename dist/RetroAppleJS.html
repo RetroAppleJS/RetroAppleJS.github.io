@@ -16111,6 +16111,13 @@ function Apple2Debug()
         {            
             // TODO SEARCH THROUGH watchparam
             var opd = parseInt(op.substring(1,op.length),16)
+            var symlink = null;
+
+            if(typeof(oASM)!="undefined" && oASM && oASM.symlink)
+                symlink = oASM.symlink;
+            else if(typeof(asm)!="undefined" && asm && asm.symlink)
+                symlink = asm.symlink;
+
             switch(adm)
             {
                 case "zpg":
@@ -16118,10 +16125,13 @@ function Apple2Debug()
                 case "rel":
                 case "iny":
                 case "inx":
-                    var adr = asm.symlink[opd];  // watch parameter translation
-                    if(typeof(adr)!="undefined") return adr+" <small>"+op+"h</small>"
-                    var adr = asm.symlink[opd-1];  // watch parameter translation of address - 1
-                    if(typeof(adr)!="undefined") return adr+"+1 <small>"+op+"h</small>"
+                    if(symlink)
+                    {
+                        var adr = symlink[opd];  // watch parameter translation
+                        if(typeof(adr)!="undefined") return adr+" <small>"+op+"h</small>"
+                        var adr = symlink[opd-1];  // watch parameter translation of address - 1
+                        if(typeof(adr)!="undefined") return adr+"+1 <small>"+op+"h</small>"
+                    }
                 break;
             }
             return op;
