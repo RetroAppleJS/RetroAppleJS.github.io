@@ -1344,7 +1344,7 @@ Label1 TXA
                 if(listingText)
                 {
                   var n = String(listingText).split(/\r\n|\r|\n/).length;
-                  listingInfo.textContent = n + " listing lines";
+                  listingInfo.textContent = n + " lines";
                 }
                 else listingInfo.textContent = "compile()";
               }
@@ -3011,7 +3011,8 @@ Label1 TXA
     var DBG_runInstructionCount = 0;
     var DBG_runLastStatusStep = 0;
     var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45};
-   
+    var DBG_debugSessionFileName = "sample.DEB";
+
     DBG_listingRowByPc.fill(-1);
     DBG_listingRowByByteAddress.fill(-1);
 
@@ -3379,6 +3380,7 @@ Label1 TXA
         DBG_traceHW = null;
         DBG_traceStarted = false;
         DBG_traceStepCount = 0;
+        DBG_traceHistory = [];
         DBG_traceLines = [];
         DBG_renderTraceView();
       }
@@ -3811,6 +3813,7 @@ Label1 TXA
         var raw = JSON.parse(await file.text());
         var table = DBG_normalizeSymbolTable(raw, file.name);
         var overlaps = DBG_findSymbolScopeOverlaps(table.scope);
+        DBG_updateDebugSessionFileNameFromSource(file.name);
 
         if (overlaps.length) DBG_showSymbolOverlapPopup(table, overlaps);
         else DBG_addSymbolTable(table);
@@ -3834,6 +3837,7 @@ Label1 TXA
 
       try {
         var table = DBG_normalizeSymbolTable(raw, fileName || "");
+        DBG_updateDebugSessionFileNameFromSource(fileName || table.source || "");
         var overlaps = DBG_findSymbolScopeOverlaps(table.scope);
         var mode = options.overlap || "ask";
 
@@ -4195,7 +4199,7 @@ Label1 TXA
       else DBG_hideListingPcOverlay();
 
       var info = DBG_el("DBG_listingInfo");
-      if (info) info.textContent = lines.length + " listing lines / 64K RAM";
+      if (info) info.textContent = lines.length + " lines / 64K";
 
       return lines.length;
     }
@@ -4277,6 +4281,235 @@ Label1 TXA
         if(!el) return !!defaultValue;
         return !!el.checked;
       }
+
+       function DBG_safeDebugBaseName(name) {
+         name = String(name || "").trim();
+         name = name.replace(/[\\/:*?\"<>|]+/g,"_");
+         name = name.replace(/\.[^.]*$/,"");
+         name = name.replace(/[^A-Za-z0-9_.-]+/g,"_");
+         return name || "sample";
+       }
+
+       function DBG_defaultDebugSessionFileName(sourceName) {
+         return DBG_safeDebugBaseName(sourceName || "sample") + ".DEB";
+       }
+
+       function DBG_safeDebugSessionFileName(name) {
+         name = String(name || "").trim();
+         name = name.replace(/[\\/:*?\"<>|]+/g,"_");
+         name = name.replace(/\.[^.]*$/,"");
+         name = name.replace(/[^A-Za-z0-9_.-]+/g,"_");
+         return (name || DBG_safeDebugBaseName(DBG_debugSessionFileName)) + ".DEB";
+       }
+
+       function DBG_updateDebugSessionFileNameUI() {
+         var input = DBG_el("DBG_debugSessionFileNameInput");
+         if(input && input.value !== DBG_debugSessionFileName)
+           input.value = DBG_debugSessionFileName;
+       }
+
+       function DBG_setDebugSessionFileName(name) {
+         DBG_debugSessionFileName = DBG_safeDebugSessionFileName(name || DBG_debugSessionFileName);
+         DBG_updateDebugSessionFileNameUI();
+         return DBG_debugSessionFileName;
+       }
+
+       function DBG_updateDebugSessionFileNameFromSource(sourceName) {
+         if(!sourceName) return DBG_debugSessionFileName;
+         DBG_debugSessionFileName = DBG_defaultDebugSessionFileName(sourceName);
+         DBG_updateDebugSessionFileNameUI();
+         return DBG_debugSessionFileName;
+       }
+
+       function DBG_getDebugSessionFileName() {
+         var input = DBG_el("DBG_debugSessionFileNameInput");
+         return DBG_setDebugSessionFileName(input ? input.value : DBG_debugSessionFileName);
+       }
+
+       function DBG_downloadText(filename,text,mime) {
+         filename = filename || "debug.DEB";
+         text = text || "";
+         mime = mime || "application/json;charset=utf-8";
+
+         var blob = new Blob([text],{type:mime});
+         var url = URL.createObjectURL(blob);
+         var a = document.createElement("a");
+
+         a.href = url;
+         a.download = filename;
+         a.style.display = "none";
+
+         document.body.appendChild(a);
+         a.click();
+         document.body.removeChild(a);
+
+         URL.revokeObjectURL(url);
+       }
+
+       function DBG_elementValue(id,defaultValue) {
+         var el = DBG_el(id);
+         return el ? el.value : defaultValue;
+       }
+
+       function DBG_setElementValue(id,value) {
+         var el = DBG_el(id);
+         if(el && value != null) el.value = String(value);
+       }
+
+       function DBG_setElementChecked(id,value) {
+         var el = DBG_el(id);
+         if(el && value != null) el.checked = !!value;
+       }
+
+       function DBG_collectDebugSettings() {
+         return {
+           followPC: DBG_settingChecked("DBG_followPcInput",true),
+           autoScrollTrace: DBG_settingChecked("DBG_autoScrollTraceInput",true),
+           highlightChangedValues: DBG_highlightChangedValuesEnabled(),
+           listingColumns: DBG_listingColumnsValue(),
+           traceDepth: DBG_traceDepthLimit(),
+           traceColumns: DBG_traceColumnsValue(),
+           showCycles: DBG_showCyclesEnabled(),
+           showPcHistogram: DBG_settingChecked("DBG_showPcHistogramInput",false),
+           runSpeed: DBG_elementValue("DBG_runSpeedInput","1"),
+           stopAfter: DBG_elementValue("DBG_stopAfterInput",""),
+           defaultWatchSize: DBG_elementValue("DBG_defaultWatchSizeInput","byte"),
+           defaultWatchFormat: DBG_elementValue("DBG_defaultWatchFormatInput","hex")
+         };
+       }
+
+       function DBG_applyDebugSettings(settings) {
+         settings = settings || {};
+
+         DBG_setElementChecked("DBG_followPcInput",settings.followPC);
+         DBG_setElementChecked("DBG_autoScrollTraceInput",settings.autoScrollTrace);
+         DBG_setElementChecked("DBG_highlightChangedValuesInput",settings.highlightChangedValues);
+         DBG_setElementValue("DBG_listingColumnsInput",settings.listingColumns);
+         DBG_setElementValue("DBG_traceDepthInput",settings.traceDepth);
+         DBG_setElementValue("DBG_traceColumnsInput",settings.traceColumns);
+         DBG_setElementChecked("DBG_showCyclesInput",settings.showCycles);
+         DBG_setElementChecked("DBG_showPcHistogramInput",settings.showPcHistogram);
+         DBG_setElementValue("DBG_runSpeedInput",settings.runSpeed);
+         DBG_setElementValue("DBG_stopAfterInput",settings.stopAfter);
+         DBG_setElementValue("DBG_defaultWatchSizeInput",settings.defaultWatchSize);
+         DBG_setElementValue("DBG_defaultWatchFormatInput",settings.defaultWatchFormat);
+
+         DBG_stopAfterInstructionLimit();
+         DBG_applyTraceDepthLimit();
+         DBG_rebuildTraceLines();
+         DBG_renderTraceView();
+         DBG_updateRegisterDisplays();
+       }
+
+       function DBG_symbolTableSessionObject(table) {
+         table = table || {};
+         return {
+           source: table.source || "",
+           filename: table.filename || "",
+           effectiveScope: table.effectiveScope || table.scope || [],
+           raw: table.raw || {
+             format: "RetroAppleJS-ASM-symbols",
+             version: table.version || 2,
+             source: table.source || table.filename || "symbol table",
+             scopeMode: table.scopeMode || "instruction-pc",
+             scope: table.scope || [],
+             symbols: table.symbols || []
+           }
+         };
+       }
+
+       function DBG_collectDebugSession() {
+         var board = DBG_el("DBG_boardText");
+         if(board) DBG_currentByteCodeText = board.value || "";
+
+         return {
+           format: "RetroAppleJS-DBG-session",
+           version: 1,
+           filename: DBG_getDebugSessionFileName(),
+           startPC: DBG_debuggerStartPC & 0xffff,
+           startPCHex: "$" + DBG_hexWord(DBG_debuggerStartPC),
+           byteCode: DBG_currentByteCodeText || "",
+           symbolTables: DBG_symbolTables.map(DBG_symbolTableSessionObject),
+           settings: DBG_collectDebugSettings()
+         };
+       }
+
+       function DBG_exportDebugSession() {
+         var session = DBG_collectDebugSession();
+         DBG_downloadText(
+           session.filename,
+           JSON.stringify(session,null,2),
+           "application/json;charset=utf-8"
+         );
+         DBG_statusText("Exported debugger session as " + session.filename + ".");
+       }
+
+       function DBG_restoreDebugSymbolTables(list) {
+         DBG_symbolTables = [];
+         DBG_pendingSymbolImport = null;
+
+         list = Array.isArray(list) ? list : [];
+         for(var i=0;i<list.length;i++) {
+           var entry = list[i] || {};
+           var raw = entry.raw || entry;
+           try {
+             var table = DBG_normalizeSymbolTable(raw,entry.filename || raw.source || "");
+             var effective = DBG_rangeListNormalize(entry.effectiveScope || []);
+             table.effectiveScope = effective.length ? effective : table.scope.slice();
+             DBG_symbolTables.push(table);
+           } catch(err) {
+             if(typeof console !== "undefined" && console.warn)
+               console.warn("Skipped symbol table from .DEB session:",err);
+           }
+         }
+
+         DBG_rebuildSymbolIndex();
+         DBG_renderSymbolLabels();
+         DBG_disassembleRAM();
+       }
+
+       function DBG_applyDebugSession(session,fileName) {
+         if(!session || typeof session !== "object") throw new Error("Invalid debugger session file.");
+         if(session.format && session.format !== "RetroAppleJS-DBG-session")
+           throw new Error("Unsupported debugger session format: " + session.format);
+
+         if(DBG_running) DBG_stopContinuousRun("Continuous run stopped before loading debugger session.");
+
+         DBG_applyDebugSettings(session.settings || {});
+
+         DBG_currentByteCodeText = String(session.byteCode || "");
+         var board = DBG_el("DBG_boardText");
+         if(board) board.value = DBG_currentByteCodeText;
+
+         DBG_importBoardByteCode();
+         DBG_restoreDebugSymbolTables(session.symbolTables || session.symbols || []);
+
+         var startPC = Number(session.startPC);
+         if(isNaN(startPC)) startPC = 0x0000;
+         DBG_prepareDebuggerStartPC(startPC,{clearTrace:true});
+         DBG_scrollListingToPC(startPC,{behavior:"auto"});
+
+         DBG_setDebugSessionFileName(fileName || session.filename || DBG_debugSessionFileName);
+         DBG_statusText("Loaded debugger session " + DBG_debugSessionFileName + ".");
+         return true;
+       }
+
+       async function DBG_onDebugSessionFileChange(evt) {
+         var input = evt && evt.target ? evt.target : DBG_el("DBG_debugSessionFileInput");
+         var file = input && input.files && input.files[0] ? input.files[0] : null;
+         if(!file) return;
+
+         try {
+           var session = JSON.parse(await file.text());
+           DBG_applyDebugSession(session,file.name);
+         } catch(err) {
+           DBG_statusText("Debugger session import failed: " + (err && err.message ? err.message : String(err)));
+           if(typeof console !== "undefined" && console.error) console.error(err);
+         } finally {
+           if(input) input.value = "";
+         }
+       }
+
 
       function DBG_highlightChangedValuesEnabled() {
         return DBG_settingChecked("DBG_highlightChangedValuesInput",true);
@@ -4537,6 +4770,18 @@ Label1 TXA
        return true;
      }
  
+       function DBG_clearTrace() {
+         /*
+          * Clear only the trace log/ring buffer and restart trace numbering.
+          * Do not reset the CPU and do not stop an active continuous run.
+          */
+         DBG_traceStepCount = 0;
+         DBG_traceHistory = [];
+         DBG_traceLines = [];
+         DBG_renderTraceView();
+         DBG_statusText("Trace cleared; next trace entry will be step 0001.");
+         return true;
+       }     
 
       function DBG_traceStepBackward() 
       {
@@ -4919,7 +5164,11 @@ Label1 TXA
       var symFile = DBG_el("DBG_sym_fileInput");
       if (symFile) symFile.addEventListener("change", DBG_onSymbolFileChange);
 
+      var debFile = DBG_el("DBG_debugSessionFileInput");
+      if (debFile) debFile.addEventListener("change", DBG_onDebugSessionFileChange);
+ 
       DBG_renderSymbolLabels();
+      DBG_updateDebugSessionFileNameUI();
       DBG_applyTheme();
       DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
@@ -4967,8 +5216,8 @@ Label1 TXA
             <div class="toolbox">
               <div class="appbox" title="Debugger display">
                 LISTING<br>
-                <label>Follow PC <input type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
-                <label>Auto-scroll trace <input type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
+                <label>Follow PC <input id="DBG_followPcInput" type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
+                <label>Auto-scroll trace <input id="DBG_autoScrollTraceInput" type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
                 <label>Highlight changed values <input id="DBG_highlightChangedValuesInput" type="checkbox" checked onchange="DBG_updateRegisterDisplays()"></label>
                 <label>
                   Columns 
@@ -4988,7 +5237,7 @@ Label1 TXA
                    <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP, cycles" spellcheck="false" onchange="DBG_rebuildTraceLines();DBG_renderTraceView()">
                  </label>
                 <label>Show cycles <input id="DBG_showCyclesInput" type="checkbox" checked onchange="DBG_rebuildTraceLines();DBG_renderTraceView()"></label>
-                <label>Show PC histogram <input type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
+                <label>Show PC histogram <input id="DBG_showPcHistogramInput" type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
               </div>
             </div>
 
@@ -5016,7 +5265,7 @@ Label1 TXA
                 WATCH DEFAULTS<br>
                 <label>
                   Default watch size<br>
-                  <select onchange="DBG_stub('Default watch size')">
+                  <select id="DBG_defaultWatchSizeInput" onchange="DBG_stub('Default watch size')">
                     <option>byte</option>
                     <option>word</option>
                     <option>bit</option>
@@ -5024,7 +5273,7 @@ Label1 TXA
                 </label>
                 <label>
                   Default watch format<br>
-                  <select onchange="DBG_stub('Default watch format')">
+                  <select id="DBG_defaultWatchFormatInput" onchange="DBG_stub('Default watch format')">
                     <option>hex</option>
                     <option>decimal</option>
                     <option>binary</option>
@@ -5064,6 +5313,10 @@ Label1 TXA
               <div class="appbox DBG_symbolBox">
                 <div class="appbut" style="color:black">
                   add symbol table<input id="DBG_sym_fileInput" type="file" accept=".JSON,.json">
+                </div>
+                <br>
+                <div class="appbut" style="color:black">
+                  load debugger session<input id="DBG_debugSessionFileInput" type="file" accept=".DEB,.deb,.JSON,.json">
                 </div>
                 <div id="DBG_symbolLabelWrap" class="DBG_symbolLabelWrap"></div>
               </div>
@@ -5119,7 +5372,18 @@ Label1 TXA
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
                   <strong>Listing</strong>
-                  <span id="DBG_listingInfo" class="DBG_paneInfo">source listing + uncovered memory</span>
+                  <input id="DBG_debugSessionFileNameInput"
+                         type="text"
+                         value="sample.DEB"
+                         title="Debugger session filename"
+                         spellcheck="false"
+                         style="width:150px;max-width:22vw;border:1px solid rgba(0,0,0,0.25);border-radius:4px;background:#ffffff;color:#000000;padding:2px 5px;font:11px/1.2 courier,monospace;">
+                  <button id="DBG_exportDebugSessionButton"
+                          class="appbut skinny"
+                          type="button"
+                          title="Download debugger session"
+                          onclick="DBG_exportDebugSession()"><i class="fa fa-cloud-download-alt"></i></button>
+                  <span id="DBG_listingInfo" class="DBG_paneInfo"></span>
                 </div>
                 <div id="DBG_listingHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
 
@@ -5152,7 +5416,7 @@ Label1 TXA
                   <span id="DBG_traceRegisterInfo" class="DBG_paneInfo DBG_traceRegisterInfo">A=00 X=00 Y=00 SR=<sub>n</sub>0<sub>v</sub>0<sub>-</sub>1<sub>b</sub>0<sub>d</sub>0<sub>i</sub>1<sub>z</sub>0<sub>c</sub>0 SP=FF</span>
                 </div>
                 <div id="DBG_traceHeaderActions" class="com-pane-header-default-widget DBG_headerActions">
-                  <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_stub('Clear trace')" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
+                  <button class="appbut skinny" data-dbg-action="clear-trace" onclick="DBG_clearTrace()" title="Clear trace"><i class="fa fa-trash-alt"></i></button>
                   <!--button class="appbut skinny" data-dbg-action="autoscroll" onclick="DBG_stub('Auto-scroll trace')" title="Auto-scroll trace on/off"><i class="fa fa-arrow-down"></i></button-->
                   <!-- TODO: always auto-scroll -->
                   <button class="appbut skinny" data-dbg-action="filter-trace" onclick="DBG_stub('Filter trace')" title="Filter trace"><i class="fa fa-filter"></i></button>
