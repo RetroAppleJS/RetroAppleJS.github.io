@@ -2688,37 +2688,40 @@ Label1 TXA
       border-radius: 10px;
       border: 1px solid rgba(0,0,0,0.12);
       box-sizing: border-box;
-      overflow: auto;
+      overflow: hidden;
     }
 
-    .DBG_paneBody pre {
+    .DBG_textPane {
+      display: block;
+      width: 100%;
+      height: 100%;
       margin: 0px;
       padding: 0px 30px;
+      border: 0px;
+      outline: none;
+      resize: none;
       color: #000000;
       background: transparent;
       font-family: courier, monospace;
       font-size: 12px;
       font-weight: 500;
       line-height: 21px;
+      box-sizing: border-box;
       tab-size: 4;
       position: relative;
       z-index: 1;
       white-space: pre;
-    }
-
-    /*
-     * The debugger tab itself disables selection to avoid accidental drags on
-     * the UI.  The Listing and CPU Trace panes are text views, so explicitly
-     * re-enable selection/copying there.
-     */
-    #debugfield,
-    #DBG_traceView,
-    #debugfield *,
-    #DBG_traceView * {
+      overflow: auto;
       user-select: text;
       -moz-user-select: text;
       -webkit-user-select: text;
       -ms-user-select: text;
+      -webkit-user-drag: none;
+      caret-color: transparent;
+    }
+
+    .DBG_textPane::selection {
+      background: rgba(80, 145, 230, 0.34);
     }
 
     .DBG_listingPcOverlay 
@@ -2766,10 +2769,10 @@ Label1 TXA
     .DBG_flagCell,
     .DBG_watchCell {
       min-height: 43px;
-      padding: 5px 6px;
-      border: 1px solid rgba(0,0,0,0.24);
-      border-radius: 6px;
-      background: rgba(255,255,255,0.44);
+      padding: 2px 6px;
+      border: 0px;
+      border-radius: 0px;
+      background: transparent;
       box-sizing: border-box;
     }
 
@@ -2782,6 +2785,7 @@ Label1 TXA
       font-family: arial, sans-serif;
       font-size: 10px;
       font-weight: 700;
+      text-align: center;
     }
 
     .DBG_registerCell span,
@@ -2790,9 +2794,29 @@ Label1 TXA
       display: block;
       color: #000000;
       font-family: courier, monospace;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
-      line-height: 18px;
+      line-height: 13px;
+      text-align: center;
+      white-space: pre;
+    }
+
+    .DBG_registerCell span::before,
+    .DBG_flagCell span::before {
+      content: "┌──────┐\A│ ";
+      white-space: pre;
+    }
+
+    .DBG_registerCell span::after,
+    .DBG_flagCell span::after {
+      content: " │\A└──────┘";
+      white-space: pre;
+    }
+
+    .DBG_registerCell.DBG_changed span,
+    .DBG_flagCell.DBG_changed span {
+      color: #000000;
+      text-shadow: 0px 0px 2px rgba(255,214,64,0.95);
     }
 
     .DBG_flagGrid {
@@ -2809,7 +2833,7 @@ Label1 TXA
     }
 
     .DBG_changed {
-      background: rgba(255, 214, 64, 0.54) !important;
+      background: transparent !important;
       font-weight: 700;
     }
 
@@ -4087,12 +4111,11 @@ Label1 TXA
     }
 
     function DBG_listingPaneBody() {
-      var pre = DBG_el("debugfield");
-      return pre && pre.parentElement ? pre.parentElement : null;
+      return DBG_el("debugfield");
     }
 
     function DBG_listingLineHeight() {
-      var pre = DBG_el("debugfield");
+      var pre = DBG_listingPaneBody();
       if (!pre || !window.getComputedStyle) return 21;
 
       var lh = parseFloat(window.getComputedStyle(pre).lineHeight);
@@ -4104,7 +4127,9 @@ Label1 TXA
       if (!overlay || rowIndex == null || rowIndex < 0) return;
 
       var lineH = DBG_listingLineHeight();
-      overlay.style.top = Math.round(rowIndex * lineH) + "px";
+      var body = DBG_listingPaneBody();
+      var scrollTop = body ? body.scrollTop : 0;
+      overlay.style.top = Math.round((rowIndex * lineH) - scrollTop) + "px";
       overlay.style.height = Math.ceil(lineH) + "px";
       overlay.hidden = false;
     }
@@ -4166,7 +4191,7 @@ Label1 TXA
       DBG_indexDisassemblyRows(rows,lines);
 
       var debugfield = DBG_el("debugfield");
-      if (debugfield) debugfield.textContent = lines.join("\n");
+      if (debugfield) debugfield.value = lines.join("\n");
 
       if (DBG_listingCurrentPC != null) DBG_scrollListingToPC(DBG_listingCurrentPC,{behavior:"auto"});
       else DBG_hideListingPcOverlay();
@@ -4658,21 +4683,14 @@ Label1 TXA
      }
  
      function DBG_renderTraceView() {
-       var pre = DBG_el("DBG_traceView");
-       if (!pre) return;
+       var trace = DBG_el("DBG_traceView");
+       if (!trace) return;
  
        //var header = DBG_formatTraceParts({stp:"; #", pc:"PC", byt:"bytes", opc:"opcode", rA:"A", rX:"X", rY:"Y", rP:"P", rSP:"SP"});
        //var ruler  = DBG_formatTraceParts({stp:"; ----", pc:"----", byt:"----------", opc:"-------------------", rA:"--", rX:"--", rY:"--", rP:"--", rSP:"--"});
-       //var html = DBG_escapeHTML(header + "\n" + ruler);
-       var html = "";
-
-       for (var i = 0; i < DBG_traceLines.length; i++) {
-         var line = DBG_escapeHTML(DBG_traceLines[i]);
-         html += (i == DBG_traceLines.length - 1 ? '<span class="DBG_traceLineCurrent">' + line + '</span>' : line)+"\n";
-       }
- 
-       pre.innerHTML = html;
-       if (pre.parentElement) pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+       //var text = header + "\n" + ruler;
+       trace.value = DBG_traceLines.join("\n") + (DBG_traceLines.length ? "\n" : "");
+       trace.scrollTop = trace.scrollHeight;
      }
  
      function DBG_startCpuTraceAtPC(startPC) {
@@ -5060,7 +5078,7 @@ Label1 TXA
           color:"#e6edf3",
           caretColor:"#e6edf3"
         });
-        DBG_setStyles("#DBG_root .DBG_paneBody pre, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span", {
+        DBG_setStyles("#DBG_root .DBG_textPane, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span", {
           color:"#e6edf3"
         });
         DBG_setStyles("#DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote", {
@@ -5083,7 +5101,7 @@ Label1 TXA
       }
       else
       {
-        DBG_clearStyles("#DBG_root .DBG_paneTitle, #DBG_root .DBG_paneTitleMain strong, #DBG_root .DBG_paneInfo, #DBG_root .DBG_paneBody, #DBG_root .DBG_paneBody pre, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span, #DBG_root .DBG_registerCell label, #DBG_root .DBG_flagCell label, #DBG_root .DBG_watchCell label, #DBG_root .DBG_watchTable th, #DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_changed, #DBG_root .DBG_changed span, #DBG_root .DBG_listingPcOverlay, #DBG_root .DBG_breakpoint", basicProps);
+        DBG_clearStyles("#DBG_root .DBG_paneTitle, #DBG_root .DBG_paneTitleMain strong, #DBG_root .DBG_paneInfo, #DBG_root .DBG_paneBody, #DBG_root .DBG_textPane, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span, #DBG_root .DBG_registerCell label, #DBG_root .DBG_flagCell label, #DBG_root .DBG_watchCell label, #DBG_root .DBG_watchTable th, #DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_changed, #DBG_root .DBG_changed span, #DBG_root .DBG_listingPcOverlay, #DBG_root .DBG_breakpoint", basicProps);
       }
     }
 
@@ -5200,6 +5218,14 @@ Label1 TXA
       document.addEventListener("keydown",DBG_onTextPaneKeyDown,true);
     }
 
+    function DBG_bindTextPaneEvents() {
+      var listing = DBG_el("debugfield");
+      if(listing)
+        listing.addEventListener("scroll",function(){
+          if(DBG_listingCurrentPC != null) DBG_positionListingPcOverlay(DBG_listingRowIndexForPC(DBG_listingCurrentPC));
+        });
+    }
+
     function DBG_initPaneContainer() {
       if (typeof PANE === "function") {
         DBG_oPANE = new PANE();
@@ -5213,7 +5239,8 @@ Label1 TXA
 
       var debFile = DBG_el("DBG_debugSessionFileInput");
       if (debFile) debFile.addEventListener("change", DBG_onDebugSessionFileChange);
- 
+      DBG_bindTextPaneEvents();
+
       DBG_renderSymbolLabels();
       DBG_updateDebugSessionFileNameUI();
       DBG_applyTheme();
@@ -5447,7 +5474,7 @@ Label1 TXA
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
               <div id="DBG_listingPcOverlay" class="DBG_listingPcOverlay" hidden></div>
-              <pre id="debugfield"></pre>
+              <textarea id="debugfield" class="DBG_textPane" readonly spellcheck="false" wrap="off"></textarea>
               </div>
             </section>
 
@@ -5476,7 +5503,7 @@ Label1 TXA
                 </div>
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
-              <pre id="DBG_traceView"></pre>
+              <textarea id="DBG_traceView" class="DBG_textPane" readonly spellcheck="false" wrap="off"></textarea>
               </div>
             </section>
 
