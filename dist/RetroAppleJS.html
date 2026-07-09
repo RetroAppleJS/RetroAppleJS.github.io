@@ -3698,85 +3698,174 @@ function prettyJsonAllman(value, indent) {
   // ASCII / UTF-8 TEXT GRID       //
   ///////////////////////////////////
 
-  this.TEXT_GRID = function(cols,rows,fill)
+  this.ASCII_GRID = function(cols,rows,fill)
   {
-    this.cols = Math.max(1,Number(cols) || 1);
-    this.rows = Math.max(1,Number(rows) || 1);
-    this.fill = (fill == null ? " " : String(fill)).charAt(0) || " ";
+    const COLS = Math.max(1,Number(cols) || 1);
+    const ROWS = Math.max(1,Number(rows) || 1);
+    const FILL = (fill == null ? " " : String(fill)).charAt(0) || " ";
+    const ascii = [];
+ 
+    this.cols = COLS;
+    this.rows = ROWS;
 
     this.BOX_SINGLE = { tl:"┌", tr:"┐", bl:"└", br:"┘", h:"─", v:"│" };
+    this.BOX_FAT    = { tl:"┏", tr:"┓", bl:"┗", br:"┛", h:"━", v:"┃" };
     this.BOX_DOUBLE = { tl:"╔", tr:"╗", bl:"╚", br:"╝", h:"═", v:"║" };
+    this._currentStroke = [];
+    this.undoStack = [];
+
+    for(var r=0;r<ROWS;r++)
+    {
+      var row = [];
+      for(var c=0;c<COLS;c++) row.push(FILL);
+      ascii.push(row);
+    }
 
     this.clear = function(ch)
     {
-      ch = (ch == null ? this.fill : String(ch).charAt(0)) || " ";
-      this.grid = [];
+      ch = (ch == null ? FILL : String(ch).charAt(0)) || " ";
 
-      for(var r=0;r<this.rows;r++)
-      {
-        var row = [];
-        for(var c=0;c<this.cols;c++) row.push(ch);
-        this.grid.push(row);
-      }
+      this._currentStroke = [];
+      for(var c=0;c<COLS;c++)
+        for(var r=0;r<ROWS;r++)
+        {
+          if(ascii[r][c]!=ch)
+          {
+            const cell = {"r":r,"c":c};
+            const op   = {"ch":ch,"type":"place"};
+            this.applyOpAtCell?.( cell , op ) ?? {};           // display character on grid & build undo buffer
+          }
+        }
+      this.pushStrokeIfNonEmpty?.(this._currentStroke) ?? {};   // commit undo buffer
 
-      return this;
-    };
-
-    this.inBounds = function(c,r)
-    {
-      return r >= 0 && r < this.rows && c >= 0 && c < this.cols;
-    };
-
-    this.put = function(c,r,ch)
-    {
-      if(this.inBounds(c,r))
-        this.grid[r][c] = (ch == null ? " " : String(ch).charAt(0)) || " ";
 
       return this;
     };
 
-    this.cell = function(c,r,text)
+    this.getCharAtCell  = function(r, c) { return ascii[r][c] }
+    this.drawCharAtCell = function(r, c, ch) { ascii[r][c] = ch; }
+
+    /*
+     * Visual-layer adapter for RetroAppleJS.
+     * This is the hook AsciiCAD uses to update the grid and build undo data.
+     */
+    this.applyOpAtCell = function(cell,op)
+     {
+        if(!cell || cell.r < 0 || cell.r >= ROWS || cell.c < 0 || cell.c >= COLS) return;
+      const prev = ascii[cell.r][cell.c];
+      const next = (op.type === "place") ? op.ch : FILL;
+      if (prev === next) return;
+
+      this._currentStroke.push({ r: cell.r, c: cell.c, prev, next });
+      ascii[cell.r][cell.c] = next;
+    }
+
+    this.pushStrokeIfNonEmpty = function(stroke)
     {
-      text = String(text == null ? "" : text);
-      var lines = text.split("\n");
+      if(stroke && stroke.length) this.undoStack.push(stroke.slice());
+    }
 
-      for(var y=0;y<lines.length;y++)
-      {
-        var line = lines[y];
-        for(var x=0;x<line.length;x++)
-          this.put(c+x,r+y,line.charAt(x));
-      }
-
-      return this;
-    };
-
-    this.box = function(c,r,w,h,arg)
+    this.draw = function()
     {
-      arg = arg || {};
-      var k = arg.kind || this.BOX_SINGLE;
+      /* no-op: RetroAppleJS renders this text grid into a readonly textarea */
+    }
 
-      w = Math.max(2,Number(w) || 2);
-      h = Math.max(2,Number(h) || 2);
-
-      this.put(c,r,k.tl);
-      this.put(c+w-1,r,k.tr);
-      this.put(c,r+h-1,k.bl);
-      this.put(c+w-1,r+h-1,k.br);
-
-      for(var x=1;x<w-1;x++)
+    /*
+     * AsciiCAD-compatible text placement.
+     * Original API: cell(<c>,<r>,<string>)
+     */
+    this.cell = function(c, r, str)
+    {
+      if(r===undefined || c===undefined || str===undefined) return;  // safe escape if no arguments provided
+      if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+        throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+ 
+      this._currentStroke = [];
+      for(var i=0,dx=0;i<str.length;i++,dx++)
       {
-        this.put(c+x,r,k.h);
-        this.put(c+x,r+h-1,k.h);
+        var op = {};
+        op.ch    = str.charAt(i);  if(op.ch=="\n") { dx=-1; r++; continue; }
+        op.type  = "place";
+        var cell = {"r":r,"c":c+dx}
+        if(cell.c < COLS)
+          this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
       }
-
-      for(var y=1;y<h-1;y++)
-      {
-        this.put(c,r+y,k.v);
-        this.put(c+w-1,r+y,k.v);
-      }
-
+      this.pushStrokeIfNonEmpty(this._currentStroke);     // feed undo buffer
       return this;
-    };
+    }
+
+    /*
+     * AsciiCAD-compatible box.
+     * Original API: box(<c0>,<r0>,<c1>,<r1>, {kind:[boxStyle]})
+     */
+    this.box = function(c0,r0,c1,r1, modifiers)
+    {
+      console.log("this.box("+c0+","+r0+","+c1+","+r1+","+JSON.stringify(modifiers)+")");
+
+      if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
+      if(modifiers===undefined) var modifiers = {kind:{ h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' }};
+      const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , modifiers);
+
+      // De-dup (corners overwrite edges)
+      const m = new Map();
+      for (const p of path)
+      {
+        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+        m.set(p.r + ',' + p.c, p.ch);
+      }
+
+      this._currentStroke = [];
+      for (const [key, ch] of m) 
+      {
+        const [r, c] = key.split(',').map(Number);
+        const cell = {"r":r,"c":c};
+        const op = {"ch":ch,"type":"place"};
+        this.applyOpAtCell( cell , op );                     // display character on grid & build undo buffer
+      }
+      this.pushStrokeIfNonEmpty(this._currentStroke);   // commit undo buffer 
+    }
+
+    this.buildBoxPath = function(start, end, modifiers)
+    {
+      const style = modifiers.kind;
+      const r0 = start.r, c0 = start.c;
+      const r1 = end.r, c1 = end.c;
+
+      const top   = Math.min(r0, r1);
+      const bot   = Math.max(r0, r1);
+      const left  = Math.min(c0, c1);
+      const right = Math.max(c0, c1);
+
+      const out = [];
+
+      // Degenerate: a line or a point — we still draw something useful
+      if (top === bot && left === right) {
+        out.push({ r: top, c: left, ch: style.tl }); // or '+'; your call
+        return out;
+      }
+
+      // Top edge
+      for (let c = left + 1; c <= right - 1; c++) out.push({ r: top, c, ch: style.h });
+      // Bottom edge
+      if (bot !== top) {
+        for (let c = left + 1; c <= right - 1; c++) out.push({ r: bot, c, ch: style.h });
+      }
+
+      // Left edge
+      for (let r = top + 1; r <= bot - 1; r++) out.push({ r, c: left, ch: style.v });
+      // Right edge
+      if (right !== left) {
+        for (let r = top + 1; r <= bot - 1; r++) out.push({ r, c: right, ch: style.v });
+      }
+
+      // Corners (only if box has width/height)
+      out.push({ r: top, c: left, ch: style.tl });
+      if (right !== left) out.push({ r: top, c: right, ch: style.tr });
+      if (bot !== top) out.push({ r: bot, c: left, ch: style.bl });
+      if (bot !== top && right !== left) out.push({ r: bot, c: right, ch: style.br });
+
+      return out;
+    }
 
     this.line = function(arg)
     {
@@ -3786,34 +3875,42 @@ function prettyJsonAllman(value, indent) {
 
       function step(a,b) { return a < b ? 1 : (a > b ? -1 : 0); }
 
+      var stroke = [];
       for(var i=1;i<path.length;i++)
       {
         var c0 = Number(path[i-1][0]), r0 = Number(path[i-1][1]);
         var c1 = Number(path[i][0]),   r1 = Number(path[i][1]);
 
         var dc = step(c0,c1);
-        while(c0 != c1) { this.put(c0,r0,k.h); c0 += dc; }
+        while(c0 != c1)
+        {
+          this.applyOpAtCell({c:c0,r:r0},{ch:k.h,type:"place"});
+          c0 += dc;
+        }
 
         var dr = step(r0,r1);
-        while(r0 != r1) { this.put(c0,r0,k.v); r0 += dr; }
+        while(r0 != r1)
+        {
+          this.applyOpAtCell({c:c0,r:r0},{ch:k.v,type:"place"});
+          r0 += dr;
+        }
 
-        this.put(c1,r1,(c0 == c1 ? k.v : k.h));
+        this.applyOpAtCell({c:c1,r:r1},{ch:(c0 == c1 ? k.v : k.h),type:"place"});
       }
+      this.pushStrokeIfNonEmpty(this._currentStroke);
 
       return this;
     };
 
     this.toString = function()
     {
-      return this.grid.map(function(row){ return row.join("").replace(/\s+$/,""); }).join("\n");
+      return ascii.map(function(row){ return row.join("").replace(/\s+$/,""); }).join("\n");
     };
-
-    this.clear();
   };
 
   this.textGrid = function(cols,rows,fill)
   {
-    return new this.TEXT_GRID(cols,rows,fill);
+    return new this.ASCII_GRID(cols,rows,fill);
   };
 
 
@@ -28807,7 +28904,8 @@ Label1 TXA
 
       function DBG_drawWatchField(grid,x,y,label,value,changed,width)
       {
-        var text = String(label == null ? "" : label) + ":" + String(value == null ? "" : value);
+        var text = String(label == null ? "" : label) + "·" + String(value == null ? "" : value);
+        // 〉⭢ ⏵ ─ ╌ ⋯ ┈ · ┄
         var inner = Math.max(1,Number(width) || text.length || 1);
 
         var outer = inner + 2;
@@ -28819,7 +28917,7 @@ Label1 TXA
          *
          * Unchanged values still reserve the same grid area, but no box is drawn.
          */
-        if(changed) grid.box(x,y,outer,3,{kind:grid.BOX_SINGLE});
+        if(changed) grid.box(x,y,x+outer-1,y+2,{kind:grid.BOX_SINGLE});
         grid.cell(x + 1,y + 1,text);
         return outer;
       }
@@ -28844,21 +28942,20 @@ Label1 TXA
         var x = 0;
 
         x += DBG_drawWatchField(grid,x,0,"PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),7);
-        x += DBG_drawWatchField(grid,x,0,"A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4);
-        x += DBG_drawWatchField(grid,x,0,"X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4);
-        x += DBG_drawWatchField(grid,x,0,"Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4);
-        x += DBG_drawWatchField(grid,x,0,"SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),5);
-        x += DBG_drawWatchField(grid,x,0,"SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5); 
+        x += DBG_drawWatchField(grid,x,0,"a", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4);
+        x += DBG_drawWatchField(grid,x,0,"x", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4);
+        x += DBG_drawWatchField(grid,x,0,"y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4);
+        x += DBG_drawWatchField(grid,x,0,"SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5);
 
-        var names = ["N","V","-","B","D","I","Z","C"];
-        var bits  = [7,6,5,4,3,2,1,0];
+        var names = ["N","V","B","D","I","Z","C"];
+        var bits  = [ 7,  6,  4,  3,  2,  1,  0];
         x = 0;
 
         for(var i=0;i<bits.length;i++)
         {
           var bit = (state.p >> bits[i]) & 1;
           var cbit = (cp >> bits[i]) & 1;
-          x += DBG_drawWatchField(grid,x,3,names[i],String(bit),highlight && bit !== cbit,3);
+          x += DBG_drawWatchField(grid,x,2,names[i],String(bit),highlight && bit !== cbit,3);
         }
 
         watch.value = grid.toString();
