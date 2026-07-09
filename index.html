@@ -2706,6 +2706,21 @@ Label1 TXA
       white-space: pre;
     }
 
+    /*
+     * The debugger tab itself disables selection to avoid accidental drags on
+     * the UI.  The Listing and CPU Trace panes are text views, so explicitly
+     * re-enable selection/copying there.
+     */
+    #debugfield,
+    #DBG_traceView,
+    #debugfield *,
+    #DBG_traceView * {
+      user-select: text;
+      -moz-user-select: text;
+      -webkit-user-select: text;
+      -ms-user-select: text;
+    }
+
     .DBG_listingPcOverlay 
     {
       position: absolute;
