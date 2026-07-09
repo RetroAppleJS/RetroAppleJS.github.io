@@ -1150,6 +1150,129 @@ function prettyJsonAllman(value, indent) {
     return s;
 }
 
+  ///////////////////////////////////
+  // ASCII / UTF-8 TEXT GRID       //
+  ///////////////////////////////////
+
+  this.TEXT_GRID = function(cols,rows,fill)
+  {
+    this.cols = Math.max(1,Number(cols) || 1);
+    this.rows = Math.max(1,Number(rows) || 1);
+    this.fill = (fill == null ? " " : String(fill)).charAt(0) || " ";
+
+    this.BOX_SINGLE = { tl:"┌", tr:"┐", bl:"└", br:"┘", h:"─", v:"│" };
+    this.BOX_DOUBLE = { tl:"╔", tr:"╗", bl:"╚", br:"╝", h:"═", v:"║" };
+
+    this.clear = function(ch)
+    {
+      ch = (ch == null ? this.fill : String(ch).charAt(0)) || " ";
+      this.grid = [];
+
+      for(var r=0;r<this.rows;r++)
+      {
+        var row = [];
+        for(var c=0;c<this.cols;c++) row.push(ch);
+        this.grid.push(row);
+      }
+
+      return this;
+    };
+
+    this.inBounds = function(c,r)
+    {
+      return r >= 0 && r < this.rows && c >= 0 && c < this.cols;
+    };
+
+    this.put = function(c,r,ch)
+    {
+      if(this.inBounds(c,r))
+        this.grid[r][c] = (ch == null ? " " : String(ch).charAt(0)) || " ";
+
+      return this;
+    };
+
+    this.cell = function(c,r,text)
+    {
+      text = String(text == null ? "" : text);
+      var lines = text.split("\n");
+
+      for(var y=0;y<lines.length;y++)
+      {
+        var line = lines[y];
+        for(var x=0;x<line.length;x++)
+          this.put(c+x,r+y,line.charAt(x));
+      }
+
+      return this;
+    };
+
+    this.box = function(c,r,w,h,arg)
+    {
+      arg = arg || {};
+      var k = arg.kind || this.BOX_SINGLE;
+
+      w = Math.max(2,Number(w) || 2);
+      h = Math.max(2,Number(h) || 2);
+
+      this.put(c,r,k.tl);
+      this.put(c+w-1,r,k.tr);
+      this.put(c,r+h-1,k.bl);
+      this.put(c+w-1,r+h-1,k.br);
+
+      for(var x=1;x<w-1;x++)
+      {
+        this.put(c+x,r,k.h);
+        this.put(c+x,r+h-1,k.h);
+      }
+
+      for(var y=1;y<h-1;y++)
+      {
+        this.put(c,r+y,k.v);
+        this.put(c+w-1,r+y,k.v);
+      }
+
+      return this;
+    };
+
+    this.line = function(arg)
+    {
+      arg = arg || {};
+      var path = arg.path || [];
+      var k = arg.wire || this.BOX_SINGLE;
+
+      function step(a,b) { return a < b ? 1 : (a > b ? -1 : 0); }
+
+      for(var i=1;i<path.length;i++)
+      {
+        var c0 = Number(path[i-1][0]), r0 = Number(path[i-1][1]);
+        var c1 = Number(path[i][0]),   r1 = Number(path[i][1]);
+
+        var dc = step(c0,c1);
+        while(c0 != c1) { this.put(c0,r0,k.h); c0 += dc; }
+
+        var dr = step(r0,r1);
+        while(r0 != r1) { this.put(c0,r0,k.v); r0 += dr; }
+
+        this.put(c1,r1,(c0 == c1 ? k.v : k.h));
+      }
+
+      return this;
+    };
+
+    this.toString = function()
+    {
+      return this.grid.map(function(row){ return row.join("").replace(/\s+$/,""); }).join("\n");
+    };
+
+    this.clear();
+  };
+
+  this.textGrid = function(cols,rows,fill)
+  {
+    return new this.TEXT_GRID(cols,rows,fill);
+  };
+
+
   /////////////////////////////////
   // TAB SWITCHING / ANIMATION   //
   /////////////////////////////////
