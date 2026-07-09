@@ -2754,88 +2754,12 @@ Label1 TXA
       background: rgba(140, 190, 220, 0.33);
     }
 
-    .DBG_watchBoard {
-      padding: 10px 14px 14px 14px;
-    }
-
-    .DBG_registerGrid {
-      display: grid;
-      grid-template-columns: 1.15fr repeat(5, 0.72fr);
-      gap: 6px;
-      margin: 0px 0px 9px 0px;
-    }
-
-    .DBG_registerCell,
-    .DBG_flagCell,
-    .DBG_watchCell {
-      min-height: 43px;
-      padding: 2px 6px;
-      border: 0px;
-      border-radius: 0px;
-      background: transparent;
-      box-sizing: border-box;
-    }
-
-    .DBG_registerCell label,
-    .DBG_flagCell label,
-    .DBG_watchCell label {
-      display: block;
-      margin-bottom: 2px;
-      color: rgba(0,0,0,0.72);
-      font-family: arial, sans-serif;
-      font-size: 10px;
-      font-weight: 700;
-      text-align: center;
-    }
-
-    .DBG_registerCell span,
-    .DBG_flagCell span,
-    .DBG_watchCell span {
-      display: block;
-      color: #000000;
-      font-family: courier, monospace;
+      .DBG_watchTextPane {
+      padding: 10px 14px;
       font-size: 12px;
+      line-height: 15px;
       font-weight: 700;
-      line-height: 13px;
-      text-align: center;
-      white-space: pre;
-    }
-
-    .DBG_registerCell span::before,
-    .DBG_flagCell span::before {
-      content: "┌──────┐\A│ ";
-      white-space: pre;
-    }
-
-    .DBG_registerCell span::after,
-    .DBG_flagCell span::after {
-      content: " │\A└──────┘";
-      white-space: pre;
-    }
-
-    .DBG_registerCell.DBG_changed span,
-    .DBG_flagCell.DBG_changed span {
-      color: #000000;
-      text-shadow: 0px 0px 2px rgba(255,214,64,0.95);
-    }
-
-    .DBG_flagGrid {
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      gap: 5px;
-      margin: 0px 0px 10px 0px;
-    }
-
-    .DBG_flagCell {
-      min-height: 36px;
-      text-align: center;
-      padding: 4px 2px;
-    }
-
-    .DBG_changed {
-      background: transparent !important;
-      font-weight: 700;
-    }
+     }
 
 
     /*
@@ -3003,7 +2927,6 @@ Label1 TXA
     var DBG_traceStepCount = 0;
     var DBG_traceHistory = null;
     var DBG_traceLines = [];
-    var DBG_activeTextPane = null;
     var DBG_traceCurrentWrites = null;
     var DBG_runTimer = null;
     var DBG_runInstructionCount = 0;
@@ -4566,12 +4489,85 @@ Label1 TXA
         ].join(",");
       }
 
-      function DBG_setWatchCellChanged(id,changed) {
-        var el = DBG_el(id);
-        if(!el) return;
 
-        var cell = el.closest ? el.closest(".DBG_registerCell,.DBG_flagCell,.DBG_watchCell") : el.parentElement;
-        if(cell && cell.classList) cell.classList.toggle("DBG_changed",!!changed);
+      function DBG_centerText(text,width) {
+        text = String(text == null ? "" : text);
+        width = Math.max(1,Number(width) || 1);
+        if(text.length >= width) return text.slice(0,width);
+
+        var left = Math.floor((width - text.length) / 2);
+        var right = width - text.length - left;
+        return " ".repeat(left) + text + " ".repeat(right);
+      }
+
+      function DBG_watchBox(label,value,changed,width) {
+        width = Math.max(4,Number(width) || 8);
+        var inner = width - 2;
+
+        return [
+          DBG_centerText(label,width),
+          changed ? "┌" + "─".repeat(inner) + "┐" : " ".repeat(width),
+          changed ? "│" + DBG_centerText(value,inner) + "│" : DBG_centerText(value,width),
+          changed ? "└" + "─".repeat(inner) + "┘" : " ".repeat(width)
+        ];
+      }
+
+      function DBG_joinWatchBoxes(boxes,gap) {
+        gap = gap == null ? "  " : String(gap);
+
+        var out = [];
+        for(var row=0;row<4;row++)
+        {
+          var line = [];
+          for(var col=0;col<boxes.length;col++)
+            line.push(boxes[col][row]);
+
+          out.push(line.join(gap));
+        }
+
+        return out;
+      }
+
+      function DBG_renderWatchView(state,compareState) {
+        var watch = DBG_el("DBG_watchView");
+        if(!watch) return;
+
+        state = state || {};
+        compareState = compareState || null;
+
+        var highlight = DBG_highlightChangedValuesEnabled() && !!compareState;
+        var cpc = compareState ? (compareState.pc & 0xffff) : (state.pc & 0xffff);
+        var ca  = compareState ? (compareState.a  & 0xff)   : (state.a  & 0xff);
+        var cx  = compareState ? (compareState.x  & 0xff)   : (state.x  & 0xff);
+        var cy  = compareState ? (compareState.y  & 0xff)   : (state.y  & 0xff);
+        var cp  = compareState ? (compareState.p  & 0xff)   : (state.p  & 0xff);
+        var csp = compareState ? (compareState.sp & 0xff)   : (state.sp & 0xff);
+
+        var regs = [
+          DBG_watchBox("PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),8),
+          DBG_watchBox("A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),8),
+          DBG_watchBox("X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),8),
+          DBG_watchBox("Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),8),
+          DBG_watchBox("SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),8),
+          DBG_watchBox("SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),8)
+        ];
+
+        var names = ["N","V","-","B","D","I","Z","C"];
+        var bits  = [7,6,5,4,3,2,1,0];
+        var flags = [];
+
+        for(var i=0;i<bits.length;i++)
+        {
+          var bit = (state.p >> bits[i]) & 1;
+          var cbit = (cp >> bits[i]) & 1;
+          flags.push(DBG_watchBox(names[i],String(bit),highlight && bit !== cbit,6));
+        }
+
+        watch.value = []
+          .concat(DBG_joinWatchBoxes(regs,"  "))
+          .concat([""])
+          .concat(DBG_joinWatchBoxes(flags," "))
+          .join("\n");
       }
 
       function DBG_traceLineFromRecord(record) {
@@ -4625,8 +4621,11 @@ Label1 TXA
      }
  
      function DBG_updateRegisterDisplays(state,compareState) {
-       state = state || (DBG_traceCPU && DBG_traceCPU.watch ? DBG_traceCPU.watch() : null);
-       if (!state) return;
+       state = state || (DBG_traceCPU && DBG_traceCPU.watch ? DBG_traceCPU.watch() : {
+         pc:DBG_debuggerStartPC || 0x0000,
+         a:0,x:0,y:0,p:0x24,sp:0xff,
+         cycle_delay:0
+       });
  
        var pc = state.pc & 0xffff;
        var a  = state.a  & 0xff;
@@ -4643,25 +4642,7 @@ Label1 TXA
        var cp  = compareState ? (compareState.p  & 0xff) : p;
        var csp = compareState ? (compareState.sp & 0xff) : sp;
 
-       if (DBG_el("dispPC")) DBG_el("dispPC").textContent = DBG_hexWord(pc);
-       if (DBG_el("dispAC")) DBG_el("dispAC").textContent = DBG_hexByte(a);
-       if (DBG_el("dispXR")) DBG_el("dispXR").textContent = DBG_hexByte(x);
-       if (DBG_el("dispYR")) DBG_el("dispYR").textContent = DBG_hexByte(y);
-       if (DBG_el("dispSR")) DBG_el("dispSR").textContent = DBG_hexByte(p);
-       if (DBG_el("dispSP")) DBG_el("dispSP").textContent = DBG_hexByte(sp);
- 
-       DBG_setWatchCellChanged("dispPC",highlight && pc !== cpc);
-       DBG_setWatchCellChanged("dispAC",highlight && a !== ca);
-       DBG_setWatchCellChanged("dispXR",highlight && x !== cx);
-       DBG_setWatchCellChanged("dispYR",highlight && y !== cy);
-       DBG_setWatchCellChanged("dispSR",highlight && p !== cp);
-       DBG_setWatchCellChanged("dispSP",highlight && sp !== csp);
-
-       for (var i = 0; i < 8; i++) {
-         var bitEl = DBG_el("dispSR" + i);
-         if (bitEl) bitEl.textContent = String((p >> i) & 1);
-        DBG_setWatchCellChanged("dispSR" + i,highlight && (((p >> i) & 1) !== ((cp >> i) & 1)));
-       }
+       DBG_renderWatchView({pc:pc,a:a,x:x,y:y,p:p,sp:sp},compareState);
  
        var info = DBG_el("DBG_traceRegisterInfo");
        if (info) {
@@ -5078,18 +5059,11 @@ Label1 TXA
           color:"#e6edf3",
           caretColor:"#e6edf3"
         });
-        DBG_setStyles("#DBG_root .DBG_textPane, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span", {
+        DBG_setStyles("#DBG_root .DBG_textPane", {
           color:"#e6edf3"
         });
-        DBG_setStyles("#DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote", {
-          background:"rgba(255,255,255,0.08)",
-          borderColor:"rgba(255,255,255,0.16)",
-          color:"#e6edf3"
-        });
-        DBG_setStyles("#DBG_root .DBG_registerCell label, #DBG_root .DBG_flagCell label, #DBG_root .DBG_watchCell label, #DBG_root .DBG_watchTable th", {
-          color:"rgba(230,237,243,0.72)"
-        });
-        DBG_setStyles("#DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_changed, #DBG_root .DBG_changed span", {
+
+        DBG_setStyles("#DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent", {
           color:"#000000"
         });
         DBG_setStyles("#DBG_root .DBG_listingPcOverlay", {
@@ -5101,7 +5075,7 @@ Label1 TXA
       }
       else
       {
-        DBG_clearStyles("#DBG_root .DBG_paneTitle, #DBG_root .DBG_paneTitleMain strong, #DBG_root .DBG_paneInfo, #DBG_root .DBG_paneBody, #DBG_root .DBG_textPane, #DBG_root .DBG_watchTable, #DBG_root .DBG_registerCell, #DBG_root .DBG_flagCell, #DBG_root .DBG_watchCell, #DBG_root .DBG_watchTable td, #DBG_root .DBG_footerNote, #DBG_root .DBG_registerCell span, #DBG_root .DBG_flagCell span, #DBG_root .DBG_watchCell span, #DBG_root .DBG_registerCell label, #DBG_root .DBG_flagCell label, #DBG_root .DBG_watchCell label, #DBG_root .DBG_watchTable th, #DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_changed, #DBG_root .DBG_changed span, #DBG_root .DBG_listingPcOverlay, #DBG_root .DBG_breakpoint", basicProps);
+        DBG_clearStyles("#DBG_root .DBG_paneTitle, #DBG_root .DBG_paneTitleMain strong, #DBG_root .DBG_paneInfo, #DBG_root .DBG_paneBody, #DBG_root .DBG_textPane, #DBG_root .DBG_listingLineCurrent, #DBG_root .DBG_traceLineCurrent, #DBG_root .DBG_listingPcOverlay, #DBG_root .DBG_breakpoint", basicProps);
       }
     }
 
@@ -5158,66 +5132,6 @@ Label1 TXA
       }
     }
 
-
-    function DBG_isEditableTarget(el) {
-      if(!el) return false;
-      if(el.isContentEditable) return true;
-
-      var tag = el.tagName ? el.tagName.toUpperCase() : "";
-      return tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT";
-    }
-
-    function DBG_selectTextPane(pre) {
-      if(!pre) return false;
-
-      var sel = window.getSelection ? window.getSelection() : null;
-      if(!sel || !document.createRange) return false;
-
-      var range = document.createRange();
-      range.selectNodeContents(pre);
-
-      sel.removeAllRanges();
-      sel.addRange(range);
-      return true;
-    }
-
-    function DBG_onTextPaneKeyDown(ev) {
-      if(!ev || !(ev.ctrlKey || ev.metaKey)) return;
-      if(String(ev.key || "").toLowerCase() != "a") return;
-
-      /*
-       * Do not steal Ctrl/Cmd+A from real editing controls such as start-PC
-       * inputs, file-name inputs, textareas, or contenteditable fields.
-       */
-      if(DBG_isEditableTarget(ev.target)) return;
-
-      var pane = null;
-      if(ev.target && ev.target.closest)
-        pane = ev.target.closest("#debugfield,#DBG_traceView");
-
-      pane = pane || DBG_activeTextPane;
-      if(!pane) return;
-
-      ev.preventDefault();
-      DBG_activeTextPane = pane;
-      DBG_selectTextPane(pane);
-    }
-
-    function DBG_bindTextPaneSelection() {
-      var panes = [DBG_el("debugfield"),DBG_el("DBG_traceView")];
-
-      for(var i=0;i<panes.length;i++)
-      {
-        if(!panes[i]) continue;
-
-        panes[i].setAttribute("tabindex","0");
-        panes[i].addEventListener("mousedown",function(){ DBG_activeTextPane = this; });
-        panes[i].addEventListener("focus",function(){ DBG_activeTextPane = this; });
-      }
-
-      document.addEventListener("keydown",DBG_onTextPaneKeyDown,true);
-    }
-
     function DBG_bindTextPaneEvents() {
       var listing = DBG_el("debugfield");
       if(listing)
@@ -5246,6 +5160,7 @@ Label1 TXA
       DBG_applyTheme();
       DBG_applyPaneHeaderButtonTheme();
       DBG_equalizePaneHeaders();
+      DBG_updateRegisterDisplays();
 
       DBG_loadManualPane();
     }
@@ -5511,7 +5426,7 @@ Label1 TXA
               <div class="com-pane-title DBG_paneTitle">
                 <div class="DBG_paneTitleMain">
                   <strong>CPU Watch</strong>
-                  <span class="DBG_paneInfo"></span>
+                  <span id="DBG_status" class="DBG_paneInfo"></span>
                 </div>
                 <div class="com-pane-header-default-widget DBG_headerActions">
                   <button class="appbut skinny" data-dbg-action="add-watch" onclick="DBG_stub('Add watch')" title="Add watch"><i class="fa fa-stethoscope"></i></button>
@@ -5521,28 +5436,8 @@ Label1 TXA
 
                 </div>
               </div>
-              <div class="DBG_paneBody dotmatrix_bck DBG_watchBoard">
-                <div class="DBG_registerGrid">
-                  <div class="DBG_registerCell"><label>PC</label><span id="dispPC">6002</span></div>
-                  <div class="DBG_registerCell"><label>A</label><span id="dispAC">00</span></div>
-                  <div class="DBG_registerCell"><label>X</label><span id="dispXR">00</span></div>
-                  <div class="DBG_registerCell"><label>Y</label><span id="dispYR">00</span></div>
-                  <div class="DBG_registerCell DBG_changed"><label>SR</label><span id="dispSR">22</span></div>
-                  <div class="DBG_registerCell"><label>SP</label><span id="dispSP">FF</span></div>
-                </div>
-
-                <div class="DBG_flagGrid">
-                  <div class="DBG_flagCell"><label>N</label><span id="dispSR7">0</span></div>
-                  <div class="DBG_flagCell"><label>V</label><span id="dispSR6">0</span></div>
-                  <div class="DBG_flagCell"><label>-</label><span id="dispSR5">1</span></div>
-                  <div class="DBG_flagCell"><label>B</label><span id="dispSR4">0</span></div>
-                  <div class="DBG_flagCell"><label>D</label><span id="dispSR3">0</span></div>
-                  <div class="DBG_flagCell"><label>I</label><span id="dispSR2">0</span></div>
-                  <div class="DBG_flagCell DBG_changed"><label>Z</label><span id="dispSR1">1</span></div>
-                  <div class="DBG_flagCell"><label>C</label><span id="dispSR0">0</span></div>
-                </div>
-
-                <div class="DBG_footerNote" id="DBG_status"></div>
+              <div class="DBG_paneBody dotmatrix_bck">
+                <textarea id="DBG_watchView" class="DBG_textPane DBG_watchTextPane" readonly spellcheck="false" wrap="off"></textarea>              
               </div>
             </section>
 
