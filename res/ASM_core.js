@@ -1580,14 +1580,14 @@ function ASM(options)
 
 
 
-/*
- * Legacy DASM compatibility container.
- *
- * ASM_core_v6.js intentionally contains the v6 assembler core only, but
- * DBG_6502gui.js still creates `new DASM()` during load.  Keep DASM here
- * so pages that include only ASM_core_v6.js still expose the legacy
- * debugger/disassembler object expected by DBG_6502gui.js.
- */
+//    ██████  ██ ███████  █████  ███████ ███████ ███████ ███    ███ ██████  ██      ███████ ██████  
+//    ██   ██ ██ ██      ██   ██ ██      ██      ██      ████  ████ ██   ██ ██      ██      ██   ██ 
+//    ██   ██ ██ ███████ ███████ ███████ ███████ █████   ██ ████ ██ ██████  ██      █████   ██████  
+//    ██   ██ ██      ██ ██   ██      ██      ██ ██      ██  ██  ██ ██   ██ ██      ██      ██   ██ 
+//    ██████  ██ ███████ ██   ██ ███████ ███████ ███████ ██      ██ ██████  ███████ ███████ ██   ██
+
+
+
 function DASM()
 {
     this.hextab = (typeof oCOM != "undefined" && oCOM.hextab) ? oCOM.hextab : ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];

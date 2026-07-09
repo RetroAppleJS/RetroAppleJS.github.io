@@ -1634,8 +1634,7 @@ this.write = function(rel_addr,d8)
                     + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D1')\">"
                     + "      </form>"
                     
-                    //+ "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D1'))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D1'))\" id=\"dump_D1\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D1'))\" id=\"dump_D1\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
 
                     + "    </div>"
 
@@ -1652,8 +1651,7 @@ this.write = function(rel_addr,d8)
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
                     + "      </form>"
 
-                    //+ "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.DiskObj().getDiskData('D2'))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D2'))\" id=\"dump_D2\" title=\"Dump\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D2'))\" id=\"dump_D2\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     + "  </div>"
