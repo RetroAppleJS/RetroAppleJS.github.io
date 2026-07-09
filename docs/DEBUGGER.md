@@ -298,6 +298,7 @@ The Assembler handoff is the easiest path for your own source code. For emulator
 7. Set or verify the start address / Program Counter.
 8. Start stepping.
 
+
       ┌──────────────────────┐
       │ Running emulator     │
       │ full 64K memory      │
@@ -311,8 +312,8 @@ The Assembler handoff is the easiest path for your own source code. For emulator
                  │ paste into Debugger Tools
                  ▼
       ┌──────────────────────┐       ┌──────────────────────────────┐
-      │ Debugger memory      │◀──────│ Optional symbols              │
-      │ reconstructed image  │       │ e.g. ROM labels/comments      │
+      │ Debugger memory      │◀──────│ Optional symbols             │
+      │ reconstructed image  │       │ e.g. ROM labels/comments     │
       └──────────┬───────────┘       └──────────────────────────────┘
                  │
                  ▼
@@ -320,6 +321,7 @@ The Assembler handoff is the easiest path for your own source code. For emulator
       │ Step through memory  │
       │ with readable trace  │
       └──────────────────────┘
+
 
 ### Example symbol file
 
