@@ -28693,8 +28693,9 @@ Label1 TXA
         return " ".repeat(left) + text + " ".repeat(right);
       }
 
-      function DBG_watchBox(label,value,changed,width) {
-        var text = String(label == null ? "" : label) + ":" + String(value == null ? "" : value);
+      function DBG_watchBox(label,value,changed,width) 
+      {
+        var text = String(label == null ? "" : label) + "" + String(value == null ? "" : value);
         var inner = Math.max(1,Number(width) || text.length || 1);
         width = inner + 2;
 
@@ -28764,7 +28765,6 @@ Label1 TXA
 
         watch.value = []
           .concat(DBG_joinWatchBoxes(regs,""))
-          .concat([""])
           .concat(DBG_joinWatchBoxes(flags,""))
           .join("\n");
       }
