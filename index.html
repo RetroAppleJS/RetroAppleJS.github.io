@@ -4495,7 +4495,8 @@ Label1 TXA
       }
 
       function DBG_watchBox(label,value,changed,width) {
-        var inner = Math.max(1,Number(width) || String(value == null ? "" : value).length || 1);
+        var text = String(label == null ? "" : label) + ":" + String(value == null ? "" : value);
+        var inner = Math.max(1,Number(width) || text.length || 1);
         width = inner + 2;
 
         return [
@@ -4505,7 +4506,7 @@ Label1 TXA
            * the exact same character width with spaces, so columns do not jump.
            */
           changed ? "┌" + "─".repeat(inner) + "┐" : " ".repeat(width),
-          changed ? "│" + DBG_centerText(value,inner) + "│" : DBG_centerText(value,width),
+          changed ? "│" + DBG_centerText(text,inner) + "│" : DBG_centerText(text,width),
           changed ? "└" + "─".repeat(inner) + "┘" : " ".repeat(width)
         ];
       }
@@ -4526,7 +4527,8 @@ Label1 TXA
         return out;
       }
 
-      function DBG_renderWatchView(state,compareState) {
+      function DBG_renderWatchView(state,compareState) 
+      {
         var watch = DBG_el("DBG_watchView");
         if(!watch) return;
 
@@ -4542,12 +4544,12 @@ Label1 TXA
         var csp = compareState ? (compareState.sp & 0xff)   : (state.sp & 0xff);
 
         var regs = [
-          DBG_watchBox("PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),4),
-          DBG_watchBox("A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),2),
-          DBG_watchBox("X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),2),
-          DBG_watchBox("Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),2),
-          DBG_watchBox("SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),2),
-          DBG_watchBox("SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),2)
+          DBG_watchBox("PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),7),
+          DBG_watchBox("A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4),
+          DBG_watchBox("X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4),
+          DBG_watchBox("Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4),
+          DBG_watchBox("SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),5),
+          DBG_watchBox("SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5)
         ];
 
         var names = ["N","V","-","B","D","I","Z","C"];
@@ -4558,7 +4560,7 @@ Label1 TXA
         {
           var bit = (state.p >> bits[i]) & 1;
           var cbit = (cp >> bits[i]) & 1;
-          flags.push(DBG_watchBox(names[i],String(bit),highlight && bit !== cbit,1));
+          flags.push(DBG_watchBox(names[i],String(bit),highlight && bit !== cbit,3));
         }
 
         watch.value = []
