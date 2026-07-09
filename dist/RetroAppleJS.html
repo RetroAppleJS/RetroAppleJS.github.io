@@ -3694,6 +3694,129 @@ function prettyJsonAllman(value, indent) {
     return s;
 }
 
+  ///////////////////////////////////
+  // ASCII / UTF-8 TEXT GRID       //
+  ///////////////////////////////////
+
+  this.TEXT_GRID = function(cols,rows,fill)
+  {
+    this.cols = Math.max(1,Number(cols) || 1);
+    this.rows = Math.max(1,Number(rows) || 1);
+    this.fill = (fill == null ? " " : String(fill)).charAt(0) || " ";
+
+    this.BOX_SINGLE = { tl:"┌", tr:"┐", bl:"└", br:"┘", h:"─", v:"│" };
+    this.BOX_DOUBLE = { tl:"╔", tr:"╗", bl:"╚", br:"╝", h:"═", v:"║" };
+
+    this.clear = function(ch)
+    {
+      ch = (ch == null ? this.fill : String(ch).charAt(0)) || " ";
+      this.grid = [];
+
+      for(var r=0;r<this.rows;r++)
+      {
+        var row = [];
+        for(var c=0;c<this.cols;c++) row.push(ch);
+        this.grid.push(row);
+      }
+
+      return this;
+    };
+
+    this.inBounds = function(c,r)
+    {
+      return r >= 0 && r < this.rows && c >= 0 && c < this.cols;
+    };
+
+    this.put = function(c,r,ch)
+    {
+      if(this.inBounds(c,r))
+        this.grid[r][c] = (ch == null ? " " : String(ch).charAt(0)) || " ";
+
+      return this;
+    };
+
+    this.cell = function(c,r,text)
+    {
+      text = String(text == null ? "" : text);
+      var lines = text.split("\n");
+
+      for(var y=0;y<lines.length;y++)
+      {
+        var line = lines[y];
+        for(var x=0;x<line.length;x++)
+          this.put(c+x,r+y,line.charAt(x));
+      }
+
+      return this;
+    };
+
+    this.box = function(c,r,w,h,arg)
+    {
+      arg = arg || {};
+      var k = arg.kind || this.BOX_SINGLE;
+
+      w = Math.max(2,Number(w) || 2);
+      h = Math.max(2,Number(h) || 2);
+
+      this.put(c,r,k.tl);
+      this.put(c+w-1,r,k.tr);
+      this.put(c,r+h-1,k.bl);
+      this.put(c+w-1,r+h-1,k.br);
+
+      for(var x=1;x<w-1;x++)
+      {
+        this.put(c+x,r,k.h);
+        this.put(c+x,r+h-1,k.h);
+      }
+
+      for(var y=1;y<h-1;y++)
+      {
+        this.put(c,r+y,k.v);
+        this.put(c+w-1,r+y,k.v);
+      }
+
+      return this;
+    };
+
+    this.line = function(arg)
+    {
+      arg = arg || {};
+      var path = arg.path || [];
+      var k = arg.wire || this.BOX_SINGLE;
+
+      function step(a,b) { return a < b ? 1 : (a > b ? -1 : 0); }
+
+      for(var i=1;i<path.length;i++)
+      {
+        var c0 = Number(path[i-1][0]), r0 = Number(path[i-1][1]);
+        var c1 = Number(path[i][0]),   r1 = Number(path[i][1]);
+
+        var dc = step(c0,c1);
+        while(c0 != c1) { this.put(c0,r0,k.h); c0 += dc; }
+
+        var dr = step(r0,r1);
+        while(r0 != r1) { this.put(c0,r0,k.v); r0 += dr; }
+
+        this.put(c1,r1,(c0 == c1 ? k.v : k.h));
+      }
+
+      return this;
+    };
+
+    this.toString = function()
+    {
+      return this.grid.map(function(row){ return row.join("").replace(/\s+$/,""); }).join("\n");
+    };
+
+    this.clear();
+  };
+
+  this.textGrid = function(cols,rows,fill)
+  {
+    return new this.TEXT_GRID(cols,rows,fill);
+  };
+
+
   /////////////////////////////////
   // TAB SWITCHING / ANIMATION   //
   /////////////////////////////////
@@ -28682,49 +28805,23 @@ Label1 TXA
         ].join(",");
       }
 
-
-      function DBG_centerText(text,width) {
-        text = String(text == null ? "" : text);
-        width = Math.max(1,Number(width) || 1);
-        if(text.length >= width) return text.slice(0,width);
-
-        var left = Math.floor((width - text.length) / 2);
-        var right = width - text.length - left;
-        return " ".repeat(left) + text + " ".repeat(right);
-      }
-
-      function DBG_watchBox(label,value,changed,width) 
+      function DBG_drawWatchField(grid,x,y,label,value,changed,width)
       {
-        var text = String(label == null ? "" : label) + "" + String(value == null ? "" : value);
+        var text = String(label == null ? "" : label) + ":" + String(value == null ? "" : value);
         var inner = Math.max(1,Number(width) || text.length || 1);
-        width = inner + 2;
 
-        return [
-          /*
-           * Always return the same 3-line, fixed-width block.
-           * Changed values draw a real UTF-8 box; unchanged values occupy
-           * the exact same character width with spaces, so columns do not jump.
-           */
-          changed ? "┌" + "─".repeat(inner) + "┐" : " ".repeat(width),
-          changed ? "│" + DBG_centerText(text,inner) + "│" : DBG_centerText(text,width),
-          changed ? "└" + "─".repeat(inner) + "┘" : " ".repeat(width)
-        ];
-      }
-
-      function DBG_joinWatchBoxes(boxes,gap) {
-        gap = gap == null ? "  " : String(gap);
-
-        var out = [];
-        for(var row=0;row<3;row++)
-        {
-          var line = [];
-          for(var col=0;col<boxes.length;col++)
-            line.push(boxes[col][row]);
-
-          out.push(line.join(gap));
-        }
-
-        return out;
+        var outer = inner + 2;
+        /*
+         * Stable 3-line block:
+         *   y     = optional top box line
+         *   y + 1 = label/value
+         *   y + 2 = optional bottom box line
+         *
+         * Unchanged values still reserve the same grid area, but no box is drawn.
+         */
+        if(changed) grid.box(x,y,outer,3,{kind:grid.BOX_SINGLE});
+        grid.cell(x + 1,y + 1,text);
+        return outer;
       }
 
       function DBG_renderWatchView(state,compareState) 
@@ -28743,30 +28840,28 @@ Label1 TXA
         var cp  = compareState ? (compareState.p  & 0xff)   : (state.p  & 0xff);
         var csp = compareState ? (compareState.sp & 0xff)   : (state.sp & 0xff);
 
-        var regs = [
-          DBG_watchBox("PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),7),
-          DBG_watchBox("A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4),
-          DBG_watchBox("X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4),
-          DBG_watchBox("Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4),
-          DBG_watchBox("SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),5),
-          DBG_watchBox("SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5)
-        ];
+        var grid = oCOM.textGrid(80,6);
+        var x = 0;
+
+        x += DBG_drawWatchField(grid,x,0,"PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),7);
+        x += DBG_drawWatchField(grid,x,0,"A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4);
+        x += DBG_drawWatchField(grid,x,0,"X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4);
+        x += DBG_drawWatchField(grid,x,0,"Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4);
+        x += DBG_drawWatchField(grid,x,0,"SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),5);
+        x += DBG_drawWatchField(grid,x,0,"SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5); 
 
         var names = ["N","V","-","B","D","I","Z","C"];
         var bits  = [7,6,5,4,3,2,1,0];
-        var flags = [];
+        x = 0;
 
         for(var i=0;i<bits.length;i++)
         {
           var bit = (state.p >> bits[i]) & 1;
           var cbit = (cp >> bits[i]) & 1;
-          flags.push(DBG_watchBox(names[i],String(bit),highlight && bit !== cbit,3));
+          x += DBG_drawWatchField(grid,x,3,names[i],String(bit),highlight && bit !== cbit,3);
         }
 
-        watch.value = []
-          .concat(DBG_joinWatchBoxes(regs,""))
-          .concat(DBG_joinWatchBoxes(flags,""))
-          .join("\n");
+        watch.value = grid.toString();
       }
 
       function DBG_traceLineFromRecord(record) {
