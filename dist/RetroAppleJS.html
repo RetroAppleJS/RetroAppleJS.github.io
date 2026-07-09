@@ -24843,7 +24843,7 @@ function DASM()
                 color: #000000;
                 -webkit-text-fill-color: #000000;
                 caret-color: #000000;
-                font-family: courier, monospace;
+                font-family: "DejaVu Sans Mono","Menlo","Consolas","Courier New",monospace;
                 font-size: 12px;
                 font-weight: 500;
                 line-height: 21px;
@@ -26917,6 +26917,7 @@ Label1 TXA
       -ms-user-select: text;
       -webkit-user-drag: none;
       caret-color: transparent;
+      font-variant-ligatures: none;
     }
 
     .DBG_textPane::selection {
@@ -26952,13 +26953,6 @@ Label1 TXA
       padding: 0px 30px;
       background: rgba(140, 190, 220, 0.33);
     }
-
-      .DBG_watchTextPane {
-      padding: 10px 14px;
-      font-size: 12px;
-      line-height: 15px;
-      font-weight: 700;
-     }
 
 
     /*
@@ -29636,7 +29630,7 @@ Label1 TXA
                 </div>
               </div>
               <div class="DBG_paneBody dotmatrix_bck">
-                <textarea id="DBG_watchView" class="DBG_textPane DBG_watchTextPane" readonly spellcheck="false" wrap="off"></textarea>              
+                <textarea id="DBG_watchView" class="DBG_textPane" readonly spellcheck="false" wrap="off"></textarea>             
               </div>
             </section>
 
