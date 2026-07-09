@@ -298,31 +298,6 @@ The Assembler handoff is the easiest path for your own source code. For emulator
 7. Set or verify the start address / Program Counter.
 8. Start stepping.
 
-
-      ┌──────────────────────┐
-      │ Running emulator     │
-      │ full 64K memory      │
-      └──────────┬───────────┘
-                 │ MemCap
-                 ▼
-      ┌──────────────────────┐
-      │ Memory capture       │
-      │ copied as text/data  │
-      └──────────┬───────────┘
-                 │ paste into Debugger Tools
-                 ▼
-      ┌──────────────────────┐       ┌──────────────────────────────┐
-      │ Debugger memory      │◀──────│ Optional symbols             │
-      │ reconstructed image  │       │ e.g. ROM labels/comments     │
-      └──────────┬───────────┘       └──────────────────────────────┘
-                 │
-                 ▼
-      ┌──────────────────────┐
-      │ Step through memory  │
-      │ with readable trace  │
-      └──────────────────────┘
-
-
 #### Example symbol file
 
 For the Apple II Monitor ROM, a matching symbol file can be loaded from:
