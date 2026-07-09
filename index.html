@@ -4485,7 +4485,8 @@ Label1 TXA
 
       function DBG_drawWatchField(grid,x,y,label,value,changed,width)
       {
-        var text = String(label == null ? "" : label) + ":" + String(value == null ? "" : value);
+        var text = String(label == null ? "" : label) + "·" + String(value == null ? "" : value);
+        // 〉⭢ ⏵ ─ ╌ ⋯ ┈ · ┄
         var inner = Math.max(1,Number(width) || text.length || 1);
 
         var outer = inner + 2;
@@ -4497,7 +4498,7 @@ Label1 TXA
          *
          * Unchanged values still reserve the same grid area, but no box is drawn.
          */
-        if(changed) grid.box(x,y,outer,3,{kind:grid.BOX_SINGLE});
+        if(changed) grid.box(x,y,x+outer-1,y+2,{kind:grid.BOX_SINGLE});
         grid.cell(x + 1,y + 1,text);
         return outer;
       }
@@ -4522,21 +4523,20 @@ Label1 TXA
         var x = 0;
 
         x += DBG_drawWatchField(grid,x,0,"PC",DBG_hexWord(state.pc),highlight && ((state.pc & 0xffff) !== cpc),7);
-        x += DBG_drawWatchField(grid,x,0,"A", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4);
-        x += DBG_drawWatchField(grid,x,0,"X", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4);
-        x += DBG_drawWatchField(grid,x,0,"Y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4);
-        x += DBG_drawWatchField(grid,x,0,"SR",DBG_hexByte(state.p), highlight && ((state.p  & 0xff) !== cp),5);
-        x += DBG_drawWatchField(grid,x,0,"SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5); 
+        x += DBG_drawWatchField(grid,x,0,"a", DBG_hexByte(state.a), highlight && ((state.a  & 0xff) !== ca),4);
+        x += DBG_drawWatchField(grid,x,0,"x", DBG_hexByte(state.x), highlight && ((state.x  & 0xff) !== cx),4);
+        x += DBG_drawWatchField(grid,x,0,"y", DBG_hexByte(state.y), highlight && ((state.y  & 0xff) !== cy),4);
+        x += DBG_drawWatchField(grid,x,0,"SP",DBG_hexByte(state.sp),highlight && ((state.sp & 0xff) !== csp),5);
 
-        var names = ["N","V","-","B","D","I","Z","C"];
-        var bits  = [7,6,5,4,3,2,1,0];
+        var names = ["N","V","B","D","I","Z","C"];
+        var bits  = [ 7,  6,  4,  3,  2,  1,  0];
         x = 0;
 
         for(var i=0;i<bits.length;i++)
         {
           var bit = (state.p >> bits[i]) & 1;
           var cbit = (cp >> bits[i]) & 1;
-          x += DBG_drawWatchField(grid,x,3,names[i],String(bit),highlight && bit !== cbit,3);
+          x += DBG_drawWatchField(grid,x,2,names[i],String(bit),highlight && bit !== cbit,3);
         }
 
         watch.value = grid.toString();
