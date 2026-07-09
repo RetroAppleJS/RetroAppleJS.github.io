@@ -229,7 +229,7 @@ function init_gui(_o)
     mocha_started = true;
 
     mocha.setup('bdd');
-    oASM.mocha_test({"chai":chai});
+    asm_mocha_test({"chai":chai,"asm":oASM});
 
     var grep = new URLSearchParams(window.location.search).get("grep");
     if(grep)
@@ -240,6 +240,129 @@ function init_gui(_o)
     var oObj_inspector = new OBJ_INSPECTOR();
     oObj_inspector.load_mocha(mocha);
     document.getElementById("obj-inspector").innerHTML += oObj_inspector.scan(this);
+  }
+
+
+  /*
+   * ASM_core.js v6.3 no longer exposes the legacy ASM.mocha_test()
+   * helper that still exists in ASM_core_obsolete.js.  Keep the unit
+   * tests here so tools/MochaJS_test.html tests the active assembler core.
+   */
+  function asm_pick(obj, fields)
+  {
+    var ret = {};
+    for(var i=0;i<fields.length;i++)
+      if(typeof(obj[fields[i]])!="undefined") ret[fields[i]] = obj[fields[i]];
+    return ret;
+  }
+
+  function asm_mocha_test(_o)
+  {
+    var _a = _o.chai.assert;
+    var _asm = _o.asm || oASM;
+
+    describe("ASM",function()
+    {
+      beforeEach(function()
+      {
+        _asm.reset();
+      });
+
+      describe("getNumber",function()
+      {
+        it("parses HEX, BIN and DEC numbers",function()
+        {
+          _a.deepEqual(asm_pick(_asm.getNumber("$FF"),["val","fmt","bytes"]),{val:255,fmt:"HEX",bytes:1},"1-byte HEX");
+          _a.deepEqual(asm_pick(_asm.getNumber("$100"),["val","fmt","bytes"]),{val:256,fmt:"HEX",bytes:2},"2-byte HEX");
+          _a.deepEqual(asm_pick(_asm.getNumber("%100000000"),["val","fmt","bytes"]),{val:256,fmt:"BIN",bytes:2},"2-byte BIN");
+          _a.deepEqual(asm_pick(_asm.getNumber("255"),["val","fmt","bytes"]),{val:255,fmt:"DEC",bytes:1},"1-byte DEC");
+        });
+
+        it("parses high-byte and low-byte operators",function()
+        {
+          _a.deepEqual(asm_pick(_asm.getNumber(">$FEFF"),["val","fmt","bytes"]),{val:254,fmt:"HI",bytes:1},"high byte");
+          _a.deepEqual(asm_pick(_asm.getNumber("<$FEFF"),["val","fmt","bytes"]),{val:255,fmt:"LO",bytes:1},"low byte");
+        });
+
+        it("parses ASCII constants",function()
+        {
+          _a.deepEqual(asm_pick(_asm.getNumber("\"A\""),["val","fmt","bytes"]),{val:193,fmt:"ASC",bytes:1},"double quote sets high bit");
+          _a.deepEqual(asm_pick(_asm.getNumber("'A'"),["val","fmt","bytes"]),{val:65,fmt:"ASC",bytes:1},"single quote keeps high bit off");
+          _a.deepEqual(asm_pick(_asm.getNumber("\"AB\""),["val","fmt","bytes","type"]),{val:[193,194],fmt:"ASC",bytes:2,type:"string"},"double-quoted strings become byte arrays");
+        });
+
+        it("resolves identifiers through symtab",function()
+        {
+          _asm.symtab = {"VARIAB":10};
+          _a.deepEqual(asm_pick(_asm.getNumber("VARIAB"),["val","fmt","bytes"]),{val:10,fmt:"ID",bytes:1},"known identifier");
+          _a.match(_asm.getNumber("UNKNOWN").err,/identifier does not exist/,"unknown identifier reports an error");
+        });
+      });
+
+      describe("source parsing",function()
+      {
+        it("strips right comments without touching quoted semicolons",function()
+        {
+          _a.equal(_asm.stripRightComment("LDA #$01 ; comment"),"LDA #$01 ");
+          _a.equal(_asm.stripRightComment("ASC \"A;B\" ; comment"),"ASC \"A;B\" ");
+        });
+
+        it("splits and tags labelled mnemonic statements",function()
+        {
+          var sym = _asm.statement_splitter("START LDA #$01 ; comment");
+          _a.deepEqual(sym,["START","LDA","#$01"]);
+          _a.deepEqual(_asm.statement_tagger(sym),["LBL","MNE","OPR"]);
+        });
+
+        it("recognizes pragma rows",function()
+        {
+          var sym = _asm.statement_splitter("ORG $6000");
+          _a.deepEqual(sym,["ORG","$6000"]);
+          _a.deepEqual(_asm.statement_tagger(sym),["PGM","OPR"]);
+        });
+      });
+
+      describe("addressing modes",function()
+      {
+        it("infers immediate, absolute and relative modes",function()
+        {
+          var imm = _asm.inferAddressMode("LDA","#$01");
+          _a.equal(imm.mod,"imm");
+          _a.equal(imm.opc,0xA9);
+
+          var abs = _asm.inferAddressMode("STA","$0400");
+          _a.equal(abs.mod,"abs");
+          _a.equal(abs.opc,0x8D);
+
+          var rel = _asm.inferAddressMode("BNE","$6000");
+          _a.equal(rel.mod,"rel");
+          _a.equal(rel.opc,0xD0);
+        });
+      });
+
+      describe("compiler helpers",function()
+      {
+        it("compiles mnemonic rows",function()
+        {
+          var lda = {"tag":["MNE","OPR"],"sym":["LDA","#$01"],"pc":0x6000};
+          var sta = {"tag":["MNE","OPR"],"sym":["STA","$0400"],"pc":0x6002};
+          var bne = {"tag":["MNE","OPR"],"sym":["BNE","$6000"],"pc":0x6004};
+
+          _a.deepEqual(_asm.compileMnemonicRow(lda,{}),[0xA9,0x01],"LDA immediate");
+          _a.deepEqual(_asm.compileMnemonicRow(sta,{}),[0x8D,0x00,0x04],"STA absolute");
+          _a.deepEqual(_asm.compileMnemonicRow(bne,{}),[0xD0,0xFA],"BNE relative back to $6000");
+        });
+
+        it("compiles data pragmas",function()
+        {
+          _a.deepEqual(_asm.compileHexData("A9 01"),[0xA9,0x01],"HEX data");
+          _a.deepEqual(_asm.compileBinData("10101010"),[0xAA],"BIN data");
+          _a.deepEqual(_asm.compileAsciiData("\"A\""),[0xC1],"ASC high-bit text");
+          _a.deepEqual(_asm.compileWordData("$1234",{},false),[0x34,0x12],"little-endian WORD");
+          _a.deepEqual(_asm.compileByteData("$01,%10,'A'",{}),[0x01,0x02,0x41],"BYTE list");
+        });
+      });
+    });
   }
 
 
