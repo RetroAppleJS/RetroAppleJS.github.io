@@ -27178,6 +27178,7 @@ Label1 TXA
     var DBG_traceStepCount = 0;
     var DBG_traceHistory = null;
     var DBG_traceLines = [];
+    var DBG_activeTextPane = null;
     var DBG_traceCurrentWrites = null;
     var DBG_runTimer = null;
     var DBG_runInstructionCount = 0;
@@ -29336,6 +29337,66 @@ Label1 TXA
       if (DBG_oPANE && typeof DBG_oPANE.equalizePaneHeaderHeights === "function") {
         DBG_oPANE.equalizePaneHeaderHeights("#DBG_root .com-pane-title");
       }
+    }
+
+
+    function DBG_isEditableTarget(el) {
+      if(!el) return false;
+      if(el.isContentEditable) return true;
+
+      var tag = el.tagName ? el.tagName.toUpperCase() : "";
+      return tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT";
+    }
+
+    function DBG_selectTextPane(pre) {
+      if(!pre) return false;
+
+      var sel = window.getSelection ? window.getSelection() : null;
+      if(!sel || !document.createRange) return false;
+
+      var range = document.createRange();
+      range.selectNodeContents(pre);
+
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return true;
+    }
+
+    function DBG_onTextPaneKeyDown(ev) {
+      if(!ev || !(ev.ctrlKey || ev.metaKey)) return;
+      if(String(ev.key || "").toLowerCase() != "a") return;
+
+      /*
+       * Do not steal Ctrl/Cmd+A from real editing controls such as start-PC
+       * inputs, file-name inputs, textareas, or contenteditable fields.
+       */
+      if(DBG_isEditableTarget(ev.target)) return;
+
+      var pane = null;
+      if(ev.target && ev.target.closest)
+        pane = ev.target.closest("#debugfield,#DBG_traceView");
+
+      pane = pane || DBG_activeTextPane;
+      if(!pane) return;
+
+      ev.preventDefault();
+      DBG_activeTextPane = pane;
+      DBG_selectTextPane(pane);
+    }
+
+    function DBG_bindTextPaneSelection() {
+      var panes = [DBG_el("debugfield"),DBG_el("DBG_traceView")];
+
+      for(var i=0;i<panes.length;i++)
+      {
+        if(!panes[i]) continue;
+
+        panes[i].setAttribute("tabindex","0");
+        panes[i].addEventListener("mousedown",function(){ DBG_activeTextPane = this; });
+        panes[i].addEventListener("focus",function(){ DBG_activeTextPane = this; });
+      }
+
+      document.addEventListener("keydown",DBG_onTextPaneKeyDown,true);
     }
 
     function DBG_initPaneContainer() {
