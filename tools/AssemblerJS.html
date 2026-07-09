@@ -1554,87 +1554,64 @@ SUBTBL      .BYTE    <BASCONT-1
 //document.getElementById("sampleSourceTemplate").textContent = sampleSourceTemplate;
 //document.getElementById("sampleSourceTemplate").textContent = init_asm_src;
 
-var oPANE = new PANE();
-if (typeof oPANE.injectFindReplaceCSS == "function") {
-    oPANE.injectFindReplaceCSS();
-}
-
 var asmPaneHost = document.getElementById("asmPaneHost");
 var bytePaneHost = document.getElementById("bytePaneHost");
 //var sampleSourceText = document.getElementById("sampleSourceTemplate").textContent.replace(/^\n/, "");
 
 asmPaneHost.innerHTML =
-    oPANE.getHTML("", {
-        id:"sourcePaneWrapper",
-        class:"pane",
-        header:{
-            title:"Source",
-            class:"pane-title",
-            html:'<strong>Source</strong><span id="sourceFindReplaceMount" class="pane-title-search-host"></span>'
-        },
-        body:{
-            id:"sourcePane",
-            tag:"textarea",
-            content:sampleSourceText,
-            attr:{spellcheck:false}
-        }
-    })
-    + oPANE.getHTML("", {
-        id:"listingPaneWrapper",
-        class:"pane listing-pane",
-        header:{
-            class:"pane-title",
-            html:'<span class="pane-title-main">'
-                + '<strong>Listing</strong>'
-                + '<input id="listingColumnsInput" class="listing-columns-input" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" />'
-                + '</span>'
-                + '<span id="listingInfo">compile()</span>'
-        },
-        body:{
-            id:"listingPane",
-            tag:"textarea",
-            content:"",
-            attr:{readonly:true,spellcheck:false}
-        }
-    })
-    + oPANE.getHTML("", {
-        id:"jsonPaneWrapper",
-        class:"pane json-pane",
-        header:{
-            title:"JSON output",
-            class:"pane-title",
-            infoHTML:'<span id="jsonInfo">not assembled</span>'
-                + '<button class="halfsizeBtn" id="copyJsonButton" type="button" title="Copy JSON">Copy JSON</button>'
-        },
-        body:{
-            id:"jsonMount",
-            tag:"div",
-            class:"json-mount",
-            attr:{tabindex:0},
-            content:"",
-            callback:prettifyJSON
-        }
-    });
+    '<section id="sourcePaneWrapper" class="pane">'
+    + '<div class="pane-title">'
+    +   '<span class="pane-title-main"><strong>Source</strong></span>'
+    +   '<span id="sourceFindReplaceMount" class="pane-title-search-host">'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="undo" title="Undo">Undo</button>'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="redo" title="Redo">Redo</button>'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="outdent" title="Outdent">Outdent</button>'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="indent" title="Indent">Indent</button>'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="theme" title="Toggle theme">Theme</button>'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="top" title="Back to top">'
+    +       '<i class="fa fa-angle-double-up"></i>'
+    +     '</button>'
+    +     '<button class="halfsizeBtn" type="button" data-pane-default-act="bottom" title="Go to bottom">'
+    +       '<i class="fa fa-angle-double-down"></i>'
+    +     '</button>'
+    +   '</span>'
+    + '</div>'
+    + '<textarea id="sourcePane" spellcheck="false"></textarea>'
+    + '</section>'
+    + '<section id="listingPaneWrapper" class="pane listing-pane">'
+    + '<div class="pane-title">'
+    +   '<span class="pane-title-main">'
+    +     '<strong>Listing</strong>'
+    +     '<input id="listingColumnsInput" class="listing-columns-input" type="text" value="{adr:0,code:6,lbl:15,ins:25,opr:30,com:46}" title="Listing columns: address, code bytes, label, instruction, operand, comment" spellcheck="false" />'
+    +   '</span>'
+    +   '<span id="listingInfo">compile()</span>'
+    + '</div>'
+    + '<textarea id="listingPane" readonly spellcheck="false"></textarea>'
+    + '</section>'
+    + '<section id="jsonPaneWrapper" class="pane json-pane">'
+    + '<div class="pane-title">'
+    +   '<span class="pane-title-main"><strong>JSON output</strong></span>'
+    +   '<span class="pane-title-search-host">'
+    +     '<span id="jsonInfo">not assembled</span>'
+    +     '<button class="halfsizeBtn" id="copyJsonButton" type="button" title="Copy JSON">Copy JSON</button>'
+    +   '</span>'
+    + '</div>'
+    + '<div id="jsonMount" class="json-mount" tabindex="0"></div>'
+    + '</section>';   
 
     bytePaneHost.innerHTML =
-        oPANE.getHTML("", {
-            id:"bytePaneWrapper",
-            class:"pane byte-pane",
-            header:{
-                title:"Byte code",
-                class:"pane-title",
-                infoHTML:'<span id="byteCodeInfo">0 bytes</span>'
-                    + '<button class="halfsizeBtn" id="scrollTopButton" type="button" title="Back to top">'
-                    + '<i class="fa fa-angle-double-up"></i>'
-                    + '</button>'
-            },
-            body:{
-                id:"byteCodePane",
-                tag:"textarea",
-                content:"",
-                attr:{readonly:true,spellcheck:false}
-            }
-        });
+    '<section id="bytePaneWrapper" class="pane byte-pane">'
+    + '<div class="pane-title">'
+    +   '<span class="pane-title-main"><strong>Byte code</strong></span>'
+    +   '<span class="pane-title-search-host">'
+    +     '<span id="byteCodeInfo">0 bytes</span>'
+    +     '<button class="halfsizeBtn" id="scrollTopButton" type="button" title="Back to top">'
+    +       '<i class="fa fa-angle-double-up"></i>'
+    +     '</button>'
+    +   '</span>'
+    + '</div>'
+    + '<textarea id="byteCodePane" readonly spellcheck="false"></textarea>'
+    + '</section>'; 
 
 var fileInput = document.getElementById("fileInput");
 var assembleButton = document.getElementById("assembleButton");
@@ -1913,8 +1890,20 @@ function installAsmPaneColumnHandles() {
  }
 
 function equalizePaneHeaders() {
-    if (window.oPANE && typeof oPANE.equalizePaneHeaderHeights == "function")
-        oPANE.equalizePaneHeaderHeights("#asmPaneHost .com-pane-title, #bytePaneHost .com-pane-title");
+    var headers = Array.prototype.slice.call(document.querySelectorAll("#asmPaneHost .pane-title, #bytePaneHost .pane-title"));
+    if (!headers.length) return;
+
+    headers.forEach(function(h) {
+        h.style.minHeight = "";
+        h.style.height = "";
+    });
+
+    var max = headers.reduce(function(m, h) {
+        return Math.max(m, Math.ceil(h.getBoundingClientRect().height || 0));
+    }, 0);
+
+    if (max > 0) headers.forEach(function(h) { h.style.minHeight = max + "px"; });
+
 }
 
 function normalizeLineEndingsInfo(text) {
@@ -2047,41 +2036,7 @@ try {
 } catch (_ignore) {}
 applyAppTheme(appThemeName);
 
-if (typeof oPANE.createPaneHeaderWidgetManager == "function") {
-    sourceHeaderWidgetManager = oPANE.createPaneHeaderWidgetManager("sourceFindReplaceMount", {
-        defaultId:"default",
-        defaultHTML:oPANE.defaultPaneHeaderWidgetHTML(),
-        onChange:function(){ equalizePaneHeaders(); }
-    });
-    bindSourceDefaultWidgetActions();
-}
-
-if (typeof oPANE.bindFindReplace == "function") {
-    sourceFindReplace = oPANE.bindFindReplace("sourcePane", {
-        id:"sourceFindReplace",
-        mount:"sourceFindReplaceMount",
-        inline:true,
-        overlayExpand:true,
-        floatingNav:true,
-        pageScrollOnMatch:true,
-        pageScrollOffset:72,
-        manager:sourceHeaderWidgetManager,
-        scheme:appThemes[appThemeName].findReplace,
-        barWidth:"390px",
-        debounce_ms:500,
-        onChange:function(){ syncPaneHeightsFromListing(); equalizePaneHeaders(); }
-    });
-
-    listingFindReplace = oPANE.bindFindReplace("listingPane", {
-        id:"listingFindReplace",
-        inline:false,
-        scheme:appThemes[appThemeName].findReplace,
-        barWidth:"400px",
-        debounce_ms:500,
-        onChange:function(){ autosizeListingPane(); syncPaneHeightsFromListing(); }
-    });
-   
-}
+bindSourceDefaultWidgetActions();
 
 function setStatus(text, kind) {
     statusEl.className = "status" + (kind ? " " + kind : "");
