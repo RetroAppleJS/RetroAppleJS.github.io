@@ -1,4 +1,4 @@
-# RetroAppleJS Debugger — User Guide
+## Debugger
 
 This guide gets you from source code to a working step-by-step debugger session as quickly as possible, and then explains the debugger features in more detail.
 
@@ -14,11 +14,11 @@ That is all you need for a first debugging session.
 
 ---
 
-## 1. Quick Start: Debug `sample.S`
+### 1. Quick Start: Debug `sample.S`
 
 The Assembler tab already provides a sample source file. The quickest way to create a debugger session is to assemble that source and send the result directly to the debugger.
 
-### Step-by-step
+#### Step-by-step
 
 1. Go to the **Assembler** tab.
 2. Leave the default `sample.S` source in place.
@@ -40,7 +40,7 @@ After the first step, the debugger starts showing:
 
 ---
 
-## 2. What the Assembler Sends to the Debugger
+### 2. What the Assembler Sends to the Debugger
 
 The debugger needs executable bytes, a program counter location, and optional human-readable context. The Assembler handoff supplies all of this automatically.
 
@@ -83,7 +83,7 @@ The `.DEB` session is a practical debugger container. It holds the byte code, th
 
 ---
 
-## 3. Byte Code + Symbols = Readable Debugging
+### 3. Byte Code + Symbols = Readable Debugging
 
 The CPU only executes bytes. Symbols do not change execution. Symbols make execution understandable for humans.
 
@@ -111,7 +111,7 @@ Without symbols, the debugger can still disassemble instructions, but it may onl
 
 ---
 
-## 4. The Debugger Data Sources
+### 4. The Debugger Data Sources
 
 The debugger can be started from different data sources.
 
@@ -142,7 +142,7 @@ The debugger can be started from different data sources.
                                                          │ Listing caret      │
                                                          └────────────────────┘
 
-### Main sources
+#### Main sources
 
 | Source | What it provides | Typical use |
 |---|---|---|
@@ -153,7 +153,7 @@ The debugger can be started from different data sources.
 
 ---
 
-## 5. The Debugger Screen
+### 5. The Debugger Screen
 
 The debugger is centered around three ideas:
 
@@ -177,11 +177,11 @@ Typical panes:
 
 ---
 
-## 6. CPU Watch
+### 6. CPU Watch
 
 The CPU Watch pane shows the state of the 6502 CPU.
 
-### Registers
+#### Registers
 
 | Register | Meaning |
 |---|---|
@@ -192,7 +192,7 @@ The CPU Watch pane shows the state of the 6502 CPU.
 | `SR` | Status Register |
 | `SP` | Stack Pointer |
 
-### Status flags
+#### Status flags
 
 The `SR` register contains eight flags, shown from bit 7 to bit 0:
 
@@ -219,7 +219,7 @@ The exact layout may vary, but the goal is always the same: quickly show what ch
 
 ---
 
-## 7. CPU Trace
+### 7. CPU Trace
 
 The CPU Trace is a chronological log of executed instructions.
 
@@ -242,7 +242,7 @@ When symbols are available, labels such as `PLOT` or `GBASCALC` can appear inste
 
 ---
 
-## 8. Listing Caret and Origin
+### 8. Listing Caret and Origin
 
 When byte code is sent from the Assembler to the Debugger, the debugger uses the source origin address to place the Listing caret.
 
@@ -263,7 +263,7 @@ If the caret or trace starts at the wrong place, first check that the assembled 
 
 ---
 
-## 9. Stepping Through Code
+### 9. Stepping Through Code
 
 Use **Step one instruction forward** to execute exactly one instruction.
 
@@ -283,11 +283,11 @@ This is especially useful for learning or verifying low-level 6502 behavior, bec
 
 ---
 
-## 10. Debugging with MemCap
+### 10. Debugging with MemCap
 
 The Assembler handoff is the easiest path for your own source code. For emulator memory, ROMs, or already-running code, use **MemCap**.
 
-### MemCap workflow
+#### MemCap workflow
 
 1. In the emulator, use **MemCap** to capture the full memory space.
 2. Copy the memory capture.
@@ -323,7 +323,7 @@ The Assembler handoff is the easiest path for your own source code. For emulator
       └──────────────────────┘
 
 
-### Example symbol file
+#### Example symbol file
 
 For the Apple II Monitor ROM, a matching symbol file can be loaded from:
 
@@ -333,7 +333,7 @@ A memory capture gives the debugger the bytes. The symbol file gives those bytes
 
 ---
 
-## 11. Working with Symbol Files
+### 11. Working with Symbol Files
 
 A symbol file can provide:
 
@@ -359,7 +359,7 @@ The bytes are the same. The symbols make the code readable.
 
 ---
 
-## 12. Debugger Sessions
+### 12. Debugger Sessions
 
 A debugger session, such as `sample.DEB`, collects the state needed to continue or reproduce a debugging setup.
 
@@ -376,7 +376,7 @@ The Assembler handoff prepares `sample.DEB` automatically when you send byte cod
 
 ---
 
-## 13. Memory Notes
+### 13. Memory Notes
 
 The Apple II uses a 16-bit address space, so the debugger works with a 64K memory range:
 
@@ -397,9 +397,9 @@ Exact behavior depends on the current emulator configuration and memory mapping.
 
 ---
 
-## 14. Troubleshooting
+### 14. Troubleshooting
 
-### The debugger opens, but stepping starts at the wrong address
+#### The debugger opens, but stepping starts at the wrong address
 
 Check:
 
@@ -408,11 +408,11 @@ Check:
 - the current `PC`,
 - and whether the Listing caret was moved manually.
 
-### The trace shows raw addresses instead of labels
+#### The trace shows raw addresses instead of labels
 
 Load a matching symbol file, or use the Assembler handoff so the assembler can provide its symbol table automatically.
 
-### The trace does not match the source
+#### The trace does not match the source
 
 Check that:
 
@@ -421,11 +421,11 @@ Check that:
 - the memory dump matches the symbol file,
 - and the Program Counter points into the loaded code.
 
-### ROM symbols look wrong
+#### ROM symbols look wrong
 
 Make sure the symbol file belongs to the exact ROM image or memory capture you are debugging.
 
-### A memory capture does not step correctly
+#### A memory capture does not step correctly
 
 Check that:
 
@@ -436,7 +436,7 @@ Check that:
 
 ---
 
-## 15. Practical First Exercise
+### 15. Practical First Exercise
 
 Use the default sample source.
 
