@@ -30,6 +30,7 @@ const _o = {"tools":{}
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
         ,"EMU_legacyJS":false
+        ,"EMU_vid_mode":""
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
         ,"EMU_Updates_s":10                 // Emulator intervals per second 
@@ -97,8 +98,9 @@ function EMU_init()
                 oEMU.system[oCOM.URL.uri[uri]] = {active:true};
                 for(var i in _TABS) _TABS[i].DEF_SYS = oCOM.URL.uri[uri];
             break;
-            case "gpu":
-                // TODO initialise GPU algorithm instead of CPU
+            case "disp":
+                // TODO select graphics mode (gpu, wave, threejs, canvas)
+                _o.EMU_vid_mode = String(oCOM.URL.uri[uri] || "").trim();
             break;
             case "addr":
                 oCOM.URL.addr = oCOM.URL.uri[uri];
