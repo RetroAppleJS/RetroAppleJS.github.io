@@ -24,15 +24,35 @@ function Apple2VideoMUX(canvas)
     };
 
     this.renderModes = [
-        { name: "GPU",     ctor: Apple2VideoGPU,    context: "canvas" },
-        { name: "Wave",    ctor: Apple2VideoWave,   context: "canvas" },
-        { name: "ThreeJS", ctor: Apple2VideoTHREE,  context: "canvas" },
-        { name: "video",   ctor: Apple2VideoCanvas, context: "2d"     }
+        { name: "gpu",     ctor: Apple2VideoGPU,    context: "canvas" },
+        { name: "wave",    ctor: Apple2VideoWave,   context: "canvas" },
+        { name: "threejs", ctor: Apple2VideoTHREE,  context: "canvas" },
+        { name: "canvas",   ctor: Apple2VideoCanvas, context: "2d"     }
     ];
 
-    this.modeIndex = 0;
+    this.getRenderModeIndexByName = function(modeName)
+    {
+        var name = String(modeName || "").trim().toLowerCase();
+        if(!name) return 0;
+
+        for(var i=0; i<this.renderModes.length; i++)
+        {
+            if(String(this.renderModes[i].name).toLowerCase() == name)
+                return i;
+        }
+
+        console.warn("Unknown video display mode '" + modeName + "'; using " + this.renderModes[0].name);
+        return 0;
+    };
+
+    var defaultMode =
+        (typeof(_o) != "undefined" && typeof(_o.EMU_vid_mode) != "undefined")
+        ? _o.EMU_vid_mode
+        : "";
+
+    this.modeIndex = this.getRenderModeIndexByName(defaultMode);
     this.active = null;
-    this.activeName = "GPU";
+    this.activeName = this.renderModes[this.modeIndex].name;
 
     this.renderers = {};
     this.canvases = {};
@@ -63,7 +83,7 @@ function Apple2VideoMUX(canvas)
         var base = this.getBaseCanvas();
         var c;
 
-        if(spec.name == "GPU" && base)
+        if(spec.name == this.renderModes[0].name && base)
             c = base;
         else if(base)
             c = base.cloneNode(false);
@@ -162,7 +182,7 @@ function Apple2VideoMUX(canvas)
 
     this.getRenderMode = function()
     {
-        return this.activeName || "GPU";
+        return this.activeName || this.this.renderModes[0].name;
     };
 
     this.updateRenderModeUI = function(uiEl)
