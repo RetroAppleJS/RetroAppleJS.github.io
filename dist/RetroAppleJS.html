@@ -27785,7 +27785,7 @@ Label1 TXA
     var DBG_runTimer = null;
     var DBG_runInstructionCount = 0;
     var DBG_runLastStatusStep = 0;
-    var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45};
+    var DBG_defaultTraceColumns = {stp:0,pc:5,byt:10,opc:19,rA:32,rX:35,rY:38,rSP:41,rP:44,cyc:47};
     var DBG_debugSessionFileName = "sample.DEB";
 
     DBG_listingRowByPc.fill(-1);
@@ -28944,7 +28944,7 @@ Label1 TXA
 
      function DBG_traceColumnsValue() {
        var input = DBG_el("DBG_traceColumnsInput");
-       return input ? input.value : "{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45}";
+       return input ? input.value : "{stp:0,pc:5,byt:10,opc:19,rA:32,rX:35,rY:38,rSP:41,rP:44,cyc:47}";
 
       }
  
@@ -28959,7 +28959,7 @@ Label1 TXA
  
      function DBG_formatTraceParts(parts) {
        var columns = DBG_parseTraceColumns(DBG_traceColumnsValue());
-       var order = ["stp","pc","byt","opc","rA","rX","rY","rP","rSP","cyc"];
+       var order = ["stp","pc","byt","opc","rA","rX","rY","rSP","rP","cyc"];
        var line = "";
  
        for (var i = 0; i < order.length; i++) {
@@ -29376,8 +29376,8 @@ Label1 TXA
           rA:  DBG_hexByte(before.a || 0),
           rX:  DBG_hexByte(before.x || 0),
           rY:  DBG_hexByte(before.y || 0),
-          rP:  DBG_hexByte(before.p || 0),
-          rSP: DBG_hexByte(before.sp == null ? 0xff : before.sp)
+          rSP: DBG_hexByte(before.sp == null ? 0xff : before.sp),
+          rP:  DBG_hexByte(before.p || 0)
         };
 
         if(DBG_showCyclesEnabled()) parts.cyc = String(record.cycles || 0);
@@ -30018,7 +30018,7 @@ Label1 TXA
                 </label>
                  <label>
                    Columns 
-                   <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:30,rX:33,rY:36,rP:39,rSP:42,cyc:45}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP, cycles" spellcheck="false" onchange="DBG_rebuildTraceLines();DBG_renderTraceView()">
+                   <input id="DBG_traceColumnsInput" type="text" value="{stp:0,pc:5,byt:10,opc:19,rA:32,rX:35,rY:38,rSP:41,rP:44,cyc:47}" title="Trace columns: step, PC, bytes, opcode, A, X, Y, P, SP, cycles" spellcheck="false" onchange="DBG_rebuildTraceLines();DBG_renderTraceView()">
                  </label>
                 <label>Show cycles <input id="DBG_showCyclesInput" type="checkbox" checked onchange="DBG_rebuildTraceLines();DBG_renderTraceView()"></label>
                 <label>Show PC histogram <input id="DBG_showPcHistogramInput" type="checkbox" onchange="DBG_stub('Show PC histogram')"></label>
