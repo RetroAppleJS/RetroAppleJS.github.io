@@ -9604,6 +9604,7 @@ const _o = {"tools":{}
         ,"EMU_key_id":"keybox"
         ,"EMU_legacyJS":false
         ,"EMU_vid_mode":""
+        ,"EMU_disk_cat":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
         ,"EMU_Updates_s":10                 // Emulator intervals per second 
@@ -9724,6 +9725,9 @@ function EMU_init()
                     //oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
                 }
 
+            break;
+            case "CAT":
+                _o.EMU_disk_cat = String(oCOM.URL.uri[uri] || "").trim().toLowerCase() == "true";
             break;
             case "D1":
                 var dsk = oCOM.URL.uri["D1"];
@@ -9851,6 +9855,11 @@ function EMU_init()
     //var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,state:{active:false}},"AppleDisk");
     var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
     if(disk2===undefined) console.error("disk2 not found ??")
+
+    if(_o.EMU_disk_cat === true && disk2 && typeof(disk2.diskMenu_detail) == "function")
+    {
+        disk2.diskMenu_detail({id:"softwareCat"});
+    }
 
     keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
     keys.init();
