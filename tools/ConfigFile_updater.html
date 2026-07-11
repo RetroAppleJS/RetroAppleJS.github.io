@@ -83,6 +83,11 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     }
 
     // EXECUTE
+    var s = oPROCESS.process_table(["[ROMRANGES]","\|","\n|","\|\n\n"],"const _CFG_ROMRANGES",this.responseText,this.responseURL);
+    document.getElementById('dest').innerHTML += s;
+    oPROCESS.changeDATA = bck_method; // restore the abstract method
+
+    // EXECUTE
     var s = oPROCESS.process_table(["[IORANGES]","\|","\n|","\|\n\n"],"const _CFG_IORANGES",this.responseText,this.responseURL);
     document.getElementById('dest').innerHTML += s;
     oPROCESS.changeDATA = bck_method; // restore the abstract method
