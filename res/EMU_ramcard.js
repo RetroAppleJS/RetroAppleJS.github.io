@@ -36,7 +36,9 @@ function RamCard()
     var bDebug_mon = false;     // debug RAM Write monitor
     var bDebug     = false;     // debug all RAM R/W operations   
 
-    const MEM_MAP_ORG   = 0xD000;                     // the address space origin this ramcard typically overrides
+    const ROM_ID        = _CFG_SYSCODE["A2P"].ROM;
+    const ROM_CFG       = _CFG_ROMRANGES[ROM_ID];
+    const ROM_RANGE     = oCOM.parseRngExpr(ROM_CFG.ROM);
 
     const BANK_SIZE     = 0x1000;                     // 4K bank memory size = contiguous bank offset  = 4Kbytes  
     const CONT_SIZE     = 0x2000;                     // 8K contiguous memory size
@@ -128,9 +130,9 @@ function RamCard()
                 ,"mappings":[
                     {
                          "id":"upper-memory-read"
-                        ,"space":"A2P_R"
+                        ,"space":ROM_ID
                         ,"op":"RD"
-                        ,"range":"$D000-$FFFF"
+                        ,"range":ROM_CFG.ROM
                         ,"handler":state.mapped ? "mapRead" : "@default"
                         ,"target":state.mapped ? "MS16K RAM" : "Apple II ROM"
                         ,"enabled":true
@@ -138,9 +140,9 @@ function RamCard()
                     },
                     {
                          "id":"upper-memory-write"
-                        ,"space":"A2P_R"
+                        ,"space":ROM_ID
                         ,"op":"WR"
-                        ,"range":"$D000-$FFFF"
+                        ,"range":ROM_CFG.ROM
                         ,"handler":"mapWrite"
                         ,"target":"MS16K RAM - bank "+state.BANK+" and contiguous 8K"
                         ,"enabled":writeEnabled
@@ -159,8 +161,8 @@ function RamCard()
         oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
     }
 
-    function abs2rel(addr)     { return ((addr & 0xFFFF) - MEM_MAP_ORG); }
-    function rel2abs(rel_addr) { return (rel_addr + MEM_MAP_ORG) & 0xFFFF; }
+    function abs2rel(addr)     { return ((addr & 0xFFFF) - ROM_RANGE.from); }
+    function rel2abs(rel_addr) { return (rel_addr + ROM_RANGE.from) & 0xFFFF; }
 
     // translate addresses from the bus to ramcard addresses 
     function ramcard_address_encoder(addr,bank_bit) 

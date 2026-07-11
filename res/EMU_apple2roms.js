@@ -1560,7 +1560,7 @@ const apple2Rom = new Uint8Array([
         0xf5, 0x03, 0xfb, 0x03, 0x62, 0xfa, 0x59, 0xff
 ]); // apple2Rom
 
-alert(oCOM.getHexWord( oCOM.crc16(apple2Rom) ))
+//alert(oCOM.getHexWord( oCOM.crc16(apple2Rom) ))
 
 const apple2RomLabels = {0xFBE2:"BEEP"}
 
