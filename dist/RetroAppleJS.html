@@ -19630,8 +19630,7 @@ function RamCard()
 
 
         var ramcard = apple2plus.hwObj().io.HASH2obj( this.mount.hash  ); // reference the ramcard object by hash
-        oCOM.addRefreshEvent(ramcard.MEM_monitoring,"MEM_monitoring_MS16K",false);  // TODO: investigate why memory monitoring does not take extended ram
-        oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
+        oCOM.addRefreshEvent(ramcard.MEM_monitoring,"MEM_monitoring_MS16K",false);  // enabled together with the main memory monitor by the UI button
     }
 
     function abs2rel(addr)     { return ((addr & 0xFFFF) - ROM_RANGE.from); }
@@ -19667,7 +19666,7 @@ function RamCard()
         if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
 
 
-        this.update_MEM_status();
+        // MEM_monitoring() updates the soft-switch display only while monitoring is enabled.
         return status_nibble;
     };
 
@@ -22625,8 +22624,10 @@ this.write = function(rel_addr,d8)
                 + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
                 + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\""
                         +"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
-                        +"apple2plus.hwObj().enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring'));"
-                        +"oEMU.component.IO.RamCard?.enable_MEM_monitoring(oCOM.toggleRefreshEvent('MEM_monitoring_MS16K'));"
+                        +"var bMEM_monitoring=oCOM.toggleRefreshEvent('MEM_monitoring');"
+                        +"apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
+                        +"oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
+                        +"apple2plus.hwObj().io.PCODE2obj('MS16K')[0]?.enable_MEM_monitoring(bMEM_monitoring);"
                         +"\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
