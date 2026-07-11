@@ -128,7 +128,7 @@ function RamCard()
                 ,"mappings":[
                     {
                          "id":"upper-memory-read"
-                        ,"space":"READ MAPPING"
+                        ,"space":"A2P_R"
                         ,"op":"RD"
                         ,"range":"$D000-$FFFF"
                         ,"handler":state.mapped ? "mapRead" : "@default"
@@ -138,7 +138,7 @@ function RamCard()
                     },
                     {
                          "id":"upper-memory-write"
-                        ,"space":"WRITE MAPPING"
+                        ,"space":"A2P_R"
                         ,"op":"WR"
                         ,"range":"$D000-$FFFF"
                         ,"handler":"mapWrite"

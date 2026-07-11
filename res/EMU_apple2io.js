@@ -1544,11 +1544,9 @@ this.write = function(rel_addr,d8)
         else
         {
             var slot = this.slot_cfg.slotConfig[n] || {};
-
-            var slot = this.slot_cfg.slotConfig[n] || {};
             document.getElementById("slotConfig_popup").innerHTML =
-                slotName
-                + close
+                //slotName
+                close
                 + slotConfigDetail_html(slot);
 
             //console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
@@ -1640,8 +1638,10 @@ this.write = function(rel_addr,d8)
 
         return ""
             + "<div class='appbox' style='width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
+            
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
+            + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
             + "</div>"
             + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
@@ -1728,7 +1728,13 @@ this.write = function(rel_addr,d8)
      * callback functions; these functions cannot be displayed through
      * JSON.stringify().
      */
-    function slotConfigDetail_html(slot)
+    /*
+     * Kept temporarily as a legacy renderer for comparison/debugging.
+     *
+     * It must not use the slotConfigDetail_html name: a later function
+     * declaration with that name overrides the compact renderer above.
+     */
+    function slotConfigDetail_legacy_html(slot)
     {
         var p = slot && slot.peripheral;
 
