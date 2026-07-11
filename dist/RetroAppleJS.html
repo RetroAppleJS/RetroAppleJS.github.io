@@ -13801,6 +13801,8 @@ const apple2Rom = new Uint8Array([
         0xf5, 0x03, 0xfb, 0x03, 0x62, 0xfa, 0x59, 0xff
 ]); // apple2Rom
 
+alert(oCOM.getHexWord( oCOM.crc16(apple2Rom) ))
+
 const apple2RomLabels = {0xFBE2:"BEEP"}
 
 const apple2CharRom = new Uint8Array([
@@ -19595,7 +19597,7 @@ function RamCard()
                 ,"mappings":[
                     {
                          "id":"upper-memory-read"
-                        ,"space":"READ MAPPING"
+                        ,"space":"A2P_R"
                         ,"op":"RD"
                         ,"range":"$D000-$FFFF"
                         ,"handler":state.mapped ? "mapRead" : "@default"
@@ -19605,7 +19607,7 @@ function RamCard()
                     },
                     {
                          "id":"upper-memory-write"
-                        ,"space":"WRITE MAPPING"
+                        ,"space":"A2P_R"
                         ,"op":"WR"
                         ,"range":"$D000-$FFFF"
                         ,"handler":"mapWrite"
@@ -22003,11 +22005,9 @@ this.write = function(rel_addr,d8)
         else
         {
             var slot = this.slot_cfg.slotConfig[n] || {};
-
-            var slot = this.slot_cfg.slotConfig[n] || {};
             document.getElementById("slotConfig_popup").innerHTML =
-                slotName
-                + close
+                //slotName
+                close
                 + slotConfigDetail_html(slot);
 
             //console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
@@ -22099,8 +22099,10 @@ this.write = function(rel_addr,d8)
 
         return ""
             + "<div class='appbox' style='width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
+            
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
+            + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
             + "</div>"
             + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
@@ -22187,7 +22189,13 @@ this.write = function(rel_addr,d8)
      * callback functions; these functions cannot be displayed through
      * JSON.stringify().
      */
-    function slotConfigDetail_html(slot)
+    /*
+     * Kept temporarily as a legacy renderer for comparison/debugging.
+     *
+     * It must not use the slotConfigDetail_html name: a later function
+     * declaration with that name overrides the compact renderer above.
+     */
+    function slotConfigDetail_legacy_html(slot)
     {
         var p = slot && slot.peripheral;
 
