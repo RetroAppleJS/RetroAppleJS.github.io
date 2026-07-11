@@ -125,8 +125,8 @@ var APPLE2_THREE_CFG_DEFAULT =
         }
         catch(e) {}
 
-        if (global.THREE_scene !== undefined)
-            return global.THREE_scene;
+        if (window.THREE_scene !== undefined)
+            return window.THREE_scene;
 
         return null;
     }

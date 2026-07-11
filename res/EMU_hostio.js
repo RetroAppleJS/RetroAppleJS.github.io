@@ -263,8 +263,13 @@ function AppleBoard()
             });
         }
 
-        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
- 
+        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">' 
+        + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+        + '<tr>'
+        + '<th style="text-align:left;padding:2px 4px;">Device</th>'
+        + '<th style="text-align:left;padding:2px 4px;">Controls</th>'
+        + '</tr>';
+
         for(var i=0;i<rows.length;i++)
         {
             s += '<tr>'
