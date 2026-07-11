@@ -66,6 +66,13 @@ We aim to have all the documentation available in markdown format, for easy onli
 * log / phy: logical slots = accessible via software (e.g. PR#n), physcial slot = real plug-in card slot
 
 
+## ROM RANGES
+
+|[ROMRANGES] | ROM          | CRC16 |
+| :--------: | :----------: | :---: |
+| A2P_R      | $D000-$FFFF  | $CF45 |
+
+
 ## I/O RANGES
 
 |[IORANGES]            | HostIO  | HostROM  | SlotIO     | SlotROM    |
