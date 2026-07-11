@@ -1519,39 +1519,23 @@ this.write = function(rel_addr,d8)
     this.slotConfig_detail = function(slotName)
     {
         var n = slotName2n(slotName)
-        //oCOM.POPUP.on("slotConfig_popup");
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
-        // TODO extend here to all popup customisations?
-    
+        var slot = this.slot_cfg.slotConfig[n] || {};
+        var html = close + slotConfigDetail_html(slot);
+
+        
         if(n==0)
         {
+            html += "<div style='overflow-y:scroll;height:350px'>"
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
             var board = this.PCODE2obj("A2BO")[0];
-            document.getElementById("slotConfig_popup").innerHTML =
-
-                "(EMU_apple2io.js) board I/O ["+model+"]" + close 
-
-                + (board && typeof(board.deviceList_html)=="function" ? board.deviceList_html(model) : "")
-                + (board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "")
-                
-                
-            oCOM.POPUP.toggle("slotConfig_popup");
-            return;
-        }
-        else
-        {
-            var slot = this.slot_cfg.slotConfig[n] || {};
-            document.getElementById("slotConfig_popup").innerHTML =
-                //slotName
-                close
-                + slotConfigDetail_html(slot);
-
-            //console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
-            //alert("this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n]));
-            oCOM.POPUP.toggle("slotConfig_popup");
+            html += "<div class='appbox' style='float:none;'>"+(board && typeof(board.deviceList_html)=="function" ? board.deviceList_html(model) : "")+"</div>"
+                 + "<div class='appbox' style='float:none;'>"+(board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "") +"</div>";
+            html += "</div>"
         }
 
-
+        document.getElementById("slotConfig_popup").innerHTML = html;
+        oCOM.POPUP.toggle("slotConfig_popup");
     }
 
     this.slotConfig_addressToggle = function(element,headerID,showOffset)
@@ -1617,25 +1601,39 @@ this.write = function(rel_addr,d8)
         for(var j=0;j<dynamicMappings.length;j++)
         {
             var mapping = dynamicMappings[j];
-            rows.push({
-                 "space":mapping.space || "MEMORY MAPPING"
-                ,"cpuFrom":mapping.from
-                ,"cpuTo":mapping.to
-                ,"operations":[{
-                     "op":mapping.op
-                    ,"title":mappingTooltip(mapping)
-                    ,"enabled":mapping.enabled!==false
-                }]
-            });
+            var space = mapping.space || "MEMORY MAPPING";
+            var operation = {
+                 "op":mapping.op
+                ,"title":mappingTooltip(mapping)
+                ,"enabled":mapping.enabled!==false
+            };
+            var row = rows.find(function(candidate)
+            {
+                return candidate.space===space &&
+                    candidate.cpuFrom===mapping.from &&
+                    candidate.cpuTo===mapping.to &&
+                    candidate.offsetFrom===undefined &&
+                    candidate.offsetTo===undefined;
+             });
+
+            /* Keep RD/WR as separate evidence, but combine their display row. */
+            if(row)
+                row.operations.push(operation);
+            else
+                rows.push({
+                     "space":space
+                    ,"cpuFrom":mapping.from
+                    ,"cpuTo":mapping.to
+                    ,"operations":[operation]
+                });
+
         }
 
         var body = "";
         for(var r=0;r<rows.length;r++) body += mappingRow_html(rows[r],headerID);
         if(!body) body = "<tr><td colspan='3' style='padding:8px'>No mappings registered.</td></tr>";
 
-        return ""
-            + "<div class='appbox' style='width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
-            
+        return "<div class='appbox' style='float:none;width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
@@ -1647,7 +1645,8 @@ this.write = function(rel_addr,d8)
             + "<th style='padding:4px 6px'>R/W</th>"
             + "</tr></thead>"
             + "<tbody>"+body+"</tbody>"
-            + "</table></div>";
+            + "</table></div>"
+            
     }
 
     function mappingRow_html(row,headerID)
