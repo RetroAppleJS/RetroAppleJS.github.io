@@ -37,7 +37,6 @@ function RamCard()
     var bDebug     = false;     // debug all RAM R/W operations   
 
     const MEM_MAP_ORG   = 0xD000;                     // the address space origin this ramcard typically overrides
-    const MEM_MAP_STEP  = 0x1000;                     // address space is divided in chunks of 0x1000 bytes (according to ramcard_address_encoder() logic)
 
     const BANK_SIZE     = 0x1000;                     // 4K bank memory size = contiguous bank offset  = 4Kbytes  
     const CONT_SIZE     = 0x2000;                     // 8K contiguous memory size
@@ -64,57 +63,48 @@ function RamCard()
     }
     var softswitch_diff = {RE:0,WE:0,BANK:0};
 
+    this.mapRead = function(addr)
+    {
+        return card.read(abs2rel(addr));
+    };
+
+    this.mapWrite = function(addr,d8)
+    {
+        var rel_addr = abs2rel(addr);
+        var sw = softswitch[card.state.softswitch_pos] || {};
+
+        card.write(rel_addr,d8);
+        card.mark_MEM_monitoring(
+            rel_addr<BANK_SIZE ? (sw.BANK==0 ? "bankA" : "bankB") : "cont",
+            rel_addr
+        );
+    };
+
     this.updateMemoryMap = function(bRamcardActive)
     {
         if(hw===undefined) { hw = apple2plus.hwObj(); console.warn("EMU_ramcard.js lost hw from scope") }
+        if(io===undefined) { io = apple2plus.hwObj().io; console.warn("EMU_ramcard.js lost io from scope") }
 
-        if(this.bMEM_monitoring != hw.bMEM_monitoring) 
-            this.enable_MEM_monitoring(hw.bMEM_monitoring);  // follow mem monitoring flag from hardware 
-        if(bDebug_sw) 
+        if(this.bMEM_monitoring != hw.bMEM_monitoring)
+            this.enable_MEM_monitoring(hw.bMEM_monitoring);  // follow mem monitoring flag from hardware
+        if(bDebug_sw)
+
             debug_updateMemoryMap(bRamcardActive,this);      // log memory map updates
-        if (!hw || !hw.RD || !hw.WR || !hw.default_map) return false;
+        if(!io || !io.MEMORY_MAP || !this.mount) return false;
 
-        const xD = hw.lineDecode(MEM_MAP_ORG), xE = hw.lineDecode(MEM_MAP_ORG+MEM_MAP_STEP), xF = hw.lineDecode(MEM_MAP_ORG+MEM_MAP_STEP+MEM_MAP_STEP);
+        var sw = softswitch[this.state.softswitch_pos] || {};
+        var ruleID = this.id.PCODE+":"+this.mount.hash;
+        var ok = io.MEMORY_MAP.runRule(ruleID,{
+             "position":"$"+oCOM.getHexByte(this.state.softswitch_pos)
+            ,"RE":sw.RE==1
+            ,"WE":sw.WE==1
+            ,"RR":this.state.RR==1
+            ,"BANK":sw.BANK==0 ? "A" : "B"
+            ,"mapped":!!bRamcardActive
+        });
 
-        // READ MAPPING
-        if (bRamcardActive)
-        {   
-            // PERIPHERAL RAM IS SELECTED FOR READ
-            hw.RD[xD] = function(addr) { return card.read(abs2rel(addr)); };
-            hw.RD[xE] = function(addr) { return card.read(abs2rel(addr)); };
-            hw.RD[xF] = function(addr) { return card.read(abs2rel(addr)); };
-        }
-        else
-        {  
-            // HARDWARE ROM IS SELECTED FOR READ
-            hw.RD[xD] = hw.default_map.RD[xD];
-            hw.RD[xE] = hw.default_map.RD[xE];
-            hw.RD[xF] = hw.default_map.RD[xF];
-        }
-
-        // WRITE MAPPING
-        hw.WR[xD] = function(addr,d8) 
-        { 
-            const rel_addr = abs2rel(addr);
-            const sw = softswitch[card.state.softswitch_pos];
-            card.write(rel_addr, d8);
-            card.mark_MEM_monitoring(sw.BANK==0?"bankA":"bankB",rel_addr); 
-        };
-        hw.WR[xE] = function(addr,d8)
-        { 
-            const rel_addr = abs2rel(addr);
-            card.write(rel_addr, d8); 
-            card.mark_MEM_monitoring("cont",rel_addr); 
-        };
-        hw.WR[xF] = function(addr,d8) 
-        { 
-            const rel_addr = abs2rel(addr);
-            card.write(rel_addr, d8);
-            card.mark_MEM_monitoring("cont",rel_addr); 
-        };
-
-        this.state.bMapped = bRamcardActive;
-        return true;
+        if(ok) this.state.bMapped = !!bRamcardActive;
+        return ok;
     };
 
     this.reset = function() { }   // language card settings remain unchanged at warm boot
@@ -126,6 +116,43 @@ function RamCard()
         debug_flush();
         this.state.bMapped = false;
         this.state.RR      = 0;
+
+        var ruleID = this.id.PCODE+":"+this.mount.hash;
+        io.MEMORY_MAP.addRule(ruleID,function(state)
+        {
+            var writeEnabled = state.WE && state.RR;
+            return {
+                 "owner":card
+                ,"source":"MS16K language-card soft switches"
+                ,"state":state
+                ,"mappings":[
+                    {
+                         "id":"upper-memory-read"
+                        ,"space":"READ MAPPING"
+                        ,"op":"RD"
+                        ,"range":"$D000-$FFFF"
+                        ,"handler":state.mapped ? "mapRead" : "@default"
+                        ,"target":state.mapped ? "MS16K RAM" : "Apple II ROM"
+                        ,"enabled":true
+                        ,"condition":"RE="+Number(state.RE)+"; mapped="+Number(state.mapped)+"; bank="+state.BANK
+                    },
+                    {
+                         "id":"upper-memory-write"
+                        ,"space":"WRITE MAPPING"
+                        ,"op":"WR"
+                        ,"range":"$D000-$FFFF"
+                        ,"handler":"mapWrite"
+                        ,"target":"MS16K RAM - bank "+state.BANK+" and contiguous 8K"
+                        ,"enabled":writeEnabled
+                        ,"condition":"WE="+Number(state.WE)+"; RR="+Number(state.RR)+"; bank="+state.BANK
+                    }
+                ]
+            };
+        });
+
+        // Register the initial ROM-read/RAM-write routing and its evidence.
+        this.updateMemoryMap(false);
+
 
         var ramcard = apple2plus.hwObj().io.HASH2obj( this.mount.hash  ); // reference the ramcard object by hash
         oCOM.addRefreshEvent(ramcard.MEM_monitoring,"MEM_monitoring_MS16K",false);  // TODO: investigate why memory monitoring does not take extended ram
@@ -156,11 +183,15 @@ function RamCard()
         debug_flush(); if(bDebug_sw) debug_soft_switch(sw,this.state);
         this.state.RR = sw.WE==1 ? (this.state.RR == 0 ? 1 : this.state.RR) : 0;  // only flip write-enable state after double trigger sw.WE==1
 
-        if((sw.WE==1 && this.state.RR==0) == false && sw.RE!=pre_sw.RE) // update memory map only after WRITE ENABLE was triggered twice
-        {
-            var ok = this.updateMemoryMap(!!sw.RE);
-            if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
-        }
+        // Refresh both the active callback table and its registered evidence.
+        var mapped = this.state.bMapped;
+        if((sw.WE==1 && this.state.RR==0) == false && sw.RE!=pre_sw.RE)
+            mapped = !!sw.RE;
+
+        var ok = this.updateMemoryMap(mapped);
+        if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
+
+
         this.update_MEM_status();
         return status_nibble;
     };

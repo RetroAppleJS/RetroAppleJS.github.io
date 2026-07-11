@@ -546,6 +546,243 @@ this.write = function(rel_addr,d8)
         return {"sInfo":slot_info,"pObj":peripheral_obj};
     }
 
+
+    /*
+     * Dynamic CPU memory mappings owned by peripherals.
+     *
+     * A peripheral registers a rule function. The rule receives a
+     * JSON-compatible state object and returns the complete mapping
+     * selected by that state.
+     *
+     * handler:
+     *   "@default"  -> restore the Apple II default callback
+     *   "methodName" -> use owner[methodName]
+     */
+    this.MEMORY_MAP =
+    {
+        rules: {},
+        evidence: {},
+
+        addRule: function(id,ruleFunction)
+        {
+            if(!id || typeof ruleFunction != "function")
+                return false;
+
+            this.rules[id] = ruleFunction;
+            return true;
+        },
+
+        runRule: function(id,state)
+        {
+            var ruleFunction = this.rules[id];
+
+            if(typeof ruleFunction != "function")
+                return false;
+
+            return this.mount(ruleFunction(state || {}));
+        },
+
+        mount: function(rule)
+        {
+            var hw = apple2plus.hwObj();
+
+            if(!rule || !rule.owner || !Array.isArray(rule.mappings))
+                return false;
+
+            if(!hw || !hw.RD || !hw.WR || !hw.default_map)
+                return false;
+
+            var owner = rule.owner;
+            var hash = owner.mount && owner.mount.hash;
+
+            if(hash === undefined)
+                return false;
+
+            var state = cloneMappingState(rule.state);
+            var evidence = [];
+
+            for(var i=0;i<rule.mappings.length;i++)
+            {
+                var mapping = rule.mappings[i] || {};
+                var op = String(mapping.op || "").toUpperCase();
+                var range = parseCPUMappingRange(mapping.range);
+
+                if(op != "RD" && op != "WR")
+                    continue;
+
+                if(!range)
+                    continue;
+
+                /*
+                 * Apple2Hw currently dispatches CPU memory through one
+                 * callback per 4K line.
+                 */
+                if(
+                    (range.from & 0x0FFF) != 0 ||
+                    (range.to   & 0x0FFF) != 0x0FFF
+                )
+                {
+                    console.warn(
+                        "MEMORY_MAP: range must be aligned to 4K lines: "
+                        + mapping.range
+                    );
+
+                    continue;
+                }
+
+                var callback = null;
+
+                if(mapping.handler != "@default")
+                {
+                    if(typeof mapping.callback == "function")
+                    {
+                        callback = mapping.callback;
+                    }
+                    else if(
+                        mapping.handler &&
+                        typeof owner[mapping.handler] == "function"
+                    )
+                    {
+                        callback = owner[mapping.handler].bind(owner);
+                    }
+
+                    if(typeof callback != "function")
+                    {
+                        console.warn(
+                            "MEMORY_MAP: callback not found: "
+                            + mapping.handler
+                        );
+
+                        continue;
+                    }
+                }
+
+                for(
+                    var address=range.from;
+                    address<=range.to;
+                    address+=0x1000
+                )
+                {
+                    var line = hw.lineDecode(address);
+
+                    hw[op][line] =
+                        mapping.handler == "@default"
+                            ? hw.default_map[op][line]
+                            : callback;
+                }
+
+                /*
+                 * Store only serialisable evidence. Function references
+                 * remain in the actual hardware callback tables.
+                 */
+                evidence.push({
+                     "id":        mapping.id || op+"_"+range.from
+                    ,"space":     mapping.space || "MEMORY MAPPING"
+                    ,"op":        op
+                    ,"from":      range.from
+                    ,"to":        range.to
+                    ,"handler":   mapping.handler || ""
+                    ,"target":    mapping.target || ""
+                    ,"enabled":   mapping.enabled === undefined
+                                    ? true
+                                    : !!mapping.enabled
+                    ,"condition": mapping.condition || ""
+                    ,"source":    rule.source || ""
+                    ,"state":     state
+                });
+            }
+
+            this.evidence[hash] = evidence;
+
+            /*
+             * Also place the evidence directly in slotConfig[n], beneath
+             * peripheral.mount, so the slot popup has one source.
+             */
+            if(!owner.mount)
+                owner.mount = {};
+
+            owner.mount.mappings = evidence;
+
+            return evidence.length > 0;
+        },
+
+        getEvidence: function(owner)
+        {
+            var hash = owner && owner.mount && owner.mount.hash;
+
+            return hash === undefined
+                ? []
+                : this.evidence[hash] || [];
+        }
+    };
+
+    function parseCPUMappingRange(spec)
+    {
+        var range;
+
+        if(typeof spec == "string")
+        {
+            range = oCOM.parseRngExpr(spec);
+        }
+        else if(spec && typeof spec == "object")
+        {
+            range = {
+                 "from": Number(spec.from)
+                ,"to":   spec.to === undefined
+                            ? Number(spec.from)
+                            : Number(spec.to)
+            };
+        }
+
+        if(
+            !range ||
+            !Number.isFinite(range.from) ||
+            !Number.isFinite(range.to)
+        )
+            return null;
+
+        return range;
+    }
+
+    function cloneMappingState(state)
+    {
+        try
+        {
+            return JSON.parse(JSON.stringify(state || {}));
+        }
+        catch(e)
+        {
+            return {};
+        }
+    }
+
+
+
+
+    this.mapRead = function(addr)
+    {
+        return card.read(abs2rel(addr));
+    };
+
+    this.mapWrite = function(addr,d8)
+    {
+        var rel_addr = abs2rel(addr);
+        var sw = softswitch[card.state.softswitch_pos] || {};
+
+        card.write(rel_addr,d8);
+
+        card.mark_MEM_monitoring(
+            rel_addr < BANK_SIZE
+                ? (sw.BANK == 0 ? "bankA" : "bankB")
+                : "cont",
+            rel_addr
+        );
+    };
+
+
+
+
+
     // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
 
     // TODO: let apple2keys.js itself intercept keypress events   or eventually make a generic event dispatcher in io
@@ -1306,19 +1543,338 @@ this.write = function(rel_addr,d8)
         }
         else
         {
-            document.getElementById("slotConfig_popup").innerHTML = 
+            var slot = this.slot_cfg.slotConfig[n] || {};
+
+            var slot = this.slot_cfg.slotConfig[n] || {};
+            document.getElementById("slotConfig_popup").innerHTML =
                 slotName
-                + close 
-                + "<div class=appbut style=width:400px;word-break: break-all;>"
-                + "this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n])
-                + "<div>"
+                + close
+                + slotConfigDetail_html(slot);
 
             //console.log("apple2plus.hwObj().io.slotConfig_detail('"+slotName+"')");
             //alert("this.slot_cfg.slotConfig["+n+"] = "+JSON.stringify(this.slot_cfg.slotConfig[n]));
             oCOM.POPUP.toggle("slotConfig_popup");
         }
 
+
     }
+
+    this.slotConfig_addressToggle = function(element,headerID,showOffset)
+    {
+        if(!element) return;
+
+        var header = document.getElementById(headerID);
+        if(showOffset && element.dataset.ioOffset)
+        {
+            element.textContent = element.dataset.ioOffset;
+            if(header) header.textContent = "I/O offset";
+        }
+        else
+        {
+            element.textContent = element.dataset.cpuAddress || "";
+            if(header) header.textContent = "CPU address";
+        }
+    }
+
+    function slotConfigDetail_html(slot)
+    {
+        var peripheral = slot && slot.peripheral;
+        if(!peripheral)
+            return "<div class='appbox' style='margin-top:8px;padding:8px'>No peripheral mounted.</div>";
+
+        var hash = peripheral.mount && peripheral.mount.hash!==undefined ? peripheral.mount.hash : "unknown";
+        var headerID = "slotConfig_address_header_"+String(hash).replace(/[^a-zA-Z0-9_-]/g,"_");
+        var rows = [];
+        var rangeNames = ["HostIO","SlotIO","SlotROM","HostROM"];
+
+        // Static mappings declared by peripheral.action and peripheral.mount.ranges.
+        for(var i=0;i<rangeNames.length;i++)
+        {
+            var rangeName = rangeNames[i];
+            var range = peripheralRange(peripheral,rangeName);
+            if(!range) continue;
+
+            var action = peripheral.action && peripheral.action[rangeName]
+                ? peripheral.action[rangeName]
+                : {};
+            var operations = [];
+
+            if(action.RD && typeof(action.RD.callback)=="function")
+                operations.push({"op":"RD","title":"RD -> "+callbackLabel(action.RD.callback)});
+            if(action.WR && typeof(action.WR.callback)=="function")
+                operations.push({"op":"WR","title":"WR -> "+callbackLabel(action.WR.callback)});
+
+            rows.push({
+                 "space":rangeName
+                ,"cpuFrom":range.from+ioBase()
+                ,"cpuTo":range.to+ioBase()
+                ,"offsetFrom":range.from
+                ,"offsetTo":range.to
+                ,"operations":operations
+            });
+        }
+
+        // Dynamic CPU mappings registered through MEMORY_MAP.
+        var dynamicMappings = peripheral.mount && Array.isArray(peripheral.mount.mappings)
+            ? peripheral.mount.mappings
+            : [];
+
+        for(var j=0;j<dynamicMappings.length;j++)
+        {
+            var mapping = dynamicMappings[j];
+            rows.push({
+                 "space":mapping.space || "MEMORY MAPPING"
+                ,"cpuFrom":mapping.from
+                ,"cpuTo":mapping.to
+                ,"operations":[{
+                     "op":mapping.op
+                    ,"title":mappingTooltip(mapping)
+                    ,"enabled":mapping.enabled!==false
+                }]
+            });
+        }
+
+        var body = "";
+        for(var r=0;r<rows.length;r++) body += mappingRow_html(rows[r],headerID);
+        if(!body) body = "<tr><td colspan='3' style='padding:8px'>No mappings registered.</td></tr>";
+
+        return ""
+            + "<div class='appbox' style='width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
+            + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
+            + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
+            + "</div>"
+            + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
+            + "<thead><tr style='border-bottom:1px solid #888'>"
+            + "<th style='padding:4px 6px'>Space</th>"
+            + "<th id='"+headerID+"' style='padding:4px 6px'>CPU address</th>"
+            + "<th style='padding:4px 6px'>R/W</th>"
+            + "</tr></thead>"
+            + "<tbody>"+body+"</tbody>"
+            + "</table></div>";
+    }
+
+    function mappingRow_html(row,headerID)
+    {
+        return ""
+            + "<tr>"
+            + "<td style='padding:4px 6px'>"+slotEscapeHTML(row.space)+"</td>"
+            + "<td style='padding:4px 6px'>"+mappingAddress_html(row,headerID)+"</td>"
+            + "<td style='padding:4px 6px'>"+mappingOperations_html(row.operations)+"</td>"
+            + "</tr>";
+    }
+
+    function mappingAddress_html(row,headerID)
+    {
+        var cpuRange = fmtRange(row.cpuFrom,row.cpuTo,0);
+        if(row.offsetFrom===undefined || row.offsetTo===undefined)
+            return "<div class=\"appbut skinny\">"+cpuRange+"</div>";
+
+        var offsetRange = fmtRange(row.offsetFrom,row.offsetTo,0);
+        return ""
+            + "<div class=\"appbut skinny\""
+            + " data-cpu-address=\""+cpuRange+"\""
+            + " data-io-offset=\""+offsetRange+"\""
+            + " onmouseenter=\"apple2plus.hwObj().io.slotConfig_addressToggle(this,'"+headerID+"',true)\""
+            + " onmouseleave=\"apple2plus.hwObj().io.slotConfig_addressToggle(this,'"+headerID+"',false)\">"
+            + cpuRange
+            + "</div>";
+    }
+
+    function mappingOperations_html(operations)
+    {
+        if(!operations || !operations.length) return "&mdash;";
+
+        var html = "<div style='display:flex;gap:3px;white-space:nowrap'>";
+        for(var i=0;i<operations.length;i++)
+        {
+            var operation = operations[i];
+            html += "<div class=\"appbut skinny\""
+                + (operation.title ? " title=\""+slotEscapeHTML(operation.title)+"\"" : "")
+                + (operation.enabled===false ? " style=\"opacity:.55\"" : "")
+                + ">"+slotEscapeHTML(operation.op)+"</div>";
+        }
+        return html+"</div>";
+    }
+
+    function mappingTooltip(mapping)
+    {
+        var parts = [];
+        if(mapping.target) parts.push(mapping.op+" -> "+mapping.target);
+        if(mapping.condition) parts.push(mapping.condition);
+        if(mapping.enabled===false) parts.push("disabled by current soft-switch state");
+        if(mapping.source) parts.push(mapping.source);
+        return parts.join("; ");
+    }
+
+    function slotEscapeHTML(value)
+    {
+        return String(value)
+            .replace(/&/g,"&amp;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;")
+            .replace(/"/g,"&quot;")
+            .replace(/'/g,"&#39;");
+
+
+
+
+    }
+
+    /*
+     * Render the address spaces and callbacks of one mounted peripheral.
+     *
+     * mount.ranges contains offsets relative to the Apple II I/O base,
+     * normally $C000. peripheral.action contains the actual RD and WR
+     * callback functions; these functions cannot be displayed through
+     * JSON.stringify().
+     */
+    function slotConfigDetail_html(slot)
+    {
+        var p = slot && slot.peripheral;
+
+        if(!p)
+        {
+            return ""
+                + "<div class=appbox "
+                + "style='margin-top:8px;padding:8px'>"
+                + "No peripheral mounted."
+                + "</div>";
+        }
+
+        /*
+         * This order also follows the CPU-visible Apple II address space:
+         *
+         * HostIO  : $C000-$C07F
+         * SlotIO  : $C080-$C0FF
+         * SlotROM : $C100-$C7FF
+         * HostROM : $C800-$CFFF
+         */
+        var rangeNames = [
+             "HostIO"
+            ,"SlotIO"
+            ,"SlotROM"
+            ,"HostROM"
+        ];
+
+        var rows = "";
+
+        for(var i=0;i<rangeNames.length;i++)
+        {
+            var rangeName = rangeNames[i];
+            var range = peripheralRange(p,rangeName);
+
+            if(!range) continue;
+
+            var action =
+                p.action && p.action[rangeName]
+                    ? p.action[rangeName]
+                    : {};
+
+            rows += ""
+                + "<tr>"
+
+                + "<td style='padding:4px 8px'>"
+                + "<b>"+escapeHTML(rangeName)+"</b>"
+                + "</td>"
+
+                + "<td style='padding:4px 8px;font-family:monospace'>"
+                + fmtRange(range.from,range.to,0)
+                + "</td>"
+
+                + "<td style='padding:4px 8px;font-family:monospace'>"
+                + fmtRange(range.from,range.to,ioBase())
+                + "</td>"
+
+                + "<td style='padding:4px 8px;font-family:monospace'>"
+                + actionCallbackLabel(action.RD)
+                + "</td>"
+
+                + "<td style='padding:4px 8px;font-family:monospace'>"
+                + actionCallbackLabel(action.WR)
+                + "</td>"
+
+                + "</tr>";
+        }
+
+        if(rows=="")
+        {
+            rows = ""
+                + "<tr>"
+                + "<td colspan=5 style='padding:8px'>"
+                + "No address ranges are configured for this peripheral."
+                + "</td>"
+                + "</tr>";
+        }
+
+        var description = peripheralDescription(p);
+
+        return ""
+            + "<div class=appbox "
+            + "style='width:650px;max-width:80vw;"
+            + "overflow:auto;margin-top:8px;padding:8px'>"
+
+            + "<div>"
+            + "<b>"+escapeHTML(peripheralPCODE(p))+"</b>"
+            + (
+                description
+                    ? " &mdash; "+escapeHTML(description)
+                    : ""
+              )
+            + "</div>"
+
+            + "<table "
+            + "style='width:100%;border-collapse:collapse;"
+            + "margin-top:8px;text-align:left'>"
+
+            + "<thead>"
+            + "<tr style='border-bottom:1px solid #888'>"
+            + "<th style='padding:4px 8px'>Space</th>"
+            + "<th style='padding:4px 8px'>I/O offset</th>"
+            + "<th style='padding:4px 8px'>CPU address</th>"
+            + "<th style='padding:4px 8px'>RD function</th>"
+            + "<th style='padding:4px 8px'>WR function</th>"
+            + "</tr>"
+            + "</thead>"
+
+            + "<tbody>"
+            + rows
+            + "</tbody>"
+
+            + "</table>"
+            + "</div>";
+    }
+
+    function actionCallbackLabel(action)
+    {
+        var fn = action && action.callback;
+
+        if(typeof fn !== "function")
+            return "&mdash;";
+
+        /*
+         * Function.bind() normally produces names such as
+         * "bound read" and "bound write". The "bound" prefix is
+         * an implementation detail and is not useful in the UI.
+         */
+        var name = callbackLabel(fn).replace(/^bound\s+/,"");
+
+        return escapeHTML(
+            name == "(anonymous)"
+                ? name
+                : name+"()"
+        );
+    }
+
+    function escapeHTML(value)
+    {
+        return String(value)
+            .replace(/&/g,"&amp;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;")
+            .replace(/"/g,"&quot;")
+            .replace(/'/g,"&#39;");
+    }
+
 
     /////////////////////////////////////////////////////////////////
 
