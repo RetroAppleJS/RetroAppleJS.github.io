@@ -157,8 +157,7 @@ function RamCard()
 
 
         var ramcard = apple2plus.hwObj().io.HASH2obj( this.mount.hash  ); // reference the ramcard object by hash
-        oCOM.addRefreshEvent(ramcard.MEM_monitoring,"MEM_monitoring_MS16K",false);  // TODO: investigate why memory monitoring does not take extended ram
-        oCOM.toggleRefreshEvent('MEM_monitoring_MS16K');
+        oCOM.addRefreshEvent(ramcard.MEM_monitoring,"MEM_monitoring_MS16K",false);  // enabled together with the main memory monitor by the UI button
     }
 
     function abs2rel(addr)     { return ((addr & 0xFFFF) - ROM_RANGE.from); }
@@ -194,7 +193,7 @@ function RamCard()
         if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
 
 
-        this.update_MEM_status();
+        // MEM_monitoring() updates the soft-switch display only while monitoring is enabled.
         return status_nibble;
     };
 
