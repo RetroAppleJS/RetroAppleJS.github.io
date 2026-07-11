@@ -242,24 +242,20 @@ function AppleBoard()
     this.deviceList_html = function(model)
     {
 
-        var ct =  
+ 
                   
-                 "<div class=\"appbut mini\">"
-                 +"<input id=\"perspRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-                    +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective</div>"
-                 +"</div><br>"
-                 
-                 +"<div class=\"appbut mini\">"
-                   +"<input id=\"lumRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-                   +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity</div>"
-                 +"</div><br>"
+  var ct = ""; 
 
-                 +"<div class=\"appbut mini\">"
-                   +"<input id=\"moveLight\" type=\"checkbox\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-                   +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"  
-                 +"</div>"    
+//oApple2Video.renderModes[0].ctor 
 
-                 var rows = [{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;ThreeJS_vid</div>","ctrl":ct}];
+//oApple2Video.renderModes[0].ctor.ctrl_dlg()
+
+                 var rows = [
+                     {"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[0].name+"</div>","ctrl":ct}
+                    ,{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[1].name+"</div>","ctrl":ct}
+                    ,{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[2].name+"</div>","ctrl":ct}
+                    ,{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[3].name+"</div>","ctrl":ct}
+                ];
 
                 var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
             + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
