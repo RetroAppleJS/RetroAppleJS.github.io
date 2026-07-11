@@ -216,7 +216,7 @@ function AppleBoard()
     {
         var rows = this.getBoardIORows(model);
 
-        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
+        var s = '<div style="margin-top:6px;">'
             + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
             + '<tr>'
             + '<th style="text-align:left;padding:2px 4px;">Addr</th>'
