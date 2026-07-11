@@ -30,6 +30,29 @@ function Apple2VideoMUX(canvas)
         { name: "canvas",   ctor: Apple2VideoCanvas, context: "2d"     }
     ];
 
+    this.getRenderModes = function()
+    {
+        return this.renderModes.slice();
+    };
+
+    this.getRenderModeSpec = function(mode)
+    {
+        if(typeof(mode) == "number")
+            return this.renderModes[mode] || null;
+
+        if(mode && typeof(mode) == "object" && mode.name)
+            return mode;
+
+        var name = String(mode || "").trim().toLowerCase();
+        for(var i=0;i<this.renderModes.length;i++)
+        {
+            if(String(this.renderModes[i].name).toLowerCase() == name)
+                return this.renderModes[i];
+        }
+
+        return null;
+    };
+
     this.getRenderModeIndexByName = function(modeName)
     {
         var name = String(modeName || "").trim().toLowerCase();
@@ -154,6 +177,41 @@ function Apple2VideoMUX(canvas)
 
         this.applyState(r);
         return r;
+    };
+
+    this.getRendererInstance = function(mode,createIfMissing)
+    {
+        var spec = this.getRenderModeSpec(mode);
+        if(!spec) return null;
+
+        var r = this.renderers[spec.name] || null;
+        if(!r && createIfMissing === true)
+            r = this.getRenderer(spec,false);
+
+        return r;
+    };
+
+    this.getActiveRenderer = function()
+    {
+        return this.ensureActive() ? this.active : null;
+    };
+
+    this.getRendererControlHTML = function(mode)
+    {
+        var spec = this.getRenderModeSpec(mode);
+        if(!spec) return "";
+
+        // Prefer the real object when this renderer has already been created.
+        var r = this.getRendererInstance(spec,false);
+        if(r && typeof(r.ctrl_dlg) == "function")
+            return r.ctrl_dlg();
+
+        // Control markup may also be exposed as constructor metadata, so merely
+        // opening the HostIO popup does not instantiate every renderer.
+        if(spec.ctor && typeof(spec.ctor.ctrl_dlg) == "function")
+            return spec.ctor.ctrl_dlg();
+
+        return "";
     };
 
     this.setMode = function(idx, uiEl, forceReset)

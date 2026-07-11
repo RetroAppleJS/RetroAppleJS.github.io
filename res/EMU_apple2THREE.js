@@ -51,22 +51,14 @@
 //       cameraAspectMul: 1
 //   };
 //
-(function(global)
+"use strict";
+
+// Explicit dependency: THREE uses the GPU renderer as its hidden 2D producer.
+// index.html defines Apple2VideoGPU before loading this file.
+var Apple2VideoTHREE_2D = typeof(Apple2VideoGPU) == "function" ? Apple2VideoGPU : null;
+
+var APPLE2_THREE_CFG_DEFAULT = 
 {
-    "use strict";
-
-    if (typeof(global.oEMU) === "undefined")
-        global.oEMU = {"component":{"Video":{}}};
-    else if (global.oEMU.component === undefined)
-        global.oEMU.component = {"Video":{}};
-    else if (global.oEMU.component.Video === undefined)
-        global.oEMU.component.Video = {};
-
-    // Capture the previously loaded compatible renderer before replacing it.
-    // With the recommended include order this is EMU_apple2GPU.js.
-    var Apple2Video2D = global.Apple2Video;
-
-    var THREE_CFG_DEFAULT = {
         textureFPS: 10,
         renderFPS: 50,
         orbitControls: false,
@@ -103,15 +95,15 @@
         cameraAspectMul: 1
     };
 
-    function copyConfig()
+    function Apple2VideoTHREE_copyConfig()
     {
-        var cfg = {}, user = global.Apple2VideoTHREE_CONFIG || {};
-        for (var k in THREE_CFG_DEFAULT) cfg[k] = THREE_CFG_DEFAULT[k];
+        var cfg = {}, user = window.Apple2VideoTHREE_CONFIG || {};
+        for (var k in APPLE2_THREE_CFG_DEFAULT) cfg[k] = APPLE2_THREE_CFG_DEFAULT[k];
         for (var u in user) cfg[u] = user[u];
         return cfg;
     }
 
-    function clampInt(v, lo, hi)
+    function Apple2VideoTHREE_clampInt(v, lo, hi)
     {
         v = Number(v);
         if (!isFinite(v)) v = 0;
@@ -121,15 +113,15 @@
         return v;
     }
 
-    function getEmbeddedProjectScene()
+    function Apple2VideoTHREE_getEmbeddedProjectScene()
     {
         // Important: a top-level `const THREE_scene = ...` in a non-module
         // browser script is not necessarily a property of window.  Therefore
         // check the lexical global first, then fall back to window.THREE_scene.
         try
         {
-            if (typeof(THREE_scene) !== "undefined")
-                return THREE_scene;
+        if (window.THREE_scene !== undefined)
+            return window.THREE_scene;
         }
         catch(e) {}
 
@@ -139,13 +131,31 @@
         return null;
     }
 
+    function Apple2VideoTHREE_controls()
+    {
+        return "<div class=\"appbut mini\">"
+            +"<input id=\"perspRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective</div>"
+            +"</div><br>"
+            
+            +"<div class=\"appbut mini\">"
+            +"<input id=\"lumRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity</div>"
+            +"</div><br>"
+
+            +"<div class=\"appbut mini\">"
+            +"<input id=\"moveLight\" type=\"checkbox\" onchange=\"\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"  
+            +"</div>";
+    }
+
     function Apple2VideoTHREE(canvas)
     {
         const DISPLAY_W = 560;
         const DISPLAY_H = 384;
 
         var video3D = this;
-        var cfg = copyConfig();
+        var cfg = Apple2VideoTHREE_copyConfig();
 
         var renderLoopStarted = false;
         var resizeListenerInstalled = false;
@@ -202,13 +212,13 @@
         this.ensure2DRenderer = function()
         {
             if (this.video2D) return true;
-            if (typeof(Apple2Video2D) !== "function" || Apple2Video2D === Apple2VideoTHREE)
+            if (typeof(Apple2VideoTHREE_2D) !== "function" || Apple2VideoTHREE_2D === Apple2VideoTHREE)
             {
-                console.warn("Apple2VideoTHREE: no previous Apple2Video renderer found. Load EMU_apple2GPU.js before EMU_apple2THREE.js.");
+                console.warn("Apple2VideoTHREE: Apple2VideoGPU is unavailable. Load EMU_apple2GPU.js before EMU_apple2THREE.js.");
                 return false;
             }
 
-            this.video2D = new Apple2Video2D(this.videoCanvas);
+            this.video2D = new Apple2VideoTHREE_2D(this.videoCanvas);
             this.video2D.vidram = this.vidram;
             this.video2D.hw = this.hw;
 
@@ -368,7 +378,7 @@
             if (this.renderer)
                 return true;
 
-            if (typeof(global.THREE) === "undefined")
+            if (typeof(THREE) === "undefined")
             {
                 console.warn("Apple2VideoTHREE: THREE is not loaded. Add three.min.js before EMU_apple2THREE.js.");
                 return false;
@@ -388,7 +398,7 @@
                 alpha: false
             });
 
-            this.renderer.setPixelRatio(global.devicePixelRatio || 1);
+            this.renderer.setPixelRatio(window.devicePixelRatio || 1);
             this.resizeRenderer();
 
             this.screenTexture = new THREE.CanvasTexture(this.textureCanvas);
@@ -519,11 +529,10 @@
                 right = p.right;
                 bottom = p.bottom;
             }
-
-            cfg.texturePadLeft   = clampInt(left,   0, DISPLAY_W - 1);
-            cfg.texturePadTop    = clampInt(top,    0, DISPLAY_H - 1);
-            cfg.texturePadRight  = clampInt(right,  0, DISPLAY_W - 1);
-            cfg.texturePadBottom = clampInt(bottom, 0, DISPLAY_H - 1);
+            cfg.texturePadLeft   = Apple2VideoTHREE_clampInt(left,   0, DISPLAY_W - 1);
+            cfg.texturePadTop    = Apple2VideoTHREE_clampInt(top,    0, DISPLAY_H - 1);
+            cfg.texturePadRight  = Apple2VideoTHREE_clampInt(right,  0, DISPLAY_W - 1);
+            cfg.texturePadBottom = Apple2VideoTHREE_clampInt(bottom, 0, DISPLAY_H - 1);
 
             this.textureDirty = true;
             return this.getTexturePadding();
@@ -545,10 +554,11 @@
         {
             if (!this.textureCtx || !this.videoCanvas) return;
 
-            var l = clampInt(cfg.texturePadLeft,   0, DISPLAY_W - 1);
-            var t = clampInt(cfg.texturePadTop,    0, DISPLAY_H - 1);
-            var r = clampInt(cfg.texturePadRight,  0, DISPLAY_W - 1);
-            var b = clampInt(cfg.texturePadBottom, 0, DISPLAY_H - 1);
+            var l = Apple2VideoTHREE_clampInt(cfg.texturePadLeft,   0, DISPLAY_W - 1);
+            var t = Apple2VideoTHREE_clampInt(cfg.texturePadTop,    0, DISPLAY_H - 1);
+            var r = Apple2VideoTHREE_clampInt(cfg.texturePadRight,  0, DISPLAY_W - 1);
+            var b = Apple2VideoTHREE_clampInt(cfg.texturePadBottom, 0, DISPLAY_H - 1);
+
             var dw = DISPLAY_W - l - r;
             var dh = DISPLAY_H - t - b;
 
@@ -569,7 +579,7 @@
             if (sceneLoadStarted) return;
             sceneLoadStarted = true;
 
-            var json_proj = getEmbeddedProjectScene();
+            var json_proj = Apple2VideoTHREE_getEmbeddedProjectScene();
             if (!json_proj)
             {
                 console.warn("Apple2VideoTHREE: THREE_scene is not defined; using fallback scene.");
@@ -842,7 +852,7 @@
             if (resizeListenerInstalled) return;
             resizeListenerInstalled = true;
 
-            global.addEventListener("resize", function()
+            window.addEventListener("resize", function()
             {
                 video3D.resizeRenderer();
             });
@@ -855,7 +865,7 @@
 
             function animate(now)
             {
-                global.requestAnimationFrame(animate);
+                window.requestAnimationFrame(animate);
 
                 var renderInterval = 1000 / Math.max(1, cfg.renderFPS | 0);
                 if (now - lastRenderUpdate < renderInterval)
@@ -871,7 +881,7 @@
                     video3D.renderer.render(video3D.scene, video3D.camera);
             }
 
-            global.requestAnimationFrame(animate);
+            window.requestAnimationFrame(animate);
         };
 
         this.pumpTexture = function(now)
@@ -914,30 +924,11 @@
             return this.renderer;
         };
 
-        this.ctrl_dlg = function()
-        {
-            return "<div class=\"appbut mini\">"
-                +"<input id=\"perspRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-                +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective</div>"
-                +"</div><br>"
-                
-                +"<div class=\"appbut mini\">"
-                +"<input id=\"lumRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-                +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity</div>"
-                +"</div><br>"
-
-                +"<div class=\"appbut mini\">"
-                +"<input id=\"moveLight\" type=\"checkbox\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-                +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"  
-                +"</div>" 
-        }
+        this.ctrl_dlg = Apple2VideoTHREE_controls;
 
     }
 
+Apple2VideoTHREE.ctrl_dlg = Apple2VideoTHREE_controls;
 
-
-
-    global.Apple2Video = Apple2VideoTHREE;
-    global.oEMU.component.Video.Apple2Video = new Apple2VideoTHREE();
-
-})(typeof(window) !== "undefined" ? window : this);
+if(typeof(oEMU)!="undefined" && oEMU.component && oEMU.component.Video)
+    oEMU.component.Video.Apple2Video = new Apple2VideoTHREE();

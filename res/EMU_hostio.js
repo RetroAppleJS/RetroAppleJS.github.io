@@ -216,7 +216,7 @@ function AppleBoard()
     {
         var rows = this.getBoardIORows(model);
 
-        var s = '<div style="margin-top:6px;">'
+        var s = '<div style="margin-top:6px">'
             + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
             + '<tr>'
             + '<th style="text-align:left;padding:2px 4px;">Addr</th>'
@@ -243,27 +243,28 @@ function AppleBoard()
     {
 
  
-                  
-  var ct = ""; 
+        var modes = oApple2Video && typeof(oApple2Video.getRenderModes) == "function"
+            ? oApple2Video.getRenderModes()
+            : [];
+        var rows = [];
 
-//oApple2Video.renderModes[0].ctor 
+        for(var m=0;m<modes.length;m++)
+        {
+            var mode = modes[m];
+            var controls = typeof(oApple2Video.getRendererControlHTML) == "function"
+                ? oApple2Video.getRendererControlHTML(mode.name)
+                : "";
 
-//oApple2Video.renderModes[0].ctor.ctrl_dlg()
+            rows.push({
+                 "name":"<div style=\"display:inline-block;white-space:nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"
+                    +oCOM.escapeHTML(mode.name)
+                    +"</div>"
+                ,"ctrl":controls
+            });
+        }
 
-                 var rows = [
-                     {"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[0].name+"</div>","ctrl":ct}
-                    ,{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[1].name+"</div>","ctrl":ct}
-                    ,{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[2].name+"</div>","ctrl":ct}
-                    ,{"name":"<div style=\"display: inline-block;white-space: nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"+oApple2Video.renderModes[3].name+"</div>","ctrl":ct}
-                ];
-
-                var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
-            + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-            + '<tr>'
-            + '<th style="text-align:left;padding:2px 4px;">Device</th>'
-            + '<th style="text-align:left;padding:2px 4px;">Controls</th>'
-            + '</tr>';
-
+        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">'
+ 
         for(var i=0;i<rows.length;i++)
         {
             s += '<tr>'
