@@ -120,8 +120,8 @@ var APPLE2_THREE_CFG_DEFAULT =
         // check the lexical global first, then fall back to window.THREE_scene.
         try
         {
-        if (window.THREE_scene !== undefined)
-            return window.THREE_scene;
+            if (typeof(THREE_scene) !== "undefined")
+                return THREE_scene;
         }
         catch(e) {}
 
