@@ -27,8 +27,11 @@
 //       textureFPS: 10,
 //       renderFPS: 30,
 //       orbitControls: true,
+//       lightMove: false,
 //       emissiveColor: 0xFFFFFF,
 //       emissiveIntensity: 1,
+//       environmentLuminosity: 0,
+//       environmentLightIntensity: 1,
 //
 //       textureFlipY: false,
 //       textureMirrorX: false,
@@ -62,6 +65,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         textureFPS: 10,
         renderFPS: 50,
         orbitControls: false,
+        lightMove: false,
 
         fixedCameraLookAt: true,
         fixedCameraTargetX: 0,
@@ -70,6 +74,8 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
+        environmentLuminosity: 0,
+        environmentLightIntensity: 1,
 
         // Final orientation from v3/v4.
         textureFlipY: false,
@@ -178,7 +184,26 @@ var APPLE2_THREE_CFG_DEFAULT =
         if (!renderer3D || typeof(renderer3D.setTextureSmoothing) !== "function") return;
 
         input.checked = renderer3D.setTextureSmoothing(input.checked);
+    }
 
+    function Apple2VideoTHREE_setLightMoveControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setLightMoveEnabled) !== "function") return;
+
+        input.checked = renderer3D.setLightMoveEnabled(input.checked);
+    }
+
+    function Apple2VideoTHREE_setEnvironmentControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setEnvironmentLuminosity) !== "function") return;
+
+        var value = renderer3D.setEnvironmentLuminosity(Number(input.value) / 100);
+        input.value = Math.round(value * 100);
+
+        var output = document.getElementById("threeEnvironmentValue");
+        if (output) output.textContent = Math.round(value * 100) + "%";
     }
 
     function Apple2VideoTHREE_resetCameraControl()
@@ -187,7 +212,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         if (!renderer3D || typeof(renderer3D.resetCameraPosition) !== "function") return;
 
         renderer3D.resetCameraPosition();
-     }
+    }
 
     function Apple2VideoTHREE_controls(renderer3D)
     {
@@ -200,12 +225,18 @@ var APPLE2_THREE_CFG_DEFAULT =
         var orbit = renderer3D && typeof(renderer3D.getOrbitEnabled) === "function"
             ? renderer3D.getOrbitEnabled()
             : !!APPLE2_THREE_CFG_DEFAULT.orbitControls;
+        var lightMove = renderer3D && typeof(renderer3D.getLightMoveEnabled) === "function"
+            ? renderer3D.getLightMoveEnabled()
+            : !!APPLE2_THREE_CFG_DEFAULT.lightMove;
         var smoothing = renderer3D && typeof(renderer3D.getTextureSmoothing) === "function"
             ? renderer3D.getTextureSmoothing()
             : !!APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
+        var environment = renderer3D && typeof(renderer3D.getEnvironmentLuminosity) === "function"
+            ? renderer3D.getEnvironmentLuminosity()
+            : Number(APPLE2_THREE_CFG_DEFAULT.environmentLuminosity) || 0;
 
         return "<div class=\"appbut mini\">"
-            +"<input id=\"threePerspective\" type=\"range\" min=\"10\" max=\"120\" step=\"1\" value=\""+Math.round(fov)+"\" class=\"slider\""
+            +"<input id=\"threePerspective\" type=\"range\" min=\"5\" max=\"90\" step=\"1\" value=\""+Math.round(fov)+"\" class=\"slider\""
             +" oninput=\"Apple2VideoTHREE_setPerspectiveControl(this)\" style=\"width:65px;float:left\"></input>"
             +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective "
             +"<span id=\"threePerspectiveValue\">"+Math.round(fov)+"°</span></div>"
@@ -214,8 +245,15 @@ var APPLE2_THREE_CFG_DEFAULT =
             +"<div class=\"appbut mini\">"
             +"<input id=\"threeLuminosity\" type=\"range\" min=\"0\" max=\"300\" step=\"5\" value=\""+Math.round(luminosity*100)+"\" class=\"slider\""
             +" oninput=\"Apple2VideoTHREE_setLuminosityControl(this)\" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity "
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">screen luminosity "
             +"<span id=\"threeLuminosityValue\">"+Number(luminosity).toFixed(2)+"</span></div>"
+            +"</div><br>"
+
+            +"<div class=\"appbut mini\">"
+            +"<input id=\"threeEnvironment\" type=\"range\" min=\"0\" max=\"100\" step=\"1\" value=\""+Math.round(environment*100)+"\" class=\"slider\""
+            +" oninput=\"Apple2VideoTHREE_setEnvironmentControl(this)\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">environment "
+            +"<span id=\"threeEnvironmentValue\">"+Math.round(environment*100)+"%</span></div>"
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
@@ -226,8 +264,16 @@ var APPLE2_THREE_CFG_DEFAULT =
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
+            +"<input id=\"threeMoveLight\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setLightMoveControl(this)\""
+            +(lightMove ? " checked" : "")
+            +" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"
+            +"</div><br>"
+
+            +"<div class=\"appbut mini\">"
             +"<input id=\"threeTextureSmoothing\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setTextureSmoothingControl(this)\""
             +(smoothing ? " checked" : "")
+            +" style=\"width:65px;float:left\"></input>"
             +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">smooth texture</div>"
             +"</div><br>"
 
@@ -266,6 +312,20 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.screenTexture = null;
 
         this.defaultCameraState = null;
+        this.sceneBounds = null;
+        this.environmentLight = null;
+
+        this.lightMoveEnabled = !!cfg.lightMove;
+        this.activeSceneLight = null;
+        this.lightMovePlane = null;
+        this.lightMoveRaycaster = null;
+        this.lightMoveNdc = null;
+        this.lightMovePoint = null;
+        this._lightMovePointerHandler = function(event)
+        {
+            video3D.onLightPointerMove(event);
+        };
+        this._lightMovePreviousCursor = "";
 
         this.textureDirty = true;
         this.ready = false;
@@ -558,10 +618,34 @@ var APPLE2_THREE_CFG_DEFAULT =
             return this.camera && this.camera.isPerspectiveCamera ? this.camera.fov : 50;
         };
 
-        this.getCameraTarget = function()
+        this.updateSceneBounds = function()
         {
-            if (this.controls && this.controls.target)
-                return this.controls.target.clone();
+            if (!this.scene) return null;
+
+            this.scene.updateMatrixWorld(true);
+            var box = new THREE.Box3().setFromObject(this.scene);
+            if (box.isEmpty())
+            {
+                this.sceneBounds = null;
+                return null;
+            }
+
+            var size = box.getSize(new THREE.Vector3());
+            if (!isFinite(size.length()) || size.lengthSq()===0)
+            {
+                this.sceneBounds = null;
+                return null;
+            }
+
+            this.sceneBounds = box;
+            return box;
+        };
+
+        this.getSceneCenter = function()
+        {
+            var box = this.sceneBounds || this.updateSceneBounds();
+            if (box)
+                return box.getCenter(new THREE.Vector3());
 
             return new THREE.Vector3(
                 cfg.fixedCameraTargetX || 0,
@@ -570,9 +654,18 @@ var APPLE2_THREE_CFG_DEFAULT =
             );
         };
 
-        this.captureDefaultCameraState = function(camera)
+        this.getCameraTarget = function()
+        {
+            if (this.controls && this.controls.target)
+                return this.controls.target.clone();
+
+            return this.getSceneCenter();
+        };
+
+        this.captureDefaultCameraState = function(camera,target)
         {
             if (!camera) return;
+            target = target ? target.clone() : this.getSceneCenter();
 
             this.defaultCameraState = {
                  "position":camera.position.clone()
@@ -580,11 +673,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 ,"up":camera.up.clone()
                 ,"zoom":camera.zoom
                 ,"fov":camera.isPerspectiveCamera ? camera.fov : 50
-                ,"target":new THREE.Vector3(
-                    cfg.fixedCameraTargetX || 0,
-                    cfg.fixedCameraTargetY || 0,
-                    cfg.fixedCameraTargetZ || 0
-                )
+                ,"target":target
             };
         };
 
@@ -624,40 +713,55 @@ var APPLE2_THREE_CFG_DEFAULT =
             }
 
             return true;
-        }
+        };
 
         this.setPerspective = function(fov)
         {
             fov = Number(fov);
             if (!isFinite(fov)) fov = this.getPerspective();
-            fov = Math.max(10, Math.min(120, fov));
+            fov = Math.max(5,Math.min(90,fov));
 
             if (!this.camera)
                 this.ensureTHREE();
 
             if (this.camera && this.camera.isPerspectiveCamera)
             {
-                var oldFov = Math.max(1,this.camera.fov);
+                var oldFov = this.camera.fov || 50;
                 var target = this.getCameraTarget();
-                var direction = this.camera.position.clone().sub(target);
-                var distance = direction.length();
 
-                if (distance > 0 && oldFov !== fov)
+                if (Math.abs(fov-oldFov)>1e-6)
                 {
-                    distance *= Math.tan(oldFov*Math.PI/360) /
-                                Math.tan(fov*Math.PI/360);
-                    direction.setLength(distance);
-                    this.camera.position.copy(target).add(direction);
+                    var viewDir = new THREE.Vector3().subVectors(this.camera.position,target);
+                    var oldDistance = viewDir.length();
+
+                    if (oldDistance>1e-6)
+                    {
+                        var oldFovRad = THREE.MathUtils.degToRad(oldFov);
+                        var newFovRad = THREE.MathUtils.degToRad(fov);
+                        var visibleHeightAtTarget = 2*oldDistance*Math.tan(oldFovRad*0.5);
+                        var newDistance = visibleHeightAtTarget/(2*Math.tan(newFovRad*0.5));
+
+                        viewDir.normalize();
+                        this.camera.position.copy(target).add(viewDir.multiplyScalar(newDistance));
+                        this.camera.near = Math.max(newDistance/1000,0.001);
+                        this.camera.far = Math.max(newDistance*1000,1000);
+                    }
                 }
 
-                this.camera.fov = fov;
-                this.camera.updateProjectionMatrix();
+                var w = this.canvas ? (this.canvas.clientWidth || this.canvas.width || DISPLAY_W) : DISPLAY_W;
+                var h = this.canvas ? (this.canvas.clientHeight || this.canvas.height || DISPLAY_H) : DISPLAY_H;
 
-                this.camera.updateMatrix();
+                this.camera.fov = fov;
+                this.camera.aspect = (w*cfg.cameraAspectMul)/Math.max(1,h);
+                this.camera.updateProjectionMatrix();
+                this.camera.lookAt(target);
                 this.camera.updateMatrixWorld(true);
 
                 if (this.controls)
-                    this.controls.update();                
+                {
+                    this.controls.target.copy(target);
+                    this.controls.update();
+                }
             }
 
             return fov;
@@ -694,6 +798,50 @@ var APPLE2_THREE_CFG_DEFAULT =
             return intensity;
         };
 
+        this.getEnvironmentLuminosity = function()
+        {
+            var value = Number(cfg.environmentLuminosity);
+            if (!isFinite(value)) value = 0;
+            return Math.max(0,Math.min(1,value));
+        };
+
+        this.applyEnvironmentLuminosity = function()
+        {
+            if (!this.scene) return this.getEnvironmentLuminosity();
+
+            var value = this.getEnvironmentLuminosity();
+            this.scene.background = new THREE.Color(value,value,value);
+
+            if (!this.environmentLight || this.environmentLight.parent!==this.scene)
+            {
+                this.environmentLight = this.scene.getObjectByName("__Apple2VideoTHREE_environment");
+                if (!this.environmentLight)
+                {
+                    this.environmentLight = new THREE.AmbientLight(0xffffff,0);
+                    this.environmentLight.name = "__Apple2VideoTHREE_environment";
+                    this.scene.add(this.environmentLight);
+                }
+            }
+
+            var gain = Number(cfg.environmentLightIntensity);
+            if (!isFinite(gain)) gain = 1;
+            this.environmentLight.intensity = value*Math.max(0,gain);
+
+            return value;
+        };
+
+        this.setEnvironmentLuminosity = function(value)
+        {
+            value = Number(value);
+            if (!isFinite(value)) value = this.getEnvironmentLuminosity();
+            cfg.environmentLuminosity = Math.max(0,Math.min(1,value));
+
+            if (!this.scene)
+                this.ensureTHREE();
+
+            return this.applyEnvironmentLuminosity();
+        };
+
         this.getTextureSmoothing = function()
         {
             return !!cfg.textureSmoothing;
@@ -709,11 +857,6 @@ var APPLE2_THREE_CFG_DEFAULT =
                 this.textureCanvas.width = width;
             if (this.textureCanvas.height !== height)
                 this.textureCanvas.height = height;
-
-            this.msaaRenderTarget = null;
-            this.msaaCopyScene = null;
-            this.msaaCopyCamera = null;
-            this.msaaCopyQuad = null;
 
             this.textureCtx = this.textureCanvas.getContext("2d",{alpha:false});
         };
@@ -891,12 +1034,11 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             var loader = new THREE.ObjectLoader();
             this.scene = loader.parse(json_proj.scene);
-
-            if (this.scene && cfg.background !== null && cfg.background !== undefined)
-                this.scene.background = new THREE.Color(cfg.background);
+            this.updateSceneBounds();
 
             this.camera = this.cameraFromProject(json_proj.camera);
             this.attachTextureToScreen();
+            this.applyEnvironmentLuminosity();
 
             if (cfg.showGrid)
                 this.scene.add(new THREE.GridHelper(200, 20));
@@ -905,6 +1047,8 @@ var APPLE2_THREE_CFG_DEFAULT =
                 this.scene.add(new THREE.AxesHelper(60));
 
             this.installOrbitControls();
+            if (this.lightMoveEnabled)
+                this.setLightMoveEnabled(true);
             this.resizeRenderer();
             this.ready = true;
         };
@@ -933,19 +1077,14 @@ var APPLE2_THREE_CFG_DEFAULT =
             if (c.up) cam.up.fromArray(c.up);
             if (c.layers !== undefined) cam.layers.mask = c.layers;
 
+            var target = this.getSceneCenter();
             if (cfg.fixedCameraLookAt)
-            {
-                cam.lookAt(
-                    cfg.fixedCameraTargetX || 0,
-                    cfg.fixedCameraTargetY || 0,
-                    cfg.fixedCameraTargetZ || 0
-                );
-            }
+                cam.lookAt(target);
 
             cam.updateProjectionMatrix();
             cam.updateMatrix();
             cam.updateMatrixWorld(true);
-            this.captureDefaultCameraState(cam);
+            this.captureDefaultCameraState(cam,target);
 
             return cam;
         };
@@ -957,7 +1096,6 @@ var APPLE2_THREE_CFG_DEFAULT =
             cam.lookAt(0, 0, 0);
             cam.updateMatrix();
             cam.updateMatrixWorld(true);
-            this.captureDefaultCameraState(cam);
             return cam;
         };
 
@@ -1005,7 +1143,12 @@ var APPLE2_THREE_CFG_DEFAULT =
             light.position.set(2, 4, 3);
             this.scene.add(light);
 
+            this.updateSceneBounds();
+            this.captureDefaultCameraState(this.camera,this.getSceneCenter());
+            this.applyEnvironmentLuminosity();
             this.installOrbitControls();
+            if (this.lightMoveEnabled)
+                this.setLightMoveEnabled(true);
             this.ready = true;
         };
 
@@ -1065,6 +1208,121 @@ var APPLE2_THREE_CFG_DEFAULT =
             return true;
         };
 
+        this.findMovableLight = function()
+        {
+            if (!this.scene) return null;
+
+            var pointLight = null;
+            var positionedLight = null;
+
+            this.scene.traverse(function(obj)
+            {
+                if (!pointLight && obj.isPointLight)
+                    pointLight = obj;
+
+                if (!positionedLight && obj.isLight &&
+                    !obj.isAmbientLight && !obj.isHemisphereLight && obj.position)
+                    positionedLight = obj;
+            });
+
+            return pointLight || positionedLight;
+        };
+
+        this.getLightMoveEnabled = function()
+        {
+            return !!this.lightMoveEnabled;
+        };
+
+        this.setLightMoveEnabled = function(flag)
+        {
+            flag = !!flag;
+            cfg.lightMove = flag;
+
+            if (flag && !this.renderer)
+                this.ensureTHREE();
+
+            var el = this.renderer && this.renderer.domElement;
+            if (!flag)
+            {
+                if (el)
+                {
+                    el.removeEventListener("pointermove",this._lightMovePointerHandler,true);
+                    el.style.cursor = this._lightMovePreviousCursor || "";
+                }
+
+                cfg.lightMove = false;
+                this.lightMoveEnabled = false;
+                this.activeSceneLight = null;
+
+                if (this.controls)
+                    this.controls.enabled = !!cfg.orbitControls;
+
+                return false;
+            }
+
+            var light = this.findMovableLight();
+            if (!el || !this.camera || !light)
+            {
+                cfg.lightMove = false;
+                this.lightMoveEnabled = false;
+                return false;
+            }
+
+            if (!this.lightMovePlane)
+            {
+                this.lightMovePlane = new THREE.Plane();
+                this.lightMoveRaycaster = new THREE.Raycaster();
+                this.lightMoveNdc = new THREE.Vector2();
+                this.lightMovePoint = new THREE.Vector3();
+            }
+
+            this.activeSceneLight = light;
+            this.lightMoveEnabled = true;
+
+            var normal = new THREE.Vector3();
+            this.camera.getWorldDirection(normal);
+            this.lightMovePlane.setFromNormalAndCoplanarPoint(normal,light.position);
+
+            el.removeEventListener("pointermove",this._lightMovePointerHandler,true);
+            el.addEventListener("pointermove",this._lightMovePointerHandler,true);
+            this._lightMovePreviousCursor = el.style.cursor || "";
+            el.style.cursor = "crosshair";
+
+            if (this.controls)
+                this.controls.enabled = false;
+
+            return true;
+        };
+
+        this.onLightPointerMove = function(event)
+        {
+            if (!this.lightMoveEnabled || !this.activeSceneLight ||
+                !this.lightMoveRaycaster || !this.lightMovePlane ||
+                !this.renderer || !this.camera)
+                return;
+
+            var rect = this.renderer.domElement.getBoundingClientRect();
+            this.lightMoveNdc.x =
+                ((event.clientX-rect.left)/Math.max(1,rect.width))*2-1;
+            this.lightMoveNdc.y =
+                -(((event.clientY-rect.top)/Math.max(1,rect.height))*2-1);
+
+            this.lightMoveRaycaster.setFromCamera(this.lightMoveNdc,this.camera);
+            var hit = this.lightMoveRaycaster.ray.intersectPlane(
+                this.lightMovePlane,
+                this.lightMovePoint
+            );
+
+            if (!hit) return;
+
+            this.activeSceneLight.position.copy(this.lightMovePoint);
+            this.activeSceneLight.updateMatrixWorld(true);
+
+            if (event.cancelable)
+                event.preventDefault();
+            event.stopPropagation();
+        };
+
         this.getOrbitEnabled = function()
         {
             return !!cfg.orbitControls;
@@ -1122,12 +1380,11 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.controls.enableDamping = true;
             this.controls.dampingFactor = 0.08;
 
-            this.controls.target.set(
-                cfg.fixedCameraTargetX || 0,
-                cfg.fixedCameraTargetY || 0,
-                cfg.fixedCameraTargetZ || 0
-            );
+            this.controls.target.copy(this.getSceneCenter());
+            this.controls.enabled = !this.lightMoveEnabled;
             this.controls.update();
+            if (typeof(this.controls.saveState)==="function")
+                this.controls.saveState();
 
             this.installCanvasEventShield();
         };
