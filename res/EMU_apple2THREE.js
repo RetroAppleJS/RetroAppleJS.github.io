@@ -261,6 +261,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             +(orbit ? " checked" : "")
             +" style=\"width:65px;float:left\"></input>"
             +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">orbit camera</div>"
+            +"&nbsp;|&nbsp;<button type=\"button\" class=\"appbut mini\" onclick=\"Apple2VideoTHREE_resetCameraControl()\">reset</button>"; 
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
@@ -275,9 +276,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             +(smoothing ? " checked" : "")
             +" style=\"width:65px;float:left\"></input>"
             +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">smooth texture</div>"
-            +"</div><br>"
-
-            +"<button type=\"button\" class=\"appbut mini\" onclick=\"Apple2VideoTHREE_resetCameraControl()\">reset camera</button>";           
+            +"</div><br>"          
     }
 
     function Apple2VideoTHREE(canvas)
