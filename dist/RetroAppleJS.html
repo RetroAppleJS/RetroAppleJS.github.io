@@ -14324,7 +14324,6 @@ function Apple2Video(ctx)
 //   window.Apple2VideoTHREE_CONFIG = {
 //       textureFPS: 10,
 //       renderFPS: 30,
-//       msaaSamples: 0,
 //       orbitControls: true,
 //       emissiveColor: 0xFFFFFF,
 //       emissiveIntensity: 1,
@@ -14360,7 +14359,6 @@ var APPLE2_THREE_CFG_DEFAULT =
 {
         textureFPS: 10,
         renderFPS: 50,
-        msaaSamples: 0,
         orbitControls: false,
 
         fixedCameraLookAt: true,
@@ -14472,19 +14470,22 @@ var APPLE2_THREE_CFG_DEFAULT =
         input.checked = renderer3D.setOrbitEnabled(input.checked);
     }
 
-    function Apple2VideoTHREE_setMSAAControl(input)
+    function Apple2VideoTHREE_setTextureSmoothingControl(input)
     {
         var renderer3D = Apple2VideoTHREE_getControlInstance();
-        if (!renderer3D || typeof(renderer3D.setMSAASamples) !== "function") return;
+        if (!renderer3D || typeof(renderer3D.setTextureSmoothing) !== "function") return;
 
-        var info = renderer3D.setMSAASamples(input.value);
-        input.max = Math.max(0, info.maxSamples);
-        input.value = info.samples;
-        input.disabled = info.maxSamples <= 0;
+        input.checked = renderer3D.setTextureSmoothing(input.checked);
 
-        var output = document.getElementById("threeMSAAValue");
-        if (output) output.textContent = info.samples + " / " + info.maxSamples;
     }
+
+    function Apple2VideoTHREE_resetCameraControl()
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.resetCameraPosition) !== "function") return;
+
+        renderer3D.resetCameraPosition();
+     }
 
     function Apple2VideoTHREE_controls(renderer3D)
     {
@@ -14497,10 +14498,9 @@ var APPLE2_THREE_CFG_DEFAULT =
         var orbit = renderer3D && typeof(renderer3D.getOrbitEnabled) === "function"
             ? renderer3D.getOrbitEnabled()
             : !!APPLE2_THREE_CFG_DEFAULT.orbitControls;
-        var msaa = renderer3D && typeof(renderer3D.getMSAAInfo) === "function"
-            ? renderer3D.getMSAAInfo()
-            : {"samples":APPLE2_THREE_CFG_DEFAULT.msaaSamples, "maxSamples":8};
-        var msaaMax = Math.max(0, msaa.maxSamples | 0);
+        var smoothing = renderer3D && typeof(renderer3D.getTextureSmoothing) === "function"
+            ? renderer3D.getTextureSmoothing()
+            : !!APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
 
         return "<div class=\"appbut mini\">"
             +"<input id=\"threePerspective\" type=\"range\" min=\"10\" max=\"120\" step=\"1\" value=\""+Math.round(fov)+"\" class=\"slider\""
@@ -14524,13 +14524,12 @@ var APPLE2_THREE_CFG_DEFAULT =
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
-            +"<input id=\"threeMSAA\" type=\"range\" min=\"0\" max=\""+msaaMax+"\" step=\"1\" value=\""+Math.min(msaa.samples|0,msaaMax)+"\" class=\"slider\""
-            +" onchange=\"Apple2VideoTHREE_setMSAAControl(this)\""
-            +(msaaMax <= 0 ? " disabled" : "")
-            +" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">MSAA samples "
-            +"<span id=\"threeMSAAValue\">"+Math.min(msaa.samples|0,msaaMax)+" / "+msaaMax+"</span></div>"
-            +"</div>";
+            +"<input id=\"threeTextureSmoothing\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setTextureSmoothingControl(this)\""
+            +(smoothing ? " checked" : "")
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">smooth texture</div>"
+            +"</div><br>"
+
+            +"<button type=\"button\" class=\"appbut mini\" onclick=\"Apple2VideoTHREE_resetCameraControl()\">reset camera</button>";           
     }
 
     function Apple2VideoTHREE(canvas)
@@ -14564,10 +14563,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.screenMesh = null;
         this.screenTexture = null;
 
-        this.msaaRenderTarget = null;
-        this.msaaCopyScene = null;
-        this.msaaCopyCamera = null;
-        this.msaaCopyQuad = null;
+        this.defaultCameraState = null;
 
         this.textureDirty = true;
         this.ready = false;
@@ -14790,7 +14786,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             this.renderer.setPixelRatio(window.devicePixelRatio || 1);
             this.resizeRenderer();
-            this.setMSAASamples(cfg.msaaSamples);
+            this.resizeTextureCanvas();
 
             this.screenTexture = new THREE.CanvasTexture(this.textureCanvas);
             this.configureScreenTexture();
@@ -14837,8 +14833,6 @@ var APPLE2_THREE_CFG_DEFAULT =
                 this.camera.aspect = (w * cfg.cameraAspectMul) / h;
                 this.camera.updateProjectionMatrix();
             }
-
-            this.resizeMSAATarget();
         };
 
         this.configureRendererFromProject = function(project)
@@ -14862,6 +14856,74 @@ var APPLE2_THREE_CFG_DEFAULT =
             return this.camera && this.camera.isPerspectiveCamera ? this.camera.fov : 50;
         };
 
+        this.getCameraTarget = function()
+        {
+            if (this.controls && this.controls.target)
+                return this.controls.target.clone();
+
+            return new THREE.Vector3(
+                cfg.fixedCameraTargetX || 0,
+                cfg.fixedCameraTargetY || 0,
+                cfg.fixedCameraTargetZ || 0
+            );
+        };
+
+        this.captureDefaultCameraState = function(camera)
+        {
+            if (!camera) return;
+
+            this.defaultCameraState = {
+                 "position":camera.position.clone()
+                ,"quaternion":camera.quaternion.clone()
+                ,"up":camera.up.clone()
+                ,"zoom":camera.zoom
+                ,"fov":camera.isPerspectiveCamera ? camera.fov : 50
+                ,"target":new THREE.Vector3(
+                    cfg.fixedCameraTargetX || 0,
+                    cfg.fixedCameraTargetY || 0,
+                    cfg.fixedCameraTargetZ || 0
+                )
+            };
+        };
+
+        this.resetCameraPosition = function()
+        {
+            if (!this.camera)
+                this.ensureTHREE();
+
+            var state = this.defaultCameraState;
+            if (!this.camera || !state) return false;
+
+            var direction = state.position.clone().sub(state.target);
+            var distance = direction.length();
+
+            if (this.camera.isPerspectiveCamera && distance > 0)
+            {
+                var currentFov = Math.max(1,this.camera.fov);
+                distance *= Math.tan(state.fov*Math.PI/360) /
+                            Math.tan(currentFov*Math.PI/360);
+            }
+
+            if (direction.lengthSq() > 0)
+                direction.setLength(distance);
+
+            this.camera.position.copy(state.target).add(direction);
+            this.camera.quaternion.copy(state.quaternion);
+            this.camera.up.copy(state.up);
+            this.camera.zoom = state.zoom;
+            this.camera.updateProjectionMatrix();
+            this.camera.updateMatrix();
+            this.camera.updateMatrixWorld(true);
+
+            if (this.controls)
+            {
+                this.controls.target.copy(state.target);
+                this.controls.update();
+            }
+
+            return true;
+        }
+
         this.setPerspective = function(fov)
         {
             fov = Number(fov);
@@ -14873,8 +14935,27 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             if (this.camera && this.camera.isPerspectiveCamera)
             {
+                var oldFov = Math.max(1,this.camera.fov);
+                var target = this.getCameraTarget();
+                var direction = this.camera.position.clone().sub(target);
+                var distance = direction.length();
+
+                if (distance > 0 && oldFov !== fov)
+                {
+                    distance *= Math.tan(oldFov*Math.PI/360) /
+                                Math.tan(fov*Math.PI/360);
+                    direction.setLength(distance);
+                    this.camera.position.copy(target).add(direction);
+                }
+
                 this.camera.fov = fov;
                 this.camera.updateProjectionMatrix();
+
+                this.camera.updateMatrix();
+                this.camera.updateMatrixWorld(true);
+
+                if (this.controls)
+                    this.controls.update();                
             }
 
             return fov;
@@ -14911,109 +14992,50 @@ var APPLE2_THREE_CFG_DEFAULT =
             return intensity;
         };
 
-        this.getMaxSamples = function()
+        this.getTextureSmoothing = function()
         {
-            return this.renderer && this.renderer.capabilities
-                ? Math.max(0, this.renderer.capabilities.maxSamples | 0)
-                : 0;
+            return !!cfg.textureSmoothing;
         };
 
-        this.disposeMSAATarget = function()
+        this.resizeTextureCanvas = function()
         {
-            if (this.msaaRenderTarget)
-                this.msaaRenderTarget.dispose();
+            var scale = cfg.textureSmoothing ? 2 : 1;
+            var width = DISPLAY_W*scale;
+            var height = DISPLAY_H*scale;
 
-            if (this.msaaCopyQuad)
-            {
-                if (this.msaaCopyQuad.geometry)
-                    this.msaaCopyQuad.geometry.dispose();
-                if (this.msaaCopyQuad.material)
-                    this.msaaCopyQuad.material.dispose();
-            }
+            if (this.textureCanvas.width !== width)
+                this.textureCanvas.width = width;
+            if (this.textureCanvas.height !== height)
+                this.textureCanvas.height = height;
 
             this.msaaRenderTarget = null;
             this.msaaCopyScene = null;
             this.msaaCopyCamera = null;
             this.msaaCopyQuad = null;
+
+            this.textureCtx = this.textureCanvas.getContext("2d",{alpha:false});
         };
 
-        this.rebuildMSAATarget = function()
+        this.setTextureSmoothing = function(flag)
         {
-            this.disposeMSAATarget();
+            cfg.textureSmoothing = !!flag;
+            this.resizeTextureCanvas();
+            this.configureScreenTexture();
+            this.updateTextureCanvas();
 
-            if (!this.renderer || cfg.msaaSamples <= 0)
-                return;
+            if (this.screenTexture)
+                this.screenTexture.needsUpdate = true;
 
-            var size = new THREE.Vector2();
-            this.renderer.getDrawingBufferSize(size);
-
-            this.msaaRenderTarget = new THREE.WebGLRenderTarget(
-                Math.max(1,size.x),
-                Math.max(1,size.y),
-                {
-                     "depthBuffer":true
-                    ,"stencilBuffer":false
-                    ,"samples":cfg.msaaSamples
-                }
-            );
-
-            this.msaaCopyCamera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-            this.msaaCopyCamera.position.z = 1;
-            this.msaaCopyScene = new THREE.Scene();
-
-            var material = new THREE.MeshBasicMaterial({
-                 "map":this.msaaRenderTarget.texture
-                ,"depthTest":false
-                ,"depthWrite":false
-            });
-            material.toneMapped = false;
-
-            this.msaaCopyQuad = new THREE.Mesh(new THREE.PlaneGeometry(2,2),material);
-            this.msaaCopyScene.add(this.msaaCopyQuad);
-        };
-
-        this.resizeMSAATarget = function()
-        {
-            if (!this.renderer || !this.msaaRenderTarget) return;
-
-            var size = new THREE.Vector2();
-            this.renderer.getDrawingBufferSize(size);
-            this.msaaRenderTarget.setSize(Math.max(1,size.x),Math.max(1,size.y));
-        };
-
-        this.getMSAAInfo = function()
-        {
-            return {
-                 "samples":Math.max(0,cfg.msaaSamples|0)
-                ,"maxSamples":this.getMaxSamples()
-            };
-        };
-
-        this.setMSAASamples = function(samples)
-        {
-            var maxSamples = this.getMaxSamples();
-            samples = Apple2VideoTHREE_clampInt(samples,0,maxSamples);
-            cfg.msaaSamples = samples;
-            this.rebuildMSAATarget();
-            return this.getMSAAInfo();
+            this.textureDirty = true;
+            return cfg.textureSmoothing;            
         };
 
         this.renderTHREEScene = function()
         {
             if (!this.renderer || !this.scene || !this.camera) return;
 
-            if (this.msaaRenderTarget && cfg.msaaSamples > 0)
-            {
-                this.renderer.setRenderTarget(this.msaaRenderTarget);
-                this.renderer.render(this.scene,this.camera);
-                this.renderer.setRenderTarget(null);
-                this.renderer.render(this.msaaCopyScene,this.msaaCopyCamera);
-            }
-            else
-            {
-                this.renderer.setRenderTarget(null);
-                this.renderer.render(this.scene,this.camera);
-            }
+            this.renderer.setRenderTarget(null);
+            this.renderer.render(this.scene,this.camera);           
         };
 
 
@@ -15026,8 +15048,17 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.screenTexture.wrapS = THREE.ClampToEdgeWrapping;
             this.screenTexture.wrapT = THREE.ClampToEdgeWrapping;
             this.screenTexture.minFilter = THREE.LinearFilter;
-            this.screenTexture.magFilter = THREE.NearestFilter;
+            this.screenTexture.magFilter = cfg.textureSmoothing
+                ? THREE.LinearFilter
+                : THREE.NearestFilter;            
             this.screenTexture.generateMipmaps = false;
+            var maxAnisotropy = this.renderer && this.renderer.capabilities &&
+                typeof(this.renderer.capabilities.getMaxAnisotropy) === "function"
+                ? this.renderer.capabilities.getMaxAnisotropy()
+                : 1;
+            this.screenTexture.anisotropy = cfg.textureSmoothing
+                ? Math.max(1,maxAnisotropy)
+                : 1;
             this.screenTexture.needsUpdate = true;
 
             if (THREE.SRGBColorSpace !== undefined)
@@ -15108,13 +15139,16 @@ var APPLE2_THREE_CFG_DEFAULT =
         {
             if (!this.textureCtx || !this.videoCanvas) return;
 
-            var l = Apple2VideoTHREE_clampInt(cfg.texturePadLeft,   0, DISPLAY_W - 1);
-            var t = Apple2VideoTHREE_clampInt(cfg.texturePadTop,    0, DISPLAY_H - 1);
-            var r = Apple2VideoTHREE_clampInt(cfg.texturePadRight,  0, DISPLAY_W - 1);
-            var b = Apple2VideoTHREE_clampInt(cfg.texturePadBottom, 0, DISPLAY_H - 1);
+            var scaleX = this.textureCanvas.width/DISPLAY_W;
+            var scaleY = this.textureCanvas.height/DISPLAY_H;
 
-            var dw = DISPLAY_W - l - r;
-            var dh = DISPLAY_H - t - b;
+            var l = Math.round(Apple2VideoTHREE_clampInt(cfg.texturePadLeft,   0, DISPLAY_W - 1)*scaleX);
+            var t = Math.round(Apple2VideoTHREE_clampInt(cfg.texturePadTop,    0, DISPLAY_H - 1)*scaleY);
+            var r = Math.round(Apple2VideoTHREE_clampInt(cfg.texturePadRight,  0, DISPLAY_W - 1)*scaleX);
+            var b = Math.round(Apple2VideoTHREE_clampInt(cfg.texturePadBottom, 0, DISPLAY_H - 1)*scaleY);
+
+            var dw = this.textureCanvas.width - l - r;
+            var dh = this.textureCanvas.height - t - b;
 
             if (dw < 1) dw = 1;
             if (dh < 1) dh = 1;
@@ -15122,9 +15156,12 @@ var APPLE2_THREE_CFG_DEFAULT =
             var ctx = this.textureCtx;
             ctx.save();
             ctx.imageSmoothingEnabled = !!cfg.textureSmoothing;
+            if ("imageSmoothingQuality" in ctx)
+                ctx.imageSmoothingQuality = cfg.textureSmoothing ? "high" : "low";
             ctx.fillStyle = cfg.texturePadColor || "#000000";
-            ctx.fillRect(0, 0, DISPLAY_W, DISPLAY_H);
-            ctx.drawImage(this.videoCanvas, 0, 0, DISPLAY_W, DISPLAY_H, l, t, dw, dh);
+            ctx.fillRect(0,0,this.textureCanvas.width,this.textureCanvas.height);
+            ctx.drawImage(this.videoCanvas,0,0,DISPLAY_W,DISPLAY_H,l,t,dw,dh);
+            
             ctx.restore();
         };
 
@@ -15206,6 +15243,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             cam.updateProjectionMatrix();
             cam.updateMatrix();
             cam.updateMatrixWorld(true);
+            this.captureDefaultCameraState(cam);
 
             return cam;
         };
@@ -15215,6 +15253,9 @@ var APPLE2_THREE_CFG_DEFAULT =
             var cam = new THREE.PerspectiveCamera(45, DISPLAY_W / DISPLAY_H, 0.01, 1000);
             cam.position.set(0, 0, 3.2);
             cam.lookAt(0, 0, 0);
+            cam.updateMatrix();
+            cam.updateMatrixWorld(true);
+            this.captureDefaultCameraState(cam);
             return cam;
         };
 
