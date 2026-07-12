@@ -26,6 +26,7 @@
 //   window.Apple2VideoTHREE_CONFIG = {
 //       textureFPS: 10,
 //       renderFPS: 30,
+//       msaaSamples: 0,
 //       orbitControls: true,
 //       emissiveColor: 0xFFFFFF,
 //       emissiveIntensity: 1,
@@ -61,6 +62,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 {
         textureFPS: 10,
         renderFPS: 50,
+        msaaSamples: 0,
         orbitControls: false,
 
         fixedCameraLookAt: true,
@@ -131,21 +133,105 @@ var APPLE2_THREE_CFG_DEFAULT =
         return null;
     }
 
-    function Apple2VideoTHREE_controls()
+    function Apple2VideoTHREE_getControlInstance()
+     {
+        if (typeof(oApple2Video) === "undefined" || oApple2Video === null ||
+            typeof(oApple2Video.getRendererInstance) !== "function")
+            return null;
+
+        return oApple2Video.getRendererInstance("threejs", true);
+    }
+
+    function Apple2VideoTHREE_setPerspectiveControl(input)
     {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setPerspective) !== "function") return;
+
+        var value = renderer3D.setPerspective(input.value);
+        input.value = value;
+
+        var output = document.getElementById("threePerspectiveValue");
+        if (output) output.textContent = value + "°";
+    }
+
+    function Apple2VideoTHREE_setLuminosityControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setEmissiveIntensity) !== "function") return;
+
+        var value = renderer3D.setEmissiveIntensity(Number(input.value) / 100);
+        input.value = Math.round(value * 100);
+
+        var output = document.getElementById("threeLuminosityValue");
+        if (output) output.textContent = value.toFixed(2);
+    }
+
+    function Apple2VideoTHREE_setOrbitControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setOrbitEnabled) !== "function") return;
+
+        input.checked = renderer3D.setOrbitEnabled(input.checked);
+    }
+
+    function Apple2VideoTHREE_setMSAAControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setMSAASamples) !== "function") return;
+
+        var info = renderer3D.setMSAASamples(input.value);
+        input.max = Math.max(0, info.maxSamples);
+        input.value = info.samples;
+        input.disabled = info.maxSamples <= 0;
+
+        var output = document.getElementById("threeMSAAValue");
+        if (output) output.textContent = info.samples + " / " + info.maxSamples;
+    }
+
+    function Apple2VideoTHREE_controls(renderer3D)
+    {
+        var fov = renderer3D && typeof(renderer3D.getPerspective) === "function"
+            ? renderer3D.getPerspective()
+            : 50;
+        var luminosity = renderer3D && typeof(renderer3D.getEmissiveIntensity) === "function"
+            ? renderer3D.getEmissiveIntensity()
+            : 1;
+        var orbit = renderer3D && typeof(renderer3D.getOrbitEnabled) === "function"
+            ? renderer3D.getOrbitEnabled()
+            : !!APPLE2_THREE_CFG_DEFAULT.orbitControls;
+        var msaa = renderer3D && typeof(renderer3D.getMSAAInfo) === "function"
+            ? renderer3D.getMSAAInfo()
+            : {"samples":APPLE2_THREE_CFG_DEFAULT.msaaSamples, "maxSamples":8};
+        var msaaMax = Math.max(0, msaa.maxSamples | 0);
+
         return "<div class=\"appbut mini\">"
-            +"<input id=\"perspRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective</div>"
+            +"<input id=\"threePerspective\" type=\"range\" min=\"10\" max=\"120\" step=\"1\" value=\""+Math.round(fov)+"\" class=\"slider\""
+            +" oninput=\"Apple2VideoTHREE_setPerspectiveControl(this)\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">perspective "
+            +"<span id=\"threePerspectiveValue\">"+Math.round(fov)+"°</span></div>"
             +"</div><br>"
             
             +"<div class=\"appbut mini\">"
-            +"<input id=\"lumRange\" type=\"range\" min=\"0\" max=\"70\" value=\"35\" class=\"slider\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity</div>"
+            +"<input id=\"threeLuminosity\" type=\"range\" min=\"0\" max=\"300\" step=\"5\" value=\""+Math.round(luminosity*100)+"\" class=\"slider\""
+            +" oninput=\"Apple2VideoTHREE_setLuminosityControl(this)\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">luminosity "
+            +"<span id=\"threeLuminosityValue\">"+Number(luminosity).toFixed(2)+"</span></div>"
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
-            +"<input id=\"moveLight\" type=\"checkbox\" onchange=\"\" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"  
+            +"<input id=\"threeOrbit\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setOrbitControl(this)\""
+            +(orbit ? " checked" : "")
+            +" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">orbit camera</div>"
+            +"</div><br>"
+
+            +"<div class=\"appbut mini\">"
+            +"<input id=\"threeMSAA\" type=\"range\" min=\"0\" max=\""+msaaMax+"\" step=\"1\" value=\""+Math.min(msaa.samples|0,msaaMax)+"\" class=\"slider\""
+            +" onchange=\"Apple2VideoTHREE_setMSAAControl(this)\""
+            +(msaaMax <= 0 ? " disabled" : "")
+            +" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">MSAA samples "
+            +"<span id=\"threeMSAAValue\">"+Math.min(msaa.samples|0,msaaMax)+" / "+msaaMax+"</span></div>"
             +"</div>";
     }
 
@@ -179,6 +265,12 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.controlsCamera = null;
         this.screenMesh = null;
         this.screenTexture = null;
+
+        this.msaaRenderTarget = null;
+        this.msaaCopyScene = null;
+        this.msaaCopyCamera = null;
+        this.msaaCopyQuad = null;
+
         this.textureDirty = true;
         this.ready = false;
         this._eventShieldInstalled = false;
@@ -400,6 +492,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             this.renderer.setPixelRatio(window.devicePixelRatio || 1);
             this.resizeRenderer();
+            this.setMSAASamples(cfg.msaaSamples);
 
             this.screenTexture = new THREE.CanvasTexture(this.textureCanvas);
             this.configureScreenTexture();
@@ -446,6 +539,8 @@ var APPLE2_THREE_CFG_DEFAULT =
                 this.camera.aspect = (w * cfg.cameraAspectMul) / h;
                 this.camera.updateProjectionMatrix();
             }
+
+            this.resizeMSAATarget();
         };
 
         this.configureRendererFromProject = function(project)
@@ -463,6 +558,167 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             this.renderer.toneMappingExposure = project.toneMappingExposure || 1;
         };
+
+        this.getPerspective = function()
+        {
+            return this.camera && this.camera.isPerspectiveCamera ? this.camera.fov : 50;
+        };
+
+        this.setPerspective = function(fov)
+        {
+            fov = Number(fov);
+            if (!isFinite(fov)) fov = this.getPerspective();
+            fov = Math.max(10, Math.min(120, fov));
+
+            if (!this.camera)
+                this.ensureTHREE();
+
+            if (this.camera && this.camera.isPerspectiveCamera)
+            {
+                this.camera.fov = fov;
+                this.camera.updateProjectionMatrix();
+            }
+
+            return fov;
+        };
+
+        this.getEmissiveIntensity = function()
+        {
+            return Number(cfg.emissiveIntensity) || 0;
+        };
+
+        this.setEmissiveIntensity = function(intensity)
+        {
+            intensity = Number(intensity);
+            if (!isFinite(intensity)) intensity = this.getEmissiveIntensity();
+            intensity = Math.max(0, Math.min(5, intensity));
+            cfg.emissiveIntensity = intensity;
+
+            if (!this.scene)
+                this.ensureTHREE();
+
+            var screen = this.screenMesh || this.findScreenMesh();
+            if (screen)
+            {
+                var materials = Array.isArray(screen.material) ? screen.material : [screen.material];
+                for (var i=0;i<materials.length;i++)
+                {
+                    var material = materials[i];
+                    if (!material || material.emissive === undefined) continue;
+                    material.emissiveIntensity = intensity;
+                    material.needsUpdate = true;
+                }
+            }
+
+            return intensity;
+        };
+
+        this.getMaxSamples = function()
+        {
+            return this.renderer && this.renderer.capabilities
+                ? Math.max(0, this.renderer.capabilities.maxSamples | 0)
+                : 0;
+        };
+
+        this.disposeMSAATarget = function()
+        {
+            if (this.msaaRenderTarget)
+                this.msaaRenderTarget.dispose();
+
+            if (this.msaaCopyQuad)
+            {
+                if (this.msaaCopyQuad.geometry)
+                    this.msaaCopyQuad.geometry.dispose();
+                if (this.msaaCopyQuad.material)
+                    this.msaaCopyQuad.material.dispose();
+            }
+
+            this.msaaRenderTarget = null;
+            this.msaaCopyScene = null;
+            this.msaaCopyCamera = null;
+            this.msaaCopyQuad = null;
+        };
+
+        this.rebuildMSAATarget = function()
+        {
+            this.disposeMSAATarget();
+
+            if (!this.renderer || cfg.msaaSamples <= 0)
+                return;
+
+            var size = new THREE.Vector2();
+            this.renderer.getDrawingBufferSize(size);
+
+            this.msaaRenderTarget = new THREE.WebGLRenderTarget(
+                Math.max(1,size.x),
+                Math.max(1,size.y),
+                {
+                     "depthBuffer":true
+                    ,"stencilBuffer":false
+                    ,"samples":cfg.msaaSamples
+                }
+            );
+
+            this.msaaCopyCamera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+            this.msaaCopyCamera.position.z = 1;
+            this.msaaCopyScene = new THREE.Scene();
+
+            var material = new THREE.MeshBasicMaterial({
+                 "map":this.msaaRenderTarget.texture
+                ,"depthTest":false
+                ,"depthWrite":false
+            });
+            material.toneMapped = false;
+
+            this.msaaCopyQuad = new THREE.Mesh(new THREE.PlaneGeometry(2,2),material);
+            this.msaaCopyScene.add(this.msaaCopyQuad);
+        };
+
+        this.resizeMSAATarget = function()
+        {
+            if (!this.renderer || !this.msaaRenderTarget) return;
+
+            var size = new THREE.Vector2();
+            this.renderer.getDrawingBufferSize(size);
+            this.msaaRenderTarget.setSize(Math.max(1,size.x),Math.max(1,size.y));
+        };
+
+        this.getMSAAInfo = function()
+        {
+            return {
+                 "samples":Math.max(0,cfg.msaaSamples|0)
+                ,"maxSamples":this.getMaxSamples()
+            };
+        };
+
+        this.setMSAASamples = function(samples)
+        {
+            var maxSamples = this.getMaxSamples();
+            samples = Apple2VideoTHREE_clampInt(samples,0,maxSamples);
+            cfg.msaaSamples = samples;
+            this.rebuildMSAATarget();
+            return this.getMSAAInfo();
+        };
+
+        this.renderTHREEScene = function()
+        {
+            if (!this.renderer || !this.scene || !this.camera) return;
+
+            if (this.msaaRenderTarget && cfg.msaaSamples > 0)
+            {
+                this.renderer.setRenderTarget(this.msaaRenderTarget);
+                this.renderer.render(this.scene,this.camera);
+                this.renderer.setRenderTarget(null);
+                this.renderer.render(this.msaaCopyScene,this.msaaCopyCamera);
+            }
+            else
+            {
+                this.renderer.setRenderTarget(null);
+                this.renderer.render(this.scene,this.camera);
+            }
+        };
+
+
 
         this.configureScreenTexture = function()
         {
@@ -768,6 +1024,32 @@ var APPLE2_THREE_CFG_DEFAULT =
             return true;
         };
 
+        this.getOrbitEnabled = function()
+        {
+            return !!cfg.orbitControls;
+        };
+
+        this.setOrbitEnabled = function(flag)
+        {
+            cfg.orbitControls = !!flag;
+
+            if (!cfg.orbitControls)
+            {
+                if (this.controls && typeof(this.controls.dispose) === "function")
+                    this.controls.dispose();
+
+                this.controls = null;
+                this.controlsCamera = null;
+                return false;
+            }
+
+            if (!this.renderer)
+                this.ensureTHREE();
+
+            this.installOrbitControls();
+            return !!this.controls;
+        };
+
         this.installOrbitControls = function()
         {
             if (!cfg.orbitControls || !this.camera || !this.renderer)
@@ -798,6 +1080,13 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.controlsCamera = this.camera;
             this.controls.enableDamping = true;
             this.controls.dampingFactor = 0.08;
+
+            this.controls.target.set(
+                cfg.fixedCameraTargetX || 0,
+                cfg.fixedCameraTargetY || 0,
+                cfg.fixedCameraTargetZ || 0
+            );
+            this.controls.update();
 
             this.installCanvasEventShield();
         };
@@ -877,8 +1166,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 if (video3D.controls)
                     video3D.controls.update();
 
-                if (video3D.renderer && video3D.scene && video3D.camera)
-                    video3D.renderer.render(video3D.scene, video3D.camera);
+                video3D.renderTHREEScene();
             }
 
             window.requestAnimationFrame(animate);
@@ -924,11 +1212,17 @@ var APPLE2_THREE_CFG_DEFAULT =
             return this.renderer;
         };
 
-        this.ctrl_dlg = Apple2VideoTHREE_controls;
+        this.ctrl_dlg = function()
+        {
+            return Apple2VideoTHREE_controls(this);
+        };
 
     }
 
-Apple2VideoTHREE.ctrl_dlg = Apple2VideoTHREE_controls;
+Apple2VideoTHREE.ctrl_dlg = function()
+{
+    return Apple2VideoTHREE_controls(null);
+};
 
 if(typeof(oEMU)!="undefined" && oEMU.component && oEMU.component.Video)
     oEMU.component.Video.Apple2Video = new Apple2VideoTHREE();
