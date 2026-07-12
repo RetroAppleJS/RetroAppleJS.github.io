@@ -930,7 +930,31 @@ var APPLE2_THREE_CFG_DEFAULT =
                 return false;
 
             this.screenMesh = screen;
-            return this.applyScreenTextureMaterialSlots();
+
+            var materials = Array.isArray(screen.material) ? screen.material : [screen.material];
+            for (var i=0;i<materials.length;i++)
+            {
+                var mat = materials[i];
+                if (!mat) continue;
+
+                this.applyScreenMaterialProfile(mat);
+
+                mat.map = cfg.baseMap ? this.screenTexture : null;
+
+                if (mat.emissive !== undefined)
+                {
+                    mat.emissive = new THREE.Color(cfg.emissiveColor);
+                    mat.emissiveMap = this.screenTexture;
+                    mat.emissiveIntensity = cfg.emissiveIntensity;
+                }
+
+                mat.roughnessMap = cfg.roughMetalMap ? this.screenTexture : null;
+                mat.metalnessMap = cfg.roughMetalMap ? this.screenTexture : null;
+                mat.needsUpdate = true;
+            }
+
+            this.textureDirty = true;
+            return true;
         };
 
         this.getTextureSmoothing = function()
@@ -1276,27 +1300,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             }
 
             this.screenMesh = screen;
-
-            var materials = Array.isArray(screen.material) ? screen.material : [screen.material];
-            for (var i = 0; i < materials.length; i++)
-            {
-                var mat = materials[i];
-                if (!mat) continue;
-
-                mat.map = this.screenTexture;
-
-                if (mat.emissive !== undefined)
-                {
-                    mat.emissive = new THREE.Color(cfg.emissiveColor);
-                    mat.emissiveMap = this.screenTexture;
-                    mat.emissiveIntensity = cfg.emissiveIntensity;
-                }
-
-                mat.needsUpdate = true;
-            }
-
-            this.textureDirty = true;
-            return true;
+            return this.applyScreenTextureMaterialSlots();
         };
 
         this.findMovableLight = function()
