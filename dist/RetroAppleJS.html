@@ -14388,7 +14388,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         texturePadRight: 14,
         texturePadBottom: 64,
         texturePadColor: "#000000",
-        textureSmoothing: false,
+        textureSmoothing: true,
 
         eventShield: false,
         eventShieldPreventDefault: false,
@@ -14516,7 +14516,7 @@ var APPLE2_THREE_CFG_DEFAULT =
     {
         var fov = renderer3D && typeof(renderer3D.getPerspective) === "function"
             ? renderer3D.getPerspective()
-            : 50;
+            : 30;
         var luminosity = renderer3D && typeof(renderer3D.getEmissiveIntensity) === "function"
             ? renderer3D.getEmissiveIntensity()
             : 1;
@@ -14528,7 +14528,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             : !!APPLE2_THREE_CFG_DEFAULT.lightMove;
         var smoothing = renderer3D && typeof(renderer3D.getTextureSmoothing) === "function"
             ? renderer3D.getTextureSmoothing()
-            : !!APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
+            : !APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
         var environment = renderer3D && typeof(renderer3D.getEnvironmentLuminosity) === "function"
             ? renderer3D.getEnvironmentLuminosity()
             : Number(APPLE2_THREE_CFG_DEFAULT.environmentLuminosity) || 0;
@@ -14913,7 +14913,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.getPerspective = function()
         {
-            return this.camera && this.camera.isPerspectiveCamera ? this.camera.fov : 50;
+            return this.camera && this.camera.isPerspectiveCamera ? this.camera.fov : 30;
         };
 
         this.updateSceneBounds = function()
@@ -14970,7 +14970,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 ,"quaternion":camera.quaternion.clone()
                 ,"up":camera.up.clone()
                 ,"zoom":camera.zoom
-                ,"fov":camera.isPerspectiveCamera ? camera.fov : 50
+                ,"fov":camera.isPerspectiveCamera ? camera.fov : 30
                 ,"target":target
             };
         };
@@ -15024,7 +15024,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             if (this.camera && this.camera.isPerspectiveCamera)
             {
-                var oldFov = this.camera.fov || 50;
+                var oldFov = this.camera.fov || 30;
                 var target = this.getCameraTarget();
 
                 if (Math.abs(fov-oldFov)>1e-6)
