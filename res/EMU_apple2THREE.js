@@ -28,12 +28,13 @@
 //       renderFPS: 30,
 //       orbitControls: true,
 //       lightMove: false,
+//       lightMoveHandles: true,
 //       baseMap: true,
 //       roughMetalMap: false,
 //       emissiveColor: 0xFFFFFF,
 //       emissiveIntensity: 1,
 //       environmentLuminosity: 0,
-//       environmentLightIntensity: 1,
+//       environmentLightIntensity: 0.45,
 //
 //       textureFlipY: false,
 //       textureMirrorX: false,
@@ -68,6 +69,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         renderFPS: 50,
         orbitControls: false,
         lightMove: false,
+        lightMoveHandles: true,
 
         baseMap: true,
         roughMetalMap: false,        
@@ -79,7 +81,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         emissiveColor: 0xFFFFFF,
         emissiveIntensity: 1,
         environmentLuminosity: 0,
-        environmentLightIntensity: 1,
+        environmentLightIntensity: 0.45,
 
         // Final orientation from v3/v4.
         textureFlipY: false,
@@ -141,6 +143,29 @@ var APPLE2_THREE_CFG_DEFAULT =
         return null;
     }
 
+    function Apple2VideoTHREE_getEmbeddedDefaultImageMaps()
+    {
+        try
+        {
+            if (typeof(default_image_maps) !== "undefined")
+                return default_image_maps;
+        }
+        catch(e) {}
+
+        if (window.default_image_maps !== undefined)
+            return window.default_image_maps;
+
+        return null;
+    }
+
+    function Apple2VideoTHREE_isUsableImageDataUrl(url)
+    {
+        return typeof(url) == "string" &&
+               url.indexOf("data:image/") == 0 &&
+               url.indexOf("...") < 0 &&
+               url.length > 32;
+    }
+
     function Apple2VideoTHREE_getControlInstance()
      {
         if (typeof(oApple2Video) === "undefined" || oApple2Video === null ||
@@ -198,6 +223,27 @@ var APPLE2_THREE_CFG_DEFAULT =
         input.checked = renderer3D.setLightMoveEnabled(input.checked);
     }
 
+    function Apple2VideoTHREE_syncLightIntensityControl(value)
+    {
+        var input = document.getElementById("threeLightIntensity");
+        var output = document.getElementById("threeLightIntensityValue");
+
+        value = Number(value);
+        if (!isFinite(value)) value = 0;
+
+        if (input) input.value = value;
+        if (output) output.textContent = value.toFixed(2);
+    }
+
+    function Apple2VideoTHREE_setLightIntensityControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setLightIntensity) !== "function") return;
+
+        var value = renderer3D.setLightIntensity(Number(input.value));
+        Apple2VideoTHREE_syncLightIntensityControl(value);
+    }
+
     function Apple2VideoTHREE_setEnvironmentControl(input)
     {
         var renderer3D = Apple2VideoTHREE_getControlInstance();
@@ -224,6 +270,9 @@ var APPLE2_THREE_CFG_DEFAULT =
         if (!renderer3D || typeof(renderer3D.resetLightPosition) !== "function") return;
 
         renderer3D.resetLightPosition();
+        if (typeof(renderer3D.getLightIntensity) === "function")
+            Apple2VideoTHREE_syncLightIntensityControl(renderer3D.getLightIntensity());
+
     }
 
     function Apple2VideoTHREE_setBaseMapControl(input)
@@ -256,6 +305,9 @@ var APPLE2_THREE_CFG_DEFAULT =
         var lightMove = renderer3D && typeof(renderer3D.getLightMoveEnabled) === "function"
             ? renderer3D.getLightMoveEnabled()
             : !!APPLE2_THREE_CFG_DEFAULT.lightMove;
+        var lightIntensity = renderer3D && typeof(renderer3D.getLightIntensity) === "function"
+            ? renderer3D.getLightIntensity()
+            : 0.45;
         var baseMap = renderer3D && typeof(renderer3D.getBaseMapEnabled) === "function"
             ? renderer3D.getBaseMapEnabled()
             : !!APPLE2_THREE_CFG_DEFAULT.baseMap;
@@ -313,6 +365,13 @@ var APPLE2_THREE_CFG_DEFAULT =
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
+            +"<input id=\"threeLightIntensity\" type=\"range\" min=\"0\" max=\"5\" step=\"0.05\" value=\""+Number(lightIntensity).toFixed(2)+"\" class=\"slider\""
+            +" oninput=\"Apple2VideoTHREE_setLightIntensityControl(this)\" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">light intensity "
+            +"<span id=\"threeLightIntensityValue\">"+Number(lightIntensity).toFixed(2)+"</span></div>"
+            +"</div><br>"
+
+            +"<div class=\"appbut mini\">"
             +"<input id=\"threeTextureSmoothing\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setTextureSmoothingControl(this)\""
             +(smoothing ? " checked" : "")
             +" style=\"width:65px;float:left\"></input>"
@@ -355,9 +414,12 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.defaultLightState = null;
         this.sceneBounds = null;
         this.environmentLight = null;
+        this.defaultMaterialTextures = {};
 
         this.lightMoveEnabled = !!cfg.lightMove;
         this.activeSceneLight = null;
+        this.lightTransformControls = null;
+        this.lightTransformHelper = null;
         this.lightMovePlane = null;
         this.lightMoveRaycaster = null;
         this.lightMoveNdc = null;
@@ -865,7 +927,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             }
 
             var gain = Number(cfg.environmentLightIntensity);
-            if (!isFinite(gain)) gain = 1;
+            if (!isFinite(gain)) gain = 0.45;
             this.environmentLight.intensity = value*Math.max(0,gain);
 
             return value;
@@ -916,11 +978,81 @@ var APPLE2_THREE_CFG_DEFAULT =
             if (mat.color) mat.color.set(0xffffff);
             if (mat.roughness !== undefined) mat.roughness = 1;
             if (mat.metalness !== undefined) mat.metalness = 0;
-            if (mat.envMapIntensity !== undefined) mat.envMapIntensity = 1;
+            if (mat.envMapIntensity !== undefined) mat.envMapIntensity = 0.45;
 
             mat.side = THREE.DoubleSide;
             mat.needsUpdate = true;
             return true;
+        };
+
+        this.applyDefaultTextureProfile = function(texture,slot)
+        {
+            if (!texture) return texture;
+
+            var srgb = (slot == "map" || slot == "emissiveMap");
+            texture.mapping = THREE.UVMapping;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1,1);
+            texture.offset.set(0,0);
+            texture.center.set(0,0);
+            texture.rotation = 0;
+            texture.format = THREE.RGBAFormat;
+            texture.type = THREE.UnsignedByteType;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.anisotropy = 1;
+            texture.flipY = false;
+            texture.generateMipmaps = true;
+            texture.premultiplyAlpha = false;
+            texture.unpackAlignment = 4;
+
+            if (srgb)
+            {
+                if (THREE.SRGBColorSpace !== undefined)
+                    texture.colorSpace = THREE.SRGBColorSpace;
+                else if (THREE.sRGBEncoding !== undefined)
+                    texture.encoding = THREE.sRGBEncoding;
+            }
+            else
+            {
+                if (THREE.NoColorSpace !== undefined)
+                    texture.colorSpace = THREE.NoColorSpace;
+                else if (THREE.LinearEncoding !== undefined)
+                    texture.encoding = THREE.LinearEncoding;
+            }
+
+            texture.needsUpdate = true;
+            return texture;
+        };
+
+        this.getDefaultMaterialTexture = function(slot)
+        {
+            var maps = Apple2VideoTHREE_getEmbeddedDefaultImageMaps();
+            if (!maps) return null;
+
+            var url = maps[slot];
+            if (slot == "roughMetal")
+                url = maps.roughnessMap || maps.metalnessMap;
+
+            if (!Apple2VideoTHREE_isUsableImageDataUrl(url))
+                return null;
+
+            if (this.defaultMaterialTextures[slot])
+                return this.defaultMaterialTextures[slot];
+
+            var texture = new THREE.TextureLoader().load(url,function(tex)
+            {
+                video3D.applyDefaultTextureProfile(tex,slot);
+                video3D.applyScreenTextureMaterialSlots();
+                video3D.textureDirty = true;
+            });
+
+            texture.name = "__Apple2VideoTHREE_default_" + slot;
+            this.applyDefaultTextureProfile(texture,slot);
+            this.defaultMaterialTextures[slot] = texture;
+
+            return texture;
         };
 
         this.applyScreenTextureMaterialSlots = function()
@@ -931,6 +1063,19 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             this.screenMesh = screen;
 
+            var baseTexture = cfg.baseMap
+                ? (this.getDefaultMaterialTexture("map") || this.screenTexture)
+                : null;
+
+            var roughTexture = cfg.roughMetalMap
+                ? (this.getDefaultMaterialTexture("roughnessMap") ||
+                   this.getDefaultMaterialTexture("roughMetal"))
+                : null;
+
+            var metalTexture = cfg.roughMetalMap
+                ? (this.getDefaultMaterialTexture("metalnessMap") || roughTexture)
+                : null;
+
             var materials = Array.isArray(screen.material) ? screen.material : [screen.material];
             for (var i=0;i<materials.length;i++)
             {
@@ -939,7 +1084,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
                 this.applyScreenMaterialProfile(mat);
 
-                mat.map = cfg.baseMap ? this.screenTexture : null;
+                mat.map = baseTexture;
 
                 if (mat.emissive !== undefined)
                 {
@@ -948,8 +1093,8 @@ var APPLE2_THREE_CFG_DEFAULT =
                     mat.emissiveIntensity = cfg.emissiveIntensity;
                 }
 
-                mat.roughnessMap = cfg.roughMetalMap ? this.screenTexture : null;
-                mat.metalnessMap = cfg.roughMetalMap ? this.screenTexture : null;
+                mat.roughnessMap = roughTexture;
+                mat.metalnessMap = metalTexture;
                 mat.needsUpdate = true;
             }
 
@@ -1363,6 +1508,10 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             light.updateMatrixWorld(true);
 
+            if (this.lightTransformControls &&
+                typeof(this.lightTransformControls.updateMatrixWorld) == "function")
+                this.lightTransformControls.updateMatrixWorld(true);
+
             if (this.lightMoveEnabled && this.lightMovePlane && this.camera)
             {
                 var normal = new THREE.Vector3();
@@ -1371,6 +1520,110 @@ var APPLE2_THREE_CFG_DEFAULT =
             }
 
             return true;
+        };
+
+        this.installLightTransformControls = function(light)
+        {
+            if (!cfg.lightMoveHandles || !light || !this.scene || !this.camera ||
+                !this.renderer || typeof(THREE.TransformControls) != "function")
+                return false;
+
+            if (!this.lightTransformControls)
+            {
+                var controls3D = new THREE.TransformControls(this.camera,this.renderer.domElement);
+                controls3D.setMode("translate");
+                if (typeof(controls3D.setSize) == "function")
+                    controls3D.setSize(0.8);
+                controls3D.name = "__Apple2VideoTHREE_light_transform";
+
+                controls3D.addEventListener("dragging-changed",function(event)
+                {
+                    if (video3D.controls)
+                        video3D.controls.enabled = !video3D.lightMoveEnabled &&
+                                                   !event.value &&
+                                                   !!cfg.orbitControls;
+                });
+
+                controls3D.addEventListener("objectChange",function()
+                {
+                    if (video3D.activeSceneLight)
+                    {
+                        video3D.activeSceneLight.updateMatrixWorld(true);
+
+                        if (video3D.lightMovePlane && video3D.camera)
+                        {
+                            var normal = new THREE.Vector3();
+                            video3D.camera.getWorldDirection(normal);
+                            video3D.lightMovePlane.setFromNormalAndCoplanarPoint(
+                                normal,
+                                video3D.activeSceneLight.position
+                            );
+                        }
+                    }
+                });
+
+                controls3D.addEventListener("change",function()
+                {
+                    video3D.renderTHREEScene();
+                });
+
+                this.lightTransformControls = controls3D;
+            }
+            else
+            {
+                this.lightTransformControls.camera = this.camera;
+            }
+
+            this.lightTransformHelper =
+                typeof(this.lightTransformControls.getHelper) == "function"
+                    ? this.lightTransformControls.getHelper()
+                    : this.lightTransformControls;
+
+            if (this.lightTransformHelper && this.lightTransformHelper.parent !== this.scene)
+                this.scene.add(this.lightTransformHelper);
+
+            this.lightTransformControls.attach(light);
+            return true;
+        };
+
+        this.detachLightTransformControls = function()
+        {
+            if (this.lightTransformControls &&
+                typeof(this.lightTransformControls.detach) == "function")
+                this.lightTransformControls.detach();
+
+            if (this.lightTransformHelper && this.lightTransformHelper.parent)
+                this.lightTransformHelper.parent.remove(this.lightTransformHelper);
+        };
+
+        this.getLightIntensity = function()
+        {
+            var light = this.activeSceneLight || this.findMovableLight();
+            if (!light || light.intensity === undefined)
+                return 0;
+
+            var value = Number(light.intensity);
+            return isFinite(value) ? value : 0;
+        };
+
+        this.setLightIntensity = function(intensity)
+        {
+            intensity = Number(intensity);
+            if (!isFinite(intensity)) intensity = this.getLightIntensity();
+            intensity = Math.max(0,Math.min(5,intensity));
+
+            if (!this.scene)
+                this.ensureTHREE();
+
+            var light = this.activeSceneLight || this.findMovableLight();
+            if (!light || light.intensity === undefined)
+                return intensity;
+
+            this.captureDefaultLightState(light);
+            light.intensity = intensity;
+            light.updateMatrixWorld(true);
+
+            return intensity;
         };
 
         this.getLightMoveEnabled = function()
@@ -1394,6 +1647,8 @@ var APPLE2_THREE_CFG_DEFAULT =
                     el.removeEventListener("pointermove",this._lightMovePointerHandler,true);
                     el.style.cursor = this._lightMovePreviousCursor || "";
                 }
+
+                this.detachLightTransformControls();
 
                 cfg.lightMove = false;
                 this.lightMoveEnabled = false;
@@ -1429,13 +1684,23 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.camera.getWorldDirection(normal);
             this.lightMovePlane.setFromNormalAndCoplanarPoint(normal,light.position);
 
-            el.removeEventListener("pointermove",this._lightMovePointerHandler,true);
-            el.addEventListener("pointermove",this._lightMovePointerHandler,true);
-            this._lightMovePreviousCursor = el.style.cursor || "";
-            el.style.cursor = "crosshair";
-
             if (this.controls)
                 this.controls.enabled = false;
+
+            var hasTransformHandles = this.installLightTransformControls(light);
+            el.removeEventListener("pointermove",this._lightMovePointerHandler,true);
+
+            if (hasTransformHandles)
+            {
+                el.style.cursor = this._lightMovePreviousCursor || "";
+            }
+            else
+            {
+                this._lightMovePreviousCursor = el.style.cursor || "";
+                el.addEventListener("pointermove",this._lightMovePointerHandler,true);
+                el.style.cursor = "crosshair";
+            }
+
 
             return true;
         };
