@@ -261,7 +261,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             +(orbit ? " checked" : "")
             +" style=\"width:65px;float:left\"></input>"
              +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">orbit camera"
-             +"&nbsp;|&nbsp;<button type=\"button\" class=\"appbut mini\" onclick=\"Apple2VideoTHREE_resetCameraControl()\">reset</button>"; 
+             +"&nbsp;|&nbsp;<button type=\"button\" class=\"appbut mini\" onclick=\"Apple2VideoTHREE_resetCameraControl()\">reset</button>"
              +"</div>"
             +"</div><br>"
 
