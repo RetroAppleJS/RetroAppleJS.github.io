@@ -47,7 +47,7 @@
 //       texturePadRight: 14,
 //       texturePadBottom: 16,
 //       texturePadColor: "#000000",
-//       textureSmoothing: false,
+//       textureSmoothing: true,
 //
 //       eventShield: false,
 //       eventShieldPreventDefault: false,
@@ -1270,6 +1270,50 @@ var APPLE2_THREE_CFG_DEFAULT =
             ctx.restore();
         };
 
+        this.getConfiguredInitialPerspective = function()
+        {
+            var fov = Number(cfg.perspective);
+            if (!isFinite(fov)) fov = 30;
+            return Math.max(5,Math.min(90,fov));
+        };
+
+        this.applyInitialPerspective = function()
+        {
+            if (!this.camera || !this.camera.isPerspectiveCamera)
+                return false;
+
+            this.setPerspective(this.getConfiguredInitialPerspective());
+            this.captureDefaultCameraState(this.camera,this.getCameraTarget());
+            return true;
+        };
+
+        this.getConfiguredInitialLightIntensity = function()
+        {
+            var intensity = Number(cfg.lightIntensity);
+            if (!isFinite(intensity)) intensity = 0.45;
+            return Math.max(0,Math.min(5,intensity));
+        };
+
+        this.applyInitialLightIntensity = function()
+        {
+            var light = this.findMovableLight();
+            if (!light || light.intensity === undefined)
+                return false;
+
+            light.intensity = this.getConfiguredInitialLightIntensity();
+            light.updateMatrixWorld(true);
+
+            if (light.userData)
+                delete light.userData.__Apple2VideoTHREE_defaultLight;
+
+            this.captureDefaultLightState(light);
+
+            if (typeof(Apple2VideoTHREE_syncLightIntensityControl) === "function")
+                Apple2VideoTHREE_syncLightIntensityControl(light.intensity);
+
+            return true;
+        };
+
         this.loadProjectScene = function()
         {
             if (sceneLoadStarted) return;
@@ -1297,8 +1341,10 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.updateSceneBounds();
 
             this.camera = this.cameraFromProject(json_proj.camera);
+            this.applyInitialPerspective();
             this.attachTextureToScreen();
             this.applyEnvironmentLuminosity();
+            this.applyInitialLightIntensity();
 
             if (cfg.showGrid)
                 this.scene.add(new THREE.GridHelper(200, 20));
@@ -1404,8 +1450,10 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.scene.add(light);
 
             this.updateSceneBounds();
+            this.applyInitialPerspective();
             this.captureDefaultCameraState(this.camera,this.getSceneCenter());
             this.applyEnvironmentLuminosity();
+            this.applyInitialLightIntensity();
             this.installOrbitControls();
             if (this.lightMoveEnabled)
                 this.setLightMoveEnabled(true);
