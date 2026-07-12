@@ -28,6 +28,8 @@
 //       renderFPS: 30,
 //       orbitControls: true,
 //       lightMove: false,
+//       baseMap: true,
+//       roughMetalMap: false,
 //       emissiveColor: 0xFFFFFF,
 //       emissiveIntensity: 1,
 //       environmentLuminosity: 0,
@@ -67,6 +69,8 @@ var APPLE2_THREE_CFG_DEFAULT =
         orbitControls: false,
         lightMove: false,
 
+        baseMap: true,
+        roughMetalMap: false,        
         fixedCameraLookAt: true,
         fixedCameraTargetX: 0,
         fixedCameraTargetY: 0,
@@ -214,6 +218,30 @@ var APPLE2_THREE_CFG_DEFAULT =
         renderer3D.resetCameraPosition();
     }
 
+    function Apple2VideoTHREE_resetLightControl()
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.resetLightPosition) !== "function") return;
+
+        renderer3D.resetLightPosition();
+    }
+
+    function Apple2VideoTHREE_setBaseMapControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setBaseMapEnabled) !== "function") return;
+
+        input.checked = renderer3D.setBaseMapEnabled(input.checked);
+    }
+
+    function Apple2VideoTHREE_setRoughMetalControl(input)
+    {
+        var renderer3D = Apple2VideoTHREE_getControlInstance();
+        if (!renderer3D || typeof(renderer3D.setRoughMetalEnabled) !== "function") return;
+
+        input.checked = renderer3D.setRoughMetalEnabled(input.checked);
+    }
+
     function Apple2VideoTHREE_controls(renderer3D)
     {
         var fov = renderer3D && typeof(renderer3D.getPerspective) === "function"
@@ -228,12 +256,15 @@ var APPLE2_THREE_CFG_DEFAULT =
         var lightMove = renderer3D && typeof(renderer3D.getLightMoveEnabled) === "function"
             ? renderer3D.getLightMoveEnabled()
             : !!APPLE2_THREE_CFG_DEFAULT.lightMove;
+        var baseMap = renderer3D && typeof(renderer3D.getBaseMapEnabled) === "function"
+            ? renderer3D.getBaseMapEnabled()
+            : !!APPLE2_THREE_CFG_DEFAULT.baseMap;
+        var roughMetal = renderer3D && typeof(renderer3D.getRoughMetalEnabled) === "function"
+            ? renderer3D.getRoughMetalEnabled()
+            : !!APPLE2_THREE_CFG_DEFAULT.roughMetalMap;
         var smoothing = renderer3D && typeof(renderer3D.getTextureSmoothing) === "function"
             ? renderer3D.getTextureSmoothing()
             : !APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
-        var environment = renderer3D && typeof(renderer3D.getEnvironmentLuminosity) === "function"
-            ? renderer3D.getEnvironmentLuminosity()
-            : Number(APPLE2_THREE_CFG_DEFAULT.environmentLuminosity) || 0;
 
         return "<div class=\"appbut mini\">"
             +"<input id=\"threePerspective\" type=\"range\" min=\"5\" max=\"90\" step=\"1\" value=\""+Math.round(fov)+"\" class=\"slider\""
@@ -250,10 +281,17 @@ var APPLE2_THREE_CFG_DEFAULT =
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
-            +"<input id=\"threeEnvironment\" type=\"range\" min=\"0\" max=\"100\" step=\"1\" value=\""+Math.round(environment*100)+"\" class=\"slider\""
-            +" oninput=\"Apple2VideoTHREE_setEnvironmentControl(this)\" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">environment "
-            +"<span id=\"threeEnvironmentValue\">"+Math.round(environment*100)+"%</span></div>"
+            +"<input id=\"threeBaseMap\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setBaseMapControl(this)\""
+            +(baseMap ? " checked" : "")
+            +" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">base material</div>"
+            +"</div><br>"
+
+            +"<div class=\"appbut mini\">"
+            +"<input id=\"threeRoughMetal\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setRoughMetalControl(this)\""
+            +(roughMetal ? " checked" : "")
+            +" style=\"width:65px;float:left\"></input>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">rough/metal</div>"
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
@@ -269,7 +307,9 @@ var APPLE2_THREE_CFG_DEFAULT =
             +"<input id=\"threeMoveLight\" type=\"checkbox\" onchange=\"Apple2VideoTHREE_setLightMoveControl(this)\""
             +(lightMove ? " checked" : "")
             +" style=\"width:65px;float:left\"></input>"
-            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light</div>"
+            +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">move light"
+            +"&nbsp;|&nbsp;<button type=\"button\" class=\"appbut mini\" onclick=\"Apple2VideoTHREE_resetLightControl()\">reset</button>"
+            +"</div>"
             +"</div><br>"
 
             +"<div class=\"appbut mini\">"
@@ -312,6 +352,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.screenTexture = null;
 
         this.defaultCameraState = null;
+        this.defaultLightState = null;
         this.sceneBounds = null;
         this.environmentLight = null;
 
@@ -842,6 +883,56 @@ var APPLE2_THREE_CFG_DEFAULT =
             return this.applyEnvironmentLuminosity();
         };
 
+        this.getBaseMapEnabled = function()
+        {
+            return !!cfg.baseMap;
+        };
+
+        this.setBaseMapEnabled = function(flag)
+        {
+            cfg.baseMap = !!flag;
+            this.applyScreenTextureMaterialSlots();
+            return cfg.baseMap;
+        };
+
+        this.getRoughMetalEnabled = function()
+        {
+            return !!cfg.roughMetalMap;
+        };
+
+        this.setRoughMetalEnabled = function(flag)
+        {
+            cfg.roughMetalMap = !!flag;
+            this.applyScreenTextureMaterialSlots();
+            return cfg.roughMetalMap;
+        };
+
+        this.applyScreenMaterialProfile = function(mat)
+        {
+            if (!mat) return false;
+
+            // Mirrors the scalar part of tools/GUI_DEV/THREEJS_loader.html
+            // after APPLY BASE. Texture slots are managed separately below.
+            if (mat.color) mat.color.set(0xffffff);
+            if (mat.roughness !== undefined) mat.roughness = 1;
+            if (mat.metalness !== undefined) mat.metalness = 0;
+            if (mat.envMapIntensity !== undefined) mat.envMapIntensity = 1;
+
+            mat.side = THREE.DoubleSide;
+            mat.needsUpdate = true;
+            return true;
+        };
+
+        this.applyScreenTextureMaterialSlots = function()
+        {
+            var screen = this.screenMesh || this.findScreenMesh();
+            if (!screen)
+                return false;
+
+            this.screenMesh = screen;
+            return this.applyScreenTextureMaterialSlots();
+        };
+
         this.getTextureSmoothing = function()
         {
             return !!cfg.textureSmoothing;
@@ -1228,6 +1319,56 @@ var APPLE2_THREE_CFG_DEFAULT =
             return pointLight || positionedLight;
         };
 
+        this.captureDefaultLightState = function(light)
+        {
+            if (!light || !light.position) return null;
+
+            if (!light.userData)
+                light.userData = {};
+
+            if (!light.userData.__Apple2VideoTHREE_defaultLight)
+            {
+                light.userData.__Apple2VideoTHREE_defaultLight = {
+                     "position": light.position.clone()
+                    ,"intensity": light.intensity
+                    ,"distance": light.distance
+                    ,"decay": light.decay
+                };
+            }
+
+            this.defaultLightState = light.userData.__Apple2VideoTHREE_defaultLight;
+            return this.defaultLightState;
+        };
+
+        this.resetLightPosition = function()
+        {
+            if (!this.scene)
+                this.ensureTHREE();
+
+            var light = this.activeSceneLight || this.findMovableLight();
+            if (!light) return false;
+
+            var state = this.captureDefaultLightState(light);
+            if (!state) return false;
+
+            light.position.copy(state.position);
+
+            if (state.intensity !== undefined) light.intensity = state.intensity;
+            if (state.distance  !== undefined) light.distance  = state.distance;
+            if (state.decay     !== undefined) light.decay     = state.decay;
+
+            light.updateMatrixWorld(true);
+
+            if (this.lightMoveEnabled && this.lightMovePlane && this.camera)
+            {
+                var normal = new THREE.Vector3();
+                this.camera.getWorldDirection(normal);
+                this.lightMovePlane.setFromNormalAndCoplanarPoint(normal,light.position);
+            }
+
+            return true;
+        };
+
         this.getLightMoveEnabled = function()
         {
             return !!this.lightMoveEnabled;
@@ -1276,6 +1417,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 this.lightMovePoint = new THREE.Vector3();
             }
 
+            this.captureDefaultLightState(light);
             this.activeSceneLight = light;
             this.lightMoveEnabled = true;
 

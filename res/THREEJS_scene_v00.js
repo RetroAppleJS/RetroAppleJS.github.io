@@ -1,3 +1,4 @@
+
 const THREE_scene = {
   "metadata": {},
   "project": {
@@ -20,7 +21,7 @@ const THREE_scene = {
       "matrix": [
         0.4130461354846072
         ,0
-        ,0.78
+        ,0.78 // ASPECT
         ,0
         ,0.2914840398005568
         ,0.947396471906859
@@ -31,9 +32,9 @@ const THREE_scene = {
         ,0.320062376761837
         ,0.39131845149287936
         ,0
-        ,0
-        ,0.0358
-        ,3.0
+        ,0    // X-rotation
+        ,0.0358  // Y-rotation
+        ,3.0  // ZOOM
         ,1
       ],
       
@@ -96,10 +97,10 @@ const THREE_scene = {
         "uuid": "8727a210-fbcc-4c2f-bdd0-93781facd407",
         "type": "MeshStandardMaterial",
         "name": "monitor_screen_mat",
-        "color": 16777215,
+        "color": 0xFFFFFF,
         "roughness": 0,
         "metalness": 0,
-        "emissive": 45930,
+        "emissive": 0xB36A,
         "emissiveIntensity": 7.74,
         "emissiveMap": "2fd50e10-42dd-477d-8504-24e7d2b27b08",
         "envMapRotation": [0,0,0,"XYZ"],
@@ -163,9 +164,9 @@ const THREE_scene = {
             ,0,0,0
             ,0,1,0
 
-            ,0
-            ,0.02
-            ,1.25
+            ,0        // X-TRANSLATION
+            ,0.02     // Y-TRANSLATION
+            ,1.25      // Z-TRANSLATION
             
             ,1
           ],
@@ -180,11 +181,9 @@ const THREE_scene = {
           "type": "PointLight",
           "name": "PointLight",
           "layers": 1,
-          "matrix": [1,0,0,0,0,1,0,0,0,0,1,0
-          ,0,0.255,2.3
-          ,1],
+          "matrix": [1,0,0,0,0,1,0,0,0,0,1,0,-0.45669859804274227,1.1293625747226137,1.4174270774311593,1],
           "up": [0,1,0],
-          "color": 16777215,
+          "color": 0xFFFFFF,
           "intensity": 1,
           "distance": 0,
           "decay": 2,
@@ -210,4 +209,4 @@ const THREE_scene = {
     "redos": []
   },
   "environment": null
-}
+};
