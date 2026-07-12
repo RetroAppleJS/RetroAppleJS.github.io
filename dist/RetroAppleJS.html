@@ -14330,40 +14330,11 @@ function Apple2Video(ctx)
 //
 // Optional configuration before loading this file:
 //
-//   window.Apple2VideoTHREE_CONFIG = {
-//       textureFPS: 10,
-//       renderFPS: 30,
-//       orbitControls: true,
-//       lightMove: false,
-//       lightMoveHandles: true,
-//       baseMap: true,
-//       roughMetalMap: false,
-//       emissiveColor: 0xFFFFFF,
-//       emissiveIntensity: 1,
-//       environmentLuminosity: 0,
-//       environmentLightIntensity: 0.45,
-//
-//       textureFlipY: false,
-//       textureMirrorX: false,
-//       textureMirrorY: false,
-//
-//       // v5 default compensation, based on the observed truncation:
-//       // ~14 canvas px left/right and ~16 canvas px top/bottom.
-//       texturePadLeft: 14,
-//       texturePadTop: 16,
-//       texturePadRight: 14,
-//       texturePadBottom: 16,
-//       texturePadColor: "#000000",
-//       textureSmoothing: true,
-//
-//       eventShield: false,
-//       eventShieldPreventDefault: false,
-//       showGrid: false,
-//       showAxes: false,
-//       background: 0x202020,
-//       cameraAspectMul: 1
-//   };
-//
+//   window.Apple2VideoTHREE_CONFIG = { ... };
+// Runtime defaults live only in APPLE2_THREE_CFG_DEFAULT below.
+// The UI and the initialized Three.js scene must read through the cfg helpers,
+// never through separate literal fallbacks.
+
 "use strict";
 
 // Explicit dependency: THREE uses the GPU renderer as its hidden 2D producer.
@@ -14374,9 +14345,11 @@ var APPLE2_THREE_CFG_DEFAULT =
 {
         textureFPS: 10,
         renderFPS: 50,
+        perspective: 30,
         orbitControls: false,
         lightMove: false,
         lightMoveHandles: true,
+        lightIntensity: 0.45,
 
         baseMap: true,
         roughMetalMap: false,        
@@ -14602,7 +14575,7 @@ var APPLE2_THREE_CFG_DEFAULT =
     {
         var fov = renderer3D && typeof(renderer3D.getPerspective) === "function"
             ? renderer3D.getPerspective()
-            : 30;
+            : APPLE2_THREE_CFG_DEFAULT.perspective;
         var luminosity = renderer3D && typeof(renderer3D.getEmissiveIntensity) === "function"
             ? renderer3D.getEmissiveIntensity()
             : 1;
@@ -14614,7 +14587,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             : !!APPLE2_THREE_CFG_DEFAULT.lightMove;
         var lightIntensity = renderer3D && typeof(renderer3D.getLightIntensity) === "function"
             ? renderer3D.getLightIntensity()
-            : 0.45;
+            : APPLE2_THREE_CFG_DEFAULT.lightIntensity;
         var baseMap = renderer3D && typeof(renderer3D.getBaseMapEnabled) === "function"
             ? renderer3D.getBaseMapEnabled()
             : !!APPLE2_THREE_CFG_DEFAULT.baseMap;
@@ -14623,7 +14596,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             : !!APPLE2_THREE_CFG_DEFAULT.roughMetalMap;
         var smoothing = renderer3D && typeof(renderer3D.getTextureSmoothing) === "function"
             ? renderer3D.getTextureSmoothing()
-            : !APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
+            : !!APPLE2_THREE_CFG_DEFAULT.textureSmoothing;
 
         return "<div class=\"appbut mini\">"
             +"<input id=\"threePerspective\" type=\"range\" min=\"5\" max=\"90\" step=\"1\" value=\""+Math.round(fov)+"\" class=\"slider\""
@@ -14765,6 +14738,27 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.initGPU = function()
         {
             return true;
+        };
+
+        this.getSceneNumber = function(key,lo,hi)
+        {
+            var value = Number(cfg[key]);
+            if (!isFinite(value))
+                value = Number(APPLE2_THREE_CFG_DEFAULT[key]);
+            if (!isFinite(value))
+                value = 0;
+
+            if (lo !== undefined && value < lo) value = lo;
+            if (hi !== undefined && value > hi) value = hi;
+            return value;
+        };
+
+        this.getSceneBoolean = function(key)
+        {
+            var value = cfg[key];
+            if (value === undefined)
+                value = APPLE2_THREE_CFG_DEFAULT[key];
+            return !!value;
         };
 
         this.ensure2DRenderer = function()
@@ -14961,8 +14955,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.resizeTextureCanvas();
 
             this.screenTexture = new THREE.CanvasTexture(this.textureCanvas);
-            this.configureScreenTexture();
-            this.updateTextureCanvas();
+            this.applyInitialTextureSmoothing();
 
             this.buildFallbackScene();
             this.loadProjectScene();
@@ -15025,7 +15018,9 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.getPerspective = function()
         {
-            return this.camera && this.camera.isPerspectiveCamera ? this.camera.fov : 30;
+            return this.camera && this.camera.isPerspectiveCamera
+                ? this.camera.fov
+                : this.getSceneNumber("perspective",5,90);
         };
 
         this.updateSceneBounds = function()
@@ -15130,6 +15125,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             fov = Number(fov);
             if (!isFinite(fov)) fov = this.getPerspective();
             fov = Math.max(5,Math.min(90,fov));
+            cfg.perspective = fov;
 
             if (!this.camera)
                 this.ensureTHREE();
@@ -15414,6 +15410,11 @@ var APPLE2_THREE_CFG_DEFAULT =
             return !!cfg.textureSmoothing;
         };
 
+        this.applyInitialTextureSmoothing = function()
+        {
+            return this.setTextureSmoothing(this.getSceneBoolean("textureSmoothing"));
+        };
+
         this.resizeTextureCanvas = function()
         {
             var scale = cfg.textureSmoothing ? 2 : 1;
@@ -15579,9 +15580,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.getConfiguredInitialPerspective = function()
         {
-            var fov = Number(cfg.perspective);
-            if (!isFinite(fov)) fov = 30;
-            return Math.max(5,Math.min(90,fov));
+            return this.getSceneNumber("perspective",5,90);
         };
 
         this.applyInitialPerspective = function()
@@ -15596,9 +15595,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.getConfiguredInitialLightIntensity = function()
         {
-            var intensity = Number(cfg.lightIntensity);
-            if (!isFinite(intensity)) intensity = 0.45;
-            return Math.max(0,Math.min(5,intensity));
+            return this.getSceneNumber("lightIntensity",0,5);
         };
 
         this.applyInitialLightIntensity = function()
@@ -15704,7 +15701,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.makeFallbackCamera = function()
         {
-            var cam = new THREE.PerspectiveCamera(45, DISPLAY_W / DISPLAY_H, 0.01, 1000);
+            var cam = new THREE.PerspectiveCamera(this.getSceneNumber("perspective",5,90), DISPLAY_W / DISPLAY_H, 0.01, 1000);
             cam.position.set(0, 0, 3.2);
             cam.lookAt(0, 0, 0);
             cam.updateMatrix();
@@ -15752,7 +15749,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             var ambient = new THREE.AmbientLight(0xffffff, 0.55);
             this.scene.add(ambient);
 
-            var light = new THREE.DirectionalLight(0xffffff, 0.65);
+            var light = new THREE.DirectionalLight(0xffffff, this.getSceneNumber("lightIntensity",0,5));
             light.position.set(2, 4, 3);
             this.scene.add(light);
 
@@ -15955,10 +15952,10 @@ var APPLE2_THREE_CFG_DEFAULT =
         {
             var light = this.activeSceneLight || this.findMovableLight();
             if (!light || light.intensity === undefined)
-                return 0;
+                return this.getSceneNumber("lightIntensity",0,5);
 
             var value = Number(light.intensity);
-            return isFinite(value) ? value : 0;
+            return isFinite(value) ? value : this.getSceneNumber("lightIntensity",0,5);
         };
 
         this.setLightIntensity = function(intensity)
@@ -15966,6 +15963,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             intensity = Number(intensity);
             if (!isFinite(intensity)) intensity = this.getLightIntensity();
             intensity = Math.max(0,Math.min(5,intensity));
+            cfg.lightIntensity = intensity;
 
             if (!this.scene)
                 this.ensureTHREE();
