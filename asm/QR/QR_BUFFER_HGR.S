@@ -7,13 +7,9 @@ ORG   $6000
 ; Mixed-mode text area:       bottom four text rows on page 1
 ; ------------------------------------------------------------
 
-HGR_MIXED_PAGE1:
-        BIT   $C054           ; Select display page 1
-        BIT   $C057           ; Select high-resolution graphics
-        BIT   $C053           ; Enable mixed graphics/text mode
-        BIT   $C050           ; Enable graphics display
 
 ; Test example
+JSR   $F3E2
 
 ; Set buffer 0, coordinate (12,34):
               LDX   #$80+12
