@@ -1,0 +1,274 @@
+--- a/res/EMU_apple2GPU.js
++++ b/res/EMU_apple2GPU.js
+@@ -10,8 +10,9 @@
+ //       frameRate: 50
+ //   };
+ //
+-// frameRate is the maximum dirty-frame submission rate. The browser's
+-// requestAnimationFrame cadence remains the final presentation limit.
++// frameRate is the maximum dirty-frame submission rate, measured in wall-clock
++// time. The browser's requestAnimationFrame cadence remains the final
++// presentation limit.
+ 
+ if(oEMU===undefined) var oEMU = {"component":{"Video":{"Apple2Video":new Apple2Video()}}}
+ else oEMU.component.Video.Apple2Video = new Apple2Video();
+@@ -25,8 +26,7 @@
+ {
+     min: 10,
+     max: 60,
+-    step: 5,
+-    cpuClockHz: 1000000
++    step: 5
+ };
+ 
+ function Apple2VideoGPU_copyConfig()
+@@ -78,13 +78,35 @@
+         output.textContent = Math.round(value) + " fps";
+ }
+ 
++function Apple2VideoGPU_setFrameRateFeedback(flag)
++{
++    var rendererGPU = Apple2VideoGPU_getControlInstance();
++    if (!rendererGPU || typeof(rendererGPU.setFrameRateFeedbackEnabled) !== "function")
++        return;
++
++    rendererGPU.setFrameRateFeedbackEnabled(flag);
++}
++
++function Apple2VideoGPU_syncMeasuredFrameRate(value)
++{
++    var output = document.getElementById("gpuFrameRateMeasuredValue");
++    if (output)
++        output.textContent = Number(value).toFixed(1) + " fps";
++}
++
+ function Apple2VideoGPU_controls(rendererGPU)
+ {
+     var frameRate = rendererGPU && typeof(rendererGPU.getFrameRate) === "function"
+         ? rendererGPU.getFrameRate()
+         : APPLE2_GPU_CFG_DEFAULT.frameRate;
+-
+-    return "<div class=\"appbut mini\">"
++    var measuredRate = rendererGPU && typeof(rendererGPU.getFrameRateMeasured) === "function"
++        ? rendererGPU.getFrameRateMeasured()
++        : 0;
++
++    return "<div class=\"appbut mini\""
++        +" onmouseover=\"Apple2VideoGPU_setFrameRateFeedback(true)\""
++        +" onmouseout=\"Apple2VideoGPU_setFrameRateFeedback(false)\""
++        +" title=\"Hover here to hear the measured submitted-frame cadence.\">"
+         +"<input id=\"gpuFrameRate\" type=\"range\""
+         +" min=\""+APPLE2_GPU_FRAME_RATE_SPEC.min+"\""
+         +" max=\""+APPLE2_GPU_FRAME_RATE_SPEC.max+"\""
+@@ -95,6 +117,8 @@
+         +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">"
+         +"max frame rate "
+         +"<span id=\"gpuFrameRateValue\">"+Math.round(frameRate)+" fps</span>"
++        +"&nbsp;|&nbsp;measured "
++        +"<span id=\"gpuFrameRateMeasuredValue\">"+Number(measuredRate).toFixed(1)+" fps</span>"
+         +"</div></div><br>";
+ }
+ 
+@@ -108,7 +132,7 @@
+ 
+ function Apple2Video(ctx)
+ {
+-    const bDebug_snd = false;
++    var bDebug_snd = false;
+     var renderCfg = Apple2VideoGPU_copyConfig();
+ 
+     var gfx_mode;
+@@ -118,13 +142,16 @@
+     var chrome_mode = 0;
+     var flash_on = false;
+     var flash_count = 0;
+-    var frame_count = 0;
++    var frame_count = 0; // kept for compatibility/debugging; timing is wall-clock based.
+     var frame_redraw = true;
+     var frame_rate = Apple2VideoGPU_clampFrameRate(renderCfg.frameRate);
+-    var frame_cycle_threshold = Math.max(
+-        1,
+-        Math.round(APPLE2_GPU_FRAME_RATE_SPEC.cpuClockHz/frame_rate)
+-    );
++    var frame_interval_ms = 1000/frame_rate;
++    var flash_interval_ms = 250;
++    var last_frame_submit_ms = 0;
++    var last_flash_toggle_ms = 0;
++    var frame_submit_count = 0;
++    var frame_measurement_start_ms = 0;
++    var frame_rate_measured = 0;
+ 
+     if(ctx) this.ctx = ctx;
+ 
+@@ -160,23 +187,79 @@
+         return frame_rate;
+     };
+ 
++    this.getFrameIntervalMs = function()
++    {
++        return frame_interval_ms;
++    };
++
+     this.getFrameCycleThreshold = function()
+     {
+-        return frame_cycle_threshold;
++        // Backward-compatible alias from the first control implementation.
++        // Timing is no longer cycle-based.
++        return frame_interval_ms;
++    };
++
++    this.getFrameRateMeasured = function()
++    {
++        return frame_rate_measured;
++    };
++
++    this.setFrameRateFeedbackEnabled = function(flag)
++    {
++        bDebug_snd = !!flag;
++        return bDebug_snd;
++    };
++
++    this.nowMs = function()
++    {
++        return (typeof(performance) !== "undefined" && typeof(performance.now) === "function")
++            ? performance.now()
++            : Date.now();
+     };
+ 
+     this.setFrameRate = function(value)
+     {
+         frame_rate = Apple2VideoGPU_clampFrameRate(value);
+         renderCfg.frameRate = frame_rate;
+-        frame_cycle_threshold = Math.max(
+-            1,
+-            Math.round(APPLE2_GPU_FRAME_RATE_SPEC.cpuClockHz/frame_rate)
+-        );
+-
++        frame_interval_ms = 1000/frame_rate;
++
++        last_frame_submit_ms = 0;
+         frame_count = 0;
+         frame_redraw = true;
+         return frame_rate;
++    };
++
++    this.recordFrameSubmit = function(now)
++    {
++        if (!isFinite(now))
++            now = this.nowMs();
++
++        if (!frame_measurement_start_ms)
++            frame_measurement_start_ms = now;
++
++        frame_submit_count++;
++    };
++
++    this.updateFrameRateMeasurement = function(now)
++    {
++        if (!isFinite(now))
++            now = this.nowMs();
++
++        if (!frame_measurement_start_ms)
++            frame_measurement_start_ms = now;
++
++        var elapsed = now - frame_measurement_start_ms;
++        if (elapsed < 1000)
++            return frame_rate_measured;
++
++        frame_rate_measured = frame_submit_count * 1000 / elapsed;
++        frame_submit_count = 0;
++        frame_measurement_start_ms = now;
++
++        if (typeof(Apple2VideoGPU_syncMeasuredFrameRate) === "function")
++            Apple2VideoGPU_syncMeasuredFrameRate(frame_rate_measured);
++
++        return frame_rate_measured;
+     };
+ 
+     this.reset = function()
+@@ -188,6 +271,11 @@
+         flash_on    = true;
+         flash_count = 0;
+         frame_count = 0;
++        last_frame_submit_ms = 0;
++        last_flash_toggle_ms = this.nowMs();
++        frame_submit_count = 0;
++        frame_measurement_start_ms = last_flash_toggle_ms;
++        frame_rate_measured = 0;
+         chrome_mode = 0;
+         this.register_mode();
+ 
+@@ -214,23 +302,27 @@
+ 
+     this.cycle = function()
+     {
++      var now = this.nowMs();
+       frame_count++;
+-      if(frame_count > frame_cycle_threshold)
++      this.updateFrameRateMeasurement(now);
++
++      if(frame_redraw==true)
+       {
+-        if(frame_redraw==true)
++        if(last_frame_submit_ms == 0 || now - last_frame_submit_ms >= frame_interval_ms)
+         {
+           frame_count = 0;
+-          this.redraw();  // redraw only if flag is set
+-          if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
++          this.redraw(now);  // redraw only if flag is set
+         }
+-        else if(frame_count > 200000) // reflash (250000~4fps)
+-        {
++      }
++      else if(now - last_flash_toggle_ms >= flash_interval_ms)
++      {
+           flash_on = ! flash_on;
++          last_flash_toggle_ms = now;
+           frame_count = 0;
+           frame_redraw = true;
+-          this.redraw();
+-          if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+-        }
++
++          if(last_frame_submit_ms == 0 || now - last_frame_submit_ms >= frame_interval_ms)
++              this.redraw(now);
+       }
+ 
+     }
+@@ -238,15 +330,21 @@
+     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
+     //this.reflash = function() { frame_redraw = true; this.redraw() }
+ 
+-  this.redraw = function()
++  this.redraw = function(now)
+   {
++      now = Number(now);
++      if (!isFinite(now))
++          now = this.nowMs();
++
++      last_frame_submit_ms = now;
++
+       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
+       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
+       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
+ 
+       const video = this;
+ 
+-      window.requestAnimationFrame(function()
++      window.requestAnimationFrame(function(rafNow)
+       {
+           if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
+           if (typeof(video.kernel) !== "function") return;
+@@ -256,6 +354,12 @@
+               apple2CharRom,
+               video.serial8
+           );
++
++          video.recordFrameSubmit(Number(rafNow));
++          if(bDebug_snd && oEMU && oEMU.component && oEMU.component.IO &&
++             oEMU.component.IO.AppleSpeaker &&
++             typeof(oEMU.component.IO.AppleSpeaker.toggle) === "function")
++              oEMU.component.IO.AppleSpeaker.toggle();
+       });
+ 
+       frame_redraw = false;

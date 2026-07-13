@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Robust Unified Diff Applier</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#11151a;
+    --panel:#1a2129;
+    --panel2:#202933;
+    --border:#34414f;
+    --text:#e8edf2;
+    --muted:#9aa8b6;
+    --ok:#8bd17c;
+    --warn:#ffd166;
+    --bad:#ff8a8a;
+    --accent:#79b8ff;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  header {
+    padding:16px 20px;
+    border-bottom:1px solid var(--border);
+    background:#0d1117;
+  }
+  h1 { margin:0 0 4px; font-size:20px; }
+  header p { margin:0; color:var(--muted); }
+  main {
+    display:grid;
+    grid-template-columns:minmax(300px,420px) minmax(0,1fr);
+    gap:14px;
+    padding:14px;
+    min-height:calc(100vh - 78px);
+  }
+  .panel {
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+    min-width:0;
+  }
+  .stack { display:flex; flex-direction:column; gap:10px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  button, input, select {
+    font:inherit;
+  }
+  button {
+    border:1px solid var(--border);
+    background:var(--panel2);
+    color:var(--text);
+    border-radius:6px;
+    padding:7px 10px;
+    cursor:pointer;
+  }
+  button:hover { border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary { background:#17395f; border-color:#2e6ea8; }
+  button.danger { background:#552525; border-color:#8b3c3c; }
+  label { color:var(--muted); }
+  input[type="number"] {
+    width:82px;
+    background:#0f1419;
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:5px;
+  }
+  input[type="file"] {
+    width:100%;
+    color:var(--muted);
+  }
+  .status {
+    border:1px solid var(--border);
+    border-radius:7px;
+    padding:8px;
+    background:#0f1419;
+    white-space:pre-wrap;
+    word-break:break-word;
+    min-height:52px;
+  }
+  .ok { color:var(--ok); }
+  .warn { color:var(--warn); }
+  .bad { color:var(--bad); }
+  .muted { color:var(--muted); }
+  .summary {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(90px,1fr));
+    gap:8px;
+  }
+  .metric {
+    background:#0f1419;
+    border:1px solid var(--border);
+    border-radius:7px;
+    padding:8px;
+  }
+  .metric strong { display:block; font-size:18px; }
+  .results {
+    height:calc(100vh - 210px);
+    overflow:auto;
+    border:1px solid var(--border);
+    border-radius:7px;
+    background:#0f1419;
+  }
+  details {
+    border-bottom:1px solid #26313c;
+  }
+  details:last-child { border-bottom:none; }
+  summary {
+    padding:9px 10px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .hunk {
+    padding:8px 12px 12px 28px;
+    border-top:1px solid #26313c;
+  }
+  pre {
+    margin:6px 0 0;
+    padding:8px;
+    overflow:auto;
+    background:#090d11;
+    border:1px solid #26313c;
+    border-radius:5px;
+    color:#cdd7e1;
+    font:12px/1.35 "DejaVu Sans Mono","Menlo","Consolas",monospace;
+  }
+  code { font-family:"DejaVu Sans Mono","Menlo","Consolas",monospace; }
+  .pill {
+    display:inline-block;
+    padding:1px 6px;
+    border-radius:999px;
+    border:1px solid currentColor;
+    font-size:11px;
+    margin-left:6px;
+  }
+  .note {
+    padding:8px;
+    border-left:3px solid var(--accent);
+    background:#122233;
+    color:#cfe6ff;
+  }
+  @media (max-width:900px) {
+    main { grid-template-columns:1fr; }
+    .results { height:55vh; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Robust Unified Diff Applier</h1>
+  <p>Applies standard unified <code>.diff</code>/<code>.patch</code> files to a selected project folder using exact, offset, whitespace-tolerant and fuzzy context matching.</p>
+</header>
+
+<main>
+  <section class="panel stack">
+    <div>
+      <strong>1. Select project folder</strong>
+      <div class="row" style="margin-top:7px">
+        <button id="pickRoot" class="primary">Choose project folder</button>
+        <span id="rootName" class="muted">No folder selected</span>
+      </div>
+    </div>
+
+    <div>
+      <strong>2. Select diff file</strong>
+      <input id="diffFile" type="file" accept=".diff,.patch,text/x-diff,text/plain">
+    </div>
+
+    <div>
+      <strong>3. Matching policy</strong>
+      <div class="stack" style="margin-top:7px">
+        <label><input id="ignoreWhitespace" type="checkbox" checked> Ignore whitespace differences while locating hunks</label>
+        <label><input id="allowFuzzy" type="checkbox" checked> Allow fuzzy context matching</label>
+        <label><input id="detectApplied" type="checkbox" checked> Detect hunks that appear already applied</label>
+        <label>Maximum fuzz lines
+          <input id="maxFuzz" type="number" min="0" max="8" value="3">
+        </label>
+        <label>Preferred search radius
+          <input id="searchRadius" type="number" min="10" max="5000" value="500"> lines
+        </label>
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="preview" class="primary" disabled>Preview</button>
+      <button id="apply" disabled>Apply all</button>
+      <button id="export" disabled>Export patched files</button>
+    </div>
+
+    <div class="note">
+      Writes are blocked unless every hunk is either matched unambiguously or detected as already applied. Before writing, the tool stores originals in <code>.diff-backups/&lt;timestamp&gt;/</code>.
+    </div>
+
+    <div id="status" class="status muted">Select a project folder and a diff file.</div>
+  </section>
+
+  <section class="panel stack">
+    <div class="summary">
+      <div class="metric"><span class="muted">Files</span><strong id="mFiles">0</strong></div>
+      <div class="metric"><span class="muted">Hunks</span><strong id="mHunks">0</strong></div>
+      <div class="metric"><span class="muted">Applicable</span><strong id="mApplicable">0</strong></div>
+      <div class="metric"><span class="muted">Blocked</span><strong id="mBlocked">0</strong></div>
+    </div>
+    <div id="results" class="results">
+      <div class="muted" style="padding:14px">No preview yet.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const state = {
+  root: null,
+  diffText: "",
+  parsed: null,
+  preview: null
+};
+
+const $ = id => document.getElementById(id);
+
+function setStatus(text, cls = "muted") {
+  const el = $("status");
+  el.className = "status " + cls;
+  el.textContent = text;
+}
+
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function detectEol(text) {
+  return text.includes("\r\n") ? "\r\n" : "\n";
+}
+
+function safePath(path) {
+  path = String(path || "").trim();
+  path = path.replace(/^["']|["']$/g, "");
+  path = path.replace(/\\/g, "/");
+  path = path.replace(/^(a|b)\//, "");
+  path = path.replace(/^\.\/+/, "");
+  path = path.split("\t")[0].trim();
+
+  const parts = path.split("/").filter(Boolean);
+  if (!parts.length || parts.some(p => p === "..")) {
+    throw new Error("Unsafe or empty patch path: " + path);
+  }
+  return parts.join("/");
+}
+
+function parseRange(raw) {
+  const m = String(raw).match(/^(\d+)(?:,(\d+))?$/);
+  if (!m) throw new Error("Invalid hunk range: " + raw);
+  return { start: Number(m[1]), count: m[2] === undefined ? 1 : Number(m[2]) };
+}
+
+function parseUnifiedDiff(text) {
+  const lines = normalizeEol(text).split("\n");
+  const files = [];
+  let file = null;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.startsWith("diff --git ")) {
+      i++;
+      continue;
+    }
+
+    if (line.startsWith("--- ")) {
+      const oldPathRaw = line.slice(4).trim();
+      const next = lines[i + 1] || "";
+      if (!next.startsWith("+++ ")) {
+        throw new Error("Expected +++ after --- at diff line " + (i + 1));
+      }
+
+      const newPathRaw = next.slice(4).trim();
+      const oldPath = oldPathRaw === "/dev/null" ? null : safePath(oldPathRaw);
+      const newPath = newPathRaw === "/dev/null" ? null : safePath(newPathRaw);
+
+      file = {
+        oldPath,
+        newPath,
+        targetPath: newPath || oldPath,
+        isCreate: oldPath === null,
+        isDelete: newPath === null,
+        hunks: []
+      };
+      files.push(file);
+      i += 2;
+      continue;
+    }
+
+    if (line.startsWith("@@ ")) {
+      if (!file) throw new Error("Hunk encountered before file header at diff line " + (i + 1));
+      const m = line.match(/^@@ -([^ ]+) \+([^ ]+) @@(.*)$/);
+      if (!m) throw new Error("Invalid hunk header at diff line " + (i + 1));
+
+      const hunk = {
+        header: line,
+        oldRange: parseRange(m[1]),
+        newRange: parseRange(m[2]),
+        section: m[3] || "",
+        lines: []
+      };
+
+      i++;
+      while (i < lines.length) {
+        const hline = lines[i];
+        if (hline.startsWith("@@ ") || hline.startsWith("--- ") || hline.startsWith("diff --git ")) break;
+        if (hline === "\\ No newline at end of file") {
+          hunk.noNewline = true;
+          i++;
+          continue;
+        }
+        const prefix = hline.charAt(0);
+        if (prefix !== " " && prefix !== "+" && prefix !== "-") break;
+        hunk.lines.push({ type: prefix, text: hline.slice(1) });
+        i++;
+      }
+      file.hunks.push(hunk);
+      continue;
+    }
+
+    i++;
+  }
+
+  if (!files.length) throw new Error("No unified diff file sections were found.");
+  return { files };
+}
+
+async function getFileHandle(root, path, create = false) {
+  const parts = safePath(path).split("/");
+  let dir = root;
+  for (let i = 0; i < parts.length - 1; i++) {
+    dir = await dir.getDirectoryHandle(parts[i], { create });
+  }
+  return dir.getFileHandle(parts[parts.length - 1], { create });
+}
+
+async function getDirectoryHandle(root, path, create = false) {
+  const parts = safePath(path).split("/");
+  let dir = root;
+  for (const part of parts) {
+    dir = await dir.getDirectoryHandle(part, { create });
+  }
+  return dir;
+}
+
+async function readProjectFile(path) {
+  const handle = await getFileHandle(state.root, path, false);
+  const file = await handle.getFile();
+  return file.text();
+}
+
+function normalizeLine(line, ignoreWhitespace) {
+  if (!ignoreWhitespace) return line;
+  return line.replace(/[ \t]+/g, " ").trim();
+}
+
+function oldSequence(hunk) {
+  return hunk.lines.filter(x => x.type !== "+").map(x => x.text);
+}
+
+function newSequence(hunk) {
+  return hunk.lines.filter(x => x.type !== "-").map(x => x.text);
+}
+
+function equalityScore(a, b, ignoreWhitespace) {
+  return normalizeLine(a, ignoreWhitespace) === normalizeLine(b, ignoreWhitespace);
+}
+
+function sequenceMatches(lines, pos, seq, ignoreWhitespace) {
+  if (pos < 0 || pos + seq.length > lines.length) return false;
+  for (let i = 0; i < seq.length; i++) {
+    if (!equalityScore(lines[pos + i], seq[i], ignoreWhitespace)) return false;
+  }
+  return true;
+}
+
+function contextIndexes(hunk) {
+  const indexes = [];
+  let oldIndex = 0;
+  for (const line of hunk.lines) {
+    if (line.type !== "+") {
+      if (line.type === " ") indexes.push(oldIndex);
+      oldIndex++;
+    }
+  }
+  return indexes;
+}
+
+function fuzzyScore(lines, pos, hunk, ignoreWhitespace, maxFuzz) {
+  const seq = oldSequence(hunk);
+  if (pos < 0 || pos + seq.length > lines.length) return null;
+
+  const ctx = new Set(contextIndexes(hunk));
+  let contextMismatch = 0;
+  let removalMismatch = 0;
+  let exact = 0;
+
+  for (let i = 0; i < seq.length; i++) {
+    const same = equalityScore(lines[pos + i], seq[i], ignoreWhitespace);
+    if (same) {
+      exact++;
+    } else if (ctx.has(i)) {
+      contextMismatch++;
+    } else {
+      removalMismatch++;
+    }
+  }
+
+  if (removalMismatch > 0 || contextMismatch > maxFuzz) return null;
+
+  return {
+    score: exact * 10 - contextMismatch * 25,
+    contextMismatch,
+    removalMismatch
+  };
+}
+
+function candidatePositions(lines, expected, radius) {
+  const out = [];
+  const seen = new Set();
+  const add = p => {
+    p = Math.max(0, Math.min(lines.length, p));
+    if (!seen.has(p)) {
+      seen.add(p);
+      out.push(p);
+    }
+  };
+
+  add(expected);
+  for (let d = 1; d <= radius; d++) {
+    add(expected - d);
+    add(expected + d);
+  }
+  for (let p = 0; p <= lines.length; p++) add(p);
+  return out;
+}
+
+function locateHunk(lines, hunk, lineDelta, options) {
+  const oldSeq = oldSequence(hunk);
+  const newSeq = newSequence(hunk);
+  const expected = Math.max(0, hunk.oldRange.start - 1 + lineDelta);
+  const positions = candidatePositions(lines, expected, options.searchRadius);
+
+  for (const pos of positions) {
+    if (sequenceMatches(lines, pos, oldSeq, false)) {
+      return { status: "exact", pos, expected, fuzz: 0 };
+    }
+  }
+
+  if (options.ignoreWhitespace) {
+    const matches = [];
+    for (const pos of positions) {
+      if (sequenceMatches(lines, pos, oldSeq, true)) matches.push(pos);
+    }
+    if (matches.length === 1) {
+      return { status: "whitespace", pos: matches[0], expected, fuzz: 0 };
+    }
+    if (matches.length > 1) {
+      return { status: "ambiguous", expected, candidates: matches.slice(0, 20) };
+    }
+  }
+
+  if (options.detectApplied) {
+    const applied = [];
+    for (const pos of positions) {
+      if (sequenceMatches(lines, pos, newSeq, options.ignoreWhitespace)) applied.push(pos);
+    }
+    if (applied.length === 1) {
+      return { status: "already-applied", pos: applied[0], expected, fuzz: 0 };
+    }
+  }
+
+  if (options.allowFuzzy) {
+    const scored = [];
+    for (const pos of positions) {
+      const s = fuzzyScore(lines, pos, hunk, options.ignoreWhitespace, options.maxFuzz);
+      if (s) scored.push({ pos, ...s });
+    }
+    scored.sort((a, b) => b.score - a.score || Math.abs(a.pos - expected) - Math.abs(b.pos - expected));
+
+    if (scored.length) {
+      const best = scored[0];
+      const second = scored[1];
+      if (second && second.score === best.score && Math.abs(second.pos - expected) === Math.abs(best.pos - expected)) {
+        return { status: "ambiguous", expected, candidates: scored.slice(0, 20) };
+      }
+      return {
+        status: "fuzzy",
+        pos: best.pos,
+        expected,
+        fuzz: best.contextMismatch,
+        score: best.score
+      };
+    }
+  }
+
+  return { status: "failed", expected };
+}
+
+function applyAt(lines, pos, hunk) {
+  const oldSeq = oldSequence(hunk);
+  const newSeq = newSequence(hunk);
+  lines.splice(pos, oldSeq.length, ...newSeq);
+  return newSeq.length - oldSeq.length;
+}
+
+async function previewAll() {
+  if (!state.root || !state.diffText) return;
+
+  const options = {
+    ignoreWhitespace: $("ignoreWhitespace").checked,
+    allowFuzzy: $("allowFuzzy").checked,
+    detectApplied: $("detectApplied").checked,
+    maxFuzz: Math.max(0, Number($("maxFuzz").value) || 0),
+    searchRadius: Math.max(10, Number($("searchRadius").value) || 500)
+  };
+
+  const parsed = parseUnifiedDiff(state.diffText);
+  const preview = {
+    parsed,
+    options,
+    files: [],
+    totalHunks: 0,
+    applicable: 0,
+    blocked: 0
+  };
+
+  for (const filePatch of parsed.files) {
+    const result = {
+      patch: filePatch,
+      path: filePatch.targetPath,
+      hunks: [],
+      blocked: false,
+      originalText: "",
+      outputText: "",
+      eol: "\n"
+    };
+
+    let original = "";
+    if (!filePatch.isCreate) {
+      try {
+        original = await readProjectFile(filePatch.oldPath || filePatch.targetPath);
+      } catch (err) {
+        result.blocked = true;
+        result.error = "Could not read target file: " + err.message;
+        preview.blocked += filePatch.hunks.length || 1;
+        preview.files.push(result);
+        continue;
+      }
+    }
+
+    result.originalText = original;
+    result.eol = detectEol(original);
+    const hadFinalNewline = original.endsWith("\n") || original.endsWith("\r\n");
+    const lines = normalizeEol(original).split("\n");
+    if (hadFinalNewline) lines.pop();
+
+    let delta = 0;
+
+    for (const hunk of filePatch.hunks) {
+      preview.totalHunks++;
+      const loc = locateHunk(lines, hunk, delta, options);
+      const hres = { hunk, ...loc };
+      result.hunks.push(hres);
+
+      if (loc.status === "failed" || loc.status === "ambiguous") {
+        result.blocked = true;
+        preview.blocked++;
+        continue;
+      }
+
+      preview.applicable++;
+
+      if (loc.status !== "already-applied") {
+        const change = applyAt(lines, loc.pos, hunk);
+        delta += change;
+      }
+    }
+
+    if (filePatch.isDelete && !result.blocked) {
+      result.outputText = null;
+    } else {
+      result.outputText = lines.join(result.eol) + (hadFinalNewline ? result.eol : "");
+    }
+
+    preview.files.push(result);
+  }
+
+  state.parsed = parsed;
+  state.preview = preview;
+  renderPreview(preview);
+
+  const canWrite = preview.blocked === 0;
+  $("apply").disabled = !canWrite;
+  $("export").disabled = !canWrite;
+  setStatus(
+    canWrite
+      ? "Preview succeeded. Every hunk is applicable or already applied."
+      : "Preview blocked. Resolve failed or ambiguous hunks before writing.",
+    canWrite ? "ok" : "bad"
+  );
+}
+
+function renderPreview(preview) {
+  $("mFiles").textContent = preview.files.length;
+  $("mHunks").textContent = preview.totalHunks;
+  $("mApplicable").textContent = preview.applicable;
+  $("mBlocked").textContent = preview.blocked;
+
+  const root = $("results");
+  root.innerHTML = "";
+
+  for (const file of preview.files) {
+    const details = document.createElement("details");
+    details.open = file.blocked;
+
+    const summary = document.createElement("summary");
+    const stateText = file.blocked ? "BLOCKED" : "READY";
+    summary.innerHTML =
+      `<strong>${escapeHtml(file.path)}</strong>` +
+      `<span class="pill ${file.blocked ? "bad" : "ok"}">${stateText}</span>` +
+      ` <span class="muted">${file.hunks.length} hunks</span>`;
+    details.appendChild(summary);
+
+    if (file.error) {
+      const div = document.createElement("div");
+      div.className = "hunk bad";
+      div.textContent = file.error;
+      details.appendChild(div);
+    }
+
+    file.hunks.forEach((h, idx) => {
+      const div = document.createElement("div");
+      div.className = "hunk";
+      let cls = "ok";
+      if (h.status === "fuzzy" || h.status === "whitespace" || h.status === "already-applied") cls = "warn";
+      if (h.status === "failed" || h.status === "ambiguous") cls = "bad";
+
+      const offset = h.pos === undefined ? "" : `, matched line ${h.pos + 1}`;
+      const expected = `expected line ${h.expected + 1}`;
+      div.innerHTML =
+        `<strong>Hunk ${idx + 1}</strong> ` +
+        `<span class="${cls}">${escapeHtml(h.status)}</span>` +
+        `<div class="muted">${expected}${offset}${h.fuzz ? `, fuzz ${h.fuzz}` : ""}</div>`;
+
+      const pre = document.createElement("pre");
+      pre.textContent = h.hunk.header + "\n" + h.hunk.lines.map(x => x.type + x.text).join("\n");
+      div.appendChild(pre);
+      details.appendChild(div);
+    });
+
+    root.appendChild(details);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+async function ensurePermission(handle, mode) {
+  const opts = { mode };
+  if ((await handle.queryPermission(opts)) === "granted") return true;
+  return (await handle.requestPermission(opts)) === "granted";
+}
+
+function timestampName() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+async function writeTextFile(root, path, text) {
+  const handle = await getFileHandle(root, path, true);
+  const writable = await handle.createWritable();
+  await writable.write(text);
+  await writable.close();
+}
+
+async function copyToBackup(backupRoot, path, text) {
+  await writeTextFile(backupRoot, path, text);
+}
+
+async function removeProjectFile(path) {
+  const parts = safePath(path).split("/");
+  const filename = parts.pop();
+  let dir = state.root;
+  for (const part of parts) dir = await dir.getDirectoryHandle(part, { create:false });
+  await dir.removeEntry(filename);
+}
+
+async function applyAll() {
+  const preview = state.preview;
+  if (!preview || preview.blocked) return;
+
+  if (!(await ensurePermission(state.root, "readwrite"))) {
+    setStatus("Write permission was not granted.", "bad");
+    return;
+  }
+
+  $("apply").disabled = true;
+  setStatus("Creating backups and writing files...", "warn");
+
+  const backupBase = await state.root.getDirectoryHandle(".diff-backups", { create:true });
+  const backupRoot = await backupBase.getDirectoryHandle(timestampName(), { create:true });
+  const written = [];
+
+  try {
+    for (const file of preview.files) {
+      await copyToBackup(backupRoot, file.path, file.originalText);
+
+      if (file.outputText === null) {
+        await removeProjectFile(file.path);
+      } else {
+        await writeTextFile(state.root, file.path, file.outputText);
+      }
+      written.push(file);
+    }
+
+    setStatus(
+      `Applied ${preview.totalHunks} hunks across ${preview.files.length} files.\n` +
+      `Backups are stored under .diff-backups/.`,
+      "ok"
+    );
+  } catch (err) {
+    setStatus("Write failed: " + err.message + "\nAttempting rollback...", "bad");
+
+    for (const file of written.reverse()) {
+      try {
+        await writeTextFile(state.root, file.path, file.originalText);
+      } catch (_) {}
+    }
+
+    setStatus("Write failed and rollback was attempted: " + err.message, "bad");
+  } finally {
+    $("apply").disabled = preview.blocked !== 0;
+  }
+}
+
+async function exportPatchedFiles() {
+  const preview = state.preview;
+  if (!preview || preview.blocked) return;
+
+  for (const file of preview.files) {
+    if (file.outputText === null) continue;
+    const blob = new Blob([file.outputText], { type:"text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = file.path.replace(/\//g, "__");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+}
+
+$("pickRoot").addEventListener("click", async () => {
+  try {
+    state.root = await window.showDirectoryPicker({ mode:"readwrite" });
+    $("rootName").textContent = state.root.name;
+    $("preview").disabled = !state.diffText;
+    setStatus("Project folder selected. Choose a diff file.", "ok");
+  } catch (err) {
+    if (err.name !== "AbortError") setStatus(err.message, "bad");
+  }
+});
+
+$("diffFile").addEventListener("change", async event => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  state.diffText = await file.text();
+  $("preview").disabled = !state.root;
+  setStatus(`Loaded ${file.name} (${state.diffText.length} characters).`, "ok");
+});
+
+$("preview").addEventListener("click", () => {
+  previewAll().catch(err => {
+    console.error(err);
+    setStatus(err.stack || err.message, "bad");
+    $("apply").disabled = true;
+    $("export").disabled = true;
+  });
+});
+
+$("apply").addEventListener("click", () => {
+  applyAll().catch(err => setStatus(err.stack || err.message, "bad"));
+});
+
+$("export").addEventListener("click", exportPatchedFiles);
+
+if (!("showDirectoryPicker" in window)) {
+  $("pickRoot").disabled = true;
+  setStatus(
+    "This browser does not expose the File System Access API. Open this tool in a Chromium-based browser.",
+    "bad"
+  );
+}
+</script>
+</body>
+</html>
