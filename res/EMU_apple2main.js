@@ -34,14 +34,14 @@ const _o = {"tools":{}
         ,"EMU_disk_cat":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
-        ,"EMU_Updates_s":10                 // Emulator intervals per second 
+        ,"EMU_Updates_s":10                 // Processing frames per second 
         ,"EMU_DashboardRefresh_s":2         // Dashboard updates per second      
         //,"CPU_ClocksTicks_s":1000000      // CPU clocksTicks per second
         ,"CPU_ClocksTicks_s":1021800        // CPU clocksTicks per second
         ,"EMU_audio":{ "prepared": false, "unlocked": false, "trying": false}
     };
 
-    // 100 000 intervals per frame
+    // At the default 10 fps, roughly 100 000 CPU cycles are processed per frame
     // ideally 102273 intervals for NTSC (derived from 14.31818Mhz / 14)
     // ideally 101700 intervals for PAL  (derived from 14.238MHz / 14)
 
@@ -67,8 +67,9 @@ var oEMU =
     ,"stats":{}
 }
 
+_o.CPU_TargetTicks_s = _o.CPU_ClocksTicks_s
 _o.EMU_IntervalTime_ms = 1000/_o.EMU_Updates_s                  // Emulator Intervals per milisecond
-_o.CPU_ClockTicks = _o.CPU_ClocksTicks_s / _o.EMU_Updates_s     // CPU clockTicks per Interval
+_o.CPU_ClockTicks = _o.CPU_TargetTicks_s / _o.EMU_Updates_s      // CPU clockTicks per Interval
 oEMU.stats.EMU_DashboardRefresh_cy = Math.round(_o.EMU_Updates_s / _o.EMU_DashboardRefresh_s) // Dashboard refreshes per Cycle
 oEMU.component.CPU["dutycycle_time"] = 0;
 oEMU.component.CPU["dutycycle_idx"] = 0;
@@ -458,10 +459,43 @@ function EMUI()
         this.cpuSpd(pct);
     }
 
+    // PROCESSING FRAME RATE SLIDER
+    this.fpsSld = function(el,id)
+    {
+        var fps = Math.round(Number(el.value));
+        document.getElementById(id).innerHTML = fps+"fps";
+        this.fpsSpd(fps);
+    }
+
+    // MODIFY PROCESSING FRAME RATE WITHOUT CHANGING CPU CLOCKS PER SECOND
+    this.fpsSpd = function(fps)
+    {
+        fps = Math.round(Number(fps));
+        if(!Number.isFinite(fps) || fps < 1) return;
+
+        _o.EMU_Updates_s = fps;
+        _o.EMU_IntervalTime_ms = 1000 / fps;
+        _o.CPU_ClockTicks = Math.round(_o.CPU_TargetTicks_s / fps);
+        oEMU.stats.EMU_DashboardRefresh_cy = Math.round(fps / _o.EMU_DashboardRefresh_s);
+
+        var speaker = oEMU.component.IO.AppleSpeaker;
+        if(speaker && typeof(speaker.setFrameRate) == "function")
+            speaker.setFrameRate(fps);
+
+        if(appleIntervalHandle != null)
+        {
+            window.clearInterval(appleIntervalHandle);
+            appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+        }
+
+        console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
+    }
+
     // MODIFY CPU SPEED
     this.cpuSpd = function(pct)
     {
-        _o.CPU_ClockTicks = Math.round( _o.CPU_ClocksTicks_s * pct / _o.EMU_Updates_s );
+        _o.CPU_TargetTicks_s = _o.CPU_ClocksTicks_s * pct;
+        _o.CPU_ClockTicks = Math.round( _o.CPU_TargetTicks_s / _o.EMU_Updates_s );
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
         //oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);

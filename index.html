@@ -235,11 +235,11 @@
               </div>
 
               <!--  SETTINGS TAB WINDOW -->
-              <div class="hints1" id="tab1.1" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <div class="hints1" id="tab1.1" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:96px;">
 
                 <!--  SYSTEM SETTINGS -->
                 <div class=toolbox>
-                  <div class=appbox title="SYSTEM" style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
+                  <div class=appbox title="SYSTEM" style="text-align:left;height:92px;padding:0px 6px 0px 6px;">
                     SYSTEM
                     <div style="font-family:arial;font-size:11px">
 
@@ -251,6 +251,9 @@
                         <br>
                         <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
                         <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<div class=\'appbut skinny\'><i class=\'fa fa-bug\' onclick=oEMUI.cpuDbg(\'feature_box\') title=\'Step trace\'></i></div>&nbsp;')" style="width:65px">
+                        <br>
+                        <div id="slider_fps_v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">10fps</div>
+                        <input id="fpsRange" type="range" min="10" max="100" value="10" step="1" class="slider" oninput="document.getElementById('slider_fps_v').innerHTML=this.value+'fps'" onchange="oEMUI.fpsSld(this,'slider_fps_v')" title="Processing frames per second" style="width:65px">
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
@@ -273,7 +276,7 @@
 
                 <!--  SLOT SETTINGS -->
                 <div class=toolbox>
-                  <div class=appbox style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
+                  <div class=appbox style="text-align:left;height:92px;padding:0px 6px 0px 6px;">
                     SLOTS<br>
                     <div id="peripheral_slots"></div>
                   </div>

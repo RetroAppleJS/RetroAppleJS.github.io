@@ -22,20 +22,19 @@ function AppleSpeaker()
     /*
         Original target was 21760 Hz, but with CPU_ClocksTicks_s = 1021800:
             tickCycle = round(1021800 / 21760) = 47
-            samples per 100 ms = floor(102180 / 47) = 2174
+            samples at 10 fps = floor((1021800 / 10) / 47) = 2174
 
-        So we keep the tick granularity, then derive the real buffer duration
-        from the actual samples produced per emulator interval.
+        Keep the tick granularity, but recalculate the buffer geometry whenever
+        the processing frame rate changes.  samplerate = samples * fps keeps
+        every audio buffer exactly one processing frame long.
     */
     var targetSamplerate = 21760;
-    var cpuTicksPerBlock = Math.round(_o.CPU_ClocksTicks_s / _o.EMU_Updates_s);
 
     this.tickCycle = Math.round(_o.CPU_ClocksTicks_s / targetSamplerate);
 
-    var blockSamples = Math.floor(cpuTicksPerBlock / this.tickCycle);
-    var samplerate   = blockSamples * _o.EMU_Updates_s;   // normally 21740 Hz
-
-    var data = new Array(blockSamples).fill(0);
+    var blockSamples = 0;
+    var samplerate   = targetSamplerate;
+    var data         = [];
 
     /*
         Runtime tuning knobs.
@@ -89,6 +88,21 @@ function AppleSpeaker()
     var data_i = {};
     var ccnt = 0;
     var floatval = 0;
+
+    this.setFrameRate = function(fps)
+    {
+        fps = Math.round(Number(fps));
+        if(!Number.isFinite(fps) || fps < 1) return;
+
+        var cpuTicksPerBlock = _o.CPU_ClocksTicks_s / fps;
+
+        blockSamples = Math.max(1, Math.floor(cpuTicksPerBlock / this.tickCycle));
+        samplerate   = blockSamples * fps;
+        data         = new Array(blockSamples).fill(floatval);
+        this.pos     = data.length;
+    };
+
+    this.setFrameRate(_o.EMU_Updates_s);
 
     this.audio = undefined;
     this.gain = undefined;
