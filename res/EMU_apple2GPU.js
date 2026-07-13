@@ -4,12 +4,111 @@
 //
 // apple2GPU.js
 
+//
+// Optional configuration before loading this file:
+//   window.Apple2VideoGPU_CONFIG = {
+//       frameRate: 50
+//   };
+//
+// frameRate is the maximum dirty-frame submission rate. The browser's
+// requestAnimationFrame cadence remains the final presentation limit.
+
+var APPLE2_GPU_CFG_DEFAULT =
+{
+    frameRate: 50
+};
+
+var APPLE2_GPU_FRAME_RATE_SPEC =
+{
+    min: 10,
+    max: 60,
+    step: 5,
+    cpuClockHz: 1000000
+};
+
+function Apple2VideoGPU_copyConfig()
+{
+    var cfg = {}, user = window.Apple2VideoGPU_CONFIG || {};
+
+    for (var key in APPLE2_GPU_CFG_DEFAULT)
+        cfg[key] = APPLE2_GPU_CFG_DEFAULT[key];
+
+    for (var userKey in user)
+        cfg[userKey] = user[userKey];
+
+    return cfg;
+}
+
+function Apple2VideoGPU_clampFrameRate(value)
+{
+    value = Number(value);
+
+    if (!isFinite(value))
+        value = APPLE2_GPU_CFG_DEFAULT.frameRate;
+
+    return Math.max(
+        APPLE2_GPU_FRAME_RATE_SPEC.min,
+        Math.min(APPLE2_GPU_FRAME_RATE_SPEC.max,value)
+    );
+}
+
+function Apple2VideoGPU_getControlInstance()
+{
+    if (typeof(oApple2Video) === "undefined" || oApple2Video === null ||
+        typeof(oApple2Video.getRendererInstance) !== "function")
+        return null;
+
+    return oApple2Video.getRendererInstance("gpu",true);
+}
+
+function Apple2VideoGPU_setFrameRateControl(input)
+{
+    var rendererGPU = Apple2VideoGPU_getControlInstance();
+    if (!rendererGPU || typeof(rendererGPU.setFrameRate) !== "function")
+        return;
+
+    var value = rendererGPU.setFrameRate(Number(input.value));
+    input.value = value;
+
+    var output = document.getElementById("gpuFrameRateValue");
+    if (output)
+        output.textContent = Math.round(value) + " fps";
+}
+
+function Apple2VideoGPU_controls(rendererGPU)
+{
+    var frameRate = rendererGPU && typeof(rendererGPU.getFrameRate) === "function"
+        ? rendererGPU.getFrameRate()
+        : APPLE2_GPU_CFG_DEFAULT.frameRate;
+
+    return "<div class=\"appbut mini\">"
+        +"<input id=\"gpuFrameRate\" type=\"range\""
+        +" min=\""+APPLE2_GPU_FRAME_RATE_SPEC.min+"\""
+        +" max=\""+APPLE2_GPU_FRAME_RATE_SPEC.max+"\""
+        +" step=\""+APPLE2_GPU_FRAME_RATE_SPEC.step+"\""
+        +" value=\""+Math.round(frameRate)+"\" class=\"slider\""
+        +" oninput=\"Apple2VideoGPU_setFrameRateControl(this)\""
+        +" style=\"width:65px;float:left\"></input>"
+        +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">"
+        +"max frame rate "
+        +"<span id=\"gpuFrameRateValue\">"+Math.round(frameRate)+" fps</span>"
+        +"</div></div><br>";
+}
+
+// Function declarations are hoisted, so constructor metadata can be attached
+// before the renderer alias is captured by index.html.
+Apple2Video.ctrl_dlg = function()
+{
+    return Apple2VideoGPU_controls(null);
+};
+
 if(oEMU===undefined) var oEMU = {"component":{"Video":{"Apple2Video":new Apple2Video()}}}
 else oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
     const bDebug_snd = false;
+    var renderCfg = Apple2VideoGPU_copyConfig();
 
     var gfx_mode;
     var mix_mode;
@@ -20,8 +119,18 @@ function Apple2Video(ctx)
     var flash_count = 0;
     var frame_count = 0;
     var frame_redraw = true;
+    var frame_rate = Apple2VideoGPU_clampFrameRate(renderCfg.frameRate);
+    var frame_cycle_threshold = Math.max(
+        1,
+        Math.round(APPLE2_GPU_FRAME_RATE_SPEC.cpuClockHz/frame_rate)
+    );
 
     if(ctx) this.ctx = ctx;
+
+    this.ctrl_dlg = function()
+    {
+        return Apple2VideoGPU_controls(this);
+    };
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
     this.hw = null;     // apple2hw provides its reference during initialisation
@@ -44,6 +153,30 @@ function Apple2Video(ctx)
         this.config8_idx[name] = this.serial8.length;
         }
     }
+
+    this.getFrameRate = function()
+    {
+        return frame_rate;
+    };
+
+    this.getFrameCycleThreshold = function()
+    {
+        return frame_cycle_threshold;
+    };
+
+    this.setFrameRate = function(value)
+    {
+        frame_rate = Apple2VideoGPU_clampFrameRate(value);
+        renderCfg.frameRate = frame_rate;
+        frame_cycle_threshold = Math.max(
+            1,
+            Math.round(APPLE2_GPU_FRAME_RATE_SPEC.cpuClockHz/frame_rate)
+        );
+
+        frame_count = 0;
+        frame_redraw = true;
+        return frame_rate;
+    };
 
     this.reset = function()
     {
@@ -81,7 +214,7 @@ function Apple2Video(ctx)
     this.cycle = function()
     {
       frame_count++;
-      if(frame_count > 20000)  // 68120~12.5fps 34060~25fps 28383~30fps 17030~50 fps
+      if(frame_count > frame_cycle_threshold)
       {
         if(frame_redraw==true)
         {
