@@ -1,811 +1,1699 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Robust Unified Diff Applier</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UnifiedDiffJS — Local Unified Diff Analyzer</title>
 <style>
-  :root {
-    color-scheme: dark;
-    --bg:#11151a;
-    --panel:#1a2129;
-    --panel2:#202933;
-    --border:#34414f;
-    --text:#e8edf2;
-    --muted:#9aa8b6;
-    --ok:#8bd17c;
-    --warn:#ffd166;
-    --bad:#ff8a8a;
-    --accent:#79b8ff;
+  :root{
+    --bg:#0f1216; --panel:#171b21; --panel2:#1e2430; --border:#2b323f;
+    --text:#e6e9ef; --muted:#9aa4b2; --accent:#4f8cff; --accent2:#2f6fe0;
+    --ok:#2e9e5b; --ok-bg:#123322; --warn:#c98a1c; --warn-bg:#3a2c0f;
+    --bad:#d84f4f; --bad-bg:#3a1616; --info:#6c7ee1; --info-bg:#1c1f3a;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   }
-  * { box-sizing:border-box; }
-  body {
-    margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;}
+  h1,h2,h3,h4{margin:0 0 8px 0;font-weight:600;}
+  h1{font-size:20px;} h2{font-size:16px;} h3{font-size:14px;} h4{font-size:13px;color:var(--muted);}
+  a{color:var(--accent);}
+  .wrap{max-width:1300px;margin:0 auto;padding:20px;}
+  header.top{padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:5;}
+  header.top p{margin:4px 0 0 0;color:var(--muted);font-size:12.5px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr;}}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer;}
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent2);border-color:var(--accent2);color:#fff;font-weight:600;}
+  button.primary:hover{background:var(--accent);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  button.danger{border-color:var(--bad);color:var(--bad);}
+  input[type=text], textarea, input[type=search]{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:7px 10px;font-size:13px;width:100%;font-family:var(--mono);
   }
-  header {
-    padding:16px 20px;
-    border-bottom:1px solid var(--border);
-    background:#0d1117;
-  }
-  h1 { margin:0 0 4px; font-size:20px; }
-  header p { margin:0; color:var(--muted); }
-  main {
-    display:grid;
-    grid-template-columns:minmax(300px,420px) minmax(0,1fr);
-    gap:14px;
-    padding:14px;
-    min-height:calc(100vh - 78px);
-  }
-  .panel {
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:12px;
-    min-width:0;
-  }
-  .stack { display:flex; flex-direction:column; gap:10px; }
-  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  button, input, select {
-    font:inherit;
-  }
-  button {
-    border:1px solid var(--border);
-    background:var(--panel2);
-    color:var(--text);
-    border-radius:6px;
-    padding:7px 10px;
-    cursor:pointer;
-  }
-  button:hover { border-color:var(--accent); }
-  button:disabled { opacity:.45; cursor:not-allowed; }
-  button.primary { background:#17395f; border-color:#2e6ea8; }
-  button.danger { background:#552525; border-color:#8b3c3c; }
-  label { color:var(--muted); }
-  input[type="number"] {
-    width:82px;
-    background:#0f1419;
-    color:var(--text);
-    border:1px solid var(--border);
-    border-radius:5px;
-    padding:5px;
-  }
-  input[type="file"] {
-    width:100%;
-    color:var(--muted);
-  }
-  .status {
-    border:1px solid var(--border);
-    border-radius:7px;
-    padding:8px;
-    background:#0f1419;
-    white-space:pre-wrap;
-    word-break:break-word;
-    min-height:52px;
-  }
-  .ok { color:var(--ok); }
-  .warn { color:var(--warn); }
-  .bad { color:var(--bad); }
-  .muted { color:var(--muted); }
-  .summary {
-    display:grid;
-    grid-template-columns:repeat(4,minmax(90px,1fr));
-    gap:8px;
-  }
-  .metric {
-    background:#0f1419;
-    border:1px solid var(--border);
-    border-radius:7px;
-    padding:8px;
-  }
-  .metric strong { display:block; font-size:18px; }
-  .results {
-    height:calc(100vh - 210px);
-    overflow:auto;
-    border:1px solid var(--border);
-    border-radius:7px;
-    background:#0f1419;
-  }
-  details {
-    border-bottom:1px solid #26313c;
-  }
-  details:last-child { border-bottom:none; }
-  summary {
-    padding:9px 10px;
-    cursor:pointer;
-    user-select:none;
-  }
-  .hunk {
-    padding:8px 12px 12px 28px;
-    border-top:1px solid #26313c;
-  }
-  pre {
-    margin:6px 0 0;
-    padding:8px;
-    overflow:auto;
-    background:#090d11;
-    border:1px solid #26313c;
-    border-radius:5px;
-    color:#cdd7e1;
-    font:12px/1.35 "DejaVu Sans Mono","Menlo","Consolas",monospace;
-  }
-  code { font-family:"DejaVu Sans Mono","Menlo","Consolas",monospace; }
-  .pill {
-    display:inline-block;
-    padding:1px 6px;
-    border-radius:999px;
-    border:1px solid currentColor;
-    font-size:11px;
-    margin-left:6px;
-  }
-  .note {
-    padding:8px;
-    border-left:3px solid var(--accent);
-    background:#122233;
-    color:#cfe6ff;
-  }
-  @media (max-width:900px) {
-    main { grid-template-columns:1fr; }
-    .results { height:55vh; }
-  }
+  textarea{min-height:140px;resize:vertical;}
+  .dropzone{border:2px dashed var(--border);border-radius:8px;padding:18px;text-align:center;color:var(--muted);font-size:13px;}
+  .dropzone.drag{border-color:var(--accent);color:var(--text);background:rgba(79,140,255,.06);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .stat .n{font-size:20px;font-weight:700;}
+  .stat .l{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;border:1px solid transparent;white-space:nowrap;}
+  .badge.exact{background:var(--ok-bg);color:#63d38b;border-color:#1c5c37;}
+  .badge.offset{background:var(--warn-bg);color:#f0b64d;border-color:#7a5a17;}
+  .badge.whitespace{background:var(--warn-bg);color:#f0b64d;border-color:#7a5a17;}
+  .badge.fuzzy{background:var(--warn-bg);color:#f0b64d;border-color:#7a5a17;}
+  .badge.already-applied{background:var(--info-bg);color:#a9b4ff;border-color:#3b3f8a;}
+  .badge.failed{background:var(--bad-bg);color:#ff8f8f;border-color:#7a2323;}
+  .badge.ambiguous{background:var(--bad-bg);color:#ff8f8f;border-color:#7a2323;}
+  .badge.unsupported{background:var(--bad-bg);color:#ff8f8f;border-color:#7a2323;}
+  .badge.unresolved{background:var(--bad-bg);color:#ff8f8f;border-color:#7a2323;}
+  .badge.blocked{background:var(--bad-bg);color:#ff8f8f;border-color:#7a2323;}
+  .badge.pass{background:var(--ok-bg);color:#63d38b;border-color:#1c5c37;}
+  .badge.fail{background:var(--bad-bg);color:#ff8f8f;border-color:#7a2323;}
+  .file-card{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+  .file-card > .fhead{padding:10px 12px;background:var(--panel2);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap;}
+  .fhead .path{font-family:var(--mono);font-size:13px;}
+  .fbody{padding:10px 12px;display:none;}
+  .fbody.open{display:block;}
+  .hunk{border:1px solid var(--border);border-radius:6px;margin-bottom:8px;}
+  .hunk > .hhead{padding:8px 10px;display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer;flex-wrap:wrap;background:#151920;}
+  .hunk .hbody{padding:10px;display:none;border-top:1px solid var(--border);}
+  .hunk .hbody.open{display:block;}
+  pre.code{background:#0b0d11;border:1px solid var(--border);border-radius:6px;padding:8px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.5;margin:6px 0;}
+  .line{white-space:pre;}
+  .line .ln{display:inline-block;width:44px;color:#5b6472;user-select:none;text-align:right;margin-right:8px;}
+  .line.ctx{color:#c7cdd6;}
+  .line.del{color:#ff9d9d;background:rgba(216,79,79,.08);}
+  .line.add{color:#8ce0a4;background:rgba(46,158,91,.08);}
+  .line.mismatch{color:#f0b64d;background:rgba(201,138,28,.12);}
+  .small{font-size:12px;color:var(--muted);}
+  .chip{padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);font-size:12px;cursor:pointer;}
+  .chip.active{border-color:var(--accent);color:var(--accent);}
+  .msg{padding:10px 12px;border-radius:8px;font-size:13px;margin:8px 0;}
+  .msg.ok{background:var(--ok-bg);color:#8fe3ac;border:1px solid #1c5c37;}
+  .msg.bad{background:var(--bad-bg);color:#ff9d9d;border:1px solid #7a2323;}
+  .msg.info{background:var(--info-bg);color:#b7c0ff;border:1px solid #3b3f8a;}
+  ul.reasons{margin:6px 0;padding-left:18px;}
+  .file-list{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:6px;background:#0b0d11;}
+  .file-list .fitem{display:flex;justify-content:space-between;padding:4px 8px;font-family:var(--mono);font-size:12px;border-bottom:1px solid #1c212a;cursor:pointer;}
+  .file-list .fitem:hover{background:var(--panel2);}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px;}
+  .kv div.k{color:var(--muted);}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  footer{padding:24px 20px;color:var(--muted);font-size:12px;text-align:center;}
+  .test-table td.name{font-family:var(--mono);}
+  .downloads-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+  .downloads-list .drow{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
-<header>
-  <h1>Robust Unified Diff Applier</h1>
-  <p>Applies standard unified <code>.diff</code>/<code>.patch</code> files to a selected project folder using exact, offset, whitespace-tolerant and fuzzy context matching.</p>
+<header class="top">
+  <div class="wrap" style="padding:0;">
+    <h1>UnifiedDiffJS</h1>
+    <p>Deterministic, browser-only unified diff analyzer — an analysis-phase alternative to <code>git apply</code>. No backend, no network, no install.</p>
+  </div>
 </header>
 
-<main>
-  <section class="panel stack">
-    <div>
-      <strong>1. Select project folder</strong>
-      <div class="row" style="margin-top:7px">
-        <button id="pickRoot" class="primary">Choose project folder</button>
-        <span id="rootName" class="muted">No folder selected</span>
+<div class="wrap">
+
+  <!-- ============ INPUTS ============ -->
+  <section class="panel" id="panel-inputs">
+    <h2>1. Inputs</h2>
+    <div class="grid2">
+      <div>
+        <h3>Project directory</h3>
+        <div class="row">
+          <input type="file" id="dirInput" webkitdirectory multiple style="display:none;">
+          <button id="btnPickDir">Select project directory…</button>
+          <button id="btnAddFile">Add / replace single file…</button>
+          <input type="file" id="singleFileInput" style="display:none;">
+          <button id="btnReloadProject" class="danger">Reset project</button>
+        </div>
+        <div id="projectDrop" class="dropzone" style="margin-top:10px;">Or drag &amp; drop a project folder here</div>
+        <div class="kv" style="margin-top:10px;">
+          <div class="k">Detected root</div><div id="projRoot">—</div>
+          <div class="k">Files loaded</div><div id="projCount">0</div>
+        </div>
+        <div style="margin-top:8px;">
+          <input type="search" id="projSearch" placeholder="Search loaded files…">
+        </div>
+        <div class="file-list" id="projFileList" style="margin-top:8px;"></div>
+        <div id="projInspect" class="small" style="margin-top:8px;"></div>
+        <div id="projWarnings"></div>
+      </div>
+      <div>
+        <h3>Diff / patch</h3>
+        <div class="row">
+          <input type="file" id="diffFileInput" accept=".diff,.patch,.txt" style="display:none;">
+          <button id="btnPickDiff">Select .diff / .patch file…</button>
+          <button id="btnClearDiff" class="danger">Clear</button>
+        </div>
+        <div id="diffDrop" class="dropzone" style="margin-top:10px;">Or drag &amp; drop a .diff / .patch file here</div>
+        <div style="margin-top:10px;">
+          <h4>…or paste unified diff text</h4>
+          <textarea id="diffPaste" placeholder="diff --git a/file b/file&#10;--- a/file&#10;+++ b/file&#10;@@ -1,3 +1,4 @@&#10; context&#10;-old&#10;+new"></textarea>
+        </div>
+        <div class="kv" style="margin-top:10px;">
+          <div class="k">Patch file</div><div id="diffFileName">—</div>
+          <div class="k">Patch size</div><div id="diffFileSize">—</div>
+        </div>
       </div>
     </div>
-
-    <div>
-      <strong>2. Select diff file</strong>
-      <input id="diffFile" type="file" accept=".diff,.patch,text/x-diff,text/plain">
-    </div>
-
-    <div>
-      <strong>3. Matching policy</strong>
-      <div class="stack" style="margin-top:7px">
-        <label><input id="ignoreWhitespace" type="checkbox" checked> Ignore whitespace differences while locating hunks</label>
-        <label><input id="allowFuzzy" type="checkbox" checked> Allow fuzzy context matching</label>
-        <label><input id="detectApplied" type="checkbox" checked> Detect hunks that appear already applied</label>
-        <label>Maximum fuzz lines
-          <input id="maxFuzz" type="number" min="0" max="8" value="3">
-        </label>
-        <label>Preferred search radius
-          <input id="searchRadius" type="number" min="10" max="5000" value="500"> lines
-        </label>
-      </div>
-    </div>
-
-    <div class="row">
-      <button id="preview" class="primary" disabled>Preview</button>
-      <button id="apply" disabled>Apply all</button>
-      <button id="export" disabled>Export patched files</button>
-    </div>
-
-    <div class="note">
-      Writes are blocked unless every hunk is either matched unambiguously or detected as already applied. Before writing, the tool stores originals in <code>.diff-backups/&lt;timestamp&gt;/</code>.
-    </div>
-
-    <div id="status" class="status muted">Select a project folder and a diff file.</div>
-  </section>
-
-  <section class="panel stack">
-    <div class="summary">
-      <div class="metric"><span class="muted">Files</span><strong id="mFiles">0</strong></div>
-      <div class="metric"><span class="muted">Hunks</span><strong id="mHunks">0</strong></div>
-      <div class="metric"><span class="muted">Applicable</span><strong id="mApplicable">0</strong></div>
-      <div class="metric"><span class="muted">Blocked</span><strong id="mBlocked">0</strong></div>
-    </div>
-    <div id="results" class="results">
-      <div class="muted" style="padding:14px">No preview yet.</div>
+    <div class="row" style="margin-top:14px;">
+      <button id="btnAnalyze" class="primary">Load &amp; Analyze</button>
+      <button id="btnResetAll" class="danger">Reset everything</button>
+      <span id="analyzeStatus" class="small"></span>
     </div>
   </section>
-</main>
+
+  <!-- ============ PATCH OVERVIEW ============ -->
+  <section class="panel" id="panel-overview" style="display:none;">
+    <h2>2. Patch overview</h2>
+    <div class="stat-grid" id="overviewStats"></div>
+    <div id="overviewUnsupported"></div>
+    <div id="overviewWarnings"></div>
+  </section>
+
+  <!-- ============ FILE / HUNK RESULTS ============ -->
+  <section class="panel" id="panel-results" style="display:none;">
+    <div class="flex-between">
+      <h2>3. File &amp; hunk results</h2>
+      <div class="row" id="filterChips"></div>
+    </div>
+    <div id="fileResults"></div>
+  </section>
+
+  <!-- ============ DOWNLOADS ============ -->
+  <section class="panel" id="panel-downloads" style="display:none;">
+    <h2>4. Downloads</h2>
+    <div id="downloadGate"></div>
+    <div id="downloadArea"></div>
+  </section>
+
+  <!-- ============ SELF TESTS ============ -->
+  <section class="panel" id="panel-tests">
+    <div class="flex-between">
+      <h2>5. Self-tests</h2>
+      <button id="btnRunTests" class="primary">Run self-tests</button>
+    </div>
+    <div id="testSummary" class="small" style="margin:8px 0;"></div>
+    <table class="test-table" id="testTable" style="display:none;">
+      <thead><tr><th>#</th><th>Test</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody id="testBody"></tbody>
+    </table>
+  </section>
+
+</div>
+<footer>UnifiedDiffJS — runs entirely in your browser. No files are ever modified on disk; only new downloadable files are produced.</footer>
 
 <script>
 "use strict";
 
-const state = {
-  root: null,
-  diffText: "",
-  parsed: null,
-  preview: null
-};
+/* =========================================================================
+   UTILITIES
+   ========================================================================= */
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-const $ = id => document.getElementById(id);
-
-function setStatus(text, cls = "muted") {
-  const el = $("status");
-  el.className = "status " + cls;
-  el.textContent = text;
+function escapeHtml(s){
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function normalizeEol(text) {
-  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-}
-
-function detectEol(text) {
-  return text.includes("\r\n") ? "\r\n" : "\n";
-}
-
-function safePath(path) {
-  path = String(path || "").trim();
-  path = path.replace(/^["']|["']$/g, "");
-  path = path.replace(/\\/g, "/");
-  path = path.replace(/^(a|b)\//, "");
-  path = path.replace(/^\.\/+/, "");
-  path = path.split("\t")[0].trim();
-
-  const parts = path.split("/").filter(Boolean);
-  if (!parts.length || parts.some(p => p === "..")) {
-    throw new Error("Unsafe or empty patch path: " + path);
+function ce(tag, props, children){
+  const node = document.createElement(tag);
+  if (props) for (const k in props){
+    if (k === 'class') node.className = props[k];
+    else if (k === 'text') node.textContent = props[k];
+    else if (k.startsWith('on') && typeof props[k] === 'function') node.addEventListener(k.slice(2), props[k]);
+    else node.setAttribute(k, props[k]);
   }
-  return parts.join("/");
-}
-
-function parseRange(raw) {
-  const m = String(raw).match(/^(\d+)(?:,(\d+))?$/);
-  if (!m) throw new Error("Invalid hunk range: " + raw);
-  return { start: Number(m[1]), count: m[2] === undefined ? 1 : Number(m[2]) };
-}
-
-function parseUnifiedDiff(text) {
-  const lines = normalizeEol(text).split("\n");
-  const files = [];
-  let file = null;
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.startsWith("diff --git ")) {
-      i++;
-      continue;
-    }
-
-    if (line.startsWith("--- ")) {
-      const oldPathRaw = line.slice(4).trim();
-      const next = lines[i + 1] || "";
-      if (!next.startsWith("+++ ")) {
-        throw new Error("Expected +++ after --- at diff line " + (i + 1));
-      }
-
-      const newPathRaw = next.slice(4).trim();
-      const oldPath = oldPathRaw === "/dev/null" ? null : safePath(oldPathRaw);
-      const newPath = newPathRaw === "/dev/null" ? null : safePath(newPathRaw);
-
-      file = {
-        oldPath,
-        newPath,
-        targetPath: newPath || oldPath,
-        isCreate: oldPath === null,
-        isDelete: newPath === null,
-        hunks: []
-      };
-      files.push(file);
-      i += 2;
-      continue;
-    }
-
-    if (line.startsWith("@@ ")) {
-      if (!file) throw new Error("Hunk encountered before file header at diff line " + (i + 1));
-      const m = line.match(/^@@ -([^ ]+) \+([^ ]+) @@(.*)$/);
-      if (!m) throw new Error("Invalid hunk header at diff line " + (i + 1));
-
-      const hunk = {
-        header: line,
-        oldRange: parseRange(m[1]),
-        newRange: parseRange(m[2]),
-        section: m[3] || "",
-        lines: []
-      };
-
-      i++;
-      while (i < lines.length) {
-        const hline = lines[i];
-        if (hline.startsWith("@@ ") || hline.startsWith("--- ") || hline.startsWith("diff --git ")) break;
-        if (hline === "\\ No newline at end of file") {
-          hunk.noNewline = true;
-          i++;
-          continue;
-        }
-        const prefix = hline.charAt(0);
-        if (prefix !== " " && prefix !== "+" && prefix !== "-") break;
-        hunk.lines.push({ type: prefix, text: hline.slice(1) });
-        i++;
-      }
-      file.hunks.push(hunk);
-      continue;
-    }
-
-    i++;
+  if (children) for (const c of children){
+    if (c == null) continue;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
   }
-
-  if (!files.length) throw new Error("No unified diff file sections were found.");
-  return { files };
+  return node;
 }
 
-async function getFileHandle(root, path, create = false) {
-  const parts = safePath(path).split("/");
-  let dir = root;
-  for (let i = 0; i < parts.length - 1; i++) {
-    dir = await dir.getDirectoryHandle(parts[i], { create });
-  }
-  return dir.getFileHandle(parts[parts.length - 1], { create });
+function formatBytes(n){
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+  return (n/1024/1024).toFixed(2) + ' MB';
 }
 
-async function getDirectoryHandle(root, path, create = false) {
-  const parts = safePath(path).split("/");
-  let dir = root;
-  for (const part of parts) {
-    dir = await dir.getDirectoryHandle(part, { create });
-  }
-  return dir;
-}
+function stripCR(s){ return s.endsWith('\r') ? s.slice(0, -1) : s; }
 
-async function readProjectFile(path) {
-  const handle = await getFileHandle(state.root, path, false);
-  const file = await handle.getFile();
-  return file.text();
-}
+function normWs(s){ return s.replace(/[ \t]+/g, ' ').trim(); }
 
-function normalizeLine(line, ignoreWhitespace) {
-  if (!ignoreWhitespace) return line;
-  return line.replace(/[ \t]+/g, " ").trim();
-}
+function normalizeSlashes(p){ return p.replace(/\\/g, '/'); }
 
-function oldSequence(hunk) {
-  return hunk.lines.filter(x => x.type !== "+").map(x => x.text);
-}
-
-function newSequence(hunk) {
-  return hunk.lines.filter(x => x.type !== "-").map(x => x.text);
-}
-
-function equalityScore(a, b, ignoreWhitespace) {
-  return normalizeLine(a, ignoreWhitespace) === normalizeLine(b, ignoreWhitespace);
-}
-
-function sequenceMatches(lines, pos, seq, ignoreWhitespace) {
-  if (pos < 0 || pos + seq.length > lines.length) return false;
-  for (let i = 0; i < seq.length; i++) {
-    if (!equalityScore(lines[pos + i], seq[i], ignoreWhitespace)) return false;
+function sliceEquals(arr, start, seq){
+  if (start < 0 || start + seq.length > arr.length) return false;
+  for (let i = 0; i < seq.length; i++){
+    if (arr[start + i] !== seq[i]) return false;
   }
   return true;
 }
 
-function contextIndexes(hunk) {
-  const indexes = [];
-  let oldIndex = 0;
-  for (const line of hunk.lines) {
-    if (line.type !== "+") {
-      if (line.type === " ") indexes.push(oldIndex);
-      oldIndex++;
-    }
-  }
-  return indexes;
+function arraysEqual(a, b){
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 
-function fuzzyScore(lines, pos, hunk, ignoreWhitespace, maxFuzz) {
-  const seq = oldSequence(hunk);
-  if (pos < 0 || pos + seq.length > lines.length) return null;
-
-  const ctx = new Set(contextIndexes(hunk));
-  let contextMismatch = 0;
-  let removalMismatch = 0;
-  let exact = 0;
-
-  for (let i = 0; i < seq.length; i++) {
-    const same = equalityScore(lines[pos + i], seq[i], ignoreWhitespace);
-    if (same) {
-      exact++;
-    } else if (ctx.has(i)) {
-      contextMismatch++;
-    } else {
-      removalMismatch++;
-    }
+function findExactOccurrences(lines, seq){
+  const res = [];
+  if (seq.length === 0) return res;
+  const n = lines.length, m = seq.length;
+  for (let start = 0; start <= n - m; start++){
+    if (lines[start] !== seq[0]) continue;
+    let ok = true;
+    for (let k = 1; k < m; k++){ if (lines[start+k] !== seq[k]) { ok = false; break; } }
+    if (ok) res.push(start);
   }
-
-  if (removalMismatch > 0 || contextMismatch > maxFuzz) return null;
-
-  return {
-    score: exact * 10 - contextMismatch * 25,
-    contextMismatch,
-    removalMismatch
-  };
+  return res;
 }
 
-function candidatePositions(lines, expected, radius) {
+function findWhitespaceOccurrences(lines, seq){
+  const res = [];
+  if (seq.length === 0) return res;
+  const n = lines.length, m = seq.length;
+  const normSeq = seq.map(normWs);
+  for (let start = 0; start <= n - m; start++){
+    let ok = true;
+    for (let k = 0; k < m; k++){ if (normWs(lines[start+k]) !== normSeq[k]) { ok = false; break; } }
+    if (ok) res.push(start);
+  }
+  return res;
+}
+
+/* =========================================================================
+   LINE ENDING HANDLING
+   ========================================================================= */
+function detectLineEnding(content){
+  const crlf = (content.match(/\r\n/g) || []).length;
+  const bareLf = (content.split('\n').length - 1) - crlf;
+  const eol = crlf >= bareLf ? '\r\n' : '\n';
+  const finalNewline = content.length > 0 && (content.endsWith('\n'));
+  const mixed = crlf > 0 && bareLf > 0;
+  return { eol, finalNewline, mixed };
+}
+
+function splitLines(content){
+  if (content === '') return [];
+  const hadTrailingNL = /\n$/.test(content);
+  const lines = content.split(/\r\n|\n/);
+  if (hadTrailingNL) lines.pop();
+  return lines;
+}
+
+function joinLines(lines, eol, finalNewline){
+  let s = lines.join(eol);
+  if (finalNewline) s += eol;
+  return s;
+}
+
+/* =========================================================================
+   PROJECT STORE
+   ========================================================================= */
+const project = {
+  root: '',
+  files: new Map(), // normalizedPath -> {content, eol, finalNewline, size, mixed}
+  warnings: [],
+};
+
+function resetProject(){
+  project.root = '';
+  project.files.clear();
+  project.warnings = [];
+  renderProjectPanel();
+}
+
+async function loadProjectFromFileList(fileList){
+  const files = Array.from(fileList).filter(f => f.name !== '.DS_Store');
+  if (files.length === 0) return;
+  project.files.clear();
+  project.warnings = [];
+  let root = null;
+  const entries = files.map(f => ({ file: f, rel: normalizeSlashes(f.webkitRelativePath || f.name) }));
+  for (const e of entries){
+    const top = e.rel.split('/')[0];
+    if (root === null) root = top; else if (root !== top) root = '';
+  }
+  project.root = root || '';
+  let count = 0;
+  for (const { file: f, rel } of entries){
+    let path = rel;
+    if (project.root && path.startsWith(project.root + '/')) path = path.slice(project.root.length + 1);
+    if (!path) continue;
+    try {
+      const content = await f.text();
+      if (content.indexOf('\u0000') !== -1){
+        project.warnings.push('Skipped likely binary file: ' + path);
+        continue;
+      }
+      const { eol, finalNewline, mixed } = detectLineEnding(content);
+      if (mixed) project.warnings.push('Mixed line endings detected in: ' + path);
+      if (project.files.has(path)) project.warnings.push('Duplicate relative path overwritten: ' + path);
+      project.files.set(path, { content, eol, finalNewline, size: f.size });
+      count++;
+    } catch (e){
+      project.warnings.push('Failed to read ' + path + ': ' + e.message);
+    }
+    if (count % 150 === 0) await sleep(0);
+  }
+  renderProjectPanel();
+}
+
+async function traverseEntry(entry, base, out){
+  if (entry.isFile){
+    await new Promise((resolve) => {
+      entry.file(async (file) => {
+        out.push({ file, rel: base + entry.name });
+        resolve();
+      }, () => resolve());
+    });
+  } else if (entry.isDirectory){
+    const reader = entry.createReader();
+    const readBatch = () => new Promise((resolve) => reader.readEntries(resolve, () => resolve([])));
+    let batch;
+    do {
+      batch = await readBatch();
+      for (const child of batch) await traverseEntry(child, base + entry.name + '/', out);
+    } while (batch.length > 0);
+  }
+}
+
+async function loadProjectFromDrop(dataTransfer){
+  const items = dataTransfer.items;
+  if (!items) return;
   const out = [];
-  const seen = new Set();
-  const add = p => {
-    p = Math.max(0, Math.min(lines.length, p));
-    if (!seen.has(p)) {
-      seen.add(p);
-      out.push(p);
-    }
-  };
-
-  add(expected);
-  for (let d = 1; d <= radius; d++) {
-    add(expected - d);
-    add(expected + d);
+  const promises = [];
+  for (let i = 0; i < items.length; i++){
+    const item = items[i];
+    const entry = item.webkitGetAsEntry && item.webkitGetAsEntry();
+    if (entry) promises.push(traverseEntry(entry, '', out));
   }
-  for (let p = 0; p <= lines.length; p++) add(p);
+  await Promise.all(promises);
+  if (out.length === 0) return;
+  project.files.clear();
+  project.warnings = [];
+  let root = null;
+  for (const o of out){
+    const top = o.rel.split('/')[0];
+    if (root === null) root = top; else if (root !== top) root = '';
+  }
+  project.root = root || '';
+  let count = 0;
+  for (const { file: f, rel } of out){
+    let path = rel;
+    if (project.root && path.startsWith(project.root + '/')) path = path.slice(project.root.length + 1);
+    if (!path) continue;
+    try {
+      const content = await f.text();
+      if (content.indexOf('\u0000') !== -1){
+        project.warnings.push('Skipped likely binary file: ' + path);
+        continue;
+      }
+      const { eol, finalNewline, mixed } = detectLineEnding(content);
+      if (mixed) project.warnings.push('Mixed line endings detected in: ' + path);
+      if (project.files.has(path)) project.warnings.push('Duplicate relative path overwritten: ' + path);
+      project.files.set(path, { content, eol, finalNewline, size: f.size });
+      count++;
+    } catch (e){
+      project.warnings.push('Failed to read ' + path + ': ' + e.message);
+    }
+    if (count % 150 === 0) await sleep(0);
+  }
+  renderProjectPanel();
+}
+
+/* =========================================================================
+   PATCH PATH NORMALIZATION
+   ========================================================================= */
+class PathError extends Error { constructor(msg){ super(msg); this.name = 'PathError'; } }
+
+function normalizePatchPath(raw){
+  if (raw == null) return null;
+  let p = raw.trim();
+  if (p === '/dev/null') return null;
+  if (p.startsWith('"') && p.endsWith('"')) p = p.slice(1, -1);
+  p = normalizeSlashes(p);
+  if (/^a\//.test(p)) p = p.slice(2);
+  else if (/^b\//.test(p)) p = p.slice(2);
+  else if (/^\.\//.test(p)) p = p.slice(2);
+  if (p.indexOf('\u0000') !== -1) throw new PathError('Path contains a null character: ' + raw);
+  if (/^[A-Za-z]:[\\\/]/.test(p)) throw new PathError('Drive-letter path is not allowed: ' + raw);
+  if (p.startsWith('/')) throw new PathError('Absolute path is not allowed: ' + raw);
+  const parts = p.split('/');
+  for (const part of parts){
+    if (part === '..') throw new PathError('Path traversal ("..") is not allowed: ' + raw);
+    if (part === '') throw new PathError('Empty path component in: ' + raw);
+  }
+  return parts.join('/');
+}
+
+/* =========================================================================
+   UNIFIED DIFF PARSER
+   ========================================================================= */
+function parseHunk(lines, idx){
+  const headerLine = stripCR(lines[idx]);
+  const re = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@\s?(.*)$/;
+  const m = re.exec(headerLine);
+  if (!m){
+    return { hunk: { header: headerLine, malformed: true, error: 'Malformed hunk header (expected "@@ -l,s +l,s @@")', lines: [] }, nextIndex: idx + 1 };
+  }
+  const oldStart = parseInt(m[1], 10);
+  const oldCount = m[2] !== undefined ? parseInt(m[2], 10) : 1;
+  const newStart = parseInt(m[3], 10);
+  const newCount = m[4] !== undefined ? parseInt(m[4], 10) : 1;
+  const hunk = { header: headerLine, oldStart, oldCount, newStart, newCount, lines: [], noNewlineOld: false, noNewlineNew: false, malformed: false };
+  let i = idx + 1;
+  let oldRemaining = oldCount, newRemaining = newCount;
+  let lastType = null;
+  while (i < lines.length && (oldRemaining > 0 || newRemaining > 0)){
+    const raw = lines[i];
+    if (raw.length === 0){
+      if (oldRemaining > 0 && newRemaining > 0){ hunk.lines.push({ type: 'context', text: '' }); oldRemaining--; newRemaining--; lastType = 'context'; }
+      else if (newRemaining > 0){ hunk.lines.push({ type: 'add', text: '' }); newRemaining--; lastType = 'add'; }
+      else { hunk.lines.push({ type: 'del', text: '' }); oldRemaining--; lastType = 'del'; }
+      i++; continue;
+    }
+    const c = raw[0];
+    if (c === ' '){ hunk.lines.push({ type: 'context', text: raw.slice(1) }); oldRemaining--; newRemaining--; lastType = 'context'; i++; }
+    else if (c === '-'){ hunk.lines.push({ type: 'del', text: raw.slice(1) }); oldRemaining--; lastType = 'del'; i++; }
+    else if (c === '+'){ hunk.lines.push({ type: 'add', text: raw.slice(1) }); newRemaining--; lastType = 'add'; i++; }
+    else if (c === '\\'){
+      if (lastType === 'del' || lastType === 'context') hunk.noNewlineOld = true;
+      if (lastType === 'add' || lastType === 'context') hunk.noNewlineNew = true;
+      i++;
+    } else {
+      break;
+    }
+  }
+  if (i < lines.length && stripCR(lines[i]).startsWith('\\')){
+    if (lastType === 'del' || lastType === 'context') hunk.noNewlineOld = true;
+    if (lastType === 'add' || lastType === 'context') hunk.noNewlineNew = true;
+    i++;
+  }
+  return { hunk, nextIndex: i };
+}
+
+function parseFileSection(lines, startIdx, hasGitLine){
+  let i = startIdx;
+  const file = {
+    header: lines[startIdx],
+    headerExtra: [],
+    oldPath: null, newPath: null,
+    operation: 'modify',
+    unsupported: [],
+    hunks: [],
+    _gitA: null, _gitB: null
+  };
+  if (hasGitLine){
+    const gline = stripCR(lines[i]);
+    const m = /^diff --git a\/(.*) b\/(.*)$/.exec(gline) || /^diff --git (.*) (.*)$/.exec(gline);
+    if (m){ file._gitA = m[1]; file._gitB = m[2]; }
+    i++;
+    while (i < lines.length){
+      const line = stripCR(lines[i]);
+      if (line.startsWith('--- ') || line.startsWith('diff --git ')) break;
+      if (line === ''){ i++; continue; }
+      if (/^index /.test(line)){ file.headerExtra.push(line); i++; continue; }
+      if (/^new file mode /.test(line)){ file.operation = 'create'; file.headerExtra.push(line); i++; continue; }
+      if (/^deleted file mode /.test(line)){ file.operation = 'delete'; file.headerExtra.push(line); i++; continue; }
+      if (/^old mode /.test(line) || /^new mode /.test(line)){ file.unsupported.push('Mode change: ' + line); i++; continue; }
+      if (/^similarity index /.test(line)){ file.unsupported.push('Similarity index (rename/copy detection): ' + line); i++; continue; }
+      if (/^rename from /.test(line) || /^rename to /.test(line)){ file.unsupported.push('Rename: ' + line); i++; continue; }
+      if (/^copy from /.test(line) || /^copy to /.test(line)){ file.unsupported.push('Copy: ' + line); i++; continue; }
+      if (/^GIT binary patch/.test(line)){
+        file.unsupported.push('GIT binary patch');
+        i++;
+        while (i < lines.length && lines[i] !== '' && !stripCR(lines[i]).startsWith('diff --git ')) i++;
+        continue;
+      }
+      if (/^Binary files .* differ$/.test(line)){ file.unsupported.push('Binary files differ: ' + line); i++; continue; }
+      file.headerExtra.push(line);
+      i++;
+    }
+  }
+  if (i < lines.length && stripCR(lines[i]).startsWith('--- ')){
+    file.oldPath = stripCR(lines[i]).slice(4).trim();
+    i++;
+  }
+  if (i < lines.length && stripCR(lines[i]).startsWith('+++ ')){
+    file.newPath = stripCR(lines[i]).slice(4).trim();
+    i++;
+  } else {
+    file.unsupported.push('Missing +++ header line');
+  }
+  while (i < lines.length){
+    const line = stripCR(lines[i]);
+    if (line.startsWith('@@')){
+      const r = parseHunk(lines, i);
+      file.hunks.push(r.hunk);
+      i = r.nextIndex;
+    } else if (line.startsWith('diff --git ') || (line.startsWith('--- ') && file.hunks.length > 0)){
+      break;
+    } else if (line === ''){
+      i++;
+    } else {
+      break;
+    }
+  }
+  if (!file.oldPath && file._gitA) file.oldPath = 'a/' + file._gitA;
+  if (!file.newPath && file._gitB) file.newPath = 'b/' + file._gitB;
+  if (file.oldPath === '/dev/null') file.operation = (file.operation === 'delete') ? 'delete' : 'create';
+  if (file.newPath === '/dev/null') file.operation = 'delete';
+  return { file, nextIndex: i };
+}
+
+function parseDiffText(text){
+  const lines = text.split('\n');
+  const files = [];
+  const warnings = [];
+  let i = 0;
+  while (i < lines.length){
+    const line = stripCR(lines[i]);
+    if (line === ''){ i++; continue; }
+    if (line.startsWith('diff --git ')){
+      const { file, nextIndex } = parseFileSection(lines, i, true);
+      files.push(file);
+      i = nextIndex;
+    } else if (line.startsWith('--- ')){
+      const { file, nextIndex } = parseFileSection(lines, i, false);
+      files.push(file);
+      i = nextIndex;
+    } else {
+      warnings.push('Ignored line outside any file section: ' + line.slice(0, 120));
+      i++;
+    }
+  }
+  return { files, warnings };
+}
+
+/* =========================================================================
+   PATH MAPPING
+   ========================================================================= */
+function mapFileSectionPaths(file){
+  file.pathError = null;
+  try { file.oldPathNorm = normalizePatchPath(file.oldPath); } catch (e){ file.pathError = e.message; file.oldPathNorm = undefined; }
+  if (file.pathError === null){
+    try { file.newPathNorm = normalizePatchPath(file.newPath); } catch (e){ file.pathError = e.message; file.newPathNorm = undefined; }
+  }
+  if (file.oldPathNorm === null && file.newPathNorm){
+    file.operation = (file.operation === 'delete') ? 'delete' : 'create';
+    file.targetPath = file.newPathNorm;
+  } else if (file.newPathNorm === null && file.oldPathNorm){
+    file.operation = 'delete';
+    file.targetPath = file.oldPathNorm;
+  } else if (file.oldPathNorm && file.newPathNorm){
+    file.targetPath = file.newPathNorm;
+    if (file.oldPathNorm !== file.newPathNorm){
+      file.unsupported.push('Path rename not supported: ' + file.oldPathNorm + ' -> ' + file.newPathNorm);
+    }
+  } else if (!file.pathError){
+    file.pathError = 'Both old and new paths resolve to /dev/null';
+  }
+}
+
+function resolveMapping(file, proj){
+  if (file.pathError){ file.mapStatus = 'unresolved'; return; }
+  const target = file.targetPath;
+  if (file.operation === 'create'){
+    file.mapStatus = proj.files.has(target) ? 'exists-conflict' : 'newFile';
+  } else {
+    file.mapStatus = proj.files.has(target) ? 'resolved' : 'unresolved';
+  }
+}
+
+/* =========================================================================
+   MATCH ENGINE
+   ========================================================================= */
+const FUZZ_THRESHOLD = 0.6;
+
+function hunkOldLines(hunk){ return hunk.lines.filter(l => l.type !== 'add').map(l => l.text); }
+function hunkNewLines(hunk){ return hunk.lines.filter(l => l.type !== 'del').map(l => l.text); }
+function hunkDelLines(hunk){ return hunk.lines.filter(l => l.type === 'del').map(l => l.text); }
+function hunkOldTypes(hunk){ return hunk.lines.filter(l => l.type !== 'add').map(l => l.type); }
+
+function classifyHunk(workingLines, expectedLine0, oldSide, newSide, delSide, oldTypes){
+  const n = workingLines.length;
+
+  // Step A: exact at expected line
+  if (sliceEquals(workingLines, expectedLine0, oldSide)){
+    return { status: 'exact', matchedLine: expectedLine0 + 1 };
+  }
+
+  // Step B: exact elsewhere -> offset
+  if (oldSide.length > 0){
+    const occ = findExactOccurrences(workingLines, oldSide);
+    if (occ.length > 0){
+      let best = occ[0];
+      for (const o of occ) if (Math.abs(o - expectedLine0) < Math.abs(best - expectedLine0)) best = o;
+      return { status: 'offset', matchedLine: best + 1, offset: (best - expectedLine0), occurrences: occ.length, unique: occ.length === 1, allOccurrences: occ.map(o => o + 1) };
+    }
+  }
+
+  // Step C: whitespace-normalized match
+  if (oldSide.length > 0){
+    const occWs = findWhitespaceOccurrences(workingLines, oldSide);
+    if (occWs.length > 0){
+      let best = occWs[0];
+      for (const o of occWs) if (Math.abs(o - expectedLine0) < Math.abs(best - expectedLine0)) best = o;
+      const rawDiffs = [];
+      for (let k = 0; k < oldSide.length; k++){
+        const srcLine = workingLines[best + k];
+        if (srcLine !== oldSide[k]) rawDiffs.push({ line: best + k + 1, expected: oldSide[k], actual: srcLine });
+      }
+      return { status: 'whitespace', matchedLine: best + 1, offset: (best - expectedLine0), rawDiffs, occurrences: occWs.length };
+    }
+  }
+
+  // Step D: already-applied (new side already present)
+  if (newSide.length > 0){
+    if (sliceEquals(workingLines, expectedLine0, newSide)){
+      return { status: 'already-applied', matchedLine: expectedLine0 + 1, note: 'The new side of this hunk is already present at the expected location.' };
+    }
+    const occNew = findExactOccurrences(workingLines, newSide);
+    if (occNew.length > 0){
+      return { status: 'already-applied', matchedLine: occNew[0] + 1, occurrences: occNew.length, unique: occNew.length === 1, note: 'The new side of this hunk already exists elsewhere in the file.' };
+    }
+  }
+
+  // Step E: fuzzy diagnostic matching (removed lines must match exactly; context may differ)
+  if (delSide.length > 0 && oldSide.length > 0){
+    const WINDOW = 1500;
+    const lo = Math.max(0, expectedLine0 - WINDOW);
+    const hi = Math.min(n - oldSide.length, expectedLine0 + WINDOW);
+    const candidates = [];
+    for (let s = lo; s <= hi; s++){
+      let delOk = true;
+      const mismatches = [];
+      let matches = 0;
+      for (let k = 0; k < oldSide.length; k++){
+        const type = oldTypes[k];
+        const srcLine = workingLines[s + k];
+        const expLine = oldSide[k];
+        if (type === 'del'){
+          if (srcLine !== expLine){ delOk = false; break; }
+          matches++;
+        } else {
+          if (srcLine === expLine) matches++;
+          else mismatches.push({ line: s + k + 1, expected: expLine, actual: srcLine });
+        }
+      }
+      if (delOk) candidates.push({ line: s + 1, mismatches, score: matches / oldSide.length });
+    }
+    if (candidates.length > 0){
+      candidates.sort((a, b) => b.score - a.score);
+      const top = candidates[0].score;
+      const topCandidates = candidates.filter(c => c.score === top);
+      if (topCandidates.length === 1){
+        return { status: 'fuzzy', candidateLine: topCandidates[0].line, mismatches: topCandidates[0].mismatches, score: top, threshold: FUZZ_THRESHOLD, competing: candidates.slice(1, 6) };
+      } else {
+        return { status: 'ambiguous', candidates: topCandidates.slice(0, 10), score: top };
+      }
+    }
+  }
+
+  // Step F: failed
+  const reasons = [];
+  if (n === 0) reasons.push('Target file is empty or was not found.');
+  if (oldSide.length === 0) reasons.push('Hunk declares no old-side content — likely a pure insertion hunk that could not be positioned.');
+  reasons.push('No exact, offset, whitespace-normalized, already-applied, or fuzzy candidate match was found.');
+  reasons.push('Possible causes: target file missing, removed/context lines changed, source scope rewritten, patch based on another revision, line endings changed, or the hunk is truncated/malformed.');
+  return { status: 'failed', reasons };
+}
+
+function applyHunkToLines(workingLines, expectedLine0, oldSide, newSide){
+  workingLines.splice(expectedLine0, oldSide.length, ...newSide);
+}
+
+function analyzeFileSection(file, proj){
+  mapFileSectionPaths(file);
+  resolveMapping(file, proj);
+  file.hunkResults = [];
+
+  let status = null;
+  if (file.unsupported.length > 0) status = 'unsupported';
+  if (!status && file.mapStatus === 'unresolved') status = 'unresolved';
+  if (!status && file.mapStatus === 'exists-conflict') status = 'failed';
+
+  let workingLines = [];
+  let eol = '\n', finalNewline = true;
+
+  if (file.operation === 'create'){
+    if (file.mapStatus !== 'exists-conflict') workingLines = [];
+  }
+  if (file.operation !== 'create'){
+    const pf = file.targetPath ? proj.files.get(file.targetPath) : null;
+    if (pf){
+      workingLines = splitLines(pf.content);
+      eol = pf.eol;
+      finalNewline = pf.finalNewline;
+    } else if (!status){
+      status = 'unresolved';
+    }
+  }
+
+  let cumulativeDelta = 0;
+  let fileBlocked = !!status;
+
+  for (let hi = 0; hi < file.hunks.length; hi++){
+    const hunk = file.hunks[hi];
+    if (hunk.malformed){
+      file.hunkResults.push({ index: hi + 1, status: 'failed', header: hunk.header, reasons: [hunk.error] });
+      fileBlocked = true;
+      continue;
+    }
+    const oldSide = hunkOldLines(hunk);
+    const newSide = hunkNewLines(hunk);
+    const delSide = hunkDelLines(hunk);
+    const oldTypes = hunkOldTypes(hunk);
+    const expectedLine0 = hunk.oldCount === 0
+      ? Math.max(0, hunk.oldStart + cumulativeDelta)
+      : hunk.oldStart - 1 + cumulativeDelta;
+
+    const result = classifyHunk(workingLines, expectedLine0, oldSide, newSide, delSide, oldTypes);
+    result.index = hi + 1;
+    result.header = hunk.header;
+    result.expectedLine = expectedLine0 + 1;
+    result.oldSide = oldSide;
+    result.newSide = newSide;
+    result.oldCount = hunk.oldCount;
+    result.newCount = hunk.newCount;
+    file.hunkResults.push(result);
+
+    if (result.status === 'exact'){
+      applyHunkToLines(workingLines, expectedLine0, oldSide, newSide);
+      cumulativeDelta += (hunk.newCount - hunk.oldCount);
+    } else {
+      fileBlocked = true;
+    }
+  }
+
+  if (!status) status = fileBlocked ? 'blocked' : 'exact';
+  file.status = status;
+  file.finalLinesIfExact = (!fileBlocked) ? workingLines : null;
+  file.finalContent = (!fileBlocked && file.operation !== 'delete') ? joinLines(workingLines, eol, finalNewline) : null;
+  file.eol = eol;
+  file.finalNewline = finalNewline;
+  return file;
+}
+
+function analyzeAll(parseResult, proj){
+  const results = [];
+  for (const f of parseResult.files){
+    results.push(analyzeFileSection(f, proj));
+  }
+  return results;
+}
+
+/* =========================================================================
+   MANIFEST / REPORT
+   ========================================================================= */
+function buildManifest(diffMeta, results, overallExact){
+  return {
+    tool: 'UnifiedDiffJS',
+    result: overallExact ? 'exact' : 'blocked',
+    patchFile: diffMeta.name || 'pasted-diff',
+    projectRoot: project.root || '(root)',
+    generatedAt: new Date().toISOString(),
+    files: results.map(f => ({
+      path: f.targetPath || f.oldPath || f.newPath,
+      operation: f.operation,
+      status: f.status,
+      hunks: f.hunkResults.map(h => ({
+        index: h.index,
+        header: h.header,
+        status: h.status,
+        expectedLine: h.expectedLine,
+        matchedLine: h.matchedLine !== undefined ? h.matchedLine : (h.candidateLine !== undefined ? h.candidateLine : null),
+        oldCount: h.oldCount,
+        newCount: h.newCount
+      }))
+    }))
+  };
+}
+
+function buildDiagnosticReport(diffMeta, parseResult, results, overallExact, blockReasons){
+  const lines = [];
+  lines.push('UnifiedDiffJS Diagnostic Report');
+  lines.push('Generated: ' + new Date().toISOString());
+  lines.push('Patch file: ' + (diffMeta.name || 'pasted-diff'));
+  lines.push('Project root: ' + (project.root || '(root)'));
+  lines.push('Overall result: ' + (overallExact ? 'EXACT — downloads enabled' : 'BLOCKED — downloads disabled'));
+  lines.push('');
+  if (parseResult.warnings.length){
+    lines.push('Parser warnings:');
+    for (const w of parseResult.warnings) lines.push('  - ' + w);
+    lines.push('');
+  }
+  if (!overallExact){
+    lines.push('Reasons downloads are blocked:');
+    for (const r of blockReasons) lines.push('  - ' + r);
+    lines.push('');
+  }
+  for (const f of results){
+    lines.push('=================================================================');
+    lines.push('File: ' + (f.targetPath || f.oldPath || f.newPath) + '  [' + f.operation + ']');
+    lines.push('Status: ' + f.status);
+    if (f.pathError) lines.push('Path error: ' + f.pathError);
+    if (f.unsupported.length) lines.push('Unsupported metadata: ' + f.unsupported.join('; '));
+    lines.push('Map status: ' + f.mapStatus);
+    for (const h of f.hunkResults){
+      lines.push('  Hunk #' + h.index + ' ' + h.header + '  -> ' + h.status.toUpperCase());
+      lines.push('    expected line: ' + h.expectedLine);
+      if (h.matchedLine !== undefined) lines.push('    matched line: ' + h.matchedLine);
+      if (h.candidateLine !== undefined) lines.push('    candidate line: ' + h.candidateLine);
+      if (h.offset !== undefined) lines.push('    offset: ' + h.offset);
+      if (h.occurrences !== undefined) lines.push('    occurrences: ' + h.occurrences + (h.unique !== undefined ? (h.unique ? ' (unique)' : ' (not unique)') : ''));
+      if (h.rawDiffs) for (const d of h.rawDiffs) lines.push('    ws-diff @' + d.line + ': expected [' + d.expected + '] actual [' + d.actual + ']');
+      if (h.mismatches) for (const mmatch of h.mismatches) lines.push('    context mismatch @' + mmatch.line + ': expected [' + mmatch.expected + '] actual [' + mmatch.actual + ']');
+      if (h.candidates) for (const c of h.candidates) lines.push('    ambiguous candidate @' + c.line + ' score=' + c.score.toFixed(2));
+      if (h.reasons) for (const r of h.reasons) lines.push('    reason: ' + r);
+    }
+  }
+  return lines.join('\n');
+}
+
+/* =========================================================================
+   ZIP WRITER (stored, uncompressed)
+   ========================================================================= */
+function crc32(buf){
+  let crc = ~0;
+  for (let i = 0; i < buf.length; i++){
+    crc ^= buf[i];
+    for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+  }
+  return (~crc) >>> 0;
+}
+
+function buildZip(entries){
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const dosTime = 0, dosDate = 0x21;
+  for (const entry of entries){
+    const nameBytes = encoder.encode(entry.path);
+    const data = entry.data;
+    const crc = crc32(data);
+    const size = data.length;
+
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(localHeader.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true);
+    dv.setUint16(6, 0, true);
+    dv.setUint16(8, 0, true);
+    dv.setUint16(10, dosTime, true);
+    dv.setUint16(12, dosDate, true);
+    dv.setUint32(14, crc, true);
+    dv.setUint32(18, size, true);
+    dv.setUint32(22, size, true);
+    dv.setUint16(26, nameBytes.length, true);
+    dv.setUint16(28, 0, true);
+    localHeader.set(nameBytes, 30);
+    localParts.push(localHeader, data);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cdv = new DataView(centralHeader.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);
+    cdv.setUint16(6, 20, true);
+    cdv.setUint16(8, 0, true);
+    cdv.setUint16(10, 0, true);
+    cdv.setUint16(12, dosTime, true);
+    cdv.setUint16(14, dosDate, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, size, true);
+    cdv.setUint32(24, size, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);
+    cdv.setUint16(32, 0, true);
+    cdv.setUint16(34, 0, true);
+    cdv.setUint16(36, 0, true);
+    cdv.setUint32(38, 0, true);
+    cdv.setUint32(42, offset, true);
+    centralHeader.set(nameBytes, 46);
+    centralParts.push(centralHeader);
+
+    offset += localHeader.length + data.length;
+  }
+  const centralStart = offset;
+  let centralSize = 0;
+  for (const c of centralParts) centralSize += c.length;
+
+  const end = new Uint8Array(22);
+  const edv = new DataView(end.buffer);
+  edv.setUint32(0, 0x06054b50, true);
+  edv.setUint16(4, 0, true);
+  edv.setUint16(6, 0, true);
+  edv.setUint16(8, entries.length, true);
+  edv.setUint16(10, entries.length, true);
+  edv.setUint32(12, centralSize, true);
+  edv.setUint32(16, centralStart, true);
+  edv.setUint16(20, 0, true);
+
+  let totalLen = 0;
+  for (const p of localParts) totalLen += p.length;
+  totalLen += centralSize + end.length;
+  const out = new Uint8Array(totalLen);
+  let pos = 0;
+  for (const p of localParts){ out.set(p, pos); pos += p.length; }
+  for (const p of centralParts){ out.set(p, pos); pos += p.length; }
+  out.set(end, pos);
   return out;
 }
 
-function locateHunk(lines, hunk, lineDelta, options) {
-  const oldSeq = oldSequence(hunk);
-  const newSeq = newSequence(hunk);
-  const expected = Math.max(0, hunk.oldRange.start - 1 + lineDelta);
-  const positions = candidatePositions(lines, expected, options.searchRadius);
-
-  for (const pos of positions) {
-    if (sequenceMatches(lines, pos, oldSeq, false)) {
-      return { status: "exact", pos, expected, fuzz: 0 };
-    }
-  }
-
-  if (options.ignoreWhitespace) {
-    const matches = [];
-    for (const pos of positions) {
-      if (sequenceMatches(lines, pos, oldSeq, true)) matches.push(pos);
-    }
-    if (matches.length === 1) {
-      return { status: "whitespace", pos: matches[0], expected, fuzz: 0 };
-    }
-    if (matches.length > 1) {
-      return { status: "ambiguous", expected, candidates: matches.slice(0, 20) };
-    }
-  }
-
-  if (options.detectApplied) {
-    const applied = [];
-    for (const pos of positions) {
-      if (sequenceMatches(lines, pos, newSeq, options.ignoreWhitespace)) applied.push(pos);
-    }
-    if (applied.length === 1) {
-      return { status: "already-applied", pos: applied[0], expected, fuzz: 0 };
-    }
-  }
-
-  if (options.allowFuzzy) {
-    const scored = [];
-    for (const pos of positions) {
-      const s = fuzzyScore(lines, pos, hunk, options.ignoreWhitespace, options.maxFuzz);
-      if (s) scored.push({ pos, ...s });
-    }
-    scored.sort((a, b) => b.score - a.score || Math.abs(a.pos - expected) - Math.abs(b.pos - expected));
-
-    if (scored.length) {
-      const best = scored[0];
-      const second = scored[1];
-      if (second && second.score === best.score && Math.abs(second.pos - expected) === Math.abs(best.pos - expected)) {
-        return { status: "ambiguous", expected, candidates: scored.slice(0, 20) };
-      }
-      return {
-        status: "fuzzy",
-        pos: best.pos,
-        expected,
-        fuzz: best.contextMismatch,
-        score: best.score
-      };
-    }
-  }
-
-  return { status: "failed", expected };
+function downloadBlob(filename, blobParts, type){
+  const blob = new Blob(blobParts, { type: type || 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-function applyAt(lines, pos, hunk) {
-  const oldSeq = oldSequence(hunk);
-  const newSeq = newSequence(hunk);
-  lines.splice(pos, oldSeq.length, ...newSeq);
-  return newSeq.length - oldSeq.length;
-}
+function safeDownloadName(path){ return path.replace(/\//g, '__'); }
 
-async function previewAll() {
-  if (!state.root || !state.diffText) return;
+/* =========================================================================
+   APPLICATION STATE + WIRING
+   ========================================================================= */
+const state = {
+  diffMeta: { name: '', size: 0, text: '' },
+  parseResult: null,
+  results: null,
+  filter: 'all',
+};
 
-  const options = {
-    ignoreWhitespace: $("ignoreWhitespace").checked,
-    allowFuzzy: $("allowFuzzy").checked,
-    detectApplied: $("detectApplied").checked,
-    maxFuzz: Math.max(0, Number($("maxFuzz").value) || 0),
-    searchRadius: Math.max(10, Number($("searchRadius").value) || 500)
-  };
+function el(id){ return document.getElementById(id); }
 
-  const parsed = parseUnifiedDiff(state.diffText);
-  const preview = {
-    parsed,
-    options,
-    files: [],
-    totalHunks: 0,
-    applicable: 0,
-    blocked: 0
-  };
-
-  for (const filePatch of parsed.files) {
-    const result = {
-      patch: filePatch,
-      path: filePatch.targetPath,
-      hunks: [],
-      blocked: false,
-      originalText: "",
-      outputText: "",
-      eol: "\n"
-    };
-
-    let original = "";
-    if (!filePatch.isCreate) {
-      try {
-        original = await readProjectFile(filePatch.oldPath || filePatch.targetPath);
-      } catch (err) {
-        result.blocked = true;
-        result.error = "Could not read target file: " + err.message;
-        preview.blocked += filePatch.hunks.length || 1;
-        preview.files.push(result);
-        continue;
-      }
-    }
-
-    result.originalText = original;
-    result.eol = detectEol(original);
-    const hadFinalNewline = original.endsWith("\n") || original.endsWith("\r\n");
-    const lines = normalizeEol(original).split("\n");
-    if (hadFinalNewline) lines.pop();
-
-    let delta = 0;
-
-    for (const hunk of filePatch.hunks) {
-      preview.totalHunks++;
-      const loc = locateHunk(lines, hunk, delta, options);
-      const hres = { hunk, ...loc };
-      result.hunks.push(hres);
-
-      if (loc.status === "failed" || loc.status === "ambiguous") {
-        result.blocked = true;
-        preview.blocked++;
-        continue;
-      }
-
-      preview.applicable++;
-
-      if (loc.status !== "already-applied") {
-        const change = applyAt(lines, loc.pos, hunk);
-        delta += change;
-      }
-    }
-
-    if (filePatch.isDelete && !result.blocked) {
-      result.outputText = null;
-    } else {
-      result.outputText = lines.join(result.eol) + (hadFinalNewline ? result.eol : "");
-    }
-
-    preview.files.push(result);
+/* ---- Project panel rendering ---- */
+function renderProjectPanel(){
+  el('projRoot').textContent = project.root || '(none)';
+  el('projCount').textContent = String(project.files.size);
+  const list = el('projFileList');
+  list.innerHTML = '';
+  const q = (el('projSearch').value || '').toLowerCase();
+  const paths = Array.from(project.files.keys()).sort();
+  for (const p of paths){
+    if (q && p.toLowerCase().indexOf(q) === -1) continue;
+    const item = ce('div', { class: 'fitem' }, [
+      ce('span', { text: p }),
+      ce('span', {}, [
+        ce('button', { text: 'view', onclick: () => inspectFile(p) }),
+        ' ',
+        ce('button', { text: 'remove', onclick: () => { project.files.delete(p); renderProjectPanel(); } })
+      ])
+    ]);
+    list.appendChild(item);
   }
-
-  state.parsed = parsed;
-  state.preview = preview;
-  renderPreview(preview);
-
-  const canWrite = preview.blocked === 0;
-  $("apply").disabled = !canWrite;
-  $("export").disabled = !canWrite;
-  setStatus(
-    canWrite
-      ? "Preview succeeded. Every hunk is applicable or already applied."
-      : "Preview blocked. Resolve failed or ambiguous hunks before writing.",
-    canWrite ? "ok" : "bad"
-  );
-}
-
-function renderPreview(preview) {
-  $("mFiles").textContent = preview.files.length;
-  $("mHunks").textContent = preview.totalHunks;
-  $("mApplicable").textContent = preview.applicable;
-  $("mBlocked").textContent = preview.blocked;
-
-  const root = $("results");
-  root.innerHTML = "";
-
-  for (const file of preview.files) {
-    const details = document.createElement("details");
-    details.open = file.blocked;
-
-    const summary = document.createElement("summary");
-    const stateText = file.blocked ? "BLOCKED" : "READY";
-    summary.innerHTML =
-      `<strong>${escapeHtml(file.path)}</strong>` +
-      `<span class="pill ${file.blocked ? "bad" : "ok"}">${stateText}</span>` +
-      ` <span class="muted">${file.hunks.length} hunks</span>`;
-    details.appendChild(summary);
-
-    if (file.error) {
-      const div = document.createElement("div");
-      div.className = "hunk bad";
-      div.textContent = file.error;
-      details.appendChild(div);
-    }
-
-    file.hunks.forEach((h, idx) => {
-      const div = document.createElement("div");
-      div.className = "hunk";
-      let cls = "ok";
-      if (h.status === "fuzzy" || h.status === "whitespace" || h.status === "already-applied") cls = "warn";
-      if (h.status === "failed" || h.status === "ambiguous") cls = "bad";
-
-      const offset = h.pos === undefined ? "" : `, matched line ${h.pos + 1}`;
-      const expected = `expected line ${h.expected + 1}`;
-      div.innerHTML =
-        `<strong>Hunk ${idx + 1}</strong> ` +
-        `<span class="${cls}">${escapeHtml(h.status)}</span>` +
-        `<div class="muted">${expected}${offset}${h.fuzz ? `, fuzz ${h.fuzz}` : ""}</div>`;
-
-      const pre = document.createElement("pre");
-      pre.textContent = h.hunk.header + "\n" + h.hunk.lines.map(x => x.type + x.text).join("\n");
-      div.appendChild(pre);
-      details.appendChild(div);
-    });
-
-    root.appendChild(details);
+  const warnBox = el('projWarnings');
+  warnBox.innerHTML = '';
+  if (project.warnings.length){
+    const box = ce('div', { class: 'msg info' }, [ce('b', { text: 'Notes: ' })]);
+    const ul = ce('ul', { class: 'reasons' });
+    for (const w of project.warnings) ul.appendChild(ce('li', { text: w }));
+    box.appendChild(ul);
+    warnBox.appendChild(box);
   }
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
-  })[c]);
+function inspectFile(path){
+  const pf = project.files.get(path);
+  const box = el('projInspect');
+  box.innerHTML = '';
+  if (!pf){ box.textContent = 'File not found: ' + path; return; }
+  const header = ce('div', {}, [
+    ce('b', { text: path }),
+    ce('span', { text: '  (' + formatBytes(pf.size || pf.content.length) + ', eol=' + JSON.stringify(pf.eol) + ', finalNewline=' + pf.finalNewline + ')' })
+  ]);
+  const pre = ce('pre', { class: 'code' });
+  const lines = splitLines(pf.content).slice(0, 400);
+  lines.forEach((l, idx) => {
+    const div = ce('div', { class: 'line ctx' }, [
+      ce('span', { class: 'ln', text: String(idx + 1) }),
+      document.createTextNode(l)
+    ]);
+    pre.appendChild(div);
+  });
+  box.appendChild(header);
+  box.appendChild(pre);
 }
 
-async function ensurePermission(handle, mode) {
-  const opts = { mode };
-  if ((await handle.queryPermission(opts)) === "granted") return true;
-  return (await handle.requestPermission(opts)) === "granted";
-}
+/* ---- wiring: project directory ---- */
+el('btnPickDir').addEventListener('click', () => el('dirInput').click());
+el('dirInput').addEventListener('change', (e) => loadProjectFromFileList(e.target.files));
+el('btnReloadProject').addEventListener('click', () => { resetProject(); el('projInspect').textContent = ''; });
+el('projSearch').addEventListener('input', renderProjectPanel);
 
-function timestampName() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-}
+el('btnAddFile').addEventListener('click', () => el('singleFileInput').click());
+el('singleFileInput').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const rel = prompt('Relative project path for this file:', f.webkitRelativePath || f.name);
+  if (!rel) return;
+  const content = await f.text();
+  const { eol, finalNewline } = detectLineEnding(content);
+  project.files.set(normalizeSlashes(rel), { content, eol, finalNewline, size: f.size });
+  renderProjectPanel();
+});
 
-async function writeTextFile(root, path, text) {
-  const handle = await getFileHandle(root, path, true);
-  const writable = await handle.createWritable();
-  await writable.write(text);
-  await writable.close();
-}
+const projectDrop = el('projectDrop');
+['dragenter', 'dragover'].forEach(ev => projectDrop.addEventListener(ev, (e) => { e.preventDefault(); projectDrop.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => projectDrop.addEventListener(ev, (e) => { e.preventDefault(); projectDrop.classList.remove('drag'); }));
+projectDrop.addEventListener('drop', (e) => { loadProjectFromDrop(e.dataTransfer); });
 
-async function copyToBackup(backupRoot, path, text) {
-  await writeTextFile(backupRoot, path, text);
-}
+/* ---- wiring: diff input ---- */
+el('btnPickDiff').addEventListener('click', () => el('diffFileInput').click());
+el('diffFileInput').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  state.diffMeta = { name: f.name, size: f.size, text };
+  el('diffPaste').value = text;
+  el('diffFileName').textContent = f.name;
+  el('diffFileSize').textContent = formatBytes(f.size);
+});
+el('btnClearDiff').addEventListener('click', () => {
+  state.diffMeta = { name: '', size: 0, text: '' };
+  el('diffPaste').value = '';
+  el('diffFileName').textContent = '—';
+  el('diffFileSize').textContent = '—';
+});
 
-async function removeProjectFile(path) {
-  const parts = safePath(path).split("/");
-  const filename = parts.pop();
-  let dir = state.root;
-  for (const part of parts) dir = await dir.getDirectoryHandle(part, { create:false });
-  await dir.removeEntry(filename);
-}
+const diffDrop = el('diffDrop');
+['dragenter', 'dragover'].forEach(ev => diffDrop.addEventListener(ev, (e) => { e.preventDefault(); diffDrop.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => diffDrop.addEventListener(ev, (e) => { e.preventDefault(); diffDrop.classList.remove('drag'); }));
+diffDrop.addEventListener('drop', async (e) => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  const text = await f.text();
+  state.diffMeta = { name: f.name, size: f.size, text };
+  el('diffPaste').value = text;
+  el('diffFileName').textContent = f.name;
+  el('diffFileSize').textContent = formatBytes(f.size);
+});
 
-async function applyAll() {
-  const preview = state.preview;
-  if (!preview || preview.blocked) return;
+/* ---- Analyze pipeline ---- */
+el('btnAnalyze').addEventListener('click', runAnalysis);
+el('btnResetAll').addEventListener('click', () => {
+  resetProject();
+  state.diffMeta = { name: '', size: 0, text: '' };
+  el('diffPaste').value = '';
+  el('diffFileName').textContent = '—';
+  el('diffFileSize').textContent = '—';
+  el('panel-overview').style.display = 'none';
+  el('panel-results').style.display = 'none';
+  el('panel-downloads').style.display = 'none';
+  el('analyzeStatus').textContent = '';
+  el('projInspect').textContent = '';
+});
 
-  if (!(await ensurePermission(state.root, "readwrite"))) {
-    setStatus("Write permission was not granted.", "bad");
+async function runAnalysis(){
+  const text = el('diffPaste').value;
+  if (!text || !text.trim()){
+    el('analyzeStatus').textContent = 'No diff loaded — select, drop, or paste a unified diff first.';
     return;
   }
+  if (project.files.size === 0){
+    el('analyzeStatus').textContent = 'No project directory loaded — select or drop a project folder first.';
+    return;
+  }
+  state.diffMeta.text = text;
+  if (!state.diffMeta.name) state.diffMeta.name = 'pasted-diff.patch';
+  if (!state.diffMeta.size) state.diffMeta.size = text.length;
 
-  $("apply").disabled = true;
-  setStatus("Creating backups and writing files...", "warn");
+  el('analyzeStatus').textContent = 'Parsing…';
+  await sleep(0);
 
-  const backupBase = await state.root.getDirectoryHandle(".diff-backups", { create:true });
-  const backupRoot = await backupBase.getDirectoryHandle(timestampName(), { create:true });
-  const written = [];
-
+  let parseResult;
   try {
-    for (const file of preview.files) {
-      await copyToBackup(backupRoot, file.path, file.originalText);
+    parseResult = parseDiffText(text);
+  } catch (e){
+    el('analyzeStatus').textContent = 'Parse error: ' + e.message;
+    return;
+  }
+  state.parseResult = parseResult;
 
-      if (file.outputText === null) {
-        await removeProjectFile(file.path);
-      } else {
-        await writeTextFile(state.root, file.path, file.outputText);
-      }
-      written.push(file);
+  el('analyzeStatus').textContent = 'Analyzing hunks…';
+  await sleep(0);
+
+  const results = [];
+  for (let i = 0; i < parseResult.files.length; i++){
+    results.push(analyzeFileSection(parseResult.files[i], project));
+    if (i % 20 === 0) await sleep(0);
+  }
+  state.results = results;
+
+  el('analyzeStatus').textContent = 'Done.';
+  renderOverview();
+  renderFileResults();
+  renderDownloads();
+  el('panel-overview').style.display = '';
+  el('panel-results').style.display = '';
+  el('panel-downloads').style.display = '';
+}
+
+/* ---- Overview rendering ---- */
+function renderOverview(){
+  const results = state.results;
+  let hunkCount = 0, exactCount = 0, blockedCount = 0, unsupportedCount = 0;
+  let created = 0, modified = 0, deleted = 0;
+  for (const f of results){
+    hunkCount += f.hunkResults.length;
+    for (const h of f.hunkResults) if (h.status === 'exact') exactCount++;
+    if (f.status === 'unsupported') unsupportedCount++;
+    if (f.status !== 'exact') blockedCount++;
+    if (f.operation === 'create') created++;
+    else if (f.operation === 'delete') deleted++;
+    else modified++;
+  }
+  const stats = [
+    ['Patch file', state.diffMeta.name],
+    ['Patch size', formatBytes(state.diffMeta.size)],
+    ['File sections', results.length],
+    ['Hunks', hunkCount],
+    ['Exact hunks', exactCount],
+    ['Blocked files', blockedCount],
+    ['Unsupported', unsupportedCount],
+    ['Created', created],
+    ['Modified', modified],
+    ['Deleted', deleted],
+  ];
+  const box = el('overviewStats');
+  box.innerHTML = '';
+  for (const [label, val] of stats){
+    box.appendChild(ce('div', { class: 'stat' }, [
+      ce('div', { class: 'n', text: String(val) }),
+      ce('div', { class: 'l', text: label })
+    ]));
+  }
+  const uBox = el('overviewUnsupported');
+  uBox.innerHTML = '';
+  const unsupportedFiles = results.filter(f => f.unsupported.length);
+  if (unsupportedFiles.length){
+    const msg = ce('div', { class: 'msg bad' }, [ce('b', { text: 'Unsupported metadata detected — downloads are blocked while present:' })]);
+    const ul = ce('ul', { class: 'reasons' });
+    for (const f of unsupportedFiles){
+      ul.appendChild(ce('li', { text: (f.targetPath || f.oldPath || f.newPath) + ': ' + f.unsupported.join('; ') }));
     }
-
-    setStatus(
-      `Applied ${preview.totalHunks} hunks across ${preview.files.length} files.\n` +
-      `Backups are stored under .diff-backups/.`,
-      "ok"
-    );
-  } catch (err) {
-    setStatus("Write failed: " + err.message + "\nAttempting rollback...", "bad");
-
-    for (const file of written.reverse()) {
-      try {
-        await writeTextFile(state.root, file.path, file.originalText);
-      } catch (_) {}
-    }
-
-    setStatus("Write failed and rollback was attempted: " + err.message, "bad");
-  } finally {
-    $("apply").disabled = preview.blocked !== 0;
+    msg.appendChild(ul);
+    uBox.appendChild(msg);
+  }
+  const wBox = el('overviewWarnings');
+  wBox.innerHTML = '';
+  if (state.parseResult.warnings.length){
+    const msg = ce('div', { class: 'msg info' }, [ce('b', { text: 'Parser warnings:' })]);
+    const ul = ce('ul', { class: 'reasons' });
+    for (const w of state.parseResult.warnings) ul.appendChild(ce('li', { text: w }));
+    msg.appendChild(ul);
+    wBox.appendChild(msg);
   }
 }
 
-async function exportPatchedFiles() {
-  const preview = state.preview;
-  if (!preview || preview.blocked) return;
+/* ---- File / hunk results rendering ---- */
+const FILTERS = ['all', 'exact', 'offset', 'whitespace', 'fuzzy', 'already-applied', 'failed', 'ambiguous', 'unsupported'];
 
-  for (const file of preview.files) {
-    if (file.outputText === null) continue;
-    const blob = new Blob([file.outputText], { type:"text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = file.path.replace(/\//g, "__");
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+function renderFilterChips(){
+  const box = el('filterChips');
+  box.innerHTML = '';
+  for (const f of FILTERS){
+    const chip = ce('div', { class: 'chip' + (state.filter === f ? ' active' : ''), text: f, onclick: () => { state.filter = f; renderFileResults(); } });
+    box.appendChild(chip);
   }
 }
 
-$("pickRoot").addEventListener("click", async () => {
-  try {
-    state.root = await window.showDirectoryPicker({ mode:"readwrite" });
-    $("rootName").textContent = state.root.name;
-    $("preview").disabled = !state.diffText;
-    setStatus("Project folder selected. Choose a diff file.", "ok");
-  } catch (err) {
-    if (err.name !== "AbortError") setStatus(err.message, "bad");
-  }
-});
+function statusBadge(status){
+  return ce('span', { class: 'badge ' + status, text: status });
+}
 
-$("diffFile").addEventListener("change", async event => {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-  state.diffText = await file.text();
-  $("preview").disabled = !state.root;
-  setStatus(`Loaded ${file.name} (${state.diffText.length} characters).`, "ok");
-});
-
-$("preview").addEventListener("click", () => {
-  previewAll().catch(err => {
-    console.error(err);
-    setStatus(err.stack || err.message, "bad");
-    $("apply").disabled = true;
-    $("export").disabled = true;
+function buildLinePreview(lines, startLineNo, types){
+  const pre = ce('pre', { class: 'code' });
+  lines.forEach((l, idx) => {
+    const t = types ? types[idx] : 'ctx';
+    const cls = t === 'del' ? 'del' : (t === 'add' ? 'add' : (t === 'mismatch' ? 'mismatch' : 'ctx'));
+    const div = ce('div', { class: 'line ' + cls }, [
+      ce('span', { class: 'ln', text: String(startLineNo + idx) }),
+      document.createTextNode((t === 'del' ? '- ' : t === 'add' ? '+ ' : '  ') + l)
+    ]);
+    pre.appendChild(div);
   });
-});
-
-$("apply").addEventListener("click", () => {
-  applyAll().catch(err => setStatus(err.stack || err.message, "bad"));
-});
-
-$("export").addEventListener("click", exportPatchedFiles);
-
-if (!("showDirectoryPicker" in window)) {
-  $("pickRoot").disabled = true;
-  setStatus(
-    "This browser does not expose the File System Access API. Open this tool in a Chromium-based browser.",
-    "bad"
-  );
+  return pre;
 }
+
+function renderHunk(h){
+  const wrap = ce('div', { class: 'hunk' });
+  const hhead = ce('div', { class: 'hhead' }, [
+    ce('div', {}, [
+      ce('b', { text: '#' + h.index + '  ' }),
+      document.createTextNode(h.header || ''),
+    ]),
+    ce('div', { class: 'row' }, [statusBadge(h.status)])
+  ]);
+  const body = ce('div', { class: 'hbody' });
+
+  const kv = ce('div', { class: 'kv' });
+  const addKv = (k, v) => { kv.appendChild(ce('div', { class: 'k', text: k })); kv.appendChild(ce('div', { text: String(v) })); };
+  addKv('Expected line', h.expectedLine);
+  if (h.matchedLine !== undefined) addKv('Matched line', h.matchedLine);
+  if (h.candidateLine !== undefined) addKv('Candidate line', h.candidateLine);
+  if (h.offset !== undefined) addKv('Offset', (h.offset > 0 ? '+' : '') + h.offset);
+  if (h.occurrences !== undefined) addKv('Exact occurrences', h.occurrences + (h.unique !== undefined ? (h.unique ? ' (unique)' : ' (not unique)') : ''));
+  if (h.score !== undefined) addKv('Candidate score', h.score.toFixed(2) + ' (threshold ' + FUZZ_THRESHOLD + ')');
+  if (h.oldCount !== undefined) addKv('Old / new count', h.oldCount + ' / ' + h.newCount);
+  body.appendChild(kv);
+
+  if (h.note) body.appendChild(ce('div', { class: 'msg info', text: h.note }));
+
+  if (h.reasons){
+    const box = ce('div', { class: 'msg bad' }, [ce('b', { text: 'Diagnosis:' })]);
+    const ul = ce('ul', { class: 'reasons' });
+    for (const r of h.reasons) ul.appendChild(ce('li', { text: r }));
+    box.appendChild(ul);
+    body.appendChild(box);
+  }
+
+  if (h.rawDiffs && h.rawDiffs.length){
+    body.appendChild(ce('h4', { text: 'Whitespace differences (raw)' }));
+    const pre = ce('pre', { class: 'code' });
+    for (const d of h.rawDiffs){
+      pre.appendChild(ce('div', { class: 'line mismatch' }, [ce('span', { class: 'ln', text: String(d.line) }), document.createTextNode('expected: ' + JSON.stringify(d.expected))]));
+      pre.appendChild(ce('div', { class: 'line mismatch' }, [ce('span', { class: 'ln', text: '' }), document.createTextNode('actual:   ' + JSON.stringify(d.actual))]));
+    }
+    body.appendChild(pre);
+  }
+
+  if (h.mismatches && h.mismatches.length){
+    body.appendChild(ce('h4', { text: 'Mismatching context lines' }));
+    const pre = ce('pre', { class: 'code' });
+    for (const m of h.mismatches){
+      pre.appendChild(ce('div', { class: 'line mismatch' }, [ce('span', { class: 'ln', text: String(m.line) }), document.createTextNode('expected: ' + JSON.stringify(m.expected) + '   actual: ' + JSON.stringify(m.actual))]));
+    }
+    body.appendChild(pre);
+  }
+
+  if (h.candidates && h.candidates.length){
+    body.appendChild(ce('h4', { text: 'Ambiguous candidates' }));
+    const pre = ce('pre', { class: 'code' });
+    for (const c of h.candidates){
+      pre.appendChild(ce('div', { class: 'line mismatch' }, [document.createTextNode('line ' + c.line + '  score=' + c.score.toFixed(2) + '  mismatches=' + c.mismatches.length)]));
+    }
+    body.appendChild(pre);
+  }
+
+  if (h.competing && h.competing.length){
+    body.appendChild(ce('h4', { text: 'Competing candidates (lower score)' }));
+    const pre = ce('pre', { class: 'code' });
+    for (const c of h.competing){
+      pre.appendChild(ce('div', { class: 'line ctx' }, [document.createTextNode('line ' + c.line + '  score=' + c.score.toFixed(2))]));
+    }
+    body.appendChild(pre);
+  }
+
+  if (h.oldSide && h.oldSide.length){
+    body.appendChild(ce('h4', { text: 'Patch old side' }));
+    body.appendChild(buildLinePreview(h.oldSide, 1, h.oldSide.map(() => 'del')));
+  }
+  if (h.newSide && h.newSide.length){
+    body.appendChild(ce('h4', { text: 'Patch new side' }));
+    body.appendChild(buildLinePreview(h.newSide, 1, h.newSide.map(() => 'add')));
+  }
+
+  hhead.addEventListener('click', () => body.classList.toggle('open'));
+  wrap.appendChild(hhead);
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function fileMatchesFilter(f, filter){
+  if (filter === 'all') return true;
+  if (filter === 'unsupported') return f.unsupported.length > 0;
+  return f.hunkResults.some(h => h.status === filter);
+}
+
+function renderFileResults(){
+  renderFilterChips();
+  const container = el('fileResults');
+  container.innerHTML = '';
+  const results = state.results || [];
+  const filtered = results.filter(f => fileMatchesFilter(f, state.filter));
+  if (filtered.length === 0){
+    container.appendChild(ce('div', { class: 'msg info', text: 'No file sections match the current filter.' }));
+    return;
+  }
+  for (const f of filtered){
+    const card = ce('div', { class: 'file-card' });
+    const exactHunks = f.hunkResults.filter(h => h.status === 'exact').length;
+    const blockedHunks = f.hunkResults.length - exactHunks;
+    const fhead = ce('div', { class: 'fhead' }, [
+      ce('div', { class: 'path' }, [document.createTextNode((f.targetPath || f.oldPath || f.newPath || '(unknown path)') + '  ')]),
+      ce('div', { class: 'row' }, [
+        ce('span', { class: 'small', text: f.operation }),
+        ce('span', { class: 'small', text: f.hunkResults.length + ' hunks · ' + exactHunks + ' exact · ' + blockedHunks + ' blocked' }),
+        statusBadge(f.status)
+      ])
+    ]);
+    const fbody = ce('div', { class: 'fbody' });
+
+    if (f.pathError) fbody.appendChild(ce('div', { class: 'msg bad', text: 'Path error: ' + f.pathError }));
+    if (f.unsupported.length) fbody.appendChild(ce('div', { class: 'msg bad', text: 'Unsupported metadata: ' + f.unsupported.join('; ') }));
+    fbody.appendChild(ce('div', { class: 'small', text: 'Path mapping: ' + (f.oldPath || '(none)') + '  →  ' + (f.targetPath || '(unresolved)') + '   [' + f.mapStatus + ']' }));
+
+    const hunksFiltered = state.filter === 'all' || state.filter === 'unsupported'
+      ? f.hunkResults
+      : f.hunkResults.filter(h => h.status === state.filter);
+    for (const h of hunksFiltered) fbody.appendChild(renderHunk(h));
+
+    fhead.addEventListener('click', () => fbody.classList.toggle('open'));
+    card.appendChild(fhead);
+    card.appendChild(fbody);
+    container.appendChild(card);
+  }
+}
+
+/* ---- Downloads ---- */
+function computeBlockReasons(results){
+  const reasons = [];
+  for (const f of results){
+    const path = f.targetPath || f.oldPath || f.newPath;
+    if (f.unsupported.length) reasons.push(path + ': unsupported metadata (' + f.unsupported.join('; ') + ')');
+    if (f.mapStatus === 'unresolved') reasons.push(path + ': patch path could not be mapped to exactly one project file');
+    if (f.mapStatus === 'exists-conflict') reasons.push(path + ': file-creation target already exists');
+    for (const h of f.hunkResults){
+      if (h.status !== 'exact') reasons.push(path + ' hunk #' + h.index + ': ' + h.status);
+    }
+  }
+  return reasons;
+}
+
+function renderDownloads(){
+  const results = state.results;
+  const overallExact = results.every(f => f.status === 'exact');
+  const gate = el('downloadGate');
+  gate.innerHTML = '';
+  const area = el('downloadArea');
+  area.innerHTML = '';
+
+  if (!overallExact){
+    const reasons = computeBlockReasons(results);
+    const msg = ce('div', { class: 'msg bad' }, [ce('b', { text: 'Patched-file downloads are disabled.' }), ce('div', { text: 'Every hunk in every file must be an exact match before patched files can be produced. Reasons:' })]);
+    const ul = ce('ul', { class: 'reasons' });
+    for (const r of reasons.slice(0, 200)) ul.appendChild(ce('li', { text: r }));
+    msg.appendChild(ul);
+    gate.appendChild(msg);
+  } else {
+    gate.appendChild(ce('div', { class: 'msg ok', text: 'All files and hunks matched exactly. Patched files are available for download below.' }));
+  }
+
+  const dl = ce('div', { class: 'downloads-list' });
+
+  if (overallExact){
+    for (const f of results){
+      const path = f.targetPath;
+      const row = ce('div', { class: 'drow' });
+      row.appendChild(ce('div', {}, [
+        ce('b', { text: safeDownloadName(path) }),
+        ce('div', { class: 'small', text: 'deploy to: ' + path + '  [' + f.operation + ']' })
+      ]));
+      if (f.operation === 'delete'){
+        row.appendChild(ce('button', { text: 'Download deletion instruction', onclick: () => {
+          const txt = 'DELETE INSTRUCTION\nDelete this file from the project:\n' + path + '\n\nUnifiedDiffJS never deletes local files automatically.\n';
+          downloadBlob(safeDownloadName(path) + '.DELETE.txt', [txt], 'text/plain');
+        }}));
+      } else {
+        row.appendChild(ce('button', { text: 'Download', onclick: () => {
+          downloadBlob(safeDownloadName(path), [f.finalContent], 'text/plain');
+        }}));
+      }
+      dl.appendChild(row);
+    }
+    const allRow = ce('div', { class: 'drow' });
+    allRow.appendChild(ce('div', { text: 'Download all patched files as a ZIP archive (correct directory structure).' }));
+    allRow.appendChild(ce('button', { class: 'primary', text: 'Download all (.zip)', onclick: () => {
+      const encoder = new TextEncoder();
+      const entries = [];
+      for (const f of results){
+        if (f.operation === 'delete'){
+          entries.push({ path: f.targetPath + '.DELETE.txt', data: encoder.encode('DELETE INSTRUCTION\nDelete this file from the project:\n' + f.targetPath + '\n') });
+        } else {
+          entries.push({ path: f.targetPath, data: encoder.encode(f.finalContent) });
+        }
+      }
+      const zipBytes = buildZip(entries);
+      downloadBlob('unifieddiffjs-patched-files.zip', [zipBytes], 'application/zip');
+    }}));
+    dl.appendChild(allRow);
+  }
+
+  const manifestRow = ce('div', { class: 'drow' });
+  manifestRow.appendChild(ce('div', { text: 'Deployment / diagnostic manifest (JSON).' }));
+  manifestRow.appendChild(ce('button', { text: 'Download manifest.json', onclick: () => {
+    const manifest = buildManifest(state.diffMeta, results, overallExact);
+    downloadBlob('unifieddiffjs-manifest.json', [JSON.stringify(manifest, null, 2)], 'application/json');
+  }}));
+  dl.appendChild(manifestRow);
+
+  const reportRow = ce('div', { class: 'drow' });
+  reportRow.appendChild(ce('div', { text: 'Human-readable diagnostic report (available even when blocked).' }));
+  reportRow.appendChild(ce('button', { text: 'Download report.txt', onclick: () => {
+    const reasons = overallExact ? [] : computeBlockReasons(results);
+    const report = buildDiagnosticReport(state.diffMeta, state.parseResult, results, overallExact, reasons);
+    downloadBlob('unifieddiffjs-report.txt', [report], 'text/plain');
+  }}));
+  dl.appendChild(reportRow);
+
+  area.appendChild(dl);
+}
+
+/* =========================================================================
+   SELF TESTS
+   ========================================================================= */
+function makeProject(filesObj){
+  const p = { root: '', files: new Map(), warnings: [] };
+  for (const path in filesObj){
+    const content = filesObj[path];
+    const { eol, finalNewline } = detectLineEnding(content);
+    p.files.set(path, { content, eol, finalNewline, size: content.length });
+  }
+  return p;
+}
+
+function analyzeDiffAgainst(diffText, proj){
+  const parsed = parseDiffText(diffText);
+  const results = parsed.files.map(f => analyzeFileSection(f, proj));
+  return { parsed, results };
+}
+
+function assert(cond, msg){ if (!cond) throw new Error(msg || 'Assertion failed'); }
+
+const selfTests = [
+  {
+    name: 'Exact hunk at expected line',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\ntwo\nthree\nfour\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact, got ' + results[0].status);
+      assert(results[0].finalContent === 'one\nTWO\nthree\nfour\n', 'unexpected final content');
+    }
+  },
+  {
+    name: 'Exact hunk shifted to another line (offset)',
+    run(){
+      const proj = makeProject({ 'a.txt': 'zero\none\ntwo\nthree\nfour\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].hunkResults[0].status === 'offset', 'expected offset, got ' + results[0].hunkResults[0].status);
+    }
+  },
+  {
+    name: 'Whitespace-only mismatch',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\n  two\nthree\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].hunkResults[0].status === 'whitespace', 'expected whitespace, got ' + results[0].hunkResults[0].status);
+    }
+  },
+  {
+    name: 'Fuzzy context mismatch',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\nDIFFERENT_CONTEXT\ntwo\nthree\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      const s = results[0].hunkResults[0].status;
+      assert(s === 'fuzzy', 'expected fuzzy (removed line matches, one context line differs), got ' + s);
+      assert(results[0].hunkResults[0].mismatches.length === 1, 'expected exactly one mismatching context line');
+    }
+  },
+  {
+    name: 'Changed removal line (failed)',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\nCHANGED\nthree\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].hunkResults[0].status === 'failed', 'expected failed, got ' + results[0].hunkResults[0].status);
+    }
+  },
+  {
+    name: 'Already-applied hunk',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\nTWO\nthree\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].hunkResults[0].status === 'already-applied', 'expected already-applied, got ' + results[0].hunkResults[0].status);
+    }
+  },
+  {
+    name: 'Malformed hunk header',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\ntwo\nthree\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ garbage @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].hunkResults[0].status === 'failed', 'expected failed for malformed header');
+    }
+  },
+  {
+    name: 'Missing source file',
+    run(){
+      const proj = makeProject({ 'other.txt': 'x\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,1 +1,1 @@\n-one\n+ONE\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'unresolved', 'expected unresolved, got ' + results[0].status);
+    }
+  },
+  {
+    name: 'File creation',
+    run(){
+      const proj = makeProject({});
+      const diff = 'diff --git a/new.txt b/new.txt\nnew file mode 100644\n--- /dev/null\n+++ b/new.txt\n@@ -0,0 +1,2 @@\n+hello\n+world\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact create, got ' + results[0].status);
+      assert(results[0].finalContent === 'hello\nworld\n', 'unexpected created content: ' + JSON.stringify(results[0].finalContent));
+    }
+  },
+  {
+    name: 'File deletion',
+    run(){
+      const proj = makeProject({ 'gone.txt': 'a\nb\n' });
+      const diff = 'diff --git a/gone.txt b/gone.txt\ndeleted file mode 100644\n--- a/gone.txt\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-a\n-b\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact delete, got ' + results[0].status);
+      assert(results[0].operation === 'delete', 'expected delete operation');
+    }
+  },
+  {
+    name: 'CRLF preservation',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\r\ntwo\r\nthree\r\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact, got ' + results[0].status);
+      assert(results[0].finalContent.indexOf('\r\n') !== -1, 'expected CRLF preserved in output');
+    }
+  },
+  {
+    name: 'Final newline preservation (no trailing newline)',
+    run(){
+      const proj = makeProject({ 'a.txt': 'one\ntwo\nthree' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n\\ No newline at end of file\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact, got ' + results[0].status);
+      assert(!results[0].finalContent.endsWith('\n'), 'expected no trailing newline preserved');
+    }
+  },
+  {
+    name: 'Multiple hunks with cumulative line offsets',
+    run(){
+      const proj = makeProject({ 'a.txt': 'l1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,3 @@\n l1\n+NEW\n l2\n@@ -6,2 +7,2 @@\n l6\n-l7\n+L7\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].hunkResults[0].status === 'exact', 'hunk1 expected exact');
+      assert(results[0].hunkResults[1].status === 'exact', 'hunk2 expected exact after offset accounted, got ' + results[0].hunkResults[1].status);
+      assert(results[0].finalContent.indexOf('L7') !== -1, 'expected L7 substitution to have applied');
+    }
+  },
+  {
+    name: 'Unsupported binary patch',
+    run(){
+      const proj = makeProject({ 'img.png': 'binarydata' });
+      const diff = 'diff --git a/img.png b/img.png\nindex abc..def 100644\nGIT binary patch\nliteral 10\nXXXXXXXXXX\n\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'unsupported', 'expected unsupported, got ' + results[0].status);
+    }
+  },
+  {
+    name: 'Unsafe path traversal rejected',
+    run(){
+      let threw = false;
+      try { normalizePatchPath('a/../../etc/passwd'); } catch (e){ threw = (e instanceof PathError); }
+      assert(threw, 'expected PathError for traversal path');
+    }
+  },
+  {
+    name: 'Source line beginning with "---" inside a hunk',
+    run(){
+      const proj = makeProject({ 'a.txt': 'x\n--- not a header\ny\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n x\n --- not a header\n-y\n+Y\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact, got ' + results[0].status + ' (context line starting with --- mis-parsed as header?)');
+    }
+  },
+  {
+    name: 'Source line beginning with "+++" inside a hunk',
+    run(){
+      const proj = makeProject({ 'a.txt': 'x\n+++ not a header\ny\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n x\n +++ not a header\n-y\n+Y\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results[0].status === 'exact', 'expected exact, got ' + results[0].status + ' (context line starting with +++ mis-parsed as header?)');
+    }
+  },
+  {
+    name: 'Patch with multiple files',
+    run(){
+      const proj = makeProject({ 'a.txt': 'a1\na2\n', 'b.txt': 'b1\nb2\n' });
+      const diff =
+        'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,1 +1,1 @@\n-a1\n+A1\n' +
+        'diff --git a/b.txt b/b.txt\n--- a/b.txt\n+++ b/b.txt\n@@ -1,1 +1,1 @@\n-b1\n+B1\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      assert(results.length === 2, 'expected 2 file sections, got ' + results.length);
+      assert(results[0].status === 'exact' && results[1].status === 'exact', 'expected both files exact');
+    }
+  },
+  {
+    name: 'Ambiguous duplicate candidate block',
+    run(){
+      const proj = makeProject({ 'a.txt': 'HDR\nfoo\nBODY\nbar\nHDR\nfoo\nBODY\nbar\n' });
+      const diff = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -20,3 +20,3 @@\n HDR\n-foo\n+FOO\n BODY\n';
+      const { results } = analyzeDiffAgainst(diff, proj);
+      const s = results[0].hunkResults[0].status;
+      assert(s === 'offset', 'expected offset (multiple exact occurrences found elsewhere), got ' + s);
+    }
+  },
+  {
+    name: 'Zip writer produces a valid local-file-header signature',
+    run(){
+      const bytes = buildZip([{ path: 'x.txt', data: new TextEncoder().encode('hi') }]);
+      assert(bytes[0] === 0x50 && bytes[1] === 0x4b, 'expected PK signature at start of zip');
+    }
+  },
+];
+
+function runSelfTests(){
+  const body = el('testBody');
+  body.innerHTML = '';
+  let pass = 0, fail = 0;
+  selfTests.forEach((t, idx) => {
+    let result = 'pass', detail = 'OK';
+    try { t.run(); pass++; }
+    catch (e){ result = 'fail'; detail = e.message; fail++; }
+    const tr = ce('tr', {}, [
+      ce('td', { text: String(idx + 1) }),
+      ce('td', { class: 'name', text: t.name }),
+      ce('td', {}, [ce('span', { class: 'badge ' + result, text: result })]),
+      ce('td', { class: 'small', text: detail })
+    ]);
+    body.appendChild(tr);
+  });
+  el('testTable').style.display = '';
+  el('testSummary').textContent = pass + ' passed, ' + fail + ' failed, out of ' + selfTests.length + ' tests.';
+}
+
+el('btnRunTests').addEventListener('click', runSelfTests);
+
+/* ---- initial render ---- */
+renderProjectPanel();
 </script>
 </body>
 </html>
