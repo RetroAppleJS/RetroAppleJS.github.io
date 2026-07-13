@@ -13357,6 +13357,8 @@ function Apple2VideoGPU_controls(rendererGPU)
         ? rendererGPU.getFrameRate()
         : APPLE2_GPU_CFG_DEFAULT.frameRate;
 
+  var FrameRateMeasured = 0;
+
     return "<div class=\"appbut mini\">"
         +"<input id=\"gpuFrameRate\" type=\"range\""
         +" min=\""+APPLE2_GPU_FRAME_RATE_SPEC.min+"\""
@@ -13366,8 +13368,7 @@ function Apple2VideoGPU_controls(rendererGPU)
         +" oninput=\"Apple2VideoGPU_setFrameRateControl(this)\""
         +" style=\"width:65px;float:left\"></input>"
         +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">"
-        +"max frame rate "
-        +"<span id=\"gpuFrameRateValue\">"+Math.round(frameRate)+" fps</span>"
+        +"<span id=\"gpuFrameRateValue\">"+Math.round(frameRate)+" fps (measured "+FrameRateMeasured+")</span>"
         +"</div></div><br>";
 }
 
