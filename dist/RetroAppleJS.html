@@ -13641,9 +13641,134 @@ function Apple2Video(ctx)
 // - HGR page 1 ($2000-$3FFF) and HGR page 2 ($4000-$5FFF)
 // - waveform/YIQ rendering for HGR graphics
 // - deterministic GPU rendering for TEXT, LORES, and mixed-mode text/lores areas
-// - fixed/default waveform parameters:
-//      Y slope = 1.00, Y gain = 1.00, Chroma = 1.00, I' gain = 1.00, Q' gain = 1.00
+// - configurable waveform parameters, with defaults defined once below.
 //
+// Optional configuration before loading this file:
+//   window.Apple2VideoWave_CONFIG = {
+//       ySlope: 1.00,
+//       yGain: 1.00,
+//       chromaGain: 1.00,
+//       iGain: 1.00,
+//       qGain: 1.00
+//   };
+//
+
+var APPLE2_GPUWAVE_CFG_DEFAULT =
+{
+    ySlope: 1.00,
+    yGain: 1.00,
+    chromaGain: 1.00,
+    iGain: 1.00,
+    qGain: 1.00
+};
+
+var APPLE2_GPUWAVE_PARAM_SPEC =
+{
+    ySlope:    { index:0, min:0.00, max:1.00 },
+    yGain:     { index:1, min:0.50, max:1.50 },
+    chromaGain:{ index:2, min:0.00, max:2.00 },
+    iGain:     { index:3, min:0.00, max:2.00 },
+    qGain:     { index:4, min:0.00, max:2.00 }
+};
+
+function Apple2VideoWave_copyConfig()
+{
+    var cfg = {}, user = window.Apple2VideoWave_CONFIG || {};
+    for (var key in APPLE2_GPUWAVE_CFG_DEFAULT)
+        cfg[key] = APPLE2_GPUWAVE_CFG_DEFAULT[key];
+    for (var userKey in user)
+        cfg[userKey] = user[userKey];
+    return cfg;
+}
+
+function Apple2VideoWave_clampParameter(key,value)
+{
+    var spec = APPLE2_GPUWAVE_PARAM_SPEC[key];
+    value = Number(value);
+
+    if (!spec)
+        return isFinite(value) ? value : 0;
+
+    if (!isFinite(value))
+        value = Number(APPLE2_GPUWAVE_CFG_DEFAULT[key]);
+
+    if (!isFinite(value))
+        value = 0;
+
+    return Math.max(spec.min,Math.min(spec.max,value));
+}
+
+function Apple2VideoWave_getControlInstance()
+{
+    if (typeof(oApple2Video) === "undefined" || oApple2Video === null ||
+        typeof(oApple2Video.getRendererInstance) !== "function")
+        return null;
+
+    return oApple2Video.getRendererInstance("wave",true);
+}
+
+function Apple2VideoWave_setParameterControl(input,key,labelId)
+{
+    var rendererWave = Apple2VideoWave_getControlInstance();
+    if (!rendererWave || typeof(rendererWave.setWaveParameter) !== "function")
+        return;
+
+    var value = rendererWave.setWaveParameter(key,Number(input.value)/100);
+    input.value = Math.round(value*100);
+
+    var output = document.getElementById(labelId);
+    if (output)
+        output.textContent = Number(value).toFixed(2);
+}
+
+function Apple2VideoWave_setYSlopeControl(input)
+{
+    Apple2VideoWave_setParameterControl(input,"ySlope","waveYSlopeValue");
+}
+
+function Apple2VideoWave_setYGainControl(input)
+{
+    Apple2VideoWave_setParameterControl(input,"yGain","waveYGainValue");
+}
+
+function Apple2VideoWave_setChromaControl(input)
+{
+    Apple2VideoWave_setParameterControl(input,"chromaGain","waveChromaValue");
+}
+
+function Apple2VideoWave_controls(rendererWave)
+{
+    var ySlope = rendererWave && typeof(rendererWave.getYSlope) === "function"
+        ? rendererWave.getYSlope()
+        : APPLE2_GPUWAVE_CFG_DEFAULT.ySlope;
+    var yGain = rendererWave && typeof(rendererWave.getYGain) === "function"
+        ? rendererWave.getYGain()
+        : APPLE2_GPUWAVE_CFG_DEFAULT.yGain;
+    var chroma = rendererWave && typeof(rendererWave.getChromaGain) === "function"
+        ? rendererWave.getChromaGain()
+        : APPLE2_GPUWAVE_CFG_DEFAULT.chromaGain;
+
+    return "<div class=\"appbut mini\">"
+        +"<input id=\"waveYSlope\" type=\"range\" min=\"0\" max=\"100\" step=\"1\" value=\""+Math.round(ySlope*100)+"\" class=\"slider\""
+        +" oninput=\"Apple2VideoWave_setYSlopeControl(this)\" style=\"width:65px;float:left\"></input>"
+        +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">Y slope "
+        +"<span id=\"waveYSlopeValue\">"+Number(ySlope).toFixed(2)+"</span></div>"
+        +"</div><br>"
+
+        +"<div class=\"appbut mini\">"
+        +"<input id=\"waveYGain\" type=\"range\" min=\"50\" max=\"150\" step=\"1\" value=\""+Math.round(yGain*100)+"\" class=\"slider\""
+        +" oninput=\"Apple2VideoWave_setYGainControl(this)\" style=\"width:65px;float:left\"></input>"
+        +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">Y gain "
+        +"<span id=\"waveYGainValue\">"+Number(yGain).toFixed(2)+"</span></div>"
+        +"</div><br>"
+
+        +"<div class=\"appbut mini\">"
+        +"<input id=\"waveChroma\" type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Math.round(chroma*100)+"\" class=\"slider\""
+        +" oninput=\"Apple2VideoWave_setChromaControl(this)\" style=\"width:65px;float:left\"></input>"
+        +"<div style=\"float:left;border:0px solid;padding:2px 0px 0px 10px;\">Chroma "
+        +"<span id=\"waveChromaValue\">"+Number(chroma).toFixed(2)+"</span></div>"
+        +"</div><br>";
+}
 
 if (typeof(oEMU) === "undefined")
     var oEMU = {"component":{"Video":{}}};
@@ -13657,6 +13782,7 @@ oEMU.component.Video.Apple2Video = new Apple2Video();
 function Apple2Video(ctx)
 {
     const bDebug_snd = false;
+    var renderCfg = Apple2VideoWave_copyConfig();
 
     const HGR_W = 280;
     const HGR_H = 192;
@@ -13695,9 +13821,74 @@ function Apple2Video(ctx)
 
     this.hgrLinear = new Uint8Array(HGR_H * HGR_BYTES_PER_LINE);
 
-    // Fixed/default parameters from ScreenGPU_HGR_NTSC_stepE_v10_2.html.
     // cfg[0] ySlope, cfg[1] yGain, cfg[2] chromaGain, cfg[3] iGain, cfg[4] qGain
-    this.cfg = new Float32Array([1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]);
+    this.cfg = new Float32Array([
+        Apple2VideoWave_clampParameter("ySlope",renderCfg.ySlope),
+        Apple2VideoWave_clampParameter("yGain",renderCfg.yGain),
+        Apple2VideoWave_clampParameter("chromaGain",renderCfg.chromaGain),
+        Apple2VideoWave_clampParameter("iGain",renderCfg.iGain),
+        Apple2VideoWave_clampParameter("qGain",renderCfg.qGain),
+        0.0, 0.0, 0.0
+    ]);
+
+    this.getWaveParameter = function(key)
+    {
+        var spec = APPLE2_GPUWAVE_PARAM_SPEC[key];
+        if (!spec)
+            return 0;
+
+        var value = Number(this.cfg[spec.index]);
+        return isFinite(value)
+            ? value
+            : Apple2VideoWave_clampParameter(key,renderCfg[key]);
+    };
+
+    this.setWaveParameter = function(key,value)
+    {
+        var spec = APPLE2_GPUWAVE_PARAM_SPEC[key];
+        if (!spec)
+            return 0;
+
+        value = Apple2VideoWave_clampParameter(key,value);
+        renderCfg[key] = value;
+        this.cfg[spec.index] = value;
+        frame_redraw = true;
+
+        if (this.gpu && typeof(this.redraw) === "function")
+            this.redraw();
+
+        return value;
+    };
+
+    this.getYSlope = function()
+    {
+        return this.getWaveParameter("ySlope");
+    };
+
+    this.setYSlope = function(value)
+    {
+        return this.setWaveParameter("ySlope",value);
+    };
+
+    this.getYGain = function()
+    {
+        return this.getWaveParameter("yGain");
+    };
+
+    this.setYGain = function(value)
+    {
+        return this.setWaveParameter("yGain",value);
+    };
+
+    this.getChromaGain = function()
+    {
+        return this.getWaveParameter("chromaGain");
+    };
+
+    this.setChromaGain = function(value)
+    {
+        return this.setWaveParameter("chromaGain",value);
+    };   
 
     this.reset = function()
     {
@@ -14283,6 +14474,11 @@ function Apple2Video(ctx)
         return new Uint8Array(0x6000);
     };
 
+    this.ctrl_dlg = function()
+    {
+        return Apple2VideoWave_controls(this);
+    };
+
     function linearizeHgrPage(mem, out, pageBase)
     {
         for (let y = 0; y < HGR_H; y++)
@@ -14303,6 +14499,10 @@ function Apple2Video(ctx)
     }
 }
 
+Apple2Video.ctrl_dlg = function()
+{
+    return Apple2VideoWave_controls(null);
+};
 </script><script>var Apple2VideoWave = Apple2Video; Apple2Video = Apple2VideoGPU;</script>
             <script type="text/javascript">
 //
