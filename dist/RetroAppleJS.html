@@ -1681,6 +1681,23 @@ ____    ____          _
       padding: 0px;
 }
 
+.hints1 .appbox 
+{
+      height: auto;
+      min-height: 63px;
+      text-align: left;
+      box-sizing: border-box;
+}
+
+.hints1 label {
+      display: block;
+      min-height: 18px;
+      line-height: 18px;
+      white-space: nowrap;
+      font-family: arial;
+      font-size: 11px;
+    }
+
 .CRT_TV
 {
   background-size:800px 560px;
@@ -2065,7 +2082,7 @@ table { border-collapse: collapse; position: relative;}
     padding: 6px;
     border-radius: 5px;
     border-style: none;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.96);
     float:left;
     text-align:center;
   }
@@ -27431,24 +27448,30 @@ function DASM()
                 <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab2.2');" title="Tools"><i class="fa fa-toolbox"></i></button>          
               </div>
 
-              <!--  ASM SETTINGS -->
+              <!--  ASSEMBLER SETTINGS -->
               <div class="hints1" id="tab2.1" hidden>
                 <div class=toolbox>
-                  <div class=appbox title="Assembler settings" style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
-                    ASSEMBLER<br>
-                    <div style="font-family:arial;font-size:11px">
-                      Listing columns<br>
-                      <input id="ASM_settingsListingColumnsInput" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" size=42 style="font-family:monospace;font-size:11px">
-                      <label title="Legacy double-quote mode: when checked, double-quoted character literals force Apple II high-bit text. When unchecked, double quotes compile like single quotes.">
-                        <input id="ASM_dQuoteLegacyInput" type="checkbox">
-                        dQuoteLegacy
-                      </label>
-                    </div>
+                  <div class=appbox title="Assembler settings" style="min-height:63px;height:auto;padding:0px 6px 0px 6px;color:black;text-align: left;">
+                    <br>
+                    <label title="Legacy double-quote mode: when checked, double-quoted character literals force Apple II high-bit text. When unchecked, double quotes compile like single quotes.">
+                      Quote legacy <input id="ASM_dQuoteLegacyInput" type="checkbox">
+                    </label>
                   </div>
                 </div>
+
+                <div class=toolbox>
+                  <div class=appbox title="Assembler settings" style="min-height:63px;height:auto;padding:0px 6px 0px 6px;color:black;text-align: left;">
+                    LISTING<br>
+                    <label>
+                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=22 value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
+                    </label>
+                  </div>
+                </div>
+
+
               </div>
 
-              <!--  ASM TOOLS -->
+              <!--  ASSEMBLER TOOLS -->
               <div class="hints1" id="tab2.2" hidden>
                 <div class=toolbox>
                   <form name="ASMboard" onsubmit="return false">
@@ -27476,7 +27499,7 @@ function DASM()
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
                     </div>
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
-                </div>
+                  </div>
                 </div>
               </div>
 
@@ -28918,57 +28941,6 @@ Label1 TXA
 
     #DBG_root {
       position: relative;
-    }
-
-    .DBG_popupHost {
-      position: absolute;
-      left: 0px;
-      top: 32px;
-      z-index: 20;
-      margin: 0px;
-      padding: 0px;
-    }
-
-    /* TODO: review if we can make this popup action dynamic (driven by code) instead of trying hard to override one CSS by another */
-    .DBG_popupHost[hidden] {
-      display: none !important;
-    }
-
-    .DBG_popupHost .toolbox {
-      height: auto;
-    }
-
-    .DBG_popupHost .appbox {
-      height: auto;
-      min-height: 63px;
-      padding: 0px 6px;
-      text-align: left;
-      box-sizing: border-box;
-    }
-
-    .DBG_popupHost label {
-      display: block;
-      min-height: 18px;
-      line-height: 18px;
-      white-space: nowrap;
-      font-family: arial;
-      font-size: 11px;
-    }
-
-    .DBG_popupHost input[type="number"],
-    .DBG_popupHost select,
-    .DBG_popupHost input[type="text"] {
-      width: 150px;
-      min-height: 20px;
-      border: 1px solid rgba(0,0,0,0.28);
-      border-radius: 4px;
-      background: #ffffff;
-      color: #000000;
-      font: 11px/1.2 courier, monospace;
-    }
-
-    .DBG_popupHost input.DBG_listingColumnsInput {
-      width: 120px;
     }
 
     .DBG_paneHost {
