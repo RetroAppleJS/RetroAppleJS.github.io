@@ -1,21 +1,21 @@
 ;*****************************************************************************
 ;* Apple II+ QR generator - Step 0: text editor and mode recommendation       *
-;*                                                                           *
-;* HGR page 1 remains visible in mixed mode.  The bottom four text rows are  *
-;* used as follows:                                                          *
-;*   row 20 : [E]DIT [W]IPE [C]ODE [ESC]       0000.0 N            *
+;*                                                                            *
+;* HGR page 1 remains visible in mixed mode.  The bottom four text rows are   *
+;* used as follows:                                                           *
+;*   row 20 : [E]DIT [W]IPE [C]ODE [ESC]       0000.0 N                       *
 ;*   rows 21-23 : 120-character viewport into the 1024-byte text buffer       *
-;*                                                                           *
+;*                                                                            *
 ;* The text buffer occupies all of text page 2 ($0800-$0BFF).                 *
 ;* The display must stay on PAGE1; PAGE2 is used only as ordinary RAM.        *
-;*                                                                           *
-;* Four-byte reusable buffer descriptor:                                     *
-;*   $0C00/$0C01  BUF_LEN   complete bytes in use (0..1024)                  *
-;*   $0C02        BUF_BITS  valid MSB-first bits in the following byte       *
+;*                                                                            *
+;* Four-byte reusable buffer descriptor:                                      *
+;*   $0C00/$0C01  BUF_LEN   complete bytes in use (0..1024)                   *
+;*   $0C02        BUF_BITS  valid MSB-first bits in the following byte        *
 ;*                         (0..7; always 0 while editing raw text)            *
 ;*   $0C03        BUF_MODE  current buffer representation: $01/$02/$04        *
 ;*   $0C04        REC_MODE  recommended mode while the buffer contains raw text *
-;*   $0C05        BUF_STATE $00=raw editable text, $80=packed encoded data       *
+;*   $0C05        BUF_STATE $00=raw editable text, $80=packed encoded data   *
 ;*                                                                           *
 ;* Editor keys:                                                              *
 ;*   printable character : insert at cursor                                  *
@@ -23,10 +23,10 @@
 ;*   Ctrl-D              : delete character under cursor ($04)               *
 ;*   Delete              : delete character before cursor ($7F), if present  *
 ;*   Escape              : return to menu                                    *
-;* Menu keys: E=edit raw text, W=wipe, C=pack using recommended mode          *
+;* Menu keys: E=edit raw text, W=wipe, C=pack using recommended mode         *
 ;*                                                                           *
-;* The three display rows form one contiguous 120-character viewport.         *
-;* No CR byte is inserted when text wraps from one display row to the next.   *
+;* The three display rows form one contiguous 120-character viewport.        *
+;* No CR byte is inserted when text wraps from one display row to the next.  *
 ;*****************************************************************************
 
 ;*** APPLE II ROM CALLS ***
