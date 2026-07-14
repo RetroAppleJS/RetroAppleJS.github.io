@@ -36,6 +36,25 @@ function ASM(options)
     this.warnings = [];
     this.passNo = 0;
 
+    /*
+     * Backward compatibility:
+     * Older RetroAppleJS assembler behaviour treated double-quoted character
+     * literals as Apple II high-bit text, so #"0" became $B0 while #'0'
+     * became $30.  Keep that behaviour as the core default for existing tools.
+     *
+     * index.html can pass {dQuoteLegacy:false} to make double quotes behave
+     * like single quotes, i.e. both compile the UTF-8 source character to the
+     * Apple II ASCII byte value without forcing bit 7.
+     */
+    this.dQuoteLegacy = options.dQuoteLegacy !== undefined ? !!options.dQuoteLegacy : true;
+
+    this.appleCharCode = function (ch, quote) {
+        var text = String(ch == null ? "" : ch);
+        var v = text.length ? text.charCodeAt(0) : 0;
+        if (quote === "\"" && this.dQuoteLegacy) v |= 0x80;
+        return v & 0xff;
+    };
+
     // Addressing mode order deliberately matches the original RetroAppleJS table.
     this.addrModeName = ["imp", "acc", "imm", "abs", "abx", "aby", "zpg", "zpx", "zpy", "ind", "inx", "iny", "rel"];
     this.addrModeLongName = {
@@ -495,9 +514,10 @@ function ASM(options)
             return { val: dv, bytes: this.operandByteSizeFromValue(dv), fmt: "DEC" };
         }
         if ((text.charAt(0) === '"' || text.charAt(0) === "'") && text.charAt(text.length - 1) === text.charAt(0)) {
+            var quote = text.charAt(0);
             var body = text.substring(1, text.length - 1);
-            if (body.length === 1) return { val: body.charCodeAt(0) | (text.charAt(0) === '"' ? 0x80 : 0), bytes: 1, fmt: "ASC" };
-            return { val: body.split("").map(function (c) { return c.charCodeAt(0) | (text.charAt(0) === '"' ? 0x80 : 0); }), bytes: body.length, fmt: "ASC", type: "string" };
+            if (body.length === 1) return { val: this.appleCharCode(body.charAt(0), quote), bytes: 1, fmt: "ASC" };
+            return { val: body.split("").map(function (c) { return self.appleCharCode(c, quote); }), bytes: body.length, fmt: "ASC", type: "string" };
         }
 
         var id = this.getID(text);
@@ -907,9 +927,8 @@ function ASM(options)
         var quoted = operandText.match(/^(["'])([\s\S]*)\1$/);
         var slash = operandText.match(/^[\-/]([\s\S]*)[\-/]?$/);
         var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
-        var highBit = quoted && quoted[1] === '"';
         var out = [];
-        for (var i = 0; i < text.length; i++) out.push((text.charCodeAt(i) | (highBit ? 0x80 : 0)) & 0xff);
+        for (var i = 0; i < text.length; i++) out.push(this.appleCharCode(text.charAt(i), quoted ? quoted[1] : ""));
         return out;
     };
 

@@ -1046,6 +1046,10 @@
                     <div style="font-family:arial;font-size:11px">
                       Listing columns<br>
                       <input id="ASM_settingsListingColumnsInput" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" size=42 style="font-family:monospace;font-size:11px">
+                      <label title="Legacy double-quote mode: when checked, double-quoted character literals force Apple II high-bit text. When unchecked, double quotes compile like single quotes.">
+                        <input id="ASM_dQuoteLegacyInput" type="checkbox">
+                        dQuoteLegacy
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -1257,6 +1261,12 @@ Label1 TXA
               return headerInput ? headerInput.value : (settingsInput ? settingsInput.value : undefined);
             }
 
+            function ASM_dQuoteLegacyValue()
+            {
+              var input = ASM_el("ASM_dQuoteLegacyInput");
+              return !!(input && input.checked);
+            }
+
             function ASM_syncListingColumns(sourceInput)
             {
               var headerInput   = ASM_el("ASM_listingColumnsInput");
@@ -1389,7 +1399,10 @@ Label1 TXA
                 var jsonMount = ASM_el("ASM_jsonMount");
 
                 ASM_syncListingColumns(listingColumnsInput);
-                window.oASM = new ASM({listingColumns:listingColumnsInput ? listingColumnsInput.value : undefined});
+                window.oASM = new ASM({
+                  listingColumns:listingColumnsInput ? listingColumnsInput.value : undefined,
+                  dQuoteLegacy:ASM_dQuoteLegacyValue()
+                });
                 if(listingColumnsInput && typeof window.oASM.setListingColumns == "function")
                   window.oASM.setListingColumns(listingColumnsInput.value);
 
@@ -2419,6 +2432,7 @@ Label1 TXA
               var boardText = ASM_el("ASM_boardText");
               var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
               var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
+              var dQuoteLegacyInput = ASM_el("ASM_dQuoteLegacyInput");
 
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
               if(assembleButton) assembleButton.addEventListener("click",function(ev){ ev.preventDefault(); ASM_assembleCurrentSource(); });
@@ -2464,6 +2478,10 @@ Label1 TXA
               if(settingsListingColumnsInput) settingsListingColumnsInput.addEventListener("change",function(){
                 ASM_syncListingColumns(settingsListingColumnsInput);
                 ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
+              });
+
+              if(dQuoteLegacyInput) dQuoteLegacyInput.addEventListener("change",function(){
+                ASM_clearOutputs("dQuoteLegacy changed. Click assemble to regenerate output.","warn");
               });
 
               ASM_syncSourceFindReplaceSkin();
