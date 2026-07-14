@@ -179,7 +179,19 @@ const _CFG_SLOT = {
 
    // EXECUTE
    var s = oPROCESS.process_table(["[KEYFONT]","\|","\n|","\|\n\n"],"const _CFG_KEYFONT",this.responseText,this.responseURL);
-    document.getElementById('dest').innerHTML += s.replace(/&#x7C;/g,"|");
+    document.getElementById('dest').innerHTML += s
+
+  /*
+const _CFG_KEYFONT = {
+ "A2_US":{"MAP_FORMULA":"function(ch) {return ch" ,"MAP_JSON":"0x80 }"}
+,"[CHROMA]":{"MAP_FORMULA":"COL_num" ,"MAP_JSON":"COL_name"}
+,":-----:":{"MAP_FORMULA":":------" ,"MAP_JSON":":----------"}
+,0:{"MAP_FORMULA":"" ,"MAP_JSON":"FULL-COLOR"}
+,1:{"MAP_FORMULA":"#FFFFFF" ,"MAP_JSON":"B&W"}
+,2:{"MAP_FORMULA":"#A0FFF0" ,"MAP_JSON":"GREEN"}
+,3:{"MAP_FORMULA":"#FCE7A1" ,"MAP_JSON":"AMBER"}
+}
+*/
 
    // EXECUTE
    var s = oPROCESS.process_table(["[CHROMA]","\|","\n|","\|\n\n"],"const _CFG_CHROMA",this.responseText,this.responseURL);
