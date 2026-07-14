@@ -52,6 +52,8 @@ __Screen settings__
 
 __Keyboard features__
 
+
+      Text flow diagram
       ┌───────┐┌─────────────┐┌──────────┐
       │ASM src││Host keyboard││Pasteboard│
       └──────┬┘└──┬──────────┘└─┬────────┘
