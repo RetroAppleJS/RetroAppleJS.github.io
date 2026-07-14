@@ -44,7 +44,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## SYSTEMS LIST
 
-|[SYSCODE]| Model              |CPU     | Speeds    | Display  | Slots log/phy* | ROM   | KeyFont     |
+|[SYSCODE]| Model              |CPU     | Speeds    | Display  | Slots log/phy* | ROM   | KeyFont       |
 | :---:   | :----------------- | :-------- | :-------- | :------- | :---------: | :---- | :------------ |
 | A1      | Apple I            |6502       | 1.023     | A1_txt   |             |       | A1_US         |
 | A2      | Apple II           |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
@@ -266,6 +266,12 @@ We aim to have all the documentation available in markdown format, for easy onli
 | MOCK  | Mockingboard C                         |        | X      |          |             | 1,2,3,4*,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
 
 \* = pre-assigned slot
+
+## ASCII MAPPING
+
+|[KEYFONT] | MAP_FORMULA | MAP_JSON        |
+| :------: | :---------- | :---------------| 
+| A2_US    | function(ch) {return ch \| 0x80 } | {"é": [0x45],"“": [0x22],"”": [0x22],"…": [0x2E, 0x2E, 0x2E]}
 
 
 ## COLOR MODES
