@@ -194,26 +194,23 @@
                   <button class=appbut                 onclick="javascript:oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute'}).muteAct()"  title="Sound"><i id="mutebutton" class="fa fa-volume-mute"></i></button>
                   <button class=appbut                 onclick="javascript:oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause'})" id="pausebutton"   title="Pause"><i  class="fa fa-play"></i></button>
                   <br>
-                <button class=appbut
-                        value="Restart"
-                        id="restartbutton"
-                        title="Short press: warm boot / hold 1/2s: cold boot"
-                        onmousedown="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
-                        onmouseup="return oEMUI.restartBtnUp();"
-                        onmouseleave="return oEMUI.restartBtnCancel();"
-                        ontouchstart="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
-                        ontouchend="return oEMUI.restartBtnUp();"
-                        ontouchcancel="return oEMUI.restartBtnCancel();">
-                  <i class="fa fa-power-off"></i>
-                </button>
-                <button class=appbut onclick="javascript:apple2plus.hwObj().io.deviceBtn({id:'devices'})" id="devices" title="Peripheral controls" data-slot=""></button>
-                  <!-- <i class="fa fa-cube"></i> -->
-                </button>
+                  <button class="appbut"
+                          value="Restart"
+                          id="restartbutton"
+                          title="Short press: warm boot / hold 1/2s: cold boot"
+                          onmousedown="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+                          onmouseup="return oEMUI.restartBtnUp();"
+                          onmouseleave="return oEMUI.restartBtnCancel();"
+                          ontouchstart="EMU_audio_event_unlock();return oEMUI.restartBtnDown();"
+                          ontouchend="return oEMUI.restartBtnUp();"
+                          ontouchcancel="return oEMUI.restartBtnCancel();">
+                  <i class="fa fa-power-off"></i></button>
+                  <button class=appbut onclick="javascript:apple2plus.hwObj().io.deviceBtn({id:'devices'})" id="devices" title="Peripheral controls" data-slot=""></button>
 
                 </div>
                 <!--  DEVICE TOOLBOX -->
 
-                <div id="device_toolbox_body"></div>
+                <div class=toolbox id="device_toolbox_body"></div>
 
                 <div class="toolbox">
                   <div id=LEDS class=appbox style="text-align:left;padding:0px 0px 0px 0px;margin:0px 0px 0px 0px; z-index:0">
@@ -235,7 +232,7 @@
               </div>
 
               <!--  SETTINGS TAB WINDOW -->
-              <div class="hints1" id="tab1.1" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:96px;">
+              <div class="hints1" id="tab1.1" hidden>
 
                 <!--  SYSTEM SETTINGS -->
                 <div class=toolbox>
@@ -1042,7 +1039,7 @@
               </div>
 
               <!--  ASM SETTINGS -->
-              <div class="hints1" id="ASM_settings" hidden="" style="position:absolute;left:0px;top:32px;z-index:2;height:80px;">
+              <div class="hints1" id="tab2.1" hidden>
                 <div class=toolbox>
                   <div class=appbox title="Assembler settings" style="text-align:left;height:76px;padding:0px 6px 0px 6px;">
                     ASSEMBLER<br>
@@ -1055,7 +1052,7 @@
               </div>
 
               <!--  ASM TOOLS -->
-              <div class="hints1" id="ASM_tools" hidden="" style="z-index:2;position:absolute;margin-top:3px">
+              <div class="hints1" id="tab2.2" hidden>
                 <div class=toolbox>
                   <form name="ASMboard" onsubmit="return false">
                     <textarea id="ASM_boardText" cols=40 rows=4 style="float:left" placeholder="Byte-code output" name="boardText"></textarea><br>
@@ -1064,7 +1061,7 @@
                     <input title="Copy byte code to clipboard" type="button" id="ASM_copyByteCodeButton" value="copy">
                     <input title="Clear byte code" type="button" value="Clear" onclick="javascript:ASM_clearBoard()">
                     <span id="ASM_byteCodeInfo" style="color:#000000;font-family:arial;font-size:11px;padding:0px 6px;white-space:nowrap;">0 bytes</span>
-                    <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('ASM_tools')">
+                    <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('tab2.2')">
                   </form>
                 </div>
 
@@ -2401,18 +2398,9 @@ Label1 TXA
                *   tab2.1 = Settings
                *   tab2.2 = Tools
                */
-              if(typeof oCOM == "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule != "function")
-                return;
-
-              oCOM.POPUP.addRule("tab2.1",function(o){
-                o.toggle("ASM_settings");
-                o.off("ASM_tools");
-              });
-
-              oCOM.POPUP.addRule("tab2.2",function(o){
-                o.toggle("ASM_tools");
-                o.off("ASM_settings");
-              });
+              if(typeof oCOM == "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule != "function") return;
+              oCOM.POPUP.addRule("tab2.1",function(o){ o.toggle("tab2.1"); o.off("tab2.2"); });
+              oCOM.POPUP.addRule("tab2.2",function(o){ o.toggle("tab2.2"); o.off("tab2.1"); });
             }
 
             function ASM_bindEvents()
@@ -4887,15 +4875,15 @@ Label1 TXA
       var target = DBG_el(id);
       if (!target) return;
 
-      var other = id === "DBG_settings" ? DBG_el("DBG_tools") : DBG_el("DBG_settings");
+      var other = id === "tab3.1" ? DBG_el("tab3.2") : DBG_el("tab3.1");
       if (other) other.hidden = true;
       target.hidden = !target.hidden;
       DBG_equalizePaneHeaders();
     }
 
     function DBG_closePanels() {
-      if (DBG_el("DBG_settings")) DBG_el("DBG_settings").hidden = true;
-      if (DBG_el("DBG_tools")) DBG_el("DBG_tools").hidden = true;
+      if (DBG_el("tab3.1")) DBG_el("tab3.1").hidden = true;
+      if (DBG_el("tab3.2")) DBG_el("tab3.2").hidden = true;
     }
 
     function DBG_registerPopupRules() {
@@ -4908,23 +4896,12 @@ Label1 TXA
        *   tab3.1 = Settings
        *   tab3.2 = Tools
        *
-       * The actual popup IDs remain DBG_settings / DBG_tools,
+       * The actual popup IDs remain tab3.1 / tab3.2,
        * because the v22 debugger code already uses those IDs internally.
        */
-      if (typeof oCOM === "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule !== "function")
-        return;
-
-      oCOM.POPUP.addRule("tab3.1", function(o) {
-        o.toggle("DBG_settings");
-        o.off("DBG_tools");
-        DBG_equalizePaneHeaders();
-      });
-
-      oCOM.POPUP.addRule("tab3.2", function(o) {
-        o.toggle("DBG_tools");
-        o.off("DBG_settings");
-        DBG_equalizePaneHeaders();
-      });
+      if (typeof oCOM === "undefined" || !oCOM || !oCOM.POPUP || typeof oCOM.POPUP.addRule !== "function") return;
+      oCOM.POPUP.addRule("tab3.1", function(o) { o.toggle("tab3.1"); o.off("tab3.2"); DBG_equalizePaneHeaders(); });
+      oCOM.POPUP.addRule("tab3.2", function(o) { o.toggle("tab3.2"); o.off("tab3.1"); DBG_equalizePaneHeaders(); });
     }
 
     function DBG_applyPaneHeaderButtonTheme() {
@@ -5140,7 +5117,7 @@ Label1 TXA
           </div>
 
           <!-- DEBUGGER SETTINGS -->
-          <div class="hints1 DBG_popupHost" id="DBG_settings" hidden>
+          <div class="hints1 DBG_popupHost" id="tab3.1" hidden>
             <div class="toolbox">
               <div class="appbox" title="Debugger display">
                 LISTING<br>
@@ -5213,7 +5190,7 @@ Label1 TXA
           </div>
 
           <!-- DEBUGGER TOOLS -->
-          <div class="hints1 DBG_popupHost" id="DBG_tools" hidden style="padding-top:0px;">
+          <div class="hints1 DBG_popupHost" id="tab3.2" hidden>
     
           <div class=toolbox>
             <form name="DBGboard" onsubmit="return false">
@@ -5221,7 +5198,7 @@ Label1 TXA
               <input title="Send byte code to debugger" id="DBG_ByteCodeImportButton" type="button" value="to debugger" onclick="DBG_importBoardByteCode()">
               <input title="Clear byte code" type="button" value="Clear" onclick="javascript:DBG_clearBoard()">
               <span id="DBG_byteCodeInfo" style="color:#000000;font-family:arial;font-size:11px;white-space:nowrap;">0 bytes</span>
-              <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('DBG_tools')">
+              <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('tab3.2')">
             </form>
           </div>
 
