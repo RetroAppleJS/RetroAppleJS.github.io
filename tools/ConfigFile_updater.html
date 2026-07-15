@@ -179,7 +179,7 @@ const _CFG_SLOT = {
 
    // EXECUTE
    var s = oPROCESS.process_table(["[KEYFONT]","\|","\n|","\|\n\n"],"const _CFG_KEYFONT",this.responseText,this.responseURL);
-   document.getElementById('dest').innerHTML += s
+   document.getElementById('dest').innerHTML += s.replace(/&#x7C;/g,"|");
 
   /*
 const _CFG_KEYFONT = {
