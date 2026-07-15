@@ -966,7 +966,7 @@ function ASM(options)
     };
 
     this.getListingColumnOrder = function () {
-        return ["adr", "code", "lin", "lbl", "ins", "opr", "com"];
+        return ["adr", "code", "lin", "lbl", "ins", "opr", "asm", "com"];
     };
 
     this.getListingLineLayout = function (columns) {
@@ -1252,13 +1252,13 @@ function ASM(options)
         };
     };
 
-    this.defaultListingColumns = { adr: 0, code: 6, lin: 15, lbl: 20, ins: 30, opr: 35, com: 51 };
+    this.defaultListingColumns = { adr: 0, code: 6, lin: 15, lbl: 21, ins: 30, opr: 35, asm: 51, com: 60 };
     this.listingColumns = Object.assign({}, this.defaultListingColumns);
     this.listingLabelLen = options.listingLabelLen || 8;
 
     this.parseListingColumns = function (spec) 
     {
-        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lin: 15, lbl: 20, ins: 30, opr: 35, com: 51 };
+        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lin: 15, lbl: 21, ins: 30, opr: 35, asm: 51, com: 60 };
         var parsed = {};
         var out = {};
 
@@ -1283,7 +1283,7 @@ function ASM(options)
         }
 
         /*
-         * Missing keys are intentional: if the user removes "com:51",
+         * Missing keys are intentional: if the user removes "com:60",
          * the comment column is hidden.  Defaults are used only when the
          * whole column specification is empty or missing.
          */
@@ -1298,7 +1298,7 @@ function ASM(options)
         if (parsed.operand != null) parsed.opr = parsed.operand;
         if (parsed.comment != null) parsed.com = parsed.comment;
 
-        ["adr", "code", "lin", "lbl", "ins", "opr", "com"].forEach(function (k) {
+        ["adr", "code", "lin", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
             if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
         });
 
@@ -1355,7 +1355,7 @@ function ASM(options)
         bytes = bytes || [];
         var tag = row.tag || [];
         var sym = row.sym || [];
-        var parts = { adr: "", code: "", lin: row.lin || "", lbl: "", ins: "", opr: "", com: "" };
+        var parts = { adr: "", code: "", lin: row.lin || "", lbl: "", ins: "", opr: "", asm: "", com: "" };
         var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);
         parts.com = split.comment || "";
 
@@ -1370,8 +1370,18 @@ function ASM(options)
         var oprIndex = this.getTokenIndexByTag(tag, "OPR");
 
         if (lblIndex >= 0) parts.lbl = this.truncateListingLabel(sym[lblIndex]);
-        if (mneIndex >= 0) parts.ins = this.normaliseListingInstruction(row, sym[mneIndex], false);
-        else if (pgmIndex >= 0) parts.ins = this.normaliseListingInstruction(row, sym[pgmIndex], true);
+        if (mneIndex >= 0) {
+            parts.ins = this.normaliseListingInstruction(row, sym[mneIndex], false);
+        }
+        else if (pgmIndex >= 0) {
+            var pragmaToken = sym[pgmIndex];
+            var pinfo = this.pragmaInfo(pragmaToken);
+            var asmList = Array.isArray(row.asm) ? row.asm : (pinfo && Array.isArray(pinfo.asm) ? pinfo.asm : []);
+            parts.ins = this.normaliseListingInstruction(row, pragmaToken, true);
+            parts.asm = asmList.filter(function (assembler) {
+                return String(assembler).toLowerCase() !== "rajs";
+            }).join(",");
+        }
         if (oprIndex >= 0) parts.opr = sym.slice(oprIndex).join(" ");
 
         return parts;
