@@ -269,9 +269,9 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## ASCII MAPPING
 
-|[KEYFONT] | MAP_FORMULA | MAP_JSON        |
-| :------: | :---------- | :---------------| 
-| A2_US    | function(ch) {return ch \| 0x80 } | {"é": [0x45],"“": [0x22],"”": [0x22],"…": [0x2E, 0x2E, 0x2E]}
+|[KEYFONT] | MAP_FORMULA | MAP_JSON            |
+| :------: | :---------- | :-------------------| 
+| A2_US    | ch \| 0x80  | {"é": [0x45],"“": [0x22],"”": [0x22],"…": [0x2E, 0x2E, 0x2E]}
 
 
 ## COLOR MODES
