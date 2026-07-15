@@ -1,0 +1,562 @@
+{
+  "tool": "UnifiedDiffJS_GPT",
+  "version": "2.5.0",
+  "patchFile": "add-pragma-assembler-column.patch",
+  "projectRoot": "RetroAppleJS.github.io",
+  "unsupported": [],
+  "projectWarnings": [
+    "Binary-looking file skipped: res/update_icon.png",
+    "Binary-looking file skipped: res/palette.png",
+    "Binary-looking file skipped: res/FindReplace_200x200.png",
+    "Binary-looking file skipped: res/neon-assembler_200x200.png",
+    "Binary-looking file skipped: res/i_nok.png",
+    "Binary-looking file skipped: res/DASM_200x200.png",
+    "Binary-looking file skipped: res/reorder_200x200.png",
+    "Binary-looking file skipped: res/MOS_6502AD_300.png",
+    "Binary-looking file skipped: res/favicon.ico",
+    "Binary-looking file skipped: res/arrow_button_left.png",
+    "Binary-looking file skipped: res/appleIIplus_motherboard_p1_650.png",
+    "Binary-looking file skipped: res/color_pencils_320x240.png",
+    "Binary-looking file skipped: res/kickstart_200x200.png",
+    "Binary-looking file skipped: res/dotmatrix_bck_inv.png",
+    "Binary-looking file skipped: res/apple-disk-ii_LID_110x150.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_650_logo.png",
+    "Binary-looking file skipped: res/Beep_32float.wav",
+    "Binary-looking file skipped: res/LED_ON.png",
+    "Binary-looking file skipped: res/SID_chips.png",
+    "Binary-looking file skipped: res/GPU_icon.png",
+    "Binary-looking file skipped: res/neon-code_200x200.png",
+    "Binary-looking file skipped: res/CRT_TV_50b.png",
+    "Binary-looking file skipped: res/neon-doc_200x200.png",
+    "Binary-looking file skipped: res/i_ok.png",
+    "Binary-looking file skipped: res/doc_emu_CPU_pane.png",
+    "Binary-looking file skipped: res/retro_lab16.png",
+    "Binary-looking file skipped: res/DiskII_shortswipe_32float.wav",
+    "Binary-looking file skipped: res/DiskII_spin_32float.wav",
+    "Binary-looking file skipped: res/arrow_button_right.png",
+    "Binary-looking file skipped: res/i_firefox.png",
+    "Binary-looking file skipped: res/appleII_title.png",
+    "Binary-looking file skipped: res/dotmatrix_bck.png",
+    "Binary-looking file skipped: res/doc_emu_pasteboard_pane.png",
+    "Binary-looking file skipped: res/appleIIplus_font.gif",
+    "Binary-looking file skipped: res/ARCADE_N.TTF",
+    "Binary-looking file skipped: res/i_opera.png",
+    "Binary-looking file skipped: res/doc_emu_disk_pane.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_650_v3_A.png",
+    "Binary-looking file skipped: res/Monitor_200x200.png",
+    "Binary-looking file skipped: res/mockingboard.png",
+    "Binary-looking file skipped: res/GUI_200x200.png",
+    "Binary-looking file skipped: res/Start_Step12.png",
+    "Binary-looking file skipped: res/appleIIplus_motherboard_p2_650.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_650_v3_B.png",
+    "Binary-looking file skipped: res/DiskII_spinup_32float.wav",
+    "Binary-looking file skipped: res/i_safari.png",
+    "Binary-looking file skipped: res/i_edge.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_650_v3.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_650_v2.png",
+    "Binary-looking file skipped: res/appleIIplus_vir.png",
+    "Binary-looking file skipped: res/mcs6502-interrupt-ops_340.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_650.png",
+    "Binary-looking file skipped: res/DiskII_longswipe_32float.wav",
+    "Binary-looking file skipped: res/chroma_200x200.jpg",
+    "Binary-looking file skipped: res/three_200x200.png",
+    "Binary-looking file skipped: res/Apple_first_logo.png",
+    "Binary-looking file skipped: res/Lena_Soderberg_280x192.png",
+    "Binary-looking file skipped: res/NumSysJS.png",
+    "Binary-looking file skipped: res/mem_map_200x200.png",
+    "Binary-looking file skipped: res/appleIIplus_kbd_650.png",
+    "Binary-looking file skipped: res/HGRpatternJS.png",
+    "Binary-looking file skipped: res/VintageLab256.png",
+    "Binary-looking file skipped: res/elliptic_icon.png",
+    "Binary-looking file skipped: res/apple-disk-ii_256.png",
+    "Binary-looking file skipped: res/apple-logo-1977.png",
+    "Binary-looking file skipped: res/pattern_block_conflicts_2x2.png",
+    "Binary-looking file skipped: res/apple-logo-icon.png",
+    "Binary-looking file skipped: res/webfonts/fa-solid-900.ttf",
+    "Binary-looking file skipped: res/webfonts/fa-regular-400.woff2",
+    "Binary-looking file skipped: res/webfonts/fa-solid-900.eot",
+    "Binary-looking file skipped: res/webfonts/fa-regular-400.woff",
+    "Binary-looking file skipped: res/webfonts/fa-brands-400.eot",
+    "Binary-looking file skipped: res/webfonts/fa-solid-900.woff",
+    "Binary-looking file skipped: res/webfonts/fa-regular-400.ttf",
+    "Binary-looking file skipped: res/webfonts/fa-solid-900.woff2",
+    "Binary-looking file skipped: res/webfonts/fa-brands-400.woff2",
+    "Binary-looking file skipped: res/webfonts/fa-brands-400.woff",
+    "Binary-looking file skipped: res/webfonts/fa-brands-400.ttf",
+    "Binary-looking file skipped: res/webfonts/fa-regular-400.eot",
+    "Binary-looking file skipped: res/pallette_200x200.png",
+    "Binary-looking file skipped: res/prompt-icon.png",
+    "Binary-looking file skipped: res/APG_icon.png",
+    "Binary-looking file skipped: res/AsciiCAD_200x200.png",
+    "Binary-looking file skipped: res/tabs_200x200.png",
+    "Binary-looking file skipped: res/qr_icon.png",
+    "Binary-looking file skipped: res/compress_icon.png",
+    "Binary-looking file skipped: res/6502_200x200.png",
+    "Binary-looking file skipped: res/matrixpaper.png",
+    "Binary-looking file skipped: res/link.gif",
+    "Binary-looking file skipped: res/TOOL_SID_emulator.png",
+    "Binary-looking file skipped: res/pattern_block_conflicts_4x2.png",
+    "Binary-looking file skipped: res/appleiie_kbd_650.png",
+    "Binary-looking file skipped: res/Start_Step2.png",
+    "Binary-looking file skipped: res/Mocha_200x200.png",
+    "Binary-looking file skipped: res/HGR_Venus.png",
+    "Binary-looking file skipped: res/DiskII_click_32float.wav",
+    "Binary-looking file skipped: res/neon-doc-edit_200x200.png",
+    "Binary-looking file skipped: res/doc_emu_tools_menu.png",
+    "Binary-looking file skipped: res/keys_200x200.png",
+    "Binary-looking file skipped: res/i_chrome.png",
+    "Binary-looking file skipped: res/Image_to_Base64_200x200.png",
+    "Binary-looking file skipped: res/appleIIplus_bck_FULL_v3.png",
+    "Binary-looking file skipped: res/cassette_50.png",
+    "Binary-looking file skipped: res/Start_Step1.png",
+    "Binary-looking file skipped: res/appleI_kbd_650.png",
+    "Binary-looking file skipped: res/neon-keyboard_200x200.png",
+    "Binary-looking file skipped: res/AudioWorklet_icon.png",
+    "Binary-looking file skipped: res/fonts/EngraversGothic-Regular-webfont.eot",
+    "Binary-looking file skipped: res/fonts/Volkswagen_Serial-Regular-webfont.woff",
+    "Binary-looking file skipped: res/fonts/EngraversGothic-Regular-webfont.ttf",
+    "Binary-looking file skipped: res/fonts/EngraversGothic-Regular-webfont.woff",
+    "Binary-looking file skipped: res/fonts/fontawesome-webfont.woff2",
+    "Binary-looking file skipped: res/fonts/combining-diacritical.ttf",
+    "Binary-looking file skipped: res/fonts/fontawesome-webfont.ttf",
+    "Binary-looking file skipped: res/fonts/Volkswagen_Serial-Regular-webfont.eot",
+    "Binary-looking file skipped: res/fonts/fontawesome-webfont.woff",
+    "Binary-looking file skipped: res/fonts/Volkswagen_Serial-Regular-webfont.ttf",
+    "Binary-looking file skipped: res/favicon.copy.f17f048f84_mono.png",
+    "Binary-looking file skipped: res/DiskII_spindown_32float.wav",
+    "Binary-looking file skipped: res/pattern_block_4x2.png",
+    "Binary-looking file skipped: res/slider_200x200.png",
+    "Binary-looking file skipped: res/Peripheral_slot_16.png",
+    "Binary-looking file skipped: res/camera.png",
+    "Binary-looking file skipped: res/doc_emu_system_pane.png",
+    "Binary-looking file skipped: res/pixT.gif",
+    "Binary-looking file skipped: res/neon-gears_200x200.png",
+    "Binary-looking file skipped: res/mockingboard-cover.png",
+    "Binary-looking file skipped: res/fontawesome_icon.png",
+    "Binary-looking file skipped: res/ascii_map.jpeg",
+    "Binary-looking file skipped: res/zlib_icon.png",
+    "Binary-looking file skipped: res/pattern_block_2x2.png",
+    "Binary-looking file skipped: res/back_200x200.png",
+    "Binary-looking file skipped: res/appleIIplus_motherboard_650.png",
+    "Binary-looking file skipped: res/mcs6502-jsr-rts-ops_340.png",
+    "Binary-looking file skipped: res/doc_emu_settings_menu.png",
+    "Binary-looking file skipped: tools/music/nq_taimat.fym",
+    "Binary-looking file skipped: tools/music/Lenore.sid",
+    "Binary-looking file skipped: tools/music/Pimp_My_Commodore.sid",
+    "Binary-looking file skipped: tools/music/Irish_Dream.sid",
+    "Binary-looking file skipped: tools/music/Funtempo.sid",
+    "Binary-looking file skipped: tools/music/Super_Mario_Bros_3_Underworld.sid",
+    "Binary-looking file skipped: tools/music/Dream_a_Little_Dream_of_Me.sid",
+    "Binary-looking file skipped: tools/music/monty.fym",
+    "Binary-looking file skipped: tools/music/Kurztech.ym",
+    "Binary-looking file skipped: tools/music/E_G_Blues_2SID.sid",
+    "Binary-looking file skipped: tools/music/01_scalesmannmisfire.fym",
+    "Binary-looking file skipped: tools/music/Bomberland_preview.sid",
+    "Binary-looking file skipped: tools/music/Garden_Party.sid",
+    "Binary-looking file skipped: tools/music/Get_Lucky_2SID.sid",
+    "Binary-looking file skipped: tools/music/Mendegel_A_Mandarin.sid",
+    "Binary-looking file skipped: tools/music/Funck_the_Metal.sid",
+    "Binary-looking file skipped: tools/music/Flat_Beat.sid",
+    "Binary-looking file skipped: tools/music/Damballa.sid",
+    "Binary-looking file skipped: tools/music/Everydays.sid",
+    "Binary-looking file skipped: tools/music/B-land_Scrapbook.sid",
+    "Binary-looking file skipped: tools/music/Magyar_Nepzenek.sid",
+    "Binary-looking file skipped: tools/music/I_Just_Cant_Stop_Loving_You.sid",
+    "Binary-looking file skipped: tools/music/Pinball_Fantasies-Partyland.sid",
+    "Binary-looking file skipped: tools/music/Illusion.psg",
+    "Binary-looking file skipped: tools/music/Bomberland.sid - v2NG",
+    "Binary-looking file skipped: tools/music/Ocult_Friend.sid",
+    "Binary-looking file skipped: tools/GUI_DEV/ThreeJS/material-baseColor.png",
+    "Binary-looking file skipped: tools/GUI_DEV/ThreeJS/material-emissiveMap.png",
+    "Binary-looking file skipped: tools/GUI_DEV/ThreeJS/material-roughness-metalness.png",
+    "Binary-looking file skipped: tools/Tensorflow/mnist_images.png",
+    "Binary-looking file skipped: asm/MATH/TobyLobster-multiply_test- Comparing 6502 multiply routines.webloc",
+    "Binary-looking file skipped: asm/_TODO/SHOOTER.c.webloc",
+    "Binary-looking file skipped: docs/MS16K_user_manual.pdf",
+    "Binary-looking file skipped: disks/Merlin/Merlin Assembler (early version, 40-column, DOS 3.3) side A.dsk",
+    "Binary-looking file skipped: disks/Merlin/Merlin Assembler (early version, 40-column, DOS 3.3) side B.dsk",
+    "Binary-looking file skipped: disks/BLANK_DOS.DSK",
+    "Binary-looking file skipped: disks/A2CAM.DSK",
+    "Binary-looking file skipped: disks/fdraw/fdrawdemo.do",
+    "Binary-looking file skipped: disks/PacMan_collection.dsk",
+    "Binary-looking file skipped: disks/dev toolkits/DOS Programmers Toolkit_B.dsk",
+    "Binary-looking file skipped: disks/dev toolkits/DOS Programmers Toolkit_A.dsk",
+    "Binary-looking file skipped: disks/dev toolkits/EDASM.DSK",
+    "Binary-looking file skipped: disks/dev toolkits/Apple 6502 Assembler-Editor.pdf",
+    "Binary-looking file skipped: disks/dev toolkits/AppleSoft Toolkit (EDASM).dsk",
+    "Binary-looking file skipped: disks/Conan 1984-Disk1-1-Side B.dsk",
+    "Binary-looking file skipped: disks/ProDos/rr_data.po",
+    "Binary-looking file skipped: disks/ProDos/Thunderclock Plus - Basic Software - ProDOS.po",
+    "Binary-looking file skipped: disks/ProDos/AE Super Desktop Expander 5.3.1 ProDOS ProDrive.po",
+    "Binary-looking file skipped: disks/ProDos/AW3 Expander 1.3 Expander and Utilities.po",
+    "Binary-looking file skipped: disks/ProDos/VBMP.po",
+    "Binary-looking file skipped: disks/ProDos/AW3 Expander 1.3 Documentation.po",
+    "Binary-looking file skipped: disks/ProDos/empty.po",
+    "Binary-looking file skipped: disks/ProDos/empty.po 2",
+    "Binary-looking file skipped: disks/Conan 1984-Disk1-1-Side A.dsk",
+    "Binary-looking file skipped: disks/Apple DOS 3.3.dsk",
+    "Binary-looking file skipped: disks/Saturn-RAMSoft/SATURN_128KRAM-SOFT.dsk",
+    "Binary-looking file skipped: disks/Saturn-RAMSoft/Rw4Dos33v14.dsk",
+    "Binary-looking file skipped: disks/Saturn-RAMSoft/SATURN_32KRAM-SOFT.dsk",
+    "Binary-looking file skipped: disks/Saturn-RAMSoft/SATURN_Basic-PSEUDO.dsk",
+    "Binary-looking file skipped: disks/BLANK_PRONTODOS.dsk",
+    "Binary-looking file skipped: disks/ProDOS 8.dsk",
+    "Binary-looking file skipped: disks/Vaporlock/d181s1-mon-rom-vaporlock.dsk",
+    "Binary-looking file skipped: disks/Vaporlock/\"Vaporlock\" technique from Don Lancaster's Enhancing Your Apple II and IIe | Applefritter.webloc",
+    "Binary-looking file skipped: disks/Vaporlock/Don_Lancaster.dsk",
+    "Binary-looking file skipped: disks/Falcons.dsk"
+  ],
+  "files": [
+    {
+      "path": "res/ASM_core.js",
+      "error": null,
+      "hunks": [
+        {
+          "key": "res/ASM_core.js:1",
+          "status": "manual",
+          "diagnosticStatus": "offset",
+          "reason": "Accepted user resolution applied in memory at source lines 966–972.",
+          "expectedLine": 968,
+          "matchedLine": 966,
+          "parseError": null,
+          "parseErrorLine": null,
+          "mismatches": [],
+          "proposal": null,
+          "resolution": {
+            "origin": "user",
+            "action": "apply_offset",
+            "startLine": 966,
+            "endLine": 972
+          },
+          "ai": null
+        },
+        {
+          "key": "res/ASM_core.js:2",
+          "status": "manual",
+          "diagnosticStatus": "offset",
+          "reason": "Accepted user resolution applied in memory at source lines 1252–1264.",
+          "expectedLine": 1254,
+          "matchedLine": 1252,
+          "parseError": null,
+          "parseErrorLine": null,
+          "mismatches": [],
+          "proposal": null,
+          "resolution": {
+            "origin": "user",
+            "action": "apply_offset",
+            "startLine": 1252,
+            "endLine": 1264
+          },
+          "ai": null
+        },
+        {
+          "key": "res/ASM_core.js:3",
+          "status": "manual",
+          "diagnosticStatus": "offset",
+          "reason": "Accepted user resolution applied in memory at source lines 1296–1304.",
+          "expectedLine": 1298,
+          "matchedLine": 1296,
+          "parseError": null,
+          "parseErrorLine": null,
+          "mismatches": [],
+          "proposal": null,
+          "resolution": {
+            "origin": "user",
+            "action": "apply_offset",
+            "startLine": 1296,
+            "endLine": 1304
+          },
+          "ai": null
+        },
+        {
+          "key": "res/ASM_core.js:4",
+          "status": "manual",
+          "diagnosticStatus": "offset",
+          "reason": "Accepted ai-assisted resolution applied in memory at source lines 1357–1363.",
+          "expectedLine": 1359,
+          "matchedLine": 1357,
+          "parseError": null,
+          "parseErrorLine": null,
+          "mismatches": [],
+          "proposal": null,
+          "resolution": {
+            "origin": "ai-assisted",
+            "action": "apply_offset",
+            "startLine": 1357,
+            "endLine": 1363
+          },
+          "ai": {
+            "response": {
+              "schemaVersion": "1.0",
+              "hunkId": "res/ASM_core.js:4",
+              "sourceFingerprint": "3446d91de959485d5813a8a7f485e7143bbf1a36ac7da02b777020c864d8b980",
+              "diagnosticStatus": "offset",
+              "diagnosis": "The complete old side matches exactly in the current source at line 1357, with an offset of -2 from the hunk header's expected location. The only intended change is to add an `asm` field to the `parts` object initialized in `getListingParts`.",
+              "confidence": 0.99,
+              "recommendedAction": "apply_offset",
+              "summary": "Apply the hunk at the detected offset by replacing the `parts` object initializer on source line 1360 to include `asm: \"\"`.",
+              "candidate": {
+                "startLine": 1357,
+                "endLine": 1363,
+                "anchors": [
+                  {
+                    "patchText": "bytes = bytes || [];",
+                    "sourceLine": 1357,
+                    "occurrences": 1
+                  },
+                  {
+                    "patchText": "var parts = { adr: \"\", code: \"\", lin: row.lin || \"\", lbl: \"\", ins: \"\", opr: \"\", com: \"\" };",
+                    "sourceLine": 1360,
+                    "occurrences": 1
+                  },
+                  {
+                    "patchText": "parts.com = split.comment || \"\";",
+                    "sourceLine": 1362,
+                    "occurrences": 1
+                  }
+                ]
+              },
+              "preserveSourceLines": [
+                {
+                  "line": 1357,
+                  "text": "        bytes = bytes || [];",
+                  "reason": "Context line exactly matches the old side."
+                },
+                {
+                  "line": 1358,
+                  "text": "        var tag = row.tag || [];",
+                  "reason": "Context line exactly matches the old side."
+                },
+                {
+                  "line": 1359,
+                  "text": "        var sym = row.sym || [];",
+                  "reason": "Context line exactly matches the old side."
+                },
+                {
+                  "line": 1361,
+                  "text": "        var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);",
+                  "reason": "Context line exactly matches the old side."
+                },
+                {
+                  "line": 1362,
+                  "text": "        parts.com = split.comment || \"\";",
+                  "reason": "Context line exactly matches the old side."
+                }
+              ],
+              "removeSourceLines": [
+                {
+                  "line": 1360,
+                  "text": "        var parts = { adr: \"\", code: \"\", lin: row.lin || \"\", lbl: \"\", ins: \"\", opr: \"\", com: \"\" };",
+                  "reason": "This is the old initializer and should be replaced to add the new `asm` field."
+                }
+              ],
+              "addLines": [
+                {
+                  "afterLine": 1359,
+                  "text": "        var parts = { adr: \"\", code: \"\", lin: row.lin || \"\", lbl: \"\", ins: \"\", opr: \"\", asm: \"\", com: \"\" };",
+                  "reason": "Adds the requested `asm` listing part while preserving existing fields and order otherwise."
+                }
+              ],
+              "replacementText": "        var parts = { adr: \"\", code: \"\", lin: row.lin || \"\", lbl: \"\", ins: \"\", opr: \"\", asm: \"\", com: \"\" };",
+              "risks": [
+                "Low risk: this changes only the object initializer in an exactly matched hunk at an offset location.",
+                "Downstream code must understand or harmlessly ignore the new `asm` property; no evidence in this hunk shows its later use."
+              ],
+              "alternatives": [
+                {
+                  "action": "already_applied_noop",
+                  "summary": "Not appropriate because the current initializer does not yet include `asm: \"\"`."
+                },
+                {
+                  "action": "request_more_context",
+                  "summary": "Only needed if validation of downstream consumers of `parts.asm` is required."
+                }
+              ],
+              "needsMoreContext": false,
+              "requestedContext": []
+            },
+            "error": "",
+            "stale": false
+          }
+        },
+        {
+          "key": "res/ASM_core.js:5",
+          "status": "failed",
+          "diagnosticStatus": "failed",
+          "reason": "Hunk count mismatch in @@ -1372,8 +1374,18 @@ function ASM(options). Expected old/new counts 8/18, parsed 8/19.",
+          "expectedLine": 1368,
+          "matchedLine": null,
+          "parseError": "Hunk count mismatch in @@ -1372,8 +1374,18 @@ function ASM(options). Expected old/new counts 8/18, parsed 8/19.",
+          "parseErrorLine": 74,
+          "mismatches": [],
+          "proposal": null,
+          "resolution": null,
+          "ai": {
+            "response": {
+              "schemaVersion": "1.0",
+              "hunkId": "res/ASM_core.js:5",
+              "sourceFingerprint": "91d02574924aef7bdfd1fa2dbea827ccc3d9d9ceb7fe737428be801dbe7d3d6a",
+              "diagnosticStatus": "failed",
+              "diagnosis": "The hunk is malformed: its header declares old/new counts 8/18 but the parsed body is 8/19. Despite that, the old-side text is present in the supplied source window at lines 1366-1373 with no apparent local edits inside that scope.",
+              "confidence": 0.92,
+              "recommendedAction": "replace_scope",
+              "summary": "Replace source lines 1366-1373 with the parsed 19-line new-side block, correcting the malformed hunk count rather than applying the header literally.",
+              "candidate": {
+                "startLine": 1366,
+                "endLine": 1373,
+                "anchors": [
+                  {
+                    "patchText": "        var oprIndex = this.getTokenIndexByTag(tag, \"OPR\");",
+                    "sourceLine": 1366,
+                    "occurrences": 1
+                  },
+                  {
+                    "patchText": "        return parts;",
+                    "sourceLine": 1373,
+                    "occurrences": 1
+                  }
+                ]
+              },
+              "preserveSourceLines": [],
+              "removeSourceLines": [
+                {
+                  "line": 1369,
+                  "text": "        if (mneIndex >= 0) parts.ins = this.normaliseListingInstruction(row, sym[mneIndex], false);",
+                  "reason": "Replaced by braced form from patch."
+                },
+                {
+                  "line": 1370,
+                  "text": "        else if (pgmIndex >= 0) parts.ins = this.normaliseListingInstruction(row, sym[pgmIndex], true);",
+                  "reason": "Replaced by expanded pragma handling from patch."
+                }
+              ],
+              "addLines": [],
+              "replacementText": "        var oprIndex = this.getTokenIndexByTag(tag, \"OPR\");\n\n        if (lblIndex >= 0) parts.lbl = this.truncateListingLabel(sym[lblIndex]);\n        if (mneIndex >= 0) {\n            parts.ins = this.normaliseListingInstruction(row, sym[mneIndex], false);\n        }\n        else if (pgmIndex >= 0) {\n            var pragmaToken = sym[pgmIndex];\n            var pinfo = this.pragmaInfo(pragmaToken);\n            parts.ins = this.normaliseListingInstruction(row, pragmaToken, true);\n            if (pinfo && Array.isArray(pinfo.asm)) {\n                parts.asm = pinfo.asm.filter(function (assembler) {\n                    return String(assembler).toLowerCase() !== \"rajs\";\n                }).join(\",\");\n            }\n        }\n        if (oprIndex >= 0) parts.opr = sym.slice(oprIndex).join(\" \");\n\n        return parts;",
+              "risks": [
+                "The hunk header count is invalid, so automated patch tools may reject it unless the count is corrected or the scope is manually replaced.",
+                "This assumes the parsed 19-line new side is intended; no broader context was supplied to verify interactions with later listing column rendering."
+              ],
+              "alternatives": [
+                {
+                  "action": "request_more_context",
+                  "summary": "Request more context if there may be additional local changes near getListingParts not shown in the supplied window."
+                }
+              ],
+              "needsMoreContext": false,
+              "requestedContext": []
+            },
+            "error": "",
+            "stale": true
+          }
+        }
+      ]
+    },
+    {
+      "path": "index.html",
+      "error": null,
+      "hunks": [
+        {
+          "key": "index.html:1",
+          "status": "failed",
+          "diagnosticStatus": "failed",
+          "reason": "Hunk count mismatch in @@ -1055,7 +1055,7 @@. Expected old/new counts 7/7, parsed 6/6.",
+          "expectedLine": 1055,
+          "matchedLine": null,
+          "parseError": "Hunk count mismatch in @@ -1055,7 +1055,7 @@. Expected old/new counts 7/7, parsed 6/6.",
+          "parseErrorLine": 86,
+          "mismatches": [],
+          "proposal": null,
+          "resolution": null,
+          "ai": {
+            "response": {
+              "schemaVersion": "1.0",
+              "hunkId": "index.html:1",
+              "sourceFingerprint": "241cc3d2240df2837b182e03ac9cb19fd2df27241f7e99fb935d15f179cf8d5f",
+              "diagnosticStatus": "failed",
+              "diagnosis": "The hunk header declares 7 old/new lines, but the parsed body contains 6 old/new lines, so the deterministic tool rejected it. In the supplied source window, the 6-line old-side body is present at lines 1054-1059, and the intended change appears limited to replacing the input element on line 1056.",
+              "confidence": 0.9,
+              "recommendedAction": "replace_scope",
+              "summary": "Replace the LISTING Columns input line within the existing 6-line block, preserving the surrounding local HTML unchanged.",
+              "candidate": {
+                "startLine": 1054,
+                "endLine": 1059,
+                "anchors": [
+                  {
+                    "patchText": "                    LISTING<br>",
+                    "sourceLine": 1054,
+                    "occurrences": 1
+                  },
+                  {
+                    "patchText": "                      Columns <input id=\"ASM_settingsListingColumnsInput\" type=\"text\" size=22 value=\"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}\" title=\"Listing columns: address, code bytes, jump lines, label, instruction, operand, comment\" spellcheck=\"false\" style=\"font-family:monospace;font-size:11px\">",
+                    "sourceLine": 1056,
+                    "occurrences": 1
+                  }
+                ]
+              },
+              "preserveSourceLines": [
+                {
+                  "line": 1054,
+                  "text": "                    LISTING<br>",
+                  "reason": "Unchanged context for the listing settings block."
+                },
+                {
+                  "line": 1055,
+                  "text": "                    <label>",
+                  "reason": "Unchanged surrounding markup."
+                },
+                {
+                  "line": 1057,
+                  "text": "                    </label>",
+                  "reason": "Unchanged surrounding markup."
+                },
+                {
+                  "line": 1058,
+                  "text": "                  </div>",
+                  "reason": "Unchanged surrounding markup."
+                },
+                {
+                  "line": 1059,
+                  "text": "                </div>",
+                  "reason": "Unchanged surrounding markup."
+                }
+              ],
+              "removeSourceLines": [
+                {
+                  "line": 1056,
+                  "text": "                      Columns <input id=\"ASM_settingsListingColumnsInput\" type=\"text\" size=22 value=\"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}\" title=\"Listing columns: address, code bytes, jump lines, label, instruction, operand, comment\" spellcheck=\"false\" style=\"font-family:monospace;font-size:11px\">",
+                  "reason": "This is the old listing-column configuration that lacks the asm column."
+                }
+              ],
+              "addLines": [
+                {
+                  "afterLine": 1055,
+                  "text": "                      Columns <input id=\"ASM_settingsListingColumnsInput\" type=\"text\" size=28 value=\"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,asm:51,com:60}\" title=\"Listing columns: address, code bytes, jump lines, label, instruction, operand, compatible assemblers for pragmas, comment\" spellcheck=\"false\" style=\"font-family:monospace;font-size:11px\">",
+                  "reason": "Adds the asm listing column, shifts comment column to 60, widens the field, and updates the title."
+                }
+              ],
+              "replacementText": "                    LISTING<br>\n                    <label>\n                      Columns <input id=\"ASM_settingsListingColumnsInput\" type=\"text\" size=28 value=\"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,asm:51,com:60}\" title=\"Listing columns: address, code bytes, jump lines, label, instruction, operand, compatible assemblers for pragmas, comment\" spellcheck=\"false\" style=\"font-family:monospace;font-size:11px\">\n                    </label>\n                  </div>\n                </div>",
+              "risks": [
+                "The original hunk is malformed due to the header count mismatch, so apply the scoped replacement rather than the hunk verbatim.",
+                "This HTML setting may require corresponding JavaScript/CSS/listing-renderer support for an asm column elsewhere in the project; that cannot be verified from the supplied context."
+              ],
+              "alternatives": [
+                {
+                  "action": "request_more_context",
+                  "summary": "Request broader context if you need to verify that the asm column is supported by surrounding code before changing the UI default."
+                },
+                {
+                  "action": "reject_unsafe",
+                  "summary": "Reject if malformed hunks are not allowed in your integration workflow despite the localized visible replacement."
+                }
+              ],
+              "needsMoreContext": false,
+              "requestedContext": []
+            },
+            "error": "",
+            "stale": false
+          }
+        }
+      ]
+    }
+  ]
+}
