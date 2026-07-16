@@ -383,6 +383,21 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(255, 255, 255, 0.75);
   }
 
+  .appbut.greyed,
+  .appbut:disabled
+  {
+    opacity: 0.38;
+    filter: grayscale(1);
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .appbut.greyed:hover,
+  .appbut:disabled:hover
+  {
+    background: rgba(128,128,128,0.08);
+  }
+
   .appbut.skinny
   {
     display: inline-block;
