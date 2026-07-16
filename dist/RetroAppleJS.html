@@ -17643,6 +17643,7 @@ function AppleDisk2()
         ,"DSK_led" :[]
         ,"DSK_lid":[]
         ,"diskData":[null,null]
+        ,"diskName":[null,null]
         ,"hw":[{
              "track":0
             ,"phase":0
@@ -18143,6 +18144,7 @@ function AppleDisk2()
         }
 
         state.diskData[deviceN] = nibBytes;
+        this.setDiskName(deviceID, filepath);
 
         this.traceLog("setDiskData",
         {
@@ -18163,6 +18165,7 @@ function AppleDisk2()
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         this.traceFlush("getDiskData");
         var nibBytes = state.diskData[deviceN];
+        if(nibBytes==null) return null;
         var dskBytes = this.convertNib2Dsk(nibBytes);
         this.traceLog("getDiskData", 
         {
@@ -18182,6 +18185,41 @@ function AppleDisk2()
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         return state.diskData[deviceN]!=null;
     }
+
+    function normalizeDiskFileName(filepath, fallback)
+    {
+        var name = String(filepath || "")
+            .split(/[\\/]/)
+            .pop()
+            .trim();
+
+        name = name.replace(/[\x00-\x1f<>:"/\\|?*]+/g, "_");
+
+        return name || fallback || "dump.dsk";
+    }
+
+    this.setDiskName = function(deviceID, filepath)
+    {
+        if(deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        state.diskName[deviceN] = normalizeDiskFileName(filepath, "dump.dsk");
+    }
+
+    this.getDiskName = function(deviceID)
+    {
+        if(deviceID===undefined) return "dump.dsk";
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        return normalizeDiskFileName(state.diskName[deviceN], "dump.dsk");
+    }
+
+    this.downloadDisk = function(deviceID)
+    {
+        var bytes = this.getDiskData(deviceID);
+        if(bytes==null) return;
+
+        oCOM.Download(this.getDiskName(deviceID), bytes);
+    }
+
 
     // DOS 3.3 Disk sector skew constants for disk format conversions
     const SECTOR_ORDER_DOS33 = 
@@ -23628,7 +23666,7 @@ this.write = function(rel_addr,d8)
                     + "        <input type=\"file\" name=\"D1\" id=\"file_D1\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D1')\">"
                     + "      </form>"
                     
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D1'))\" id=\"dump_D1\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D1')\" id=\"dump_D1\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
 
                     + "    </div>"
 
@@ -23644,8 +23682,7 @@ this.write = function(rel_addr,d8)
                     + "      <form action=\"index.html\" id=\"f_D2\" style=\"display:inline;\">"
                     + "        <input type=\"file\" name=\"D2\" id=\"file_D2\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
                     + "      </form>"
-
-                    + "      <button class=appbut value=\"Download\" onclick=\"oCOM.Download('dump.dsk',apple2plus.hwObj().io.SLOT2obj("+slotN+").getDiskData('D2'))\" id=\"dump_D2\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+                    + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D2')\" id=\"dump_D2\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
                     + "    </div>"
 
                     + "  </div>"
