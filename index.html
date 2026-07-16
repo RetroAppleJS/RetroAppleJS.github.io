@@ -1331,15 +1331,87 @@ Label1 TXA
                 : "No assembly errors";
             }
 
-            function ASM_jsonTextSearchOffset(pattern)
+            function ASM_findJsonKeyElement(key)
             {
-              var text = ASM_currentJsonText || "";
-              var pos = text.indexOf(pattern);
-              if(pos >= 0) return pos;
-
               var mount = ASM_el("ASM_jsonMount");
-              text = mount ? (mount.textContent || "") : "";
-              return text.indexOf(pattern);
+              if(!mount) return null;
+
+              /*
+               * oCOM.JSONprettify() wraps JSON keys in .json-key spans.
+               * Prefer the real rendered key element, because the JSON may contain
+               * very large string values before "errors" (for example listingText).
+               * A text-offset * line-height estimate does not survive that case.
+               */
+              var keys = mount.querySelectorAll(".json-key,.ASM_jsonKey");
+              for(var i = 0; i < keys.length; i++)
+              {
+                var txt = String(keys[i].textContent || "").replace(/^\s+|\s+$/g,"");
+                if(txt == '"' + key + '"' || txt == "'" + key + "'" || txt == key)
+                  return keys[i];
+              }
+
+              return null;
+            }
+
+            function ASM_findJsonTextRangeForKey(key)
+            {
+              var mount = ASM_el("ASM_jsonMount");
+              if(!mount) return null;
+
+              /*
+               * Fallback for non-prettified JSON.  Find a key at the beginning of
+               * a JSON line, not a random occurrence inside listingText/comments.
+               */
+              var full = mount.textContent || ASM_currentJsonText || "";
+              var re = new RegExp("(^|\\n)\\s*[\\\"']" + key + "[\\\"']\\s*:", "m");
+              var m = re.exec(full);
+              if(!m) return null;
+
+              var targetOffset = m.index + (m[1] ? m[1].length : 0);
+              var seen = 0;
+              var walker = document.createTreeWalker(mount,NodeFilter.SHOW_TEXT,null,false);
+              var node;
+
+              while((node = walker.nextNode()))
+              {
+                var len = node.nodeValue ? node.nodeValue.length : 0;
+                if(seen + len >= targetOffset)
+                {
+                  var local = Math.max(0,targetOffset - seen);
+                  var range = document.createRange();
+                  range.setStart(node,local);
+                  range.setEnd(node,Math.min(len,local + key.length + 2));
+                  return range;
+                }
+                seen += len;
+              }
+
+              return null;
+            }
+
+            function ASM_scrollJsonTargetIntoView(target)
+            {
+              var mount = ASM_el("ASM_jsonMount");
+              if(!mount || !target) return false;
+
+              var targetRect;
+              if(typeof target.getBoundingClientRect == "function")
+                targetRect = target.getBoundingClientRect();
+              else if(typeof target.getClientRects == "function" && target.getClientRects().length)
+                targetRect = target.getClientRects()[0];
+
+              if(!targetRect) return false;
+
+              var mountRect = mount.getBoundingClientRect();
+              var lh = parseFloat(window.getComputedStyle(mount).lineHeight) || 21;
+
+              mount.scrollTop = Math.max(
+                0,
+                mount.scrollTop + (targetRect.top - mountRect.top) - (2 * lh)
+              );
+
+              mount.focus();
+              return true;
             }
 
             function ASM_scrollJsonToErrors()
@@ -1350,24 +1422,15 @@ Label1 TXA
                 var mount = ASM_el("ASM_jsonMount");
                 if(!mount) return;
 
-                var text = mount.textContent || ASM_currentJsonText || "";
-                var pos = ASM_jsonTextSearchOffset('"errors"');
-                if(pos < 0) pos = ASM_jsonTextSearchOffset("'errors'");
+                var target = ASM_findJsonKeyElement("errors") || ASM_findJsonTextRangeForKey("errors");
 
-                if(pos < 0)
+                if(!ASM_scrollJsonTargetIntoView(target))
                 {
                   mount.scrollTop = 0;
                   mount.focus();
-                  return;
                 }
-
-                var line = text.substring(0,pos).split(/\r\n|\r|\n/).length - 1;
-                var lh = parseFloat(window.getComputedStyle(mount).lineHeight) || 21;
-
-                mount.scrollTop = Math.max(0,(line * lh) - (2 * lh));
-                mount.focus();
               },0);
-            }
+            }           
 
             function ASM_jumpToErrors()
             {
