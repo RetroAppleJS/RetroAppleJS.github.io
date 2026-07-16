@@ -25,6 +25,7 @@ function AppleDisk2()
         ,"DSK_led" :[]
         ,"DSK_lid":[]
         ,"diskData":[null,null]
+        ,"diskName":[null,null]
         ,"hw":[{
              "track":0
             ,"phase":0
@@ -525,6 +526,7 @@ function AppleDisk2()
         }
 
         state.diskData[deviceN] = nibBytes;
+        this.setDiskName(deviceID, filepath);
 
         this.traceLog("setDiskData",
         {
@@ -545,6 +547,7 @@ function AppleDisk2()
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         this.traceFlush("getDiskData");
         var nibBytes = state.diskData[deviceN];
+        if(nibBytes==null) return null;
         var dskBytes = this.convertNib2Dsk(nibBytes);
         this.traceLog("getDiskData", 
         {
@@ -564,6 +567,41 @@ function AppleDisk2()
         const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
         return state.diskData[deviceN]!=null;
     }
+
+    function normalizeDiskFileName(filepath, fallback)
+    {
+        var name = String(filepath || "")
+            .split(/[\\/]/)
+            .pop()
+            .trim();
+
+        name = name.replace(/[\x00-\x1f<>:"/\\|?*]+/g, "_");
+
+        return name || fallback || "dump.dsk";
+    }
+
+    this.setDiskName = function(deviceID, filepath)
+    {
+        if(deviceID===undefined) return;
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        state.diskName[deviceN] = normalizeDiskFileName(filepath, "dump.dsk");
+    }
+
+    this.getDiskName = function(deviceID)
+    {
+        if(deviceID===undefined) return "dump.dsk";
+        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        return normalizeDiskFileName(state.diskName[deviceN], "dump.dsk");
+    }
+
+    this.downloadDisk = function(deviceID)
+    {
+        var bytes = this.getDiskData(deviceID);
+        if(bytes==null) return;
+
+        oCOM.Download(this.getDiskName(deviceID), bytes);
+    }
+
 
     // DOS 3.3 Disk sector skew constants for disk format conversions
     const SECTOR_ORDER_DOS33 = 
