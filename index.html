@@ -1149,6 +1149,10 @@ Label1 TXA
                     <div title="Send byte code to emulator" id="ASM_toEmulatorHeaderButton" class="ASM_toEmulatorButton appbut skinny"><i class="fa fa-apple-alt"></i>&nbsp;<i class="fa fa-caret-left"></i></div> | 
                     <div title="Send byte code to debugger" id="ASM_toDebuggerHeaderButton" class="ASM_toDebuggerButton appbut skinny"><i class="fa fa-caret-right"></i>&nbsp;<i class="fa fa-bug"></i></div>                    
 
+                    <button type="button" id="ASM_jumpErrorsButton" class="appbut skinny greyed" data-pane-default-act="jump2errors" title="No assembly errors" disabled>
+                      <i class="fa fa-stethoscope"></i>
+                    </button>
+
                       <!--button id="ASM_exportSymbolsButton"
                               class="ASM_paneTitleButton"
                               type="button"
@@ -1167,6 +1171,9 @@ Label1 TXA
                     <span class="ASM_paneTitleMain">
                       <span id="ASM_jsonInfo" class="ASM_paneInfo"></span>
                       <div id="ASM_copyJsonButton" class="ASM_paneTitleButton" title="Copy JSON"><i class="fa fa-copy"></i></div>
+                      <button type="button" id="ASM_closeJsonButton" class="appbut skinny" title="Hide JSON output">
+                        <i class="fa fa-times"></i>
+                      </button>
                     </span>
                   </div>
                   <div id="ASM_jsonMount" class="ASM_jsonMount dotmatrix_bck" data-placeholder="Parser output (JSON)" aria-label="Parser output (JSON)" tabindex="0"></div>
@@ -1185,6 +1192,7 @@ Label1 TXA
             var ASM_currentFileName = "sample.S";
             var ASM_currentJsonText = "";
             var ASM_currentByteCodeText = "";
+            var ASM_currentErrorCount = 0;
             var ASM_oPANE = null;
             var ASM_sourceFindReplace = null;
             var ASM_sourceHeaderWidgetManager = null;
@@ -1305,6 +1313,73 @@ Label1 TXA
               }
             }
 
+
+            function ASM_setErrorButtonState(errorCount)
+            {
+              ASM_currentErrorCount = Number(errorCount) || 0;
+
+              var btn = ASM_el("ASM_jumpErrorsButton");
+              if(!btn) return;
+
+              var hasErrors = ASM_currentErrorCount > 0;
+
+              btn.disabled = !hasErrors;
+              btn.classList.toggle("greyed",!hasErrors);
+              btn.classList.toggle("blink",hasErrors);
+              btn.title = hasErrors
+                ? "Jump to " + ASM_currentErrorCount + " assembly error(s) in JSON output"
+                : "No assembly errors";
+            }
+
+            function ASM_jsonTextSearchOffset(pattern)
+            {
+              var text = ASM_currentJsonText || "";
+              var pos = text.indexOf(pattern);
+              if(pos >= 0) return pos;
+
+              var mount = ASM_el("ASM_jsonMount");
+              text = mount ? (mount.textContent || "") : "";
+              return text.indexOf(pattern);
+            }
+
+            function ASM_scrollJsonToErrors()
+            {
+              ASM_toggleJsonPane(true);
+
+              window.setTimeout(function(){
+                var mount = ASM_el("ASM_jsonMount");
+                if(!mount) return;
+
+                var text = mount.textContent || ASM_currentJsonText || "";
+                var pos = ASM_jsonTextSearchOffset('"errors"');
+                if(pos < 0) pos = ASM_jsonTextSearchOffset("'errors'");
+
+                if(pos < 0)
+                {
+                  mount.scrollTop = 0;
+                  mount.focus();
+                  return;
+                }
+
+                var line = text.substring(0,pos).split(/\r\n|\r|\n/).length - 1;
+                var lh = parseFloat(window.getComputedStyle(mount).lineHeight) || 21;
+
+                mount.scrollTop = Math.max(0,(line * lh) - (2 * lh));
+                mount.focus();
+              },0);
+            }
+
+            function ASM_jumpToErrors()
+            {
+              if(ASM_currentErrorCount <= 0)
+              {
+                ASM_setErrorButtonState(0);
+                return;
+              }
+
+              ASM_scrollJsonToErrors();
+            }
+
             function ASM_setStatus(text, kind)
             {
               var msg = "[ASM" + (kind ? " " + kind.toUpperCase() : "") + "] " + text;
@@ -1374,6 +1449,8 @@ Label1 TXA
               ASM_setByteCodeOutput("",0);
               window.asmTokeniseJSON = null;
               window.asmCompileResult = null;
+              ASM_currentErrorCount = 0;
+              ASM_setErrorButtonState(0);
 
               if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
               if(ASM_el("ASM_jsonMount"))    ASM_el("ASM_jsonMount").replaceChildren();
@@ -1431,6 +1508,8 @@ Label1 TXA
                 var rowCount = compiled.rows && compiled.rows.length ? compiled.rows.length : 0;
                 var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
                 var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
+                ASM_currentErrorCount = errorCount;
+                ASM_setErrorButtonState(errorCount);
 
                 ASM_setByteCodeOutput(compiled.byteCodeText || "", byteCount);
                 ASM_resizeSourceListingPanes();
@@ -1453,6 +1532,8 @@ Label1 TXA
                 ASM_currentJsonText = JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2);
                 ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
                 ASM_prettifyJSON();
+                ASM_currentErrorCount = 0;
+                ASM_setErrorButtonState(0);
                 ASM_setPaneInfos("", "error");
                 ASM_setStatus("Error: " + (err && err.message ? err.message : String(err)),"bad");
                 return false;
@@ -2432,6 +2513,8 @@ Label1 TXA
               var downloadSourceButton = ASM_el("ASM_downloadSourceButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
               var copyJsonButton = ASM_el("ASM_copyJsonButton");
+              var jumpErrorsButton = ASM_el("ASM_jumpErrorsButton");
+              var closeJsonButton = ASM_el("ASM_closeJsonButton");
               var toEmulatorButtons = document.querySelectorAll(".ASM_toEmulatorButton");
               var toDebuggerButtons = document.querySelectorAll(".ASM_toDebuggerButton");
               var sourcePane = ASM_el("ASM_sourcePane");
@@ -2454,6 +2537,8 @@ Label1 TXA
               if(downloadSourceButton) downloadSourceButton.addEventListener("click",ASM_downloadSource);
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
               if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
+              if(jumpErrorsButton) jumpErrorsButton.addEventListener("click",ASM_jumpToErrors);
+              if(closeJsonButton) closeJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(false); });
               if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
               for(var i = 0; i < toEmulatorButtons.length; i++)
                 toEmulatorButtons[i].addEventListener("click",ASM_toEmulator);
