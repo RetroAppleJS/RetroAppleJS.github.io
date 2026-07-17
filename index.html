@@ -1088,9 +1088,9 @@
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
                     </div>
-                    <span style="display:inline-flex;align-items:center;gap:4px;color:#000000;font-family:arial;font-size:11px;white-space:nowrap;"
+                    <div class="appbut" style="color:black"
                           title="Start address used when byte-encoding the source pane into monitor byte code">
-                      <span style="font-weight:700;">A</span>
+                      byte encode source
                       <input id="ASM_sourceByteCodeStartInput"
                              type="text"
                              value="$6000"
@@ -1105,7 +1105,7 @@
                            tabindex="0"><i class="fa fa-scroll"></i></div>
                       <span id="ASM_sourceByteCodeRangeInfo"
                             style="color:#000000;font-family:arial;font-size:11px;padding:0px 4px;white-space:nowrap;">A$6000 L$0000</span>
-                    </span>
+                  </div>
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
                   </div>
                 </div>
@@ -1429,7 +1429,7 @@ Label1 TXA
               var btn = ASM_el("ASM_encodeSourceButton");
               if(btn)
               {
-                btn.classList.toggle("blink",!!active);
+                //btn.classList.toggle("blink",!!active);
                 btn.title = active
                   ? "Source byte-code mode is active; address/source changes refresh the byte code"
                   : "Byte encode source at this address";
