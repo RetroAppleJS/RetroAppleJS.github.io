@@ -41,10 +41,10 @@ COUT            EQU     $FDED
 CTRL_D          EQU     $04
 CR              EQU     $0D
 
-ERR_FNAME       EQU     $01
-ERR_LEN         EQU     $02
-ERR_FIN_CR      EQU     $03
-ERR_WRAP        EQU     $04
+EC_FNAM         EQU     $01
+EC_LEN          EQU     $02
+EC_FINCR        EQU     $03
+EC_WRAP         EQU     $04
 
 
 ;===============================================================================
@@ -58,7 +58,7 @@ ENTRY           JMP     START
 ; first byte is the length, followed by the filename characters.
 
 PAR_FNAME .BYTE  FNAME_END-FNAME_TXT
-FNAME_TXT .TXT   "SOURCE"
+FNAME_TXT ASC   "SOURCE"
 FNAME_END
 ; Address of the source text appended after the writer code.
 
@@ -74,91 +74,56 @@ PAR_TXT_LEN.   .WORD   TXT_END-TXT_DATA
 ; MAIN ROUTINE
 ;===============================================================================
 
-START
+START           LDA     PAR_FNAME.    ; Validate filename length.
+                BNE     FN_OK1
+                JMP     BAD_FNAM
 
-; Validate filename length.
-; DOS 3.3 filenames may contain at most 30 characters.
+FN_OK1          CMP     #31
+                BCC     FN_OK2
+                JMP     BAD_FNAM
 
-                LDA     PAR_FNAME
-                BEQ     ERR_FNAME
-
-                CMP     #31
-                BCS     ERR_FNAME
-
-; Reject an empty text buffer.
-
-                LDA     PAR_TXT_LEN
+FN_OK2          LDA     PAR_TXT_LEN.   ; Reject an empty text buffer.
                 ORA     PAR_TXT_LEN+1
-                BEQ     ERR_LEN
+                BNE     LEN_OK
+                JMP     BAD_LEN
 
-; Calculate:
-;
-;     final byte address = text start + text length - 1
-;
-; First calculate the exclusive end address.
-
-                LDA     PAR_TXT_START
+LEN_OK          LDA     PAR_TXT_START      ; Final byte address = text start + text length - 1
                 CLC
                 ADC     PAR_TXT_LEN
                 STA     LAST_FETCH+1
 
-                LDA     PAR_TXT_START+1
+                LDA     PAR_TXT_START+1    
                 ADC     PAR_TXT_LEN+1
-                BCS     ERR_WRAP
-                STA     LAST_FETCH+2
+                BCC     WRAP_OK           ; First calculate the exclusive end address.
+                JMP     BAD_WRAP
 
-
-; Convert exclusive end address to final-byte address.
-
-                LDA     LAST_FETCH+1
+WRAP_OK         STA     LAST_FETCH+2
+                LDA     LAST_FETCH+1      ; Convert exclusive end address to final-byte address.
                 BNE     LAST_ADR_L_OK
-
                 DEC     LAST_FETCH+2
-
 LAST_ADR_L_OK   DEC     LAST_FETCH+1
 
-
-; Verify that the source ends with a carriage return.
-; Either low-bit $0D or high-bit $8D is accepted.
-
-LAST_FETCH      LDA     $FFFF
+LAST_FETCH      LDA     $FFFF        ; Verify that the source ends with a carriage return.
                 AND     #$7F
                 CMP     #CR
-                BNE     ERR_FIN_CR
+                BEQ     FINCR_OK     ; Either low-bit $0D or high-bit $8D is accepted.
+                JMP     BAD_FIN
 
-
-; Send:
-;
-;     OPEN filename
-
-                LDX     #<CMD_OPEN
+FINCR_OK        LDX     #<CMD_OPEN   ;     OPEN filename
                 LDY     #>CMD_OPEN
                 JSR     SND_DOS_CMD
 
-
-; Send:
-;
-;     WRT filename
-
-                LDX     #<CMD_WRT
+                LDX     #<CMD_WRT     ;     WRT filename
                 LDY     #>CMD_WRT
                 JSR     SND_DOS_CMD
 
-
-; Initialise the self-modifying source pointer.
-
-                LDA     PAR_TXT_START
+                LDA     PAR_TXT_START   ; Initialise the self-modifying source pointer.
                 STA     DATA_FETCH+1
-
                 LDA     PAR_TXT_START+1
                 STA     DATA_FETCH+2
 
-
-; Initialise the 16-bit remaining-byte counter.
-
-                LDA     PAR_TXT_LEN
+                LDA     PAR_TXT_LEN     ; Initialise the 16-bit remaining-byte counter.
                 STA     BYTES_LEFT
-
                 LDA     PAR_TXT_LEN+1
                 STA     BYTES_LEFT+1
 
@@ -174,60 +139,40 @@ WRT_LOOP        LDA     BYTES_LEFT
 
 DATA_FETCH      LDA     $FFFF
                 JSR     PUT_CHAR
-
-
-; Advance the source pointer.
-
-                INC     DATA_FETCH+1
+                INC     DATA_FETCH+1    ; Advance the source pointer.
                 BNE     DATA_PTR_OK
-
                 INC     DATA_FETCH+2
 
-; Decrement the remaining-byte counter.
-
-DATA_PTR_OK     LDA     BYTES_LEFT
+DATA_PTR_OK     LDA     BYTES_LEFT    ; Decrement the remaining-byte counter.
                 BNE     DECREMENT_L
-
                 DEC     BYTES_LEFT+1
 
 DECREMENT_L     DEC     BYTES_LEFT
                 JMP     WRT_LOOP
 
-
-; The source buffer ends with CR, so DOS is already at the beginning
-; of a new line. Do not send another CR before Control-D CLOSE,
-; because that would add an extra blank line to the file.
-
-WRT_FIN
-                LDX     #<CMD_CLOSE
-                LDY     #>CMD_CLOSE
-                JSR     SND_DOS_CMD_AT_BOL
-
+WRT_FIN         LDX     #<CMD_CLOSE          ; The source buffer ends with CR, so DOS is already at the beginning
+                LDY     #>CMD_CLOSE          ; of a new line. Do not send another CR before Control-D CLOSE,
+                JSR     SND_DOS_CMD_AT_BOL   ; because that would add an extra blank line to the file.
                 LDA     #$00
                 CLC
                 RTS
-
 
 ;===============================================================================
 ; LOCAL VALIDATION ERRS
 ;===============================================================================
 
-ERR_FNAME       LDA     #ERR_FNAME
+BAD_FNAM        LDA     #EC_FNAM
                 SEC
                 RTS
-
-ERR_LEN         LDA     #ERR_LEN
+BAD_LEN         LDA     #EC_LEN
                 SEC
                 RTS
-
-ERR_FIN_CR      LDA     #ERR_FIN_CR
+BAD_FIN         LDA     #EC_FINCR
                 SEC
                 RTS
-
-ERR_WRAP        LDA     #ERR_WRAP
+BAD_WRAP        LDA     #EC_WRAP
                 SEC
                 RTS
-
 
 ;===============================================================================
 ; SND_DOS_CMD
@@ -248,12 +193,9 @@ ERR_WRAP        LDA     #ERR_WRAP
 
 SND_DOS_CMD     STX     CMD_FETCH+1
                 STY     CMD_FETCH+2
-
                 LDA     #CR
                 JSR     PUT_CHAR
-
                 JMP     SND_DOS_CMD_BODY
-
 
 ;===============================================================================
 ; SND_DOS_CMD_AT_BOL
@@ -268,36 +210,21 @@ SND_DOS_CMD_AT_BOL
                 STX     CMD_FETCH+1
                 STY     CMD_FETCH+2
 
-
 SND_DOS_CMD_BODY
                 LDA     #CTRL_D
                 JSR     PUT_CHAR
+                LDY     #$00      ; Send the zero-terminated DOS command prefix.
 
-
-; Send the zero-terminated DOS command prefix.
-
-                LDY     #$00
-
-CMD_CHR
-
-CMD_FETCH
-                LDA     $FFFF,Y
+CMD_FETCH       LDA     $FFFF,Y
                 BEQ     CMD_PFIX_DONE
-
                 JSR     PUT_CHAR
 
                 INY
-                BNE     CMD_CHR
+                BNE     CMD_FETCH
 
+CMD_PFIX_DONE   LDX     #$00     ; Append the filename.
 
-CMD_PFIX_DONE
-
-; Append the filename.
-
-                LDX     #$00
-
-FNAME_CHR
-                CPX     PAR_FNAME
+FNAME_CHR       CPX     PAR_FNAME
                 BEQ     DOS_CMD_FIN
 
                 LDA     FNAME_TXT,X
@@ -306,13 +233,8 @@ FNAME_CHR
                 INX
                 BNE     FNAME_CHR
 
-
-; Complete the DOS command with carriage return.
-
-DOS_CMD_FIN
-                LDA     #CR
+DOS_CMD_FIN     LDA     #CR; Complete the DOS command with carriage return.
                 JSR     PUT_CHAR
-
                 RTS
 
 
@@ -336,7 +258,6 @@ PUT_CHAR        STA     SAV_CHR
 
                 TXA
                 PHA
-
                 TYA
                 PHA
 
@@ -346,10 +267,8 @@ PUT_CHAR        STA     SAV_CHR
 
                 PLA
                 TAY
-
                 PLA
                 TAX
-
                 RTS
 
 
@@ -364,13 +283,13 @@ BYTES_LEFT      .WORD   $0000
 ; DOS CMD STRINGS
 ;===============================================================================
 
-CMD_OPEN        .TXT   "OPEN "
+CMD_OPEN        ASC   "OPEN "
                 .BYTE   $00
 
-CMD_WRT         .TXT   "WRT "
+CMD_WRT         ASC   "WRT "
                 .BYTE   $00
 
-CMD_CLOSE       .TXT   "CLOSE "
+CMD_CLOSE       ASC   "CLOSE "
                 .BYTE   $00
 
 
@@ -385,19 +304,19 @@ CMD_CLOSE       .TXT   "CLOSE "
 ;
 ;===============================================================================
 
-TXT_DATA        .TXT   "; SAMPLE APPLE II ASSEMBLY SOURCE"
+TXT_DATA        ASC   "       ; SAMPLE APPLE II ASSEMBLY SOURCE"
                 .BYTE   CR
 
-                .TXT   "        ORG $8000"
+                ASC   "        ORG $8000"
                 .BYTE   CR
 
-                .TXT   "START   LDA #$C8"
+                ASC   "START   LDA #$C8"
                 .BYTE   CR
 
-                .TXT   "        JSR $FDED"
+                ASC   "        JSR $FDED"
                 .BYTE   CR
 
-                .TXT   "        RTS"
+                ASC   "        RTS"
                 .BYTE   CR
 
 TXT_END
