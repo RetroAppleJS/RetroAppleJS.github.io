@@ -1088,6 +1088,9 @@
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
                     </div>
+                    <div id="ASM_encodeSourceButton" class="appbut mini" style="color:black" title="Byte encode source" role="button" tabindex="0">
+                      <i class="fa fa-scroll"></i>
+                    </div>
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
                   </div>
                 </div>
@@ -1267,6 +1270,187 @@ Label1 TXA
 
               ASM_updateByteCodeInfo(typeof byteCount == "number" ? byteCount : ASM_countByteCodeText(ASM_currentByteCodeText));
             }
+
+            /*
+             * Address where the ASCII source text will be placed when it is
+             * converted to Apple monitor byte-code lines.
+             *
+             * $6000 is the safe/default source-text buffer used by the TSAVE
+             * workflow.  When the debugger's "Go to PC" value has been set to
+             * a non-zero address, reuse that value so the same address control
+             * can position both debugger imports and source-text imports.
+             */
+            function ASM_sourceByteCodeOrigin()
+            {
+              var origin = 0x6000;
+
+              /*
+               * Prefer a value currently visible in a debugger start-PC field.
+               * This also accepts $0000 when the user explicitly typed it.
+               */
+              var pcInputs = document.querySelectorAll(".DBG_startPcInput");
+              for(var i = 0; i < pcInputs.length; i++)
+              {
+                var raw = String(pcInputs[i].value || "").trim();
+                if(!raw) continue;
+
+                if(typeof DBG_parseHexAddress == "function")
+                {
+                  var parsed = DBG_parseHexAddress(raw);
+                  if(parsed !== null) return parsed & 0xFFFF;
+                }
+
+                raw = raw.replace(/^\$/,"").replace(/^0x/i,"");
+                if(/^[0-9A-Fa-f]{1,4}$/.test(raw))
+                  return parseInt(raw,16) & 0xFFFF;
+              }
+
+              /*
+               * DBG_debuggerStartPC is initially zero.  Treat a later non-zero
+               * value as an address deliberately selected through "Go to PC".
+               */
+              if(typeof DBG_debuggerStartPC == "number" &&
+                 isFinite(DBG_debuggerStartPC) &&
+                 DBG_debuggerStartPC !== 0)
+                origin = DBG_debuggerStartPC & 0xFFFF;
+
+              return origin;
+            }
+
+            function ASM_sourceTextBytes(text)
+            {
+              /*
+               * Apple DOS text uses CR as its line separator.  Normalize every
+               * browser/host newline form before encoding so CRLF does not
+               * accidentally become two characters.
+               */
+              text = String(text == null ? "" : text)
+                .replace(/\r\n/g,"\n")
+                .replace(/\r/g,"\n")
+                .replace(/\n/g,"\r");
+
+              var bytes = [];
+              var replacements = 0;
+
+              for(var i = 0; i < text.length; i++)
+              {
+                var code = text.charCodeAt(i);
+
+                /*
+                 * The memory buffer intentionally contains ordinary 7-bit
+                 * ASCII.  BSAVE ...,T performs the Apple high-bit conversion.
+                 *
+                 * Replace NUL and non-ASCII UTF-16 characters with "?" rather
+                 * than truncating them to misleading byte values.
+                 */
+                if(code === 0 || code > 0x7F)
+                {
+                  code = 0x3F;
+                  replacements++;
+                }
+
+                bytes.push(code & 0x7F);
+              }
+
+              return {
+                bytes: bytes,
+                replacements: replacements
+              };
+            }
+
+            function ASM_formatSourceByteCode(bytes,origin)
+            {
+              var records = [];
+              for(var i = 0; i < bytes.length; i++)
+                records.push({pc:(origin + i) & 0xFFFF,val:bytes[i] & 0xFF});
+
+              /*
+               * Reuse ASM_core's formatter whenever possible.  It emits the
+               * same eight-byte Apple monitor lines as assembled byte code.
+               */
+              var formatter = window.oASM;
+              if((!formatter || typeof formatter.formatByteCodeLines != "function") &&
+                 typeof window.ASM == "function")
+                formatter = new ASM();
+
+              if(formatter && typeof formatter.formatByteCodeLines == "function")
+                return formatter.formatByteCodeLines(records,8).join("\n");
+
+              /*
+               * Defensive fallback for a page where ASM_core.js failed to load.
+               */
+              var lines = [];
+              for(var p = 0; p < bytes.length; p += 8)
+              {
+                var hex = [];
+                for(var j = p; j < Math.min(p + 8,bytes.length); j++)
+                  hex.push(("0" + bytes[j].toString(16).toUpperCase()).slice(-2));
+
+                lines.push(
+                  ("000" + ((origin + p) & 0xFFFF).toString(16).toUpperCase()).slice(-4)
+                  + ": "
+                  + hex.join(" ")
+                );
+              }
+              return lines.join("\n");
+            }
+
+            function ASM_byteEncodeSource()
+            {
+              var sourcePane = ASM_el("ASM_sourcePane");
+              if(!sourcePane)
+              {
+                ASM_setStatus("Source pane is not available.","bad");
+                return false;
+              }
+
+              var encoded = ASM_sourceTextBytes(sourcePane.value);
+              var bytes = encoded.bytes;
+              var origin = ASM_sourceByteCodeOrigin();
+
+              if(!bytes.length)
+              {
+                ASM_setStatus("Source pane is empty; no bytes were generated.","warn");
+                return false;
+              }
+
+              if(bytes.length > (0x10000 - origin))
+              {
+                ASM_setStatus(
+                  "Source text does not fit from $"
+                  + ("000" + origin.toString(16).toUpperCase()).slice(-4)
+                  + " through $FFFF.",
+                  "bad"
+                );
+                return false;
+              }
+
+              ASM_setByteCodeOutput(
+                ASM_formatSourceByteCode(bytes,origin),
+                bytes.length
+              );
+
+              var originHex = ("000" + origin.toString(16).toUpperCase()).slice(-4);
+              var lengthHex = ("000" + bytes.length.toString(16).toUpperCase()).slice(-4);
+              var filename = ASM_setCurrentFileName(
+                ASM_el("ASM_sourceFileNameInput")
+                  ? ASM_el("ASM_sourceFileNameInput").value
+                  : ASM_currentFileName
+              );
+
+              ASM_setStatus(
+                "Encoded " + bytes.length + " source byte(s) at $" + originHex
+                + (encoded.replacements
+                    ? "; replaced " + encoded.replacements + " non-ASCII/NUL character(s)"
+                    : "")
+                + ". Save as text with BSAVE " + filename
+                + ",A$" + originHex + ",L$" + lengthHex + ",T.",
+                encoded.replacements ? "warn" : "ok"
+              );
+
+              return true;
+            }
+
 
             function ASM_listingColumnsValue()
             {
@@ -2578,6 +2762,7 @@ Label1 TXA
               var copyJsonButton = ASM_el("ASM_copyJsonButton");
               var jumpErrorsButton = ASM_el("ASM_jumpErrorsButton");
               var closeJsonButton = ASM_el("ASM_closeJsonButton");
+              var encodeSourceButton = ASM_el("ASM_encodeSourceButton");
               var toEmulatorButtons = document.querySelectorAll(".ASM_toEmulatorButton");
               var toDebuggerButtons = document.querySelectorAll(".ASM_toDebuggerButton");
               var sourcePane = ASM_el("ASM_sourcePane");
@@ -2603,6 +2788,17 @@ Label1 TXA
               if(jumpErrorsButton) jumpErrorsButton.addEventListener("click",ASM_jumpToErrors);
               if(closeJsonButton) closeJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(false); });
               if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
+              if(encodeSourceButton)
+              {
+                encodeSourceButton.addEventListener("click",ASM_byteEncodeSource);
+                encodeSourceButton.addEventListener("keydown",function(ev){
+                  if(ev.key == "Enter" || ev.key == " ")
+                  {
+                    ev.preventDefault();
+                    ASM_byteEncodeSource();
+                  }
+                });
+              }              
               for(var i = 0; i < toEmulatorButtons.length; i++)
                 toEmulatorButtons[i].addEventListener("click",ASM_toEmulator);
 
