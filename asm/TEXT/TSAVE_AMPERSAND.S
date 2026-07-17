@@ -1,213 +1,116 @@
 ;===============================================================================
 ; &TSAVE - DOS 3.3 DIRECT-MODE TEXT SAVE COMMAND
+; Block/range-write version
 ;===============================================================================
 ;
-; Installation address:
+; Origin:
 ;
 ;       $0300
 ;
-; Install from Applesoft:
+; Install:
 ;
 ;       CALL 768
 ;
-; Then use directly from the prompt:
+; Use:
 ;
-;       &TSAVE SOURCE.S,A$615D,L$70
+;       &TSAVE SOURCE,A$615D,L$70
 ;
-; Decimal values are also accepted:
+; DOS performs the filename and A/L/S/D/V parsing before entering TSAVE.
 ;
-;       &TSAVE SOURCE.S,A24925,L112
+; This compact version occupies $0300-$03CF.  DOS page-three vectors begin
+; at $03D0.
 ;
-; Optional DOS parameters are inherited from BSAVE:
+; The command replaces the external VERIFY command with &TSAVE.
 ;
-;       &TSAVE SOURCE.S,A$615D,L$70,D2
-;       &TSAVE SOURCE.S,A$615D,L$70,S6,D1,V254
+; Staging-buffer restrictions:
 ;
-; Operation
-; ---------
-; DOS performs all command parsing before entering TSAVE:
+;   - $0200-$02FF is used as a temporary conversion buffer.
+;   - $0300-$03CF contains this command.
+;   - Do not use a source range overlapping either area.
 ;
-;       filename  -> PRIMFNBF
-;       A value   -> ADRPRSD
-;       L value   -> LENPRSD
-;       S value   -> SLOTPRSD
-;       D value   -> DRVPRSD
-;       V value   -> VOLPRSD
-;
-; TSAVE then:
-;
-;   1. verifies that A and L were supplied;
-;   2. rejects an address range that wraps beyond $FFFF;
-;   3. opens a DOS text file;
-;   4. reads exactly L bytes beginning at A;
-;   5. sets bit 7 on every character;
-;   6. appends a $00 DOS text end marker;
-;   7. closes and verifies the file.
-;
-; Input character format
-; ----------------------
-; The memory buffer may contain either:
-;
-;       7-bit ASCII:             "A" = $41, CR = $0D
-;       Apple high-bit ASCII:    "A" = $C1, CR = $8D
-;
-; ORA #$80 converts low-bit ASCII and leaves high-bit ASCII unchanged.
-;
-; Limitations inherited from DOS 3.3
-; ----------------------------------
-;   - L must be from 1 through $7FFF.
-;   - A may be from $0000 through $FFFF.
-;   - A + L must not wrap beyond $FFFF.
-;   - The external VERIFY command is replaced by &TSAVE.
-;   - DOS's internal verify routine remains available and is used by TSAVE.
-;
-; Memory limitation
-; -----------------
-; Do not save a range overlapping $0300-$03CE. TSAVE modifies its embedded
-; source pointer and byte counter while running.
-;
-; Compatibility
-; -------------
-; This code uses the standard DOS 3.3 memory layout and entry points.
-; The installer accepts either the original VERIFY name or an already
-; installed &TSAVE name.
-;
-; Assembler restrictions
-; ----------------------
-;   - No labels end in a colon.
-;   - All labels are eight characters or fewer.
+; Input bytes may be 7-bit ASCII or Apple high-bit ASCII.  ORA #$80 converts
+; 7-bit ASCII and leaves already converted bytes unchanged.
 ;
 ;===============================================================================
 
                 ORG     $0300
 
 
-;===============================================================================
-; DOS 3.3 COMMAND TABLE LOCATIONS
-;===============================================================================
+;-------------------------------------------------------------------------------
+; DOS 3.3 command tables
+;-------------------------------------------------------------------------------
 
-; VERIFY occupies six bytes at the end of the DOS command-name table.
-; It is replaced in place by the six-character command name "&TSAVE".
-
-CMDNAME         EQU     $A902
-
-; Final command-handler vector in CMDTBL.
-; DOS stores handler-address-minus-one because handlers are entered using RTS.
-
-CMDVEC          EQU     $9D54
-
-; Two command-attribute bytes belonging to VERIFY.
-
-CMDATTR         EQU     $A93F
+CMDNAME         EQU     $A902           ; VERIFY name: 6 bytes
+CMDVEC          EQU     $9D54           ; VERIFY handler vector
+CMDATTR         EQU     $A93F           ; VERIFY attributes
 
 
-;===============================================================================
-; DOS 3.3 PARSED COMMAND VALUES
-;===============================================================================
+;-------------------------------------------------------------------------------
+; DOS parsed-command values
+;-------------------------------------------------------------------------------
 
-CUMOPT          EQU     $AA65           ; Bits representing parsed options
+CUMOPT          EQU     $AA65
+LENPRSD         EQU     $AA6C
+RECPRSD         EQU     $AA6E
+ADRPRSD         EQU     $AA72
 
-LENPRSD         EQU     $AA6C           ; Parsed L value, little endian
-ADRPRSD         EQU     $AA72           ; Parsed A value, little endian
+; TSAVE does not permit an R parameter, so the parsed R field can be reused as
+; a private remaining-byte counter after parsing is complete.
 
-
-;===============================================================================
-; DOS FILE MANAGER PARAMETER FIELDS
-;===============================================================================
-
-OPCODE          EQU     $B5BB           ; File Manager operation
-SUBCODE         EQU     $B5BC           ; File Manager sub-operation
-ONEBYTE         EQU     $B5C3           ; One-byte input/output field
+BYLEFT          EQU     RECPRSD
 
 
-;===============================================================================
-; DOS 3.3 INTERNAL ENTRY POINTS
-;===============================================================================
+;-------------------------------------------------------------------------------
+; DOS input buffer and File Manager parameter fields
+;-------------------------------------------------------------------------------
 
-OPNCKT          EQU     $A3D5           ; Open file and check requested type
-FMDRIVE         EQU     $A6A8           ; Call the DOS File Manager
-CMDCLOS         EQU     $A2EA           ; DOS CLOSE command handler
-CMDVRFY         EQU     $A27D           ; Internal VERIFY handler
-SYNTERR         EQU     $A6C4           ; DOS syntax-error handler
-RNGERR          EQU     $A0C9           ; DOS range-error handler
+BUF200          EQU     $0200           ; staging buffer after parsing
+
+OPCODE          EQU     $B5BB           ; File Manager opcode
+SUBCODE         EQU     $B5BC           ; File Manager subcode
+LEN2RW          EQU     $B5C1           ; range length / length-minus-one
+CURIO           EQU     $B5C3           ; current range-buffer address
+
+
+;-------------------------------------------------------------------------------
+; DOS 3.3 entry points
+;-------------------------------------------------------------------------------
+
+OPNCKT          EQU     $A3D5           ; open file and check type
+FMDRIVE         EQU     $A6A8           ; File Manager driver
+CMDCLOS         EQU     $A2EA           ; CLOSE command handler
+SYNTERR         EQU     $A6C4           ; DOS syntax error
+RNGERR          EQU     $A0C9           ; DOS range error
 
 
 ;===============================================================================
 ; INSTALL
 ;===============================================================================
 ;
-; Entry:
+; The installer is deliberately compact so the complete extension fits below
+; the DOS vector table at $03D0.
 ;
-;       CALL 768
+; It:
 ;
-; Return:
+;   1. assigns BSAVE-compatible attributes to the command;
+;   2. redirects VERIFY's command vector to TSAVE;
+;   3. replaces the command name VERIFY with &TSAVE.
 ;
-;       Carry clear, A = $00
-;           Installation completed.
-;
-;       Carry set, A = $01
-;           The expected VERIFY or &TSAVE command-table signature was not found.
-;
-; The external VERIFY command is replaced. A DOS reboot restores the original
-; command table.
+; Repeating CALL 768 is harmless.
 ;
 ;===============================================================================
 
-INSTALL         LDA     CMDNAME          ; Original name must begin with "V".
-                CMP     #$56
-                BEQ     CHKOLD
-
-                CMP     #$26             ; Or it may already begin with "&".
-                BNE     INSTBAD
-
-                LDA     CMDNAME+5        ; Installed name ends in high-bit "E".
-                CMP     #$C5
-                BNE     INSTBAD
-                JMP     PATCH
-
-CHKOLD          LDA     CMDNAME+5        ; VERIFY ends in high-bit "Y".
-                CMP     #$D9
-                BNE     INSTBAD
-
-
-;-------------------------------------------------------------------------------
-; Give the command the same attributes as BSAVE.
-;
-; Attribute word = $7921, stored little endian:
-;
-;       filename applicable
-;       new file may be created
-;       legal in direct mode
-;       V, D, S, L and A options accepted
-;
-;-------------------------------------------------------------------------------
-
-PATCH           LDA     #$21
+INSTALL         LDA     #$21
                 STA     CMDATTR
 
                 LDA     #$79
                 STA     CMDATTR+1
-
-
-;-------------------------------------------------------------------------------
-; Patch the command-handler table.
-;
-; DOS command-handler vectors contain the handler address minus one.
-;-------------------------------------------------------------------------------
 
                 LDA     #<TSVEC
                 STA     CMDVEC
 
                 LDA     #>TSVEC
                 STA     CMDVEC+1
-
-
-;-------------------------------------------------------------------------------
-; Replace "VERIFY" with "&TSAVE".
-;
-; The final character has bit 7 set because DOS uses that bit to mark the end
-; of a command-table entry.
-;-------------------------------------------------------------------------------
 
                 LDX     #5
 
@@ -216,44 +119,23 @@ PNLOOP          LDA     NEWNAME,X
                 DEX
                 BPL     PNLOOP
 
-                LDA     #$00
-                CLC
                 RTS
 
 
-INSTBAD         LDA     #$01
-                SEC
-                RTS
+NEWNAME         .BYTE   $26,$54,$53,$41,$56,$C5
 
-
-NEWNAME         .BYTE   $26              ; &
-                .BYTE   $54              ; T
-                .BYTE   $53              ; S
-                .BYTE   $41              ; A
-                .BYTE   $56              ; V
-                .BYTE   $C5              ; E with end-of-command bit
-
-
-; DOS's handler table requires entry address minus one.
+; DOS stores command-handler addresses minus one.
 
 TSVEC           EQU     TSAVE-1
 
 
 ;===============================================================================
-; TSAVE COMMAND HANDLER
-;===============================================================================
-;
-; DOS has already parsed and validated the filename and all options before
-; entering here.
-;
+; TSAVE
 ;===============================================================================
 
 TSAVE           LDA     CUMOPT
 
-; Both A and L are mandatory:
-;
-;       bit 0 = A supplied
-;       bit 3 = L supplied
+; A and L are both mandatory.
 
                 AND     #$09
                 CMP     #$09
@@ -262,25 +144,12 @@ TSAVE           LDA     CUMOPT
                 JMP     SYNTERR
 
 
-;===============================================================================
-; VALIDATE ADDRESS RANGE
-;===============================================================================
+;-------------------------------------------------------------------------------
+; Reject a source range whose exclusive end wraps beyond $FFFF.
 ;
-; Calculate:
-;
-;       ADRPRSD + LENPRSD
-;
-; A carry from the high-byte addition means the source range wraps from $FFFF
-; into page zero. Reject that as a DOS range error.
-;
-; A range ending exactly at $10000 is also rejected. For example:
-;
-;       A$FF00,L$100
-;
-; The final byte would be $FFFF, but the exclusive end address is $10000 and
-; sets carry. A later revision could explicitly permit that boundary case.
-;
-;===============================================================================
+; As in the previous version, a range ending exactly at $10000 is also rejected.
+; DOS already restricts L to $0001-$7FFF.
+;-------------------------------------------------------------------------------
 
 PARMOK          LDA     ADRPRSD
                 CLC
@@ -293,20 +162,16 @@ PARMOK          LDA     ADRPRSD
                 JMP     RNGERR
 
 
-;===============================================================================
-; INITIALISE SOURCE POINTER AND COUNTER
-;===============================================================================
-;
-; GETBYTE is a self-modifying absolute LDA instruction.
-;
-;===============================================================================
+;-------------------------------------------------------------------------------
+; Save the source address in the self-modifying LDA and preserve the parsed
+; length in BYLEFT.
+;-------------------------------------------------------------------------------
 
 NOWRAP          LDA     ADRPRSD
                 STA     GETBYTE+1
 
                 LDA     ADRPRSD+1
                 STA     GETBYTE+2
-
 
                 LDA     LENPRSD
                 STA     BYLEFT
@@ -315,127 +180,145 @@ NOWRAP          LDA     ADRPRSD
                 STA     BYLEFT+1
 
 
-;===============================================================================
-; OPEN AS A SEQUENTIAL TEXT FILE
-;===============================================================================
+;-------------------------------------------------------------------------------
+; Open a sequential text file.
 ;
-; DOS's common OPEN handler interprets a nonzero L parameter as a random-access
-; record length. Clear LENPRSD before OPEN so DOS defaults the record length
-; to one byte.
-;
-; The original requested length is safely retained in BYLEFT.
-;
-;===============================================================================
+; A nonzero LENPRSD would make DOS treat the text file as random-access, so
+; clear the parsed length before calling the common OPEN handler.
+;-------------------------------------------------------------------------------
 
-                LDA     #$00
+                LDA     #0
                 STA     LENPRSD
                 STA     LENPRSD+1
 
-
-; File type zero is a DOS text file.
-
-                LDA     #$00
+                LDA     #0              ; DOS text-file type
                 JSR     OPNCKT
 
 
-;===============================================================================
-; PREPARE FILE MANAGER FOR WRITE-ONE-BYTE
-;===============================================================================
+;-------------------------------------------------------------------------------
+; Prepare WRITE RANGE.
 ;
-; OPCODE $04 = WRITE
-; SUBCODE $02 = write one byte
+; OPCODE  $04 = WRITE
+; SUBCODE $02 = WRITE RANGE
 ;
-; WRADRLEN in DOS itself uses this same File Manager operation.
-;
-;===============================================================================
+; For a write range DOS expects LEN2RW = number of bytes minus one.
+;-------------------------------------------------------------------------------
 
-                LDA     #$04
+                LDA     #4
                 STA     OPCODE
 
-                LDA     #$02
+                LDA     #2
                 STA     SUBCODE
 
 
 ;===============================================================================
-; WRITE SOURCE BYTES
+; CONVERT AND WRITE BLOCKS
+;===============================================================================
+;
+; Each non-final block contains 254 converted source bytes.
+;
+; The final block contains:
+;
+;       1-254 converted source bytes
+;       one terminating $00 byte
+;
+; Therefore every File Manager range is between 1 and 255 bytes.
 ;===============================================================================
 
-WRLOOP          LDA     BYLEFT
-                ORA     BYLEFT+1
-                BEQ     WRDONE
+CHUNK           LDX     #0
 
 
-; Read one byte from the self-modifying source address.
+; Read and convert one source byte.
 
 GETBYTE         LDA     $FFFF
-
-
-; Convert ordinary ASCII to Apple high-bit ASCII.
-;
-; Already converted Apple characters remain unchanged.
-
                 ORA     #$80
-                STA     ONEBYTE
-
-                JSR     FMDRIVE
+                STA     BUF200,X
 
 
-; Advance the embedded 16-bit source address.
+; Advance the embedded source address.
 
                 INC     GETBYTE+1
-                BNE     PTRDONE
+                BNE     PTRNEXT
 
                 INC     GETBYTE+2
 
 
-; Decrement the 16-bit remaining-byte count.
+; Decrement the remaining-byte counter.
 
-PTRDONE         LDA     BYLEFT
+PTRNEXT         LDA     BYLEFT
                 BNE     DECLOW
 
                 DEC     BYLEFT+1
 
 DECLOW          DEC     BYLEFT
-                JMP     WRLOOP
 
 
-;===============================================================================
-; APPEND DOS TEXT END MARKER
-;===============================================================================
-;
-; DOS text reading treats $00 as end-of-data. Appending it ensures that
-; overwriting an existing, longer text file does not expose stale trailing text.
-;
-; The $00 byte is not included in the user's L parameter.
-;
-;===============================================================================
+; If no source bytes remain, append the DOS text terminator.
 
-WRDONE          LDA     #$00
-                STA     ONEBYTE
+                LDA     BYLEFT
+                ORA     BYLEFT+1
+                BEQ     FINAL
+
+
+; Otherwise continue until 254 data bytes have been staged.
+
+                INX
+                CPX     #$FE
+                BNE     GETBYTE
+
+                JMP     WRITE
+
+
+; Append $00 after the final converted source byte.
+;
+; At entry X is the index of the final data byte.  After the two INX
+; instructions, X equals the total number of bytes to write.
+
+FINAL           INX
+                LDA     #0
+                STA     BUF200,X
+                INX
+
+
+;-------------------------------------------------------------------------------
+; Write the staged range.
+;
+; X = total range length, from 1 through 255.
+; DOS WRITE RANGE requires length minus one.
+;-------------------------------------------------------------------------------
+
+WRITE           TXA
+                SEC
+                SBC     #1
+                STA     LEN2RW
+
+                LDA     #0
+                STA     LEN2RW+1
+
+                LDA     #<BUF200
+                STA     CURIO
+
+                LDA     #>BUF200
+                STA     CURIO+1
+
                 JSR     FMDRIVE
 
 
-;===============================================================================
-; CLOSE AND VERIFY
-;===============================================================================
-;
-; CMDCLOS flushes the final data sector, updates the catalog entry and releases
-; the active DOS file buffer.
-;
-; CMDVRFY remains available internally even though its external command name
-; was replaced with &TSAVE.
-;
-; The final JMP ultimately returns through DOS's normal command-processing
-; stack, back to the Applesoft prompt.
-;
-;===============================================================================
+; More source bytes remain: prepare another block.
 
-                JSR     CMDCLOS
-                JMP     CMDVRFY
+                LDA     BYLEFT
+                ORA     BYLEFT+1
+                BNE     CHUNK
 
 
-;===============================================================================
-; LOCAL WORKING STORAGE
-;===============================================================================
+; BUF200 originally held the DOS command.  Restore its first byte to CR so
+; DOS's normal AFTRCMD/FINSHCMD path sees a completed direct-mode command.
 
-BYLEFT          .WORD   $0000
+                LDA     #$8D
+                STA     BUF200
+
+
+; Tail-call CLOSE.  Its final RTS returns to DOS's normal command-completion
+; path without adding another command-handler return address.
+
+                JMP     CMDCLOS
