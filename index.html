@@ -1424,6 +1424,28 @@ Label1 TXA
                 + ",T";
             }
 
+            function ASM_sourceByteCodePasteText(bytes,origin,filename)
+            {
+              /*
+               * Build a complete Apple II paste sequence:
+               *
+               *   CALL-151          enter the monitor
+               *   xxxx: .. ..       write the source buffer bytes
+               *   E003G             return through DOS warm-start entry
+               *   BSAVE ...,T       save the memory buffer as a DOS text file
+               *
+               * The final BSAVE line is intentionally not followed by an extra
+               * newline here.  This keeps the generated board text from
+               * auto-submitting the final command when it is copied manually.
+               */
+              return [
+                "CALL-151",
+                ASM_formatSourceByteCode(bytes,origin),
+                "E003G",
+                ASM_sourceByteCodeSaveCommand(filename,origin,bytes.length)
+              ].join("\n");
+            }
+
             function ASM_setSourceByteCodeModeUI(active)
             {
               var btn = ASM_el("ASM_encodeSourceButton");
@@ -1505,15 +1527,15 @@ Label1 TXA
                 return false;
               }
 
-              ASM_setByteCodeOutput(
-                ASM_formatSourceByteCode(bytes,origin),
-                bytes.length
-              );
-
               var filename = ASM_setCurrentFileName(
                 ASM_el("ASM_sourceFileNameInput")
                   ? ASM_el("ASM_sourceFileNameInput").value
                   : ASM_currentFileName
+              );
+
+              ASM_setByteCodeOutput(
+                ASM_sourceByteCodePasteText(bytes,origin,filename),
+                bytes.length
               );
 
               ASM_updateSourceByteCodeRangeInfo(origin,bytes.length);
@@ -2371,7 +2393,18 @@ Label1 TXA
 
               if(typeof EMUboard != "undefined" && EMUboard.boardText)
               {
-                EMUboard.boardText.value = "CALL-151\r\n" + ASM_currentByteCodeText.replace(/\n/g,"\r\n") + "\r\n";
+                var text = ASM_currentByteCodeText.replace(/\n/g,"\r\n");
+
+                /*
+                 * Normal assembled byte code still needs the monitor prefix and
+                 * a trailing return.  Source byte-code output is already a full
+                 * paste script ending with a BSAVE command, deliberately without
+                 * a trailing return after that final command.
+                 */
+                if(ASM_sourceByteCodeActive || /^\s*CALL-151(?:\r?\n|$)/i.test(ASM_currentByteCodeText))
+                  EMUboard.boardText.value = text;
+                else
+                  EMUboard.boardText.value = "CALL-151\r\n" + text + "\r\n";
                 ASM_showEmulatorTools();
                 COM_switchTab("tab1");
                 ASM_setStatus("Byte code copied to emulator paste board.","ok");
