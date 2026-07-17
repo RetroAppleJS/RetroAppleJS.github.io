@@ -27596,9 +27596,24 @@ function DASM()
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
                     </div>
-                    <div id="ASM_encodeSourceButton" class="appbut mini" style="color:black" title="Byte encode source" role="button" tabindex="0">
-                      <i class="fa fa-scroll"></i>
-                    </div>
+                    <span style="display:inline-flex;align-items:center;gap:4px;color:#000000;font-family:arial;font-size:11px;white-space:nowrap;"
+                          title="Start address used when byte-encoding the source pane into monitor byte code">
+                      <span style="font-weight:700;">A</span>
+                      <input id="ASM_sourceByteCodeStartInput"
+                             type="text"
+                             value="$6000"
+                             maxlength="6"
+                             spellcheck="false"
+                             style="width:64px;min-height:20px;font:12px/1.2 courier,monospace;text-transform:uppercase;box-sizing:border-box;">
+                      <div id="ASM_encodeSourceButton"
+                           class="appbut mini"
+                           style="color:black"
+                           title="Byte encode source at this address"
+                           role="button"
+                           tabindex="0"><i class="fa fa-scroll"></i></div>
+                      <span id="ASM_sourceByteCodeRangeInfo"
+                            style="color:#000000;font-family:arial;font-size:11px;padding:0px 4px;white-space:nowrap;">A$6000 L$0000</span>
+                    </span>
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
                   </div>
                 </div>
@@ -27704,6 +27719,7 @@ Label1 TXA
             var ASM_currentJsonText = "";
             var ASM_currentByteCodeText = "";
             var ASM_currentErrorCount = 0;
+            var ASM_sourceByteCodeActive = false;
             var ASM_oPANE = null;
             var ASM_sourceFindReplace = null;
             var ASM_sourceHeaderWidgetManager = null;
@@ -27780,50 +27796,55 @@ Label1 TXA
             }
 
             /*
-             * Address where the ASCII source text will be placed when it is
-             * converted to Apple monitor byte-code lines.
+             * Source byte-code origin.
              *
-             * $6000 is the safe/default source-text buffer used by the TSAVE
-             * workflow.  When the debugger's "Go to PC" value has been set to
-             * a non-zero address, reuse that value so the same address control
-             * can position both debugger imports and source-text imports.
+             * This deliberately belongs to the assembler toolbox instead of the
+             * debugger.  The debugger's "Go to PC" controls execution/listing
+             * position; this address controls where the source text buffer will
+             * be pasted into Apple II memory before BSAVE ...,T writes it as a
+             * DOS text file.
              */
-            function ASM_sourceByteCodeOrigin()
+            function ASM_hexWord(v)
             {
-              var origin = 0x6000;
+              if(typeof oCOM != "undefined" && oCOM && typeof oCOM.getHexWord == "function")
+                return oCOM.getHexWord(v & 0xFFFF);
+              return ("000" + ((v & 0xFFFF).toString(16).toUpperCase())).slice(-4);
+            }
 
-              /*
-               * Prefer a value currently visible in a debugger start-PC field.
-               * This also accepts $0000 when the user explicitly typed it.
-               */
-              var pcInputs = document.querySelectorAll(".DBG_startPcInput");
-              for(var i = 0; i < pcInputs.length; i++)
+            function ASM_parseHexAddress(text)
+            {
+              text = String(text == null ? "" : text).trim();
+              text = text.replace(/^\$/,"").replace(/^0x/i,"");
+              if(!/^[0-9A-Fa-f]{1,4}$/.test(text)) return null;
+
+              var value = parseInt(text,16);
+              if(isNaN(value) || value < 0 || value > 0xFFFF) return null;
+              return value & 0xFFFF;
+            }
+
+            function ASM_sourceByteCodeOrigin(reportError)
+            {
+              var input = ASM_el("ASM_sourceByteCodeStartInput");
+              var raw = input ? input.value : "$6000";
+              var origin = ASM_parseHexAddress(raw);
+
+              if(origin === null)
               {
-                var raw = String(pcInputs[i].value || "").trim();
-                if(!raw) continue;
-
-                if(typeof DBG_parseHexAddress == "function")
-                {
-                  var parsed = DBG_parseHexAddress(raw);
-                  if(parsed !== null) return parsed & 0xFFFF;
-                }
-
-                raw = raw.replace(/^\$/,"").replace(/^0x/i,"");
-                if(/^[0-9A-Fa-f]{1,4}$/.test(raw))
-                  return parseInt(raw,16) & 0xFFFF;
+                if(reportError !== false)
+                  ASM_setStatus("Invalid source byte-code start address. Use hexadecimal $0000-$FFFF.","bad");
+                return null;
               }
-
-              /*
-               * DBG_debuggerStartPC is initially zero.  Treat a later non-zero
-               * value as an address deliberately selected through "Go to PC".
-               */
-              if(typeof DBG_debuggerStartPC == "number" &&
-                 isFinite(DBG_debuggerStartPC) &&
-                 DBG_debuggerStartPC !== 0)
-                origin = DBG_debuggerStartPC & 0xFFFF;
 
               return origin;
             }
+
+            function ASM_normalizeSourceByteCodeStartInput()
+            {
+              var input = ASM_el("ASM_sourceByteCodeStartInput");
+              var origin = ASM_sourceByteCodeOrigin(false);
+              if(input && origin !== null) input.value = "$" + ASM_hexWord(origin);
+              return origin;
+            }      
 
             function ASM_sourceTextBytes(text)
             {
@@ -27903,30 +27924,89 @@ Label1 TXA
               return lines.join("\n");
             }
 
-            function ASM_byteEncodeSource()
+            function ASM_sourceByteCodeSaveCommand(filename,origin,length)
             {
+              return "BSAVE " + filename
+                + ",A$" + ASM_hexWord(origin)
+                + ",L$" + ASM_hexWord(length)
+                + ",T";
+            }
+
+            function ASM_setSourceByteCodeModeUI(active)
+            {
+              var btn = ASM_el("ASM_encodeSourceButton");
+              if(btn)
+              {
+                btn.classList.toggle("blink",!!active);
+                btn.title = active
+                  ? "Source byte-code mode is active; address/source changes refresh the byte code"
+                  : "Byte encode source at this address";
+              }
+            }
+
+            function ASM_updateSourceByteCodeRangeInfo(origin,length)
+            {
+              var info = ASM_el("ASM_sourceByteCodeRangeInfo");
+              if(!info) return;
+
+              if(origin === null)
+              {
+                info.textContent = "invalid A";
+                info.title = "Invalid start address";
+                return;
+              }
+
+              length = Number(length) || 0;
+              info.textContent = "A$" + ASM_hexWord(origin) + " L$" + ASM_hexWord(length);
+              info.title = "Use " + ASM_sourceByteCodeSaveCommand(
+                ASM_currentFileName || "source.S",
+                origin,
+                length
+              );
+            }
+
+            function ASM_renderSourceByteCode(options)
+             {
+              options = options || {};
+
               var sourcePane = ASM_el("ASM_sourcePane");
               if(!sourcePane)
               {
                 ASM_setStatus("Source pane is not available.","bad");
                 return false;
               }
+              var origin = ASM_sourceByteCodeOrigin(options.status !== false);
+              if(origin === null)
+              {
+                ASM_updateSourceByteCodeRangeInfo(null,0);
+                return false;
+              }
+
+              if(options.normalizeInput !== false)
+                ASM_normalizeSourceByteCodeStartInput();
+
 
               var encoded = ASM_sourceTextBytes(sourcePane.value);
               var bytes = encoded.bytes;
-              var origin = ASM_sourceByteCodeOrigin();
+
+              if(options.activate) ASM_sourceByteCodeActive = true;
+              ASM_setSourceByteCodeModeUI(ASM_sourceByteCodeActive);
 
               if(!bytes.length)
               {
-                ASM_setStatus("Source pane is empty; no bytes were generated.","warn");
+                ASM_setByteCodeOutput("",0);
+                ASM_updateSourceByteCodeRangeInfo(origin,0);
+                if(options.status !== false)
+                  ASM_setStatus("Source pane is empty; no bytes were generated.","warn");
                 return false;
               }
 
               if(bytes.length > (0x10000 - origin))
               {
+                ASM_updateSourceByteCodeRangeInfo(origin,bytes.length);
                 ASM_setStatus(
                   "Source text does not fit from $"
-                  + ("000" + origin.toString(16).toUpperCase()).slice(-4)
+                  + ASM_hexWord(origin)
                   + " through $FFFF.",
                   "bad"
                 );
@@ -27938,27 +28018,52 @@ Label1 TXA
                 bytes.length
               );
 
-              var originHex = ("000" + origin.toString(16).toUpperCase()).slice(-4);
-              var lengthHex = ("000" + bytes.length.toString(16).toUpperCase()).slice(-4);
               var filename = ASM_setCurrentFileName(
                 ASM_el("ASM_sourceFileNameInput")
                   ? ASM_el("ASM_sourceFileNameInput").value
                   : ASM_currentFileName
               );
 
-              ASM_setStatus(
-                "Encoded " + bytes.length + " source byte(s) at $" + originHex
-                + (encoded.replacements
-                    ? "; replaced " + encoded.replacements + " non-ASCII/NUL character(s)"
-                    : "")
-                + ". Save as text with BSAVE " + filename
-                + ",A$" + originHex + ",L$" + lengthHex + ",T.",
-                encoded.replacements ? "warn" : "ok"
-              );
+              ASM_updateSourceByteCodeRangeInfo(origin,bytes.length);
+
+              if(options.status !== false)
+              {
+                ASM_setStatus(
+                  "Encoded " + bytes.length + " source byte(s) at $" + ASM_hexWord(origin)
+                  + (encoded.replacements
+                      ? "; replaced " + encoded.replacements + " non-ASCII/NUL character(s)"
+                      : "")
+                  + ". Save as text with "
+                  + ASM_sourceByteCodeSaveCommand(filename,origin,bytes.length)
+                  + ".",
+                  encoded.replacements ? "warn" : "ok"
+                );
+              }
 
               return true;
             }
 
+
+            function ASM_byteEncodeSource()
+            {
+              return ASM_renderSourceByteCode({activate:true,status:true});
+            }
+
+            function ASM_refreshSourceByteCodeFromAddress()
+            {
+              var origin = ASM_sourceByteCodeOrigin(false);
+
+              if(!ASM_sourceByteCodeActive)
+              {
+                ASM_updateSourceByteCodeRangeInfo(origin,ASM_countByteCodeText(ASM_currentByteCodeText));
+                return origin !== null;
+              }
+
+              return ASM_renderSourceByteCode({
+                status:false,
+                normalizeInput:false
+              });
+            }
 
             function ASM_listingColumnsValue()
             {
@@ -28201,7 +28306,10 @@ Label1 TXA
             function ASM_clearOutputs(message,kind)
             {
               ASM_currentJsonText = "";
+              ASM_sourceByteCodeActive = false;
+              ASM_setSourceByteCodeModeUI(false);
               ASM_setByteCodeOutput("",0);
+              ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),0);
               window.asmTokeniseJSON = null;
               window.asmCompileResult = null;
               ASM_currentErrorCount = 0;
@@ -28266,7 +28374,10 @@ Label1 TXA
                 ASM_currentErrorCount = errorCount;
                 ASM_setErrorButtonState(errorCount);
 
+                ASM_sourceByteCodeActive = false;
+                ASM_setSourceByteCodeModeUI(false);
                 ASM_setByteCodeOutput(compiled.byteCodeText || "", byteCount);
+                ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),byteCount);                
                 ASM_resizeSourceListingPanes();
                 ASM_refreshFindReplaceOverlay();
 
@@ -29271,6 +29382,7 @@ Label1 TXA
               var jumpErrorsButton = ASM_el("ASM_jumpErrorsButton");
               var closeJsonButton = ASM_el("ASM_closeJsonButton");
               var encodeSourceButton = ASM_el("ASM_encodeSourceButton");
+              var sourceByteCodeStartInput = ASM_el("ASM_sourceByteCodeStartInput");
               var toEmulatorButtons = document.querySelectorAll(".ASM_toEmulatorButton");
               var toDebuggerButtons = document.querySelectorAll(".ASM_toDebuggerButton");
               var sourcePane = ASM_el("ASM_sourcePane");
@@ -29295,7 +29407,12 @@ Label1 TXA
               if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
               if(jumpErrorsButton) jumpErrorsButton.addEventListener("click",ASM_jumpToErrors);
               if(closeJsonButton) closeJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(false); });
-              if(boardText) boardText.addEventListener("input",ASM_syncByteCodeFromBoard);
+              if(boardText) boardText.addEventListener("input",function(){
+                ASM_sourceByteCodeActive = false;
+                ASM_setSourceByteCodeModeUI(false);
+                ASM_syncByteCodeFromBoard();
+                ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),ASM_countByteCodeText(ASM_currentByteCodeText));
+              });              
               if(encodeSourceButton)
               {
                 encodeSourceButton.addEventListener("click",ASM_byteEncodeSource);
@@ -29306,7 +29423,28 @@ Label1 TXA
                     ASM_byteEncodeSource();
                   }
                 });
-              }              
+              }   
+              
+              if(sourceByteCodeStartInput)
+              {
+                sourceByteCodeStartInput.addEventListener("input",ASM_refreshSourceByteCodeFromAddress);
+                sourceByteCodeStartInput.addEventListener("change",function(){
+                  ASM_normalizeSourceByteCodeStartInput();
+                  ASM_refreshSourceByteCodeFromAddress();
+                });
+                sourceByteCodeStartInput.addEventListener("keydown",function(ev){
+                  if(ev.key == "Enter")
+                  {
+                    ev.preventDefault();
+                    ASM_normalizeSourceByteCodeStartInput();
+                    if(!ASM_sourceByteCodeActive) ASM_byteEncodeSource();
+                    else ASM_refreshSourceByteCodeFromAddress();
+                    sourceByteCodeStartInput.blur();
+                  }
+                });
+              }
+
+
               for(var i = 0; i < toEmulatorButtons.length; i++)
                 toEmulatorButtons[i].addEventListener("click",ASM_toEmulator);
 
@@ -29318,6 +29456,8 @@ Label1 TXA
                 sourcePane.addEventListener("input",function(){
                   ASM_resizeSourceListingPanes();
                   ASM_refreshFindReplaceOverlay();
+                  if(ASM_sourceByteCodeActive)
+                    ASM_renderSourceByteCode({status:false,normalizeInput:false});
                 });
                 sourcePane.addEventListener("keydown",function(ev){
                   if((ev.ctrlKey || ev.metaKey) && ev.key == "Enter")
@@ -29356,6 +29496,7 @@ Label1 TXA
             ASM_loadManualPane();
             ASM_toggleJsonPane(false);
             ASM_clearOutputs("Sample source loaded. Click assemble to generate output.","");
+            ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),0);
             ASM_resizeSourceListingPanes();
             ASM_refreshFindReplaceOverlay();
             ASM_equalizePaneHeaders();
