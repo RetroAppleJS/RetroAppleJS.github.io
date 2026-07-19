@@ -19,6 +19,9 @@ function Apple2IO(vid)
     this.slot_ctx = {};
     this.slots = [];
 
+    // restart() installs the real empty-bus filler; live remounts reuse it.
+    var refillEmptyIOActions = function(){};
+
     // Slot I/O addresses
     const SLOT_IO =    [0x80,
                         0x90,
@@ -135,6 +138,7 @@ function Apple2IO(vid)
             if(bDebug) console.log("EMU_apple2io.js - mount(<"+pinfo.PCODE+" in "+slotN2name(slotN)+">)" );
         }
 
+        refillEmptyIOActions = installEmptyIOActions;
         installEmptyIOActions();
 
         function installEmptyIOActions()
@@ -314,43 +318,72 @@ function mergeActionMap(dst,src)
         return {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{},"BT":{},"RG":{}};
     }
 
-function update_IORANGES(sys_model)
-{
-    if(oEMU.system===undefined) return;
-    if(typeof(_CFG_IORANGES)==="undefined") return;
-
-    for(var o in _CFG_IORANGES)
+    function unmapPeripheralActions(peripheral_obj)
     {
-        if(syscode_has_model(o,sys_model))
-        {
-            oEMU.system["IORANGES"] = _CFG_IORANGES[o];
+        var ranges = peripheral_obj && peripheral_obj.mount ? peripheral_obj.mount.ranges || {} : {};
+        var actions = peripheral_obj && peripheral_obj.action ? peripheral_obj.action : {};
+        var bindings = [
+             ["HostROM","RD"]
+            ,["SlotROM","RD"]
+            ,["SlotIO","RD"]
+            ,["SlotIO","WR"]
+            ,["HostIO","RD"]
+            ,["HostIO","WR"]
+        ];
 
-            oEMU.system["IORANGES-SLOT"] = {};
-            for(var r in _CFG_IORANGES[o])
-            {
-                oEMU.system["IORANGES-SLOT"][r] =
-                    oCOM.parseRngExpr(_CFG_IORANGES[o][r],{n:3});
-            }
-            return;
+        for(var b=0;b<bindings.length;b++)
+        {
+            var rangeName = bindings[b][0];
+            var op = bindings[b][1];
+            var range = ranges[rangeName];
+            var action = actions[rangeName] && actions[rangeName][op];
+            var callback = action && action.callback;
+
+            if(!range || typeof(callback)!="function") continue;
+
+            for(var addr=range.from;addr<=range.to;addr++)
+                if(CIO.ACTION_MAP[op][addr] === callback)
+                    delete CIO.ACTION_MAP[op][addr];
         }
     }
-}
 
-function syscode_has_model(syscodes,sys_model)
-{
-    if(!syscodes || !sys_model) return false;
-
-    var needle = String(sys_model).toUpperCase();
-    var list = String(syscodes)
-        .replace(/<br\s*\/?\s*>/gi,"")
-        .split(",");
-
-    for(var i=0;i<list.length;i++)
+    function update_IORANGES(sys_model)
     {
-        if(oCOM.trim(list[i]).toUpperCase()===needle) return true;
+        if(oEMU.system===undefined) return;
+        if(typeof(_CFG_IORANGES)==="undefined") return;
+
+        for(var o in _CFG_IORANGES)
+        {
+            if(syscode_has_model(o,sys_model))
+            {
+                oEMU.system["IORANGES"] = _CFG_IORANGES[o];
+
+                oEMU.system["IORANGES-SLOT"] = {};
+                for(var r in _CFG_IORANGES[o])
+                {
+                    oEMU.system["IORANGES-SLOT"][r] =
+                        oCOM.parseRngExpr(_CFG_IORANGES[o][r],{n:3});
+                }
+                return;
+            }
+        }
     }
-    return false;
-}
+
+    function syscode_has_model(syscodes,sys_model)
+    {
+        if(!syscodes || !sys_model) return false;
+
+        var needle = String(sys_model).toUpperCase();
+        var list = String(syscodes)
+            .replace(/<br\s*\/?\s*>/gi,"")
+            .split(",");
+
+        for(var i=0;i<list.length;i++)
+        {
+            if(oCOM.trim(list[i]).toUpperCase()===needle) return true;
+        }
+        return false;
+    }
 
    var CIO = oEMU.component.IO;
 
@@ -424,15 +457,20 @@ this.write = function(rel_addr,d8)
 
     this.cycle = function() {}
 
-    this.mount = function(cinfo,peripheral_info,slotIdx,slotFit)
+    this.mount = function(cinfo,peripheral_info,slotIdx,slotFit,peripheral_obj)
     {
-        var peripheral_obj = null;
+        var remounting = peripheral_obj != null;
         var slot_info = {};
 
-        if(oEMU.system===undefined) return {"sInfo":slot_info,"pObj":peripheral_obj};
-        if(!cinfo || !peripheral_info) return {"sInfo":slot_info,"pObj":peripheral_obj};
-        if(!oEMU.system["IORANGES"]) return {"sInfo":slot_info,"pObj":peripheral_obj};
-        if(typeof(globalThis[peripheral_info.coID])!="function") return {"sInfo":slot_info,"pObj":peripheral_obj};
+        if(oEMU.system===undefined) return {"sInfo":slot_info,"pObj":null};
+        if(!cinfo || !peripheral_info) return {"sInfo":slot_info,"pObj":null};
+        if(!oEMU.system["IORANGES"]) return {"sInfo":slot_info,"pObj":null};
+        if(!remounting && typeof(globalThis[peripheral_info.coID])!="function")
+            return {"sInfo":slot_info,"pObj":null};
+
+        slotIdx = Number(slotIdx);
+        if(!Number.isInteger(slotIdx))
+            return {"sInfo":slot_info,"pObj":null};
 
         if(oEMU.system["IORANGES"] && peripheral_info)
         {
@@ -449,8 +487,9 @@ this.write = function(rel_addr,d8)
             if(bSlotROM) ranges.SlotROM = oCOM.parseRngExpr(oEMU.system.IORANGES.SlotROM,{n:slotIdx-1,base:ioBase});
             if(bHostIO)  ranges.HostIO  = oCOM.parseRngExpr(oEMU.system.IORANGES.HostIO, {n:slotIdx,base:ioBase});
 
-            // coID = container ID
-            peripheral_obj = new globalThis[peripheral_info.coID](); // freshly made object instance from the object container
+            // Reuse a live object when moving it; constructing a new one would lose device state.
+            if(remounting) unmapPeripheralActions(peripheral_obj);
+            else peripheral_obj = new globalThis[peripheral_info.coID]();
             //if(cinfo!=null)  peripheral_obj.bFirstConfig = true;
 
             if(peripheral_obj)
@@ -464,16 +503,19 @@ this.write = function(rel_addr,d8)
                 peripheral_obj.id.coID = peripheral_info.coID || peripheral_obj.constructor.name;
                 peripheral_obj.id.description = cinfo.NAME;
 
-                // Keep mount-specific metadata on the peripheral object itself.
-                //const hashKey = slotIdx + peripheralPCODE(peripheral_obj);
-                const hashKey = Math.random();
-                peripheral_obj.mount = {
-                     "slotN": slotIdx
-                    ,"slotFit": slotFit || []
-                    ,"ranges": ranges
-                    ,"hash": oCOM.crc16(new TextEncoder("utf-8").encode(hashKey))
-                    ,"source":cinfo!=null?"COM_CONFIG":"USER"
-                };
+                // Keep stable ownership metadata and dynamic mappings during a live move.
+                var oldMount = peripheral_obj.mount || {};
+                var mountHash = oldMount.hash;
+                if(mountHash===undefined)
+                    mountHash = oCOM.crc16(new TextEncoder("utf-8").encode(Math.random()));
+
+                peripheral_obj.mount = Object.assign({},oldMount,{
+                     "slotN":slotIdx
+                    ,"slotFit":slotFit || []
+                    ,"ranges":ranges
+                    ,"hash":mountHash
+                    ,"source":oldMount.source || (cinfo!=null?"COM_CONFIG":"USER")
+                });
 
                 //if(slotIdx == 7)
                 //    alert("mounted DISKII "+peripheral_obj.mount.hash)
@@ -533,6 +575,7 @@ this.write = function(rel_addr,d8)
                         ,"hash": peripheral_obj.mount.hash
                     };
                 }
+                if(remounting) refillEmptyIOActions();
             }
         }
 
@@ -942,15 +985,6 @@ this.write = function(rel_addr,d8)
         if(!p) return undefined;
         if(p.mount && p.mount.ranges && p.mount.ranges[rangeName]) return p.mount.ranges[rangeName];
         return p[rangeName]; // legacy fallback
-    }
-
-    function setPeripheralSlot(p,slotN,slotTitle)
-    {
-        if(!p) return;
-        //p.slotN = slotN;
-        if(!p.mount) p.mount = {};
-        p.mount.slotN = slotN;
-        //p.mount.slotTitle = slotTitle || slotN2name(slotN);
     }
 
     this.HASH2obj = function(HASH)
@@ -1429,9 +1463,8 @@ this.write = function(rel_addr,d8)
         var toSlotId = ctx.pointerDrag.hotTarget ? ctx.pointerDrag.hotTarget.dataset.slotId : null;
         var emui = ctx.pointerDrag.emui;
         cleanupPointerDrag();
-        if (toSlotId)
+        if (toSlotId && slotMove(ctx.slots, fromSlotId, toSlotId))
         {
-          slotMove(ctx.slots, fromSlotId, toSlotId);
           emui.slotsRender(ctx.hostId);
           console.log("Move peripheral from->to", ctx.hostId, fromSlotId, toSlotId);
           emui.onSlotMove(ctx, ev, fromSlotId, toSlotId);
@@ -1443,7 +1476,7 @@ this.write = function(rel_addr,d8)
                 !fromSlotId ||
                 !toSlotId ||
                 fromSlotId === toSlotId)
-                return;
+                return false;
 
             var from = getSlotById(slots, fromSlotId);
             var to   = getSlotById(slots, toSlotId);
@@ -1453,17 +1486,29 @@ this.write = function(rel_addr,d8)
                 from.lock ||
                 !from.peripheral ||
                 to.peripheral)
-                return;
+                return false;
 
             to.peripheral = from.peripheral;
+            var peripheral = from.peripheral;
+            var pcode = peripheralPCODE(peripheral);
+            var containers = emui.scanPeripheralContainers();
+            var pinfo = containers[pcode];
+            var cinfo = typeof(_CFG_PSLOT)!="undefined" ? _CFG_PSLOT[pcode] : null;
+            var toSlotN = slotName2n(toSlotId);
+            var mounted = emui.mount(
+                 cinfo
+                ,pinfo
+                ,toSlotN
+                ,slotR.slotFit ? slotR.slotFit[toSlotN] : []
+                ,peripheral
 
-            setPeripheralSlot(
-                to.peripheral,
-                slotName2n(toSlotId),
-                toSlotId
             );
+            if(!mounted || !mounted.pObj) return false;
 
+            for(var key in mounted.sInfo) to[key] = mounted.sInfo[key];
+            to.peripheral = mounted.pObj;
             delete from.peripheral;
+            return true;
         }
       }
 
@@ -1564,6 +1609,28 @@ this.write = function(rel_addr,d8)
         }
     }
 
+    this.slotConfig_download = function(slotN)
+    {
+        slotN = Number(slotN);
+        var slot = this.slots[slotN];
+        if(!slot) return false;
+
+        try
+        {
+            var pcode = peripheralPCODE(slot.peripheral) || "slot";
+            var slotName = slotN2name(slotN).replace("#","");
+            var fileName = (pcode+"_"+slotName).replace(/[^A-Za-z0-9_.-]/g,"_")+".json";
+            var json = JSON.stringify(slot,null,2);
+            oCOM.Download(fileName,new TextEncoder("utf-8").encode(json));
+            return true;
+        }
+        catch(e)
+        {
+            console.error("Slot JSON download failed",e);
+            return false;
+        }
+    }
+
     function slotConfigDetail_html(slot)
     {
         var peripheral = slot && slot.peripheral;
@@ -1646,7 +1713,10 @@ this.write = function(rel_addr,d8)
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
-            +"&nbsp;<i class=\"fa fa-cloud-download-alt\"></i>"
+            + "&nbsp;<button class=\"appbut skinny\" type=\"button\""
+            + " title=\"Download slot JSON\""
+            + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_download("+Number(slot.peripheral.mount.slotN)+")\">"
+            + "<i class=\"fa fa-cloud-download-alt\"></i></button>"
             + "</div>"
             
             + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
@@ -2044,11 +2114,11 @@ this.write = function(rel_addr,d8)
     this.deviceSlots = function()
     {
         var slots = ["H"];
-        if(typeof(_CFG_SLOT) == "object")
+        for(var slotID=0;slotID<8;slotID++)
         {
-            for(var i=0;i<8;i++)
-                if(_CFG_SLOT[i] && _CFG_SLOT[i].PCODE)
-                    slots.push(i);
+            var slotN = slotID2n(slotID);
+            if(this.slots[slotN] && this.slots[slotN].peripheral)
+                slots.push(slotID);
         }
         return slots;
     }
@@ -2066,9 +2136,10 @@ this.write = function(rel_addr,d8)
         for(var i=0;i<slots.length;i++)
         {
             var s = slots[i];
+            var slotN = s==="H" ? 0 : slotID2n(s);
             var pcode = s==="H"
                 ? "HostIO"
-                : (_CFG_SLOT[s] && _CFG_SLOT[s].PCODE ? _CFG_SLOT[s].PCODE : "");
+            : peripheralPCODE(this.slots[slotN] && this.slots[slotN].peripheral);
             sig.push(String(s)+":"+pcode);
         }
 
@@ -2162,7 +2233,7 @@ this.write = function(rel_addr,d8)
 
         var pcode = slotID==="H"
             ? "HostIO"
-            : (_CFG_SLOT[slotID] && _CFG_SLOT[slotID].PCODE ? _CFG_SLOT[slotID].PCODE : "");
+            : peripheralPCODE(this.slots[slotN] && this.slots[slotN].peripheral);
  
         switch(pcode)
         {
