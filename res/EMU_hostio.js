@@ -287,44 +287,32 @@ function AppleBoard()
         var modes = oApple2Video && typeof(oApple2Video.getRenderModes) == "function"
             ? oApple2Video.getRenderModes()
             : [];
-        var rows = [];
+        var labels = [];
 
         for(var m=0;m<modes.length;m++)
         {
             var mode = modes[m];
             var modeName = String(mode.name || "");
             var modeArg = JSON.stringify(modeName);
-            var controlsButton = "<button class=\"appbut mini\" type=\"button\""
+            var openControls = "event.stopPropagation();"
+                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"if(b)b.deviceControls_popup("+modeArg+");";
+
+            labels.push(
+                 "<div class=\"appbut label\""
+                +" style=\"cursor:default;white-space:nowrap;\""
+                +" title=\""+oCOM.escapeHTML(modeName)+" display\">"
+                +"<i class=\"fa fa-eye\" aria-hidden=\"true\"></i>&nbsp;"
+                +oCOM.escapeHTML(modeName)
+                +"&nbsp;<i class=\"fa fa-sliders-h\""            
                 +" title=\"Open "+oCOM.escapeHTML(modeName)+" controls\""
-                +" onclick='var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
-                +"if(b)b.deviceControls_popup("+modeArg+");'>"
-                +"<i class=\"fa fa-sliders-h\"></i>&nbsp;Open</button>";
-
-            rows.push({
-                 "name":"<div style=\"display:inline-block;white-space:nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"
-                    +oCOM.escapeHTML(modeName)
-                    +"</div>"
-                ,"ctrl":controlsButton
-            });
+                +" style=\"cursor:pointer\" onclick='"+openControls+"'></i>"
+                +"</div>"
+            );
         }
-
-        var s = '<div style="margin-top:6px;">'
-        + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-        + '<tr>'
-        + '<th style="text-align:left;padding:2px 4px;">Device</th>'
-        + '<th style="text-align:left;padding:2px 4px;">Controls</th>'
-        + '</tr>';
-
-        for(var i=0;i<rows.length;i++)
-        {
-            s += '<tr>'
-            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+rows[i].name+'</td>'
-            + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+rows[i].ctrl+'</td>'
-            + '</tr>';
-        }
-
-        s += '</table></div>';
-        return s;
+        return '<div style="display:flex;flex-wrap:wrap;align-content:flex-start;gap:2px;padding:2px;">'
+            + labels.join("")
+            + '</div>';
 
     }
 }
