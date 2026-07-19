@@ -28875,21 +28875,25 @@ Label1 TXA
               var settings = ASM_el("tab1.1");
               var tools    = ASM_el("tab1.2");
 
+              /*
+              * Keep this helper in sync with the POPUP API.
+              *
+              * Do not force settings.style.display = "none" here. The Settings
+              * button later calls oCOM.POPUP.toggle("tab1.1"), and that API only
+              * flips the element's hidden property.
+              */
               if(typeof oCOM != "undefined" && oCOM.POPUP && typeof oCOM.POPUP.off == "function")
                 oCOM.POPUP.off("tab1.1");
 
-              if(settings)
-              {
-                settings.hidden = true;
-                settings.setAttribute("hidden","");
-                settings.style.display = "none";
-              }
-
               if(tools)
               {
-                tools.hidden = false;
-                tools.removeAttribute("hidden");
-                tools.style.display = "";
+                if(typeof oCOM != "undefined" && oCOM.POPUP && typeof oCOM.POPUP.on == "function")
+                  oCOM.POPUP.on("tab1.2");
+                else
+                {
+                  tools.hidden = false;
+                  tools.removeAttribute("hidden");
+                }
               }
             }
 
