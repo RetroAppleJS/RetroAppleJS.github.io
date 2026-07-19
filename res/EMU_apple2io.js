@@ -1232,9 +1232,10 @@ this.write = function(rel_addr,d8)
       var parent = ev.currentTarget.parentElement.parentElement.parentElement;
       var periID = parent.children[0].id;
 
-      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
+      //console.log(JSON.stringify(ctx.slots));
       alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
-      alert(JSON.stringify(this.slot_cfg[ctx.hostId]));
+      
+      alert("onSlotMove checkpoint: this.slot_cfg.slotConfig["+toSlotId+"] = "+JSON.stringify(this.slot_cfg.slotConfig[ slotName2n(toSlotId) ]));
     };
 
     this.slotsRender = function(elid, cfg)
@@ -1246,15 +1247,16 @@ this.write = function(rel_addr,d8)
         this.slot_ctx[elid] = {
           hostId: elid,
           host: null,
+          slots: null,
           clickBound: false,
           pointerDrag: null
         };
       }
 
       var ctx = this.slot_ctx[elid];
-
-      if (cfg !== undefined) this.slot_cfg[elid] = cfg;
-      if (!this.slot_cfg[elid]) this.slot_cfg[elid] = [];
+      if (cfg !== undefined) ctx.slots = cfg;
+      if (!ctx.slots) ctx.slots = this.slot_cfg.slotConfig;
+  
 
       ctx.host = document.getElementById(elid);
       if (!ctx.host) return;
@@ -1392,7 +1394,7 @@ this.write = function(rel_addr,d8)
         if (!slotEl) return;
 
         var fromSlotId = slotEl.dataset.slotId;
-        var fromSlot = getSlotById(emui.slot_cfg[ctx.hostId], fromSlotId);
+        var fromSlot = getSlotById(ctx.slots, fromSlotId);
         if (!fromSlot || !fromSlot.peripheral) return;
 
         ctx.pointerDrag = {
@@ -1436,25 +1438,40 @@ this.write = function(rel_addr,d8)
         cleanupPointerDrag();
         if (toSlotId)
         {
-          slotMove(emui.slot_cfg, ctx, ev, fromSlotId, toSlotId);
+          slotMove(ctx.slots, fromSlotId, toSlotId);
           emui.slotsRender(ctx.hostId);
           console.log("Move peripheral from->to", ctx.hostId, fromSlotId, toSlotId);
           emui.onSlotMove(ctx, ev, fromSlotId, toSlotId);
         }
 
-        function slotMove(cfg, ctx, ev, fromSlotId, toSlotId)
+        function slotMove(slots, fromSlotId, toSlotId)
         {
-          if (!ctx || !fromSlotId || !toSlotId || fromSlotId === toSlotId) return;
+            if (!slots ||
+                !fromSlotId ||
+                !toSlotId ||
+                fromSlotId === toSlotId)
+                return;
 
-          var from = getSlotById(cfg[ctx.hostId], fromSlotId);
-          var to   = getSlotById(cfg[ctx.hostId], toSlotId);
-          if (!from || !to || from.lock || !from.peripheral || to.peripheral) return;
+            var from = getSlotById(slots, fromSlotId);
+            var to   = getSlotById(slots, toSlotId);
 
-          to.peripheral = from.peripheral;
-          setPeripheralSlot(to.peripheral, slotName2n(toSlotId), toSlotId);
+            if (!from ||
+                !to ||
+                from.lock ||
+                !from.peripheral ||
+                to.peripheral)
+                return;
 
-          delete from.peripheral;
-        };
+            to.peripheral = from.peripheral;
+
+            setPeripheralSlot(
+                to.peripheral,
+                slotName2n(toSlotId),
+                toSlotId
+            );
+
+            delete from.peripheral;
+        }
       }
 
       function onPointerDragCancel(ev) { if (ctx.pointerDrag && ev.pointerId == ctx.pointerDrag.pointerId) cleanupPointerDrag() }
@@ -1483,8 +1500,8 @@ this.write = function(rel_addr,d8)
           ctx.clickBound = true;
         }
       }
-
-      ctx.host.innerHTML = (this.slot_cfg[ctx.hostId] || []).map(renderSlot).join("");
+      ctx.host.innerHTML = (ctx.slots || []).map(renderSlot).join("");
+      
       wireEvents(this, ctx);
     };
 
@@ -1502,7 +1519,7 @@ this.write = function(rel_addr,d8)
 
       //oCOM.POPUP.toggle("slotConfig_popup");
 
-      console.log(JSON.stringify(this.slot_cfg[ctx.hostId]));
+      console.log(JSON.stringify(ctx.slots));
     };
 
 
@@ -1895,8 +1912,23 @@ this.write = function(rel_addr,d8)
         html += "<br><br>";
 
         var io = apple2plus.hwObj().io;
+
+        /*
+        console.assert(
+            Object.keys(io.slot_cfg).length === 1
+        );
+
+        console.assert(
+            io.slot_ctx.peripheral_slots.slots ===
+            io.slot_cfg.slotConfig
+        );
+
+        console.log(JSON.stringify(io.slot_cfg, null, 2));
+        // Contains only "slotConfig"
+        */
+
         var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
-        console.log(names);
+        
         for (var pcode in names) 
         {
             var id = names[pcode];

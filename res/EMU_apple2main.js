@@ -273,7 +273,7 @@ function EMU_init()
 
     //if(slot_count>0)
     //{
-        apple2plus.hwObj().io.slotsRender("peripheral_slots",apple2plus.hwObj().io.slot_cfg.slotConfig);
+        apple2plus.hwObj().io.slotsRender("peripheral_slots");
         apple2plus.hwObj().io.deviceBtn({"id":"devices","init":true,"default_slot":6});
     //}
 
