@@ -1261,9 +1261,8 @@ this.write = function(rel_addr,d8)
       var periID = parent.children[0].id;
 
       //console.log(JSON.stringify(ctx.slots));
-      alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
-      
-      alert("onSlotMove checkpoint: this.slots["+toSlotId+"] = "+JSON.stringify(this.slots[ slotName2n(toSlotId) ]));
+      //alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
+      //alert("onSlotMove checkpoint: this.slots["+toSlotId+"] = "+JSON.stringify(this.slots[ slotName2n(toSlotId) ]));
     };
 
     this.slotsRender = function(elid, cfg)
@@ -1713,7 +1712,7 @@ this.write = function(rel_addr,d8)
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
-            + "&nbsp;<button class=\"appbut skinny\" type=\"button\""
+            + "&nbsp;<button class=\"appbut\" type=\"button\""
             + " title=\"Download slot JSON\""
             + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_download("+Number(slot.peripheral.mount.slotN)+")\">"
             + "<i class=\"fa fa-cloud-download-alt\"></i></button>"
