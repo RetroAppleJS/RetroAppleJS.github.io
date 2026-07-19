@@ -2168,8 +2168,8 @@ this.write = function(rel_addr,d8)
                 var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
                 var board = this.PCODE2obj("A2BO")[0];
                 return ""
-                    + "<div class=toolbox id=\"device_tool_H\" style=\"overflow:auto;padding:0px\" hidden>"
-                        +"<div class='appbox' style='float:none;width:350px;max-width:80vw;overflow:auto;padding:0px'>"
+                    + "<div class=toolbox id=\"device_tool_H\" style=\"width:352px;max-width:80vw;overflow-y:auto;overflow-x:hidden;padding:0px\" hidden>"
+                        +"<div class='appbox' style='float:none;width:350px;max-width:100%;box-sizing:border-box;text-align:left;padding:2px'>"
                         +(board && typeof(board.deviceList_html)=="function" ? board.deviceList_html(model) : "")
                         +"</div>"
                     + "</div>";
