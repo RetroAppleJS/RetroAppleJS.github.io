@@ -435,9 +435,6 @@ function EMU_init()
     document.getElementById("feature_box").innerHTML += 
         "<div class=appbox  id=\"cpuDbg_popup\"     hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n"
-
-    //oEMUI.slotConfig({"id":"slotB","icon":"fa fa-cog","active":true});        // replaced by oEMUI.
-    //oEMUI.slotConfig({"id":"d_slotB","icon":"fa fa-cube","active":true});     // replaced by oEMUI.
     // all other slots are configured in EMU_apple2io.js --> this.mount()
     
 }
