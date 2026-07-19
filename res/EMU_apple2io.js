@@ -2168,18 +2168,10 @@ this.write = function(rel_addr,d8)
                 var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
                 var board = this.PCODE2obj("A2BO")[0];
                 return ""
-                    + "<div class=toolbox id=\"device_tool_H\" style=\"overflow:auto;padding:0px\" hidden>"
-                    //+ "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-                    //+ "    <div><b>HostIO ["+model+"]</b>"
-                    //+ "    <button class=appbut style=\"float:right;margin-top:0px\" onclick=\"apple2plus.hwObj().io.slotConfig_detail('BOARD')\">details</button></div>"
-                    //+ "    <div style=\"padding-top:4px\">"
-                    //+ "    <img src=res/cassette_50.png style=\"height:40px\">"
-                    +"<div class='appbox' style='float:none;width:350px;max-width:80vw;overflow:auto;padding:8px'>"
+                    + "<div class=toolbox id=\"device_tool_H\" style=\"padding:0px\" hidden>"
+                        +"<div class='appbox' style='float:none;width:350px;max-width:80vw;padding:8px'>"
                         +(board && typeof(board.deviceList_html)=="function" ? board.deviceList_html(model) : "")
-                    +"</div>"
-                    //+ "keyboard, speaker, cassette, paddles<br>and other soft-switches."
-                    //+ "    </div>"
-                    //+ "  </div>"
+                        +"</div>"
                     + "</div>";
             case "MS16K":
                 return ""

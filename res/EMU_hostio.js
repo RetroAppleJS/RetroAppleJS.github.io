@@ -239,6 +239,46 @@ function AppleBoard()
         return s;
     }
 
+    this.deviceControls_popup = function(modeName)
+    {
+        var popup_id = "hostDeviceControls_popup";
+        var popup = document.getElementById(popup_id);
+
+        if(popup == null)
+        {
+            var host = document.getElementById("feature_box") || document.body;
+            popup = document.createElement("div");
+            popup.id = popup_id;
+            popup.className = "appbox com_popup_frame";
+            popup.hidden = true;
+            popup.style.cssText = "position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0px;margin:0px";
+            host.appendChild(popup);
+        }
+
+        var controls = oApple2Video && typeof(oApple2Video.getRendererControlHTML) == "function"
+            ? oApple2Video.getRendererControlHTML(modeName)
+            : "";
+
+        if(!controls)
+            controls = "<div style=\"padding:8px\">No controls are available for this device.</div>";
+
+        var closeBtn = "<div class=\"appbut\" "
+            +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
+            +"style=\"text-align:center;float:right;\">x</div>";
+        var title = "<span>"+oCOM.escapeHTML(String(modeName || "device").toUpperCase())+" CONTROLS</span>";
+        var wasHidden = popup.hidden;
+
+        popup.innerHTML = oCOM.POPUP.title_body_html(
+             title + closeBtn
+            ,"<div style=\"padding:8px;min-width:0px;\">"+controls+"</div>"
+            ,"hostDeviceControls_body"
+            ,"com_popup_body com_scroll_xy"
+        );
+
+        // Selecting another row replaces the dialog contents without closing it.
+        if(wasHidden) oCOM.POPUP.toggle(popup_id);
+    }
+
     this.deviceList_html = function(model)
     {
 
@@ -251,19 +291,23 @@ function AppleBoard()
         for(var m=0;m<modes.length;m++)
         {
             var mode = modes[m];
-            var controls = typeof(oApple2Video.getRendererControlHTML) == "function"
-                ? oApple2Video.getRendererControlHTML(mode.name)
-                : "";
+            var modeName = String(mode.name || "");
+            var modeArg = JSON.stringify(modeName);
+            var controlsButton = "<button class=\"appbut\" type=\"button\""
+                +" title=\"Open "+oCOM.escapeHTML(modeName)+" controls\""
+                +" onclick='var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"if(b)b.deviceControls_popup("+modeArg+");'>"
+                +"<i class=\"fa fa-sliders-h\"></i>&nbsp;Open</button>";
 
             rows.push({
                  "name":"<div style=\"display:inline-block;white-space:nowrap;\"><i class=\"fa fa-eye\"></i>&nbsp;"
-                    +oCOM.escapeHTML(mode.name)
+                    +oCOM.escapeHTML(modeName)
                     +"</div>"
-                ,"ctrl":controls
+                ,"ctrl":controlsButton
             });
         }
 
-        var s = '<div style="max-height:420px;overflow:auto;margin-top:6px;">' 
+        var s = '<div style="margin-top:6px;">'
         + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
         + '<tr>'
         + '<th style="text-align:left;padding:2px 4px;">Device</th>'

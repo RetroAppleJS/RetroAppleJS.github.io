@@ -2153,6 +2153,50 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
     this.GitHubDirCache = {};
 
+    /*
+     * Use the embedded catalog only for a confirmed GitHub API rate limit.
+     *
+     * GitHub normally reports rate limits as HTTP 403/429.  A primary limit
+     * also exposes x-ratelimit-remaining: 0; a secondary limit may expose
+     * Retry-After and/or a response message mentioning the rate limit.
+     *
+     * Do not classify an otherwise unrelated 4xx/5xx response as a rate
+     * limit.  In particular, a bare HTTP 504 must remain visible as an error.
+     */
+    this.isGitHubRateLimitResponse = function(xhr)
+    {
+        if(xhr == null) return false;
+
+        var status = Number(xhr.status);
+        var remaining = "";
+        var retryAfter = "";
+
+        try
+        {
+            remaining = xhr.getResponseHeader("x-ratelimit-remaining") || "";
+            retryAfter = xhr.getResponseHeader("retry-after") || "";
+        }
+        catch(e) {}
+
+        // This header is the strongest primary-rate-limit signal, even when
+        // an intermediary has rewritten the HTTP status.
+        if(remaining == "0") return true;
+
+        // GitHub documents 403 and 429 for primary/secondary REST limits.
+        if(status != 403 && status != 429) return false;
+
+        var message = String(xhr.responseText || xhr.response || "");
+        try
+        {
+            var json = JSON.parse(message);
+            if(json && json.message) message = json.message;
+        }
+        catch(e) {}
+
+        return retryAfter != "" || /rate\s+limit/i.test(message);
+    };
+
+
     this.getSoftwareCatRows = function(arg)
     {
 
@@ -2198,8 +2242,11 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                 {
                     if(this.status != 200)
                     {
-                        if(useOfflineDir("HTTP " + this.status))
-                            return;
+                        if(disk2.isGitHubRateLimitResponse(this))
+                        {
+                            if(useOfflineDir("GitHub API rate limit (HTTP " + this.status + ")"))
+                                return;
+                        }
 
                         callback({
                             status:this.status,
@@ -2234,9 +2281,6 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     }
                     catch(e)
                     {
-                        if(useOfflineDir("JSON parse failed: " + e.message))
-                            return;
-
                         callback({
                             status:this.status,
                             message:e.message
@@ -2332,9 +2376,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     
                     head += '<tr>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+subDir[0]+oCOM.escapeHTML(rows[i].name)+subDir[1]+'</td>'
-                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].size)+'</td>'
-                    //+ '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].type)+'</td>'
-                    //+ '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(rows[i].path)+'</td>'
+                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(bDir ? "-" : rows[i].size)+'</td>'                    
                     + '</tr>';
                 }
                 head += '</table></div>';
