@@ -1646,7 +1646,9 @@ this.write = function(rel_addr,d8)
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
+            +"&nbsp;<i class=\"fa fa-cloud-download-alt\"></i>"
             + "</div>"
+            
             + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
             + "<th style='padding:4px 6px'>Space</th>"
