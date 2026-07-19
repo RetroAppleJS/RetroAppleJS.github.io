@@ -95,11 +95,11 @@ function Apple2IO(vid)
         //console.log("oEMU.component.MIO = "+JSON.stringify(oEMU.component.MIO));
 
         // create empty slot info directly in the Apple2IO-owned configuration
-        if(this.slot_cfg.slotConfig.length==0)
+        if(this.slots.length==0)
         {
-            this.slot_cfg.slotConfig = [];
+            this.slots = [];
             for(var slotN=0;slotN<slot_count+1;slotN++)
-                this.slot_cfg.slotConfig[slotN] = {"slotTitle":slotN2name(slotN)}
+                this.slots[slotN] = {"slotTitle":slotN2name(slotN)}
         }
 
         var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
@@ -119,7 +119,7 @@ function Apple2IO(vid)
             if(pinfo===undefined) continue;
 
             var cinfo = _CFG_PSLOT[pinfo.PCODE];
-            var slotObj = this.slot_cfg.slotConfig[slotN];
+            var slotObj = this.slots[slotN];
             if(slotObj===undefined) { continue; }
 
             if(slotObj.peripheral?.mount?.source == "COM_CONFIG") continue;     // avoid re-mounting pre-configured peripherals at the next restart
@@ -210,7 +210,7 @@ function Apple2IO(vid)
 /*
 Example output of a mounted peripheral:
 
-this.slot_cfg.slotConfig[3] = 
+this.slots[3] = 
 {
    "slotTitle":"PR#2",
    "peripheral":
@@ -248,15 +248,15 @@ this.slot_cfg.slotConfig[3] =
         //console.groupEnd();
 
         console.group("slot configuration overview");
-        console.table(slotConfigReport(this.slot_cfg.slotConfig));
-        //console.log("this.slot_cfg.slotConfig = "+JSON.stringify(this.slot_cfg.slotConfig));
+        console.table(slotConfigReport(this.slots));
+        //console.log("this.slots = "+JSON.stringify(this.slots));
         console.groupEnd();
 
         // restart all plugged-in and active peripherals
-        for(var slotN in this.slot_cfg.slotConfig)
+        for(var slotN in this.slots)
         {
-            if(this.slot_cfg.slotConfig[slotN].peripheral===undefined) continue;
-            var peripheral_obj = this.slot_cfg.slotConfig[slotN].peripheral;
+            if(this.slots[slotN].peripheral===undefined) continue;
+            var peripheral_obj = this.slots[slotN].peripheral;
             if(peripheral_obj.restart)
             {
                 peripheral_obj.restart();
@@ -302,11 +302,10 @@ function mergeActionMap(dst,src)
     this.PCODE2obj = function(PCODE)
     {
         var obj_arr = [];
-        var cfg = this.slot_cfg.slotConfig;
-        for(var o in cfg)
+        for(var o in this.slots)
         {
-            if(cfg[o].peripheral?.id.PCODE == PCODE)
-                obj_arr.push(cfg[o].peripheral);         // we can have multiple matches, since we do not specify slotN
+            if(this.slots[o].peripheral?.id.PCODE == PCODE)
+                obj_arr.push(this.slots[o].peripheral);         // we can have multiple matches, since we do not specify slotN
         }
         return obj_arr;
     }
@@ -959,20 +958,18 @@ this.write = function(rel_addr,d8)
 
     this.HASH2obj = function(HASH)
     {
-        var cfg = this.slot_cfg.slotConfig;
-        for(var o in cfg)
+        for(var o in this.slots)
         {
-            if(cfg[o].peripheral?.mount.hash == HASH)
-                return cfg[o].peripheral;         // we can have multiple matches, since we do not specify slotN
+            if(this.slots[o].peripheral?.mount.hash == HASH)
+                return this.slots[o].peripheral;         // we can have multiple matches, since we do not specify slotN
         }
         return null;
     }
 
     this.SLOT2obj = function(slotN)
     {
-        var cfg = this.slot_cfg.slotConfig;
-        if(cfg[slotN].peripheral===undefined) return null;
-        return cfg[slotN].peripheral;
+        if(this.slots[slotN].peripheral===undefined) return null;
+        return this.slots[slotN].peripheral;
     }
 
     this.DeviceName2obj = function(str)
@@ -1235,7 +1232,7 @@ this.write = function(rel_addr,d8)
       //console.log(JSON.stringify(ctx.slots));
       alert("Move " + ctx.hostId + " peripheral "+periID+" slot " + fromSlotId + "->" + toSlotId);
       
-      alert("onSlotMove checkpoint: this.slot_cfg.slotConfig["+toSlotId+"] = "+JSON.stringify(this.slot_cfg.slotConfig[ slotName2n(toSlotId) ]));
+      alert("onSlotMove checkpoint: this.slots["+toSlotId+"] = "+JSON.stringify(this.slots[ slotName2n(toSlotId) ]));
     };
 
     this.slotsRender = function(elid, cfg)
@@ -1255,8 +1252,7 @@ this.write = function(rel_addr,d8)
 
       var ctx = this.slot_ctx[elid];
       if (cfg !== undefined) ctx.slots = cfg;
-      if (!ctx.slots) ctx.slots = this.slot_cfg.slotConfig;
-  
+      if (!ctx.slots) ctx.slots = this.slots;
 
       ctx.host = document.getElementById(elid);
       if (!ctx.host) return;
@@ -1537,7 +1533,7 @@ this.write = function(rel_addr,d8)
     {
         var n = slotName2n(slotName)
         var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
-        var slot = this.slot_cfg.slotConfig[n] || {};
+        var slot = this.slots[n] || {};
         var html = close + slotConfigDetail_html(slot);
 
         
@@ -1913,19 +1909,20 @@ this.write = function(rel_addr,d8)
 
         var io = apple2plus.hwObj().io;
 
-        /*
         console.assert(
-            Object.keys(io.slot_cfg).length === 1
+            Array.isArray(io.slots),
+            "io.slots must be an array"
         );
 
         console.assert(
-            io.slot_ctx.peripheral_slots.slots ===
-            io.slot_cfg.slotConfig
+            io.slot_ctx.peripheral_slots.slots === io.slots,
+            "slot renderer must reference the canonical slot array"
         );
 
-        console.log(JSON.stringify(io.slot_cfg, null, 2));
-        // Contains only "slotConfig"
-        */
+        console.assert(
+            io.slots.length === slot_count + 1,
+            "unexpected number of internal slot records"
+        );
 
         var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
         
@@ -1968,24 +1965,25 @@ this.write = function(rel_addr,d8)
         oCOM.POPUP.toggle(popupId);
     };
 
-    this.slotPicker_select = function(hostId, slotTitle, pcode) {
-        var cfg = this.slot_cfg[hostId] || [];
-        var slot = cfg.find(function(s) {
-            return s.slotTitle === slotTitle;
-        });
-
+    this.slotPicker_select = function(hostId, slotTitle, pcode)
+    {
+        var ctx = this.slot_ctx[hostId];
+        var slots = ctx && Array.isArray(ctx.slots) ? ctx.slots : this.slots;
+        var slot = slots.find(function(s) { return s.slotTitle === slotTitle; });
         if (!slot || slot.lock || slot.peripheral) return;
 
         var io = oEMU.component.IO.self;
         var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
         var id = names[pcode];
-        var cinfo = (typeof(_CFG_PSLOT)!="undefined" && _CFG_PSLOT[pcode]) ? _CFG_PSLOT[pcode] : null;
 
+        var cinfo = typeof(_CFG_PSLOT) !== "undefined" && _CFG_PSLOT[pcode] ? _CFG_PSLOT[pcode] : null;
         if (!id || !cinfo) return;
 
         var slotN = slotName2n(slotTitle);
-        var o = io.mount(cinfo,id,slotN,slotR.slotFit ? slotR.slotFit[slotN] : []);
-        for(var so in o.sInfo) slot[so] = o.sInfo[so];
+        var o = io.mount( cinfo, id, slotN, slotR.slotFit ? slotR.slotFit[slotN] : [] );
+        if (!o || !o.pObj) return;
+
+        for (var so in o.sInfo) slot[so] = o.sInfo[so];
         slot.peripheral = o.pObj;
 
         oCOM.POPUP.toggle("slotConfig_popup");
