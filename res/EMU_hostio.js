@@ -242,18 +242,21 @@ function AppleBoard()
     this.deviceControls_popup = function(modeName)
     {
         var popup_id = "hostDeviceControls_popup";
+        var host = document.getElementById("tab1.2") || document.body;
         var popup = document.getElementById(popup_id);
 
         if(popup == null)
         {
-            var host = document.getElementById("feature_box") || document.body;
             popup = document.createElement("div");
             popup.id = popup_id;
             popup.className = "appbox com_popup_frame";
             popup.hidden = true;
             popup.style.cssText = "position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0px;margin:0px";
-            host.appendChild(popup);
         }
+
+        // The controls dialog belongs to the Tools panel, not Settings.
+        if(popup.parentNode !== host)
+            host.appendChild(popup);
 
         var controls = oApple2Video && typeof(oApple2Video.getRendererControlHTML) == "function"
             ? oApple2Video.getRendererControlHTML(modeName)
@@ -281,8 +284,6 @@ function AppleBoard()
 
     this.deviceList_html = function(model)
     {
-
- 
         var modes = oApple2Video && typeof(oApple2Video.getRenderModes) == "function"
             ? oApple2Video.getRenderModes()
             : [];
@@ -293,7 +294,7 @@ function AppleBoard()
             var mode = modes[m];
             var modeName = String(mode.name || "");
             var modeArg = JSON.stringify(modeName);
-            var controlsButton = "<button class=\"appbut\" type=\"button\""
+            var controlsButton = "<button class=\"appbut mini\" type=\"button\""
                 +" title=\"Open "+oCOM.escapeHTML(modeName)+" controls\""
                 +" onclick='var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
                 +"if(b)b.deviceControls_popup("+modeArg+");'>"
