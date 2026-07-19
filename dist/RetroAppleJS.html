@@ -21477,6 +21477,7 @@ function AppleBoard()
     this.deviceControls_popup = function(modeName)
     {
         var popup_id = "hostDeviceControls_popup";
+        modeName = String(modeName || "");
         var host = document.getElementById("tab1.2") || document.body;
         var popup = document.getElementById(popup_id);
 
@@ -21493,6 +21494,16 @@ function AppleBoard()
         if(popup.parentNode !== host)
             host.appendChild(popup);
 
+        var currentMode = popup.getAttribute("data-mode") || "";
+
+        // Clicking the sliders icon for the currently open device closes it.
+        // Selecting another device keeps the popup open and replaces its body.
+        if(!popup.hidden && currentMode === modeName)
+        {
+            oCOM.POPUP.toggle(popup_id);
+            return;
+        }
+
         var controls = oApple2Video && typeof(oApple2Video.getRendererControlHTML) == "function"
             ? oApple2Video.getRendererControlHTML(modeName)
             : "";
@@ -21503,9 +21514,10 @@ function AppleBoard()
         var closeBtn = "<div class=\"appbut\" "
             +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
             +"style=\"text-align:center;float:right;\">x</div>";
-        var title = "<span>"+oCOM.escapeHTML(String(modeName || "device").toUpperCase())+" CONTROLS</span>";
+        var title = "<span>"+oCOM.escapeHTML((modeName || "device").toUpperCase())+" CONTROLS</span>";
         var wasHidden = popup.hidden;
 
+        popup.setAttribute("data-mode",modeName);
         popup.innerHTML = oCOM.POPUP.title_body_html(
              title + closeBtn
             ,"<div style=\"padding:8px;min-width:0px;\">"+controls+"</div>"
