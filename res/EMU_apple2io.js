@@ -457,6 +457,30 @@ this.write = function(rel_addr,d8)
 
     this.cycle = function() {}
 
+    this.unmount = function(slotN)
+    {
+        slotN = Number(slotN);
+        var slot = this.slots[slotN];
+
+        if(!Number.isInteger(slotN) || !slot || slot.lock || !slot.peripheral)
+            return false;
+
+        var peripheral_obj = slot.peripheral;
+
+        unmapPeripheralActions(peripheral_obj);
+
+        if(this.MEMORY_MAP && typeof(this.MEMORY_MAP.unmount)=="function")
+            this.MEMORY_MAP.unmount(peripheral_obj);
+
+        delete slot.peripheral;
+        refillEmptyIOActions();
+
+        if(bDebug)
+            console.log("EMU_apple2io.js - unmount(<"+peripheralPCODE(peripheral_obj)+" from "+slotN2name(slotN)+">)");
+
+        return true;
+    }
+
     this.mount = function(cinfo,peripheral_info,slotIdx,slotFit,peripheral_obj)
     {
         var remounting = peripheral_obj != null;
@@ -749,6 +773,43 @@ this.write = function(rel_addr,d8)
             return hash === undefined
                 ? []
                 : this.evidence[hash] || [];
+        },
+
+        unmount: function(owner)
+        {
+            var hw = typeof(apple2plus)=="object" && apple2plus
+                ? apple2plus.hwObj()
+                : null;
+
+            if(!owner || !owner.mount || !hw || !hw.RD || !hw.WR || !hw.default_map)
+                return false;
+
+            var hash = owner.mount.hash;
+            var mappings = Array.isArray(owner.mount.mappings)
+                ? owner.mount.mappings
+                : (this.evidence[hash] || []);
+
+            for(var i=0;i<mappings.length;i++)
+            {
+                var mapping = mappings[i] || {};
+                var op = String(mapping.op || "").toUpperCase();
+                var from = Number(mapping.from);
+                var to = Number(mapping.to);
+
+                if((op!="RD" && op!="WR") || !Number.isFinite(from) || !Number.isFinite(to))
+                    continue;
+
+                for(var address=from;address<=to;address+=0x1000)
+                {
+                    var line = hw.lineDecode(address);
+                    hw[op][line] = hw.default_map[op][line];
+                }
+            }
+
+            delete this.evidence[hash];
+            delete this.rules[peripheralPCODE(owner)+":"+hash];
+            owner.mount.mappings = [];
+            return true;
         }
     };
 
@@ -1630,6 +1691,95 @@ this.write = function(rel_addr,d8)
         }
     }
 
+    this.slotConfig_eject = function(slotN)
+    {
+        slotN = Number(slotN);
+        var slot = this.slots[slotN];
+
+        if(!Number.isInteger(slotN) || !slot || slot.lock || !slot.peripheral)
+            return false;
+
+        var previous = document.getElementById("slotConfig_eject_confirm");
+        if(previous) previous.remove();
+
+        var io = this;
+        var peripheral = slot.peripheral;
+        var dialog = document.createElement("dialog");
+        dialog.id = "slotConfig_eject_confirm";
+        dialog.className = "appbox";
+        dialog.style.cssText = "max-width:360px;text-align:left;padding:12px";
+
+        var question = document.createElement("div");
+        question.style.marginBottom = "12px";
+        question.textContent = "Eject "
+            + peripheralPCODE(peripheral)
+            + " from "
+            + slotN2name(slotN)
+            + "?";
+
+        var note = document.createElement("div");
+        note.style.cssText = "font-size:11px;margin-bottom:12px";
+        note.textContent = "The peripheral and its active I/O mappings will be removed.";
+
+        var buttons = document.createElement("div");
+        buttons.style.textAlign = "right";
+
+        var noButton = document.createElement("button");
+        noButton.type = "button";
+        noButton.className = "appbut";
+        noButton.textContent = "No";
+
+        var yesButton = document.createElement("button");
+        yesButton.type = "button";
+        yesButton.className = "appbut";
+        yesButton.textContent = "Yes";
+
+        function eraseDialog()
+        {
+            if(dialog.open && typeof(dialog.close)=="function")
+                dialog.close();
+            dialog.remove();
+        }
+
+        noButton.onclick = eraseDialog;
+        dialog.addEventListener("cancel",function(ev)
+        {
+            ev.preventDefault();
+            eraseDialog();
+        });
+
+        yesButton.onclick = function()
+        {
+            var removed = io.unmount(slotN);
+            eraseDialog();
+            if(!removed) return;
+
+            var detail = document.getElementById("slotConfig_popup");
+            if(detail)
+            {
+                detail.innerHTML = "";
+                oCOM.POPUP.off("slotConfig_popup");
+            }
+
+            for(var hostId in io.slot_ctx)
+                io.slotsRender(hostId);
+
+            if(typeof(io.refreshDeviceToolboxes)=="function")
+                io.refreshDeviceToolboxes({"id":"devices"});
+        };
+
+        buttons.appendChild(noButton);
+        buttons.appendChild(yesButton);
+        dialog.appendChild(question);
+        dialog.appendChild(note);
+        dialog.appendChild(buttons);
+        document.body.appendChild(dialog);
+
+        if(typeof(dialog.showModal)=="function") dialog.showModal();
+        else dialog.setAttribute("open","");
+        return true;
+    }
+
     function slotConfigDetail_html(slot)
     {
         var peripheral = slot && slot.peripheral;
@@ -1708,14 +1858,25 @@ this.write = function(rel_addr,d8)
         for(var r=0;r<rows.length;r++) body += mappingRow_html(rows[r],headerID);
         if(!body) body = "<tr><td colspan='3' style='padding:8px'>No mappings registered.</td></tr>";
 
+        var slotN = Number(peripheral.mount.slotN);
+        var ejectButton = "<button class=\"appbut\" type=\"button\""
+            + (slot.lock
+                ? " disabled title=\"This peripheral is locked\""
+                : " title=\"Eject peripheral\""
+                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_eject("+slotN+")\"")
+            + ">"
+            + "<i class=\"fa fa-eject\"></i>"
+            + "</button>";
+
         return "<div class='appbox' style='float:none;width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
             + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
             + "&nbsp;<button class=\"appbut\" type=\"button\""
             + " title=\"Download slot JSON\""
-            + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_download("+Number(slot.peripheral.mount.slotN)+")\">"
+            + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_download("+slotN+")\">"
             + "<i class=\"fa fa-cloud-download-alt\"></i></button>"
+            + "&nbsp;"+ejectButton
             + "</div>"
             
             + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
