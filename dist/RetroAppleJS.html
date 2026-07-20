@@ -21591,6 +21591,36 @@ function AppleBoard()
             : [];
         var labels = [];
 
+        function deviceIconClass(deviceCode,icon)
+        {
+            var fallback = {
+                 "A2KBD":"fa fa-keyboard"
+                ,"A2SPK":"fa fa-volume-up"
+            };
+
+            var cls = String(icon || fallback[deviceCode] || "fa fa-microchip").trim();
+
+            // Accept either "fa-keyboard" or "fa fa-keyboard" in device metadata.
+            if(cls.indexOf("fa-") < 0)
+                cls = "fa-" + cls;
+
+            if(!/(^|\s)fa(s|r|l|d|b)?(\s|$)/.test(cls))
+                cls = "fa " + cls;
+
+            /*
+             * FontAwesome Free 5 exposes solid icons through .fas.  Keep legacy
+             * .fa metadata working, but add .fas so host-device labels render
+             * reliably when the class came from device.id.icon.
+             */
+            if(!/(^|\s)fas(\s|$)/.test(cls))
+                cls += " fas";
+
+            if(!/(^|\s)fa-fw(\s|$)/.test(cls))
+                cls += " fa-fw";
+
+            return cls;
+        }
+
         // List actual attached child-device instances, not merely deviceConfig entries.
         for(var d=0;d<devices.length;d++)
         {
@@ -21605,7 +21635,8 @@ function AppleBoard()
                 "device"
             );
             var description = String(id.description || deviceCode);
-            var icon = String(id.icon || "fa fa-microchip");
+            var iconClass = deviceIconClass(deviceCode,id.icon);
+
             var range = device.attach && device.attach.range
                 ? String(device.attach.range)
                 : "";
@@ -21616,7 +21647,7 @@ function AppleBoard()
                 +" data-dcode=\""+oCOM.escapeHTML(deviceCode)+"\""
                 +" style=\"cursor:default;white-space:nowrap;\""
                 +" title=\""+oCOM.escapeHTML(title)+"\">"
-                +"<i class=\""+oCOM.escapeHTML(icon)+"\" aria-hidden=\"true\"></i>&nbsp;"
+                +"<i class=\""+iconClass+"\" aria-hidden=\"true\"></i>&nbsp;"
                 +oCOM.escapeHTML(deviceCode)
                 +"</div>"
             );
