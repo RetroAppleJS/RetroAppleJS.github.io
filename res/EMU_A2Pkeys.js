@@ -50,8 +50,8 @@ function A2Pkeys()
         return this.active;
     }
 
-    // Attached-device frame hook. Keyboard capture does not run per CPU cycle.
-    this.frame = function()
+    // Attached-device cycle hook. Keyboard capture is refreshed once per processing cycle.
+    this.cycle = function()
     {
         if(typeof(window)=="undefined") return;
         var handler = this.isActive() ? this.keypress_handler : null;
@@ -603,6 +603,7 @@ padding: 0;
 
     this.events = function(arg)
     {
+        var keyboard = this;
         if(this.events_data.metabits[0]==null && arg.getModifierState)     // init metabits (in case program starts while control is pressed or capslock active)
         {
             this.events_data.metabits[0] = 0;
@@ -630,7 +631,7 @@ padding: 0;
             case "keycap_click":
                 return function(t)
                 {
-                    var _this  = oEMU.component.Keyboard;
+                    var _this  = keyboard;
                     var Hash16 = _this.getKeyHash16(_this.getKeyContent(t));
                     var lookup = _this.events_data.HTMLmap_A2_US[Hash16];
                     if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")");

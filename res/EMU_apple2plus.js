@@ -113,7 +113,7 @@ function Apple2Plus(context)
             video.cycle();
             cpu.cycle();
             //snd.cycle(n);
-            hw.io.cycle(n);
+            hw.io.tick(n);
         }
         // TODO optimise speed!!!!!!!
         var debug = oEMU.component.CPU.Apple2Debug;
@@ -126,7 +126,7 @@ function Apple2Plus(context)
             debug.cycle({"cpu":cpu});
 
         //snd.play();
-        hw.io.frame();
+        hw.io.cycle();
         //keys.cycle(this);
 
         // display dashboard parameters

@@ -514,23 +514,14 @@ this.write = function(rel_addr,d8)
     return 0x00;
 }
 
-    this.cycle = function(n)
+    // CPU-tick hook for devices that need sub-cycle sampling, such as the speaker.
+    this.tick = function(n)
     {
         for(var key in this.attachments)
         {
             var device = this.attachments[key].device;
-            if(device && typeof(device.cycle)=="function")
+            if(device && typeof(device.tick)=="function")
                 device.cycle(n);
-        }
-    }
-
-    this.frame = function()
-    {
-        for(var key in this.attachments)
-        {
-            var device = this.attachments[key].device;
-            if(device && typeof(device.frame)=="function")
-                device.frame();
         }
     }
 

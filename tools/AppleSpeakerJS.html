@@ -163,12 +163,13 @@ function appleInterval()
     applespeaker.toggle(n);
     while (n-- > 0)
     {
-        applespeaker.cycle(n); 
+        applespeaker.tick(n);
         if(wavecnt % toggle_freq == 0) applespeaker.toggle(n);
         wavecnt = wavecnt == (toggle_freq-1) ? 0 : wavecnt + 1;
         
     }
 
+    applespeaker.cycle();
     
     for(var i=applespeaker.buffer.length-1;i>=applespeaker.buffer.length-40;i--)
     {

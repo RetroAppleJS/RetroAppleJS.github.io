@@ -162,7 +162,7 @@ function AppleSpeaker()
         }
     };
 
-    this.cycle = function(n)
+    this.tick = function(n)
     {
         var m = n % this.tickCycle;
 
@@ -203,7 +203,7 @@ function AppleSpeaker()
         state ^= 1;
     };
 
-    this.frame = function()
+    this.cycle = function()
     {
         if(!this.enabled || !this.audio || !this.gain) return;
         
@@ -289,7 +289,7 @@ function AppleSpeaker()
     };
 
     // Backward-compatible alias for the stand-alone speaker tester.
-    this.play = this.frame;
+    this.play = this.cycle;
 
 }
 
